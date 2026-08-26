@@ -8,6 +8,16 @@ import {
 export const CALENDAR_HOUR_HEIGHT = 80
 export const CALENDAR_MIN_EVENT_HEIGHT = 24
 export const CALENDAR_DAY_MINUTES = 24 * 60
+export const CALENDAR_TIME_COL_WIDTH = 100
+export const CALENDAR_SERVICE_COL_MIN_WIDTH = 200
+
+export function reservationDayGridStyle(columnCount: number) {
+  const count = Math.max(1, columnCount)
+  return {
+    gridTemplateColumns: `${CALENDAR_TIME_COL_WIDTH}px repeat(${count}, minmax(${CALENDAR_SERVICE_COL_MIN_WIDTH}px, 1fr))`,
+    minWidth: CALENDAR_TIME_COL_WIDTH + count * CALENDAR_SERVICE_COL_MIN_WIDTH,
+  }
+}
 
 export type TimedReservation = Pick<Reservation, "id" | "start_time" | "end_time">
 

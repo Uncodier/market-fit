@@ -1,7 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
-import { assertReservationSlot } from "@/app/reservations/availability";
+import { assertCommerceReservationSlot } from "@/app/commerce/pass-round-robin-server";
 
 export interface BookWithEntitlementParams {
   entitlementId: string;
@@ -11,7 +11,16 @@ export interface BookWithEntitlementParams {
   quantity: number;
 }
 
-export async function bookWithEntitlement({
+export async function bookWithEntitlement(params: BookWithEntitlementParams) {
+  try {
+    const data = await executeBookWithEntitlement(params)
+    return { data }
+  } catch (error: any) {
+    return { error: error?.message || "Failed to book" }
+  }
+}
+
+async function executeBookWithEntitlement({
   entitlementId,
   reservableCatalogItemId,
   startIso,
@@ -63,14 +72,14 @@ export async function bookWithEntitlement({
   }
 
   // 3. Assert Slot
-  await assertReservationSlot(
-    entitlement.site_id,
-    reservableCatalogItemId,
+  await assertCommerceReservationSlot({
+    siteId: entitlement.site_id,
+    catalogItem: { id: reservableCatalogItemId },
     startIso,
     endIso,
     quantity,
-    true // Treat as admin/system so it bypasses some frontend checks if needed, but the actual rules are checked.
-  );
+    isAdmin: true,
+  });
 
   // Get lead for buyer
   const { data: lead } = await supabase

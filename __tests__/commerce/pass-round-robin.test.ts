@@ -1,5 +1,6 @@
 import {
   isRoundRobinPass,
+  isRoundRobinPassOrParent,
   mergeMemberSlots,
   pickNextRedeemableMember,
 } from "@/app/commerce/pass-round-robin"
@@ -135,6 +136,11 @@ describe("isRoundRobinPass / access-only", () => {
     expect(isRoundRobinPass(roundRobinPass)).toBe(true)
     expect(isAccessOnlyItem(roundRobinPass)).toBe(false)
     expect(getListingCtaLabel(roundRobinPass)).toBe("marketplace.listing.cta.book")
+  })
+
+  it("detects round_robin on the parent when the variant has no mode", () => {
+    expect(isRoundRobinPassOrParent({ redeem_assignment_mode: null }, roundRobinPass)).toBe(true)
+    expect(isRoundRobinPassOrParent(userChoicePass, userChoicePass)).toBe(false)
   })
 
   it("keeps subscriptions access-only even if marked round_robin", () => {

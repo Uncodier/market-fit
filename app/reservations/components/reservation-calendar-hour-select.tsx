@@ -299,7 +299,7 @@ export function HourCell({
         onBeginDrag(date, hour, event)
       }}
       className={cn(
-        "h-20 border-b border-border relative group transition-colors select-none",
+        "h-20 border-b border-border relative group transition-colors select-none [touch-action:pan-x_pan-y]",
         onBeginDrag && "cursor-pointer",
         !isHourPassed && !isDragSelected && "hover:bg-accent/5",
         isCurrentHourBlock && !isDragSelected && "bg-accent/20 dark:bg-accent/30",

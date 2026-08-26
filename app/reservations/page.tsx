@@ -168,7 +168,7 @@ export default function ReservationsPage() {
   })
 
   return (
-    <div className="flex-1 flex flex-col h-[calc(100vh-var(--topbar-height,64px))] bg-muted/30">
+    <div className="flex-1 flex flex-col min-h-0 min-w-0 h-[calc(100vh-var(--topbar-height,64px))] bg-muted/30">
       <StickyHeader>
         <div className="w-full pt-0 flex items-center justify-between">
           <div className="flex items-center justify-between gap-2 w-full">
@@ -275,7 +275,13 @@ export default function ReservationsPage() {
         </div>
       </StickyHeader>
 
-      <div className="p-4 md:p-6 lg:p-8 flex-1 overflow-auto">
+      <div
+        className={
+          viewType === "calendar" && viewMode !== "schedules"
+            ? "p-4 md:p-6 lg:p-8 flex-1 min-h-0 min-w-0 overflow-hidden flex flex-col"
+            : "p-4 md:p-6 lg:p-8 flex-1 min-h-0 min-w-0 overflow-auto"
+        }
+      >
         {!currentSite || isLoading || isLoadingBlocks ? (
           <ReservationsTableSkeleton />
         ) : viewMode === "schedules" ? (
@@ -283,7 +289,7 @@ export default function ReservationsPage() {
             <SchedulesList siteId={currentSite.id} />
           </div>
         ) : viewType === "calendar" ? (
-          <div className="bg-card rounded-xl shadow-sm border border-border overflow-hidden">
+          <div className="bg-card rounded-xl shadow-sm border border-border overflow-hidden min-h-0 min-w-0 h-full flex flex-col">
             <ReservationCalendar
               reservations={filteredReservations}
               blocks={calendarBlocks}

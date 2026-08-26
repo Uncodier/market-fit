@@ -56,6 +56,15 @@ function getTimeBlocks(dayConfig: any): { start: string; end: string }[] {
   return []
 }
 
+/** Half-open intervals [start, end): back-to-back slots do not overlap. */
+export function intervalsOverlap(startA: Date, endA: Date, startB: Date, endB: Date): boolean {
+  return isBefore(startA, endB) && isAfter(endA, startB)
+}
+
+function applyExclusiveTimeOverlap(query: any, startIso: string, endIso: string) {
+  return query.gt("end_time", startIso).lt("start_time", endIso)
+}
+
 export async function resolveReservationConfig(catalogItemId: string, supabaseClient: any): Promise<{ scheduleItemId: string, capacityGroupIds: string[] }> {
   const { data: item } = await supabaseClient
     .from("catalog_items")
@@ -132,14 +141,13 @@ export async function getBookedSeats(
   supabaseClient: any,
   ignoreReservationId?: string
 ) {
-  // get overlapping reservations
+  // Exclusive overlap: reservation.end > slot.start AND reservation.start < slot.end
   let query = supabaseClient
     .from("reservations")
-    .select("id, quantity, status")
+    .select("id, quantity, status, start_time, end_time")
     .in("catalog_item_id", catalogItemIds)
     .in("status", ["pending", "confirmed"])
-    .gte("end_time", start.toISOString())
-    .lte("start_time", end.toISOString())
+  query = applyExclusiveTimeOverlap(query, start.toISOString(), end.toISOString())
 
   if (ignoreReservationId) {
     query = query.neq("id", ignoreReservationId)
@@ -152,7 +160,12 @@ export async function getBookedSeats(
     return 0
   }
 
-  return (reservations || []).reduce((acc: number, res: any) => acc + (res.quantity || 1), 0)
+  return (reservations || [])
+    .filter((res: any) => {
+      if (!res.start_time || !res.end_time) return true
+      return intervalsOverlap(start, end, new Date(res.start_time), new Date(res.end_time))
+    })
+    .reduce((acc: number, res: any) => acc + (res.quantity || 1), 0)
 }
 
 export async function getAvailableSlots(
@@ -231,23 +244,27 @@ export async function getAvailableSlotsForItem(
   const rangeStart = addDays(parseISO(`${toDateStr(startDateStr)}T00:00:00Z`), -1)
   const rangeEnd = addDays(parseISO(`${toDateStr(endDateStr)}T23:59:59Z`), 1)
 
-  // 2. Get reservations
-  const { data: reservations } = await supabase
-    .from("reservations")
-    .select("id, start_time, end_time, quantity, status")
-    .in("catalog_item_id", config.capacityGroupIds)
-    .in("status", ["pending", "confirmed"])
-    .gte("start_time", rangeStart.toISOString())
-    .lte("end_time", rangeEnd.toISOString())
+  // 2. Get reservations that overlap the padded window (not merely contained in it)
+  const { data: reservations } = await applyExclusiveTimeOverlap(
+    supabase
+      .from("reservations")
+      .select("id, start_time, end_time, quantity, status")
+      .in("catalog_item_id", config.capacityGroupIds)
+      .in("status", ["pending", "confirmed"]),
+    rangeStart.toISOString(),
+    rangeEnd.toISOString()
+  )
 
   // 2.5 Get calendar blocks
   const siteId = schedules[0].site_id
-  const { data: blocksData } = await supabase
-    .from("calendar_blocks")
-    .select("entity_type, entity_id, start_time, end_time")
-    .eq("site_id", siteId)
-    .gte("end_time", rangeStart.toISOString())
-    .lte("start_time", rangeEnd.toISOString())
+  const { data: blocksData } = await applyExclusiveTimeOverlap(
+    supabase
+      .from("calendar_blocks")
+      .select("entity_type, entity_id, start_time, end_time")
+      .eq("site_id", siteId),
+    rangeStart.toISOString(),
+    rangeEnd.toISOString()
+  )
 
   const calendarBlocks = (blocksData || []).filter((b: any) => 
     b.entity_type === 'global' || 
@@ -281,11 +298,9 @@ export async function getAvailableSlotsForItem(
           if (isAfter(slotEnd, dayEnd)) break
           
           // Check if slot overlaps with any calendar block
-          const isBlocked = calendarBlocks.some((b: any) => {
-            const bStart = new Date(b.start_time)
-            const bEnd = new Date(b.end_time)
-            return isBefore(current, bEnd) && isAfter(slotEnd, bStart)
-          })
+          const isBlocked = calendarBlocks.some((b: any) =>
+            intervalsOverlap(current, slotEnd, new Date(b.start_time), new Date(b.end_time))
+          )
 
           if (isBlocked) {
             current = addMinutes(current, duration)
@@ -293,11 +308,9 @@ export async function getAvailableSlotsForItem(
           }
 
           // Calculate booked seats
-          const booked = activeReservations.filter((r: any) => {
-            const rStart = new Date(r.start_time)
-            const rEnd = new Date(r.end_time)
-            return isBefore(current, rEnd) && isAfter(slotEnd, rStart)
-          }).reduce((acc: number, r: any) => acc + (r.quantity || 1), 0)
+          const booked = activeReservations.filter((r: any) =>
+            intervalsOverlap(current, slotEnd, new Date(r.start_time), new Date(r.end_time))
+          ).reduce((acc: number, r: any) => acc + (r.quantity || 1), 0)
 
           const available = capacity - booked
 
@@ -358,17 +371,19 @@ export async function assertReservationSlot(
   }
   
   // Check calendar blocks
-  const { data: blocksData } = await supabase
-    .from("calendar_blocks")
-    .select("entity_type, entity_id, start_time, end_time")
-    .eq("site_id", siteId)
-    .gte("end_time", startIso)
-    .lte("start_time", endIso)
+  const { data: blocksData } = await applyExclusiveTimeOverlap(
+    supabase
+      .from("calendar_blocks")
+      .select("entity_type, entity_id, start_time, end_time")
+      .eq("site_id", siteId),
+    startIso,
+    endIso
+  )
 
-  const isBlocked = (blocksData || []).some((b: any) => 
-    (b.entity_type === 'global' || 
+  const isBlocked = (blocksData || []).some((b: any) =>
+    (b.entity_type === 'global' ||
     (b.entity_type === 'catalog_item' && config.capacityGroupIds.includes(b.entity_id))) &&
-    isBefore(start, new Date(b.end_time)) && isAfter(end, new Date(b.start_time))
+    intervalsOverlap(start, end, new Date(b.start_time), new Date(b.end_time))
   )
 
   if (isBlocked) {
@@ -404,7 +419,8 @@ export async function assertReservationSlot(
 
     if (isWithinAnyBlock) {
       const booked = await getBookedSeats(config.capacityGroupIds, start, end, supabase, ignoreReservationId)
-      if (schedule.capacity - booked >= quantity) {
+      const capacity = schedule.capacity || 1
+      if (capacity - booked >= quantity) {
         validScheduleFound = true
         break
       } else {

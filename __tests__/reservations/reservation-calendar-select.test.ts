@@ -49,7 +49,7 @@ describe("resolveCalendarPointerCommit", () => {
     ).toBe("select")
   })
 
-  it("extends the range when dragging from an already selected start", () => {
+  it("ignores a touch swipe from a selected slot so the calendar can scroll", () => {
     expect(
       resolveCalendarPointerCommit({
         pointerType: "touch",
@@ -57,7 +57,7 @@ describe("resolveCalendarPointerCommit", () => {
         wasAlreadySelected: true,
         dragArmed: false,
       })
-    ).toBe("select")
+    ).toBe("ignore")
   })
 
   it("keeps a mouse drag as a selection", () => {

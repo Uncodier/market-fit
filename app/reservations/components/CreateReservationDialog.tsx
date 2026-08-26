@@ -28,9 +28,8 @@ import type { Reservation, CatalogItem, VariantAxis } from "@/app/types"
 import type { ModifierGroupWithItems } from "@/app/catalog/modifier-types"
 import type { CartModifier } from "@/app/commerce/cart-modifiers"
 import { useDisplayCurrency } from "@/app/context/DisplayCurrencyContext"
-import { updateReservationStatus, upsertReservation } from "../actions"
+import { updateReservationStatus, upsertReservation, validateReservationSlot } from "../actions"
 import { reservationCanCancel } from "../reservation-helpers"
-import { assertReservationSlot } from "../availability"
 import { getLeads } from "@/app/leads/actions"
 import { listCatalogItems } from "@/app/catalog/actions"
 import { filterReservablePickerItems } from "@/app/catalog/storefront-availability"
@@ -577,15 +576,23 @@ export function CreateReservationDialog({
       if (leadError) throw new Error(leadError)
       if (!resolvedLeadId) throw new Error("Customer is required")
 
-      await assertReservationSlot(
-        currentSite.id,
-        resolvedItemId,
-        selectedSlot.start,
-        selectedSlot.end,
-        reservation?.quantity || 1,
-        true,
-        reservation?.id
-      )
+      const { error: slotError } = await validateReservationSlot({
+        siteId: currentSite.id,
+        catalogItem: {
+          id: sellableItem.id,
+          kind: sellableItem.kind,
+          digital_subtype: sellableItem.digital_subtype,
+          redeem_assignment_mode:
+            sellableItem.redeem_assignment_mode ||
+            parentItemObj?.redeem_assignment_mode,
+        },
+        startIso: selectedSlot.start,
+        endIso: selectedSlot.end,
+        quantity: reservation?.quantity || 1,
+        isAdmin: true,
+        ignoreReservationId: reservation?.id,
+      })
+      if (slotError) throw new Error(slotError)
 
       let finalNotes = notes.trim()
       if (selectedModifiers.length > 0) {

@@ -34,7 +34,7 @@ export function ReservationWeekView({
   const { begin, isSelected } = useHourDragSelect(onCreateSlot)
 
   return (
-    <div className="bg-background rounded-lg">
+    <div className="bg-background rounded-lg min-w-0">
       <div className="grid min-w-[720px]" style={{ gridTemplateColumns: "80px repeat(7, minmax(0, 1fr))" }}>
         <div className="bg-muted/50 sticky top-0 left-0 z-20 border-b border-border h-14" />
         {weekDates.map((date) => {

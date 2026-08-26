@@ -10,6 +10,13 @@ export function isRoundRobinPass(item: RoundRobinPassFields | null | undefined):
   return Boolean(item && item.redeem_assignment_mode === "round_robin")
 }
 
+export function isRoundRobinPassOrParent(
+  item: RoundRobinPassFields | null | undefined,
+  parent?: RoundRobinPassFields | null
+): boolean {
+  return isRoundRobinPass(item) || isRoundRobinPass(parent)
+}
+
 export type SlotAvailability = {
   start: string
   end: string

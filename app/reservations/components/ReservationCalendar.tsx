@@ -207,9 +207,9 @@ export function ReservationCalendar({
   }
 
   return (
-    <div className="flex flex-col">
-      <div className="flex items-center justify-between py-6 border-b pl-8 pr-[33px]">
-        <div className="flex-1 flex items-center gap-2">
+    <div className="flex flex-col h-full min-h-0 min-w-0">
+      <div className="flex flex-wrap items-center justify-between gap-2 py-4 md:py-6 border-b px-4 md:pl-8 md:pr-[33px] shrink-0">
+        <div className="flex items-center gap-2 md:flex-1">
           <Button
             variant="ghost"
             size="sm"
@@ -235,16 +235,18 @@ export function ReservationCalendar({
             {t("controlCenter.calendar.today") || "Today"}
           </Button>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 min-w-0">
           <Button variant="ghost" size="sm" onClick={prevPeriod}>
             <ChevronLeft className="h-4 w-4" />
           </Button>
-          <h2 className="text-lg font-semibold min-w-[200px] text-center">{getPeriodLabel()}</h2>
+          <h2 className="text-sm md:text-lg font-semibold min-w-0 md:min-w-[200px] text-center truncate">
+            {getPeriodLabel()}
+          </h2>
           <Button variant="ghost" size="sm" onClick={nextPeriod}>
             <ChevronRight className="h-4 w-4" />
           </Button>
         </div>
-        <div className="flex-1 flex justify-end">
+        <div className="flex justify-end md:flex-1 overflow-x-auto">
           <ToggleGroup
             type="single"
             value={viewMode}
@@ -265,7 +267,9 @@ export function ReservationCalendar({
           </ToggleGroup>
         </div>
       </div>
-      <div className="p-6 md:p-8">{renderCalendarContent()}</div>
+      <div className="flex-1 min-h-0 min-w-0 overflow-auto overscroll-contain p-4 md:p-8">
+        {renderCalendarContent()}
+      </div>
     </div>
   )
 }

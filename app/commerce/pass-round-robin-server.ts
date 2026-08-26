@@ -2,6 +2,7 @@ import { createServiceClient } from "@/lib/supabase/server"
 import { assertReservationSlot, getAvailableSlotsForItem } from "@/app/reservations/availability"
 import {
   isRoundRobinPass,
+  isRoundRobinPassOrParent,
   mergeMemberSlots,
   pickNextRedeemableMember,
   type SlotAvailability,
@@ -224,6 +225,27 @@ export async function pickNextRedeemableService(params: {
   return picked.memberId
 }
 
+async function catalogItemIsRoundRobin(catalogItem: {
+  id: string
+  redeem_assignment_mode?: string | null
+}): Promise<boolean> {
+  if (isRoundRobinPass(catalogItem)) return true
+  const supabase = await createServiceClient(true)
+  const { data: item } = await supabase
+    .from("catalog_items")
+    .select("parent_id, redeem_assignment_mode")
+    .eq("id", catalogItem.id)
+    .maybeSingle()
+  if (isRoundRobinPass(item)) return true
+  if (!item?.parent_id) return false
+  const { data: parent } = await supabase
+    .from("catalog_items")
+    .select("redeem_assignment_mode")
+    .eq("id", item.parent_id)
+    .maybeSingle()
+  return isRoundRobinPassOrParent(item, parent)
+}
+
 export async function assertCommerceReservationSlot(params: {
   siteId: string
   catalogItem: {
@@ -238,7 +260,7 @@ export async function assertCommerceReservationSlot(params: {
   isAdmin?: boolean
   ignoreReservationId?: string
 }) {
-  if (isRoundRobinPass(params.catalogItem)) {
+  if (await catalogItemIsRoundRobin(params.catalogItem)) {
     const memberIds = await listPassRoundRobinMemberIds(params.catalogItem.id)
     if (memberIds.length === 0) {
       throw new Error("This pass has no reservable services to assign.")

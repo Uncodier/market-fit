@@ -1,10 +1,10 @@
-import { getBookedSeats, getAvailableSlots, assertReservationSlot } from '../../app/reservations/availability';
+import { getBookedSeats, getAvailableSlots, assertReservationSlot, intervalsOverlap } from '../../app/reservations/availability';
 import { addDays, addMinutes, format } from 'date-fns';
 import { fromZonedTime } from 'date-fns-tz';
 
 function createChain(resolved: any) {
   const chain: any = {};
-  const methods = ['from', 'select', 'eq', 'in', 'gte', 'lte', 'neq', 'single', 'maybeSingle', 'order'];
+  const methods = ['from', 'select', 'eq', 'in', 'gte', 'lte', 'gt', 'lt', 'neq', 'single', 'maybeSingle', 'order'];
   for (const m of methods) {
     chain[m] = jest.fn(() => chain);
   }
@@ -24,6 +24,24 @@ describe('Reservation Availability Engine', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+  });
+
+  describe('intervalsOverlap', () => {
+    const noon = fromZonedTime('2026-07-25T12:00:00', 'UTC');
+    const one = fromZonedTime('2026-07-25T13:00:00', 'UTC');
+    const two = fromZonedTime('2026-07-25T14:00:00', 'UTC');
+    const half = fromZonedTime('2026-07-25T12:30:00', 'UTC');
+    const oneThirty = fromZonedTime('2026-07-25T13:30:00', 'UTC');
+
+    it('treats back-to-back slots as free', () => {
+      expect(intervalsOverlap(one, two, noon, one)).toBe(false);
+      expect(intervalsOverlap(noon, one, one, two)).toBe(false);
+    });
+
+    it('detects the same slot and partial overlap', () => {
+      expect(intervalsOverlap(one, two, one, two)).toBe(true);
+      expect(intervalsOverlap(one, two, half, oneThirty)).toBe(true);
+    });
   });
 
   describe('getBookedSeats', () => {
@@ -50,6 +68,73 @@ describe('Reservation Availability Engine', () => {
 
       const seats = await getBookedSeats([catalogItemId], start, end, client);
       expect(seats).toBe(0);
+    });
+
+    it('should not count a reservation that ends when the new slot starts', async () => {
+      const start = fromZonedTime('2026-07-25T13:00:00', 'UTC');
+      const end = fromZonedTime('2026-07-25T14:00:00', 'UTC');
+      const client = createChain({
+        data: [{
+          quantity: 1,
+          status: 'confirmed',
+          start_time: '2026-07-25T12:00:00.000Z',
+          end_time: '2026-07-25T13:00:00.000Z',
+        }],
+        error: null,
+      });
+
+      const seats = await getBookedSeats([catalogItemId], start, end, client);
+      expect(seats).toBe(0);
+      expect(client.gt).toHaveBeenCalledWith('end_time', start.toISOString());
+      expect(client.lt).toHaveBeenCalledWith('start_time', end.toISOString());
+    });
+
+    it('should not count a reservation that starts when the new slot ends', async () => {
+      const start = fromZonedTime('2026-07-25T12:00:00', 'UTC');
+      const end = fromZonedTime('2026-07-25T13:00:00', 'UTC');
+      const client = createChain({
+        data: [{
+          quantity: 1,
+          status: 'confirmed',
+          start_time: '2026-07-25T13:00:00.000Z',
+          end_time: '2026-07-25T14:00:00.000Z',
+        }],
+        error: null,
+      });
+
+      expect(await getBookedSeats([catalogItemId], start, end, client)).toBe(0);
+    });
+
+    it('should count a reservation on the exact same slot', async () => {
+      const start = fromZonedTime('2026-07-25T13:00:00', 'UTC');
+      const end = fromZonedTime('2026-07-25T14:00:00', 'UTC');
+      const client = createChain({
+        data: [{
+          quantity: 1,
+          status: 'confirmed',
+          start_time: start.toISOString(),
+          end_time: end.toISOString(),
+        }],
+        error: null,
+      });
+
+      expect(await getBookedSeats([catalogItemId], start, end, client)).toBe(1);
+    });
+
+    it('should count a partially overlapping reservation', async () => {
+      const start = fromZonedTime('2026-07-25T13:00:00', 'UTC');
+      const end = fromZonedTime('2026-07-25T14:00:00', 'UTC');
+      const client = createChain({
+        data: [{
+          quantity: 1,
+          status: 'confirmed',
+          start_time: '2026-07-25T12:30:00.000Z',
+          end_time: '2026-07-25T13:30:00.000Z',
+        }],
+        error: null,
+      });
+
+      expect(await getBookedSeats([catalogItemId], start, end, client)).toBe(1);
     });
   });
 
@@ -336,6 +421,47 @@ describe('Reservation Availability Engine', () => {
       await expect(
         assertReservationSlot(siteId, catalogItemId, start.toISOString(), end.toISOString(), 1)
       ).rejects.toThrow('Not enough capacity for this slot');
+    });
+
+    it('should allow a 13:00 slot when only 12:00 is booked', async () => {
+      const tomorrow = addDays(new Date(), 1);
+      const tomorrowStr = format(tomorrow, 'yyyy-MM-dd');
+      const dayOfWeek = format(tomorrow, 'eeee').toLowerCase();
+      const timeZone = 'UTC';
+
+      const noonStart = fromZonedTime(`${tomorrowStr}T12:00:00`, timeZone);
+      const noonEnd = addMinutes(noonStart, 60);
+      const oneStart = fromZonedTime(`${tomorrowStr}T13:00:00`, timeZone);
+      const oneEnd = addMinutes(oneStart, 60);
+
+      const schedulesChain = createChain({
+        data: [{
+          capacity: 1,
+          timezone: timeZone,
+          days: {
+            [dayOfWeek]: { enabled: true, start: '09:00', end: '17:00' }
+          }
+        }],
+      });
+      const bookedChain = createChain({
+        data: [{
+          quantity: 1,
+          status: 'confirmed',
+          start_time: noonStart.toISOString(),
+          end_time: noonEnd.toISOString(),
+        }],
+      });
+
+      mockCreateServiceClient.mockResolvedValue({
+        from: jest.fn((table: string) => {
+          if (table === 'reservation_schedules') return schedulesChain;
+          return bookedChain;
+        }),
+      });
+
+      await expect(
+        assertReservationSlot(siteId, catalogItemId, oneStart.toISOString(), oneEnd.toISOString(), 1)
+      ).resolves.toBe(true);
     });
 
     it('should validate slots using the schedule timezone', async () => {

@@ -174,6 +174,31 @@ export async function upsertReservation(reservation: Partial<Reservation>) {
   }
 }
 
+export async function validateReservationSlot(params: {
+  siteId: string
+  catalogItem: {
+    id: string
+    kind?: string | null
+    digital_subtype?: string | null
+    redeem_assignment_mode?: string | null
+  }
+  startIso: string
+  endIso: string
+  quantity: number
+  isAdmin?: boolean
+  ignoreReservationId?: string
+}): Promise<{ error?: string }> {
+  try {
+    const { assertCommerceReservationSlot } = await import(
+      "@/app/commerce/pass-round-robin-server"
+    )
+    await assertCommerceReservationSlot(params)
+    return {}
+  } catch (error: any) {
+    return { error: error?.message || "Failed to validate reservation slot" }
+  }
+}
+
 export async function updateReservationStatus(siteId: string, reservationId: string, status: Reservation['status']) {
   try {
     const supabase = await createClient();

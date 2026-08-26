@@ -12,7 +12,7 @@ import {
   useCalendarRangeDrag,
   useHourDragSelect,
 } from "./reservation-calendar-hour-select"
-import { groupReservationsByService } from "./reservation-calendar-layout"
+import { groupReservationsByService, reservationDayGridStyle } from "./reservation-calendar-layout"
 import {
   ReservationTimeColumn,
   reservationHourClassName,
@@ -158,16 +158,12 @@ export function ReservationDayView({
   const isCurrentHourBlock = (hour: number) => isCurrentDay && hour === currentTime.getHours()
 
   return (
-    <div className="bg-background rounded-lg">
+    <div className="bg-background rounded-lg min-w-0">
       <div
         className="grid divide-x divide-border"
-        style={{
-          gridTemplateColumns: columns
-            ? `100px repeat(${columns.length}, minmax(200px, 1fr))`
-            : "100px minmax(200px, 1fr)",
-        }}
+        style={reservationDayGridStyle(columns?.length || 1)}
       >
-        {columns ? <div className="bg-muted/50 sticky top-0 left-0 z-10 border-b border-border h-10" /> : null}
+        {columns ? <div className="bg-muted/50 sticky top-0 left-0 z-20 border-b border-border h-10" /> : null}
         {columns?.map((group) => (
           <div
             key={group.key}

@@ -14,8 +14,7 @@ import { useAuthContext as useAuth } from "@/app/components/auth/auth-provider"
 import { bookWithEntitlement } from "@/app/commerce/redeem-reservation"
 import { toast } from "sonner"
 import { RelationSelect } from "@/app/components/ui/relation-select"
-import { upsertReservation } from "@/app/reservations/actions"
-import { assertReservationSlot } from "@/app/reservations/availability"
+import { upsertReservation, validateReservationSlot } from "@/app/reservations/actions"
 import { CommerceShellHeader } from "@/app/components/commerce/CommerceShellHeader"
 import { useDisplayCurrency } from "@/app/context/DisplayCurrencyContext"
 import { PdpMetricChips } from "@/app/components/commerce/pdp/PdpMetricChips"
@@ -75,13 +74,14 @@ export function BookingExperience({
       if (!entitlementId) return
       setBooking(true)
       try {
-        await bookWithEntitlement({
+        const res = await bookWithEntitlement({
           entitlementId,
           reservableCatalogItemId: item.id,
           startIso,
           endIso,
           quantity: 1
         })
+        if (res.error) throw new Error(res.error)
         toast.success(t("booking.confirmed") || "Reservation confirmed")
         if (onSuccess) onSuccess()
         if (backUrl) router.push(backUrl)
@@ -101,7 +101,20 @@ export function BookingExperience({
       }
       setBooking(true)
       try {
-        await assertReservationSlot(siteId, item.id, startIso, endIso, 1, true)
+        const { error: slotError } = await validateReservationSlot({
+          siteId,
+          catalogItem: {
+            id: item.id,
+            kind: item.kind,
+            digital_subtype: item.digital_subtype,
+            redeem_assignment_mode: item.redeem_assignment_mode,
+          },
+          startIso,
+          endIso,
+          quantity: 1,
+          isAdmin: true,
+        })
+        if (slotError) throw new Error(slotError)
         const res = await upsertReservation({
           site_id: siteId,
           catalog_item_id: item.id,

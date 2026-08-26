@@ -8,14 +8,9 @@ export const RANGE_HOLD_MS = 180
 export function canDragCalendarRange(input: {
   pointerType: string
   dragArmed: boolean
-  wasAlreadySelected: boolean
+  wasAlreadySelected?: boolean
 }) {
-  return (
-    input.pointerType === "mouse" ||
-    input.pointerType === "pen" ||
-    input.dragArmed ||
-    input.wasAlreadySelected
-  )
+  return input.pointerType === "mouse" || input.pointerType === "pen" || input.dragArmed
 }
 
 export function localDateKey(date: Date) {

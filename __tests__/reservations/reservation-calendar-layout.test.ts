@@ -1,7 +1,10 @@
 import {
   CALENDAR_HOUR_HEIGHT,
+  CALENDAR_SERVICE_COL_MIN_WIDTH,
+  CALENDAR_TIME_COL_WIDTH,
   groupReservationsByService,
   layoutReservationLanes,
+  reservationDayGridStyle,
 } from "../../app/reservations/components/reservation-calendar-layout"
 import type { Reservation } from "../../app/types"
 
@@ -157,5 +160,23 @@ describe("groupReservationsByService", () => {
     expect(groups.map((group) => ({ key: group.key, label: group.label }))).toEqual([
       { key: "catalog:emmanuel", label: "EMMANUEL" },
     ])
+  })
+})
+
+describe("reservationDayGridStyle", () => {
+  it("keeps a single column at the service minimum width", () => {
+    expect(reservationDayGridStyle(0)).toEqual({
+      gridTemplateColumns: `${CALENDAR_TIME_COL_WIDTH}px repeat(1, minmax(${CALENDAR_SERVICE_COL_MIN_WIDTH}px, 1fr))`,
+      minWidth: CALENDAR_TIME_COL_WIDTH + CALENDAR_SERVICE_COL_MIN_WIDTH,
+    })
+  })
+
+  it("grows horizontally as more services are added", () => {
+    const five = reservationDayGridStyle(5)
+    const six = reservationDayGridStyle(6)
+
+    expect(five.minWidth).toBe(CALENDAR_TIME_COL_WIDTH + 5 * CALENDAR_SERVICE_COL_MIN_WIDTH)
+    expect(six.minWidth).toBe(five.minWidth + CALENDAR_SERVICE_COL_MIN_WIDTH)
+    expect(six.gridTemplateColumns).toContain("repeat(6,")
   })
 })

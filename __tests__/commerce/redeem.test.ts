@@ -1,12 +1,11 @@
 import { bookWithEntitlement } from "../../app/commerce/redeem-reservation";
-import { assertReservationSlot } from "../../app/reservations/availability";
 
 jest.mock("../../lib/supabase/server", () => ({
   createClient: jest.fn(),
 }));
 
-jest.mock("../../app/reservations/availability", () => ({
-  assertReservationSlot: jest.fn()
+jest.mock("../../app/commerce/pass-round-robin-server", () => ({
+  assertCommerceReservationSlot: jest.fn(),
 }));
 
 const mockSupabaseClient = {
@@ -55,7 +54,7 @@ describe("Redeem Reservation", () => {
         endIso: "2026-08-01T11:00:00Z",
         quantity: 1
       })
-    ).rejects.toThrow("Cannot book using a used entitlement.");
+    ).resolves.toEqual({ error: "Cannot book using a used entitlement." });
   });
 
   it("should fail if not enough uses", async () => {
@@ -77,6 +76,8 @@ describe("Redeem Reservation", () => {
         endIso: "2026-08-01T11:00:00Z",
         quantity: 1
       })
-    ).rejects.toThrow("Not enough uses remaining on this pass (has 0, requested 1).");
+    ).resolves.toEqual({
+      error: "Not enough uses remaining on this pass (has 0, requested 1).",
+    });
   });
 });
