@@ -1,6 +1,7 @@
 import {
   compareReservationStartTime,
   reservationCanCancel,
+  reservationCanRegisterPayment,
   reservationCanRestore,
   reservationServiceColor,
   reservationServiceColorForKey,
@@ -140,5 +141,23 @@ describe("reservationCanRestore", () => {
     expect(reservationCanRestore({ status: "confirmed" })).toBe(false)
     expect(reservationCanRestore({ status: "completed" })).toBe(false)
     expect(reservationCanRestore({ status: "cancelled", is_task: true })).toBe(false)
+  })
+})
+
+describe("reservationCanRegisterPayment", () => {
+  it("allows unpaid service reservations, including those without an order yet", () => {
+    expect(reservationCanRegisterPayment({ status: "confirmed" })).toBe(true)
+    expect(reservationCanRegisterPayment({ status: "pending", amount_due: 40 })).toBe(true)
+    expect(
+      reservationCanRegisterPayment({ status: "confirmed", sale_order_id: "so-1", amount_due: 25 })
+    ).toBe(true)
+  })
+
+  it("hides payment for tasks, cancelled reservations, and fully paid orders", () => {
+    expect(reservationCanRegisterPayment({ status: "confirmed", is_task: true })).toBe(false)
+    expect(reservationCanRegisterPayment({ status: "cancelled" })).toBe(false)
+    expect(
+      reservationCanRegisterPayment({ status: "confirmed", sale_order_id: "so-1", amount_due: 0 })
+    ).toBe(false)
   })
 })

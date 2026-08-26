@@ -13,7 +13,8 @@ import { ZoomableCanvas, type ZoomableViewportInfo } from "./zoomable-canvas"
 import { ImprentaParentEdgesCanvas } from "./imprenta-parent-edges-canvas"
 import { ImprentaNodesCanvas, readCachedIdsAndGrid, type GridCacheEntry } from "./imprenta-nodes-canvas"
 import { ImprentaContextEdges } from "./imprenta-context-edges"
-import { ImprentaTempConnectionLine, ImprentaLoadingRouteEdges } from "./imprenta-world-svg"
+import { ImprentaLoadingRouteEdges } from "./imprenta-world-svg"
+import { ImprentaTempConnectionCanvas } from "./imprenta-temp-connection-canvas"
 import { sizedAncestorRect, screenToWorld } from "@/app/lib/imprenta-world-svg"
 import {
   imprentaMediaBoxHeight,
@@ -34,6 +35,7 @@ import {
 } from "@/app/lib/imprenta-viewport-store"
 import { getImprentaThumbCache } from "@/app/lib/imprenta-thumb-cache"
 import { createImprentaDragStore } from '@/app/lib/imprenta-drag-store'
+import { createImprentaConnectionStore } from '@/app/lib/imprenta-connection-store'
 import { createImprentaHoverStore } from '@/app/lib/imprenta-hover-store'
 import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/card"
 import { Badge } from "@/app/components/ui/badge"
@@ -1842,8 +1844,11 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
   const [positions, setPositions] = useState<Record<string, {x: number, y: number}>>({})
   /** rAF-batched live position while dragging so edges stay aligned without setPositions every mousemove. */
   const dragStore = useMemo(() => createImprentaDragStore(), [])
+  const connectionStore = useMemo(() => createImprentaConnectionStore(), [])
   const hoverStore = useMemo(() => createImprentaHoverStore(), [])
   const nodeDragRafRef = useRef<number | null>(null)
+  const connectionMoveRafRef = useRef<number | null>(null)
+  const lastConnectionPointerRef = useRef<{ x: number; y: number } | null>(null)
   const lastNodeDragPosRef = useRef<{ x: number; y: number } | null>(null)
   const [viewportInfo, setViewportInfo] = useState<ZoomableViewportInfo | null>(null)
   /** External pub/sub for pan/zoom so edges/nodes canvases repaint without React reconcile. */
@@ -1859,8 +1864,9 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
   const [selectedContextId, setSelectedContextId] = useState<string | null>(null)
   /** Drives stronger strokes on context + parent-chain edges while a card is hovered. */
 
-  const [tempConnection, setTempConnection] = useState<{fromNode: string, currentX: number, currentY: number} | null>(null)
+  const [tempConnection, setTempConnection] = useState<{ fromNode: string } | null>(null)
   const drawingConnectionRef = useRef<{fromNode: string, mouseStartX: number, mouseStartY: number, nodeStartX: number, nodeStartY: number} | null>(null)
+  const handleConnectionCancelRef = useRef<() => void>(() => {})
 
   const draggingNodeRef = useRef<string | null>(null)
   const dragStartPos = useRef({ x: 0, y: 0 })
@@ -2906,7 +2912,7 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
       if (e.key === "Escape") {
         if (drawingConnectionRef.current) {
           e.preventDefault();
-          handleConnectionCancel();
+          handleConnectionCancelRef.current();
         }
       }
 
@@ -3109,36 +3115,67 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
     beginNodeDrag(nodeId, e.clientX, e.clientY)
   }
 
-  const handleConnectionMove = useCallback((e: MouseEvent) => {
+  const handleConnectionMove = useCallback((e: Event) => {
     if (!drawingConnectionRef.current) return;
+    if (!("clientX" in e) || !("clientY" in e)) return;
+    const { clientX, clientY } = e as MouseEvent;
 
-    const snap = viewportStore.get();
-    const contentDiv = document.getElementById("imprenta-canvas-content");
-    // Graph content is 0×0 (all nodes are absolute); Chrome's rect on that
-    // node is not a reliable origin. Use the sized zoomable-canvas ancestor.
-    const rect = sizedAncestorRect(contentDiv);
-    if (!rect) return;
+    lastConnectionPointerRef.current = { x: clientX, y: clientY };
+    if (connectionMoveRafRef.current != null) return;
 
-    const { x: currentX, y: currentY } = screenToWorld(
-      e.clientX,
-      e.clientY,
-      rect,
-      snap?.position || { x: 0, y: 0 },
-      snap?.scale || 1
-    );
+    connectionMoveRafRef.current = requestAnimationFrame(() => {
+      connectionMoveRafRef.current = null;
+      const drawing = drawingConnectionRef.current;
+      const ptr = lastConnectionPointerRef.current;
+      if (!drawing || !ptr) return;
 
-    setTempConnection({
-      fromNode: drawingConnectionRef.current.fromNode,
-      currentX,
-      currentY,
+      const snap = viewportStore.get();
+      const contentDiv = document.getElementById("imprenta-canvas-content");
+      // Graph content is 0×0 (all nodes are absolute); Chrome's rect on that
+      // node is not a reliable origin. Use the sized zoomable-canvas ancestor.
+      const rect = sizedAncestorRect(contentDiv);
+      if (!rect) return;
+
+      const { x: currentX, y: currentY } = screenToWorld(
+        ptr.x,
+        ptr.y,
+        rect,
+        snap?.position || { x: 0, y: 0 },
+        snap?.scale || 1
+      );
+
+      connectionStore.set({
+        fromNode: drawing.fromNode,
+        toX: currentX,
+        toY: currentY,
+      });
     });
-  }, [viewportStore]);
+  }, [viewportStore, connectionStore]);
+
+  const unbindConnectionMove = useCallback(() => {
+    window.removeEventListener("pointermove", handleConnectionMove, true);
+    window.removeEventListener("mousemove", handleConnectionMove, true);
+    if (connectionMoveRafRef.current != null) {
+      cancelAnimationFrame(connectionMoveRafRef.current);
+      connectionMoveRafRef.current = null;
+    }
+  }, [handleConnectionMove]);
 
   const handleConnectionCancel = useCallback(() => {
     drawingConnectionRef.current = null;
+    lastConnectionPointerRef.current = null;
+    connectionStore.set(null);
     setTempConnection(null);
-    window.removeEventListener('mousemove', handleConnectionMove);
-  }, [handleConnectionMove]);
+    unbindConnectionMove();
+  }, [connectionStore, unbindConnectionMove]);
+  handleConnectionCancelRef.current = handleConnectionCancel
+
+  useEffect(() => {
+    return () => {
+      unbindConnectionMove()
+      connectionStore.set(null)
+    }
+  }, [unbindConnectionMove, connectionStore])
 
   const handleConnectionStart = (e: React.MouseEvent, nodeId: string) => {
     e.stopPropagation();
@@ -3161,15 +3198,14 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
        nodeStartX: startX,
        nodeStartY: startY
     };
-    
-    setTempConnection({
-      fromNode: nodeId,
-      currentX: startX,
-      currentY: startY
-    });
-    
-    window.addEventListener('mousemove', handleConnectionMove);
-    // Removed mouseup and click listeners so connection stays active
+
+    lastConnectionPointerRef.current = { x: e.clientX, y: e.clientY };
+    connectionStore.set({ fromNode: nodeId, toX: startX, toY: startY });
+    setTempConnection({ fromNode: nodeId });
+
+    window.addEventListener("pointermove", handleConnectionMove, true);
+    window.addEventListener("mousemove", handleConnectionMove, true);
+    handleConnectionMove(e.nativeEvent);
   }
 
   const handleConnectionDrop = async (
@@ -3887,6 +3923,7 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
             />
           }
           screenSpaceFront={
+            <>
             <ImprentaNodesCanvas
               nodes={canvasNodes}
               positions={stablePositions}
@@ -3910,6 +3947,16 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
               onNodePointerDown={handleCanvasNodePointerDown}
               pointerEventsEnabled={tempConnection == null && draggingNodeId == null}
             />
+            <ImprentaTempConnectionCanvas
+              connectionStore={connectionStore}
+              viewportStore={viewportStore}
+              positions={stablePositions}
+              nodeHeights={nodeHeightsSnapshot}
+              nodeW={NODE_W}
+              rowH={ROW_H}
+              strokeStyle={isDarkMode ? "hsl(0, 0%, 100%)" : "hsl(0, 0%, 0%)"}
+            />
+            </>
           }
           onSort={() => {
             toast.info("Organizing layout...");
@@ -4014,6 +4061,7 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
             <div 
               id="imprenta-canvas-content" 
               className="relative"
+              data-imprenta-connecting={tempConnection ? "true" : undefined}
               onClick={() => setSelectedContextId(null)}
             >
                   {/* Parent edges are drawn by the viewport-sized canvas mounted in screenSpaceBehind. */}
@@ -4108,20 +4156,6 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
                     )
                   })}
 
-                  {/* Draw temp dragging connection */}
-                  {tempConnection && positions[tempConnection.fromNode] && (() => {
-                    const fromPos = resolveNodePosition(tempConnection.fromNode)
-                    const fromCy = (nodeHeightsRef.current[tempConnection.fromNode] || ROW_H) / 2
-                    return (
-                      <ImprentaTempConnectionLine
-                        fromX={fromPos.x + NODE_W}
-                        fromY={fromPos.y + fromCy}
-                        toX={tempConnection.currentX}
-                        toY={tempConnection.currentY}
-                      />
-                    )
-                  })()}
-                  
                   {/* Draw nodes (virtualized + LOD when graph is large). */}
                   <TooltipProvider delayDuration={200}>
                   {slicedRenderNodes.map(node => {

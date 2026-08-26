@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { Reservation } from "@/app/types";
+import { loadReservationSalePayments } from "./ensure-sale-order";
 
 export async function getReservations(siteId: string) {
   try {
@@ -138,10 +139,23 @@ export async function getReservations(siteId: string) {
       } as Reservation;
     });
 
-    const enriched = (data || []).map((row) => ({
-      ...row,
-      buyer_profile: row.buyer_user_id ? profileById.get(row.buyer_user_id) || null : null,
-    })) as Reservation[];
+    const itemIds = Array.from(
+      new Set((data || []).map((r) => r.sale_order_item_id).filter(Boolean))
+    ) as string[]
+    const paymentByItemId = await loadReservationSalePayments(supabase, itemIds)
+
+    const enriched = (data || []).map((row) => {
+      const payment = row.sale_order_item_id
+        ? paymentByItemId.get(row.sale_order_item_id)
+        : null
+      return {
+        ...row,
+        buyer_profile: row.buyer_user_id ? profileById.get(row.buyer_user_id) || null : null,
+        sale_order_id: payment?.sale_order_id ?? null,
+        amount: payment?.amount ?? null,
+        amount_due: payment?.amount_due ?? null,
+      }
+    }) as Reservation[];
 
     const combined = [...enriched, ...mappedTasks].sort((a, b) => 
       new Date(a.start_time).getTime() - new Date(b.start_time).getTime()

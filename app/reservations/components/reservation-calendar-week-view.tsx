@@ -7,6 +7,17 @@ import { CalendarTimeSlot, useHourDragSelect } from "./reservation-calendar-hour
 import { ReservationTimeColumn, reservationHourLabel } from "./reservation-calendar-time-column"
 import { localDateKey } from "./reservation-calendar-select"
 import type { CalendarBlockSpan } from "../calendar-block-helpers"
+import { useLocalization } from "@/app/context/LocalizationContext"
+
+const WEEKDAY_KEYS = [
+  "common.days.short.sun",
+  "common.days.short.mon",
+  "common.days.short.tue",
+  "common.days.short.wed",
+  "common.days.short.thu",
+  "common.days.short.fri",
+  "common.days.short.sat",
+] as const
 
 export function ReservationWeekView({
   selectedDate,
@@ -29,6 +40,7 @@ export function ReservationWeekView({
   onBlockClick?: (block: CalendarBlock) => void
   onCreateSlot?: (slot: CalendarTimeSlot) => void
 }) {
+  const { t } = useLocalization()
   const weekDates = getWeekDates(selectedDate)
   const hours = Array.from({ length: 24 }, (_, i) => i)
   const { begin, isSelected } = useHourDragSelect(onCreateSlot)
@@ -49,7 +61,7 @@ export function ReservationWeekView({
             >
               <div className="flex flex-col items-center justify-center h-full">
                 <div className="text-sm font-medium">
-                  {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][date.getDay()]}
+                  {t(WEEKDAY_KEYS[date.getDay()]) || ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][date.getDay()]}
                 </div>
                 <div
                   className={cn(

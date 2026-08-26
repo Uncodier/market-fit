@@ -126,6 +126,15 @@
       backface-visibility: hidden;
       -webkit-transform: translateZ(0) scale(1.0, 1.0);
     }
+
+    /* World-space graph edges: icon hacks collapse these SVGs to 0×0 in Safari. */
+    svg.imprenta-world-svg,
+    svg.imprenta-world-svg * {
+      transform: none !important;
+      -webkit-transform: none !important;
+      backface-visibility: visible !important;
+      -webkit-backface-visibility: visible !important;
+    }
     
     /* Fix específico para menús de navegación */
     nav svg, 
@@ -943,6 +952,15 @@ html.safari svg {
   /* Preparamos los SVG para que se comporten bien en Safari */
   transform: translateZ(0);
   backface-visibility: hidden;
+}
+
+html.safari svg.imprenta-world-svg,
+html.safari svg.imprenta-world-svg * {
+  transform: none !important;
+  -webkit-transform: none !important;
+  backface-visibility: visible !important;
+  -webkit-backface-visibility: visible !important;
+  overflow: visible !important;
 }
 
 /* Inputs con iconos en Safari */
@@ -2970,6 +2988,14 @@ html.safari .chat-input-container[style*="fixed"] {
   z-index: 1;
   transform: translateZ(0);
   backface-visibility: hidden;
+}
+
+/* Drop knobs pulse while a connection rubber-band is active. */
+#imprenta-canvas-content[data-imprenta-connecting="true"] [title="Drop context here"],
+#imprenta-canvas-content[data-imprenta-connecting="true"] [title^="Content:"],
+#imprenta-canvas-content[data-imprenta-connecting="true"] [title^="Context:"],
+#imprenta-canvas-content[data-imprenta-connecting="true"] [title^="Audience:"] {
+  box-shadow: 0 0 0 4px hsl(var(--primary) / 0.4);
 }
 
 /* SVG path that represents the route to a loading result. */

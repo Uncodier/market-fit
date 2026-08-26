@@ -124,6 +124,7 @@ export function CalendarBlockItem({
   compact?: boolean
   displayStart?: string
 }) {
+  const { t } = useLocalization()
   const start = new Date(displayStart || block.start_time)
   const timeStr = start.toLocaleTimeString("en-US", {
     hour: "2-digit",
@@ -131,8 +132,12 @@ export function CalendarBlockItem({
     hour12: false,
   })
   const dayStr = start.getDate().toString()
-  const title = calendarBlockTitle(block)
-  const scope = calendarBlockScopeLabel(block)
+  const title = calendarBlockTitle(block, t("reservations.blocks.blockedTime") || "Blocked time")
+  const scope = calendarBlockScopeLabel(block, {
+    catalog_item: t("reservations.blocks.scopeService") || "Specific service",
+    user: t("reservations.blocks.scopeStaff") || "Staff member",
+    global: t("reservations.blocks.scopeBusiness") || "Entire business",
+  })
 
   return (
     <div

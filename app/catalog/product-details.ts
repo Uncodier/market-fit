@@ -75,6 +75,8 @@ export function needsBuyerAccount(
   return Boolean(item.kind === "digital_asset" || item.is_recurring)
 }
 
+export const VARIANT_SELECTION_REASON = "Item requires variant selection"
+
 /** Parent listing that must resolve a child SKU before add-to-cart / book / buy. */
 export function requiresVariantSelection(
   item: CatalogItem & { _shop?: { hasVariants?: boolean; children?: unknown[] } }
@@ -85,6 +87,24 @@ export function requiresVariantSelection(
     item.metadata?.variant_axes?.length &&
     item.is_purchasable === false
   )
+}
+
+/** Checkout-time variant guard. Parents with purchasable children cannot be sold directly. */
+export function variantSelectionBlockReason(
+  item: { is_purchasable?: boolean | null; parent_id?: string | null },
+  purchasableChildCount: number,
+): string | null {
+  if (item.is_purchasable === false) return VARIANT_SELECTION_REASON
+  if (!item.parent_id && purchasableChildCount > 0) return VARIANT_SELECTION_REASON
+  return null
+}
+
+/** Existing reservation lines already picked the bookable SKU (often a staff parent). */
+export function shouldSkipVariantSelectionForCheckoutLine(params: {
+  existingReservationId?: string | null
+  reservationStart?: string | null
+}) {
+  return Boolean(params.existingReservationId && params.reservationStart)
 }
 
 export function hasProductDetails(item: CatalogItem): boolean {

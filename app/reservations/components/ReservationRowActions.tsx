@@ -18,11 +18,12 @@ import {
   ClipboardList,
   Pencil,
   RotateCcw,
+  Banknote,
 } from "@/app/components/ui/icons"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { getVisitsSettings } from "@/app/visits/actions"
 import { reservationCanRegisterVisitor } from "@/app/visits/visit-helpers"
-import { reservationCanEdit, reservationCanRestore } from "../reservation-helpers"
+import { reservationCanEdit, reservationCanRestore, reservationCanRegisterPayment } from "../reservation-helpers"
 
 export function ReservationRowActions({
   reservation,
@@ -30,12 +31,14 @@ export function ReservationRowActions({
   updating,
   onStatusChange,
   onEdit,
+  onRegisterPayment,
 }: {
   reservation: Reservation
   siteId: string
   updating: boolean
   onStatusChange: (id: string, status: Reservation["status"]) => void
   onEdit?: (reservation: Reservation) => void
+  onRegisterPayment?: (reservation: Reservation) => void
 }) {
   const { t } = useLocalization()
   const router = useRouter()
@@ -63,6 +66,11 @@ export function ReservationRowActions({
         {onEdit && reservationCanEdit(reservation) && (
           <DropdownMenuItem onClick={() => onEdit(reservation)}>
             <Pencil className="h-4 w-4 mr-2" /> {t("reservations.actions.edit") || "Edit"}
+          </DropdownMenuItem>
+        )}
+        {onRegisterPayment && reservationCanRegisterPayment(reservation) && (
+          <DropdownMenuItem onClick={() => onRegisterPayment(reservation)}>
+            <Banknote className="h-4 w-4 mr-2" /> {t("reservations.actions.registerPayment") || "Register payment"}
           </DropdownMenuItem>
         )}
         {reservation.status === "pending" && (

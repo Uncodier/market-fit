@@ -1,14 +1,14 @@
 "use server";
 
 import { createClient, createServiceClient } from "@/lib/supabase/server";
-import { assertCanSell } from "@/app/catalog/actions";
+import { assertCanSell } from "@/app/catalog/sell-availability";
 import { getTaxesByCatalogItemIds } from "@/app/catalog/tax-actions";
 import { resolveUnitPrice } from "@/app/price-lists/actions";
 import { toPriceListChannel } from "@/app/price-lists/price-list-channels";
 import { applyPromotionToOrder } from "@/app/promotions/apply-promotion-to-order";
 import { resolvePromotionDiscount } from "@/app/promotions/resolve-promotion";
 import { createShipment } from "@/app/shipments/actions";
-import { isAccessOnlyItem } from "@/app/catalog/product-details";
+import { isAccessOnlyItem, shouldSkipVariantSelectionForCheckoutLine } from "@/app/catalog/product-details";
 import {
   assertCommerceReservationSlot,
 } from "@/app/commerce/pass-round-robin-server";
@@ -19,7 +19,8 @@ import { getUsdFxRates } from "@/app/lib/fx-rates";
 import {
   checkoutLinesNeedFxConversion,
   normalizeCheckoutLinesToCurrency,
-  resolveSiteCurrency,
+  resolveCheckoutOrderCurrency,
+  resolveProductCurrency,
 } from "./checkout-currency";
 import {
   findPosClientMutation,
@@ -95,6 +96,8 @@ export interface CheckoutCartParams {
   publicAccessToken?: string;
   /** Customer special instructions for the order (sale_orders.notes). */
   notes?: string;
+  /** Attach the sale line to this reservation instead of inserting another row. */
+  existingReservationId?: string;
 }
 
 export async function checkoutCart({
@@ -122,6 +125,7 @@ export async function checkoutCart({
   quotationId,
   publicAccessToken,
   notes,
+  existingReservationId,
 }: CheckoutCartParams) {
   try {
     if (clientMutationId && inputSource === "pos") {
@@ -384,7 +388,12 @@ export async function checkoutCart({
     
     for (const line of lines) {
       // Assert can sell
-      await assertCanSell(siteId, line.catalogItemId, line.quantity, originLocationId, isAdmin);
+      await assertCanSell(siteId, line.catalogItemId, line.quantity, originLocationId, isAdmin, {
+        skipVariantSelection: shouldSkipVariantSelectionForCheckoutLine({
+          existingReservationId,
+          reservationStart: line.reservationStart,
+        }),
+      });
 
       const { data: catalogItem } = await (isAdmin ? supabaseAdmin : supabase)
         .from("catalog_items")
@@ -438,6 +447,7 @@ export async function checkoutCart({
           endIso: line.reservationEnd,
           quantity: line.quantity,
           isAdmin,
+          ignoreReservationId: existingReservationId,
         });
       }
       
@@ -465,7 +475,7 @@ export async function checkoutCart({
         catalog_item_id: line.catalogItemId,
         name: finalName,
         description: catalogItem?.description,
-        currency: catalogItem?.currency || "USD",
+        currency: resolveProductCurrency(catalogItem?.currency, siteSettings?.currency),
         quantity: line.quantity,
         unit_price: price,
         subtotal: subtotal,
@@ -505,7 +515,10 @@ export async function checkoutCart({
           catalog_item_id: mod.catalogItemId,
           name: modItem?.name || "Extra",
           description: modItem?.description,
-          currency: modItem?.currency || catalogItem?.currency || "USD",
+          currency: resolveProductCurrency(
+            modItem?.currency || catalogItem?.currency,
+            siteSettings?.currency,
+          ),
           quantity: modQty,
           unit_price: modPrice,
           subtotal: modSubtotal,
@@ -521,7 +534,10 @@ export async function checkoutCart({
       }
     }
 
-    const orderCurrency = resolveSiteCurrency(siteSettings?.currency);
+    const orderCurrency = resolveCheckoutOrderCurrency(
+      processedLines,
+      siteSettings?.currency,
+    );
     if (checkoutLinesNeedFxConversion(processedLines, orderCurrency)) {
       const { rates } = await getUsdFxRates();
       const normalized = normalizeCheckoutLinesToCurrency(
@@ -890,6 +906,7 @@ export async function checkoutCart({
       finalLeadId,
       buyerUserId,
       ownerSiteId,
+      existingReservationId,
     });
 
     // 6.b Update order JSONB items for backwards compatibility is already handled above in the update/insert.

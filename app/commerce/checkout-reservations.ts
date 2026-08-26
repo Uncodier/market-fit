@@ -24,6 +24,8 @@ export async function syncCheckoutDropinReservations(params: {
   finalLeadId?: string | null
   buyerUserId?: string | null
   ownerSiteId?: string | null
+  /** Link this reservation instead of inserting a second capacity row. */
+  existingReservationId?: string | null
 }) {
   const {
     supabaseAdmin,
@@ -35,6 +37,7 @@ export async function syncCheckoutDropinReservations(params: {
     finalLeadId,
     buyerUserId,
     ownerSiteId,
+    existingReservationId,
   } = params
 
   for (const item of upsertedItems) {
@@ -47,6 +50,8 @@ export async function syncCheckoutDropinReservations(params: {
       .select("id, catalog_item_id")
       .eq("sale_order_item_id", item.id)
       .maybeSingle()
+
+    const targetReservationId = existingRes?.id || existingReservationId || null
 
     const resStatus =
       ["completed", "complete", "pay"].includes(intent || "") && isFullyPaid
@@ -62,12 +67,12 @@ export async function syncCheckoutDropinReservations(params: {
         endIso: item._reservationEnd,
         quantity: item.quantity,
         isAdmin,
-        ignoreReservationId: existingRes?.id,
+        ignoreReservationId: existingRes?.id || targetReservationId || undefined,
         preferredMemberId: existingRes?.catalog_item_id,
       })
     }
 
-    if (existingRes) {
+    if (targetReservationId) {
       await supabaseAdmin
         .from("reservations")
         .update({
@@ -76,8 +81,12 @@ export async function syncCheckoutDropinReservations(params: {
           catalog_item_id: reservationCatalogItemId,
           start_time: item._reservationStart,
           end_time: item._reservationEnd,
+          sale_order_item_id: item.id,
+          ...(finalLeadId ? { lead_id: finalLeadId } : {}),
+          buyer_user_id: buyerUserId || null,
+          owner_site_id: ownerSiteId || null,
         })
-        .eq("id", existingRes.id)
+        .eq("id", targetReservationId)
       continue
     }
 

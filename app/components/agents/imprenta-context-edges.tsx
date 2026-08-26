@@ -123,22 +123,20 @@ export const ImprentaContextEdges = memo(function ImprentaContextEdges({
   return (
     <WorldSpaceSvg
       points={points}
-      className="pointer-events-none"
-      style={{ zIndex: 0 }}
-      shapeRendering="optimizeSpeed"
+      className="pointer-events-none text-primary"
+      style={{ zIndex: 0, color: "hsl(var(--primary))" }}
     >
       {edges.map((edge) => {
-        const strokeClass =
-          edge.isSelected || edge.touchesHoverChain ? "text-primary" : "text-primary/50"
         const strokeWidth = edge.isSelected ? 4 : edge.touchesHoverChain ? 3 : 2
         return (
           <g key={`ctx-edge-${edge.id}`}>
             <path
               d={edge.d}
               fill="none"
-              stroke="currentColor"
+              stroke="hsl(var(--primary))"
+              strokeOpacity={edge.isSelected || edge.touchesHoverChain ? 1 : 0.5}
               strokeWidth={strokeWidth}
-              className={`${strokeClass} cursor-pointer`}
+              className="cursor-pointer"
               strokeDasharray="4 4"
               style={{ pointerEvents: "stroke" }}
               onClick={(e) => {

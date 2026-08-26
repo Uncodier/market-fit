@@ -1,45 +1,54 @@
-/**
- * Unit coverage for the purchasable guard used by checkout.
- * Full assertCanSell pulls Next.js cache; we document the expected rule here.
- */
+import {
+  VARIANT_SELECTION_REASON,
+  shouldSkipVariantSelectionForCheckoutLine,
+  variantSelectionBlockReason,
+} from "@/app/catalog/product-details"
 
 describe("variant purchasable guard", () => {
-  function canSellItem(item: { status: string; is_purchasable?: boolean; availability_mode?: string }) {
-    if (item.is_purchasable === false) {
-      return { sellable: false, reason: "Item requires variant selection" };
-    }
-    if (item.status !== "active") {
-      return { sellable: false, reason: "Item is archived" };
-    }
-    if (item.availability_mode === "always" || !item.availability_mode) {
-      return { sellable: true };
-    }
-    return { sellable: true };
-  }
-
   it("blocks parent items that are not purchasable", () => {
-    const result = canSellItem({
-      status: "active",
-      is_purchasable: false,
-    });
-    expect(result.sellable).toBe(false);
-    expect(result.reason).toBe("Item requires variant selection");
-  });
+    expect(variantSelectionBlockReason({ is_purchasable: false }, 0)).toBe(
+      VARIANT_SELECTION_REASON,
+    )
+  })
+
+  it("blocks legacy parents that still have purchasable children", () => {
+    expect(variantSelectionBlockReason({ is_purchasable: true }, 4)).toBe(
+      VARIANT_SELECTION_REASON,
+    )
+  })
 
   it("allows child variant SKUs", () => {
-    const result = canSellItem({
-      status: "active",
-      is_purchasable: true,
-      availability_mode: "always",
-    });
-    expect(result.sellable).toBe(true);
-  });
+    expect(
+      variantSelectionBlockReason({ is_purchasable: true, parent_id: "parent-1" }, 0),
+    ).toBeNull()
+  })
 
-  it("allows simple items without variants (default purchasable)", () => {
-    const result = canSellItem({
-      status: "active",
-      availability_mode: "always",
-    });
-    expect(result.sellable).toBe(true);
-  });
-});
+  it("allows simple items without variants", () => {
+    expect(variantSelectionBlockReason({ is_purchasable: true }, 0)).toBeNull()
+    expect(variantSelectionBlockReason({}, 0)).toBeNull()
+  })
+})
+
+describe("shouldSkipVariantSelectionForCheckoutLine", () => {
+  it("skips when attaching a reservation line to an existing booking", () => {
+    expect(
+      shouldSkipVariantSelectionForCheckoutLine({
+        existingReservationId: "res-1",
+        reservationStart: "2026-08-26T18:00:00Z",
+      }),
+    ).toBe(true)
+  })
+
+  it("still requires a variant for new cart lines", () => {
+    expect(
+      shouldSkipVariantSelectionForCheckoutLine({
+        reservationStart: "2026-08-26T18:00:00Z",
+      }),
+    ).toBe(false)
+    expect(
+      shouldSkipVariantSelectionForCheckoutLine({
+        existingReservationId: "res-1",
+      }),
+    ).toBe(false)
+  })
+})

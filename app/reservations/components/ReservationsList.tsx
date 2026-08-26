@@ -23,6 +23,7 @@ interface ReservationsListProps {
   onUpdate: () => void
   onEdit: (reservation: Reservation) => void
   onEditBlock?: (block: CalendarBlock) => void
+  onRegisterPayment?: (reservation: Reservation) => void
 }
 
 export function ReservationsList({
@@ -33,6 +34,7 @@ export function ReservationsList({
   onUpdate,
   onEdit,
   onEditBlock,
+  onRegisterPayment,
 }: ReservationsListProps) {
   const { t } = useLocalization()
   const [updating, setUpdating] = useState<string | null>(null)
@@ -55,7 +57,7 @@ export function ReservationsList({
     if (error) {
       toast.error(error)
     } else {
-      toast.success("Block removed")
+      toast.success(t("reservations.toast.blockRemoved") || "Block removed")
       onUpdate()
     }
     setUpdating(null)
@@ -89,7 +91,7 @@ export function ReservationsList({
     if (blocks.length > 0) {
       groups.push({
         key: "blocked-time",
-        title: "Blocked time",
+        title: t("reservations.blocks.blockedTime") || "Blocked time",
         reservations: [],
         blocks: sortReservations(blocks, sortBy),
       })
@@ -133,6 +135,7 @@ export function ReservationsList({
               updating={updating === reservation.id}
               onStatusChange={handleStatusChange}
               onEdit={onEdit}
+              onRegisterPayment={onRegisterPayment}
             />
           ))}
         </React.Fragment>

@@ -1,9 +1,9 @@
 "use server";
 
 import { revalidatePath, revalidateTag } from "next/cache";
-import { createClient, createServiceClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/supabase/server";
 import { CatalogItem } from "@/app/types";
-import { CatalogListParams, CatalogListResponse, CatalogAvailabilityResult } from "./types";
+import { CatalogListParams, CatalogListResponse } from "./types";
 import { attachCatalogRelationSummaries } from "./relation-summaries";
 import { shopCacheTag } from "@/app/shop/[siteSlug]/shop-catalog-shared";
 
@@ -296,105 +296,6 @@ export async function unarchiveCatalogItem(siteId: string, catalogItemId: string
   } catch (error: any) {
     return { error: error.message };
   }
-}
-
-/**
- * Checks if an item can be sold based on availability mode and inventory levels.
- */
-export async function getCatalogAvailability(
-  siteId: string,
-  catalogItemId: string,
-  quantity: number = 1,
-  locationId?: string,
-  forceServiceRole: boolean = false
-): Promise<CatalogAvailabilityResult> {
-  const supabase = forceServiceRole ? await createServiceClient(true) : await createClient();
-
-  // 1. Fetch item & site policy
-  const [itemRes, settingsRes] = await Promise.all([
-    supabase.from("catalog_items").select("*").eq("id", catalogItemId).eq("site_id", siteId).single(),
-    supabase.from("settings").select("commerce").eq("site_id", siteId).single()
-  ]);
-
-  if (itemRes.error) return { sellable: false, reason: "Item not found", policy: 'block' };
-  
-  const item = itemRes.data;
-  const commerceSettings = settingsRes.data?.commerce as any || { stock_shortage_policy: 'allow' };
-  const policy = commerceSettings.stock_shortage_policy || 'allow';
-
-  // 0. Check purchasable flag (parents with variants are not purchasable directly)
-  if (item.is_purchasable === false) {
-    return { sellable: false, reason: "Item requires variant selection", policy: 'block' };
-  }
-
-  // Legacy parent_id links may leave is_purchasable=true without variant_axes
-  if (!item.parent_id) {
-    const { count: childCount } = await supabase
-      .from("catalog_items")
-      .select("id", { count: "exact", head: true })
-      .eq("parent_id", catalogItemId)
-      .eq("status", "active")
-      .eq("is_purchasable", true);
-    if ((childCount || 0) > 0) {
-      return { sellable: false, reason: "Item requires variant selection", policy: "block" };
-    }
-  }
-
-  // 1. Check status
-  if (item.status !== 'active') {
-    return { sellable: false, reason: "Item is archived", policy };
-  }
-
-  // 2. Check mode
-  if (item.availability_mode === 'always') {
-    return { sellable: true, policy };
-  }
-
-  if (item.availability_mode === 'manual') {
-    if (item.availability_status === 'available') {
-      return { sellable: true, policy };
-    } else {
-      return { sellable: false, reason: `Item is marked as ${item.availability_status}`, policy };
-    }
-  }
-
-  // 3. Inventory mode
-  if (item.availability_mode === 'inventory') {
-    let query = supabase
-      .from("inventory_levels")
-      .select("quantity")
-      .eq("catalog_item_id", catalogItemId)
-      .eq("site_id", siteId);
-      
-    if (locationId) {
-      query = query.eq("location_id", locationId);
-    }
-    
-    const { data: levels } = await query;
-    
-    const availableQty = levels?.reduce((sum: number, level: any) => sum + Number(level.quantity), 0) || 0;
-    
-    if (quantity <= availableQty) {
-      return { sellable: true, availableQty, policy };
-    } else {
-      return { 
-        sellable: policy !== 'block', 
-        reason: `Insufficient stock (requested ${quantity}, available ${availableQty})`,
-        availableQty,
-        policy
-      };
-    }
-  }
-
-  return { sellable: true, policy };
-}
-
-export async function assertCanSell(siteId: string, catalogItemId: string, quantity: number = 1, locationId?: string, forceServiceRole: boolean = false) {
-  const result = await getCatalogAvailability(siteId, catalogItemId, quantity, locationId, forceServiceRole);
-  if (!result.sellable) {
-    throw new Error(result.reason || "Item cannot be sold");
-  }
-  return result;
 }
 
 export async function getSubscriptionPlanItems(planCatalogItemId: string) {

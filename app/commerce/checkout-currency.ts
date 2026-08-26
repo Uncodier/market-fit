@@ -12,13 +12,45 @@ export function resolveSiteCurrency(siteCurrency?: string | null): string {
   return trimmed ? trimmed.toUpperCase() : "USD"
 }
 
+export function resolveLineCurrency(currency?: string | null): string {
+  return resolveSiteCurrency(currency)
+}
+
+/** Product currency when set; otherwise the site currency (USD only as last resort). */
+export function resolveProductCurrency(
+  productCurrency?: string | null,
+  siteCurrency?: string | null,
+): string {
+  const trimmed = productCurrency?.trim()
+  return trimmed ? trimmed.toUpperCase() : resolveSiteCurrency(siteCurrency)
+}
+
+/**
+ * Charge in the products' currency when every line agrees.
+ * Missing line currencies inherit the site; mixed carts settle in the site currency.
+ */
+export function resolveCheckoutOrderCurrency(
+  lines: { currency?: string | null }[],
+  siteCurrency?: string | null,
+): string {
+  const site = resolveSiteCurrency(siteCurrency)
+  if (lines.length === 0) return site
+  const codes = new Set<string>()
+  for (const line of lines) {
+    const trimmed = line.currency?.trim()
+    if (trimmed) codes.add(trimmed.toUpperCase())
+  }
+  if (codes.size === 1) return [...codes][0]
+  return site
+}
+
 export function checkoutLinesNeedFxConversion<T extends CheckoutMoneyLine>(
   lines: T[],
   targetCurrency: string,
 ): boolean {
   const target = targetCurrency.toUpperCase()
   return lines.some(
-    (line) => (line.currency || "USD").toUpperCase() !== target,
+    (line) => resolveProductCurrency(line.currency, target) !== target,
   )
 }
 
@@ -29,7 +61,7 @@ export function normalizeCheckoutLinesToCurrency<T extends CheckoutMoneyLine>(
 ): { lines: T[]; subtotal: number } {
   const target = targetCurrency.toUpperCase()
   const converted = lines.map((line) => {
-    const from = (line.currency || "USD").toUpperCase()
+    const from = resolveProductCurrency(line.currency, target)
     if (from === target) {
       return { ...line, currency: target }
     }
@@ -60,7 +92,7 @@ export function convertCartAmountToCurrency(
 ): number {
   const converted = convertAmount(
     amount,
-    fromCurrency || "USD",
+    resolveProductCurrency(fromCurrency, toCurrency),
     toCurrency,
     rates,
   )

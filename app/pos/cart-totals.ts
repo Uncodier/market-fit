@@ -1,7 +1,17 @@
-import { convertCartAmountToCurrency } from "@/app/commerce/checkout-currency"
+import { convertCartAmountToCurrency, resolveCheckoutOrderCurrency } from "@/app/commerce/checkout-currency"
 import { roundMoney } from "@/app/commerce/taxes"
 import { modifiersUnitTotal } from "@/app/pos/cart-line-utils"
 import type { PosCartItem } from "@/app/pos/components/CartPanel"
+
+export function resolvePosCartCurrency(
+  cart: PosCartItem[],
+  siteCurrency: string,
+): string {
+  return resolveCheckoutOrderCurrency(
+    cart.filter((item) => item.cartQty > 0).map((item) => ({ currency: item.currency })),
+    siteCurrency,
+  )
+}
 
 export function posCartSubtotalInSiteCurrency(
   cart: PosCartItem[],

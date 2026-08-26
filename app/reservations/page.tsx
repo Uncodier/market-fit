@@ -22,6 +22,7 @@ import { StickyHeader } from "@/app/components/ui/sticky-header"
 import { SearchInput } from "@/app/components/ui/search-input"
 import { reservationResourceLabel } from "@/app/visits/visit-helpers"
 import { CreateReservationDialog } from "./components/CreateReservationDialog"
+import { ReservationPaymentDialog } from "./components/ReservationPaymentDialog"
 import { CreateCalendarBlockDialog } from "./components/CreateCalendarBlockDialog"
 import { reservationCanEdit, sortReservations, type ReservationSortBy } from "./reservation-helpers"
 import type { CalendarTimeSlot } from "./components/reservation-calendar-hour-select"
@@ -40,6 +41,7 @@ export default function ReservationsPage() {
   const [sortBy, setSortBy] = useState<ReservationSortBy>("newest")
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [editingReservation, setEditingReservation] = useState<Reservation | null>(null)
+  const [payingReservation, setPayingReservation] = useState<Reservation | null>(null)
   const [createSlot, setCreateSlot] = useState<CalendarTimeSlot | null>(null)
   const [isBlockFormOpen, setIsBlockFormOpen] = useState(false)
   const [editingBlock, setEditingBlock] = useState<CalendarBlock | null>(null)
@@ -172,14 +174,14 @@ export default function ReservationsPage() {
       <StickyHeader>
         <div className="w-full pt-0 flex items-center justify-between">
           <div className="flex items-center justify-between gap-2 w-full">
-            <MobileFiltersDrawer triggerText={t('common.search') || "Buscar"}>
+            <MobileFiltersDrawer triggerText={t('common.search') || "Search"}>
               <div className="flex flex-col md:flex-row items-stretch md:items-center gap-6 md:gap-4 w-full flex-1 min-w-0">
                 <div className="md:hidden w-full">
                   <SearchInput  placeholder={t("reservations.search.placeholder") || "Search reservations..."} value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} alwaysExpanded={true}    className="w-full h-10 md:h-9"  containerClassName="w-full" />
                 </div>
 
                 <div className="flex flex-col gap-2 w-full md:w-auto">
-                  <span className="text-xs font-semibold text-muted-foreground md:hidden mb-1 uppercase">{t('common.view') || 'Vista'}</span>
+                  <span className="text-xs font-semibold text-muted-foreground md:hidden mb-1 uppercase">{t('common.view') || 'View'}</span>
                   <Tabs value={viewMode} onValueChange={(value) => setViewMode(value as typeof viewMode)}>
                     <TabsList className="h-auto md:h-8 p-0 md:p-0.5 bg-transparent md:bg-muted/30 rounded-lg md:rounded-full flex flex-col md:flex-row w-full md:max-w-full overflow-y-auto md:overflow-x-auto justify-start items-stretch md:items-center gap-1 md:gap-0">
                       <TabsTrigger value="calendar" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent gap-2 whitespace-normal md:whitespace-nowrap">
@@ -197,7 +199,7 @@ export default function ReservationsPage() {
 
                 {viewMode !== "schedules" && (
                   <div className="flex flex-col gap-2 w-full md:w-auto">
-                    <span className="text-xs font-semibold text-muted-foreground md:hidden mb-1 uppercase">{t('common.status') === 'common.status' ? 'Status' : t('common.status')}</span>
+                    <span className="text-xs font-semibold text-muted-foreground md:hidden mb-1 uppercase">{t('common.status') || 'Status'}</span>
                     <Tabs
                       value={statusFilter}
                       onValueChange={(val) => setStatusFilter(val as typeof statusFilter)}
@@ -223,17 +225,19 @@ export default function ReservationsPage() {
                   <DropdownMenuTrigger asChild>
                     <Button variant="outline" size="sm" className="h-9 font-medium gap-2 hidden md:flex">
                       <ListOrdered className="h-4 w-4" />
-                      {sortBy === "newest" ? "Newest First" : "Oldest First"}
+                      {sortBy === "newest"
+                        ? t("reservations.sort.newest") || "Newest First"
+                        : t("reservations.sort.oldest") || "Oldest First"}
                       <ChevronDown className="h-4 w-4 opacity-50" />
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-[160px]">
                     <DropdownMenuItem onClick={() => setSortBy("newest")} className="justify-between">
-                      Newest First
+                      {t("reservations.sort.newest") || "Newest First"}
                       {sortBy === "newest" && <Check className="h-4 w-4" />}
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => setSortBy("oldest")} className="justify-between">
-                      Oldest First
+                      {t("reservations.sort.oldest") || "Oldest First"}
                       {sortBy === "oldest" && <Check className="h-4 w-4" />}
                     </DropdownMenuItem>
                   </DropdownMenuContent>
@@ -243,10 +247,10 @@ export default function ReservationsPage() {
               <div className="w-[180px]">
                 <Select value={selectedMember} onValueChange={setSelectedMember}>
                   <SelectTrigger className="h-9">
-                    <SelectValue placeholder="All Members" />
+                    <SelectValue placeholder={t("reservations.filter.allMembers") || "All Members"} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All Members</SelectItem>
+                    <SelectItem value="all">{t("reservations.filter.allMembers") || "All Members"}</SelectItem>
                     {(membersData?.members || []).map((m: any) => (
                       <SelectItem key={m.user_id} value={m.user_id}>
                         {m.name || m.email}
@@ -306,7 +310,8 @@ export default function ReservationsPage() {
             siteId={currentSite.id}
             onUpdate={refresh}
             onEdit={openEdit}
-            onEditBlock={openEditBlock} />
+            onEditBlock={openEditBlock}
+            onRegisterPayment={setPayingReservation} />
         ) : (
           <ReservationsByDateList
             reservations={filteredReservations}
@@ -315,7 +320,8 @@ export default function ReservationsPage() {
             siteId={currentSite.id}
             onUpdate={refresh}
             onEdit={openEdit}
-            onEditBlock={openEditBlock} />
+            onEditBlock={openEditBlock}
+            onRegisterPayment={setPayingReservation} />
         )}
       </div>
       <CreateReservationDialog
@@ -323,6 +329,18 @@ export default function ReservationsPage() {
         reservation={editingReservation}
         initialSlot={createSlot}
         onOpenChange={handleFormOpenChange}
+        onSuccess={refresh}
+        onRegisterPayment={(reservation) => {
+          handleFormOpenChange(false)
+          setPayingReservation(reservation)
+        }} />
+      <ReservationPaymentDialog
+        reservation={payingReservation}
+        siteId={currentSite?.id || ""}
+        open={Boolean(payingReservation)}
+        onOpenChange={(open) => {
+          if (!open) setPayingReservation(null)
+        }}
         onSuccess={refresh} />
       <CreateCalendarBlockDialog
         open={isBlockFormOpen}

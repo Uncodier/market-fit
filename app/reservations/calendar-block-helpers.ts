@@ -18,15 +18,25 @@ export function calendarBlockLocalDateKey(isoOrDate: string | Date) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`
 }
 
-export function calendarBlockTitle(block: Pick<CalendarBlock, "reason">) {
+export function calendarBlockTitle(
+  block: Pick<CalendarBlock, "reason">,
+  fallback = "Blocked time"
+) {
   const reason = block.reason?.trim()
-  return reason || "Blocked time"
+  return reason || fallback
 }
 
-export function calendarBlockScopeLabel(block: Pick<CalendarBlock, "entity_type">) {
-  if (block.entity_type === "catalog_item") return "Specific service"
-  if (block.entity_type === "user") return "Staff member"
-  return "Entire business"
+export function calendarBlockScopeLabel(
+  block: Pick<CalendarBlock, "entity_type">,
+  labels: { catalog_item: string; user: string; global: string } = {
+    catalog_item: "Specific service",
+    user: "Staff member",
+    global: "Entire business",
+  }
+) {
+  if (block.entity_type === "catalog_item") return labels.catalog_item
+  if (block.entity_type === "user") return labels.user
+  return labels.global
 }
 
 export function calendarBlockSearchText(block: Pick<CalendarBlock, "reason" | "entity_type">) {

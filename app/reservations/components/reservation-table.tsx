@@ -80,12 +80,14 @@ export function ReservationDataRow({
   onEdit,
   customerMeta,
   showDate,
+  onRegisterPayment,
 }: {
   reservation: Reservation
   siteId: string
   updating: boolean
   onStatusChange: (id: string, status: Reservation["status"]) => void
   onEdit?: (reservation: Reservation) => void
+  onRegisterPayment?: (reservation: Reservation) => void
   customerMeta?: string | null
   showDate?: boolean
 }) {
@@ -118,6 +120,7 @@ export function ReservationDataRow({
           updating={updating}
           onStatusChange={onStatusChange}
           onEdit={onEdit}
+          onRegisterPayment={onRegisterPayment}
         />
       </TableCell>
     </DocumentListRow>
@@ -137,8 +140,13 @@ export function CalendarBlockDataRow({
   deleting?: boolean
   showDate?: boolean
 }) {
-  const title = calendarBlockTitle(block)
-  const scope = calendarBlockScopeLabel(block)
+  const { t } = useLocalization()
+  const title = calendarBlockTitle(block, t("reservations.blocks.blockedTime") || "Blocked time")
+  const scope = calendarBlockScopeLabel(block, {
+    catalog_item: t("reservations.blocks.scopeService") || "Specific service",
+    user: t("reservations.blocks.scopeStaff") || "Staff member",
+    global: t("reservations.blocks.scopeBusiness") || "Entire business",
+  })
   const spansDays =
     calendarBlockLocalDateKey(block.start_time) !==
     calendarBlockLocalDateKey(new Date(new Date(block.end_time).getTime() - 1))
@@ -161,7 +169,7 @@ export function CalendarBlockDataRow({
         </div>
       </TableCell>
       <TableCell className="py-3.5">
-        <StatusDot status="blocked" label="Blocked" />
+        <StatusDot status="blocked" label={t("reservations.blocks.blocked") || "Blocked"} />
       </TableCell>
       <TableCell className="py-3.5">
         <ReservationTimeCell start={block.start_time} end={block.end_time} showDate={showDate || spansDays} />
@@ -179,13 +187,13 @@ export function CalendarBlockDataRow({
               disabled={deleting}
             >
               <MoreHorizontal className="h-4 w-4" />
-              <span className="sr-only">Actions</span>
+              <span className="sr-only">{t("reservations.table.actions") || "Actions"}</span>
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             {onEdit ? (
               <DropdownMenuItem onClick={() => onEdit(block)}>
-                <Pencil className="h-4 w-4 mr-2" /> Edit
+                <Pencil className="h-4 w-4 mr-2" /> {t("reservations.actions.edit") || "Edit"}
               </DropdownMenuItem>
             ) : null}
             {onDelete ? (
@@ -193,7 +201,7 @@ export function CalendarBlockDataRow({
                 onClick={() => onDelete(block)}
                 className="text-red-600 focus:text-red-600"
               >
-                <Trash2 className="h-4 w-4 mr-2" /> Delete
+                <Trash2 className="h-4 w-4 mr-2" /> {t("common.delete") || "Delete"}
               </DropdownMenuItem>
             ) : null}
           </DropdownMenuContent>

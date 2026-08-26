@@ -74,11 +74,6 @@ export function PosCartLines({
                 <h4 className="font-medium text-sm text-foreground truncate">
                   {item.name}
                 </h4>
-                {reservationLabel ? (
-                  <div className="text-muted-foreground text-xs mt-0.5 truncate">
-                    {reservationLabel}
-                  </div>
-                ) : null}
                 <div className="text-muted-foreground text-xs mt-0.5">
                   {formatPrice(unitTotal, item.currency || "USD")}
                   {item.cartDiscountPercent
@@ -115,28 +110,42 @@ export function PosCartLines({
                 </Button>
               </div>
             </div>
-            {modifiers.length > 0 && (
-              <div className="bg-muted/30 border-t px-3 py-2 shadow-inner">
-                <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">
-                  {(t as any)?.('pos.modifiers.title') || 'Extras'}
-                </div>
-                <div className="space-y-1">
-                  {modifiers.map((m) => (
-                    <div
-                      key={`${lineKey}-${m.catalogItemId}`}
-                      className="text-xs text-muted-foreground flex justify-between gap-2"
-                    >
-                      <div className="flex gap-1.5 items-center truncate">
-                        <span>+</span>
-                        <span className="truncate">{m.name}</span>
-                      </div>
-                      <div className="flex gap-3 items-center flex-shrink-0">
-                        <span>{m.cartQty > 1 ? `${m.cartQty} × ` : ""}{formatPrice(m.cartPrice, item.currency || "USD")}</span>
-                        <span className="font-medium text-foreground w-12 text-right">{formatPrice(m.cartPrice * m.cartQty * item.cartQty, item.currency || "USD")}</span>
-                      </div>
+            {(reservationLabel || modifiers.length > 0) && (
+              <div className="bg-muted/30 border-t px-3 py-2 shadow-inner space-y-2">
+                {reservationLabel ? (
+                  <div>
+                    <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">
+                      {t("pos.cart.reservation") || "Reservation"}
                     </div>
-                  ))}
-                </div>
+                    <div className="text-xs text-muted-foreground truncate">
+                      {reservationLabel}
+                    </div>
+                  </div>
+                ) : null}
+                {modifiers.length > 0 ? (
+                  <div>
+                    <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">
+                      {t("pos.modifiers.title") || "Extras"}
+                    </div>
+                    <div className="space-y-1">
+                      {modifiers.map((m) => (
+                        <div
+                          key={`${lineKey}-${m.catalogItemId}`}
+                          className="text-xs text-muted-foreground flex justify-between gap-2"
+                        >
+                          <div className="flex gap-1.5 items-center truncate">
+                            <span>+</span>
+                            <span className="truncate">{m.name}</span>
+                          </div>
+                          <div className="flex gap-3 items-center flex-shrink-0">
+                            <span>{m.cartQty > 1 ? `${m.cartQty} × ` : ""}{formatPrice(m.cartPrice, item.currency || "USD")}</span>
+                            <span className="font-medium text-foreground w-12 text-right">{formatPrice(m.cartPrice * m.cartQty * item.cartQty, item.currency || "USD")}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
               </div>
             )}
           </div>

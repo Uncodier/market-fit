@@ -20,6 +20,17 @@ export function reservationCanRestore(
   return reservation.status === "cancelled"
 }
 
+export function reservationCanRegisterPayment(
+  reservation: Pick<Reservation, "status" | "is_task" | "amount_due" | "sale_order_id">
+) {
+  if (reservation.is_task) return false
+  if (reservation.status === "cancelled") return false
+  if (reservation.sale_order_id && Number(reservation.amount_due || 0) === 0) {
+    return false
+  }
+  return true
+}
+
 export function compareReservationStartTime(
   a: Pick<Reservation, "start_time">,
   b: Pick<Reservation, "start_time">,

@@ -100,6 +100,7 @@ export default function POSPage() {
     shippingAddress: cartApi.shippingAddress,
     subtotal: cartApi.subtotal,
     taxTotal: cartApi.taxTotal,
+    currency: cartApi.cartCurrency,
     onCleared: () => {
       void cartApi.resetToNewOrder();
     },
@@ -255,7 +256,7 @@ export default function POSPage() {
     siteId,
     onLeadUpdated: leadApi.handleLeadUpdated,
     onSplitBill: () => setIsSplitBillOpen(true),
-    siteCurrency: currentSite?.settings?.currency || "USD",
+    siteCurrency: cartApi.cartCurrency,
     t,
   };
 
@@ -405,6 +406,7 @@ export default function POSPage() {
         open={checkout.isPaymentDialogOpen}
         onOpenChange={checkout.setIsPaymentDialogOpen}
         totalAmount={cartApi.total}
+        currency={cartApi.cartCurrency}
         onConfirm={checkout.handleCheckout}
         isLoading={checkout.checkoutLoading}
         hasCustomer={!!cartApi.leadValue} />

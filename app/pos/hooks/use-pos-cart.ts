@@ -26,6 +26,7 @@ import { resolveUnitPriceLocal } from "@/app/pos/local/resolve-unit-price-local"
 import {
   posCartSubtotalInSiteCurrency,
   posCartTaxLinesInSiteCurrency,
+  resolvePosCartCurrency,
 } from "@/app/pos/cart-totals";
 import { usePosPromo } from "@/app/pos/hooks/use-pos-promo";
 import { hasPosCustomer } from "@/app/pos/lead-utils";
@@ -109,6 +110,10 @@ export function usePosCart({
   }, [cart, activeOrderId]);
 
   const hasLead = hasPosCustomer(leadValue);
+  const cartCurrency = useMemo(
+    () => resolvePosCartCurrency(cart, siteCurrency),
+    [cart, siteCurrency],
+  );
 
   const {
     promoCode,
@@ -127,7 +132,7 @@ export function usePosCart({
     hasLead,
     onRequireLead,
     t,
-    siteCurrency,
+    siteCurrency: cartCurrency,
     fxRates: rates,
   });
 
@@ -327,14 +332,14 @@ export function usePosCart({
     );
   };
 
-  const subtotal = posCartSubtotalInSiteCurrency(cart, siteCurrency, rates);
+  const subtotal = posCartSubtotalInSiteCurrency(cart, cartCurrency, rates);
   const taxTotal = useMemo(
     () =>
       calculateOrderTaxTotal(
-        posCartTaxLinesInSiteCurrency(cart, siteCurrency, rates),
+        posCartTaxLinesInSiteCurrency(cart, cartCurrency, rates),
         taxesByItem || {},
       ),
-    [cart, taxesByItem, siteCurrency, rates],
+    [cart, taxesByItem, cartCurrency, rates],
   );
   const shippingTotal = useMemo(
     () =>
@@ -483,6 +488,7 @@ export function usePosCart({
     taxTotal,
     shippingTotal,
     total,
+    cartCurrency,
     activeCartItems,
     resetToNewOrder,
     handleOrderSelect,

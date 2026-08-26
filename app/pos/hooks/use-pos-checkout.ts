@@ -51,6 +51,7 @@ type UsePosCheckoutArgs = {
   t: (key: string) => string;
   subtotal?: number;
   taxTotal?: number;
+  currency?: string | null;
 };
 
 export function usePosCheckout({
@@ -75,6 +76,7 @@ export function usePosCheckout({
   t,
   subtotal,
   taxTotal,
+  currency,
 }: UsePosCheckoutArgs) {
   const { currentSite } = useSite();
   const [checkoutLoading, setCheckoutLoading] = useState(false);
@@ -243,7 +245,7 @@ export function usePosCheckout({
       brand: ticketBrandFromSite(currentSite),
       customerName: leadRelationValue?.label || null,
       fulfillment,
-      currency: currentSite?.settings?.currency || "USD",
+      currency: currency || currentSite?.settings?.currency || "USD",
       subtotal,
       taxTotal,
     });

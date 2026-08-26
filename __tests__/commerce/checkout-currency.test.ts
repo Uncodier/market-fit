@@ -2,6 +2,8 @@ import {
   checkoutLinesNeedFxConversion,
   convertCartAmountToCurrency,
   normalizeCheckoutLinesToCurrency,
+  resolveCheckoutOrderCurrency,
+  resolveProductCurrency,
   resolveSiteCurrency,
 } from "../../app/commerce/checkout-currency"
 
@@ -11,12 +13,58 @@ const rates = {
   GBP: 0.8,
 }
 
+describe("resolveProductCurrency", () => {
+  it("prefers the product currency and falls back to the site", () => {
+    expect(resolveProductCurrency("mxn", "USD")).toBe("MXN")
+    expect(resolveProductCurrency("  eur ", "USD")).toBe("EUR")
+    expect(resolveProductCurrency(null, "mxn")).toBe("MXN")
+    expect(resolveProductCurrency("", "eur")).toBe("EUR")
+    expect(resolveProductCurrency(null, null)).toBe("USD")
+  })
+})
+
 describe("resolveSiteCurrency", () => {
   it("uppercases and falls back to USD", () => {
     expect(resolveSiteCurrency("mxn")).toBe("MXN")
     expect(resolveSiteCurrency("  eur ")).toBe("EUR")
     expect(resolveSiteCurrency(null)).toBe("USD")
     expect(resolveSiteCurrency("")).toBe("USD")
+  })
+})
+
+describe("resolveCheckoutOrderCurrency", () => {
+  it("keeps the line currency when every product uses the same one", () => {
+    expect(
+      resolveCheckoutOrderCurrency(
+        [
+          { currency: "MXN" },
+          { currency: "mxn" },
+        ],
+        "USD",
+      ),
+    ).toBe("MXN")
+  })
+
+  it("falls back to the site currency for mixed or empty carts", () => {
+    expect(resolveCheckoutOrderCurrency([], "mxn")).toBe("MXN")
+    expect(
+      resolveCheckoutOrderCurrency(
+        [{ currency: "USD" }, { currency: "MXN" }],
+        "usd",
+      ),
+    ).toBe("USD")
+    expect(
+      resolveCheckoutOrderCurrency([{ currency: null }, { currency: "" }], "mxn"),
+    ).toBe("MXN")
+  })
+
+  it("keeps the agreed product currency when some lines omit it", () => {
+    expect(
+      resolveCheckoutOrderCurrency(
+        [{ currency: "MXN" }, { currency: null }],
+        "USD",
+      ),
+    ).toBe("MXN")
   })
 })
 
@@ -43,6 +91,15 @@ describe("checkoutLinesNeedFxConversion", () => {
         "USD",
       ),
     ).toBe(true)
+  })
+
+  it("does not convert lines that inherit the target currency", () => {
+    expect(
+      checkoutLinesNeedFxConversion(
+        [{ currency: null, unit_price: 10, subtotal: 10 }],
+        "MXN",
+      ),
+    ).toBe(false)
   })
 })
 
@@ -114,5 +171,6 @@ describe("convertCartAmountToCurrency", () => {
     expect(convertCartAmountToCurrency(100, "USD", "USD", rates)).toBe(100)
     expect(convertCartAmountToCurrency(1000, "JPY", "USD", rates)).toBe(1000)
     expect(convertCartAmountToCurrency(100, "EUR", "USD", {})).toBe(100)
+    expect(convertCartAmountToCurrency(250, null, "MXN", rates)).toBe(250)
   })
 })

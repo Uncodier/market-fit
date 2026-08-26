@@ -16,8 +16,11 @@ import { Label } from "@/app/components/ui/label"
 import { X, CreditCard, Banknote, HelpCircle, User, CheckCircle2, Bank } from "@/app/components/ui/icons"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { useSite } from "@/app/context/SiteContext"
-import { useDisplayCurrency } from "@/app/context/DisplayCurrencyContext"
+import { resolveSiteCurrency } from "@/app/commerce/checkout-currency"
+import { formatDisplayCurrency } from "@/app/lib/fx"
 import { cn } from "@/lib/utils"
+import { Skeleton } from "@/app/components/ui/skeleton"
+import { PaymentDialogSkeleton } from "./payment-dialog-skeleton"
 
 interface PaymentEntry {
   method: string
@@ -32,7 +35,10 @@ interface PaymentConfirmationDialogProps {
   totalAmount: number
   onConfirm: (payments: PaymentEntry[], promotionCode?: string, intent?: 'complete' | 'pay' | 'send') => void
   isLoading?: boolean
+  isPreparing?: boolean
   hasCustomer?: boolean
+  /** Currency of the amounts being registered. Shown as-is. */
+  currency?: string | null
 }
 
 export function PaymentConfirmationDialog({
@@ -41,11 +47,14 @@ export function PaymentConfirmationDialog({
   totalAmount,
   onConfirm,
   isLoading = false,
-  hasCustomer = false
+  isPreparing = false,
+  hasCustomer = false,
+  currency,
 }: PaymentConfirmationDialogProps) {
   const { t } = useLocalization()
   const { currentSite } = useSite()
-  const { formatPrice } = useDisplayCurrency()
+  const paymentCurrency = resolveSiteCurrency(currency ?? currentSite?.settings?.currency)
+  const money = (amount: number) => formatDisplayCurrency(amount, paymentCurrency)
   
   const [payments, setPayments] = useState<PaymentEntry[]>([])
   const [selectedMethod, setSelectedMethod] = useState("cash")
@@ -143,7 +152,7 @@ export function PaymentConfirmationDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent size="xl" busy={isLoading} className="sm:max-w-[900px] max-h-[90vh]">
+      <DialogContent size="xl" busy={isLoading && !isPreparing} className="sm:max-w-[900px] max-h-[90vh]">
         <DialogHeader className="relative pb-6 border-b">
           <div className="flex justify-between items-center w-full pr-6">
             <div className="flex flex-col gap-1">
@@ -156,6 +165,9 @@ export function PaymentConfirmationDialog({
         </DialogHeader>
 
         <DialogBody>
+        {isPreparing ? (
+          <PaymentDialogSkeleton />
+        ) : (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {/* Column 1: Payment Input */}
           <div className="flex flex-col gap-6">
@@ -277,7 +289,7 @@ export function PaymentConfirmationDialog({
                       {t('pos.payment.changeToReturn') || 'Change to Return'}
                     </span>
                     <span className="text-4xl font-bold text-green-600 dark:text-green-400">
-                      {formatPrice(totalChange, currentSite?.settings?.currency || "USD")}
+                      {money(totalChange)}
                     </span>
                   </div>
                 )}
@@ -290,7 +302,7 @@ export function PaymentConfirmationDialog({
             <div className="flex flex-col items-center justify-center py-8 px-4 border-b border-border/40 bg-white/50 dark:bg-background/20">
               <span className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-2">{t('pos.payment.totalToPay') || 'Total to Pay'}</span>
               <span className="text-5xl font-bold text-foreground">
-                {formatPrice(totalAmount, currentSite?.settings?.currency || "USD")}
+                {money(totalAmount)}
               </span>
             </div>
 
@@ -305,13 +317,13 @@ export function PaymentConfirmationDialog({
                           <span className="text-sm font-medium">{getMethodLabel(p.method)}</span>
                           {p.method === 'cash' && p.change > 0 && (
                             <span className="text-[11px] text-muted-foreground mt-0.5">
-                              {t('pos.payment.tendered') || 'Tendered'}: {formatPrice(p.tendered, currentSite?.settings?.currency || "USD")}
+                              {t('pos.payment.tendered') || 'Tendered'}: {money(p.tendered)}
                             </span>
                           )}
                         </div>
                         <div className="flex items-center gap-3">
                           <span className="font-semibold text-green-600">
-                            {formatPrice(p.amount, currentSite?.settings?.currency || "USD")}
+                            {money(p.amount)}
                           </span>
                           <Button variant="ghost" size="icon" className="h-7 w-7 rounded-full text-muted-foreground hover:text-destructive hover:bg-destructive/10" onClick={() => handleRemovePayment(idx)}>
                             <X className="h-4 w-4" />
@@ -332,7 +344,7 @@ export function PaymentConfirmationDialog({
               <div className="flex flex-col items-center justify-center py-6 px-4 bg-blue-50/50 dark:bg-blue-950/20 border-t border-blue-100 dark:border-blue-900/50 mt-auto">
                 <span className="text-sm font-semibold text-blue-800/70 dark:text-blue-300/70 uppercase tracking-wider mb-2">{t('pos.payment.remainingBalance') || 'Remaining Balance'}</span>
                 <span className="text-4xl font-bold text-blue-600 dark:text-blue-400">
-                  {formatPrice(remainingAmount, currentSite?.settings?.currency || "USD")}
+                  {money(remainingAmount)}
                 </span>
               </div>
             )}
@@ -400,9 +412,18 @@ export function PaymentConfirmationDialog({
             </div>
           </div>
         </div>
+        )}
         </DialogBody>
 
         <DialogFooter>
+          {isPreparing ? (
+            <>
+              <Skeleton className="h-10 w-24" />
+              <Skeleton className="h-10 w-40" />
+              <Skeleton className="h-10 w-36" />
+            </>
+          ) : (
+            <>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isLoading}>
             {t('common.cancel') || 'Cancel'}
           </Button>
@@ -427,6 +448,8 @@ export function PaymentConfirmationDialog({
               ? (t('pos.payment.processing') || "Processing...")
               : (t('pos.payment.payAndComplete') || "Pay & Complete")}
           </Button>
+            </>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>

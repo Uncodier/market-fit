@@ -826,6 +826,9 @@ export interface Reservation {
   quantity?: number;
   sale_order_item_id?: string | null;
   entitlement_id?: string | null;
+  sale_order_id?: string | null;
+  amount_due?: number | null;
+  amount?: number | null;
   created_at: string;
   updated_at: string;
   catalog_item?: Partial<CatalogItem>;

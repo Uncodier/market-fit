@@ -12,8 +12,18 @@ import { upsertReservationSchedule } from "../schedule-actions"
 import { ReservationSchedule } from "@/app/types"
 import { Trash2, Plus } from "@/app/components/ui/icons"
 import { TimeRangeSelect } from "@/app/components/ui/time-select"
+import { useLocalization } from "@/app/context/LocalizationContext"
 
-const DAYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
+const DAYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"] as const
+const DAY_SHORT: Record<(typeof DAYS)[number], string> = {
+  monday: "mon",
+  tuesday: "tue",
+  wednesday: "wed",
+  thursday: "thu",
+  friday: "fri",
+  saturday: "sat",
+  sunday: "sun",
+}
 
 interface ScheduleEditorDialogProps {
   open: boolean
@@ -23,6 +33,7 @@ interface ScheduleEditorDialogProps {
 }
 
 export function ScheduleEditorDialog({ open, onOpenChange, schedule, onSaved }: ScheduleEditorDialogProps) {
+  const { t } = useLocalization()
   const defaultDays = DAYS.reduce((acc, day) => {
     acc[day] = { enabled: false, timeBlocks: [{ start: "09:00", end: "17:00" }] }
     return acc
@@ -94,7 +105,7 @@ export function ScheduleEditorDialog({ open, onOpenChange, schedule, onSaved }: 
     if (error) {
       toast.error(error)
     } else {
-      toast.success("Schedule saved")
+      toast.success(t("reservations.schedules.saved") || "Schedule saved")
       onSaved()
       onOpenChange(false)
     }
@@ -106,23 +117,23 @@ export function ScheduleEditorDialog({ open, onOpenChange, schedule, onSaved }: 
         <FormProvider {...methods}>
           <DialogForm onSubmit={handleSubmit(onSubmit)}>
             <DialogHeader>
-              <DialogTitle>Edit Schedule</DialogTitle>
+              <DialogTitle>{t("reservations.schedules.editTitle") || "Edit Schedule"}</DialogTitle>
             </DialogHeader>
             <DialogBody className="grid gap-4">
             <div className="space-y-2">
-              <Label>Schedule Name</Label>
+              <Label>{t("reservations.schedules.name") || "Schedule Name"}</Label>
               <Controller
                 name="name"
                 control={control}
                 render={({ field }) => (
-                  <Input placeholder="e.g. Standard" {...field} />
+                  <Input placeholder={t("reservations.schedules.namePlaceholder") || "e.g. Standard"} {...field} />
                 )}
               />
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Duration (minutes)</Label>
+                <Label>{t("reservations.schedules.durationMinutes") || "Duration (minutes)"}</Label>
                 <Controller
                   name="duration_minutes"
                   control={control}
@@ -132,7 +143,7 @@ export function ScheduleEditorDialog({ open, onOpenChange, schedule, onSaved }: 
                 />
               </div>
               <div className="space-y-2">
-                <Label>Capacity (seats per slot)</Label>
+                <Label>{t("reservations.schedules.capacitySeats") || "Capacity (seats per slot)"}</Label>
                 <Controller
                   name="capacity"
                   control={control}
@@ -144,7 +155,7 @@ export function ScheduleEditorDialog({ open, onOpenChange, schedule, onSaved }: 
             </div>
 
             <div className="space-y-2">
-              <Label>Timezone</Label>
+              <Label>{t("reservations.schedules.timezone") || "Timezone"}</Label>
               <Controller
                 name="timezone"
                 control={control}
@@ -155,7 +166,7 @@ export function ScheduleEditorDialog({ open, onOpenChange, schedule, onSaved }: 
             </div>
 
             <div className="space-y-4">
-              <Label>Weekly Schedule</Label>
+              <Label>{t("reservations.schedules.weekly") || "Weekly Schedule"}</Label>
               {DAYS.map((day) => (
                 <div key={day} className="flex items-center gap-4 border p-3 rounded-md">
                   <div className="w-28 flex items-center gap-2">
@@ -169,7 +180,9 @@ export function ScheduleEditorDialog({ open, onOpenChange, schedule, onSaved }: 
                         />
                       )}
                     />
-                    <span className="capitalize text-sm font-medium">{day.slice(0,3)}</span>
+                    <span className="capitalize text-sm font-medium">
+                      {t(`common.days.short.${DAY_SHORT[day]}`) || day.slice(0, 3)}
+                    </span>
                   </div>
                   
                   {watch(`days.${day}.enabled`) ? (
@@ -210,11 +223,11 @@ export function ScheduleEditorDialog({ open, onOpenChange, schedule, onSaved }: 
                           setValue(`days.${day}.timeBlocks`, [...currentBlocks, { start: "09:00", end: "17:00" }]);
                         }}
                       >
-                        <Plus className="h-3 w-3 mr-1" /> Add hours
+                        <Plus className="h-3 w-3 mr-1" /> {t("reservations.schedules.addHours") || "Add hours"}
                       </Button>
                     </div>
                   ) : (
-                    <div className="flex-1 text-sm text-muted-foreground">Closed</div>
+                    <div className="flex-1 text-sm text-muted-foreground">{t("reservations.schedules.closed") || "Closed"}</div>
                   )}
                 </div>
               ))}
@@ -223,9 +236,9 @@ export function ScheduleEditorDialog({ open, onOpenChange, schedule, onSaved }: 
             </DialogBody>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-                Cancel
+                {t("common.cancel") || "Cancel"}
               </Button>
-              <Button type="submit">Save</Button>
+              <Button type="submit">{t("common.save") || "Save"}</Button>
             </DialogFooter>
           </DialogForm>
         </FormProvider>

@@ -1,7 +1,10 @@
 "use client"
 
 import { useMemo, type CSSProperties, type ReactNode, type SVGProps } from "react"
+import { cn } from "@/lib/utils"
 import {
+  worldConnectionBezier,
+  worldConnectionPathD,
   worldSvgBox,
   worldSvgLayout,
   type WorldPoint,
@@ -33,10 +36,11 @@ export function WorldSpaceSvg({
   const layout = worldSvgLayout(box)
   return (
     <svg
-      className={className}
+      className={cn("imprenta-world-svg", className)}
       width={layout.width}
       height={layout.height}
       viewBox={layout.viewBox}
+      overflow="visible"
       style={{ ...layout.style, ...style }}
       {...rest}
     >
@@ -126,20 +130,19 @@ export function ImprentaTempConnectionLine({
     ],
     [fromX, fromY, toX, toY]
   )
-  const d = `M ${fromX} ${fromY} C ${fromX + 50} ${fromY}, ${toX - 50} ${toY}, ${toX} ${toY}`
+  const d = worldConnectionPathD(worldConnectionBezier(fromX, fromY, toX, toY))
   return (
     <WorldSpaceSvg
       points={points}
-      className="pointer-events-none"
-      style={{ zIndex: 50 }}
-      shapeRendering="optimizeSpeed"
+      className="pointer-events-none text-primary"
+      style={{ zIndex: 50, color: "hsl(var(--primary))" }}
     >
       <path
         d={d}
         fill="none"
-        stroke="currentColor"
+        stroke="hsl(var(--primary))"
         strokeWidth="2"
-        className="text-primary"
+        strokeLinecap="round"
       />
     </WorldSpaceSvg>
   )

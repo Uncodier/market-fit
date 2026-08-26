@@ -53,7 +53,11 @@ export function worldSvgLayout(box: WorldSvgBox): {
     position: "absolute"
     left: number
     top: number
+    width: number
+    height: number
     overflow: "visible"
+    transform: "none"
+    backfaceVisibility: "visible"
   }
 } {
   return {
@@ -64,9 +68,49 @@ export function worldSvgLayout(box: WorldSvgBox): {
       position: "absolute",
       left: box.minX,
       top: box.minY,
+      // CSS size beats Safari `svg { width: auto }` which otherwise collapses
+      // world-space edges to the 0×0 graph parent and clips the stroke.
+      width: box.width,
+      height: box.height,
       overflow: "visible",
+      transform: "none",
+      backfaceVisibility: "visible",
     },
   }
+}
+
+/** Cubic used for context links and the in-progress connection rubber-band. */
+export type WorldConnectionBezier = {
+  x1: number
+  y1: number
+  cx1: number
+  cy1: number
+  cx2: number
+  cy2: number
+  x2: number
+  y2: number
+}
+
+export function worldConnectionBezier(
+  fromX: number,
+  fromY: number,
+  toX: number,
+  toY: number
+): WorldConnectionBezier {
+  return {
+    x1: fromX,
+    y1: fromY,
+    cx1: fromX + 50,
+    cy1: fromY,
+    cx2: toX - 50,
+    cy2: toY,
+    x2: toX,
+    y2: toY,
+  }
+}
+
+export function worldConnectionPathD(curve: WorldConnectionBezier): string {
+  return `M ${curve.x1} ${curve.y1} C ${curve.cx1} ${curve.cy1}, ${curve.cx2} ${curve.cy2}, ${curve.x2} ${curve.y2}`
 }
 
 /** First ancestor with a non-zero layout box (skips collapsed 0×0 graph layers). */

@@ -252,16 +252,16 @@ export function ReservationCalendar({
             value={viewMode}
             onValueChange={(value: string) => value && setViewMode(value as CalendarViewMode)}
           >
-            <ToggleGroupItem value="year" aria-label="Year view" className="px-3">
+            <ToggleGroupItem value="year" aria-label={t("controlCenter.calendar.year") || "Year"} className="px-3">
               {t("controlCenter.calendar.year") || "Year"}
             </ToggleGroupItem>
-            <ToggleGroupItem value="month" aria-label="Month view" className="px-3">
+            <ToggleGroupItem value="month" aria-label={t("controlCenter.calendar.month") || "Month"} className="px-3">
               {t("controlCenter.calendar.month") || "Month"}
             </ToggleGroupItem>
-            <ToggleGroupItem value="week" aria-label="Week view" className="px-3">
+            <ToggleGroupItem value="week" aria-label={t("controlCenter.calendar.week") || "Week"} className="px-3">
               {t("controlCenter.calendar.week") || "Week"}
             </ToggleGroupItem>
-            <ToggleGroupItem value="day" aria-label="Day view" className="px-3">
+            <ToggleGroupItem value="day" aria-label={t("controlCenter.calendar.day") || "Day"} className="px-3">
               {t("controlCenter.calendar.day") || "Day"}
             </ToggleGroupItem>
           </ToggleGroup>

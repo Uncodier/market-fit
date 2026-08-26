@@ -91,4 +91,48 @@ describe("syncCheckoutDropinReservations", () => {
       expect.objectContaining({ catalog_item_id: "service-1" })
     )
   })
+
+  it("links an existing reservation instead of inserting a second row", async () => {
+    const maybeSingle = jest.fn().mockResolvedValue({ data: null })
+    const eq = jest.fn().mockResolvedValue({ error: null })
+    const update = jest.fn().mockReturnValue({ eq })
+    const insert = jest.fn()
+    supabaseAdmin.from.mockReturnValue({
+      select: jest.fn().mockReturnValue({
+        eq: jest.fn().mockReturnValue({ maybeSingle }),
+      }),
+      update,
+      insert,
+    })
+
+    await syncCheckoutDropinReservations({
+      supabaseAdmin,
+      siteId: "site-1",
+      upsertedItems: [
+        {
+          id: "soi-3",
+          catalog_item_id: "service-1",
+          quantity: 1,
+          _is_reservation_dropin: true,
+          _reservationStart: "2026-08-14T10:00:00Z",
+          _reservationEnd: "2026-08-14T11:00:00Z",
+        },
+      ],
+      intent: "send",
+      isFullyPaid: false,
+      isAdmin: true,
+      finalLeadId: "lead-1",
+      existingReservationId: "res-existing",
+    })
+
+    expect(insert).not.toHaveBeenCalled()
+    expect(update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sale_order_item_id: "soi-3",
+        catalog_item_id: "service-1",
+        status: "pending",
+      })
+    )
+    expect(eq).toHaveBeenCalledWith("id", "res-existing")
+  })
 })

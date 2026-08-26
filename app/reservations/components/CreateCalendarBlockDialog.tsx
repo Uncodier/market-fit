@@ -79,9 +79,9 @@ export function CreateCalendarBlockDialog({
   const memberOptions = useMemo(() => {
     return (membersData?.members || []).map((m: any) => ({
       id: m.user_id,
-      label: m.name || m.email || "Unknown User"
+      label: m.name || m.email || t("reservations.blocks.unknownUser") || "Unknown User"
     }))
-  }, [membersData])
+  }, [membersData, t])
 
   useEffect(() => {
     if (open) {
@@ -116,7 +116,7 @@ export function CreateCalendarBlockDialog({
   const handleSubmit = async () => {
     if (!currentSite) return
     if (!startDate || !startTime || !endDate || !endTime) {
-      toast.error("Please fill in all date and time fields")
+      toast.error(t("reservations.toast.fillDateTime") || "Please fill in all date and time fields")
       return
     }
 
@@ -124,14 +124,14 @@ export function CreateCalendarBlockDialog({
     const endIso = new Date(`${endDate.toISOString().split("T")[0]}T${endTime}:00`).toISOString()
     
     if (new Date(startIso) >= new Date(endIso)) {
-      toast.error("End time must be after start time")
+      toast.error(t("reservations.toast.endAfterStart") || "End time must be after start time")
       return
     }
 
     let entityId = null
     if (entityType !== "global") {
       if (!entityValue || entityValue.mode !== "existing") {
-         toast.error("Please select the target for the block")
+         toast.error(t("reservations.toast.selectBlockTarget") || "Please select the target for the block")
          return
       }
       entityId = entityValue.id
@@ -153,11 +153,11 @@ export function CreateCalendarBlockDialog({
       const res = await upsertCalendarBlock(payload)
       if (res.error) throw new Error(res.error)
 
-      toast.success(isEdit ? "Block updated" : "Block created successfully")
+      toast.success(isEdit ? t("reservations.toast.blockUpdated") || "Block updated" : t("reservations.toast.blockCreated") || "Block created successfully")
       onOpenChange(false)
       onSuccess?.()
     } catch (error: any) {
-      toast.error(error.message || "Failed to save block")
+      toast.error(error.message || t("reservations.toast.blockSaveFailed") || "Failed to save block")
     } finally {
       setIsSubmitting(false)
     }
@@ -169,12 +169,12 @@ export function CreateCalendarBlockDialog({
     try {
       const res = await deleteCalendarBlock(block.id)
       if (res.error) throw new Error(res.error)
-      toast.success("Block removed")
+      toast.success(t("reservations.toast.blockRemoved") || "Block removed")
       setConfirmDelete(false)
       onOpenChange(false)
       onSuccess?.()
     } catch (error: any) {
-      toast.error(error.message || "Failed to delete block")
+      toast.error(error.message || t("reservations.toast.blockDeleteFailed") || "Failed to delete block")
     } finally {
       setIsSubmitting(false)
     }
@@ -185,54 +185,54 @@ export function CreateCalendarBlockDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>{isEdit ? "Edit Calendar Block" : "Create Calendar Block"}</DialogTitle>
+          <DialogTitle>{isEdit ? t("reservations.blocks.editTitle") || "Edit Calendar Block" : t("reservations.blocks.createTitle") || "Create Calendar Block"}</DialogTitle>
           <DialogDescription>
-            Block time in your calendar for holidays, maintenance, or personal time. This will prevent new reservations from being created during this time.
+            {t("reservations.blocks.description") || "Block time in your calendar for holidays, maintenance, or personal time. This will prevent new reservations from being created during this time."}
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 py-2">
           <div className="space-y-2">
-            <Label>Block Type</Label>
+            <Label>{t("reservations.blocks.type") || "Block Type"}</Label>
             <Select value={entityType} onValueChange={(val: any) => setEntityType(val)}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="global">Entire Business (Global)</SelectItem>
-                <SelectItem value="catalog_item">Specific Service</SelectItem>
-                <SelectItem value="user">Specific User/Staff</SelectItem>
+                <SelectItem value="global">{t("reservations.blocks.typeGlobal") || "Entire Business (Global)"}</SelectItem>
+                <SelectItem value="catalog_item">{t("reservations.blocks.typeService") || "Specific Service"}</SelectItem>
+                <SelectItem value="user">{t("reservations.blocks.typeUser") || "Specific User/Staff"}</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
           {entityType === "catalog_item" && (
             <div className="space-y-2">
-              <Label>Service to Block</Label>
+              <Label>{t("reservations.blocks.service") || "Service to Block"}</Label>
               <RelationSelect
                 options={catalogOptions}
                 value={entityValue}
                 onValueChange={setEntityValue}
-                placeholder="Select service..."
+                placeholder={t("reservations.blocks.selectService") || "Select service..."}
               />
             </div>
           )}
 
           {entityType === "user" && (
             <div className="space-y-2">
-              <Label>Staff Member to Block</Label>
+              <Label>{t("reservations.blocks.staff") || "Staff Member to Block"}</Label>
               <RelationSelect
                 options={memberOptions}
                 value={entityValue}
                 onValueChange={setEntityValue}
-                placeholder="Select user..."
+                placeholder={t("reservations.blocks.selectUser") || "Select user..."}
               />
             </div>
           )}
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label>Start Date</Label>
+              <Label>{t("reservations.blocks.startDate") || "Start Date"}</Label>
               <DatePicker 
                 date={startDate} 
                 setDate={(date: Date) => setStartDate(date)} 
@@ -240,7 +240,7 @@ export function CreateCalendarBlockDialog({
               />
             </div>
             <div className="space-y-2">
-              <Label>Start Time</Label>
+              <Label>{t("reservations.blocks.startTime") || "Start Time"}</Label>
               <TimeSelect 
                 value={startTime} 
                 onValueChange={setStartTime} 
@@ -251,7 +251,7 @@ export function CreateCalendarBlockDialog({
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label>End Date</Label>
+              <Label>{t("reservations.blocks.endDate") || "End Date"}</Label>
               <DatePicker 
                 date={endDate} 
                 setDate={(date: Date) => setEndDate(date)} 
@@ -259,7 +259,7 @@ export function CreateCalendarBlockDialog({
               />
             </div>
             <div className="space-y-2">
-              <Label>End Time</Label>
+              <Label>{t("reservations.blocks.endTime") || "End Time"}</Label>
               <TimeSelect 
                 value={endTime} 
                 onValueChange={setEndTime} 
@@ -269,9 +269,9 @@ export function CreateCalendarBlockDialog({
           </div>
 
           <div className="space-y-2">
-            <Label>Reason (Optional)</Label>
+            <Label>{t("reservations.blocks.reason") || "Reason (Optional)"}</Label>
             <Input 
-              placeholder="e.g. Vacation, Holiday, Cleaning..."
+              placeholder={t("reservations.blocks.reasonPlaceholder") || "e.g. Vacation, Holiday, Cleaning..."}
               value={reason}
               onChange={(e) => setReason(e.target.value)}
             />
@@ -286,17 +286,21 @@ export function CreateCalendarBlockDialog({
               onClick={() => setConfirmDelete(true)}
               disabled={isSubmitting}
             >
-              Delete
+              {t("common.delete") || "Delete"}
             </Button>
           ) : (
             <span />
           )}
           <div className="flex gap-2">
             <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting}>
-              Cancel
+              {t("common.cancel") || "Cancel"}
             </Button>
             <Button onClick={handleSubmit} disabled={isSubmitting}>
-              {isSubmitting ? "Saving..." : (isEdit ? "Save Changes" : "Create Block")}
+              {isSubmitting
+                ? t("reservations.dialog.saving") || "Saving..."
+                : (isEdit
+                  ? t("reservations.dialog.save") || "Save Changes"
+                  : t("reservations.blocks.create") || "Create Block")}
             </Button>
           </div>
         </DialogFooter>
@@ -305,19 +309,21 @@ export function CreateCalendarBlockDialog({
     <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Delete this block?</AlertDialogTitle>
+          <AlertDialogTitle>{t("reservations.blocks.deleteTitle") || "Delete this block?"}</AlertDialogTitle>
           <AlertDialogDescription>
-            This will reopen the blocked time for new reservations. This action cannot be undone.
+            {t("reservations.blocks.deleteDescription") || "This will reopen the blocked time for new reservations. This action cannot be undone."}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel disabled={isSubmitting}>Cancel</AlertDialogCancel>
+          <AlertDialogCancel disabled={isSubmitting}>{t("common.cancel") || "Cancel"}</AlertDialogCancel>
           <AlertDialogAction
             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             onClick={handleDelete}
             disabled={isSubmitting}
           >
-            {isSubmitting ? "Deleting..." : "Delete block"}
+            {isSubmitting
+              ? t("reservations.blocks.deleting") || "Deleting..."
+              : t("reservations.blocks.delete") || "Delete block"}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

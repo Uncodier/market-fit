@@ -1,6 +1,7 @@
 import {
   posCartSubtotalInSiteCurrency,
   posCartTaxLinesInSiteCurrency,
+  resolvePosCartCurrency,
 } from "../../app/pos/cart-totals"
 
 const rates = { EUR: 0.9, MXN: 18.0 }
@@ -27,6 +28,16 @@ describe("posCartSubtotalInSiteCurrency", () => {
         rates,
       ),
     ).toBe(120)
+  })
+
+  it("keeps original amounts when the target matches the line", () => {
+    expect(
+      posCartSubtotalInSiteCurrency(
+        [line({ cartPrice: 250, currency: "MXN" })],
+        "MXN",
+        rates,
+      ),
+    ).toBe(250)
   })
 
   it("keeps original amounts when rates are missing", () => {
@@ -58,5 +69,34 @@ describe("posCartTaxLinesInSiteCurrency", () => {
       { catalogItemId: "host", subtotal: 10 },
       { catalogItemId: "mod", subtotal: 1 },
     ])
+  })
+})
+
+describe("resolvePosCartCurrency", () => {
+  it("uses the product currency when the cart is uniform", () => {
+    expect(
+      resolvePosCartCurrency(
+        [line({ currency: "MXN" }), line({ currency: "MXN", cartQty: 2 })],
+        "USD",
+      ),
+    ).toBe("MXN")
+  })
+
+  it("uses the site currency when the cart is mixed", () => {
+    expect(
+      resolvePosCartCurrency(
+        [line({ currency: "USD" }), line({ currency: "MXN" })],
+        "USD",
+      ),
+    ).toBe("USD")
+  })
+
+  it("uses the site currency when cart lines omit a product currency", () => {
+    expect(
+      resolvePosCartCurrency(
+        [line({ currency: null }), line({ currency: undefined, cartQty: 2 })],
+        "MXN",
+      ),
+    ).toBe("MXN")
   })
 })

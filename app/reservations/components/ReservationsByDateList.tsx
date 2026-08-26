@@ -26,6 +26,7 @@ interface ReservationsByDateListProps {
   onUpdate: () => void
   onEdit: (reservation: Reservation) => void
   onEditBlock?: (block: CalendarBlock) => void
+  onRegisterPayment?: (reservation: Reservation) => void
 }
 
 export function ReservationsByDateList({
@@ -36,6 +37,7 @@ export function ReservationsByDateList({
   onUpdate,
   onEdit,
   onEditBlock,
+  onRegisterPayment,
 }: ReservationsByDateListProps) {
   const { t } = useLocalization()
   const [updating, setUpdating] = useState<string | null>(null)
@@ -58,7 +60,7 @@ export function ReservationsByDateList({
     if (error) {
       toast.error(error)
     } else {
-      toast.success("Block removed")
+      toast.success(t("reservations.toast.blockRemoved") || "Block removed")
       onUpdate()
     }
     setUpdating(null)
@@ -95,6 +97,7 @@ export function ReservationsByDateList({
                   updating={updating === item.id}
                   onStatusChange={handleStatusChange}
                   onEdit={onEdit}
+                  onRegisterPayment={onRegisterPayment}
                   showDate={false}
                   customerMeta={reservationResourceLabel({
                     resource_type: item.reservation.resource_type,

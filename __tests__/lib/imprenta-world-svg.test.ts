@@ -2,6 +2,8 @@ import {
   WORLD_SVG_EDGE_PAD,
   screenToWorld,
   sizedAncestorRect,
+  worldConnectionBezier,
+  worldConnectionPathD,
   worldSvgBox,
   worldSvgLayout,
 } from "@/app/lib/imprenta-world-svg"
@@ -50,6 +52,9 @@ describe("worldSvgLayout", () => {
     expect(layout.style.top).toBe(-10)
     expect(layout.width).toBe(520)
     expect(layout.height).toBe(270)
+    expect(layout.style.width).toBe(520)
+    expect(layout.style.height).toBe(270)
+    expect(layout.style.transform).toBe("none")
   })
 })
 
@@ -87,5 +92,22 @@ describe("sizedAncestorRect", () => {
     expect(rect?.width).toBe(800)
     expect(rect?.height).toBe(600)
     outer.remove()
+  })
+})
+
+describe("worldConnectionBezier", () => {
+  it("builds the same cubic the canvas rubber-band and SVG edges share", () => {
+    const curve = worldConnectionBezier(480, 150, 720, 200)
+    expect(curve).toEqual({
+      x1: 480,
+      y1: 150,
+      cx1: 530,
+      cy1: 150,
+      cx2: 670,
+      cy2: 200,
+      x2: 720,
+      y2: 200,
+    })
+    expect(worldConnectionPathD(curve)).toBe("M 480 150 C 530 150, 670 200, 720 200")
   })
 })
