@@ -4,6 +4,11 @@ import { Agent } from "@/app/types/agents"
 import { SupabaseClient } from '@supabase/supabase-js'
 import { Database } from "@/types/supabase"
 import { randomUUID } from 'crypto'
+import { InterventionRequestError } from "@/app/services/mark-intervention-message-failed"
+import {
+  buildInterventionRequestBody,
+  type InterventionRequestOptions,
+} from "@/app/services/intervention-request"
 
 /**
  * Generate a UUID
@@ -1030,6 +1035,9 @@ export async function getConversationMessages(conversationId: string): Promise<C
   }
 }
 
+export type { InterventionRequestOptions } from "@/app/services/intervention-request"
+export { buildInterventionRequestBody } from "@/app/services/intervention-request"
+
 /**
  * Sends a team member intervention message in a conversation
  */
@@ -1038,28 +1046,19 @@ export async function sendTeamMemberIntervention(
   message: string,
   userId: string,
   agentId: string,
-  options?: {
-    conversation_title?: string;
-    lead_id?: string;
-    visitor_id?: string;
-    site_id?: string;
-  }
+  options?: InterventionRequestOptions
 ): Promise<any> {
   // Log the API URL being used
   const API_URL = `${FULL_API_SERVER_URL}/api/agents/chat/intervention`;
   console.log("Sending intervention to API URL:", API_URL);
   
-  const requestBody = {
+  const requestBody = buildInterventionRequestBody(
     conversationId,
-    conversation_id: conversationId,
     message,
-    user_id: userId,
+    userId,
     agentId,
-    conversation_title: options?.conversation_title,
-    lead_id: options?.lead_id,
-    visitor_id: options?.visitor_id,
-    site_id: options?.site_id,
-  };
+    options
+  );
   
   console.log("Intervention request payload:", JSON.stringify(requestBody));
   
@@ -1079,9 +1078,12 @@ export async function sendTeamMemberIntervention(
       let errorMsg = `Error sending intervention: ${response.status} ${response.statusText}`;
       const errorData = await response.json().catch(() => null);
       if (errorData) {
-        errorMsg = errorData.message || errorData.error || errorMsg;
+        errorMsg = errorData.error?.message || errorData.message || errorMsg;
       }
-      throw new Error(errorMsg);
+      throw new InterventionRequestError(errorMsg, {
+        message_id: errorData?.data?.message_id || errorData?.message_id,
+        conversation_id: errorData?.data?.conversation_id || errorData?.conversation_id,
+      });
     }
     
     const responseData = await response.json().catch(() => ({ success: true }));
