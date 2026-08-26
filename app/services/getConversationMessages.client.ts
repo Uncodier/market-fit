@@ -110,19 +110,47 @@ export async function getConversationMessages(conversationId: string): Promise<C
       })
     }
 
+    const teamMemberIds = [...new Set(
+      sorted
+        .filter((msg: any) => msg.role === "team_member" && msg.user_id)
+        .map((msg: any) => msg.user_id as string)
+    )]
+
+    const profileById = new Map<string, { name: string; avatar_url: string | null }>()
+    if (teamMemberIds.length > 0) {
+      const { data: profiles, error: profilesError } = await supabase
+        .from("profiles")
+        .select("id, email, name, avatar_url")
+        .in("id", teamMemberIds)
+
+      if (profilesError) {
+        console.error("Error fetching team member profiles:", profilesError)
+      } else {
+        for (const profile of profiles || []) {
+          profileById.set(profile.id, {
+            name: profile.name || (profile.email ? profile.email.split("@")[0] : "Team Member"),
+            avatar_url: profile.avatar_url,
+          })
+        }
+      }
+    }
+
     // Minimal conversion matching chat-service's convertMessagesToChatFormat
-    return sorted.map((msg: any) => ({
-      id: msg.id,
-      role: msg.role,
-      text: msg.content,
-      timestamp: new Date(msg.created_at),
-      metadata: msg.custom_data || undefined,
-      command_id: msg.command_id || undefined,
-      sender_id: msg.user_id || msg.agent_id || msg.visitor_id || undefined,
-      sender_name: msg.custom_data?.user_name || msg.custom_data?.sender_name,
-      sender_avatar: msg.custom_data?.avatar_url || msg.custom_data?.sender_avatar,
-      agent_id: msg.agent_id || undefined
-    }))
+    return sorted.map((msg: any) => {
+      const profile = msg.user_id ? profileById.get(msg.user_id) : undefined
+      return {
+        id: msg.id,
+        role: msg.role,
+        text: msg.content,
+        timestamp: new Date(msg.created_at),
+        metadata: msg.custom_data || undefined,
+        command_id: msg.command_id || undefined,
+        sender_id: msg.user_id || msg.agent_id || msg.visitor_id || undefined,
+        sender_name: msg.custom_data?.user_name || msg.custom_data?.sender_name || profile?.name,
+        sender_avatar: msg.custom_data?.avatar_url || msg.custom_data?.sender_avatar || profile?.avatar_url || undefined,
+        agent_id: msg.agent_id || undefined
+      }
+    })
   } catch (e) {
     console.error("getConversationMessages (client) error:", e)
     return []

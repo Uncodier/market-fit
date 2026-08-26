@@ -61,6 +61,7 @@ export const ChannelSelector = memo(function ChannelSelector({
             {availableChannels.map((channel) => {
               const config = channelConfig[channel]
               const IconComponent = config.icon
+              const isSelected = channel === selectedChannel
 
               return (
                 <Tooltip key={channel}>
@@ -69,12 +70,16 @@ export const ChannelSelector = memo(function ChannelSelector({
                       value={channel}
                       disabled={isUpdating}
                       className={cn(
-                        "h-7 w-7 px-0 flex items-center justify-center rounded-full font-inter transition-all duration-200",
+                        "h-7 w-7 px-0 flex items-center justify-center rounded-full font-inter transition-all duration-200 border-0 focus:outline-none focus:ring-0",
                         "[&>*]:flex [&>*]:items-center [&>*]:justify-center",
+                        "data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-md data-[state=active]:ring-1 data-[state=active]:ring-border",
+                        isSelected
+                          ? "bg-background text-foreground shadow-md ring-1 ring-border"
+                          : "text-muted-foreground hover:text-foreground hover:bg-muted/50",
                         isUpdating && "cursor-not-allowed"
                       )}
                     >
-                      {isUpdating && channel === selectedChannel ? (
+                      {isUpdating && isSelected ? (
                         <LoadingSkeleton size="sm" />
                       ) : (
                         <IconComponent className="h-4 w-4" />
@@ -97,4 +102,4 @@ export const ChannelSelector = memo(function ChannelSelector({
       )}
     </div>
   )
-}) 
+})

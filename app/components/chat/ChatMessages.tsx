@@ -31,6 +31,7 @@ import { useAuthContext } from "@/app/components/auth/auth-provider"
 import { getUserData } from "@/app/services/user-service"
 import { cn } from "@/lib/utils"
 import { useLayout } from "@/app/context/LayoutContext"
+import { resolveTeamMemberSender } from "@/app/components/chat/resolveTeamMemberSender"
 
 // Helper function to format date as "Month Day, Year"
 const formatDate = (date: Date) => {
@@ -578,16 +579,16 @@ export function ChatMessages({
       
       // Find all unique user IDs that are not current user and not in cache
       chatMessages.forEach(msg => {
-        if (msg.sender_id && 
-            msg.sender_id !== currentUserId && 
+        if (msg.sender_id &&
             !userDataCache[msg.sender_id] &&
-            (msg.role === "user" || msg.role === "team_member")) {
+            (msg.role === "user" || msg.role === "team_member") &&
+            (!msg.sender_name || !msg.sender_avatar)) {
           userIdsToFetch.push(msg.sender_id)
         }
       })
       
       // Fetch user data for each unique ID
-      for (const userId of userIdsToFetch) {
+      for (const userId of [...new Set(userIdsToFetch)]) {
         try {
           const userData = await getUserData(userId)
           if (userData) {
@@ -1160,6 +1161,12 @@ export function ChatMessages({
                   );
                 // Use id + index so duplicate message ids don't cause React key warnings
                 const rowKey = msg.id ? `${msg.id}-${index}` : `idx-${index}`;
+                const teamSender = resolveTeamMemberSender(msg, {
+                  currentUserId,
+                  currentUserName,
+                  currentUserAvatar,
+                  userDataCache,
+                })
 
                 return (
                   <React.Fragment key={rowKey}>
@@ -1183,16 +1190,16 @@ export function ChatMessages({
                           <div className="flex flex-col min-w-0 group">
                           <div className="flex items-center mb-1 gap-2">
                             <Avatar className="h-7 w-7 border border-primary/10">
-                              <AvatarImage src={msg.sender_avatar || (msg.sender_id && userDataCache[msg.sender_id]?.avatar_url) || undefined} alt={msg.sender_name || (msg.sender_id && userDataCache[msg.sender_id]?.name) || "Team Member"} style={{ objectFit: 'cover' }} />
+                              <AvatarImage src={teamSender.avatar} alt={teamSender.name} style={{ objectFit: 'cover' }} />
                               <AvatarFallback className="text-xs bg-primary/10" style={{
                                 backgroundColor: msg.sender_id
                                   ? `hsl(${parseInt(msg.sender_id.replace(/[^a-f0-9]/gi, '').substring(0, 6), 16) % 360}, 70%, 65%)`
                                   : undefined
                               }}>
-                                {(msg.sender_name || (msg.sender_id && userDataCache[msg.sender_id]?.name)) ? (msg.sender_name || userDataCache[msg.sender_id!]?.name)!.split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase() : (msg.sender_id ? msg.sender_id.substring(0, 2).toUpperCase() : "T")}
+                                {teamSender.initials}
                               </AvatarFallback>
                             </Avatar>
-                            <span className="text-sm font-medium text-blue-600 dark:text-blue-400">{msg.sender_name || (msg.sender_id && userDataCache[msg.sender_id]?.name) || `Team Member (${msg.sender_id ? msg.sender_id.substring(0, 6) + '...' : 'Unknown'})`}</span>
+                            <span className="text-sm font-medium text-blue-600 dark:text-blue-400">{teamSender.name}</span>
                           </div>
                           <div className={`rounded-lg p-4 transition-all duration-300 ease-in-out text-foreground ml-9 min-w-0 overflow-hidden ${
                             msg.metadata?.status === "pending" ? "opacity-60" : ""
@@ -1299,16 +1306,16 @@ export function ChatMessages({
                           <div className="flex flex-col min-w-0 items-end group">
                           <div className="flex items-center mb-1 gap-2 flex-row-reverse">
                             <Avatar className="h-7 w-7 border border-primary/10">
-                              <AvatarImage src={msg.sender_avatar || (msg.sender_id && userDataCache[msg.sender_id]?.avatar_url) || undefined} alt={msg.sender_name || (msg.sender_id && userDataCache[msg.sender_id]?.name) || "Team Member"} style={{ objectFit: 'cover' }} />
+                              <AvatarImage src={teamSender.avatar} alt={teamSender.name} style={{ objectFit: 'cover' }} />
                               <AvatarFallback className="text-xs bg-primary/10" style={{
                                 backgroundColor: msg.sender_id
                                   ? `hsl(${parseInt(msg.sender_id.replace(/[^a-f0-9]/gi, '').substring(0, 6), 16) % 360}, 70%, 65%)`
                                   : undefined
                               }}>
-                                {(msg.sender_name || (msg.sender_id && userDataCache[msg.sender_id]?.name)) ? (msg.sender_name || userDataCache[msg.sender_id!]?.name)!.split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase() : (msg.sender_id ? msg.sender_id.substring(0, 2).toUpperCase() : "T")}
+                                {teamSender.initials}
                               </AvatarFallback>
                             </Avatar>
-                            <span className="text-sm font-medium text-blue-600 dark:text-blue-400">{msg.sender_name || (msg.sender_id && userDataCache[msg.sender_id]?.name) || `Team Member (${msg.sender_id ? msg.sender_id.substring(0, 6) + '...' : 'Unknown'})`}</span>
+                            <span className="text-sm font-medium text-blue-600 dark:text-blue-400">{teamSender.name}</span>
                           </div>
                           <div className={`rounded-lg p-4 transition-all duration-300 ease-in-out text-foreground mr-9 min-w-0 overflow-hidden ${
                               msg.metadata?.status === "pending" ? "opacity-60" : msg.metadata?.status === "accepted" ? "border-2 border-green-500/30 bg-green-50/50 dark:bg-green-900/10" : ""
@@ -1665,12 +1672,12 @@ export function ChatMessages({
                           <div className="flex flex-col min-w-0 items-end group">
                           <div className="flex items-center mb-1 gap-2 flex-row-reverse">
                             <Avatar className="h-7 w-7 border border-primary/20">
-                              <AvatarImage src={currentUserAvatar || undefined} alt={currentUserName || "You"} />
+                              <AvatarImage src={teamSender.avatar} alt={teamSender.name} style={{ objectFit: 'cover' }} />
                               <AvatarFallback className="bg-primary/10 text-primary">
-                                {currentUserName ? currentUserName.split(' ').map((n: string) => n[0]).join('').substring(0, 2) : "Y"}
+                                {teamSender.initials}
                               </AvatarFallback>
                             </Avatar>
-                            <span className="text-sm font-medium text-primary">{currentUserName || "You"}</span>
+                            <span className="text-sm font-medium text-primary">{teamSender.name}</span>
                           </div>
                           <div className={`rounded-lg p-4 transition-all duration-300 ease-in-out text-foreground mr-9 min-w-0 overflow-hidden ${
                             msg.metadata?.status === "pending" ? "opacity-60" : ""

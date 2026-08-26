@@ -1051,6 +1051,7 @@ export async function sendTeamMemberIntervention(
   
   const requestBody = {
     conversationId,
+    conversation_id: conversationId,
     message,
     user_id: userId,
     agentId,
