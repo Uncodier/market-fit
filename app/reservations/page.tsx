@@ -34,6 +34,7 @@ export default function ReservationsPage() {
   const [viewType, setViewType] = useState<"list" | "calendar">("list")
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedMember, setSelectedMember] = useState<string>("all")
+  const [statusFilter, setStatusFilter] = useState<"active" | "cancelled">("active")
   const [sortBy, setSortBy] = useState<"newest" | "oldest">("newest")
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [editingReservation, setEditingReservation] = useState<Reservation | null>(null)
@@ -99,6 +100,11 @@ export default function ReservationsPage() {
   const reservations = data?.data || []
   const filteredReservations = useMemo(() => {
     let filtered = reservations
+    if (statusFilter === "cancelled") {
+      filtered = filtered.filter((r) => r.status === "cancelled")
+    } else {
+      filtered = filtered.filter((r) => r.status !== "cancelled")
+    }
     if (selectedMember !== "all") {
       filtered = filtered.filter((r) => r.assignee_user_id === selectedMember)
     }
@@ -130,7 +136,7 @@ export default function ReservationsPage() {
         .toLowerCase()
       return haystack.includes(query)
     })
-  }, [reservations, searchQuery, selectedMember])
+  }, [reservations, searchQuery, selectedMember, sortBy, statusFilter])
 
   return (
     <div className="flex-1 flex flex-col h-[calc(100vh-var(--topbar-height,64px))] bg-muted/30">
@@ -159,6 +165,22 @@ export default function ReservationsPage() {
                     </TabsList>
                   </Tabs>
                 </div>
+
+                {viewMode !== "schedules" && (
+                  <div className="flex flex-col gap-2 w-full md:w-auto">
+                    <span className="text-xs font-semibold text-muted-foreground md:hidden mb-1 uppercase">{t('common.status') === 'common.status' ? 'Status' : t('common.status')}</span>
+                    <Tabs
+                      value={statusFilter}
+                      onValueChange={(val) => setStatusFilter(val as typeof statusFilter)}
+                      className="w-full md:w-auto flex-shrink-0"
+                    >
+                      <TabsList className="h-auto md:h-8 p-0 md:p-0.5 bg-transparent md:bg-muted/30 rounded-lg md:rounded-full flex flex-col md:flex-row w-full md:max-w-full overflow-y-auto md:overflow-x-auto justify-start items-stretch md:items-center gap-1 md:gap-0">
+                        <TabsTrigger value="active" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent whitespace-normal md:whitespace-nowrap">{t('status.active') || 'Active'}</TabsTrigger>
+                        <TabsTrigger value="cancelled" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent whitespace-normal md:whitespace-nowrap">{t('status.cancelled') || 'Cancelled'}</TabsTrigger>
+                      </TabsList>
+                    </Tabs>
+                  </div>
+                )}
 
                 <div className="hidden md:flex items-center gap-2 w-full md:w-auto">
                   <SearchInput  placeholder={t("reservations.search.placeholder") || "Search reservations..."} value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)}    className="w-full"  containerClassName="w-64" />
