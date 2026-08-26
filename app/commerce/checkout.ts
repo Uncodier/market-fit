@@ -906,7 +906,7 @@ export async function checkoutCart({
       upsertedItems,
       intent,
       isFullyPaid,
-      isAdmin,
+      isAdmin: source === 'pos' || source === 'sales',
       finalLeadId,
       buyerUserId,
       ownerSiteId,
