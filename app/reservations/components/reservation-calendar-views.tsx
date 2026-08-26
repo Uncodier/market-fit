@@ -1,28 +1,42 @@
 "use client"
 
 import { cn } from "@/lib/utils"
-import { CurrentTimeIndicator } from "@/app/control-center/components/CurrentTimeIndicator"
-import { Reservation } from "@/app/types"
+import { CalendarBlock, Reservation } from "@/app/types"
 import { reservationServiceColor } from "../reservation-helpers"
-import { ReservationItem } from "./ReservationCalendarItem"
+import { CalendarBlockItem, ReservationItem } from "./ReservationCalendarItem"
 import { buildMonthCalendarDays, getMonthName } from "./reservation-calendar-utils"
 import {
   CalendarTimeSlot,
-  HourCell,
   slotFromDayKeys,
   slotFromMonthRange,
   useCalendarRangeDrag,
   useHourDragSelect,
 } from "./reservation-calendar-hour-select"
+import { groupReservationsByService } from "./reservation-calendar-layout"
+import {
+  ReservationTimeColumn,
+  reservationHourClassName,
+  reservationHourLabel,
+} from "./reservation-calendar-time-column"
+import { localDateKey } from "./reservation-calendar-select"
+import {
+  calendarBlockAppliesToGroup,
+  calendarBlockOverlapsMonth,
+  calendarDayItems,
+  type CalendarBlockSpan,
+} from "../calendar-block-helpers"
 
 export { ReservationWeekView } from "./reservation-calendar-week-view"
 
 type ReservationsByDate = Record<string, Reservation[]>
+type BlocksByDate = Record<string, CalendarBlockSpan[]>
 
 type SharedViewProps = {
   reservationsByDate: ReservationsByDate
+  blocksByDate: BlocksByDate
   isToday: (date: Date | string) => boolean
   onReservationClick: (reservation: Reservation) => void
+  onBlockClick?: (block: CalendarBlock) => void
   onCreateSlot?: (slot: CalendarTimeSlot) => void
 }
 
@@ -30,8 +44,10 @@ export function ReservationMonthView({
   selectedDate,
   weekdayLabels,
   reservationsByDate,
+  blocksByDate,
   isToday,
   onReservationClick,
+  onBlockClick,
   onCreateSlot,
 }: SharedViewProps & { selectedDate: Date; weekdayLabels: string[] }) {
   const calendarDays = buildMonthCalendarDays(selectedDate.getFullYear(), selectedDate.getMonth())
@@ -48,6 +64,8 @@ export function ReservationMonthView({
       ))}
       {calendarDays.map(({ day, dateStr, isCurrentMonth: isCurrentMonthDay }, index) => {
         const dayReservations = reservationsByDate[dateStr] || []
+        const dayBlocks = blocksByDate[dateStr] || []
+        const dayItems = calendarDayItems(dayReservations, dayBlocks)
         const isCurrentDay = isToday(dateStr)
         const isDragSelected = isSelected(dateStr)
 
@@ -81,14 +99,24 @@ export function ReservationMonthView({
               {day}
             </div>
             <div className="space-y-1">
-              {dayReservations.map((reservation) => (
-                <ReservationItem
-                  key={reservation.id}
-                  reservation={reservation}
-                  onClick={onReservationClick}
-                  showTime
-                />
-              ))}
+              {dayItems.map((item) =>
+                item.kind === "block" ? (
+                  <CalendarBlockItem
+                    key={item.id}
+                    block={item.block}
+                    onClick={(block) => onBlockClick?.(block)}
+                    showTime
+                    displayStart={item.start_time}
+                  />
+                ) : (
+                  <ReservationItem
+                    key={item.id}
+                    reservation={item.reservation}
+                    onClick={onReservationClick}
+                    showTime
+                  />
+                )
+              )}
             </div>
           </div>
         )
@@ -99,12 +127,13 @@ export function ReservationMonthView({
 
 export function ReservationDayView({
   selectedDate,
-  listGroupMode,
   reservationsByDate,
+  blocksByDate,
   isToday,
   currentTime,
   timePosition,
   onReservationClick,
+  onBlockClick,
   onCreateSlot,
 }: SharedViewProps & {
   selectedDate: Date
@@ -112,11 +141,14 @@ export function ReservationDayView({
   currentTime: Date
   timePosition: number
 }) {
-  const dateStr = selectedDate.toISOString().split("T")[0]
+  const dateStr = localDateKey(selectedDate)
   const dayReservations = reservationsByDate[dateStr] || []
+  const dayBlocks = blocksByDate[dateStr] || []
   const hours = Array.from({ length: 24 }, (_, i) => i)
   const isCurrentDay = isToday(selectedDate)
   const { begin, isSelected } = useHourDragSelect(onCreateSlot)
+  const serviceGroups = groupReservationsByService(dayReservations)
+  const columns = serviceGroups.length > 0 ? serviceGroups : null
 
   const isHourPassed = (hour: number) => {
     if (!isCurrentDay) return false
@@ -125,137 +157,49 @@ export function ReservationDayView({
 
   const isCurrentHourBlock = (hour: number) => isCurrentDay && hour === currentTime.getHours()
 
-  const services =
-    listGroupMode === "service"
-      ? Array.from(new Set(dayReservations.map((r) => r.catalog_item?.name || "Unknown Service")))
-      : []
-
-  if (listGroupMode === "service" && services.length > 0) {
-
-    return (
-      <div className="bg-background rounded-lg">
-        <div
-          className="grid divide-x divide-border"
-          style={{ gridTemplateColumns: `100px repeat(${services.length}, minmax(200px, 1fr))` }}
-        >
-          <div className="bg-muted/50 sticky top-0 left-0 z-10 border-b border-border h-10" />
-          {services.map((serviceName) => {
-            const sample = dayReservations.find(
-              (reservation) => (reservation.catalog_item?.name || "Unknown Service") === serviceName
-            )
-            const swatch = sample ? reservationServiceColor(sample).swatch : "bg-muted-foreground"
-            return (
-              <div
-                key={serviceName}
-                className="bg-muted/50 sticky top-0 z-10 border-b border-border h-10 flex items-center justify-center gap-2 font-medium text-sm truncate px-2"
-              >
-                <span className={cn("h-2 w-2 shrink-0 rounded-full", swatch)} />
-                <span className="truncate">{serviceName}</span>
-              </div>
-            )
-          })}
-          <div className="bg-muted/50 sticky left-0 z-[2] mt-10" style={{ gridRow: "2 / span 24", gridColumn: "1" }}>
-            {hours.map((hour) => (
-              <div
-                key={hour}
-                className={cn(
-                  "h-20 border-b border-border p-2 text-sm text-right pr-4",
-                  isHourPassed(hour) && "text-muted-foreground",
-                  isCurrentHourBlock(hour) && "text-accent-foreground font-medium"
-                )}
-              >
-                {`${hour.toString().padStart(2, "0")}:00`}
-              </div>
-            ))}
-          </div>
-          {services.map((serviceName, colIndex) => (
-            <div key={serviceName} className="relative" style={{ gridRow: "2 / span 24", gridColumn: colIndex + 2 }}>
-              {isCurrentDay && (
-                <div
-                  className="absolute left-0 right-0 top-0 bg-muted/30 dark:bg-muted/50 pointer-events-none z-0"
-                  style={{ height: `${timePosition}px` }}
-                />
-              )}
-              {hours.map((hour) => (
-                <HourCell
-                  key={hour}
-                  date={selectedDate}
-                  hour={hour}
-                  isHourPassed={isHourPassed(hour)}
-                  isCurrentHourBlock={isCurrentHourBlock(hour)}
-                  isDragSelected={isSelected(selectedDate, hour)}
-                  reservations={dayReservations.filter((r) => {
-                    const resDate = new Date(r.start_time)
-                    return resDate.getHours() === hour && (r.catalog_item?.name || "Unknown Service") === serviceName
-                  })}
-                  onReservationClick={onReservationClick}
-                  onBeginDrag={onCreateSlot ? begin : undefined}
-                />
-              ))}
-              {isCurrentDay && (
-                <CurrentTimeIndicator
-                  timePosition={timePosition}
-                  currentTime={currentTime}
-                  showLabel={false}
-                />
-              )}
-            </div>
-          ))}
-        </div>
-      </div>
-    )
-  }
-
-  const reservationsByHour = hours.reduce((acc, hour) => {
-    acc[hour] = dayReservations.filter((reservation) => new Date(reservation.start_time).getHours() === hour)
-    return acc
-  }, {} as Record<number, Reservation[]>)
-
   return (
     <div className="bg-background rounded-lg">
-      <div className="grid grid-cols-[100px_1fr] divide-x divide-border">
+      <div
+        className="grid divide-x divide-border"
+        style={{
+          gridTemplateColumns: columns
+            ? `100px repeat(${columns.length}, minmax(200px, 1fr))`
+            : "100px minmax(200px, 1fr)",
+        }}
+      >
+        {columns ? <div className="bg-muted/50 sticky top-0 left-0 z-10 border-b border-border h-10" /> : null}
+        {columns?.map((group) => (
+          <div
+            key={group.key}
+            className="bg-muted/50 sticky top-0 z-10 border-b border-border h-10 flex items-center justify-center gap-2 font-medium text-sm truncate px-2"
+          >
+            <span className={cn("h-2 w-2 shrink-0 rounded-full", reservationServiceColor(group.sample).swatch)} />
+            <span className="truncate">{group.label}</span>
+          </div>
+        ))}
         <div className="bg-muted/50 sticky left-0 z-[2]">
           {hours.map((hour) => (
-            <div
-              key={hour}
-              className={cn(
-                "h-20 border-b border-border p-2 text-sm text-right pr-4",
-                isHourPassed(hour) && "text-muted-foreground",
-                isCurrentHourBlock(hour) && "text-accent-foreground font-medium"
-              )}
-            >
-              {`${hour.toString().padStart(2, "0")}:00`}
+            <div key={hour} className={reservationHourClassName(isHourPassed(hour), isCurrentHourBlock(hour))}>
+              {reservationHourLabel(hour)}
             </div>
           ))}
         </div>
-        <div className="relative min-w-[200px]">
-          {isCurrentDay && (
-            <div
-              className="absolute left-0 right-0 top-0 bg-muted/30 dark:bg-muted/50 pointer-events-none z-0"
-              style={{ height: `${timePosition}px` }}
-            />
-          )}
-          {hours.map((hour) => (
-            <HourCell
-              key={hour}
+        {(columns || [{ key: "all", reservations: dayReservations }]).map((group) => (
+          <div key={group.key} className="min-w-0">
+            <ReservationTimeColumn
               date={selectedDate}
-              hour={hour}
-              isHourPassed={isHourPassed(hour)}
-              isCurrentHourBlock={isCurrentHourBlock(hour)}
-              isDragSelected={isSelected(selectedDate, hour)}
-              reservations={reservationsByHour[hour] || []}
-              onReservationClick={onReservationClick}
-              onBeginDrag={onCreateSlot ? begin : undefined}
-            />
-          ))}
-          {isCurrentDay && (
-            <CurrentTimeIndicator
-              timePosition={timePosition}
+              reservations={group.reservations}
+              blocks={dayBlocks.filter((span) => calendarBlockAppliesToGroup(span.block, group.key))}
+              isCurrentDay={isCurrentDay}
               currentTime={currentTime}
-              showLabel={false}
+              timePosition={timePosition}
+              onReservationClick={onReservationClick}
+              onBlockClick={onBlockClick}
+              onBeginDrag={onCreateSlot ? begin : undefined}
+              isSelected={isSelected}
             />
-          )}
-        </div>
+          </div>
+        ))}
       </div>
     </div>
   )
@@ -264,12 +208,16 @@ export function ReservationDayView({
 export function ReservationYearView({
   selectedDate,
   reservations,
+  blocks = [],
   onReservationClick,
+  onBlockClick,
   onCreateSlot,
 }: {
   selectedDate: Date
   reservations: Reservation[]
+  blocks?: CalendarBlock[]
   onReservationClick: (reservation: Reservation) => void
+  onBlockClick?: (block: CalendarBlock) => void
   onCreateSlot?: (slot: CalendarTimeSlot) => void
 }) {
   const months = Array.from({ length: 12 }, (_, i) => i)
@@ -287,8 +235,23 @@ export function ReservationYearView({
           const resDate = new Date(reservation.start_time)
           return resDate.getMonth() === month && resDate.getFullYear() === year
         })
-        const visibleReservations = monthReservations.slice(0, 15)
-        const remainingReservations = monthReservations.length - 15
+        const monthBlocks = blocks.filter((item) => calendarBlockOverlapsMonth(item, year, month))
+        const monthItems = [
+          ...monthReservations.map((reservation) => ({
+            kind: "reservation" as const,
+            id: reservation.id,
+            start_time: reservation.start_time,
+            reservation,
+          })),
+          ...monthBlocks.map((item) => ({
+            kind: "block" as const,
+            id: item.id,
+            start_time: item.start_time,
+            block: item,
+          })),
+        ].sort((a, b) => a.start_time.localeCompare(b.start_time))
+        const visibleItems = monthItems.slice(0, 15)
+        const remainingItems = monthItems.length - 15
         const isCurrentMonthHighlight = month === today.getMonth() && year === today.getFullYear()
         const isDragSelected = isSelected(monthKey)
 
@@ -320,21 +283,30 @@ export function ReservationYearView({
               {getMonthName(month)}
             </h3>
             <div className="flex-1 flex flex-col">
-              {visibleReservations.length > 0 ? (
+              {visibleItems.length > 0 ? (
                 <>
                   <div className="flex-1 space-y-2">
-                    {visibleReservations.map((reservation) => (
-                      <ReservationItem
-                        key={reservation.id}
-                        reservation={reservation}
-                        onClick={onReservationClick}
-                        showDay
-                      />
-                    ))}
+                    {visibleItems.map((item) =>
+                      item.kind === "block" ? (
+                        <CalendarBlockItem
+                          key={item.id}
+                          block={item.block}
+                          onClick={(block) => onBlockClick?.(block)}
+                          showDay
+                        />
+                      ) : (
+                        <ReservationItem
+                          key={item.id}
+                          reservation={item.reservation}
+                          onClick={onReservationClick}
+                          showDay
+                        />
+                      )
+                    )}
                   </div>
-                  {remainingReservations > 0 && (
+                  {remainingItems > 0 && (
                     <div className="text-xs text-muted-foreground text-center mt-3 py-1 bg-muted/50 rounded-md">
-                      {`+${remainingReservations} more`}
+                      {`+${remainingItems} more`}
                     </div>
                   )}
                 </>

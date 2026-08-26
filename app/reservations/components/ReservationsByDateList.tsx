@@ -1,29 +1,42 @@
 "use client"
 
 import React, { useState } from "react"
-import { Reservation } from "@/app/types"
+import { CalendarBlock, Reservation } from "@/app/types"
 import { updateReservationStatus } from "../actions"
+import { deleteCalendarBlock } from "../calendar-blocks-actions"
 import { toast } from "sonner"
 import { format } from "date-fns"
 import { reservationResourceLabel } from "@/app/visits/visit-helpers"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import {
+  CalendarBlockDataRow,
   ReservationDataRow,
   ReservationGroupHeader,
   ReservationsEmpty,
   ReservationsTableFrame,
 } from "./reservation-table"
-import { sortReservationGroups, type ReservationSortBy } from "../reservation-helpers"
+import { type ReservationSortBy } from "../reservation-helpers"
+import { groupTimelineByLocalDate } from "../calendar-block-helpers"
 
 interface ReservationsByDateListProps {
   reservations: Reservation[]
+  blocks?: CalendarBlock[]
   sortBy: ReservationSortBy
   siteId: string
   onUpdate: () => void
   onEdit: (reservation: Reservation) => void
+  onEditBlock?: (block: CalendarBlock) => void
 }
 
-export function ReservationsByDateList({ reservations, sortBy, siteId, onUpdate, onEdit }: ReservationsByDateListProps) {
+export function ReservationsByDateList({
+  reservations,
+  blocks = [],
+  sortBy,
+  siteId,
+  onUpdate,
+  onEdit,
+  onEditBlock,
+}: ReservationsByDateListProps) {
   const { t } = useLocalization()
   const [updating, setUpdating] = useState<string | null>(null)
 
@@ -39,45 +52,58 @@ export function ReservationsByDateList({ reservations, sortBy, siteId, onUpdate,
     setUpdating(null)
   }
 
-  const grouped = sortReservationGroups(
-    Object.entries(
-      reservations.reduce((acc, res) => {
-        const dayStr = format(new Date(res.start_time), "yyyy-MM-dd")
-        if (!acc[dayStr]) acc[dayStr] = []
-        acc[dayStr].push(res)
-        return acc
-      }, {} as Record<string, Reservation[]>)
-    ),
-    sortBy
-  )
+  const handleDeleteBlock = async (block: CalendarBlock) => {
+    setUpdating(block.id)
+    const { error } = await deleteCalendarBlock(block.id)
+    if (error) {
+      toast.error(error)
+    } else {
+      toast.success("Block removed")
+      onUpdate()
+    }
+    setUpdating(null)
+  }
 
-  if (reservations.length === 0) {
+  const grouped = groupTimelineByLocalDate(reservations, blocks, sortBy)
+
+  if (reservations.length === 0 && blocks.length === 0) {
     return <ReservationsEmpty />
   }
 
   return (
-    <ReservationsTableFrame count={reservations.length}>
-      {grouped.map(([dayStr, resList]) => {
-        const dateObj = new Date(resList[0].start_time)
+    <ReservationsTableFrame count={reservations.length} blocksCount={blocks.length}>
+      {grouped.map(([dayStr, items]) => {
+        const dateObj = new Date(items[0].start_time)
         return (
           <React.Fragment key={dayStr}>
-            <ReservationGroupHeader title={format(dateObj, "EEEE, MMMM d, yyyy")} count={resList.length} />
-            {resList.map((reservation) => (
-              <ReservationDataRow
-                key={reservation.id}
-                reservation={reservation}
-                siteId={siteId}
-                updating={updating === reservation.id}
-                onStatusChange={handleStatusChange}
-                onEdit={onEdit}
-                showDate={false}
-                customerMeta={reservationResourceLabel({
-                  resource_type: reservation.resource_type,
-                  catalog_item: reservation.catalog_item,
-                  location: reservation.location,
-                })}
-              />
-            ))}
+            <ReservationGroupHeader title={format(dateObj, "EEEE, MMMM d, yyyy")} count={items.length} />
+            {items.map((item) =>
+              item.kind === "block" ? (
+                <CalendarBlockDataRow
+                  key={item.id}
+                  block={item.block}
+                  onEdit={onEditBlock}
+                  onDelete={handleDeleteBlock}
+                  deleting={updating === item.id}
+                  showDate={false}
+                />
+              ) : (
+                <ReservationDataRow
+                  key={item.id}
+                  reservation={item.reservation}
+                  siteId={siteId}
+                  updating={updating === item.id}
+                  onStatusChange={handleStatusChange}
+                  onEdit={onEdit}
+                  showDate={false}
+                  customerMeta={reservationResourceLabel({
+                    resource_type: item.reservation.resource_type,
+                    catalog_item: item.reservation.catalog_item,
+                    location: item.reservation.location,
+                  })}
+                />
+              )
+            )}
           </React.Fragment>
         )
       })}

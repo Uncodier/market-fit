@@ -7,7 +7,7 @@ import { Input } from "@/app/components/ui/input"
 import { Label } from "@/app/components/ui/label"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { useSite } from "@/app/context/SiteContext"
-import { upsertCalendarBlock } from "../calendar-blocks-actions"
+import { upsertCalendarBlock, deleteCalendarBlock } from "../calendar-blocks-actions"
 import { toast } from "sonner"
 import type { CalendarBlock } from "@/app/types"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
@@ -16,6 +16,16 @@ import { DatePicker } from "@/app/components/ui/date-picker"
 import { TimeSelect } from "@/app/components/ui/time-select"
 import useSWR from "swr"
 import { listCatalogItems } from "@/app/catalog/actions"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/app/components/ui/alert-dialog"
 
 interface CreateCalendarBlockDialogProps {
   open: boolean
@@ -43,6 +53,7 @@ export function CreateCalendarBlockDialog({
   const [endDate, setEndDate] = useState<Date | undefined>(undefined)
   const [endTime, setEndTime] = useState("17:00")
   const [reason, setReason] = useState("")
+  const [confirmDelete, setConfirmDelete] = useState(false)
 
   const { data: catalogData } = useSWR(
     open && currentSite && entityType === "catalog_item" ? ["catalog", currentSite.id, "reservable"] : null,
@@ -152,7 +163,25 @@ export function CreateCalendarBlockDialog({
     }
   }
 
+  const handleDelete = async () => {
+    if (!block) return
+    setIsSubmitting(true)
+    try {
+      const res = await deleteCalendarBlock(block.id)
+      if (res.error) throw new Error(res.error)
+      toast.success("Block removed")
+      setConfirmDelete(false)
+      onOpenChange(false)
+      onSuccess?.()
+    } catch (error: any) {
+      toast.error(error.message || "Failed to delete block")
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
@@ -249,15 +278,50 @@ export function CreateCalendarBlockDialog({
           </div>
         </div>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting}>
-            Cancel
-          </Button>
-          <Button onClick={handleSubmit} disabled={isSubmitting}>
-            {isSubmitting ? "Saving..." : (isEdit ? "Save Changes" : "Create Block")}
-          </Button>
+        <DialogFooter className="gap-2 sm:justify-between">
+          {isEdit ? (
+            <Button
+              variant="ghost"
+              className="text-destructive hover:text-destructive"
+              onClick={() => setConfirmDelete(true)}
+              disabled={isSubmitting}
+            >
+              Delete
+            </Button>
+          ) : (
+            <span />
+          )}
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting}>
+              Cancel
+            </Button>
+            <Button onClick={handleSubmit} disabled={isSubmitting}>
+              {isSubmitting ? "Saving..." : (isEdit ? "Save Changes" : "Create Block")}
+            </Button>
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>
+    <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Delete this block?</AlertDialogTitle>
+          <AlertDialogDescription>
+            This will reopen the blocked time for new reservations. This action cannot be undone.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={isSubmitting}>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            onClick={handleDelete}
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? "Deleting..." : "Delete block"}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    </>
   )
 }

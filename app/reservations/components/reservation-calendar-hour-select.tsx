@@ -2,8 +2,6 @@
 
 import { PointerEvent as ReactPointerEvent, useCallback, useEffect, useRef, useState } from "react"
 import { cn } from "@/lib/utils"
-import { Reservation } from "@/app/types"
-import { ReservationItem } from "./ReservationCalendarItem"
 import {
   RANGE_HOLD_MS,
   TAP_MOVE_THRESHOLD,
@@ -278,8 +276,6 @@ export function HourCell({
   isHourPassed,
   isCurrentHourBlock,
   isDragSelected,
-  reservations,
-  onReservationClick,
   onBeginDrag,
 }: {
   date: Date
@@ -287,8 +283,6 @@ export function HourCell({
   isHourPassed: boolean
   isCurrentHourBlock: boolean
   isDragSelected: boolean
-  reservations: Reservation[]
-  onReservationClick: (reservation: Reservation) => void
   onBeginDrag?: (date: Date, hour: number, event: ReactPointerEvent) => void
 }) {
   return (
@@ -305,21 +299,12 @@ export function HourCell({
         onBeginDrag(date, hour, event)
       }}
       className={cn(
-        "h-20 border-b border-border p-2 relative group transition-colors select-none",
+        "h-20 border-b border-border relative group transition-colors select-none",
         onBeginDrag && "cursor-pointer",
         !isHourPassed && !isDragSelected && "hover:bg-accent/5",
         isCurrentHourBlock && !isDragSelected && "bg-accent/20 dark:bg-accent/30",
         isDragSelected && "bg-primary/15"
       )}
-    >
-      {reservations.map((reservation) => (
-        <ReservationItem
-          key={reservation.id}
-          reservation={reservation}
-          onClick={onReservationClick}
-          showTime
-        />
-      ))}
-    </div>
+    />
   )
 }

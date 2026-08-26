@@ -6,7 +6,7 @@ import { ChevronLeft, ChevronRight } from "@/app/components/ui/icons"
 import { ToggleGroup, ToggleGroupItem } from "@/app/components/ui/toggle-group"
 import { cn } from "@/lib/utils"
 import { useCurrentTime } from "@/app/hooks/useCurrentTime"
-import { Reservation } from "@/app/types"
+import { Reservation, CalendarBlock } from "@/app/types"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { CalendarViewMode, createNewDatePreservingDay, getWeekDates } from "./reservation-calendar-utils"
 import {
@@ -16,18 +16,24 @@ import {
   ReservationYearView,
 } from "./reservation-calendar-views"
 import type { CalendarTimeSlot } from "./reservation-calendar-hour-select"
+import { localDateKey } from "./reservation-calendar-select"
+import { groupBlockSpansByDate } from "../calendar-block-helpers"
 
 interface ReservationCalendarProps {
   reservations: Reservation[]
+  blocks?: CalendarBlock[]
   viewMode: "service" | "calendar"
   onReservationClick?: (reservation: Reservation) => void
+  onBlockClick?: (block: CalendarBlock) => void
   onCreateSlot?: (slot: CalendarTimeSlot) => void
 }
 
 export function ReservationCalendar({
   reservations,
+  blocks = [],
   viewMode: listGroupMode,
   onReservationClick,
+  onBlockClick,
   onCreateSlot,
 }: ReservationCalendarProps) {
   const { t } = useLocalization()
@@ -104,11 +110,12 @@ export function ReservationCalendar({
   }
 
   const reservationsByDate = reservations.reduce((acc, reservation) => {
-    const dateStr = reservation.start_time.split("T")[0]
+    const dateStr = localDateKey(new Date(reservation.start_time))
     if (!acc[dateStr]) acc[dateStr] = []
     acc[dateStr].push(reservation)
     return acc
   }, {} as Record<string, Reservation[]>)
+  const blocksByDate = groupBlockSpansByDate(blocks)
 
   const getPeriodLabel = () => {
     switch (viewMode) {
@@ -155,8 +162,10 @@ export function ReservationCalendar({
   const renderCalendarContent = () => {
     const shared = {
       reservationsByDate,
+      blocksByDate,
       isToday,
       onReservationClick: handleReservationClick,
+      onBlockClick,
       onCreateSlot,
     }
     switch (viewMode) {
@@ -186,7 +195,9 @@ export function ReservationCalendar({
           <ReservationYearView
             selectedDate={selectedDate}
             reservations={reservations}
+            blocks={blocks}
             onReservationClick={handleReservationClick}
+            onBlockClick={onBlockClick}
             onCreateSlot={onCreateSlot}
           />
         )

@@ -2,11 +2,18 @@
 
 import React from "react"
 import { format } from "date-fns"
-import { Reservation } from "@/app/types"
+import { Reservation, CalendarBlock } from "@/app/types"
 import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/app/components/ui/table"
 import { Skeleton } from "@/app/components/ui/skeleton"
 import { EmptyCard } from "@/app/components/ui/empty-card"
-import { Calendar as CalendarIcon } from "@/app/components/ui/icons"
+import { Calendar as CalendarIcon, Ban, MoreHorizontal, Pencil, Trash2 } from "@/app/components/ui/icons"
+import { Button } from "@/app/components/ui/button"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/app/components/ui/dropdown-menu"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { cn } from "@/lib/utils"
 import {
@@ -19,6 +26,7 @@ import { ReservationAttestationCell } from "./ReservationAttestationCell"
 import { ReservationCustomerCell } from "./ReservationCustomerCell"
 import { ReservationRowActions } from "./ReservationRowActions"
 import { reservationCanEdit } from "../reservation-helpers"
+import { calendarBlockLocalDateKey, calendarBlockScopeLabel, calendarBlockTitle } from "../calendar-block-helpers"
 
 export function reservationAccent(status: Reservation["status"]): "due" | "cancelled" | "none" {
   if (status === "cancelled") return "cancelled"
@@ -116,14 +124,97 @@ export function ReservationDataRow({
   )
 }
 
+export function CalendarBlockDataRow({
+  block,
+  onEdit,
+  onDelete,
+  deleting,
+  showDate,
+}: {
+  block: CalendarBlock
+  onEdit?: (block: CalendarBlock) => void
+  onDelete?: (block: CalendarBlock) => void
+  deleting?: boolean
+  showDate?: boolean
+}) {
+  const title = calendarBlockTitle(block)
+  const scope = calendarBlockScopeLabel(block)
+  const spansDays =
+    calendarBlockLocalDateKey(block.start_time) !==
+    calendarBlockLocalDateKey(new Date(new Date(block.end_time).getTime() - 1))
+
+  return (
+    <DocumentListRow
+      accent="none"
+      onClick={onEdit ? () => onEdit(block) : undefined}
+      className={onEdit ? undefined : "cursor-default"}
+    >
+      <TableCell className="py-3.5">
+        <div className="flex min-w-0 items-center gap-3">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-300">
+            <Ban className="h-4 w-4" />
+          </span>
+          <div className="min-w-0 space-y-0.5">
+            <p className="truncate text-sm font-medium leading-tight text-foreground">{title}</p>
+            <p className="truncate text-[11px] leading-tight text-muted-foreground">{scope}</p>
+          </div>
+        </div>
+      </TableCell>
+      <TableCell className="py-3.5">
+        <StatusDot status="blocked" label="Blocked" />
+      </TableCell>
+      <TableCell className="py-3.5">
+        <ReservationTimeCell start={block.start_time} end={block.end_time} showDate={showDate || spansDays} />
+      </TableCell>
+      <TableCell className="py-3.5">
+        <span className="text-sm text-muted-foreground">—</span>
+      </TableCell>
+      <TableCell className="py-3.5 text-right" onClick={(event) => event.stopPropagation()}>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 opacity-100 md:opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100 data-[state=open]:opacity-100"
+              disabled={deleting}
+            >
+              <MoreHorizontal className="h-4 w-4" />
+              <span className="sr-only">Actions</span>
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            {onEdit ? (
+              <DropdownMenuItem onClick={() => onEdit(block)}>
+                <Pencil className="h-4 w-4 mr-2" /> Edit
+              </DropdownMenuItem>
+            ) : null}
+            {onDelete ? (
+              <DropdownMenuItem
+                onClick={() => onDelete(block)}
+                className="text-red-600 focus:text-red-600"
+              >
+                <Trash2 className="h-4 w-4 mr-2" /> Delete
+              </DropdownMenuItem>
+            ) : null}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </TableCell>
+    </DocumentListRow>
+  )
+}
+
 export function ReservationsTableFrame({
   children,
   count,
+  blocksCount = 0,
 }: {
   children: React.ReactNode
   count: number
+  blocksCount?: number
 }) {
   const { t } = useLocalization()
+  const reservationLabel = t("reservations.table.reservations") || "reservations"
+  const blockLabel = blocksCount === 1 ? "block" : "blocks"
 
   return (
     <div className={documentListShellClassName()}>
@@ -143,7 +234,15 @@ export function ReservationsTableFrame({
         <p className="text-xs text-muted-foreground">
           <span className="font-medium text-foreground">{count}</span>
           {" "}
-          {t("reservations.table.reservations") || "reservations"}
+          {reservationLabel}
+          {blocksCount > 0 ? (
+            <>
+              {" · "}
+              <span className="font-medium text-foreground">{blocksCount}</span>
+              {" "}
+              {blockLabel}
+            </>
+          ) : null}
         </p>
       </div>
     </div>

@@ -7,6 +7,7 @@ import { useLocalization } from "@/app/context/LocalizationContext"
 import { useSite } from "@/app/context/SiteContext"
 import useSWR from "swr"
 import { getReservations } from "./actions"
+import { getCalendarBlocks } from "./calendar-blocks-actions"
 import { ReservationsList } from "./components/ReservationsList"
 import { Calendar as CalendarIcon, CalendarDays, List, Clock, Filter, ListOrdered, Check, ChevronDown } from "@/app/components/ui/icons"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/app/components/ui/dropdown-menu"
@@ -24,8 +25,9 @@ import { CreateReservationDialog } from "./components/CreateReservationDialog"
 import { CreateCalendarBlockDialog } from "./components/CreateCalendarBlockDialog"
 import { reservationCanEdit, sortReservations, type ReservationSortBy } from "./reservation-helpers"
 import type { CalendarTimeSlot } from "./components/reservation-calendar-hour-select"
-import type { Reservation } from "@/app/types"
+import type { CalendarBlock, Reservation } from "@/app/types"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
+import { filterCalendarBlocks } from "./calendar-block-helpers"
 
 export default function ReservationsPage() {
   const { t } = useLocalization()
@@ -40,10 +42,16 @@ export default function ReservationsPage() {
   const [editingReservation, setEditingReservation] = useState<Reservation | null>(null)
   const [createSlot, setCreateSlot] = useState<CalendarTimeSlot | null>(null)
   const [isBlockFormOpen, setIsBlockFormOpen] = useState(false)
+  const [editingBlock, setEditingBlock] = useState<CalendarBlock | null>(null)
 
   const { data, isLoading, mutate } = useSWR(
     currentSite?.id ? ["reservations", currentSite.id] : null,
     () => getReservations(currentSite!.id)
+  )
+
+  const { data: blocksData, isLoading: isLoadingBlocks, mutate: mutateBlocks } = useSWR(
+    currentSite?.id ? ["calendar-blocks", currentSite.id] : null,
+    () => getCalendarBlocks(currentSite!.id)
   )
 
   const { data: membersData } = useSWR(
@@ -86,9 +94,29 @@ export default function ReservationsPage() {
     }
   }
 
+  const refresh = () => {
+    mutate()
+    mutateBlocks()
+  }
+
+  const openCreateBlock = () => {
+    setEditingBlock(null)
+    setIsBlockFormOpen(true)
+  }
+
+  const openEditBlock = (block: CalendarBlock) => {
+    setEditingBlock(block)
+    setIsBlockFormOpen(true)
+  }
+
+  const handleBlockFormOpenChange = (open: boolean) => {
+    setIsBlockFormOpen(open)
+    if (!open) setEditingBlock(null)
+  }
+
   useEffect(() => {
     const handleCreate = () => openCreate()
-    const handleCreateBlock = () => setIsBlockFormOpen(true)
+    const handleCreateBlock = () => openCreateBlock()
     window.addEventListener("reservations:create", handleCreate)
     window.addEventListener("calendarBlocks:create", handleCreateBlock)
     return () => {
@@ -132,6 +160,12 @@ export default function ReservationsPage() {
 
     return sortReservations(filtered, sortBy)
   }, [reservations, searchQuery, selectedMember, sortBy, statusFilter])
+
+  const calendarBlocks = filterCalendarBlocks(blocksData?.data || [], {
+    query: searchQuery,
+    selectedMember,
+    statusFilter,
+  })
 
   return (
     <div className="flex-1 flex flex-col h-[calc(100vh-var(--topbar-height,64px))] bg-muted/30">
@@ -242,7 +276,7 @@ export default function ReservationsPage() {
       </StickyHeader>
 
       <div className="p-4 md:p-6 lg:p-8 flex-1 overflow-auto">
-        {!currentSite || isLoading ? (
+        {!currentSite || isLoading || isLoadingBlocks ? (
           <ReservationsTableSkeleton />
         ) : viewMode === "schedules" ? (
           <div className="bg-card rounded-xl shadow-sm border border-border overflow-hidden">
@@ -252,24 +286,30 @@ export default function ReservationsPage() {
           <div className="bg-card rounded-xl shadow-sm border border-border overflow-hidden">
             <ReservationCalendar
               reservations={filteredReservations}
+              blocks={calendarBlocks}
               viewMode={viewMode}
               onReservationClick={openEdit}
+              onBlockClick={openEditBlock}
               onCreateSlot={openCreate} />
           </div>
         ) : viewMode === "service" ? (
           <ReservationsList
             reservations={filteredReservations}
+            blocks={calendarBlocks}
             sortBy={sortBy}
             siteId={currentSite.id}
-            onUpdate={mutate}
-            onEdit={openEdit} />
+            onUpdate={refresh}
+            onEdit={openEdit}
+            onEditBlock={openEditBlock} />
         ) : (
           <ReservationsByDateList
             reservations={filteredReservations}
+            blocks={calendarBlocks}
             sortBy={sortBy}
             siteId={currentSite.id}
-            onUpdate={mutate}
-            onEdit={openEdit} />
+            onUpdate={refresh}
+            onEdit={openEdit}
+            onEditBlock={openEditBlock} />
         )}
       </div>
       <CreateReservationDialog
@@ -277,11 +317,12 @@ export default function ReservationsPage() {
         reservation={editingReservation}
         initialSlot={createSlot}
         onOpenChange={handleFormOpenChange}
-        onSuccess={mutate} />
+        onSuccess={refresh} />
       <CreateCalendarBlockDialog
         open={isBlockFormOpen}
-        onOpenChange={setIsBlockFormOpen}
-        onSuccess={mutate} />
+        block={editingBlock}
+        onOpenChange={handleBlockFormOpenChange}
+        onSuccess={refresh} />
     </div>
   )
 }

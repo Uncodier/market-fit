@@ -1,26 +1,32 @@
 "use client"
 
 import { cn } from "@/lib/utils"
-import { CurrentTimeIndicator } from "@/app/control-center/components/CurrentTimeIndicator"
-import { Reservation } from "@/app/types"
+import { CalendarBlock, Reservation } from "@/app/types"
 import { getWeekDates } from "./reservation-calendar-utils"
-import { CalendarTimeSlot, HourCell, useHourDragSelect } from "./reservation-calendar-hour-select"
+import { CalendarTimeSlot, useHourDragSelect } from "./reservation-calendar-hour-select"
+import { ReservationTimeColumn, reservationHourLabel } from "./reservation-calendar-time-column"
+import { localDateKey } from "./reservation-calendar-select"
+import type { CalendarBlockSpan } from "../calendar-block-helpers"
 
 export function ReservationWeekView({
   selectedDate,
   reservationsByDate,
+  blocksByDate,
   isToday,
   currentTime,
   timePosition,
   onReservationClick,
+  onBlockClick,
   onCreateSlot,
 }: {
   selectedDate: Date
   reservationsByDate: Record<string, Reservation[]>
+  blocksByDate: Record<string, CalendarBlockSpan[]>
   isToday: (date: Date | string) => boolean
   currentTime: Date
   timePosition: number
   onReservationClick: (reservation: Reservation) => void
+  onBlockClick?: (block: CalendarBlock) => void
   onCreateSlot?: (slot: CalendarTimeSlot) => void
 }) {
   const weekDates = getWeekDates(selectedDate)
@@ -61,44 +67,31 @@ export function ReservationWeekView({
         <div className="bg-muted/50 sticky left-0 z-[2]">
           {hours.map((hour) => (
             <div key={hour} className="h-20 border-b border-border p-2 text-sm text-right pr-3 text-muted-foreground">
-              {`${hour.toString().padStart(2, "0")}:00`}
+              {reservationHourLabel(hour)}
             </div>
           ))}
         </div>
 
         {weekDates.map((date) => {
-          const dateStr = date.toISOString().split("T")[0]
+          const dateStr = localDateKey(date)
           const dayReservations = reservationsByDate[dateStr] || []
+          const dayBlocks = blocksByDate[dateStr] || []
           const isCurrentDay = isToday(date)
 
           return (
-            <div key={dateStr} className={cn("relative", isCurrentDay && "bg-accent/5")}>
-              {hours.map((hour) => (
-                <HourCell
-                  key={hour}
-                  date={date}
-                  hour={hour}
-                  isHourPassed={
-                    isCurrentDay &&
-                    (hour < currentTime.getHours() ||
-                      (hour === currentTime.getHours() && currentTime.getMinutes() > 0))
-                  }
-                  isCurrentHourBlock={isCurrentDay && hour === currentTime.getHours()}
-                  isDragSelected={isSelected(date, hour)}
-                  reservations={dayReservations.filter((reservation) => {
-                    return new Date(reservation.start_time).getHours() === hour
-                  })}
-                  onReservationClick={onReservationClick}
-                  onBeginDrag={onCreateSlot ? begin : undefined}
-                />
-              ))}
-              {isCurrentDay && (
-                <CurrentTimeIndicator
-                  timePosition={timePosition}
-                  currentTime={currentTime}
-                  showLabel={false}
-                />
-              )}
+            <div key={dateStr} className={cn("min-w-0", isCurrentDay && "bg-accent/5")}>
+              <ReservationTimeColumn
+                date={date}
+                reservations={dayReservations}
+                blocks={dayBlocks}
+                isCurrentDay={isCurrentDay}
+                currentTime={currentTime}
+                timePosition={timePosition}
+                onReservationClick={onReservationClick}
+                onBlockClick={onBlockClick}
+                onBeginDrag={onCreateSlot ? begin : undefined}
+                isSelected={isSelected}
+              />
             </div>
           )
         })}
