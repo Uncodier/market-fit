@@ -73,7 +73,6 @@ export const getSystemPromptForActivity = (
     "generate-image": "generate image",
     "generate-video": "generate video",
     "generate-audio": "generate audio",
-    "generate-audience": "generate audience",
     "create-automation": "create automation",
     "create-app": "create app",
     "create-presentation": "create presentation",

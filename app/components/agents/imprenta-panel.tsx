@@ -1223,7 +1223,7 @@ const ImprentaNodeCardInner = memo(({
                                 
                                 {node.type === 'generate-audience' && (
                                   <TooltipProvider delayDuration={200}>
-                                    <div className="flex w-full flex-wrap items-center gap-x-4 gap-y-2.5">
+                                    <div className="grid w-full grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-3 lg:grid-cols-4 [&>*]:min-w-0">
                                       {([
                                         { key: 'email', label: 'Email', icon: Mail, hint: 'Only include leads that have an email address.' },
                                         { key: 'web', label: 'Web', icon: Globe, hint: 'Only include leads that have a website URL.' },
@@ -1245,18 +1245,15 @@ const ImprentaNodeCardInner = memo(({
                                           <Tooltip key={key}>
                                             <TooltipTrigger asChild>
                                               <label
-                                                className="flex cursor-pointer select-none items-center gap-1.5 text-[11px]"
+                                                className="flex w-full min-w-0 cursor-pointer select-none items-center gap-1.5 text-[11px]"
                                                 onClick={(e) => e.stopPropagation()}
                                               >
-                                                <span className="flex items-center justify-center shrink-0 text-muted-foreground w-3.5 h-3.5">
-                                                  <Icon size={14} className="[&>svg]:stroke-[1.5px]" />
-                                                </span>
-                                                <span className={`whitespace-nowrap font-medium ${isSelected ? 'text-foreground' : 'text-muted-foreground'}`}>{label}</span>
+                                                <Icon className="h-3 w-3 shrink-0 text-muted-foreground" />
+                                                <span className={`min-w-0 flex-1 truncate text-right font-medium ${isSelected ? 'text-foreground' : 'text-muted-foreground'}`}>{label}</span>
                                                 <Switch
                                                   checked={isSelected}
                                                   onCheckedChange={toggleChannel}
                                                   onClick={(e) => e.stopPropagation()}
-                                                  className="scale-75 origin-left -mr-[11px] -my-[3px]"
                                                 />
                                               </label>
                                             </TooltipTrigger>
@@ -1297,14 +1294,14 @@ const ImprentaNodeCardInner = memo(({
                                       <Tooltip key={key}>
                                         <TooltipTrigger asChild>
                                           <label
-                                            className="flex cursor-pointer select-none items-center gap-1.5 text-[11px]"
+                                            className="flex w-full min-w-0 cursor-pointer select-none items-center gap-1.5 text-[11px]"
                                             onClick={(e) => e.stopPropagation()}
                                           >
-                                            <span className="flex items-center justify-center shrink-0 text-muted-foreground w-3.5 h-3.5">
+                                            <span className="flex items-center justify-center shrink-0 text-muted-foreground w-[12px] h-[12px] [&>span]:w-full [&>span]:h-full [&>div]:w-full [&>div]:h-full [&>svg]:w-full [&>svg]:h-full">
                                               {icon}
                                             </span>
                                             <span
-                                              className={`whitespace-nowrap font-medium ${isSelected ? 'text-foreground' : 'text-muted-foreground'}`}
+                                              className={`min-w-0 flex-1 truncate text-right font-medium ${isSelected ? 'text-foreground' : 'text-muted-foreground'}`}
                                             >
                                               {label}
                                             </span>
@@ -1312,7 +1309,6 @@ const ImprentaNodeCardInner = memo(({
                                               checked={isSelected}
                                               onCheckedChange={() => toggleDestination(key)}
                                               onClick={(e) => e.stopPropagation()}
-                                              className="scale-75 origin-left -mr-[11px] -my-[3px]"
                                             />
                                           </label>
                                         </TooltipTrigger>
@@ -1325,7 +1321,7 @@ const ImprentaNodeCardInner = memo(({
 
                                   return (
                                     <TooltipProvider delayDuration={200}>
-                                      <div className="flex w-full flex-wrap items-center gap-x-4 gap-y-2.5">
+                                      <div className="grid w-full grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-3 lg:grid-cols-4 [&>*]:min-w-0">
                                         {(currentSite?.settings?.social_media || [])
                                           .filter(isSocialMediaEntryConnected)
                                           .map((sm: any) => {
@@ -1340,21 +1336,21 @@ const ImprentaNodeCardInner = memo(({
                                         {siteUrl && renderToggle(
                                           'blog',
                                           'Blog',
-                                          <Globe size={14} className="[&>svg]:stroke-[1.5px]" />,
+                                          <Globe size={12} />,
                                           'Publish this content as a blog post on your site.'
                                         )}
                                         {isEmailDistributionAvailable && renderToggle(
                                           'mail',
                                           'Mail',
-                                          <Mail size={14} className="[&>svg]:stroke-[1.5px]" />,
+                                          <Mail size={12} />,
                                           'Send this content as an individual email to the selected audience.'
                                         )}
                                         {isEmailDistributionAvailable && renderToggle(
                                           'newsletter',
                                           'Newsletter',
                                           <FileText
-                                            size={14}
-                                            className="[&>svg]:stroke-[1.5px] [&>svg]:block [&>svg]:-translate-x-px"
+                                            size={12}
+                                            className="[&>svg]:block [&>svg]:-translate-x-px"
                                           />,
                                           'Include this content in your next newsletter to subscribers.'
                                         )}
@@ -2573,10 +2569,6 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
         output_type: currentMediaType,
         parameters: { ...((node.settings as any)?.parameters || {}) }
       };
-
-      if (node.type === 'generate-audience' || currentMediaType === 'audience') {
-        contextObj.audience_channels = (node.settings as any)?.audience_channels || [];
-      }
 
       if (node.type === 'publish') {
         const dest = Array.isArray((node.settings as any)?.publish_destinations)
