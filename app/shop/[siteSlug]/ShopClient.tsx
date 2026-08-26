@@ -553,6 +553,10 @@ export default function ShopClient({
               )
             : undefined
         }
+        scheduledFor={scheduledFor}
+        setScheduledFor={setScheduledFor}
+        setOrderTiming={setOrderTiming}
+        onUnavailableClick={() => buyerLocation.setSheetOpen(true)}
       />
 
       <ShopCatalogMain

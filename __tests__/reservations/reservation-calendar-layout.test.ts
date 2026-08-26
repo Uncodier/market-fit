@@ -144,6 +144,22 @@ describe("groupReservationsByService", () => {
     expect(groups[1].label).toBe("Corte")
   })
 
+  it("does not give leftover pass bookings their own catalog column", () => {
+    const groups = groupReservationsByService([
+      reservation("service", {
+        catalog_item_id: "emmanuel",
+        catalog_item: { name: "EMMANUEL" },
+      }),
+      reservation("pass", {
+        catalog_item_id: "pass-1",
+        catalog_item: { name: "Gym Pass", digital_subtype: "pass" },
+      }),
+    ])
+
+    expect(groups.some((group) => group.key === "catalog:pass-1")).toBe(false)
+    expect(groups[0].key).toBe("catalog:emmanuel")
+  })
+
   it("rolls override variants up to the parent column", () => {
     const groups = groupReservationsByService([
       reservation("variant", {

@@ -1,7 +1,6 @@
 import { memo, useMemo, useEffect, useState, type MutableRefObject } from "react"
 import { InstanceNode } from "@/app/types/instance-nodes"
 import { getPublishContextAnchorY } from "./imprenta-publish-context"
-import { WorldSpaceSvg } from "./imprenta-world-svg"
 import type { ImprentaHoverStore } from "@/app/lib/imprenta-hover-store"
 import type { WorldPoint } from "@/app/lib/imprenta-world-svg"
 
@@ -38,7 +37,6 @@ type ImprentaContextEdgesProps = {
   selectedContextId: string | null
   setSelectedContextId: (id: string | null) => void
   hoverStore: ImprentaHoverStore
-  visibleNodeIds: Set<string> | null
 }
 
 export const ImprentaContextEdges = memo(function ImprentaContextEdges({
@@ -49,7 +47,6 @@ export const ImprentaContextEdges = memo(function ImprentaContextEdges({
   selectedContextId,
   setSelectedContextId,
   hoverStore,
-  visibleNodeIds,
 }: ImprentaContextEdgesProps) {
   const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(hoverStore.get())
 
@@ -68,13 +65,6 @@ export const ImprentaContextEdges = memo(function ImprentaContextEdges({
     const out: ContextEdgeGeom[] = []
     const chain = imprentaHoverChainIds
     for (const ctx of contexts) {
-      if (
-        visibleNodeIds &&
-        !visibleNodeIds.has(ctx.context_node_id) &&
-        !visibleNodeIds.has(ctx.target_node_id)
-      ) {
-        continue
-      }
       if (!positions[ctx.context_node_id] || !positions[ctx.target_node_id]) continue
       const start = resolveNodePosition(ctx.context_node_id)
       const end = resolveNodePosition(ctx.target_node_id)
@@ -103,28 +93,19 @@ export const ImprentaContextEdges = memo(function ImprentaContextEdges({
   }, [
     contexts,
     positions,
-    visibleNodeIds,
     selectedContextId,
     imprentaHoverChainIds,
     nodeHeightsRef,
     nodesRef,
   ])
 
-  const points = useMemo(() => {
-    const pts: WorldPoint[] = []
-    for (const edge of edges) {
-      pts.push(edge.start, edge.end)
-    }
-    return pts
-  }, [edges])
-
   if (edges.length === 0) return null
 
   return (
-    <WorldSpaceSvg
-      points={points}
-      className="pointer-events-none text-primary"
-      style={{ zIndex: 0, color: "hsl(var(--primary))" }}
+    <svg
+      className="absolute top-0 left-0 w-full h-full pointer-events-none imprenta-world-svg"
+      style={{ zIndex: 0, overflow: 'visible' }}
+      shapeRendering="optimizeSpeed"
     >
       {edges.map((edge) => {
         const strokeWidth = edge.isSelected ? 4 : edge.touchesHoverChain ? 3 : 2
@@ -133,10 +114,10 @@ export const ImprentaContextEdges = memo(function ImprentaContextEdges({
             <path
               d={edge.d}
               fill="none"
-              stroke="hsl(var(--primary))"
+              stroke="currentColor"
               strokeOpacity={edge.isSelected || edge.touchesHoverChain ? 1 : 0.5}
               strokeWidth={strokeWidth}
-              className="cursor-pointer"
+              className={`${edge.isSelected || edge.touchesHoverChain ? "text-primary" : "text-primary/50"} cursor-pointer`}
               strokeDasharray="4 4"
               style={{ pointerEvents: "stroke" }}
               onClick={(e) => {
@@ -159,6 +140,6 @@ export const ImprentaContextEdges = memo(function ImprentaContextEdges({
           </g>
         )
       })}
-    </WorldSpaceSvg>
+    </svg>
   )
 })

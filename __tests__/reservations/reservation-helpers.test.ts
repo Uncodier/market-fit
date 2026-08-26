@@ -3,6 +3,7 @@ import {
   reservationCanCancel,
   reservationCanRegisterPayment,
   reservationCanRestore,
+  reservationColumnCatalogId,
   reservationServiceColor,
   reservationServiceColorForKey,
   reservationServiceColorKey,
@@ -92,6 +93,21 @@ describe("reservation service colors", () => {
         catalog_item: { name: "Corte", parent_id: "emmanuel" },
       })
     )
+  })
+
+  it("does not give leftover pass bookings their own catalog column", () => {
+    expect(
+      reservationColumnCatalogId({
+        catalog_item_id: "pass-1",
+        catalog_item: { name: "Gym Pass", digital_subtype: "pass" },
+      })
+    ).toBeNull()
+    expect(
+      reservationServiceColorKey({
+        catalog_item_id: "pass-1",
+        catalog_item: { name: "Gym Pass", digital_subtype: "pass" },
+      })
+    ).not.toBe("catalog:pass-1")
   })
 
   it("keeps independent variant colors on the leaf catalog item", () => {

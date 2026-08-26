@@ -1,7 +1,8 @@
 "use client"
 
-import type { ReactNode } from "react"
+import { forwardRef, type ButtonHTMLAttributes, type ReactNode } from "react"
 import { Button } from "@/app/components/ui/button"
+import { DatePicker } from "@/app/components/ui/date-picker"
 import { ShieldCheck, Truck, RotateCcw } from "@/app/components/ui/icons"
 import { ProgressiveImage } from "@/app/components/commerce/ProgressiveImage"
 import { useLocalization } from "@/app/context/LocalizationContext"
@@ -13,25 +14,30 @@ function badgeIcon(icon?: string) {
   return ShieldCheck
 }
 
-function WarningChip({ children }: { children: ReactNode }) {
-  return (
-    <Button
-      asChild
-      tint="destructive"
-      size="sm"
-      data-permission="allow"
-      className="!min-w-0 pointer-events-none h-auto px-3 py-1.5 font-bold"
-    >
-      <span className="inline-flex items-center gap-1.5">
-        <span className="relative flex h-2 w-2" aria-hidden>
-          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white opacity-75" />
-          <span className="relative inline-flex h-2 w-2 rounded-full bg-white" />
+const WarningChip = forwardRef<HTMLButtonElement, ButtonHTMLAttributes<HTMLButtonElement>>(
+  function WarningChip({ children, className, ...props }, ref) {
+    return (
+      <Button
+        ref={ref}
+        type="button"
+        tint="destructive"
+        size="sm"
+        data-permission="allow"
+        className={`!min-w-0 h-auto px-3 py-1.5 font-bold ${className || ""}`}
+        {...props}
+      >
+        <span className="inline-flex items-center gap-1.5">
+          <span className="relative flex h-2 w-2" aria-hidden>
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white opacity-75" />
+            <span className="relative inline-flex h-2 w-2 rounded-full bg-white" />
+          </span>
+          {children}
         </span>
-        {children}
-      </span>
-    </Button>
-  )
-}
+      </Button>
+    )
+  }
+)
+WarningChip.displayName = "WarningChip"
 
 export function ShopHeroTrust({
   site,
@@ -41,6 +47,10 @@ export function ShopHeroTrust({
   locationAvailable = true,
   deliveryTimeLabel,
   fulfillment,
+  scheduledFor = null,
+  setScheduledFor,
+  setOrderTiming,
+  onUnavailableClick,
 }: {
   site: any
   searchQuery: string
@@ -49,6 +59,10 @@ export function ShopHeroTrust({
   locationAvailable?: boolean
   deliveryTimeLabel?: string | null
   fulfillment?: (tone: "hero" | "default", centerAction?: ReactNode) => ReactNode
+  scheduledFor?: Date | null
+  setScheduledFor?: (value: Date | null) => void
+  setOrderTiming?: (value: "now" | "scheduled") => void
+  onUnavailableClick?: () => void
 }) {
   const { t } = useLocalization()
   const shop = site?.settings?.shop
@@ -100,14 +114,28 @@ export function ShopHeroTrust({
             {(!isOpen || !locationAvailable || deliveryTimeLabel) && (
               <div className="mb-4 flex flex-wrap gap-2 justify-center md:justify-start">
                 {!isOpen && (
-                  <WarningChip>
-                    {nextOpenSlot
-                      ? (t("shop.closedOpens", { time: nextOpenSlot.label }) || `Closed · Opens ${nextOpenSlot.label}`)
-                      : (t("shop.closed") || "Closed")}
-                  </WarningChip>
+                  <DatePicker
+                    date={scheduledFor || undefined}
+                    setDate={(date: Date) => {
+                      setScheduledFor?.(date)
+                      setOrderTiming?.("scheduled")
+                    }}
+                    showTimePicker
+                    timeFormat="12h"
+                    mode="task"
+                    showEvents
+                    position="bottom"
+                    trigger={
+                      <WarningChip>
+                        {nextOpenSlot
+                          ? (t("shop.closedOpens", { time: nextOpenSlot.label }) || `Closed · Opens ${nextOpenSlot.label}`)
+                          : (t("shop.closed") || "Closed")}
+                      </WarningChip>
+                    }
+                  />
                 )}
                 {!locationAvailable && (
-                  <WarningChip>
+                  <WarningChip onClick={onUnavailableClick}>
                     {t("shop.unavailableInYourArea") || "Unavailable in your area"}
                   </WarningChip>
                 )}

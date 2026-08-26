@@ -70,7 +70,7 @@ export function reservationServiceGroupKey(reservation: Reservation) {
 function reservationGroupCatalogIds(reservation: Reservation) {
   const ids = [
     reservationColumnCatalogId(reservation),
-    reservation.catalog_item_id,
+    reservation.catalog_item?.digital_subtype === "pass" ? null : reservation.catalog_item_id,
   ].filter((id): id is string => !!id)
   return Array.from(new Set(ids))
 }

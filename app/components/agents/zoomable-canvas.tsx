@@ -187,6 +187,9 @@ export function ZoomableCanvas({
   }, [isInitialized, scale, position, flushViewportNotify]);
 
   useEffect(() => {
+    if (contentRef.current) {
+      contentRef.current.style.pointerEvents = isUserInteracting ? "none" : "";
+    }
     const store = viewportStoreRef.current;
     if (!store) return;
     store.setInteracting(isUserInteracting);

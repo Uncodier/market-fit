@@ -259,6 +259,7 @@ export async function ensureReservationSaleOrder(params: {
 
 export async function saveServiceReservation(params: {
   reservation: Partial<Reservation>
+  overrideSaleItemId?: string
   modifiers?: CheckoutLineModifier[]
 }): Promise<{ data?: Reservation; error?: string }> {
   const payload = { ...params.reservation }
@@ -290,7 +291,7 @@ export async function saveServiceReservation(params: {
 
     const lines = checkoutLinesFromModifiers({
       reservationId: reservation.id,
-      catalogItemId: reservation.catalog_item_id,
+      catalogItemId: params.overrideSaleItemId || reservation.catalog_item_id,
       quantity: reservation.quantity || 1,
       reservationStart: reservation.start_time,
       reservationEnd: reservation.end_time,

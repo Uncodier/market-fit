@@ -26,7 +26,7 @@ function node(id: string, overrides: Partial<InstanceNode> = {}): InstanceNode {
 }
 
 describe("ImprentaContextEdges", () => {
-  it("gives the SVG a non-zero layout box so Chrome can paint the stroke", () => {
+  it("renders a full-screen SVG with overflow visible", () => {
     const nodes = [node("a"), node("b")]
     const nodesRef = createRef<InstanceNode[]>()
     nodesRef.current = nodes
@@ -49,34 +49,30 @@ describe("ImprentaContextEdges", () => {
         selectedContextId={null}
         setSelectedContextId={() => {}}
         hoverStore={createImprentaHoverStore()}
-        visibleNodeIds={null}
       />
     )
 
     const svg = container.querySelector("svg")
     expect(svg).not.toBeNull()
-    expect(svg.getAttribute("class")).toContain("imprenta-world-svg")
-    const width = Number(svg.getAttribute("width"))
-    const height = Number(svg.getAttribute("height"))
-    expect(width).toBeGreaterThan(1)
-    expect(height).toBeGreaterThan(1)
-    expect(svg.getAttribute("viewBox")).toBeTruthy()
-    expect(svg.style.width).toBe(`${width}px`)
-    expect(svg.style.height).toBe(`${height}px`)
+    expect(svg!.getAttribute("class")).toContain("w-full")
+    expect(svg!.getAttribute("class")).toContain("imprenta-world-svg")
+    expect(svg!.getAttribute("class")).toContain("h-full")
+    expect(svg!.style.overflow).toBe("visible")
     expect(container.querySelector("path")).not.toBeNull()
   })
 })
 
 describe("ImprentaTempConnectionLine", () => {
-  it("sizes the in-progress connection SVG to the drag geometry", () => {
+  it("renders a full-screen SVG with overflow visible", () => {
     const { container } = render(
       <ImprentaTempConnectionLine fromX={480} fromY={150} toX={720} toY={200} />
     )
     const svg = container.querySelector("svg")
     expect(svg).not.toBeNull()
-    expect(Number(svg.getAttribute("width"))).toBeGreaterThan(1)
-    expect(Number(svg.getAttribute("height"))).toBeGreaterThan(1)
-    expect(svg.style.width).toBe(`${svg.getAttribute("width")}px`)
+    expect(svg!.getAttribute("class")).toContain("w-full")
+    expect(svg!.getAttribute("class")).toContain("imprenta-world-svg")
+    expect(svg!.getAttribute("class")).toContain("h-full")
+    expect(svg!.style.overflow).toBe("visible")
     expect(container.querySelector("path")?.getAttribute("d")).toContain("M 480 150")
   })
 })

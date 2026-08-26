@@ -88,6 +88,7 @@ export function reservationRollsUpToParent(reservation: ServiceColorReservation)
 
 export function reservationColumnCatalogId(reservation: ServiceColorReservation) {
   if (!reservation.catalog_item_id) return null
+  if (reservation.catalog_item?.digital_subtype === "pass") return null
   if (reservationRollsUpToParent(reservation) && reservation.catalog_item?.parent_id) {
     return reservation.catalog_item.parent_id
   }

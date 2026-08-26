@@ -194,6 +194,8 @@ html.safari svg {
 }
 
 html.safari svg.imprenta-world-svg {
+  width: unset;
+  height: unset;
   transform: none !important;
   -webkit-transform: none !important;
   backface-visibility: visible !important;

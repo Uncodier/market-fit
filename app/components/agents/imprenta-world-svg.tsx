@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, type CSSProperties, type ReactNode, type SVGProps } from "react"
+import { useMemo, useState, useEffect, type CSSProperties, type ReactNode, type SVGProps } from "react"
 import { cn } from "@/lib/utils"
 import {
   worldConnectionBezier,
@@ -16,7 +16,7 @@ type WorldSpaceSvgProps = {
   className?: string
   style?: CSSProperties
   children: ReactNode
-} & Omit<SVGProps<SVGSVGElement>, "viewBox" | "width" | "height" | "style">
+} & Omit<SVGProps<SVGSVGElement>, "viewBox" | "width" | "height" | "style" | "points">
 
 /**
  * SVG sized to its path geometry so Chrome paints strokes. Percentage
@@ -57,7 +57,6 @@ type LoadingRouteEdgesProps = {
   nodeHeights: Record<string, number>
   nodeW: number
   rowH: number
-  visibleNodeIds: Set<string> | null
 }
 
 export function ImprentaLoadingRouteEdges({
@@ -66,12 +65,10 @@ export function ImprentaLoadingRouteEdges({
   nodeHeights,
   nodeW,
   rowH,
-  visibleNodeIds,
 }: LoadingRouteEdgesProps) {
   const geoms = useMemo(() => {
     const out: { key: string; d: string; start: WorldPoint; end: WorldPoint }[] = []
     for (const { parentId, childId } of edges) {
-      if (visibleNodeIds && !visibleNodeIds.has(parentId) && !visibleNodeIds.has(childId)) continue
       const start = positions[parentId]
       const end = positions[childId]
       if (!start || !end) continue
@@ -87,7 +84,7 @@ export function ImprentaLoadingRouteEdges({
       })
     }
     return out
-  }, [edges, positions, nodeHeights, nodeW, rowH, visibleNodeIds])
+  }, [edges, positions, nodeHeights, nodeW, rowH])
 
   const points = useMemo(() => {
     const pts: WorldPoint[] = []
@@ -98,15 +95,15 @@ export function ImprentaLoadingRouteEdges({
   if (geoms.length === 0) return null
 
   return (
-    <WorldSpaceSvg
-      points={points}
-      className="pointer-events-none"
-      style={{ zIndex: 12 }}
+    <svg
+      className="absolute top-0 left-0 w-full h-full pointer-events-none imprenta-world-svg"
+      style={{ zIndex: 12, overflow: 'visible' }}
+      shapeRendering="optimizeSpeed"
     >
       {geoms.map((g) => (
         <path key={g.key} d={g.d} className="imprenta-loading-edge" />
       ))}
-    </WorldSpaceSvg>
+    </svg>
   )
 }
 
@@ -123,27 +120,20 @@ export function ImprentaTempConnectionLine({
   toX,
   toY,
 }: TempConnectionLineProps) {
-  const points = useMemo(
-    () => [
-      { x: fromX, y: fromY },
-      { x: toX, y: toY },
-    ],
-    [fromX, fromY, toX, toY]
-  )
   const d = worldConnectionPathD(worldConnectionBezier(fromX, fromY, toX, toY))
   return (
-    <WorldSpaceSvg
-      points={points}
-      className="pointer-events-none text-primary"
-      style={{ zIndex: 50, color: "hsl(var(--primary))" }}
+    <svg
+      className="absolute top-0 left-0 w-full h-full pointer-events-none text-primary imprenta-world-svg"
+      style={{ zIndex: 50, color: "hsl(var(--primary))", overflow: 'visible' }}
+      shapeRendering="optimizeSpeed"
     >
       <path
         d={d}
         fill="none"
-        stroke="hsl(var(--primary))"
+        stroke="currentColor"
         strokeWidth="2"
         strokeLinecap="round"
       />
-    </WorldSpaceSvg>
+    </svg>
   )
 }

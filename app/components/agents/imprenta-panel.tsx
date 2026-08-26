@@ -2067,6 +2067,7 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
 
 
   const handleImprentaNodeHover = useCallback((nodeId: string | null) => {
+    if (viewportStoreRef.current?.get().interacting) return
     hoverStore.set(nodeId)
   }, [hoverStore])
 
@@ -4075,7 +4076,6 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
                     selectedContextId={selectedContextId}
                     setSelectedContextId={setSelectedContextId}
                     hoverStore={hoverStore}
-                    visibleNodeIds={visibleNodeIds}
                   />
 
                   {contexts.filter(ctx => !visibleNodeIds || visibleNodeIds.has(ctx.context_node_id) || visibleNodeIds.has(ctx.target_node_id)).map((ctx) => {
@@ -4251,7 +4251,6 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
                     nodeHeights={nodeHeightsSnapshot}
                     nodeW={NODE_W}
                     rowH={ROW_H}
-                    visibleNodeIds={visibleNodeIds}
                   />
             </div>
             </ZoomableCanvas>

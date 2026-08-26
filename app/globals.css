@@ -954,13 +954,21 @@ html.safari svg {
   backface-visibility: hidden;
 }
 
-html.safari svg.imprenta-world-svg,
-html.safari svg.imprenta-world-svg * {
+html.safari svg.imprenta-world-svg {
+  width: unset;
+  height: unset;
   transform: none !important;
   -webkit-transform: none !important;
   backface-visibility: visible !important;
   -webkit-backface-visibility: visible !important;
   overflow: visible !important;
+}
+
+html.safari svg.imprenta-world-svg * {
+  transform: none !important;
+  -webkit-transform: none !important;
+  backface-visibility: visible !important;
+  -webkit-backface-visibility: visible !important;
 }
 
 /* Inputs con iconos en Safari */

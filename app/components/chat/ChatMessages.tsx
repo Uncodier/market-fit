@@ -355,7 +355,7 @@ const MessageFeedback: React.FC<MessageFeedbackProps> = ({ messageId, commandId,
   };
 
   return (
-    <div className="flex items-center gap-3 mt-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+    <div className="flex items-center gap-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
       <TooltipProvider>
         <Tooltip>
           <TooltipTrigger asChild>
@@ -1005,9 +1005,9 @@ export function ChatMessages({
     message.metadata?.status === "delivered" || message.metadata?.status === "sent"
 
   const renderMessageTime = (msg: ChatMessage, className = "text-xs opacity-70", showDate = false) => (
-    <p className={`${className} inline-flex items-center gap-1`}>
+    <p className={`${className} inline-flex items-center gap-1 whitespace-nowrap shrink-0`}>
       {showDate && (
-        <span className="mr-1">{new Date(msg.timestamp).toLocaleDateString("en-US", { month: "short", day: "numeric" })}</span>
+        <span>{new Date(msg.timestamp).toLocaleDateString("en-US", { month: "short", day: "numeric" })}</span>
       )}
       {new Date(msg.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
       {isDelivered(msg) && (
@@ -1596,9 +1596,8 @@ export function ChatMessages({
                             {renderMessageContent(msg, markdownComponents)}
                             
                             {/* Row: MessageFeedback (center) + Sending at (right) */}
-                            <div className="flex items-center justify-between mt-2">
-                              <div className="flex-1" />
-                              <div className="flex items-center justify-center flex-1">
+                            <div className="flex items-center justify-between gap-2 mt-2">
+                              <div className="flex items-center min-w-0">
                                 {msg.command_id && (
                                   <MessageFeedback 
                                     messageId={String(msg.id || index)} 
@@ -1607,7 +1606,7 @@ export function ChatMessages({
                                   />
                                 )}
                               </div>
-                              <div className="flex items-center justify-end flex-1">
+                              <div className="flex items-center justify-end shrink-0">
                                 {(msg.metadata?.status === "pending" || msg.metadata?.status === "accepted") ? (
                                   <>
                                     {msg.metadata?.status === "pending" && (
@@ -1978,8 +1977,8 @@ export function ChatMessages({
                               )}
                             </div>
                             
-                            {/* Message feedback widget - center */}
-                            <div className="flex items-center justify-center flex-1">
+                            {/* Message feedback widget */}
+                            <div className="flex items-center min-w-0">
                               {msg.command_id && (
                                 <MessageFeedback 
                                   messageId={String(msg.id || index)} 
@@ -1989,7 +1988,7 @@ export function ChatMessages({
                               )}
                             </div>
                             
-                            <div className="flex items-center justify-end flex-1">
+                            <div className="flex items-center justify-end shrink-0">
                               {renderMessageTime(msg)}
                             </div>
                           </div>

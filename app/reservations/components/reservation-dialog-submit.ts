@@ -4,7 +4,8 @@ import { createTask, updateTask } from "@/app/leads/tasks/actions"
 import type { RelationSelectValue } from "@/app/components/ui/relation-select"
 import type { CatalogItem, Reservation } from "@/app/types"
 import type { CartModifier } from "@/app/commerce/cart-modifiers"
-import { validateReservationSlot, updateReservationStatus } from "../actions"
+import { isRoundRobinPassOrParent } from "@/app/commerce/pass-round-robin"
+import { validateReservationSlot, updateReservationStatus, resolveRoundRobinService } from "../actions"
 import { saveServiceReservation } from "../sale-order-actions"
 
 export async function submitTeamTaskReservation(params: {
@@ -152,9 +153,28 @@ export async function submitServiceReservationForm(params: {
   })
   if (slotError) throw new Error(slotError)
 
+  const isPass =
+    params.sellableItem.digital_subtype === "pass" ||
+    isRoundRobinPassOrParent(params.sellableItem, params.parentItem)
+
+  let actualCatalogItemId = params.sellableItem.id
+  if (isPass) {
+    const { data: resolvedId, error: resolveError } = await resolveRoundRobinService({
+      siteId: params.siteId,
+      passCatalogItemId: params.sellableItem.id,
+      startIso: params.selectedSlot.start,
+      endIso: params.selectedSlot.end,
+      quantity: params.reservation?.quantity || 1,
+      ignoreReservationId: params.reservation?.id,
+      preferredMemberId: params.reservation?.catalog_item_id,
+    })
+    if (resolveError) throw new Error(resolveError)
+    if (resolvedId) actualCatalogItemId = resolvedId
+  }
+
   const payload: Partial<Reservation> = {
     site_id: params.siteId,
-    catalog_item_id: params.sellableItem.id,
+    catalog_item_id: actualCatalogItemId,
     lead_id: resolvedLeadId,
     assignee_user_id: params.taskAssignee || undefined,
     start_time: params.selectedSlot.start,
@@ -167,6 +187,7 @@ export async function submitServiceReservationForm(params: {
 
   const res = await saveServiceReservation({
     reservation: payload,
+    overrideSaleItemId: isPass ? params.sellableItem.id : undefined,
     modifiers: params.selectedModifiers.map((modifier) => ({
       catalogItemId: modifier.catalogItemId,
       quantity: modifier.cartQty,

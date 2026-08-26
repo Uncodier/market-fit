@@ -412,7 +412,9 @@ export async function checkoutCart({
       let effectiveAssignmentMode = catalogItem?.redeem_assignment_mode;
       
       if (catalogItem?.is_reservation && !isAccessOnly) {
-        if (!line.reservationStart || !line.reservationEnd) {
+        const hasReservationDates = Boolean(line.reservationStart && line.reservationEnd);
+        const canReuseLinkedReservation = Boolean(existingReservationId || existingOrderId);
+        if (!hasReservationDates && !canReuseLinkedReservation) {
           throw new Error("Reservation dates are required for drop-in reservable items.");
         }
         if (!finalLeadId && !isAdmin) {
@@ -435,20 +437,22 @@ export async function checkoutCart({
           }
         }
         
-        await assertCommerceReservationSlot({
-          siteId,
-          catalogItem: {
-            id: catalogItem.id,
-            kind: catalogItem.kind,
-            digital_subtype: catalogItem.digital_subtype,
-            redeem_assignment_mode: effectiveAssignmentMode,
-          },
-          startIso: line.reservationStart,
-          endIso: line.reservationEnd,
-          quantity: line.quantity,
-          isAdmin,
-          ignoreReservationId: existingReservationId,
-        });
+        if (hasReservationDates) {
+          await assertCommerceReservationSlot({
+            siteId,
+            catalogItem: {
+              id: catalogItem.id,
+              kind: catalogItem.kind,
+              digital_subtype: catalogItem.digital_subtype,
+              redeem_assignment_mode: effectiveAssignmentMode,
+            },
+            startIso: line.reservationStart!,
+            endIso: line.reservationEnd!,
+            quantity: line.quantity,
+            isAdmin,
+            ignoreReservationId: existingReservationId,
+          });
+        }
       }
       
       const price = await resolveLinePrice(line.catalogItemId, line.unitPriceOverride);

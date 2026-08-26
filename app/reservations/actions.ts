@@ -12,7 +12,7 @@ export async function getReservations(siteId: string) {
       .from("reservations")
       .select(`
         *,
-        catalog_item:catalog_items(id, name, description, kind, parent_id, metadata, parent:parent_id(name)),
+        catalog_item:catalog_items(id, name, description, kind, digital_subtype, parent_id, metadata, parent:parent_id(name)),
         location:locations(id, name),
         lead:leads(id, name, email, phone)
       `)
@@ -230,5 +230,32 @@ export async function updateReservationStatus(siteId: string, reservationId: str
     return { data: data as Reservation };
   } catch (error: any) {
     return { error: error.message };
+  }
+}
+
+export async function resolveRoundRobinService(params: {
+  siteId: string
+  passCatalogItemId: string
+  startIso: string
+  endIso: string
+  quantity: number
+  ignoreReservationId?: string
+  preferredMemberId?: string | null
+}): Promise<{ data?: string; error?: string }> {
+  try {
+    const { pickNextRedeemableService } = await import("@/app/commerce/pass-round-robin-server")
+    const resolvedId = await pickNextRedeemableService({
+      passCatalogItemId: params.passCatalogItemId,
+      siteId: params.siteId,
+      startIso: params.startIso,
+      endIso: params.endIso,
+      quantity: params.quantity,
+      isAdmin: true,
+      ignoreReservationId: params.ignoreReservationId,
+      preferredMemberId: params.preferredMemberId,
+    })
+    return { data: resolvedId }
+  } catch (error: any) {
+    return { error: error?.message || "Failed to resolve round robin service" }
   }
 }

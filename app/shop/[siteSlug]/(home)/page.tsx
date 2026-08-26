@@ -1,3 +1,4 @@
+import { Suspense } from "react"
 import { getShopSite, getShopCatalog, getShopCategoryOffsets, getShopLocations } from "../actions"
 import ShopClient from "../ShopClient"
 import { Metadata } from "next"
@@ -7,6 +8,7 @@ import { SiteLocaleBootstrap } from "@/app/components/commerce/SiteLocaleBootstr
 import { SHOP_PAGE_SIZE, SHOP_UNCATEGORIZED_NAME, uniqueCategoryNames } from "../shop-catalog-shared"
 import { getShopMerchandising } from "@/app/promotions/storefront-promotions"
 import { ShopSlugNotFound } from "../ShopSlugNotFound"
+import { ShopHomeSkeleton } from "../ShopHomeSkeleton"
 
 // Literal required: Next.js cannot statically analyze imported segment config values.
 // Keep in sync with SHOP_CACHE_REVALIDATE_SECONDS in ./shop-catalog-shared
@@ -37,6 +39,23 @@ export default async function ShopPage({ params }: { params: Promise<{ siteSlug:
     return <ShopSlugNotFound slug={siteSlug} />
   }
 
+  return (
+    <div className="min-h-screen bg-[#fafafa] flex flex-col font-sans text-gray-900 selection:bg-gray-900 selection:text-white">
+      <SiteLocaleBootstrap locale={site.settings?.default_locale} />
+      <Suspense fallback={<ShopHomeSkeleton site={site} />}>
+        <ShopCatalogPage site={site} siteSlug={siteSlug} />
+      </Suspense>
+    </div>
+  )
+}
+
+async function ShopCatalogPage({
+  site,
+  siteSlug,
+}: {
+  site: NonNullable<Awaited<ReturnType<typeof getShopSite>>>
+  siteSlug: string
+}) {
   const timezone = site?.settings?.business_hours?.[0]?.timezone || null
   const [{ data: catalogItems, count }, categoryOffsets, { data: locations }, buyerGeo, merchandising] = await Promise.all([
     getShopCatalog(site.id, { offset: 0, pageSize: SHOP_PAGE_SIZE }),
@@ -53,20 +72,17 @@ export default async function ShopPage({ params }: { params: Promise<{ siteSlug:
   )
 
   return (
-    <div className="min-h-screen bg-[#fafafa] flex flex-col font-sans text-gray-900 selection:bg-gray-900 selection:text-white">
-      <SiteLocaleBootstrap locale={site.settings?.default_locale} />
-      <ShopClient 
-        site={site} 
-        initialCatalog={catalogItems as any[]} 
-        initialCategories={categories}
-        initialCategoryOffsets={categoryOffsets}
-        initialCount={count || 0}
-        locations={locations as any[]} 
-        buyerGeo={buyerGeo}
-        generalPromos={merchandising.general}
-        promoBadgesByItemId={merchandising.byItemId}
-        categoryPromosByName={merchandising.categoryPromosByName}
-      />
-    </div>
+    <ShopClient
+      site={site}
+      initialCatalog={catalogItems as any[]}
+      initialCategories={categories}
+      initialCategoryOffsets={categoryOffsets}
+      initialCount={count || 0}
+      locations={locations as any[]}
+      buyerGeo={buyerGeo}
+      generalPromos={merchandising.general}
+      promoBadgesByItemId={merchandising.byItemId}
+      categoryPromosByName={merchandising.categoryPromosByName}
+    />
   )
 }
