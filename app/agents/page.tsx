@@ -30,6 +30,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
 import { CommandsPanel } from "@/app/components/agents/commands-panel"
 import { AgentToolsPanel } from "@/app/components/agents/agent-tools-panel"
 import { SearchInput } from "@/app/components/ui/search-input"
+import { getCachedAgents, setCachedAgents } from "@/app/agents/agents-cache"
 
 
 
@@ -67,9 +68,6 @@ const logAgent = (prefix: string, agent: ExtendedAgent) => {
   console.log(`${prefix}: ${agent.id} - ${agent.name} - isDisabled: ${agent.isDisabled} - dbData: ${agent.dbData ? 'SI' : 'NO'}`);
 };
 
-let cachedAgents: ExtendedAgent[] | null = null;
-let cachedSiteId: string | null = null;
-
 // Wrap the export in a Suspense boundary
 const AgentsPageWrapper = () => {
   return (
@@ -93,10 +91,10 @@ function AgentsPageContent() {
   const { currentSite } = useSite()
   
   const [isLoading, setIsLoading] = useState(() => {
-    return !(cachedAgents && cachedSiteId === currentSite?.id)
+    return !getCachedAgents<ExtendedAgent>(currentSite?.id)
   })
   const [agents, setAgents] = useState<ExtendedAgent[]>(() => {
-    return (cachedAgents && cachedSiteId === currentSite?.id) ? cachedAgents : []
+    return getCachedAgents<ExtendedAgent>(currentSite?.id) || []
   })
   const supabase = createClient()
   const { user } = useAuthContext()
@@ -119,7 +117,7 @@ function AgentsPageContent() {
   // Fetch agents from API
   useEffect(() => {
     const fetchAgents = async () => {
-      if (!cachedAgents || cachedSiteId !== currentSite?.id) {
+      if (!getCachedAgents<ExtendedAgent>(currentSite?.id)) {
         setIsLoading(true);
       }
       try {
@@ -261,15 +259,13 @@ function AgentsPageContent() {
           hasDbData: !!a.dbData
         })));
         
-        cachedAgents = modifiedMockAgents;
-        cachedSiteId = currentSite?.id || null;
+        setCachedAgents(modifiedMockAgents, currentSite?.id || null);
         setAgents(modifiedMockAgents);
       } catch (error) {
         console.error("Error in fetchAgents:", error);
         // Fall back to mock agents on error
         const fallbackAgents = mockAgents.map(a => ({...a, isDisabled: false})) as ExtendedAgent[];
-        cachedAgents = fallbackAgents;
-        cachedSiteId = currentSite?.id || null;
+        setCachedAgents(fallbackAgents, currentSite?.id || null);
         setAgents(fallbackAgents);
       } finally {
         setIsLoading(false);

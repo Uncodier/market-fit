@@ -37,7 +37,7 @@ import {
   Link as LinkIcon,
   XCircle as UnlinkIcon
 } from "@/app/components/ui/icons"
-import { Agent, AgentActivity } from "@/app/types/agents"
+import { AgentActivity } from "@/app/types/agents"
 import { cn } from "@/lib/utils"
 import { AgentTool } from "@/app/components/agents/agent-tool"
 import { AgentIntegration } from "@/app/components/agents/agent-integration"
@@ -52,6 +52,23 @@ import { UploadFileDialog } from "@/app/components/agents/upload-file-dialog"
 import { Skeleton } from "@/app/components/ui/skeleton"
 import { getAssets, attachAssetToAgent, detachAssetFromAgent, type Asset } from "@/app/assets/actions"
 import { toast } from "sonner"
+import {
+  AGENT_ROLE_KEY_MAPPING,
+  DEFAULT_AGENT_TEMPLATES,
+  getDefaultActivitiesForRole,
+  getDefaultAgentTemplate,
+  getDefaultIntegrationsForRole,
+  getDefaultToolsForRole,
+  getDefaultTriggersForRole,
+  resolveTemplateRole,
+} from "@/app/agents/agent-defaults"
+import {
+  ActivitiesSkeleton,
+  AgentPageSkeleton,
+  ContextFilesSkeleton,
+} from "@/app/agents/agent-detail-skeletons"
+import { invalidateAgentsCache } from "@/app/agents/agents-cache"
+import { isAgentUuid, upsertAgentRecord } from "@/app/agents/save-agent"
 
 // Compatible file types for agents (same as in upload-file-dialog)
 const AGENT_COMPATIBLE_FILE_TYPES = [
@@ -135,430 +152,6 @@ const ActivityItem = ({ id, name, description, status, onToggle }: ActivityItemP
   )
 }
 
-// Get default tools for role
-const getDefaultToolsForRole = (role: string = "") => {
-  // All tools disabled by default for new agents
-  return [
-    { id: "search", name: "Web Search", description: "Search the web for real-time information", enabled: false },
-    { id: "code", name: "Code Interpreter", description: "Execute code and analyze data", enabled: false },
-    { id: "files", name: "File Browser", description: "Browse and access files in the workspace", enabled: false },
-    { id: "knowledge", name: "Knowledge Base", description: "Access company knowledge base", enabled: false },
-    { id: "calendar", name: "Calendar", description: "Check and manage calendar events", enabled: false },
-  ]
-}
-
-// Get default activities for role
-const getDefaultActivitiesForRole = (role: string = ""): AgentActivity[] => {
-  // Role-specific activities with detailed attributes matching the original format
-  switch(role) {
-    case "Growth Lead/Manager":
-      return [
-        {
-          id: "gl1",
-          name: "Task Monitoring",
-          description: "Track progress of assigned tasks and ensure timely completion of deliverables",
-          status: "available"
-        },
-        {
-          id: "gl2",
-          name: "Stakeholder Coordination",
-          description: "Facilitate decision-making processes with key stakeholders and project owners",
-          status: "available"
-        },
-        {
-          id: "gl3",
-          name: "Vendor Management",
-          description: "Monitor vendor relationships, deliverables and ensure alignment with project goals",
-          status: "available"
-        },
-        {
-          id: "gl4",
-          name: "Task Validation",
-          description: "Review completed tasks against requirements and provide quality assurance",
-          status: "available"
-        },
-        {
-          id: "gl5",
-          name: "Team Coordination",
-          description: "Facilitate cross-functional collaboration, resolve conflicts and align team efforts with strategic goals",
-          status: "available"
-        },
-        {
-          id: "gl6",
-          name: "Daily Stand Up",
-          description: "Generate comprehensive daily team progress report with insights and next steps",
-          status: "available"
-        },
-        {
-          id: "gl7",
-          name: "Assign Leads",
-          description: "Automatically assign leads to appropriate team members based on criteria and workload",
-          status: "available"
-        }
-      ];
-    case "Data Analyst":
-      return [
-        {
-          id: "da1",
-          name: "User Behavior Analysis",
-          description: "Analyze user activity patterns and engagement metrics across website and mobile app",
-          status: "available"
-        },
-        {
-          id: "da2",
-          name: "Sales Trend Analysis",
-          description: "Identify and interpret sales patterns, growth opportunities and conversion metrics",
-          status: "available"
-        },
-        {
-          id: "da3",
-          name: "Cost Trend Analysis",
-          description: "Monitor expense patterns, identify cost optimization opportunities and ROI evaluation",
-          status: "available"
-        },
-        {
-          id: "da4",
-          name: "Cohort Health Monitoring",
-          description: "Track customer cohort performance, retention metrics, and lifetime value analysis",
-          status: "available"
-        },
-        {
-          id: "da5",
-          name: "Data-Driven Task Validation",
-          description: "Verify completed tasks against performance data and validate with metric-based evidence",
-          status: "available"
-        }
-      ];
-    case "Growth Marketer":
-      return [
-        {
-          id: "mk1",
-          name: "Create Marketing Campaign",
-          description: "Develop a complete marketing campaign with creative, copy, and channel strategy",
-          status: "available"
-        },
-        {
-          id: "mk2",
-          name: "SEO Content Optimization",
-          description: "Analyze and optimize website content for better search performance",
-          status: "available"
-        },
-        {
-          id: "mk3",
-          name: "A/B Test Design",
-          description: "Create statistically valid A/B tests for landing pages or email campaigns",
-          status: "available"
-        },
-        {
-          id: "mk4",
-          name: "Analyze Segments",
-          description: "Identify and analyze customer segments to optimize targeting and conversion strategies",
-          status: "available"
-        },
-        {
-          id: "mk5",
-          name: "Campaign Requirements Creation",
-          description: "Develop detailed specifications and requirements documentation for marketing campaigns",
-          status: "available"
-        }
-      ];
-    case "UX Designer":
-      return [
-        {
-          id: "ux1",
-          name: "Website Analysis",
-          description: "Conduct comprehensive evaluation of website usability, information architecture and user experience",
-          status: "available"
-        },
-        {
-          id: "ux2",
-          name: "Application Analysis",
-          description: "Evaluate mobile and desktop applications for usability issues, interaction design and user flows",
-          status: "available"
-        },
-        {
-          id: "ux3",
-          name: "Product Requirements Creation",
-          description: "Develop detailed user-centered product requirements, specifications and design documentation",
-          status: "available"
-        }
-      ];
-    case "Sales/CRM Specialist":
-      return [
-        {
-          id: "sl1",
-          name: "Lead Follow-up Management",
-          description: "Systematically track and engage with leads through personalized communication sequences",
-          status: "available"
-        },
-        {
-          id: "sl2",
-          name: "Appointment Generation",
-          description: "Create and schedule qualified sales meetings with prospects through effective outreach",
-          status: "available"
-        },
-        {
-          id: "sl3",
-          name: "Lead Generation",
-          description: "Identify and qualify potential customers through various channels and targeting strategies",
-          status: "available"
-        },
-        {
-          id: "sl4",
-          name: "Lead Profile Research",
-          description: "Analyze prospect backgrounds, needs, and pain points to create personalized sales approaches",
-          status: "available"
-        },
-        {
-          id: "sl5",
-          name: "Generate Sales Order",
-          description: "Create complete sales orders with product details, pricing, and customer information",
-          status: "available"
-        },
-        {
-          id: "sl7",
-          name: "ICP Mining",
-          description: "Mine and enrich ideal client profile data for your market segments",
-          status: "available"
-        }
-      ];
-    case "Customer Support":
-      return [
-        {
-          id: "cs1",
-          name: "Knowledge Base Management",
-          description: "Create, update, and organize product documentation and user guides for self-service support",
-          status: "available"
-        },
-        {
-          id: "cs2",
-          name: "FAQ Development",
-          description: "Identify common customer questions and create comprehensive answers for quick resolution",
-          status: "available"
-        },
-        {
-          id: "cs3",
-          name: "Escalation Management",
-          description: "Handle complex customer issues and escalate to appropriate teams with complete context",
-          status: "available"
-        }
-      ];
-    case "Content Creator & Copywriter":
-      return [
-        {
-          id: "ct1",
-          name: "Content Calendar Creation",
-          description: "Develop a content calendar with themes, topics, and publishing schedule",
-          status: "available"
-        },
-        {
-          id: "ct2",
-          name: "Email Sequence Copywriting",
-          description: "Write engaging email sequences for nurturing prospects through the funnel",
-          status: "available"
-        },
-        {
-          id: "ct3",
-          name: "Landing Page Copywriting",
-          description: "Create persuasive, conversion-focused copy for landing pages",
-          status: "available"
-        }
-      ];
-    default:
-      // Default activities if role not recognized
-      return [
-        {
-          id: "default1",
-          name: "General Assistance",
-          description: "Provide general assistance and information on various topics",
-          status: "available"
-        },
-        {
-          id: "default2",
-          name: "Research Requests",
-          description: "Conduct research on specific topics and provide detailed findings",
-          status: "available"
-        },
-        {
-          id: "default3",
-          name: "Recommendations",
-          description: "Provide customized recommendations based on specific requirements",
-          status: "available"
-        }
-      ];
-  }
-};
-
-  // Get default integrations for role
-  const getDefaultIntegrationsForRole = () => {
-    // All integrations disconnected by default for new agents
-    return [
-      { id: "slack", name: "Slack", description: "Connect to Slack workspace", connected: false, isOpenClaw: true },
-      { id: "salesforce", name: "Salesforce", description: "Access Salesforce CRM data", connected: false, isOpenClaw: true },
-      { id: "zendesk", name: "Zendesk", description: "Integrate with Zendesk support tickets", connected: false, isOpenClaw: true },
-      { id: "hubspot", name: "HubSpot", description: "Connect to HubSpot CRM", connected: false, isOpenClaw: true },
-      { id: "google", name: "Google Workspace", description: "Access Google Docs, Sheets, etc.", connected: false, isOpenClaw: true },
-    ]
-  }
-
-// Get default triggers for role
-const getDefaultTriggersForRole = () => {
-  // All triggers disabled by default for new agents
-  return [
-    { id: "message", name: "New Message", description: "Trigger when a new message is received", enabled: false },
-    { id: "schedule", name: "Scheduled", description: "Trigger based on a schedule", enabled: false },
-    { id: "webhook", name: "Webhook", description: "Trigger via webhook endpoint", enabled: false },
-    { id: "email", name: "Email", description: "Trigger on new email", enabled: false },
-    { id: "api", name: "API Call", description: "Trigger via API request", enabled: false },
-  ]
-}
-
-// Esqueleto de carga para la sección de archivos contextuales
-function ContextFilesSkeleton() {
-  return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between pb-3">
-        <div className="space-y-1">
-          <Skeleton className="h-5 w-32" />
-          <Skeleton className="h-4 w-60" />
-        </div>
-        <Skeleton className="h-9 w-24" />
-      </div>
-      
-      <div className="space-y-3">
-        {Array(3).fill(0).map((_, i) => (
-          <div key={i} className="border rounded-lg p-3 flex items-center">
-            <div className="flex-1 flex items-center space-x-3">
-              <Skeleton className="h-4 w-4 rounded-full" />
-              <div className="space-y-1 flex-1">
-                <Skeleton className="h-4 w-36" />
-                <Skeleton className="h-3 w-48" />
-              </div>
-            </div>
-            <div className="flex space-x-1">
-              <Skeleton className="h-8 w-8 rounded-full" />
-              <Skeleton className="h-8 w-8 rounded-full" />
-              <Skeleton className="h-8 w-8 rounded-full" />
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}
-
-// Esqueleto de carga para la sección de actividades
-function ActivitiesSkeleton() {
-  return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between pb-3">
-        <div className="space-y-1">
-          <Skeleton className="h-5 w-24" />
-          <Skeleton className="h-4 w-56" />
-        </div>
-      </div>
-      
-      <div className="space-y-3">
-        {Array(6).fill(0).map((_, i) => (
-          <div key={i} className="border rounded-lg p-3 flex items-center">
-            <div className="flex-1 flex items-center space-x-3">
-              <Skeleton className="h-4 w-4 rounded-full" />
-              <div className="space-y-1 flex-1">
-                <Skeleton className="h-4 w-32" />
-                <Skeleton className="h-3 w-44" />
-              </div>
-            </div>
-            <Skeleton className="h-5 w-10 rounded-full" />
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}
-
-// Añadir nuevo componente de esqueleto para toda la página
-function AgentPageSkeleton() {
-  return (
-    <div className="flex-1 p-0">
-      <div className="sticky top-[var(--topbar-height,64px)] min-h-[71px] flex items-center p-0 bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/80 border-b border-border/40 z-10">
-        <div className="w-full transition-[padding] duration-300 ease-in-out">
-          <div className="px-4 md:px-16 pt-0">
-            <div className="flex items-center gap-8">
-              <div className="flex items-center gap-8">
-                <div className="inline-flex h-10 items-center justify-center rounded-full bg-muted p-1 text-muted-foreground">
-                  {['Basic Information', 'Tools', 'Triggers', 'Integrations', 'Context Files', 'Activities'].map((tab, index) => (
-                    <div 
-                      key={index} 
-                      className={`inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ${
-                        index === 0 
-                          ? 'bg-background text-foreground shadow-sm' 
-                          : (index === 1 || index === 2 || index === 3 ? 'hidden' : 'text-muted-foreground')
-                      }`}
-                      data-hide-in-safari={index === 1 || index === 2 || index === 3 ? "true" : undefined}
-                    >
-                      {tab}
-                    </div>
-                  ))}
-                </div>
-              </div>
-              <div className="ml-auto">
-                <div className="inline-flex items-center justify-center rounded-full text-sm font-medium bg-primary text-primary-foreground h-10 px-4 py-2">
-                  Save changes
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-      
-      <div className="px-4 md:px-16 py-8 pb-16 max-w-[880px] mx-auto">
-        <div className="space-y-8">
-          {/* Basic information card */}
-          <div className="rounded-lg border shadow-sm">
-            <div className="p-6">
-              <div className="space-y-2 mb-4">
-                <Skeleton className="h-5 w-1/3" />
-                <Skeleton className="h-4 w-1/2" />
-              </div>
-              
-              <div className="space-y-6">
-                <div className="flex items-center justify-between border-b pb-4 mb-4">
-                  <div className="space-y-1">
-                    <Skeleton className="h-5 w-32" />
-                    <Skeleton className="h-4 w-64" />
-                  </div>
-                  <Skeleton className="h-6 w-12 rounded-full" />
-                </div>
-                
-                <div className="space-y-2">
-                  <Skeleton className="h-4 w-16" />
-                  <Skeleton className="h-10 w-full" />
-                </div>
-                
-                <div className="space-y-2">
-                  <Skeleton className="h-4 w-24" />
-                  <Skeleton className="h-24 w-full" />
-                </div>
-              </div>
-            </div>
-          </div>
-          
-          {/* Agent prompt card */}
-          <div className="rounded-lg border shadow-sm">
-            <div className="p-6">
-              <div className="space-y-2 mb-4">
-                <Skeleton className="h-5 w-28" />
-                <Skeleton className="h-4 w-80" />
-              </div>
-              
-              <Skeleton className="h-40 w-full" />
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 // Content component that will use React.use()
 function AgentDetailPageContent() {
@@ -576,127 +169,8 @@ function AgentDetailPageContent() {
   const [loadError, setLoadError] = useState<string | null>(null)
   const [dataSource, setDataSource] = useState<"database" | "new" | "not-found">("new")
   
-  // Default agent names and descriptions based on organizational roles
-  const defaultAgentTemplates = [
-    { 
-      role: "Growth Lead/Manager",
-      name: "Growth Lead/Manager", 
-      description: "Strategy integration, team coordination, budget management, KPI tracking",
-      type: "marketing",
-      promptTemplate: "You are a Growth Lead/Manager assistant. Your goal is to help with strategy integration, team coordination, budget management, and KPI tracking.",
-      backstory: "As a former Growth Lead at several successful startups, I've managed marketing teams that achieved 3x user growth in under a year. I specialize in connecting marketing strategies with business goals and excel at coordinating cross-functional teams to execute growth initiatives efficiently."
-    },
-    { 
-      role: "Data Analyst",
-      name: "Data Analyst", 
-      description: "Data analysis, lead qualification, segmentation, performance metrics, optimization",
-      type: "marketing",
-      promptTemplate: "You are a Data Analyst assistant. Your goal is to help with data analysis, lead qualification, segmentation, performance metrics, and optimization.",
-      backstory: "With 8+ years of experience in marketing analytics, I've helped companies transform raw data into actionable insights. I specialize in customer segmentation, attribution modeling, and performance tracking that drives measurable business results. I've implemented data-driven strategies that increased conversion rates by up to 40%."
-    },
-    { 
-      role: "Growth Marketer",
-      name: "Growth Marketer", 
-      description: "Marketing strategy, omnichannel campaigns, A/B testing, SEO techniques",
-      type: "marketing",
-      promptTemplate: "You are a Growth Marketer assistant. Your goal is to help with marketing strategy, omnichannel campaigns, A/B testing, and SEO techniques.",
-      backstory: "I've worked with over 50 SaaS companies to develop and execute growth strategies across multiple channels. My expertise includes SEO optimization that's driven 200%+ organic traffic growth, designing conversion-focused marketing funnels, and implementing rigorous A/B testing frameworks that continuously improve campaign performance."
-    },
-    { 
-      role: "UX Designer",
-      name: "UX Designer", 
-      description: "Conversion optimization, UX/UI design for funnel, onboarding experience",
-      type: "marketing",
-      promptTemplate: "You are a UX Designer assistant. Your goal is to help with conversion optimization, UX/UI design for funnel, and onboarding experience.",
-      backstory: "I've led UX design teams at both startups and enterprise companies, creating intuitive user experiences that drive engagement and retention. I specialize in user research, journey mapping, and conversion-focused design that transforms complex processes into simple, delightful interactions. My redesigns have improved conversion rates by an average of 35%."
-    },
-    { 
-      role: "Sales/CRM Specialist",
-      name: "Sales/CRM Specialist", 
-      description: "Lead management, demos, systematic follow-up, sales cycle",
-      type: "sales",
-      promptTemplate: "You are a Sales/CRM Specialist assistant. Your goal is to help with lead management, demos, systematic follow-up, and sales cycle optimization.",
-      backstory: "With over a decade in SaaS sales, I've built and optimized sales processes from scratch that generated millions in ARR. I excel at implementing CRM systems that improve lead management efficiency by 50%+ and designing sales playbooks that shorten sales cycles while increasing close rates. I've trained dozens of sales reps who consistently exceed their targets."
-    },
-    { 
-      role: "Customer Support",
-      name: "Customer Support", 
-      description: "Knowledge base management, FAQ development, customer issue escalation",
-      type: "support",
-      promptTemplate: "You are a Customer Support assistant. Your goal is to help with knowledge base management, FAQ development, and customer issue escalation.",
-      backstory: "I've built support teams from the ground up at several high-growth companies, achieving 98%+ customer satisfaction ratings. I specialize in creating comprehensive knowledge bases that reduce ticket volume by 40% and implementing efficient ticket management systems. I'm particularly skilled at turning customer feedback into actionable product improvements."
-    },
-    { 
-      role: "Content Creator & Copywriter",
-      name: "Content Creator & Copywriter", 
-      description: "Persuasive copywriting, site content, blog posts, email sequences",
-      type: "marketing",
-      promptTemplate: "You are a Content Creator & Copywriter assistant. Your goal is to help with persuasive copywriting, site content, blog posts, and email sequences.",
-      backstory: "I've written for brands across multiple industries, creating content strategies that drive engagement and conversions. My email campaigns typically achieve 30%+ open rates and 5%+ CTR. I specialize in creating SEO-optimized blog content that ranks in the top 3 positions and crafting compelling website copy that tells a brand's story while driving action."
-    }
-  ]
-  
-  // Mapping from old role keys to new human-readable roles
-  const roleKeyMapping: Record<string, string> = {
-    "growth_lead": "Growth Lead/Manager",
-    "data_analyst": "Data Analyst",
-    "growth_marketer": "Growth Marketer",
-    "ux_designer": "UX Designer",
-    "sales": "Sales/CRM Specialist",
-    "support": "Customer Support",
-    "content_creator": "Content Creator & Copywriter"
-  };
-
-  // Find default template to use
-  const getDefaultTemplate = () => {
-    // First, check if agentId corresponds directly to a template role (new format)
-    if (!isNewAgent) {
-      const templateByRole = defaultAgentTemplates.find(t => t.role === agentId);
-      if (templateByRole) {
-        console.log("Found template by direct role match:", agentId);
-        return templateByRole;
-      }
-      
-      // Then check if agentId is an old role key that needs mapping
-      const mappedRole = roleKeyMapping[agentId];
-      if (mappedRole) {
-        const templateByMappedRole = defaultAgentTemplates.find(t => t.role === mappedRole);
-        if (templateByMappedRole) {
-          console.log("Found template by mapped role:", agentId, "->", mappedRole);
-          return templateByMappedRole;
-        }
-      }
-    }
-    
-    // Then check if we have a role parameter in the URL
-    if (typeof window !== 'undefined') {
-      const urlParams = new URLSearchParams(window.location.search);
-      const roleParam = urlParams.get('role');
-      
-      if (roleParam) {
-        // First try direct match
-        const template = defaultAgentTemplates.find(t => t.role === roleParam);
-        if (template) return template;
-        
-        // Then try mapped role
-        const mappedRole = roleKeyMapping[roleParam];
-        if (mappedRole) {
-          const templateByMappedRole = defaultAgentTemplates.find(t => t.role === mappedRole);
-          if (templateByMappedRole) return templateByMappedRole;
-        }
-      }
-    }
-    
-    // Default to Customer Support if no parameter is found
-    const supportTemplate = defaultAgentTemplates.find(t => t.role === "Customer Support");
-    if (supportTemplate) return supportTemplate;
-    
-    // Fallback if support template somehow not found
-    return defaultAgentTemplates[5]; // Customer Support
-  }
-  
-  // Use the default template
-  const defaultTemplate = getDefaultTemplate()
+  const roleParam = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("role") : null
+  const defaultTemplate = getDefaultAgentTemplate(agentId, isNewAgent, roleParam)
   
   // Initialize state variables with default values for new agents
   const [name, setName] = useState(defaultTemplate.name)
@@ -755,11 +229,7 @@ function AgentDetailPageContent() {
         setIsLoading(true)
         setLoadError(null)
         
-        // Check if agentId is a valid UUID
-        const isValidUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(agentId)
-        
-        // For valid UUIDs, always fetch from the database
-        if (isValidUUID) {
+        if (isAgentUuid(agentId)) {
           console.log("Fetching agent with valid UUID:", agentId)
           const { data: agentData, error } = await supabase
             .from('agents')
@@ -951,14 +421,13 @@ function AgentDetailPageContent() {
           
           // Try to load template details based on role
           // Role is in format of growth_lead, support, etc. or new human-readable format
-          let template = defaultAgentTemplates.find(t => t.role === agentId);
+          let template = DEFAULT_AGENT_TEMPLATES.find(t => t.role === agentId);
           let roleForDefaults = agentId;
           
-          // If not found, try mapping from old role key
           if (!template) {
-            const mappedRole = roleKeyMapping[agentId];
+            const mappedRole = AGENT_ROLE_KEY_MAPPING[agentId];
             if (mappedRole) {
-              template = defaultAgentTemplates.find(t => t.role === mappedRole);
+              template = DEFAULT_AGENT_TEMPLATES.find(t => t.role === mappedRole);
               roleForDefaults = mappedRole;
             }
           }
@@ -1209,573 +678,119 @@ function AgentDetailPageContent() {
     };
   }, [isNewAgent, name]);
   
-  // Handle save basic information
-  const handleSaveBasicInfo = async () => {
+  const persistAgent = async () => {
     if (!currentSite) {
-      console.error("Missing site information")
-      return
+      throw new Error("Missing site information")
     }
-    
+
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session?.user) {
+      throw new Error("User not authenticated")
+    }
+
+    const currentRoleParam = typeof window !== "undefined"
+      ? new URLSearchParams(window.location.search).get("role")
+      : null
+
+    const toolsConfig = tools.reduce((config, tool) => {
+      config[tool.id] = {
+        enabled: tool.enabled,
+        name: tool.name,
+        description: tool.description,
+      }
+      return config
+    }, {} as Record<string, unknown>)
+
+    const integrationsConfig = integrations.reduce((config, integration) => {
+      config[integration.id] = {
+        connected: integration.connected,
+        name: integration.name,
+        description: integration.description,
+      }
+      return config
+    }, {} as Record<string, unknown>)
+
+    const triggersConfig = triggers.reduce((config, trigger) => {
+      config[trigger.id] = {
+        enabled: trigger.enabled,
+        name: trigger.name,
+        description: trigger.description,
+      }
+      return config
+    }, {} as Record<string, unknown>)
+
+    const activitiesConfig = activities.reduce((config, activity) => {
+      config[activity.id] = {
+        name: activity.name,
+        description: activity.description,
+        status: activity.status,
+        enabled: activity.status === "available",
+      }
+      return config
+    }, {} as Record<string, unknown>)
+
+    const savedId = await upsertAgentRecord(supabase, {
+      agentId,
+      isNewAgent,
+      siteId: currentSite.id,
+      userId: session.user.id,
+      name,
+      description,
+      type,
+      status,
+      prompt,
+      backstory,
+      role: resolveTemplateRole(agentId, isNewAgent, currentRoleParam),
+      tools: toolsConfig,
+      activities: activitiesConfig,
+      integrations: integrationsConfig,
+      configuration: {
+        contextFiles: contextFiles.map((file) => ({
+          id: file.id,
+          name: file.name,
+          path: file.path,
+        })),
+        triggers: triggersConfig,
+      },
+    })
+
+    invalidateAgentsCache()
+    if (savedId !== agentId) {
+      router.replace(`/agents/${savedId}`)
+    }
+
+    return savedId
+  }
+
+  const handleSaveSection = async (successMessage: string, errorMessage: string) => {
     setIsSaving(true)
-    
     try {
-      const { data: { session } } = await supabase.auth.getSession()
-      
-      if (!session?.user) {
-        console.error("User not authenticated")
-        return
-      }
-      
-      const isValidUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(agentId);
-      const isExistingAgent = isValidUUID && !isNewAgent;
-      
-      let agentRole: string;
-      
-      if (isExistingAgent) {
-        const { data: existingAgentData } = await supabase
-          .from('agents')
-          .select('role')
-          .eq('id', agentId)
-          .single();
-        agentRole = existingAgentData?.role || "";
-      } else {
-        const templateMatch = defaultAgentTemplates.find(t => t.role === agentId);
-        if (templateMatch) {
-          agentRole = templateMatch.role;
-        } else {
-          const mappedRole = roleKeyMapping[agentId];
-          agentRole = mappedRole || defaultTemplate.role;
-        }
-      }
-      
-      const agentData = {
-        name,
-        description,
-        status,
-        role: agentRole,
-        site_id: currentSite.id,
-        user_id: session.user.id,
-        updated_at: new Date().toISOString()
-      }
-      
-      if (isExistingAgent) {
-        await supabase
-          .from('agents')
-          .update(agentData)
-          .eq('id', agentId)
-      } else {
-        const { data: existingAgent } = await supabase
-          .from('agents')
-          .select('id')
-          .eq('role', agentRole)
-          .eq('user_id', session.user.id)
-          .eq('site_id', currentSite.id)
-          .maybeSingle();
-        
-        if (existingAgent?.id) {
-          await supabase
-            .from('agents')
-            .update(agentData)
-            .eq('id', existingAgent.id)
-        } else {
-          await supabase
-            .from('agents')
-            .insert(agentData)
-        }
-      }
-      
-      toast.success("Basic information saved successfully")
+      await persistAgent()
+      toast.success(successMessage)
     } catch (error) {
-      console.error("Error saving basic information:", error);
-      toast.error("Failed to save basic information")
+      console.error(errorMessage, error)
+      const detail =
+        error && typeof error === "object" && "message" in error
+          ? String((error as { message: unknown }).message)
+          : null
+      toast.error(detail ? `${errorMessage}: ${detail}` : errorMessage)
     } finally {
-      setIsSaving(false);
+      setIsSaving(false)
     }
   }
 
-  // Handle save prompt
-  const handleSavePrompt = async () => {
-    if (!currentSite) {
-      console.error("Missing site information")
-      return
-    }
-    
-    setIsSaving(true)
-    
-    try {
-      const { data: { session } } = await supabase.auth.getSession()
-      
-      if (!session?.user) {
-        console.error("User not authenticated")
-        return
-      }
-      
-      const isValidUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(agentId);
-      const isExistingAgent = isValidUUID && !isNewAgent;
-      
-      let agentRole: string;
-      
-      if (isExistingAgent) {
-        const { data: existingAgentData } = await supabase
-          .from('agents')
-          .select('role')
-          .eq('id', agentId)
-          .single();
-        agentRole = existingAgentData?.role || "";
-      } else {
-        const templateMatch = defaultAgentTemplates.find(t => t.role === agentId);
-        if (templateMatch) {
-          agentRole = templateMatch.role;
-        } else {
-          const mappedRole = roleKeyMapping[agentId];
-          agentRole = mappedRole || defaultTemplate.role;
-        }
-      }
-      
-      const agentData = {
-        prompt,
-        role: agentRole,
-        site_id: currentSite.id,
-        user_id: session.user.id,
-        updated_at: new Date().toISOString()
-      }
-      
-      if (isExistingAgent) {
-        await supabase
-          .from('agents')
-          .update(agentData)
-          .eq('id', agentId)
-      } else {
-        const { data: existingAgent } = await supabase
-          .from('agents')
-          .select('id')
-          .eq('role', agentRole)
-          .eq('user_id', session.user.id)
-          .eq('site_id', currentSite.id)
-          .maybeSingle();
-        
-        if (existingAgent?.id) {
-          await supabase
-            .from('agents')
-            .update(agentData)
-            .eq('id', existingAgent.id)
-        } else {
-          await supabase
-            .from('agents')
-            .insert(agentData)
-        }
-      }
-      
-      toast.success("Agent prompt saved successfully")
-    } catch (error) {
-      console.error("Error saving prompt:", error);
-      toast.error("Failed to save agent prompt")
-    } finally {
-      setIsSaving(false);
-    }
-  }
+  const handleSaveBasicInfo = () =>
+    handleSaveSection("Basic information saved successfully", "Failed to save basic information")
 
-  // Handle save backstory
-  const handleSaveBackstory = async () => {
-    if (!currentSite) {
-      console.error("Missing site information")
-      return
-    }
-    
-    setIsSaving(true)
-    
-    try {
-      const { data: { session } } = await supabase.auth.getSession()
-      
-      if (!session?.user) {
-        console.error("User not authenticated")
-        return
-      }
-      
-      const isValidUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(agentId);
-      const isExistingAgent = isValidUUID && !isNewAgent;
-      
-      let agentRole: string;
-      
-      if (isExistingAgent) {
-        const { data: existingAgentData } = await supabase
-          .from('agents')
-          .select('role')
-          .eq('id', agentId)
-          .single();
-        agentRole = existingAgentData?.role || "";
-      } else {
-        const templateMatch = defaultAgentTemplates.find(t => t.role === agentId);
-        if (templateMatch) {
-          agentRole = templateMatch.role;
-        } else {
-          const mappedRole = roleKeyMapping[agentId];
-          agentRole = mappedRole || defaultTemplate.role;
-        }
-      }
-      
-      const agentData = {
-        backstory,
-        role: agentRole,
-        site_id: currentSite.id,
-        user_id: session.user.id,
-        updated_at: new Date().toISOString()
-      }
-      
-      if (isExistingAgent) {
-        await supabase
-          .from('agents')
-          .update(agentData)
-          .eq('id', agentId)
-      } else {
-        const { data: existingAgent } = await supabase
-          .from('agents')
-          .select('id')
-          .eq('role', agentRole)
-          .eq('user_id', session.user.id)
-          .eq('site_id', currentSite.id)
-          .maybeSingle();
-        
-        if (existingAgent?.id) {
-          await supabase
-            .from('agents')
-            .update(agentData)
-            .eq('id', existingAgent.id)
-        } else {
-          await supabase
-            .from('agents')
-            .insert(agentData)
-        }
-      }
-      
-      toast.success("Agent backstory saved successfully")
-    } catch (error) {
-      console.error("Error saving backstory:", error);
-      toast.error("Failed to save agent backstory")
-    } finally {
-      setIsSaving(false);
-    }
-  }
+  const handleSavePrompt = () =>
+    handleSaveSection("Agent prompt saved successfully", "Failed to save agent prompt")
 
-  // Handle save activities
-  const handleSaveActivities = async () => {
-    if (!currentSite) {
-      console.error("Missing site information")
-      return
-    }
-    
-    setIsSaving(true)
-    
-    try {
-      const { data: { session } } = await supabase.auth.getSession()
-      
-      if (!session?.user) {
-        console.error("User not authenticated")
-        return
-      }
-      
-      const activitiesConfig = activities.reduce((config, activity) => {
-        config[activity.id] = { 
-          name: activity.name,
-          description: activity.description,
-          status: activity.status,
-          enabled: activity.status === "available"
-        }
-        return config
-      }, {} as Record<string, any>)
-      
-      const isValidUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(agentId);
-      const isExistingAgent = isValidUUID && !isNewAgent;
-      
-      let agentRole: string;
-      
-      if (isExistingAgent) {
-        const { data: existingAgentData } = await supabase
-          .from('agents')
-          .select('role')
-          .eq('id', agentId)
-          .single();
-        agentRole = existingAgentData?.role || "";
-      } else {
-        const templateMatch = defaultAgentTemplates.find(t => t.role === agentId);
-        if (templateMatch) {
-          agentRole = templateMatch.role;
-        } else {
-          const mappedRole = roleKeyMapping[agentId];
-          agentRole = mappedRole || defaultTemplate.role;
-        }
-      }
-      
-      const agentData = {
-        activities: activitiesConfig,
-        role: agentRole,
-        site_id: currentSite.id,
-        user_id: session.user.id,
-        updated_at: new Date().toISOString()
-      }
-      
-      if (isExistingAgent) {
-        await supabase
-          .from('agents')
-          .update(agentData)
-          .eq('id', agentId)
-      } else {
-        const { data: existingAgent } = await supabase
-          .from('agents')
-          .select('id')
-          .eq('role', agentRole)
-          .eq('user_id', session.user.id)
-          .eq('site_id', currentSite.id)
-          .maybeSingle();
-        
-        if (existingAgent?.id) {
-          await supabase
-            .from('agents')
-            .update(agentData)
-            .eq('id', existingAgent.id)
-        } else {
-          await supabase
-            .from('agents')
-            .insert(agentData)
-        }
-      }
-      
-      toast.success("Activities saved successfully")
-    } catch (error) {
-      console.error("Error saving activities:", error);
-      toast.error("Failed to save activities")
-    } finally {
-      setIsSaving(false);
-    }
-  }
+  const handleSaveBackstory = () =>
+    handleSaveSection("Agent backstory saved successfully", "Failed to save agent backstory")
 
-  // Handle save (full save - kept for backwards compatibility)
-  const handleSave = async () => {
-    if (!currentSite) {
-      console.error("Missing site information")
-      return
-    }
-    
-    setIsSaving(true)
-    
-    try {
-      // Get current user session
-      const { data: { session } } = await supabase.auth.getSession()
-      
-      if (!session?.user) {
-        console.error("User not authenticated")
-        return
-      }
-      
-      // Prepare data for database
-      
-      // Convert tools array to configuration format
-      const toolsConfig = tools.reduce((config, tool) => {
-        config[tool.id] = { 
-          enabled: tool.enabled,
-          name: tool.name,
-          description: tool.description
-        }
-        return config
-      }, {} as Record<string, any>)
-      
-      // Convert integrations array to configuration format
-      const integrationsConfig = integrations.reduce((config, integration) => {
-        config[integration.id] = { 
-          connected: integration.connected,
-          name: integration.name,
-          description: integration.description
-        }
-        return config
-      }, {} as Record<string, any>)
-      
-      // Convert triggers array to configuration format
-      const triggersConfig = triggers.reduce((config, trigger) => {
-        config[trigger.id] = { 
-          enabled: trigger.enabled,
-          name: trigger.name,
-          description: trigger.description
-        }
-        return config
-      }, {} as Record<string, any>)
-      
-      // Convert activities array to configuration format
-      const activitiesConfig = activities.reduce((config, activity) => {
-        config[activity.id] = { 
-          name: activity.name,
-          description: activity.description,
-          status: activity.status,
-          enabled: activity.status === "available" // For backwards compatibility
-        }
-        return config
-      }, {} as Record<string, any>)
-      
-      // Legacy configuration format for context files
-      // Note: We're now using agent_assets table but keep this for backward compatibility
-      const filesConfig = contextFiles.map(file => ({
-        id: file.id,
-        name: file.name,
-        path: file.path
-      }))
-      
-      // Check if agentId is a valid UUID
-      const isValidUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(agentId);
-      const isExistingAgent = isValidUUID && !isNewAgent;
-      
-      let agentRole: string;
-      
-      // Para agentes existentes, necesitamos obtener su rol actual
-      if (isExistingAgent) {
-        console.log("Getting existing role for agent:", agentId);
-        const { data: existingAgentData } = await supabase
-          .from('agents')
-          .select('role')
-          .eq('id', agentId)
-          .single();
-        
-        // Mantener el rol existente ya que es un dato no editable
-        agentRole = existingAgentData?.role || "";
-        console.log("Using existing role:", agentRole);
-      } else {
-        // Para agentes nuevos, usar el rol de la plantilla
-        // Buscar si el agentId coincide con algún rol de plantilla
-        const templateMatch = defaultAgentTemplates.find(t => t.role === agentId);
-        
-        if (templateMatch) {
-          // Si hay coincidencia directa con un ID de plantilla, usar ese rol
-          agentRole = templateMatch.role;
-        } else {
-          // Check if agentId is an old role key that needs mapping
-          const mappedRole = roleKeyMapping[agentId];
-          if (mappedRole) {
-            agentRole = mappedRole;
-          } else {
-            // Si no, verificar si se especificó un rol en los parámetros de URL
-            const urlParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
-            const roleParam = urlParams ? urlParams.get('role') : null;
-            
-            if (roleParam) {
-              // First try direct match
-              if (defaultAgentTemplates.some(t => t.role === roleParam)) {
-                agentRole = roleParam;
-              } else {
-                // Then try mapped role
-                const mappedRoleParam = roleKeyMapping[roleParam];
-                if (mappedRoleParam && defaultAgentTemplates.some(t => t.role === mappedRoleParam)) {
-                  agentRole = mappedRoleParam;
-                } else {
-                  // De lo contrario, usar el rol del template por defecto
-                  agentRole = defaultTemplate.role;
-                }
-              }
-            } else {
-              // De lo contrario, usar el rol del template por defecto
-              agentRole = defaultTemplate.role;
-            }
-          }
-        }
-        console.log("Setting new agent role from template:", agentRole);
-      }
-      
-      // Prepare agent data for database
-      const agentData = {
-        name,
-        description,
-        type,
-        status,
-        prompt,
-        backstory,
-        role: agentRole, // Usar el rol real del agente, no su nombre
-        conversations: 0,
-        success_rate: 0,
-        tools: toolsConfig,
-        activities: activitiesConfig,
-        integrations: integrationsConfig,
-        configuration: {
-          contextFiles: filesConfig,
-          triggers: triggersConfig
-        },
-        site_id: currentSite.id,
-        user_id: session.user.id,
-        updated_at: new Date().toISOString(),
-        last_active: new Date().toISOString()
-      }
-      
-      let result;
-      let savedAgentId: string;
-      
-      // For agents with valid UUID, use upsert with onConflict='id'
-      if (isExistingAgent) {
-        console.log("Updating existing agent with ID:", agentId);
-        result = await supabase
-          .from('agents')
-          .upsert(
-            { 
-              ...agentData,
-              id: agentId
-            }, 
-            { 
-              onConflict: 'id',
-              ignoreDuplicates: false
-            }
-          )
-          .select()
-          .single();
-        
-        savedAgentId = agentId;
-      } else {
-        // For new agents, check if there's already an agent with the same role, user_id, and site_id
-        console.log("Checking for existing agent with same role, user_id, and site_id");
-        const { data: existingAgent } = await supabase
-          .from('agents')
-          .select('id')
-          .eq('role', agentRole)
-          .eq('user_id', session.user.id)
-          .eq('site_id', currentSite.id)
-          .maybeSingle();
-        
-        if (existingAgent?.id) {
-          // If agent already exists, update it
-          console.log("Found existing agent with ID:", existingAgent.id);
-          result = await supabase
-            .from('agents')
-            .update(agentData)
-            .eq('id', existingAgent.id)
-            .select()
-            .single();
-          
-          savedAgentId = existingAgent.id;
-        } else {
-          // If no agent exists, create a new one
-          console.log("Creating new agent");
-          result = await supabase
-            .from('agents')
-            .insert(agentData)
-            .select()
-            .single();
-          
-          savedAgentId = result.data?.id;
-        }
-      }
-      
-      const { data, error } = result;
-      
-      if (error) {
-        console.error("Error saving agent:", error);
-        throw error;
-      }
-      
-      console.log("Agent saved successfully:", data);
-      
-      // Redirect back to agents list
-      router.push("/agents");
-    } catch (error) {
-      console.error("Error saving agent:", error);
-    } finally {
-      setIsSaving(false);
-    }
-  }
-  
+  const handleSaveActivities = () =>
+    handleSaveSection("Activities saved successfully", "Failed to save activities")
+
   // If there was an error loading the agent
   if (loadError && dataSource === "not-found") {
     return (

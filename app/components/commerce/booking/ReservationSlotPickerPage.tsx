@@ -1,12 +1,22 @@
 "use client"
 
-import { format, addMonths, subMonths, startOfMonth, isSameMonth, isSameDay, isBefore, startOfDay } from "date-fns"
+import {
+  format,
+  addMonths,
+  subMonths,
+  addDays,
+  startOfMonth,
+  isSameMonth,
+  isSameDay,
+  isBefore,
+  startOfDay,
+} from "date-fns"
 import type { Locale } from "date-fns"
 import { Button } from "@/app/components/ui/button"
 import { Input } from "@/app/components/ui/input"
 import { Label } from "@/app/components/ui/label"
 import { Textarea } from "@/app/components/ui/textarea"
-import { CalendarIcon, Clock, ChevronLeft, ChevronRight } from "@/app/components/ui/icons"
+import { Clock, ChevronLeft, ChevronRight } from "@/app/components/ui/icons"
 import { EmptyCard } from "@/app/components/ui/empty-card"
 import { Skeleton } from "@/app/components/ui/skeleton"
 import { Card, CardContent } from "@/app/components/ui/card"
@@ -43,6 +53,9 @@ interface ReservationSlotPickerPageProps {
   setNotes: (v: string) => void
 }
 
+const cardSurface =
+  "bg-black/[0.005] dark:bg-white/[0.005] border dark:border-white/5 border-black/5 shadow-sm h-[590px] flex flex-col transition-all duration-500 ease-in-out w-full md:w-[590px] md:max-w-full"
+
 export function ReservationSlotPickerPage({
   dateLocale,
   t,
@@ -73,7 +86,7 @@ export function ReservationSlotPickerPage({
   setNotes,
 }: ReservationSlotPickerPageProps) {
   return (
-    <div className="relative w-full overflow-visible z-0 mx-auto max-w-[590px]">
+    <div className="relative w-full overflow-visible z-0">
       <style>{`
         @media (min-width: 768px) {
           .card-calendar {
@@ -112,28 +125,28 @@ export function ReservationSlotPickerPage({
         }
       `}</style>
       <div
-        className="flex flex-col md:block gap-6 md:gap-0 pb-4 md:pb-0 relative w-full md:h-[590px]"
+        className="flex flex-col md:block gap-6 md:gap-0 pb-4 md:pb-0 relative w-full md:h-[590px] overflow-hidden md:overflow-visible"
         style={{
           "--cal-transform": activeStep === "calendar" ? "translateX(0) scale(1)" : activeStep === "time" ? "translateX(calc(-100% - 360px)) scale(0.95)" : "translateX(calc(-100% - 640px)) scale(0.9)",
           "--cal-opacity": activeStep === "calendar" ? "1" : "0.3",
           "--cal-opacity-hover": "1",
           "--cal-z": activeStep === "calendar" ? "40" : activeStep === "time" ? "30" : "20",
-          
+
           "--time-transform": activeStep === "calendar" ? "translateX(calc(100% + 2rem)) scale(0.95)" : activeStep === "time" ? "translateX(0) scale(1)" : "translateX(calc(-100% - 360px)) scale(0.95)",
           "--time-opacity": activeStep === "calendar" ? "0.2" : activeStep === "time" ? "1" : "0.3",
           "--time-opacity-hover": "1",
           "--time-z": activeStep === "calendar" ? "30" : activeStep === "time" ? "40" : "30",
-          
+
           "--det-transform": activeStep === "calendar" ? "translateX(calc(200% + 4rem)) scale(0.9)" : activeStep === "time" ? "translateX(calc(100% + 2rem)) scale(0.95)" : "translateX(0) scale(1)",
           "--det-opacity": activeStep === "calendar" ? "0" : activeStep === "time" ? "0.2" : "1",
           "--det-opacity-hover": "1",
           "--det-z": activeStep === "calendar" ? "20" : activeStep === "time" ? "30" : "40",
         } as React.CSSProperties}
       >
-        {/* CALENDAR CARD */}
         <Card
           className={cn(
-            "card-calendar bg-black/[0.005] dark:bg-white/[0.005] border dark:border-white/5 border-black/5 shadow-sm h-[590px] flex flex-col transition-all duration-500 ease-in-out w-full md:w-[590px] md:max-w-full",
+            "card-calendar",
+            cardSurface,
             activeStep !== "calendar" && "md:opacity-60 hover:md:opacity-100"
           )}
         >
@@ -189,7 +202,8 @@ export function ReservationSlotPickerPage({
                     const isPast = isBefore(startOfDay(date), startOfDay(new Date()))
                     const isCurrentMonth = isSameMonth(date, currentMonth)
                     const isAvailable = monthAvailability[dateStr] ?? false
-                    const shouldDisable = isPast || !isAvailable
+                    const hasLoadedAvailability = Object.keys(monthAvailability).length > 0
+                    const shouldDisable = isPast || (hasLoadedAvailability && !isAvailable)
 
                     return (
                       <button
@@ -222,10 +236,10 @@ export function ReservationSlotPickerPage({
           </CardContent>
         </Card>
 
-        {/* TIME CARD */}
         <Card
           className={cn(
-            "card-time bg-black/[0.005] dark:bg-white/[0.005] border dark:border-white/5 border-black/5 shadow-sm h-[590px] flex flex-col transition-all duration-500 ease-in-out w-full md:w-[590px] md:max-w-full",
+            "card-time",
+            cardSurface,
             activeStep !== "time" && "md:opacity-60 hover:md:opacity-100",
             !selectedDate && "pointer-events-none opacity-50"
           )}
@@ -237,37 +251,71 @@ export function ReservationSlotPickerPage({
             />
           )}
           <CardContent className="p-6 flex-1 flex flex-col min-h-0">
+            {selectedDate && (
+              <div className="flex items-center justify-start mb-6 px-1 md:hidden">
+                <Button
+                  variant="ghost"
+                  className="h-8 hover:bg-accent hover:text-accent-foreground relative z-20 text-muted-foreground pl-0"
+                  onClick={() => setActiveStep("calendar")}
+                >
+                  <ChevronLeft className="h-4 w-4 mr-1" />
+                  {t("booking.back") || "Back"}
+                </Button>
+              </div>
+            )}
             {selectedDate ? (
-              <>
-                <div className="flex items-center justify-start mb-6 px-1 md:hidden">
+              <div className="flex-1 flex flex-col h-full animate-in fade-in duration-300 w-full min-h-0">
+                <div className="flex items-center justify-between mb-6 px-1">
                   <Button
                     variant="ghost"
-                    className="h-8 hover:bg-accent hover:text-accent-foreground relative z-20 text-muted-foreground pl-0"
-                    onClick={() => setActiveStep("calendar")}
+                    size="icon"
+                    className="h-8 w-8 hover:bg-accent hover:text-accent-foreground relative z-20"
+                    onClick={() => {
+                      const newDate = addDays(selectedDate, -1)
+                      setSelectedDate(newDate)
+                      if (!isSameMonth(newDate, currentMonth)) setCurrentMonth(startOfMonth(newDate))
+                      setSelectedSlot(null)
+                    }}
+                    disabled={isBefore(startOfDay(addDays(selectedDate, -1)), startOfDay(new Date()))}
                   >
-                    <ChevronLeft className="h-4 w-4 mr-1" />
-                    {t("booking.back") || "Back"}
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <h3 className="font-semibold text-center text-lg flex-1">
+                    {format(selectedDate, "eeee, MMMM d", { locale: dateLocale })}
+                  </h3>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 hover:bg-accent hover:text-accent-foreground relative z-20"
+                    onClick={() => {
+                      const newDate = addDays(selectedDate, 1)
+                      setSelectedDate(newDate)
+                      if (!isSameMonth(newDate, currentMonth)) setCurrentMonth(startOfMonth(newDate))
+                      setSelectedSlot(null)
+                    }}
+                  >
+                    <ChevronRight className="h-4 w-4" />
                   </Button>
                 </div>
-                <div className="flex items-center justify-between mb-6 border-b pb-4 px-1">
-                  <h3 className="font-semibold text-lg text-center flex-1">
-                    {format(selectedDate, "eeee, MMMM d, yyyy", { locale: dateLocale })}
-                  </h3>
-                </div>
 
-                <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar -mr-2">
+                <div className="flex-1 overflow-y-auto space-y-3 pr-2 custom-scrollbar min-h-0 relative z-20">
                   {isLoadingSlots ? (
-                    <div className="grid grid-cols-2 gap-4">
-                      {Array.from({ length: 12 }).map((_, i) => (
-                        <Skeleton key={i} className="h-12 w-full rounded-xl" />
+                    <div className="grid grid-cols-1 gap-3 pb-4">
+                      {Array.from({ length: 8 }).map((_, i) => (
+                        <div
+                          key={i}
+                          className="h-12 w-full rounded-md ring-1 ring-inset ring-input bg-background flex items-center justify-center shadow-sm"
+                        >
+                          <Skeleton className="h-4 w-16" />
+                        </div>
                       ))}
                     </div>
                   ) : slotsForSelectedDate.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-12">
+                    <div className="flex flex-col items-center justify-center h-full pb-8">
                       <EmptyCard icon={<Clock />} title={t("booking.noAvailability")} description="" showShadow={false} />
                     </div>
                   ) : (
-                    <div className="grid grid-cols-2 gap-4 pb-4">
+                    <div className="grid grid-cols-1 gap-3 pb-4">
                       {slotsForSelectedDate.map((slot) => {
                         const isSelected = isSameSlotInstant(selectedSlot?.start, slot.start)
                         return (
@@ -275,10 +323,10 @@ export function ReservationSlotPickerPage({
                             key={slot.start}
                             variant="outline"
                             className={cn(
-                              "w-full justify-center font-medium transition-all h-12 text-base rounded-xl relative z-20",
+                              "w-full justify-center font-medium transition-all h-12",
                               isSelected
                                 ? "ring-primary bg-primary/5 text-primary"
-                                : "hover:border-primary/40 hover:bg-accent/50 border-border/60"
+                                : "hover:border-primary/30 hover:bg-accent"
                             )}
                             onClick={() => {
                               if (hideDetailsStep) onSelect(slot.start, slot.end, { available: slot.available })
@@ -290,7 +338,7 @@ export function ReservationSlotPickerPage({
                           >
                             {format(new Date(slot.start), "h:mm a")}
                             {shouldShowSlotLeftover(slot, selectedStartIso) ? (
-                              <span className="text-[10px] opacity-70 ml-2">({slot.available} left)</span>
+                              <span className="text-xs opacity-70 ml-2">({slot.available} left)</span>
                             ) : null}
                           </Button>
                         )
@@ -298,24 +346,34 @@ export function ReservationSlotPickerPage({
                     </div>
                   )}
                 </div>
-              </>
+              </div>
             ) : (
-              <div className="flex-1 flex flex-col items-center justify-center text-center opacity-50">
-                <CalendarIcon className="h-12 w-12 mb-4 text-muted-foreground" />
-                <h3 className="text-lg font-medium">{t("booking.selectDate") || "Select a date"}</h3>
-                <p className="text-sm mt-2">
-                  {t("booking.selectDateDesc") || "Choose a date from the calendar to see available times."}
-                </p>
+              <div className="flex-1 flex flex-col h-full w-full min-h-0 opacity-40 grayscale">
+                <div className="flex items-center justify-center mb-6">
+                  <Skeleton className="h-7 w-48" />
+                </div>
+                <div className="flex-1 overflow-hidden space-y-3 pr-2">
+                  <div className="grid grid-cols-1 gap-3 pb-4">
+                    {Array.from({ length: 8 }).map((_, i) => (
+                      <div
+                        key={i}
+                        className="h-12 w-full rounded-md ring-1 ring-inset ring-input bg-background flex items-center justify-center shadow-sm"
+                      >
+                        <Skeleton className="h-4 w-16" />
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
             )}
           </CardContent>
         </Card>
 
-        {/* DETAILS CARD */}
         {!hideDetailsStep && (
           <Card
             className={cn(
-              "card-details bg-black/[0.005] dark:bg-white/[0.005] border dark:border-white/5 border-black/5 shadow-sm h-[590px] flex flex-col transition-all duration-500 ease-in-out w-full md:w-[590px] md:max-w-full",
+              "card-details",
+              cardSurface,
               activeStep !== "details" && "md:opacity-60 hover:md:opacity-100",
               !selectedSlot && "pointer-events-none opacity-50"
             )}
@@ -326,8 +384,8 @@ export function ReservationSlotPickerPage({
                 onClick={() => setActiveStep("details")}
               />
             )}
-            <CardContent className="p-6 flex-1 flex flex-col min-h-0">
-              <div className="flex items-center justify-start mb-4 px-1">
+            <CardContent className="p-6 space-y-6 flex-1 pt-6 overflow-y-auto relative z-20">
+              <div className="flex items-center justify-start mb-2 px-1 md:hidden">
                 <Button
                   variant="ghost"
                   className="h-8 hover:bg-accent hover:text-accent-foreground relative z-20 text-muted-foreground pl-0"
@@ -337,55 +395,40 @@ export function ReservationSlotPickerPage({
                   {t("booking.back") || "Back"}
                 </Button>
               </div>
-
-              <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar -mr-2 space-y-6 pb-4">
-                <div className="flex items-center gap-4 bg-muted/30 p-4 rounded-2xl relative z-20">
-                  <div className="font-semibold flex items-center gap-2">
-                    <Clock className="w-4 h-4 text-primary" />
-                    {selectedDate && selectedSlot && `${format(selectedDate, "MMM d, yyyy", { locale: dateLocale })} at ${format(new Date(selectedSlot.start), "h:mm a")}`}
-                  </div>
+              <div className="space-y-5">
+                <div className="grid gap-2">
+                  <Label htmlFor="name" className="text-sm font-semibold">{t("booking.form.name") || "Name"}</Label>
+                  <Input id="name" placeholder="John Doe" className="h-12 bg-background" value={name} onChange={(e) => setName(e.target.value)} />
                 </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 relative z-20">
-                  <div className="grid gap-2">
-                    <Label htmlFor="name" className="text-sm font-semibold">{t("booking.form.name") || "Name"}</Label>
-                    <Input id="name" placeholder="John Doe" className="h-11 rounded-xl" value={name} onChange={(e) => setName(e.target.value)} />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="email" className="text-sm font-semibold">{t("booking.form.email") || "Email"}</Label>
-                    <Input id="email" type="email" placeholder="john@example.com" className="h-11 rounded-xl" value={email} onChange={(e) => setEmail(e.target.value)} />
-                  </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="email" className="text-sm font-semibold">{t("booking.form.email") || "Email"}</Label>
+                  <Input id="email" type="email" placeholder="john@example.com" className="h-12 bg-background" value={email} onChange={(e) => setEmail(e.target.value)} />
                 </div>
-                <div className="grid gap-2 relative z-20">
+                <div className="grid gap-2">
                   <Label htmlFor="guests" className="text-sm font-semibold">
                     {locale === "es" ? "Invitados (separados por coma)" : "Guests (comma separated)"}
                   </Label>
                   <Input
                     id="guests"
                     placeholder={locale === "es" ? "correo1@ejemplo.com" : "guest1@example.com"}
-                    className="h-11 rounded-xl"
+                    className="h-12 bg-background"
                     value={guestsString}
                     onChange={(e) => setGuestsString(e.target.value)}
                   />
                 </div>
-                <div className="grid gap-2 relative z-20">
+                <div className="grid gap-2">
                   <Label htmlFor="notes" className="text-sm font-semibold">{t("booking.form.notes") || "Additional Notes"}</Label>
                   <Textarea
                     id="notes"
                     placeholder={t("booking.form.notesPlaceholder") || "Any special requirements?"}
-                    className="resize-none min-h-[100px] rounded-xl"
+                    className="resize-none min-h-[80px] bg-background"
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
                   />
                 </div>
               </div>
-
-              <div className="pt-4 mt-auto border-t relative z-20">
-                <Button
-                  onClick={handleConfirm}
-                  className="w-full h-11 text-base font-bold rounded-xl shadow-md"
-                  disabled={!selectedSlot}
-                >
+              <div className="pt-2">
+                <Button onClick={handleConfirm} className="w-full font-semibold shadow-sm" disabled={!selectedSlot}>
                   {t("booking.confirm") || "Confirm"}
                 </Button>
               </div>
