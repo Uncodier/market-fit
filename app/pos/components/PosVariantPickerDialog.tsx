@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useMemo, useEffect } from "react"
+import React, { useState, useMemo, useEffect, useRef } from "react"
 import { CatalogItem, VariantAxis } from "@/app/types"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { Dialog, DialogBody, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/app/components/ui/dialog"
@@ -24,9 +24,16 @@ export function PosVariantPickerDialog({ item, open, onOpenChange, onConfirm }: 
   const [loading, setLoading] = useState(false)
   const [selectedOptions, setSelectedOptions] = useState<Record<string, string>>({})
 
-  useEffect(() => {
-    if (!open || !item) return
+  const itemId = item?.id ?? null
+  const itemRef = useRef(item)
+  itemRef.current = item
 
+  useEffect(() => {
+    if (!open || !itemId) return
+    const host = itemRef.current
+    if (!host) return
+
+    let cancelled = false
     setLoading(true)
     setSelectedOptions({})
     setChildren([])
@@ -36,18 +43,23 @@ export function PosVariantPickerDialog({ item, open, onOpenChange, onConfirm }: 
     supabase
       .from("catalog_items")
       .select("*")
-      .eq("parent_id", item.id)
+      .eq("parent_id", itemId)
       .eq("status", "active")
       .eq("is_purchasable", true)
       .then(({ data, error }) => {
+        if (cancelled) return
         if (data && !error) {
-          const resolved = resolveVariantAxesForDisplay(item, data as CatalogItem[])
+          const resolved = resolveVariantAxesForDisplay(host, data as CatalogItem[])
           setChildren(resolved.children)
           setAxes(resolved.axes)
         }
         setLoading(false)
       })
-  }, [open, item])
+
+    return () => {
+      cancelled = true
+    }
+  }, [open, itemId])
 
   const handleOptionSelect = (axisId: string, valueId: string) => {
     setSelectedOptions(prev => ({ ...prev, [axisId]: valueId }))

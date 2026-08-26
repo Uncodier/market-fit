@@ -4,12 +4,37 @@ import type { LocalReservationSlots } from "./types";
 
 const DEFAULT_TTL_MS = 5 * 60 * 1000;
 
+type SlotsResult = {
+  slots: LocalReservationSlots["slots"];
+  fromCache: boolean;
+};
+
+const inflight = new Map<string, Promise<SlotsResult>>();
+
 export function reservationSlotsKey(
   catalogItemId: string,
   startDate: string,
   endDate: string,
 ) {
   return `${catalogItemId}:${startDate}:${endDate}`;
+}
+
+export function reservationSlotsRequestKey(params: {
+  catalogItemId: string;
+  startDate: string;
+  endDate: string;
+  qty?: number;
+  ignoreReservationId?: string;
+}) {
+  return `${reservationSlotsKey(
+    params.catalogItemId,
+    params.startDate,
+    params.endDate,
+  )}:${params.qty ?? 1}:${params.ignoreReservationId ?? ""}`;
+}
+
+export function clearReservationSlotsInflight() {
+  inflight.clear();
 }
 
 export async function getCachedReservationSlots(params: {
@@ -55,6 +80,32 @@ export async function cacheReservationSlots(params: {
   await getPosDb().reservationSlots.put(row);
 }
 
+async function fetchReservationSlotsNetwork(params: {
+  catalogItemId: string;
+  startDate: string;
+  endDate: string;
+  qty?: number;
+  ignoreReservationId?: string;
+}): Promise<SlotsResult> {
+  const skipCache = Boolean(params.ignoreReservationId);
+  const slots = await getAvailableSlots(
+    params.catalogItemId,
+    params.startDate,
+    params.endDate,
+    params.qty ?? 1,
+    params.ignoreReservationId,
+  );
+  if (!skipCache) {
+    await cacheReservationSlots({
+      catalogItemId: params.catalogItemId,
+      startDate: params.startDate,
+      endDate: params.endDate,
+      slots,
+    });
+  }
+  return { slots, fromCache: false };
+}
+
 /** Fetch slots online and cache; fall back to cache when offline/error. */
 export async function getReservationSlotsLocalFirst(params: {
   catalogItemId: string;
@@ -62,33 +113,30 @@ export async function getReservationSlotsLocalFirst(params: {
   endDate: string;
   qty?: number;
   ignoreReservationId?: string;
-}): Promise<{ slots: LocalReservationSlots["slots"]; fromCache: boolean }> {
-  const skipCache = Boolean(params.ignoreReservationId);
-  const cached = skipCache ? null : await getCachedReservationSlots(params);
-  const online = typeof navigator === "undefined" ? true : navigator.onLine;
+}): Promise<SlotsResult> {
+  const key = reservationSlotsRequestKey(params);
+  const pending = inflight.get(key);
+  if (pending) return pending;
 
-  if (!online) {
-    return { slots: cached || [], fromCache: true };
-  }
+  const request = (async (): Promise<SlotsResult> => {
+    const skipCache = Boolean(params.ignoreReservationId);
+    const cached = skipCache ? null : await getCachedReservationSlots(params);
+    if (cached) return { slots: cached, fromCache: true };
 
-  try {
-    const slots = await getAvailableSlots(
-      params.catalogItemId,
-      params.startDate,
-      params.endDate,
-      params.qty ?? 1,
-      params.ignoreReservationId,
-    );
-    if (!skipCache) {
-      await cacheReservationSlots({
-        catalogItemId: params.catalogItemId,
-        startDate: params.startDate,
-        endDate: params.endDate,
-        slots,
-      });
+    const online = typeof navigator === "undefined" ? true : navigator.onLine;
+    if (!online) {
+      return { slots: [], fromCache: true };
     }
-    return { slots, fromCache: false };
-  } catch {
-    return { slots: cached || [], fromCache: true };
-  }
+
+    try {
+      return await fetchReservationSlotsNetwork(params);
+    } catch {
+      return { slots: [], fromCache: true };
+    }
+  })().finally(() => {
+    inflight.delete(key);
+  });
+
+  inflight.set(key, request);
+  return request;
 }

@@ -1,10 +1,9 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import type { CatalogItem, VariantAxis } from "@/app/types"
 import type { ModifierGroupWithItems } from "@/app/catalog/modifier-types"
 import { resolveVariantAxesForDisplay } from "@/app/catalog/variant-resolve"
-import { getModifierGroupsForCatalogItem } from "@/app/catalog/modifier-actions"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { useDisplayCurrency } from "@/app/context/DisplayCurrencyContext"
 import {
@@ -79,16 +78,7 @@ async function loadModifierGroups(
     }
   }
 
-  if (typeof navigator !== "undefined" && navigator.onLine) {
-    try {
-      const { data, error } = await getModifierGroupsForCatalogItem(host.id)
-      if (error) console.warn("Failed to load modifiers", error)
-      if (data?.length) return data
-    } catch (err) {
-      console.warn("Failed to load modifiers", err)
-    }
-  }
-
+  // Snapshot/Dexie only — a server action here remounts the dialog in a loop.
   return []
 }
 
@@ -116,9 +106,21 @@ export function PosOptionsDialog({
   )
   const [selectedModifiers, setSelectedModifiers] = useState<CartModifier[]>([])
 
-  useEffect(() => {
-    if (!open || !item) return
+  const itemRef = useRef(item)
+  const siteIdRef = useRef(siteId)
+  const modifierGroupsByHostIdRef = useRef(modifierGroupsByHostId)
+  itemRef.current = item
+  siteIdRef.current = siteId
+  modifierGroupsByHostIdRef.current = modifierGroupsByHostId
 
+  const itemId = item?.id ?? null
+
+  useEffect(() => {
+    if (!open || !itemId) return
+    const host = itemRef.current
+    if (!host) return
+
+    let cancelled = false
     setSelectedOptions({})
     setSelectedModifiers([])
     setChildren([])
@@ -131,13 +133,14 @@ export function PosOptionsDialog({
     void supabase
       .from("catalog_items")
       .select("*")
-      .eq("parent_id", item.id)
+      .eq("parent_id", itemId)
       .eq("status", "active")
       .eq("is_purchasable", true)
       .then(({ data, error }) => {
+        if (cancelled) return
         if (data && !error) {
           const resolved = resolveVariantAxesForDisplay(
-            item,
+            host,
             data as CatalogItem[],
           )
           setChildren(resolved.children)
@@ -146,13 +149,20 @@ export function PosOptionsDialog({
         setLoadingVariants(false)
       })
 
-    void loadModifierGroups(item, siteId, modifierGroupsByHostId).then(
-      (groups) => {
-        setModifierGroups(groups)
-        setLoadingModifiers(false)
-      },
-    )
-  }, [open, item, siteId, modifierGroupsByHostId])
+    void loadModifierGroups(
+      host,
+      siteIdRef.current,
+      modifierGroupsByHostIdRef.current,
+    ).then((groups) => {
+      if (cancelled) return
+      setModifierGroups(groups)
+      setLoadingModifiers(false)
+    })
+
+    return () => {
+      cancelled = true
+    }
+  }, [open, itemId])
 
   const resolvedChild = useMemo(() => {
     if (!axes.length) return null

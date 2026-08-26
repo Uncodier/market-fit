@@ -67,11 +67,11 @@ export function ReservationSlotPicker({
   const { locale, t } = useLocalization()
   const dateLocale = locale === "es" ? es : enUS
   const { user } = useAuth()
-  const session = user ? { user } : null
 
   const [activeStep, setActiveStep] = useState<"calendar" | "time" | "details">("calendar")
   const [currentMonth, setCurrentMonth] = useState(startOfMonth(new Date()))
   const [selectedDate, setSelectedDate] = useState<Date | null>(null)
+  const monthKey = format(currentMonth, "yyyy-MM")
   
   const [allSlots, setAllSlots] = useState<ReservationSlotOption[]>([])
   const [monthAvailability, setMonthAvailability] = useState<Record<string, boolean>>({})
@@ -85,11 +85,11 @@ export function ReservationSlotPicker({
   const [notes, setNotes] = useState("")
 
   useEffect(() => {
-    if (session?.user && !email) {
-      setEmail(session.user.email || "")
-      setName(session.user.user_metadata?.name || "")
+    if (user && !email) {
+      setEmail(user.email || "")
+      setName(user.user_metadata?.name || "")
     }
-  }, [session, email])
+  }, [user, email])
 
   const containerRef = useRef<HTMLDivElement>(null)
 
@@ -102,13 +102,17 @@ export function ReservationSlotPicker({
   }, [selectedStartIso, catalogItemId, display])
 
   useEffect(() => {
+    if (!catalogItemId) return
+    let cancelled = false
+
     async function loadMonthAvailability() {
       setIsLoadingSlots(true)
-      const firstDayOfMonth = startOfMonth(currentMonth).getDay()
-      const startDate = addDays(startOfMonth(currentMonth), -firstDayOfMonth)
-      const startStr = format(startDate, "yyyy-MM-dd")
-      const endStr = format(addDays(startDate, 41), "yyyy-MM-dd")
-      
+      const monthStart = startOfMonth(currentMonth)
+      const firstDayOfMonth = monthStart.getDay()
+      const rangeStart = addDays(monthStart, -firstDayOfMonth)
+      const startStr = format(rangeStart, "yyyy-MM-dd")
+      const endStr = format(addDays(rangeStart, 41), "yyyy-MM-dd")
+
       const { slots: available } = await getReservationSlotsLocalFirst({
         catalogItemId,
         startDate: startStr,
@@ -116,11 +120,12 @@ export function ReservationSlotPicker({
         qty: quantity,
         ignoreReservationId,
       })
+      if (cancelled) return
 
       const slots = mergeCurrentReservationSlot(available, selectedStartIso, selectedEndIso)
 
       setAllSlots(slots)
-      
+
       const availMap: Record<string, boolean> = {}
       slots.forEach(slot => {
         availMap[slotCalendarDate(slot.start, slot.timezone, display)] = true
@@ -133,11 +138,12 @@ export function ReservationSlotPicker({
       setMonthAvailability(availMap)
       setIsLoadingSlots(false)
     }
-    
-    if (catalogItemId) {
-      loadMonthAvailability()
+
+    void loadMonthAvailability()
+    return () => {
+      cancelled = true
     }
-  }, [catalogItemId, currentMonth, quantity, ignoreReservationId, selectedStartIso, selectedEndIso, display])
+  }, [catalogItemId, monthKey, quantity, ignoreReservationId, selectedStartIso, selectedEndIso, display])
 
   const firstDayOfMonth = startOfMonth(currentMonth).getDay()
   const startDate = addDays(startOfMonth(currentMonth), -firstDayOfMonth)

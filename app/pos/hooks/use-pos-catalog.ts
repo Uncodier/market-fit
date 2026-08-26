@@ -58,7 +58,11 @@ export function usePosCatalog(siteId: string | undefined) {
 
   useEffect(() => {
     if (!siteId) return;
-    return subscribePosSync(() => {
+    let lastSig = "";
+    return subscribePosSync((status) => {
+      const sig = `${status.lastPulledAt ?? ""}:${status.pendingCount}:${status.failedCount}`;
+      if (sig === lastSig) return;
+      lastSig = sig;
       void reload();
     });
   }, [siteId, reload]);
