@@ -2,7 +2,8 @@
 
 import { MobileFiltersDrawer } from "@/app/components/ui/mobile-filters-drawer"
 
-import React, { useEffect, useMemo, useState } from "react"
+import React, { useEffect, useMemo, useState, useCallback, Suspense } from "react"
+import { useRouter, useSearchParams, usePathname } from "next/navigation"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { useSite } from "@/app/context/SiteContext"
 import useSWR from "swr"
@@ -30,11 +31,28 @@ import type { CalendarBlock, Reservation } from "@/app/types"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
 import { filterCalendarBlocks } from "./calendar-block-helpers"
 
-export default function ReservationsPage() {
+function ReservationsPageContent() {
   const { t } = useLocalization()
   const { currentSite } = useSite()
-  const [viewMode, setViewMode] = useState<"service" | "calendar" | "schedules">("calendar")
-  const [viewType, setViewType] = useState<"list" | "calendar">("list")
+  const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+
+  const viewMode = (searchParams.get("viewMode") as "service" | "calendar" | "schedules") || "calendar"
+  const viewType = (searchParams.get("viewType") as "list" | "calendar") || "list"
+
+  const setViewMode = useCallback((mode: string) => {
+    const params = new URLSearchParams(searchParams.toString())
+    params.set("viewMode", mode)
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false })
+  }, [searchParams, pathname, router])
+
+  const setViewType = useCallback((type: string) => {
+    const params = new URLSearchParams(searchParams.toString())
+    params.set("viewType", type)
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false })
+  }, [searchParams, pathname, router])
+
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedMember, setSelectedMember] = useState<string>("all")
   const [statusFilter, setStatusFilter] = useState<"active" | "cancelled">("active")
@@ -348,5 +366,13 @@ export default function ReservationsPage() {
         onOpenChange={handleBlockFormOpenChange}
         onSuccess={refresh} />
     </div>
+  )
+}
+
+export default function ReservationsPage() {
+  return (
+    <Suspense fallback={<div className="flex-1 flex flex-col min-h-0 min-w-0 h-[calc(100vh-var(--topbar-height,64px))] bg-muted/30" />}>
+      <ReservationsPageContent />
+    </Suspense>
   )
 }

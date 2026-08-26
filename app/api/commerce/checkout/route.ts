@@ -22,6 +22,10 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Unsupported checkout source' }, { status: 400 })
     }
 
+    // Strip internal/staff-only parameters that shouldn't be accessible via the public endpoint
+    delete body.isStaffMutation;
+    delete (body as any).userId;
+
     const result = await checkoutCart(body)
 
     if (result.error) {

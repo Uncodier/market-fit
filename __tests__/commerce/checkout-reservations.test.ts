@@ -1,4 +1,8 @@
-import { syncCheckoutDropinReservations, resolveDropinReservationCatalogItemId } from "@/app/commerce/checkout-reservations"
+import {
+  syncCheckoutDropinReservations,
+  resolveDropinReservationCatalogItemId,
+  isStaffReservationCheckout,
+} from "@/app/commerce/checkout-reservations"
 import { pickNextRedeemableService } from "@/app/commerce/pass-round-robin-server"
 
 jest.mock("@/app/commerce/pass-round-robin-server", () => ({
@@ -359,6 +363,16 @@ describe("resolveDropinReservationCatalogItemId", () => {
         existingCatalogItemId: "member-b",
       })
     ).toBe("round_robin")
+  })
+
+  it("treats reservations backoffice payment as staff even if the sale originated in shop", () => {
+    expect(
+      isStaffReservationCheckout({ source: "shop", isStaffMutation: true })
+    ).toBe(true)
+    expect(isStaffReservationCheckout({ source: "pos" })).toBe(true)
+    expect(isStaffReservationCheckout({ source: "sales" })).toBe(true)
+    expect(isStaffReservationCheckout({ source: "shop" })).toBe(false)
+    expect(isStaffReservationCheckout({ source: "marketplace" })).toBe(false)
   })
 
   it("uses the line catalog item for a normal service drop-in", () => {

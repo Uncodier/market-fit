@@ -1,6 +1,7 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback, useMemo } from "react"
+import { useRouter, useSearchParams, usePathname } from "next/navigation"
 import { Button } from "@/app/components/ui/button"
 import { ChevronLeft, ChevronRight } from "@/app/components/ui/icons"
 import { ToggleGroup, ToggleGroupItem } from "@/app/components/ui/toggle-group"
@@ -16,7 +17,7 @@ import {
   ReservationYearView,
 } from "./reservation-calendar-views"
 import type { CalendarTimeSlot } from "./reservation-calendar-hour-select"
-import { localDateKey } from "./reservation-calendar-select"
+import { localDateKey, parseLocalDate } from "./reservation-calendar-select"
 import { groupBlockSpansByDate } from "../calendar-block-helpers"
 
 interface ReservationCalendarProps {
@@ -37,8 +38,35 @@ export function ReservationCalendar({
   onCreateSlot,
 }: ReservationCalendarProps) {
   const { t } = useLocalization()
-  const [selectedDate, setSelectedDate] = useState(() => new Date())
-  const [viewMode, setViewMode] = useState<CalendarViewMode>("month")
+  
+  const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+
+  const dateParam = searchParams.get("date")
+  const calViewParam = searchParams.get("calView") as CalendarViewMode | null
+
+  const selectedDate = useMemo(() => {
+    if (!dateParam) return new Date()
+    const parsed = parseLocalDate(dateParam)
+    return isNaN(parsed.getTime()) ? new Date() : parsed
+  }, [dateParam])
+    
+  const viewMode = calViewParam || "month"
+
+  const setSelectedDate = useCallback((action: Date | ((prev: Date) => Date)) => {
+    const newDate = typeof action === "function" ? action(selectedDate) : action
+    const params = new URLSearchParams(searchParams.toString())
+    params.set("date", localDateKey(newDate))
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false })
+  }, [selectedDate, searchParams, pathname, router])
+
+  const setViewMode = useCallback((mode: CalendarViewMode) => {
+    const params = new URLSearchParams(searchParams.toString())
+    params.set("calView", mode)
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false })
+  }, [searchParams, pathname, router])
+
   const { currentTime, isToday, getCurrentTimePosition } = useCurrentTime()
 
   useEffect(() => {

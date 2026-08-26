@@ -24,7 +24,7 @@ export function destinationsRequireAudience(dest: string[] | undefined): boolean
 /** Accept hyphen or underscore (DB / clients may differ). */
 export function isValidPublishAudienceSource(node: InstanceNode): boolean {
   const t = (node.type || "").trim().toLowerCase().replace(/_/g, "-")
-  return t === "generate-audience"
+  return t === "generate-audience" || (node.settings as any)?.media_type === "audience"
 }
 
 /**
@@ -229,6 +229,11 @@ export function resolveAudienceSegmentIdForImprenta(node: InstanceNode, nodes: I
     extractAudienceUuidFromObject(node.prompt) ||
     extractSegmentUuidFromAudienceBlob(collectNodeSearchBlob(node))
   if (id) return id
+  
+  if (isValidPublishAudienceSource(node) || (node.settings as any)?.media_type === "audience") {
+    return node.id
+  }
+
   if (!isDescendantOfAudienceNode(node, nodes)) return null
   let pid: string | null = node.parent_node_id
   const seen = new Set<string>()
@@ -239,8 +244,11 @@ export function resolveAudienceSegmentIdForImprenta(node: InstanceNode, nodes: I
     id =
       extractAudienceIdFromAudienceLeadsArray(p) ||
       extractAudienceUuidFromObject(p.result) ||
+      extractAudienceUuidFromObject(p.settings) ||
+      extractAudienceUuidFromObject(p.prompt) ||
       extractSegmentUuidFromAudienceBlob(collectNodeSearchBlob(p))
     if (id) return id
+    if (isValidPublishAudienceSource(p) || (p.settings as any)?.media_type === "audience") return p.id
     pid = p.parent_node_id
   }
   return null
@@ -269,9 +277,14 @@ function audienceNodeHasNonemptyResult(node: InstanceNode): boolean {
  */
 export function isPublishAudienceSourceReady(node: InstanceNode, nodes: InstanceNode[]): boolean {
   if (isDescendantOfAudienceNode(node, nodes)) return true
-  if (!isValidPublishAudienceSource(node)) return false
+  if (isValidPublishAudienceSource(node) && audienceNodeHasNonemptyResult(node)) return true
+  
   if (nodeContainsAudienceIdMarker(node)) return true
-  return audienceNodeHasNonemptyResult(node)
+  
+  const parentNode = nodes.find(n => n.id === node.parent_node_id);
+  if (parentNode && isValidPublishAudienceSource(parentNode) && audienceNodeHasNonemptyResult(node)) return true;
+  
+  return false
 }
 
 /** Creative / production context types used when assembling video, text and audio assets. */

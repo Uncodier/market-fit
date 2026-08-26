@@ -19,6 +19,18 @@ type ExistingDropinReservation = {
   catalog_item_id?: string | null
 }
 
+/** Staff POS/sales (and explicit backoffice mutations) may book or pay past slots. */
+export function isStaffReservationCheckout(params: {
+  source?: string | null
+  isStaffMutation?: boolean
+}) {
+  return (
+    params.isStaffMutation === true ||
+    params.source === "pos" ||
+    params.source === "sales"
+  )
+}
+
 export function resolveDropinReservationCatalogItemId(params: {
   lineCatalogItemId: string
   hasReservationDates: boolean

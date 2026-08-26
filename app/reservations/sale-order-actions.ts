@@ -204,6 +204,7 @@ export async function ensureReservationSaleOrder(params: {
       notes: params.notes ?? reservation.notes ?? undefined,
       existingOrderId,
       existingReservationId: reservation.id,
+      isStaffMutation: true,
       ...(existingPayments.length > 0 ? { payments: existingPayments } : {}),
     })
 

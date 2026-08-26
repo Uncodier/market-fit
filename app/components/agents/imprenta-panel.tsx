@@ -344,7 +344,7 @@ const IMPRENTA_CARD_CONTENT_W = 440
 
 /** When the full card has never been measured, approximate its height from prompt + result shape (media, text, etc.). */
 function estimateImprentaNodeContentHeight(node: InstanceNode, rowH: number): number {
-  if (isImprentaVisualMediaResultCard(node)) {
+  if (isImprentaVisualMediaResultCard(node, nodes)) {
     return Math.min(
       Math.max(imprentaMediaBoxHeight(IMPRENTA_NODE_W, imprentaNodeMediaAspectCss(node)), 120),
       1600
@@ -438,11 +438,17 @@ function imprentaNodeHasResult(node: InstanceNode): boolean {
 
 type ImprentaResultMediaType = "text" | "image" | "video" | "audio" | "audience"
 
-function inferImprentaResultMediaType(node: InstanceNode): ImprentaResultMediaType | null {
+function inferImprentaResultMediaType(node: InstanceNode, nodes: InstanceNode[] = []): ImprentaResultMediaType | null {
   if (!imprentaNodeHasResult(node)) return null
   const res = (node.result || {}) as any
 
   if (Array.isArray(res.audience_leads) && res.audience_leads.length > 0) return "audience"
+  if (node.type === "generate-audience" || (node.settings as any)?.media_type === "audience") return "audience"
+  
+  const parentNode = nodes.find(n => n.id === node.parent_node_id)
+  if (parentNode && (parentNode.type === "generate-audience" || (parentNode.settings as any)?.media_type === "audience" || (node.result as any)?.text?.includes("audience_id"))) {
+    return "audience"
+  }
 
   const outputs = Array.isArray(res.outputs) ? res.outputs : null
   if (outputs) {
@@ -490,11 +496,11 @@ function imprentaNodeTypeForResultMediaType(mediaType: ImprentaResultMediaType):
   return `generate-${mediaType}`
 }
 
-function normalizeImprentaNodeForResultMediaType(node: InstanceNode): InstanceNode {
+function normalizeImprentaNodeForResultMediaType(node: InstanceNode, nodes: InstanceNode[]): InstanceNode {
   if (node.id?.startsWith("dummy-")) return node
   if (node.type === "publish") return node
 
-  const mediaType = inferImprentaResultMediaType(node)
+  const mediaType = inferImprentaResultMediaType(node, nodes)
   if (!mediaType) return node
 
   const nextType = imprentaNodeTypeForResultMediaType(mediaType)
@@ -515,8 +521,8 @@ function normalizeImprentaNodeForResultMediaType(node: InstanceNode): InstanceNo
 }
 
 /** Completed image/video results fill the card; chrome sits on top of the media. */
-function isImprentaVisualMediaResultCard(node: InstanceNode): boolean {
-  const mediaType = inferImprentaResultMediaType(node)
+function isImprentaVisualMediaResultCard(node: InstanceNode, nodes: InstanceNode[] = []): boolean {
+  const mediaType = inferImprentaResultMediaType(node, nodes)
   return mediaType === "image" || mediaType === "video"
 }
 
@@ -1217,7 +1223,7 @@ const ImprentaNodeCardInner = memo(({
                                 
                                 {node.type === 'generate-audience' && (
                                   <TooltipProvider delayDuration={200}>
-                                    <div className="grid w-full grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-3 lg:grid-cols-4 [&>*]:min-w-0">
+                                    <div className="flex w-full flex-wrap items-center gap-x-4 gap-y-2.5">
                                       {([
                                         { key: 'email', label: 'Email', icon: Mail, hint: 'Only include leads that have an email address.' },
                                         { key: 'web', label: 'Web', icon: Globe, hint: 'Only include leads that have a website URL.' },
@@ -1239,16 +1245,18 @@ const ImprentaNodeCardInner = memo(({
                                           <Tooltip key={key}>
                                             <TooltipTrigger asChild>
                                               <label
-                                                className="flex w-full min-w-0 cursor-pointer select-none items-center gap-1.5 text-[11px]"
+                                                className="flex cursor-pointer select-none items-center gap-1.5 text-[11px]"
                                                 onClick={(e) => e.stopPropagation()}
                                               >
-                                                <span className={`min-w-0 flex-1 truncate text-right font-medium ${isSelected ? 'text-foreground' : 'text-muted-foreground'}`}>{label}</span>
+                                                <span className="flex items-center justify-center shrink-0 text-muted-foreground w-3.5 h-3.5">
+                                                  <Icon size={14} className="[&>svg]:stroke-[1.5px]" />
+                                                </span>
+                                                <span className={`whitespace-nowrap font-medium ${isSelected ? 'text-foreground' : 'text-muted-foreground'}`}>{label}</span>
                                                 <Switch
-                                                  thumbIcon={<Icon className="h-3 w-3" />}
                                                   checked={isSelected}
                                                   onCheckedChange={toggleChannel}
                                                   onClick={(e) => e.stopPropagation()}
-                                                  className="h-[22px] w-[44px] shrink-0 [&>span]:h-[18px] [&>span]:w-[18px] [&>span[data-state=checked]]:translate-x-[22px] [&>span[data-state=unchecked]]:translate-x-0"
+                                                  className="scale-75 origin-left -mr-[11px] -my-[3px]"
                                                 />
                                               </label>
                                             </TooltipTrigger>
@@ -1289,20 +1297,22 @@ const ImprentaNodeCardInner = memo(({
                                       <Tooltip key={key}>
                                         <TooltipTrigger asChild>
                                           <label
-                                            className="flex w-full min-w-0 cursor-pointer select-none items-center gap-1.5 text-[11px]"
+                                            className="flex cursor-pointer select-none items-center gap-1.5 text-[11px]"
                                             onClick={(e) => e.stopPropagation()}
                                           >
+                                            <span className="flex items-center justify-center shrink-0 text-muted-foreground w-3.5 h-3.5">
+                                              {icon}
+                                            </span>
                                             <span
-                                              className={`min-w-0 flex-1 truncate text-right font-medium ${isSelected ? 'text-foreground' : 'text-muted-foreground'}`}
+                                              className={`whitespace-nowrap font-medium ${isSelected ? 'text-foreground' : 'text-muted-foreground'}`}
                                             >
                                               {label}
                                             </span>
                                             <Switch
-                                              thumbIcon={icon}
                                               checked={isSelected}
                                               onCheckedChange={() => toggleDestination(key)}
                                               onClick={(e) => e.stopPropagation()}
-                                              className="h-[22px] w-[44px] shrink-0 [&>span]:h-[18px] [&>span]:w-[18px] [&>span[data-state=checked]]:translate-x-[22px] [&>span[data-state=unchecked]]:translate-x-0"
+                                              className="scale-75 origin-left -mr-[11px] -my-[3px]"
                                             />
                                           </label>
                                         </TooltipTrigger>
@@ -1315,7 +1325,7 @@ const ImprentaNodeCardInner = memo(({
 
                                   return (
                                     <TooltipProvider delayDuration={200}>
-                                      <div className="grid w-full grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-3 lg:grid-cols-4 [&>*]:min-w-0">
+                                      <div className="flex w-full flex-wrap items-center gap-x-4 gap-y-2.5">
                                         {(currentSite?.settings?.social_media || [])
                                           .filter(isSocialMediaEntryConnected)
                                           .map((sm: any) => {
@@ -1330,21 +1340,21 @@ const ImprentaNodeCardInner = memo(({
                                         {siteUrl && renderToggle(
                                           'blog',
                                           'Blog',
-                                          <Globe size={12} />,
+                                          <Globe size={14} className="[&>svg]:stroke-[1.5px]" />,
                                           'Publish this content as a blog post on your site.'
                                         )}
                                         {isEmailDistributionAvailable && renderToggle(
                                           'mail',
                                           'Mail',
-                                          <Mail size={12} />,
+                                          <Mail size={14} className="[&>svg]:stroke-[1.5px]" />,
                                           'Send this content as an individual email to the selected audience.'
                                         )}
                                         {isEmailDistributionAvailable && renderToggle(
                                           'newsletter',
                                           'Newsletter',
                                           <FileText
-                                            size={12}
-                                            className="[&>svg]:block [&>svg]:-translate-x-px"
+                                            size={14}
+                                            className="[&>svg]:stroke-[1.5px] [&>svg]:block [&>svg]:-translate-x-px"
                                           />,
                                           'Include this content in your next newsletter to subscribers.'
                                         )}
@@ -1414,6 +1424,7 @@ const ImprentaNodeCardInner = memo(({
                                 <div className={isVisualMediaCard ? "relative" : "flex flex-col gap-2"}>
                                 {(() => {
                                   const allNodes = [...nodes, ...dummyNodes]
+                                  const parentNode = actions.getParentNode(node);
                                   const embeddedRaw = (node.result as { audience_leads?: unknown })?.audience_leads
                                   const embeddedLeads: AudienceLeadRow[] | undefined = Array.isArray(embeddedRaw)
                                     ? (embeddedRaw as AudienceLeadRow[])
@@ -1424,18 +1435,25 @@ const ImprentaNodeCardInner = memo(({
                                     (embeddedLeads?.[0]?.audience_id
                                       ? String(embeddedLeads[0].audience_id)
                                       : "")
+                                  
+                                  const mediaType = inferImprentaResultMediaType(node, allNodes);
+                                  
                                   const showLeadsCarousel =
                                     !!currentSite?.id &&
                                     (isValidPublishAudienceSource(node) ||
-                                      isDescendantOfAudienceNode(node, allNodes)) &&
+                                      isDescendantOfAudienceNode(node, allNodes) ||
+                                      (parentNode && parentNode.type === 'generate-audience') ||
+                                      mediaType === "audience") &&
                                     (!!audienceId || (embeddedLeads && embeddedLeads.length > 0))
                                   if (!showLeadsCarousel) return null
                                   return (
-                                    <ImprentaAudienceLeadsCarousel
-                                      audienceId={audienceId || String(embeddedLeads?.[0]?.audience_id ?? "")}
-                                      siteId={currentSite.id}
-                                      embeddedLeads={embeddedLeads}
-                                    />
+                                    <div className="w-full relative mt-2 pt-2 border-t border-border">
+                                      <ImprentaAudienceLeadsCarousel
+                                        audienceId={audienceId || String(embeddedLeads?.[0]?.audience_id ?? "")}
+                                        siteId={currentSite.id}
+                                        embeddedLeads={embeddedLeads}
+                                      />
+                                    </div>
                                   )
                                 })()}
                                 {(node.result as any).outputs && Array.isArray((node.result as any).outputs) && (
@@ -1479,14 +1497,25 @@ const ImprentaNodeCardInner = memo(({
                                 {!(node.result as any).outputs && !(node.result as any).media && (node.result as any).audio && (node.result as any).audio.url && (
                                   <AudioPlayer key={extractUrl((node.result as any).audio.url)} src={extractUrl((node.result as any).audio.url)} className="w-full" />
                                 )}
-                                {((node.result as any).text || (!(node.result as any).outputs && !(node.result as any).media && !(node.result as any).images && !(node.result as any).image && !(node.result as any).video && !(node.result as any).audio && !(node.result as any).text)) && (() => {
+                                {(() => {
+                                  const allNodes = [...nodes, ...dummyNodes]
+                                  const parentNode = actions.getParentNode(node);
+                                  const isAudienceNode = node.type === "generate-audience" || inferImprentaResultMediaType(node, allNodes) === "audience" || (parentNode && parentNode.type === "generate-audience");
+                                  
+                                  const hasAnyTextOrNoMedia = ((node.result as any).text || (!(node.result as any).outputs && !(node.result as any).media && !(node.result as any).images && !(node.result as any).image && !(node.result as any).video && !(node.result as any).audio && !(node.result as any).text));
+                                  
+                                  if (isAudienceNode) {
+                                    if (!hasAnyTextOrNoMedia && !(node.result as any).text) return null;
+                                  } else {
+                                    if (!hasAnyTextOrNoMedia) return null;
+                                  }
+
                                   let textContent = (node.result as any).text 
                                     ? String((node.result as any).text) 
                                     : "```json\n" + JSON.stringify(node.result, null, 2) + "\n```";
                                   
                                   const hasStructuredMedia = !!(node.result as any).outputs || !!(node.result as any).media || !!(node.result as any).images || !!(node.result as any).image || !!(node.result as any).video || !!(node.result as any).audio;
 
-                                  const parentNode = actions.getParentNode(node);
                                   const isParentTextAction = parentNode && (parentNode.type === 'prompt' || parentNode.type === 'generate-text' || (parentNode.settings as any)?.media_type === 'text');
                                   
                                   // Detect intention: did this node intend to produce media?
@@ -1582,6 +1611,11 @@ const ImprentaNodeCardInner = memo(({
                                   if (hasStructuredMedia && textContent && !isParentTextAction) {
                                     textContent = textContent.replace(/https?:\/\/[^\s"'<>()]+\.(wav|mp3|ogg|m4a|aac|flac|webm)/gi, '').trim();
                                   }
+                                  // For audience nodes, if there's no actual reasoning text and it's just a JSON dump with audience_id, don't show the code block
+                                  if (isAudienceNode && !((node.result as any).text)) {
+                                    return null;
+                                  }
+                                  
                                   if (!textContent) return null;
                                   
                                   return (
@@ -1819,6 +1853,8 @@ const ImprentaNodeCardInner = memo(({
                       </div>
   )
 })
+
+import { resolveImprentaSync } from "@/app/lib/imprenta-instance-sync"
 
 export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string }) {
   const { currentSite } = useSite()
@@ -2251,20 +2287,6 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
     return edges
   }, [nodesById, loadingNodeIds])
 
-  // Reset ephemeral UI when changing instances
-  useEffect(() => {
-    imprentaSyncedInstanceRef.current = null
-    setInitialPrompt("")
-    setNodes([])
-    setDummyNodes([])
-    setContexts([])
-    setPositions({})
-    setGeneratingNodeIds(new Set())
-    setSelectedContextId(null)
-    hoverStore.set(null)
-    setZoomedMedia(null)
-  }, [activeInstanceId])
-
   // Media parameters state
   const [selectedMediaType, setSelectedMediaType] = useState<'text' | 'image' | 'video' | 'audio' | 'audience' | 'publish'>('text')
   const [textParams, setTextParams] = useState<any>({ expectedResults: 1, length: 'medium', styles: ['default'] })
@@ -2272,16 +2294,35 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
   const [videoParams, setVideoParams] = useState<VideoParameters>({ aspectRatio: '16:9', resolution: '1080p', duration: 4, expectedResults: 1 })
   const [audioParams, setAudioParams] = useState<AudioParameters>({ format: 'MP3', sampleRate: '44.1kHz', channels: 'stereo', duration: 15, expectedResults: 1 })
 
-  // Hydrate local state from SWR cache once per instance (realtime owns updates after that)
-  // useLayoutEffect prevents 1-frame flicker where Canvas renders with empty nodes
-  useLayoutEffect(() => {
-    if (!imprentaData || !activeInstanceId) return
-    if (imprentaSyncedInstanceRef.current === activeInstanceId) return
+  const imprentaRequestedInstanceRef = useRef<string | null>(null)
 
-    imprentaSyncedInstanceRef.current = activeInstanceId
-    setNodes(imprentaData.nodes)
-    setContexts(imprentaData.contexts)
-  }, [imprentaData, activeInstanceId])
+  // Sync SWR data and handle resets when changing instances in a single pass.
+  // useLayoutEffect prevents 1-frame flicker where Canvas renders with empty nodes
+  // or a flash of old data before clearing.
+  useLayoutEffect(() => {
+    const res = resolveImprentaSync(
+      activeInstanceId,
+      imprentaData,
+      imprentaSyncedInstanceRef.current,
+      imprentaRequestedInstanceRef.current,
+      {
+        resetEphemeralState: () => {
+          setInitialPrompt("")
+          setDummyNodes([])
+          setPositions({})
+          setGeneratingNodeIds(new Set())
+          setSelectedContextId(null)
+          hoverStore.set(null)
+          setZoomedMedia(null)
+          setTempConnection(null)
+        },
+        setNodes,
+        setContexts,
+      }
+    )
+    imprentaSyncedInstanceRef.current = res.syncedId
+    imprentaRequestedInstanceRef.current = res.requestedId
+  }, [activeInstanceId, imprentaData, hoverStore])
 
   // Realtime subscriptions for nodes and contexts
   useEffect(() => {
@@ -2294,7 +2335,7 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
     const handleNodePayload = (payload: any) => {
       if (payload.eventType === 'INSERT') {
         const incoming = payload.new as InstanceNode
-        const normalized = normalizeImprentaNodeForResultMediaType(incoming)
+        const normalized = normalizeImprentaNodeForResultMediaType(incoming, nodesRef.current)
         const typeChanged = normalized.type !== incoming.type
         const mediaChanged =
           (normalized.settings as any)?.media_type !== (incoming.settings as any)?.media_type
@@ -2353,7 +2394,7 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
         })
       } else if (payload.eventType === 'UPDATE') {
         const incoming = payload.new as InstanceNode
-        const normalized = normalizeImprentaNodeForResultMediaType(incoming)
+        const normalized = normalizeImprentaNodeForResultMediaType(incoming, nodesRef.current)
         const typeChanged = normalized.type !== incoming.type
         const mediaChanged =
           (normalized.settings as any)?.media_type !== (incoming.settings as any)?.media_type
@@ -2532,6 +2573,10 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
         output_type: currentMediaType,
         parameters: { ...((node.settings as any)?.parameters || {}) }
       };
+
+      if (node.type === 'generate-audience' || currentMediaType === 'audience') {
+        contextObj.audience_channels = (node.settings as any)?.audience_channels || [];
+      }
 
       if (node.type === 'publish') {
         const dest = Array.isArray((node.settings as any)?.publish_destinations)
@@ -3903,6 +3948,7 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
           fitOnChildrenChange={false}
           initialOffsetY={0}
           enableWheelPan={true}
+          recenterDependency={`${activeInstanceId}:${nodes.length > 0 ? "ready" : "empty"}`}
           viewportStore={viewportStore}
           graphBounds={maxBounds}
           screenSpaceBehind={

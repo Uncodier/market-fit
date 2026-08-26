@@ -37,7 +37,10 @@ import {
   isValidPublicAccessToken,
 } from "@/app/documents/public-token";
 import { upsertSaleOrderItemsWithModifiers } from "./checkout-order-items"
-import { syncCheckoutDropinReservations } from "./checkout-reservations"
+import {
+  isStaffReservationCheckout,
+  syncCheckoutDropinReservations,
+} from "./checkout-reservations"
 import { kitchenDeltaForSend } from "./checkout-print-delta";
 import {
   commerceLeadCreateFields,
@@ -98,6 +101,7 @@ export interface CheckoutCartParams {
   notes?: string;
   /** Attach the sale line to this reservation instead of inserting another row. */
   existingReservationId?: string;
+  isStaffMutation?: boolean;
 }
 
 export async function checkoutCart({
@@ -126,6 +130,7 @@ export async function checkoutCart({
   publicAccessToken,
   notes,
   existingReservationId,
+  isStaffMutation,
 }: CheckoutCartParams) {
   try {
     if (clientMutationId && inputSource === "pos") {
@@ -183,6 +188,10 @@ export async function checkoutCart({
     }
     
     const isAdmin = ['shop', 'marketplace', 'quote'].includes(source);
+    const isStaffCheckout = isStaffReservationCheckout({
+      source: inputSource,
+      isStaffMutation,
+    });
     
     // For shop, userId is undefined, so we need to get the site's user_id
     let resolvedUserId = userId;
@@ -449,7 +458,7 @@ export async function checkoutCart({
             startIso: line.reservationStart!,
             endIso: line.reservationEnd!,
             quantity: line.quantity,
-            isAdmin,
+            isAdmin: isStaffCheckout,
             ignoreReservationId: existingReservationId,
           });
         }
@@ -906,7 +915,7 @@ export async function checkoutCart({
       upsertedItems,
       intent,
       isFullyPaid,
-      isAdmin: source === 'pos' || source === 'sales',
+      isAdmin: isStaffCheckout,
       finalLeadId,
       buyerUserId,
       ownerSiteId,
