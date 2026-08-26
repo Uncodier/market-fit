@@ -13,7 +13,6 @@ import {
 } from '@/app/services/chat-service'
 import {
   markInterventionMessageFailed,
-  clearInterventionMessageFailedStatus,
   interventionErrorMessageId,
 } from '@/app/services/mark-intervention-message-failed'
 
@@ -188,9 +187,16 @@ export function useChatOperations({
           : "Failed to send message to the server."
         )
         
-        // If the API already saved the message, mark that row failed instead of inserting a twin
+        // Only persist failed when the API says Temporal never started (5xx after
+        // save, or 2xx with channel_send.success false). Do not mark failed on
+        // HTTP timeout of a started send — that would fight Temporal.
         try {
           setChatMessages(prev => prev.filter(msg => msg.id !== tempUserMessage.id))
+
+          const savedMessageId = interventionErrorMessageId(apiError)
+          if (!savedMessageId) {
+            return
+          }
 
           const errorMessage = apiError instanceof Error ? apiError.message : "API communication error"
           const savedMessage = await markInterventionMessageFailed({
@@ -200,7 +206,7 @@ export function useChatOperations({
             errorMessage,
             userName,
             avatarUrl: userAvatar,
-            messageId: interventionErrorMessageId(apiError),
+            messageId: savedMessageId,
           })
 
           if (savedMessage) {
@@ -557,8 +563,6 @@ export function useChatOperations({
         : msg
     ))
 
-    await clearInterventionMessageFailedStatus(failedMessage.id)
-
     try {
       await sendTeamMemberIntervention(
         conversationId,
@@ -573,21 +577,23 @@ export function useChatOperations({
         }
       )
 
-      await clearInterventionMessageFailedStatus(failedMessage.id)
-      setChatMessages(prev => prev.map(msg => {
-        if (msg.id !== failedMessage.id) return msg
-        const metadata = { ...msg.metadata }
-        delete metadata.command_status
-        delete metadata.error_message
-        return { ...msg, metadata }
-      }))
-      console.log(`[${new Date().toISOString()}] ✅ Retry sent for message`, failedMessage.id)
+      setChatMessages(prev => prev.map(msg =>
+        msg.id === failedMessage.id
+          ? { ...msg, metadata: { ...msg.metadata, command_status: "pending", error_message: undefined } }
+          : msg
+      ))
+      console.log(`[${new Date().toISOString()}] ✅ Retry queued for message`, failedMessage.id)
     } catch (apiError) {
       logApiError(apiError, "TeamInterventionRetry")
       toast.error(apiError instanceof Error
         ? `Error: ${apiError.message}`
         : "Failed to send message to the server."
       )
+
+      const apiSavedId = interventionErrorMessageId(apiError)
+      if (!apiSavedId) {
+        return
+      }
 
       const errorMessage = apiError instanceof Error ? apiError.message : "API communication error"
       const savedMessage = await markInterventionMessageFailed({
@@ -597,7 +603,7 @@ export function useChatOperations({
         errorMessage,
         userName,
         avatarUrl: userAvatar,
-        messageId: failedMessage.id,
+        messageId: apiSavedId,
       })
 
       if (savedMessage) {

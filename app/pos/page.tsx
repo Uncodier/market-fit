@@ -60,6 +60,7 @@ export default function POSPage() {
     siteId,
     shopSettings: currentSite?.settings?.shop,
     siteTimezone: currentSite?.settings?.business_hours?.[0]?.timezone || null,
+    siteCurrency: currentSite?.settings?.currency,
     catalogItems: catalog.catalogItems,
     locations: catalog.locations,
     priceLists: catalog.priceLists,
@@ -254,6 +255,7 @@ export default function POSPage() {
     siteId,
     onLeadUpdated: leadApi.handleLeadUpdated,
     onSplitBill: () => setIsSplitBillOpen(true),
+    siteCurrency: currentSite?.settings?.currency || "USD",
     t,
   };
 

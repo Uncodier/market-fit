@@ -2,6 +2,7 @@ import {
   markInterventionMessageFailed,
   interventionErrorMessageId,
   InterventionRequestError,
+  shouldMarkInterventionFailedFromClient,
 } from "@/app/services/mark-intervention-message-failed"
 import { buildInterventionRequestBody } from "@/app/services/intervention-request"
 
@@ -144,5 +145,11 @@ describe("retry intervention payload", () => {
       conversation_id: "conv-1",
     })
     expect(interventionErrorMessageId(error)).toBe("msg-from-api")
+    expect(shouldMarkInterventionFailedFromClient(error)).toBe(true)
+  })
+
+  it("does not mark failed on a generic HTTP timeout without API evidence", () => {
+    expect(shouldMarkInterventionFailedFromClient(new Error("Failed to fetch"))).toBe(false)
+    expect(shouldMarkInterventionFailedFromClient(new InterventionRequestError("timeout"))).toBe(false)
   })
 })

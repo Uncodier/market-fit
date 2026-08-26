@@ -7,6 +7,7 @@ import { Minus, Plus } from "@/app/components/ui/icons"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { resolveItemImage } from "@/app/lib/image-utils"
 import { cn } from "@/lib/utils"
+import { useDisplayCurrency } from "@/app/context/DisplayCurrencyContext"
 import {
   cartLineExtendedTotal,
   cartLineKey,
@@ -19,7 +20,6 @@ type Props = {
   selectedCartItemId: string | null
   setSelectedCartItemId: (id: string | null) => void
   updateQty: (id: string, delta: number) => void
-  money: (n: number) => string
 }
 
 function formatReservationTime(iso: string, dateLocale: typeof enUS) {
@@ -33,9 +33,9 @@ export function PosCartLines({
   selectedCartItemId,
   setSelectedCartItemId,
   updateQty,
-  money,
 }: Props) {
   const { locale, t } = useLocalization()
+  const { formatPrice } = useDisplayCurrency()
   const dateLocale = locale === "es" ? es : enUS
 
   return (
@@ -80,12 +80,12 @@ export function PosCartLines({
                   </div>
                 ) : null}
                 <div className="text-muted-foreground text-xs mt-0.5">
-                  {money(unitTotal)}
+                  {formatPrice(unitTotal, item.currency || "USD")}
                   {item.cartDiscountPercent
                     ? ` · −${item.cartDiscountPercent}%`
                     : ""}
                   {modifiers.length > 0
-                    ? ` · ${money(cartLineExtendedTotal(item))}`
+                    ? ` · ${formatPrice(cartLineExtendedTotal(item), item.currency || "USD")}`
                     : ""}
                 </div>
               </div>
@@ -131,8 +131,8 @@ export function PosCartLines({
                         <span className="truncate">{m.name}</span>
                       </div>
                       <div className="flex gap-3 items-center flex-shrink-0">
-                        <span>{m.cartQty > 1 ? `${m.cartQty} × ` : ""}{money(m.cartPrice)}</span>
-                        <span className="font-medium text-foreground w-12 text-right">{money(m.cartPrice * m.cartQty * item.cartQty)}</span>
+                        <span>{m.cartQty > 1 ? `${m.cartQty} × ` : ""}{formatPrice(m.cartPrice, item.currency || "USD")}</span>
+                        <span className="font-medium text-foreground w-12 text-right">{formatPrice(m.cartPrice * m.cartQty * item.cartQty, item.currency || "USD")}</span>
                       </div>
                     </div>
                   ))}

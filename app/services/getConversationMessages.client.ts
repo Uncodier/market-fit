@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/client"
 import { ChatMessage, Message } from "@/app/types/chat"
+import { withMappedCommandStatus } from "@/app/services/map-chat-command-status"
 
 export async function getConversationMessages(conversationId: string): Promise<ChatMessage[]> {
   try {
@@ -143,7 +144,7 @@ export async function getConversationMessages(conversationId: string): Promise<C
         role: msg.role,
         text: msg.content,
         timestamp: new Date(msg.created_at),
-        metadata: msg.custom_data || undefined,
+        metadata: withMappedCommandStatus(msg.custom_data) as ChatMessage["metadata"],
         command_id: msg.command_id || undefined,
         sender_id: msg.user_id || msg.agent_id || msg.visitor_id || undefined,
         sender_name: msg.custom_data?.user_name || msg.custom_data?.sender_name || profile?.name,

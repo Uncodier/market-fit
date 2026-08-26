@@ -7,8 +7,10 @@ import { randomUUID } from 'crypto'
 import { InterventionRequestError } from "@/app/services/mark-intervention-message-failed"
 import {
   buildInterventionRequestBody,
+  shouldTreatInterventionAsFailed,
   type InterventionRequestOptions,
 } from "@/app/services/intervention-request"
+import { withMappedCommandStatus } from "@/app/services/map-chat-command-status"
 
 /**
  * Generate a UUID
@@ -798,7 +800,7 @@ export function convertMessagesToChatFormat(messages: Message[]): Promise<ChatMe
       role,
       text: msg.content,
       timestamp: new Date(msg.created_at),
-      metadata: msg.custom_data as Record<string, any> | undefined,
+      metadata: withMappedCommandStatus(msg.custom_data as Record<string, unknown> | null | undefined) as ChatMessage["metadata"],
       command_id: msg.command_id ?? undefined
     };
     
@@ -1088,6 +1090,17 @@ export async function sendTeamMemberIntervention(
     
     const responseData = await response.json().catch(() => ({ success: true }));
     console.log("Intervention API response:", responseData);
+
+    if (shouldTreatInterventionAsFailed(responseData)) {
+      throw new InterventionRequestError(
+        responseData?.data?.channel_send?.error || "Delivery was not started",
+        {
+          message_id: responseData?.data?.message?.message_id,
+          conversation_id: responseData?.data?.conversation_id,
+        }
+      );
+    }
+
     return responseData;
   } catch (error) {
     console.error('Error sending team member intervention:', error);

@@ -22,6 +22,11 @@ export function interventionErrorMessageId(error: unknown): string | undefined {
   return undefined
 }
 
+/** True only when the API responded that Temporal never started (has message_id). */
+export function shouldMarkInterventionFailedFromClient(error: unknown): boolean {
+  return Boolean(interventionErrorMessageId(error))
+}
+
 export type MarkInterventionFailedParams = {
   conversationId: string
   userId: string

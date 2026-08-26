@@ -10,7 +10,6 @@ import {
   cartWithQty,
   cartWithQtyDelta,
   mergeItemIntoCart,
-  modifiersUnitTotal,
 } from "@/app/pos/cart-line-utils";
 import { clearLineDiscountFields } from "@/app/pos/line-discount";
 import { buildCartFromSaleOrderItems } from "@/app/pos/populate-cart-from-order";
@@ -24,6 +23,10 @@ import {
 import { calculateOrderTaxTotal, roundMoney } from "@/app/commerce/taxes";
 import { resolveOrderShippingCost } from "@/app/commerce/delivery-options";
 import { resolveUnitPriceLocal } from "@/app/pos/local/resolve-unit-price-local";
+import {
+  posCartSubtotalInSiteCurrency,
+  posCartTaxLinesInSiteCurrency,
+} from "@/app/pos/cart-totals";
 import { usePosPromo } from "@/app/pos/hooks/use-pos-promo";
 import { hasPosCustomer } from "@/app/pos/lead-utils";
 import {
@@ -38,12 +41,15 @@ import {
 import { getOrder } from "@/app/orders/actions";
 import { isPosOpenOrder } from "@/app/pos/open-orders";
 import { toast } from "sonner";
+import { useDisplayCurrency } from "@/app/context/DisplayCurrencyContext";
+import { resolveSiteCurrency } from "@/app/commerce/checkout-currency";
 
 type UsePosCartArgs = {
   siteId?: string;
   shopSettings?: any;
   /** IANA timezone for weekday promotion checks (from site business hours). */
   siteTimezone?: string | null;
+  siteCurrency?: string | null;
   catalogItems: CatalogItem[];
   locations: any[];
   priceLists: any[];
@@ -66,7 +72,10 @@ export function usePosCart({
   getTaxesForCart,
   onRequireLead,
   t,
+  siteCurrency: siteCurrencyInput,
 }: UsePosCartArgs) {
+  const { rates } = useDisplayCurrency();
+  const siteCurrency = resolveSiteCurrency(siteCurrencyInput);
   const [cart, setCart] = useState<PosCartItem[]>([]);
   const [leadValue, setLeadValue] = useState<RelationSelectValue | string | null>(
     null,
@@ -118,6 +127,8 @@ export function usePosCart({
     hasLead,
     onRequireLead,
     t,
+    siteCurrency,
+    fxRates: rates,
   });
 
   // Hydrate cart session from Dexie
@@ -316,27 +327,15 @@ export function usePosCart({
     );
   };
 
-  const subtotal = cart.reduce(
-    (sum, item) =>
-      sum + (item.cartPrice + modifiersUnitTotal(item.modifiers)) * item.cartQty,
-    0,
+  const subtotal = posCartSubtotalInSiteCurrency(cart, siteCurrency, rates);
+  const taxTotal = useMemo(
+    () =>
+      calculateOrderTaxTotal(
+        posCartTaxLinesInSiteCurrency(cart, siteCurrency, rates),
+        taxesByItem || {},
+      ),
+    [cart, taxesByItem, siteCurrency, rates],
   );
-  const taxTotal = useMemo(() => {
-    const lines: { catalogItemId: string; subtotal: number }[] = [];
-    for (const c of cart.filter((x) => x.cartQty > 0)) {
-      lines.push({
-        catalogItemId: c.id,
-        subtotal: c.cartPrice * c.cartQty,
-      });
-      for (const m of c.modifiers || []) {
-        lines.push({
-          catalogItemId: m.catalogItemId,
-          subtotal: m.cartPrice * m.cartQty * c.cartQty,
-        });
-      }
-    }
-    return calculateOrderTaxTotal(lines, taxesByItem || {});
-  }, [cart, taxesByItem]);
   const shippingTotal = useMemo(
     () =>
       resolveOrderShippingCost(

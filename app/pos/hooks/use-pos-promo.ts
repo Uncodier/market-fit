@@ -11,6 +11,7 @@ import {
 } from "@/app/pos/local/resolve-promo-local";
 import type { LocalPromotion } from "@/app/pos/local/types";
 import type { PosCartItem } from "@/app/pos/components/CartPanel";
+import { convertCartAmountToCurrency } from "@/app/commerce/checkout-currency";
 
 export type AppliedPosPromo = LocalPromoMatch;
 
@@ -22,6 +23,8 @@ type UsePosPromoArgs = {
   hasLead?: boolean;
   onRequireLead?: () => void;
   t: (key: string) => string;
+  siteCurrency?: string;
+  fxRates?: Record<string, number>;
 };
 
 export function usePosPromo({
@@ -32,6 +35,8 @@ export function usePosPromo({
   hasLead = false,
   onRequireLead,
   t,
+  siteCurrency = "USD",
+  fxRates = {},
 }: UsePosPromoArgs) {
   const [promoCode, setPromoCode] = useState("");
   const [appliedPromo, setAppliedPromo] = useState<AppliedPosPromo | null>(
@@ -49,11 +54,16 @@ export function usePosPromo({
         return {
           catalogItemId: c.id,
           categoryId: c.category_id,
-          subtotal: (c.cartPrice + extras) * c.cartQty,
+          subtotal: convertCartAmountToCurrency(
+            (c.cartPrice + extras) * c.cartQty,
+            c.currency,
+            siteCurrency,
+            fxRates,
+          ),
           quantity: c.cartQty,
         };
       });
-  }, [cart]);
+  }, [cart, siteCurrency, fxRates]);
 
   const applyMatch = useCallback(
     (match: LocalPromoMatch, leadPresent: boolean): boolean => {

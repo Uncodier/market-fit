@@ -113,6 +113,7 @@ interface CartPanelProps {
   setShippingAddress?: (value: PosShippingAddress) => void;
   onSplitBill?: () => void;
   t: (key: string) => string;
+  siteCurrency?: string;
 }
 
 export function CartPanel({
@@ -160,9 +161,10 @@ export function CartPanel({
   setShippingAddress,
   onSplitBill,
   t,
+  siteCurrency = "USD",
 }: CartPanelProps) {
   const { formatPrice } = useDisplayCurrency();
-  const money = (amount: number) => formatPrice(amount, cart[0]?.currency || "USD");
+  const money = (amount: number) => formatPrice(amount, siteCurrency);
 
   const getTrans = (key: string, fallback: string) =>
     t(key) === key ? fallback : t(key);
@@ -219,7 +221,6 @@ export function CartPanel({
               selectedCartItemId={selectedCartItemId}
               setSelectedCartItemId={setSelectedCartItemId}
               updateQty={updateQty}
-              money={money}
             />
 
             {appliedPromo && (

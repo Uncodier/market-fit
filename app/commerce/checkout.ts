@@ -15,6 +15,12 @@ import {
 import { isRoundRobinPass } from "@/app/commerce/pass-round-robin";
 import { grantFromOrder, syncSubscriptionEntitlements } from "./entitlements";
 import { calculateOrderTaxTotal, roundMoney } from "./taxes";
+import { getUsdFxRates } from "@/app/lib/fx-rates";
+import {
+  checkoutLinesNeedFxConversion,
+  normalizeCheckoutLinesToCurrency,
+  resolveSiteCurrency,
+} from "./checkout-currency";
 import {
   findPosClientMutation,
   recordPosClientMutation,
@@ -515,6 +521,19 @@ export async function checkoutCart({
       }
     }
 
+    const orderCurrency = resolveSiteCurrency(siteSettings?.currency);
+    if (checkoutLinesNeedFxConversion(processedLines, orderCurrency)) {
+      const { rates } = await getUsdFxRates();
+      const normalized = normalizeCheckoutLinesToCurrency(
+        processedLines,
+        orderCurrency,
+        rates,
+      );
+      processedLines.length = 0;
+      processedLines.push(...normalized.lines);
+      orderSubtotal = normalized.subtotal;
+    }
+
     const { data: taxesByItem } = await getTaxesByCatalogItemIds(
       siteId,
       processedLines.map((pl) => pl.catalog_item_id)
@@ -538,13 +557,6 @@ export async function checkoutCart({
     }
 
     let orderTotal = roundMoney(orderSubtotal + orderTaxTotal + orderShippingCost);
-
-    // Verify all items have the same currency
-    const uniqueCurrencies = Array.from(new Set(processedLines.map(pl => pl.currency)));
-    if (uniqueCurrencies.length > 1) {
-      throw new Error("All items in the cart must use the same currency.");
-    }
-    const orderCurrency = uniqueCurrencies[0] || 'USD';
 
     // Fail-fast: validate promotion before creating sale/order (avoids orphan orders)
     let normalizedPromotionCode: string | undefined;
