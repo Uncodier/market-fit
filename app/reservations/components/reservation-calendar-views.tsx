@@ -60,12 +60,12 @@ export function ReservationMonthView({
               if (event.button !== 0 || !onCreateSlot) return
               const target = event.target as Element | null
               if (target?.closest && target.closest("[data-reservation-item]")) return
-              event.preventDefault()
-              begin(dateStr)
+              if (event.pointerType === "mouse") event.preventDefault()
+              begin(dateStr, event)
             }}
             className={cn(
               "bg-background p-2 relative select-none",
-              onCreateSlot && "cursor-crosshair",
+              onCreateSlot && "cursor-pointer",
               !isCurrentMonthDay && "text-muted-foreground/50",
               isCurrentDay && !isDragSelected && "bg-accent/5",
               isDragSelected && "bg-primary/15"
@@ -302,12 +302,12 @@ export function ReservationYearView({
               if (event.button !== 0 || !onCreateSlot) return
               const target = event.target as Element | null
               if (target?.closest && target.closest("[data-reservation-item]")) return
-              event.preventDefault()
-              begin(monthKey)
+              if (event.pointerType === "mouse") event.preventDefault()
+              begin(monthKey, event)
             }}
             className={cn(
               "bg-background p-4 min-h-full flex flex-col select-none",
-              onCreateSlot && "cursor-crosshair",
+              onCreateSlot && "cursor-pointer",
               isCurrentMonthHighlight && !isDragSelected && "bg-accent/5",
               isDragSelected && "bg-primary/15"
             )}

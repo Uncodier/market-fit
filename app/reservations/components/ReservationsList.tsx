@@ -11,15 +11,17 @@ import {
   ReservationsEmpty,
   ReservationsTableFrame,
 } from "./reservation-table"
+import { sortReservationGroups, type ReservationSortBy } from "../reservation-helpers"
 
 interface ReservationsListProps {
   reservations: Reservation[]
+  sortBy: ReservationSortBy
   siteId: string
   onUpdate: () => void
   onEdit: (reservation: Reservation) => void
 }
 
-export function ReservationsList({ reservations, siteId, onUpdate, onEdit }: ReservationsListProps) {
+export function ReservationsList({ reservations, sortBy, siteId, onUpdate, onEdit }: ReservationsListProps) {
   const { t } = useLocalization()
   const [updating, setUpdating] = useState<string | null>(null)
 
@@ -35,18 +37,23 @@ export function ReservationsList({ reservations, siteId, onUpdate, onEdit }: Res
     setUpdating(null)
   }
 
-  const grouped = reservations.reduce((acc, res) => {
-    const type = res.resource_type || "catalog_item"
-    const serviceName =
-      type === "location"
-        ? (res.location?.name || t("visits.resource.locationFallback"))
-        : type === "employee"
-          ? t("visits.resource.teamFallback")
-          : (res.catalog_item?.name || t("reservations.resource.unknownService"))
-    if (!acc[serviceName]) acc[serviceName] = []
-    acc[serviceName].push(res)
-    return acc
-  }, {} as Record<string, Reservation[]>)
+  const grouped = sortReservationGroups(
+    Object.entries(
+      reservations.reduce((acc, res) => {
+        const type = res.resource_type || "catalog_item"
+        const serviceName =
+          type === "location"
+            ? (res.location?.name || t("visits.resource.locationFallback"))
+            : type === "employee"
+              ? t("visits.resource.teamFallback")
+              : (res.catalog_item?.name || t("reservations.resource.unknownService"))
+        if (!acc[serviceName]) acc[serviceName] = []
+        acc[serviceName].push(res)
+        return acc
+      }, {} as Record<string, Reservation[]>)
+    ),
+    sortBy
+  )
 
   if (reservations.length === 0) {
     return <ReservationsEmpty />
@@ -54,7 +61,7 @@ export function ReservationsList({ reservations, siteId, onUpdate, onEdit }: Res
 
   return (
     <ReservationsTableFrame count={reservations.length}>
-      {Object.entries(grouped).map(([serviceName, resList]) => (
+      {grouped.map(([serviceName, resList]) => (
         <React.Fragment key={serviceName}>
           <ReservationGroupHeader title={serviceName} count={resList.length} />
           {resList.map((reservation) => (

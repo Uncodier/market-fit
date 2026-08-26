@@ -12,7 +12,7 @@ export default async function AppleIcon({
   params: Promise<{ siteSlug: string; itemId: string }>
 }) {
   const { itemId } = await params
-  const item = await getPdpCatalogItem(itemId)
+  const item = await getPdpCatalogItem(itemId, { requireStorefront: true })
   const source = item
     ? resolveCatalogItemShareImageSource(item as any)
     : { kind: "url" as const, url: "/images/logo.png" }

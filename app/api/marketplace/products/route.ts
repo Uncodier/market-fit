@@ -2,6 +2,7 @@ import { createServiceClient } from "@/lib/supabase/server"
 import { attachSiteSettings } from "@/app/marketplace/attach-site-settings"
 import { applyChannelPricesToItems } from "@/app/price-lists/apply-channel-prices"
 import { loadVariantListingPreviews } from "@/app/catalog/variant-resolve"
+import { applyStorefrontAvailability } from "@/app/catalog/storefront-availability"
 import { NextResponse } from "next/server"
 
 export async function GET(request: Request) {
@@ -18,13 +19,14 @@ export async function GET(request: Request) {
     // Public marketplace aggregation — same pattern as /shop
     const supabase = await createServiceClient(true)
 
-    let query = supabase
-      .from('catalog_items')
-      .select('*, site:sites!inner(id, name, logo_url), raw_specs:catalog_item_specs(sort_order, item_spec:item_specs(*, category:item_spec_categories(*)))', { count: 'exact' })
-      .eq('is_marketplace_listed', true)
-      .eq('status', 'active')
-      .eq('availability_status', 'available')
-      .is('parent_id', null)
+    let query = applyStorefrontAvailability(
+      supabase
+        .from('catalog_items')
+        .select('*, site:sites!inner(id, name, logo_url), raw_specs:catalog_item_specs(sort_order, item_spec:item_specs(*, category:item_spec_categories(*)))', { count: 'exact' })
+        .eq('is_marketplace_listed', true)
+        .eq('status', 'active')
+        .is('parent_id', null)
+    )
 
     if (kind && kind !== 'all') {
       query = query.eq('kind', kind)

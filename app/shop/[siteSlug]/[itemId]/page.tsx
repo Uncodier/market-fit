@@ -19,7 +19,7 @@ export async function generateMetadata({ params }: { params: Promise<{ siteSlug:
   
   if (!itemId) return { title: 'Shop Item | Makinari' };
   
-  const item = await getPdpShareItem(itemId);
+  const item = await getPdpShareItem(itemId, { requireStorefront: true });
   if (!item) return { title: 'Shop Item | Makinari' };
 
   const path = siteSlug
@@ -48,7 +48,7 @@ export default async function ShopItemPage({ params }: { params: Promise<{ siteS
 async function ShopItemContent({ siteSlug, itemId }: { siteSlug: string; itemId: string }) {
   // Prefer resolving via catalog item (includes site join) so a flaky slug scan
   // does not block the PDP when we already have a stable item id.
-  const item = await getPdpCatalogItem(itemId)
+  const item = await getPdpCatalogItem(itemId, { requireStorefront: true })
   if (!item) {
     notFound()
   }

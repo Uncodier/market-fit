@@ -22,7 +22,7 @@ import { SearchInput } from "@/app/components/ui/search-input"
 import { reservationResourceLabel } from "@/app/visits/visit-helpers"
 import { CreateReservationDialog } from "./components/CreateReservationDialog"
 import { CreateCalendarBlockDialog } from "./components/CreateCalendarBlockDialog"
-import { reservationCanEdit } from "./reservation-helpers"
+import { reservationCanEdit, sortReservations, type ReservationSortBy } from "./reservation-helpers"
 import type { CalendarTimeSlot } from "./components/reservation-calendar-hour-select"
 import type { Reservation } from "@/app/types"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
@@ -35,7 +35,7 @@ export default function ReservationsPage() {
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedMember, setSelectedMember] = useState<string>("all")
   const [statusFilter, setStatusFilter] = useState<"active" | "cancelled">("active")
-  const [sortBy, setSortBy] = useState<"newest" | "oldest">("newest")
+  const [sortBy, setSortBy] = useState<ReservationSortBy>("newest")
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [editingReservation, setEditingReservation] = useState<Reservation | null>(null)
   const [createSlot, setCreateSlot] = useState<CalendarTimeSlot | null>(null)
@@ -109,33 +109,28 @@ export default function ReservationsPage() {
       filtered = filtered.filter((r) => r.assignee_user_id === selectedMember)
     }
 
-    const sorted = filtered.sort((a, b) => {
-      const dateA = new Date(a.start_time).getTime()
-      const dateB = new Date(b.start_time).getTime()
-      if (sortBy === "oldest") return dateA - dateB
-      return dateB - dateA // newest first
-    })
-
     const query = searchQuery.trim().toLowerCase()
-    if (!query) return sorted
-
-    return sorted.filter((reservation) => {
-      const service = reservationResourceLabel({
-        resource_type: reservation.resource_type,
-        catalog_item: reservation.catalog_item,
-        location: reservation.location,
+    if (query) {
+      filtered = filtered.filter((reservation) => {
+        const service = reservationResourceLabel({
+          resource_type: reservation.resource_type,
+          catalog_item: reservation.catalog_item,
+          location: reservation.location,
+        })
+        const haystack = [
+          reservation.lead?.name,
+          reservation.lead?.email,
+          reservation.buyer_profile?.name,
+          service,
+        ]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase()
+        return haystack.includes(query)
       })
-      const haystack = [
-        reservation.lead?.name,
-        reservation.lead?.email,
-        reservation.buyer_profile?.name,
-        service,
-      ]
-        .filter(Boolean)
-        .join(" ")
-        .toLowerCase()
-      return haystack.includes(query)
-    })
+    }
+
+    return sortReservations(filtered, sortBy)
   }, [reservations, searchQuery, selectedMember, sortBy, statusFilter])
 
   return (
@@ -264,12 +259,14 @@ export default function ReservationsPage() {
         ) : viewMode === "service" ? (
           <ReservationsList
             reservations={filteredReservations}
+            sortBy={sortBy}
             siteId={currentSite.id}
             onUpdate={mutate}
             onEdit={openEdit} />
         ) : (
           <ReservationsByDateList
             reservations={filteredReservations}
+            sortBy={sortBy}
             siteId={currentSite.id}
             onUpdate={mutate}
             onEdit={openEdit} />

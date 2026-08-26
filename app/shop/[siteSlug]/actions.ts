@@ -15,6 +15,7 @@ import {
 } from "./shop-catalog-shared";
 import { loadChannelPriceMap } from "@/app/price-lists/apply-channel-prices";
 import { loadVariantListingPreviews } from "@/app/catalog/variant-resolve";
+import { applyStorefrontAvailability } from "@/app/catalog/storefront-availability";
 
 /** Keep getShopCatalog + getShopCategoryOffsets on the same key order. */
 function applyShopCatalogOrder<T extends { order: (...args: any[]) => T }>(query: T): T {
@@ -125,13 +126,15 @@ export async function getShopCategoryOffsets(siteId: string): Promise<ShopCatego
 
       // Same order as getShopCatalog so range() jumps land on category starts.
       const { data: rows, error } = await applyShopCatalogOrder(
-        supabase
-          .from("catalog_items")
-          .select("category:catalog_categories(name, sort_order)")
-          .eq("site_id", siteId)
-          .eq("status", "active")
-          .eq("is_marketplace_listed", true)
-          .is("parent_id", null)
+        applyStorefrontAvailability(
+          supabase
+            .from("catalog_items")
+            .select("category:catalog_categories(name, sort_order)")
+            .eq("site_id", siteId)
+            .eq("status", "active")
+            .eq("is_marketplace_listed", true)
+            .is("parent_id", null)
+        )
       );
 
       if (error || !rows) return [];
@@ -141,8 +144,8 @@ export async function getShopCategoryOffsets(siteId: string): Promise<ShopCatego
       );
       return buildShopCategoryOffsets(names);
     },
-    // v5: fixed category sort order relying on global sort_order
-    ["shop-category-offsets-v5", siteId],
+    // v6: hide manual unavailable items from storefront
+    ["shop-category-offsets-v6", siteId],
     {
       revalidate: SHOP_CACHE_REVALIDATE_SECONDS,
       tags: [shopCacheTag(siteId)],
@@ -197,6 +200,8 @@ export async function getShopCatalog(
         .eq("is_marketplace_listed", true)
         .is("parent_id", null);
 
+      query = applyStorefrontAvailability(query);
+
       if (search) {
         query = query.ilike("name", `%${search}%`);
       }
@@ -238,8 +243,8 @@ export async function getShopCatalog(
         offset,
       };
     },
-    // v5: fixed category sort order relying on global sort_order
-    ["shop-catalog-v5", siteId, String(offset), String(pageSize), search, category],
+    // v6: hide manual unavailable items from storefront
+    ["shop-catalog-v6", siteId, String(offset), String(pageSize), search, category],
     {
       revalidate: SHOP_CACHE_REVALIDATE_SECONDS,
       tags: [shopCacheTag(siteId)],

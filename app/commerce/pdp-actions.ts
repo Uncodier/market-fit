@@ -3,8 +3,13 @@ import { CatalogItem } from "@/app/types";
 import { mergeParentIntoCatalogItem } from "@/app/catalog/product-details";
 import { resolveVariantAxesForDisplay } from "@/app/catalog/variant-resolve";
 import { loadChannelPriceMap } from "@/app/price-lists/apply-channel-prices";
+import { applyStorefrontAvailability } from "@/app/catalog/storefront-availability";
 
-export async function getPdpCatalogItem(itemId: string, options?: { siteId?: string, requireMarketplace?: boolean }) {
+export async function getPdpCatalogItem(itemId: string, options?: {
+  siteId?: string
+  requireMarketplace?: boolean
+  requireStorefront?: boolean
+}) {
   const supabase = await createServiceClient(true);
   
   let query = supabase
@@ -23,7 +28,10 @@ export async function getPdpCatalogItem(itemId: string, options?: { siteId?: str
   }
   
   if (options?.requireMarketplace) {
-    query = query.eq("is_marketplace_listed", true).eq("availability_status", "available");
+    query = query.eq("is_marketplace_listed", true);
+  }
+  if (options?.requireMarketplace || options?.requireStorefront) {
+    query = applyStorefrontAvailability(query);
   }
   
   const { data: item, error } = await query.single();
@@ -153,7 +161,7 @@ export async function getPdpCatalogItem(itemId: string, options?: { siteId?: str
 /** Lightweight PDP row for generateMetadata so loading.tsx can paint while the full item loads. */
 export async function getPdpShareItem(
   itemId: string,
-  options?: { requireMarketplace?: boolean },
+  options?: { requireMarketplace?: boolean; requireStorefront?: boolean },
 ) {
   const supabase = await createServiceClient(true)
   let query = supabase
@@ -163,7 +171,10 @@ export async function getPdpShareItem(
     .eq("status", "active")
 
   if (options?.requireMarketplace) {
-    query = query.eq("is_marketplace_listed", true).eq("availability_status", "available")
+    query = query.eq("is_marketplace_listed", true)
+  }
+  if (options?.requireMarketplace || options?.requireStorefront) {
+    query = applyStorefrontAvailability(query)
   }
 
   const { data, error } = await query.maybeSingle()

@@ -7,6 +7,7 @@ import { buildShareMetadata } from "@/app/lib/commerce-metadata"
 import { getMarketplaceMerchandising } from "@/app/promotions/storefront-promotions"
 import { applyChannelPricesToItems } from "@/app/price-lists/apply-channel-prices"
 import { loadVariantListingPreviews } from "@/app/catalog/variant-resolve"
+import { applyStorefrontAvailability } from "@/app/catalog/storefront-availability"
 
 export const dynamic = "force-dynamic"
 
@@ -22,13 +23,14 @@ export default async function MarketplacePage() {
   // Public marketplace aggregation — same pattern as /shop (service role bypasses RLS)
   const supabase = await createServiceClient(true)
 
-  const { data: catalogItems, count, error } = await supabase
-    .from('catalog_items')
-    .select('*, site:sites!inner(id, name, logo_url)', { count: 'exact' })
-    .eq('is_marketplace_listed', true)
-    .eq('status', 'active')
-    .eq('availability_status', 'available')
-    .is('parent_id', null)
+  const { data: catalogItems, count, error } = await applyStorefrontAvailability(
+    supabase
+      .from('catalog_items')
+      .select('*, site:sites!inner(id, name, logo_url)', { count: 'exact' })
+      .eq('is_marketplace_listed', true)
+      .eq('status', 'active')
+      .is('parent_id', null)
+  )
     .order('created_at', { ascending: false })
     .limit(20)
 
