@@ -1,4 +1,5 @@
-import { getBookedSeats, getAvailableSlots, assertReservationSlot, intervalsOverlap } from '../../app/reservations/availability';
+import { getBookedSeats, getAvailableSlots, assertReservationSlot } from '../../app/reservations/availability';
+import { intervalsOverlap } from '../../app/reservations/interval-overlap';
 import { addDays, addMinutes, format } from 'date-fns';
 import { fromZonedTime } from 'date-fns-tz';
 

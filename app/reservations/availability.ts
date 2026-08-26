@@ -1,14 +1,9 @@
 "use server"
 
 import { createServiceClient } from "@/lib/supabase/server"
-import {
-  addDays,
-  addMinutes,
-  parseISO,
-  isAfter,
-  isBefore,
-} from "date-fns"
+import { addDays, addMinutes, isAfter, isBefore, parseISO } from "date-fns"
 import { formatInTimeZone, fromZonedTime } from "date-fns-tz"
+import { intervalsOverlap } from "@/app/reservations/interval-overlap"
 
 const DEFAULT_TZ = "America/Mexico_City"
 
@@ -54,11 +49,6 @@ function getTimeBlocks(dayConfig: any): { start: string; end: string }[] {
     return [{ start: dayConfig.start, end: dayConfig.end }]
   }
   return []
-}
-
-/** Half-open intervals [start, end): back-to-back slots do not overlap. */
-export function intervalsOverlap(startA: Date, endA: Date, startB: Date, endB: Date): boolean {
-  return isBefore(startA, endB) && isAfter(endA, startB)
 }
 
 function applyExclusiveTimeOverlap(query: any, startIso: string, endIso: string) {
