@@ -113,6 +113,18 @@ describe("calendarBlockAppliesToGroup", () => {
     expect(calendarBlockAppliesToGroup(serviceBlock, "catalog:svc-2")).toBe(false)
     expect(calendarBlockAppliesToGroup(block(), "catalog:svc-1")).toBe(true)
   })
+
+  it("applies parent service blocks to a rolled-up column", () => {
+    const parentBlock = block({ entity_type: "catalog_item", entity_id: "emmanuel" })
+    expect(calendarBlockAppliesToGroup(parentBlock, "catalog:emmanuel", ["emmanuel", "corte"])).toBe(true)
+    expect(calendarBlockAppliesToGroup(parentBlock, "catalog:cris", ["cris"])).toBe(false)
+  })
+
+  it("applies child variant blocks to the parent column", () => {
+    const variantBlock = block({ entity_type: "catalog_item", entity_id: "corte" })
+    expect(calendarBlockAppliesToGroup(variantBlock, "catalog:emmanuel", ["emmanuel", "corte"])).toBe(true)
+    expect(calendarBlockAppliesToGroup(variantBlock, "catalog:emmanuel")).toBe(false)
+  })
 })
 
 describe("groupTimelineByLocalDate", () => {

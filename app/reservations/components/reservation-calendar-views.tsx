@@ -184,12 +184,14 @@ export function ReservationDayView({
             </div>
           ))}
         </div>
-        {(columns || [{ key: "all", reservations: dayReservations }]).map((group) => (
+        {(columns || [{ key: "all", reservations: dayReservations, catalogIds: [] }]).map((group) => (
           <div key={group.key} className="min-w-0">
             <ReservationTimeColumn
               date={selectedDate}
               reservations={group.reservations}
-              blocks={dayBlocks.filter((span) => calendarBlockAppliesToGroup(span.block, group.key))}
+              blocks={dayBlocks.filter((span) =>
+                calendarBlockAppliesToGroup(span.block, group.key, group.catalogIds)
+              )}
               isCurrentDay={isCurrentDay}
               currentTime={currentTime}
               timePosition={timePosition}

@@ -1,5 +1,9 @@
 import type { Reservation } from "@/app/types"
-import { reservationServiceColorKey, reservationServiceName } from "../reservation-helpers"
+import {
+  reservationColumnCatalogId,
+  reservationServiceColorKey,
+  reservationServiceColumnLabel,
+} from "../reservation-helpers"
 
 export const CALENDAR_HOUR_HEIGHT = 80
 export const CALENDAR_MIN_EVENT_HEIGHT = 24
@@ -23,6 +27,7 @@ export type ReservationServiceGroup = {
   label: string
   sample: Reservation
   reservations: Reservation[]
+  catalogIds: string[]
 }
 
 type TimedSpan<T extends TimedReservation> = {
@@ -47,8 +52,17 @@ export function reservationTimeSpan(reservation: TimedReservation) {
 }
 
 export function reservationServiceGroupKey(reservation: Reservation) {
-  if (reservation.catalog_item_id) return `catalog:${reservation.catalog_item_id}`
+  const columnId = reservationColumnCatalogId(reservation)
+  if (columnId) return `catalog:${columnId}`
   return reservationServiceColorKey(reservation)
+}
+
+function reservationGroupCatalogIds(reservation: Reservation) {
+  const ids = [
+    reservationColumnCatalogId(reservation),
+    reservation.catalog_item_id,
+  ].filter((id): id is string => !!id)
+  return Array.from(new Set(ids))
 }
 
 export function groupReservationsByService(reservations: Reservation[]): ReservationServiceGroup[] {
@@ -62,13 +76,17 @@ export function groupReservationsByService(reservations: Reservation[]): Reserva
     const existing = groups.get(key)
     if (existing) {
       existing.reservations.push(reservation)
+      for (const catalogId of reservationGroupCatalogIds(reservation)) {
+        if (!existing.catalogIds.includes(catalogId)) existing.catalogIds.push(catalogId)
+      }
       continue
     }
     groups.set(key, {
       key,
-      label: reservationServiceName(reservation, "Unknown Service"),
+      label: reservationServiceColumnLabel(reservation, "Unknown Service"),
       sample: reservation,
       reservations: [reservation],
+      catalogIds: reservationGroupCatalogIds(reservation),
     })
   }
 

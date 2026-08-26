@@ -71,6 +71,32 @@ describe("reservation service colors", () => {
     expect(reservationServiceColorKey({ catalog_item: { name: "Haircut" } })).toBe("name:Haircut")
   })
 
+  it("rolls variant colors up to the parent catalog item", () => {
+    expect(
+      reservationServiceColorKey({
+        catalog_item_id: "corte",
+        catalog_item: {
+          name: "Corte",
+          parent_id: "emmanuel",
+          parent: { name: "EMMANUEL" },
+        },
+      })
+    ).toBe("catalog:emmanuel")
+  })
+
+  it("keeps independent variant colors on the leaf catalog item", () => {
+    expect(
+      reservationServiceColorKey({
+        catalog_item_id: "corte",
+        catalog_item: {
+          name: "Corte",
+          parent_id: "emmanuel",
+          metadata: { reservation_mode: "independent" },
+        },
+      })
+    ).toBe("catalog:corte")
+  })
+
   it("spreads different catalog items across the palette", () => {
     const swatches = new Set(
       ["massage", "haircut", "facial", "manicure", "training", "consult"].map(

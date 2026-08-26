@@ -108,9 +108,17 @@ export function groupBlockSpansByDate(blocks: CalendarBlock[]): Record<string, C
   return grouped
 }
 
-export function calendarBlockAppliesToGroup(block: CalendarBlock, groupKey: string) {
+export function calendarBlockAppliesToGroup(
+  block: CalendarBlock,
+  groupKey: string,
+  groupCatalogIds?: string[]
+) {
   if (groupKey === "all") return true
-  if (block.entity_type === "catalog_item") return groupKey === `catalog:${block.entity_id}`
+  if (block.entity_type === "catalog_item") {
+    if (!block.entity_id) return false
+    if (groupKey === `catalog:${block.entity_id}`) return true
+    return groupCatalogIds?.includes(block.entity_id) ?? false
+  }
   return true
 }
 

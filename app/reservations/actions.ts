@@ -11,7 +11,7 @@ export async function getReservations(siteId: string) {
       .from("reservations")
       .select(`
         *,
-        catalog_item:catalog_items(id, name, description, kind),
+        catalog_item:catalog_items(id, name, description, kind, parent_id, metadata, parent:parent_id(name)),
         location:locations(id, name),
         lead:leads(id, name, email, phone)
       `)

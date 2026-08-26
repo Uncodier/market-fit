@@ -95,4 +95,67 @@ describe("groupReservationsByService", () => {
     expect(groups[0].reservations.map((item) => item.id)).toEqual(["a", "c"])
     expect(groups[0].label).toBe("CRIS")
   })
+
+  it("rolls variant reservations up to the parent column", () => {
+    const groups = groupReservationsByService([
+      reservation("parent", {
+        catalog_item_id: "emmanuel",
+        catalog_item: { name: "EMMANUEL" },
+      }),
+      reservation("variant", {
+        catalog_item_id: "corte",
+        catalog_item: {
+          name: "Corte",
+          parent_id: "emmanuel",
+          parent: { name: "EMMANUEL" },
+        },
+      }),
+    ])
+
+    expect(groups).toHaveLength(1)
+    expect(groups[0].key).toBe("catalog:emmanuel")
+    expect(groups[0].label).toBe("EMMANUEL")
+    expect(groups[0].reservations.map((item) => item.id)).toEqual(["parent", "variant"])
+    expect(groups[0].catalogIds).toEqual(["emmanuel", "corte"])
+    expect(groups[0].reservations[1].catalog_item?.name).toBe("Corte")
+  })
+
+  it("keeps independent variants on their own column", () => {
+    const groups = groupReservationsByService([
+      reservation("parent", {
+        catalog_item_id: "emmanuel",
+        catalog_item: { name: "EMMANUEL" },
+      }),
+      reservation("variant", {
+        catalog_item_id: "corte",
+        catalog_item: {
+          name: "Corte",
+          parent_id: "emmanuel",
+          parent: { name: "EMMANUEL" },
+          metadata: { reservation_mode: "independent" },
+        },
+      }),
+    ])
+
+    expect(groups.map((group) => group.key)).toEqual(["catalog:emmanuel", "catalog:corte"])
+    expect(groups[1].label).toBe("Corte")
+  })
+
+  it("rolls override variants up to the parent column", () => {
+    const groups = groupReservationsByService([
+      reservation("variant", {
+        catalog_item_id: "corte",
+        catalog_item: {
+          name: "Corte",
+          parent_id: "emmanuel",
+          parent: { name: "EMMANUEL" },
+          metadata: { reservation_mode: "override" },
+        },
+      }),
+    ])
+
+    expect(groups.map((group) => ({ key: group.key, label: group.label }))).toEqual([
+      { key: "catalog:emmanuel", label: "EMMANUEL" },
+    ])
+  })
 })

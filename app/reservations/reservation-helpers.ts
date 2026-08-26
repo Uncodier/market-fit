@@ -54,6 +54,28 @@ type ServiceColorReservation = Pick<
   "catalog_item_id" | "location_id" | "assignee_user_id" | "resource_type" | "catalog_item" | "location"
 >
 
+export function reservationRollsUpToParent(reservation: ServiceColorReservation) {
+  const parentId = reservation.catalog_item?.parent_id
+  if (!parentId) return false
+  const mode = reservation.catalog_item?.metadata?.reservation_mode || "parent"
+  return mode !== "independent"
+}
+
+export function reservationColumnCatalogId(reservation: ServiceColorReservation) {
+  if (!reservation.catalog_item_id) return null
+  if (reservationRollsUpToParent(reservation) && reservation.catalog_item?.parent_id) {
+    return reservation.catalog_item.parent_id
+  }
+  return reservation.catalog_item_id
+}
+
+export function reservationServiceColumnLabel(reservation: Reservation, fallback = "Unknown Service") {
+  if (reservationRollsUpToParent(reservation)) {
+    return reservation.catalog_item?.parent?.name || reservationServiceName(reservation, fallback)
+  }
+  return reservationServiceName(reservation, fallback)
+}
+
 export const RESERVATION_SERVICE_COLORS = [
   {
     badge: "bg-violet-500/10 text-violet-700 dark:text-violet-400 border-violet-500/20",
@@ -114,7 +136,8 @@ function hashString(value: string) {
 }
 
 export function reservationServiceColorKey(reservation: ServiceColorReservation) {
-  if (reservation.catalog_item_id) return `catalog:${reservation.catalog_item_id}`
+  const columnId = reservationColumnCatalogId(reservation)
+  if (columnId) return `catalog:${columnId}`
   if (reservation.location_id) return `location:${reservation.location_id}`
   if (reservation.assignee_user_id) return `employee:${reservation.assignee_user_id}`
   const name = reservation.catalog_item?.name || reservation.location?.name
