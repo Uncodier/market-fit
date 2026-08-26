@@ -1,3 +1,8 @@
+export const overlayZClassName = "z-[1000000]"
+export const dialogContentZClassName = "z-[1000001]"
+/** Portaled menus/selects/popovers must sit above dialog content. */
+export const floatingLayerZClassName = "z-[1000050]"
+
 export const overlayClassName =
   "fixed inset-0 z-[1000000] bg-black/40 dark:bg-black/50 backdrop-blur-[2px] data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0"
 

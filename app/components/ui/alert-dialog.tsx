@@ -6,8 +6,10 @@ import * as AlertDialogPrimitive from "@radix-ui/react-alert-dialog"
 import { cn } from "@/lib/utils"
 import { Button, buttonVariants } from "@/app/components/ui/button"
 import {
+  dialogContentZClassName,
   dialogSizeClassName,
   overlayClassName,
+  overlayZClassName,
   type DialogSize,
 } from "@/app/components/ui/overlay-styles"
 
@@ -22,7 +24,7 @@ const AlertDialogOverlay = React.forwardRef<
   React.ComponentPropsWithoutRef<typeof AlertDialogPrimitive.Overlay>
 >(({ className, ...props }, ref) => (
   <AlertDialogPrimitive.Overlay
-    className={cn(overlayClassName, "z-[1000000]", className)}
+    className={cn(overlayClassName, overlayZClassName, className)}
     {...props}
     ref={ref}
   />
@@ -44,7 +46,8 @@ const AlertDialogContent = React.forwardRef<
     <AlertDialogPrimitive.Content
       ref={ref}
       className={cn(
-        "fixed z-[1000001] grid w-full gap-4 border bg-background p-6 shadow-lg duration-200",
+        "fixed grid w-full gap-4 border bg-background p-6 shadow-lg duration-200",
+        dialogContentZClassName,
         "inset-x-0 bottom-0 top-auto translate-x-0 translate-y-0 rounded-t-2xl",
         "data-[state=open]:animate-in data-[state=closed]:animate-out",
         "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",

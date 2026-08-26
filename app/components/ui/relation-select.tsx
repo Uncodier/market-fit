@@ -245,7 +245,7 @@ export function RelationSelect({
           </div>
         </PopoverTrigger>
         <PopoverContent 
-          className="p-1 w-[var(--radix-popover-trigger-width)] max-h-[300px] z-[1000000] font-inter overflow-auto" 
+          className="p-1 w-[var(--radix-popover-trigger-width)] max-h-[300px] font-inter overflow-auto" 
           align="start"
           onOpenAutoFocus={(e) => e.preventDefault()}
         >

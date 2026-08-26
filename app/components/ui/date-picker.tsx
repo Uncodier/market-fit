@@ -715,7 +715,7 @@ export function DatePicker({
           {resolvedTrigger}
         </PopoverTrigger>
         <PopoverContent
-          className="p-0 w-auto max-w-[calc(100vw-2rem)] sm:max-w-none z-[1000050]"
+          className="p-0 w-auto max-w-[calc(100vw-2rem)] sm:max-w-none"
           side={position}
           align="center"
           onInteractOutside={(event) => {

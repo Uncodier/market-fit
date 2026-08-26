@@ -8,8 +8,10 @@ import { buttonVariants } from "@/app/components/ui/button"
 import { cn } from "@/lib/utils"
 import {
   dialogContentOverflowClassName,
+  dialogContentZClassName,
   dialogSizeClassName,
   overlayClassName,
+  overlayZClassName,
   preventDismissFromFloatingLayer,
   type DialogSize,
 } from "@/app/components/ui/overlay-styles"
@@ -28,7 +30,7 @@ const DialogOverlay = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <DialogPrimitive.Overlay
     ref={ref}
-    className={cn(overlayClassName, "z-[1000000]", className)}
+    className={cn(overlayClassName, overlayZClassName, className)}
     {...props}
   />
 ))
@@ -36,7 +38,8 @@ DialogOverlay.displayName = DialogPrimitive.Overlay.displayName
 
 const dialogContentVariants = cva(
   [
-    "fixed z-[1000001] flex w-full flex-col border bg-background shadow-lg outline-none duration-200",
+    "fixed flex w-full flex-col border bg-background shadow-lg outline-none duration-200",
+    dialogContentZClassName,
     dialogContentOverflowClassName,
     "max-h-[min(90vh,720px)] p-0",
     "inset-x-0 bottom-0 top-auto translate-x-0 translate-y-0 rounded-t-2xl",

@@ -1,12 +1,26 @@
 import {
   dialogContentOverflowClassName,
+  dialogContentZClassName,
   dialogSizeClassName,
+  floatingLayerZClassName,
   isDismissEventFromFloatingLayer,
   overlayClassName,
+  overlayZClassName,
   preventDismissFromFloatingLayer,
 } from "@/app/components/ui/overlay-styles"
 
 describe("overlay styles", () => {
+  it("stacks portaled menus above dialog content", () => {
+    expect(overlayZClassName).toBe("z-[1000000]")
+    expect(dialogContentZClassName).toBe("z-[1000001]")
+    expect(floatingLayerZClassName).toBe("z-[1000050]")
+    expect(overlayClassName).toContain(overlayZClassName)
+
+    const zValue = (className: string) => Number(className.match(/z-\[(\d+)\]/)?.[1])
+    expect(zValue(floatingLayerZClassName)).toBeGreaterThan(zValue(dialogContentZClassName))
+    expect(zValue(dialogContentZClassName)).toBeGreaterThan(zValue(overlayZClassName))
+  })
+
   it("uses a light dim overlay with a thin blur", () => {
     expect(overlayClassName).toContain("bg-black/40")
     expect(overlayClassName).toContain("dark:bg-black/50")
