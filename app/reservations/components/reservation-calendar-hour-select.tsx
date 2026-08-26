@@ -296,6 +296,7 @@ export function HourCell({
       data-hour-cell
       data-hour={hour}
       data-day={localDateKey(date)}
+      data-calendar-current-hour={isCurrentHourBlock || undefined}
       onPointerDown={(event) => {
         if (event.button !== 0 || !onBeginDrag) return
         const target = event.target as Element | null

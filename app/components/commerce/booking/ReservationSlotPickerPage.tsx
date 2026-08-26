@@ -21,11 +21,11 @@ import { EmptyCard } from "@/app/components/ui/empty-card"
 import { Skeleton } from "@/app/components/ui/skeleton"
 import { Card, CardContent } from "@/app/components/ui/card"
 import { cn } from "@/lib/utils"
-import { isSameSlotInstant, shouldShowSlotLeftover } from "../reservation-slot-utils"
+import { formatSlotTime, formatSlotTimeZoneName, isSameSlotInstant, shouldShowSlotLeftover, type SlotTimeDisplay } from "../reservation-slot-utils"
 
 interface ReservationSlotPickerPageProps {
   dateLocale: Locale
-  t: (key: string) => string
+  t: (key: string, params?: Record<string, string | number>) => string
   locale: string
   currentMonth: Date
   setCurrentMonth: (date: Date) => void
@@ -37,7 +37,7 @@ interface ReservationSlotPickerPageProps {
   calendarDays: Date[]
   monthAvailability: Record<string, boolean>
   isLoadingSlots: boolean
-  slotsForSelectedDate: { start: string; end: string; available: number }[]
+  slotsForSelectedDate: { start: string; end: string; available: number; timezone?: string }[]
   selectedStartIso?: string
   selectedSlot: { start: string; end: string } | null
   hideDetailsStep: boolean
@@ -51,6 +51,7 @@ interface ReservationSlotPickerPageProps {
   setGuestsString: (v: string) => void
   notes: string
   setNotes: (v: string) => void
+  timeDisplay: SlotTimeDisplay
 }
 
 const cardSurface =
@@ -84,6 +85,7 @@ export function ReservationSlotPickerPage({
   setGuestsString,
   notes,
   setNotes,
+  timeDisplay,
 }: ReservationSlotPickerPageProps) {
   return (
     <div className="relative w-full overflow-visible z-0">
@@ -297,6 +299,13 @@ export function ReservationSlotPickerPage({
                     <ChevronRight className="h-4 w-4" />
                   </Button>
                 </div>
+                {timeDisplay === "venue" ? (
+                  <p className="text-xs text-muted-foreground text-center mb-4">
+                    {t("booking.timesInTimezone", {
+                      timezone: formatSlotTimeZoneName(slotsForSelectedDate[0]?.timezone),
+                    }) || `Times shown in ${formatSlotTimeZoneName(slotsForSelectedDate[0]?.timezone)}`}
+                  </p>
+                ) : null}
 
                 <div className="flex-1 overflow-y-auto space-y-3 pr-2 custom-scrollbar min-h-0 relative z-20">
                   {isLoadingSlots ? (
@@ -329,14 +338,18 @@ export function ReservationSlotPickerPage({
                                 : "hover:border-primary/30 hover:bg-accent"
                             )}
                             onClick={() => {
-                              if (hideDetailsStep) onSelect(slot.start, slot.end, { available: slot.available })
-                              else {
+                              if (hideDetailsStep) {
+                                onSelect(slot.start, slot.end, {
+                                  available: slot.available,
+                                  timezone: slot.timezone,
+                                })
+                              } else {
                                 setSelectedSlot(slot)
                                 setActiveStep("details")
                               }
                             }}
                           >
-                            {format(new Date(slot.start), "h:mm a")}
+                            {formatSlotTime(slot.start, slot.timezone, timeDisplay)}
                             {shouldShowSlotLeftover(slot, selectedStartIso) ? (
                               <span className="text-xs opacity-70 ml-2">({slot.available} left)</span>
                             ) : null}

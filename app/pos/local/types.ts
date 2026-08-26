@@ -141,7 +141,7 @@ export type LocalReservationSlots = {
   catalogItemId: string;
   startDate: string;
   endDate: string;
-  slots: { start: string; end: string; available: number }[];
+  slots: { start: string; end: string; available: number; timezone?: string }[];
   expiresAt: string;
 };
 

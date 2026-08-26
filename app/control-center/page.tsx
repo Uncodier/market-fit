@@ -648,13 +648,13 @@ export default function ControlCenterPage() {
         {/* Content */}
         <div className="flex-1 overflow-auto bg-muted/30 transition-colors duration-300 ease-in-out pt-[71px]">
           <div 
-            className="h-full transition-all duration-300 ease-in-out"
+            className="min-h-full flex flex-col transition-all duration-300 ease-in-out"
             style={{ 
               paddingLeft: isMobile ? '0px' : `calc(${sidebarLeft} + ${!isSidebarCollapsed ? "319px" : "0px"})`
             }}
           >
             {filteredTasks.length === 0 ? (
-              <div className="h-full flex items-center justify-center">
+              <div className="flex-1 flex items-center justify-center">
                 <EmptyState 
                   icon={<ClipboardList className="h-8 w-8 text-muted-foreground" />}
                   title={t('controlCenter.empty.title') || "No tasks found"}
@@ -663,7 +663,7 @@ export default function ControlCenterPage() {
                 />
               </div>
             ) : (
-              <div className="p-4 md:p-8 h-full">
+              <div className="p-4 md:p-8 min-h-full">
                 {viewType === "kanban" ? (
                 <TaskKanban
                   tasks={filteredTasks}

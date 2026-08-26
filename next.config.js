@@ -10,8 +10,10 @@ const nextConfig = {
       String(Date.now()),
   },
 
-  // Configurar assetPrefix en producción para que el proxy en www cargue los assets desde app.makinari.com
-  assetPrefix: process.env.NODE_ENV === 'production' ? 'https://app.makinari.com' : undefined,
+  // www proxies shop/commerce HTML to this app; prefix chunks so the browser
+  // fetches them from app, not www. Only set on Vercel — local `next start`
+  // would otherwise load production JS and POST stale Server Action IDs.
+  assetPrefix: process.env.VERCEL ? 'https://app.makinari.com' : undefined,
   
   // Mitigate ECONNRESET in dev: Node 20+ fetch uses keep-alive; stale connections cause resets.
   ...(process.env.NODE_ENV === 'development' && {

@@ -10,7 +10,7 @@ import {
 } from "date-fns"
 import { formatInTimeZone, fromZonedTime } from "date-fns-tz"
 
-const DEFAULT_TZ = "UTC"
+const DEFAULT_TZ = "America/Mexico_City"
 
 function toDateStr(value: string): string {
   return value.slice(0, 10)
@@ -225,7 +225,7 @@ export async function getAvailableSlotsForItem(
   if (!schedules || schedules.length === 0) return []
 
   const dateStrs = eachDateString(startDateStr, endDateStr)
-  const result: { start: string; end: string; available: number }[] = []
+  const result: { start: string; end: string; available: number; timezone: string }[] = []
 
   // Pad query window so evening slots near UTC day boundaries are included
   const rangeStart = addDays(parseISO(`${toDateStr(startDateStr)}T00:00:00Z`), -1)
@@ -310,7 +310,8 @@ export async function getAvailableSlotsForItem(
               result.push({
                 start: current.toISOString(),
                 end: slotEnd.toISOString(),
-                available
+                available,
+                timezone: timeZone,
               })
             }
           }

@@ -196,11 +196,57 @@ describe('Reservation Availability Engine', () => {
 
       expect(slots).toHaveLength(1);
       // 19:00 America/Mexico_City (UTC-6) => 01:00 UTC next day
-      expect(slots[0].start).toBe(fromZonedTime(`${dateStr}T19:00:00`, timeZone).toISOString());
-      expect(slots[0].end).toBe(fromZonedTime(`${dateStr}T20:00:00`, timeZone).toISOString());
-      // Ensure we did NOT treat 19:00 as UTC (which would display as 1pm in Mexico)
+      expect(slots[0].start).toBe("2026-08-13T01:00:00.000Z");
+      expect(slots[0].end).toBe("2026-08-13T02:00:00.000Z");
+      expect(slots[0].timezone).toBe(timeZone);
       expect(slots[0].start).not.toBe(`${dateStr}T19:00:00.000Z`);
       expect(wednesday.getUTCDay()).toBe(3); // sanity: Aug 12 2026 is Wednesday
+    });
+
+    it("should emit 11:00 Mexico slots as 17:00Z, not 11:00Z", async () => {
+      const dateStr = "2026-08-12";
+      const timeZone = "America/Mexico_City";
+
+      const schedulesChain = createChain({
+        data: [{
+          catalog_item_id: catalogItemId,
+          duration_minutes: 60,
+          capacity: 10,
+          timezone: timeZone,
+          days: {
+            wednesday: { enabled: true, start: "11:00", end: "12:00" },
+          },
+        }],
+      });
+      const reservationsChain = createChain({ data: [] });
+
+      mockCreateServiceClient.mockResolvedValue({
+        from: jest.fn((table: string) => {
+          if (table === "catalog_items") {
+            return {
+              select: jest.fn().mockReturnThis(),
+              eq: jest.fn().mockReturnThis(),
+              single: jest.fn(() => Promise.resolve({ data: { kind: "service", id: catalogItemId }, error: null })),
+              maybeSingle: jest.fn(() => Promise.resolve({ data: { kind: "service", id: catalogItemId }, error: null })),
+              then: (res: any) => Promise.resolve({ data: [], error: null }).then(res),
+            };
+          }
+          if (table === "reservation_schedules") return schedulesChain;
+          return reservationsChain;
+        }),
+      });
+
+      jest.useFakeTimers().setSystemTime(new Date("2026-08-10T12:00:00Z"));
+
+      const slots = await getAvailableSlots(catalogItemId, dateStr, dateStr, 1);
+
+      jest.useRealTimers();
+
+      expect(slots).toHaveLength(1);
+      expect(slots[0].start).toBe("2026-08-12T17:00:00.000Z");
+      expect(slots[0].end).toBe("2026-08-12T18:00:00.000Z");
+      expect(slots[0].timezone).toBe(timeZone);
+      expect(slots[0].start).not.toBe(`${dateStr}T11:00:00.000Z`);
     });
   });
 

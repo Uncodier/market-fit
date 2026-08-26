@@ -20,6 +20,7 @@ import { getModifierGroupsForCatalogItem } from "@/app/catalog/modifier-actions"
 import type { ModifierGroupWithItems } from "@/app/catalog/modifier-types";
 import type { PosCartItem, PosCartModifier } from "@/app/pos/components/CartPanel";
 import { getPosDb } from "@/app/pos/local/db";
+import { isStorefrontAvailable } from "@/app/catalog/storefront-availability";
 
 type Args = {
   siteId?: string;
@@ -247,10 +248,7 @@ export function usePosAddItem({
       }
     }
 
-    if (
-      item.availability_mode === "manual" &&
-      item.availability_status !== "available"
-    ) {
+    if (!isStorefrontAvailable(item)) {
       toast.error(t("pos.errorItemNotAvailable") || "Item is not available");
       return;
     }

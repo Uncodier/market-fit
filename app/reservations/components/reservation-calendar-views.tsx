@@ -1,9 +1,9 @@
 "use client"
 
-import { RefObject } from "react"
 import { cn } from "@/lib/utils"
 import { CurrentTimeIndicator } from "@/app/control-center/components/CurrentTimeIndicator"
 import { Reservation } from "@/app/types"
+import { reservationServiceColor } from "../reservation-helpers"
 import { ReservationItem } from "./ReservationCalendarItem"
 import { buildMonthCalendarDays, getMonthName } from "./reservation-calendar-utils"
 import {
@@ -40,7 +40,7 @@ export function ReservationMonthView({
   })
 
   return (
-    <div className="grid grid-cols-7 gap-px bg-muted rounded-lg overflow-hidden h-[calc(100vh-280px)]">
+    <div className="grid grid-cols-7 gap-px bg-muted rounded-lg overflow-hidden">
       {weekdayLabels.map((day) => (
         <div key={day} className="p-2 text-center text-sm font-medium bg-background sticky top-0 z-10">
           {day}
@@ -64,7 +64,7 @@ export function ReservationMonthView({
               begin(dateStr, event)
             }}
             className={cn(
-              "bg-background p-2 relative select-none",
+              "bg-background p-2 relative select-none min-h-[120px]",
               onCreateSlot && "cursor-pointer",
               !isCurrentMonthDay && "text-muted-foreground/50",
               isCurrentDay && !isDragSelected && "bg-accent/5",
@@ -100,7 +100,6 @@ export function ReservationMonthView({
 export function ReservationDayView({
   selectedDate,
   listGroupMode,
-  dayViewRef,
   reservationsByDate,
   isToday,
   currentTime,
@@ -110,7 +109,6 @@ export function ReservationDayView({
 }: SharedViewProps & {
   selectedDate: Date
   listGroupMode: "service" | "calendar"
-  dayViewRef: RefObject<HTMLDivElement | null>
   currentTime: Date
   timePosition: number
 }) {
@@ -135,23 +133,27 @@ export function ReservationDayView({
   if (listGroupMode === "service" && services.length > 0) {
 
     return (
-      <div
-        ref={dayViewRef}
-        className="bg-background rounded-lg overflow-auto h-[calc(100vh-280px)] scroll-smooth"
-      >
+      <div className="bg-background rounded-lg">
         <div
           className="grid divide-x divide-border"
           style={{ gridTemplateColumns: `100px repeat(${services.length}, minmax(200px, 1fr))` }}
         >
           <div className="bg-muted/50 sticky top-0 left-0 z-10 border-b border-border h-10" />
-          {services.map((serviceName) => (
-            <div
-              key={serviceName}
-              className="bg-muted/50 sticky top-0 z-10 border-b border-border h-10 flex items-center justify-center font-medium text-sm truncate px-2"
-            >
-              {serviceName}
-            </div>
-          ))}
+          {services.map((serviceName) => {
+            const sample = dayReservations.find(
+              (reservation) => (reservation.catalog_item?.name || "Unknown Service") === serviceName
+            )
+            const swatch = sample ? reservationServiceColor(sample).swatch : "bg-muted-foreground"
+            return (
+              <div
+                key={serviceName}
+                className="bg-muted/50 sticky top-0 z-10 border-b border-border h-10 flex items-center justify-center gap-2 font-medium text-sm truncate px-2"
+              >
+                <span className={cn("h-2 w-2 shrink-0 rounded-full", swatch)} />
+                <span className="truncate">{serviceName}</span>
+              </div>
+            )
+          })}
           <div className="bg-muted/50 sticky left-0 z-[2] mt-10" style={{ gridRow: "2 / span 24", gridColumn: "1" }}>
             {hours.map((hour) => (
               <div
@@ -210,10 +212,7 @@ export function ReservationDayView({
   }, {} as Record<number, Reservation[]>)
 
   return (
-    <div
-      ref={dayViewRef}
-      className="bg-background rounded-lg overflow-auto h-[calc(100vh-280px)] scroll-smooth"
-    >
+    <div className="bg-background rounded-lg">
       <div className="grid grid-cols-[100px_1fr] divide-x divide-border">
         <div className="bg-muted/50 sticky left-0 z-[2]">
           {hours.map((hour) => (
@@ -281,7 +280,7 @@ export function ReservationYearView({
   })
 
   return (
-    <div className="grid grid-cols-4 gap-px bg-muted rounded-lg overflow-hidden h-[calc(100vh-280px)]">
+    <div className="grid grid-cols-4 gap-px bg-muted rounded-lg overflow-hidden">
       {months.map((month) => {
         const monthKey = String(month).padStart(2, "0")
         const monthReservations = reservations.filter((reservation) => {

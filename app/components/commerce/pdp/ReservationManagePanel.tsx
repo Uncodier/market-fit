@@ -8,6 +8,7 @@ import { Calendar, Clock, Download } from "@/app/components/ui/icons"
 import { Button } from "@/app/components/ui/button"
 import { Dialog, DialogBody, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/app/components/ui/dialog"
 import { ReservationSlotPicker } from "@/app/components/commerce/ReservationSlotPicker"
+import { formatSlotTime, formatSlotTimeZoneName } from "@/app/components/commerce/reservation-slot-utils"
 import QRCode from "react-qr-code"
 import { downloadAccessPass } from "@/app/lib/download-access-pass"
 import { resolveVenueLocation } from "@/app/catalog/product-details"
@@ -28,6 +29,8 @@ export function ReservationManagePanel({
   const [showCancelConfirm, setShowCancelConfirm] = useState(false)
   const [isDownloading, setIsDownloading] = useState(false)
   
+  const venueTimeZone = schedules[0]?.timezone
+  const venueTimeLabel = `${formatSlotTime(reservation.start_time, venueTimeZone)} – ${formatSlotTime(reservation.end_time, venueTimeZone)} (${formatSlotTimeZoneName(venueTimeZone)})`
   const [isRescheduling, setIsRescheduling] = useState(false)
   const [showRescheduleDialog, setShowRescheduleDialog] = useState(false)
   const [selectedSlot, setSelectedSlot] = useState<{ startIso: string; endIso: string } | null>(null)
@@ -48,13 +51,7 @@ export function ReservationManagePanel({
         month: "short",
         day: "numeric",
       })
-      const timeLabel = `${new Date(reservation.start_time).toLocaleTimeString([], {
-        hour: "2-digit",
-        minute: "2-digit",
-      })} – ${new Date(reservation.end_time).toLocaleTimeString([], {
-        hour: "2-digit",
-        minute: "2-digit",
-      })}`
+      const timeLabel = venueTimeLabel
       const venueLoc = reservation.catalog_item
         ? resolveVenueLocation(reservation.catalog_item)
         : { name: "", address: "", city: "" }
@@ -146,7 +143,7 @@ export function ReservationManagePanel({
           <div className="flex items-center gap-2">
             <Clock className="w-5 h-5 text-foreground/70" />
             <span className="font-medium text-foreground">
-              {new Date(reservation.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - {new Date(reservation.end_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              {venueTimeLabel}
             </span>
           </div>
         </div>
@@ -241,6 +238,7 @@ export function ReservationManagePanel({
             <ReservationSlotPicker
               catalogItemId={reservation.catalog_item_id}
               quantity={reservation.quantity || 1}
+              timeDisplay="venue"
               onSelect={(start, end) => setSelectedSlot({ startIso: start, endIso: end })}
               selectedStartIso={selectedSlot?.startIso}
               hideDetailsStep={true}

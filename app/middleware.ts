@@ -187,7 +187,6 @@ function isTrustedActionOriginHost(host: string): boolean {
  * the trusted Origin host so CSRF checks pass for proxied commerce pages.
  */
 function nextWithAlignedServerActionHost(request: NextRequest): NextResponse {
-  const headers = new Headers(request.headers)
   const actionId = request.headers.get('next-action')
   const origin = request.headers.get('origin')
 
@@ -200,14 +199,18 @@ function nextWithAlignedServerActionHost(request: NextRequest): NextResponse {
         forwardedHost &&
         forwardedHost !== originHost
       ) {
+        const headers = new Headers(request.headers)
         headers.set('x-forwarded-host', originHost)
+        return NextResponse.next({ request: { headers } })
       }
     } catch {
       // keep original headers
     }
   }
 
-  return NextResponse.next({ request: { headers } })
+  // Do not clone request headers on the default path. Next 16.2 + Turbopack
+  // then fails to match App Router route handlers and serves HTML 404s.
+  return NextResponse.next()
 }
 
 // CORS headers configuration

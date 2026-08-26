@@ -21,6 +21,7 @@ import { VariantPicker } from "./VariantPicker"
 import { usePathname, useRouter } from "next/navigation"
 import { PdpExperience } from "./pdp-experience"
 import { ReservationManagePanel } from "./ReservationManagePanel"
+import { formatSlotTime, formatSlotTimeZoneName } from "@/app/components/commerce/reservation-slot-utils"
 import { SubscriptionManagePanel } from "./SubscriptionManagePanel"
 import { DynamicQuotePdpProvider } from "./DynamicQuotePdpPanel"
 import { ServiceDynamicQuoteLayout } from "./ServiceDynamicQuoteLayout"
@@ -132,6 +133,7 @@ export function ServicePdpLayout({
     ? optimizeForPreset(passImageUrl, "full")
     : resolveItemImage(item, "full")
 
+  const venueTimeZone = experience?.extras?.schedules?.[0]?.timezone
   const bookedDateLabel = reservation
     ? new Date(reservation.start_time).toLocaleDateString(undefined, {
         weekday: "short",
@@ -140,7 +142,7 @@ export function ServicePdpLayout({
       })
     : null
   const bookedTimeLabel = reservation
-    ? `${new Date(reservation.start_time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} – ${new Date(reservation.end_time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
+    ? `${formatSlotTime(reservation.start_time, venueTimeZone)} – ${formatSlotTime(reservation.end_time, venueTimeZone)} (${formatSlotTimeZoneName(venueTimeZone)})`
     : null
 
   if (isDynamic && !isReservationExperience) {

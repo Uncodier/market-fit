@@ -8,6 +8,7 @@ import { Search, Calendar } from "@/app/components/ui/icons"
 import { resolveItemImage } from "@/app/lib/image-utils"
 import { Skeleton } from "@/app/components/ui/skeleton"
 import { useDisplayCurrency } from "@/app/context/DisplayCurrencyContext"
+import { isStorefrontAvailable } from "@/app/catalog/storefront-availability"
 
 interface PosCatalogGridProps {
   items: CatalogItem[]
@@ -49,9 +50,7 @@ export function PosCatalogGrid({ items, loading, onAdd, t }: PosCatalogGridProps
           </div>
         ) : (
           items.map((item) => {
-            const isAvailable =
-              item.availability_mode !== "manual" ||
-              item.availability_status === "available"
+            const isAvailable = isStorefrontAvailable(item)
             return (
               <Card
                 key={item.id}

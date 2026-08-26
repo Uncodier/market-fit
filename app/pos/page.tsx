@@ -120,7 +120,11 @@ export default function POSPage() {
 
   const filteredItems = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
-    let list = catalog.catalogItems.filter((i) => !i.parent_id);
+    const source =
+      selectedCategory === "unavailable"
+        ? catalog.unavailableItems
+        : catalog.availableItems;
+    let list = source.filter((i) => !i.parent_id);
     if (q) {
       list = list.filter(
         (i) =>
@@ -129,7 +133,7 @@ export default function POSPage() {
       );
     }
     
-    if (selectedCategory !== "all") {
+    if (selectedCategory !== "all" && selectedCategory !== "unavailable") {
       if (selectedCategory === "kind_product") {
         list = list.filter((i) => i.kind === "product");
       } else if (selectedCategory === "kind_service") {
@@ -164,16 +168,23 @@ export default function POSPage() {
         }
       };
     });
-  }, [catalog.catalogItems, searchQuery, selectedCategory]);
+  }, [catalog.availableItems, catalog.unavailableItems, catalog.catalogItems, searchQuery, selectedCategory]);
 
   const hasProducts = catalog.availableItems.some((i) => i.kind === "product" && !i.parent_id);
   const hasServices = catalog.availableItems.some((i) => i.kind === "service" && !i.parent_id);
   const hasDigital = catalog.availableItems.some(
     (i) => i.kind === "digital_asset" && !i.parent_id,
   );
+  const hasUnavailable = catalog.unavailableItems.some((i) => !i.parent_id);
   const nonEmptyCategories = catalog.categories.filter((cat: any) =>
     catalog.availableItems.some((i) => i.category_id === cat.id && !i.parent_id),
   );
+
+  useEffect(() => {
+    if (selectedCategory === "unavailable" && !hasUnavailable) {
+      setSelectedCategory("all");
+    }
+  }, [selectedCategory, hasUnavailable]);
 
   useEffect(() => {
     window.dispatchEvent(
@@ -301,6 +312,14 @@ export default function POSPage() {
                           {cat.name}
                         </TabsTrigger>
                       ))}
+                      {hasUnavailable && (
+                        <TabsTrigger
+                          value="unavailable"
+                          className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent whitespace-normal md:whitespace-nowrap"
+                        >
+                          {t("pos.filters.unavailable") || "Unavailable"}
+                        </TabsTrigger>
+                      )}
                     </TabsList>
                   </div>
 

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/app/components/ui/button"
 import { ChevronLeft, ChevronRight } from "@/app/components/ui/icons"
 import { ToggleGroup, ToggleGroupItem } from "@/app/components/ui/toggle-group"
@@ -33,16 +33,15 @@ export function ReservationCalendar({
   const { t } = useLocalization()
   const [selectedDate, setSelectedDate] = useState(() => new Date())
   const [viewMode, setViewMode] = useState<CalendarViewMode>("month")
-  const dayViewRef = useRef<HTMLDivElement>(null)
   const { currentTime, isToday, getCurrentTimePosition } = useCurrentTime()
 
   useEffect(() => {
-    if (viewMode === "day" && dayViewRef.current) {
-      const currentHour = currentTime.getHours()
-      const scrollPosition = currentHour * 80 - dayViewRef.current.clientHeight / 2 + 40
-      dayViewRef.current.scrollTo({ top: Math.max(0, scrollPosition), behavior: "smooth" })
-    }
-  }, [viewMode, currentTime])
+    if (viewMode !== "day") return
+    document.querySelector("[data-calendar-current-hour]")?.scrollIntoView({
+      block: "center",
+      behavior: "smooth",
+    })
+  }, [viewMode, selectedDate])
 
   const nextPeriod = () => {
     setSelectedDate((prevDate) => {
@@ -177,7 +176,6 @@ export function ReservationCalendar({
           <ReservationDayView
             selectedDate={selectedDate}
             listGroupMode={listGroupMode}
-            dayViewRef={dayViewRef}
             currentTime={currentTime}
             timePosition={getCurrentTimePosition()}
             {...shared}
@@ -198,7 +196,7 @@ export function ReservationCalendar({
   }
 
   return (
-    <div className="h-full flex flex-col">
+    <div className="flex flex-col">
       <div className="flex items-center justify-between py-6 border-b pl-8 pr-[33px]">
         <div className="flex-1 flex items-center gap-2">
           <Button
@@ -207,10 +205,13 @@ export function ReservationCalendar({
             onClick={() => {
               const now = new Date()
               setSelectedDate(now)
-              if (viewMode === "day" && isToday(now.toISOString().split("T")[0]) && dayViewRef.current) {
-                const currentHour = now.getHours()
-                const scrollPosition = currentHour * 80 - dayViewRef.current.clientHeight / 2 + 40
-                dayViewRef.current.scrollTo({ top: Math.max(0, scrollPosition), behavior: "smooth" })
+              if (viewMode === "day") {
+                requestAnimationFrame(() => {
+                  document.querySelector("[data-calendar-current-hour]")?.scrollIntoView({
+                    block: "center",
+                    behavior: "smooth",
+                  })
+                })
               }
             }}
             className={cn(
@@ -253,7 +254,7 @@ export function ReservationCalendar({
           </ToggleGroup>
         </div>
       </div>
-      <div className="p-6 md:p-8 flex-1">{renderCalendarContent()}</div>
+      <div className="p-6 md:p-8">{renderCalendarContent()}</div>
     </div>
   )
 }

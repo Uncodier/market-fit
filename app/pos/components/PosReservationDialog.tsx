@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { format } from "date-fns";
 import type { CatalogItem } from "@/app/types";
 import type { RelationSelectValue } from "@/app/components/ui/relation-select";
 import {
@@ -15,6 +14,7 @@ import {
 import { Button } from "@/app/components/ui/button";
 import { Label } from "@/app/components/ui/label";
 import { ReservationSlotPicker } from "@/app/components/commerce/ReservationSlotPicker";
+import { formatSlotDateTime } from "@/app/components/commerce/reservation-slot-utils";
 import { hasPosCustomer } from "@/app/pos/lead-utils";
 import { PosCustomerSelect } from "./PosCustomerSelect";
 
@@ -65,7 +65,12 @@ export function PosReservationDialog({
   t,
 }: Props) {
   const [draft, setDraft] = useState<RelationSelectValue>(null);
-  const [slot, setSlot] = useState<{ start: string; end: string; available?: number } | null>(null);
+  const [slot, setSlot] = useState<{
+    start: string;
+    end: string;
+    available?: number;
+    timezone?: string;
+  } | null>(null);
   const [confirming, setConfirming] = useState(false);
   const getTrans = (key: string, fallback: string) =>
     t(key) === key ? fallback : t(key);
@@ -136,12 +141,14 @@ export function PosReservationDialog({
               catalogItemId={item.id}
               layout="dialog"
               hideDetailsStep
-              onSelect={(start, end, data) => setSlot({ start, end, available: data?.available })}
+              onSelect={(start, end, data) =>
+                setSlot({ start, end, available: data?.available, timezone: data?.timezone })
+              }
             />
             {slot ? (
               <p className="text-sm text-muted-foreground">
                 {getTrans("pos.reservation.selected", "Selected")}:{" "}
-                {format(new Date(slot.start), "PPP p")}
+                {formatSlotDateTime(slot.start, slot.timezone, "PPP p", "system")}
               </p>
             ) : null}
           </div>

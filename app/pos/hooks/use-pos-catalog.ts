@@ -12,6 +12,7 @@ import { getPosDb } from "@/app/pos/local/db";
 import { subscribePosSync } from "@/app/pos/local/sync-engine";
 import type { LocalPendingOrder, LocalPromotion } from "@/app/pos/local/types";
 import { selectPosOpenOrders } from "@/app/pos/open-orders";
+import { isStorefrontAvailable } from "@/app/catalog/storefront-availability";
 
 export function usePosCatalog(siteId: string | undefined) {
   const [catalogItems, setCatalogItems] = useState<CatalogItem[]>([]);
@@ -67,18 +68,19 @@ export function usePosCatalog(siteId: string | undefined) {
   }, []);
 
   const availableItems = useMemo(
-    () =>
-      catalogItems.filter(
-        (item) =>
-          item.availability_mode !== "manual" ||
-          item.availability_status === "available",
-      ),
+    () => catalogItems.filter((item) => isStorefrontAvailable(item)),
+    [catalogItems],
+  );
+
+  const unavailableItems = useMemo(
+    () => catalogItems.filter((item) => !isStorefrontAvailable(item)),
     [catalogItems],
   );
 
   return {
     catalogItems,
     availableItems,
+    unavailableItems,
     categories,
     locations,
     leads,

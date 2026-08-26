@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent } from "@/app/components/ui/card"
 import { Badge } from "@/app/components/ui/badge"
 import { Button } from "@/app/components/ui/button"
@@ -131,7 +131,6 @@ export function RecordsCalendar({ records, onRecordClick }: RecordsCalendarProps
   const { t } = useLocalization()
   const [selectedDate, setSelectedDate] = useState(() => new Date())
   const [viewMode, setViewMode] = useState<CalendarViewMode>('month')
-  const dayViewRef = useRef<HTMLDivElement>(null)
   
   const { 
     currentTime, 
@@ -139,17 +138,13 @@ export function RecordsCalendar({ records, onRecordClick }: RecordsCalendarProps
     getCurrentTimePosition 
   } = useCurrentTime()
 
-  // Effect to scroll to current time in day view
   useEffect(() => {
-    if (viewMode === 'day' && dayViewRef.current) {
-      const currentHour = currentTime.getHours()
-      const scrollPosition = (currentHour * 80) - (dayViewRef.current.clientHeight / 2) + 40
-      dayViewRef.current.scrollTo({
-        top: Math.max(0, scrollPosition),
-        behavior: 'smooth'
-      })
-    }
-  }, [viewMode, currentTime])
+    if (viewMode !== 'day') return
+    document.querySelector('[data-calendar-current-hour]')?.scrollIntoView({
+      block: 'center',
+      behavior: 'smooth'
+    })
+  }, [viewMode, selectedDate])
 
   // Helper function to create a new date while preserving the day
   const createNewDatePreservingDay = (
@@ -372,7 +367,7 @@ export function RecordsCalendar({ records, onRecordClick }: RecordsCalendarProps
     }
 
     return (
-      <div className="grid grid-cols-7 gap-px bg-muted rounded-lg overflow-hidden h-[calc(100vh-280px)]">
+      <div className="grid grid-cols-7 gap-px bg-muted rounded-lg overflow-hidden">
         {/* Week day headers */}
         {[
           t('common.days.short.sun') || 'Sun', 
@@ -397,7 +392,7 @@ export function RecordsCalendar({ records, onRecordClick }: RecordsCalendarProps
             <div
               key={`${dateStr}-${index}`}
               className={cn(
-                "bg-background p-2 relative",
+                "bg-background p-2 relative min-h-[120px]",
                 !isCurrentMonthDay && "text-muted-foreground/50",
                 isCurrentDay && "bg-accent/5"
               )}
@@ -432,7 +427,7 @@ export function RecordsCalendar({ records, onRecordClick }: RecordsCalendarProps
     const timePosition = getCurrentTimePosition()
 
     return (
-      <div className="grid grid-cols-7 gap-px bg-muted rounded-lg overflow-hidden h-[calc(100vh-280px)]">
+      <div className="grid grid-cols-7 gap-px bg-muted rounded-lg overflow-hidden">
         {/* Week day headers */}
         {weekDates.map((date) => {
           const isCurrentDay = isToday(date)
@@ -479,7 +474,7 @@ export function RecordsCalendar({ records, onRecordClick }: RecordsCalendarProps
                 isCurrentDay && "bg-accent/5"
               )}
             >
-              <div className="p-2 space-y-2 h-[600px] overflow-y-auto">
+              <div className="p-2 space-y-2">
                 {dayRecords.map((record) => (
                   <div
                     key={record.id}
@@ -543,10 +538,7 @@ export function RecordsCalendar({ records, onRecordClick }: RecordsCalendarProps
     }
 
     return (
-      <div 
-        ref={dayViewRef}
-        className="bg-background rounded-lg overflow-auto h-[calc(100vh-280px)] scroll-smooth"
-      >
+      <div className="bg-background rounded-lg">
         <div className="grid grid-cols-[100px_1fr] divide-x divide-border">
           {/* Time column */}
           <div className="bg-muted/50 sticky left-0 z-[2]">
@@ -579,6 +571,7 @@ export function RecordsCalendar({ records, onRecordClick }: RecordsCalendarProps
             {hours.map((hour) => (
               <div
                 key={hour}
+                data-calendar-current-hour={isCurrentHourBlock(hour) || undefined}
                 className={cn(
                   "h-20 border-b border-border p-2 relative group transition-colors",
                   !isHourPassed(hour) && "hover:bg-accent/5",
@@ -616,7 +609,7 @@ export function RecordsCalendar({ records, onRecordClick }: RecordsCalendarProps
     const today = new Date()
     
     return (
-      <div className="grid grid-cols-4 gap-px bg-muted rounded-lg overflow-hidden h-[calc(100vh-280px)]">
+      <div className="grid grid-cols-4 gap-px bg-muted rounded-lg overflow-hidden">
         {months.map((month) => {
           const monthRecords = records.filter(record => {
             if (!record.created_at) return false
@@ -677,7 +670,7 @@ export function RecordsCalendar({ records, onRecordClick }: RecordsCalendarProps
   }
 
   return (
-    <Card className="h-full">
+    <Card>
       <CardContent className="p-0">
         <style jsx>{`
           .records-container {
@@ -697,13 +690,12 @@ export function RecordsCalendar({ records, onRecordClick }: RecordsCalendarProps
               onClick={() => {
                 const now = new Date()
                 setSelectedDate(now)
-                // If we're already in day view and it's today, just scroll to current time
-                if (viewMode === 'day' && isToday(now.toISOString().split('T')[0]) && dayViewRef.current) {
-                  const currentHour = now.getHours()
-                  const scrollPosition = (currentHour * 80) - (dayViewRef.current.clientHeight / 2) + 40
-                  dayViewRef.current.scrollTo({
-                    top: Math.max(0, scrollPosition),
-                    behavior: 'smooth'
+                if (viewMode === 'day') {
+                  requestAnimationFrame(() => {
+                    document.querySelector('[data-calendar-current-hour]')?.scrollIntoView({
+                      block: 'center',
+                      behavior: 'smooth'
+                    })
                   })
                 }
               }}

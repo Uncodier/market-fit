@@ -14,6 +14,7 @@ export type SlotAvailability = {
   start: string
   end: string
   available: number
+  timezone?: string
 }
 
 /** Merge member slots by start/end. Uses max availability because one booking maps to one member. */
@@ -25,8 +26,14 @@ export function mergeMemberSlots(lists: SlotAvailability[][]): SlotAvailability[
       const existing = map.get(key)
       if (existing) {
         existing.available += slot.available // sum availability from all members
+        if (!existing.timezone && slot.timezone) existing.timezone = slot.timezone
       } else {
-        map.set(key, { start: slot.start, end: slot.end, available: slot.available })
+        map.set(key, {
+          start: slot.start,
+          end: slot.end,
+          available: slot.available,
+          timezone: slot.timezone,
+        })
       }
     }
   }

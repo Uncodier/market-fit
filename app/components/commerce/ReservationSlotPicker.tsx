@@ -31,6 +31,12 @@ import {
   isSameSlotInstant,
   mergeCurrentReservationSlot,
   shouldShowSlotLeftover,
+  slotCalendarDate,
+  formatSlotTime,
+  calendarDateFromIso,
+  formatSlotTimeZoneName,
+  type ReservationSlotOption,
+  type SlotTimeDisplay,
 } from "./reservation-slot-utils"
 
 interface ReservationSlotPickerProps {
@@ -42,6 +48,8 @@ interface ReservationSlotPickerProps {
   ignoreReservationId?: string
   hideDetailsStep?: boolean
   layout?: "dialog" | "page"
+  /** system = browser clock (reservations/POS). venue = schedule TZ + label (book/PDP). */
+  timeDisplay?: SlotTimeDisplay
 }
 
 export function ReservationSlotPicker({
@@ -53,7 +61,9 @@ export function ReservationSlotPicker({
   ignoreReservationId,
   hideDetailsStep = false,
   layout = "dialog",
+  timeDisplay,
 }: ReservationSlotPickerProps) {
+  const display: SlotTimeDisplay = timeDisplay ?? (layout === "page" ? "venue" : "system")
   const { locale, t } = useLocalization()
   const dateLocale = locale === "es" ? es : enUS
   const { user } = useAuth()
@@ -63,7 +73,7 @@ export function ReservationSlotPicker({
   const [currentMonth, setCurrentMonth] = useState(startOfMonth(new Date()))
   const [selectedDate, setSelectedDate] = useState<Date | null>(null)
   
-  const [allSlots, setAllSlots] = useState<{start: string, end: string, available: number}[]>([])
+  const [allSlots, setAllSlots] = useState<ReservationSlotOption[]>([])
   const [monthAvailability, setMonthAvailability] = useState<Record<string, boolean>>({})
   const [isLoadingSlots, setIsLoadingSlots] = useState(true)
   const [selectedSlot, setSelectedSlot] = useState<{start: string, end: string, available?: number} | null>(null)
@@ -85,11 +95,11 @@ export function ReservationSlotPicker({
 
   useEffect(() => {
     if (!selectedStartIso) return
-    const start = new Date(selectedStartIso)
-    setCurrentMonth(startOfMonth(start))
-    setSelectedDate(startOfDay(start))
+    const date = calendarDateFromIso(selectedStartIso, undefined, display)
+    setCurrentMonth(startOfMonth(date))
+    setSelectedDate(date)
     setActiveStep("time")
-  }, [selectedStartIso, catalogItemId])
+  }, [selectedStartIso, catalogItemId, display])
 
   useEffect(() => {
     async function loadMonthAvailability() {
@@ -113,12 +123,11 @@ export function ReservationSlotPicker({
       
       const availMap: Record<string, boolean> = {}
       slots.forEach(slot => {
-        const d = format(new Date(slot.start), "yyyy-MM-dd")
-        availMap[d] = true
+        availMap[slotCalendarDate(slot.start, slot.timezone, display)] = true
       })
       if (selectedStartIso) {
-        availMap[format(new Date(selectedStartIso), "yyyy-MM-dd")] = true
         const match = findSlotByInstant(slots, selectedStartIso)
+        availMap[slotCalendarDate(selectedStartIso, match?.timezone, display)] = true
         if (match) setSelectedSlot(match)
       }
       setMonthAvailability(availMap)
@@ -128,7 +137,7 @@ export function ReservationSlotPicker({
     if (catalogItemId) {
       loadMonthAvailability()
     }
-  }, [catalogItemId, currentMonth, quantity, ignoreReservationId, selectedStartIso, selectedEndIso])
+  }, [catalogItemId, currentMonth, quantity, ignoreReservationId, selectedStartIso, selectedEndIso, display])
 
   const firstDayOfMonth = startOfMonth(currentMonth).getDay()
   const startDate = addDays(startOfMonth(currentMonth), -firstDayOfMonth)
@@ -139,7 +148,7 @@ export function ReservationSlotPicker({
 
   // get slots for selected date
   const slotsForSelectedDate = selectedDate ? allSlots.filter(s => {
-    return format(new Date(s.start), "yyyy-MM-dd") === format(selectedDate, "yyyy-MM-dd")
+    return slotCalendarDate(s.start, s.timezone, display) === format(selectedDate, "yyyy-MM-dd")
   }) : []
 
   const handleConfirm = () => {
@@ -149,7 +158,8 @@ export function ReservationSlotPicker({
         email,
         guests: guestsString,
         notes,
-        available: selectedSlot.available
+        available: selectedSlot.available,
+        timezone: selectedSlot.timezone,
       })
     }
   }
@@ -205,7 +215,7 @@ export function ReservationSlotPicker({
                   const isCurrentMonth = isSameMonth(date, currentMonth)
                   const isAvailable = monthAvailability[dateStr] ?? false
                   const isCurrentReservationDate = Boolean(
-                    selectedStartIso && format(new Date(selectedStartIso), "yyyy-MM-dd") === dateStr
+                    selectedStartIso && slotCalendarDate(selectedStartIso, undefined, display) === dateStr
                   )
                   const shouldDisable = (isPast || !isAvailable) && !isCurrentReservationDate
 
@@ -256,6 +266,13 @@ export function ReservationSlotPicker({
                 {selectedDate && format(selectedDate, "eeee, MMMM d", { locale: dateLocale })}
               </h3>
             </div>
+            {display === "venue" ? (
+              <p className="text-xs text-muted-foreground text-center mb-3">
+                {t("booking.timesInTimezone", {
+                  timezone: formatSlotTimeZoneName(slotsForSelectedDate[0]?.timezone || allSlots[0]?.timezone),
+                }) || `Times shown in ${formatSlotTimeZoneName(slotsForSelectedDate[0]?.timezone || allSlots[0]?.timezone)}`}
+              </p>
+            ) : null}
 
             <div className="space-y-3">
               {isLoadingSlots ? (
@@ -285,13 +302,16 @@ export function ReservationSlotPicker({
                         onClick={() => {
                           setSelectedSlot(slot)
                           if (hideDetailsStep) {
-                            onSelect(slot.start, slot.end, { available: slot.available })
+                            onSelect(slot.start, slot.end, {
+                              available: slot.available,
+                              timezone: slot.timezone,
+                            })
                           } else {
                             setActiveStep("details")
                           }
                         }}
                       >
-                        {format(new Date(slot.start), "h:mm a")}
+                        {formatSlotTime(slot.start, slot.timezone, display)}
                         {shouldShowSlotLeftover(slot, selectedStartIso) ? (
                           <span className="text-xs opacity-70 ml-2">({slot.available} left)</span>
                         ) : null}
@@ -373,6 +393,7 @@ export function ReservationSlotPicker({
           setGuestsString={setGuestsString}
           notes={notes}
           setNotes={setNotes}
+          timeDisplay={display}
         />
       )}
     </div>

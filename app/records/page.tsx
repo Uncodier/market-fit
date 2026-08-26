@@ -399,13 +399,13 @@ export default function RecordsPage() {
 
         <div className="flex-1 overflow-auto bg-muted/30 transition-colors duration-300 ease-in-out pt-[71px]">
           <div 
-            className="h-full transition-all duration-300 ease-in-out"
+            className="min-h-full flex flex-col transition-all duration-300 ease-in-out"
             style={{ 
               paddingLeft: isMobile ? '0px' : `calc(${sidebarLeft} + ${!isSidebarCollapsed ? "319px" : "0px"})`
             }}
           >
             {isLoading ? (
-              <div className="p-4 md:p-8 h-full">
+              <div className="p-4 md:p-8 min-h-full">
                 {viewType === "table" ? (
                   <RecordsTableSkeleton />
                 ) : viewType === "calendar" ? (
@@ -415,7 +415,7 @@ export default function RecordsPage() {
                 )}
               </div>
             ) : filteredRecords.length === 0 ? (
-              <div className="h-full flex items-center justify-center">
+              <div className="flex-1 flex items-center justify-center">
                 <EmptyState 
                   icon={<ClipboardList className="h-8 w-8 text-muted-foreground" />}
                   title={t("records.empty.title") || "No records found"}
@@ -424,7 +424,7 @@ export default function RecordsPage() {
                 />
               </div>
             ) : (
-              <div className="p-4 md:p-8 h-full">
+              <div className="p-4 md:p-8 min-h-full">
                 {viewType === "table" ? (
                   <RecordsTable
                     records={filteredRecords.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)}

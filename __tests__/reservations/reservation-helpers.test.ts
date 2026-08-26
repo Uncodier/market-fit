@@ -1,5 +1,7 @@
 import {
   compareReservationStartTime,
+  reservationServiceColor,
+  reservationServiceColorKey,
   sortReservationGroups,
   sortReservations,
 } from "../../app/reservations/reservation-helpers"
@@ -43,5 +45,39 @@ describe("reservation sorting", () => {
   it("compares start times for oldest first", () => {
     expect(compareReservationStartTime(earlier, later, "oldest")).toBeLessThan(0)
     expect(compareReservationStartTime(later, earlier, "newest")).toBeLessThan(0)
+  })
+})
+
+describe("reservation service colors", () => {
+  it("keeps the same color for the same catalog item", () => {
+    const first = reservationServiceColor({ catalog_item_id: "service-massage" })
+    const second = reservationServiceColor({ catalog_item_id: "service-massage" })
+
+    expect(first).toEqual(second)
+  })
+
+  it("prefers catalog item id over the service name", () => {
+    expect(
+      reservationServiceColorKey({
+        catalog_item_id: "service-1",
+        catalog_item: { name: "Massage" },
+      })
+    ).toBe("catalog:service-1")
+  })
+
+  it("falls back to location, employee, then name", () => {
+    expect(reservationServiceColorKey({ location_id: "room-1" })).toBe("location:room-1")
+    expect(reservationServiceColorKey({ assignee_user_id: "member-1" })).toBe("employee:member-1")
+    expect(reservationServiceColorKey({ catalog_item: { name: "Haircut" } })).toBe("name:Haircut")
+  })
+
+  it("spreads different catalog items across the palette", () => {
+    const swatches = new Set(
+      ["massage", "haircut", "facial", "manicure", "training", "consult"].map(
+        (id) => reservationServiceColor({ catalog_item_id: id }).swatch
+      )
+    )
+
+    expect(swatches.size).toBeGreaterThan(1)
   })
 })

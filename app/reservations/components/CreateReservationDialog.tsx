@@ -1,7 +1,6 @@
 "use client"
 
 import { useEffect, useState, useMemo } from "react"
-import { format } from "date-fns"
 import useSWR from "swr"
 import { useRouter } from "next/navigation"
 import {
@@ -33,9 +32,11 @@ import { upsertReservation } from "../actions"
 import { assertReservationSlot } from "../availability"
 import { getLeads } from "@/app/leads/actions"
 import { listCatalogItems } from "@/app/catalog/actions"
+import { filterReservablePickerItems } from "@/app/catalog/storefront-availability"
 import { RelationSelect, RelationSelectValue } from "@/app/components/ui/relation-select"
 import { resolveRelationId } from "@/app/commerce/resolve-relation"
 import { ReservationSlotPicker } from "@/app/components/commerce/ReservationSlotPicker"
+import { formatSlotDateTime } from "@/app/components/commerce/reservation-slot-utils"
 import { ConfirmDialog } from "@/app/components/ui/confirm-dialog"
 import { useDirtyDialogClose } from "@/app/components/ui/use-dirty-dialog-close"
 import { Skeleton } from "@/app/components/ui/skeleton"
@@ -104,7 +105,7 @@ export function CreateReservationDialog({
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [catalogItemValue, setCatalogItemValue] = useState<RelationSelectValue>(null)
   const [leadValue, setLeadValue] = useState<RelationSelectValue>(null)
-  const [selectedSlot, setSelectedSlot] = useState<{ start: string; end: string } | null>(null)
+  const [selectedSlot, setSelectedSlot] = useState<{ start: string; end: string; timezone?: string } | null>(null)
   const [notes, setNotes] = useState("")
   
   const [mode, setMode] = useState<"service" | "task">("service")
@@ -199,7 +200,14 @@ export function CreateReservationDialog({
 
   const leads = leadsData?.leads || []
   const members = membersData?.members || []
-  const items = useMemo(() => (catalogData?.data || []).filter((item: any) => !item.parent_id), [catalogData?.data])
+  const items = useMemo(
+    () =>
+      filterReservablePickerItems(
+        catalogData?.data || [],
+        reservation?.catalog_item_id,
+      ),
+    [catalogData?.data, reservation?.catalog_item_id],
+  )
   const schedules = combinedCalendars
   const schedulesLoading = profilesLoading
   const catalogItemId = catalogItemValue?.mode === "existing" ? catalogItemValue.id : ""
@@ -844,7 +852,7 @@ export function CreateReservationDialog({
                 </div>
                 {selectedSlot && !sellableItem ? (
                   <p className="text-sm text-muted-foreground">
-                    Selected: {format(new Date(selectedSlot.start), "PPP p")} – {format(new Date(selectedSlot.end), "p")}
+                    Selected: {formatSlotDateTime(selectedSlot.start, selectedSlot.timezone, "PPP p", "system")} – {formatSlotDateTime(selectedSlot.end, selectedSlot.timezone, "p", "system")}
                   </p>
                 ) : null}
                 {sellableItem ? (
@@ -857,11 +865,13 @@ export function CreateReservationDialog({
                       ignoreReservationId={reservation?.id}
                       selectedStartIso={selectedSlot?.start}
                       selectedEndIso={selectedSlot?.end}
-                      onSelect={(start, end) => setSelectedSlot({ start, end })}
+                      onSelect={(start, end, extra) =>
+                        setSelectedSlot({ start, end, timezone: extra?.timezone })
+                      }
                     />
                     {selectedSlot ? (
                       <p className="text-sm text-muted-foreground">
-                        Selected: {format(new Date(selectedSlot.start), "PPP p")} – {format(new Date(selectedSlot.end), "p")}
+                        Selected: {formatSlotDateTime(selectedSlot.start, selectedSlot.timezone, "PPP p", "system")} – {formatSlotDateTime(selectedSlot.end, selectedSlot.timezone, "p", "system")}
                       </p>
                     ) : null}
                   </div>

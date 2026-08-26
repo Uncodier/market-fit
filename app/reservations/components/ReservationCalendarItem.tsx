@@ -5,7 +5,11 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/app/components/ui/avatar"
 import { cn } from "@/lib/utils"
 import { Reservation } from "@/app/types"
 import { useLocalization } from "@/app/context/LocalizationContext"
-import { reservationCustomerName, reservationServiceName } from "../reservation-helpers"
+import {
+  reservationCustomerName,
+  reservationServiceColor,
+  reservationServiceName,
+} from "../reservation-helpers"
 
 function ReservationStatusDot({ status }: { status: Reservation["status"] }) {
   return (
@@ -57,6 +61,7 @@ export function ReservationItem({
     reservation,
     t("reservations.resource.unknownService") || "Unknown service"
   )
+  const serviceColor = reservationServiceColor(reservation)
 
   return (
     <div
@@ -68,14 +73,7 @@ export function ReservationItem({
         variant="outline"
         className={cn(
           "flex items-center gap-2 text-xs w-full pr-2 pl-1 h-auto py-1",
-          reservation.status === "completed" &&
-            "bg-green-500/10 text-green-700 dark:text-green-400 border-green-500/20",
-          reservation.status === "confirmed" &&
-            "bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-500/20",
-          reservation.status === "pending" &&
-            "bg-yellow-500/10 text-yellow-700 dark:text-yellow-400 border-yellow-500/20",
-          reservation.status === "cancelled" &&
-            "bg-red-500/10 text-red-700 dark:text-red-400 border-red-500/20"
+          serviceColor.badge
         )}
       >
         <Avatar className="h-5 w-5 mr-1.5 shrink-0">
