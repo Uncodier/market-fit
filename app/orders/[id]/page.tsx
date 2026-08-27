@@ -259,8 +259,8 @@ export default function OrderDetail(props: { params: Promise<{ id: string }> }) 
     <div className="flex-1 flex flex-col min-h-[calc(100vh-var(--topbar-height,64px))] bg-muted/30">
       <Tabs defaultValue="details" className="flex-1 flex flex-col">
         <StickyHeader>
-          <div className="w-full pt-0 flex justify-between items-center gap-3">
-            <div className="flex items-center gap-3 min-w-0">
+          <div className="w-full pt-0 flex justify-between items-center gap-3 overflow-x-auto">
+            <div className="flex items-center gap-3 min-w-0 flex-shrink-0">
               <TabsList>
                 <TabsTrigger value="details">{t('orders.detail.tabs.details') || 'Details'}</TabsTrigger>
                 <TabsTrigger value="shipments">{t('orders.detail.tabs.shipments') || 'Shipments'}</TabsTrigger>
@@ -305,12 +305,13 @@ export default function OrderDetail(props: { params: Promise<{ id: string }> }) 
                 </Button>
               </div>
             </div>
-            <div className="flex items-center justify-end">
-              <OrderStatusBar
-                currentStatus={order.status}
-                onStatusChange={handleStatusChange}
-                disabled={updatingStatus}
-              />
+              <div className="flex items-center justify-end flex-shrink-0">
+                <OrderStatusBar
+                  currentStatus={order.status}
+                  onStatusChange={handleStatusChange}
+                  disabled={updatingStatus}
+                />
+              </div>
             </div>
           </div>
         </StickyHeader>

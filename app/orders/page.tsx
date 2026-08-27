@@ -210,8 +210,8 @@ export default function OrdersPage() {
                       </SelectContent>
                     </Select>
                   )}
-                  
-                  <div className="flex flex-col md:flex-row items-stretch md:items-center gap-2">
+
+                  <div className="md:hidden flex flex-col md:flex-row items-stretch md:items-center gap-2">
                     <CalendarDateRangePicker 
                       onRangeChange={handleDateRangeChange} 
                       initialStartDate={dateRange.startDate}
@@ -227,8 +227,15 @@ export default function OrdersPage() {
               </MobileFiltersDrawer>
 
               <div className="ml-auto flex items-center gap-3">
-                <PrinterSyncBadge module="orders" />
+                <div className="hidden md:flex items-center gap-2">
+                  <CalendarDateRangePicker 
+                    onRangeChange={handleDateRangeChange} 
+                    initialStartDate={dateRange.startDate}
+                    initialEndDate={dateRange.endDate} />
+                </div>
                 
+                <PrinterSyncBadge module="orders" />
+
                 <ViewSelector currentView={viewType} onViewChange={setViewType} />
               </div>
             </div>

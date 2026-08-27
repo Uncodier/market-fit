@@ -15,17 +15,17 @@ import { cn } from "@/lib/utils"
 import { navigateToLead, navigateToSale, navigateToShipment } from "@/app/hooks/use-navigation-history"
 
 const ROW_STATUS_STYLES: Record<string, string> = {
-  draft: "bg-gray-50/50",
-  new: "bg-amber-50/50",
-  preparing: "bg-blue-50/50",
-  completed: "bg-green-50/50",
+  draft: "bg-gray-50/50 dark:bg-gray-900/50",
+  new: "bg-amber-50/50 dark:bg-amber-950/30",
+  preparing: "bg-blue-50/50 dark:bg-blue-950/30",
+  completed: "bg-green-50/50 dark:bg-green-950/30",
 }
 
 const LINE_STATUS_STYLES: Record<string, string> = {
-  draft: "bg-white text-gray-700 border-gray-200",
-  new: "bg-white text-amber-700 border-amber-200",
-  preparing: "bg-white text-blue-700 border-blue-200",
-  completed: "bg-white text-green-700 border-green-200",
+  draft: "bg-white text-gray-700 border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700",
+  new: "bg-white text-amber-700 border-amber-200 dark:bg-amber-950/50 dark:text-amber-400 dark:border-amber-900",
+  preparing: "bg-white text-blue-700 border-blue-200 dark:bg-blue-950/50 dark:text-blue-400 dark:border-blue-900",
+  completed: "bg-white text-green-700 border-green-200 dark:bg-green-950/50 dark:text-green-400 dark:border-green-900",
 }
 
 interface OrderInvoiceDocumentProps {
