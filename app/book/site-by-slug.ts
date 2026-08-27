@@ -9,14 +9,23 @@ export function toSiteSlug(name: string): string {
 
 function isTransientDbError(error: { message?: string; details?: string } | null | undefined): boolean {
   const msg = `${error?.message || ""} ${error?.details || ""}`;
-  return /fetch failed|ENOTFOUND|ECONNRESET|ETIMEDOUT|ECONNREFUSED|socket|network/i.test(msg);
+  return /fetch failed|ENOTFOUND|ECONNRESET|ETIMEDOUT|ECONNREFUSED|socket|network|502|503|504|521|cloudflare|web server is down/i.test(msg);
 }
 
 function formatDbError(error: { message?: string; details?: string; hint?: string; code?: string } | null | undefined): string {
   if (!error) return "unknown error";
-  return [error.message, error.code && `code=${error.code}`, error.details, error.hint]
+  
+  const formatted = [error.message, error.code && `code=${error.code}`, error.details, error.hint]
     .filter(Boolean)
     .join(" | ") || JSON.stringify(error);
+
+  if (formatted.toLowerCase().includes("<!doctype html>") || formatted.toLowerCase().includes("<html")) {
+    const titleMatch = formatted.match(/<title[^>]*>(.*?)<\/title>/i);
+    const title = titleMatch ? titleMatch[1] : "HTML Error Page";
+    return `HTML Error Response: ${title} (truncated)`;
+  }
+  
+  return formatted;
 }
 
 async function withTransientRetry<T extends { error: any }>(
