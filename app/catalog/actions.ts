@@ -167,6 +167,19 @@ async function ensurePassRedeemsCatalogItem(
   })
 }
 
+async function cascadeToVariants(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  siteId: string,
+  parentId: string,
+  updates: { status?: "archived"; availability_mode?: "manual"; availability_status?: "unavailable" }
+) {
+  await supabase
+    .from("catalog_items")
+    .update(updates)
+    .eq("parent_id", parentId)
+    .eq("site_id", siteId)
+}
+
 export async function upsertCatalogItem(item: Partial<CatalogItem>) {
   try {
     const supabase = await createClient();
@@ -198,6 +211,19 @@ export async function upsertCatalogItem(item: Partial<CatalogItem>) {
         if (subtype === 'pass' && pi.digital_catalog_item_id) {
           await ensurePassRedeemsCatalogItem(data.site_id, pi.digital_catalog_item_id, data.id)
         }
+      }
+    }
+
+    if (data?.id && data.site_id) {
+      if (data.status === 'archived') {
+        await cascadeToVariants(supabase, data.site_id, data.id, { status: 'archived' });
+      }
+
+      if (data.availability_mode === 'manual' && data.availability_status === 'unavailable') {
+        await cascadeToVariants(supabase, data.site_id, data.id, {
+          availability_mode: 'manual',
+          availability_status: 'unavailable',
+        });
       }
     }
 
@@ -238,6 +264,13 @@ export async function updateCatalogAvailability(
       return { error: error.message };
     }
 
+    if (updates.availability_status === 'unavailable') {
+      await cascadeToVariants(supabase, siteId, catalogItemId, {
+        availability_mode: 'manual',
+        availability_status: 'unavailable',
+      });
+    }
+
     revalidatePath(`/catalog`);
     revalidatePath(`/pos`);
     revalidateTag(shopCacheTag(siteId), "max");
@@ -262,6 +295,23 @@ export async function deleteCatalogItem(siteId: string, catalogItemId: string) {
     if (error) {
       return { error: error.message };
     }
+
+    // Clean up pass_redeemable_items for this item and its variants
+    const { data: children } = await supabase
+      .from("catalog_items")
+      .select("id")
+      .eq("parent_id", catalogItemId)
+      .eq("site_id", siteId);
+
+    const idsToRemove = [catalogItemId, ...(children?.map((c: any) => c.id) || [])];
+
+    await supabase
+      .from("pass_redeemable_items")
+      .delete()
+      .in("reservable_catalog_item_id", idsToRemove);
+
+    // Archive all variants
+    await cascadeToVariants(supabase, siteId, catalogItemId, { status: 'archived' });
 
     revalidatePath(`/catalog`);
     revalidatePath(`/pos`);

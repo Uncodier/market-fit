@@ -7,6 +7,29 @@ import {
   pickNextRedeemableMember,
   type SlotAvailability,
 } from "@/app/commerce/pass-round-robin"
+import { isStorefrontAvailable } from "@/app/catalog/storefront-availability"
+
+type RoundRobinMemberRow = {
+  id: string
+  kind?: string | null
+  digital_subtype?: string | null
+  redeem_assignment_mode?: string | null
+  is_reservation?: boolean | null
+  status?: string | null
+  parent_id?: string | null
+  availability_mode?: string | null
+  availability_status?: string | null
+  parent?: { status?: string | null } | { status?: string | null }[] | null
+}
+
+function isActiveRoundRobinMember(item: RoundRobinMemberRow | undefined): boolean {
+  if (!item || item.status === "archived") return false
+  const parent = Array.isArray(item.parent) ? item.parent[0] : item.parent
+  if (parent?.status === "archived") return false
+  if (!isStorefrontAvailable(item)) return false
+  if (isRoundRobinPass(item)) return false
+  return Boolean(item.is_reservation)
+}
 
 export async function listPassRoundRobinMemberIds(passCatalogItemId: string): Promise<string[]> {
   const supabase = await createServiceClient(true)
@@ -35,6 +58,22 @@ export async function listPassRoundRobinMemberIds(passCatalogItemId: string): Pr
   if (error) throw new Error(error.message)
   let orderedIds = (rows || []).map((r) => r.reservable_catalog_item_id as string)
   
+  if (orderedIds.length === 0) return []
+
+  // Drop archived / unavailable members before variant mapping so their
+  // still-active children are never considered.
+  const { data: baseItems } = await supabase
+    .from("catalog_items")
+    .select("id, status, availability_mode, availability_status")
+    .in("id", orderedIds)
+
+  const baseById = new Map((baseItems || []).map((item) => [item.id, item]))
+  orderedIds = orderedIds.filter((id) => {
+    const item = baseById.get(id)
+    if (!item || item.status === "archived") return false
+    return isStorefrontAvailable(item)
+  })
+
   if (orderedIds.length === 0) return []
 
   // 3. If target is a variant, we need to map the parent's members to their corresponding variants
@@ -70,9 +109,6 @@ export async function listPassRoundRobinMemberIds(passCatalogItemId: string): Pr
       })
       if (match) {
         mappedIds.push(match.id)
-      } else {
-        // If we didn't find a matching variant for this member, they can't fulfill this request.
-        // E.g., if one barber doesn't offer "Corte", they shouldn't be considered for "Corte".
       }
     }
     orderedIds = mappedIds
@@ -82,17 +118,33 @@ export async function listPassRoundRobinMemberIds(passCatalogItemId: string): Pr
 
   const { data: items } = await supabase
     .from("catalog_items")
-    .select("id, kind, digital_subtype, redeem_assignment_mode, is_reservation, status")
+    .select("id, kind, digital_subtype, redeem_assignment_mode, is_reservation, status, parent_id, availability_mode, availability_status")
     .in("id", orderedIds)
 
-  const byId = new Map((items || []).map((item) => [item.id, item]))
-  const finalIds = orderedIds.filter((id) => {
-    const item = byId.get(id)
-    if (!item || item.status === "archived") return false
-    if (isRoundRobinPass(item)) return false
-    return Boolean(item.is_reservation)
-  })
-  return finalIds
+  const byId = new Map<string, RoundRobinMemberRow>(
+    (items || []).map((item) => [item.id, item as RoundRobinMemberRow]),
+  )
+
+  const parentIds = Array.from(
+    new Set(
+      (items || [])
+        .map((item) => item.parent_id as string | null)
+        .filter((id): id is string => Boolean(id)),
+    ),
+  )
+  if (parentIds.length > 0) {
+    const { data: parents } = await supabase
+      .from("catalog_items")
+      .select("id, status")
+      .in("id", parentIds)
+    const parentStatus = new Map((parents || []).map((parent) => [parent.id, parent.status]))
+    for (const item of byId.values()) {
+      if (!item.parent_id) continue
+      item.parent = { status: parentStatus.get(item.parent_id) ?? null }
+    }
+  }
+
+  return orderedIds.filter((id) => isActiveRoundRobinMember(byId.get(id)))
 }
 
 export async function getMergedRoundRobinSlots(
