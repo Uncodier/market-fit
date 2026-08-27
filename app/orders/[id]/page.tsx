@@ -305,13 +305,12 @@ export default function OrderDetail(props: { params: Promise<{ id: string }> }) 
                 </Button>
               </div>
             </div>
-              <div className="flex items-center justify-end flex-shrink-0">
-                <OrderStatusBar
-                  currentStatus={order.status}
-                  onStatusChange={handleStatusChange}
-                  disabled={updatingStatus}
-                />
-              </div>
+            <div className="flex items-center justify-end flex-shrink-0">
+              <OrderStatusBar
+                currentStatus={order.status}
+                onStatusChange={handleStatusChange}
+                disabled={updatingStatus}
+              />
             </div>
           </div>
         </StickyHeader>

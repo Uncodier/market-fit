@@ -3,6 +3,8 @@ import useSWR from 'swr'
 import { createClient } from '@/lib/supabase/client'
 import { InstanceNode } from '@/app/types/instance-nodes'
 
+import { WF_LOAD_NODE_TYPES } from '@/app/components/workflows/types'
+
 export interface ImprentaData {
   nodes: InstanceNode[]
   contexts: any[]
@@ -21,6 +23,7 @@ async function fetchAllNodes(instanceId: string): Promise<InstanceNode[]> {
       .from('instance_nodes')
       .select('*')
       .eq('instance_id', instanceId)
+      .not('type', 'in', `(${WF_LOAD_NODE_TYPES.join(',')})`)
       .order('created_at', { ascending: true })
       .range(from, from + PAGE - 1)
 

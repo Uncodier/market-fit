@@ -89,6 +89,7 @@ import {
   PUBLISH_SLOT_REFERENCE,
   validatePublishNodeInputs,
 } from "@/app/components/agents/imprenta-publish-context"
+import { WF_LOAD_NODE_TYPES } from "@/app/components/workflows/types"
 
 /** Treat inherited / mistaken DB copies of the parent's coordinates as invalid for child nodes. */
 function positionsNearlyEqual(
@@ -2443,6 +2444,10 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
         table: 'instance_nodes',
         filter: `instance_id=eq.${activeInstanceId}`
       }, (payload: any) => {
+        // Skip workflow nodes arriving via realtime
+        const type = payload.new?.type || payload.old?.type
+        if (type && (WF_LOAD_NODE_TYPES as readonly string[]).includes(type)) return
+
         nodeBatchBuffer.push(payload)
         if (!nodeBatchTimeout) {
           nodeBatchTimeout = setTimeout(() => {
