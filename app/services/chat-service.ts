@@ -517,7 +517,7 @@ export async function getConversations(
       
       // Extract channel from custom_data or default to 'web'
       const customData = conv.custom_data || {};
-      let channel = customData.channel || 'web';
+      let channel = conv.channel || customData.channel || 'web';
       
       // Normalize website_chat to web since they are the same
       if (channel === 'website_chat') {
