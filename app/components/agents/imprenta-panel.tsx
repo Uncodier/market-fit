@@ -2602,7 +2602,7 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
         user_id: node.user_id,
         instance_id: node.instance_id,
         instance_node_id: node.id, // Pass the current node ID instead of creating a child
-        context: JSON.stringify(contextObj),
+        context: JSON.stringify({ ...contextObj, nodeType: node.type }), // Ensure nodeType is sent
         system_prompt: systemPrompt,
         expected_results_amount: (node.settings as any)?.parameters?.expectedResults || 1
       }
