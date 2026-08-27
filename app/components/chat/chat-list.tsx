@@ -282,7 +282,7 @@ export function ChatList({
           
           // Extract channel from custom_data or default to 'web'
           const customData = conversationData.custom_data || {};
-          const channel = customData.channel || 'web';
+          const channel = conversationData.channel || customData.channel || 'web';
           
           // Use assignee name if available, otherwise use agent name
           const finalAgentName = assigneeName || agentName;

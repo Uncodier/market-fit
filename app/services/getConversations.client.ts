@@ -93,6 +93,7 @@ export async function getConversations(
       last_message_at,
       created_at,
       custom_data,
+      channel,
       status,
       messages (
         content,
@@ -145,12 +146,13 @@ export async function getConversations(
     // Apply channel filter to both queries if specified
     if (channelFilter && channelFilter !== 'all') {
       if (channelFilter === 'web') {
-        const channelFilterStr = `custom_data->>channel.eq.web,custom_data->>channel.eq.website_chat,custom_data->>channel.is.null,custom_data.is.null`
+        const channelFilterStr = `channel.eq.web,channel.eq.website_chat,channel.is.null,custom_data->>channel.eq.web,custom_data->>channel.eq.website_chat,custom_data->>channel.is.null,custom_data.is.null`
         pendingQuery = pendingQuery.or(channelFilterStr)
         nonPendingQuery = nonPendingQuery.or(channelFilterStr)
       } else {
-        pendingQuery = pendingQuery.eq(`custom_data->>channel`, channelFilter)
-        nonPendingQuery = nonPendingQuery.eq(`custom_data->>channel`, channelFilter)
+        const channelFilterStr = `channel.eq.${channelFilter},custom_data->>channel.eq.${channelFilter}`
+        pendingQuery = pendingQuery.or(channelFilterStr)
+        nonPendingQuery = nonPendingQuery.or(channelFilterStr)
       }
     }
 
@@ -172,10 +174,11 @@ export async function getConversations(
     // Apply the same channel filter to count query
     if (channelFilter && channelFilter !== 'all') {
       if (channelFilter === 'web') {
-        const channelFilterStr = `custom_data->>channel.eq.web,custom_data->>channel.eq.website_chat,custom_data->>channel.is.null,custom_data.is.null`
+        const channelFilterStr = `channel.eq.web,channel.eq.website_chat,channel.is.null,custom_data->>channel.eq.web,custom_data->>channel.eq.website_chat,custom_data->>channel.is.null,custom_data.is.null`
         pendingCountQuery = pendingCountQuery.or(channelFilterStr)
       } else {
-        pendingCountQuery = pendingCountQuery.eq(`custom_data->>channel`, channelFilter)
+        const channelFilterStr = `channel.eq.${channelFilter},custom_data->>channel.eq.${channelFilter}`
+        pendingCountQuery = pendingCountQuery.or(channelFilterStr)
       }
     }
 
@@ -473,7 +476,7 @@ export async function getConversations(
       let agentName = agentsMap[agentId] || (agentId && agentId !== "" ? "Unknown Agent" : "Agent")
       if (assigneeId && assigneesMap[assigneeId]) agentName = assigneesMap[assigneeId]
       const customData = conv.custom_data || {}
-      let channel = customData.channel || 'web'
+      let channel = conv.channel || customData.channel || 'web'
       if (channel === 'website_chat') channel = 'web'
 
       // Check if any message has accepted or pending status
@@ -560,7 +563,7 @@ async function buildConversationListItems(
     let agentName = agentsMap[agentId] || (agentId ? "Unknown Agent" : "Agent")
     if (assigneeId && assigneesMap[assigneeId]) agentName = assigneesMap[assigneeId]
     const customData = conv.custom_data || {}
-    let channel = customData.channel || 'web'
+    let channel = conv.channel || customData.channel || 'web'
     if (channel === 'website_chat') channel = 'web'
     const hasAcceptedMessage = conv.messages?.some((msg: any) => msg.custom_data?.status === 'accepted')
     const hasPendingMessages = conv.messages?.some((msg: any) =>

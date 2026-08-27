@@ -1097,7 +1097,7 @@ const ImprentaNodeCardInner = memo(({
                                         style={{ top: `${PUBLISH_ANCHOR_AUDIENCE_Y * 100}%` }}
                                         title={
                                           needAudience
-                                            ? "Audience: Audience node including audience_id: (required for Mail, WhatsApp, Newsletter)"
+                                            ? "Audience: Audience node including audience_id: (required for Mail, WhatsApp, Newsletter, SMS, Message, Email)"
                                             : "Audience: Audience node including audience_id: (optional)"
                                         }
                                       >
