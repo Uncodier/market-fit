@@ -129,42 +129,44 @@ export function CommerceShareControl({
           <Share className={iconClassName || "w-4 h-4"} />
         </button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle className="text-center">{t("commerce.share.title") || "Share this page"}</DialogTitle>
+      <DialogContent size="sm" flush>
+        <DialogHeader className="border-b-0 pb-0 pt-6 px-6 sm:pr-6 text-center">
+          <DialogTitle className="text-center text-lg">{t("commerce.share.title") || "Share"}</DialogTitle>
         </DialogHeader>
         
-        <div className="flex flex-col items-center justify-center space-y-6 py-4">
+        <div className="flex flex-col items-center justify-center pb-8 pt-4 px-6">
           {/* QR Code */}
           {shareUrl && (
-            <div ref={qrRef} className="bg-white p-4 rounded-xl shadow-sm border">
+            <div ref={qrRef} className="bg-white p-3 rounded-2xl border shadow-sm mb-6">
               <QRCode
                 value={shareUrl}
-                size={180}
+                size={160}
                 level="M"
                 className="mx-auto"
               />
             </div>
           )}
-          <p className="text-sm text-muted-foreground text-center">
-            {t("commerce.share.qrHelper") || "Scan this QR code to open on another device"}
-          </p>
 
-          <div className="flex flex-col w-full gap-3 mt-4">
-            <Button onClick={handleShareQR} variant="outline" className="w-full">
+          <div className="flex items-center w-full gap-2 bg-muted/40 p-1.5 rounded-lg border">
+            <div className="flex-1 truncate px-2 text-sm text-muted-foreground select-all">
+              {shareUrl}
+            </div>
+            <Button size="icon" variant="ghost" className="h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground" onClick={handleCopyLink} title={t("commerce.share.copyLink") || "Copy Link"}>
+              <Copy className="w-4 h-4" />
+            </Button>
+          </div>
+
+          <div className="flex justify-center w-full gap-3 mt-4">
+            <Button variant="outline" className="flex-1 rounded-lg" onClick={handleShareQR}>
               <Download className="w-4 h-4 mr-2" />
-              {t("commerce.share.downloadQr") || "Share / Download QR"}
+              {t("commerce.share.downloadQr") || "Download"}
             </Button>
             {canNativeShare && (
-              <Button onClick={handleNativeShare} className="w-full">
+              <Button variant="default" className="flex-1 rounded-lg" onClick={handleNativeShare}>
                 <Share className="w-4 h-4 mr-2" />
-                {t("commerce.share.nativeShare") || "Share via..."}
+                {t("commerce.share.nativeShare") || "Share"}
               </Button>
             )}
-            <Button onClick={handleCopyLink} variant={canNativeShare ? "outline" : "default"} className="w-full">
-              <Copy className="w-4 h-4 mr-2" />
-              {t("commerce.share.copyLink") || "Copy Link"}
-            </Button>
           </div>
         </div>
       </DialogContent>

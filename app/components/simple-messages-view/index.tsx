@@ -45,6 +45,7 @@ import { StepIndicator } from './components/StepIndicator'
 import { BacklogIndicator } from './components/BacklogIndicator'
 import { EditStepModal } from './components/EditStepModal'
 import { StepCompletedItem } from './components/StepCompletedItem'
+import { ArtifactShownItem } from './components/ArtifactShownItem'
 import { EmptyStatePrompts } from './components/EmptyStatePrompts'
 
 // Import utilities
@@ -661,8 +662,10 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
   const isToolCallLog = (log: any) => {
     const isToolCall = log.log_type === 'tool_call' || log.log_type === 'tool_result'
     const hasToolName = log.tool_name || log.toolName
-    const isStructuredOutput = (log.tool_name || log.toolName)?.toLowerCase() === 'structured_output'
-    return (isToolCall || hasToolName) && !isStructuredOutput
+    const toolNameLower = (log.tool_name || log.toolName)?.toLowerCase()
+    const isStructuredOutput = toolNameLower === 'structured_output'
+    const isShowArtifact = toolNameLower === 'show_artifact'
+    return (isToolCall || hasToolName) && !isStructuredOutput && !isShowArtifact
   }
 
   const processedTimeline = groupTimelineToolCalls(
@@ -837,7 +840,9 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
                   )
                 } else if (item.type === 'log') {
                   const log = item.data
-                  const isStructuredOutput = (log.tool_name || log.toolName)?.toLowerCase() === 'structured_output'
+                  const toolNameLower = (log.tool_name || log.toolName)?.toLowerCase()
+                  const isStructuredOutput = toolNameLower === 'structured_output'
+                  const isShowArtifact = toolNameLower === 'show_artifact'
                   const isStepCompleted = isStructuredOutput && log.message?.includes('event=step_completed')
                   
                   if (isStepCompleted) {
@@ -846,6 +851,18 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
                         key={log.id}
                         log={log}
                         isDarkMode={isDarkMode}
+                      />
+                    )
+                  } else if (isShowArtifact) {
+                    if (log.log_type === 'tool_result') {
+                      return null // Ignore tool_result since we already render the tool_call
+                    }
+                    content = (
+                      <ArtifactShownItem
+                        key={log.id}
+                        log={log}
+                        isDarkMode={isDarkMode}
+                        isBrowserVisible={isBrowserVisible}
                       />
                     )
                   } else {
