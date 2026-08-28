@@ -126,7 +126,7 @@ export function QuotationInvoice({
           </div>
         </div>
       ) : quotation.notes ? (
-        <div className="text-sm leading-relaxed w-full overflow-hidden break-words word-wrap hyphens-auto" style={{ wordWrap: 'break-word', overflowWrap: 'break-word', wordBreak: 'break-word' }}>
+        <div className="text-sm leading-relaxed w-full overflow-x-auto [&_h1]:text-foreground [&_h2]:text-foreground [&_h3]:text-foreground [&_strong]:text-foreground [&_table]:text-foreground">
           <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>{quotation.notes}</ReactMarkdown>
         </div>
       ) : (
@@ -163,14 +163,6 @@ export function QuotationInvoice({
             ) : null}
           </div>
           <div className="flex flex-col items-end gap-2">
-            <Badge
-              variant="outline"
-              className={cn("uppercase", STATUS_STYLES[quotation.status] || STATUS_STYLES.draft)}
-            >
-              {t(`status.${quotation.status}`) ||
-                t(`quotations.status.${quotation.status}`) ||
-                quotation.status}
-            </Badge>
             <div className="text-right">
               <div className="text-sm text-muted-foreground">
                 {t("quotations.detail.created") || "Created"}

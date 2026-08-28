@@ -5,8 +5,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/app/components/ui/label"
 import { createClient } from "@/lib/supabase/client"
 import { useAuthContext as useAuth } from "@/app/components/auth/auth-provider"
-
 import { useLocalization } from "@/app/context/LocalizationContext"
+import { mergeDestinationSites, sameDestinationSites } from "@/app/components/commerce/destination-sites"
 
 interface DestinationSelectorProps {
   value: string | null // null = personal
@@ -18,19 +18,21 @@ interface DestinationSelectorProps {
 export function DestinationSelector({ value, onChange, label, locked = false }: DestinationSelectorProps) {
   const { user } = useAuth()
   const { t } = useLocalization()
-  const session = user ? { user } : null
+  const userId = user?.id ?? null
   const [sites, setSites] = useState<{ id: string, name: string }[]>([])
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(Boolean(userId))
 
   useEffect(() => {
+    if (!userId) {
+      setSites([])
+      setLoading(false)
+      return
+    }
+
+    let cancelled = false
+
     async function loadSites() {
-      if (!session?.user) {
-        setLoading(false)
-        return
-      }
-      
       const supabase = createClient()
-      // Need to find sites where this user is an active member or owner
       const { data, error } = await supabase
         .from('sites')
         .select(`
@@ -38,36 +40,31 @@ export function DestinationSelector({ value, onChange, label, locked = false }: 
           name,
           site_members!inner (user_id, status)
         `)
-        .eq('site_members.user_id', session.user.id)
+        .eq('site_members.user_id', userId)
         .eq('site_members.status', 'active')
-        
-      if (!error && data) {
-        setSites(data.map(s => ({ id: s.id, name: s.name })))
-      }
-      
-      // Also get owned sites directly
+
       const { data: ownedSites, error: ownedError } = await supabase
         .from('sites')
         .select('id, name')
-        .eq('user_id', session.user.id)
-        
-      if (!ownedError && ownedSites) {
-        setSites(prev => {
-          const combined = [...prev]
-          ownedSites.forEach(os => {
-            if (!combined.some(s => s.id === os.id)) {
-              combined.push(os)
-            }
-          })
-          return combined
-        })
-      }
-      
+        .eq('user_id', userId)
+
+      if (cancelled) return
+
+      const memberSites = !error && data
+        ? data.map((site: { id: string; name: string }) => ({ id: site.id, name: site.name }))
+        : []
+      const owned = !ownedError && ownedSites ? ownedSites : []
+      const next = mergeDestinationSites(memberSites, owned)
+
+      setSites((prev) => (sameDestinationSites(prev, next) ? prev : next))
       setLoading(false)
     }
-    
-    loadSites()
-  }, [session])
+
+    void loadSites()
+    return () => {
+      cancelled = true
+    }
+  }, [userId])
 
   // If not logged in or no sites (and not locked with a value), don't show the selector
   if (loading || (sites.length === 0 && !locked)) {

@@ -264,7 +264,7 @@ export function PrintableQuotation({
                   <h4 className="font-semibold text-foreground print:text-black mb-2">
                     {documentT(documentLocale, "quotations.detail.notes")}
                   </h4>
-                  <div className="text-sm leading-relaxed print:text-black w-full overflow-hidden break-words word-wrap hyphens-auto" style={{ wordWrap: 'break-word', overflowWrap: 'break-word', wordBreak: 'break-word' }}>
+                  <div className="text-sm leading-relaxed print:text-black w-full overflow-x-auto">
                     <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>{quotation.notes}</ReactMarkdown>
                   </div>
                 </div>
@@ -325,7 +325,7 @@ export function PrintableQuotation({
             </h2>
             <p className="text-lg text-muted-foreground print:text-gray-600">#{quoteRef}</p>
           </div>
-          <div className="text-sm leading-relaxed print:text-black w-full overflow-hidden break-words word-wrap hyphens-auto" style={{ wordWrap: 'break-word', overflowWrap: 'break-word', wordBreak: 'break-word' }}>
+          <div className="text-sm leading-relaxed print:text-black w-full overflow-x-auto">
             <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>{quotation.notes}</ReactMarkdown>
           </div>
         </div>

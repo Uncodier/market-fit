@@ -20,7 +20,7 @@ const QUOTE_SELECT = `
     )
   ),
   lead:leads(id, name, email, buyer_user_id),
-  site:sites(id, name, logo_url)
+  site:sites(id, name, logo_url, url)
 `
 
 function publicTokenSchemaError(message?: string | null) {

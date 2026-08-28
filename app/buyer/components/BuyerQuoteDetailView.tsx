@@ -11,21 +11,16 @@ import {
 import { startQuoteCheckout } from "@/app/commerce/quote-cart"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
 import { Button } from "@/app/components/ui/button"
-import { Badge } from "@/app/components/ui/badge"
-import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/card"
+import { Card, CardContent } from "@/app/components/ui/card"
 import { toast } from "sonner"
 import { Skeleton } from "@/app/components/ui/skeleton"
-import { FileText, CheckCircle2, ChevronLeft, Ban, ShoppingCart } from "@/app/components/ui/icons"
-import { format } from "date-fns"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/app/components/ui/table"
+import { CheckCircle2, ChevronLeft, Ban, ShoppingCart } from "@/app/components/ui/icons"
 import { DestinationSelector } from "@/app/components/commerce/DestinationSelector"
 import { PublicDocumentShopNav } from "@/app/documents/components/PublicDocumentShopNav"
 import { PublicDocumentViewSkeleton } from "@/app/documents/components/PublicDocumentViewSkeleton"
 import { useAuthContext as useAuth } from "@/app/components/auth/auth-provider"
 import { useLocalization } from "@/app/context/LocalizationContext"
-import ReactMarkdown from "react-markdown"
-import { markdownComponents } from "@/app/components/simple-messages-view/utils/markdownComponents"
-import remarkGfm from "remark-gfm"
+import { BuyerQuoteDocument } from "@/app/buyer/components/BuyerQuoteDocument"
 
 export interface BuyerQuoteDetailViewProps {
   quoteId?: string
@@ -37,13 +32,13 @@ export interface BuyerQuoteDetailViewProps {
   lockDestination?: boolean
 }
 
-export function BuyerQuoteDetailView({ 
-  quoteId, 
+export function BuyerQuoteDetailView({
+  quoteId,
   publicAccessToken,
   backHref = "/buyer/quotes",
   returnUrl,
   defaultOwnerSiteId = null,
-  lockDestination = false
+  lockDestination = false,
 }: BuyerQuoteDetailViewProps) {
   const router = useRouter()
   const { user } = useAuth()
@@ -52,7 +47,7 @@ export function BuyerQuoteDetailView({
   const isPublic = Boolean(publicAccessToken)
   const resolvedReturnUrl =
     returnUrl || (isPublic && publicAccessToken ? `/q/${publicAccessToken}` : "/buyer")
-  
+
   const [quotation, setQuotation] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [accepting, setAccepting] = useState(false)
@@ -94,7 +89,11 @@ export function BuyerQuoteDetailView({
       })
       router.push(path)
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : (t('buyer.quotes.detail.checkoutError') || "Failed to start checkout"))
+      toast.error(
+        e instanceof Error
+          ? e.message
+          : t("buyer.quotes.detail.checkoutError") || "Failed to start checkout"
+      )
       setAccepting(false)
     }
   }
@@ -110,7 +109,7 @@ export function BuyerQuoteDetailView({
       setRejecting(false)
       return
     }
-    toast.success(t('buyer.quotes.detail.rejected') || "Quote rejected")
+    toast.success(t("buyer.quotes.detail.rejected") || "Quote rejected")
     await loadQuotation()
     setRejecting(false)
   }
@@ -133,7 +132,9 @@ export function BuyerQuoteDetailView({
         {isPublic ? <PublicDocumentShopNav /> : null}
         <div className="flex-1 flex items-center justify-center p-8">
           <div className="text-center max-w-md space-y-2">
-            <h1 className="text-xl font-bold">{t('buyer.quotes.detail.unavailable') || 'Quote unavailable'}</h1>
+            <h1 className="text-xl font-bold">
+              {t("buyer.quotes.detail.unavailable") || "Quote unavailable"}
+            </h1>
             <p className="text-muted-foreground text-sm">{loadError}</p>
           </div>
         </div>
@@ -143,219 +144,130 @@ export function BuyerQuoteDetailView({
 
   if (!quotation) return null
 
-  const isLongNote = quotation?.notes && (quotation.notes.length > 800 || quotation.notes.split('\n').length > 15)
   const isExpired = quotation.valid_until && new Date(quotation.valid_until) < new Date()
-  const canRespond = quotation.status === 'sent' && !isExpired
+  const canRespond = quotation.status === "sent" && !isExpired
   const busy = accepting || rejecting
   const isSiteScope = lockDestination || (backHref?.startsWith("/purchases") ?? false)
   const quoteSiteId = quotation.site?.id || quotation.site_id || null
+  const siteName = quotation.site?.name || ""
 
   const headerContent = (
     <div className="flex w-full items-center gap-4">
       {backHref ? (
-        <Button variant="ghost" size="icon" onClick={() => router.push(backHref)} className="rounded-full">
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => router.push(backHref)}
+          className="rounded-full"
+        >
           <ChevronLeft className="w-5 h-5" />
         </Button>
       ) : null}
       <div>
-        <h1 className="font-bold text-lg leading-tight">{t('buyer.quotes.detail.quote') || 'Quote'} {quotation.id.substring(0,8)}</h1>
-        <p className="text-xs text-muted-foreground">{t('buyer.quotes.detail.from') || 'From'} {quotation.site?.name}</p>
+        <h1 className="font-bold text-lg leading-tight">
+          {t("buyer.quotes.detail.quote") || "Quote"} {quotation.id.substring(0, 8)}
+        </h1>
+        <p className="text-xs text-muted-foreground">
+          {t("buyer.quotes.detail.from") || "From"} {siteName}
+        </p>
       </div>
-      <Badge variant="outline" className="uppercase ml-auto">{quotation.status ? (t(`status.${quotation.status.toLowerCase()}`) || quotation.status) : ''}</Badge>
     </div>
   )
 
+  // Same sticky chrome as BuyerQuotesView / BuyerOrdersView / etc.
+  const HeaderWrapper = isSiteScope
+    ? StickyHeader
+    : ({ children }: any) => (
+        <div className="sticky top-[72px] z-30 bg-transparent h-[72px] flex items-center w-full">
+          {isPublic ? (
+            <div className="w-full max-w-7xl mx-auto px-4 md:px-8 flex items-center h-full">
+              {children}
+            </div>
+          ) : (
+            children
+          )}
+        </div>
+      )
+
   return (
-    <div className={`flex-1 flex flex-col min-h-full ${isPublic ? "min-h-screen bg-muted/30" : ""}`}>
+    <div
+      className={`flex-1 flex flex-col min-h-full ${isPublic ? "min-h-screen bg-muted/30" : ""}`}
+    >
       {isPublic ? (
         <PublicDocumentShopNav
           siteId={quoteSiteId}
-          siteName={quotation.site?.name}
+          siteName={siteName}
           logoUrl={quotation.site?.logo_url}
           currency={quotation.currency}
         />
       ) : null}
-      {isSiteScope ? (
-        <StickyHeader>{headerContent}</StickyHeader>
-      ) : (
-        <div className={`sticky z-30 bg-transparent min-h-[71px] flex items-center w-full px-4 md:px-6 ${isPublic ? "top-0" : "top-[72px]"}`}>
-          {headerContent}
-        </div>
-      )}
+      <HeaderWrapper>{headerContent}</HeaderWrapper>
 
       <div className="flex-1 p-4 md:p-6 overflow-auto">
         <div className="max-w-4xl mx-auto space-y-6">
-          <div className="bg-card rounded-xl border p-6 flex flex-col md:flex-row gap-6 justify-between md:items-center">
-            <div className="flex items-center gap-4">
-              {quotation.site?.logo_url ? (
-                <img src={quotation.site.logo_url} className="w-16 h-16 object-contain" />
-              ) : (
-                <div className="w-16 h-16 bg-muted rounded-xl flex items-center justify-center">
-                  <FileText className="w-8 h-8 text-muted-foreground" />
-                </div>
-              )}
-              <div>
-                <h2 className="text-xl font-bold">{quotation.title}</h2>
-                <div className="text-muted-foreground text-sm flex gap-2">
-                  <span>{format(new Date(quotation.created_at), 'MMM d, yyyy')}</span>
-                  {quotation.valid_until && (
-                    <>
-                      <span>•</span>
-                      <span className={isExpired ? "text-red-500" : ""}>{t('buyer.quotes.detail.validUntil') || 'Valid until'} {quotation.valid_until && !isNaN(new Date(quotation.valid_until).getTime()) ? format(new Date(quotation.valid_until), 'MMM d, yyyy') : '-'}</span>
-                    </>
-                  )}
-                </div>
-              </div>
-            </div>
-            
-            <div className="text-right">
-              <div className="text-3xl font-bold">{new Intl.NumberFormat('en-US', { style: 'currency', currency: quotation.currency || 'USD' }).format(quotation.total)}</div>
-              {canRespond && (
-                <div className="mt-2 text-sm text-muted-foreground">
-                  {t('buyer.quotes.detail.ready') || 'Ready to accept'}
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Legacy description fallback */}
-          {quotation.description && !quotation.notes && (
-            <Card>
-              <CardContent className="pt-6">
-                <div className="whitespace-pre-wrap text-sm">{quotation.description}</div>
-              </CardContent>
-            </Card>
-          )}
-
-          {quotation.notes && isLongNote && (
-            <Card>
-              <CardHeader className="pb-3 border-b">
-                <CardTitle className="text-base">{t('quotations.detail.notes') || 'Terms and Conditions'}</CardTitle>
-              </CardHeader>
-              <CardContent className="pt-6">
-                <div className="text-sm leading-relaxed w-full overflow-hidden break-words word-wrap hyphens-auto" style={{ wordWrap: 'break-word', overflowWrap: 'break-word', wordBreak: 'break-word' }}>
-                  <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>{quotation.notes}</ReactMarkdown>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          <Card>
-            <CardHeader className="pb-3 border-b">
-              <CardTitle className="text-base">{t('buyer.quotes.detail.orderDetails') || 'Order Details'}</CardTitle>
-            </CardHeader>
-            <CardContent className="p-0">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>{t('buyer.quotes.detail.item') || 'Item'}</TableHead>
-                    <TableHead className="text-center">{t('buyer.quotes.detail.qty') || 'Qty'}</TableHead>
-                    <TableHead className="text-right">{t('buyer.quotes.detail.price') || 'Price'}</TableHead>
-                    <TableHead className="text-right">{t('buyer.quotes.detail.total') || 'Total'}</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {quotation.items?.map((item: any, idx: number) => (
-                    <TableRow key={idx}>
-                      <TableCell className="font-medium">{item.name}</TableCell>
-                      <TableCell className="text-center">{item.quantity}</TableCell>
-                      <TableCell className="text-right">{new Intl.NumberFormat('en-US', { style: 'currency', currency: quotation.currency || 'USD' }).format(item.unit_price)}</TableCell>
-                      <TableCell className="text-right font-medium">{new Intl.NumberFormat('en-US', { style: 'currency', currency: quotation.currency || 'USD' }).format(item.subtotal)}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-              <div className="p-6 border-t bg-muted/10 flex flex-col md:flex-row justify-between gap-6">
-                <div className="flex-1">
-                  {quotation.notes && !isLongNote && (
-                    <div className="text-sm text-muted-foreground">
-                      <h4 className="font-semibold text-foreground mb-2">{t('quotations.detail.notes') || 'Terms and Conditions'}</h4>
-                      <div className="text-sm leading-relaxed w-full overflow-hidden break-words word-wrap hyphens-auto" style={{ wordWrap: 'break-word', overflowWrap: 'break-word', wordBreak: 'break-word' }}>
-                        <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>{quotation.notes}</ReactMarkdown>
-                      </div>
-                    </div>
-                  )}
-                </div>
-                <div className="w-full max-w-[300px] space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">{t('buyer.quotes.detail.subtotal') || 'Subtotal'}</span>
-                    <span>{new Intl.NumberFormat('en-US', { style: 'currency', currency: quotation.currency || 'USD' }).format(quotation.subtotal)}</span>
-                  </div>
-                  {quotation.tax_total > 0 && (
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">{t('buyer.quotes.detail.tax') || 'Tax'}</span>
-                      <span>{new Intl.NumberFormat('en-US', { style: 'currency', currency: quotation.currency || 'USD' }).format(quotation.tax_total)}</span>
-                    </div>
-                  )}
-                  {quotation.discount_total > 0 && (
-                    <div className="flex justify-between text-sm text-green-600">
-                      <span>{t('buyer.quotes.detail.discount') || 'Discount'}</span>
-                      <span>-{new Intl.NumberFormat('en-US', { style: 'currency', currency: quotation.currency || 'USD' }).format(quotation.discount_total)}</span>
-                    </div>
-                  )}
-                  <div className="flex justify-between font-bold text-lg pt-2 border-t">
-                    <span>{t('buyer.quotes.detail.total') || 'Total'}</span>
-                    <span>{new Intl.NumberFormat('en-US', { style: 'currency', currency: quotation.currency || 'USD' }).format(quotation.total)}</span>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          <BuyerQuoteDocument quotation={quotation} isExpired={Boolean(isExpired)} />
 
           {canRespond && (
             <Card className="border-primary/50 shadow-md">
               <CardContent className="pt-6 space-y-6">
                 <div>
-                  <h3 className="font-bold text-lg mb-2">{t('buyer.quotes.detail.accept') || 'Accept'}</h3>
+                  <h3 className="font-bold text-lg mb-2">
+                    {t("buyer.quotes.detail.accept") || "Accept"}
+                  </h3>
                   <p className="text-muted-foreground text-sm">
-                    {t('buyer.quotes.detail.acceptDesc') || 'Accept this quote to continue to checkout with the quoted prices. You can choose delivery and payment options next.'}
+                    {t("buyer.quotes.detail.acceptDesc") ||
+                      "Accept this quote to continue to checkout with the quoted prices. You can choose delivery and payment options next."}
                   </p>
                 </div>
-                
+
                 {session?.user && (
-                  <DestinationSelector 
-                    value={ownerSiteId} 
-                    onChange={setOwnerSiteId} 
-                    label={t('buyer.quotes.detail.whereToFile') || "Where should we file this purchase?"} 
+                  <DestinationSelector
+                    value={ownerSiteId}
+                    onChange={setOwnerSiteId}
+                    label={
+                      t("buyer.quotes.detail.whereToFile") ||
+                      "Where should we file this purchase?"
+                    }
                     locked={lockDestination}
                   />
                 )}
 
                 <div className="flex flex-col sm:flex-row gap-3">
-                  <Button 
-                    size="lg" 
+                  <Button
+                    size="lg"
                     variant="outline"
                     className="flex-1 text-base h-14 text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700 dark:border-red-500/30 dark:hover:bg-red-500/10"
-                    onClick={handleReject} 
+                    onClick={handleReject}
                     disabled={busy}
                   >
                     {rejecting ? (
                       <span className="flex items-center gap-2">
                         <div className="w-5 h-5 rounded-full border-2 border-current border-t-transparent animate-spin" />
-                        {t('buyer.quotes.detail.processing') || 'Processing...'}
+                        {t("buyer.quotes.detail.processing") || "Processing..."}
                       </span>
                     ) : (
                       <span className="flex items-center gap-2">
                         <Ban className="w-5 h-5" />
-                        {t('buyer.quotes.detail.reject') || 'Reject'}
+                        {t("buyer.quotes.detail.reject") || "Reject"}
                       </span>
                     )}
                   </Button>
-                  <Button 
-                    size="lg" 
-                    className="flex-1 text-base h-14" 
-                    onClick={handleAccept} 
+                  <Button
+                    size="lg"
+                    className="flex-1 text-base h-14"
+                    onClick={handleAccept}
                     disabled={busy}
                   >
                     {accepting ? (
                       <span className="flex items-center gap-2">
                         <div className="w-5 h-5 rounded-full border-2 border-background border-t-transparent animate-spin" />
-                        {t('buyer.quotes.detail.processing') || 'Processing...'}
+                        {t("buyer.quotes.detail.processing") || "Processing..."}
                       </span>
                     ) : (
                       <span className="flex items-center gap-2">
                         <ShoppingCart className="w-5 h-5" />
-                        {t('buyer.quotes.detail.proceedToCheckout') || 'Proceed to Checkout'}
+                        {t("buyer.quotes.detail.proceedToCheckout") ||
+                          "Proceed to Checkout"}
                       </span>
                     )}
                   </Button>
@@ -364,23 +276,26 @@ export function BuyerQuoteDetailView({
             </Card>
           )}
 
-          {isExpired && quotation.status === 'sent' && (
+          {isExpired && quotation.status === "sent" && (
             <div className="bg-red-50 text-red-700 p-4 rounded-xl border border-red-200 text-center dark:bg-red-500/10 dark:text-red-400 dark:border-red-500/20">
-              {t('buyer.quotes.detail.expiredDesc') || 'This quote has expired and can no longer be accepted. Please contact the seller for a new quote.'}
-            </div>
-          )}
-          
-          {quotation.status === 'accepted' && (
-            <div className="bg-green-50 text-green-700 p-4 rounded-xl border border-green-200 text-center flex items-center justify-center gap-2 dark:bg-green-500/10 dark:text-green-400 dark:border-green-500/20">
-              <CheckCircle2 className="w-5 h-5" />
-              {t('buyer.quotes.detail.alreadyAccepted') || 'This quote has already been accepted.'}
+              {t("buyer.quotes.detail.expiredDesc") ||
+                "This quote has expired and can no longer be accepted. Please contact the seller for a new quote."}
             </div>
           )}
 
-          {quotation.status === 'rejected' && (
+          {quotation.status === "accepted" && (
+            <div className="bg-green-50 text-green-700 p-4 rounded-xl border border-green-200 text-center flex items-center justify-center gap-2 dark:bg-green-500/10 dark:text-green-400 dark:border-green-500/20">
+              <CheckCircle2 className="w-5 h-5" />
+              {t("buyer.quotes.detail.alreadyAccepted") ||
+                "This quote has already been accepted."}
+            </div>
+          )}
+
+          {quotation.status === "rejected" && (
             <div className="bg-red-50 text-red-700 p-4 rounded-xl border border-red-200 text-center flex items-center justify-center gap-2 dark:bg-red-500/10 dark:text-red-400 dark:border-red-500/20">
               <Ban className="w-5 h-5" />
-              {t('buyer.quotes.detail.alreadyRejected') || 'This quote has been rejected.'}
+              {t("buyer.quotes.detail.alreadyRejected") ||
+                "This quote has been rejected."}
             </div>
           )}
         </div>
