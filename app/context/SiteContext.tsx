@@ -16,7 +16,7 @@ import { billingService, BillingData } from "../services/billing-service"
 import { toast } from "react-hot-toast"
 import { isDemoModeActive, isRealSiteId } from "@/lib/demo-utils"
 import { clearCurrentSiteCookie, persistCurrentSiteCookie } from "@/lib/auth/current-site-cookie"
-import { getWorkspaceSiteRedirect } from "@/lib/auth/workspace-site-redirect"
+import { getWorkspaceSiteRedirect, unauthorizedSitesLoadAction } from "@/lib/auth/workspace-site-redirect"
 import { navigateOrAssign } from "@/lib/navigation/stale-router"
 import { fetchAccessibleSitesClient } from "@/lib/sites/fetch-accessible-sites"
 import { postgrestErrorMessage } from "@/lib/supabase/postgrest-error"
@@ -577,6 +577,7 @@ export function SiteProvider({ children }: SiteProviderProps) {
   }, [isLoading])
   
   const refreshTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const unauthorizedRetryRef = useRef(0)
   
   // ✅ Only consider redirects after sites have actually finished loading at least once
   const [sitesLoaded, setSitesLoaded] = useState(false)
@@ -684,6 +685,8 @@ export function SiteProvider({ children }: SiteProviderProps) {
       userId = null
     }
     
+    let keepLoading = false
+
     try {
       // Always set loading to true when starting to load sites, regardless of initialization status
       setIsLoading(true)
@@ -704,11 +707,35 @@ export function SiteProvider({ children }: SiteProviderProps) {
       }
 
       if (unauthorized) {
-        setHasValidSession(false)
-        setSites([])
+        const action = unauthorizedSitesLoadAction({
+          hasLocalUser: Boolean(userId),
+          retriesSoFar: unauthorizedRetryRef.current,
+        })
+
+        if (action === "retry") {
+          unauthorizedRetryRef.current += 1
+          keepLoading = true
+          setTimeout(() => {
+            void loadSites()
+          }, 400)
+          return
+        }
+
+        unauthorizedRetryRef.current = 0
+        // Keep previous sites. Do not paint an empty create-site state.
         if (!isInitialized) {
           setIsInitialized(true)
         }
+
+        if (action === "finish") {
+          // Local session exists; API stayed unauthorized. Let the wrapper bounce to /projects.
+          setHasValidSession(true)
+          setSitesLoaded(true)
+          return
+        }
+
+        setHasValidSession(false)
+        keepLoading = true
         return
       }
 
@@ -720,6 +747,7 @@ export function SiteProvider({ children }: SiteProviderProps) {
         throw new Error(postgrestErrorMessage(sitesError, "Failed to load sites"))
       }
 
+      unauthorizedRetryRef.current = 0
       setHasValidSession(true)
 
       // Apply detail hydration to the target site
@@ -838,7 +866,9 @@ export function SiteProvider({ children }: SiteProviderProps) {
       console.error("Error loading sites:", err instanceof Error ? err.message : String(err))
       setError(err instanceof Error ? err : new Error(String(err)))
     } finally {
-      setIsLoading(false)
+      if (!keepLoading) {
+        setIsLoading(false)
+      }
     }
   }
   
@@ -859,8 +889,8 @@ export function SiteProvider({ children }: SiteProviderProps) {
     
     // Suscribirse a eventos de autenticación para cargar sitios cuando el usuario inicie sesión
     const { data: { subscription } } = supabaseRef.current.auth.onAuthStateChange(
-      (event: 'SIGNED_IN' | 'SIGNED_OUT' | 'USER_UPDATED' | 'PASSWORD_RECOVERY' | 'TOKEN_REFRESHED', session: any) => {
-        if (event === 'SIGNED_IN') {
+      (event: 'SIGNED_IN' | 'SIGNED_OUT' | 'USER_UPDATED' | 'PASSWORD_RECOVERY' | 'TOKEN_REFRESHED' | 'INITIAL_SESSION', session: any) => {
+        if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
           // Check if we already have a valid session (cross-tab auth sync or initial load)
           if (hasValidSessionRef.current) {
             // Only update session without reloading sites to avoid blocking UI
@@ -868,9 +898,11 @@ export function SiteProvider({ children }: SiteProviderProps) {
             return
           }
           
-          setHasValidSession(true)
-          setSitesLoadAttempted(false) // ✅ Reset for new load
-          loadSitesWithPrevention()
+          if (session) {
+            setHasValidSession(true)
+            setSitesLoadAttempted(false) // ✅ Reset for new load
+            loadSitesWithPrevention()
+          }
         } else if (event === 'SIGNED_OUT') {
           setSites([])
           setCurrentSite(null)
@@ -884,10 +916,12 @@ export function SiteProvider({ children }: SiteProviderProps) {
             console.error("Error removing currentSiteId from localStorage:", e)
           }
         } else if (event === 'TOKEN_REFRESHED') {
-          // Token refresh happens automatically when window regains focus
-          // Don't reload sites to prevent interrupting user work on settings page
-          
-          // Update session validity without reloading sites
+          if (session && !hasValidSessionRef.current) {
+            setHasValidSession(true)
+            setSitesLoadAttempted(false)
+            loadSitesWithPrevention()
+            return
+          }
           setHasValidSession(!!session)
         }
       }
@@ -967,7 +1001,7 @@ export function SiteProvider({ children }: SiteProviderProps) {
   }, [isInitialized, isMounted, currentSite?.id || null]) // currentSite?.id needed for closure in UPDATE handling
 
   // Keep demo accounts on the page they loaded (robots iframe, catalog, etc.).
-  // Real users with no workspace site still go to /buyer or /projects.
+  // Real users on a wrapper path without a selected site bounce to /projects.
   useEffect(() => {
     // Add a delay to ensure all state updates are complete
     const redirectTimer = setTimeout(() => {

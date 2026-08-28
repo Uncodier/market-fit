@@ -122,7 +122,10 @@ export class ContextService {
       contents: [],
       requirements: [],
       tasks: [],
-      campaigns: []
+      campaigns: [],
+      quotations: [],
+      deals: [],
+      records: []
     }
 
     try {

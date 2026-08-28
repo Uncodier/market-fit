@@ -115,8 +115,14 @@ export function placeResultNodes(
   heights: Record<string, number>,
 ): Record<string, WFPoint> {
   const next = { ...positions }
+  const placed: InstanceNode[] = [...graphNodes]
   
   resultNodes.forEach((result) => {
+    if (next[result.id]) {
+      placed.push(result)
+      return
+    }
+
     const parentId = result.settings?.source_node_id as string | undefined
     if (parentId) {
       const parentPos = next[parentId] || positions[parentId] || { x: 80, y: 80 }
@@ -126,6 +132,17 @@ export function placeResultNodes(
         x: parentPos.x,
         y: parentPos.y + parentH + 12,
       }
+      placed.push(result)
+    } else {
+      const parent = graphNodes.find((node) => node.id === result.parent_node_id) || null
+      next[result.id] = placeNewNode({
+        type: "wf-step",
+        parent,
+        nodes: placed,
+        positions: next,
+        heights,
+      })
+      placed.push(result)
     }
   })
   return next

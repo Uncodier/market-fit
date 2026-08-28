@@ -106,7 +106,7 @@ export function SiteSelector({ isCollapsed = false }: SiteSelectorProps) {
   // Contenido principal cuando está montado
   const MainContent = () => {
     // Si no hay sitio actual o está en estado de carga, mostrar skeleton
-    if (!currentSite || currentSite.id === "default" || isLoading) {
+    if (!currentSite || currentSite.id === "default" || isLoading || sites.length === 0) {
       return <SkeletonContent />
     }
 
@@ -137,25 +137,26 @@ export function SiteSelector({ isCollapsed = false }: SiteSelectorProps) {
     )
   }
 
-  // Si no hay sitios disponibles, mostrar botón para crear uno nuevo
-  if (isMounted && !isLoading && sites.length === 0) {
+  // Empty list inside the workspace wrapper is a load/session error.
+  // Bounce to /projects is handled by SiteContext; do not offer create-site here.
+  if (!isMounted || sites.length === 0) {
     return (
-      <div className="flex justify-center w-full">
-        <div 
-          className={cn(
-            "flex items-center gap-2 p-2 rounded-md border border-blue-200 bg-blue-50 text-blue-600 hover:bg-blue-100 cursor-pointer transition-colors",
-            isCollapsed ? "justify-center" : "px-3 py-2 w-[232px]"
-          )}
-          onClick={() => navigateOrAssign(router, "/create-site")}
-        >
-          <div className="h-6 w-6 flex items-center justify-center rounded-full font-inter font-bold bg-blue-100 text-blue-600 flex-shrink-0">
-            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M12 5v14M5 12h14" />
-            </svg>
+      <div className={cn(
+        "relative flex justify-center",
+        !isCollapsed && "w-full"
+      )}>
+        <div className={cn(
+          "relative",
+          !isCollapsed && "w-[232px]"
+        )}>
+          <div
+            className={cn(
+              "flex items-center rounded-md px-3 py-2 text-sm",
+              isCollapsed ? "justify-center h-[45px]" : "w-full"
+            )}
+          >
+            <SkeletonContent />
           </div>
-          {!isCollapsed && (
-            <span className="text-sm font-medium flex-1">{t('layout.sidebar.createFirstProject') || 'Create your first project'}</span>
-          )}
         </div>
       </div>
     )

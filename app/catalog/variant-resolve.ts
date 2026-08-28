@@ -108,7 +108,6 @@ export async function loadVariantListingPreviews(
       unique.map((p) => p.id)
     )
     .eq("status", "active")
-    .eq("is_purchasable", true)
     .order("name", { ascending: true })
 
   for (const row of data || []) {

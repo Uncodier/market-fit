@@ -62,7 +62,7 @@ async function enrichShopItems(siteId: string, items: any[], supabase: Awaited<R
   const [priceData, levelsRes, settingsRes, variantPreviews, siteRes] = await Promise.all([
     loadChannelPriceMap(supabase, [siteId], "shop"),
     supabase.from("inventory_levels").select("catalog_item_id, quantity").eq("site_id", siteId),
-    supabase.from("settings").select("commerce").eq("site_id", siteId).single(),
+    supabase.from("settings").select("commerce, currency").eq("site_id", siteId).maybeSingle(),
     loadVariantListingPreviews(
       supabase,
       items.map((item) => ({ id: item.id, name: item.name }))
@@ -98,10 +98,16 @@ async function enrichShopItems(siteId: string, items: any[], supabase: Awaited<R
       Boolean(item.metadata?.variant_axes?.length && item.is_purchasable === false);
 
     const mappedPrice = priceData.priceByItemId.get(item.id);
+    const listCurrency = priceData.currencyBySiteId.get(siteId);
+    
     return {
       ...item,
       currency:
-        item.currency || priceData.currencyBySiteId.get(siteId) || "USD",
+        (mappedPrice != null ? listCurrency : item.currency) ||
+        item.currency ||
+        listCurrency ||
+        settingsRes.data?.currency ||
+        "USD",
       item_specs: ((item as any).raw_specs || [])
         .sort((a: any, b: any) => (a.sort_order || 0) - (b.sort_order || 0))
         .map((cis: any) => cis.item_spec)
@@ -144,8 +150,8 @@ export async function getShopCategoryOffsets(siteId: string): Promise<ShopCatego
       );
       return buildShopCategoryOffsets(names);
     },
-    // v6: hide manual unavailable items from storefront
-    ["shop-category-offsets-v6", siteId],
+    // v7: use site settings currency fallback
+    ["shop-category-offsets-v7", siteId],
     {
       revalidate: SHOP_CACHE_REVALIDATE_SECONDS,
       tags: [shopCacheTag(siteId)],
@@ -243,8 +249,8 @@ export async function getShopCatalog(
         offset,
       };
     },
-    // v6: hide manual unavailable items from storefront
-    ["shop-catalog-v6", siteId, String(offset), String(pageSize), search, category],
+    // v8: fix price list currency override
+    ["shop-catalog-v8", siteId, String(offset), String(pageSize), search, category],
     {
       revalidate: SHOP_CACHE_REVALIDATE_SECONDS,
       tags: [shopCacheTag(siteId)],
@@ -275,7 +281,7 @@ export async function getShopItemsByIds(siteId: string, ids: string[]) {
       const enriched = await enrichShopItems(siteId, items, supabase);
       return { data: enriched, error: undefined as string | undefined };
     },
-    ["shop-items-by-ids", siteId, sortedIds.join(",")],
+    ["shop-items-by-ids-v7", siteId, sortedIds.join(",")],
     {
       revalidate: SHOP_CACHE_REVALIDATE_SECONDS,
       tags: [shopCacheTag(siteId)],

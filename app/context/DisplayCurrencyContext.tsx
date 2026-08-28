@@ -5,7 +5,7 @@ import { useLocalization } from './LocalizationContext';
 import { resolveLocalCurrency } from '../lib/locale-currency';
 import { convertAmount, formatDisplayCurrency } from '../lib/fx';
 
-export type CurrencyMode = 'local' | 'usd';
+export type CurrencyMode = string;
 
 interface DisplayCurrencyContextType {
   mode: CurrencyMode;
@@ -13,6 +13,8 @@ interface DisplayCurrencyContextType {
   localCurrency: string;
   displayCurrency: string;
   rates: Record<string, number>;
+  storeCurrency: string;
+  setStoreCurrency: (currency: string) => void;
   formatPrice: (amount: number, sourceCurrency?: string) => string;
 }
 
@@ -22,6 +24,7 @@ export const DisplayCurrencyProvider = ({ children, initialCountry }: { children
   const { locale } = useLocalization();
   const [mode, setModeState] = useState<CurrencyMode>('local');
   const [localCurrency, setLocalCurrency] = useState<string>('USD');
+  const [storeCurrency, setStoreCurrency] = useState<string>('USD');
   const [rates, setRates] = useState<Record<string, number>>({});
   const [mounted, setMounted] = useState(false);
 
@@ -36,8 +39,8 @@ export const DisplayCurrencyProvider = ({ children, initialCountry }: { children
     setLocalCurrency(resolved);
 
     // 2. Load preferred mode from localStorage
-    const savedMode = localStorage.getItem('makinari-currency-mode') as CurrencyMode;
-    if (savedMode === 'local' || savedMode === 'usd') {
+    const savedMode = localStorage.getItem('makinari-currency-mode');
+    if (savedMode) {
       setModeState(savedMode);
     }
 
@@ -83,7 +86,7 @@ export const DisplayCurrencyProvider = ({ children, initialCountry }: { children
     localStorage.setItem('makinari-currency-mode', newMode);
   };
 
-  const displayCurrency = mode === 'usd' ? 'USD' : localCurrency;
+  const displayCurrency = mode === 'local' ? localCurrency : mode === 'store' ? storeCurrency : mode;
 
   const formatPrice = useCallback((amount: number, sourceCurrency: string = 'USD'): string => {
     if (!mounted) {
@@ -105,7 +108,7 @@ export const DisplayCurrencyProvider = ({ children, initialCountry }: { children
   }, [mounted, displayCurrency, rates]);
 
   return (
-    <DisplayCurrencyContext.Provider value={{ mode, setMode, localCurrency, displayCurrency, rates, formatPrice }}>
+    <DisplayCurrencyContext.Provider value={{ mode, setMode, localCurrency, displayCurrency, rates, storeCurrency, setStoreCurrency, formatPrice }}>
       {children}
     </DisplayCurrencyContext.Provider>
   );

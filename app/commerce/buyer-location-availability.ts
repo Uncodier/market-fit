@@ -3,6 +3,7 @@ import type { BuyerGeo } from "@/app/commerce/buyer-geo"
 import { getItemPickupLocationIds } from "@/app/commerce/delivery-options"
 import {
   evaluateLocationRestrictions,
+  normalizeCountry,
   type Address,
 } from "@/app/commerce/location-restrictions"
 
@@ -46,18 +47,57 @@ export function formatBuyerLocationLabel(
   return fallback
 }
 
-/** True when buyer city matches a site office / inventory location name or city. */
+/** True when buyer city matches a site office / inventory location name or city, AND country matches if specified. */
 export function buyerMatchesSiteLocations(
   buyerGeo: BuyerGeo | null | undefined,
-  siteLocations: Array<{ name?: string; city?: string }> | null | undefined
+  siteLocations: Array<{ name?: string; city?: string; country?: string }> | null | undefined
 ): boolean {
   const city = normalize(buyerGeo?.city)
   if (!city || !siteLocations?.length) return false
   return siteLocations.some((l) => {
     const lc = normalize(l.city)
     const ln = normalize(l.name)
-    return (lc && lc === city) || (ln && ln === city)
+    const cityMatch = (lc && lc === city) || (ln && ln === city)
+    
+    if (cityMatch && buyerGeo?.country && l.country) {
+      if (normalizeCountry(buyerGeo.country) !== normalizeCountry(l.country)) {
+        return false
+      }
+    }
+    return cityMatch
   })
+}
+
+function implicitCountryMismatch(
+  settingsLocations?: SettingsLocation[] | null,
+  inventoryLocations?: Array<{ name?: string; city?: string; country?: string }> | null,
+  buyerGeo?: BuyerGeo | null
+): boolean {
+  if (!buyerGeo?.country) return false
+  const settings = settingsLocations || []
+  const inv = inventoryLocations || []
+  if (settings.length === 0 && inv.length === 0) return false
+
+  let hasDefinedCountry = false
+  let countryMatch = false
+  const buyerCountry = normalizeCountry(buyerGeo.country)
+
+  const checkLoc = (l: { country?: string }) => {
+    if (l.country) {
+      hasDefinedCountry = true
+      if (normalizeCountry(l.country) === buyerCountry) {
+        countryMatch = true
+      }
+    }
+  }
+
+  settings.forEach(checkLoc)
+  inv.forEach(checkLoc)
+
+  if (hasDefinedCountry && !countryMatch) {
+    return true // Mismatch!
+  }
+  return false
 }
 
 /**
@@ -153,19 +193,24 @@ export function pickPreferredPickupLocation<T extends NearbyLocationRef>(
 
 /** Shop pill: multi inventory stores OR settings geo needs relocate. */
 export function shouldShowShopLocationPill(params: {
-  inventoryLocations: Array<Pick<Location, "id" | "is_active">>
+  inventoryLocations: Array<Pick<Location, "id" | "is_active"> & { country?: string }>
   settingsLocations?: SettingsLocation[] | null
   buyerGeo?: BuyerGeo | null
 }): boolean {
   const active = (params.inventoryLocations || []).filter((l) => l.is_active !== false)
   if (active.length > 1) return true
 
+  const address = buyerGeoToAddress(params.buyerGeo)
+  if (!address.country && !address.city && !address.zip) return true
+
+  // If implicit mismatch, we definitely need the pill to show restricted status
+  if (implicitCountryMismatch(params.settingsLocations, params.inventoryLocations, params.buyerGeo)) {
+    return true
+  }
+
   const settings = params.settingsLocations || []
   const hasEnabled = settings.some((l) => l.restrictions?.enabled)
   if (!hasEnabled) return false
-
-  const address = buyerGeoToAddress(params.buyerGeo)
-  if (!address.country && !address.city && !address.zip) return true
 
   if (buyerMatchesSiteLocations(params.buyerGeo, settings)) return false
 
@@ -179,28 +224,31 @@ export function shouldShowShopLocationPill(params: {
  */
 export function isBuyerLocationIncompatible(params: {
   settingsLocations?: SettingsLocation[] | null
-  inventoryLocations?: Array<{ name?: string; city?: string }> | null
+  inventoryLocations?: Array<{ name?: string; city?: string; country?: string }> | null
   buyerGeo?: BuyerGeo | null
   selectedLocationId?: string | null
 }): boolean {
   if (params.selectedLocationId) return false
 
   const settings = params.settingsLocations || []
-  if (!settings.length) return false
-
   const address = buyerGeoToAddress(params.buyerGeo)
   if (!address.country && !address.city && !address.zip) return false
 
   if (buyerMatchesSiteLocations(params.buyerGeo, settings)) return false
   if (buyerMatchesSiteLocations(params.buyerGeo, params.inventoryLocations)) return false
 
-  return !evaluateLocationRestrictions(settings, address).available
+  if (settings.length > 0) {
+    const { available } = evaluateLocationRestrictions(settings, address)
+    if (!available) return true
+  }
+
+  return implicitCountryMismatch(settings, params.inventoryLocations, params.buyerGeo)
 }
 
 export function isItemLocationAvailable(params: {
   item: Partial<CatalogItem>
   settingsLocations?: SettingsLocation[] | null
-  inventoryLocations?: Array<{ name?: string; city?: string }> | null
+  inventoryLocations?: Array<{ name?: string; city?: string; country?: string }> | null
   buyerGeo?: BuyerGeo | null
   selectedLocationId?: string | null
 }): boolean {
@@ -215,19 +263,23 @@ export function isItemLocationAvailable(params: {
     return true
   }
 
-  const settings = params.settingsLocations || []
-  if (settings.length > 0) {
-    const address = buyerGeoToAddress(params.buyerGeo)
-    if (address.country || address.city || address.zip) {
-      // Buyer is at a city where the business has a presence
-      if (
-        buyerMatchesSiteLocations(params.buyerGeo, settings) ||
-        buyerMatchesSiteLocations(params.buyerGeo, params.inventoryLocations)
-      ) {
-        return true
-      }
+  const address = buyerGeoToAddress(params.buyerGeo)
+  if (address.country || address.city || address.zip) {
+    if (
+      buyerMatchesSiteLocations(params.buyerGeo, params.settingsLocations) ||
+      buyerMatchesSiteLocations(params.buyerGeo, params.inventoryLocations)
+    ) {
+      return true
+    }
+    
+    const settings = params.settingsLocations || []
+    if (settings.length > 0) {
       const geo = evaluateLocationRestrictions(settings, address)
       if (!geo.available) return false
+    }
+    
+    if (implicitCountryMismatch(params.settingsLocations, params.inventoryLocations, params.buyerGeo)) {
+      return false
     }
   }
 

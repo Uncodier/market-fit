@@ -48,6 +48,7 @@ import {
 } from "@/app/commerce/buyer-location-availability"
 import { useBuyerLocation } from "@/app/components/commerce/use-buyer-location"
 import { buyerLocationLeadingChip } from "@/app/components/commerce/BuyerLocationControls"
+import { useDisplayCurrency } from "@/app/context/DisplayCurrencyContext"
 
 interface CartItem extends CatalogItem {
   cartQty: number;
@@ -170,6 +171,14 @@ export default function ShopClient({
   const isOpen = businessHours.length > 0 ? isBusinessOpen(businessHours) : true
   const nextOpenSlot = !isOpen ? getNextOpenSlot(businessHours, new Date(), locale) : null
   
+  const { setStoreCurrency } = useDisplayCurrency()
+
+  useEffect(() => {
+    if (site?.settings?.currency) {
+      setStoreCurrency(site.settings.currency);
+    }
+  }, [site?.settings?.currency, setStoreCurrency])
+
   const buyerLocation = useBuyerLocation({
     scope: `shop:${site?.id || siteSlug}`,
     initialGeo: buyerGeo,

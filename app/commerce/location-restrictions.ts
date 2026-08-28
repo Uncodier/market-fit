@@ -22,7 +22,7 @@ function normalize(str?: string): string {
 }
 
 /** Collapse common ISO / name variants so MX matches Mexico, US matches United States, etc. */
-function normalizeCountry(str?: string): string {
+export function normalizeCountry(str?: string): string {
   const n = normalize(str);
   const aliases: Record<string, string> = {
     mx: 'mexico',

@@ -1,11 +1,11 @@
 "use client"
 
 import React, { useEffect, useRef } from "react"
-import { Command, CommandEmpty, CommandGroup, CommandItem, CommandList } from "@/app/components/ui/command"
 import { Loader } from "@/app/components/ui/icons"
 import { useContextEntitiesSearch } from "@/app/hooks/use-context-entities-search"
 import { SelectedContextIds } from "@/app/components/simple-messages-view/types"
 import { Badge } from "@/app/components/ui/badge"
+import { cn } from "@/lib/utils"
 
 interface ContextMentionPickerProps {
   query: string
@@ -45,8 +45,8 @@ export function ContextMentionPicker({ query, onSelect, onClose }: ContextMentio
       ref={containerRef}
       className="absolute bottom-full mb-2 left-0 w-80 max-h-80 overflow-hidden rounded-md border bg-popover shadow-md z-[60]"
     >
-      <Command shouldFilter={false} className="w-full">
-        <CommandList className="max-h-80">
+      <div className="w-full">
+        <div className="max-h-80 overflow-y-auto overflow-x-hidden p-1">
           {loading && (
             <div className="flex items-center justify-center p-4 text-sm text-muted-foreground">
               <Loader className="mr-2 h-4 w-4 animate-spin" />
@@ -54,26 +54,28 @@ export function ContextMentionPicker({ query, onSelect, onClose }: ContextMentio
             </div>
           )}
           {isEmpty && (
-            <CommandEmpty className="p-4 text-sm text-center text-muted-foreground">
+            <div className="p-4 text-sm text-center text-muted-foreground">
               No results found.
-            </CommandEmpty>
+            </div>
           )}
           {!loading && enabledCollections.map(collection => {
             const items = searchResults[collection.key]
             if (!items || items.length === 0) return null
             
             return (
-              <CommandGroup key={collection.key} heading={collection.label}>
+              <div key={collection.key} className="overflow-hidden p-1 text-foreground">
+                <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground">
+                  {collection.label}
+                </div>
                 {items.slice(0, 5).map((item: any) => {
                   const title = item.title || item.name || `Item ${item.id.substring(0,8)}`
                   const Icon = collection.icon
                   
                   return (
-                    <CommandItem
+                    <div
                       key={item.id}
-                      value={`${collection.key}-${item.id}`}
-                      onSelect={() => onSelect(collection.key, item.id, title)}
-                      className="flex flex-col items-start cursor-pointer py-2"
+                      onClick={() => onSelect(collection.key, item.id, title)}
+                      className="relative flex flex-col items-start cursor-pointer select-none rounded-sm px-2 py-2 text-sm outline-none hover:bg-accent hover:text-accent-foreground transition-colors"
                     >
                       <div className="flex items-center w-full gap-2">
                         <Icon className="h-4 w-4 text-muted-foreground shrink-0" />
@@ -89,14 +91,14 @@ export function ContextMentionPicker({ query, onSelect, onClose }: ContextMentio
                           {item.description || item.email || item.stage}
                         </span>
                       )}
-                    </CommandItem>
+                    </div>
                   )
                 })}
-              </CommandGroup>
+              </div>
             )
           })}
-        </CommandList>
-      </Command>
+        </div>
+      </div>
     </div>
   )
 }

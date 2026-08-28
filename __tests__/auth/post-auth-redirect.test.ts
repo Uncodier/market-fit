@@ -14,11 +14,11 @@ import {
 } from '@/lib/auth/post-auth-redirect'
 
 describe('post-auth-redirect', () => {
-  it('defaults to /robots on app', () => {
-    expect(DEFAULT_POST_AUTH_PATH).toBe('/robots')
-    expect(resolvePostAuthRedirect(null)).toBe('/robots')
-    expect(resolvePostAuthRedirect(undefined)).toBe('/robots')
-    expect(resolvePostAuthRedirect(null, 'app.makinari.com')).toBe('/robots')
+  it('defaults to /projects on app', () => {
+    expect(DEFAULT_POST_AUTH_PATH).toBe('/projects')
+    expect(resolvePostAuthRedirect(null)).toBe('/projects')
+    expect(resolvePostAuthRedirect(undefined)).toBe('/projects')
+    expect(resolvePostAuthRedirect(null, 'app.makinari.com')).toBe('/projects')
   })
 
   it('defaults to /buyer on www', () => {
@@ -44,8 +44,15 @@ describe('post-auth-redirect', () => {
     expect(isSafeInternalPath('/auth')).toBe(false)
     expect(isSafeInternalPath('/auth/callback')).toBe(false)
     expect(isSafeInternalPath('/')).toBe(false)
-    expect(resolvePostAuthRedirect('/auth')).toBe('/robots')
-    expect(resolvePostAuthRedirect('/')).toBe('/robots')
+    expect(resolvePostAuthRedirect('/auth')).toBe('/projects')
+    expect(resolvePostAuthRedirect('/')).toBe('/projects')
+  })
+
+  it('never restores /create-site as a post-auth target', () => {
+    expect(isSafeInternalPath('/create-site')).toBe(false)
+    expect(isSafeInternalPath('/create-site?step=1')).toBe(false)
+    expect(resolvePostAuthRedirect('/create-site')).toBe('/projects')
+    expect(resolvePostAuthRedirect('/create-site?step=1', 'app.makinari.com')).toBe('/projects')
   })
 
   it('uses navigation history when returnTo is missing (client)', () => {
@@ -81,6 +88,38 @@ describe('post-auth-redirect', () => {
     })
   })
 
+  it('skips /create-site entries in navigation history', () => {
+    const storage: Record<string, string> = {
+      navigationHistory: JSON.stringify({
+        items: [
+          { path: '/leads', label: 'Leads', timestamp: 1 },
+          { path: '/create-site', label: 'Create', timestamp: 2 },
+        ],
+      }),
+    }
+    const original = globalThis.localStorage
+    Object.defineProperty(globalThis, 'localStorage', {
+      configurable: true,
+      value: {
+        getItem: (key: string) => storage[key] ?? null,
+        setItem: (key: string, value: string) => {
+          storage[key] = value
+        },
+        removeItem: (key: string) => {
+          delete storage[key]
+        },
+      },
+    })
+
+    expect(resolveAuthenticatedSignInRedirect(null)).toBe('/leads')
+    expect(resolveAuthenticatedSignInRedirect('/create-site')).toBe('/leads')
+
+    Object.defineProperty(globalThis, 'localStorage', {
+      configurable: true,
+      value: original,
+    })
+  })
+
   it('falls back to /buyer on www when history is empty', () => {
     const original = globalThis.localStorage
     Object.defineProperty(globalThis, 'localStorage', {
@@ -93,7 +132,7 @@ describe('post-auth-redirect', () => {
     })
 
     expect(resolveAuthenticatedSignInRedirect(null, 'www.makinari.com')).toBe('/buyer')
-    expect(resolveAuthenticatedSignInRedirect(null, 'app.makinari.com')).toBe('/robots')
+    expect(resolveAuthenticatedSignInRedirect(null, 'app.makinari.com')).toBe('/projects')
 
     Object.defineProperty(globalThis, 'localStorage', {
       configurable: true,

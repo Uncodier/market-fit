@@ -84,8 +84,7 @@ export function requiresVariantSelection(
   if (item._shop?.hasVariants) return true
   if (item._shop?.children && item._shop.children.length > 0) return true
   return Boolean(
-    item.metadata?.variant_axes?.length &&
-    item.is_purchasable === false
+    item.metadata?.variant_axes?.length
   )
 }
 
@@ -95,6 +94,7 @@ export function variantSelectionBlockReason(
   purchasableChildCount: number,
 ): string | null {
   if (item.is_purchasable === false) return VARIANT_SELECTION_REASON
+  // Require variant selection if there are active variant children, even if the parent itself is technically purchasable
   if (!item.parent_id && purchasableChildCount > 0) return VARIANT_SELECTION_REASON
   return null
 }

@@ -1,6 +1,7 @@
 import {
   getWorkspaceSiteRedirect,
   shouldClearDemoCookieOnPath,
+  unauthorizedSitesLoadAction,
 } from "@/lib/auth/workspace-site-redirect"
 
 describe("getWorkspaceSiteRedirect", () => {
@@ -17,11 +18,10 @@ describe("getWorkspaceSiteRedirect", () => {
     expect(getWorkspaceSiteRedirect({ ...base, isDemoMode: true, pathname: "/catalog" })).toBeNull()
   })
 
-  it("sends signed-in users with no real sites to the buyer portal", () => {
-    expect(getWorkspaceSiteRedirect(base)).toBe("/buyer")
-  })
-
-  it("sends users with real sites but no selection to projects", () => {
+  it("sends signed-in users on a workspace page with no current site to projects picker", () => {
+    // Both 0 sites and >0 sites bounce to /projects if there is no current site.
+    // They no longer go to /buyer or /create-site.
+    expect(getWorkspaceSiteRedirect({ ...base, realSiteCount: 0 })).toBe("/projects")
     expect(
       getWorkspaceSiteRedirect({
         ...base,
@@ -51,8 +51,30 @@ describe("getWorkspaceSiteRedirect", () => {
     ).toBeNull()
   })
 
+  it("does not redirect when a real site is already selected", () => {
+    expect(
+      getWorkspaceSiteRedirect({
+        ...base,
+        realSiteCount: 2,
+        hasRealCurrentSite: true,
+      })
+    ).toBeNull()
+  })
+
   it("does not redirect without a session", () => {
     expect(getWorkspaceSiteRedirect({ ...base, hasValidSession: false })).toBeNull()
+  })
+
+  it("never sends workspace users to /buyer or /create-site", () => {
+    const destinations = [
+      getWorkspaceSiteRedirect(base),
+      getWorkspaceSiteRedirect({ ...base, realSiteCount: 3 }),
+      getWorkspaceSiteRedirect({ ...base, pathname: "/catalog" }),
+    ]
+    for (const destination of destinations) {
+      expect(destination).not.toBe("/buyer")
+      expect(destination).not.toBe("/create-site")
+    }
   })
 })
 
@@ -66,5 +88,28 @@ describe("shouldClearDemoCookieOnPath", () => {
     expect(shouldClearDemoCookieOnPath("/shop/acme")).toBe(true)
     expect(shouldClearDemoCookieOnPath("/marketplace")).toBe(true)
     expect(shouldClearDemoCookieOnPath("/cart")).toBe(true)
+  })
+})
+
+describe("unauthorizedSitesLoadAction", () => {
+  it("retries while a local session exists (cookie race after login)", () => {
+    expect(
+      unauthorizedSitesLoadAction({ hasLocalUser: true, retriesSoFar: 0 })
+    ).toBe("retry")
+    expect(
+      unauthorizedSitesLoadAction({ hasLocalUser: true, retriesSoFar: 1 })
+    ).toBe("retry")
+  })
+
+  it("finishes the load after retries so the wrapper can bounce to /projects", () => {
+    expect(
+      unauthorizedSitesLoadAction({ hasLocalUser: true, retriesSoFar: 2 })
+    ).toBe("finish")
+  })
+
+  it("waits for a session event when there is no local user", () => {
+    expect(
+      unauthorizedSitesLoadAction({ hasLocalUser: false, retriesSoFar: 0 })
+    ).toBe("wait-for-session")
   })
 })

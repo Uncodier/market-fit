@@ -667,7 +667,7 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
 
   const processedTimeline = groupTimelineToolCalls(
     sortedTimeline,
-    (log: any) => log.tool_name || log.toolName,
+    getToolName,
     isToolCallLog
   )
   

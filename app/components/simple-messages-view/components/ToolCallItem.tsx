@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react'
 import { Eye, EyeOff, Code, LayoutGrid, Zap, Search, Download } from "@/app/components/ui/icons"
 import { InstanceLog } from '../types'
-import { getToolName, getToolResult, formatBase64Image, getToolLogPlainTextForCopy } from '../utils'
+import { getToolName, getToolResult, formatBase64Image, getToolLogPlainTextForCopy, formatToolDisplayName, getToolCallSubtitle } from '../utils'
 import { InstanceLogCopyFeedbackBar } from './InstanceLogCopyFeedbackBar'
 import { renderObjectWithImages } from '../render-helpers'
 import { GeneratedImageDisplay, GeneratedImageDisplayCollapsed } from './GeneratedImageDisplay'
@@ -23,7 +23,7 @@ const renderToolIcon = (toolName: string) => {
   const lower = toolName.toLowerCase()
   if (lower === 'computer') return <Code className="h-3.5 w-3.5" />
   if (lower === 'structured_output') return <LayoutGrid className="h-3.5 w-3.5" />
-  if (lower.includes('search') || lower === 'websearch') return <Search className="h-3.5 w-3.5" />
+  if (lower.includes('search') || lower === 'websearch' || lower.includes('lookup') || lower.startsWith('meta:tools') || lower.startsWith('tools_meta')) return <Search className="h-3.5 w-3.5" />
   return <Zap className="h-3.5 w-3.5" />
 }
 
@@ -36,6 +36,7 @@ export const ToolCallItem: React.FC<ToolCallItemProps> = ({
 }) => {
   const toolName = getToolName(log)
   const toolResult = getToolResult(log)
+  const toolSubtitle = getToolCallSubtitle(log)
   const [isFullscreenOpen, setIsFullscreenOpen] = useState(false)
   const { toast } = useToast()
   const copyPlainText = useMemo(() => getToolLogPlainTextForCopy(log), [log])
@@ -182,7 +183,7 @@ export const ToolCallItem: React.FC<ToolCallItemProps> = ({
         <div className="flex items-center gap-2">
           {toolName && renderToolIcon(toolName)}
           <span className="font-medium text-muted-foreground">
-            {log.log_type === 'tool_call' ? 'Llamada a herramienta' : 'Resultado de herramienta'}: {toolName || 'Desconocido'}
+            {log.log_type === 'tool_call' ? 'Llamada a herramienta' : 'Resultado de herramienta'}: {toolName ? formatToolDisplayName(toolName) : 'Desconocido'}
           </span>
           
           {/* Status badge - only show for pending status */}
@@ -193,9 +194,9 @@ export const ToolCallItem: React.FC<ToolCallItemProps> = ({
             </span>
           )}
           
-          {log.message && toolName !== 'generate_image' && toolName !== 'generate_video' && (
+          {toolSubtitle && toolName !== 'generate_image' && toolName !== 'generate_video' && (
             <span className="text-muted-foreground/70 ml-2">
-              - {log.message}
+              - {toolSubtitle}
             </span>
           )}
           {hasError && (

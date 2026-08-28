@@ -1,5 +1,5 @@
 /** Default landing for authenticated users leaving the sign-in page on app. */
-export const DEFAULT_POST_AUTH_PATH = '/robots'
+export const DEFAULT_POST_AUTH_PATH = '/projects'
 
 /** Default landing for authenticated users on www (commerce, not workspace). */
 export const WWW_POST_AUTH_PATH = '/buyer'
@@ -20,6 +20,7 @@ export function isSafeInternalPath(path: string | null | undefined): path is str
   if (!path.startsWith('/')) return false
   if (path.startsWith('//')) return false
   if (path.startsWith('/auth')) return false
+  if (path.startsWith('/create-site')) return false
   // Landing page re-enters the sign-in client; never bounce there after auth.
   const pathname = path.split('?')[0].split('#')[0]
   if (pathname === '/') return false

@@ -18,7 +18,7 @@ const renderToolIcon = (toolName: string) => {
   const lower = toolName.toLowerCase()
   if (lower === 'computer') return <Code className="h-3.5 w-3.5" />
   if (lower === 'structured_output') return <LayoutGrid className="h-3.5 w-3.5" />
-  if (lower.includes('search') || lower === 'websearch') return <Search className="h-3.5 w-3.5" />
+  if (lower.includes('search') || lower === 'websearch' || lower.includes('lookup') || lower.startsWith('meta:tools') || lower.startsWith('tools_meta')) return <Search className="h-3.5 w-3.5" />
   return <Zap className="h-3.5 w-3.5" />
 }
 

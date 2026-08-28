@@ -1,12 +1,19 @@
 import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
 import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
+import {
+  hostnameFromRequestHeaders,
+  resolvePostAuthRedirect,
+} from '@/lib/auth/post-auth-redirect'
 
 export async function GET(request: Request) {
   try {
     const requestUrl = new URL(request.url)
     const code = requestUrl.searchParams.get('code')
-    const returnTo = requestUrl.searchParams.get('returnTo') || '/buyer'
+    const returnTo = resolvePostAuthRedirect(
+      requestUrl.searchParams.get('returnTo'),
+      hostnameFromRequestHeaders(request.headers)
+    )
 
     console.log("Auth callback: Processing code=", !!code, "returnTo=", returnTo);
 

@@ -12,7 +12,7 @@ const COMMERCE_PREFIXES = [
 
 const NO_REDIRECT_PREFIXES = ["/create-site", "/auth", "/projects", "/demo", "/profile"]
 
-export type WorkspaceSiteRedirect = "/buyer" | "/projects"
+export type WorkspaceSiteRedirect = "/projects"
 
 /**
  * Where to send a signed-in user that has no usable workspace site selected.
@@ -31,9 +31,27 @@ export function getWorkspaceSiteRedirect(input: {
   if (NO_REDIRECT_PREFIXES.some((prefix) => input.pathname.startsWith(prefix))) return null
   if (COMMERCE_PREFIXES.some((prefix) => input.pathname.startsWith(prefix))) return null
 
-  if (input.realSiteCount === 0) return "/buyer"
+  // If a user is on a workspace page without a site, bounce them to the picker.
+  // We NEVER default to /create-site or /buyer from a workspace page.
   if (!input.hasRealCurrentSite) return "/projects"
   return null
+}
+
+export type UnauthorizedSitesLoadAction = "retry" | "finish" | "wait-for-session"
+
+/**
+ * After GET /api/sites 401: retry while a local session exists (cookie race),
+ * then finish the load so the wrapper can bounce to /projects.
+ */
+export function unauthorizedSitesLoadAction(input: {
+  hasLocalUser: boolean
+  retriesSoFar: number
+  maxRetries?: number
+}): UnauthorizedSitesLoadAction {
+  const maxRetries = input.maxRetries ?? 2
+  if (input.hasLocalUser && input.retriesSoFar < maxRetries) return "retry"
+  if (input.hasLocalUser) return "finish"
+  return "wait-for-session"
 }
 
 /** Public storefronts should drop the demo cookie; /buyer must keep it. */

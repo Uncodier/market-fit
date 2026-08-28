@@ -95,6 +95,7 @@ export interface InstanceLog {
   user_id?: string | null
   tool_name?: string
   tool_result?: any
+  tool_args?: any
   screenshot_base64?: string
   parent_log_id?: string | null
   // Support for alternative field names from different data sources

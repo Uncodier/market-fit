@@ -90,21 +90,25 @@ export function ContextSelectorModal({ onContextChange, selectedContext, isBrows
             name: selectedItemsNames[id].name,
             type: selectedItemsNames[id].type
           })
-        } else if (open && searchResults) {
-          // Try to get from current search results
-          const searchData = (searchResults as any)[category] || []
-          const foundItem = searchData.find((item: any) => item.id === id)
+        } else {
+          let foundItem = null
+          if (open && searchResults) {
+            // Try to get from current search results
+            const searchData = (searchResults as any)[category] || []
+            foundItem = searchData.find((item: any) => item.id === id)
+          }
+          
           if (foundItem) {
             const name = foundItem.name || foundItem.title || 'Unknown'
             items.push({id, name, type: category.slice(0, -1)})
+          } else {
+            // Fallback to ID-based name
+            items.push({
+              id,
+              name: `${category.slice(0, -1)} ${id.slice(0, 8)}...`,
+              type: category.slice(0, -1)
+            })
           }
-        } else {
-          // Fallback to ID-based name
-          items.push({
-            id,
-            name: `${category.slice(0, -1)} ${id.slice(0, 8)}...`,
-            type: category.slice(0, -1)
-          })
         }
       })
     })

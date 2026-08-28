@@ -1,4 +1,7 @@
 import { InstanceLog, PlanStep, EventType, StructuredOutputStyle, StructuredOutputStylesLight, ImageParameters, VideoParameters, AudioParameters } from './types'
+import { getToolName, formatToolDisplayName, getToolCallMeta, getToolCallSubtitle } from './parse-tool-call'
+
+export { getToolName, formatToolDisplayName, getToolCallMeta, getToolCallSubtitle }
 
 // Helper function to get style per theme
 export const getStructuredStyle = (event: EventType, isDark: boolean): StructuredOutputStyle => {
@@ -120,11 +123,6 @@ export const removeDuplicateSteps = (steps: PlanStep[]): PlanStep[] => {
   
   // Re-order the steps to ensure consistent ordering
   return uniqueSteps.sort((a, b) => a.order - b.order)
-}
-
-// Helper function to get tool name from various possible field names
-export const getToolName = (log: InstanceLog): string | null => {
-  return log.tool_name || log.toolName || null
 }
 
 // Helper function to get tool result from various possible field names
@@ -271,12 +269,4 @@ export const groupTimelineToolCalls = (
   }
 
   return result
-}
-
-/** Converts snake_case tool name to Display Case */
-export const formatToolDisplayName = (name: string): string => {
-  return name
-    .split(/[_-]/)
-    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-    .join(' ')
 }
