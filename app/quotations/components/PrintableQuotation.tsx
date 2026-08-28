@@ -2,6 +2,9 @@
 
 import { Badge } from "@/app/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/app/components/ui/table"
+import ReactMarkdown from "react-markdown"
+import { markdownComponents } from "@/app/components/simple-messages-view/utils/markdownComponents"
+import remarkGfm from "remark-gfm"
 import {
   documentT,
   formatDocumentDate,
@@ -54,6 +57,7 @@ export function PrintableQuotation({
   const billTo = resolveBillToLines(quotation.lead)
   const locationLines = formatPdfLocationLines(location)
   const quoteRef = String(quotation.id || "").substring(0, 8)
+  const isLongNote = quotation.notes && (quotation.notes.length > 800 || quotation.notes.split('\n').length > 15)
 
   return (
     <div className="max-w-4xl mx-auto bg-white text-gray-900 dark:bg-[#0a0a0a] dark:text-gray-100 border border-black/5 dark:border-white/10 print:bg-white print:text-black print:shadow-none print:border-none">
@@ -253,8 +257,20 @@ export function PrintableQuotation({
             </Table>
           </div>
 
-          <div className="flex justify-end">
-            <div className="w-64 space-y-2">
+          <div className="flex flex-col md:flex-row justify-between gap-8 mt-6">
+            <div className="flex-1">
+              {quotation.notes && !isLongNote && (
+                <div className="text-sm text-muted-foreground print:text-gray-600">
+                  <h4 className="font-semibold text-foreground print:text-black mb-2">
+                    {documentT(documentLocale, "quotations.detail.notes")}
+                  </h4>
+                  <div className="text-sm leading-relaxed print:text-black w-full overflow-hidden break-words word-wrap hyphens-auto" style={{ wordWrap: 'break-word', overflowWrap: 'break-word', wordBreak: 'break-word' }}>
+                    <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>{quotation.notes}</ReactMarkdown>
+                  </div>
+                </div>
+              )}
+            </div>
+            <div className="w-64 space-y-2 shrink-0">
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground print:text-gray-600">{t("quotations.document.subtotal")}:</span>
                 <span className="text-foreground print:text-black">{money(quotation.subtotal)}</span>
@@ -288,7 +304,7 @@ export function PrintableQuotation({
           </div>
         ) : null}
 
-        <div className="pt-6 border-t border-border print:border-gray-200 text-xs text-muted-foreground print:text-gray-500 print:break-inside-avoid">
+            <div className="pt-6 border-t border-border print:border-gray-200 text-xs text-muted-foreground print:text-gray-500 print:break-inside-avoid">
           <div className="flex justify-between gap-4">
             <div>
               {siteName} · {t("quotations.document.quote")} #{quoteRef}
@@ -300,6 +316,20 @@ export function PrintableQuotation({
           </div>
         </div>
       </div>
+
+      {quotation.notes && isLongNote ? (
+        <div className="p-8 print:p-0 print:break-before-page mt-8 print:mt-0 space-y-8">
+          <div className="border-b border-border pb-6 print:border-gray-200 print:break-inside-avoid">
+            <h2 className="text-2xl font-bold text-foreground print:text-black">
+              {documentT(documentLocale, "quotations.detail.notes")}
+            </h2>
+            <p className="text-lg text-muted-foreground print:text-gray-600">#{quoteRef}</p>
+          </div>
+          <div className="text-sm leading-relaxed print:text-black w-full overflow-hidden break-words word-wrap hyphens-auto" style={{ wordWrap: 'break-word', overflowWrap: 'break-word', wordBreak: 'break-word' }}>
+            <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>{quotation.notes}</ReactMarkdown>
+          </div>
+        </div>
+      ) : null}
     </div>
   )
 }

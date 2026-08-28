@@ -23,6 +23,9 @@ import { PublicDocumentShopNav } from "@/app/documents/components/PublicDocument
 import { PublicDocumentViewSkeleton } from "@/app/documents/components/PublicDocumentViewSkeleton"
 import { useAuthContext as useAuth } from "@/app/components/auth/auth-provider"
 import { useLocalization } from "@/app/context/LocalizationContext"
+import ReactMarkdown from "react-markdown"
+import { markdownComponents } from "@/app/components/simple-messages-view/utils/markdownComponents"
+import remarkGfm from "remark-gfm"
 
 export interface BuyerQuoteDetailViewProps {
   quoteId?: string
@@ -140,6 +143,7 @@ export function BuyerQuoteDetailView({
 
   if (!quotation) return null
 
+  const isLongNote = quotation?.notes && (quotation.notes.length > 800 || quotation.notes.split('\n').length > 15)
   const isExpired = quotation.valid_until && new Date(quotation.valid_until) < new Date()
   const canRespond = quotation.status === 'sent' && !isExpired
   const busy = accepting || rejecting
@@ -214,10 +218,24 @@ export function BuyerQuoteDetailView({
             </div>
           </div>
 
-          {quotation.description && (
+          {/* Legacy description fallback */}
+          {quotation.description && !quotation.notes && (
             <Card>
               <CardContent className="pt-6">
                 <div className="whitespace-pre-wrap text-sm">{quotation.description}</div>
+              </CardContent>
+            </Card>
+          )}
+
+          {quotation.notes && isLongNote && (
+            <Card>
+              <CardHeader className="pb-3 border-b">
+                <CardTitle className="text-base">{t('quotations.detail.notes') || 'Terms and Conditions'}</CardTitle>
+              </CardHeader>
+              <CardContent className="pt-6">
+                <div className="text-sm leading-relaxed w-full overflow-hidden break-words word-wrap hyphens-auto" style={{ wordWrap: 'break-word', overflowWrap: 'break-word', wordBreak: 'break-word' }}>
+                  <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>{quotation.notes}</ReactMarkdown>
+                </div>
               </CardContent>
             </Card>
           )}
@@ -247,7 +265,17 @@ export function BuyerQuoteDetailView({
                   ))}
                 </TableBody>
               </Table>
-              <div className="p-6 border-t bg-muted/10 flex justify-end">
+              <div className="p-6 border-t bg-muted/10 flex flex-col md:flex-row justify-between gap-6">
+                <div className="flex-1">
+                  {quotation.notes && !isLongNote && (
+                    <div className="text-sm text-muted-foreground">
+                      <h4 className="font-semibold text-foreground mb-2">{t('quotations.detail.notes') || 'Terms and Conditions'}</h4>
+                      <div className="text-sm leading-relaxed w-full overflow-hidden break-words word-wrap hyphens-auto" style={{ wordWrap: 'break-word', overflowWrap: 'break-word', wordBreak: 'break-word' }}>
+                        <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>{quotation.notes}</ReactMarkdown>
+                      </div>
+                    </div>
+                  )}
+                </div>
                 <div className="w-full max-w-[300px] space-y-2">
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">{t('buyer.quotes.detail.subtotal') || 'Subtotal'}</span>

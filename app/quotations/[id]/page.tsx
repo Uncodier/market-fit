@@ -12,7 +12,7 @@ import {
 import { ensureQuotationPublicAccessToken } from "../public-actions"
 import { buildPublicQuotePath } from "../public-token"
 import { authorizeDynamicQuote, retryDynamicQuoteItem } from "../dynamic-quote-actions"
-import { updateQuotationItem } from "../actions"
+import { updateQuotationItem, updateQuotationNotes } from "../actions"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
 import { Button } from "@/app/components/ui/button"
 import { toast } from "sonner"
@@ -108,7 +108,7 @@ export default function QuotationDetail({ params }: { params: Promise<{ id: stri
         t("quotations.detail.statusUpdatedTo", { status: label }) ||
           `Status updated to ${label}`
       )
-      setQuotation(res.data)
+      setQuotation((prev: any) => ({ ...prev, ...res.data }))
     }
     setUpdating(false)
   }
@@ -173,6 +173,18 @@ export default function QuotationDetail({ params }: { params: Promise<{ id: stri
     setUpdating(false)
   }
 
+  const handleUpdateNotes = async (notes: string | null) => {
+    setUpdating(true)
+    const res = await updateQuotationNotes(quotation.id, notes)
+    if (res.error) {
+      toast.error(res.error)
+    } else {
+      toast.success(t("common.saved") || "Saved")
+      setQuotation((prev: any) => ({ ...prev, notes }))
+    }
+    setUpdating(false)
+  }
+
   const handleDelete = async () => {
     setUpdating(true)
     const res = await deleteQuotation(quotation.id)
@@ -210,7 +222,7 @@ export default function QuotationDetail({ params }: { params: Promise<{ id: stri
         t("quotations.detail.sentEmail") ||
           "Quote emailed to the client with PDF attached"
       )
-      if (res.data) setQuotation(res.data)
+      if (res.data) setQuotation((prev: any) => ({ ...prev, ...res.data }))
       else loadQuotation()
     }
     setUpdating(false)
@@ -390,6 +402,7 @@ export default function QuotationDetail({ params }: { params: Promise<{ id: stri
               onUpdateItemQuantity={handleUpdateItemQuantity}
               onUpdateItemPrice={handleUpdateItemPrice}
               onRetryItem={handleRetry}
+              onUpdateNotes={handleUpdateNotes}
             />
             <div className="absolute inset-0 rounded-lg shadow-xl -z-10 transform translate-y-1 bg-card/50 dark:bg-card/10 opacity-50 dark:border dark:border-border/30" />
             <div className="absolute inset-0 rounded-lg shadow-md -z-20 transform translate-y-2 bg-card/30 dark:bg-card/5 opacity-30 dark:border dark:border-border/20" />

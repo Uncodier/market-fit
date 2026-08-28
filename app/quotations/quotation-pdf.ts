@@ -42,6 +42,7 @@ export type QuotationPdfInput = {
   tax_total?: number | null
   discount_total?: number | null
   total?: number | null
+  notes?: string | null
   items?: QuotationPdfItem[] | null
   lead?: { name?: string | null; email?: string | null } | null
   site?: QuotationPdfSite | null
@@ -423,6 +424,104 @@ export async function buildQuotationPdf(input: QuotationPdfInput): Promise<Uint8
     font,
     color: pdfMuted,
   })
+
+  // Notes Page (if notes exist)
+  const isLongNote = input.notes && (input.notes.length > 800 || input.notes.split('\n').length > 15)
+  
+  if (input.notes && input.notes.trim()) {
+    let notesPage = page
+    let ny = y - 24
+
+    if (isLongNote) {
+      notesPage = doc.addPage([595.28, 841.89])
+      ny = notesPage.getHeight() - margin
+
+      notesPage.drawText(t("quotations.document.quote").toUpperCase(), {
+        x: margin,
+        y: ny - 14,
+        size: 22,
+        font: bold,
+        color: pdfInk,
+      })
+      notesPage.drawText(`#${quoteRef}`, {
+        x: margin,
+        y: ny - 34,
+        size: 12,
+        font,
+        color: pdfMuted,
+      })
+      
+      ny -= 64
+    }
+
+    notesPage.drawText(t("quotations.detail.notes") || "Notes", {
+      x: margin,
+      y: ny,
+      size: 10,
+      font: bold,
+      color: pdfInk,
+    })
+    
+    ny -= 16
+    
+    // Very simple Markdown parser for PDF
+    const lines = input.notes.split('\n')
+    for (const line of lines) {
+      if (ny < margin + 20) {
+        // Need new page (not fully handling multi-page notes, but avoiding crashing off bottom)
+        notesPage = doc.addPage([595.28, 841.89])
+        ny = notesPage.getHeight() - margin
+      }
+      
+      const trimmed = line.trim()
+      if (!trimmed) {
+        ny -= 14
+        continue
+      }
+      
+      let isBold = false
+      let textToDraw = trimmed
+      let size = 9
+      let indent = 0
+      
+      // Headers
+      if (trimmed.startsWith('### ')) {
+        isBold = true
+        size = 10
+        textToDraw = trimmed.substring(4)
+      } else if (trimmed.startsWith('## ')) {
+        isBold = true
+        size = 11
+        textToDraw = trimmed.substring(3)
+      } else if (trimmed.startsWith('# ')) {
+        isBold = true
+        size = 12
+        textToDraw = trimmed.substring(2)
+      } else if (trimmed.startsWith('- ') || trimmed.startsWith('* ')) {
+        textToDraw = '• ' + trimmed.substring(2)
+        indent = 10
+      } else if (/^\d+\.\s/.test(trimmed)) {
+        indent = 10
+      }
+      
+      // Inline bold stripping (**text**) - simplified just removing the asterisks
+      textToDraw = textToDraw.replace(/\*\*(.*?)\*\*/g, '$1')
+      textToDraw = textToDraw.replace(/__(.*?)__/g, '$1')
+      
+      // If it's a short note on the first page, wrap it tighter to avoid the totals block on the right
+      const maxWidth = !isLongNote && notesPage === page ? contentWidth - 200 : contentWidth - indent
+
+      ny = drawPdfWrappedText(notesPage, textToDraw, {
+        x: margin + indent,
+        y: ny,
+        size,
+        font: isBold ? bold : font,
+        color: pdfInk,
+        maxWidth,
+        lineHeight: size + 4,
+      })
+    }
+  }
 
   return doc.save()
 }

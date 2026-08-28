@@ -4,9 +4,14 @@ import { Badge } from "@/app/components/ui/badge"
 import { Button } from "@/app/components/ui/button"
 import { Input } from "@/app/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/app/components/ui/table"
-import { Plus, Trash2 } from "@/app/components/ui/icons"
+import { Plus, Trash2, Pencil, Check, X } from "@/app/components/ui/icons"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { useSite } from "@/app/context/SiteContext"
+import ReactMarkdown from "react-markdown"
+import { markdownComponents } from "@/app/components/simple-messages-view/utils/markdownComponents"
+import remarkGfm from "remark-gfm"
+import { Textarea } from "@/app/components/ui/textarea"
+import { useState } from "react"
 import {
   formatDocumentDate,
   formatDocumentMoney,
@@ -34,6 +39,7 @@ interface QuotationInvoiceProps {
   onUpdateItemQuantity?: (itemId: string, quantity: number) => void
   onUpdateItemPrice?: (itemId: string, price: number) => void
   onRetryItem?: (itemId: string) => void
+  onUpdateNotes?: (notes: string | null) => void
 }
 
 export function QuotationInvoice({
@@ -44,9 +50,13 @@ export function QuotationInvoice({
   onUpdateItemQuantity,
   onUpdateItemPrice,
   onRetryItem,
+  onUpdateNotes,
 }: QuotationInvoiceProps) {
   const { t } = useLocalization()
   const { currentSite } = useSite()
+
+  const [isEditingNotes, setIsEditingNotes] = useState(false)
+  const [draftNotes, setDraftNotes] = useState("")
 
   const documentLocale = resolveDocumentLocale(
     currentSite?.settings?.default_locale || undefined
@@ -58,6 +68,74 @@ export function QuotationInvoice({
   )
   const billTo = resolveBillToLines(quotation.lead)
   const isDraft = quotation.status === "draft"
+  
+  const isLongNote = quotation.notes && (quotation.notes.length > 800 || quotation.notes.split('\n').length > 15)
+
+  const notesBlock = (
+    <div className="text-sm text-muted-foreground bg-muted/30 p-4 rounded-md border border-border">
+      <div className="flex items-center justify-between mb-2">
+        <h4 className="font-semibold text-foreground">
+          {t("quotations.detail.notes") || "Terms and Conditions"}
+        </h4>
+        {isDraft && onUpdateNotes && !isEditingNotes && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 text-xs"
+            onClick={() => {
+              setDraftNotes(quotation.notes || "")
+              setIsEditingNotes(true)
+            }}
+            disabled={updating}
+          >
+            <Pencil className="w-3 h-3 mr-1" />
+            {t("common.edit") || "Edit"}
+          </Button>
+        )}
+      </div>
+      
+      {isEditingNotes ? (
+        <div className="space-y-2 mt-2">
+          <Textarea
+            value={draftNotes}
+            onChange={(e) => setDraftNotes(e.target.value)}
+            className="min-h-[150px] font-mono text-xs"
+            disabled={updating}
+          />
+          <div className="flex justify-end gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsEditingNotes(false)}
+              disabled={updating}
+            >
+              <X className="w-4 h-4 mr-1" />
+              {t("common.cancel") || "Cancel"}
+            </Button>
+            <Button
+              size="sm"
+              onClick={() => {
+                onUpdateNotes?.(draftNotes)
+                setIsEditingNotes(false)
+              }}
+              disabled={updating}
+            >
+              <Check className="w-4 h-4 mr-1" />
+              {t("common.save") || "Save"}
+            </Button>
+          </div>
+        </div>
+      ) : quotation.notes ? (
+        <div className="text-sm leading-relaxed w-full overflow-hidden break-words word-wrap hyphens-auto" style={{ wordWrap: 'break-word', overflowWrap: 'break-word', wordBreak: 'break-word' }}>
+          <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>{quotation.notes}</ReactMarkdown>
+        </div>
+      ) : (
+        <div className="text-muted-foreground/60 italic text-xs">
+          {isDraft ? (t("quotations.detail.emptyNotes") || "No notes added yet.") : ""}
+        </div>
+      )}
+    </div>
+  )
 
   const formatMoney = (amount: number) =>
     formatDocumentMoney(amount || 0, quotation.currency || "USD", documentLocale)
@@ -324,14 +402,7 @@ export function QuotationInvoice({
 
         <div className="mt-6 flex flex-col md:flex-row justify-between gap-6">
           <div className="flex-1">
-            {quotation.notes && (
-              <div className="text-sm text-muted-foreground whitespace-pre-wrap bg-muted/30 p-4 rounded-md border border-border">
-                <h4 className="font-semibold text-foreground mb-2">
-                  {t("quotations.detail.notes") || "Terms and Conditions"}
-                </h4>
-                {quotation.notes}
-              </div>
-            )}
+            {!isLongNote && notesBlock}
           </div>
           <div className="w-full md:w-64 space-y-2">
             <div className="flex justify-between text-sm">
@@ -360,6 +431,12 @@ export function QuotationInvoice({
             </div>
           </div>
         </div>
+        
+        {isLongNote && (
+          <div className="mt-6">
+            {notesBlock}
+          </div>
+        )}
       </div>
     </div>
   )

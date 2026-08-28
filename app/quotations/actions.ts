@@ -183,6 +183,19 @@ export async function updateQuotationStatus(id: string, status: string) {
   return { data }
 }
 
+export async function updateQuotationNotes(id: string, notes: string | null) {
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('quotations')
+    .update({ notes })
+    .eq('id', id)
+    .select()
+    .single()
+    
+  if (error) return { error: error.message }
+  return { data }
+}
+
 export async function sendQuotation(id: string) {
   const supabase = await createClient()
   const { data: quote, error: quoteError } = await supabase
@@ -257,6 +270,7 @@ export async function sendQuotation(id: string) {
     tax_total: quote.tax_total,
     discount_total: quote.discount_total,
     total: quote.total,
+    notes: quote.notes,
     items: quote.items || [],
     lead: quote.lead,
     site: quote.site,
