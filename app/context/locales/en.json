@@ -6928,6 +6928,8 @@
   "quotations.detail.linkCopied": "Link copied to clipboard",
   "quotations.detail.markAsSent": "Mark as Sent",
   "quotations.detail.notSpecified": "Not specified",
+  "quotations.detail.notes": "Terms and Conditions",
+  "quotations.detail.emptyNotes": "No notes added yet.",
   "quotations.detail.reject": "Reject",
   "quotations.detail.resendEmail": "Resend",
   "quotations.detail.selectItem": "Select or create item...",
