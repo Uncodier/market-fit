@@ -204,13 +204,11 @@ export function ShopHeader({
               data-commerce-shell-actions-core
               className="flex items-center justify-end gap-4 min-w-0"
             >
-              <div className="hidden md:contents">
-                <CommerceShareControl
-                  className={`relative ${shellClasses.iconButton}`}
-                  iconClassName="h-4 w-4"
-                  title={site.name}
-                />
-              </div>
+              <CommerceShareControl
+                className={`relative ${shellClasses.iconButton}`}
+                iconClassName="h-4 w-4"
+                title={site.name}
+              />
               <Sheet open={isCartOpen} onOpenChange={setIsCartOpen}>
                 <SheetTrigger asChild>
                   <CartButton

@@ -120,13 +120,11 @@ export function ProductDetailPage({ item, site, backUrl, experience }: ProductDe
             data-commerce-shell-actions-core
             className="flex items-center justify-end gap-4 min-w-0"
           >
-            <div className="hidden md:contents">
-              <CommerceShareControl
-                className={`relative ${shellClasses.iconButton}`}
-                iconClassName="h-4 w-4"
-                title={item.name}
-              />
-            </div>
+            <CommerceShareControl
+              className={`relative ${shellClasses.iconButton}`}
+              iconClassName="h-4 w-4"
+              title={item.name}
+            />
 
             <CartButton
               href={`${backUrl}?cart=1`}
