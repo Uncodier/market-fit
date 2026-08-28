@@ -1,5 +1,5 @@
 import React from 'react'
-import { Sparkles, LayoutPanelLeft } from "@/app/components/ui/icons"
+import { Sparkles, LayoutGrid } from "@/app/components/ui/icons"
 import { Avatar, AvatarFallback } from "@/app/components/ui/avatar"
 import { InstanceLog } from '../types'
 import { formatTime } from '../utils'
@@ -81,7 +81,7 @@ export const ArtifactShownItem: React.FC<ArtifactShownItemProps> = ({
           }}
         >
           <div className="flex items-center gap-2 text-primary font-medium text-sm">
-            <LayoutPanelLeft className="w-4 h-4" />
+            <LayoutGrid className="w-4 h-4" />
             <span>Artefacto Mostrado</span>
           </div>
           {title && (
