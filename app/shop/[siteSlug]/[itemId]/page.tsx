@@ -1,6 +1,6 @@
 import { Suspense } from "react"
 import { getPdpCatalogItem, getPdpShareItem } from "@/app/commerce/pdp-actions"
-import { getShopSite } from "../actions"
+import { getShopSite, getShopCatalogSize } from "../actions"
 import { notFound } from "next/navigation"
 import { ProductDetailPage } from "@/app/components/commerce/pdp/ProductDetailPage"
 import { SiteLocaleBootstrap } from "@/app/components/commerce/SiteLocaleBootstrap"
@@ -99,10 +99,15 @@ async function ShopItemContent({ siteSlug, itemId }: { siteSlug: string; itemId:
 
   const siteDefaultLocale = site?.settings?.default_locale
 
+  let catalogSize = 0;
+  if (site) {
+    catalogSize = await getShopCatalogSize(site.id);
+  }
+
   return (
     <>
       <SiteLocaleBootstrap locale={siteDefaultLocale} />
-      <ProductDetailPage item={item as any} site={site} backUrl={`/shop/${siteSlug}`} experience={experience as any} />
+      <ProductDetailPage item={item as any} site={site} backUrl={`/shop/${siteSlug}`} experience={experience as any} catalogSize={catalogSize} />
     </>
   )
 }

@@ -4,7 +4,7 @@ import { DestinationSelector } from "@/app/components/commerce/DestinationSelect
 
 const fromMock = jest.fn()
 
-jest.mock("@/lib/supabase/client", () => ({
+jest.mock("../../../lib/supabase/client", () => ({
   createClient: () => ({ from: fromMock }),
 }))
 

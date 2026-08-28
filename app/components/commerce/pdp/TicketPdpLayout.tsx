@@ -16,6 +16,8 @@ import { Button } from "@/app/components/ui/button"
 import { downloadAccessPass } from "@/app/lib/download-access-pass"
 
 import { PdpCtaButton } from "./PdpCtaButton"
+import { PdpPurchaseCtas } from "./PdpPurchaseCtas"
+import { afterAddToCartHref } from "./pdp-purchase-cta"
 import { PdpPriceBlock } from "./PdpPriceBlock"
 import { PdpMetricChips } from "./PdpMetricChips"
 import { PdpMobileBuyBar } from "./PdpMobileBuyBar"
@@ -23,7 +25,7 @@ import { PdpExperience } from "./pdp-experience"
 import QRCode from "react-qr-code"
 import { SubscriptionManagePanel } from "./SubscriptionManagePanel"
 
-export function TicketPdpLayout({ item, backUrl, experience }: { item: CatalogItem & { _shop?: any }, backUrl: string, experience?: PdpExperience }) {
+export function TicketPdpLayout({ item, backUrl, experience, catalogSize = 0 }: { item: CatalogItem & { _shop?: any }, backUrl: string, experience?: PdpExperience, catalogSize?: number }) {
   const { t } = useLocalization()
   const router = useRouter()
   const { addToCartStorage, startBuyNow } = usePdpCart(item.site_id)
@@ -55,7 +57,7 @@ export function TicketPdpLayout({ item, backUrl, experience }: { item: CatalogIt
   const handleAdd = () => {
     addToCartStorage(item)
     toast.success(`${item.name} ${t('marketplace.addedToCart') || 'added to cart'}`)
-    router.push(`${backUrl}?cart=1`)
+    router.push(afterAddToCartHref(backUrl))
   }
 
   const handleBuyNow = () => {
@@ -242,23 +244,16 @@ export function TicketPdpLayout({ item, backUrl, experience }: { item: CatalogIt
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
                 <PdpPriceBlock price={item.target_sale_price || 0} currency={item.currency || 'USD'} />
                 
-                <div className="hidden sm:flex gap-3">
-                  <PdpCtaButton 
-                    variant="outline"
-                    onClick={handleAdd}
-                    disabled={item._shop?.sellable === false}
-                    className="w-auto px-6"
-                  >
-                    {t('marketplace.add') || 'Add'}
-                  </PdpCtaButton>
-                  <PdpCtaButton 
-                    onClick={handleBuyNow}
-                    disabled={item._shop?.sellable === false}
-                    className="w-auto px-10"
-                  >
-                    {item._shop?.sellable === false ? (t('pdp.soldOut') || 'Sold Out') : (t('pdp.getTickets') || 'Get Tickets')}
-                  </PdpCtaButton>
-                </div>
+                <PdpPurchaseCtas
+                  catalogSize={catalogSize}
+                  disabled={item._shop?.sellable === false}
+                  disabledLabel={item._shop?.sellable === false ? (t('pdp.soldOut') || 'Sold Out') : null}
+                  onAdd={handleAdd}
+                  onBuyNow={handleBuyNow}
+                  buyNowLabel={t('pdp.getTickets') || 'Get Tickets'}
+                  presentation="row"
+                  className="hidden sm:flex"
+                />
               </div>
             )}
           </div>
@@ -273,23 +268,15 @@ export function TicketPdpLayout({ item, backUrl, experience }: { item: CatalogIt
 
       {!ownedEntitlement && !experience && (
         <PdpMobileBuyBar price={item.target_sale_price || 0} fullWidthCta={true}>
-          <div className="flex gap-2 w-full">
-            <PdpCtaButton 
-              variant="outline"
-              onClick={handleAdd}
-              disabled={item._shop?.sellable === false}
-              className="px-4 shrink-0 w-auto"
-            >
-              {t('marketplace.add') || 'Add'}
-            </PdpCtaButton>
-            <PdpCtaButton 
-              onClick={handleBuyNow}
-              disabled={item._shop?.sellable === false}
-              className="flex-1"
-            >
-              {item._shop?.sellable === false ? (t('pdp.soldOut') || 'Sold Out') : (t('pdp.getTickets') || 'Get Tickets')}
-            </PdpCtaButton>
-          </div>
+          <PdpPurchaseCtas
+            catalogSize={catalogSize}
+            disabled={item._shop?.sellable === false}
+            disabledLabel={item._shop?.sellable === false ? (t('pdp.soldOut') || 'Sold Out') : null}
+            onAdd={handleAdd}
+            onBuyNow={handleBuyNow}
+            buyNowLabel={t('pdp.getTickets') || 'Get Tickets'}
+            presentation="mobile"
+          />
         </PdpMobileBuyBar>
       )}
     </div>

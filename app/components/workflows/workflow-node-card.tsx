@@ -19,11 +19,17 @@ const STATUS_RING: Record<WorkflowStepStatus, string> = {
   cancelled: "ring-muted-foreground/40",
 }
 
-function triggerTitle(kind: WorkflowTriggerKind) {
-  if (kind === "cron") return "Cron trigger"
-  if (kind === "db_event") return "Table trigger"
-  if (kind === "webhook") return "Webhook trigger"
-  return "Manual trigger"
+const TITLE_MAP: Record<WorkflowTriggerKind, string> = {
+  cron: "Cron",
+  db_event: "Table",
+  webhook: "Webhook",
+  manual: "Manual",
+}
+
+function triggerTitle(kinds: WorkflowTriggerKind[]) {
+  if (!kinds || kinds.length === 0) return "Manual trigger"
+  if (kinds.length === 1) return `${TITLE_MAP[kinds[0]]} trigger`
+  return `Trigger: ${kinds.map(k => TITLE_MAP[k]).join(" + ")}`
 }
 
 function mergeSettings(node: InstanceNode, patch: Record<string, unknown>) {
@@ -151,14 +157,15 @@ export function WorkflowNodeCard({
             trigger={trigger}
             enabled={Boolean(settings.enabled)}
             onPersist={persist}
-            onKindChange={(kind) =>
+            onKindsChange={(kinds) =>
               void persist({
                 trigger: {
                   ...trigger,
-                  kind,
-                  ...(kind === "cron" && !trigger.cron ? { cron: DEFAULT_CRON } : {}),
+                  kind: kinds[0] || "manual",
+                  active_kinds: kinds,
+                  ...(kinds.includes("cron") && !trigger.cron ? { cron: DEFAULT_CRON } : {}),
                 },
-                title: triggerTitle(kind),
+                title: triggerTitle(kinds),
               })
             }
           />

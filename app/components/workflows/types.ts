@@ -66,11 +66,13 @@ export const PLAN_TYPE_OPTIONS: readonly { value: WorkflowPlanType; label: strin
 
 export interface WorkflowTriggerConfig {
   kind: WorkflowTriggerKind
+  active_kinds?: WorkflowTriggerKind[]
   name?: string
   description?: string
   plan_type?: WorkflowPlanType
   cron?: string
   cron_preset?: 'custom'
+  timezone?: string
   table?: string
   op?: ('insert' | 'update' | 'delete')[] | 'insert' | 'update' | 'delete'
   // Multiple table events

@@ -53,6 +53,37 @@ export function ContextSelectorModal({ onContextChange, selectedContext, isBrows
   loadInitialDataRef.current = loadInitialData
   clearSearchRef.current = clearSearch
 
+  // Cache names from searchResults so that pre-selected items or items that drop out of search results don't lose their names
+  useEffect(() => {
+    if (!searchResults) return
+
+    let hasUpdates = false
+    const newNames = { ...selectedItemsNames }
+
+    Object.keys(selectedContext).forEach(category => {
+      const ids = selectedContext[category as keyof SelectedContextIds]
+      if (!Array.isArray(ids)) return
+      
+      const searchData = (searchResults as any)[category] || []
+      ids.forEach(id => {
+        if (!newNames[id]) {
+          const found = searchData.find((item: any) => item.id === id)
+          if (found) {
+            newNames[id] = {
+              name: found.name || found.title || 'Unknown',
+              type: category.slice(0, -1)
+            }
+            hasUpdates = true
+          }
+        }
+      })
+    })
+
+    if (hasUpdates) {
+      setSelectedItemsNames(newNames)
+    }
+  }, [searchResults, selectedContext, selectedItemsNames])
+
   const prevOpenRef = useRef(open)
   const prevSearchTermRef = useRef(searchTerm)
 

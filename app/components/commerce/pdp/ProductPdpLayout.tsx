@@ -11,6 +11,8 @@ import { useRouter, usePathname } from "next/navigation"
 
 import { useState, useMemo, useEffect } from "react"
 import { PdpCtaButton } from "./PdpCtaButton"
+import { PdpPurchaseCtas } from "./PdpPurchaseCtas"
+import { afterAddToCartHref } from "./pdp-purchase-cta"
 import { PdpPriceBlock } from "./PdpPriceBlock"
 import { PdpMobileBuyBar } from "./PdpMobileBuyBar"
 import { PdpMetricChips } from "./PdpMetricChips"
@@ -40,7 +42,7 @@ import {
 import { isDynamicPricedItem } from "@/app/catalog/dynamic-pricing"
 import { getDynamicPricingConfig } from "@/app/catalog/dynamic-pricing"
 
-export function ProductPdpLayout({ item, backUrl, experience: _experience }: { item: CatalogItem & { _shop?: any }, backUrl: string, experience?: any }) {
+export function ProductPdpLayout({ item, backUrl, experience: _experience, catalogSize = 0 }: { item: CatalogItem & { _shop?: any }, backUrl: string, experience?: any, catalogSize?: number }) {
   const { t } = useLocalization()
   const router = useRouter()
   const pathname = usePathname()
@@ -221,7 +223,7 @@ export function ProductPdpLayout({ item, backUrl, experience: _experience }: { i
 
     addToCartStorage(activeItem, 1, undefined, undefined, selectedModifiers)
     toast.success(`${activeItem.name} ${t('marketplace.addedToCart') || 'added to cart'}`)
-    router.push(`${backUrl}?cart=1`)
+    router.push(afterAddToCartHref(backUrl))
   }
 
   const handleBuyNow = () => {
@@ -420,14 +422,15 @@ export function ProductPdpLayout({ item, backUrl, experience: _experience }: { i
                   {disabledCtaLabel || t("booking.selectTime") || "Select a Time"}
                 </PdpCtaButton>
               ) : (
-                <>
-                  <PdpCtaButton onClick={handleBuyNow} disabled={!isSellable}>
-                    {disabledCtaLabel || t("pdp.buyNow") || "Buy Now"}
-                  </PdpCtaButton>
-                  <PdpCtaButton variant="outline" onClick={handleAdd} disabled={!isSellable}>
-                    {t("marketplace.add") || "Add to Cart"}
-                  </PdpCtaButton>
-                </>
+                <PdpPurchaseCtas
+                  catalogSize={catalogSize}
+                  disabled={!isSellable}
+                  disabledLabel={disabledCtaLabel}
+                  onAdd={handleAdd}
+                  onBuyNow={handleBuyNow}
+                  buyNowLabel={t("pdp.buyNow") || "Buy Now"}
+                  presentation="stack"
+                />
               )}
             </div>
             <div className="mt-4 flex items-center justify-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-widest">
@@ -452,27 +455,21 @@ export function ProductPdpLayout({ item, backUrl, experience: _experience }: { i
       )}
 
       <PdpMobileBuyBar price={displayPrice} fullWidthCta={true}>
-        <div className="flex gap-2 w-full">
-          {!isDropIn && (
-            <PdpCtaButton
-              variant="outline"
-              onClick={handleAdd}
-              disabled={!isSellable}
-              className="px-4 shrink-0 w-auto"
-            >
-              {t("marketplace.add") || "Add"}
-            </PdpCtaButton>
-          )}
-          {isDropIn ? (
-            <PdpCtaButton onClick={handleBook} disabled={!isSellable} className="flex-1">
-              {disabledCtaLabel || t("booking.selectTime") || "Select a Time"}
-            </PdpCtaButton>
-          ) : (
-            <PdpCtaButton onClick={handleBuyNow} disabled={!isSellable} className="flex-1">
-              {disabledCtaLabel || t("pdp.buyNow") || "Buy Now"}
-            </PdpCtaButton>
-          )}
-        </div>
+        {isDropIn ? (
+          <PdpCtaButton onClick={handleBook} disabled={!isSellable} className="flex-1">
+            {disabledCtaLabel || t("booking.selectTime") || "Select a Time"}
+          </PdpCtaButton>
+        ) : (
+          <PdpPurchaseCtas
+            catalogSize={catalogSize}
+            disabled={!isSellable}
+            disabledLabel={disabledCtaLabel}
+            onAdd={handleAdd}
+            onBuyNow={handleBuyNow}
+            buyNowLabel={t("pdp.buyNow") || "Buy Now"}
+            presentation="mobile"
+          />
+        )}
       </PdpMobileBuyBar>
     </div>
   )

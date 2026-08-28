@@ -1,5 +1,6 @@
 "use client"
 
+import { useProfile } from "@/app/hooks/use-profile"
 import type { WorkflowTriggerConfig } from "./types"
 import { WF_FIELD_CLASS } from "./types"
 import { WorkflowSearchSelect } from "./workflow-search-select"
@@ -29,6 +30,9 @@ export function WorkflowCronFields({
   trigger: WorkflowTriggerConfig
   onPersist: (patch: Record<string, unknown>) => Promise<unknown>
 }) {
+  const { timezone: profileTimezone } = useProfile()
+  const timezone = trigger.timezone || profileTimezone || "America/Mexico_City"
+
   const schedule = resolveSchedule(trigger)
   const showHour = cronNeedsHour(schedule.preset)
   const showWeekday = cronNeedsWeekday(schedule.preset)
@@ -37,6 +41,7 @@ export function WorkflowCronFields({
     const nextTrigger: WorkflowTriggerConfig = {
       ...trigger,
       cron: buildCronExpression(next, custom ?? trigger.cron),
+      timezone,
     }
     if (next.preset === "custom") nextTrigger.cron_preset = "custom"
     else delete nextTrigger.cron_preset
@@ -121,7 +126,10 @@ export function WorkflowCronFields({
         </label>
       )}
 
-      <p className="text-[10px] text-muted-foreground font-mono pl-1">{schedule.expression}</p>
+      <div className="flex justify-between items-center px-1">
+        <p className="text-[10px] text-muted-foreground font-mono">{schedule.expression}</p>
+        <p className="text-[10px] text-muted-foreground">Times in {timezone}</p>
+      </div>
     </div>
   )
 }

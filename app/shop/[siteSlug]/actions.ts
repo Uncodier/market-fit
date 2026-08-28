@@ -97,6 +97,12 @@ async function enrichShopItems(siteId: string, items: any[], supabase: Awaited<R
       Boolean(preview?.hasVariants) ||
       Boolean(item.metadata?.variant_axes?.length && item.is_purchasable === false);
 
+    // If item is explicitly marked as not purchasable and it doesn't have variants, 
+    // it shouldn't be sellable.
+    if (item.is_purchasable === false && !hasVariants) {
+      sellable = false;
+    }
+
     const mappedPrice = priceData.priceByItemId.get(item.id);
     const listCurrency = priceData.currencyBySiteId.get(siteId);
     
@@ -251,6 +257,29 @@ export async function getShopCatalog(
     },
     // v8: fix price list currency override
     ["shop-catalog-v8", siteId, String(offset), String(pageSize), search, category],
+    {
+      revalidate: SHOP_CACHE_REVALIDATE_SECONDS,
+      tags: [shopCacheTag(siteId)],
+    }
+  )();
+}
+
+export async function getShopCatalogSize(siteId: string) {
+  return unstable_cache(
+    async () => {
+      const supabase = await createServiceClient(true);
+      const { count } = await applyStorefrontAvailability(
+        supabase
+          .from("catalog_items")
+          .select("id", { count: "exact", head: true })
+          .eq("site_id", siteId)
+          .eq("status", "active")
+          .eq("is_marketplace_listed", true)
+          .is("parent_id", null)
+      );
+      return count || 0;
+    },
+    ["shop-catalog-size-v1", siteId],
     {
       revalidate: SHOP_CACHE_REVALIDATE_SECONDS,
       tags: [shopCacheTag(siteId)],

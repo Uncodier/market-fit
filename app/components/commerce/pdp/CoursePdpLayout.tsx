@@ -10,6 +10,8 @@ import { toast } from "sonner"
 import { useRouter } from "next/navigation"
 
 import { PdpCtaButton } from "./PdpCtaButton"
+import { PdpPurchaseCtas } from "./PdpPurchaseCtas"
+import { afterAddToCartHref } from "./pdp-purchase-cta"
 import { PdpPriceBlock } from "./PdpPriceBlock"
 import { PdpMetricChips } from "./PdpMetricChips"
 import { PdpMobileBuyBar } from "./PdpMobileBuyBar"
@@ -18,7 +20,7 @@ import { PdpExperience } from "./pdp-experience"
 import { CourseLessonPlayer } from "./CourseLessonPlayer"
 import { SubscriptionManagePanel } from "./SubscriptionManagePanel"
 
-export function CoursePdpLayout({ item, backUrl, experience }: { item: CatalogItem & { _shop?: any }, backUrl: string, experience?: PdpExperience }) {
+export function CoursePdpLayout({ item, backUrl, experience, catalogSize = 0 }: { item: CatalogItem & { _shop?: any }, backUrl: string, experience?: PdpExperience, catalogSize?: number }) {
   const { t } = useLocalization()
   const router = useRouter()
   const { addToCartStorage, startBuyNow } = usePdpCart(item.site_id)
@@ -50,7 +52,7 @@ export function CoursePdpLayout({ item, backUrl, experience }: { item: CatalogIt
   const handleAdd = () => {
     addToCartStorage(item)
     toast.success(`${item.name} ${t('marketplace.addedToCart') || 'added to cart'}`)
-    router.push(`${backUrl}?cart=1`)
+    router.push(afterAddToCartHref(backUrl))
   }
 
   const handleBuyNow = () => {
@@ -155,12 +157,15 @@ export function CoursePdpLayout({ item, backUrl, experience }: { item: CatalogIt
               </div>
               
               <div className="hidden lg:block">
-                <PdpCtaButton 
-                  onClick={handleAdd}
+                <PdpPurchaseCtas
+                  catalogSize={catalogSize}
                   disabled={item._shop?.sellable === false}
-                >
-                  {item._shop?.sellable === false ? (t('pdp.soldOut') || 'Sold Out') : (t('pdp.enrollNow') || 'Enroll Now')}
-                </PdpCtaButton>
+                  disabledLabel={item._shop?.sellable === false ? (t('pdp.soldOut') || 'Sold Out') : null}
+                  onAdd={handleAdd}
+                  onBuyNow={handleBuyNow}
+                  buyNowLabel={t('pdp.enrollNow') || 'Enroll Now'}
+                  presentation="stack"
+                />
               </div>
             </div>
           </div>
@@ -231,23 +236,15 @@ export function CoursePdpLayout({ item, backUrl, experience }: { item: CatalogIt
 
       {!ownedEntitlement && (
         <PdpMobileBuyBar price={item.target_sale_price || 0} fullWidthCta={true}>
-          <div className="flex gap-2 w-full">
-            <PdpCtaButton 
-              variant="outline"
-              onClick={handleAdd}
-              disabled={item._shop?.sellable === false}
-              className="px-4 shrink-0 w-auto"
-            >
-              {t('marketplace.add') || 'Add'}
-            </PdpCtaButton>
-            <PdpCtaButton 
-              onClick={handleBuyNow}
-              disabled={item._shop?.sellable === false}
-              className="flex-1"
-            >
-              {item._shop?.sellable === false ? (t('pdp.soldOut') || 'Sold Out') : (t('pdp.enrollNow') || 'Enroll Now')}
-            </PdpCtaButton>
-          </div>
+          <PdpPurchaseCtas
+            catalogSize={catalogSize}
+            disabled={item._shop?.sellable === false}
+            disabledLabel={item._shop?.sellable === false ? (t('pdp.soldOut') || 'Sold Out') : null}
+            onAdd={handleAdd}
+            onBuyNow={handleBuyNow}
+            buyNowLabel={t('pdp.enrollNow') || 'Enroll Now'}
+            presentation="mobile"
+          />
         </PdpMobileBuyBar>
       )}
     </div>

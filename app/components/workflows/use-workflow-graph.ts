@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { createClient } from "@/lib/supabase/client"
+import { apiClient } from "@/app/services/api-client-service"
 import type { InstanceNode } from "@/app/types/instance-nodes"
 import { DEFAULT_PLAN_TYPE, WF_LOAD_NODE_TYPES, type WorkflowNodeType } from "./types"
 
@@ -32,7 +33,7 @@ async function seedTrigger(instanceId: string, siteId: string): Promise<Instance
           title: "Manual trigger",
           enabled: false,
           ui_position: { x: 80, y: 80 },
-          trigger: { kind: "manual", plan_type: DEFAULT_PLAN_TYPE },
+          trigger: { kind: "manual", active_kinds: ["manual"], plan_type: DEFAULT_PLAN_TYPE },
         },
         result: {},
       })
@@ -101,6 +102,27 @@ export function useWorkflowGraph(instanceId?: string, siteId?: string) {
     }
   }, [instanceId, reload])
 
+  const nodesRef = useRef(nodes)
+  nodesRef.current = nodes
+
+  const syncTimerRef = useRef<NodeJS.Timeout | null>(null)
+
+  const syncTriggers = useCallback((instanceIdToSync: string) => {
+    if (syncTimerRef.current) {
+      clearTimeout(syncTimerRef.current)
+    }
+    syncTimerRef.current = setTimeout(async () => {
+      try {
+        const response = await apiClient.post(`/api/workflows/${instanceIdToSync}/sync-triggers`, {})
+        if (!response.success) {
+          console.error("Failed to sync triggers: API returned success=false", response.error)
+        }
+      } catch (err) {
+        console.error("Failed to sync triggers (network error):", err)
+      }
+    }, 1000)
+  }, [])
+
   const createNode = useCallback(
     async (params: {
       type: WorkflowNodeType
@@ -135,9 +157,14 @@ export function useWorkflowGraph(instanceId?: string, siteId?: string) {
       if (error) throw error
       const created = data as InstanceNode
       setNodes((prev) => (prev.some((n) => n.id === created.id) ? prev : [...prev, created]))
+      
+      if (created.type === "wf-trigger" && created.instance_id) {
+        syncTriggers(created.instance_id)
+      }
+      
       return created
     },
-    [instanceId, siteId],
+    [instanceId, siteId, syncTriggers],
   )
 
   const updateNode = useCallback(async (id: string, patch: Partial<InstanceNode>) => {
@@ -145,14 +172,27 @@ export function useWorkflowGraph(instanceId?: string, siteId?: string) {
     if (error) throw error
     const updated = data as InstanceNode
     setNodes((prev) => prev.map((n) => (n.id === id ? updated : n)))
+    
+    if (updated.type === "wf-trigger" && updated.instance_id) {
+      // We use a 1000ms debounce in syncTriggers to avoid spamming the API on drags
+      syncTriggers(updated.instance_id)
+    }
+    
     return updated
-  }, [])
+  }, [syncTriggers])
 
   const deleteNode = useCallback(async (id: string) => {
+    // Find the node before deleting it to know if it's a trigger
+    const target = nodesRef.current.find((n) => n.id === id)
+    
     const { error } = await supabase.from("instance_nodes").delete().eq("id", id)
     if (error) throw error
     setNodes((prev) => prev.filter((n) => n.id !== id && n.parent_node_id !== id))
-  }, [])
+    
+    if (target?.type === "wf-trigger" && target.instance_id) {
+      syncTriggers(target.instance_id)
+    }
+  }, [syncTriggers])
 
   const hasSandboxStep = useMemo(
     () =>

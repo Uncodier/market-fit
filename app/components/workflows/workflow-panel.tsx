@@ -166,7 +166,7 @@ export function WorkflowPanel({ activeInstanceId }: { activeInstanceId?: string 
       prompt: type === "wf-step" ? "Describe what this step should accomplish." : "When this workflow starts",
       settings:
         type === "wf-trigger"
-          ? { enabled: false, trigger: { kind: "manual", plan_type: DEFAULT_PLAN_TYPE } }
+          ? { enabled: false, trigger: { kind: "manual", active_kinds: ["manual"], plan_type: DEFAULT_PLAN_TYPE } }
           : {
               step: {
                 skill: DEFAULT_STEP_SKILL,

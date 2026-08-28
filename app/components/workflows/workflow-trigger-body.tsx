@@ -152,24 +152,25 @@ export function WorkflowTriggerBody({
   trigger,
   enabled,
   onPersist,
-  onKindChange,
+  onKindsChange,
 }: {
   node: InstanceNode
   trigger: WorkflowTriggerConfig
   enabled: boolean
   onPersist: (patch: Record<string, unknown>) => Promise<unknown>
-  onKindChange: (kind: WorkflowTriggerKind) => void
+  onKindsChange: (kinds: WorkflowTriggerKind[]) => void
 }) {
   const [testing, setTesting] = useState(false)
   const [copied, setCopied] = useState(false)
   const webhookUrl = useMemo(() => webhookCallUrl(node), [node.id, node.instance_id, node.site_id])
   const planType = trigger.plan_type || DEFAULT_PLAN_TYPE
+  const activeKinds = trigger.active_kinds || (trigger.kind ? [trigger.kind] : ["manual"])
 
   const runTest = async () => {
     setTesting(true)
     try {
       const response = await apiClient.post(`/api/workflows/${node.instance_id}/test`, {
-        payload: { source: trigger.kind || "manual", trigger_id: node.id },
+        payload: { source: activeKinds[0] || "manual", trigger_id: node.id },
       })
       if (!response.success) throw new Error(response.error?.message || "Test failed")
       toast.success("Test run started (no side effects).")
@@ -198,59 +199,64 @@ export function WorkflowTriggerBody({
       onKeyDown={stopInteract}
     >
       <div className="flex items-center bg-muted/50 p-1 rounded-2xl gap-1">
-        {TRIGGER_KIND_OPTIONS.map(({ kind, label }) => (
-          <Button
-            key={kind}
-            type="button"
-            variant={trigger.kind === kind ? "outline" : "ghost"}
-            size="sm"
-            className={`flex-1 h-7 text-[11px] rounded-full font-medium ${
-              trigger.kind === kind
-                ? "bg-background shadow-sm border-white/10"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-            onClick={() => onKindChange(kind)}
-          >
-            {label}
-          </Button>
-        ))}
+        {TRIGGER_KIND_OPTIONS.map(({ kind, label }) => {
+          const isActive = activeKinds.includes(kind)
+          return (
+            <Button
+              key={kind}
+              type="button"
+              variant={isActive ? "outline" : "ghost"}
+              size="sm"
+              className={`flex-1 h-7 text-[11px] rounded-full font-medium ${
+                isActive
+                  ? "bg-background shadow-sm border-white/10"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+              onClick={() => {
+                let next = isActive ? activeKinds.filter((k) => k !== kind) : [...activeKinds, kind]
+                if (next.length === 0) next = ["manual"]
+                onKindsChange(next)
+              }}
+            >
+              {label}
+            </Button>
+          )
+        })}
       </div>
 
       <div className="rounded-2xl bg-muted/30 p-3 flex flex-col gap-3">
-        {(!trigger.kind || trigger.kind === "manual") && (
-          <div className="flex flex-col gap-2">
-            <input
-              className={`w-full ${WF_FIELD_CLASS}`}
-              placeholder="Workflow Name (e.g. Lead processing)"
-              defaultValue={trigger.name || ""}
-              key={`${node.id}-name`}
-              onBlur={(event) => void onPersist({ trigger: { ...trigger, name: event.target.value } })}
+        <div className="flex flex-col gap-2">
+          <input
+            className={`w-full ${WF_FIELD_CLASS}`}
+            placeholder="Workflow Name (e.g. Lead processing)"
+            defaultValue={trigger.name || ""}
+            key={`${node.id}-name`}
+            onBlur={(event) => void onPersist({ trigger: { ...trigger, name: event.target.value } })}
+          />
+          <textarea
+            className={WF_TEXTAREA_CLASS}
+            placeholder="Description..."
+            defaultValue={trigger.description || ""}
+            key={`${node.id}-desc`}
+            onBlur={(event) => void onPersist({ trigger: { ...trigger, description: event.target.value } })}
+          />
+          <label className="flex flex-col gap-1">
+            <span className="text-[11px] font-medium">Plan type</span>
+            <WorkflowSearchSelect
+              options={PLAN_TYPE_OPTIONS}
+              value={planType}
+              placeholder="Plan type"
+              allowCreate={false}
+              onChange={(next) =>
+                void onPersist({
+                  trigger: { ...trigger, plan_type: next as typeof planType },
+                })
+              }
             />
-            <textarea
-              className={WF_TEXTAREA_CLASS}
-              placeholder="Description..."
-              defaultValue={trigger.description || ""}
-              key={`${node.id}-desc`}
-              onBlur={(event) => void onPersist({ trigger: { ...trigger, description: event.target.value } })}
-            />
-            <label className="flex flex-col gap-1">
-              <span className="text-[11px] font-medium">Plan type</span>
-              <WorkflowSearchSelect
-                options={PLAN_TYPE_OPTIONS}
-                value={planType}
-                placeholder="Plan type"
-                allowCreate={false}
-                onChange={(next) =>
-                  void onPersist({
-                    trigger: { ...trigger, plan_type: next as typeof planType },
-                  })
-                }
-              />
-            </label>
-          </div>
-        )}
+          </label>
+        </div>
 
-        {trigger.kind === "webhook" && (
+        {activeKinds.includes("webhook") && (
           <div className="space-y-1.5">
             <div className="flex items-center justify-between gap-2">
               <span className="text-[11px] font-medium">Webhook URL</span>
@@ -265,9 +271,9 @@ export function WorkflowTriggerBody({
           </div>
         )}
 
-        {trigger.kind === "cron" && <WorkflowCronFields trigger={trigger} onPersist={onPersist} />}
+        {activeKinds.includes("cron") && <WorkflowCronFields trigger={trigger} onPersist={onPersist} />}
 
-        {trigger.kind === "db_event" && <WorkflowTriggerTableEvents trigger={trigger} onPersist={onPersist} />}
+        {activeKinds.includes("db_event") && <WorkflowTriggerTableEvents trigger={trigger} onPersist={onPersist} />}
 
         <div className="flex items-center justify-between gap-3">
           <Button

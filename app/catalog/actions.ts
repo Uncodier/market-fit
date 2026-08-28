@@ -186,14 +186,34 @@ export async function upsertCatalogItem(item: Partial<CatalogItem>) {
     
     const { item_specs, raw_specs, parent, _parent, plan_includes, pass_redeems, ...dbItem } = item as any;
 
-    const { data, error } = await supabase
-      .from("catalog_items")
-      .upsert({
-        ...dbItem,
-        updated_at: new Date().toISOString(),
-      })
-      .select()
-      .single();
+    let data, error;
+    
+    if (dbItem.id) {
+      const { data: updateData, error: updateError } = await supabase
+        .from("catalog_items")
+        .update({
+          ...dbItem,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", dbItem.id)
+        .select()
+        .single();
+      
+      data = updateData;
+      error = updateError;
+    } else {
+      const { data: insertData, error: insertError } = await supabase
+        .from("catalog_items")
+        .insert({
+          ...dbItem,
+          updated_at: new Date().toISOString(),
+        })
+        .select()
+        .single();
+        
+      data = insertData;
+      error = insertError;
+    }
 
     if (error) {
       return { error: error.message };
@@ -452,6 +472,7 @@ export async function findOrCreateCatalogItem(site_id: string, name: string, def
         name: trimmed,
         kind,
         status: "active",
+        is_purchasable: true,
         ...defaults
       })
       .select()

@@ -22,6 +22,7 @@ import {
 } from "@/app/quotations/dynamic-quote-progress"
 import { startQuoteCheckout } from "@/app/commerce/quote-cart"
 import { usePdpCart } from "./usePdpCart"
+import { afterAddToCartHref } from "./pdp-purchase-cta"
 import { toast } from "sonner"
 import { useAuthContext as useAuth } from "@/app/components/auth/auth-provider"
 import { useLocalization } from "@/app/context/LocalizationContext"
@@ -285,12 +286,13 @@ export function DynamicQuotePdpProvider({
       toast.success(
         `${quoteItem.name} ${t("marketplace.addedToCart") || "added to cart"}`
       )
+      router.push(afterAddToCartHref(backUrl))
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "Failed to add quote to cart")
     } finally {
       setLoading(false)
     }
-  }, [pricedItem, quotationId, addToCartStorage, quantity, t])
+  }, [pricedItem, quotationId, addToCartStorage, quantity, t, router, backUrl])
 
   if (!config) {
     return <>{children}</>

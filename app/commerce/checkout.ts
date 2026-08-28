@@ -511,6 +511,7 @@ export async function checkoutCart({
           modQty,
           originLocationId,
           isAdmin,
+          { skipVariantSelection: true } // Modifiers are leaf SKUs, they shouldn't trigger variant guards
         );
         const { data: modItem } = await (isAdmin ? supabaseAdmin : supabase)
           .from("catalog_items")

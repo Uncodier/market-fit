@@ -13,6 +13,8 @@ import { useRouter } from "next/navigation"
 import { resolveBookableAccess } from "@/app/buyer/entitlement-queries"
 
 import { PdpCtaButton } from "./PdpCtaButton"
+import { PdpPurchaseCtas } from "./PdpPurchaseCtas"
+import { afterAddToCartHref } from "./pdp-purchase-cta"
 import { PdpPriceBlock } from "./PdpPriceBlock"
 import { PdpMetricChips } from "./PdpMetricChips"
 import { PdpMobileBuyBar } from "./PdpMobileBuyBar"
@@ -20,7 +22,7 @@ import { PdpExperience } from "./pdp-experience"
 import { PassBookingPanel } from "./PassBookingPanel"
 import { SubscriptionManagePanel } from "./SubscriptionManagePanel"
 
-export function PassPdpLayout({ item, backUrl, experience }: { item: CatalogItem & { _shop?: any }, backUrl: string, experience?: PdpExperience }) {
+export function PassPdpLayout({ item, backUrl, experience, catalogSize = 0 }: { item: CatalogItem & { _shop?: any }, backUrl: string, experience?: PdpExperience, catalogSize?: number }) {
   const { t } = useLocalization()
   const router = useRouter()
   const { addToCartStorage, startBuyNow } = usePdpCart(item.site_id)
@@ -62,6 +64,7 @@ export function PassPdpLayout({ item, backUrl, experience }: { item: CatalogItem
   const handleAdd = () => {
     addToCartStorage(item)
     toast.success(`${item.name} ${t('marketplace.addedToCart') || 'added to cart'}`)
+    router.push(afterAddToCartHref(backUrl))
   }
 
   const handleBuyNow = () => {
@@ -244,21 +247,15 @@ export function PassPdpLayout({ item, backUrl, experience }: { item: CatalogItem
                   </PdpCtaButton>
                 ) : null
               ) : (
-                <div className="space-y-3">
-                  <PdpCtaButton 
-                    onClick={handleBuyNow}
-                    disabled={item._shop?.sellable === false || loadingOwned}
-                  >
-                    {item._shop?.sellable === false ? (t('pdp.soldOut') || 'Sold Out') : (isRecurring ? (t('pdp.subscribe') || 'Subscribe Now') : (t('pdp.payNow') || 'Buy Now'))}
-                  </PdpCtaButton>
-                  <PdpCtaButton 
-                    variant="outline"
-                    onClick={handleAdd}
-                    disabled={item._shop?.sellable === false || loadingOwned}
-                  >
-                    {t('marketplace.add') || 'Add to Cart'}
-                  </PdpCtaButton>
-                </div>
+                <PdpPurchaseCtas
+                  catalogSize={catalogSize}
+                  disabled={item._shop?.sellable === false || loadingOwned}
+                  disabledLabel={item._shop?.sellable === false ? (t('pdp.soldOut') || 'Sold Out') : null}
+                  onAdd={handleAdd}
+                  onBuyNow={handleBuyNow}
+                  buyNowLabel={isRecurring ? (t('pdp.subscribe') || 'Subscribe Now') : (t('pdp.payNow') || 'Buy Now')}
+                  presentation="stack"
+                />
               )}
               <div className="mt-6 text-center text-xs text-muted-foreground font-medium flex items-center justify-center gap-2">
                 <span>{t('pdp.secureCheckout') || 'Secure checkout'}</span>
@@ -277,29 +274,20 @@ export function PassPdpLayout({ item, backUrl, experience }: { item: CatalogItem
           validityDays={item.pass_validity_days}
           fullWidthCta={true}
         >
-          <div className="flex gap-2 w-full min-w-0">
-            <PdpCtaButton 
-              variant="outline"
-              onClick={handleAdd}
-              disabled={item._shop?.sellable === false || loadingOwned}
-              className="flex-1 min-w-0 px-3"
-            >
-              <span className="truncate">{t('common.add') || 'Add'}</span>
-            </PdpCtaButton>
-            <PdpCtaButton 
-              onClick={handleBuyNow}
-              disabled={item._shop?.sellable === false || loadingOwned}
-              className="flex-1 min-w-0 px-3"
-            >
-              <span className="truncate">
-                {item._shop?.sellable === false
-                  ? (t('pdp.soldOut') || 'Sold Out')
-                  : (isRecurring
-                    ? (t('marketplace.listing.cta.subscribe') || t('pdp.subscribe') || 'Subscribe')
-                    : (t('pdp.payNow') || 'Buy Now'))}
-              </span>
-            </PdpCtaButton>
-          </div>
+          <PdpPurchaseCtas
+            catalogSize={catalogSize}
+            disabled={item._shop?.sellable === false || loadingOwned}
+            disabledLabel={item._shop?.sellable === false ? (t('pdp.soldOut') || 'Sold Out') : null}
+            onAdd={handleAdd}
+            onBuyNow={handleBuyNow}
+            buyNowLabel={
+              isRecurring
+                ? (t('marketplace.listing.cta.subscribe') || t('pdp.subscribe') || 'Subscribe')
+                : (t('pdp.payNow') || 'Buy Now')
+            }
+            addShortLabel={t('common.add') || 'Add'}
+            presentation="mobile"
+          />
         </PdpMobileBuyBar>
       )}
 

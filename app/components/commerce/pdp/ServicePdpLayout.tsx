@@ -14,6 +14,8 @@ import { isAccessOnlyItem } from "@/app/catalog/product-details"
 import { getActivePassEntitlementForReservable } from "@/app/buyer/entitlement-queries"
 
 import { PdpCtaButton } from "./PdpCtaButton"
+import { PdpPurchaseCtas } from "./PdpPurchaseCtas"
+import { afterAddToCartHref } from "./pdp-purchase-cta"
 import { PdpPriceBlock } from "./PdpPriceBlock"
 import { PdpMetricChips } from "./PdpMetricChips"
 import { PdpMobileBuyBar } from "./PdpMobileBuyBar"
@@ -34,10 +36,12 @@ export function ServicePdpLayout({
   item,
   backUrl,
   experience,
+  catalogSize = 0,
 }: {
   item: CatalogItem & { _shop?: any }
   backUrl: string
   experience?: PdpExperience
+  catalogSize?: number
 }) {
   const { t } = useLocalization()
   const { addToCartStorage, startBuyNow } = usePdpCart(item.site_id)
@@ -111,6 +115,7 @@ export function ServicePdpLayout({
     }
     addToCartStorage(activeItem)
     toast.success(`${activeItem.name} ${t("marketplace.addedToCart") || "added to cart"}`)
+    router.push(afterAddToCartHref(backUrl))
   }
 
   const handleBuyNow = () => {
@@ -293,17 +298,22 @@ export function ServicePdpLayout({
                     </PdpCtaButton>
                   </>
                 ) : (
-                  <div className="hidden lg:block space-y-3">
-                    <PdpCtaButton onClick={handleBuyNow} disabled={!isSellable}>
-                      {!isSellable
-                        ? isSelectionComplete
-                          ? t("pdp.soldOut") || "Sold Out"
-                          : t("pdp.selectOptions") || "Select Options"
-                        : t("pdp.buyNow") || "Buy Now"}
-                    </PdpCtaButton>
-                    <PdpCtaButton variant="outline" onClick={handleAdd} disabled={!isSellable}>
-                      {t("marketplace.add") || "Add to Cart"}
-                    </PdpCtaButton>
+                  <div className="hidden lg:block">
+                    <PdpPurchaseCtas
+                      catalogSize={catalogSize}
+                      disabled={!isSellable}
+                      disabledLabel={
+                        !isSellable
+                          ? isSelectionComplete
+                            ? t("pdp.soldOut") || "Sold Out"
+                            : t("pdp.selectOptions") || "Select Options"
+                          : null
+                      }
+                      onAdd={handleAdd}
+                      onBuyNow={handleBuyNow}
+                      buyNowLabel={t("pdp.buyNow") || "Buy Now"}
+                      presentation="stack"
+                    />
                   </div>
                 )}
                 </>
@@ -406,23 +416,21 @@ export function ServicePdpLayout({
 
       {!isDropIn && !experience && (
         <PdpMobileBuyBar price={displayPrice} fullWidthCta={true}>
-          <div className="flex gap-2 w-full">
-            <PdpCtaButton
-              variant="outline"
-              onClick={handleAdd}
-              disabled={!isSellable}
-              className="px-4 shrink-0 w-auto"
-            >
-              {t("marketplace.add") || "Add"}
-            </PdpCtaButton>
-            <PdpCtaButton onClick={handleBuyNow} disabled={!isSellable} className="flex-1">
-              {!isSellable
+          <PdpPurchaseCtas
+            catalogSize={catalogSize}
+            disabled={!isSellable}
+            disabledLabel={
+              !isSellable
                 ? isSelectionComplete
                   ? t("pdp.soldOut") || "Sold Out"
                   : t("pdp.selectOptions") || "Select Options"
-                : t("pdp.buyNow") || "Buy Now"}
-            </PdpCtaButton>
-          </div>
+                : null
+            }
+            onAdd={handleAdd}
+            onBuyNow={handleBuyNow}
+            buyNowLabel={t("pdp.buyNow") || "Buy Now"}
+            presentation="mobile"
+          />
         </PdpMobileBuyBar>
       )}
     </div>

@@ -123,7 +123,7 @@ export function placeResultNodes(
       return
     }
 
-    const parentId = result.settings?.source_node_id as string | undefined
+    const parentId = (result.settings?.source_node_id as string | undefined) || result.parent_node_id
     if (parentId) {
       const parentPos = next[parentId] || positions[parentId] || { x: 80, y: 80 }
       const parentH = heights[parentId] || NODE_H

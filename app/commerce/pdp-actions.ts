@@ -90,6 +90,12 @@ export async function getPdpCatalogItem(itemId: string, options?: {
     children = resolved.children;
     variantAxes = resolved.axes;
   }
+  
+  const hasVariants = children.length > 0 || variantAxes.length > 0;
+  
+  if (item.is_purchasable === false && !hasVariants) {
+    sellable = false;
+  }
 
   // Inherit display fields from parent service / product when this is a child variant
   let parent: (CatalogItem & { item_specs?: any[] }) | null = null;
@@ -123,7 +129,6 @@ export async function getPdpCatalogItem(itemId: string, options?: {
   const defaultLocale =
     (settings as { default_locale?: string } | null)?.default_locale || undefined
 
-  const hasVariants = children.length > 0 || variantAxes.length > 0
   const categoryName = Array.isArray(item.category)
     ? item.category[0]?.name
     : item.category?.name

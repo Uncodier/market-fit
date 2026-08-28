@@ -29,15 +29,17 @@ import { CommerceShellHeader, shellClasses } from "../CommerceShellHeader"
 import { useCommerceSignInHref } from "../use-commerce-sign-in-href"
 
 import { SubscriptionManagePanel } from "./SubscriptionManagePanel"
+import { PDP_ADD_TO_CART_PRIMARY_AFTER } from "./pdp-purchase-cta"
 
 interface ProductDetailPageProps {
   item: CatalogItem & { site?: any, _shop?: any }
   site?: any
   backUrl: string
   experience?: PdpExperience
+  catalogSize?: number
 }
 
-export function ProductDetailPage({ item, site, backUrl, experience }: ProductDetailPageProps) {
+export function ProductDetailPage({ item, site, backUrl, experience, catalogSize = 0 }: ProductDetailPageProps) {
   const { t } = useLocalization()
   const { theme, toggleTheme } = useTheme()
   const { user } = useAuth()
@@ -51,6 +53,9 @@ export function ProductDetailPage({ item, site, backUrl, experience }: ProductDe
   const isMarketplace = pathname?.startsWith('/marketplace')
   const cartSource = isMarketplace ? 'marketplace' : 'shop'
   const cartSiteId = site?.id || item.site_id || item.site?.id || null
+  const effectiveCatalogSize = isMarketplace
+    ? Math.max(catalogSize, PDP_ADD_TO_CART_PRIMARY_AFTER + 1)
+    : catalogSize
 
   useEffect(() => {
     const checkCart = () => {
@@ -178,7 +183,7 @@ export function ProductDetailPage({ item, site, backUrl, experience }: ProductDe
       />
 
       <main>
-        <LayoutComponent item={item} backUrl={backUrl} experience={experience} />
+        <LayoutComponent item={item} backUrl={backUrl} experience={experience} catalogSize={effectiveCatalogSize} />
       </main>
 
       {/* Footer */}
