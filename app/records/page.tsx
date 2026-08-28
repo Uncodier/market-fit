@@ -397,7 +397,7 @@ export default function RecordsPage() {
           />
         </div>
 
-        <div className="flex-1 overflow-auto bg-muted/30 transition-colors duration-300 ease-in-out pt-[71px]">
+        <div className="flex-1 overflow-y-auto min-w-0 bg-muted/30 transition-colors duration-300 ease-in-out pt-[71px]">
           <div 
             className="min-h-full flex flex-col transition-all duration-300 ease-in-out"
             style={{ 
@@ -405,7 +405,7 @@ export default function RecordsPage() {
             }}
           >
             {isLoading ? (
-              <div className="p-4 md:p-8 min-h-full">
+              <div className={cn("min-h-full min-w-0", viewType === "kanban" ? "py-4 md:py-8" : "p-4 md:p-8")}>
                 {viewType === "table" ? (
                   <RecordsTableSkeleton />
                 ) : viewType === "calendar" ? (
@@ -424,7 +424,7 @@ export default function RecordsPage() {
                 />
               </div>
             ) : (
-              <div className="p-4 md:p-8 min-h-full">
+              <div className={cn("min-h-full min-w-0", viewType === "kanban" ? "py-4 md:py-8" : "p-4 md:p-8")}>
                 {viewType === "table" ? (
                   <RecordsTable
                     records={filteredRecords.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)}

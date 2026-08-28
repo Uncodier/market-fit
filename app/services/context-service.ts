@@ -76,6 +76,30 @@ export interface ContextData {
     type: string
     created_at: string
   }>
+  quotations: Array<{
+    id: string
+    title: string
+    status: string
+    total: number
+    currency: string
+    created_at: string
+  }>
+  deals: Array<{
+    id: string
+    name: string
+    stage: string
+    amount: number | null
+    currency: string
+    created_at: string
+  }>
+  records: Array<{
+    id: string
+    title: string
+    description: string | null
+    status: string
+    category?: { name: string } | null
+    created_at: string
+  }>
 }
 
 export interface SelectedContextIds {
@@ -84,6 +108,9 @@ export interface SelectedContextIds {
   requirements: string[]
   tasks: string[]
   campaigns: string[]
+  quotations: string[]
+  deals: string[]
+  records: string[]
 }
 
 export class ContextService {
@@ -100,7 +127,7 @@ export class ContextService {
 
     try {
       // Fetch Leads
-      if (selectedIds.leads.length > 0) {
+      if (selectedIds.leads?.length > 0) {
         const { data: leadsData, error: leadsError } = await this.supabase
           .from('leads')
           .select(`
@@ -126,7 +153,7 @@ export class ContextService {
       }
 
       // Fetch Contents
-      if (selectedIds.contents.length > 0) {
+      if (selectedIds.contents?.length > 0) {
         const { data: contentsData, error: contentsError } = await this.supabase
           .from('content')
           .select(`
@@ -154,7 +181,7 @@ export class ContextService {
       }
 
       // Fetch Requirements
-      if (selectedIds.requirements.length > 0) {
+      if (selectedIds.requirements?.length > 0) {
         const { data: requirementsData, error: requirementsError } = await this.supabase
           .from('requirements')
           .select(`
@@ -179,7 +206,7 @@ export class ContextService {
       }
 
       // Fetch Tasks
-      if (selectedIds.tasks.length > 0) {
+      if (selectedIds.tasks?.length > 0) {
         const { data: tasksData, error: tasksError } = await this.supabase
           .from('tasks')
           .select(`
@@ -208,7 +235,7 @@ export class ContextService {
       }
 
       // Fetch Campaigns
-      if (selectedIds.campaigns.length > 0) {
+      if (selectedIds.campaigns?.length > 0) {
         const { data: campaignsData, error: campaignsError } = await this.supabase
           .from('campaigns')
           .select(`
@@ -227,6 +254,75 @@ export class ContextService {
           console.error('Error fetching campaigns:', campaignsError)
         } else {
           results.campaigns = campaignsData || []
+        }
+      }
+
+      // Fetch Quotations
+      if (selectedIds.quotations?.length > 0) {
+        const { data: quotesData, error: quotesError } = await this.supabase
+          .from('quotations')
+          .select(`
+            id,
+            title,
+            status,
+            total,
+            currency,
+            created_at
+          `)
+          .eq('site_id', siteId)
+          .in('id', selectedIds.quotations)
+
+        if (quotesError) {
+          console.error('Error fetching quotations:', quotesError)
+        } else {
+          results.quotations = quotesData || []
+        }
+      }
+
+      // Fetch Deals
+      if (selectedIds.deals?.length > 0) {
+        const { data: dealsData, error: dealsError } = await this.supabase
+          .from('deals')
+          .select(`
+            id,
+            name,
+            stage,
+            amount,
+            currency,
+            created_at
+          `)
+          .eq('site_id', siteId)
+          .in('id', selectedIds.deals)
+
+        if (dealsError) {
+          console.error('Error fetching deals:', dealsError)
+        } else {
+          results.deals = dealsData || []
+        }
+      }
+
+      // Fetch Records
+      if (selectedIds.records?.length > 0) {
+        const { data: recordsData, error: recordsError } = await this.supabase
+          .from('records')
+          .select(`
+            id,
+            title,
+            description,
+            status,
+            created_at,
+            category:record_categories(name)
+          `)
+          .eq('site_id', siteId)
+          .in('id', selectedIds.records)
+
+        if (recordsError) {
+          console.error('Error fetching records:', recordsError)
+        } else {
+          results.records = (recordsData || []).map((r: any) => ({
+            ...r,
+            category: r.category && !Array.isArray(r.category) ? { name: r.category.name } : null
+          }))
         }
       }
 
@@ -254,8 +350,17 @@ export class ContextService {
     if (contextData.tasks.length > 0) {
       summary.push(`${contextData.tasks.length} tasks`)
     }
-    if (contextData.campaigns.length > 0) {
+    if (contextData.campaigns?.length > 0) {
       summary.push(`${contextData.campaigns.length} campaigns`)
+    }
+    if (contextData.quotations?.length > 0) {
+      summary.push(`${contextData.quotations.length} quotations`)
+    }
+    if (contextData.deals?.length > 0) {
+      summary.push(`${contextData.deals.length} deals`)
+    }
+    if (contextData.records?.length > 0) {
+      summary.push(`${contextData.records.length} records`)
     }
 
     return summary.length > 0 ? `Context: ${summary.join(', ')}` : 'No context selected'

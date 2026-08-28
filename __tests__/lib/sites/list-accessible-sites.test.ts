@@ -1,12 +1,15 @@
-import { listAccessibleSitesForUser, mergeAccessibleSites } from "@/lib/sites/list-accessible-sites"
+import { listAccessibleSitesForUser, mergeAccessibleSites, SITE_LIST_COLUMNS } from "@/lib/sites/list-accessible-sites"
 
-function fakeAdmin(tables: Record<string, any[]>) {
+function fakeAdmin(tables: Record<string, any[]>, trackSelects: string[] = []) {
   return {
     from(table: string) {
       const rows = tables[table] || []
       const filters: Array<(row: any) => boolean> = []
       const builder: any = {
-        select: () => builder,
+        select: (cols: string) => {
+          if (table === "sites") trackSelects.push(cols)
+          return builder
+        },
         eq: (column: string, value: unknown) => {
           filters.push((row) => row[column] === value)
           return builder
@@ -58,5 +61,23 @@ describe("listAccessibleSitesForUser", () => {
     const { sites, error } = await listAccessibleSitesForUser(admin, "user-1")
     expect(error).toBeNull()
     expect(sites.map((site) => site.id).sort()).toEqual(["co-owned", "member", "owned"])
+  })
+
+  it("uses slim columns to avoid fetching heavy fields like base64 logos", async () => {
+    const trackSelects: string[] = []
+    const admin = fakeAdmin({
+      sites: [{ id: "owned", user_id: "user-1" }],
+      site_members: [],
+      site_ownership: []
+    }, trackSelects)
+    
+    await listAccessibleSitesForUser(admin, "user-1")
+    
+    expect(trackSelects.length).toBeGreaterThan(0)
+    for (const cols of trackSelects) {
+      expect(cols).toBe(SITE_LIST_COLUMNS)
+      expect(cols).not.toContain("logo_url")
+      expect(cols).not.toContain("*")
+    }
   })
 })

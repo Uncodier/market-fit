@@ -5,7 +5,10 @@ import {
   ContextContent, 
   ContextRequirement, 
   ContextTask,
-  ContextCampaign
+  ContextCampaign,
+  ContextQuotation,
+  ContextDeal,
+  ContextRecord
 } from "@/app/services/context-entities.service"
 
 interface BaseContextItemProps {
@@ -31,6 +34,18 @@ interface ContextTaskItemProps extends BaseContextItemProps {
 
 interface ContextCampaignItemProps extends BaseContextItemProps {
   campaign: ContextCampaign
+}
+
+interface ContextQuotationItemProps extends BaseContextItemProps {
+  quotation: ContextQuotation
+}
+
+interface ContextDealItemProps extends BaseContextItemProps {
+  deal: ContextDeal
+}
+
+interface ContextRecordItemProps extends BaseContextItemProps {
+  record: ContextRecord
 }
 
 export function ContextLeadItem({ lead, checked, onCheckedChange }: ContextLeadItemProps) {
@@ -242,6 +257,115 @@ export function ContextCampaignItem({ campaign, checked, onCheckedChange }: Cont
         </p>
         <p className="text-xs text-muted-foreground">
           Type: {campaign.type}
+        </p>
+      </div>
+    </div>
+  )
+}
+
+export function ContextQuotationItem({ quotation, checked, onCheckedChange }: ContextQuotationItemProps) {
+  return (
+    <div 
+      className={`flex items-start space-x-3 p-3 rounded-lg hover:bg-muted/50 transition-all duration-200 cursor-pointer border ${
+        checked ? 'bg-primary/5 border-primary/20' : 'border-transparent'
+      }`}
+      onClick={() => onCheckedChange(!checked)}
+    >
+      <div className="flex items-center justify-center w-5 h-5 mt-0.5">
+        {checked && (
+          <div className="w-5 h-5 bg-primary rounded-full font-inter flex items-center justify-center">
+            <Check className="h-3 w-3 text-primary-foreground" />
+          </div>
+        )}
+      </div>
+      <div className="flex-1 space-y-1 min-w-0">
+        <div className="flex items-center justify-between gap-2">
+          <h4 className="text-sm font-medium text-foreground truncate flex-1">
+            {quotation.title}
+          </h4>
+          <div className="flex gap-1 flex-shrink-0">
+            <Badge variant="outline" className="text-xs">
+              {quotation.status}
+            </Badge>
+          </div>
+        </div>
+        <p className="text-xs text-muted-foreground line-clamp-2">
+          {quotation.total} {quotation.currency}
+        </p>
+      </div>
+    </div>
+  )
+}
+
+export function ContextDealItem({ deal, checked, onCheckedChange }: ContextDealItemProps) {
+  return (
+    <div 
+      className={`flex items-start space-x-3 p-3 rounded-lg hover:bg-muted/50 transition-all duration-200 cursor-pointer border ${
+        checked ? 'bg-primary/5 border-primary/20' : 'border-transparent'
+      }`}
+      onClick={() => onCheckedChange(!checked)}
+    >
+      <div className="flex items-center justify-center w-5 h-5 mt-0.5">
+        {checked && (
+          <div className="w-5 h-5 bg-primary rounded-full font-inter flex items-center justify-center">
+            <Check className="h-3 w-3 text-primary-foreground" />
+          </div>
+        )}
+      </div>
+      <div className="flex-1 space-y-1 min-w-0">
+        <div className="flex items-center justify-between gap-2">
+          <h4 className="text-sm font-medium text-foreground truncate flex-1">
+            {deal.name}
+          </h4>
+          <div className="flex gap-1 flex-shrink-0">
+            <Badge variant="outline" className="text-xs">
+              {deal.stage}
+            </Badge>
+          </div>
+        </div>
+        {deal.amount !== null && (
+          <p className="text-xs text-muted-foreground line-clamp-2">
+            {deal.amount} {deal.currency}
+          </p>
+        )}
+      </div>
+    </div>
+  )
+}
+
+export function ContextRecordItem({ record, checked, onCheckedChange }: ContextRecordItemProps) {
+  return (
+    <div 
+      className={`flex items-start space-x-3 p-3 rounded-lg hover:bg-muted/50 transition-all duration-200 cursor-pointer border ${
+        checked ? 'bg-primary/5 border-primary/20' : 'border-transparent'
+      }`}
+      onClick={() => onCheckedChange(!checked)}
+    >
+      <div className="flex items-center justify-center w-5 h-5 mt-0.5">
+        {checked && (
+          <div className="w-5 h-5 bg-primary rounded-full font-inter flex items-center justify-center">
+            <Check className="h-3 w-3 text-primary-foreground" />
+          </div>
+        )}
+      </div>
+      <div className="flex-1 space-y-1 min-w-0">
+        <div className="flex items-center justify-between gap-2">
+          <h4 className="text-sm font-medium text-foreground truncate flex-1">
+            {record.title}
+          </h4>
+          <div className="flex gap-1 flex-shrink-0">
+            {record.category?.name && (
+              <Badge variant="outline" className="text-xs">
+                {record.category.name}
+              </Badge>
+            )}
+            <Badge variant="outline" className="text-xs">
+              {record.status}
+            </Badge>
+          </div>
+        </div>
+        <p className="text-xs text-muted-foreground line-clamp-2">
+          {record.description}
         </p>
       </div>
     </div>

@@ -14,6 +14,7 @@ type SitesClient = {
 
 export type FetchAccessibleSitesResult = {
   sites: any[]
+  detail?: any
   error: PostgrestErrorSnapshot | null
   aborted: boolean
   unauthorized: boolean
@@ -31,7 +32,8 @@ function sitesResult(
 }
 
 export async function fetchAccessibleSitesClient(
-  client: SitesClient
+  client: SitesClient,
+  detailId?: string | null
 ): Promise<FetchAccessibleSitesResult> {
   if (client?._isDemo) {
     if (typeof client.rpc !== "function") {
@@ -53,8 +55,9 @@ export async function fetchAccessibleSitesClient(
   }
 
   try {
-    const response = await fetch("/api/sites", { credentials: "include" })
-    const payload = await response.json().catch(() => ({} as { error?: unknown; sites?: unknown }))
+    const url = detailId ? `/api/sites?detail=${detailId}` : "/api/sites"
+    const response = await fetch(url, { credentials: "include" })
+    const payload = await response.json().catch(() => ({} as { error?: unknown; sites?: unknown; detail?: unknown }))
     if (!response.ok) {
       return sitesResult({
         sites: [],
@@ -66,6 +69,7 @@ export async function fetchAccessibleSitesClient(
     }
     return sitesResult({
       sites: Array.isArray(payload.sites) ? payload.sites : [],
+      detail: payload.detail
     })
   } catch (error) {
     return sitesResult({

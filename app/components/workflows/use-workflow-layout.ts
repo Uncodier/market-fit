@@ -115,21 +115,18 @@ export function placeResultNodes(
   heights: Record<string, number>,
 ): Record<string, WFPoint> {
   const next = { ...positions }
-  const placed: InstanceNode[] = [...graphNodes]
+  
   resultNodes.forEach((result) => {
-    if (next[result.id]) {
-      placed.push(result)
-      return
+    const parentId = result.settings?.source_node_id as string | undefined
+    if (parentId) {
+      const parentPos = next[parentId] || positions[parentId] || { x: 80, y: 80 }
+      const parentH = heights[parentId] || NODE_H
+      // Always pin result nodes exactly below their parent
+      next[result.id] = {
+        x: parentPos.x,
+        y: parentPos.y + parentH + 12,
+      }
     }
-    const parent = graphNodes.find((node) => node.id === result.parent_node_id) || null
-    next[result.id] = placeNewNode({
-      type: "wf-step",
-      parent,
-      nodes: placed,
-      positions: next,
-      heights,
-    })
-    placed.push(result)
   })
   return next
 }
@@ -180,8 +177,20 @@ export function sortWorkflowLayout(
   heights: Record<string, number>,
 ): Record<string, WFPoint> {
   const byParent = new Map<string, InstanceNode[]>()
+  const resultsByParent = new Map<string, InstanceNode[]>()
   const roots: InstanceNode[] = []
+  
   nodes.forEach((node) => {
+    if (isWorkflowResultId(node.id)) {
+      const pId = node.settings?.source_node_id as string | undefined || node.parent_node_id
+      if (pId) {
+        const arr = resultsByParent.get(pId) || []
+        arr.push(node)
+        resultsByParent.set(pId, arr)
+      }
+      return
+    }
+    
     if (!node.parent_node_id) {
       roots.push(node)
       return
@@ -190,33 +199,43 @@ export function sortWorkflowLayout(
     siblings.push(node)
     byParent.set(node.parent_node_id, siblings)
   })
+
   const byTime = (a: InstanceNode, b: InstanceNode) =>
     new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime()
-  const bySibling = (a: InstanceNode, b: InstanceNode) => {
-    const dummyA = isWorkflowResultId(a.id)
-    const dummyB = isWorkflowResultId(b.id)
-    if (dummyA !== dummyB) return dummyA ? 1 : -1
-    if (dummyA && dummyB) {
-      const overallA = isOverallResultId(a.id)
-      const overallB = isOverallResultId(b.id)
-      if (overallA !== overallB) return overallA ? 1 : -1
-    }
-    return byTime(a, b)
-  }
+  
   roots.sort(byTime)
-  byParent.forEach((siblings) => siblings.sort(bySibling))
+  byParent.forEach((siblings) => siblings.sort(byTime))
+  resultsByParent.forEach((results) => results.sort(byTime))
+
+  const nodeEffectiveHeight = (nodeId: string): number => {
+    let h = heights[nodeId] || NODE_H
+    const results = resultsByParent.get(nodeId) || []
+    results.forEach((res) => {
+      h += 12 + (heights[res.id] || NODE_H)
+    })
+    return h
+  }
 
   const subtreeHeight = (node: InstanceNode): number => {
     const kids = byParent.get(node.id) || []
-    const self = heights[node.id] || NODE_H
-    if (kids.length === 0) return self
+    const selfH = nodeEffectiveHeight(node.id)
+    if (kids.length === 0) return selfH
     const kidsH = kids.reduce((sum, kid, index) => sum + subtreeHeight(kid) + (index > 0 ? V_GAP : 0), 0)
-    return Math.max(self, kidsH)
+    return Math.max(selfH, kidsH)
   }
 
   const pos: Record<string, WFPoint> = {}
   const place = (node: InstanceNode, x: number, y: number) => {
     pos[node.id] = { x, y }
+    
+    // Place result nodes exactly below
+    let currentY = y + (heights[node.id] || NODE_H) + 12
+    const results = resultsByParent.get(node.id) || []
+    results.forEach((res) => {
+      pos[res.id] = { x, y: currentY }
+      currentY += (heights[res.id] || NODE_H) + 12
+    })
+
     const kids = byParent.get(node.id) || []
     let childY = y
     kids.forEach((kid) => {

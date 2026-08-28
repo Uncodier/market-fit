@@ -71,6 +71,7 @@ export type PosCartSession = {
 export type PosMeta = {
   siteId: string;
   lastPulledAt: string | null;
+  lastCatalogRevision?: string | null;
   schemaVersion: number;
   /** host catalog_item_id → modifier groups with options (from last POS pull). */
   modifierGroupsByHostId?: Record<string, any[]>;

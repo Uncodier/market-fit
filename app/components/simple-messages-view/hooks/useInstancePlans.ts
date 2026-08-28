@@ -69,7 +69,10 @@ export const useInstancePlans = ({ activeRobotInstance }: UseInstancePlansProps)
           console.error('🔧 Debug query failed:', debugErr)
         }
       } else {
-        const allPlans = data || []
+        const allPlansRaw = data || []
+        
+        // Filter out workflow template plans (they are used as blueprints, not actual runs)
+        const allPlans = allPlansRaw.filter((plan: InstancePlan) => !plan.metadata?.workflow_template)
         
         // Categorize plans by status for better management
         // Only ONE plan should be in_progress at a time

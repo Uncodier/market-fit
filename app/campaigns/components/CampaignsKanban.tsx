@@ -67,8 +67,8 @@ export function CampaignsKanban({
   searchQuery: string
 }) {
   return (
-    <div className="w-[calc(100%+4rem)] overflow-x-auto overflow-y-visible pb-4 -ml-8">
-      <div className="flex gap-6 min-w-full w-max px-8 pb-8 bg-transparent rounded-lg shadow-sm h-full">
+    <div className="w-full min-w-0 overflow-x-auto overflow-y-hidden pb-4">
+      <div className="flex gap-6 min-w-max px-4 md:px-8 pb-8 items-stretch after:content-[''] after:w-px after:shrink-0">
         {Object.entries(campaignsByType).map(([type, typeCampaigns]) => (
           <KanbanColumn
             key={type}
@@ -84,18 +84,17 @@ export function CampaignsKanban({
 
 export function CampaignsKanbanSkeleton() {
   return (
-    <div className="p-8 space-y-4 bg-muted/30 flex-1">
-      <div className="w-[calc(100%+4rem)] overflow-x-auto overflow-y-visible pb-4 -ml-8">
-        <div className="flex gap-6 min-w-full w-max px-8 pb-8 bg-transparent rounded-lg shadow-sm h-full">
-          {[1, 2, 3, 4, 5].map((columnIndex) => (
-            <div key={columnIndex} className="flex flex-col h-full w-[280px]">
+    <div className="w-full min-w-0 overflow-x-auto overflow-y-hidden pb-4">
+      <div className="flex gap-6 min-w-max px-4 md:px-8 pb-8 items-stretch after:content-[''] after:w-px after:shrink-0">
+        {[1, 2, 3, 4, 5].map((columnIndex) => (
+          <div key={columnIndex} className="flex flex-col h-full w-[280px]">
               <div className="bg-background rounded-t-md p-3 border-b border-x border-t">
                 <div className="flex items-center gap-2">
                   <Skeleton className="h-4 w-24" />
                   <Skeleton className="h-5 w-6 rounded-full" />
                 </div>
               </div>
-              <div className="bg-muted/30 rounded-b-md border-b border-x p-2 space-y-3">
+              <div className="bg-muted/30 rounded-b-md border-b border-x p-2 space-y-3 min-h-[150px]">
                 {[1, 2, 3].map((cardIndex) => (
                   <Card key={cardIndex} className="mb-3 p-3 space-y-3">
                     <Skeleton className="h-4 w-[60%]" />
@@ -108,6 +107,5 @@ export function CampaignsKanbanSkeleton() {
           ))}
         </div>
       </div>
-    </div>
   )
 }

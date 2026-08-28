@@ -55,10 +55,10 @@ function OrderCardSkeleton() {
 
 export function OrdersKanbanSkeleton() {
   return (
-    <div className="overflow-x-auto pb-4 -mx-4 md:-mx-8">
-      <div className="flex gap-4 min-w-fit px-4 md:px-8 min-h-[calc(100vh-220px)] items-stretch">
+    <div className="w-full min-w-0 overflow-x-auto overflow-y-hidden pb-4">
+      <div className="flex gap-4 min-w-max px-4 md:px-8 items-stretch after:content-[''] after:w-px after:shrink-0">
         {ORDER_STATUSES.map((status, columnIndex) => (
-          <div key={status.id} className="flex-shrink-0 w-80 flex flex-col">
+          <div key={status.id} className="flex-shrink-0 w-72 md:w-80 flex flex-col min-h-[calc(100vh-220px)]">
             <div
               className={cn(
                 "bg-background/80 backdrop-blur-sm rounded-t-lg p-3.5 border-b-[3px] border-x border-t shadow-sm",
@@ -117,9 +117,8 @@ export function OrdersKanban({ orders, onOrderClick, onUpdateOrderStatus }: Orde
 
   return (
     <DragDropContext onDragEnd={onDragEnd}>
-      <div className="w-full overflow-x-auto">
-        <div className="pb-4 -mx-4 md:-mx-8">
-          <div className="flex gap-4 min-w-fit px-4 md:px-8 items-stretch">
+      <div className="w-full min-w-0 overflow-x-auto overflow-y-hidden pb-4">
+        <div className="flex gap-4 min-w-max px-4 md:px-8 items-stretch after:content-[''] after:w-px after:shrink-0">
           {ORDER_STATUSES.map((status) => {
             const statusOrders = orders.filter(order => order.status === status.id)
             const totalAmount = statusOrders.reduce((sum, order) => sum + (order.total || 0), 0)
@@ -259,7 +258,6 @@ export function OrdersKanban({ orders, onOrderClick, onUpdateOrderStatus }: Orde
               </div>
             )
           })}
-        </div>
         </div>
       </div>
     </DragDropContext>

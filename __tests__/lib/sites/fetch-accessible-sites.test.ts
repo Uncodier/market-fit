@@ -49,6 +49,18 @@ describe("fetchAccessibleSitesClient", () => {
     expect(result.error?.message).toBe("Not authenticated")
   })
 
+  it("passes detail parameter when provided and extracts it from payload", async () => {
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ success: true, sites: [{ id: "site-1" }], detail: { id: "site-1", logo_url: "a" } }),
+    }) as unknown as typeof fetch
+
+    const rpc = jest.fn()
+    const result = await fetchAccessibleSitesClient({ rpc }, "site-1")
+    expect(global.fetch).toHaveBeenCalledWith("/api/sites?detail=site-1", { credentials: "include" })
+    expect(result.detail).toEqual({ id: "site-1", logo_url: "a" })
+  })
+
   it("returns an aborted flag instead of a blank {} error", async () => {
     const abortError = { name: "AbortError", message: "The user aborted a request." }
     const rpc = jest.fn().mockResolvedValue({ data: null, error: abortError })

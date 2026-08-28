@@ -41,6 +41,45 @@ export interface ContextTask {
   created_at: string
 }
 
+export interface ContextCampaign {
+  id: string
+  title: string
+  description: string
+  status: string
+  priority: string
+  type: string
+  created_at: string
+}
+
+export interface ContextQuotation {
+  id: string
+  title: string
+  status: string
+  total: number
+  currency: string
+  created_at: string
+  leadName?: string
+}
+
+export interface ContextDeal {
+  id: string
+  name: string
+  stage: string
+  amount: number | null
+  currency: string
+  created_at: string
+  companyName?: string
+}
+
+export interface ContextRecord {
+  id: string
+  title: string
+  description: string | null
+  status: string
+  category?: { name: string } | null
+  created_at: string
+}
+
 export interface ContextEntitiesResponse<T> {
   data: T[]
   error: string | null

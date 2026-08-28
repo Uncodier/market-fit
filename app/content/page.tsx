@@ -390,9 +390,12 @@ export default function ContentPage() {
         </StickyHeader>
         
         <div 
-          className="p-8 space-y-6 bg-muted/30 flex-1 flex flex-col justify-start w-full h-full transition-all duration-300 ease-in-out"
+          className={cn(
+            "space-y-6 bg-muted/30 flex-1 flex flex-col justify-start w-full min-w-0 h-full transition-all duration-300 ease-in-out overflow-y-auto",
+            viewType === 'kanban' ? "py-8" : "p-8 overflow-x-hidden"
+          )}
           style={{
-            paddingLeft: `calc(${sidebarLeft} + 2rem)`
+            paddingLeft: `calc(${sidebarLeft} + ${viewType === 'kanban' ? '0px' : '2rem'})`
           }}
         >
           {/* Trends Section - Only for Table View */}
@@ -403,8 +406,8 @@ export default function ContentPage() {
           )}
           
           {/* Main Content Layout */}
-          <div className={viewType === 'kanban' ? "overflow-x-auto pb-4 -mx-8 flex-1 flex flex-col justify-start" : "px-8"}>
-            <div className={viewType === 'kanban' ? "flex items-start gap-4 min-w-fit px-8 pt-0 mt-0 flex-1 flex-row" : "px-8"}>
+          <div className={viewType === 'kanban' ? "flex-1 flex flex-col justify-start h-full" : "px-8"}>
+            <div className={viewType === 'kanban' ? "flex items-start gap-4 pt-0 mt-0 flex-1 flex-row h-full" : "px-8"}>
               {/* Left Sidebar - Trends Column (Only for Kanban View) */}
               {viewType === 'kanban' && (
                 <div className="flex-shrink-0 pt-0 mt-0 flex flex-col justify-start self-stretch min-h-0">

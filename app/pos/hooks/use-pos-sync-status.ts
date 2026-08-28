@@ -18,6 +18,7 @@ const EMPTY: SyncStatus = {
   pendingCount: 0,
   failedCount: 0,
   lastPulledAt: null,
+  lastOrdersPulledAt: null,
   lastError: null,
 };
 
@@ -38,7 +39,7 @@ export function usePosSyncStatus(siteId: string | undefined) {
   return {
     status,
     retrySync: () => {
-      if (siteId) void runPosSyncCycle(siteId);
+      if (siteId) void runPosSyncCycle(siteId, true);
     },
     drainOutbox: () => {
       if (siteId) void drainPosOutbox(siteId);

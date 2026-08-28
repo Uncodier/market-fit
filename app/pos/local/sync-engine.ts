@@ -8,7 +8,14 @@ import {
   mapLocalId,
   updateOutboxRow,
 } from "./outbox";
-import { pullAndStorePosSnapshot } from "./snapshot-pull";
+import { pullAndStorePosCatalogSnapshot, applyPosOpenOrders } from "./snapshot-pull";
+import { getPosCatalogRevision } from "@/app/pos/actions/sync-revision";
+import { listPosOpenOrders } from "@/app/pos/actions/list-open-orders";
+import {
+  shouldRunCatalogPull,
+  shouldRunOrdersPull,
+  shouldDrainOutbox,
+} from "./sync-policy";
 import type { PosOutboxRow } from "./types";
 
 export type SyncStatus = {
@@ -18,7 +25,17 @@ export type SyncStatus = {
   pendingCount: number;
   failedCount: number;
   lastPulledAt: string | null;
+  lastOrdersPulledAt: string | null;
   lastError: string | null;
+};
+
+type SiteSyncState = {
+  lastPulledAt: string | null;
+  lastCatalogCheckAt: number | null;
+  lastOrdersAt: number | null;
+  lastOrdersPulledAt: string | null;
+  pendingCount: number;
+  failedCount: number;
 };
 
 type SyncListener = (status: SyncStatus) => void;
@@ -27,10 +44,15 @@ const listeners = new Set<SyncListener>();
 let running = false;
 let pulling = false;
 let lastError: string | null = null;
-const siteState = new Map<
-  string,
-  { lastPulledAt: string | null; pendingCount: number; failedCount: number }
->();
+const EMPTY_SITE_STATE: SiteSyncState = {
+  lastPulledAt: null,
+  lastCatalogCheckAt: null,
+  lastOrdersAt: null,
+  lastOrdersPulledAt: null,
+  pendingCount: 0,
+  failedCount: 0,
+};
+const siteState = new Map<string, SiteSyncState>();
 
 function isBrowserOnline() {
   return typeof navigator === "undefined" ? true : navigator.onLine;
@@ -43,11 +65,7 @@ async function refreshCounts(siteId: string) {
   ).length;
   const failedCount = rows.filter((r) => r.status === "failed").length;
   const meta = await getPosDb().meta.get(siteId);
-  const prev = siteState.get(siteId) || {
-    lastPulledAt: null,
-    pendingCount: 0,
-    failedCount: 0,
-  };
+  const prev = siteState.get(siteId) || { ...EMPTY_SITE_STATE };
   siteState.set(siteId, {
     ...prev,
     lastPulledAt: meta?.lastPulledAt ?? prev.lastPulledAt,
@@ -58,11 +76,7 @@ async function refreshCounts(siteId: string) {
 }
 
 function emit(siteId: string) {
-  const state = siteState.get(siteId) || {
-    lastPulledAt: null,
-    pendingCount: 0,
-    failedCount: 0,
-  };
+  const state = siteState.get(siteId) || { ...EMPTY_SITE_STATE };
   const status: SyncStatus = {
     online: isBrowserOnline(),
     pulling,
@@ -70,6 +84,7 @@ function emit(siteId: string) {
     pendingCount: state.pendingCount,
     failedCount: state.failedCount,
     lastPulledAt: state.lastPulledAt,
+    lastOrdersPulledAt: state.lastOrdersPulledAt,
     lastError,
   };
   listeners.forEach((l) => l(status));
@@ -81,11 +96,7 @@ export function subscribePosSync(listener: SyncListener): () => void {
 }
 
 export function getPosSyncStatus(siteId: string): SyncStatus {
-  const state = siteState.get(siteId) || {
-    lastPulledAt: null,
-    pendingCount: 0,
-    failedCount: 0,
-  };
+  const state = siteState.get(siteId) || { ...EMPTY_SITE_STATE };
   return {
     online: isBrowserOnline(),
     pulling,
@@ -93,6 +104,7 @@ export function getPosSyncStatus(siteId: string): SyncStatus {
     pendingCount: state.pendingCount,
     failedCount: state.failedCount,
     lastPulledAt: state.lastPulledAt,
+    lastOrdersPulledAt: state.lastOrdersPulledAt,
     lastError,
   };
 }
@@ -237,43 +249,115 @@ export async function drainPosOutbox(siteId: string): Promise<void> {
   }
 }
 
-export async function pullPosSnapshotInBackground(
+function markCatalogChecked(siteId: string) {
+  const prev = siteState.get(siteId) || { ...EMPTY_SITE_STATE };
+  siteState.set(siteId, {
+    ...prev,
+    lastCatalogCheckAt: Date.now(),
+  });
+}
+
+export async function pullPosCatalogInBackground(
   siteId: string,
+  force = false,
 ): Promise<void> {
-  if (!isBrowserOnline()) {
-    emit(siteId);
-    return;
-  }
+  if (!isBrowserOnline()) return;
   if (pulling) return;
   pulling = true;
   emit(siteId);
+
   try {
-    const res = await pullAndStorePosSnapshot(siteId);
+    const meta = await getPosDb().meta.get(siteId);
+    let revisionToUse: string | null = null;
+
+    const revRes = await getPosCatalogRevision(siteId);
+    if (!("error" in revRes) && revRes.data) {
+      if (!force && meta?.lastCatalogRevision === revRes.data) {
+        markCatalogChecked(siteId);
+        return;
+      }
+      revisionToUse = revRes.data;
+    }
+
+    const res = await pullAndStorePosCatalogSnapshot(siteId, revisionToUse);
     if (!res.ok) {
-      lastError = res.error || "Pull failed";
+      lastError = res.error || "Catalog pull failed";
     } else {
-      const prev = siteState.get(siteId) || {
-        lastPulledAt: null,
-        pendingCount: 0,
-        failedCount: 0,
-      };
+      const prev = siteState.get(siteId) || { ...EMPTY_SITE_STATE };
       siteState.set(siteId, {
         ...prev,
         lastPulledAt: res.pulledAt || new Date().toISOString(),
+        lastCatalogCheckAt: Date.now(),
       });
       if (!lastError?.includes("Sync")) lastError = null;
     }
   } catch (e: any) {
-    lastError = e?.message || "Pull failed";
+    lastError = e?.message || "Catalog pull failed";
   } finally {
     pulling = false;
     await refreshCounts(siteId);
   }
 }
 
-export async function runPosSyncCycle(siteId: string): Promise<void> {
-  await pullPosSnapshotInBackground(siteId);
-  await drainPosOutbox(siteId);
+export async function pullPosOrdersInBackground(siteId: string): Promise<void> {
+  if (!isBrowserOnline()) return;
+  try {
+    const res = await listPosOpenOrders(siteId);
+    if (res.error) return;
+    await applyPosOpenOrders(siteId, res.data || []);
+    const prev = siteState.get(siteId) || { ...EMPTY_SITE_STATE };
+    siteState.set(siteId, {
+      ...prev,
+      lastOrdersAt: Date.now(),
+      lastOrdersPulledAt: new Date().toISOString(),
+    });
+    emit(siteId);
+  } catch {
+    // Keep the last known local open orders if the light pull fails.
+  }
+}
+
+export async function runPosSyncCycle(
+  siteId: string,
+  force = false,
+  isVisibilityTrigger = false,
+): Promise<void> {
+  if (typeof window === "undefined" || document.visibilityState === "hidden") return;
+
+  const now = Date.now();
+  const state = siteState.get(siteId) || { ...EMPTY_SITE_STATE };
+  const lastCatalogAt =
+    state.lastCatalogCheckAt ??
+    (state.lastPulledAt ? new Date(state.lastPulledAt).getTime() : null);
+
+  const doCatalog = shouldRunCatalogPull({
+    now,
+    lastCatalogAt,
+    visible: true,
+    force,
+    isVisibilityTrigger,
+  });
+  const doOrders = shouldRunOrdersPull({
+    now,
+    lastOrdersAt: state.lastOrdersAt,
+    visible: true,
+    force,
+  });
+
+  if (doCatalog) {
+    await pullPosCatalogInBackground(siteId, force);
+  }
+
+  if (doOrders) {
+    await pullPosOrdersInBackground(siteId);
+  }
+
+  const online = isBrowserOnline();
+  const pendingCount =
+    siteState.get(siteId)?.pendingCount ?? state.pendingCount;
+  if (shouldDrainOutbox({ pendingCount, online, force })) {
+    await drainPosOutbox(siteId);
+  }
 }
 
 let wired = false;
@@ -283,11 +367,11 @@ export function startPosSyncLoop(siteId: string) {
   if (typeof window === "undefined") return;
 
   void refreshCounts(siteId);
-  void runPosSyncCycle(siteId);
+  void runPosSyncCycle(siteId, true);
 
   if (!intervals.has(siteId)) {
     const id = window.setInterval(() => {
-      void runPosSyncCycle(siteId);
+      void runPosSyncCycle(siteId, false);
     }, 30_000);
     intervals.set(siteId, id);
   }
@@ -295,14 +379,14 @@ export function startPosSyncLoop(siteId: string) {
   if (!wired) {
     wired = true;
     window.addEventListener("online", () => {
-      intervals.forEach((_, sid) => void runPosSyncCycle(sid));
+      intervals.forEach((_, sid) => void drainPosOutbox(sid));
     });
     window.addEventListener("offline", () => {
       intervals.forEach((_, sid) => emit(sid));
     });
     document.addEventListener("visibilitychange", () => {
       if (document.visibilityState === "visible") {
-        intervals.forEach((_, sid) => void runPosSyncCycle(sid));
+        intervals.forEach((_, sid) => void runPosSyncCycle(sid, false, true));
       }
     });
   }

@@ -241,11 +241,14 @@ export default function CatalogPage() {
         </div>
       </StickyHeader>
 
-      <div className="flex-1 p-4 md:p-6 min-h-0 overflow-auto">
-        <div className="flex flex-col gap-6">
-          <div>
+      <div className={cn(
+        "flex-1 min-h-0 min-w-0 overflow-y-auto",
+        viewType === "kanban" ? "py-4 md:py-6" : "p-4 md:p-6 overflow-x-hidden"
+      )}>
+        <div className="flex flex-col gap-6 h-full">
+          <div className="h-full">
             {!currentSite || isLoading ? (
-              <div className="p-6 space-y-4">
+              <div className={viewType === 'kanban' ? "px-4 md:px-6 space-y-4" : "space-y-4"}>
                 {Array.from({ length: 5 }).map((_, i) => (
                   <Skeleton key={i} className="h-12 w-full" />
                 ))}
@@ -255,7 +258,7 @@ export default function CatalogPage() {
                 Error al cargar el catálogo. {error.message}
               </div>
             ) : (
-              <>
+              <div className="h-full">
                 {viewType === 'table' ? (
                   <>
                     <CatalogTable 
@@ -277,8 +280,7 @@ export default function CatalogPage() {
                     )}
                   </>
                 ) : (
-                  <div className={viewType === 'kanban' ? "-mx-4 md:-mx-6" : "h-full flex flex-col"}>
-                    <div className={viewType === 'kanban' ? "px-4 md:px-6" : "h-full flex flex-col"}>
+                  <div className="h-full min-w-0 w-full flex flex-col">
                       {data?.items.data && data.items.data.length > 0 ? (
                         <KanbanView 
                           items={data.items.data}
@@ -287,7 +289,7 @@ export default function CatalogPage() {
                           isDragEnabled={isDragEnabled}
                           searchQuery={searchQuery} />
                       ) : (
-                        <div className="pt-4">
+                        <div className="pt-4 px-4 md:px-6">
                           <EmptyCard
                             icon={<Archive className="h-6 w-6" />}
                             title={t('catalog.empty.title') || "No se encontraron ítems"}
@@ -300,10 +302,9 @@ export default function CatalogPage() {
                             } />
                         </div>
                       )}
-                    </div>
                   </div>
                 )}
-              </>
+              </div>
             )}
           </div>
         </div>

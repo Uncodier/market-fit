@@ -29,6 +29,7 @@ import { navigateToOrder } from "@/app/hooks/use-navigation-history"
 import { Button } from "@/app/components/ui/button"
 import { PrinterSyncBadge } from "@/app/components/printer/PrinterSyncBadge"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "@/app/components/ui/dropdown-menu"
+import { cn } from "@/lib/utils"
 
 export default function OrdersPage() {
   const { currentSite } = useSite()
@@ -242,20 +243,33 @@ export default function OrdersPage() {
           </div>
         </StickyHeader>
 
-        <div className="p-8 space-y-4 bg-muted/30 flex-1 min-h-0 overflow-auto">
-          <div className={viewType === "kanban" ? "pb-4 -mx-8" : ""}>
-            <div className={viewType === "kanban" ? "px-8" : "h-full flex flex-col"}>
+        <div className={cn(
+          "bg-muted/30 flex-1 min-h-0 min-w-0 overflow-y-auto",
+          viewType === "kanban" ? "py-4 md:py-8" : "p-4 md:p-8 space-y-4 overflow-x-hidden"
+        )}>
+          {viewType === "kanban" ? (
+            <div className="h-full min-w-0 w-full">
               {!currentSite || isLoading ? (
-                viewType === "kanban" ? <OrdersKanbanSkeleton /> : <OrdersTableSkeleton />
+                <OrdersKanbanSkeleton />
               ) : error ? (
                 <div className="p-6 text-center text-red-500">
                   Failed to load orders. {error.message}
                 </div>
-              ) : viewType === "kanban" ? (
+              ) : (
                 <OrdersKanban
                   orders={data?.data || []}
                   onOrderClick={(order) => navigateToOrder({ orderId: order.id, orderNumber: order.order_number, router })}
                   onUpdateOrderStatus={handleUpdateOrderStatus} />
+              )}
+            </div>
+          ) : (
+            <div className="h-full flex flex-col">
+              {!currentSite || isLoading ? (
+                <OrdersTableSkeleton />
+              ) : error ? (
+                <div className="p-6 text-center text-red-500">
+                  Failed to load orders. {error.message}
+                </div>
               ) : (
                 <OrdersTable
                   orders={data?.data || []}
@@ -267,7 +281,7 @@ export default function OrdersPage() {
                   onOrderClick={(order) => navigateToOrder({ orderId: order.id, orderNumber: order.order_number, router })} />
               )}
             </div>
-          </div>
+          )}
         </div>
       </Tabs>
     </div>

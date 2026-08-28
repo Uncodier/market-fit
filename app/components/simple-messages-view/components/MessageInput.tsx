@@ -12,6 +12,8 @@ import { useRequirementStatus } from '../hooks/useRequirementStatus'
 import { useRouter } from 'next/navigation'
 import { useSite } from '@/app/context/SiteContext'
 import { useLocalization } from '@/app/context/LocalizationContext'
+import { getMentionQuery } from '@/app/components/context/mention-query'
+import { ContextMentionPicker } from '@/app/components/context/context-mention-picker'
 
 interface MessageInputProps {
   message: string
@@ -60,6 +62,7 @@ const MessageInputComponent: React.FC<MessageInputProps> = ({
 }) => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
   const [dropdownDirection, setDropdownDirection] = useState<'down' | 'up'>('down')
+  const [mentionState, setMentionState] = useState<{ query: string, start: number, end: number } | null>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
@@ -151,6 +154,42 @@ const MessageInputComponent: React.FC<MessageInputProps> = ({
     }
   }
 
+  const handleMentionSelect = (type: keyof SelectedContextIds, id: string, name: string) => {
+    // Add to context
+    const newContext = { ...selectedContext }
+    newContext[type] = [...(newContext[type] || []), id]
+    onContextChange(newContext)
+
+    // Remove @query from text
+    if (mentionState && textareaRef && "current" in textareaRef && textareaRef.current) {
+      const currentText = textareaRef.current.value
+      const before = currentText.slice(0, mentionState.start)
+      const after = currentText.slice(mentionState.end)
+      const newText = before + after
+      
+      textareaRef.current.value = newText
+      
+      // Update state
+      if (handleMessageChange) {
+        // Mock event
+        handleMessageChange({ target: { value: newText } } as any)
+      } else {
+        onMessageChange(newText)
+      }
+      
+      // Reset cursor
+      const newCursorPos = mentionState.start
+      setTimeout(() => {
+        if (textareaRef.current) {
+          textareaRef.current.setSelectionRange(newCursorPos, newCursorPos)
+          textareaRef.current.focus()
+        }
+      }, 0)
+    }
+    
+    setMentionState(null)
+  }
+
   // Handle attachment button click
   const handleAttachmentClick = () => {
     fileInputRef.current?.click()
@@ -160,17 +199,58 @@ const MessageInputComponent: React.FC<MessageInputProps> = ({
       <div className="mx-auto w-full max-w-[800px]">
         <form className="relative w-full" onSubmit={(e) => {
           e.preventDefault()
-          onSubmit()
+          if (!mentionState) onSubmit()
         }}>
           <div className="relative w-full">
+            {mentionState && (
+              <ContextMentionPicker 
+                query={mentionState.query} 
+                onSelect={handleMentionSelect}
+                onClose={() => setMentionState(null)} 
+              />
+            )}
+            
             <OptimizedTextarea
               ref={textareaRef}
               defaultValue={message}
-              onChange={handleMessageChange || ((e) => onMessageChange(e.target.value))}
+              onChange={(e) => {
+                // Determine cursor position
+                const cursorPosition = e.target.selectionStart
+                const currentText = e.target.value
+                const mention = getMentionQuery(currentText, cursorPosition)
+                setMentionState(mention)
+                
+                if (handleMessageChange) {
+                  handleMessageChange(e)
+                } else {
+                  onMessageChange(currentText)
+                }
+              }}
+              onKeyUp={(e) => {
+                const target = e.target as HTMLTextAreaElement
+                const cursorPosition = target.selectionStart
+                const currentText = target.value
+                const mention = getMentionQuery(currentText, cursorPosition)
+                setMentionState(mention)
+              }}
               onKeyDown={(e) => {
+                if (mentionState) {
+                  // If mention picker is open, let it handle Enter/Arrow keys
+                  if (e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'Enter') {
+                    // Let the command list capture it. But Command is outside this input.
+                    // Actually, if we just want it to not submit on Enter when mention is open:
+                    if (e.key === 'Enter') {
+                      e.preventDefault()
+                      return
+                    }
+                  }
+                }
+                
                 if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault()
-                  onSubmit()
+                  if (!mentionState) {
+                    onSubmit()
+                  }
                 }
               }}
               placeholder={dynamicPlaceholder}

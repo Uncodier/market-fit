@@ -52,10 +52,10 @@ function DealCardSkeleton() {
 
 export function DealsKanbanSkeleton() {
   return (
-    <div className="overflow-x-auto pb-4 -mx-8">
-      <div className="flex gap-4 min-w-fit px-8 min-h-[calc(100vh-220px)] items-stretch">
+    <div className="w-full min-w-0 overflow-x-auto overflow-y-hidden pb-4">
+      <div className="flex gap-4 min-w-max px-4 md:px-8 items-stretch after:content-[''] after:w-px after:shrink-0">
         {DEAL_STAGES.map((stage, columnIndex) => (
-          <div key={stage.id} className="flex-shrink-0 w-80 flex flex-col">
+          <div key={stage.id} className="flex-shrink-0 w-72 md:w-80 flex flex-col min-h-[calc(100vh-220px)]">
             <div
               className={cn(
                 "bg-background/80 backdrop-blur-sm rounded-t-lg p-3.5 border-b-[3px] border-x border-t shadow-sm",
@@ -135,8 +135,8 @@ export function DealsKanban({ deals, onDealClick, onUpdateDealStage }: DealsKanb
 
   return (
     <DragDropContext onDragEnd={onDragEnd}>
-      <div className="overflow-x-auto pb-4 -mx-8">
-        <div className="flex gap-4 min-w-fit px-8 min-h-[calc(100vh-220px)] items-stretch">
+      <div className="w-full min-w-0 overflow-x-auto overflow-y-hidden pb-4">
+        <div className="flex gap-4 min-w-max px-4 md:px-8 items-stretch after:content-[''] after:w-px after:shrink-0">
           {DEAL_STAGES.map((stage) => {
             const stageDeals = deals.filter(deal => deal.stage === stage.id)
             const totalAmount = stageDeals.reduce((sum, deal) => sum + (deal.amount || 0), 0)

@@ -689,12 +689,15 @@ export function SiteProvider({ children }: SiteProviderProps) {
       setIsLoading(true)
       setError(null)
 
+      const savedSiteId = getLocalStorage("currentSiteId")
+
       const {
         sites: accessibleSites,
+        detail,
         error: sitesError,
         aborted,
         unauthorized,
-      } = await fetchAccessibleSitesClient(supabaseRef.current)
+      } = await fetchAccessibleSitesClient(supabaseRef.current, savedSiteId)
 
       if (aborted) {
         return
@@ -719,6 +722,16 @@ export function SiteProvider({ children }: SiteProviderProps) {
 
       setHasValidSession(true)
 
+      // Apply detail hydration to the target site
+      if (detail && detail.id) {
+        const targetSite = accessibleSites.find(s => s.id === detail.id)
+        if (targetSite) {
+          targetSite.logo_url = detail.logo_url
+          targetSite.tracking = detail.tracking
+          targetSite.resource_urls = detail.resource_urls
+        }
+      }
+
       const allSitesData = [...accessibleSites]
       
       // Demo accounts are only available while demo mode is active.
@@ -742,32 +755,10 @@ export function SiteProvider({ children }: SiteProviderProps) {
         }
       }
       
-      // Fetch billing information for real sites only (filter out demo sites)
-      const realSiteIds = allSitesData
-        .map(site => site.id)
-        .filter(id => !id.startsWith('demo-'))
-        
-      let billingData: any[] = []
-      
-      if (realSiteIds.length > 0) {
-        const { data: billingInfo, error: billingError } = await supabaseRef.current
-          .from('billing')
-          .select('*')
-          .in('site_id', realSiteIds)
-        
-        if (billingError) {
-          console.error("Error fetching billing data:", billingError)
-          // Don't throw error for billing data, continue without it
-        } else {
-          billingData = billingInfo || []
-        }
-      }
-      
-      
       // Cargar focusMode desde localStorage y agregar datos de billing
-      const sitesWithData = allSitesData.map((site: Tables<'sites'>) => {
-        // Find billing data for this site
-        const siteBilling = billingData.find(billing => billing.site_id === site.id)
+      const sitesWithData = allSitesData.map((site: any) => {
+        // Find billing data for this site (now coming from API)
+        const siteBilling = site.billing
         
         // Full credits for demo sites
         const isDemoSite = site.id.startsWith('demo-')
@@ -1032,11 +1023,12 @@ export function SiteProvider({ children }: SiteProviderProps) {
       setCurrentSite(site)
       
       try {
-        // Cargar los settings específicamente para este sitio en background
-        if (!site.settings && supabaseRef.current) {
+        // Cargar los settings y detalles de sitio en background
+        if (supabaseRef.current) {
 
         let settingsData = null;
         let settingsError = null;
+        let siteDetailData = null;
         
         if (site.id.startsWith('demo-')) {
           const { getDemoData } = await import('@/lib/demo-data/index');
@@ -1045,19 +1037,45 @@ export function SiteProvider({ children }: SiteProviderProps) {
             settingsData = demoData.settings;
           }
         } else {
-          const { data, error } = await supabaseRef.current
-            .from('settings')
-            .select('*')
-            .eq('site_id', site.id)
-            .single();
+          const [settingsResult, siteDetailResult] = await Promise.all([
+            !site.settings ? supabaseRef.current
+              .from('settings')
+              .select('*')
+              .eq('site_id', site.id)
+              .single() : Promise.resolve({ data: site.settings, error: null }),
             
-          settingsData = data;
-          settingsError = error;
+            // Si no tenemos la URL del logo original (es nula, pero el sitio no es demo)
+            // cargamos los detalles pesados
+            site.logo_url === undefined || site.logo_url === null ? supabaseRef.current
+              .from('sites')
+              .select('logo_url, tracking, resource_urls')
+              .eq('id', site.id)
+              .single() : Promise.resolve({ data: null, error: null })
+          ]);
+            
+          settingsData = settingsResult.data;
+          settingsError = settingsResult.error;
+          siteDetailData = siteDetailResult.data;
         }
           
           if (settingsError && settingsError.code !== 'PGRST116') {
             // PGRST116 significa que no se encontraron registros (es normal para un sitio nuevo)
             console.error(`Error loading settings for site ${site.id}:`, settingsError);
+          }
+          
+          // Si tenemos detalles (logo_url, etc), actualizar el objeto site primero
+          let mergedSite = site;
+          if (siteDetailData) {
+            mergedSite = {
+              ...site,
+              logo_url: siteDetailData.logo_url,
+              tracking: siteDetailData.tracking,
+              resource_urls: siteDetailData.resource_urls
+            };
+            
+            // Actualizar también en la lista de sitios y el sitio actual
+            setSites(prev => prev.map(s => s.id === site.id ? mergedSite : s));
+            setCurrentSite(current => current?.id === mergedSite.id ? mergedSite : current);
           }
           
           // Si tenemos settings, los agregamos al sitio
@@ -1085,7 +1103,7 @@ export function SiteProvider({ children }: SiteProviderProps) {
             const parsedBusinessHours = parseJsonField(settingsData.business_hours, []);
             
             const enrichedSite = {
-              ...site,
+              ...mergedSite,
               settings: {
                 id: settingsData.id,
                 site_id: settingsData.site_id,

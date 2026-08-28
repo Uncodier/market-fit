@@ -60,7 +60,7 @@ export function usePosCatalog(siteId: string | undefined) {
     if (!siteId) return;
     let lastSig = "";
     return subscribePosSync((status) => {
-      const sig = `${status.lastPulledAt ?? ""}:${status.pendingCount}:${status.failedCount}`;
+      const sig = `${status.lastPulledAt ?? ""}:${status.lastOrdersPulledAt ?? ""}:${status.pendingCount}:${status.failedCount}`;
       if (sig === lastSig) return;
       lastSig = sig;
       void reload();

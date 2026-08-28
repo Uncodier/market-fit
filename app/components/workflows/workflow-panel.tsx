@@ -87,9 +87,43 @@ export function WorkflowPanel({ activeInstanceId }: { activeInstanceId?: string 
     })
   }, [graphSig, resultSig, dragId, heightTick])
 
+  const observerRef = useRef<ResizeObserver | null>(null)
+
+  useEffect(() => {
+    let frame: number
+    observerRef.current = new ResizeObserver((entries) => {
+      let changed = false
+      for (const entry of entries) {
+        const id = (entry.target as HTMLElement).dataset.nodeId
+        if (!id) continue
+        const height = (entry.target as HTMLElement).offsetHeight
+        if (height > 0 && heightsRef.current[id] !== height) {
+          heightsRef.current[id] = height
+          changed = true
+        }
+      }
+      if (changed) {
+        cancelAnimationFrame(frame)
+        frame = requestAnimationFrame(() => setHeightTick((tick) => tick + 1))
+      }
+    })
+    return () => {
+      cancelAnimationFrame(frame)
+      observerRef.current?.disconnect()
+    }
+  }, [])
+
   const registerHeight = useCallback((id: string, el: HTMLDivElement | null) => {
+    const prevEl = nodeElsRef.current[id]
+    if (prevEl && prevEl !== el && observerRef.current) {
+      observerRef.current.unobserve(prevEl)
+    }
     nodeElsRef.current[id] = el
     if (!el) return
+    el.dataset.nodeId = id
+    if (observerRef.current) {
+      observerRef.current.observe(el)
+    }
     const height = el.offsetHeight
     if (height <= 0 || heightsRef.current[id] === height) return
     heightsRef.current[id] = height

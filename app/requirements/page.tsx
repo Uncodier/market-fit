@@ -35,6 +35,7 @@ import { RequirementsTable, RequirementsTableSkeleton } from "./RequirementsTabl
 import { useRequirementsList } from "./use-requirements-list"
 import { COMPLETION_STATUS, REQUIREMENT_STATUS, type Requirement } from "./types"
 import { useOptimisticError } from "@/app/hooks/use-optimistic-error"
+import { cn } from "@/lib/utils"
 
 export default function RequirementsPage() {
   const { t } = useLocalization()
@@ -221,21 +222,19 @@ export default function RequirementsPage() {
             </div>
         </StickyHeader>
 
-        <div className="flex-1 space-y-4 bg-muted/30 p-8">
-          <div className={viewMode === "kanban" ? "overflow-x-auto pb-4 -mx-8" : ""}>
-            <div className={viewMode === "kanban" ? "min-w-fit px-8" : ""}>
+        <div className={cn(
+          "flex-1 bg-muted/30 min-w-0 overflow-y-auto",
+          viewMode === "kanban" ? "py-4 md:py-8" : "p-4 md:p-8 space-y-4 overflow-x-hidden"
+        )}>
               {["all", "pending", "completed", "rejected"].map((tab) => (
                 <TabsContent
                   key={tab}
                   value={tab}
-                  className={viewMode === "kanban" ? "m-0 mt-0 min-h-[calc(100dvh-220px)]" : "mt-0 min-h-[calc(100dvh-220px)] space-y-4"}
+                  className={viewMode === "kanban" ? "m-0 mt-0 h-full min-w-0" : "mt-0 h-full space-y-4"}
                 >
                   {renderContent()}
                 </TabsContent>
               ))}
-            </div>
-            {viewMode === "kanban" ? <div className="w-16 flex-shrink-0" /> : null}
-          </div>
         </div>
       </Tabs>
     </div>

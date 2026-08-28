@@ -411,12 +411,29 @@ export default function SalesPage() {
             </div>
           </StickyHeader>
           
-        <div className="p-8 space-y-4 bg-muted/30 flex-1 min-h-0 overflow-auto">
-          <div className={viewType === 'kanban' ? "pb-4 -mx-8" : ""}>
-            <div className={viewType === 'kanban' ? "px-8" : "h-full flex flex-col"}>
+        <div className={cn(
+          "bg-muted/30 flex-1 min-h-0 min-w-0 overflow-y-auto",
+          viewType === "kanban" ? "py-4 md:py-8" : "p-4 md:p-8 space-y-4 overflow-x-hidden"
+        )}>
+          {viewType === "kanban" ? (
+            <div className="h-full min-w-0 w-full">
               {loading ? (
                 <SalesTableSkeleton />
-              ) : viewType === "table" ? (
+              ) : (
+                <KanbanView
+                  sales={filteredSales}
+                  onUpdateSaleStatus={handleUpdateSaleStatus}
+                  segments={segments}
+                  onSaleClick={handleSaleClick}
+                  onPrintSale={handlePrintSale}
+                  onRegisterPayment={handleRegisterPayment} />
+              )}
+            </div>
+          ) : (
+            <div className="h-full flex flex-col">
+              {loading ? (
+                <SalesTableSkeleton />
+              ) : (
                 <SalesTable
                   sales={currentSales}
                   currentPage={currentPage}
@@ -428,18 +445,10 @@ export default function SalesPage() {
                   onSaleClick={handleSaleClick}
                   onPrintSale={handlePrintSale}
                   onRegisterPayment={handleRegisterPayment} />
-              ) : (
-                <KanbanView
-                  sales={filteredSales}
-                  onUpdateSaleStatus={handleUpdateSaleStatus}
-                  segments={segments}
-                  onSaleClick={handleSaleClick}
-                  onPrintSale={handlePrintSale}
-                  onRegisterPayment={handleRegisterPayment} />
               )}
-              </div>
             </div>
-          </div>
+          )}
+        </div>
         </Tabs>
         
         {/* Print Sale Dialog */}

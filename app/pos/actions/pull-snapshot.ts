@@ -7,18 +7,11 @@ import { listLocations } from "@/app/inventory/actions";
 import { getLeads } from "@/app/leads/actions";
 import { listPriceLists } from "@/app/price-lists/actions";
 import { listAllModifierGroupsForPos } from "@/app/catalog/modifier-actions";
-import { listPosOpenOrders } from "@/app/pos/actions/list-open-orders";
 import { isPriceListAllowedForChannel } from "@/app/price-lists/price-list-channels";
-import {
-  listPromotions,
-  listPromotionItems,
-  listPromotionCategories,
-  listPromotionRequiredItems,
-  listPromotionRequiredCategories,
-} from "@/app/promotions/actions";
+import { listPromotions } from "@/app/promotions/actions";
 import { isPromotionAllowedForChannel } from "@/app/promotions/promotion-channels";
 
-export type PosSnapshot = {
+export type PosCatalogSnapshot = {
   catalogItems: any[];
   categories: any[];
   locations: any[];
@@ -32,13 +25,12 @@ export type PosSnapshot = {
   }[];
   taxesByItem: Record<string, any[]>;
   promotions: any[];
-  pendingOrders: any[];
   modifierGroupsByHostId: Record<string, any[]>;
   pulledAt: string;
 };
 
-export async function pullPosSnapshot(siteId: string): Promise<
-  { data: PosSnapshot } | { error: string }
+export async function pullPosCatalogSnapshot(siteId: string): Promise<
+  { data: PosCatalogSnapshot } | { error: string }
 > {
   try {
     if (!siteId) return { error: "siteId is required" };
@@ -55,7 +47,6 @@ export async function pullPosSnapshot(siteId: string): Promise<
       locationsRes,
       leadsRes,
       priceListsRes,
-      openOrdersRes,
       promotionsRes,
     ] = await Promise.all([
       listCatalogItems({
@@ -68,7 +59,6 @@ export async function pullPosSnapshot(siteId: string): Promise<
       listLocations(siteId),
       getLeads(siteId),
       listPriceLists({ siteId, pageSize: 100 }),
-      listPosOpenOrders(siteId),
       listPromotions({ siteId, status: "active", pageSize: 100 }),
     ]);
 
@@ -82,48 +72,38 @@ export async function pullPosSnapshot(siteId: string): Promise<
     );
     const priceListIds = activePriceLists.map((pl: any) => pl.id);
 
-    let priceListItems: PosSnapshot["priceListItems"] = [];
+    let priceListItems: PosCatalogSnapshot["priceListItems"] = [];
     if (priceListIds.length > 0) {
       const { data: pli } = await supabase
         .from("price_list_items")
         .select("id, price_list_id, catalog_item_id, unit_price")
         .in("price_list_id", priceListIds);
-      priceListItems = (pli || []) as PosSnapshot["priceListItems"];
+      priceListItems = (pli || []) as PosCatalogSnapshot["priceListItems"];
     }
 
     const posPromos = (promotionsRes?.data || []).filter((promo: any) =>
       isPromotionAllowedForChannel(promo.channels, "pos"),
     );
-    const promotions = await Promise.all(
-      posPromos.map(async (promo: any) => {
-        const [itemsRes, catsRes, reqRes, reqCatsRes] = await Promise.all([
-          listPromotionItems(promo.id, siteId),
-          listPromotionCategories(promo.id, siteId),
-          listPromotionRequiredItems(promo.id, siteId),
-          listPromotionRequiredCategories(promo.id, siteId),
-        ]);
-        return {
-          ...promo,
-          catalog_item_ids: (itemsRes?.data || []).map(
-            (r: any) => r.catalog_item_id,
-          ),
-          category_ids: (catsRes?.data || []).map(
-            (r: any) => r.catalog_category_id,
-          ),
-          required_items: (reqRes?.data || []).map(
-            (r: any) => ({ catalog_item_id: r.catalog_item_id, min_quantity: r.min_quantity })
-          ),
-          required_categories: (reqCatsRes?.data || []).map(
-            (r: any) => ({
-              catalog_category_id: r.catalog_category_id,
-              min_quantity: r.min_quantity,
-            })
-          ),
-        };
-      }),
-    );
+    
+    let promotions = posPromos;
+    if (posPromos.length > 0) {
+      const promoIds = posPromos.map((p: any) => p.id);
+      
+      const [itemsRes, catsRes, reqItemsRes, reqCatsRes] = await Promise.all([
+        supabase.from("promotion_catalog_items").select("promotion_id, catalog_item_id").in("promotion_id", promoIds).eq("site_id", siteId),
+        supabase.from("promotion_catalog_categories").select("promotion_id, catalog_category_id").in("promotion_id", promoIds).eq("site_id", siteId),
+        supabase.from("promotion_required_items").select("promotion_id, catalog_item_id, min_quantity").in("promotion_id", promoIds).eq("site_id", siteId),
+        supabase.from("promotion_required_categories").select("promotion_id, catalog_category_id, min_quantity").in("promotion_id", promoIds).eq("site_id", siteId),
+      ]);
 
-    const pendingOrders = openOrdersRes?.data || [];
+      promotions = posPromos.map((promo: any) => ({
+        ...promo,
+        catalog_item_ids: (itemsRes.data || []).filter(r => r.promotion_id === promo.id).map(r => r.catalog_item_id),
+        category_ids: (catsRes.data || []).filter(r => r.promotion_id === promo.id).map(r => r.catalog_category_id),
+        required_items: (reqItemsRes.data || []).filter(r => r.promotion_id === promo.id).map(r => ({ catalog_item_id: r.catalog_item_id, min_quantity: r.min_quantity })),
+        required_categories: (reqCatsRes.data || []).filter(r => r.promotion_id === promo.id).map(r => ({ catalog_category_id: r.catalog_category_id, min_quantity: r.min_quantity })),
+      }));
+    }
 
     const modifiersRes = await listAllModifierGroupsForPos(siteId);
 
@@ -137,12 +117,11 @@ export async function pullPosSnapshot(siteId: string): Promise<
         priceListItems,
         taxesByItem: taxesRes?.data || {},
         promotions,
-        pendingOrders,
         modifierGroupsByHostId: modifiersRes.data || {},
         pulledAt: new Date().toISOString(),
       },
     };
   } catch (error: any) {
-    return { error: error?.message || "Failed to pull POS snapshot" };
+    return { error: error?.message || "Failed to pull POS catalog snapshot" };
   }
 }

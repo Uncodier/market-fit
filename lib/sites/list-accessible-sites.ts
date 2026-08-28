@@ -25,21 +25,25 @@ async function runQuery<T>(builder: QueryResult<T>): Promise<{ data: T[]; error:
   return { data: data || [], error: null }
 }
 
+export const SITE_LIST_COLUMNS = "id, name, url, description, user_id, created_at, updated_at"
+
 export async function listAccessibleSitesForUser(
   admin: SitesAdminClient,
   userId: string
 ): Promise<{ sites: SiteRow[]; error: string | null }> {
-  const owned = await runQuery<SiteRow>(
-    admin.from("sites").select("*").eq("user_id", userId)
-  )
+  const [owned, memberships, ownerships] = await Promise.all([
+    runQuery<SiteRow>(
+      admin.from("sites").select(SITE_LIST_COLUMNS).eq("user_id", userId)
+    ),
+    runQuery<{ site_id: string }>(
+      admin.from("site_members").select("site_id").eq("user_id", userId).eq("status", "active")
+    ),
+    runQuery<{ site_id: string }>(
+      admin.from("site_ownership").select("site_id").eq("user_id", userId)
+    )
+  ])
+  
   if (owned.error) return { sites: [], error: owned.error }
-
-  const memberships = await runQuery<{ site_id: string }>(
-    admin.from("site_members").select("site_id").eq("user_id", userId).eq("status", "active")
-  )
-  const ownerships = await runQuery<{ site_id: string }>(
-    admin.from("site_ownership").select("site_id").eq("user_id", userId)
-  )
 
   const ownedIds = new Set(owned.data.map((site) => site.id))
   const extraIds = [
@@ -53,7 +57,7 @@ export async function listAccessibleSitesForUser(
   }
 
   const extra = await runQuery<SiteRow>(
-    admin.from("sites").select("*").in("id", uniqueExtraIds)
+    admin.from("sites").select(SITE_LIST_COLUMNS).in("id", uniqueExtraIds)
   )
   if (extra.error) return { sites: owned.data, error: null }
 

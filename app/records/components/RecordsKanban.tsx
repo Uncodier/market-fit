@@ -18,8 +18,8 @@ import { publicPromptImageUrl } from "@/app/lib/image-utils"
 
 export function RecordsKanbanSkeleton() {
   return (
-    <div className="h-full flex flex-col">
-      <div className="flex-1 flex gap-6 overflow-x-auto overflow-y-hidden px-1">
+    <div className="w-full min-w-0 overflow-x-auto overflow-y-hidden pb-4">
+      <div className="flex gap-4 min-w-max px-4 md:px-8 pb-4 items-stretch justify-start min-h-[calc(100vh-220px)] after:content-[''] after:w-px after:shrink-0">
         {Array.from({ length: 3 }).map((_, colIndex) => (
           <div key={colIndex} className="flex-shrink-0 w-80 flex flex-col max-h-full">
             <div className="flex items-center justify-between mb-4 flex-none px-1">
@@ -368,8 +368,8 @@ export function RecordsKanban({
 
   return (
     <DragDropContext onDragEnd={handleDragEnd}>
-      <div className="overflow-x-auto pb-4 -mx-4 md:-mx-8">
-        <div className="flex gap-4 min-w-fit px-4 md:px-16 min-h-[calc(100vh-220px)] items-stretch justify-start">
+      <div className="w-full min-w-0 overflow-x-auto overflow-y-hidden pb-4">
+        <div className="flex gap-4 min-w-max px-4 md:px-8 pb-4 items-stretch justify-start min-h-[calc(100vh-220px)] after:content-[''] after:w-px after:shrink-0">
           {kanbanColumns.map(status => (
             <div key={status.id} className="flex-shrink-0 w-80 flex flex-col">
               <div className="bg-background rounded-t-md p-3 border-b border-x border-t">

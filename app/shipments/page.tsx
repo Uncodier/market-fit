@@ -179,9 +179,10 @@ export default function ShipmentsPage() {
           </div>
         </StickyHeader>
 
-        <div className="flex-1 p-4 md:p-6 overflow-auto">
-          <div className={cn(viewType === "kanban" ? "overflow-x-auto -mx-4 md:-mx-6" : "")}>
-            <div className={cn(viewType === "kanban" ? "px-4 md:px-6" : "")}>
+        <div className={cn(
+          "flex-1 min-h-0 min-w-0 overflow-y-auto",
+          viewType === "kanban" ? "py-4 md:py-6" : "p-4 md:p-6 overflow-x-hidden"
+        )}>
               {!currentSite || isLoading ? (
                 <ShipmentsTableSkeleton />
               ) : error ? (
@@ -209,8 +210,6 @@ export default function ShipmentsPage() {
                   onPageChange={setPage}
                   onShipmentClick={(shipment) => navigateToShipment({ shipmentId: shipment.id, router })} />
               )}
-            </div>
-          </div>
         </div>
       </Tabs>
     </div>

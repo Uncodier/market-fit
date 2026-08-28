@@ -77,6 +77,9 @@ export interface SelectedContextIds {
   requirements: string[]
   tasks: string[]
   campaigns: string[]
+  quotations: string[]
+  deals: string[]
+  records: string[]
 }
 
 export interface InstanceLog {
@@ -143,6 +146,11 @@ export interface InstancePlan {
   updated_at?: string
   completed_at?: string
   steps?: any // Contains the steps for the plan
+  metadata?: {
+    workflow_template?: boolean
+    workflow_run?: boolean
+    [key: string]: unknown
+  }
 }
 
 export interface PlanStep {

@@ -240,9 +240,9 @@ export function KanbanView({
           hint={t('requirements.empty.hint') === 'requirements.empty.hint' ? "Try clearing your filters or create a new requirement to get started." : t('requirements.empty.hint')}
         />
       ) : (
-        <div className="w-full">
+        <div className="w-full min-w-0 overflow-x-auto overflow-y-hidden pb-4">
           <DragDropContext onDragEnd={handleDragEnd}>
-            <div className="flex gap-4 pb-4 min-w-fit min-h-[calc(100dvh-220px)]">
+            <div className="flex gap-4 px-4 md:px-8 pb-4 min-w-max min-h-[calc(100dvh-220px)] after:content-[''] after:w-px after:shrink-0">
               {REQUIREMENT_STATUSES.map(status => {
                 const isCollapsed = collapsedColumns[status.id] || false;
                 const columnItems = requirementsByStatus[status.id];

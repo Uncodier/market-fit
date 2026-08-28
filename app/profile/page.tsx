@@ -28,7 +28,6 @@ import {
   Home,
   Phone
 } from "@/app/components/ui/icons"
-import { Switch } from "@/app/components/ui/switch"
 import {
   Select,
   SelectContent,
@@ -42,6 +41,7 @@ import { useTheme } from "@/app/context/ThemeContext"
 import { ProfileSkeleton } from "./components/ProfileSkeleton"
 import { EmailSecurityCard } from "./components/EmailSecurityCard"
 import { CalendarPreferences } from "./components/CalendarPreferences"
+import { SiteNotificationsPreferences } from "./components/SiteNotificationsPreferences"
 import { CalendarSettings } from "@/app/services/profile.service"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
 
@@ -53,17 +53,9 @@ export default function ProfilePage() {
     isLoading, 
     isUpdating, 
     updateProfile, 
-    updateNotifications,
     requestEmailChange,
     emailChangeStatus,
-    name,
     email,
-    bio,
-    role,
-    language,
-    timezone,
-    avatarUrl,
-    notifications,
     updateSettings
   } = useProfile()
   
@@ -79,11 +71,6 @@ export default function ProfilePage() {
     timezone: "America/Mexico_City"
   })
   
-  const [notificationSettings, setNotificationSettings] = useState({
-    email: true,
-    push: true
-  })
-  
   const [imageUrl, setImageUrl] = useState<string | null>(null)
 
   // Actualizar formulario cuando se carga el perfil
@@ -97,7 +84,6 @@ export default function ProfilePage() {
         language: profile.language || "es",
         timezone: profile.timezone || "America/Mexico_City"
       })
-      setNotificationSettings(profile.notifications || { email: true, push: true })
       setImageUrl(profile.avatar_url || null)
     }
   }, [profile])
@@ -272,6 +258,7 @@ export default function ProfilePage() {
         <StickyHeader>
           <TabsList className="h-8 p-0.5 bg-muted/30 rounded-full">
             <TabsTrigger value="profile" className="text-xs rounded-full px-4">Profile</TabsTrigger>
+            <TabsTrigger value="notifications" className="text-xs rounded-full px-4">Notifications</TabsTrigger>
             <TabsTrigger value="calendar" className="text-xs rounded-full px-4">Calendar</TabsTrigger>
           </TabsList>
         </StickyHeader>
@@ -467,6 +454,10 @@ export default function ProfilePage() {
                 </Button>
               </ActionFooter>
             </SectionCard>
+          </TabsContent>
+
+          <TabsContent value="notifications" className="mt-0 border-0 p-0 focus-visible:ring-0">
+            <SiteNotificationsPreferences />
           </TabsContent>
 
           <TabsContent value="calendar" className="mt-0 border-0 p-0 focus-visible:ring-0">

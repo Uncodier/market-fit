@@ -82,7 +82,10 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
         contents: [],
         requirements: [],
         tasks: [],
-        campaigns: []
+        campaigns: [],
+        quotations: [],
+        deals: [],
+        records: []
       })
       
       // Reset activity selection
@@ -108,7 +111,10 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
     contents: [],
     requirements: [],
     tasks: [],
-    campaigns: []
+    campaigns: [],
+    quotations: [],
+    deals: [],
+    records: []
   })
   const [selectedActivity, setSelectedActivity] = useState<string>('ask')
   const [isStepIndicatorExpanded, setIsStepIndicatorExpanded] = useState(false)

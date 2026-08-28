@@ -581,7 +581,7 @@ export function KanbanView({
   const hasNoLeads = leads.length === 0
   
   return (
-    <div className="w-full">
+      <div className="w-full">
       {hasNoLeads ? (
         <EmptyState
           icon={<ClipboardList className="h-12 w-12 text-primary" />}
@@ -590,9 +590,9 @@ export function KanbanView({
           hint="Try clearing your filters or create a new lead to get started."
         />
       ) : (
-        <div className="overflow-x-auto pb-8">
+        <div className="w-full min-w-0 overflow-x-auto overflow-y-hidden pb-8">
           <DragDropContext onDragEnd={handleDragEnd}>
-            <div className="inline-flex gap-4 pb-4 min-h-[200px]">
+            <div className="flex gap-4 min-w-max px-4 md:px-8 pb-4 min-h-[200px] items-stretch after:content-[''] after:w-px after:shrink-0">
               {LEAD_STATUSES.map(status => (
                 <div key={status.id} className="flex flex-col h-full min-w-[260px] w-auto">
                   <div className="mb-2 flex items-center justify-between">

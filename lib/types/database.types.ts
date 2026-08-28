@@ -9,6 +9,35 @@ export type Json =
 export interface Database {
   public: {
     Tables: {
+      user_site_notifications: {
+        Row: {
+          user_id: string
+          site_id: string
+          email_enabled: boolean
+          push_enabled: boolean
+          categories: Json
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          user_id: string
+          site_id: string
+          email_enabled?: boolean
+          push_enabled?: boolean
+          categories?: Json
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          user_id?: string
+          site_id?: string
+          email_enabled?: boolean
+          push_enabled?: boolean
+          categories?: Json
+          created_at?: string
+          updated_at?: string
+        }
+      }
       catalog_items: {
         Row: {
           id: string

@@ -1,4 +1,4 @@
-import { pullPosSnapshot, type PosSnapshot } from "@/app/pos/actions/pull-snapshot";
+import { pullPosCatalogSnapshot, type PosCatalogSnapshot } from "@/app/pos/actions/pull-snapshot";
 import { posOrderAmountDue, selectPosOpenOrders } from "@/app/pos/open-orders";
 import { getPosDb } from "./db";
 import type { LocalPendingOrder, LocalPromotion } from "./types";
@@ -39,6 +39,7 @@ export async function readLocalCatalog(siteId: string) {
     priceLists,
     modifierGroupsByHostId: meta?.modifierGroupsByHostId || {},
     lastPulledAt: meta?.lastPulledAt ?? null,
+    lastCatalogRevision: meta?.lastCatalogRevision ?? null,
     hasLocalData: catalogItems.length > 0,
   };
 }
@@ -61,7 +62,7 @@ export async function readTaxesByItemIds(catalogItemIds: string[]) {
   return map;
 }
 
-export async function applyPosSnapshot(siteId: string, snapshot: PosSnapshot) {
+export async function applyPosCatalogSnapshot(siteId: string, snapshot: PosCatalogSnapshot, revision: string | null) {
   const db = getPosDb();
 
   const taxRows = Object.entries(snapshot.taxesByItem || {}).map(
@@ -70,25 +71,6 @@ export async function applyPosSnapshot(siteId: string, snapshot: PosSnapshot) {
       taxes: taxes || [],
     }),
   );
-
-  const pendingOrders: LocalPendingOrder[] = selectPosOpenOrders(
-    snapshot.pendingOrders || [],
-  ).map((o: any) => {
-    const amountDue = posOrderAmountDue(o);
-    return {
-      id: o.id,
-      site_id: siteId,
-      status: o.status,
-      created_at: o.created_at,
-      lead_id: o.lead_id ?? o.leads?.id ?? null,
-      price_list_id: o.price_list_id ?? null,
-      amount_due: amountDue,
-      total: o.total ?? o.amount ?? null,
-      leads: o.leads ?? null,
-      payment_status: o.payment_status ?? (amountDue != null && amountDue <= 0 ? "paid" : "unpaid"),
-      raw: o,
-    };
-  });
 
   const promotions: LocalPromotion[] = (snapshot.promotions || []).map(
     (p: any) => ({
@@ -134,7 +116,6 @@ export async function applyPosSnapshot(siteId: string, snapshot: PosSnapshot) {
       db.priceListItems,
       db.taxesByItem,
       db.promotions,
-      db.pendingOrders,
     ],
     async () => {
       // Keep locally-created leads that have not synced yet
@@ -156,7 +137,6 @@ export async function applyPosSnapshot(siteId: string, snapshot: PosSnapshot) {
       await db.priceListItems.clear();
       await db.taxesByItem.clear();
       await db.promotions.where("site_id").equals(siteId).delete();
-      await db.pendingOrders.where("site_id").equals(siteId).delete();
 
       if (snapshot.catalogItems.length) {
         await db.catalogItems.bulkPut(
@@ -206,13 +186,11 @@ export async function applyPosSnapshot(siteId: string, snapshot: PosSnapshot) {
       if (promotions.length) {
         await db.promotions.bulkPut(promotions);
       }
-      if (pendingOrders.length) {
-        await db.pendingOrders.bulkPut(pendingOrders);
-      }
 
       await db.meta.put({
         siteId,
         lastPulledAt: snapshot.pulledAt,
+        lastCatalogRevision: revision,
         schemaVersion: SCHEMA_VERSION,
         modifierGroupsByHostId: snapshot.modifierGroupsByHostId || {},
       });
@@ -220,15 +198,45 @@ export async function applyPosSnapshot(siteId: string, snapshot: PosSnapshot) {
   );
 }
 
-export async function pullAndStorePosSnapshot(siteId: string): Promise<{
+export async function applyPosOpenOrders(siteId: string, openOrders: any[]) {
+  const db = getPosDb();
+  
+  const pendingOrders: LocalPendingOrder[] = selectPosOpenOrders(
+    openOrders || [],
+  ).map((o: any) => {
+    const amountDue = posOrderAmountDue(o);
+    return {
+      id: o.id,
+      site_id: siteId,
+      status: o.status,
+      created_at: o.created_at,
+      lead_id: o.lead_id ?? o.leads?.id ?? null,
+      price_list_id: o.price_list_id ?? null,
+      amount_due: amountDue,
+      total: o.total ?? o.amount ?? null,
+      leads: o.leads ?? null,
+      payment_status: o.payment_status ?? (amountDue != null && amountDue <= 0 ? "paid" : "unpaid"),
+      raw: o,
+    };
+  });
+
+  await db.transaction("rw", [db.pendingOrders], async () => {
+    await db.pendingOrders.where("site_id").equals(siteId).delete();
+    if (pendingOrders.length) {
+      await db.pendingOrders.bulkPut(pendingOrders);
+    }
+  });
+}
+
+export async function pullAndStorePosCatalogSnapshot(siteId: string, revision: string | null): Promise<{
   ok: boolean;
   error?: string;
   pulledAt?: string;
 }> {
-  const res = await pullPosSnapshot(siteId);
+  const res = await pullPosCatalogSnapshot(siteId);
   if ("error" in res) {
     return { ok: false, error: res.error };
   }
-  await applyPosSnapshot(siteId, res.data);
+  await applyPosCatalogSnapshot(siteId, res.data, revision);
   return { ok: true, pulledAt: res.data.pulledAt };
 }

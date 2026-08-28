@@ -64,10 +64,9 @@ export function KanbanView({
   }
 
   return (
-    <div className="w-full">
-      <div className="overflow-x-auto pb-8">
-        <DragDropContext onDragEnd={handleDragEnd}>
-          <div className="inline-flex gap-4 pb-4 min-h-[200px]">
+    <div className="w-full min-w-0 overflow-x-auto overflow-y-hidden pb-4">
+      <DragDropContext onDragEnd={handleDragEnd}>
+        <div className="flex gap-4 min-w-max px-4 md:px-6 pb-4 min-h-[200px] items-stretch after:content-[''] after:w-px after:shrink-0">
             {SHIPMENT_STATUSES.map(status => (
               <div key={status.id} className="flex flex-col h-full w-[280px]">
                 <div className="mb-2 flex items-center justify-between">
@@ -187,7 +186,6 @@ export function KanbanView({
             ))}
           </div>
         </DragDropContext>
-      </div>
     </div>
   )
 }

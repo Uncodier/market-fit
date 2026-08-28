@@ -663,7 +663,7 @@ export default function ControlCenterPage() {
                 />
               </div>
             ) : (
-              <div className="p-4 md:p-8 min-h-full">
+              <div className={cn("min-h-full min-w-0", viewType === "kanban" ? "py-4 md:py-8" : "p-4 md:p-8")}>
                 {viewType === "kanban" ? (
                 <TaskKanban
                   tasks={filteredTasks}

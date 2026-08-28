@@ -1,39 +1,35 @@
 "use client"
 
-import { useState, useEffect, useMemo, useRef } from "react"
+import { useState, useEffect, useRef } from "react"
+import { resolveContextSearchAction } from "@/app/components/context/context-search-action"
 import { Button } from "@/app/components/ui/button"
 import { Badge } from "@/app/components/ui/badge"
 import { Input } from "@/app/components/ui/input"
-import { LoadingSkeleton } from "@/app/components/ui/loading-skeleton"
+import { Skeleton } from "@/app/components/ui/skeleton"
 import { Dialog, DialogBody, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/app/components/ui/dialog"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
 import { Search } from "@/app/components/ui/icons"
 import { useContextEntitiesSearch } from "@/app/hooks/use-context-entities-search"
+import { SelectedContextIds } from "@/app/components/simple-messages-view/types"
 import {
   ContextLeadItem,
   ContextContentItem,
   ContextRequirementItem,
   ContextTaskItem,
-  ContextCampaignItem
+  ContextCampaignItem,
+  ContextQuotationItem,
+  ContextDealItem,
+  ContextRecordItem
 } from "@/app/components/context/context-items"
-interface SelectedContext {
-  leads: string[]
-  contents: string[]
-  requirements: string[]
-  tasks: string[]
-  campaigns: string[]
-}
 
 interface ContextSelectorModalProps {
-  onContextChange: (context: SelectedContext) => void
-  selectedContext: SelectedContext
+  onContextChange: (context: SelectedContextIds) => void
+  selectedContext: SelectedContextIds
   isBrowserVisible?: boolean
   hideChips?: boolean
 }
 
 export function ContextSelectorModal({ onContextChange, selectedContext, isBrowserVisible = false, hideChips = false }: ContextSelectorModalProps) {
   const [open, setOpen] = useState(false)
-  const [activeTab, setActiveTab] = useState("leads")
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedItemsNames, setSelectedItemsNames] = useState<{[key: string]: {name: string, type: string}}>({})
   const searchInputRef = useRef<HTMLInputElement>(null)
@@ -43,10 +39,22 @@ export function ContextSelectorModal({ onContextChange, selectedContext, isBrows
     error,
     searchAll,
     clearSearch,
-    loadInitialData
+    loadInitialData,
+    enabledCollections,
+    hasInitialized
   } = useContextEntitiesSearch()
 
-  const totalSelected = Object.values(selectedContext).reduce((sum, arr) => sum + (arr?.length || 0), 0)
+  const totalSelected = Object.values(selectedContext).reduce((sum, arr) => sum + ((arr as string[])?.length || 0), 0)
+
+  const searchAllRef = useRef(searchAll)
+  const loadInitialDataRef = useRef(loadInitialData)
+  const clearSearchRef = useRef(clearSearch)
+  searchAllRef.current = searchAll
+  loadInitialDataRef.current = loadInitialData
+  clearSearchRef.current = clearSearch
+
+  const prevOpenRef = useRef(open)
+  const prevSearchTermRef = useRef(searchTerm)
 
   const handleRemoveItem = (itemId: string) => {
     const newContext = { ...selectedContext }
@@ -54,9 +62,9 @@ export function ContextSelectorModal({ onContextChange, selectedContext, isBrows
     
     // Find which category this item belongs to and remove it
     Object.keys(newContext).forEach(category => {
-      const categoryKey = category as keyof SelectedContext
+      const categoryKey = category as keyof SelectedContextIds
       if (newContext[categoryKey]) {
-        newContext[categoryKey] = newContext[categoryKey].filter(id => id !== itemId)
+        newContext[categoryKey] = (newContext[categoryKey] as string[]).filter(id => id !== itemId)
       }
     })
     
@@ -72,7 +80,9 @@ export function ContextSelectorModal({ onContextChange, selectedContext, isBrows
     
     // Use stored names when available, otherwise use search results or fallback
     Object.keys(selectedContext).forEach(category => {
-      selectedContext[category as keyof SelectedContext].forEach(id => {
+      const ids = selectedContext[category as keyof SelectedContextIds]
+      if (!Array.isArray(ids)) return
+      ids.forEach(id => {
         if (selectedItemsNames[id]) {
           // Use stored name
           items.push({
@@ -82,7 +92,7 @@ export function ContextSelectorModal({ onContextChange, selectedContext, isBrows
           })
         } else if (open && searchResults) {
           // Try to get from current search results
-          const searchData = searchResults[category as keyof typeof searchResults] || []
+          const searchData = (searchResults as any)[category] || []
           const foundItem = searchData.find((item: any) => item.id === id)
           if (foundItem) {
             const name = foundItem.name || foundItem.title || 'Unknown'
@@ -107,35 +117,39 @@ export function ContextSelectorModal({ onContextChange, selectedContext, isBrows
   const extraCount = selectedItems.length - 4
 
   useEffect(() => {
-    if (open && !searchTerm.trim()) {
-      console.log('Modal opened, loading initial data')
-      loadInitialData()
-    }
-  }, [open, loadInitialData, searchTerm])
+    const wasOpen = prevOpenRef.current
+    const prevTerm = prevSearchTermRef.current
+    prevOpenRef.current = open
+    prevSearchTermRef.current = searchTerm
 
-  useEffect(() => {
-    if (!open) return
-    
-    const delayedSearch = setTimeout(() => {
-      if (searchTerm.trim().length >= 1) {
-        console.log('Executing search for:', searchTerm.trim())
-        searchAll(searchTerm.trim())
-      } else {
-        // Load initial data when search is cleared
-        console.log('Search cleared, loading initial data')
-        loadInitialData()
-      }
+    const action = resolveContextSearchAction({
+      open,
+      wasOpen,
+      searchTerm,
+      previousSearchTerm: prevTerm,
+      hasInitialized
+    })
+
+    if (action === 'idle') return
+
+    if (action === 'load-initial') {
+      loadInitialDataRef.current()
+      return
+    }
+
+    const delayedSearch = window.setTimeout(() => {
+      searchAllRef.current(searchTerm.trim())
     }, 300)
 
-    return () => clearTimeout(delayedSearch)
-  }, [searchTerm, open, searchAll, loadInitialData])
+    return () => window.clearTimeout(delayedSearch)
+  }, [open, searchTerm, hasInitialized])
 
   useEffect(() => {
     if (!open) {
       setSearchTerm("")
-      clearSearch()
+      clearSearchRef.current()
     }
-  }, [open, clearSearch])
+  }, [open])
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -151,7 +165,7 @@ export function ContextSelectorModal({ onContextChange, selectedContext, isBrows
     return () => document.removeEventListener('keydown', handleKeyDown)
   }, [open])
 
-  const handleSelectionChange = (tab: keyof SelectedContext, itemId: string, checked: boolean, itemName?: string) => {
+  const handleSelectionChange = (tab: keyof SelectedContextIds, itemId: string, checked: boolean, itemName?: string) => {
     const newContext = { ...selectedContext }
     const newSelectedNames = { ...selectedItemsNames }
     
@@ -159,7 +173,7 @@ export function ContextSelectorModal({ onContextChange, selectedContext, isBrows
       newContext[tab] = [...(newContext[tab] || []), itemId]
       // Store the item name for later use
       if (itemName) {
-        newSelectedNames[itemId] = { name: itemName, type: tab.slice(0, -1) } // Remove 's' from plural
+        newSelectedNames[itemId] = { name: itemName, type: String(tab).slice(0, -1) } // Remove 's' from plural
       }
     } else {
       newContext[tab] = (newContext[tab] || []).filter(id => id !== itemId)
@@ -176,27 +190,36 @@ export function ContextSelectorModal({ onContextChange, selectedContext, isBrows
     return searchResults[tabKey as keyof typeof searchResults] || []
   }
 
-  const renderTabContent = (tabKey: string) => {
-    const data = getTabData(tabKey)
-    const isLoading = loading
-    
-    if (isLoading) {
+  const renderConsolidatedContent = () => {
+    if (loading) {
       return (
-        <div className="space-y-3 py-4">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="flex items-center justify-between p-3 border rounded-lg">
-              <div className="flex items-center gap-3 flex-1">
-                <div className="flex-shrink-0">
-                  <LoadingSkeleton variant="inline" size="sm" />
-                </div>
-                <div className="flex-1 space-y-2">
-                  <LoadingSkeleton variant="inline" className="h-4 w-3/4" />
-                  <LoadingSkeleton variant="inline" className="h-3 w-1/2" />
+        <div className="space-y-6 py-2">
+          {Array.from({ length: 2 }).map((_, groupIndex) => (
+            <div key={`skeleton-group-${groupIndex}`} className="space-y-2">
+              {/* Group Header Skeleton */}
+              <div className="py-2 border-b">
+                <div className="flex items-center gap-2">
+                  <Skeleton className="w-4 h-4 rounded" />
+                  <Skeleton className="h-4 w-24" />
+                  <Skeleton className="h-5 w-8 rounded-full" />
                 </div>
               </div>
-              <div className="flex gap-2">
-                <LoadingSkeleton variant="inline" className="h-6 w-16" />
-                <LoadingSkeleton variant="inline" className="h-6 w-12" />
+              {/* Items Skeleton */}
+              <div className="grid gap-2">
+                {Array.from({ length: 3 }).map((_, itemIndex) => (
+                  <div key={`skeleton-item-${itemIndex}`} className="flex items-start space-x-3 p-3 rounded-lg border border-transparent">
+                    <div className="flex items-center justify-center w-5 h-5 mt-0.5">
+                      <Skeleton className="w-4 h-4 rounded" />
+                    </div>
+                    <div className="flex-1 space-y-2 min-w-0">
+                      <div className="flex items-center justify-between">
+                        <Skeleton className="h-4 w-1/3" />
+                        <Skeleton className="h-4 w-12 rounded-full" />
+                      </div>
+                      <Skeleton className="h-3 w-2/3" />
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           ))}
@@ -219,111 +242,83 @@ export function ContextSelectorModal({ onContextChange, selectedContext, isBrows
       )
     }
 
-    if (data.length === 0 && !searchTerm.trim() && !loading) {
-      const tableNames = {
-        leads: 'leads o contactos',
-        contents: 'elementos de contenido',
-        requirements: 'requisitos',
-        tasks: 'tareas',
-        campaigns: 'campañas'
-      }
-      
+    const isEmpty = enabledCollections.every(c => ((searchResults as any)[c.key]?.length || 0) === 0)
+
+    if (isEmpty && !searchTerm.trim() && !loading) {
       return (
         <div className="text-center py-12 min-h-[300px] flex flex-col items-center justify-center">
           <Search className="h-12 w-12 text-muted-foreground/40 mx-auto mb-4" />
-          <h3 className="text-sm font-medium text-foreground mb-2">No hay {tableNames[tabKey as keyof typeof tableNames]} disponibles</h3>
+          <h3 className="text-sm font-medium text-foreground mb-2">No data available</h3>
           <p className="text-xs text-muted-foreground">
-            No se encontraron {tableNames[tabKey as keyof typeof tableNames]} en la base de datos de tu sitio
-          </p>
-          <p className="text-xs text-muted-foreground/70 mt-1">
-            Esta función estará disponible una vez que tengas {tableNames[tabKey as keyof typeof tableNames]} en tu sistema
+            No records were found in your site database
           </p>
         </div>
       )
     }
 
-    if (data.length === 0) {
+    if (isEmpty) {
       return (
         <div className="text-center py-12 min-h-[300px] flex flex-col items-center justify-center">
           <p className="text-sm text-muted-foreground">
-            No se encontraron {tabKey} que coincidan con "{searchTerm}"
+            No results matching "{searchTerm}"
           </p>
         </div>
       )
     }
 
     return (
-      <div className="max-h-96 min-h-[300px] overflow-y-auto" style={{ rowGap: '0px' }}>
-        {        data.map((item: any) => {
-          const isChecked = (selectedContext[tabKey as keyof SelectedContext] || []).includes(item.id)
-          const handleCheck = (checked: boolean) => {
-            const itemName = item.name || item.title || 'Unknown'
-            handleSelectionChange(tabKey as keyof SelectedContext, item.id, checked, itemName)
-          }
+      <div className="max-h-96 min-h-[300px] overflow-y-auto space-y-6 pr-2">
+        {enabledCollections.map(collection => {
+          const items = (searchResults as any)[collection.key] || []
+          if (items.length === 0) return null
 
-          switch (tabKey) {
-            case 'leads':
-              return (
-                <ContextLeadItem
-                  key={item.id}
-                  lead={item}
-                  checked={isChecked}
-                  onCheckedChange={handleCheck}
-                />
-              )
-            case 'contents':
-              return (
-                <ContextContentItem
-                  key={item.id}
-                  content={item}
-                  checked={isChecked}
-                  onCheckedChange={handleCheck}
-                />
-              )
-            case 'requirements':
-              return (
-                <ContextRequirementItem
-                  key={item.id}
-                  requirement={item}
-                  checked={isChecked}
-                  onCheckedChange={handleCheck}
-                />
-              )
-            case 'tasks':
-              return (
-                <ContextTaskItem
-                  key={item.id}
-                  task={item}
-                  checked={isChecked}
-                  onCheckedChange={handleCheck}
-                />
-              )
-            case 'campaigns':
-              return (
-                <ContextCampaignItem
-                  key={item.id}
-                  campaign={item}
-                  checked={isChecked}
-                  onCheckedChange={handleCheck}
-                />
-              )
-            default:
-              return null
-          }
+          return (
+            <div key={collection.key} className="space-y-2">
+              <div className="sticky top-0 bg-background/95 backdrop-blur z-10 py-2 border-b">
+                <h3 className="text-sm font-medium flex items-center gap-2 text-muted-foreground">
+                  <collection.icon className="w-4 h-4" />
+                  {collection.label}
+                  <Badge variant="outline" className="text-[10px] px-1 h-4 font-normal">
+                    {items.length}
+                  </Badge>
+                </h3>
+              </div>
+              <div className="space-y-1">
+                {items.map((item: any) => {
+                  const isChecked = (selectedContext[collection.key as keyof SelectedContextIds] || []).includes(item.id)
+                  const handleCheck = (checked: boolean) => {
+                    const itemName = item.name || item.title || 'Unknown'
+                    handleSelectionChange(collection.key as keyof SelectedContextIds, item.id, checked, itemName)
+                  }
+
+                  switch (collection.key) {
+                    case 'leads':
+                      return <ContextLeadItem key={item.id} lead={item} checked={isChecked} onCheckedChange={handleCheck} />
+                    case 'contents':
+                      return <ContextContentItem key={item.id} content={item} checked={isChecked} onCheckedChange={handleCheck} />
+                    case 'requirements':
+                      return <ContextRequirementItem key={item.id} requirement={item} checked={isChecked} onCheckedChange={handleCheck} />
+                    case 'tasks':
+                      return <ContextTaskItem key={item.id} task={item} checked={isChecked} onCheckedChange={handleCheck} />
+                    case 'campaigns':
+                      return <ContextCampaignItem key={item.id} campaign={item} checked={isChecked} onCheckedChange={handleCheck} />
+                    case 'quotations':
+                      return <ContextQuotationItem key={item.id} quotation={item} checked={isChecked} onCheckedChange={handleCheck} />
+                    case 'deals':
+                      return <ContextDealItem key={item.id} deal={item} checked={isChecked} onCheckedChange={handleCheck} />
+                    case 'records':
+                      return <ContextRecordItem key={item.id} record={item} checked={isChecked} onCheckedChange={handleCheck} />
+                    default:
+                      return null
+                  }
+                })}
+              </div>
+            </div>
+          )
         })}
       </div>
     )
   }
-
-  const tabCounts = useMemo(() => {
-    return {
-      leads: selectedContext.leads?.length || 0,
-      contents: selectedContext.contents?.length || 0,
-      requirements: selectedContext.requirements?.length || 0,
-      tasks: selectedContext.tasks?.length || 0,
-      campaigns: selectedContext.campaigns?.length || 0
-    }
-  }, [selectedContext])
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -400,68 +395,9 @@ export function ContextSelectorModal({ onContextChange, selectedContext, isBrows
             )}
           </div>
 
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full flex flex-col" style={{ rowGap: '0px' }}>
-            <TabsList className="grid w-full grid-cols-5">
-              <TabsTrigger value="leads" className="flex items-center gap-2">
-                Leads
-                {tabCounts.leads > 0 && (
-                  <Badge variant="outline" className="h-4 px-1.5 text-xs">
-                    {tabCounts.leads}
-                  </Badge>
-                )}
-              </TabsTrigger>
-              <TabsTrigger value="contents" className="flex items-center gap-2">
-                Content
-                {tabCounts.contents > 0 && (
-                  <Badge variant="outline" className="h-4 px-1.5 text-xs">
-                    {tabCounts.contents}
-                  </Badge>
-                )}
-              </TabsTrigger>
-              <TabsTrigger value="requirements" className="flex items-center gap-2">
-                Requirements
-                {tabCounts.requirements > 0 && (
-                  <Badge variant="outline" className="h-4 px-1.5 text-xs">
-                    {tabCounts.requirements}
-                  </Badge>
-                )}
-              </TabsTrigger>
-              <TabsTrigger value="tasks" className="flex items-center gap-2">
-                Tasks
-                {tabCounts.tasks > 0 && (
-                  <Badge variant="outline" className="h-4 px-1.5 text-xs">
-                    {tabCounts.tasks}
-                  </Badge>
-                )}
-              </TabsTrigger>
-              <TabsTrigger value="campaigns" className="flex items-center gap-2">
-                Campaigns
-                {tabCounts.campaigns > 0 && (
-                  <Badge variant="outline" className="h-4 px-1.5 text-xs">
-                    {tabCounts.campaigns}
-                  </Badge>
-                )}
-              </TabsTrigger>
-            </TabsList>
-
-            <div className="flex-1 overflow-hidden" style={{ rowGap: '0px' }}>
-              <TabsContent value="leads" className="h-full mt-0">
-                {renderTabContent('leads')}
-              </TabsContent>
-              <TabsContent value="contents" className="h-full mt-0">
-                {renderTabContent('contents')}
-              </TabsContent>
-              <TabsContent value="requirements" className="h-full mt-0">
-                {renderTabContent('requirements')}
-              </TabsContent>
-              <TabsContent value="tasks" className="h-full mt-0">
-                {renderTabContent('tasks')}
-              </TabsContent>
-              <TabsContent value="campaigns" className="h-full mt-0">
-                {renderTabContent('campaigns')}
-              </TabsContent>
-            </div>
-          </Tabs>
+          <div className="flex-1 overflow-hidden" style={{ rowGap: '0px' }}>
+            {renderConsolidatedContent()}
+          </div>
         </DialogBody>
 
         <DialogFooter className="sm:justify-between">
@@ -478,7 +414,10 @@ export function ContextSelectorModal({ onContextChange, selectedContext, isBrows
                   contents: [],
                   requirements: [],
                   tasks: [],
-                  campaigns: []
+                  campaigns: [],
+                  quotations: [],
+                  deals: [],
+                  records: []
                 })
               }}
               disabled={totalSelected === 0}

@@ -3,10 +3,12 @@
 import { useEffect, useRef } from "react"
 import { toast } from "sonner"
 import { useLocalization } from "@/app/context/LocalizationContext"
+import { shouldCheckVersion } from "./version-check-policy"
 
 const POLL_INTERVAL_MS = 5 * 60 * 1000
 const TOAST_ID = "app-version-update"
 const CLIENT_BUILD_ID = process.env.NEXT_PUBLIC_BUILD_ID
+const STORAGE_KEY = "mf:version-check:last"
 
 function resolveVersionUrl(): string {
   const isWww =
@@ -16,7 +18,8 @@ function resolveVersionUrl(): string {
 
 async function fetchServerBuildId(): Promise<string | null> {
   try {
-    const response = await fetch(resolveVersionUrl(), { cache: "no-store" })
+    const response = await fetch(resolveVersionUrl(), { cache: "no-cache" })
+    if (response.status === 304) return CLIENT_BUILD_ID || null
     if (!response.ok) return null
     const data = (await response.json()) as { version?: unknown }
     return typeof data.version === "string" && data.version ? data.version : null
@@ -27,7 +30,7 @@ async function fetchServerBuildId(): Promise<string | null> {
 
 export function useVersionCheck(): void {
   const hasNotifiedRef = useRef(false)
-  const { t, locale } = useLocalization()
+  const { t } = useLocalization()
   const tRef = useRef(t)
   tRef.current = t
 
@@ -37,7 +40,16 @@ export function useVersionCheck(): void {
 
     const notifyIfStale = async () => {
       if (hasNotifiedRef.current) return
-      if (document.visibilityState === "hidden") return
+      
+      const now = Date.now()
+      const lastCheckStr = localStorage.getItem(STORAGE_KEY)
+      const lastCheck = lastCheckStr ? parseInt(lastCheckStr, 10) : null
+      
+      const visible = document.visibilityState === "visible"
+      
+      if (!shouldCheckVersion({ now, lastCheck, visible })) return
+      
+      localStorage.setItem(STORAGE_KEY, now.toString())
 
       const serverBuildId = await fetchServerBuildId()
       if (!serverBuildId || serverBuildId === CLIENT_BUILD_ID) return
@@ -60,15 +72,17 @@ export function useVersionCheck(): void {
       void notifyIfStale()
     }, POLL_INTERVAL_MS)
 
-    const onFocus = () => {
-      void notifyIfStale()
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        void notifyIfStale()
+      }
     }
 
-    window.addEventListener("focus", onFocus)
+    document.addEventListener("visibilitychange", onVisibilityChange)
 
     return () => {
       window.clearInterval(intervalId)
-      window.removeEventListener("focus", onFocus)
+      document.removeEventListener("visibilitychange", onVisibilityChange)
     }
   }, [])
 }

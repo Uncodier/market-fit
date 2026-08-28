@@ -1,5 +1,5 @@
 import React from 'react'
-import { CheckCircle } from "@/app/components/ui/icons"
+import { CheckCircle, XCircle } from "@/app/components/ui/icons"
 import { InstancePlan, PlanStep } from '../types'
 import { useTheme } from "@/app/context/ThemeContext"
 
@@ -98,23 +98,37 @@ export const CompletedPlanCard: React.FC<CompletedPlanCardProps> = ({ plan }) =>
           <p className={`text-sm mb-3 ${baseClasses.text}`}>{plan.description}</p>
         )}
 
-        {isCompleted && plan.steps && Array.isArray(plan.steps) && (
+        {(isCompleted || isFailed) && plan.steps && Array.isArray(plan.steps) && (
           <div className="space-y-1">
             <div className={`text-xs font-medium mb-2 ${baseClasses.meta}`}>
               Steps ({plan.steps.length}):
             </div>
-            {(plan.steps as PlanStep[]).map((step, stepIndex) => (
-              <div key={step.id || stepIndex} className={`flex items-center gap-2 text-xs ${baseClasses.text}`}>
-                <CheckCircle
-                  className={
-                    isDarkMode ? 'flex-shrink-0 text-indigo-300' : 'flex-shrink-0 text-indigo-600'
-                  }
-                  size={12}
-                />
-                <span className="font-medium">{step.order || stepIndex + 1}.</span>
-                <span className="line-through opacity-75">{step.title}</span>
-              </div>
-            ))}
+            {(plan.steps as PlanStep[]).map((step, stepIndex) => {
+              const isStepCompleted = step.status === 'completed'
+              const isStepFailed = isFailed && !isStepCompleted
+
+              return (
+                <div key={step.id || stepIndex} className={`flex items-center gap-2 text-xs ${baseClasses.text}`}>
+                  {isStepFailed ? (
+                    <XCircle
+                      className={
+                        isDarkMode ? 'flex-shrink-0 text-amber-300' : 'flex-shrink-0 text-amber-600'
+                      }
+                      size={12}
+                    />
+                  ) : (
+                    <CheckCircle
+                      className={
+                        isDarkMode ? 'flex-shrink-0 text-indigo-300' : 'flex-shrink-0 text-indigo-600'
+                      }
+                      size={12}
+                    />
+                  )}
+                  <span className="font-medium">{step.order || stepIndex + 1}.</span>
+                  <span className={`opacity-75 ${isStepCompleted ? 'line-through' : ''}`}>{step.title}</span>
+                </div>
+              )
+            })}
           </div>
         )}
 

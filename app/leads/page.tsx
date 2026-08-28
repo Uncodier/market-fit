@@ -1475,15 +1475,16 @@ export default function LeadsPage() {
           </div>
         </StickyHeader>
         
-        <div className="p-4 md:p-8 space-y-4 bg-muted/30 flex-1 min-w-0">
-          <div className={viewType === 'kanban' ? "overflow-x-auto pb-4 -mx-4 md:-mx-8" : ""}>
-            <div className={viewType === 'kanban' ? "min-w-fit px-4 md:px-8" : ""}>
+      <div className={cn(
+        "bg-muted/30 flex-1 min-w-0 overflow-y-auto",
+        viewType === "kanban" ? "py-4 md:py-8" : "p-4 md:p-8 space-y-4 overflow-x-hidden"
+      )}>
               {loading ? (
               <LeadsTableSkeleton />
             ) : (
               <>
                 {["all", "new", "contacted", "qualified", "cold", "converted", "lost", "not_qualified"].map(tabValue => (
-                  <TabsContent key={tabValue} value={tabValue} className="mt-0 space-y-4">
+                  <TabsContent key={tabValue} value={tabValue} className="mt-0 h-full min-w-0">
                   {viewType === "table" ? (
                       <GroupedLeadsTable
                         companyGroups={companyGroups}
@@ -1524,8 +1525,6 @@ export default function LeadsPage() {
                 ))}
               </>
             )}
-            </div>
-          </div>
         </div>
       </Tabs>
     </div>

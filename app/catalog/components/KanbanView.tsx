@@ -103,7 +103,7 @@ export function KanbanView({
   }
 
   return (
-    <div className="w-full overflow-x-auto">
+    <div className="w-full min-w-0 overflow-x-auto overflow-y-hidden">
       <div className="pb-8">
         <DragDropContext onDragEnd={handleDragEndInternal}>
           <Droppable droppableId="categories-board" type="category" direction="horizontal" isDropDisabled={!isDragEnabled}>
@@ -111,7 +111,7 @@ export function KanbanView({
               <div 
                 ref={providedBoard.innerRef} 
                 {...providedBoard.droppableProps}
-                className="flex gap-4 min-w-fit pb-4 min-h-[200px] items-stretch"
+                className="flex gap-4 min-w-max px-4 md:px-6 pb-4 min-h-[200px] items-stretch after:content-[''] after:w-px after:shrink-0"
               >
                 {orderedColumns.map((column, colIndex) => {
                   const isUncategorized = column.id === "uncategorized"
