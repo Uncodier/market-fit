@@ -7,6 +7,7 @@ import {
   type DocumentShippingAddress,
 } from "@/app/documents/document-meta"
 import {
+  drawPdfText,
   drawPdfWrappedText,
   pdfInk,
   pdfMuted,
@@ -42,14 +43,14 @@ export function drawDocumentOrderMeta(
   const metaX = opts.margin + opts.contentWidth / 2
 
   if (fulfillmentLabel) {
-    page.drawText(t("quotations.document.fulfillment").toUpperCase(), {
+    drawPdfText(page, t("quotations.document.fulfillment").toUpperCase(), {
       x: opts.margin,
       y,
       size: 8,
       font: opts.bold,
       color: pdfMuted,
     })
-    page.drawText(fulfillmentLabel.slice(0, 36), {
+    drawPdfText(page, fulfillmentLabel.slice(0, 36), {
       x: opts.margin,
       y: y - 14,
       size: 11,
@@ -58,14 +59,14 @@ export function drawDocumentOrderMeta(
     })
   }
   if (paymentLabel) {
-    page.drawText(t("quotations.document.paymentMethod").toUpperCase(), {
+    drawPdfText(page, t("quotations.document.paymentMethod").toUpperCase(), {
       x: metaX,
       y,
       size: 8,
       font: opts.bold,
       color: pdfMuted,
     })
-    page.drawText(paymentLabel.slice(0, 36), {
+    drawPdfText(page, paymentLabel.slice(0, 36), {
       x: metaX,
       y: y - 14,
       size: 11,
@@ -76,7 +77,7 @@ export function drawDocumentOrderMeta(
   y -= 34
 
   if (shippingLines.length > 0) {
-    page.drawText(t("quotations.document.shippingAddress").toUpperCase(), {
+    drawPdfText(page, t("quotations.document.shippingAddress").toUpperCase(), {
       x: opts.margin,
       y,
       size: 8,

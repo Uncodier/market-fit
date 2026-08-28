@@ -3,6 +3,7 @@ import { buildQuotationPdf } from "@/app/quotations/quotation-pdf"
 import {
   formatPdfLocationLines,
   resolveBillToLines,
+  sanitizePdfText,
 } from "@/app/quotations/quotation-pdf-helpers"
 
 describe("quotation pdf helpers", () => {
@@ -22,6 +23,17 @@ describe("quotation pdf helpers", () => {
         email: "sergio@uncodie.com",
       })
     ).toEqual({ primary: "sergio@uncodie.com" })
+  })
+
+  it("strips emojis and keeps WinAnsi text", () => {
+    expect(sanitizePdfText("# 📄 Propuesta de Implementación")).toBe(
+      "# Propuesta de Implementación"
+    )
+    expect(sanitizePdfText("Términos y condiciones — €99")).toBe(
+      "Términos y condiciones — €99"
+    )
+    expect(sanitizePdfText("")).toBe("")
+    expect(sanitizePdfText(null)).toBe("")
   })
 })
 
@@ -95,6 +107,25 @@ describe("buildQuotationPdf", () => {
     })
 
     expect(String.fromCharCode(bytes[0], bytes[1], bytes[2], bytes[3])).toBe("%PDF")
+  })
+
+  it("does not crash when notes contain emojis", async () => {
+    const bytes = await buildQuotationPdf({
+      id: "emoji000-aaaa-bbbb-cccc-dddddddddddd",
+      title: "Quote 🎯",
+      currency: "USD",
+      created_at: "2026-01-15T00:00:00.000Z",
+      total: 10,
+      notes: "# 📄 Propuesta de Implementación\n\n## 🎯 Alcance\n\nTexto con **negrita**.",
+      items: [{ name: "Item 📋", quantity: 1, unit_price: 10, subtotal: 10 }],
+      lead: { name: "Client", email: "c@example.com" },
+      site: { name: "Acme" },
+      locale: "es",
+      buyerLink: "https://app.example.com/q/token",
+    })
+
+    expect(String.fromCharCode(bytes[0], bytes[1], bytes[2], bytes[3])).toBe("%PDF")
+    expect(bytes.byteLength).toBeGreaterThan(500)
   })
 })
 

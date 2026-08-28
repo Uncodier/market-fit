@@ -10,6 +10,7 @@ import {
 import type { DocumentShippingAddress } from "@/app/documents/document-meta"
 import { drawDocumentOrderMeta } from "@/app/documents/document-pdf-meta"
 import {
+  drawPdfText,
   drawPdfWrappedText,
   drawRightText,
   embedPdfLogo,
@@ -19,6 +20,7 @@ import {
   pdfRule,
   pdfSoftFill,
   resolveBillToLines,
+  sanitizePdfText,
   type QuotationPdfLocation,
 } from "@/app/quotations/quotation-pdf-helpers"
 
@@ -69,7 +71,7 @@ export async function buildDocumentPdf(input: DocumentPdfInput): Promise<Uint8Ar
   let y = page.getHeight() - margin
 
   const t = (key: string) => documentT(locale, key)
-  const siteName = input.site?.name || input.docKindLabel
+  const siteName = sanitizePdfText(input.site?.name) || input.docKindLabel
   const logo = await embedPdfLogo(doc, input.site?.logo_url)
 
   if (logo) {
@@ -81,14 +83,14 @@ export async function buildDocumentPdf(input: DocumentPdfInput): Promise<Uint8Ar
   }
 
   const titleX = logo ? margin + 52 : margin
-  page.drawText(input.docKindLabel.toUpperCase().slice(0, 28), {
+  drawPdfText(page, sanitizePdfText(input.docKindLabel).toUpperCase().slice(0, 28), {
     x: titleX,
     y: y - 14,
     size: 20,
     font: bold,
     color: pdfInk,
   })
-  page.drawText(`#${input.docRef}`, {
+  drawPdfText(page, `#${input.docRef}`, {
     x: titleX,
     y: y - 34,
     size: 12,
@@ -122,14 +124,14 @@ export async function buildDocumentPdf(input: DocumentPdfInput): Promise<Uint8Ar
 
   const colW = (contentWidth - 24) / 2
   const billX = margin + colW + 24
-  page.drawText(t("quotations.document.from").toUpperCase(), {
+  drawPdfText(page, t("quotations.document.from").toUpperCase(), {
     x: margin,
     y,
     size: 8,
     font: bold,
     color: pdfMuted,
   })
-  page.drawText(t("quotations.document.billTo").toUpperCase(), {
+  drawPdfText(page, t("quotations.document.billTo").toUpperCase(), {
     x: billX,
     y,
     size: 8,
@@ -139,7 +141,7 @@ export async function buildDocumentPdf(input: DocumentPdfInput): Promise<Uint8Ar
   y -= 16
 
   let fromY = y
-  page.drawText(siteName.slice(0, 40), {
+  drawPdfText(page, siteName.slice(0, 40), {
     x: margin,
     y: fromY,
     size: 12,
@@ -170,7 +172,7 @@ export async function buildDocumentPdf(input: DocumentPdfInput): Promise<Uint8Ar
 
   const billTo = resolveBillToLines(input.party)
   let billY = y
-  page.drawText(billTo.primary.slice(0, 40), {
+  drawPdfText(page, sanitizePdfText(billTo.primary).slice(0, 40), {
     x: billX,
     y: billY,
     size: 12,
@@ -179,7 +181,7 @@ export async function buildDocumentPdf(input: DocumentPdfInput): Promise<Uint8Ar
   })
   billY -= 14
   if (billTo.secondary) {
-    billY = drawPdfWrappedText(page, billTo.secondary, {
+    billY = drawPdfWrappedText(page, sanitizePdfText(billTo.secondary), {
       x: billX,
       y: billY,
       size: 9,
@@ -198,14 +200,14 @@ export async function buildDocumentPdf(input: DocumentPdfInput): Promise<Uint8Ar
     height: 56,
     color: pdfSoftFill,
   })
-  page.drawText(t("quotations.document.total"), {
+  drawPdfText(page, t("quotations.document.total"), {
     x: margin + 16,
     y: y - 8,
     size: 8,
     font,
     color: pdfMuted,
   })
-  page.drawText(formatDocumentMoney(input.total || 0, currency, locale), {
+  drawPdfText(page, formatDocumentMoney(input.total || 0, currency, locale), {
     x: margin + 16,
     y: y - 28,
     size: 14,
@@ -218,7 +220,7 @@ export async function buildDocumentPdf(input: DocumentPdfInput): Promise<Uint8Ar
       input.status,
       input.statusKind || "orders"
     )
-    page.drawText(statusLabel.toUpperCase().slice(0, 28), {
+    drawPdfText(page, statusLabel.toUpperCase().slice(0, 28), {
       x: margin + contentWidth / 2,
       y: y - 28,
       size: 11,
@@ -265,7 +267,7 @@ export async function buildDocumentPdf(input: DocumentPdfInput): Promise<Uint8Ar
         price: margin + 360,
         total: right - 10,
       }
-  page.drawText(t("quotations.document.item"), {
+  drawPdfText(page, t("quotations.document.item"), {
     x: cols.name,
     y,
     size: 9,
@@ -273,7 +275,7 @@ export async function buildDocumentPdf(input: DocumentPdfInput): Promise<Uint8Ar
     color: pdfMuted,
   })
   if (showItemStatus) {
-    page.drawText(t("quotations.document.status"), {
+    drawPdfText(page, t("quotations.document.status"), {
       x: cols.status,
       y,
       size: 9,
@@ -281,7 +283,7 @@ export async function buildDocumentPdf(input: DocumentPdfInput): Promise<Uint8Ar
       color: pdfMuted,
     })
   }
-  page.drawText(t("quotations.document.qty"), {
+  drawPdfText(page, t("quotations.document.qty"), {
     x: cols.qty,
     y,
     size: 9,
@@ -306,8 +308,8 @@ export async function buildDocumentPdf(input: DocumentPdfInput): Promise<Uint8Ar
 
   for (const item of lineItems) {
     if (y < 140) break
-    page.drawText(
-      (item.name || t("quotations.document.item")).slice(0, showItemStatus ? 28 : 42),
+    drawPdfText(page, 
+      sanitizePdfText(item.name || t("quotations.document.item")).slice(0, showItemStatus ? 28 : 42),
       {
         x: cols.name,
         y,
@@ -324,7 +326,7 @@ export async function buildDocumentPdf(input: DocumentPdfInput): Promise<Uint8Ar
             input.statusKind || "orders"
           )
         : "—"
-      page.drawText(lineStatus.toUpperCase().slice(0, 14), {
+      drawPdfText(page, lineStatus.toUpperCase().slice(0, 14), {
         x: cols.status,
         y,
         size: 9,
@@ -332,7 +334,7 @@ export async function buildDocumentPdf(input: DocumentPdfInput): Promise<Uint8Ar
         color: pdfInk,
       })
     }
-    page.drawText(String(item.quantity ?? 0), {
+    drawPdfText(page, String(item.quantity ?? 0), {
       x: cols.qty + 6,
       y,
       size: 10,
@@ -366,7 +368,7 @@ export async function buildDocumentPdf(input: DocumentPdfInput): Promise<Uint8Ar
   y -= 8
   const totalsX = right - 180
   const drawTotal = (label: string, value: string, emphasize = false) => {
-    page.drawText(label, {
+    drawPdfText(page, label, {
       x: totalsX,
       y,
       size: emphasize ? 11 : 9,
@@ -420,14 +422,14 @@ export async function buildDocumentPdf(input: DocumentPdfInput): Promise<Uint8Ar
     color: pdfSoftFill,
   })
   const reviewKey = input.reviewLabelKey || "quotations.document.reviewOnline"
-  page.drawText(t(reviewKey), {
+  drawPdfText(page, t(reviewKey), {
     x: margin + 12,
     y: y - 12,
     size: 9,
     font: bold,
     color: pdfInk,
   })
-  page.drawText(input.viewLink.slice(0, 78), {
+  drawPdfText(page, input.viewLink.slice(0, 78), {
     x: margin + 12,
     y: y - 28,
     size: 8,

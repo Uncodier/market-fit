@@ -6,6 +6,7 @@ import {
   resolveDocumentLocale,
 } from "@/app/lib/i18n/document-t"
 import {
+  drawPdfText,
   drawPdfWrappedText,
   drawRightText,
   embedPdfLogo,
@@ -15,6 +16,7 @@ import {
   pdfRule,
   pdfSoftFill,
   resolveBillToLines,
+  sanitizePdfText,
   type QuotationPdfLocation,
 } from "@/app/quotations/quotation-pdf-helpers"
 
@@ -67,7 +69,7 @@ export async function buildQuotationPdf(input: QuotationPdfInput): Promise<Uint8
   let y = page.getHeight() - margin
 
   const t = (key: string) => documentT(locale, key)
-  const siteName = input.site?.name || t("quotations.document.quote")
+  const siteName = sanitizePdfText(input.site?.name) || t("quotations.document.quote")
   const quoteRef = input.id.substring(0, 8)
   const logo = await embedPdfLogo(doc, input.site?.logo_url)
 
@@ -81,14 +83,14 @@ export async function buildQuotationPdf(input: QuotationPdfInput): Promise<Uint8
   }
 
   const titleX = logo ? margin + 52 : margin
-  page.drawText(t("quotations.document.quote").toUpperCase(), {
+  drawPdfText(page, t("quotations.document.quote").toUpperCase(), {
     x: titleX,
     y: y - 14,
     size: 22,
     font: bold,
     color: pdfInk,
   })
-  page.drawText(`#${quoteRef}`, {
+  drawPdfText(page, `#${quoteRef}`, {
     x: titleX,
     y: y - 34,
     size: 12,
@@ -96,7 +98,7 @@ export async function buildQuotationPdf(input: QuotationPdfInput): Promise<Uint8
     color: pdfMuted,
   })
   if (input.title) {
-    page.drawText(String(input.title).slice(0, 40), {
+    drawPdfText(page, sanitizePdfText(String(input.title)).slice(0, 40), {
       x: titleX,
       y: y - 50,
       size: 9,
@@ -146,14 +148,14 @@ export async function buildQuotationPdf(input: QuotationPdfInput): Promise<Uint8
   // From / Bill to
   const colW = (contentWidth - 24) / 2
   const billX = margin + colW + 24
-  page.drawText(t("quotations.document.from").toUpperCase(), {
+  drawPdfText(page, t("quotations.document.from").toUpperCase(), {
     x: margin,
     y,
     size: 8,
     font: bold,
     color: pdfMuted,
   })
-  page.drawText(t("quotations.document.billTo").toUpperCase(), {
+  drawPdfText(page, t("quotations.document.billTo").toUpperCase(), {
     x: billX,
     y,
     size: 8,
@@ -163,7 +165,7 @@ export async function buildQuotationPdf(input: QuotationPdfInput): Promise<Uint8
   y -= 16
 
   let fromY = y
-  page.drawText(siteName.slice(0, 40), {
+  drawPdfText(page, siteName.slice(0, 40), {
     x: margin,
     y: fromY,
     size: 12,
@@ -194,7 +196,7 @@ export async function buildQuotationPdf(input: QuotationPdfInput): Promise<Uint8
 
   const billTo = resolveBillToLines(input.lead)
   let billY = y
-  page.drawText(billTo.primary.slice(0, 40), {
+  drawPdfText(page, sanitizePdfText(billTo.primary).slice(0, 40), {
     x: billX,
     y: billY,
     size: 12,
@@ -203,7 +205,7 @@ export async function buildQuotationPdf(input: QuotationPdfInput): Promise<Uint8
   })
   billY -= 14
   if (billTo.secondary) {
-    billY = drawPdfWrappedText(page, billTo.secondary, {
+    billY = drawPdfWrappedText(page, sanitizePdfText(billTo.secondary), {
       x: billX,
       y: billY,
       size: 9,
@@ -226,42 +228,42 @@ export async function buildQuotationPdf(input: QuotationPdfInput): Promise<Uint8
   const col1 = margin + 16
   const col2 = margin + contentWidth / 3 + 8
   const col3 = margin + (contentWidth * 2) / 3 + 8
-  page.drawText(t("quotations.document.total"), {
+  drawPdfText(page, t("quotations.document.total"), {
     x: col1,
     y: y - 8,
     size: 8,
     font,
     color: pdfMuted,
   })
-  page.drawText(formatDocumentMoney(input.total || 0, currency, locale), {
+  drawPdfText(page, formatDocumentMoney(input.total || 0, currency, locale), {
     x: col1,
     y: y - 28,
     size: 14,
     font: bold,
     color: pdfInk,
   })
-  page.drawText("STATUS", {
+  drawPdfText(page, "STATUS", {
     x: col2,
     y: y - 8,
     size: 8,
     font,
     color: pdfMuted,
   })
-  page.drawText(String(input.status || "draft").toUpperCase(), {
+  drawPdfText(page, String(input.status || "draft").toUpperCase(), {
     x: col2,
     y: y - 28,
     size: 11,
     font: bold,
     color: pdfInk,
   })
-  page.drawText(t("quotations.document.validUntil"), {
+  drawPdfText(page, t("quotations.document.validUntil"), {
     x: col3,
     y: y - 8,
     size: 8,
     font,
     color: pdfMuted,
   })
-  page.drawText(formatDocumentDate(input.valid_until, locale), {
+  drawPdfText(page, formatDocumentDate(input.valid_until, locale), {
     x: col3,
     y: y - 28,
     size: 11,
@@ -284,14 +286,14 @@ export async function buildQuotationPdf(input: QuotationPdfInput): Promise<Uint8
     price: margin + 360,
     total: right - 10,
   }
-  page.drawText(t("quotations.document.item"), {
+  drawPdfText(page, t("quotations.document.item"), {
     x: cols.name,
     y,
     size: 9,
     font: bold,
     color: pdfMuted,
   })
-  page.drawText(t("quotations.document.qty"), {
+  drawPdfText(page, t("quotations.document.qty"), {
     x: cols.qty,
     y,
     size: 9,
@@ -316,14 +318,14 @@ export async function buildQuotationPdf(input: QuotationPdfInput): Promise<Uint8
 
   for (const item of input.items || []) {
     if (y < 140) break
-    page.drawText((item.name || t("quotations.document.item")).slice(0, 42), {
+    drawPdfText(page, sanitizePdfText(item.name || t("quotations.document.item")).slice(0, 42), {
       x: cols.name,
       y,
       size: 10,
       font,
       color: pdfInk,
     })
-    page.drawText(String(item.quantity ?? 0), {
+    drawPdfText(page, String(item.quantity ?? 0), {
       x: cols.qty + 6,
       y,
       size: 10,
@@ -357,7 +359,7 @@ export async function buildQuotationPdf(input: QuotationPdfInput): Promise<Uint8
   y -= 8
   const totalsX = right - 180
   const drawTotal = (label: string, value: string, emphasize = false) => {
-    page.drawText(label, {
+    drawPdfText(page, label, {
       x: totalsX,
       y,
       size: emphasize ? 11 : 9,
@@ -410,14 +412,14 @@ export async function buildQuotationPdf(input: QuotationPdfInput): Promise<Uint8
     height: 44,
     color: pdfSoftFill,
   })
-  page.drawText(t("quotations.document.reviewOnline"), {
+  drawPdfText(page, t("quotations.document.reviewOnline"), {
     x: margin + 12,
     y: y - 12,
     size: 9,
     font: bold,
     color: pdfInk,
   })
-  page.drawText(input.buyerLink.slice(0, 78), {
+  drawPdfText(page, input.buyerLink.slice(0, 78), {
     x: margin + 12,
     y: y - 28,
     size: 8,
@@ -436,14 +438,14 @@ export async function buildQuotationPdf(input: QuotationPdfInput): Promise<Uint8
       notesPage = doc.addPage([595.28, 841.89])
       ny = notesPage.getHeight() - margin
 
-      notesPage.drawText(t("quotations.document.quote").toUpperCase(), {
+      drawPdfText(notesPage, t("quotations.document.quote").toUpperCase(), {
         x: margin,
         y: ny - 14,
         size: 22,
         font: bold,
         color: pdfInk,
       })
-      notesPage.drawText(`#${quoteRef}`, {
+      drawPdfText(notesPage, `#${quoteRef}`, {
         x: margin,
         y: ny - 34,
         size: 12,
@@ -454,7 +456,7 @@ export async function buildQuotationPdf(input: QuotationPdfInput): Promise<Uint8
       ny -= 64
     }
 
-    notesPage.drawText(t("quotations.detail.notes") || "Notes", {
+    drawPdfText(notesPage, t("quotations.detail.notes") || "Notes", {
       x: margin,
       y: ny,
       size: 10,
@@ -465,7 +467,8 @@ export async function buildQuotationPdf(input: QuotationPdfInput): Promise<Uint8
     ny -= 16
     
     // Very simple Markdown parser for PDF
-    const lines = input.notes.split('\n')
+    const safeNotes = sanitizePdfText(input.notes)
+    const lines = safeNotes.split('\n')
     for (const line of lines) {
       if (ny < margin + 20) {
         // Need new page (not fully handling multi-page notes, but avoiding crashing off bottom)
