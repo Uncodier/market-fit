@@ -76,6 +76,14 @@ export async function requestUsbPrinter(): Promise<{
   serialNumber?: string
   baudRate?: number
 } | null> {
+  if (isWebUsbSupported()) {
+    try {
+      return await requestWebUsbPrinter()
+    } catch (err) {
+      if (!isUserCancel(err)) throw err
+    }
+  }
+
   const serial = getSerial()
   if (serial) {
     try {
@@ -92,10 +100,10 @@ export async function requestUsbPrinter(): Promise<{
       if (!isUserCancel(err)) throw err
     }
   }
-  if (isWebUsbSupported()) {
-    return requestWebUsbPrinter()
+  
+  if (!isWebUsbSupported() && !serial) {
+    throw new Error("USB printing needs Chrome or Edge")
   }
-  if (!serial) throw new Error("USB printing needs Chrome or Edge")
   return null
 }
 
