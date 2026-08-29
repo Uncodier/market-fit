@@ -59,7 +59,7 @@ export default function RecordsPage() {
   const [isBulkActionLoading, setIsBulkActionLoading] = useState(false)
 
   const handleBulkDelete = async () => {
-    if (!confirm(t("records.bulk.confirmDelete") || `Are you sure you want to delete ${selectedRecords.size} records?`)) return
+    if (!confirm(t("records.bulk.confirmDelete", { count: selectedRecords.size }) || `Are you sure you want to delete ${selectedRecords.size} records?`)) return
     
     setIsBulkActionLoading(true)
     try {
@@ -67,7 +67,7 @@ export default function RecordsPage() {
       await Promise.all(promises)
       
       setSelectedRecords(new Set())
-      toast.success(t("records.bulk.deleted") || `${selectedRecords.size} records deleted successfully`)
+      toast.success(t("records.bulk.deleted", { count: selectedRecords.size }) || `${selectedRecords.size} records deleted successfully`)
       refreshData()
     } catch (error) {
       console.error("Error in bulk delete:", error)
@@ -84,7 +84,7 @@ export default function RecordsPage() {
       await Promise.all(promises)
       
       setSelectedRecords(new Set())
-      toast.success(t("records.bulk.statusUpdated") || `Status updated for ${selectedRecords.size} records`)
+      toast.success(t("records.bulk.statusUpdated", { count: selectedRecords.size }) || `Status updated for ${selectedRecords.size} records`)
       refreshData()
     } catch (error) {
       console.error("Error in bulk status change:", error)
@@ -101,7 +101,7 @@ export default function RecordsPage() {
       await Promise.all(promises)
       
       setSelectedRecords(new Set())
-      toast.success(t("records.bulk.categoryUpdated") || `Category updated for ${selectedRecords.size} records`)
+      toast.success(t("records.bulk.categoryUpdated", { count: selectedRecords.size }) || `Category updated for ${selectedRecords.size} records`)
       refreshData()
     } catch (error) {
       console.error("Error in bulk category change:", error)

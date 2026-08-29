@@ -123,7 +123,7 @@ function CategoryItem({
       <div className="group relative flex items-center mb-[2px]">
         <Button
           variant={isSelected ? "secondary" : "ghost"}
-          className="w-full justify-start relative pr-10 pl-1"
+          className="w-full justify-start relative pr-10 pl-2"
           style={{
             height: '31.5px',
             fontSize: '11.3px'
@@ -133,24 +133,23 @@ function CategoryItem({
             onSelectCategory(category.id, null)
           }}
         >
-          <div className="flex items-center justify-center w-5 h-5 mr-1 shrink-0">
-            {hasSubfolders && (
-              <div 
-                className="flex items-center justify-center cursor-pointer hover:bg-muted/50 rounded-md h-5 w-5"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  setIsExpanded(!isExpanded)
-                }}
-              >
-                {isExpanded ? <ChevronDown className="h-3 w-3 text-muted-foreground" /> : <ChevronRight className="h-3 w-3 text-muted-foreground" />}
-              </div>
-            )}
-          </div>
           {(() => {
             const IconComponent = category.icon && (Icons as any)[category.icon] ? (Icons as any)[category.icon] : Folder;
             return <IconComponent className="mr-[6.5px] h-3.5 w-3.5 text-muted-foreground shrink-0" />;
           })()}
-          <span className="truncate">{category.name}</span>
+          <span className="truncate flex-1 text-left">{category.name}</span>
+          
+          {hasSubfolders && (
+            <div 
+              className="flex items-center justify-center cursor-pointer hover:bg-muted/50 rounded-md h-5 w-5 shrink-0 ml-1"
+              onClick={(e) => {
+                e.stopPropagation()
+                setIsExpanded(!isExpanded)
+              }}
+            >
+              {isExpanded ? <ChevronDown className="h-3 w-3 text-muted-foreground" /> : <ChevronRight className="h-3 w-3 text-muted-foreground" />}
+            </div>
+          )}
         </Button>
         <Button
           variant="ghost"
@@ -166,7 +165,7 @@ function CategoryItem({
       </div>
 
       {isExpanded && hasSubfolders && (
-        <div className="pl-4 border-l ml-[13px] pr-2 mt-1">
+        <div className="pl-4 border-l ml-[14px] pr-2 mt-1 border-border/50">
           {isLoading ? (
             <div className="pl-4 py-2 space-y-2">
               <Skeleton className="h-4 w-3/4 rounded-sm" />
@@ -182,26 +181,24 @@ function CategoryItem({
                   <div className="group flex items-center mb-[2px]">
                     <Button
                       variant="ghost"
-                      className="w-full justify-start pl-1 pr-2 relative"
+                      className="w-full justify-start pl-2 pr-2 relative"
                       style={{
                         height: '31.5px',
                         fontSize: '11.3px'
                       }}
                       onClick={(e) => toggleRelation(tree.fieldName, e)}
                     >
-                      <div className="flex items-center justify-center w-5 h-5 mr-1 shrink-0">
-                        <div 
-                          className="flex items-center justify-center cursor-pointer hover:bg-muted/50 rounded-md h-5 w-5"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            toggleRelation(tree.fieldName, e);
-                          }}
-                        >
-                          {isRelExpanded ? <ChevronDown className="h-3 w-3 text-muted-foreground" /> : <ChevronRight className="h-3 w-3 text-muted-foreground" />}
-                        </div>
-                      </div>
                       <Folder className="mr-[6.5px] h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                      <span className="truncate">{tree.fieldName}</span>
+                      <span className="truncate flex-1 text-left">{tree.fieldName}</span>
+                      <div 
+                        className="flex items-center justify-center cursor-pointer hover:bg-muted/50 rounded-md h-5 w-5 shrink-0 ml-1"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleRelation(tree.fieldName, e);
+                        }}
+                      >
+                        {isRelExpanded ? <ChevronDown className="h-3 w-3 text-muted-foreground" /> : <ChevronRight className="h-3 w-3 text-muted-foreground" />}
+                      </div>
                     </Button>
                   </div>
 
@@ -216,7 +213,7 @@ function CategoryItem({
                           <div key={entityId} className="flex items-center mb-[2px]">
                             <Button
                               variant={isEntitySelected ? "secondary" : "ghost"}
-                              className="w-full justify-start pl-[28px]"
+                              className="w-full justify-start pl-2"
                               style={{
                                 height: '31.5px',
                                 fontSize: '11.3px'
@@ -226,7 +223,7 @@ function CategoryItem({
                               <span className="mr-[6.5px] text-muted-foreground shrink-0 flex items-center justify-center">
                                 {getIcon(tree.target)}
                               </span>
-                              <span className="truncate">{resolvedNames[entityId] || (t("records.sidebar.unnamed") || 'Unnamed')}</span>
+                              <span className="truncate flex-1 text-left">{resolvedNames[entityId] || (t("records.sidebar.unnamed") || 'Unnamed')}</span>
                             </Button>
                           </div>
                         )
@@ -275,7 +272,7 @@ export function RecordsSidebar({
         <div>
           <Button
             variant={selectedCategory === "all" ? "secondary" : "ghost"}
-            className="w-full justify-start font-medium pl-[28px]"
+            className="w-full justify-start font-medium pl-2"
             style={{
               height: '31.5px',
               fontSize: '11.3px',
@@ -283,8 +280,8 @@ export function RecordsSidebar({
             }}
             onClick={() => onSelectCategory("all", null)}
           >
-            <Folder className="mr-[6.5px] h-3.5 w-3.5 text-muted-foreground" />
-            {t("records.sidebar.allRecords") || "All Records"}
+            <Folder className="mr-[6.5px] h-3.5 w-3.5 text-muted-foreground shrink-0" />
+            <span className="truncate flex-1 text-left">{t("records.sidebar.allRecords") || "All Records"}</span>
           </Button>
 
           <div className="space-y-0">
@@ -301,7 +298,7 @@ export function RecordsSidebar({
                 
                 {/* Child categories */}
                 {categories.filter(c => c.parent_category_id === category.id).length > 0 && (
-                  <div className="pl-4 border-l ml-[13px] my-1">
+                  <div className="pl-4 border-l ml-[14px] my-1 border-border/50">
                     {categories.filter(c => c.parent_category_id === category.id).map(childCategory => (
                       <CategoryItem
                         key={childCategory.id}
