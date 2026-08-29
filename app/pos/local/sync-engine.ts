@@ -42,6 +42,7 @@ type SyncListener = (status: SyncStatus) => void;
 
 const listeners = new Set<SyncListener>();
 let running = false;
+let rerunFlag = false;
 let pulling = false;
 let lastError: string | null = null;
 const EMPTY_SITE_STATE: SiteSyncState = {
@@ -73,6 +74,10 @@ async function refreshCounts(siteId: string) {
     failedCount,
   });
   emit(siteId);
+}
+
+export function refreshPosSyncCounts(siteId: string) {
+  return refreshCounts(siteId);
 }
 
 function emit(siteId: string) {
@@ -215,13 +220,16 @@ export async function drainPosOutbox(siteId: string): Promise<void> {
     emit(siteId);
     return;
   }
-  if (running) return;
+  if (running) {
+    rerunFlag = true;
+    return;
+  }
   running = true;
   emit(siteId);
 
   try {
     // Prefer create_lead before checkout that depends on it
-    const open = await listOutbox(siteId, ["pending", "failed"]);
+    const open = await listOutbox(siteId, ["pending", "syncing", "failed"]);
     const ordered = [
       ...open.filter((r) => r.kind === "create_lead"),
       ...open.filter((r) => r.kind !== "create_lead"),
@@ -233,7 +241,12 @@ export async function drainPosOutbox(siteId: string): Promise<void> {
         attempts: row.attempts + 1,
       });
       try {
-        await applyOutboxItem(row);
+        await Promise.race([
+          applyOutboxItem(row),
+          new Promise<void>((_, reject) =>
+            setTimeout(() => reject(new Error("Sync timed out")), 45000),
+          ),
+        ]);
         lastError = null;
       } catch (e: any) {
         lastError = e?.message || "Sync failed";
@@ -246,6 +259,10 @@ export async function drainPosOutbox(siteId: string): Promise<void> {
   } finally {
     running = false;
     await refreshCounts(siteId);
+    if (rerunFlag) {
+      rerunFlag = false;
+      void drainPosOutbox(siteId);
+    }
   }
 }
 

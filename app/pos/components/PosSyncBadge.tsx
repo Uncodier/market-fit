@@ -5,15 +5,7 @@ import { AlertTriangle, CheckCircle2, Loader2 } from "@/app/components/ui/icons"
 import type { SyncStatus } from "@/app/pos/local/sync-engine";
 import { cn } from "@/lib/utils";
 
-export function PosSyncBadge({
-  status,
-  onRetry,
-  t,
-}: {
-  status: SyncStatus;
-  onRetry?: () => void;
-  t: (key: string) => string;
-}) {
+export function posSyncBadgeView(status: SyncStatus, t: (key: string) => string) {
   const pending = status.pendingCount + status.failedCount;
   const busy = status.pulling || status.syncing || status.pendingCount > 0;
   const expanded = !status.online || status.failedCount > 0 || busy;
@@ -38,16 +30,30 @@ export function PosSyncBadge({
   const Icon =
     status.failedCount > 0
       ? AlertTriangle
-      : status.pulling || status.syncing
+      : busy
         ? Loader2
         : CheckCircle2;
+
+  return { label, tone, Icon, busy, expanded };
+}
+
+export function PosSyncBadge({
+  status,
+  onClick,
+  t,
+}: {
+  status: SyncStatus;
+  onClick?: () => void;
+  t: (key: string) => string;
+}) {
+  const { label, tone, Icon, busy, expanded } = posSyncBadgeView(status, t);
 
   return (
     <Button
       type="button"
       variant="ghost"
       size="sm"
-      onClick={onRetry}
+      onClick={onClick}
       aria-label={label}
       className={cn(
         "h-8 rounded-full text-xs font-medium overflow-hidden transition-[padding,gap,width] duration-200",
@@ -59,7 +65,7 @@ export function PosSyncBadge({
       <Icon
         className={cn(
           "h-3.5 w-3.5 flex-shrink-0",
-          (status.pulling || status.syncing) && "animate-spin",
+          busy && "animate-spin",
         )}
       />
       <span

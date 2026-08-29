@@ -11,7 +11,7 @@ import type { PosCartItem } from "@/app/pos/components/CartPanel";
 import { getPosCheckoutGate } from "@/app/pos/checkout-gates";
 import type { CheckoutFulfillmentMethod } from "@/app/commerce/delivery-options";
 import { enqueueCheckout } from "@/app/pos/local/outbox";
-import { drainPosOutbox } from "@/app/pos/local/sync-engine";
+import { drainPosOutbox, refreshPosSyncCounts } from "@/app/pos/local/sync-engine";
 import { getPosDb } from "@/app/pos/local/db";
 import { useSite } from "@/app/context/SiteContext";
 import { normalizePrintersSettings, ticketBrandFromSite } from "@/lib/printer";
@@ -194,6 +194,7 @@ export function usePosCheckout({
       notes: orderNotes.trim(),
       clientMutationId,
     });
+    refreshPosSyncCounts(siteId);
 
     const totalPaid = params.payments.reduce((sum, p) => sum + p.amount, 0);
     const amountDue = roundMoney(Math.max(0, total - totalPaid));
@@ -523,6 +524,7 @@ export function usePosCheckout({
         notes: order.title.trim(),
         clientMutationId,
       });
+      refreshPosSyncCounts(siteId);
 
       // Calculate amount due for this split
       const subtotalSplit = order.items.reduce(

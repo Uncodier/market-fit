@@ -336,14 +336,7 @@ export default function POSPage() {
                 <PrinterSyncBadge module="pos" />
                 <PosSyncBadge
                   status={syncStatus}
-                  onRetry={() => {
-                    if (syncStatus.failedCount > 0) {
-                      setSyncIssuesOpen(true);
-                      return;
-                    }
-                    retrySync();
-                    if (siteId) void drainPosOutbox(siteId);
-                  }}
+                  onClick={() => setSyncIssuesOpen(true)}
                   t={t} />
               </div>
 
