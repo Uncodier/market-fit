@@ -5,12 +5,19 @@
 @layer base {
   :root {
     --font-museo-moderno: 'Museo Moderno', sans-serif;
-    --font-inter: 'Inter', ui-sans-serif, system-ui, sans-serif;
   }
 
   html {
-    font-family: var(--font-museo-moderno), sans-serif;
+    font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
     scrollbar-gutter: stable;
+  }
+
+  html.museo-ready {
+    font-family: var(--font-museo-moderno), sans-serif;
+  }
+
+  html.locale-pending body {
+    visibility: hidden;
   }
 
   /* Prioritize legibility for body text and interactive elements */

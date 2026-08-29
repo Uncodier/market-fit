@@ -22,6 +22,8 @@ export function PdpProductGallery({
           <img
             src={mainSrc}
             alt={itemName}
+            fetchPriority="high"
+            decoding="async"
             className="absolute inset-0 h-full w-full object-cover object-center hover:scale-105 transition-transform duration-700"
           />
         ) : (

@@ -102,6 +102,14 @@ const nextConfig = {
   // www proxies shop/commerce to the app deployment; Origin is www while
   // x-forwarded-host is app — allow www so Server Actions are not aborted.
   experimental: {
+    optimizePackageImports: [
+      'date-fns',
+      'date-fns-tz',
+      'lodash',
+      'recharts',
+      '@tiptap/react',
+      '@tiptap/starter-kit',
+    ],
     serverActions: {
       bodySizeLimit: '10mb',
       allowedOrigins: [

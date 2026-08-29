@@ -1,12 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
-import { useAuth } from "@/app/hooks/use-auth";
-import { useSite } from "@/app/context/SiteContext";
 import { useTheme } from "@/app/context/ThemeContext";
 import { Skeleton } from "@/app/components/ui/skeleton";
-import { fetchWithRetry } from "@/app/utils/fetch-with-retry";
+import { usePerformanceSlice } from "@/app/hooks/use-dashboard-batches";
 
 interface TokenUsageChartProps {
   startDate: Date;
@@ -35,46 +32,13 @@ export function TokenUsageChart({
   endDate, 
   segmentId = "all" 
 }: TokenUsageChartProps) {
-  const [data, setData] = useState<TokensData | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const { user } = useAuth();
-  const { currentSite } = useSite();
+  const { data, isLoading } = usePerformanceSlice<TokensData>(
+    "tokens",
+    startDate,
+    endDate,
+    segmentId
+  );
   const { isDarkMode } = useTheme();
-
-  useEffect(() => {
-    const fetchData = async () => {
-      if (!currentSite?.id || !user?.id) return;
-
-      setIsLoading(true);
-
-      const params = new URLSearchParams({
-        siteId: currentSite.id,
-        userId: user.id,
-        startDate: startDate.toISOString(),
-        endDate: endDate.toISOString(),
-        segmentId: segmentId
-      });
-
-      const response = await fetchWithRetry(
-        fetch,
-        `/api/performance/tokens?${params}`,
-        { maxRetries: 3 }
-      );
-
-      if (!response) {
-        // All retries failed or request was cancelled - show empty state
-        setIsLoading(false);
-        setData(null);
-        return;
-      }
-
-      const result = await response.json();
-      setData(result);
-      setIsLoading(false);
-    };
-
-    fetchData();
-  }, [currentSite?.id, user?.id, startDate, endDate, segmentId, ]);
 
   // Colors for the chart
   const colors = {

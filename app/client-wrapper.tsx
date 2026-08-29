@@ -1,13 +1,18 @@
 "use client"
 
-import { useEffect } from "react"
+import { Suspense, useEffect } from "react"
+import dynamic from "next/dynamic"
 import { usePathname } from "next/navigation"
-import LayoutClient from "./layout-client"
 import { shouldUseLayout } from "./config/routes"
 import DemoBanner from "./components/DemoBanner"
-import ViewOnlyBanner from "./components/permissions/ViewOnlyBanner"
 import VersionCheck from "./components/VersionCheck"
 import { rememberInternalPath } from "./documents/internal-back"
+
+const LayoutClient = dynamic(() => import("./layout-client"), { ssr: true })
+const ViewOnlyBanner = dynamic(
+  () => import("./components/permissions/ViewOnlyBanner"),
+  { ssr: false }
+)
 
 export default function ClientWrapper({
   children,
@@ -23,12 +28,14 @@ export default function ClientWrapper({
 
   if (useLayout) {
     return (
-      <LayoutClient>
-        {children}
-        <DemoBanner />
-        <ViewOnlyBanner />
-        <VersionCheck />
-      </LayoutClient>
+      <Suspense fallback={<div className="min-h-[100dvh] bg-background" />}>
+        <LayoutClient>
+          {children}
+          <DemoBanner />
+          <ViewOnlyBanner />
+          <VersionCheck />
+        </LayoutClient>
+      </Suspense>
     )
   }
 
@@ -36,8 +43,7 @@ export default function ClientWrapper({
     <>
       {children}
       <DemoBanner />
-      <ViewOnlyBanner />
       <VersionCheck />
     </>
   )
-} 
+}

@@ -53,6 +53,7 @@ export const routes: RouteConfig[] = [
   { path: "/transactions", hasLayout: true },
   { path: "/finance", hasLayout: true },
   { path: "/accounting", hasLayout: true },
+  { path: "/copywriting", hasLayout: true },
 
   { path: "/create-site", hasLayout: false },
   { path: "/buyer", hasLayout: false },
@@ -71,6 +72,18 @@ export const routes: RouteConfig[] = [
 
 function pathStartsWithRoute(pathname: string, routePath: string): boolean {
   return pathname === routePath || pathname.startsWith(`${routePath}/`)
+}
+
+/** Workspace data providers (site, permissions, robots). Shop/cart keep a lean tree. */
+export function shouldUseWorkspaceProviders(pathname: string): boolean {
+  if (shouldUseLayout(pathname)) return true
+  return (
+    pathname.startsWith("/buyer") ||
+    pathname.startsWith("/create-site") ||
+    pathname.startsWith("/projects") ||
+    pathname.startsWith("/demo") ||
+    pathname.startsWith("/checkout")
+  )
 }
 
 export function shouldUseLayout(pathname: string): boolean {

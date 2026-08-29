@@ -1,9 +1,16 @@
+"use client"
+
 import React from 'react'
+import dynamic from 'next/dynamic'
 import { InstanceLog, StructuredOutputResponse } from './types'
 import { getToolResult, getStructuredStyle, isBase64Image, formatBase64Image } from './utils'
 import { StructuredOutputStylesLight } from './types'
 import { SessionNeededComponent } from './components/SessionNeededComponent'
-import { ZipViewer } from './components/ZipViewer'
+
+const ZipViewer = dynamic(
+  () => import('./components/ZipViewer').then((m) => m.ZipViewer),
+  { ssr: false }
+)
 
 // Helper function to render structured output based on tool_result.output
 export const renderStructuredOutput = (log: InstanceLog, isDarkMode: boolean): React.ReactElement | null => {

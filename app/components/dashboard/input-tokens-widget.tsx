@@ -1,98 +1,53 @@
-"use client";
+"use client"
 
-import { useState, useEffect } from "react";
-import { BaseKpiWidget } from "./base-kpi-widget";
-import { useAuth } from "@/app/hooks/use-auth";
-import { useSite } from "@/app/context/SiteContext";
-import { useLocalization } from "@/app/context/LocalizationContext";
-import { fetchWithRetry } from "@/app/utils/fetch-with-retry";
-
-interface InputTokensWidgetProps {
-  startDate: Date;
-  endDate: Date;
-  segmentId?: string;
-}
+import { BaseKpiWidget } from "./base-kpi-widget"
+import { useLocalization } from "@/app/context/LocalizationContext"
+import { usePerformanceSlice } from "@/app/hooks/use-dashboard-batches"
 
 interface TokensData {
-  actual: number;
-  percentChange: number;
-  periodType: string;
-  breakdown: {
-    commands: number;
-    instanceLogs: number;
-    inputTokens: number;
-    outputTokens: number;
-  };
+  actual: number
+  percentChange: number
+  periodType: string
+  breakdown?: {
+    inputTokens?: number
+    outputTokens?: number
+  }
 }
 
-export function InputTokensWidget({ 
-  startDate, 
-  endDate, 
-  segmentId = "all" 
-}: InputTokensWidgetProps) {
-  const { t } = useLocalization();
-  const [data, setData] = useState<TokensData | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const { user } = useAuth();
-  const { currentSite } = useSite();
+function formatPeriodType(periodType: string, t: (key: string) => string) {
+  switch (periodType) {
+    case "daily": return t("dashboard.widgets.revenue.yesterday") || "yesterday"
+    case "weekly": return t("dashboard.widgets.revenue.lastWeek") || "last week"
+    case "monthly": return t("dashboard.widgets.revenue.lastMonth") || "last month"
+    default: return t("dashboard.widgets.revenue.previousPeriod") || "previous period"
+  }
+}
 
-  useEffect(() => {
-    const fetchData = async () => {
-      if (!currentSite?.id || !user?.id) return;
-
-      setIsLoading(true);
-
-      const params = new URLSearchParams({
-        siteId: currentSite.id,
-        userId: user.id,
-        startDate: startDate.toISOString(),
-        endDate: endDate.toISOString(),
-        segmentId: segmentId
-      });
-
-      const response = await fetchWithRetry(
-        fetch,
-        `/api/performance/tokens?${params}`,
-        { maxRetries: 3 }
-      );
-
-      if (!response) {
-        // All retries failed or request was cancelled - show default 0 value
-        setIsLoading(false);
-        setData(null);
-        return;
-      }
-
-      const result = await response.json();
-      setData(result);
-      setIsLoading(false);
-    };
-
-    fetchData();
-  }, [currentSite?.id, user?.id, startDate, endDate, segmentId, ]);
-
-  const formatPeriodType = (periodType: string) => {
-    switch (periodType) {
-      case "daily": return t('dashboard.widgets.revenue.yesterday') || 'yesterday';
-      case "weekly": return t('dashboard.widgets.revenue.lastWeek') || 'last week';
-      case "monthly": return t('dashboard.widgets.revenue.lastMonth') || 'last month';
-      default: return t('dashboard.widgets.revenue.previousPeriod') || 'previous period';
-    }
-  };
-
-  // Get input tokens from breakdown
-  const inputTokens = data?.breakdown?.inputTokens || 0;
-
-  const displayValue = inputTokens.toLocaleString();
-  const changeText = `${data?.percentChange || 0}% from ${formatPeriodType(data?.periodType || "monthly")}`;
+export function InputTokensWidget({
+  startDate,
+  endDate,
+  segmentId = "all",
+}: {
+  startDate: Date
+  endDate: Date
+  segmentId?: string
+}) {
+  const { t } = useLocalization()
+  const { data, isLoading } = usePerformanceSlice<TokensData>(
+    "tokens",
+    startDate,
+    endDate,
+    segmentId
+  )
+  const inputTokens = data?.breakdown?.inputTokens || 0
 
   return (
     <BaseKpiWidget
-      title={t('dashboard.widgets.inputTokens') || 'Input Tokens'}
-      value={displayValue}
-      changeText={changeText}
+      title={t("dashboard.widgets.inputTokens") || "Input Tokens"}
+      value={inputTokens.toLocaleString()}
+      changeText={`${data?.percentChange || 0}% from ${formatPeriodType(data?.periodType || "monthly", t)}`}
       isPositiveChange={(data?.percentChange || 0) > 0}
       isLoading={isLoading}
     />
-  );
+  )
 }

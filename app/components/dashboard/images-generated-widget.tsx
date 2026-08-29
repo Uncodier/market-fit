@@ -1,89 +1,48 @@
-"use client";
+"use client"
 
-import { useState, useEffect } from "react";
-import { BaseKpiWidget } from "./base-kpi-widget";
-import { useAuth } from "@/app/hooks/use-auth";
-import { useSite } from "@/app/context/SiteContext";
-import { useLocalization } from "@/app/context/LocalizationContext";
-import { fetchWithRetry } from "@/app/utils/fetch-with-retry";
-
-interface ImagesGeneratedWidgetProps {
-  startDate: Date;
-  endDate: Date;
-  segmentId?: string;
-}
+import { BaseKpiWidget } from "./base-kpi-widget"
+import { useLocalization } from "@/app/context/LocalizationContext"
+import { usePerformanceSlice } from "@/app/hooks/use-dashboard-batches"
 
 interface ImagesGeneratedData {
-  actual: number;
-  percentChange: number;
-  periodType: string;
+  actual: number
+  percentChange: number
+  periodType: string
 }
 
-export function ImagesGeneratedWidget({ 
-  startDate, 
-  endDate, 
-  segmentId = "all" 
-}: ImagesGeneratedWidgetProps) {
-  const { t } = useLocalization();
-  const [data, setData] = useState<ImagesGeneratedData | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const { user } = useAuth();
-  const { currentSite } = useSite();
+function formatPeriodType(periodType: string, t: (key: string) => string) {
+  switch (periodType) {
+    case "daily": return t("dashboard.widgets.revenue.yesterday") || "yesterday"
+    case "weekly": return t("dashboard.widgets.revenue.lastWeek") || "last week"
+    case "monthly": return t("dashboard.widgets.revenue.lastMonth") || "last month"
+    default: return t("dashboard.widgets.revenue.previousPeriod") || "previous period"
+  }
+}
 
-  useEffect(() => {
-    const fetchData = async () => {
-      if (!currentSite?.id || !user?.id) return;
-
-      setIsLoading(true);
-
-      const params = new URLSearchParams({
-        siteId: currentSite.id,
-        userId: user.id,
-        startDate: startDate.toISOString(),
-        endDate: endDate.toISOString(),
-        segmentId: segmentId
-      });
-
-      const response = await fetchWithRetry(
-        fetch,
-        `/api/performance/images-generated?${params}`,
-        { maxRetries: 3 }
-      );
-
-      if (!response) {
-        // All retries failed or request was cancelled - show default 0 value
-        setIsLoading(false);
-        setData(null);
-        return;
-      }
-
-      const result = await response.json();
-      setData(result);
-      setIsLoading(false);
-    };
-
-    fetchData();
-  }, [currentSite?.id, user?.id, startDate, endDate, segmentId, ]);
-
-  const formatPeriodType = (periodType: string) => {
-    switch (periodType) {
-      case "daily": return t('dashboard.widgets.revenue.yesterday') || 'yesterday';
-      case "weekly": return t('dashboard.widgets.revenue.lastWeek') || 'last week';
-      case "monthly": return t('dashboard.widgets.revenue.lastMonth') || 'last month';
-      default: return t('dashboard.widgets.revenue.previousPeriod') || 'previous period';
-    }
-  };
-
-  const displayValue = data?.actual?.toLocaleString() || "0";
-  const changeText = `${data?.percentChange || 0}% from ${formatPeriodType(data?.periodType || "monthly")}`;
+export function ImagesGeneratedWidget({
+  startDate,
+  endDate,
+  segmentId = "all",
+}: {
+  startDate: Date
+  endDate: Date
+  segmentId?: string
+}) {
+  const { t } = useLocalization()
+  const { data, isLoading } = usePerformanceSlice<ImagesGeneratedData>(
+    "images-generated",
+    startDate,
+    endDate,
+    segmentId
+  )
 
   return (
     <BaseKpiWidget
-      title={t('dashboard.widgets.imagesGenerated') || 'Images Generated'}
-      value={displayValue}
-      changeText={changeText}
+      title={t("dashboard.widgets.imagesGenerated") || "Images Generated"}
+      value={data?.actual?.toLocaleString() || "0"}
+      changeText={`${data?.percentChange || 0}% from ${formatPeriodType(data?.periodType || "monthly", t)}`}
       isPositiveChange={(data?.percentChange || 0) > 0}
       isLoading={isLoading}
     />
-  );
+  )
 }

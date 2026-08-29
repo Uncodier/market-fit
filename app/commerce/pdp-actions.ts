@@ -1,3 +1,4 @@
+import { unstable_cache } from "next/cache";
 import { createServiceClient } from "@/lib/supabase/server";
 import { CatalogItem } from "@/app/types";
 import { mergeParentIntoCatalogItem } from "@/app/catalog/product-details";
@@ -5,11 +6,33 @@ import { resolveVariantAxesForDisplay } from "@/app/catalog/variant-resolve";
 import { loadChannelPriceMap } from "@/app/price-lists/apply-channel-prices";
 import { applyStorefrontAvailability } from "@/app/catalog/storefront-availability";
 
-export async function getPdpCatalogItem(itemId: string, options?: {
+const PDP_REVALIDATE_SECONDS = 60
+
+export function pdpCacheTag(itemId: string) {
+  return `pdp:${itemId}`
+}
+
+type PdpLoadOptions = {
   siteId?: string
   requireMarketplace?: boolean
   requireStorefront?: boolean
-}) {
+}
+
+export async function getPdpCatalogItem(itemId: string, options?: PdpLoadOptions) {
+  return unstable_cache(
+    () => loadPdpCatalogItem(itemId, options),
+    [
+      "pdp-item-v1",
+      itemId,
+      options?.siteId || "",
+      options?.requireMarketplace ? "m" : "",
+      options?.requireStorefront ? "s" : "",
+    ],
+    { revalidate: PDP_REVALIDATE_SECONDS, tags: [pdpCacheTag(itemId)] }
+  )()
+}
+
+async function loadPdpCatalogItem(itemId: string, options?: PdpLoadOptions) {
   const supabase = await createServiceClient(true);
   
   let query = supabase
@@ -165,6 +188,22 @@ export async function getPdpCatalogItem(itemId: string, options?: {
 
 /** Lightweight PDP row for generateMetadata so loading.tsx can paint while the full item loads. */
 export async function getPdpShareItem(
+  itemId: string,
+  options?: { requireMarketplace?: boolean; requireStorefront?: boolean },
+) {
+  return unstable_cache(
+    () => loadPdpShareItem(itemId, options),
+    [
+      "pdp-share-v1",
+      itemId,
+      options?.requireMarketplace ? "m" : "",
+      options?.requireStorefront ? "s" : "",
+    ],
+    { revalidate: PDP_REVALIDATE_SECONDS, tags: [pdpCacheTag(itemId)] }
+  )()
+}
+
+async function loadPdpShareItem(
   itemId: string,
   options?: { requireMarketplace?: boolean; requireStorefront?: boolean },
 ) {

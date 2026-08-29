@@ -19,8 +19,16 @@ import { DeleteRobotModal } from "@/app/components/robots/DeleteRobotModal"
 import { InstanceBrowserModal } from "@/app/components/robots/InstanceBrowserModal"
 import { createClient } from "@/lib/supabase/client"
 import { LoadingSkeleton } from "@/app/components/ui/loading-skeleton"
-import { ZipViewer } from '@/app/components/simple-messages-view/components/ZipViewer'
-import { ImprentaPanel } from '@/app/components/agents/imprenta-panel'
+import dynamic from "next/dynamic"
+
+const ZipViewer = dynamic(
+  () => import("@/app/components/simple-messages-view/components/ZipViewer").then((m) => m.ZipViewer),
+  { ssr: false }
+)
+const ImprentaPanel = dynamic(
+  () => import("@/app/components/agents/imprenta-panel").then((m) => m.ImprentaPanel),
+  { ssr: false }
+)
 import { WorkflowPanel } from '@/app/components/workflows/workflow-panel'
 import "@/app/styles/iframe-containment.css"
 import { useRequirementStatus } from "@/app/components/simple-messages-view/hooks/useRequirementStatus"

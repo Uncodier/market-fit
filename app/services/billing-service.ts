@@ -1,6 +1,8 @@
 import { createClient } from '@/lib/supabase/client'
-import { loadStripe } from '@stripe/stripe-js'
 import { isDemoModeActive } from '@/app/services/api-client-service'
+import type { BillingData } from './billing-types'
+
+export type { BillingData } from './billing-types'
 
 // Stripe instance management
 let stripePromise: Promise<any> | null = null;
@@ -36,7 +38,9 @@ const initializeStripe = () => {
       return null;
     }
 
-    stripePromise = loadStripe(stripeKey)
+    stripePromise = import('@stripe/stripe-js').then(({ loadStripe }) =>
+      loadStripe(stripeKey)
+    )
       .then(stripe => {
         if (!stripe) {
           throw new Error('Failed to initialize Stripe SDK');
@@ -58,26 +62,6 @@ const initializeStripe = () => {
     return null;
   }
 };
-
-export interface BillingData {
-  plan: 'commission' | 'startup' | 'enterprise'
-  card_name?: string
-  card_number?: string
-  card_expiry?: string
-  card_cvc?: string
-  card_address?: string
-  card_city?: string
-  card_postal_code?: string
-  card_country?: string
-  tax_id?: string
-  billing_address?: string
-  billing_city?: string
-  billing_postal_code?: string
-  billing_country?: string
-  auto_renew?: boolean
-  credits_available?: number
-  credits_used?: number
-}
 
 class BillingService {
   /**

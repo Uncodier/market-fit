@@ -6,6 +6,7 @@ import { CatalogItem } from "@/app/types";
 import { CatalogListParams, CatalogListResponse } from "./types";
 import { attachCatalogRelationSummaries } from "./relation-summaries";
 import { shopCacheTag } from "@/app/shop/[siteSlug]/shop-catalog-shared";
+import { pdpCacheTag } from "@/app/commerce/pdp-actions";
 
 export async function listCatalogCategories(siteId: string) {
   try {
@@ -253,6 +254,7 @@ export async function upsertCatalogItem(item: Partial<CatalogItem>) {
       revalidatePath(`/shop/${item.site_id}`);
       revalidateTag(shopCacheTag(item.site_id), "max");
     }
+    if (item.id) revalidateTag(pdpCacheTag(item.id), "max");
     
     return { data: data as CatalogItem };
   } catch (error: any) {
@@ -294,6 +296,7 @@ export async function updateCatalogAvailability(
     revalidatePath(`/catalog`);
     revalidatePath(`/pos`);
     revalidateTag(shopCacheTag(siteId), "max");
+    revalidateTag(pdpCacheTag(catalogItemId), "max");
     
     return { data: data as CatalogItem };
   } catch (error: any) {
@@ -336,6 +339,7 @@ export async function deleteCatalogItem(siteId: string, catalogItemId: string) {
     revalidatePath(`/catalog`);
     revalidatePath(`/pos`);
     revalidateTag(shopCacheTag(siteId), "max");
+    revalidateTag(pdpCacheTag(catalogItemId), "max");
     
     return { success: true };
   } catch (error: any) {
@@ -361,6 +365,7 @@ export async function unarchiveCatalogItem(siteId: string, catalogItemId: string
     revalidatePath(`/catalog`);
     revalidatePath(`/pos`);
     revalidateTag(shopCacheTag(siteId), "max");
+    revalidateTag(pdpCacheTag(catalogItemId), "max");
     
     return { success: true };
   } catch (error: any) {

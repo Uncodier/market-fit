@@ -128,11 +128,13 @@ export async function applyPosCatalogSnapshot(siteId: string, snapshot: PosCatal
       await db.catalogItems.where("site_id").equals(siteId).delete();
       await db.categories.where("site_id").equals(siteId).delete();
       await db.locations.where("site_id").equals(siteId).delete();
-      await db.leads
-        .where("site_id")
-        .equals(siteId)
-        .filter((l) => !l.is_local)
-        .delete();
+      if (snapshot.replaceLeads !== false) {
+        await db.leads
+          .where("site_id")
+          .equals(siteId)
+          .filter((l) => !l.is_local)
+          .delete();
+      }
       await db.priceLists.where("site_id").equals(siteId).delete();
       await db.priceListItems.clear();
       await db.taxesByItem.clear();

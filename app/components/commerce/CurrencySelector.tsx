@@ -13,14 +13,12 @@ import { ScrollArea } from "@/app/components/ui/scroll-area"
 import { useDisplayCurrency } from "@/app/context/DisplayCurrencyContext"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { currencyFlag } from "@/app/lib/locale-currency"
-import { useOptionalSite } from "@/app/context/SiteContext"
 
 export function CurrencySelector({ className, storeCurrency: propStoreCurrency }: { className?: string, storeCurrency?: string }) {
-  const { mode, setMode, localCurrency, displayCurrency, rates } = useDisplayCurrency()
-  const siteCtx = useOptionalSite()
+  const { mode, setMode, localCurrency, displayCurrency, rates, storeCurrency: contextStoreCurrency } = useDisplayCurrency()
   const { t } = useLocalization()
 
-  const storeCurrency = propStoreCurrency || siteCtx?.currentSite?.settings?.currency || 'USD'
+  const storeCurrency = propStoreCurrency || contextStoreCurrency || 'USD'
 
   const activeFlag = currencyFlag(displayCurrency)
 

@@ -410,15 +410,6 @@ export default function LayoutClient({
     return () => clearTimeout(fetchTimer)
   }, [isMounted, pathname])
 
-  // Renderizar un estado de carga simple hasta que la aplicación esté hidratada
-  if (!isMounted) {
-    return (
-      <div className="min-h-screen w-full flex items-center justify-center bg-background">
-        {/* Placeholder mientras se carga el cliente */}
-      </div>
-    )
-  }
-
   // Mostrar la página con posible indicador de error
   // NOTE: ThemeProvider, SiteProvider, and LayoutProvider are NOT wrapped here.
   // They already exist in Providers.tsx (app/providers/Providers.tsx) which wraps

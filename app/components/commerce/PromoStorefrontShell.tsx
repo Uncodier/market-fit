@@ -141,7 +141,7 @@ export function PromoStorefrontShell({
             &copy; {new Date().getFullYear()} {siteName || "Makinari"}. All rights reserved.
           </div>
           <div className="flex items-center gap-2">
-            <CurrencySelector className="rounded-full" />
+            <CurrencySelector className="rounded-full" storeCurrency={currency} />
             <LocaleSelector className="rounded-full" />
           </div>
         </div>

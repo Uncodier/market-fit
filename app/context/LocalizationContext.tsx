@@ -1,15 +1,12 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useLayoutEffect, ReactNode } from 'react';
 import enTranslations from './locales/en.json';
-import esTranslations from './locales/es.json';
-import frTranslations from './locales/fr.json';
-import deTranslations from './locales/de.json';
-import jaTranslations from './locales/ja.json';
 
 export type SupportedLocale = 'en' | 'es' | 'fr' | 'de' | 'ja';
 
 const SUPPORTED_LOCALES: SupportedLocale[] = ['en', 'es', 'fr', 'de', 'ja'];
+const LOCALE_COOKIE = 'makinari-locale';
 
 export function isSupportedLocale(value: unknown): value is SupportedLocale {
   return typeof value === 'string' && (SUPPORTED_LOCALES as string[]).includes(value);
@@ -22,7 +19,6 @@ interface LocalizationContextType {
   setLocale: (locale: SupportedLocale) => void;
   /** Apply site default when the visitor has no saved preference. Does not persist. */
   applySiteDefaultLocale: (locale: SupportedLocale) => void;
-  // helper to get localized strings/assets
   t: (key: string, params?: Record<string, string | number>) => string;
   getAsset: (key: string) => string;
 }
@@ -30,98 +26,139 @@ interface LocalizationContextType {
 const defaultLocale: SupportedLocale = 'en';
 
 const countryToLocale: Record<string, SupportedLocale> = {
-  // Spanish speaking countries
-  'ES': 'es', 'MX': 'es', 'AR': 'es', 'CO': 'es', 'CL': 'es', 'PE': 'es', 'VE': 'es', 
-  'EC': 'es', 'GT': 'es', 'CU': 'es', 'DO': 'es', 'HN': 'es', 'PY': 'es', 'SV': 'es', 
+  'ES': 'es', 'MX': 'es', 'AR': 'es', 'CO': 'es', 'CL': 'es', 'PE': 'es', 'VE': 'es',
+  'EC': 'es', 'GT': 'es', 'CU': 'es', 'DO': 'es', 'HN': 'es', 'PY': 'es', 'SV': 'es',
   'NI': 'es', 'CR': 'es', 'PA': 'es', 'UY': 'es', 'BO': 'es', 'GQ': 'es', 'PR': 'es',
-  // French speaking countries
   'FR': 'fr', 'BE': 'fr', 'CH': 'fr', 'CA': 'fr', 'MC': 'fr', 'LU': 'fr',
-  // German speaking countries
   'DE': 'de', 'AT': 'de', 'LI': 'de',
-  // Japanese speaking countries
   'JP': 'ja',
 };
 
 const LocalizationContext = createContext<LocalizationContextType | undefined>(undefined);
 
-const translations: Record<SupportedLocale, Record<string, string>> = {
-  en: enTranslations,
-  es: esTranslations,
-  fr: frTranslations,
-  de: deTranslations,
-  ja: jaTranslations,
+const localeLoaders: Record<SupportedLocale, () => Promise<Record<string, string>>> = {
+  en: async () => enTranslations,
+  es: () => import('./locales/es.json').then((m) => m.default),
+  fr: () => import('./locales/fr.json').then((m) => m.default),
+  de: () => import('./locales/de.json').then((m) => m.default),
+  ja: () => import('./locales/ja.json').then((m) => m.default),
 };
 
-// Map for localized assets like images
-const localizedAssets: Record<SupportedLocale, Record<string, string>> = {
-  en: {
-    'logo.main': '/images/logo.png',
-    'hero.image': '/images/hero-en.png',
-  },
-  es: {
-    'logo.main': '/images/logo.png', // Fallback or localized
-    'hero.image': '/images/hero-es.png',
-  },
-  fr: {
-    'logo.main': '/images/logo.png',
-    'hero.image': '/images/hero-fr.png',
-  },
-  de: {
-    'logo.main': '/images/logo.png',
-    'hero.image': '/images/hero-de.png',
-  },
-  ja: {
-    'logo.main': '/images/logo.png',
-    'hero.image': '/images/hero-ja.png',
-  },
+const translationCache: Partial<Record<SupportedLocale, Record<string, string>>> = {
+  en: enTranslations,
 };
+
+const localizedAssets: Record<SupportedLocale, Record<string, string>> = {
+  en: { 'logo.main': '/images/logo.png', 'hero.image': '/images/hero-en.png' },
+  es: { 'logo.main': '/images/logo.png', 'hero.image': '/images/hero-es.png' },
+  fr: { 'logo.main': '/images/logo.png', 'hero.image': '/images/hero-fr.png' },
+  de: { 'logo.main': '/images/logo.png', 'hero.image': '/images/hero-de.png' },
+  ja: { 'logo.main': '/images/logo.png', 'hero.image': '/images/hero-ja.png' },
+};
+
+function readStoredLocale(): SupportedLocale | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const fromStorage = localStorage.getItem('makinari-locale');
+    if (isSupportedLocale(fromStorage)) return fromStorage;
+  } catch {
+    // ignore
+  }
+  const match = document.cookie.match(new RegExp(`(?:^|; )${LOCALE_COOKIE}=([^;]+)`));
+  return isSupportedLocale(match?.[1]) ? match[1] : null;
+}
+
+function clearLocalePending() {
+  if (typeof document === "undefined") return;
+  document.documentElement.classList.remove("locale-pending");
+}
+
+function persistLocale(locale: SupportedLocale) {
+  try {
+    localStorage.setItem('makinari-locale', locale);
+  } catch {
+    // ignore
+  }
+  document.cookie = `${LOCALE_COOKIE}=${locale}; path=/; max-age=31536000; SameSite=Lax`;
+}
+
+function resolveInitialLocale(initialCountry?: string): SupportedLocale {
+  const stored = readStoredLocale();
+  if (stored) return stored;
+  if (initialCountry && countryToLocale[initialCountry]) return countryToLocale[initialCountry];
+  if (typeof navigator !== 'undefined') {
+    const browserLang = navigator.language.split('-')[0];
+    if (isSupportedLocale(browserLang)) return browserLang;
+  }
+  return defaultLocale;
+}
+
+if (typeof window !== 'undefined') {
+  const stored = readStoredLocale();
+  if (stored && stored !== 'en' && !translationCache[stored]) {
+    void localeLoaders[stored]().then((loaded) => {
+      translationCache[stored] = loaded;
+    });
+  }
+}
 
 export const LocalizationProvider = ({ children, initialCountry }: { children: ReactNode, initialCountry?: string }) => {
   const [locale, setLocaleState] = useState<SupportedLocale>(defaultLocale);
+  const [messages, setMessages] = useState<Record<string, string>>(enTranslations);
   const [mounted, setMounted] = useState(false);
 
-  useEffect(() => {
-    // Try to load from localStorage on mount
-    const savedLocale = localStorage.getItem('makinari-locale') as SupportedLocale;
-    if (savedLocale && Object.keys(translations).includes(savedLocale)) {
-      setLocaleState(savedLocale);
-    } else {
-      // 1. Try to guess from initialCountry (passed from server headers)
-      if (initialCountry && countryToLocale[initialCountry]) {
-        setLocaleState(countryToLocale[initialCountry]);
-      } else {
-        // 2. Try to guess from browser
-        const browserLang = navigator.language.split('-')[0] as SupportedLocale;
-        if (Object.keys(translations).includes(browserLang)) {
-          setLocaleState(browserLang);
-        }
-      }
+  useLayoutEffect(() => {
+    const next = resolveInitialLocale(initialCountry);
+    const cached = translationCache[next];
+    setLocaleState(next);
+    if (cached) {
+      setMessages(cached);
+      document.documentElement.lang = next;
+      clearLocalePending();
     }
     setMounted(true);
+    const timeout = window.setTimeout(clearLocalePending, 2000);
+    return () => window.clearTimeout(timeout);
   }, [initialCountry]);
+
+  useEffect(() => {
+    if (!mounted) return;
+    let cancelled = false;
+    const cached = translationCache[locale];
+    if (cached) {
+      setMessages(cached);
+      document.documentElement.lang = locale;
+      clearLocalePending();
+      return;
+    }
+    localeLoaders[locale]().then((loaded) => {
+      if (cancelled) return;
+      translationCache[locale] = loaded;
+      setMessages(loaded);
+      document.documentElement.lang = locale;
+      clearLocalePending();
+    }).catch(clearLocalePending);
+    return () => {
+      cancelled = true;
+    };
+  }, [locale, mounted]);
 
   const setLocale = (newLocale: SupportedLocale) => {
     setLocaleState(newLocale);
-    localStorage.setItem('makinari-locale', newLocale);
-    // Optionally update the lang attribute on html tag
+    persistLocale(newLocale);
     document.documentElement.lang = newLocale;
   };
 
   const applySiteDefaultLocale = (siteLocale: SupportedLocale) => {
     if (!isSupportedLocale(siteLocale)) return;
-    const savedLocale = localStorage.getItem('makinari-locale');
-    if (isSupportedLocale(savedLocale)) return;
+    if (readStoredLocale()) return;
     setLocaleState(siteLocale);
     document.documentElement.lang = siteLocale;
   };
 
   const t = (key: string, params?: Record<string, string | number>): string => {
-    const raw = !mounted
-      ? (translations[defaultLocale][key] || key)
-      : (translations[locale]?.[key] || translations[defaultLocale]?.[key] || key);
-
+    const raw = messages[key] || translationCache.en?.[key] || key;
     if (!params) return raw;
-
     return Object.entries(params).reduce(
       (text, [name, value]) => text.replace(new RegExp(`\\{\\{\\s*${name}\\s*\\}\\}`, 'g'), String(value)),
       raw

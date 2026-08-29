@@ -384,7 +384,7 @@ export function startPosSyncLoop(siteId: string) {
   if (typeof window === "undefined") return;
 
   void refreshCounts(siteId);
-  void runPosSyncCycle(siteId, true);
+  void runPosSyncCycle(siteId, false);
 
   if (!intervals.has(siteId)) {
     const id = window.setInterval(() => {

@@ -4,7 +4,6 @@ import { createClient } from "@/lib/supabase/server";
 import { listCatalogItems, listCatalogCategories } from "@/app/catalog/actions";
 import { getTaxesByCatalogItemIds } from "@/app/catalog/tax-actions";
 import { listLocations } from "@/app/inventory/actions";
-import { getLeads } from "@/app/leads/actions";
 import { listPriceLists } from "@/app/price-lists/actions";
 import { listAllModifierGroupsForPos } from "@/app/catalog/modifier-actions";
 import { isPriceListAllowedForChannel } from "@/app/price-lists/price-list-channels";
@@ -27,6 +26,8 @@ export type PosCatalogSnapshot = {
   promotions: any[];
   modifierGroupsByHostId: Record<string, any[]>;
   pulledAt: string;
+  /** When false, IndexedDB keeps existing synced leads. */
+  replaceLeads?: boolean;
 };
 
 export async function pullPosCatalogSnapshot(siteId: string): Promise<
@@ -45,7 +46,6 @@ export async function pullPosCatalogSnapshot(siteId: string): Promise<
       catalogRes,
       categoriesRes,
       locationsRes,
-      leadsRes,
       priceListsRes,
       promotionsRes,
     ] = await Promise.all([
@@ -57,7 +57,6 @@ export async function pullPosCatalogSnapshot(siteId: string): Promise<
       }),
       listCatalogCategories(siteId),
       listLocations(siteId),
-      getLeads(siteId),
       listPriceLists({ siteId, pageSize: 100 }),
       listPromotions({ siteId, status: "active", pageSize: 100 }),
     ]);
@@ -112,7 +111,8 @@ export async function pullPosCatalogSnapshot(siteId: string): Promise<
         catalogItems,
         categories: categoriesRes?.data || [],
         locations: locationsRes?.data || [],
-        leads: leadsRes?.leads || [],
+        leads: [],
+        replaceLeads: false,
         priceLists: activePriceLists,
         priceListItems,
         taxesByItem: taxesRes?.data || {},

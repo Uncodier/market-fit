@@ -89,7 +89,21 @@ export function NotificationsProvider({ children }: NotificationsProviderProps) 
     };
     
     if (currentSite?.id && user?.id) {
-      fetchData();
+      const idle = (window as Window & {
+        requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number
+      }).requestIdleCallback
+      if (typeof idle === "function") {
+        const id = idle(() => { void fetchData() }, { timeout: 2500 })
+        return () => {
+          isMounted = false
+          ;(window as Window & { cancelIdleCallback?: (id: number) => void }).cancelIdleCallback?.(id)
+        }
+      }
+      const timer = window.setTimeout(() => { void fetchData() }, 1200)
+      return () => {
+        isMounted = false
+        window.clearTimeout(timer)
+      }
     }
     
     return () => {

@@ -3,6 +3,7 @@
 import { cn } from "@/lib/utils"
 import { User, Bell, LayoutGrid } from "@/app/components/ui/icons"
 import { useEffect, useState, useRef, Suspense } from "react"
+import dynamic from "next/dynamic"
 import { usePathname, useRouter } from "next/navigation"
 import { ConfigurationSection } from "./ConfigurationSection"
 import { MenuItem } from "./MenuItem"
@@ -19,7 +20,9 @@ import { SIDEBAR_AUTOMATION_AREA_ORDER } from "@/app/config/navigation-areas"
 import { OnboardingProgressWidget } from "./OnboardingProgressWidget"
 import { CreditsWidget } from "./CreditsWidget"
 
-import NavigationPage from "@/app/navigation/page"
+const NavigationPage = dynamic(() => import("@/app/navigation/page"), {
+  ssr: false,
+})
 
 interface SidebarProps extends React.HTMLAttributes<HTMLDivElement> {
   isCollapsed: boolean

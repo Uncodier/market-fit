@@ -5,17 +5,18 @@ import { getSiteInfoBySlug } from "@/app/book/actions";
 import { listPublicLocations } from "@/app/inventory/actions";
 import { createServiceClient } from "@/lib/supabase/server";
 import {
-  buildShopCategoryOffsets,
   SHOP_CACHE_REVALIDATE_SECONDS,
   SHOP_PAGE_SIZE,
   SHOP_UNCATEGORIZED_NAME,
   shopCacheTag,
   shopSlugCacheTag,
-  type ShopCategoryOffset,
 } from "./shop-catalog-shared";
+import { getShopCategoryOffsets } from "./shop-category-offsets";
 import { loadChannelPriceMap } from "@/app/price-lists/apply-channel-prices";
 import { loadVariantListingPreviews } from "@/app/catalog/variant-resolve";
 import { applyStorefrontAvailability } from "@/app/catalog/storefront-availability";
+
+export { getShopCategoryOffsets };
 
 /** Keep getShopCatalog + getShopCategoryOffsets on the same key order. */
 function applyShopCatalogOrder<T extends { order: (...args: any[]) => T }>(query: T): T {
@@ -129,40 +130,6 @@ async function enrichShopItems(siteId: string, items: any[], supabase: Awaited<R
       },
     };
   });
-}
-
-export async function getShopCategoryOffsets(siteId: string): Promise<ShopCategoryOffset[]> {
-  return unstable_cache(
-    async () => {
-      const supabase = await createServiceClient(true);
-
-      // Same order as getShopCatalog so range() jumps land on category starts.
-      const { data: rows, error } = await applyShopCatalogOrder(
-        applyStorefrontAvailability(
-          supabase
-            .from("catalog_items")
-            .select("category:catalog_categories(name, sort_order)")
-            .eq("site_id", siteId)
-            .eq("status", "active")
-            .eq("is_marketplace_listed", true)
-            .is("parent_id", null)
-        )
-      );
-
-      if (error || !rows) return [];
-
-      const names = rows.map(
-        (row) => categoryNameFromJoin((row as any).category) || SHOP_UNCATEGORIZED_NAME
-      );
-      return buildShopCategoryOffsets(names);
-    },
-    // v7: use site settings currency fallback
-    ["shop-category-offsets-v7", siteId],
-    {
-      revalidate: SHOP_CACHE_REVALIDATE_SECONDS,
-      tags: [shopCacheTag(siteId)],
-    }
-  )();
 }
 
 export async function getShopCategories(siteId: string) {

@@ -1,7 +1,20 @@
+"use client"
+
 import { createContext, useContext, useEffect, useState, ReactNode, useCallback, useRef, useMemo } from "react"
 import useSWR from 'swr'
+import { usePathname } from "next/navigation"
 import { useSite } from "@/app/context/SiteContext"
 import { createClient } from "@/lib/supabase/client"
+
+function shouldLoadRobots(pathname: string | null): boolean {
+  if (!pathname) return false
+  return (
+    pathname.startsWith("/robots") ||
+    pathname.startsWith("/agents") ||
+    pathname.startsWith("/chat") ||
+    pathname.startsWith("/requirements")
+  )
+}
 
 // Robot interface
 interface Robot {
@@ -95,6 +108,8 @@ async function fetchRequirementTitles(requirementIds: string[]) {
 }
 
 export function RobotsProvider({ children }: RobotsProviderProps) {
+  const pathname = usePathname()
+  const loadRobots = shouldLoadRobots(pathname)
   const { currentSite } = useSite()
   const [error, setError] = useState<string | null>(null)
   const refreshTimeoutRef = useRef<NodeJS.Timeout | null>(null)
@@ -118,7 +133,7 @@ export function RobotsProvider({ children }: RobotsProviderProps) {
   }, [currentSite?.id])
 
   const { data: robotsData, isLoading, mutate } = useSWR(
-    isSiteContextReady && currentSite?.id ? ['remote_instances', currentSite.id] : null,
+    loadRobots && isSiteContextReady && currentSite?.id ? ['remote_instances', currentSite.id] : null,
     async ([_, siteId]) => {
       const supabase = createClient()
       const { data: robots, error: robotsError } = await supabase
@@ -345,13 +360,13 @@ export function RobotsProvider({ children }: RobotsProviderProps) {
   }, [currentSite?.id, isSiteContextReady, setupRealtimeSubscription])
 
   useEffect(() => {
-    if (!currentSite?.id || !isSiteContextReady) return
+    if (!loadRobots || !currentSite?.id || !isSiteContextReady) return
     setupRealtimeSubscription()
     return () => {
       teardownRealtimeSubscription()
       if (refreshTimeoutRef.current) clearTimeout(refreshTimeoutRef.current)
     }
-  }, [currentSite?.id, isSiteContextReady, setupRealtimeSubscription, teardownRealtimeSubscription])
+  }, [loadRobots, currentSite?.id, isSiteContextReady, setupRealtimeSubscription, teardownRealtimeSubscription])
 
   useEffect(() => {
     let debounceTimer: NodeJS.Timeout;

@@ -13,11 +13,25 @@ import { SearchInput } from "@/app/components/ui/search-input";
 import { Sheet, SheetContent, SheetTrigger } from "@/app/components/ui/sheet";
 import { ShoppingCart } from "@/app/components/ui/icons";
 import { DynamicQuoteFieldsModal } from "@/app/components/commerce/DynamicQuoteFieldsModal";
-import { PaymentConfirmationDialog } from "./components/PaymentConfirmationDialog";
+import dynamic from "next/dynamic";
 import { PosOptionsDialog } from "./components/PosOptionsDialog";
-import { PosReservationDialog } from "./components/PosReservationDialog";
-import { PosDigitalAssetDialog } from "./components/PosDigitalAssetDialog";
-import { PosSplitBillDialog } from "./components/PosSplitBillDialog";
+
+const PaymentConfirmationDialog = dynamic(
+  () => import("./components/PaymentConfirmationDialog").then((m) => m.PaymentConfirmationDialog),
+  { ssr: false }
+);
+const PosReservationDialog = dynamic(
+  () => import("./components/PosReservationDialog").then((m) => m.PosReservationDialog),
+  { ssr: false }
+);
+const PosDigitalAssetDialog = dynamic(
+  () => import("./components/PosDigitalAssetDialog").then((m) => m.PosDigitalAssetDialog),
+  { ssr: false }
+);
+const PosSplitBillDialog = dynamic(
+  () => import("./components/PosSplitBillDialog").then((m) => m.PosSplitBillDialog),
+  { ssr: false }
+);
 import { CartPanel } from "./components/CartPanel";
 import { resolveUnitPriceLocal } from "./local/resolve-unit-price-local";
 import { PosCatalogGrid } from "./components/PosCatalogGrid";

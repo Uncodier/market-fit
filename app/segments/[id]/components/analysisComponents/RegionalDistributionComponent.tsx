@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/app
 import { Button } from "@/app/components/ui/button";
 import { Copy } from "@/app/components/ui/icons";
 import { BaseAnalysisComponentProps } from "./types";
-import WorldMapComponent from "@/app/components/WorldMapComponent";
+import WorldMapComponent from "@/app/components/WorldMapLazy";
 import { 
   getCountriesFromPlatform, 
   getPlatformDisplayName, 

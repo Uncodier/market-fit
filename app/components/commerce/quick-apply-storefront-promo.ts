@@ -1,7 +1,7 @@
 "use client"
 
 import { getCartItems, setCartItems } from "@/app/commerce/cart-storage"
-import { getStorefrontPromotionDetail } from "@/app/promotions/storefront-promotions"
+import { getStorefrontPromotionDetail } from "@/app/promotions/storefront-promotion-actions"
 import { writePendingStorefrontPromo } from "@/app/components/commerce/storefront-pending-promo"
 
 type QuickApplyResult =

@@ -1,5 +1,5 @@
 import React from "react";
-import WorldMapComponent, { LocationData } from "@/app/components/WorldMapComponent";
+import WorldMapComponent, { LocationData } from "@/app/components/WorldMapLazy";
 
 interface WorldMapProps {
   locations: Array<{ type: string; name: string; relevance: string }>;

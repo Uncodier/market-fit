@@ -1,18 +1,19 @@
 'use client';
 
 import React from 'react';
+import dynamic from 'next/dynamic';
+import { usePathname } from 'next/navigation';
 import { ThemeProvider } from '../context/ThemeContext';
-import { LayoutProvider } from '../context/LayoutContext';
-import { SiteProvider } from '@/app/context/SiteContext';
-import { PermissionProvider } from '@/app/context/PermissionContext';
-import { ScreenAccessProvider } from '@/app/context/ScreenAccessContext';
-import { WidgetProvider } from '../context/WidgetContext';
-import { RobotsProvider } from '../context/RobotsContext';
 import { TooltipProvider } from '../components/ui/tooltip';
 import { AuthProvider } from '../components/auth/auth-provider';
 import { LocalizationProvider } from '../context/LocalizationContext';
 import { DisplayCurrencyProvider } from '../context/DisplayCurrencyContext';
 import { SWRProvider } from './swr-provider';
+import { shouldUseWorkspaceProviders } from '../config/routes';
+
+const WorkspaceProviders = dynamic(() => import('./WorkspaceProviders'), {
+  ssr: true,
+});
 
 interface ProvidersProps {
   children: React.ReactNode;
@@ -20,31 +21,28 @@ interface ProvidersProps {
 }
 
 export default function Providers({ children, country }: ProvidersProps) {
+  const pathname = usePathname() || '/';
+  const useWorkspace = shouldUseWorkspaceProviders(pathname);
+
   return (
     <SWRProvider>
     <AuthProvider>
       <ThemeProvider>
         <LocalizationProvider initialCountry={country}>
           <DisplayCurrencyProvider initialCountry={country}>
-            <LayoutProvider>
-              <SiteProvider>
-                <PermissionProvider>
-                <ScreenAccessProvider>
-                <RobotsProvider>
-                  <WidgetProvider>
-                    <TooltipProvider>
-                      {children}
-                    </TooltipProvider>
-                  </WidgetProvider>
-                </RobotsProvider>
-                </ScreenAccessProvider>
-                </PermissionProvider>
-              </SiteProvider>
-            </LayoutProvider>
+            {useWorkspace ? (
+              <WorkspaceProviders>
+                {children}
+              </WorkspaceProviders>
+            ) : (
+              <TooltipProvider>
+                {children}
+              </TooltipProvider>
+            )}
           </DisplayCurrencyProvider>
         </LocalizationProvider>
       </ThemeProvider>
     </AuthProvider>
     </SWRProvider>
   );
-} 
+}

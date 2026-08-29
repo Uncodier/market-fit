@@ -1,5 +1,3 @@
-"use server";
-
 import { unstable_cache } from "next/cache";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
 import {
@@ -115,7 +113,7 @@ export async function getShopMerchandising(params: {
   )();
 }
 
-export async function getMarketplaceMerchandising(params: {
+async function loadMarketplaceMerchandisingUncached(params: {
   siteIds?: string[];
   timezone?: string | null;
 }): Promise<MarketplaceMerchandisingPlacement> {
@@ -165,6 +163,19 @@ export async function getMarketplaceMerchandising(params: {
     timezone: params.timezone,
     hrefFor: (id) => `/marketplace/promo/${id}`,
   });
+}
+
+export async function getMarketplaceMerchandising(params: {
+  siteIds?: string[];
+  timezone?: string | null;
+}): Promise<MarketplaceMerchandisingPlacement> {
+  const siteKey = (params.siteIds || []).slice().sort().join(",") || "all";
+  const timezoneKey = params.timezone || "";
+  return unstable_cache(
+    () => loadMarketplaceMerchandisingUncached(params),
+    ["marketplace-merchandising", siteKey, timezoneKey],
+    { revalidate: SHOP_CACHE_REVALIDATE_SECONDS },
+  )();
 }
 
 export async function getStorefrontPromotionDetail(params: {

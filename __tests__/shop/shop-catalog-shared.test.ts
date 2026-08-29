@@ -1,5 +1,6 @@
 import {
   buildShopCategoryOffsets,
+  mapShopCategoryOffsetRows,
   countItemsByCategory,
   groupItemsByCategory,
   SHOP_UNCATEGORIZED_NAME,
@@ -71,6 +72,20 @@ describe("buildShopCategoryOffsets", () => {
     expect(offsets).toEqual([
       { name: "Brews", offset: 0, count: 1 },
       { name: SHOP_UNCATEGORIZED_NAME, offset: 1, count: 2 },
+    ])
+  })
+})
+
+describe("mapShopCategoryOffsetRows", () => {
+  it("normalizes RPC rows into chip offsets", () => {
+    expect(
+      mapShopCategoryOffsetRows([
+        { name: "Brews", offset: "0", count: "3" },
+        { name: null, offset: 3, count: 1 },
+      ])
+    ).toEqual([
+      { name: "Brews", offset: 0, count: 3 },
+      { name: SHOP_UNCATEGORIZED_NAME, offset: 3, count: 1 },
     ])
   })
 })

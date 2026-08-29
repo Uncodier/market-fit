@@ -1,5 +1,10 @@
+import { Suspense } from "react"
 import { JournalEntriesClient } from "../components/JournalEntriesClient"
 
 export default function JournalEntriesPage() {
-  return <JournalEntriesClient />
+  return (
+    <Suspense fallback={null}>
+      <JournalEntriesClient />
+    </Suspense>
+  )
 }

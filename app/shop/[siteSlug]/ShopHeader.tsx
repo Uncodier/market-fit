@@ -170,7 +170,7 @@ export function ShopHeader({
             className="shrink-0 flex items-center hover:opacity-80 transition-opacity"
           >
             {site.logo_url ? (
-              <img src={site.logo_url} alt={site.name} className="w-8 h-8 min-w-8 rounded-full object-cover border border-border shadow-sm shrink-0" />
+              <img src={site.logo_url} alt={site.name} fetchPriority="high" decoding="async" className="w-8 h-8 min-w-8 rounded-full object-cover border border-border shadow-sm shrink-0" />
             ) : (
               <span className="text-xl font-black tracking-tight text-gray-900 dark:text-gray-100 truncate max-w-[150px] md:max-w-none">
                 {site.name}

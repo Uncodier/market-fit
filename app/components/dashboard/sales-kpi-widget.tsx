@@ -1,11 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import { BaseKpiWidget } from "./base-kpi-widget";
-import { useAuth } from "@/app/hooks/use-auth";
-import { useSite } from "@/app/context/SiteContext";
 import { useLocalization } from "@/app/context/LocalizationContext";
-import { fetchWithRetry } from "@/app/utils/fetch-with-retry";
+import { usePerformanceSlice } from "@/app/hooks/use-dashboard-batches";
 
 interface SalesKpiWidgetProps {
   startDate: Date;
@@ -25,45 +22,12 @@ export function SalesKpiWidget({
   segmentId = "all" 
 }: SalesKpiWidgetProps) {
   const { t } = useLocalization();
-  const [data, setData] = useState<SalesKpiData | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const { user } = useAuth();
-  const { currentSite } = useSite();
-
-  useEffect(() => {
-    const fetchData = async () => {
-      if (!currentSite?.id || !user?.id) return;
-
-      setIsLoading(true);
-
-      const params = new URLSearchParams({
-        siteId: currentSite.id,
-        userId: user.id,
-        startDate: startDate.toISOString(),
-        endDate: endDate.toISOString(),
-        segmentId: segmentId
-      });
-
-      const response = await fetchWithRetry(
-        fetch,
-        `/api/performance/sales?${params}`,
-        { maxRetries: 3 }
-      );
-
-      if (!response) {
-        // All retries failed or request was cancelled - show default 0 value
-        setIsLoading(false);
-        setData(null);
-        return;
-      }
-
-      const result = await response.json();
-      setData(result);
-      setIsLoading(false);
-    };
-
-    fetchData();
-  }, [currentSite?.id, user?.id, startDate, endDate, segmentId, ]);
+  const { data, isLoading } = usePerformanceSlice<SalesKpiData>(
+    "sales",
+    startDate,
+    endDate,
+    segmentId
+  );
 
   const formatPeriodType = (periodType: string) => {
     switch (periodType) {

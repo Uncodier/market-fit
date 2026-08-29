@@ -19,6 +19,16 @@ export type ShopCategoryOffset = {
   count: number
 }
 
+export function mapShopCategoryOffsetRows(
+  rows: Array<{ name?: string | null; offset?: number | string | null; count?: number | string | null }>
+): ShopCategoryOffset[] {
+  return rows.map((row) => ({
+    name: row.name || SHOP_UNCATEGORIZED_NAME,
+    offset: Number(row.offset) || 0,
+    count: Number(row.count) || 0,
+  }))
+}
+
 export function categoryDomId(name: string): string {
   const slug = name
     .toLowerCase()

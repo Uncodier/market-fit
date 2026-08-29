@@ -1,12 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from "recharts";
-import { useAuth } from "@/app/hooks/use-auth";
-import { useSite } from "@/app/context/SiteContext";
 import { useTheme } from "@/app/context/ThemeContext";
 import { Skeleton } from "@/app/components/ui/skeleton";
-import { fetchWithRetry } from "@/app/utils/fetch-with-retry";
+import { usePerformanceSlice } from "@/app/hooks/use-dashboard-batches";
 
 interface LeadsTasksChartProps {
   startDate: Date;
@@ -25,46 +22,13 @@ interface MetricsData {
 }
 
 export function LeadsTasksChart({ startDate, endDate, segmentId = "all" }: LeadsTasksChartProps) {
-  const [data, setData] = useState<MetricsData | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const { user } = useAuth();
-  const { currentSite } = useSite();
+  const { data, isLoading } = usePerformanceSlice<MetricsData>(
+    "metrics-overview",
+    startDate,
+    endDate,
+    segmentId
+  );
   const { isDarkMode } = useTheme();
-
-  useEffect(() => {
-    const fetchData = async () => {
-      if (!currentSite?.id || !user?.id) return;
-
-      setIsLoading(true);
-
-      const params = new URLSearchParams({
-        siteId: currentSite.id,
-        userId: user.id,
-        startDate: startDate.toISOString(),
-        endDate: endDate.toISOString(),
-        segmentId: segmentId
-      });
-
-      const response = await fetchWithRetry(
-        fetch,
-        `/api/performance/metrics-overview?${params}`,
-        { maxRetries: 3 }
-      );
-
-      if (!response) {
-        // All retries failed or request was cancelled - show empty state
-        setIsLoading(false);
-        setData(null);
-        return;
-      }
-
-      const result = await response.json();
-      setData({ chartData: result.chartData });
-      setIsLoading(false);
-    };
-
-    fetchData();
-  }, [currentSite?.id, user?.id, startDate, endDate, segmentId, ]);
 
   const colors = {
     text: isDarkMode ? "#CBD5E1" : "#9CA3AF",

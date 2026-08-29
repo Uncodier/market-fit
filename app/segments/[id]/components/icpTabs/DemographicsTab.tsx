@@ -8,7 +8,7 @@ import { SectionCard } from "../common/Cards";
 import { ImportanceIndicator } from "../common/Indicators";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/app/components/ui/tooltip";
 import { useTheme } from "@/app/context/ThemeContext";
-import WorldMapComponent, { LocationData } from "@/app/components/WorldMapComponent";
+import WorldMapComponent, { LocationData } from "@/app/components/WorldMapLazy";
 
 // Defino la interfaz localmente para evitar problemas con el módulo de tipos
 interface ICPProfileData {

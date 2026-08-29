@@ -1,11 +1,8 @@
 "use client"
 
 import { BaseKpiWidget } from "@/app/components/dashboard/base-kpi-widget"
-import { useAuth } from "@/app/hooks/use-auth"
-import { useSite } from "@/app/context/SiteContext"
 import { useLocalization } from "@/app/context/LocalizationContext"
-import { useEffect, useState } from "react"
-import { retryOnError, useOptimisticLoadState } from "@/app/hooks/use-optimistic-error"
+import { usePerformanceSlice } from "@/app/hooks/use-dashboard-batches"
 
 interface ConversationsData {
   actual: number
@@ -23,48 +20,12 @@ export function ConversationsWidget({
   endDate: Date 
 }) {
   const { t } = useLocalization()
-  const { user } = useAuth()
-  const { currentSite } = useSite()
-  const [data, setData] = useState<ConversationsData | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    const fetchData = async () => {
-      if (!user || !currentSite) return
-
-      setIsLoading(true)
-      setError(null)
-
-      try {
-        const params = new URLSearchParams({
-          siteId: currentSite.id,
-          userId: user.id,
-          startDate: startDate.toISOString(),
-          endDate: endDate.toISOString(),
-          segmentId: segmentId || "all"
-        })
-
-        const result = await retryOnError(async () => {
-          const response = await fetch(`/api/performance/conversations?${params}`)
-          if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`)
-          }
-          return response.json()
-        })
-        setData(result)
-      } catch (err) {
-        console.error("Error fetching conversations data:", err)
-        setError(err instanceof Error ? err.message : "Failed to fetch conversations data")
-      } finally {
-        setIsLoading(false)
-      }
-    }
-
-    fetchData()
-  }, [user, currentSite, segmentId, startDate, endDate])
-
-  const { error: visibleError, isLoading: showLoading } = useOptimisticLoadState(isLoading, error)
+  const { data, isLoading } = usePerformanceSlice<ConversationsData>(
+    "conversations",
+    startDate,
+    endDate,
+    segmentId || "all"
+  )
 
   const formatPeriodType = (periodType: string) => {
     switch (periodType) {
@@ -77,9 +38,7 @@ export function ConversationsWidget({
     }
   };
 
-  const changeText = visibleError 
-    ? (t('dashboard.widgets.errorLoading') || 'Error loading data')
-    : `${data?.percentChange || 0}% from ${formatPeriodType(data?.periodType || "monthly")}`;
+  const changeText = `${data?.percentChange || 0}% from ${formatPeriodType(data?.periodType || "monthly")}`;
 
   return (
     <BaseKpiWidget
@@ -87,10 +46,7 @@ export function ConversationsWidget({
       value={data?.actual || 0}
       changeText={changeText}
       isPositiveChange={(data?.percentChange || 0) > 0}
-      isLoading={showLoading}
-      customStatus={visibleError ? (
-        <p className="text-xs text-red-500 mt-1">{String(visibleError)}</p>
-      ) : undefined}
+      isLoading={isLoading}
     />
   )
 }

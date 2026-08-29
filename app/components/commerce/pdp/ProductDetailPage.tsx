@@ -8,7 +8,9 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useAuthContext as useAuth } from "@/app/components/auth/auth-provider"
 import { useTheme } from "@/app/context/ThemeContext"
+import { useDisplayCurrency } from "@/app/context/DisplayCurrencyContext"
 import { useState, useEffect } from "react"
+import { createClient } from "@/lib/supabase/client"
 import { ProductPdpLayout } from "./ProductPdpLayout"
 import { ServicePdpLayout } from "./ServicePdpLayout"
 import { CoursePdpLayout } from "./CoursePdpLayout"
@@ -28,7 +30,6 @@ import { PdpExperience } from "./pdp-experience"
 import { CommerceShellHeader, shellClasses } from "../CommerceShellHeader"
 import { useCommerceSignInHref } from "../use-commerce-sign-in-href"
 
-import { SubscriptionManagePanel } from "./SubscriptionManagePanel"
 import { PDP_ADD_TO_CART_PRIMARY_AFTER } from "./pdp-purchase-cta"
 
 interface ProductDetailPageProps {
@@ -42,6 +43,7 @@ interface ProductDetailPageProps {
 export function ProductDetailPage({ item, site, backUrl, experience, catalogSize = 0 }: ProductDetailPageProps) {
   const { t } = useLocalization()
   const { theme, toggleTheme } = useTheme()
+  const { setStoreCurrency } = useDisplayCurrency()
   const { user } = useAuth()
   const session = user ? { user } : null
   const pathname = usePathname()
@@ -49,8 +51,11 @@ export function ProductDetailPage({ item, site, backUrl, experience, catalogSize
   
   const [cartCount, setCartCount] = useState(0)
   const [subtotal, setSubtotal] = useState(0)
+  const [clientExperience, setClientExperience] = useState<PdpExperience | undefined>(experience)
+  const resolvedExperience = experience || clientExperience
 
   const isMarketplace = pathname?.startsWith('/marketplace')
+  const storeCurrency = site?.settings?.currency || item.currency || 'USD'
   const cartSource = isMarketplace ? 'marketplace' : 'shop'
   const cartSiteId = site?.id || item.site_id || item.site?.id || null
   const effectiveCatalogSize = isMarketplace
@@ -71,6 +76,30 @@ export function ProductDetailPage({ item, site, backUrl, experience, catalogSize
     window.addEventListener('storage', checkCart)
     return () => window.removeEventListener('storage', checkCart)
   }, [cartSource, cartSiteId])
+
+  useEffect(() => {
+    if (storeCurrency) setStoreCurrency(storeCurrency)
+  }, [storeCurrency, setStoreCurrency])
+
+  useEffect(() => {
+    if (experience || !item.is_recurring || !user?.id) return
+    let cancelled = false
+    const supabase = createClient()
+    void supabase
+      .from("subscriptions")
+      .select("id, status, catalog_item_id, buyer_user_id")
+      .eq("buyer_user_id", user.id)
+      .eq("catalog_item_id", item.id)
+      .in("status", ["active", "paused"])
+      .maybeSingle()
+      .then(({ data }) => {
+        if (cancelled || !data) return
+        setClientExperience({ kind: "subscription", subscription: data })
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [experience, item.id, item.is_recurring, user?.id])
   
   const siteName = site?.name || item.site?.name
   const siteLogo = site?.logo_url || item.site?.logo_url
@@ -183,7 +212,7 @@ export function ProductDetailPage({ item, site, backUrl, experience, catalogSize
       />
 
       <main>
-        <LayoutComponent item={item} backUrl={backUrl} experience={experience} catalogSize={effectiveCatalogSize} />
+        <LayoutComponent item={item} backUrl={backUrl} experience={resolvedExperience} catalogSize={effectiveCatalogSize} />
       </main>
 
       {/* Footer */}
@@ -197,7 +226,7 @@ export function ProductDetailPage({ item, site, backUrl, experience, catalogSize
                 {t("shop.poweredBy") || "Powered by Makinari."}
               </div>
               <div className="flex items-center gap-2">
-                <CurrencySelector className="rounded-full hover:bg-gray-200 dark:hover:bg-gray-800 text-gray-500 dark:text-gray-400" />
+                <CurrencySelector className="rounded-full hover:bg-gray-200 dark:hover:bg-gray-800 text-gray-500 dark:text-gray-400" storeCurrency={storeCurrency} />
                 <LocaleSelector className="rounded-full hover:bg-gray-200 dark:hover:bg-gray-800 text-gray-500 dark:text-gray-400" />
                 <Button variant="ghost" size="icon" onClick={toggleTheme} className="rounded-full hover:bg-gray-200 dark:hover:bg-gray-800">
                   {theme === "dark" ? <Sun className="h-5 w-5 text-gray-400 hover:text-black dark:hover:text-white" /> : <Moon className="h-5 w-5 text-gray-500 hover:text-black dark:hover:text-white" />}

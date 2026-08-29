@@ -4,13 +4,12 @@ import { getShopSite, getShopCatalogSize } from "../actions"
 import { notFound } from "next/navigation"
 import { ProductDetailPage } from "@/app/components/commerce/pdp/ProductDetailPage"
 import { SiteLocaleBootstrap } from "@/app/components/commerce/SiteLocaleBootstrap"
-import { createClient } from "@/lib/supabase/server"
 import { Metadata } from "next"
 import { buildCatalogItemShareMetadata } from "@/app/lib/commerce-metadata"
 import { ShopSlugNotFound } from "../ShopSlugNotFound"
 import { PdpPageSkeleton } from "@/app/components/commerce/pdp/PdpPageSkeleton"
 
-export const dynamic = "force-dynamic"
+export const revalidate = 60
 
 export async function generateMetadata({ params }: { params: Promise<{ siteSlug: string, itemId: string }> | { siteSlug: string, itemId: string } }): Promise<Metadata> {
   const resolvedParams = await params;
@@ -78,25 +77,6 @@ async function ShopItemContent({ siteSlug, itemId }: { siteSlug: string; itemId:
     site = resolved
   }
 
-  let experience = undefined
-  if (item.is_recurring) {
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (user) {
-      const { data: subscription } = await supabase
-        .from('subscriptions')
-        .select('*')
-        .eq('buyer_user_id', user.id)
-        .eq('catalog_item_id', item.id)
-        .in('status', ['active', 'paused'])
-        .maybeSingle()
-        
-      if (subscription) {
-        experience = { kind: 'subscription', subscription }
-      }
-    }
-  }
-
   const siteDefaultLocale = site?.settings?.default_locale
 
   let catalogSize = 0;
@@ -107,7 +87,7 @@ async function ShopItemContent({ siteSlug, itemId }: { siteSlug: string; itemId:
   return (
     <>
       <SiteLocaleBootstrap locale={siteDefaultLocale} />
-      <ProductDetailPage item={item as any} site={site} backUrl={`/shop/${siteSlug}`} experience={experience as any} catalogSize={catalogSize} />
+      <ProductDetailPage item={item as any} site={site} backUrl={`/shop/${siteSlug}`} catalogSize={catalogSize} />
     </>
   )
 }
