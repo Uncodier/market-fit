@@ -41,7 +41,7 @@ export function WorldSpaceSvg({
       height={layout.height}
       viewBox={layout.viewBox}
       overflow="visible"
-      style={{ ...layout.style, ...style }}
+      style={{ ...layout.style, width: layout.width, height: layout.height, ...style }}
       {...rest}
     >
       {children}
@@ -95,15 +95,26 @@ export function ImprentaLoadingRouteEdges({
   if (geoms.length === 0) return null
 
   return (
-    <svg
-      className="absolute top-0 left-0 w-full h-full pointer-events-none imprenta-world-svg"
-      style={{ zIndex: 12, overflow: 'visible' }}
-      shapeRendering="optimizeSpeed"
-    >
-      {geoms.map((g) => (
-        <path key={g.key} d={g.d} className="imprenta-loading-edge" />
-      ))}
-    </svg>
+    <>
+      <svg
+        className="absolute top-0 left-0 w-full h-full pointer-events-none imprenta-world-svg safari-only-svg"
+        style={{ zIndex: 12, overflow: 'visible' }}
+        shapeRendering="optimizeSpeed"
+      >
+        {geoms.map((g) => (
+          <path key={g.key} d={g.d} className="imprenta-loading-edge" />
+        ))}
+      </svg>
+      <WorldSpaceSvg
+        points={points}
+        className="absolute top-0 left-0 pointer-events-none chrome-only-svg"
+        style={{ zIndex: 12 }}
+      >
+        {geoms.map((g) => (
+          <path key={g.key} d={g.d} className="imprenta-loading-edge" />
+        ))}
+      </WorldSpaceSvg>
+    </>
   )
 }
 
@@ -120,20 +131,41 @@ export function ImprentaTempConnectionLine({
   toX,
   toY,
 }: TempConnectionLineProps) {
+  const points = useMemo(
+    () => [
+      { x: fromX, y: fromY },
+      { x: toX, y: toY },
+    ],
+    [fromX, fromY, toX, toY]
+  )
   const d = worldConnectionPathD(worldConnectionBezier(fromX, fromY, toX, toY))
+  
+  const pathContent = (
+    <path
+      d={d}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+    />
+  )
+
   return (
-    <svg
-      className="absolute top-0 left-0 w-full h-full pointer-events-none text-primary imprenta-world-svg"
-      style={{ zIndex: 50, color: "hsl(var(--primary))", overflow: 'visible' }}
-      shapeRendering="optimizeSpeed"
-    >
-      <path
-        d={d}
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-      />
-    </svg>
+    <>
+      <svg
+        className="absolute top-0 left-0 w-full h-full pointer-events-none text-primary imprenta-world-svg safari-only-svg"
+        style={{ zIndex: 50, color: "hsl(var(--primary))", overflow: 'visible' }}
+        shapeRendering="optimizeSpeed"
+      >
+        {pathContent}
+      </svg>
+      <WorldSpaceSvg
+        points={points}
+        className="absolute top-0 left-0 pointer-events-none text-primary chrome-only-svg"
+        style={{ zIndex: 50, color: "hsl(var(--primary))" }}
+      >
+        {pathContent}
+      </WorldSpaceSvg>
+    </>
   )
 }

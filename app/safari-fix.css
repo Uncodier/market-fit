@@ -1,4 +1,14 @@
 /* Safari-specific fixes for icons */
+.safari-only-svg {
+  display: none !important;
+}
+html.safari .safari-only-svg {
+  display: block !important;
+}
+html.safari .chrome-only-svg {
+  display: none !important;
+}
+
 @media not all and (min-resolution:.001dpcm) {
   @supports (-webkit-appearance:none) {
     /* Reglas básicas para todos los SVG */
@@ -11,8 +21,6 @@
 
     svg.imprenta-world-svg,
     svg.imprenta-world-svg * {
-      width: unset;
-      height: unset;
       transform: none !important;
       -webkit-transform: none !important;
       backface-visibility: visible !important;
@@ -194,8 +202,6 @@ html.safari svg {
 }
 
 html.safari svg.imprenta-world-svg {
-  width: unset;
-  height: unset;
   transform: none !important;
   -webkit-transform: none !important;
   backface-visibility: visible !important;

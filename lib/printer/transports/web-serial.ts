@@ -76,11 +76,14 @@ export async function requestUsbPrinter(): Promise<{
   serialNumber?: string
   baudRate?: number
 } | null> {
+  let usbError: unknown = null
+  
   if (isWebUsbSupported()) {
     try {
       return await requestWebUsbPrinter()
     } catch (err) {
-      if (!isUserCancel(err)) throw err
+      if (isUserCancel(err)) throw err // Si canceló, no seguimos preguntando
+      usbError = err // Guardamos el error para fallback
     }
   }
 
@@ -97,13 +100,17 @@ export async function requestUsbPrinter(): Promise<{
         baudRate: DEFAULT_BAUD,
       }
     } catch (err) {
-      if (!isUserCancel(err)) throw err
+      if (!isUserCancel(err)) {
+         throw usbError || err
+      }
     }
   }
   
   if (!isWebUsbSupported() && !serial) {
     throw new Error("USB printing needs Chrome or Edge")
   }
+  
+  if (usbError) throw usbError
   return null
 }
 

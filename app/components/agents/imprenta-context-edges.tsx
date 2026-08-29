@@ -1,6 +1,7 @@
 import { memo, useMemo, useEffect, useState, type MutableRefObject } from "react"
 import { InstanceNode } from "@/app/types/instance-nodes"
 import { getPublishContextAnchorY } from "./imprenta-publish-context"
+import { WorldSpaceSvg } from "./imprenta-world-svg"
 import type { ImprentaHoverStore } from "@/app/lib/imprenta-hover-store"
 import type { WorldPoint } from "@/app/lib/imprenta-world-svg"
 
@@ -99,47 +100,68 @@ export const ImprentaContextEdges = memo(function ImprentaContextEdges({
     nodesRef,
   ])
 
+  const points = useMemo(() => {
+    const pts: WorldPoint[] = []
+    for (const edge of edges) {
+      pts.push(edge.start, edge.end)
+    }
+    return pts
+  }, [edges])
+
   if (edges.length === 0) return null
 
+  const renderEdges = () => (
+    edges.map((edge) => {
+      const strokeWidth = edge.isSelected ? 4 : edge.touchesHoverChain ? 3 : 2
+      return (
+        <g key={`ctx-edge-${edge.id}`}>
+          <path
+            d={edge.d}
+            fill="none"
+            stroke="currentColor"
+            strokeOpacity={edge.isSelected || edge.touchesHoverChain ? 1 : 0.5}
+            strokeWidth={strokeWidth}
+            className={`${edge.isSelected || edge.touchesHoverChain ? "text-primary" : "text-primary/50"} cursor-pointer`}
+            strokeDasharray="4 4"
+            style={{ pointerEvents: "stroke" }}
+            onClick={(e) => {
+              e.stopPropagation()
+              setSelectedContextId(edge.isSelected ? null : edge.id)
+            }}
+          />
+          <path
+            d={edge.d}
+            fill="none"
+            stroke="transparent"
+            strokeWidth="20"
+            className="cursor-pointer"
+            style={{ pointerEvents: "stroke" }}
+            onClick={(e) => {
+              e.stopPropagation()
+              setSelectedContextId(edge.isSelected ? null : edge.id)
+            }}
+          />
+        </g>
+      )
+    })
+  )
+
   return (
-    <svg
-      className="absolute top-0 left-0 w-full h-full pointer-events-none imprenta-world-svg"
-      style={{ zIndex: 0, overflow: 'visible' }}
-      shapeRendering="optimizeSpeed"
-    >
-      {edges.map((edge) => {
-        const strokeWidth = edge.isSelected ? 4 : edge.touchesHoverChain ? 3 : 2
-        return (
-          <g key={`ctx-edge-${edge.id}`}>
-            <path
-              d={edge.d}
-              fill="none"
-              stroke="currentColor"
-              strokeOpacity={edge.isSelected || edge.touchesHoverChain ? 1 : 0.5}
-              strokeWidth={strokeWidth}
-              className={`${edge.isSelected || edge.touchesHoverChain ? "text-primary" : "text-primary/50"} cursor-pointer`}
-              strokeDasharray="4 4"
-              style={{ pointerEvents: "stroke" }}
-              onClick={(e) => {
-                e.stopPropagation()
-                setSelectedContextId(edge.isSelected ? null : edge.id)
-              }}
-            />
-            <path
-              d={edge.d}
-              fill="none"
-              stroke="transparent"
-              strokeWidth="20"
-              className="cursor-pointer"
-              style={{ pointerEvents: "stroke" }}
-              onClick={(e) => {
-                e.stopPropagation()
-                setSelectedContextId(edge.isSelected ? null : edge.id)
-              }}
-            />
-          </g>
-        )
-      })}
-    </svg>
+    <>
+      <svg
+        className="absolute top-0 left-0 w-full h-full pointer-events-none imprenta-world-svg safari-only-svg"
+        style={{ zIndex: 0, overflow: 'visible' }}
+        shapeRendering="optimizeSpeed"
+      >
+        {renderEdges()}
+      </svg>
+      <WorldSpaceSvg
+        points={points}
+        className="pointer-events-none text-primary chrome-only-svg"
+        style={{ zIndex: 0, color: "hsl(var(--primary))" }}
+      >
+        {renderEdges()}
+      </WorldSpaceSvg>
+    </>
   )
 })

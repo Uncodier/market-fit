@@ -79,26 +79,32 @@ async function findDevice(
 
 async function claimBulkOut(device: UsbDeviceLike): Promise<number> {
   if (!device.opened) await device.open()
-  try {
-    await device.selectConfiguration(1)
-  } catch {
-    // already configured
+  
+  if (!device.configuration) {
+    try {
+      await device.selectConfiguration(1)
+    } catch {
+      // ignore
+    }
   }
+
   const interfaces = device.configuration?.interfaces || []
   for (const iface of interfaces) {
-    const alternate = iface.alternates[0]
-    const endpoint = alternate?.endpoints.find(
-      (e) => e.direction === "out" && (e.type === "bulk" || e.type === "interrupt"),
-    )
-    if (!endpoint) continue
-    if (!iface.claimed) {
-      try {
-        await device.claimInterface(iface.interfaceNumber)
-      } catch {
-        continue
+    for (const alternate of iface.alternates || []) {
+      const endpoint = alternate.endpoints?.find(
+        (e) => e.direction === "out" && (e.type === "bulk" || e.type === "interrupt"),
+      )
+      if (endpoint) {
+        if (!iface.claimed) {
+          try {
+            await device.claimInterface(iface.interfaceNumber)
+          } catch {
+            continue
+          }
+        }
+        return endpoint.endpointNumber
       }
     }
-    return endpoint.endpointNumber
   }
   throw new Error("No USB bulk endpoint found on this printer")
 }
