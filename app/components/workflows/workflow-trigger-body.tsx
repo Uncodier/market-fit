@@ -165,13 +165,13 @@ export function WorkflowTriggerBody({
   const webhookUrl = useMemo(() => webhookCallUrl(node), [node.id, node.instance_id, node.site_id])
   const planType = trigger.plan_type || DEFAULT_PLAN_TYPE
   const activeKinds = trigger.active_kinds || (trigger.kind ? [trigger.kind] : ["manual"])
-  const [currentTab, setCurrentTab] = useState<WorkflowTriggerKind>(activeKinds[0] || "manual")
+  const currentKind = activeKinds[0] || "manual"
 
   const runTest = async () => {
     setTesting(true)
     try {
       const response = await apiClient.post(`/api/workflows/${node.instance_id}/test`, {
-        payload: { source: currentTab, trigger_id: node.id },
+        payload: { source: currentKind, trigger_id: node.id },
       })
       if (!response.success) throw new Error(response.error?.message || "Test failed")
       toast.success("Test run started (no side effects).")
@@ -201,7 +201,7 @@ export function WorkflowTriggerBody({
     >
       <div className="flex items-center bg-muted/50 p-1 rounded-2xl gap-1">
         {TRIGGER_KIND_OPTIONS.map(({ kind, label }) => {
-          const isActive = currentTab === kind
+          const isActive = currentKind === kind
           return (
             <Button
               key={kind}
@@ -214,10 +214,7 @@ export function WorkflowTriggerBody({
                   : "text-muted-foreground hover:text-foreground"
               }`}
               onClick={() => {
-                setCurrentTab(kind)
-                if (!activeKinds.includes(kind)) {
-                  onKindsChange([...activeKinds, kind])
-                }
+                onKindsChange([kind])
               }}
             >
               {label}
@@ -258,7 +255,7 @@ export function WorkflowTriggerBody({
           </label>
         </div>
 
-        {currentTab === "webhook" && (
+        {currentKind === "webhook" && (
           <div className="space-y-1.5">
             <div className="flex items-center justify-between gap-2">
               <span className="text-[11px] font-medium">Webhook URL</span>
@@ -273,9 +270,9 @@ export function WorkflowTriggerBody({
           </div>
         )}
 
-        {currentTab === "cron" && <WorkflowCronFields trigger={trigger} onPersist={onPersist} />}
+        {currentKind === "cron" && <WorkflowCronFields trigger={trigger} onPersist={onPersist} />}
 
-        {currentTab === "db_event" && <WorkflowTriggerTableEvents trigger={trigger} onPersist={onPersist} />}
+        {currentKind === "db_event" && <WorkflowTriggerTableEvents trigger={trigger} onPersist={onPersist} />}
 
         <div className="flex items-center justify-between gap-3">
           <Button

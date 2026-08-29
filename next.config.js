@@ -54,7 +54,7 @@ const nextConfig = {
               object-src 'self' https://*.supabase.co https://rnjgeloamtszdjplmqxy.supabase.co;
               base-uri 'self';
               form-action 'self';
-              frame-ancestors 'none';
+              frame-ancestors 'self' http://localhost:3000 http://localhost:3003 http://127.0.0.1:3000 http://127.0.0.1:3003 https://*.makinari.com https://makinari.com https://www.makinari.com https://*.uncodie.com;
             `.replace(/\s{2,}/g, ' ').trim()
           },
         ],

@@ -146,6 +146,47 @@ const ALIAS_MAP: Record<string, string> = {
   'asset': 'assets'
 }
 
+const DEMO_FRAME_ANCESTORS =
+  "frame-ancestors 'self' http://localhost:3000 http://localhost:3003 http://127.0.0.1:3000 http://127.0.0.1:3003 https://*.makinari.com https://makinari.com https://www.makinari.com https://*.uncodie.com"
+
+function isDemoClientId(id: string | null | undefined): id is string {
+  return typeof id === 'string' && id.startsWith('demo-')
+}
+
+function demoClientFromRequest(request: NextRequest): string | null {
+  const fromQuery = request.nextUrl.searchParams.get('client')
+  if (isDemoClientId(fromQuery)) return fromQuery
+  const fromCookie = request.cookies.get('market_fit_demo_site_id')?.value
+  return isDemoClientId(fromCookie) ? fromCookie : null
+}
+
+/** Marketing iframes hit /demo?client=&page= — bounce server-side so they never sit on a blank overlay. */
+function redirectDemoIframe(request: NextRequest): NextResponse | null {
+  const { pathname } = request.nextUrl
+  if (pathname !== '/demo' && pathname !== '/demo/') return null
+
+  const client = request.nextUrl.searchParams.get('client')
+  const page = request.nextUrl.searchParams.get('page')
+  if (!isDemoClientId(client) || !page || !page.startsWith('/') || page.startsWith('//')) {
+    return null
+  }
+
+  const dest = new URL(page, request.url)
+  dest.searchParams.set('client', client)
+  const lang = request.nextUrl.searchParams.get('lang')
+  const theme = request.nextUrl.searchParams.get('theme')
+  if (lang && !dest.searchParams.get('lang')) dest.searchParams.set('lang', lang)
+  if (theme && !dest.searchParams.get('theme')) dest.searchParams.set('theme', theme)
+
+  const res = NextResponse.redirect(dest)
+  res.cookies.set('market_fit_demo_site_id', client, {
+    path: '/',
+    maxAge: 86400,
+    sameSite: 'lax',
+  })
+  return getCorsHeaders(res, request, false)
+}
+
 function isAllowedCorsOrigin(origin: string | null): origin is string {
   if (!origin) return false
   if (
@@ -240,11 +281,8 @@ const getCorsHeaders = (
   // Include https://app.makinari.com so commerce pages proxied under www can load assetPrefix chunks.
   let csp = "default-src 'self'; connect-src 'self' https://app.makinari.com https://www.makinari.com https://*.supabase.co wss://*.supabase.co https://*.supabase.in http://localhost:3001 http://192.168.0.38:3001 http://192.168.87.79:3001 http://192.168.87.25:3001 http://192.168.87.246:3001 http://192.168.87.34:* http://192.168.87.34 https://192.168.87.34:* http://192.168.87.49/* http://192.168.87.49:* https://192.168.87.49/* https://192.168.87.49:* http://192.168.87.174:* http://192.168.87.174 https://192.168.87.174:* http://192.168.87.180:* http://192.168.87.180 https://192.168.87.180:* https://tu-api-real.com https://api.market-fit.ai https://backend.aimarket.fit https://backend.uncodie.com https://api.uncodie.com https://backend.makinari.com https://db.makinari.com wss://db.makinari.com https://ipapi.co https://nominatim.openstreetmap.org https://api.stripe.com https://*.stripe.com; script-src 'self' 'unsafe-eval' 'unsafe-inline' https://js.stripe.com https://files.uncodie.com https://backend.uncodie.com https://app.makinari.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://app.makinari.com; img-src 'self' data: blob: https: http://localhost:3001; font-src 'self' data: https://fonts.gstatic.com https://app.makinari.com; media-src 'self' blob: https://files.uncodie.com https://*.supabase.co https://rnjgeloamtszdjplmqxy.supabase.co https://db.makinari.com; frame-src 'self' https://*.vercel.app https://*.supabase.co https://rnjgeloamtszdjplmqxy.supabase.co https://docs.google.com https://js.stripe.com https://hooks.stripe.com https://*.stripe.com https://*.scrapybara.com https://*.makinari.com https://*.preview.makinari.com https://www.openstreetmap.org;";
   
-  if (isPublicBooking) {
-    csp += " frame-ancestors *;";
-    // Remove X-Frame-Options if it was set to DENY/SAMEORIGIN
-    response.headers.delete('X-Frame-Options');
-  }
+  csp += isPublicBooking ? " frame-ancestors *;" : ` ${DEMO_FRAME_ANCESTORS};`
+  response.headers.delete('X-Frame-Options')
   
   response.headers.set('Content-Security-Policy', csp);
   return response;
@@ -337,6 +375,9 @@ export async function middleware(request: NextRequest) {
     return getCorsHeaders(res, request, isPublicBooking)
   }
   
+  const demoIframeRedirect = redirectDemoIframe(request)
+  if (demoIframeRedirect) return demoIframeRedirect
+
   // Redirigir /auth/login a /auth para mantener una única ruta de autenticación
   if (pathname === '/auth/login') {
     const url = request.nextUrl.clone()
@@ -373,7 +414,7 @@ export async function middleware(request: NextRequest) {
           NextResponse.redirect(new URL(destination, request.url))
         )
       }
-    } else if (!user && !lookupFailed && !request.cookies.has('market_fit_demo_site_id')) {
+    } else if (!user && !lookupFailed && !demoClientFromRequest(request)) {
       if (isApiLikeRequest(request)) {
         return forbiddenResponse(request)
       }
@@ -392,7 +433,7 @@ export async function middleware(request: NextRequest) {
     !isAuthPath &&
     !isPrefetch &&
     !isServerAction &&
-    !request.cookies.has('market_fit_demo_site_id')
+    !demoClientFromRequest(request)
   ) {
     try {
       const blockedRedirect = await resolveBlockedScreenRedirect(
@@ -413,11 +454,18 @@ export async function middleware(request: NextRequest) {
   copyResponseCookies(sessionResponse, res)
   getCorsHeaders(res, request, isPublicBooking)
 
-  if (shouldClearDemoCookieOnPath(pathname) && request.cookies.has('market_fit_demo_site_id')) {
+  const demoClient = demoClientFromRequest(request)
+  if (shouldClearDemoCookieOnPath(pathname) && demoClient) {
     res.cookies.set('market_fit_demo_site_id', '', {
       path: '/',
       maxAge: 0,
       expires: new Date(0),
+    })
+  } else if (demoClient && !request.cookies.has('market_fit_demo_site_id')) {
+    res.cookies.set('market_fit_demo_site_id', demoClient, {
+      path: '/',
+      maxAge: 86400,
+      sameSite: 'lax',
     })
   }
 
