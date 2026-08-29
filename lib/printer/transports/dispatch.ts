@@ -26,6 +26,7 @@ async function writeUsb(device: PrinterDevice, bytes: Uint8Array, allowPrompt: b
     await writeUsbBytes(bytes, bind?.usbVendorId, bind?.usbProductId, {
       allowPrompt,
       baudRate: bind?.baudRate,
+      serialNumber: bind?.usbSerialNumber
     })
   } catch (err) {
     if (!isWebUsbSupported()) throw err

@@ -89,6 +89,8 @@ async function claimBulkOut(device: UsbDeviceLike): Promise<number> {
   }
 
   const interfaces = device.configuration?.interfaces || []
+  
+  // Buscar endpoint bulk/interrupt de salida
   for (const iface of interfaces) {
     for (const alternate of iface.alternates || []) {
       const endpoint = alternate.endpoints?.find(
@@ -98,7 +100,8 @@ async function claimBulkOut(device: UsbDeviceLike): Promise<number> {
         if (!iface.claimed) {
           try {
             await device.claimInterface(iface.interfaceNumber)
-          } catch {
+          } catch (e) {
+            console.error("No se pudo reclamar la interfaz", iface.interfaceNumber, e)
             continue
           }
         }
@@ -106,6 +109,27 @@ async function claimBulkOut(device: UsbDeviceLike): Promise<number> {
       }
     }
   }
+
+  // Fallback: si no encontramos la clase específica pero hay un endpoint out, intentarlo
+  for (const iface of interfaces) {
+    for (const alternate of iface.alternates || []) {
+      const endpoint = alternate.endpoints?.find(
+        (e) => e.direction === "out"
+      )
+      if (endpoint) {
+        if (!iface.claimed) {
+          try {
+            await device.claimInterface(iface.interfaceNumber)
+            return endpoint.endpointNumber
+          } catch (e) {
+             continue
+          }
+        }
+        return endpoint.endpointNumber
+      }
+    }
+  }
+
   throw new Error("No USB bulk endpoint found on this printer")
 }
 
@@ -119,7 +143,18 @@ export async function requestWebUsbPrinter(): Promise<{
   if (!usb) throw new Error("WebUSB is not supported in this browser")
   const device = await usb.requestDevice({ filters: USB_FILTERS })
   cached = device
-  await claimBulkOut(device)
+  try {
+    await claimBulkOut(device)
+  } catch (err) {
+    if (device.opened) {
+      try {
+        await device.close()
+      } catch {
+        // ignore
+      }
+    }
+    throw err
+  }
   return {
     kind: "webusb",
     vendorId: device.vendorId,
@@ -147,8 +182,13 @@ export async function writeWebUsbBytes(
   }
   const endpoint = await claimBulkOut(device)
   const chunkSize = 64
-  for (let i = 0; i < data.length; i += chunkSize) {
-    const result = await device.transferOut(endpoint, data.slice(i, i + chunkSize))
-    if (result.status !== "ok") throw new Error("USB printer transfer failed")
+  try {
+    for (let i = 0; i < data.length; i += chunkSize) {
+      const result = await device.transferOut(endpoint, data.slice(i, i + chunkSize))
+      if (result.status !== "ok") throw new Error("USB printer transfer failed")
+    }
+  } finally {
+    // Si queremos cerrarla después de cada print (recomendado para webusb printers)
+    // await device.close()
   }
 }

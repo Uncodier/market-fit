@@ -129,17 +129,46 @@ export async function writeUsbBytes(
   data: Uint8Array,
   vendorId?: number,
   productId?: number,
-  options?: { allowPrompt?: boolean; baudRate?: number },
+  options?: { allowPrompt?: boolean; baudRate?: number; serialNumber?: string },
 ): Promise<void> {
   const serial = getSerial()
-  if (!serial) throw new Error("Web Serial is not supported in this browser")
+  if (!serial) {
+    if (isWebUsbSupported()) {
+      const { writeWebUsbBytes } = await import("./web-usb")
+      return writeWebUsbBytes(data, vendorId, productId, options?.serialNumber, { allowPrompt: options?.allowPrompt })
+    }
+    throw new Error("USB printing is not supported in this browser")
+  }
+
+  // Attempt Web Serial first
   let port = await findPort(vendorId, productId)
+  
+  // If not found in serial, try WebUSB before prompting for serial again
+  if (!port && isWebUsbSupported()) {
+    try {
+      const { writeWebUsbBytes } = await import("./web-usb")
+      await writeWebUsbBytes(data, vendorId, productId, options?.serialNumber, { allowPrompt: false })
+      return // Success with WebUSB!
+    } catch {
+      // Fallback to requesting a serial port
+    }
+  }
+
   if (!port) {
     if (options?.allowPrompt === false) {
       throw new Error("USB printer is not connected on this station")
     }
-    port = await serial.requestPort()
+    try {
+      port = await serial.requestPort()
+    } catch (err) {
+      if (isWebUsbSupported()) {
+         const { writeWebUsbBytes } = await import("./web-usb")
+         return writeWebUsbBytes(data, vendorId, productId, options?.serialNumber, { allowPrompt: true })
+      }
+      throw err
+    }
   }
+
   await ensureOpen(port, options?.baudRate || DEFAULT_BAUD)
   if (!port.writable) throw new Error("Printer port is not writable")
   const writer = port.writable.getWriter()
