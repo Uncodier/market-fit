@@ -85,7 +85,14 @@ const htmlToMarkdown = (html: string): string => {
           case 'em': case 'i': return `*${children}*`;
           case 'ul': return `${children}\n`;
           case 'ol': return `${children}\n`;
-          case 'li': return `- ${children}\n`;
+          case 'li': {
+            const parent = element.parentElement;
+            if (parent && parent.tagName.toLowerCase() === 'ol') {
+              const index = Array.from(parent.children).indexOf(element) + 1;
+              return `${index}. ${children}\n`;
+            }
+            return `- ${children}\n`;
+          }
           case 'blockquote': return `> ${children}\n\n`;
           case 'code': return `\`${children}\``;
           case 'pre': return `\`\`\`\n${children}\n\`\`\`\n\n`;
