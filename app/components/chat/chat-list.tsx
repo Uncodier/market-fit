@@ -336,7 +336,7 @@ export function ChatList({
                           agentName: details.agentName,
                           leadName: details.leadName,
                           leadStatus: details.leadStatus,
-                          channel: (details.channel as 'web' | 'email' | 'whatsapp') || 'web',
+                          channel: details.channel || 'web',
                           status: payload.new.status || conv.status || 'active'
                         } 
                       : conv
@@ -407,7 +407,7 @@ export function ChatList({
                 timestamp: new Date(payload.new.updated_at || payload.new.created_at || new Date()),
                 unreadCount: 0,
                 messageCount: 0,
-                channel: (details.channel as 'web' | 'email' | 'whatsapp') || 'web',
+                channel: details.channel || 'web',
                 status: payload.new.status || 'active'
               };
               

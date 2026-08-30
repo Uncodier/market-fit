@@ -23,7 +23,7 @@ export interface ConversationListItem {
   messageCount?: number
   leadName?: string
   leadStatus?: string
-  channel?: 'web' | 'email' | 'whatsapp'
+  channel?: 'web' | 'email' | 'whatsapp' | 'instagram' | 'messenger' | 'sms' | 'telegram' | 'voice' | 'website_chat' | string
   status?: 'pending' | 'active' | 'closed' | 'archived'
   hasAcceptedMessage?: boolean
 }

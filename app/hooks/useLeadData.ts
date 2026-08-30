@@ -21,6 +21,7 @@ export function useLeadData(conversationId: string, siteId?: string) {
             name,
             email,
             phone,
+            social_networks,
             assignee_id,
             site_id,
             company_id,
@@ -84,6 +85,7 @@ export function useLeadData(conversationId: string, siteId?: string) {
           avatarUrl: null,
           email: lead.email,
           phone: lead.phone,
+          social_networks: lead.social_networks,
           assignee_id: lead.assignee_id,
           assignee: assigneeData ? {
             id: lead.assignee_id,

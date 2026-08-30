@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react"
 import { useSite } from "@/app/context/SiteContext"
 
-type Channel = 'web' | 'email' | 'whatsapp'
+type Channel = 'web' | 'email' | 'whatsapp' | 'instagram' | 'messenger' | 'sms' | 'telegram' | 'voice' | 'website_chat' | string
 
 interface UseChannelSelectorProps {
   conversationId?: string
@@ -9,6 +9,7 @@ interface UseChannelSelectorProps {
     id: string
     email?: string
     phone?: string
+    social_networks?: any
   } | null
   isAgentOnlyConversation?: boolean
   defaultChannel?: Channel
@@ -83,6 +84,33 @@ export function useChannelSelector({
         status: siteChannels?.whatsapp?.status,
         hasPhone: !!leadData?.phone
       })
+    }
+
+    // Check connections for other channels (instagram, messenger, sms, telegram, voice)
+    if (siteChannels?.connections && Array.isArray(siteChannels.connections)) {
+      const activeConnections = siteChannels.connections.filter(c => c.status === 'connected')
+      
+      for (const connection of activeConnections) {
+        if (!connection.type) continue;
+        
+        switch (connection.type) {
+          case 'instagram':
+            if (leadData?.social_networks?.instagram) channels.push('instagram')
+            break
+          case 'messenger':
+            if (leadData?.social_networks?.facebook || leadData?.social_networks?.messenger) channels.push('messenger')
+            break
+          case 'sms':
+            if (leadData?.phone) channels.push('sms')
+            break
+          case 'telegram':
+            if (leadData?.phone || leadData?.social_networks?.telegram) channels.push('telegram')
+            break
+          case 'voice':
+            if (leadData?.phone) channels.push('voice')
+            break
+        }
+      }
     }
 
     // IMPORTANT: Always include the conversation's selected channel if it's not already included

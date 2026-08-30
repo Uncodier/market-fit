@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react"
 import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/app/components/ui/table"
-import { MessageSquare, Mail, Globe } from "@/app/components/ui/icons"
-import { WhatsAppIcon } from "@/app/components/ui/social-icons"
+import { MessageSquare, Mail, Globe, MessageCircle, Phone } from "@/app/components/ui/icons"
+import { WhatsAppIcon, InstagramIcon, TelegramIcon } from "@/app/components/ui/social-icons"
 import { Skeleton } from "@/app/components/ui/skeleton"
 import { Button } from "@/app/components/ui/button"
 import { format } from "date-fns"
@@ -22,7 +22,7 @@ import {
 
 interface DatabaseConversation {
   id: string
-  channel: "web" | "email" | "whatsapp"
+  channel: "web" | "email" | "whatsapp" | "instagram" | "messenger" | "sms" | "telegram" | "voice" | "website_chat" | string
   subject: string
   message: string
   date: string
@@ -31,7 +31,7 @@ interface DatabaseConversation {
 
 interface Conversation {
   id: string
-  channel: "web" | "email" | "whatsapp"
+  channel: "web" | "email" | "whatsapp" | "instagram" | "messenger" | "sms" | "telegram" | "voice" | "website_chat" | string
   subject: string
   message: string
   date: string
@@ -40,10 +40,16 @@ interface Conversation {
   agentName?: string
 }
 
-const CHANNEL_ICONS = {
+const CHANNEL_ICONS: Record<string, React.ReactNode> = {
   web: <Globe className="h-3.5 w-3.5 text-muted-foreground" />,
+  website_chat: <Globe className="h-3.5 w-3.5 text-muted-foreground" />,
   email: <Mail className="h-3.5 w-3.5 text-muted-foreground" />,
   whatsapp: <WhatsAppIcon size={14} className="h-3.5 w-3.5" />,
+  instagram: <InstagramIcon size={14} className="h-3.5 w-3.5" />,
+  messenger: <MessageCircle className="h-3.5 w-3.5 text-muted-foreground" />,
+  sms: <MessageSquare className="h-3.5 w-3.5 text-muted-foreground" />,
+  telegram: <TelegramIcon size={14} className="h-3.5 w-3.5" />,
+  voice: <Phone className="h-3.5 w-3.5 text-muted-foreground" />,
 }
 
 interface ConversationsViewProps {
@@ -96,7 +102,7 @@ export function ConversationsView({ leadId }: ConversationsViewProps) {
           setConversations(
             result.conversations.map((conv: DatabaseConversation) => ({
               ...conv,
-              channel: conv.channel as "web" | "email" | "whatsapp",
+              channel: conv.channel,
               status: conv.status as "pending" | "active" | "closed" | "archived",
               agentId: (conv as any).agent_id || undefined,
               agentName: (conv as any).agent_name || undefined,
@@ -214,7 +220,7 @@ export function ConversationsView({ leadId }: ConversationsViewProps) {
                   </TableCell>
                   <TableCell className="py-3.5 text-right">
                     <div className="flex items-center justify-end gap-2 text-sm text-muted-foreground whitespace-nowrap">
-                      {CHANNEL_ICONS[conversation.channel]}
+                      {CHANNEL_ICONS[conversation.channel] || <Globe className="h-3.5 w-3.5 text-muted-foreground" />}
                       {formatDate(conversation.date)}
                     </div>
                   </TableCell>

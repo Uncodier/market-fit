@@ -2,11 +2,11 @@ import React, { memo } from "react"
 import { Tabs, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
 import * as Icons from "@/app/components/ui/icons"
 import { LoadingSkeleton } from "@/app/components/ui/loading-skeleton"
-import { WhatsAppIcon } from "@/app/components/ui/social-icons"
+import { WhatsAppIcon, InstagramIcon, TelegramIcon } from "@/app/components/ui/social-icons"
 import { cn } from "@/lib/utils"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/app/components/ui/tooltip"
 
-type Channel = 'web' | 'email' | 'whatsapp'
+type Channel = 'web' | 'email' | 'whatsapp' | 'instagram' | 'messenger' | 'sms' | 'telegram' | 'voice' | 'website_chat' | string
 
 interface ChannelSelectorProps {
   selectedChannel: Channel
@@ -16,8 +16,17 @@ interface ChannelSelectorProps {
   isUpdating?: boolean
 }
 
-const channelConfig = {
+const channelConfig: Record<string, {
+  icon: any;
+  label: string;
+  description: string;
+}> = {
   web: {
+    icon: Icons.Globe,
+    label: "Web",
+    description: "Send via web chat"
+  },
+  website_chat: {
     icon: Icons.Globe,
     label: "Web",
     description: "Send via web chat"
@@ -31,7 +40,44 @@ const channelConfig = {
     icon: ({ className }: { className?: string }) => <WhatsAppIcon size={16} className={className} />,
     label: "WhatsApp",
     description: "Send via WhatsApp"
+  },
+  instagram: {
+    icon: ({ className }: { className?: string }) => <InstagramIcon size={16} className={className} />,
+    label: "Instagram",
+    description: "Send via Instagram"
+  },
+  messenger: {
+    icon: Icons.MessageCircle,
+    label: "Messenger",
+    description: "Send via Messenger"
+  },
+  sms: {
+    icon: Icons.MessageSquare,
+    label: "SMS",
+    description: "Send via SMS"
+  },
+  telegram: {
+    icon: ({ className }: { className?: string }) => <TelegramIcon size={16} className={className} />,
+    label: "Telegram",
+    description: "Send via Telegram"
+  },
+  voice: {
+    icon: Icons.Phone,
+    label: "Voice",
+    description: "Send via Voice"
   }
+}
+
+const getChannelConfig = (channel: string) => {
+  if (channelConfig[channel]) {
+    return channelConfig[channel];
+  }
+  // Safe fallback for unknown channels
+  return {
+    icon: Icons.Globe,
+    label: channel.charAt(0).toUpperCase() + channel.slice(1),
+    description: `Send via ${channel}`
+  };
 }
 
 export const ChannelSelector = memo(function ChannelSelector({
@@ -59,7 +105,7 @@ export const ChannelSelector = memo(function ChannelSelector({
         )}>
           <TooltipProvider delayDuration={300}>
             {availableChannels.map((channel) => {
-              const config = channelConfig[channel]
+              const config = getChannelConfig(channel)
               const IconComponent = config.icon
               const isSelected = channel === selectedChannel
 

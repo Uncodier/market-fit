@@ -3,8 +3,8 @@
 import React from "react"
 import { Button } from "@/app/components/ui/button"
 import { Badge } from "@/app/components/ui/badge"
-import { Mail } from "@/app/components/ui/icons"
-import { WhatsAppIcon } from "@/app/components/ui/social-icons"
+import { Mail, Phone, MessageCircle, MessageSquare } from "@/app/components/ui/icons"
+import { WhatsAppIcon, InstagramIcon, TelegramIcon } from "@/app/components/ui/social-icons"
 import { cn } from "@/lib/utils"
 import { ConversationListItem } from "@/app/types/chat"
 import { useTheme } from "@/app/context/ThemeContext"
@@ -58,7 +58,7 @@ function formatMessageDate(timestamp: Date | string): string {
 }
 
 // Function to get channel icon
-function getChannelIcon(channel: 'web' | 'email' | 'whatsapp' | undefined, isAgentConversation?: boolean) {
+function getChannelIcon(channel: string | undefined, isAgentConversation?: boolean) {
   // Si es una conversación de agente (team member <-> agent), mostrar ícono de IA
   if (isAgentConversation) {
     return <Icons.User size={15} className="text-muted-foreground/60" />;
@@ -69,10 +69,23 @@ function getChannelIcon(channel: 'web' | 'email' | 'whatsapp' | undefined, isAge
   switch (iconChannel) {
     case 'whatsapp':
       return <WhatsAppIcon size={15} className="text-muted-foreground/60" />;
+    case 'instagram':
+      return <InstagramIcon size={15} className="text-muted-foreground/60" />;
+    case 'messenger':
+      return <MessageCircle size={15} className="text-muted-foreground/60" />;
+    case 'sms':
+      return <MessageSquare size={15} className="text-muted-foreground/60" />;
+    case 'telegram':
+      return <TelegramIcon size={15} className="text-muted-foreground/60" />;
+    case 'voice':
+      return <Phone size={15} className="text-muted-foreground/60" />;
     case 'email':
       return <Mail className="text-muted-foreground/60" style={{ width: '15px', height: '15px' }} />;
     case 'web':
+    case 'website_chat':
+      return <Icons.Globe className="text-blue-500/70" style={{ width: '15px', height: '15px' }} />;
     default:
+      // Fallback
       return <Icons.Globe className="text-blue-500/70" style={{ width: '15px', height: '15px' }} />;
   }
 }

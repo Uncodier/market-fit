@@ -499,7 +499,7 @@ export async function getConversations(
         lastMessage,
         timestamp: new Date(messageDate),
         messageCount: conv.messages?.length || 0,
-        channel: (channel as 'web' | 'email' | 'whatsapp') || 'web',
+        channel: channel || 'web',
         status: (hasPendingMessages ? 'pending' : conv.status) || 'active',
         hasAcceptedMessage: hasAcceptedMessage || false
       }
@@ -578,7 +578,7 @@ async function buildConversationListItems(
       lastMessage,
       timestamp: new Date(messageDate),
       messageCount: conv.messages?.length || 0,
-      channel: (channel as 'web' | 'email' | 'whatsapp') || 'web',
+      channel: channel || 'web',
       status: (hasPendingMessages ? 'pending' : conv.status) || 'active',
       hasAcceptedMessage: hasAcceptedMessage || false
     }
