@@ -22,7 +22,7 @@ const IconWrapper = ({
 }: IconProps & { children: React.ReactNode }) => {
   return (
     <span 
-      className={`inline-flex items-center justify-center safari-icon-fix [&>svg]:w-full [&>svg]:h-full ${className}`}
+      className={`inline-flex items-center justify-center safari-icon-fix shrink-0 [&>svg]:w-full [&>svg]:h-full ${className}`}
       style={{ 
         width: size, 
         height: size, 

@@ -380,7 +380,7 @@ export const handleSave = async (data: SiteFormValues, options: SaveOptions) => 
           settings.channels.email = {
             enabled: data.channels.email.enabled || false,
             email: data.channels.email.email || "",
-            password: "PASSWORD_PRESENT", // Indicate password is stored securely
+            password: "PASSWORD_PRESENT", // Indicate password is stored securely // ggignore
             aliases: data.channels.email.aliases || "",
             incomingServer: data.channels.email.incomingServer || "",
             incomingPort: data.channels.email.incomingPort || "",
@@ -415,7 +415,7 @@ export const handleSave = async (data: SiteFormValues, options: SaveOptions) => 
         settings.channels.email = {
           enabled: data.channels.email.enabled || false,
           email: data.channels.email.email || "",
-          password: "PASSWORD_PRESENT", // Keep the indicator
+          password: "PASSWORD_PRESENT", // Keep the indicator // ggignore
           aliases: data.channels.email.aliases || "",
           incomingServer: data.channels.email.incomingServer || "",
           incomingPort: data.channels.email.incomingPort || "",
@@ -1316,7 +1316,7 @@ export const handleSaveChannels = async (data: SiteFormValues, options: SaveOpti
           enabled: channels?.email?.enabled ?? currentSite.settings?.channels?.email?.enabled ?? false,
           email: channels?.email?.email ?? currentSite.settings?.channels?.email?.email ?? "",
           password: channels?.email?.password === 'STORED_SECURELY' || channels?.email?.password === 'PASSWORD_PRESENT' 
-            ? "PASSWORD_PRESENT" 
+            ? "PASSWORD_PRESENT" // ggignore
             : (channels?.email?.password ?? currentSite.settings?.channels?.email?.password ?? ""),
           aliases: channels?.email?.aliases ?? currentSite.settings?.channels?.email?.aliases ?? "",
           incomingServer: channels?.email?.incomingServer ?? currentSite.settings?.channels?.email?.incomingServer ?? "",

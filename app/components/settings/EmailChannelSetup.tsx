@@ -6,6 +6,7 @@ import { Switch } from "@/app/components/ui/switch"
 import { toast } from "sonner"
 import { apiClient } from "@/app/services/api-client-service"
 import { Copy, Check } from "@/app/components/ui/icons"
+import { SectionCardFooter, SectionCardContent } from "@/app/components/ui/section-card"
 
 export function EmailChannelSetup({ 
   siteId, 
@@ -118,6 +119,7 @@ export function EmailChannelSetup({
         emailAddress: fullEmail,
         emailFromName: fromName,
         emailDomainId: metadata.email_domain_id,
+        active: true,
       })
 
       if (!response.success) throw new Error(response.error?.message || "Failed to create sender")
@@ -171,19 +173,23 @@ export function EmailChannelSetup({
   // Step 1: Add Domain
   if (!metadata.email_domain_id) {
     return (
-      <div className="space-y-4 p-4 bg-muted/20 rounded-lg border dark:border-white/5 border-black/5">
-        <div className="space-y-2">
-          <h4 className="text-sm font-medium">1. Add Your Domain</h4>
-          <p className="text-xs text-muted-foreground">
-            Enter the domain you want to send emails from (e.g., yourcompany.com)
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <Input 
-            placeholder="yourcompany.com" 
-            value={domain}
-            onChange={(e) => setDomain(e.target.value)}
-          />
+      <>
+        <SectionCardContent className="space-y-4 pt-0">
+          <div className="space-y-2">
+            <h4 className="text-sm font-medium">1. Add Your Domain</h4>
+            <p className="text-xs text-muted-foreground">
+              Enter the domain you want to send emails from (e.g., yourcompany.com)
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <Input 
+              placeholder="yourcompany.com" 
+              value={domain}
+              onChange={(e) => setDomain(e.target.value)}
+            />
+          </div>
+        </SectionCardContent>
+        <SectionCardFooter>
           <Button 
             type="button" 
             onClick={handleAddDomain} 
@@ -191,16 +197,16 @@ export function EmailChannelSetup({
           >
             {isProcessing ? "Adding..." : "Add Domain"}
           </Button>
-        </div>
-      </div>
+        </SectionCardFooter>
+      </>
     )
   }
 
   // Step 2: Verify DNS
   if (domainStatus !== "verified") {
     return (
-      <div className="space-y-4 p-4 bg-muted/20 rounded-lg border dark:border-white/5 border-black/5">
-        <div className="space-y-2">
+      <>
+        <SectionCardContent className="space-y-4 pt-0">
           <div className="flex items-center justify-between">
             <h4 className="text-sm font-medium">2. Configure DNS Records</h4>
             <span className="text-xs px-2 py-1 bg-orange-100 text-orange-800 rounded capitalize">
@@ -210,51 +216,52 @@ export function EmailChannelSetup({
           <p className="text-xs text-muted-foreground">
             Add these CNAME records to your DNS provider for {metadata.domain}
           </p>
-        </div>
 
-        <div className="space-y-3">
-          {dnsRecords.map((record: any, idx: number) => (
-            <div key={idx} className="p-3 bg-background rounded border text-xs font-mono space-y-2">
-              <div className="flex justify-between items-center">
-                <span className="text-muted-foreground">Name/Host:</span>
-                <div className="flex items-center gap-2">
-                  <span className="truncate max-w-[200px]">{record.name}</span>
-                  <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => copyToClipboard(record.name, `name-${idx}`)}>
-                    {copied === `name-${idx}` ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
-                  </Button>
+          <div className="space-y-3">
+            {dnsRecords.map((record: any, idx: number) => (
+              <div key={idx} className="p-3 bg-background rounded border text-xs font-mono space-y-2">
+                <div className="flex justify-between items-center">
+                  <span className="text-muted-foreground">Name/Host:</span>
+                  <div className="flex items-center gap-2">
+                    <span className="truncate max-w-[200px]">{record.name}</span>
+                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => copyToClipboard(record.name, `name-${idx}`)}>
+                      {copied === `name-${idx}` ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+                    </Button>
+                  </div>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-muted-foreground">Value/Target:</span>
+                  <div className="flex items-center gap-2">
+                    <span className="truncate max-w-[200px]">{record.value}</span>
+                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => copyToClipboard(record.value, `val-${idx}`)}>
+                      {copied === `val-${idx}` ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+                    </Button>
+                  </div>
                 </div>
               </div>
-              <div className="flex justify-between items-center">
-                <span className="text-muted-foreground">Value/Target:</span>
-                <div className="flex items-center gap-2">
-                  <span className="truncate max-w-[200px]">{record.value}</span>
-                  <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => copyToClipboard(record.value, `val-${idx}`)}>
-                    {copied === `val-${idx}` ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
-                  </Button>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        </SectionCardContent>
 
-        <Button 
-          type="button" 
-          variant="secondary"
-          className="w-full"
-          onClick={handleVerifyDomain} 
-          disabled={isProcessing}
-        >
-          {isProcessing ? "Verifying..." : "Verify DNS"}
-        </Button>
-      </div>
+        <SectionCardFooter>
+          <Button 
+            type="button" 
+            variant="secondary"
+            onClick={handleVerifyDomain} 
+            disabled={isProcessing}
+          >
+            {isProcessing ? "Verifying..." : "Verify DNS"}
+          </Button>
+        </SectionCardFooter>
+      </>
     )
   }
 
   // Step 3: Create Sender
   if (!hasSender) {
     return (
-      <div className="space-y-4 p-4 bg-muted/20 rounded-lg border dark:border-white/5 border-black/5">
-        <div className="space-y-2">
+      <>
+        <SectionCardContent className="space-y-4 pt-0">
           <div className="flex items-center justify-between">
             <h4 className="text-sm font-medium">3. Configure Email Address</h4>
             <span className="text-xs px-2 py-1 bg-green-100 text-green-800 rounded">
@@ -264,71 +271,74 @@ export function EmailChannelSetup({
           <p className="text-xs text-muted-foreground">
             Set up the email address your agent will use
           </p>
-        </div>
 
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <Label className="text-xs">From Address</Label>
-            <div className="flex items-center gap-2">
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label className="text-xs">From Address</Label>
+              <div className="flex items-center gap-2">
+                <Input 
+                  value={fromEmail}
+                  onChange={(e) => setFromEmail(e.target.value)}
+                  className="text-right"
+                />
+                <span className="text-muted-foreground text-sm">@{metadata.domain}</span>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label className="text-xs">From Name</Label>
               <Input 
-                value={fromEmail}
-                onChange={(e) => setFromEmail(e.target.value)}
-                className="text-right"
+                placeholder="e.g. Acme Support"
+                value={fromName}
+                onChange={(e) => setFromName(e.target.value)}
               />
-              <span className="text-muted-foreground text-sm">@{metadata.domain}</span>
             </div>
           </div>
-          <div className="space-y-2">
-            <Label className="text-xs">From Name</Label>
-            <Input 
-              placeholder="e.g. Acme Support"
-              value={fromName}
-              onChange={(e) => setFromName(e.target.value)}
-            />
-          </div>
-        </div>
+        </SectionCardContent>
 
-        <Button 
-          type="button" 
-          onClick={handleCreateSender} 
-          disabled={isProcessing || !fromEmail || !fromName}
-          className="w-full"
-        >
-          {isProcessing ? "Creating..." : "Create Email Channel"}
-        </Button>
-      </div>
+        <SectionCardFooter>
+          <Button 
+            type="button" 
+            onClick={handleCreateSender} 
+            disabled={isProcessing || !fromEmail || !fromName}
+          >
+            {isProcessing ? "Creating..." : "Create Email Channel"}
+          </Button>
+        </SectionCardFooter>
+      </>
     )
   }
 
   // Step 4: Manage Existing Sender (Inbound config)
   return (
-    <div className="space-y-4 p-4 bg-muted/20 rounded-lg border dark:border-white/5 border-black/5">
-      <div className="space-y-2">
-        <h4 className="text-sm font-medium">Inbound Emails</h4>
-        <p className="text-xs text-muted-foreground">
-          To receive emails, add this MX record to your DNS:
-        </p>
-        <div className="p-3 bg-background rounded border text-xs font-mono flex justify-between items-center">
-          <span>{metadata.domain} MX 10 inbound.zavu.dev</span>
-          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => copyToClipboard(`${metadata.domain} MX 10 inbound.zavu.dev`, 'mx')}>
-            {copied === 'mx' ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
-          </Button>
-        </div>
-      </div>
-
-      <div className="flex items-center justify-between p-3 bg-background rounded border">
-        <div className="space-y-0.5">
-          <Label className="text-sm">Enable Receiving</Label>
+    <SectionCardContent className="space-y-4 pt-0">
+      <div className="space-y-4 p-4 bg-muted/20 rounded-lg border dark:border-white/5 border-black/5">
+        <div className="space-y-2">
+          <h4 className="text-sm font-medium">Inbound Emails</h4>
           <p className="text-xs text-muted-foreground">
-            Allow the agent to receive inbound emails
+            To receive emails, add this MX record to your DNS:
           </p>
+          <div className="p-3 bg-background rounded border text-xs font-mono flex justify-between items-center">
+            <span>{metadata.domain} MX 10 inbound.zavu.dev</span>
+            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => copyToClipboard(`${metadata.domain} MX 10 inbound.zavu.dev`, 'mx')}>
+              {copied === 'mx' ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+            </Button>
+          </div>
         </div>
-        <Switch 
-          checked={emailReceivingEnabled}
-          onCheckedChange={handleToggleReceiving}
-          disabled={isProcessing}
-        />
+
+        <div className="flex items-center justify-between p-3 bg-background rounded border">
+          <div className="space-y-0.5">
+            <Label className="text-sm">Enable Receiving</Label>
+            <p className="text-xs text-muted-foreground">
+              Allow the agent to receive inbound emails
+            </p>
+          </div>
+          <Switch 
+            checked={emailReceivingEnabled}
+            onCheckedChange={handleToggleReceiving}
+            disabled={isProcessing}
+          />
+        </div>
       </div>
-    </div>
+    </SectionCardContent>
   )
 }
