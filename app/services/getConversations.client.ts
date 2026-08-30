@@ -37,7 +37,7 @@ export async function getConversations(
         .eq('site_id', siteId)
         .not('conversation_id', 'is', null)
         .limit(3000)
-      const convIds = [...new Set((taskRows || []).map((t: any) => t.conversation_id).filter(Boolean))]
+      const convIds = Array.from(new Set((taskRows || []).map((t: any) => t.conversation_id).filter(Boolean)))
       if (convIds.length === 0) return []
 
       const needsAssign = assigneeFilter === 'assigned' && currentUserId
@@ -66,7 +66,9 @@ export async function getConversations(
         tasksQuery = tasksQuery.ilike('title', `%${searchQuery.trim().toLowerCase()}%`)
       }
 
-      const { data: allConvs, error } = await tasksQuery.order('last_message_at', { ascending: false })
+      const { data: allConvs, error } = await tasksQuery
+        .order('last_message_at', { ascending: false, nullsFirst: false })
+        .order('created_at', { ascending: false })
       if (error) {
         console.error('Error fetching conversations with tasks:', error)
         return []
@@ -208,7 +210,8 @@ export async function getConversations(
       const nonPendingBatches = isRepliedFilter ? 5 : 1 // 5 batches of ~1000 = ~5000 for replied
 
       const { data: pendingData, error: pendingError } = await pendingQuery
-        .order("last_message_at", { ascending: false })
+        .order("last_message_at", { ascending: false, nullsFirst: false })
+        .order("created_at", { ascending: false })
         .limit(fetchCount)
 
       if (pendingError) {
@@ -222,7 +225,8 @@ export async function getConversations(
         const from = batch * 1000
         const to = from + 999
         const { data: batchData, error: batchError } = await nonPendingQuery
-          .order("last_message_at", { ascending: false })
+          .order("last_message_at", { ascending: false, nullsFirst: false })
+          .order("created_at", { ascending: false })
           .range(from, to)
         if (batchError) {
           console.error("Error fetching non-pending batch:", batchError)
@@ -242,7 +246,8 @@ export async function getConversations(
         const pendingLimit = Math.min(pageSize, totalPending - requestedFrom)
         
         const { data: pendingData, error: pendingError } = await pendingQuery
-          .order("last_message_at", { ascending: false })
+          .order("last_message_at", { ascending: false, nullsFirst: false })
+          .order("created_at", { ascending: false })
           .range(pendingFrom, pendingFrom + pendingLimit - 1)
         
         if (pendingError) {
@@ -256,7 +261,8 @@ export async function getConversations(
         const remainingNeeded = pageSize - pendingConversations.length
         if (remainingNeeded > 0) {
           const { data: nonPendingData, error: nonPendingError } = await nonPendingQuery
-            .order("last_message_at", { ascending: false })
+            .order("last_message_at", { ascending: false, nullsFirst: false })
+            .order("created_at", { ascending: false })
             .range(0, remainingNeeded - 1)
           
           if (nonPendingError) {
@@ -270,7 +276,8 @@ export async function getConversations(
         const nonPendingFrom = requestedFrom - totalPending
         
         const { data: nonPendingData, error: nonPendingError } = await nonPendingQuery
-          .order("last_message_at", { ascending: false })
+          .order("last_message_at", { ascending: false, nullsFirst: false })
+          .order("created_at", { ascending: false })
           .range(nonPendingFrom, nonPendingFrom + pageSize - 1)
         
         if (nonPendingError) {
@@ -531,7 +538,7 @@ async function buildConversationListItems(
   if (leadIds.length > 0) {
     const { data: leads } = await supabase.from("leads").select("id, name, company, assignee_id, status").in("id", leadIds)
     if (leads?.length) {
-      const assigneeIds = [...new Set(leads.map((l: any) => l.assignee_id).filter(Boolean))]
+      const assigneeIds = Array.from(new Set(leads.map((l: any) => l.assignee_id).filter(Boolean)))
       if (assigneeIds.length > 0) {
         try {
           const { getUserData } = await import('@/app/services/user-service')

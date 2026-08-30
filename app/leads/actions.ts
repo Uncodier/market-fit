@@ -861,7 +861,8 @@ export async function getLeadConversations(siteId: string, leadId: string) {
       .eq('site_id', siteId)
       .eq('lead_id', leadId)
       .eq('is_archived', false)
-      .order('last_message_at', { ascending: false });
+      .order('last_message_at', { ascending: false, nullsFirst: false })
+      .order('created_at', { ascending: false });
 
     if (error) {
       console.error("Error fetching lead conversations:", error);
