@@ -31,6 +31,8 @@ import { CommandsPanel } from "@/app/components/agents/commands-panel"
 import { AgentToolsPanel } from "@/app/components/agents/agent-tools-panel"
 import { SearchInput } from "@/app/components/ui/search-input"
 import { getCachedAgents, setCachedAgents } from "@/app/agents/agents-cache"
+import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/app/components/ui/table"
+import { DocumentListHead, documentListShellClassName } from "@/app/components/documents/document-list"
 
 
 
@@ -1070,10 +1072,45 @@ function AgentsPageContent() {
   const renderGridView = (type?: "marketing" | "sales" | "support" | "product") => {
     if (isLoading) {
       return (
-        <div className="space-y-4">
-          {Array.from({ length: 4 }).map((_, index) => (
-            <GridAgentRowSkeleton key={index} />
-          ))}
+        <div className={documentListShellClassName()}>
+          <Table className="min-w-[920px]">
+            <TableHeader className="sticky top-0 z-10 bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80">
+              <TableRow className="hover:bg-transparent">
+              <DocumentListHead className="w-[35%] pl-4 sm:pl-6">Agent</DocumentListHead>
+              <DocumentListHead className="w-[12%]">Type</DocumentListHead>
+              <DocumentListHead className="w-[15%]">Status</DocumentListHead>
+              <DocumentListHead className="w-[15%]">Channels</DocumentListHead>
+              <DocumentListHead className="w-[13%]" align="right">Last Active</DocumentListHead>
+              <DocumentListHead className="w-[10%] pr-4 sm:pr-6" align="right">Actions</DocumentListHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {Array.from({ length: 4 }).map((_, index) => (
+                <TableRow key={index} className="hover:bg-transparent">
+                  <TableCell className="py-3.5">
+                    <div className="flex items-center gap-3">
+                      <Skeleton className="h-9 w-9 rounded-full" />
+                      <div className="space-y-1">
+                        <Skeleton className="h-4 w-40" />
+                        <Skeleton className="h-3 w-24" />
+                      </div>
+                    </div>
+                  </TableCell>
+                  <TableCell className="py-3.5"><Skeleton className="h-4 w-16" /></TableCell>
+                  <TableCell className="py-3.5"><Skeleton className="h-4 w-20" /></TableCell>
+                  <TableCell className="py-3.5"><Skeleton className="h-4 w-24 mx-auto" /></TableCell>
+                  <TableCell className="py-3.5"><Skeleton className="ml-auto h-4 w-20" /></TableCell>
+                  <TableCell className="py-3.5">
+                    <div className="flex items-center justify-end gap-2">
+                      <Skeleton className="h-8 w-8 rounded-md" />
+                      <Skeleton className="h-8 w-8 rounded-md" />
+                      <Skeleton className="h-8 w-8 rounded-md" />
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         </div>
       );
     }
@@ -1101,21 +1138,35 @@ function AgentsPageContent() {
     }
     
     return (
-      <div className="space-y-4">
-        {filteredAgents.map((agent) => (
-          <GridAgentRow 
-            key={agent.id}
-            agent={agent}
-            isExpanded={isAgentExpanded(agent.id)}
-            onToggleExpand={handleToggleActivities}
-            onManage={handleManageAgent}
-            onChat={handleChatWithAgent}
-            onExecuteActivity={handleExecuteActivity}
-            setSelectedAgent={setSelectedAgent}
-            forceShow={true} // Forzar mostrar incluso si isDisabled es true
-            activityStates={activityStates}
-          />
-        ))}
+      <div className={documentListShellClassName()}>
+        <Table className="min-w-[920px]">
+          <TableHeader className="sticky top-0 z-10 bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80">
+            <TableRow className="hover:bg-transparent">
+              <DocumentListHead className="w-[35%] pl-4 sm:pl-6">Agent</DocumentListHead>
+              <DocumentListHead className="w-[12%]">Type</DocumentListHead>
+              <DocumentListHead className="w-[15%]">Status</DocumentListHead>
+              <DocumentListHead className="w-[15%]">Channels</DocumentListHead>
+              <DocumentListHead className="w-[13%]" align="right">Last Active</DocumentListHead>
+              <DocumentListHead className="w-[10%] pr-4 sm:pr-6" align="right">Actions</DocumentListHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {filteredAgents.map((agent) => (
+              <GridAgentRow 
+                key={agent.id}
+                agent={agent}
+                isExpanded={isAgentExpanded(agent.id)}
+                onToggleExpand={handleToggleActivities}
+                onManage={handleManageAgent}
+                onChat={handleChatWithAgent}
+                onExecuteActivity={handleExecuteActivity}
+                setSelectedAgent={setSelectedAgent}
+                forceShow={true} // Forzar mostrar incluso si isDisabled es true
+                activityStates={activityStates}
+              />
+            ))}
+          </TableBody>
+        </Table>
       </div>
     );
   };
@@ -1127,10 +1178,8 @@ function AgentsPageContent() {
       <div className="flex h-full relative bg-background">
         {/* Main content area */}
         <div 
-          className="flex-1 w-full"
+          className="flex-1 w-full min-w-0"
           style={{ 
-            width: 'calc(-256px + 100vw)',
-            maxWidth: 'calc(-256px + 100vw)',
             backgroundColor: "rgba(0, 0, 0, 0.02)"
           }}
         >
@@ -1138,7 +1187,7 @@ function AgentsPageContent() {
             {mainTab === "agents" ? (
               <>
                 <StickyHeader>
-                  <div className="px-4 md:px-16 pt-0 w-full">
+                  <div className="pt-0 w-full min-w-0">
                     <div className="flex items-center justify-between gap-4 w-full">
                       <div className="flex items-center gap-4">
                         <div>
@@ -1175,21 +1224,19 @@ function AgentsPageContent() {
                   </div>
                 </StickyHeader>
               <div 
-                className=""
+                className="flex flex-col flex-1"
                 style={{
-                  padding: viewMode === "grid" ? "16px" : "16px 0",
+                  padding: "16px 0",
                   margin: viewMode === "grid" ? "16px 0" : "0",
-                  display: "flex",
-                  flexDirection: "column"
                 }}
               >
-                <div className={`${viewMode === "grid" ? "px-8" : ""}`}>
+                <div className={`${viewMode === "grid" ? "px-4 lg:px-8" : ""}`}>
                   {viewMode === "hierarchy" ? (
-                    <div className="flex flex-col items-center">
-                      <div className="w-full">
+                    <div className="flex flex-col items-center w-full">
+                      <div className="w-full relative min-h-0">
                         <ZoomableCanvas>
-                          <div className="flex flex-col items-center">
-                            <div className="pt-2 flex flex-col items-center">
+                          <div className="flex flex-col items-center w-max mx-auto">
+                            <div className="pt-2 flex flex-col items-center w-max mx-auto">
                               <h2 className="text-2xl font-bold mb-10">Growth Team Structure</h2>
                               
                               {/* Lead Manager Card - Top Level */}
@@ -1276,14 +1323,14 @@ function AgentsPageContent() {
                               )}
                               
                               {/* Execution Teams - Bottom Level with connections */}
-                              <div className="relative mt-2">
+                              <div className="relative mt-2 w-max mx-auto">
                                 {/* Horizontal connecting line - only if there are filtered execution agents */}
                                 {(isLoading || executionAgents.some(agent => 
                                   !searchQuery || 
                                   agent.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                                   agent.description.toLowerCase().includes(searchQuery.toLowerCase())
                                 )) && (
-                                  <div className="absolute top-0 left-1/2 w-[90%] h-0.5 bg-border transform -translate-x-1/2 relative">
+                                  <div className="absolute top-0 left-1/2 w-[calc(100%-650px)] h-0.5 bg-border transform -translate-x-1/2">
                                     <AnimatedConnectionLine direction="right" className="w-[50%] left-0 opacity-100" speed="normal" dotColor="var(--primary)" />
                                     <AnimatedConnectionLine direction="left" className="w-[50%] right-0 opacity-100" speed="normal" dotColor="var(--primary)" />
                                   </div>
@@ -1293,9 +1340,9 @@ function AgentsPageContent() {
                                 {isLoading ? (
                                   <>
                                     {/* Vertical connecting lines */}
-                                    <div className="grid gap-12 px-8 grid-cols-4">
+                                    <div className="flex gap-12 px-24 w-max mx-auto">
                                       {Array.from({ length: 4 }).map((_, index) => (
-                                        <div key={index} className="flex justify-center relative">
+                                        <div key={index} className="flex justify-center relative w-[458px] px-4 shrink-0">
                                           <div className="h-20 w-0.5 bg-border"></div>
                                           <AnimatedConnectionLine direction="down" className="h-20 opacity-100" dotColor="var(--primary)" />
                                         </div>
@@ -1303,10 +1350,10 @@ function AgentsPageContent() {
                                     </div>
                                     
                                     {/* Team member skeleton cards */}
-                                    <div className="pb-12 pt-10">
-                                      <div className="grid grid-flow-col auto-cols-min gap-12 px-8 min-w-full">
+                                    <div className="pb-12 pt-10 w-max mx-auto">
+                                      <div className="flex gap-12 px-24 py-4">
                                         {Array.from({ length: 4 }).map((_, index) => (
-                                          <div key={index} className="w-[458px] px-4">
+                                          <div key={index} className="w-[458px] px-4 shrink-0">
                                             <SimpleAgentCardSkeleton />
                                           </div>
                                         ))}
@@ -1347,28 +1394,20 @@ function AgentsPageContent() {
                                   return (
                                     <>
                                       {/* Vertical connecting lines */}
-                                      <div className={
-                                        `grid gap-12 px-8 ${
-                                          filteredAgents.length <= 4 ? "grid-cols-" + filteredAgents.length : "grid-cols-4"
-                                        }`
-                                      }>
+                                      <div className="flex gap-12 px-24 w-max mx-auto">
                                         {filteredAgents.map((_, index) => (
-                                          index < 5 && (
-                                            <div key={index} className="flex justify-center relative">
-                                              <div className="h-20 w-0.5 bg-border"></div>
-                                              <AnimatedConnectionLine direction="down" className="h-20 opacity-100" dotColor="var(--primary)" />
-                                            </div>
-                                          )
+                                          <div key={index} className="flex justify-center relative w-[458px] px-4 shrink-0">
+                                            <div className="h-20 w-0.5 bg-border"></div>
+                                            <AnimatedConnectionLine direction="down" className="h-20 opacity-100" dotColor="var(--primary)" />
+                                          </div>
                                         ))}
                                       </div>
                                       
                                       {/* Team member cards - scrollable container */}
-                                      <div className="pb-12 pt-10">
-                                        <div className={
-                                          `grid grid-flow-col auto-cols-min gap-12 px-8 min-w-full py-4`
-                                        }>
+                                      <div className="pb-12 pt-10 w-max mx-auto">
+                                        <div className="flex gap-12 px-24 py-4">
                                           {filteredAgents.map((agent) => (
-                                            <div key={agent.id} className="w-[458px] px-4">
+                                            <div key={agent.id} className="w-[458px] px-4 shrink-0">
                                               <SimpleAgentCard
                                                 agent={agent}
                                                 onManage={handleManageAgent}
@@ -1428,7 +1467,7 @@ function AgentsPageContent() {
                                   agent.description.toLowerCase().includes(searchQuery.toLowerCase())
                                 )) && (
                                   <div className="mt-12 flex flex-col items-center">
-                                    <div className="w-[90%] h-0.5 bg-border relative">
+                                    <div className="w-[calc(100%-650px)] h-0.5 bg-border relative">
                                       <AnimatedConnectionLine direction="left" className="w-full opacity-100" speed="slow" dotColor="var(--primary)" />
                                     </div>
                                     <div className="mt-6 mb-3 text-center">
@@ -1455,7 +1494,7 @@ function AgentsPageContent() {
             ) : mainTab === "commands" ? (
               <>
                 <StickyHeader>
-                  <div className="px-4 md:px-16 pt-0 w-full">
+                  <div className="pt-0 w-full min-w-0">
                     <div className="flex items-center gap-4 w-full">
                       <div className="flex-1 flex items-center gap-4">
                         <div>
@@ -1476,7 +1515,7 @@ function AgentsPageContent() {
             ) : (
               <>
                 <StickyHeader>
-                  <div className="px-4 md:px-16 pt-0 w-full">
+                  <div className="pt-0 w-full min-w-0">
                     <div className="flex items-center gap-4 w-full">
                       <div className="flex-1 flex items-center gap-4">
                         <div>

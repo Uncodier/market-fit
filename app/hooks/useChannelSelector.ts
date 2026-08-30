@@ -94,20 +94,30 @@ export function useChannelSelector({
         if (!connection.type) continue;
         
         switch (connection.type) {
+          case 'whatsapp':
+            if (leadData?.phone && !channels.includes('whatsapp')) channels.push('whatsapp')
+            break
+          case 'email':
+            if (leadData?.email && !channels.includes('email')) channels.push('email')
+            break
           case 'instagram':
-            if (leadData?.social_networks?.instagram) channels.push('instagram')
+            if (leadData?.social_networks?.instagram && !channels.includes('instagram')) channels.push('instagram')
             break
           case 'messenger':
-            if (leadData?.social_networks?.facebook || leadData?.social_networks?.messenger) channels.push('messenger')
+            if ((leadData?.social_networks?.facebook || leadData?.social_networks?.messenger) && !channels.includes('messenger')) {
+              channels.push('messenger')
+            }
             break
           case 'sms':
-            if (leadData?.phone) channels.push('sms')
+            if (leadData?.phone && !channels.includes('sms')) channels.push('sms')
             break
           case 'telegram':
-            if (leadData?.phone || leadData?.social_networks?.telegram) channels.push('telegram')
+            if ((leadData?.phone || leadData?.social_networks?.telegram) && !channels.includes('telegram')) {
+              channels.push('telegram')
+            }
             break
           case 'voice':
-            if (leadData?.phone) channels.push('voice')
+            if (leadData?.phone && !channels.includes('voice')) channels.push('voice')
             break
         }
       }

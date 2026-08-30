@@ -188,12 +188,11 @@ export default function CampaignsPage() {
                 <div className="flex flex-col md:flex-row items-stretch md:items-center gap-2 w-full md:w-auto">
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="secondary" size="sm" className="w-full md:w-auto md:w-9 h-10 md:h-9 gap-2 rounded-md md:rounded-full px-4 justify-between md:justify-center">
+                      <Button variant="secondary" size="sm" className="w-full md:w-auto md:w-9 h-10 md:h-9 gap-2 rounded-md md:rounded-full px-4 md:px-0 justify-between md:justify-center">
                         <div className="flex items-center gap-2">
                           <Filter className="h-4 w-4" />
                           <span className="font-normal md:hidden">Filters</span>
                         </div>
-                        <ChevronDown className="h-3 w-3 opacity-50 md:hidden" />
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-[200px]">
@@ -267,8 +266,9 @@ export default function CampaignsPage() {
                 </div>
               </div>
             </MobileFiltersDrawer>
+          </div>
 
-            <CalendarDateRangePicker />
+          <div className="flex items-center shrink-0 ml-4">
             <ViewSelector currentView={viewType} onViewChange={setViewType} />
           </div>
         </div>

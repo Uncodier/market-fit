@@ -3,8 +3,8 @@
 import React from "react"
 import { Button } from "@/app/components/ui/button"
 import { Badge } from "@/app/components/ui/badge"
-import { Mail, Phone, MessageCircle, MessageSquare } from "@/app/components/ui/icons"
-import { WhatsAppIcon, InstagramIcon, TelegramIcon } from "@/app/components/ui/social-icons"
+import { Mail, Phone, MessageSquare } from "@/app/components/ui/icons"
+import { WhatsAppIcon, InstagramIcon, TelegramIcon, MessengerIcon } from "@/app/components/ui/social-icons"
 import { cn } from "@/lib/utils"
 import { ConversationListItem } from "@/app/types/chat"
 import { useTheme } from "@/app/context/ThemeContext"
@@ -63,30 +63,28 @@ function getChannelIcon(channel: string | undefined, isAgentConversation?: boole
   if (isAgentConversation) {
     return <Icons.User size={15} className="text-muted-foreground/60" />;
   }
-  
-  const iconChannel = channel || 'web'; // Default to web if not specified
-  
+
+  const iconChannel = channel || 'web'
+
   switch (iconChannel) {
     case 'whatsapp':
-      return <WhatsAppIcon size={15} className="text-muted-foreground/60" />;
+      return <WhatsAppIcon size={15} className="text-muted-foreground/60" />
     case 'instagram':
-      return <InstagramIcon size={15} className="text-muted-foreground/60" />;
+      return <InstagramIcon size={15} className="text-muted-foreground/60" />
     case 'messenger':
-      return <MessageCircle size={15} className="text-muted-foreground/60" />;
+      return <MessengerIcon size={15} className="text-muted-foreground/60" />
     case 'sms':
-      return <MessageSquare size={15} className="text-muted-foreground/60" />;
+      return <MessageSquare size={15} className="text-muted-foreground/60" />
     case 'telegram':
-      return <TelegramIcon size={15} className="text-muted-foreground/60" />;
+      return <TelegramIcon size={15} className="text-muted-foreground/60" />
     case 'voice':
-      return <Phone size={15} className="text-muted-foreground/60" />;
+      return <Phone size={15} className="text-muted-foreground/60" />
     case 'email':
-      return <Mail className="text-muted-foreground/60" style={{ width: '15px', height: '15px' }} />;
+      return <Mail className="text-muted-foreground/60" style={{ width: '15px', height: '15px' }} />
     case 'web':
     case 'website_chat':
-      return <Icons.Globe className="text-blue-500/70" style={{ width: '15px', height: '15px' }} />;
     default:
-      // Fallback
-      return <Icons.Globe className="text-blue-500/70" style={{ width: '15px', height: '15px' }} />;
+      return <Icons.Globe className="text-blue-500/70" style={{ width: '15px', height: '15px' }} />
   }
 }
 

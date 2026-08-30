@@ -1,6 +1,5 @@
 import { createServerClient } from "@supabase/ssr"
 import { cookies } from "next/headers"
-import { Database } from "../database.types"
 import { createDemoMockClient } from "@/lib/demo-data/mock-client"
 import { wrapSupabaseClient } from "@/lib/permissions/mutation-guard"
 
@@ -15,7 +14,7 @@ export async function createClient(skipDemo: boolean = false) {
   }
 
   return wrapSupabaseClient(
-    createServerClient<Database>(
+    createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
       {
@@ -23,7 +22,7 @@ export async function createClient(skipDemo: boolean = false) {
           getAll() {
             return cookieStore.getAll()
           },
-          setAll(cookiesToSet) {
+          setAll(cookiesToSet: any[]) {
             try {
               cookiesToSet.forEach(({ name, value, options }) => {
                 cookieStore.set(name, value, options)
@@ -52,7 +51,7 @@ export async function createServiceClient(skipDemo: boolean = false) {
     }
   }
 
-  return createServerClient<Database>(
+  return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
     {

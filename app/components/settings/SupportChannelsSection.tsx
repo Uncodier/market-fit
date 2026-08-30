@@ -13,14 +13,11 @@ import {
 } from "@/app/components/ui/section-card"
 import { Button } from "@/app/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
-import { PlusCircle, Trash2, Mail } from "@/app/components/ui/icons"
+import { PlusCircle, Trash2 } from "@/app/components/ui/icons"
 import { EmptyCard } from "@/app/components/ui/empty-card"
-import {
-  WhatsAppIcon,
-  FacebookIcon,
-  TelegramIcon,
-  GlobeIcon,
-} from "@/app/components/ui/social-icons"
+import { GlobeIcon } from "@/app/components/ui/social-icons"
+import { ChannelIcon } from "@/app/components/channels/channel-icon"
+import { getChannelLabel } from "@/lib/site-channels"
 import { toast } from "sonner"
 import { v4 as uuidv4 } from "uuid"
 import { apiClient } from "@/app/services/api-client-service"
@@ -37,22 +34,13 @@ const CHANNEL_TYPES = [
 const PARTNER_LINK_TYPES = new Set(["whatsapp", "messenger"])
 
 function getChannelIcon(type: string | undefined, size = 16) {
-  switch (type) {
-    case "whatsapp":
-      return <WhatsAppIcon size={size} />
-    case "messenger":
-      return <FacebookIcon size={size} />
-    case "telegram":
-      return <TelegramIcon size={size} />
-    case "email":
-      return <Mail size={size} />
-    default:
-      return <GlobeIcon size={size} />
-  }
+  if (!type) return <GlobeIcon size={size} />
+  return <ChannelIcon channel={type} size={size} />
 }
 
 function channelLabel(type: string | undefined) {
-  return CHANNEL_TYPES.find((item) => item.value === type)?.label || "New Channel"
+  if (!type) return "New Channel"
+  return CHANNEL_TYPES.find((item) => item.value === type)?.label || getChannelLabel(type)
 }
 
 interface SupportChannelsSectionProps {

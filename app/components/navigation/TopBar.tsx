@@ -3,13 +3,17 @@
 import { cn } from "@/lib/utils"
 import { useState, useEffect } from "react"
 import { usePathname } from "next/navigation"
+import dynamic from "next/dynamic"
 import { useSite } from "@/app/context/SiteContext"
-import { getSegments } from "@/app/segments/actions"
-import { getCampaigns } from "@/app/campaigns/actions/campaigns/read"
+import { createClient } from "@/lib/supabase/client"
 import { TopBarTitle } from "./TopBarTitle"
-import { TopBarActions } from "./TopBarActions"
 import { Button } from "../ui/button"
 import { Menu } from "@/app/components/ui/icons"
+
+const TopBarActions = dynamic(
+  () => import("./TopBarActions").then((mod) => mod.TopBarActions),
+  { ssr: false }
+)
 
 interface TopBarProps extends React.HTMLAttributes<HTMLDivElement> {
   title: string
@@ -159,13 +163,19 @@ export function TopBar({
       if (!currentSite?.id) return
       
       // Only load segments for these pages
+      const supabase = createClient()
+
       if (pathname === "/leads" || pathname === "/content" || pathname === "/campaigns" || pathname === "/requirements" || pathname === "/experiments") {
         try {
-          const response = await getSegments(currentSite.id)
-          if (response.error) {
-            console.error(response.error)
-          } else if (response.segments) {
-            setSegments(response.segments.map(s => ({
+          const { data, error } = await supabase
+            .from("segments")
+            .select("id, name, description")
+            .eq("site_id", currentSite.id)
+            .order("created_at", { ascending: false })
+          if (error) {
+            console.error(error)
+          } else {
+            setSegments((data || []).map((s) => ({
               id: s.id,
               name: s.name,
               description: s.description || ""
@@ -207,21 +217,28 @@ export function TopBar({
         };
         for (let attempt = 1; attempt <= maxRetries; attempt++) {
           try {
-            const campaignsResponse = await getCampaigns(currentSite.id);
-            if (campaignsResponse.error) {
-              const isTransient = isNetworkError(campaignsResponse.error);
+            const { data, error } = await supabase
+              .from("campaigns")
+              .select("id, title, description")
+              .eq("site_id", currentSite.id)
+              .order("created_at", { ascending: false })
+            if (error) {
+              const isTransient = isNetworkError(error.message);
               if (isTransient && attempt < maxRetries) {
                 await new Promise((r) => setTimeout(r, 500));
                 continue;
               }
-              // Log as warning for transient network errors (we degrade gracefully with [])
               if (isTransient) {
-                console.warn("Campaigns unavailable (network):", campaignsResponse.error);
+                console.warn("Campaigns unavailable (network):", error.message);
               } else {
-                console.error("Error loading campaigns:", campaignsResponse.error);
+                console.error("Error loading campaigns:", error.message);
               }
             } else {
-              setCampaigns(campaignsResponse.data || []);
+              setCampaigns((data || []).map((c) => ({
+                id: c.id,
+                title: c.title || "",
+                description: c.description || ""
+              })));
               break;
             }
           } catch (campaignErr) {

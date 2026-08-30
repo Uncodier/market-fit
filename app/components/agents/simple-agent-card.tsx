@@ -3,14 +3,15 @@ import { Agent, AgentActivity } from "@/app/types/agents"
 import { Card, CardHeader, CardTitle, CardDescription, CardFooter } from "@/app/components/ui/card"
 import { Badge } from "@/app/components/ui/badge"
 import { Avatar, AvatarImage, AvatarFallback } from "@/app/components/ui/avatar"
-import { Pencil, MessageSquare, ChevronUp, ChevronDown, Mail, Globe, Send, LogIn, LogOut, Bell } from "@/app/components/ui/icons"
+import { Pencil, MessageSquare, ChevronUp, ChevronDown, LogIn, LogOut, Bell } from "@/app/components/ui/icons"
 import { Button } from "@/app/components/ui/button"
 import * as Icons from "@/app/components/ui/icons"
-import { WhatsAppIcon } from "@/app/components/ui/social-icons"
 import { agentStatusVariants, agentCardVariants } from "./agent-card.styles"
 import { AgentActivityList } from "./agent-activity-list"
 import { useSite } from "@/app/context/SiteContext"
 import { ActivityExecutionStatus } from "@/app/hooks/use-activity-execution"
+import { getEnabledSiteChannels } from "@/lib/site-channels"
+import { ChannelBadge } from "@/app/components/channels/channel-icon"
 
 // Extender el tipo Agent para incluir datos personalizados
 interface ExtendedAgent extends Agent {
@@ -102,18 +103,7 @@ export function SimpleAgentCard({
   )
 
   const { currentSite } = useSite()
-  
-  // Check which channels are enabled in site settings
-  const channels = currentSite?.settings?.channels
-  const isEmailEnabled = channels?.email?.enabled && channels?.email?.status === "synced"
-  const isWhatsAppEnabled = channels?.whatsapp?.enabled && channels?.whatsapp?.status === "active"
-  const isWebChatEnabled = currentSite?.tracking?.enable_chat // Chat is in site.tracking, not settings
-
-  // Get enabled communication channels
-  const enabledChannels = []
-  if (isWhatsAppEnabled) enabledChannels.push('whatsapp')
-  if (isEmailEnabled) enabledChannels.push('email')
-  if (isWebChatEnabled) enabledChannels.push('web')
+  const enabledChannels = getEnabledSiteChannels(currentSite)
 
   return (
     <div className={cn(
@@ -246,17 +236,7 @@ export function SimpleAgentCard({
           <LogIn className="h-4 w-4 text-green-600 dark:text-green-400" />
           <div className="flex flex-col items-center gap-2">
             {enabledChannels.map((channel) => (
-              <div key={channel} className={`flex items-center justify-center w-8 h-8 rounded-full font-inter transition-colors cursor-pointer shadow-sm ${
-                channel === 'whatsapp' 
-                  ? 'bg-green-100 dark:bg-green-900/40 hover:bg-green-200 dark:hover:bg-green-800/60' 
-                  : channel === 'email'
-                  ? 'bg-blue-100 dark:bg-blue-900/40 hover:bg-blue-200 dark:hover:bg-blue-800/60'
-                  : 'bg-purple-100 dark:bg-purple-900/40 hover:bg-purple-200 dark:hover:bg-purple-800/60'
-              }`} title={`${channel === 'whatsapp' ? 'WhatsApp' : channel === 'email' ? 'Email' : 'Web Chat'} Support`}>
-                {channel === 'whatsapp' && <WhatsAppIcon size={16} className="text-green-600 dark:text-green-400" />}
-                {channel === 'email' && <Mail className="h-4 w-4 text-blue-600 dark:text-blue-400" />}
-                {channel === 'web' && <Globe className="h-4 w-4 text-purple-600 dark:text-purple-400" />}
-              </div>
+              <ChannelBadge key={channel} channel={channel} titleSuffix="Support" />
             ))}
           </div>
         </div>
@@ -276,17 +256,7 @@ export function SimpleAgentCard({
             
             {/* Communication Channels - only for agents with reach out capability and enabled channels */}
             {shouldShowExitIcons && enabledChannels.map((channel) => (
-              <div key={channel} className={`flex items-center justify-center w-8 h-8 rounded-full font-inter transition-colors cursor-pointer shadow-sm ${
-                channel === 'whatsapp' 
-                  ? 'bg-green-100 dark:bg-green-900/40 hover:bg-green-200 dark:hover:bg-green-800/60' 
-                  : channel === 'email'
-                  ? 'bg-blue-100 dark:bg-blue-900/40 hover:bg-blue-200 dark:hover:bg-blue-800/60'
-                  : 'bg-purple-100 dark:bg-purple-900/40 hover:bg-purple-200 dark:hover:bg-purple-800/60'
-              }`} title={`${channel === 'whatsapp' ? 'WhatsApp' : channel === 'email' ? 'Email' : 'Web Chat'} Outreach`}>
-                {channel === 'whatsapp' && <WhatsAppIcon size={16} className="text-green-600 dark:text-green-400" />}
-                {channel === 'email' && <Mail className="h-4 w-4 text-blue-600 dark:text-blue-400" />}
-                {channel === 'web' && <Globe className="h-4 w-4 text-purple-600 dark:text-purple-400" />}
-              </div>
+              <ChannelBadge key={channel} channel={channel} titleSuffix="Outreach" />
             ))}
           </div>
         </div>

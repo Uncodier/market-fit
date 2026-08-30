@@ -1,6 +1,4 @@
-import {
-  ALL_TASK_IDS,
-} from "@/app/components/dashboard/hooks/use-onboarding-validation"
+import { ALL_TASK_IDS } from "@/app/lib/onboarding-task-ids"
 
 export function countOnboardingProgress(
   onboarding: Record<string, boolean> | null | undefined

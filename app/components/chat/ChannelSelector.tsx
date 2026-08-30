@@ -1,8 +1,10 @@
+"use client"
+
 import React, { memo } from "react"
 import { Tabs, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
 import * as Icons from "@/app/components/ui/icons"
 import { LoadingSkeleton } from "@/app/components/ui/loading-skeleton"
-import { WhatsAppIcon, InstagramIcon, TelegramIcon } from "@/app/components/ui/social-icons"
+import { WhatsAppIcon, InstagramIcon, TelegramIcon, MessengerIcon } from "@/app/components/ui/social-icons"
 import { cn } from "@/lib/utils"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/app/components/ui/tooltip"
 
@@ -47,7 +49,7 @@ const channelConfig: Record<string, {
     description: "Send via Instagram"
   },
   messenger: {
-    icon: Icons.MessageCircle,
+    icon: ({ className }: { className?: string }) => <MessengerIcon size={16} className={className} />,
     label: "Messenger",
     description: "Send via Messenger"
   },
@@ -72,7 +74,6 @@ const getChannelConfig = (channel: string) => {
   if (channelConfig[channel]) {
     return channelConfig[channel];
   }
-  // Safe fallback for unknown channels
   return {
     icon: Icons.Globe,
     label: channel.charAt(0).toUpperCase() + channel.slice(1),
@@ -87,7 +88,6 @@ export const ChannelSelector = memo(function ChannelSelector({
   className,
   isUpdating = false
 }: ChannelSelectorProps) {
-  // Don't render if there's only one available channel or none
   if (availableChannels.length <= 1) {
     return null
   }
@@ -142,7 +142,6 @@ export const ChannelSelector = memo(function ChannelSelector({
         </TabsList>
       </Tabs>
       
-      {/* Optional loading overlay for additional visual feedback */}
       {isUpdating && (
         <div className="absolute inset-0 bg-background/20 rounded-md pointer-events-none" />
       )}

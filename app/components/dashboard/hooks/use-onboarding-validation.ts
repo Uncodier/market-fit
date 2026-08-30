@@ -2,40 +2,15 @@
 
 import { useCallback, useEffect, useRef, useState } from "react"
 import { useSite } from "@/app/context/SiteContext"
-import { getCampaigns } from "@/app/campaigns/actions/campaigns/read"
-import { getSegments } from "@/app/segments/actions"
 import { createClient } from "@/lib/supabase/client"
+import {
+  ALL_TASK_IDS,
+  type OnboardingTaskId,
+  type OnboardingTasksState,
+} from "@/app/lib/onboarding-task-ids"
 
-export type OnboardingTaskId =
-  | "configure_channels"
-  | "install_tracking_script"
-  | "set_business_hours"
-  | "setup_branding"
-  | "setup_billing"
-  | "validate_geographic_restrictions"
-  | "fine_tune_segments"
-  | "create_campaign"
-  | "setup_content"
-  | "configure_agents"
-  | "complete_requirement"
-  | "publish_and_feedback"
-  | "personalize_customer_journey"
-  | "assign_attribution_link"
-  | "import_leads"
-  | "pay_first_campaign"
-  | "invite_team"
-  | "create_coordination_task"
-
-export const ALL_TASK_IDS: OnboardingTaskId[] = [
-  "configure_channels", "install_tracking_script", "set_business_hours",
-  "setup_branding", "setup_billing", "validate_geographic_restrictions",
-  "fine_tune_segments", "create_campaign", "setup_content", "configure_agents",
-  "complete_requirement", "publish_and_feedback", "personalize_customer_journey",
-  "assign_attribution_link", "import_leads", "pay_first_campaign", "invite_team",
-  "create_coordination_task"
-]
-
-export type OnboardingTasksState = Record<OnboardingTaskId, boolean>
+export type { OnboardingTaskId, OnboardingTasksState }
+export { ALL_TASK_IDS }
 
 export function useOnboardingValidation() {
   const { currentSite } = useSite()
@@ -193,14 +168,14 @@ export function useOnboardingValidation() {
       }, true)
 
       await check("create_campaign", async () => {
-        const r = await getCampaigns(currentSite.id)
-        return !!r.data?.length
-      })
+        const { data } = await supabase.from("campaigns").select("id").eq("site_id", currentSite.id).limit(1)
+        return !!data?.length
+      }, true)
 
       await check("fine_tune_segments", async () => {
-        const r = await getSegments(currentSite.id)
-        return !!r.segments?.length
-      })
+        const { data } = await supabase.from("segments").select("id").eq("site_id", currentSite.id).limit(1)
+        return !!data?.length
+      }, true)
 
       await check("invite_team", () => !!currentSite.settings?.team_members?.length)
 

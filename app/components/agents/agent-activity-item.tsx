@@ -4,10 +4,14 @@ import { PlayCircle, Loader, CheckCircle2, XCircle, Ban } from "@/app/components
 import { ActivityExecutionStatus } from "@/app/hooks/use-activity-execution"
 import { useEffect, useState } from "react"
 
+import { TableCell } from "@/app/components/ui/table"
+import { DocumentListRow, EntityCell, StatusDot } from "@/app/components/documents/document-list"
+import { Button } from "@/app/components/ui/button"
+
 interface AgentActivityItemProps {
   activity: AgentActivity
   onExecute: (activity: AgentActivity) => void
-  viewMode?: "vertical" | "horizontal"
+  viewMode?: "vertical" | "horizontal" | "table"
   executionStatus?: ActivityExecutionStatus
   isDisabled?: boolean
 }
@@ -89,6 +93,74 @@ export function AgentActivityItem({
       return "bg-muted text-muted-foreground/50 cursor-not-allowed"
     }
     return "bg-primary text-primary-foreground hover:bg-primary/90"
+  }
+
+  if (viewMode === "table") {
+    return (
+      <DocumentListRow className={cn("bg-muted/5 border-l-2 border-l-transparent hover:border-l-primary/30 transition-colors border-b-border/30", !isClickable && "opacity-60")}>
+        <TableCell className="py-2.5 pl-10 sm:pl-14">
+          <div className="flex items-center gap-3">
+            <span className={cn(
+              "text-xs font-medium text-muted-foreground w-4 text-center shrink-0",
+              hasError && "hidden"
+            )}>
+              {activity.id.split('').pop()}
+            </span>
+            <EntityCell
+              name={activity.name}
+              secondary={
+                isExecuting ? "Executing..." : 
+                isSuccessful ? (executionStatus.message || "Completed successfully") :
+                hasError ? (executionStatus.message || "Execution failed") :
+                null
+              }
+              meta={(!isExecuting && !isSuccessful && !hasError) ? activity.description : null}
+              secondaryMono={false}
+            />
+          </div>
+        </TableCell>
+        <TableCell className="py-2.5" />
+        <TableCell className="py-2.5">
+          <StatusDot 
+            status={isExecuting ? "in_progress" : isSuccessful ? "completed" : hasError ? "failed" : "draft"} 
+            label={isExecuting ? "Running" : isSuccessful ? "Success" : hasError ? "Failed" : "Idle"} 
+          />
+        </TableCell>
+        <TableCell className="py-2.5" />
+        <TableCell className="py-2.5" />
+        <TableCell className="py-2.5 pr-4 sm:pr-6 text-right">
+          <div className="flex items-center justify-end">
+            <Button
+              variant="ghost"
+              size="icon"
+              className={cn(
+                "h-8 w-8 rounded-full",
+                getButtonClassName(),
+                !isClickable && "hover:bg-muted"
+              )}
+              onClick={(e) => {
+                e.stopPropagation();
+                if (isClickable && !isExecuting) onExecute(activity);
+              }}
+              disabled={!isClickable || isExecuting}
+              aria-label={
+                isExecuting 
+                  ? `Executing ${activity.name}...` 
+                  : isSuccessful 
+                    ? `${activity.name} completed successfully` 
+                    : hasError 
+                      ? `${activity.name} failed` 
+                      : !isClickable 
+                        ? `${activity.name} is not available` 
+                        : `Execute ${activity.name}`
+              }
+            >
+              {getButtonContent()}
+            </Button>
+          </div>
+        </TableCell>
+      </DocumentListRow>
+    )
   }
 
   return (

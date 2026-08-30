@@ -1,7 +1,10 @@
+"use client"
+
 import React, { useState, useEffect } from "react"
 import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/app/components/ui/table"
-import { MessageSquare, Mail, Globe, MessageCircle, Phone } from "@/app/components/ui/icons"
-import { WhatsAppIcon, InstagramIcon, TelegramIcon } from "@/app/components/ui/social-icons"
+import { MessageSquare } from "@/app/components/ui/icons"
+import { ChannelIcon } from "@/app/components/channels/channel-icon"
+import { getChannelLabel } from "@/lib/site-channels"
 import { Skeleton } from "@/app/components/ui/skeleton"
 import { Button } from "@/app/components/ui/button"
 import { format } from "date-fns"
@@ -40,17 +43,6 @@ interface Conversation {
   agentName?: string
 }
 
-const CHANNEL_ICONS: Record<string, React.ReactNode> = {
-  web: <Globe className="h-3.5 w-3.5 text-muted-foreground" />,
-  website_chat: <Globe className="h-3.5 w-3.5 text-muted-foreground" />,
-  email: <Mail className="h-3.5 w-3.5 text-muted-foreground" />,
-  whatsapp: <WhatsAppIcon size={14} className="h-3.5 w-3.5" />,
-  instagram: <InstagramIcon size={14} className="h-3.5 w-3.5" />,
-  messenger: <MessageCircle className="h-3.5 w-3.5 text-muted-foreground" />,
-  sms: <MessageSquare className="h-3.5 w-3.5 text-muted-foreground" />,
-  telegram: <TelegramIcon size={14} className="h-3.5 w-3.5" />,
-  voice: <Phone className="h-3.5 w-3.5 text-muted-foreground" />,
-}
 
 interface ConversationsViewProps {
   leadId: string
@@ -139,7 +131,7 @@ export function ConversationsView({ leadId }: ConversationsViewProps) {
   }
 
   const channelLabel = (channel: Conversation["channel"]) =>
-    t(`leads.conversations.channel.${channel}`) || channel
+    t(`leads.conversations.channel.${channel}`) || getChannelLabel(channel)
 
   const statusLabel = (status: Conversation["status"]) =>
     t(`leads.conversations.status.${status}`) || status
@@ -220,7 +212,7 @@ export function ConversationsView({ leadId }: ConversationsViewProps) {
                   </TableCell>
                   <TableCell className="py-3.5 text-right">
                     <div className="flex items-center justify-end gap-2 text-sm text-muted-foreground whitespace-nowrap">
-                      {CHANNEL_ICONS[conversation.channel] || <Globe className="h-3.5 w-3.5 text-muted-foreground" />}
+                      <ChannelIcon channel={conversation.channel} size={14} />
                       {formatDate(conversation.date)}
                     </div>
                   </TableCell>

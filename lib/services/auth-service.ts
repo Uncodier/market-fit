@@ -103,7 +103,7 @@ export async function updatePassword(password: string): Promise<void> {
 // Servidor
 export async function getUserProfileFromServer(): Promise<User | null> {
   try {
-    const supabase = createServerClient()
+    const supabase = await createServerClient()
     const { data: { session } } = await supabase.auth.getSession()
     
     if (!session?.user) return null
@@ -117,7 +117,7 @@ export async function getUserProfileFromServer(): Promise<User | null> {
 
 export async function getSessionFromServer(): Promise<Session | null> {
   try {
-    const supabase = createServerClient()
+    const supabase = await createServerClient()
     const { data: { session } } = await supabase.auth.getSession()
     
     return session

@@ -14,7 +14,7 @@ import { useLocalization } from "@/app/context/LocalizationContext"
 import { Switch } from "@/app/components/ui/switch"
 import { DatePicker } from "@/app/components/ui/date-picker"
 import { updateContent, updateContentStatus, deleteContent, getContentById, type ContentItem } from "../actions"
-import { getContentTypeName, processMarkdownText, markdownToHTML } from "../utils"
+import { getContentTypeName, haveTagsChanged, processMarkdownText, markdownToHTML } from "../utils"
 import { ContentAssetsGrid } from "./components/ContentAssetsGrid"
 import { UploadAssetDialog } from "@/app/components/upload-asset-dialog"
 import { createAsset } from "@/app/assets/actions"
@@ -1902,7 +1902,7 @@ export default function ContentDetailPage(props: { params: Promise<{ id: string 
     const descriptionChanged = editForm.description !== (content.description || '')
     const segmentChanged = editForm.segment_id !== (content.segment_id || '')
     const campaignChanged = editForm.campaign_id !== (content.campaign_id || '')
-    const tagsChanged = JSON.stringify([...(editForm.tags || [])].sort()) !== JSON.stringify([...(content.tags || [])].sort())
+    const tagsChanged = haveTagsChanged(editForm.tags, content.tags)
     const ratingChanged = editForm.performance_rating !== content.performance_rating
     const statusChanged = editForm.status !== (content.status || 'draft')
     

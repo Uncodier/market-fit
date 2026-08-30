@@ -1,16 +1,19 @@
+import React from "react"
 import { cn } from "@/lib/utils"
 import { Agent, AgentActivity } from "@/app/types/agents"
-import { Avatar, AvatarImage, AvatarFallback } from "@/app/components/ui/avatar"
 import { Badge } from "@/app/components/ui/badge"
 import { Button } from "@/app/components/ui/button"
-import { MessageSquare, Pencil, PlayCircle, ChevronUp, ChevronDown, Mail, Globe, Bell, LogIn, LogOut } from "@/app/components/ui/icons"
+import { MessageSquare, Pencil, ChevronUp, ChevronDown, Bell, LogIn, LogOut } from "@/app/components/ui/icons"
 import * as Icons from "@/app/components/ui/icons"
-import { WhatsAppIcon } from "@/app/components/ui/social-icons"
-import { agentStatusVariants, metricItemVariants } from "./agent-card.styles"
+import { agentStatusVariants } from "./agent-card.styles"
 import { Skeleton } from "@/app/components/ui/skeleton"
 import { useSite } from "@/app/context/SiteContext"
 import { ActivityExecutionStatus } from "@/app/hooks/use-activity-execution"
 import { AgentActivityItem } from "./agent-activity-item"
+import { getEnabledSiteChannels } from "@/lib/site-channels"
+import { ChannelBadge } from "@/app/components/channels/channel-icon"
+import { TableCell, TableRow } from "@/app/components/ui/table"
+import { DocumentListRow, EntityCell, StatusDot } from "@/app/components/documents/document-list"
 
 // Extender el tipo Agent para incluir datos personalizados
 interface ExtendedAgent extends Agent {
@@ -40,37 +43,6 @@ interface GridAgentRowProps {
   activityStates?: Record<string, ActivityExecutionStatus>
 }
 
-export function GridAgentRowSkeleton() {
-  return (
-    <div className="rounded-lg border shadow-sm overflow-hidden mb-4">
-      <div className="flex items-center p-4 bg-background">
-        <div className="flex items-center gap-3 flex-1 min-w-0">
-          <Skeleton className="h-10 w-10 rounded-full" />
-          <div className="flex-1 min-w-0 space-y-2">
-            <Skeleton className="h-4 w-40" />
-            <Skeleton className="h-3 w-52" />
-          </div>
-        </div>
-        
-        <div className="flex items-center gap-6 mx-4">
-          <div className="w-24 text-center">
-            <Skeleton className="w-24 h-5 mx-auto" />
-          </div>
-          <div className="w-28 text-center">
-            <Skeleton className="w-28 h-5 mx-auto" />
-          </div>
-        </div>
-        
-        <div className="flex items-center gap-2">
-          <Skeleton className="h-6 w-20 rounded-full" />
-          <Skeleton className="h-8 w-8 rounded-md" />
-          <Skeleton className="h-8 w-8 rounded-md" />
-          <Skeleton className="h-8 w-8 rounded-md" />
-        </div>
-      </div>
-    </div>
-  )
-}
 
 export function GridAgentRow({
   agent,
@@ -128,17 +100,7 @@ export function GridAgentRow({
     displayStatus === "active"
   )
   
-  // Check which channels are enabled in site settings
-  const channels = currentSite?.settings?.channels
-  const isEmailEnabled = channels?.email?.enabled && channels?.email?.status === "synced"
-  const isWhatsAppEnabled = channels?.whatsapp?.enabled && channels?.whatsapp?.status === "active"
-  const isWebChatEnabled = currentSite?.tracking?.enable_chat // Chat is in site.tracking, not settings
-
-  // Get enabled communication channels
-  const enabledChannels = []
-  if (isWhatsAppEnabled) enabledChannels.push('whatsapp')
-  if (isEmailEnabled) enabledChannels.push('email')
-  if (isWebChatEnabled) enabledChannels.push('web')
+  const enabledChannels = getEnabledSiteChannels(currentSite)
   
   // Format date consistently
   const formattedDate = new Intl.DateTimeFormat("en-US", {
@@ -148,185 +110,126 @@ export function GridAgentRow({
   }).format(new Date(displayLastActive));
 
   return (
-    <div className={cn(
-      "rounded-lg border shadow-sm overflow-hidden mb-4 transition-all duration-200 hover:shadow-md hover:-translate-y-[1px]",
-      hasCustomData && "border-primary/30" // Highlight personalized agents
-    )}>
-      {/* Agent Row */}
-      <div 
-        className={cn(
-          "flex items-center p-4 bg-background transition-colors cursor-pointer",
-          isExpanded ? "border-b dark:border-white/5 border-black/5" : "hover:bg-accent/10"
-        )}
+    <React.Fragment>
+      <DocumentListRow
         onClick={() => {
           onToggleExpand(agent);
           if (setSelectedAgent) {
             setSelectedAgent(agent);
           }
         }}
+        className={cn(
+          "group",
+          isExpanded && "bg-muted/20"
+        )}
       >
-        <div className="flex items-center gap-3 flex-1 min-w-0">
-          <Avatar className="h-10 w-10 ring-1 ring-border shadow-sm">
-            <AvatarFallback className="bg-primary/5">
-              {displayName.length >= 2 
-                ? displayName.substring(0, 2).toUpperCase()
-                : displayName.split(" ").map(name => name[0]).join("").substring(0, 2)}
-            </AvatarFallback>
-          </Avatar>
-          
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center">
-              <h4 className="font-medium text-sm truncate">
-                {displayName}
-              </h4>
-              {shouldShowRole && (
-                <span className="text-xs font-medium text-primary/70 truncate ml-1.5">
-                  ({displayRole})
-                </span>
-              )}
-            </div>
-            <p className="text-xs text-muted-foreground truncate">{displayDescription}</p>
-          </div>
-        </div>
+        <TableCell className="py-3.5 pl-4 sm:pl-6">
+          <EntityCell
+            name={displayName}
+            secondary={shouldShowRole ? displayRole : null}
+            meta={displayDescription}
+            secondaryMono={false}
+          />
+        </TableCell>
         
-        {/* Entry Icons Column */}
-        <div className="w-20 flex justify-center">
-          {shouldShowEntryIcons && (
-            <div className="flex items-center gap-1">
-              <LogIn className="h-3 w-3 text-green-600 dark:text-green-400" />
-              <div className="flex gap-1">
-                {enabledChannels.map((channel) => (
-                  <div key={channel} className={`flex items-center justify-center w-5 h-5 rounded-full font-inter ${
-                    channel === 'whatsapp' 
-                      ? 'bg-green-100 dark:bg-green-900/40' 
-                      : channel === 'email'
-                      ? 'bg-blue-100 dark:bg-blue-900/40'
-                      : 'bg-purple-100 dark:bg-purple-900/40'
-                  }`} title={`${channel === 'whatsapp' ? 'WhatsApp' : channel === 'email' ? 'Email' : 'Web Chat'} Support`}>
-                    {channel === 'whatsapp' && <WhatsAppIcon size={10} className="text-green-600 dark:text-green-400" />}
-                    {channel === 'email' && <Mail className="h-2 w-2 text-blue-600 dark:text-blue-400" />}
-                    {channel === 'web' && <Globe className="h-2 w-2 text-purple-600 dark:text-purple-400" />}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
+        <TableCell className="py-3.5">
+          <span className="text-xs font-medium text-muted-foreground">{displayType.charAt(0).toUpperCase() + displayType.slice(1)}</span>
+        </TableCell>
         
-        {/* Communication Icons Column */}
-        <div className="w-24 flex justify-center">
-          {hasCustomData && displayStatus === "active" && (
-            <div className="flex items-center gap-1">
-              {shouldShowExitIcons && (
-                <LogOut className="h-3 w-3 text-orange-600 dark:text-orange-400" />
-              )}
-              <div className="flex gap-1">
-                {/* System Notifications - always shown for agents with custom data and active status */}
-                <div className="flex items-center justify-center w-5 h-5 rounded-full font-inter bg-amber-100 dark:bg-amber-900/40" title="System Notifications">
-                  <Bell className="h-2 w-2 text-amber-600 dark:text-amber-400" />
+        <TableCell className="py-3.5">
+          <StatusDot status={displayStatus} label={displayStatus.charAt(0).toUpperCase() + displayStatus.slice(1)} />
+        </TableCell>
+
+        <TableCell className="py-3.5">
+          <div className="flex flex-col gap-2">
+            {shouldShowEntryIcons && (
+              <div className="flex items-center gap-1.5">
+                <LogIn className="h-3.5 w-3.5 text-emerald-600/70" />
+                <div className="flex flex-wrap gap-1">
+                  {enabledChannels.map((channel) => (
+                    <ChannelBadge key={channel} channel={channel} size="sm" titleSuffix="Support" />
+                  ))}
                 </div>
-                
-                {/* Communication Channels - only for agents with reach out capability and enabled channels */}
-                {shouldShowExitIcons && enabledChannels.map((channel) => (
-                  <div key={channel} className={`flex items-center justify-center w-5 h-5 rounded-full font-inter ${
-                    channel === 'whatsapp' 
-                      ? 'bg-green-100 dark:bg-green-900/40' 
-                      : channel === 'email'
-                      ? 'bg-blue-100 dark:bg-blue-900/40'
-                      : 'bg-purple-100 dark:bg-purple-900/40'
-                  }`} title={`${channel === 'whatsapp' ? 'WhatsApp' : channel === 'email' ? 'Email' : 'Web Chat'} Outreach`}>
-                    {channel === 'whatsapp' && <WhatsAppIcon size={10} className="text-green-600 dark:text-green-400" />}
-                    {channel === 'email' && <Mail className="h-2 w-2 text-blue-600 dark:text-blue-400" />}
-                    {channel === 'web' && <Globe className="h-2 w-2 text-purple-600 dark:text-purple-400" />}
-                  </div>
-                ))}
               </div>
-            </div>
-          )}
-        </div>
-        
-        <div className="flex items-center gap-6 mx-4">
-          <div className="w-24 text-center">
-            <span className="text-xs font-medium">{displayType.charAt(0).toUpperCase() + displayType.slice(1)}</span>
-          </div>
-          <div className="w-28 text-center">
-            <span className="text-xs text-muted-foreground">{formattedDate}</span>
-          </div>
-        </div>
-        
-        <div className="flex items-center gap-2">
-          <Badge 
-            className={cn(
-              "flex-none",
-              agentStatusVariants({ status: displayStatus as any })
             )}
-            aria-label={`Agent status: ${displayStatus}`}
-          >
-            {displayStatus.charAt(0).toUpperCase() + displayStatus.slice(1)}
-          </Badge>
-          
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            className="h-8 w-8" 
-            onClick={(e) => {
-              e.stopPropagation();
-              onChat(agent);
-            }}
-            aria-label={`Chat with ${displayName}`}
-            disabled={isChatDisabled}
-          >
-            <MessageSquare className="h-4 w-4" />
-          </Button>
-          
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            className="h-8 w-8"
-            onClick={(e) => {
-              e.stopPropagation();
-              onManage(agent);
-            }}
-            aria-label={`Manage ${displayName}`}
-          >
-            <Pencil className="h-4 w-4" />
-          </Button>
-          
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            className="h-8 w-8"
-            aria-label={isExpanded ? "Collapse" : "Expand"}
-          >
-            {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-          </Button>
-        </div>
-      </div>
+            
+            {hasCustomData && displayStatus === "active" && (
+              <div className="flex items-center gap-1.5">
+                {shouldShowExitIcons && (
+                  <LogOut className="h-3.5 w-3.5 text-amber-600/70" />
+                )}
+                <div className="flex flex-wrap gap-1">
+                  <div className="flex items-center justify-center w-5 h-5 rounded-full font-inter bg-amber-100 dark:bg-amber-900/40" title="System Notifications">
+                    <Bell className="h-2.5 w-2.5 text-amber-600 dark:text-amber-400" />
+                  </div>
+                  {shouldShowExitIcons && enabledChannels.map((channel) => (
+                    <ChannelBadge key={channel} channel={channel} size="sm" titleSuffix="Outreach" />
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </TableCell>
+
+        <TableCell className="py-3.5 text-right">
+          <span className="text-[13px] text-muted-foreground tabular-nums">{formattedDate}</span>
+        </TableCell>
+
+        <TableCell className="py-3.5 pr-4 sm:pr-6">
+          <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity focus-within:opacity-100">
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="h-8 w-8 text-muted-foreground hover:text-foreground" 
+              onClick={(e) => {
+                e.stopPropagation();
+                onChat(agent);
+              }}
+              aria-label={`Chat with ${displayName}`}
+              disabled={isChatDisabled}
+            >
+              <MessageSquare className="h-4 w-4" />
+            </Button>
+            
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="h-8 w-8 text-muted-foreground hover:text-foreground"
+              onClick={(e) => {
+                e.stopPropagation();
+                onManage(agent);
+              }}
+              aria-label={`Manage ${displayName}`}
+            >
+              <Pencil className="h-4 w-4" />
+            </Button>
+            
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className={cn("h-8 w-8", isExpanded ? "opacity-100 text-foreground" : "text-muted-foreground hover:text-foreground")}
+              aria-label={isExpanded ? "Collapse" : "Expand"}
+            >
+              {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+            </Button>
+          </div>
+        </TableCell>
+      </DocumentListRow>
       
       {/* Activities Section - Expanded */}
       {isExpanded && agent.activities && agent.activities.length > 0 && (
-        <div className="p-4 bg-background/50 border-t dark:border-white/5 border-black/5/50">
-          <div className="rounded-lg border shadow-sm overflow-hidden bg-card">
-            <div className="bg-muted/30 px-4 py-2.5 border-b flex items-center justify-between">
-              <h3 className="text-sm font-semibold">Agent Activities</h3>
-              <Badge variant="outline" className="px-2 py-0.5 text-xs">
-                {agent.activities.length} activities
-              </Badge>
-            </div>
-            <div className="divide-y divide-border/70">
-              {agent.activities.map((activity: AgentActivity) => (
-                <AgentActivityItem 
-                  key={activity.id} 
-                  activity={activity} 
-                  onExecute={(activity) => onExecuteActivity(agent, activity)}
-                  viewMode="vertical"
-                  executionStatus={activityStates[activity.id]}
-                />
-              ))}
-            </div>
-          </div>
-        </div>
+        <>
+          {agent.activities.map((activity: AgentActivity) => (
+            <AgentActivityItem 
+              key={activity.id} 
+              activity={activity} 
+              onExecute={(activity) => onExecuteActivity(agent, activity)}
+              viewMode="table"
+              executionStatus={activityStates[activity.id]}
+            />
+          ))}
+        </>
       )}
-    </div>
+    </React.Fragment>
   )
 } 

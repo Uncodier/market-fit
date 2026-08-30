@@ -8,7 +8,6 @@ import { createRequirement } from "@/app/requirements/actions";
 import { createLead, importLeads } from "@/app/leads/actions";
 import { createDeal, addDealContact } from "@/app/deals/actions";
 import { Lead } from "@/app/leads/types";
-import { createCampaign } from "@/app/campaigns/actions/campaigns/create";
 import { Button } from "../ui/button";
 import { CreateSegmentDialog } from "../create-segment-dialog";
 import { CreateExperimentDialog } from "../create-experiment-dialog";
@@ -1128,11 +1127,51 @@ export function TopBarActions({
     values: any,
   ): Promise<{ data?: any; error?: string }> => {
     try {
-      const response = await createCampaign(values);
-      if (response.error) {
-        return { error: response.error };
+      const supabase = createClient();
+      const { data: campaign, error: campaignError } = await supabase
+        .from("campaigns")
+        .insert({
+          title: values.title,
+          description: values.description,
+          priority: values.priority,
+          status: values.status && values.status !== "draft" ? values.status : "active",
+          due_date: values.dueDate,
+          type: values.type,
+          site_id: values.site_id,
+          user_id: values.user_id,
+          assignees: 0,
+          issues: 0,
+          revenue: values.revenue || { actual: 0, projected: 0, estimated: 0, currency: "USD" },
+          budget: values.budget || { allocated: 0, remaining: 0, currency: "USD" },
+        })
+        .select()
+        .single();
+
+      if (campaignError) {
+        return { error: campaignError.message };
       }
-      return { data: response.data };
+
+      if (values.segments?.length) {
+        const { error: segmentError } = await supabase
+          .from("campaign_segments")
+          .insert(values.segments.map((segmentId: string) => ({
+            campaign_id: campaign.id,
+            segment_id: segmentId,
+          })));
+        if (segmentError) console.error("Error linking segments:", segmentError);
+      }
+
+      if (values.requirements?.length) {
+        const { error: requirementError } = await supabase
+          .from("campaign_requirements")
+          .insert(values.requirements.map((requirementId: string) => ({
+            campaign_id: campaign.id,
+            requirement_id: requirementId,
+          })));
+        if (requirementError) console.error("Error linking requirements:", requirementError);
+      }
+
+      return { data: campaign };
     } catch (error) {
       console.error("Error creating campaign:", error);
       return {

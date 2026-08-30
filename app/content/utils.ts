@@ -33,6 +33,16 @@ export function getContentTypeName(type: ContentType | string): string {
   return CONTENT_TYPE_NAMES[type as ContentType] || type;
 }
 
+export function haveTagsChanged(
+  current: readonly string[] | null | undefined,
+  original: readonly string[] | null | undefined
+): boolean {
+  const currentSorted = (current ?? []).slice().sort()
+  const originalSorted = (original ?? []).slice().sort()
+  if (currentSorted.length !== originalSorted.length) return true
+  return currentSorted.some((tag, index) => tag !== originalSorted[index])
+}
+
 // Helper function to get a segment name from a segment ID and list of segments
 export function getSegmentName(
   segmentId: string | null | undefined, 

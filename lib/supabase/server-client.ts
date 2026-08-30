@@ -1,5 +1,5 @@
 import { createClient as createSupabaseClient } from '@supabase/supabase-js'
-import { Database } from "../database.types"
+import { Database } from "@/lib/types/database.types"
 
 // Create a Supabase client for use in API routes
 export function createApiClient() {
