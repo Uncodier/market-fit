@@ -318,6 +318,7 @@ export const adaptSiteToForm = (site: Site): AdaptedSiteFormValues => {
           setupRequested: channels.agent_whatsapp?.setupRequested || false,
           status: channels.agent_whatsapp?.status || "not_configured"
         },
+        connections: Array.isArray(channels.connections) ? channels.connections : [],
         website: {
           enabled: channels.website?.enabled ?? (channels.website?.track_visitors || channels.website?.track_actions || channels.website?.record_screen || channels.website?.enable_chat) ?? false,
           track_visitors: channels.website?.track_visitors ?? site.tracking?.track_visitors ?? false,
@@ -372,6 +373,7 @@ export const adaptSiteToForm = (site: Site): AdaptedSiteFormValues => {
         setupRequested: false,
         status: "not_configured" as const
       },
+      connections: [],
       website: {
         enabled: false,
         track_visitors: site.tracking?.track_visitors ?? false,

@@ -2533,6 +2533,11 @@
   resolved "https://registry.npmjs.org/@xmldom/xmldom/-/xmldom-0.8.13.tgz"
   integrity sha512-KRYzxepc14G/CEpEGc3Yn+JKaAeT63smlDr+vjB8jRfgTBBI9wRj/nkQEO+ucV8p8I9bfKLWp37uHgFrbntPvw==
 
+"@zavudev/sdk@0.56.0":
+  version "0.56.0"
+  resolved "https://registry.npmjs.org/@zavudev/sdk/-/sdk-0.56.0.tgz"
+  integrity sha512-+FSU6Fh0xpGzkKOHMmaqtbxZrdqSG6qb7RFeUaIYnoCEtR++c0PSkyO87mYt32Mh3sE5Aoox/AFtzZANscPhaA==
+
 abab@^2.0.6:
   version "2.0.6"
   resolved "https://registry.npmjs.org/abab/-/abab-2.0.6.tgz"

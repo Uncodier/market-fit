@@ -1369,6 +1369,7 @@ export const handleSaveChannels = async (data: SiteFormValues, options: SaveOpti
           setupRequested: channels?.agent_whatsapp?.setupRequested ?? currentSite.settings?.channels?.agent_whatsapp?.setupRequested ?? false,
           status: (channels?.agent_whatsapp?.status ?? currentSite.settings?.channels?.agent_whatsapp?.status ?? "not_configured") as "not_configured" | "pending" | "active"
         },
+        connections: channels?.connections ?? currentSite.settings?.channels?.connections ?? [],
         website: {
           enabled: (tracking?.track_visitors || tracking?.track_actions || tracking?.record_screen || tracking?.enable_chat) ?? channels?.website?.enabled ?? currentSite.settings?.channels?.website?.enabled ?? false,
           track_visitors: tracking?.track_visitors ?? channels?.website?.track_visitors ?? currentSite.settings?.channels?.website?.track_visitors ?? false,

@@ -203,7 +203,7 @@ export const siteFormSchema = z.object({
     email: emailChannelSchema,
     whatsapp: z.object({
       enabled: z.boolean().default(false),
-      setupType: z.enum(["new_number", "use_own_account"]).optional(),
+      setupType: z.enum(["use_own_account"]).optional(),
       country: z.string().optional(),
       region: z.string().optional(), // For new_number: city code
       number: z.string().optional(), // The assigned WhatsApp number
@@ -221,8 +221,7 @@ export const siteFormSchema = z.object({
       status: z.enum(["not_configured", "pending", "active"]).optional().default("not_configured")
     }).optional().default({
       enabled: false,
-      setupRequested: false,
-      status: "not_configured"
+      setupType: "use_own_account"
     }).refine((data) => {
       if (!data) return true;
       // If use_own_account setup, existingNumber and account_sid are required (apiToken is handled securely)
@@ -235,6 +234,21 @@ export const siteFormSchema = z.object({
       message: "Phone Number and Account SID are required for using your own Twilio account",
       path: ["setupType"]
     }),
+    connections: z.array(z.object({
+      id: z.string().optional(),
+      type: z.union([
+        z.enum(['whatsapp', 'messenger', 'sms', 'email', 'telegram', 'instagram', 'voice']),
+        z.literal('')
+      ]).optional(),
+      name: z.string().optional().default(''),
+      status: z.enum(['pending', 'in_progress', 'connected', 'failed', 'expired', 'cancelled', 'disconnected', 'not_configured']).default('pending'),
+      zavu_sender_id: z.string().optional(),
+      zavu_invitation_id: z.string().optional(),
+      connected_account: z.any().optional(),
+      metadata: z.any().optional(),
+      created_at: z.string().optional(),
+      updated_at: z.string().optional()
+    })).optional().default([]),
     website: z.object({
       enabled: z.boolean().optional().default(false),
       track_visitors: z.boolean().optional().default(false),
@@ -311,6 +325,7 @@ export const siteFormSchema = z.object({
       setupRequested: false,
       status: "not_configured" as const
     },
+    connections: [],
     website: {
       enabled: false,
       track_visitors: false,

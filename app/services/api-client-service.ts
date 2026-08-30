@@ -492,6 +492,49 @@ export class ApiClientService {
     }
   }
 
+  async patch<T = any>(endpoint: string, body: any, options: ApiClientOptions = {}): Promise<ApiResponse<T>> {
+    const demoSiteId = await getDemoSiteIdAsync();
+    if (demoSiteId) {
+      return { success: true, data: { ...body } } as unknown as ApiResponse<T>;
+    }
+
+    const url = this.buildUrl(endpoint);
+
+    try {
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        ...options.headers
+      };
+
+      if (options.includeAuth !== false) {
+        const token = await this.getAuthToken();
+        if (token) {
+          headers['Authorization'] = `Bearer ${token}`;
+        }
+      }
+
+      const response = await fetch(url, {
+        method: 'PATCH',
+        headers,
+        body: JSON.stringify(body),
+        cache: options.cache || 'no-cache',
+        ...(options.timeout && { signal: AbortSignal.timeout(options.timeout) })
+      });
+
+      return await this.handleResponse<T>(response);
+    } catch (error) {
+      console.error('Error in PATCH request:', error);
+      return {
+        success: false,
+        error: {
+          message: error instanceof Error ? error.message : 'Network error',
+          details: error
+        }
+      };
+    }
+  }
+
   async delete<T = any>(endpoint: string, options: ApiClientOptions = {}): Promise<ApiResponse<T>> {
     const demoSiteId = await getDemoSiteIdAsync();
     if (demoSiteId) {

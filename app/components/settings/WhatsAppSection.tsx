@@ -555,7 +555,7 @@ interface WhatsAppSectionProps {
 // Local state interface
 interface WhatsAppLocalState {
   enabled: boolean
-  setupType?: "new_number" | "use_own_account"
+  setupType?: "use_own_account"
   country?: string
   region?: string
   apiToken?: string
@@ -606,13 +606,13 @@ export function WhatsAppSection({ active, form, siteId, onSave }: WhatsAppSectio
         
         // Check if secure token exists using phone number as identifier
         let hasSecureToken = false
-        if (siteId && whatsappData.setupType === "use_own_account" && whatsappData.existingNumber) {
+        if (siteId && whatsappData.existingNumber) {
           hasSecureToken = await secureTokensService.hasToken(siteId, 'twilio_whatsapp', whatsappData.existingNumber)
         }
         
         setLocalState({
           enabled: whatsappData.enabled || false,
-          setupType: whatsappData.setupType,
+          setupType: whatsappData.setupType || "use_own_account",
           country: whatsappData.country,
           region: whatsappData.region,
           apiToken: "", // Never store token in local state
@@ -638,33 +638,21 @@ export function WhatsAppSection({ active, form, siteId, onSave }: WhatsAppSectio
 
   // Validation logic for allowing user to save
   const canSaveConfiguration = () => {
-    if (localState.setupType === "new_number") {
-      if (!localState.country) return false
-      const countryConfig = TWILIO_COUNTRIES.find(c => c.code === localState.country)
-      if (countryConfig?.hasCities && !localState.region) return false
-      return true
+    // For saving new configuration, require API token, Account SID, and phone number
+    // For already configured, just require valid phone number and Account SID
+    if (localState.hasSecureToken) {
+      return localState.accountSid?.trim() &&
+             localState.existingNumber?.trim() && 
+             phoneValidation.isValid
+    } else {
+      return localState.apiToken?.trim() && 
+             localState.accountSid?.trim() &&
+             localState.existingNumber?.trim() && 
+             phoneValidation.isValid
     }
-    
-    if (localState.setupType === "use_own_account") {
-      // For saving new configuration, require API token, Account SID, and phone number
-      // For already configured, just require valid phone number and Account SID
-      if (localState.hasSecureToken) {
-        return localState.accountSid?.trim() &&
-               localState.existingNumber?.trim() && 
-               phoneValidation.isValid
-      } else {
-        return localState.apiToken?.trim() && 
-               localState.accountSid?.trim() &&
-               localState.existingNumber?.trim() && 
-               phoneValidation.isValid
-      }
-    }
-    
-    return false
   }
 
   const isConfigurationSaved = localState.status === "active"
-  const isSetupPending = localState.status === "pending" || localState.setupRequested
 
   const handleToggleEnabled = (enabled: boolean) => {
     if (enabled) {
@@ -683,26 +671,13 @@ export function WhatsAppSection({ active, form, siteId, onSave }: WhatsAppSectio
     }
   }
 
-  const handleSetupTypeChange = (setupType: "new_number" | "use_own_account") => {
+  const handleSetupTypeChange = (setupType: "use_own_account") => {
     setLocalState(prev => ({
       ...prev,
       setupType,
-      // Clear fields from the other setup type
-      ...(setupType === "new_number" ? {
-        apiToken: "",
-        accountSid: "",
-        existingNumber: undefined,
-        hasSecureToken: false
-      } : {
-        country: undefined,
-        region: undefined
-      })
+      country: undefined,
+      region: undefined
     }))
-    
-    // Reset phone validation when changing setup type
-    if (setupType === "new_number") {
-      setPhoneValidation({ isValid: true })
-    }
   }
 
   const handleCountryChange = (country: string) => {
@@ -747,7 +722,7 @@ export function WhatsAppSection({ active, form, siteId, onSave }: WhatsAppSectio
           },
           whatsapp: {
             enabled: true,
-            setupType: localState.setupType,
+            setupType: "use_own_account",
             country: localState.country,
             region: localState.region,
             account_sid: localState.accountSid,
@@ -776,7 +751,7 @@ export function WhatsAppSection({ active, form, siteId, onSave }: WhatsAppSectio
     setPhoneValidation(validation)
     
     // Check if secure token exists for this phone number
-    if (siteId && existingNumber.trim() && validation.isValid && localState.setupType === "use_own_account") {
+    if (siteId && existingNumber.trim() && validation.isValid) {
       const hasSecureToken = await secureTokensService.hasToken(siteId, 'twilio_whatsapp', existingNumber)
       setLocalState(prev => ({ ...prev, hasSecureToken }))
     } else {
@@ -789,12 +764,12 @@ export function WhatsAppSection({ active, form, siteId, onSave }: WhatsAppSectio
 
     setIsRequesting(true)
     try {
-      const newStatus = localState.setupType === "use_own_account" ? "active" : "pending"
-      const newSetupRequested = localState.setupType === "new_number" ? true : false
+      const newStatus = "active"
+      const newSetupRequested = false
 
       // For use_own_account, store API token securely
       let tokenStored = true
-      if (localState.setupType === "use_own_account" && localState.apiToken?.trim() && localState.existingNumber?.trim()) {
+      if (localState.apiToken?.trim() && localState.existingNumber?.trim()) {
         const result = await secureTokensService.storeToken(siteId, 'twilio_whatsapp', localState.apiToken, localState.existingNumber)
         tokenStored = !!result
         if (!tokenStored) {
@@ -818,7 +793,7 @@ export function WhatsAppSection({ active, form, siteId, onSave }: WhatsAppSectio
           },
           whatsapp: {
             enabled: true,
-            setupType: localState.setupType,
+            setupType: "use_own_account",
             country: localState.country,
             region: localState.region,
             account_sid: localState.accountSid,
@@ -837,7 +812,7 @@ export function WhatsAppSection({ active, form, siteId, onSave }: WhatsAppSectio
           ...prev,
           status: newStatus as "not_configured" | "pending" | "active",
           setupRequested: newSetupRequested,
-          hasSecureToken: localState.setupType === "use_own_account" && tokenStored,
+          hasSecureToken: tokenStored,
           apiToken: "" // Clear API token from local state after saving
         }
         return updatedState
@@ -846,7 +821,7 @@ export function WhatsAppSection({ active, form, siteId, onSave }: WhatsAppSectio
       // Sync with form for consistency (without API token)
       form.setValue("channels.whatsapp", {
         enabled: true,
-        setupType: localState.setupType,
+        setupType: "use_own_account",
         country: localState.country,
         region: localState.region,
         account_sid: localState.accountSid,
@@ -857,9 +832,7 @@ export function WhatsAppSection({ active, form, siteId, onSave }: WhatsAppSectio
         status: newStatus
       })
 
-      const successMessage = localState.setupType === "use_own_account"
-        ? "Twilio API configuration saved successfully!"
-        : "WhatsApp setup request submitted! Our team will contact you soon."
+      const successMessage = "Twilio API configuration saved successfully!"
 
       toast.success(successMessage)
     } catch (error) {
@@ -940,10 +913,10 @@ export function WhatsAppSection({ active, form, siteId, onSave }: WhatsAppSectio
       <SectionCardHeader>
         <SectionCardTitle className="flex items-center gap-2">
           <MessageSquare className="h-5 w-5" />
-          WhatsApp Business Channel
+          WhatsApp (Twilio)
         </SectionCardTitle>
         <p className="text-sm text-muted-foreground mt-1">
-          Connect with WhatsApp Business API to enable messaging with your customers
+          Connect with WhatsApp Business API via Twilio to enable messaging with your customers
         </p>
       </SectionCardHeader>
       <SectionCardContent className="pb-4 space-y-4">
@@ -967,96 +940,13 @@ export function WhatsAppSection({ active, form, siteId, onSave }: WhatsAppSectio
         
 
         {/* Configuration Form - Only show if enabled and not already configured */}
-        {localState.enabled && !isConfigurationSaved && !isSetupPending && (
+        {localState.enabled && !isConfigurationSaved && (
           <>
-            {/* Setup Type Selection */}
+            {/* Setup Type Selection - Hidden completely, forces own account */}
+
+            {/* Configuration Fields for Own Account */}
             <div className="space-y-4">
-              <Label className="text-base font-medium">Choose Setup Option</Label>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div
-                  className={`p-4 border rounded-lg cursor-pointer transition-colors ${
-                    localState.setupType === "new_number"
-                      ? "border-primary bg-primary/5"
-                      : "dark:border-white/5 border-black/5 hover:border-primary/50"
-                  }`}
-                  onClick={() => handleSetupTypeChange("new_number")}
-                >
-                  <div>
-                    <h4 className="font-medium">Get New Number</h4>
-                    <p className="text-sm text-muted-foreground">Recommended</p>
-                  </div>
-                </div>
-
-                <div
-                  className={`p-4 border rounded-lg cursor-pointer transition-colors ${
-                    localState.setupType === "use_own_account"
-                      ? "border-primary bg-primary/5"
-                      : "dark:border-white/5 border-black/5 hover:border-primary/50"
-                  }`}
-                  onClick={() => handleSetupTypeChange("use_own_account")}
-                >
-                  <div>
-                    <h4 className="font-medium">Use Your Own Twilio Account</h4>
-                    <p className="text-sm text-muted-foreground">Connect existing account</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Configuration Fields Based on Setup Type */}
-            {localState.setupType === "new_number" && (
-              <div className="space-y-4">
-                <div>
-                  <Label className="text-sm font-medium text-foreground">Country</Label>
-                  <Select
-                    onValueChange={handleCountryChange}
-                    value={localState.country}
-                  >
-                    <SelectTrigger className="h-12">
-                      <SelectValue placeholder="Select country" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {TWILIO_COUNTRIES.map((country) => (
-                        <SelectItem key={country.code} value={country.code}>
-                          <div className="flex items-center gap-2">
-                            <Globe className="h-4 w-4 text-muted-foreground" />
-                            {country.name}
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {selectedCountryConfig?.hasCities && availableCities.length > 0 && (
-                  <div>
-                    <Label className="text-sm font-medium text-foreground">Preferred City</Label>
-                    <Select onValueChange={handleRegionChange} value={localState.region}>
-                      <SelectTrigger className="h-12">
-                        <SelectValue placeholder="Select preferred city for your number" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {availableCities.map((city) => (
-                          <SelectItem key={city.code} value={city.code}>
-                            <div className="flex items-center gap-2">
-                              <MessageSquare className="h-4 w-4 text-muted-foreground" />
-                              {city.name}
-                            </div>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Choose the city where you'd like your new WhatsApp & SMS number
-                    </p>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {localState.setupType === "use_own_account" && (
-              <div className="space-y-4">
-                {/* Webhook URL - Below setup option, visible only for own account */}
+              {/* Webhook URL - Below setup option, visible only for own account */}
                 {localState.enabled && (
                   <div className="space-y-2">
                     <Label className="text-base font-medium">Webhook URL</Label>
@@ -1208,25 +1098,13 @@ export function WhatsAppSection({ active, form, siteId, onSave }: WhatsAppSectio
 
                 
               </div>
-            )}
           </>
         )}
 
-        {/* Setup Pending Status */}
-        {isSetupPending && (
-          <div className="flex items-center space-x-2 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-md border border-blue-200 dark:border-blue-900">
-            <CheckCircle2 className="h-5 w-5 text-blue-600" />
-            <div className="flex-1">
-              <p className="text-sm font-medium">Setup request submitted</p>
-              <p className="text-xs text-muted-foreground">
-                Our team will contact you soon to complete the WhatsApp Business setup
-              </p>
-            </div>
-          </div>
-        )}
+        {/* Setup Pending Status - Removed as per request */}
 
         {/* Missing Account SID for Own Account - Allow editing just the SID */}
-        {isConfigurationSaved && localState.setupType === "use_own_account" && !localState.accountSid && (
+        {isConfigurationSaved && !localState.accountSid && (
           <div className="space-y-4">
             <div className="flex items-center space-x-2 p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-md border border-yellow-200 dark:border-yellow-900">
               <AlertCircle className="h-5 w-5 text-yellow-600" />
@@ -1265,7 +1143,7 @@ export function WhatsAppSection({ active, form, siteId, onSave }: WhatsAppSectio
         )}
 
         {/* Configuration Active Status */}
-        {isConfigurationSaved && !(localState.setupType === "use_own_account" && !localState.accountSid) && (
+        {isConfigurationSaved && !(!localState.accountSid) && (
           <div className="space-y-4">
             <div className="flex items-center space-x-2 p-4 bg-green-50 dark:bg-green-900/20 rounded-md border border-green-200 dark:border-green-900">
               <CheckCircle2 className="h-5 w-5 text-green-600" />
@@ -1282,7 +1160,7 @@ export function WhatsAppSection({ active, form, siteId, onSave }: WhatsAppSectio
               <div>
                 <Label className="text-sm font-medium text-foreground">Setup Type</Label>
                 <div className="mt-1 p-3 bg-gray-50 dark:bg-gray-900 rounded-md border">
-                  {localState.setupType === "new_number" ? "New Number (Managed by us)" : "Your Own Twilio Account"}
+                  {"Your Own Twilio Account"}
                 </div>
               </div>
 
@@ -1299,7 +1177,7 @@ export function WhatsAppSection({ active, form, siteId, onSave }: WhatsAppSectio
                 </div>
               )}
 
-              {localState.accountSid && localState.setupType === "use_own_account" && (
+              {localState.accountSid && (
                 <div>
                   <Label className="text-sm font-medium text-foreground">Twilio Account SID</Label>
                   <div className="mt-1 p-3 bg-gray-50 dark:bg-gray-900 rounded-md border flex items-center gap-2">
@@ -1323,7 +1201,7 @@ export function WhatsAppSection({ active, form, siteId, onSave }: WhatsAppSectio
                 </div>
               )}
 
-              {dbMessagingServiceSid && localState.setupType === "use_own_account" && (
+              {dbMessagingServiceSid && (
                 <div>
                   <Label className="text-sm font-medium text-foreground">Messaging Service SID</Label>
                   <div className="mt-1 p-3 bg-gray-50 dark:bg-gray-900 rounded-md border flex items-center gap-2">
@@ -1345,7 +1223,7 @@ export function WhatsAppSection({ active, form, siteId, onSave }: WhatsAppSectio
                 </div>
               )}
 
-              {!dbMessagingServiceSid && localState.setupType === "use_own_account" && (
+              {!dbMessagingServiceSid && (
                 <div>
                   <Label className="text-sm font-medium text-foreground">Messaging Service SID</Label>
                   <div className="flex items-center gap-2">
@@ -1382,24 +1260,6 @@ export function WhatsAppSection({ active, form, siteId, onSave }: WhatsAppSectio
                 </div>
               )}
 
-              {localState.country && localState.setupType === "new_number" && (
-                <div>
-                  <Label className="text-sm font-medium text-foreground">Requested Location</Label>
-                  <div className="mt-1 p-3 bg-gray-50 dark:bg-gray-900 rounded-md border flex items-center gap-2">
-                    <Globe className="h-4 w-4 text-muted-foreground" />
-                    <span>
-                      {TWILIO_COUNTRIES.find(c => c.code === localState.country)?.name}
-                      {localState.region && (
-                        <span className="text-muted-foreground"> - {
-                          getCitiesForCountry(localState.country).find(c => c.code === localState.region)?.name ||
-                          getRegionsForCountry(localState.country).find(r => r.code === localState.region)?.name ||
-                          localState.region
-                        }</span>
-                      )}
-                    </span>
-                  </div>
-                </div>
-              )}
 
               {localState.hasSecureToken && (
                 <div>
@@ -1420,34 +1280,30 @@ export function WhatsAppSection({ active, form, siteId, onSave }: WhatsAppSectio
         <ActionFooter>
           <div className="flex items-center justify-between w-full">
             <div className="text-sm text-muted-foreground">
-              {!isConfigurationSaved && !isSetupPending && localState.setupType ? (
-                localState.setupType === "new_number"
-                  ? "We'll help you get a new WhatsApp & SMS number in your preferred city"
-                  : "Connect your existing Twilio account for WhatsApp & SMS messaging"
-              ) : isConfigurationSaved && localState.setupType === "use_own_account" && !localState.accountSid ? (
+              {!isConfigurationSaved ? (
+                "Connect your Twilio account for WhatsApp & SMS messaging"
+              ) : isConfigurationSaved && !localState.accountSid ? (
                 "Please add your Twilio Account SID to complete the configuration"
               ) : isConfigurationSaved ? (
                 "WhatsApp Business is configured and ready"
-              ) : isSetupPending ? (
-                "Setup request submitted - waiting for completion"
               ) : (
                 "Configure your WhatsApp Business setup above"
               )}
             </div>
 
             <div className="flex gap-2">
-              {!isConfigurationSaved && !isSetupPending && canSaveConfiguration() && (
+              {!isConfigurationSaved && canSaveConfiguration() && (
                 <Button variant="outline" size="sm"
                   onClick={handleSaveConfiguration}
                   disabled={isRequesting}
                 >
-                  {isRequesting ? "Saving..." : localState.setupType === "new_number" ? "Request Setup" : "Save Configuration"}
+                  {isRequesting ? "Saving..." : "Save Configuration"}
                 </Button>
               )}
 
 
 
-              {(isConfigurationSaved || isSetupPending) && (
+              {(isConfigurationSaved) && (
                 <Button
                   variant="outline"
                   onClick={handleResetConfiguration}

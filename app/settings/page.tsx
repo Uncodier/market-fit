@@ -221,9 +221,8 @@ const getVisitsSections = (t: (key: string) => string): QuickNavSection[] => [
 ]
 
 const getChannelsSections = (t: (key: string) => string): QuickNavSection[] => [
+  { id: "support-channels", title: "Support Channels" },
   { id: "website-channel", title: t('settings.nav.websiteChannel') || "Website Channel" },
-  { id: "agent-email-channel", title: t('settings.nav.agentEmailChannel') || "Agent Email Channel" },
-  { id: "agent-whatsapp-channel", title: t('settings.nav.agentWhatsappChannel') || "Agent WhatsApp Channel" },
 ]
 
 const getInitialSocialSections = (t: (key: string) => string): QuickNavSection[] => [

@@ -87,8 +87,8 @@ const getInitialWebhooksSections = (): QuickNavSection[] => [
 ]
 
 const channelsSections: QuickNavSection[] = [
-  { id: "email-channel", title: "Email Channel" },
-  { id: "whatsapp-channel", title: "WhatsApp Channel" },
+  { id: "agent-email-channel", title: "Agent Email" },
+  { id: "whatsapp-channel", title: "WhatsApp (Twilio)" },
 ]
 
 export default function IntegrationsPage() {

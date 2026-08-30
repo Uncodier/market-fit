@@ -480,10 +480,10 @@ export function AgentWhatsAppSection({ active, siteId, onSave }: AgentWhatsAppSe
       <SectionCardHeader>
         <SectionCardTitle className="flex items-center gap-2">
           <MessageSquare className="h-5 w-5" />
-          Agent WhatsApp Channel
+          WhatsApp (Twilio)
         </SectionCardTitle>
         <p className="text-sm text-muted-foreground mt-1">
-          Request an agent WhatsApp number for automated customer communication
+          Request a WhatsApp number for automated customer communication via Twilio
         </p>
       </SectionCardHeader>
       <SectionCardContent className="pb-4 space-y-4">
@@ -550,7 +550,7 @@ export function AgentWhatsAppSection({ active, siteId, onSave }: AgentWhatsAppSe
           <div className="flex items-center space-x-2 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-md border border-blue-200 dark:border-blue-900">
             <CheckCircle2 className="h-5 w-5 text-blue-600" />
             <div className="flex-1">
-              <p className="text-sm font-medium">Agent WhatsApp request submitted</p>
+              <p className="text-sm font-medium">WhatsApp (Twilio) request submitted</p>
               <p className="text-xs text-muted-foreground">
                 Your request is being processed. We'll contact you soon to complete the setup.
               </p>
@@ -562,7 +562,7 @@ export function AgentWhatsAppSection({ active, siteId, onSave }: AgentWhatsAppSe
           <div className="flex items-center space-x-2 p-4 bg-green-50 dark:bg-green-900/20 rounded-md border border-green-200 dark:border-green-900">
             <CheckCircle2 className="h-5 w-5 text-green-600" />
             <div className="flex-1">
-              <p className="text-sm font-medium">Agent WhatsApp active</p>
+              <p className="text-sm font-medium">WhatsApp (Twilio) active</p>
               <p className="text-xs text-muted-foreground">
                 Your agent WhatsApp is configured and ready to use
               </p>
@@ -582,7 +582,7 @@ export function AgentWhatsAppSection({ active, siteId, onSave }: AgentWhatsAppSe
               onClick={handleRequestAgentWhatsApp}
               disabled={isRequesting || !canRequest()}
             >
-              {isRequesting ? "Requesting..." : "Request Agent WhatsApp"}
+              {isRequesting ? "Requesting..." : "Request WhatsApp (Twilio)"}
             </Button>
           </div>
         </ActionFooter>

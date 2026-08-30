@@ -1902,7 +1902,7 @@ export default function ContentDetailPage(props: { params: Promise<{ id: string 
     const descriptionChanged = editForm.description !== (content.description || '')
     const segmentChanged = editForm.segment_id !== (content.segment_id || '')
     const campaignChanged = editForm.campaign_id !== (content.campaign_id || '')
-    const tagsChanged = JSON.stringify(editForm.tags?.sort() || []) !== JSON.stringify(content.tags?.sort() || [])
+    const tagsChanged = JSON.stringify([...(editForm.tags || [])].sort()) !== JSON.stringify([...(content.tags || [])].sort())
     const ratingChanged = editForm.performance_rating !== content.performance_rating
     const statusChanged = editForm.status !== (content.status || 'draft')
     

@@ -134,7 +134,7 @@ export interface SiteSettings {
     }
     whatsapp?: {
       enabled?: boolean
-      setupType?: "new_number" | "use_own_account"
+      setupType?: "use_own_account"
       country?: string
       region?: string
       number?: string
@@ -188,6 +188,18 @@ export interface SiteSettings {
       setupRequested?: boolean
       status?: "not_configured" | "pending" | "active"
     }
+    connections?: Array<{
+      id?: string
+      type?: "whatsapp" | "messenger" | "sms" | "email" | "telegram" | "instagram" | "voice" | ""
+      name?: string
+      status: "pending" | "in_progress" | "connected" | "failed" | "expired" | "cancelled" | "disconnected" | "not_configured"
+      zavu_sender_id?: string
+      zavu_invitation_id?: string
+      connected_account?: any
+      metadata?: any
+      created_at?: string
+      updated_at?: string
+    }>
     website?: {
       enabled?: boolean
       track_visitors?: boolean
