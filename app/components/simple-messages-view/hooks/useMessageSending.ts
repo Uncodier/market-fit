@@ -1,11 +1,9 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { createClient } from '@/lib/supabase/client'
 import { useSite } from '@/app/context/SiteContext'
 import { useToast } from '@/app/components/ui/use-toast'
-import { contextService, type SelectedContextIds } from '@/app/services/context-service'
-import { getSystemPromptForActivity } from '../utils'
+import { type SelectedContextIds } from '@/app/services/context-service'
 import { ImageParameters, VideoParameters, AudioParameters } from '../types'
-import { persistUserActionLog, markRobotInstanceError, postWithRetry } from './send-message-reliability'
+import { sendAssistantMessage, sendRobotMessage } from './message-send-handlers'
 
 interface UseMessageSendingProps {
   activeRobotInstance?: any
@@ -18,7 +16,6 @@ interface UseMessageSendingProps {
   onNewInstanceCreated?: (instanceId: string, shouldNavigate?: boolean) => void
   startInstancePolling?: (activityName: string, instanceId?: string, shouldAutoNavigate?: boolean) => Promise<void>
   onAddOptimisticMessage?: (message: string) => void
-  // Media parameters
   imageParameters?: ImageParameters
   videoParameters?: VideoParameters
   audioParameters?: AudioParameters
@@ -31,7 +28,6 @@ export const useMessageSending = ({
   messageRef,
   onMessageSent,
   onClearMessage,
-  onScrollToBottom,
   onNewInstanceCreated,
   startInstancePolling,
   onAddOptimisticMessage,
@@ -45,371 +41,149 @@ export const useMessageSending = ({
   const [hasMessageBeenSent, setHasMessageBeenSent] = useState(false)
   const [waitingForMessageId, setWaitingForMessageId] = useState<string | null>(null)
   const thinkingTimeoutRef = useRef<NodeJS.Timeout | null>(null)
-  // Track the active request ID to handle race conditions
   const activeRequestIdRef = useRef<string | null>(null)
-  // Track the instance_id for which we're currently showing loading
+  const sendingLockRef = useRef(false)
   const loadingInstanceIdRef = useRef<string | null>(null)
   const { currentSite } = useSite()
   const { toast } = useToast()
 
-  // Clear thinking state - utility function
   const clearThinkingState = useCallback(() => {
     const currentInstanceId = activeRobotInstance?.id
-    // Only clear if this state belongs to the current instance
     if (loadingInstanceIdRef.current !== null && loadingInstanceIdRef.current !== currentInstanceId) {
-      console.log(`🛡️ [useMessageSending] Not clearing thinking state - belongs to different instance (${loadingInstanceIdRef.current} vs ${currentInstanceId})`)
       return
     }
-    
-    console.log('🛡️ Clearing thinking state')
+
     setIsWaitingForResponse(false)
-    // Unlock input when thinking hides, as the user might want to interact even if the API call is still wrapping up
     setIsSendingMessage(false)
-    activeRequestIdRef.current = null // Clear active request so finally block doesn't interfere
     setWaitingForMessageId(null)
     loadingInstanceIdRef.current = null
-    
-    // Clear any existing timeout
+
     if (thinkingTimeoutRef.current) {
       clearTimeout(thinkingTimeoutRef.current)
       thinkingTimeoutRef.current = null
     }
   }, [activeRobotInstance?.id])
 
-  // New Makina specific thinking state management
   const setNewMakinaThinking = useCallback(() => {
-    // New Makina doesn't have an instance_id yet, so we use null as the identifier
-    console.log('🤔 Setting New Makina thinking state (no instance_id yet)')
-    loadingInstanceIdRef.current = null // null means "new makina" context
+    loadingInstanceIdRef.current = null
     setIsNewMakinaThinking(true)
   }, [])
 
   const clearNewMakinaThinking = useCallback(() => {
-    // Only clear if we're in the "new makina" context (loadingInstanceIdRef.current === null)
-    // or if we don't have an active instance
     if (loadingInstanceIdRef.current !== null && activeRobotInstance?.id) {
-      console.log(`🛡️ [useMessageSending] Not clearing New Makina thinking - we have an active instance (${activeRobotInstance.id})`)
       return
     }
-    
-    console.log('🛡️ [useMessageSending] Clearing New Makina thinking state')
-    console.log('🛡️ [useMessageSending] Current isNewMakinaThinking:', isNewMakinaThinking)
-    setIsNewMakinaThinking(false)
-    // Unlock input when thinking hides, as the user might want to interact even if the API call is still wrapping up
-    setIsSendingMessage(false)
-    activeRequestIdRef.current = null
-    loadingInstanceIdRef.current = null
-    console.log('🛡️ [useMessageSending] New Makina thinking state cleared')
-  }, [activeRobotInstance?.id, isNewMakinaThinking])
 
-  // Set thinking state with safety timeout
+    setIsNewMakinaThinking(false)
+    setIsSendingMessage(false)
+    loadingInstanceIdRef.current = null
+  }, [activeRobotInstance?.id])
+
   const setThinkingStateWithTimeout = useCallback(() => {
     const currentInstanceId = activeRobotInstance?.id
-    if (!currentInstanceId) {
-      console.warn('⚠️ [useMessageSending] Cannot set thinking state: no active instance')
-      return
-    }
-    
-    console.log(`🤔 Setting thinking state with safety timeout for instance: ${currentInstanceId}`)
+    if (!currentInstanceId) return
+
     loadingInstanceIdRef.current = currentInstanceId
     setIsWaitingForResponse(true)
-    
-    // Clear any existing timeout
+
     if (thinkingTimeoutRef.current) {
       clearTimeout(thinkingTimeoutRef.current)
     }
-    
-    // Set safety timeout - clear thinking state after 30 seconds if no response
+
     thinkingTimeoutRef.current = setTimeout(() => {
-      // Only clear if this timeout is still for the current instance
       if (loadingInstanceIdRef.current === currentInstanceId) {
-        console.log('⏰ Thinking timeout reached, clearing state as safety measure')
         clearThinkingState()
         loadingInstanceIdRef.current = null
       }
-    }, 30000) // 30 seconds - shorter timeout for better UX
+    }, 30000)
   }, [activeRobotInstance?.id, clearThinkingState])
 
-  // Handle assistant message (non-robot activities)
-  const handleAssistantMessage = async (messageToSend: string) => {
+  const handleAssistantMessage = useCallback(async (messageToSend: string) => {
     if (!currentSite?.id) return
+    await sendAssistantMessage({
+      messageToSend,
+      siteId: currentSite.id,
+      selectedActivity,
+      selectedContext,
+      activeRobotInstance,
+      imageParameters,
+      videoParameters,
+      audioParameters,
+      toast,
+    })
+  }, [
+    currentSite?.id,
+    selectedActivity,
+    selectedContext,
+    activeRobotInstance,
+    imageParameters,
+    videoParameters,
+    audioParameters,
+    toast,
+  ])
 
-    try {
-      const contextData = await contextService.getContextData(selectedContext, currentSite.id)
-      
-      // Determine media type and parameters
-      let mediaType = 'text'
-      let currentParams: any = {}
-      
-      if (selectedActivity === 'generate-image') {
-        mediaType = 'image'
-        currentParams = { ...imageParameters }
-      } else if (selectedActivity === 'generate-video') {
-        mediaType = 'video'
-        currentParams = { ...videoParameters }
-      } else if (selectedActivity === 'generate-audio') {
-        mediaType = 'audio'
-        currentParams = { ...audioParameters }
-      }
-      
-      let expectedResults = currentParams.expectedResults || 1
-
-      // Build contextObj
-      let contextObj: any = {}
-      if (contextData) {
-        if (typeof contextData === 'object' && !Array.isArray(contextData)) {
-           contextObj = { ...contextData }
-        } else {
-           contextObj.raw_context = contextData
-        }
-      }
-      
-      // Add parameters to context
-      contextObj.mediaType = mediaType
-      contextObj.output_type = mediaType
-      contextObj.parameters = { ...currentParams }
-      
-      // Remove expectedResults from context to prevent the LLM from duplicating output internally
-      if (contextObj.parameters.expectedResults !== undefined) {
-        delete contextObj.parameters.expectedResults
-      }
-
-      const contextString = JSON.stringify(contextObj)
-      
-      const supabase = createClient()
-      const { data: { user } } = await supabase.auth.getUser()
-      
-      const systemPrompt = getSystemPromptForActivity(selectedActivity, {
-        imageParameters,
-        videoParameters,
-        audioParameters
-      })
-      
-      // Prepare request payload
-      const requestPayload: any = {
-        message: messageToSend,
-        site_id: currentSite.id,
-        user_id: user?.id,
-        context: contextString,
-        system_prompt: systemPrompt,
-        expected_results_amount: expectedResults
-      }
-      
-      // For assistant messages, we don't need to create instances
-      // Only use instance_id if we have an active robot instance
-      let instanceId = activeRobotInstance?.id
-      
-      if (instanceId) {
-        requestPayload.instance_id = instanceId
-        console.log('🤖 Sending assistant message with existing instance_id:', instanceId)
-        await persistUserActionLog({
-          instanceId,
-          siteId: currentSite.id,
-          userId: user?.id,
-          message: messageToSend,
-        })
-      } else {
-        console.log('🤖 Sending assistant message without instance_id (new_makina context)')
-      }
-      
-      const response = await postWithRetry('/api/robots/instance/assistant', requestPayload)
-
-      if (response.success) {
-        console.log('✅ Assistant message sent successfully:', response.data)
-      } else {
-        console.error('Assistant API error:', response.error)
-        if (instanceId) {
-          await markRobotInstanceError({
-            instanceId,
-            siteId: currentSite.id,
-            userId: user?.id,
-            errorMessage: response.error?.message || 'Assistant request failed',
-          })
-        }
-        toast({
-          title: 'Error',
-          description: 'Please try again.', 
-          variant: 'destructive' 
-        })
-      }
-    } catch (error) {
-      console.error('Error sending assistant message:', error)
-      const instanceId = activeRobotInstance?.id
-      if (instanceId && currentSite?.id) {
-        await markRobotInstanceError({
-          instanceId,
-          siteId: currentSite.id,
-          errorMessage: error instanceof Error ? error.message : 'Assistant request failed',
-        })
-      }
-      toast({
-        title: 'Error',
-        description: 'Please try again.', 
-        variant: 'destructive' 
-      })
-    }
-  }
-
-  // Handle robot message (workflow/startRobot)
-  const handleRobotMessage = async (messageToSend: string) => {
+  const handleRobotMessage = useCallback(async (messageToSend: string) => {
     if (!currentSite?.id) return
+    await sendRobotMessage({
+      messageToSend,
+      siteId: currentSite.id,
+      selectedContext,
+      activeRobotInstance,
+      toast,
+      setThinkingStateWithTimeout,
+      setNewMakinaThinking,
+      clearThinkingState,
+      clearNewMakinaThinking,
+      onMessageSent,
+      onNewInstanceCreated,
+      startInstancePolling,
+    })
+  }, [
+    currentSite?.id,
+    selectedContext,
+    activeRobotInstance,
+    toast,
+    setThinkingStateWithTimeout,
+    setNewMakinaThinking,
+    clearThinkingState,
+    clearNewMakinaThinking,
+    onMessageSent,
+    onNewInstanceCreated,
+    startInstancePolling,
+  ])
 
-    try {
-      const supabase = createClient()
-      const { data: { user } } = await supabase.auth.getUser()
-      
-      let response
-      
-      if (activeRobotInstance?.id) {
-        console.log('🤖 Sending message to existing robot instance:', activeRobotInstance.id)
-        
-        // Check if robot is already running - if so, don't show loading
-        const isRobotRunning = ['running', 'active'].includes((activeRobotInstance as any).status)
-        
-        if (!isRobotRunning) {
-          // Only set thinking state if robot is not already running
-          setThinkingStateWithTimeout()
-          onMessageSent?.(true) // Trigger explorer view
-        }
-        
-        // Prepare payload for promptRobot endpoint
-        const promptPayload = {
-          instance_id: activeRobotInstance.id,
-          message: messageToSend,
-          step_status: 'in_progress',
-          site_id: currentSite.id,
-          context: JSON.stringify(selectedContext),
-          activity: 'robot'
-        }
-        
-        await persistUserActionLog({
-          instanceId: activeRobotInstance.id,
-          siteId: currentSite.id,
-          userId: user?.id,
-          message: messageToSend,
-        })
+  const handleRobotMessageRef = useRef(handleRobotMessage)
+  const handleAssistantMessageRef = useRef(handleAssistantMessage)
+  handleRobotMessageRef.current = handleRobotMessage
+  handleAssistantMessageRef.current = handleAssistantMessage
 
-        // Use promptRobot endpoint for existing robots
-        response = await postWithRetry('/api/workflow/promptRobot', promptPayload)
-      } else {
-        console.log('🤖 Starting robot workflow for new instance')
-        // Set New Makina thinking state
-        setNewMakinaThinking()
-        
-        // Prepare payload for startRobot endpoint
-        const startPayload = {
-          site_id: currentSite.id,
-          user_id: user?.id,
-          activity: 'robot',
-          message: messageToSend,
-          context: JSON.stringify(selectedContext)
-        }
-        
-        // Use startRobot endpoint for new instances
-        response = await postWithRetry('/api/workflow/startRobot', startPayload)
-      }
-
-      if (response.success) {
-        console.log('✅ Robot workflow started successfully:', response.data)
-        
-        // Start polling to detect when instance becomes running
-        if (activeRobotInstance?.id) {
-          // For existing robots, only poll if not already running
-          const isRobotRunning = ['running', 'active'].includes((activeRobotInstance as any).status)
-          if (!isRobotRunning) {
-            console.log('🔄 Starting polling for existing robot instance:', activeRobotInstance.id)
-            startInstancePolling?.('robot', activeRobotInstance.id, true) // Allow navigation for existing robots
-          } else {
-            console.log('✅ Robot already running, no polling needed')
-          }
-        } else if (response.data?.instance_id) {
-          // For new robots, we now have the instance_id immediately
-          console.log('🔄 New robot instance created:', response.data.instance_id)
-          
-          // Clear New Makina thinking state since we now have an instance
-          clearNewMakinaThinking()
-          
-          // Notify parent component about the new instance with no-navigation flag
-          onNewInstanceCreated?.(response.data.instance_id, false)
-
-          // Poll until running/failed — same path as resume; don't rely only on Realtime
-          console.log('🔄 Starting polling for new robot instance:', response.data.instance_id)
-          startInstancePolling?.('robot', response.data.instance_id, false)
-        }
-      } else {
-        console.error('Robot workflow API error:', response.error)
-        if (activeRobotInstance?.id) {
-          await markRobotInstanceError({
-            instanceId: activeRobotInstance.id,
-            siteId: currentSite.id,
-            userId: user?.id,
-            errorMessage: response.error?.message || 'Failed to start robot workflow',
-          })
-        }
-        // Clear thinking states on error
-        clearThinkingState()
-        clearNewMakinaThinking()
-        toast({
-          title: 'Error',
-          description: 'Failed to start robot workflow. Please try again.', 
-          variant: 'destructive' 
-        })
-      }
-    } catch (error) {
-      console.error('Error starting robot workflow:', error)
-      if (activeRobotInstance?.id && currentSite?.id) {
-        await markRobotInstanceError({
-          instanceId: activeRobotInstance.id,
-          siteId: currentSite.id,
-          errorMessage: error instanceof Error ? error.message : 'Failed to start robot workflow',
-        })
-      }
-      // Clear thinking states on error
-      clearThinkingState()
-      clearNewMakinaThinking()
-      toast({
-        title: 'Error',
-        description: 'Failed to start robot workflow. Please try again.', 
-        variant: 'destructive' 
-      })
-    }
-  }
-
-  // Handle sending messages
-  const handleSendMessage = async () => {
-    // Ensure messageRef.current is a string
+  const handleSendMessage = useCallback(async () => {
     const currentMessage = typeof messageRef.current === 'string' ? messageRef.current : ''
-    if (!currentMessage.trim() || !currentSite?.id || isSendingMessage) return
+    if (!currentMessage.trim() || !currentSite?.id || sendingLockRef.current || isSendingMessage) return
 
     const messageToSend = currentMessage.trim()
+    sendingLockRef.current = true
 
-    // Generate request ID to track this specific request
     const requestId = Date.now().toString()
     activeRequestIdRef.current = requestId
 
-    // Prevent duplicate submissions / set UI states
     setIsSendingMessage(true)
     onClearMessage?.()
-    
-    // Set appropriate thinking state and add optimistic message
+
     if (!activeRobotInstance) {
-      // New Makina context - set New Makina thinking state
-      console.log('🤖 New Makina context detected, setting New Makina thinking state')
       setNewMakinaThinking()
       setHasMessageBeenSent(true)
       onMessageSent?.(true)
     } else {
-      // Existing instance context - add optimistic user message + thinking state
-      console.log('🤖 Adding optimistic user message for existing instance')
       onAddOptimisticMessage?.(messageToSend)
       setThinkingStateWithTimeout()
     }
 
     try {
       if (selectedActivity === 'robot') {
-        await handleRobotMessage(messageToSend)
+        await handleRobotMessageRef.current(messageToSend)
       } else {
-        await handleAssistantMessage(messageToSend)
+        await handleAssistantMessageRef.current(messageToSend)
       }
     } catch (error) {
       console.error('Error sending message:', error)
@@ -419,60 +193,63 @@ export const useMessageSending = ({
         clearThinkingState()
       }
     } finally {
-      // Only clear sending state if this is still the active request
-      // (It might have been cleared by clearThinkingState, or a new request might have started)
+      sendingLockRef.current = false
       if (activeRequestIdRef.current === requestId) {
         setIsSendingMessage(false)
         activeRequestIdRef.current = null
       }
     }
-  }
+  }, [
+    currentSite?.id,
+    isSendingMessage,
+    activeRobotInstance,
+    selectedActivity,
+    onClearMessage,
+    setNewMakinaThinking,
+    onMessageSent,
+    onAddOptimisticMessage,
+    setThinkingStateWithTimeout,
+    clearNewMakinaThinking,
+    clearThinkingState,
+    messageRef,
+  ])
 
-  // Reset message sent state - utility function
   const resetMessageSentState = useCallback(() => {
-    console.log('🔄 Resetting message sent state')
     setHasMessageBeenSent(false)
   }, [])
 
-  // Reset loading states when activeRobotInstance changes to a different instance
   useEffect(() => {
     const currentInstanceId = activeRobotInstance?.id || null
-    
-    // If we switched to a different instance, clear loading states
+
     if (loadingInstanceIdRef.current !== null && loadingInstanceIdRef.current !== currentInstanceId) {
-      console.log(`🔄 [useMessageSending] Instance changed from ${loadingInstanceIdRef.current} to ${currentInstanceId}, clearing loading states`)
-      // Clear states directly instead of calling functions to avoid dependency issues
       setIsWaitingForResponse(false)
       setWaitingForMessageId(null)
       setIsNewMakinaThinking(false)
-      setIsSendingMessage(false) // Also clear sending state when switching instances
+      setIsSendingMessage(false)
+      sendingLockRef.current = false
       loadingInstanceIdRef.current = null
-      
-      // Clear any existing timeout
+
       if (thinkingTimeoutRef.current) {
         clearTimeout(thinkingTimeoutRef.current)
         thinkingTimeoutRef.current = null
       }
     }
-    
-    // Update the ref to track the current instance
+
     if (currentInstanceId) {
       loadingInstanceIdRef.current = currentInstanceId
     }
   }, [activeRobotInstance?.id])
 
-  // Reset hasMessageBeenSent when switching to no active instance
   useEffect(() => {
     if (!activeRobotInstance) {
       setHasMessageBeenSent(false)
-      // Also clear loading states when there's no active instance
       setIsWaitingForResponse(false)
       setWaitingForMessageId(null)
       setIsNewMakinaThinking(false)
-      setIsSendingMessage(false) // Also clear sending state when there's no active instance
+      setIsSendingMessage(false)
+      sendingLockRef.current = false
       loadingInstanceIdRef.current = null
-      
-      // Clear any existing timeout
+
       if (thinkingTimeoutRef.current) {
         clearTimeout(thinkingTimeoutRef.current)
         thinkingTimeoutRef.current = null

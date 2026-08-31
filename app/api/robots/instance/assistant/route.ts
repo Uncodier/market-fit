@@ -25,7 +25,9 @@ export async function POST(request: NextRequest) {
       instance_id,
       instance_node_id,
       attachments,
-      expected_results_amount
+      expected_results_amount,
+      client_persisted,
+      request_id,
     } = body
 
     // -------------------------------------------------------------
@@ -123,29 +125,60 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    // Create a log entry for the user message
-    const { data: userLog, error: userLogError } = await supabase
-      .from('instance_logs')
-      .insert({
-        instance_id: actualInstanceId,
-        log_type: 'user_action',
-        level: 'info',
-        message: message,
-        details: {
-          site_id,
-          user_id,
-          context: context || null,
-          system_prompt: system_prompt || null,
-          attachments: attachments || null,
-          instance_node_id: instance_node_id || null,
-          expected_results_amount: expected_results_amount || 1
-        }
-      })
-      .select()
-      .single()
+    // Create a log entry for the user message unless the client already persisted it
+    let userLog: { id: string } | null = null
 
-    if (userLogError) {
-      console.error('Error creating user log:', userLogError)
+    if (client_persisted && actualInstanceId) {
+      const { data: existingRows, error: existingError } = await supabase
+        .from('instance_logs')
+        .select('id')
+        .eq('instance_id', actualInstanceId)
+        .eq('log_type', 'user_action')
+        .eq('message', message)
+        .order('created_at', { ascending: false })
+        .limit(1)
+
+      if (existingError) {
+        console.error('Error looking up client-persisted user log:', existingError)
+      } else if (existingRows?.[0]?.id) {
+        userLog = existingRows[0]
+      }
+    }
+
+    if (!userLog) {
+      const { data: insertedLog, error: userLogError } = await supabase
+        .from('instance_logs')
+        .insert({
+          instance_id: actualInstanceId,
+          log_type: 'user_action',
+          level: 'info',
+          message: message,
+          details: {
+            site_id,
+            user_id,
+            context: context || null,
+            system_prompt: system_prompt || null,
+            attachments: attachments || null,
+            instance_node_id: instance_node_id || null,
+            expected_results_amount: expected_results_amount || 1,
+            ...(request_id ? { request_id } : {}),
+          }
+        })
+        .select()
+        .single()
+
+      if (userLogError || !insertedLog) {
+        console.error('Error creating user log:', userLogError)
+        return NextResponse.json(
+          { success: false, error: { message: "Failed to log user message" } },
+          { status: 500 }
+        )
+      }
+
+      userLog = insertedLog
+    }
+
+    if (!userLog?.id) {
       return NextResponse.json(
         { success: false, error: { message: "Failed to log user message" } },
         { status: 500 }
