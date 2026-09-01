@@ -14,6 +14,10 @@ describe("demo commerce seed", () => {
     expect(data?.locations?.some((location: { is_default: boolean }) => location.is_default)).toBe(true)
     expect(data?.settings?.[0]?.commerce).toBeTruthy()
     expect(data?.settings?.[0]?.visits?.enabled_physical).toBe(true)
+    expect(data?.settings?.[0]?.about).toContain("HabitUall")
+    expect(data?.settings?.[0]?.branding?.brand_essence).toBeTruthy()
+    expect(data?.sites?.[0]?.description).toContain("Coworking")
+    expect(data?.copywriting?.length).toBeGreaterThan(0)
   })
 
   it("fills SaaS plans, quotations, subscriptions, and records", async () => {
@@ -25,6 +29,9 @@ describe("demo commerce seed", () => {
     expect(data?.record_categories?.some((category: { name: string }) => category.name.includes("Implementation"))).toBe(true)
     expect(data?.records?.length).toBeGreaterThan(0)
     expect(data?.inventory_levels).toBeUndefined()
+    expect(data?.settings?.[0]?.industry).toBe("B2B SaaS")
+    expect(data?.settings?.[0]?.goals?.quarterly).toBeTruthy()
+    expect(data?.copywriting?.length).toBeGreaterThan(0)
   })
 
   it("fills ecommerce products, inventory, promotions, orders, and shipments", async () => {
@@ -39,6 +46,9 @@ describe("demo commerce seed", () => {
     expect(data?.sale_order_items?.length).toBeGreaterThan(0)
     expect(data?.shipments?.length).toBeGreaterThan(0)
     expect(data?.records?.some((record: { title: string }) => record.title.toLowerCase().includes("return") || record.title.toLowerCase().includes("dress") || record.title.toLowerCase().includes("belt"))).toBe(true)
+    expect(data?.settings?.[0]?.shop?.hero_title).toBeTruthy()
+    expect(data?.settings?.[0]?.social_media?.length).toBeGreaterThan(0)
+    expect(data?.copywriting?.length).toBeGreaterThan(0)
   })
 
   it.each([

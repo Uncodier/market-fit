@@ -1,4 +1,4 @@
-import { createApiClient, createServiceApiClient } from "@/lib/supabase/server-client";
+import { createServiceClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 import { format, subDays } from "date-fns";
 
@@ -61,7 +61,7 @@ export async function GET(request: Request) {
 
   
   try {
-    const supabase = createServiceApiClient();
+    const supabase = await createServiceClient();
     console.log(`[Clients By Segment API] Received request for site: ${siteId}`);
     console.log(`[Clients By Segment API] Date parameters: startDate=${startDateParam}, endDate=${endDateParam}`);
     

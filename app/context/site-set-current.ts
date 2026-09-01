@@ -60,34 +60,23 @@ export async function applyCurrentSite({
         let settingsData = null;
         let settingsError = null;
         let siteDetailData = null;
-        
-        if (site.id.startsWith('demo-')) {
-          const { getDemoData } = await import('@/lib/demo-data/index');
-          const demoData = getDemoData(site.id);
-          if (demoData && demoData.settings) {
-            settingsData = demoData.settings;
-          }
-        } else {
-          const [settingsResult, siteDetailResult] = await Promise.all([
-            !site.settings ? supabase
-              .from('settings')
-              .select('*')
-              .eq('site_id', site.id)
-              .single() : Promise.resolve({ data: site.settings, error: null }),
-            
-            // Si no tenemos la URL del logo original (es nula, pero el sitio no es demo)
-            // cargamos los detalles pesados
-            site.logo_url === undefined || site.logo_url === null ? supabase
-              .from('sites')
-              .select('logo_url, tracking, resource_urls')
-              .eq('id', site.id)
-              .single() : Promise.resolve({ data: null, error: null })
-          ]);
-            
-          settingsData = settingsResult.data;
-          settingsError = settingsResult.error;
-          siteDetailData = siteDetailResult.data;
-        }
+
+        const [settingsResult, siteDetailResult] = await Promise.all([
+          !site.settings ? supabase
+            .from('settings')
+            .select('*')
+            .eq('site_id', site.id)
+            .single() : Promise.resolve({ data: site.settings, error: null }),
+          site.logo_url === undefined || site.logo_url === null || site.description === undefined || site.description === null ? supabase
+            .from('sites')
+            .select('logo_url, tracking, resource_urls, description, name')
+            .eq('id', site.id)
+            .single() : Promise.resolve({ data: null, error: null })
+        ]);
+
+        settingsData = unwrapSettingsRow(settingsResult.data);
+        settingsError = settingsResult.error;
+        siteDetailData = siteDetailResult.data;
           
           if (settingsError && settingsError.code !== 'PGRST116') {
             // PGRST116 significa que no se encontraron registros (es normal para un sitio nuevo)
@@ -99,6 +88,8 @@ export async function applyCurrentSite({
           if (siteDetailData) {
             mergedSite = {
               ...site,
+              name: siteDetailData.name || site.name,
+              description: siteDetailData.description ?? site.description,
               logo_url: siteDetailData.logo_url,
               tracking: siteDetailData.tracking,
               resource_urls: siteDetailData.resource_urls
@@ -288,13 +279,14 @@ export async function applyCurrentSite({
     }
 }
 
+function unwrapSettingsRow(data: any) {
+  if (!data) return null
+  return Array.isArray(data) ? data[0] || null : data
+}
+
 export async function fetchSiteSettings(supabase: any, siteId: string) {
   if (!supabase || !siteId) {
     throw new Error("Supabase client not initialized or no site ID")
-  }
-  if (siteId.startsWith("demo-")) {
-    const { getDemoData } = await import("@/lib/demo-data/index")
-    return getDemoData(siteId)?.settings || null
   }
   const { data, error } = await supabase
     .from("settings")
@@ -304,16 +296,17 @@ export async function fetchSiteSettings(supabase: any, siteId: string) {
   if (error && error.code !== "PGRST116") {
     throw error
   }
-  if (data) {
-    data.social_media = parseJsonField(data.social_media, [])
-    data.calendars = parseJsonField(data.calendars, [])
-    data.goals = parseJsonField(data.goals, {
+  const row = unwrapSettingsRow(data)
+  if (row) {
+    row.social_media = parseJsonField(row.social_media, [])
+    row.calendars = parseJsonField(row.calendars, [])
+    row.goals = parseJsonField(row.goals, {
       quarterly: "",
       yearly: "",
       fiveYear: "",
       tenYear: "",
     })
-    data.shop = parseJsonField(data.shop, null)
+    row.shop = parseJsonField(row.shop, null)
   }
-  return data || null
+  return row || null
 }

@@ -52,6 +52,22 @@ describe("demo mock client", () => {
     expect(variants.every((item: { parent_id: string | null }) => item.parent_id != null)).toBe(true)
   })
 
+  it("returns a single settings row with context fields", async () => {
+    const client = await createDemoMockClientImpl("demo-ecom-es-456")
+    const { data, error } = await client
+      .from("settings")
+      .select("*")
+      .eq("site_id", "demo-ecom-es-456")
+      .single()
+
+    expect(error).toBeNull()
+    expect(Array.isArray(data)).toBe(false)
+    expect(data.about).toContain("Moda Rápida")
+    expect(data.branding.brand_essence).toBeTruthy()
+    expect(data.shop.hero_title).toBeTruthy()
+    expect(data.commerce).toBeTruthy()
+  })
+
   it("loads workflow nodes with type in() filter", async () => {
     const client = await createDemoMockClientImpl("demo-ecom-es-456")
     const { data } = await client

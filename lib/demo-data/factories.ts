@@ -347,12 +347,61 @@ export function makeWfStep(opts: {
   }
 }
 
-export function weekdaySchedule(enabledDays: string[] = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday"]) {
+export function weekdaySchedule(
+  enabledDays: string[] = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday"],
+  start = "07:00",
+  end = "21:00"
+) {
   const days: Record<string, { enabled: boolean; start?: string; end?: string }> = {}
   for (const day of ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]) {
     days[day] = enabledDays.includes(day)
-      ? { enabled: true, start: "07:00", end: "21:00" }
+      ? { enabled: true, start, end }
       : { enabled: false }
   }
   return days
+}
+
+export function makeBusinessHours(name: string, timezone: string, days = weekdaySchedule()) {
+  return {
+    name,
+    timezone,
+    respectHolidays: true,
+    force_closed: false,
+    force_open_until: null,
+    days,
+  }
+}
+
+export function makeCopywriting(opts: {
+  id: string
+  siteId: string
+  userId: string
+  title: string
+  content: string
+  copy_type: string
+  target_audience?: string
+  use_case?: string
+  tags?: string[]
+  status?: string
+}) {
+  const now = isoNow()
+  return {
+    id: opts.id,
+    site_id: opts.siteId,
+    user_id: opts.userId,
+    title: opts.title,
+    content: opts.content,
+    copy_type: opts.copy_type,
+    target_audience: opts.target_audience || null,
+    use_case: opts.use_case || null,
+    notes: null,
+    tags: opts.tags || [],
+    status: opts.status || "approved",
+    created_at: now,
+    updated_at: now,
+  }
+}
+
+export function journeyStage(tactics: string[], metrics: string[] = [], actions: string[] = []) {
+  return { metrics, actions, tactics }
 }

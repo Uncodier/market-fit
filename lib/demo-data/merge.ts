@@ -13,6 +13,11 @@ function applyOverlay(base: DemoTableMap, overlay: DemoTableMap): DemoTableMap {
       continue
     }
 
+    if (key === "sitesPatch" && value && typeof value === "object" && !Array.isArray(value)) {
+      merged.sites = (base.sites || []).map((row: any) => ({ ...row, ...value }))
+      continue
+    }
+
     if (Array.isArray(value) && Array.isArray(base[key])) {
       merged[key] = [...base[key], ...value]
       continue
