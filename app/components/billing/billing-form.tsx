@@ -1,22 +1,23 @@
 "use client"
 
 import { Button } from "../ui/button"
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "../ui/card"
+import { SectionCard, SectionCardHeader, SectionCardContent, SectionCardFooter } from "../ui/section-card"
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "../ui/form"
 import { Input } from "../ui/input"
-import { Switch } from "../ui/switch"
-import { cn } from "@/lib/utils"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
-import { Globe, PlusCircle, RotateCcw, Tag, User, Info } from "../ui/icons"
+import { Globe, Tag } from "../ui/icons"
 import { useSite } from "@/app/context/SiteContext"
 import { useState } from "react"
 import { BillingData, billingService } from "@/app/services/billing-service"
 import { toast } from "sonner"
-import { createClient } from "@/lib/supabase/client"
 import { useAuth } from "@/app/hooks/use-auth"
 import { useLocalization } from "@/app/context/LocalizationContext"
+import { PurchaseCreditsDialog } from "./purchase-credits-dialog"
+import { CreditPackages, type CreditPackage } from "./credit-packages"
+import { SubscriptionPlans, type BillingPlan } from "./subscription-plans"
+import { StripePaymentMethod } from "./stripe-payment-method"
 
 const billingFormSchema = z.object({
   plan: z.enum(["commission", "startup", "enterprise"]).default("commission"),
@@ -50,10 +51,10 @@ export function BillingForm({ id, initialData, onSuccess, onSubmitStart, onSubmi
   const { t } = useLocalization()
   const { currentSite, updateBilling, refreshSites } = useSite()
   const { user } = useAuth()
-  const [creditsToBuy, setCreditsToBuy] = useState<number | null>(null)
   const [isSavingPlan, setIsSavingPlan] = useState(false)
   const [isSavingTaxId, setIsSavingTaxId] = useState(false)
   const [isSavingBillingAddress, setIsSavingBillingAddress] = useState(false)
+  const [selectedPackage, setSelectedPackage] = useState<CreditPackage | null>(null)
   
   const form = useForm<BillingFormValues>({
     resolver: zodResolver(billingFormSchema),
@@ -76,29 +77,8 @@ export function BillingForm({ id, initialData, onSuccess, onSubmitStart, onSubmi
     }
   })
 
-  // Get contextual button text based on current and selected plan
-  const getPlanButtonText = () => {
-    if (isSavingPlan) return t('billing.form.processing') || "Processing..."
-    
-    const currentPlan = currentSite?.billing?.plan || "commission"
-    
-    const selectedPlan = form.watch("plan")
-
-    // If user is on a paid plan AND selected plan is same, they should manage subscription
-    if (currentPlan !== "commission" && currentPlan === selectedPlan) return t('billing.form.manageSub') || "Manage Subscription"
-    
-    if (currentPlan === selectedPlan) return t('billing.form.currentPlan') || "Current Plan"
-    
-    const planOrder = { commission: 0, startup: 1, enterprise: 2 }
-    
-    if (planOrder[selectedPlan] > planOrder[currentPlan]) {
-      return t('billing.form.upgrade') || "Upgrade"
-    } else if (planOrder[selectedPlan] < planOrder[currentPlan]) {
-      return t('billing.form.downgrade') || "Downgrade"
-    }
-    
-    return t('billing.form.switchPlan') || "Switch Plan"
-  }
+  const currentPlan = (currentSite?.billing?.plan || "commission") as BillingPlan
+  const isPaidPlan = currentPlan !== "commission"
 
   const handleManageSubscription = async () => {
     if (!currentSite) return
@@ -122,52 +102,40 @@ export function BillingForm({ id, initialData, onSuccess, onSubmitStart, onSubmi
     }
   }
 
-  const handleSavePlan = async () => {
+  const handleChangePlan = async (plan: BillingPlan) => {
     if (!currentSite || !user) {
       toast.error("No site selected or user not authenticated")
       return
     }
 
-    const currentPlan = currentSite.billing?.plan || "commission"
-    const selectedPlan = form.getValues().plan
-    
-    // If user is already on a paid plan AND hasn't changed selection, redirect to portal
-    if (currentPlan !== "commission" && currentPlan === selectedPlan) {
-      await handleManageSubscription()
-      return
-    }
+    if (plan === currentPlan) return
+
+    form.setValue("plan", plan)
 
     try {
       setIsSavingPlan(true)
-      
-      const values = form.getValues()
-      
-      // If changing to a paid plan, redirect to Stripe Checkout
-      if (values.plan === 'startup' || values.plan === 'enterprise') {
+
+      if (plan === "startup" || plan === "enterprise") {
         const result = await billingService.createSubscriptionCheckoutSession(
           currentSite.id,
-          values.plan,
+          plan,
           user.email!
         )
-        
+
         if (result.success && result.url) {
           window.location.href = result.url
           return
-        } else {
-          toast.error(result.error || "Failed to create checkout session")
-          setIsSavingPlan(false)
-          return
         }
+
+        toast.error(result.error || "Failed to create checkout session")
+        return
       }
-      
-      // For commission plan (free), just update the billing info
-      const billingData: BillingData = {
-        plan: values.plan,
-        auto_renew: values.auto_renew
-      }
-      
-      const result = await updateBilling(currentSite.id, billingData)
-      
+
+      const result = await updateBilling(currentSite.id, {
+        plan,
+        auto_renew: form.getValues().auto_renew,
+      })
+
       if (result.success) {
         toast.success("Plan updated successfully")
         await refreshSites()
@@ -245,242 +213,73 @@ export function BillingForm({ id, initialData, onSuccess, onSubmitStart, onSubmi
     }
   }
 
-  const handlePlanClick = (plan: "commission" | "startup" | "enterprise") => {
-    const currentPlan = currentSite?.billing?.plan || "commission"
-    
-    // If clicking on current plan and it's a paid plan, manage subscription
-    if (plan === currentPlan && plan !== "commission") {
-      handleManageSubscription()
-      return
-    }
-    
-    form.setValue("plan", plan)
-  }
-
   return (
+    <>
     <Form {...form}>
-      <div className="space-y-8">
-        <Card id="credits" className="border dark:border-white/5 border-black/5 shadow-sm hover:shadow-md transition-shadow duration-200">
-          <CardHeader className="px-8 py-6">
-            <CardTitle className="text-xl font-semibold">{t('billing.credits.title') || 'Credits'}</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-8 px-8 pb-8">
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div>
-                  <div className="text-3xl font-bold">
-                    {currentSite?.billing?.credits_available !== undefined ? currentSite.billing.credits_available : 0} <span className="text-sm font-medium text-muted-foreground">{t('billing.credits.available') || 'credits available'}</span>
-                  </div>
-                  <div className="text-sm text-muted-foreground mt-1">{t('billing.credits.reset') || 'Your credits will reset on the first day of each month'}</div>
-                  <div className="text-sm text-muted-foreground mt-1">{t('billing.credits.usage') || 'Credits are used for inference tokens, ads, and third-party services'}</div>
+      <div className="space-y-6">
+        <SectionCard id="credits">
+          <SectionCardHeader
+            title={t('billing.credits.title') || 'Credits'}
+            description={t('billing.credits.buyHint') || 'Choose a package to add credits to your balance.'}
+            actions={
+              <Button variant="outline" size="sm" type="button" onClick={() => window.location.href = "/billing?tab=credit_history"}>
+                {t('billing.credits.viewHistory') || 'View usage history'}
+              </Button>
+            }
+          />
+          <SectionCardContent className="space-y-6">
+              <div>
+                <div className="text-3xl font-bold">
+                  {currentSite?.billing?.credits_available !== undefined ? currentSite.billing.credits_available : 0} <span className="text-sm font-medium text-muted-foreground">{t('billing.credits.available') || 'credits available'}</span>
                 </div>
-                <div className="flex items-center gap-4">
-                  <Button variant="outline" className="h-10" type="button" onClick={() => window.location.href = "/billing?tab=payment_history"}>
-                    {t('billing.credits.viewHistory') || 'View usage history'}
-                  </Button>
-                </div>
+                <div className="text-sm text-muted-foreground mt-1">{t('billing.credits.reset') || 'Your credits will reset on the first day of each month'}</div>
+                <div className="text-sm text-muted-foreground mt-1">{t('billing.credits.usage') || 'Credits are used for inference tokens, ads, and third-party services'}</div>
               </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div 
-                  className={cn(
-                    "border rounded-lg p-4 transition-all cursor-pointer hover:border-blue-300 flex flex-col items-center justify-center text-center",
-                    creditsToBuy === 20 && "border-blue-500 bg-blue-50/30 dark:bg-blue-900/20"
-                  )}
-                  onClick={() => setCreditsToBuy(20)}
-                >
-                  <div className="font-medium mb-2">20 {t('billing.credits.credits') || 'Credits'}</div>
-                  <div className="text-2xl font-bold mb-2">$20</div>
-                  <div className="text-sm text-muted-foreground">$1.00 {t('billing.credits.perCredit') || 'per credit'}</div>
-                </div>
-                
-                <div 
-                  className={cn(
-                    "border rounded-lg p-4 transition-all cursor-pointer hover:border-blue-300 flex flex-col items-center justify-center text-center relative",
-                    creditsToBuy === 52 ? "border-blue-500 bg-blue-50/30 dark:bg-blue-900/20" : "hover:border-blue-300"
-                  )}
-                  onClick={() => setCreditsToBuy(52)}
-                >
-                  <div className="absolute -top-2.5 left-1/2 transform -translate-x-1/2 bg-blue-600 text-white text-xs py-0.5 px-2 rounded-full">1.5% {t('billing.credits.discount') || 'discount'}</div>
-                  <div className="font-medium mb-2">52 {t('billing.credits.credits') || 'Credits'}</div>
-                  <div className="text-2xl font-bold mb-2">$49.25</div>
-                  <div className="text-sm text-muted-foreground">$0.95 {t('billing.credits.perCredit') || 'per credit'}</div>
-                </div>
-                
-                <div 
-                  className={cn(
-                    "border rounded-lg p-4 transition-all cursor-pointer hover:border-blue-300 flex flex-col items-center justify-center text-center relative",
-                    creditsToBuy === 515 && "border-blue-500 bg-blue-50/30 dark:bg-blue-900/20"
-                  )}
-                  onClick={() => setCreditsToBuy(515)}
-                >
-                  <div className="absolute -top-2.5 left-1/2 transform -translate-x-1/2 bg-green-600 text-white text-xs py-0.5 px-2 rounded-full">3% {t('billing.credits.discount') || 'discount'}</div>
-                  <div className="font-medium mb-2">515 {t('billing.credits.credits') || 'Credits'}</div>
-                  <div className="text-2xl font-bold mb-2">$500</div>
-                  <div className="text-sm text-muted-foreground">$0.97 {t('billing.credits.perCredit') || 'per credit'}</div>
-                </div>
-              </div>
-            </CardContent>
-          <CardFooter className="px-8 py-6 bg-muted/30 border-t flex justify-end">
-            <Button 
-              type="button"
-              disabled={!creditsToBuy}
-              onClick={() => {
-                if (creditsToBuy) {
-                  window.location.href = `/checkout?credits=${creditsToBuy}`
-                }
-              }}
-            >
-              <PlusCircle className="h-4 w-4 mr-2" />
-              {t('billing.credits.purchase') || 'Purchase'}
-            </Button>
-          </CardFooter>
-        </Card>
+              <CreditPackages onBuy={setSelectedPackage} />
+            </SectionCardContent>
+        </SectionCard>
         
-        <Card id="subscription-plan" className="border dark:border-white/5 border-black/5 shadow-sm hover:shadow-md transition-shadow duration-200">
-          <CardHeader className="px-8 py-6">
-            <CardTitle className="text-xl font-semibold">{t('billing.plan.title') || 'Subscription Plan'}</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-8 px-8 pb-8">
-              <FormField
-                control={form.control}
-                name="plan"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-sm font-medium text-foreground">{t('billing.plan.current') || 'Current Plan'}</FormLabel>
-                    <FormControl>
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div 
-                          className={cn(
-                            "border rounded-lg p-4 cursor-pointer transition-all",
-                            field.value === "commission" 
-                              ? "border-blue-500 bg-blue-50 dark:bg-blue-950" 
-                              : "dark:border-white/5 border-black/5 hover:border-blue-300"
-                          )}
-                          onClick={() => handlePlanClick("commission")}
-                        >
-                          <div className="font-medium mb-2">{t('billing.plan.poc.title') || '12-Month POC'}</div>
-                          <div className="text-2xl font-bold mb-2">$27</div>
-                          <div className="text-sm text-muted-foreground">{t('billing.plan.poc.features') || 'Basic features'}</div>
-                          <div className="text-sm text-muted-foreground mt-1">{t('billing.plan.poc.desc') || 'USD/year paid at the end of the year'}</div>
-                        </div>
-                        
-                        <div 
-                          className={cn(
-                            "border rounded-lg p-4 cursor-pointer transition-all",
-                            field.value === "startup" 
-                              ? "border-blue-500 bg-blue-50 dark:bg-blue-950" 
-                              : "dark:border-white/5 border-black/5 hover:border-blue-300"
-                          )}
-                          onClick={() => handlePlanClick("startup")}
-                        >
-                          <div className="font-medium mb-2">{t('billing.plan.startup.title') || 'Startup'}</div>
-                          <div className="text-2xl font-bold mb-2">$99</div>
-                          <div className="text-sm text-muted-foreground">{t('billing.plan.startup.features') || 'Startup features'}</div>
-                          <div className="text-sm text-muted-foreground mt-1">100 {t('billing.plan.creditsPerMonth') || 'credits/month'}</div>
-                        </div>
-                        
-                        <div 
-                          className={cn(
-                            "border rounded-lg p-4 cursor-pointer transition-all",
-                            field.value === "enterprise" 
-                              ? "border-blue-500 bg-blue-50 dark:bg-blue-950" 
-                              : "dark:border-white/5 border-black/5 hover:border-blue-300"
-                          )}
-                          onClick={() => handlePlanClick("enterprise")}
-                        >
-                          <div className="font-medium mb-2">{t('billing.plan.enterprise.title') || 'Enterprise'}</div>
-                          <div className="text-2xl font-bold mb-2">$500</div>
-                          <div className="text-sm text-muted-foreground">{t('billing.plan.enterprise.features') || 'Enterprise features'}</div>
-                          <div className="text-sm text-muted-foreground mt-1">1000 {t('billing.plan.creditsPerMonth') || 'credits/month'}</div>
-                        </div>
-                      </div>
-                    </FormControl>
-                    <FormMessage className="text-xs mt-2" />
-                  </FormItem>
-                )}
+        <SectionCard id="subscription-plan">
+          <SectionCardHeader
+            title={t('billing.plan.title') || 'Subscription Plan'}
+            description={t('billing.plan.changeHint') || 'Upgrade or downgrade instantly from the plan you want.'}
+          />
+          <SectionCardContent>
+              <SubscriptionPlans
+                currentPlan={currentPlan}
+                isSaving={isSavingPlan}
+                onChangePlan={handleChangePlan}
               />
-
-              <FormField
-                control={form.control}
-                name="auto_renew"
-                render={({ field }) => (
-                  <div className="flex items-center justify-between mt-6 p-4 border rounded-lg">
-                    <div className="space-y-0.5">
-                      <div className="font-medium flex items-center">
-                        <RotateCcw className="mr-2 h-4 w-4 text-muted-foreground" />
-                        {t('billing.plan.autoRenew') || 'Auto-renew subscription'}
-                      </div>
-                      <div className="text-sm text-muted-foreground">
-                        {t('billing.plan.autoRenewDesc') || 'Automatically renew your subscription when it expires'}
-                      </div>
-                    </div>
-                    <FormControl>
-                      <Switch
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                      />
-                    </FormControl>
-                  </div>
-                )}
-              />
-              
-              {currentSite?.billing?.plan !== "commission" && (
-                <div className="flex items-center gap-3 text-sm text-muted-foreground bg-muted/50 p-4 rounded-md border dark:border-white/5 border-black/5/50 mt-6">
-                  <Info className="h-5 w-5 flex-shrink-0 text-blue-500" />
-                  <p>
-                    {t('billing.plan.stripeNotice') || 'You will be redirected to our secure Stripe portal to manage your subscription, including upgrades, downgrades to the free plan, or cancellations.'}
-                  </p>
-                </div>
-              )}
-            </CardContent>
-          <CardFooter className="px-8 py-6 bg-muted/30 border-t flex justify-end">
-            <Button 
+            </SectionCardContent>
+        </SectionCard>
+          
+        {isPaidPlan && (
+        <SectionCard id="payment-method">
+          <SectionCardHeader 
+            title={t('billing.payment.title') || 'Payment Method'} 
+            description={t('billing.payment.description') || 'Manage how you pay for your subscription.'}
+          />
+          <SectionCardContent>
+            <StripePaymentMethod siteId={currentSite?.id} />
+          </SectionCardContent>
+          <SectionCardFooter>
+            <Button
               variant="outline"
-              onClick={handleSavePlan}
+              size="sm"
+              onClick={handleManageSubscription}
               disabled={isSavingPlan}
             >
-              {getPlanButtonText()}
+              {isSavingPlan
+                ? (t('billing.form.processing') || "Processing...")
+                : (t('billing.form.manageSub') || "Manage billing")}
             </Button>
-          </CardFooter>
-        </Card>
-          
-        {/* Payment Method Info Card - Only for paid plans */}
-        {form.watch("plan") !== "commission" && (
-        <Card id="payment-method" className="border dark:border-white/5 border-black/5 shadow-sm hover:shadow-md transition-shadow duration-200">
-          <CardHeader className="px-8 py-6">
-            <CardTitle className="text-xl font-semibold">{t('billing.payment.title') || 'Payment Method'}</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4 px-8 pb-8">
-                <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 border border-blue-200 dark:border-blue-900/30">
-                  <h4 className="font-medium mb-2 text-blue-700 dark:text-blue-400">{t('billing.payment.secureTitle') || 'Secure Payment via Stripe'}</h4>
-                  <p className="text-sm text-blue-600 dark:text-blue-300 mb-3">
-                    {t('billing.payment.secureDesc') || 'Payment details will be collected securely through Stripe Checkout when you save your plan.'}
-                  </p>
-                  <ul className="text-sm space-y-1 text-blue-600 dark:text-blue-300">
-                    <li>• {t('billing.payment.secureItem1') || 'Industry-leading security and encryption'}</li>
-                    <li>• {t('billing.payment.secureItem2') || 'Support for multiple payment methods'}</li>
-                    <li>• {t('billing.payment.secureItem3') || 'PCI DSS compliant payment processing'}</li>
-                    <li>• {t('billing.payment.secureItem4') || '3D Secure authentication included'}</li>
-                  </ul>
-                        </div>
-                
-                {currentSite?.billing?.masked_card_number && (
-                  <div className="bg-muted/30 rounded-lg p-4 border dark:border-white/5 border-black/5/30">
-                    <h4 className="font-medium mb-2">{t('billing.payment.currentMethod') || 'Current Payment Method'}</h4>
-                    <p className="text-sm text-muted-foreground">
-                      {t('billing.payment.cardEnding') || 'Card ending in'} {currentSite.billing.masked_card_number.slice(-4)}
-                    </p>
-                  </div>
-                )}
-          </CardContent>
-        </Card>
+          </SectionCardFooter>
+        </SectionCard>
         )}
 
-        <Card id="tax-id" className="border dark:border-white/5 border-black/5 shadow-sm hover:shadow-md transition-shadow duration-200">
-          <CardHeader className="px-8 py-6">
-            <CardTitle className="text-xl font-semibold">{t('billing.tax.title') || 'Tax ID'}</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-8 px-8 pb-8">
+        <SectionCard id="tax-id">
+          <SectionCardHeader title={t('billing.tax.title') || 'Tax ID'} />
+          <SectionCardContent className="space-y-6">
               <FormField
                 control={form.control}
                 name="tax_id"
@@ -501,23 +300,22 @@ export function BillingForm({ id, initialData, onSuccess, onSubmitStart, onSubmi
                   </FormItem>
                 )}
               />
-            </CardContent>
-          <CardFooter className="px-8 py-6 bg-muted/30 border-t flex justify-end">
+            </SectionCardContent>
+          <SectionCardFooter>
             <Button 
               variant="outline"
               onClick={handleSaveTaxId}
               disabled={isSavingTaxId}
+              size="sm"
             >
               {isSavingTaxId ? (t('common.saving') || "Saving...") : (t('common.save') || "Save")}
             </Button>
-          </CardFooter>
-        </Card>
+          </SectionCardFooter>
+        </SectionCard>
         
-        <Card id="billing-address" className="border dark:border-white/5 border-black/5 shadow-sm hover:shadow-md transition-shadow duration-200">
-          <CardHeader className="px-8 py-6">
-            <CardTitle className="text-xl font-semibold">{t('billing.address.title') || 'Billing Address'}</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-8 px-8 pb-8">
+        <SectionCard id="billing-address">
+          <SectionCardHeader title={t('billing.address.title') || 'Billing Address'} />
+          <SectionCardContent className="space-y-6">
               <FormField
                 control={form.control}
                 name="billing_address"
@@ -603,18 +401,30 @@ export function BillingForm({ id, initialData, onSuccess, onSubmitStart, onSubmi
                   )}
                 />
               </div>
-            </CardContent>
-          <CardFooter className="px-8 py-6 bg-muted/30 border-t flex justify-end">
+            </SectionCardContent>
+          <SectionCardFooter>
             <Button 
               variant="outline"
               onClick={handleSaveBillingAddress}
               disabled={isSavingBillingAddress}
+              size="sm"
             >
               {isSavingBillingAddress ? (t('common.saving') || "Saving...") : (t('common.save') || "Save")}
             </Button>
-          </CardFooter>
-        </Card>
+          </SectionCardFooter>
+        </SectionCard>
       </div>
     </Form>
+    
+    {selectedPackage && (
+      <PurchaseCreditsDialog 
+        open={!!selectedPackage}
+        onOpenChange={(open) => {
+          if (!open) setSelectedPackage(null)
+        }}
+        {...selectedPackage}
+      />
+    )}
+    </>
   )
 } 

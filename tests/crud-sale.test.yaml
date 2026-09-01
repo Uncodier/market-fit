@@ -1,0 +1,91 @@
+goal: Complete CRUD cycle for a Sale
+
+statements:
+  - URL: /projects
+  - intent: Select the first available project
+    action: click
+    locator: "getByRole('button', { name: 'Select' }).first()"
+
+  - WAIT_UNTIL: The user is navigated to the default project page
+    js: "page.url().includes('/robots')"
+    timeout_seconds: 10
+
+  - URL: /sales
+  - intent: Click Add Sale in the top bar
+    action: click
+    locator: "getByRole('button', { name: 'Add Sale' })"
+
+  - intent: Fill the sale title
+    action: fill
+    locator: "locator('#title')"
+    value: "Automated Test Sale"
+
+  - intent: Fill the product name
+    action: fill
+    locator: "locator('#productName')"
+    value: "Automated Product"
+
+  - intent: Open product type dropdown
+    action: click
+    locator: "getByRole('combobox').filter({ hasText: 'Select product type' })"
+
+  - intent: Select product type
+    action: click
+    locator: "getByRole('option', { name: 'Service' })"
+
+  - intent: Fill the amount
+    action: fill
+    locator: "locator('#amount')"
+    value: "100"
+
+  - intent: Type a new lead name in the dependency selector
+    action: fill
+    locator: "getByPlaceholder('Select lead (optional)')"
+    value: "Automated Sale Lead"
+
+  - intent: Create the lead on the fly with Use
+    action: click
+    locator: "getByText('Use \"Automated Sale Lead\"')"
+
+  - intent: Type a new segment name in the dependency selector
+    action: fill
+    locator: "getByPlaceholder('Select segment (optional)')"
+    value: "Automated Sale Segment"
+
+  - intent: Create the segment on the fly with Use
+    action: click
+    locator: "getByText('Use \"Automated Sale Segment\"')"
+
+  - intent: Submit the create sale form
+    action: click
+    locator: "getByRole('button', { name: 'Create sale' })"
+
+  - WAIT_UNTIL: The new sale appears in the list
+    js: "page.getByText('Automated Test Sale').count() > 0"
+    timeout_seconds: 15
+
+  - intent: Open the sale details page
+    action: click
+    locator: "getByText('Automated Test Sale').first()"
+
+  - WAIT_UNTIL: The sale details route is open
+    js: "page.url().includes('/sales/') && !page.url().endsWith('/sales')"
+    timeout_seconds: 10
+
+  - VERIFY: The sale title is visible on the details page
+    js: "expect(page.getByText('Automated Test Sale').first()).toBeVisible()"
+
+  - intent: Click Delete on the sale details toolbar
+    action: click
+    locator: "getByRole('button', { name: 'Delete' })"
+
+  - intent: Confirm deletion of the sale
+    action: click
+    locator: "getByRole('button', { name: 'Delete' }).last()"
+
+  - WAIT_UNTIL: The user is back on the sales list
+    js: "page.url().endsWith('/sales')"
+    timeout_seconds: 15
+
+  - VERIFY: The sale is gone from the list
+    js: "expect(page.getByText('Automated Test Sale')).toHaveCount(0)"

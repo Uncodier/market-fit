@@ -1,0 +1,83 @@
+goal: Complete CRUD cycle for a Control Center task
+
+statements:
+  - URL: /projects
+  - intent: Select the first available project
+    action: click
+    locator: "getByRole('button', { name: 'Select' }).first()"
+
+  - WAIT_UNTIL: The user is navigated to the default project page
+    js: "page.url().includes('/robots')"
+    timeout_seconds: 10
+
+  - URL: /control-center
+  - intent: Click New Task in the top bar
+    action: click
+    locator: "getByRole('button', { name: 'New Task' })"
+
+  - intent: Fill the required task title
+    action: fill
+    locator: "locator('#title')"
+    value: "Automated Test Task"
+
+  - intent: Fill the required task description
+    action: fill
+    locator: "locator('#description')"
+    value: "Task created by automated CRUD test"
+
+  - intent: Type a new lead name in the dependency selector
+    action: fill
+    locator: "getByPlaceholder('Select lead')"
+    value: "Automated Task Lead"
+
+  - intent: Create the lead on the fly with Use
+    action: click
+    locator: "getByText('Use \"Automated Task Lead\"')"
+
+  - intent: Submit the create task form
+    action: click
+    locator: "getByRole('button', { name: 'Create task' })"
+
+  - WAIT_UNTIL: The new task appears
+    js: "page.getByText('Automated Test Task').count() > 0"
+    timeout_seconds: 15
+
+  - intent: Open the task details page
+    action: click
+    locator: "getByText('Automated Test Task').first()"
+
+  - WAIT_UNTIL: The control-center details route is open
+    js: "page.url().includes('/control-center/') && !page.url().endsWith('/control-center')"
+    timeout_seconds: 10
+
+  - intent: Switch to Details tab
+    action: click
+    locator: "getByRole('tab', { name: 'Details' })"
+
+  - intent: Update the task title
+    action: fill
+    locator: "locator('#title')"
+    value: "Automated Test Task - Edited"
+
+  - intent: Save the basic information section
+    action: click
+    locator: "getByRole('button', { name: 'Save Basic Information' })"
+
+  - WAIT_UNTIL: The save control is idle again
+    js: "page.getByRole('button', { name: 'Save Basic Information' }).count() > 0"
+    timeout_seconds: 10
+
+  - intent: Click Delete Task in the danger zone
+    action: click
+    locator: "getByRole('button', { name: 'Delete Task' })"
+
+  - intent: Confirm Delete in the Delete Task dialog
+    action: click
+    locator: "getByRole('button', { name: 'Delete' }).last()"
+
+  - WAIT_UNTIL: The edited task is gone
+    js: "page.getByText('Automated Test Task - Edited').count() === 0"
+    timeout_seconds: 15
+
+  - VERIFY: The edited task is no longer visible
+    js: "expect(page.getByText('Automated Test Task - Edited')).toHaveCount(0)"

@@ -1,0 +1,40 @@
+goal: Smoke test workspace navigation across Operations Area
+
+statements:
+  - URL: /projects
+  - VERIFY: The page has loaded successfully
+    js: expect(page).toHaveURL(/.*\/projects/)
+
+  - intent: Select the first available project
+    action: click
+    locator: "getByRole('button', { name: 'Select' }).first()"
+
+  - WAIT_UNTIL: The user is navigated to the default project page
+    js: "page.url().includes('/robots')"
+    timeout_seconds: 5
+
+  # Operations
+  - URL: /chat
+  - VERIFY: The page has loaded successfully
+    js: expect(page).not.toHaveTitle(/500|Error/i)
+  - URL: /records
+  - VERIFY: The page has loaded successfully
+    js: expect(page).not.toHaveTitle(/500|Error/i)
+  - URL: /orders
+  - VERIFY: The page has loaded successfully
+    js: expect(page).not.toHaveTitle(/500|Error/i)
+  - URL: /shipments
+  - VERIFY: The page has loaded successfully
+    js: expect(page).not.toHaveTitle(/500|Error/i)
+  - URL: /control-center
+  - VERIFY: The page has loaded successfully
+    js: expect(page).not.toHaveTitle(/500|Error/i)
+  - URL: /reservations
+  - VERIFY: The page has loaded successfully
+    js: expect(page).not.toHaveTitle(/500|Error/i)
+  - URL: /visits
+  - VERIFY: The page has loaded successfully
+    js: expect(page).not.toHaveTitle(/500|Error/i)
+  - URL: /inventory
+  - VERIFY: The page has loaded successfully
+    js: expect(page).not.toHaveTitle(/500|Error/i)

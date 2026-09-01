@@ -2,6 +2,9 @@
   "name": "market-fit",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "dev": "next dev -p 3000 -H 0.0.0.0",
     "dev:webpack": "next dev -p 3000 -H 0.0.0.0 --webpack",
@@ -11,6 +14,9 @@
     "lint:fix": "eslint . --fix",
     "test": "jest",
     "test:watch": "jest --watch",
+    "test:e2e": "shiplight test",
+    "test:e2e:headed": "shiplight test --headed",
+    "test:e2e:report": "SHIPLIGHT_REPORT_TO_CLOUD=1 shiplight report",
     "test:magic-links": "npx tsx scripts/test-magic-links.ts",
     "test:api-invitations": "npx tsx scripts/test-api-invitations.ts"
   },
@@ -108,6 +114,7 @@
     "recharts": "^2.15.1",
     "remark-gfm": "4.0.1",
     "shadcn-ui": "^0.9.4",
+    "shiplightai": "^0.1.102",
     "sonner": "^2.0.1",
     "stream-browserify": "3.0.0",
     "stripe": "18.2.1",
@@ -123,6 +130,7 @@
     "zod": "^3.24.2"
   },
   "devDependencies": {
+    "@playwright/test": "1.62.1",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^14.3.1",
     "@types/crypto-js": "^4.2.2",

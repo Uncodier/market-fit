@@ -59,3 +59,10 @@ test-schema*.ts
 
 # Python
 venv/
+
+# Shiplight
+test-results/
+shiplight-report/
+.shiplight/
+*.yaml.spec.ts
+.auth

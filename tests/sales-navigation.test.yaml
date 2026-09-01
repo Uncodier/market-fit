@@ -1,0 +1,43 @@
+goal: Smoke test workspace navigation across Sales Area
+
+statements:
+  - URL: /projects
+  - VERIFY: The page has loaded successfully
+    js: expect(page).toHaveURL(/.*\/projects/)
+
+  - intent: Select the first available project
+    action: click
+    locator: "getByRole('button', { name: 'Select' }).first()"
+
+  - WAIT_UNTIL: The user is navigated to the default project page
+    js: "page.url().includes('/robots')"
+    timeout_seconds: 5
+
+  # Sales
+  - URL: /pos
+  - VERIFY: The page has loaded successfully
+    js: expect(page).not.toHaveTitle(/500|Error/i)
+  - URL: /catalog
+  - VERIFY: The page has loaded successfully
+    js: expect(page).not.toHaveTitle(/500|Error/i)
+  - URL: /price-lists
+  - VERIFY: The page has loaded successfully
+    js: expect(page).not.toHaveTitle(/500|Error/i)
+  - URL: /subscriptions
+  - VERIFY: The page has loaded successfully
+    js: expect(page).not.toHaveTitle(/500|Error/i)
+  - URL: /sales
+  - VERIFY: The page has loaded successfully
+    js: expect(page).not.toHaveTitle(/500|Error/i)
+  - URL: /leads
+  - VERIFY: The page has loaded successfully
+    js: expect(page).not.toHaveTitle(/500|Error/i)
+  - URL: /deals
+  - VERIFY: The page has loaded successfully
+    js: expect(page).not.toHaveTitle(/500|Error/i)
+  - URL: /quotations
+  - VERIFY: The page has loaded successfully
+    js: expect(page).not.toHaveTitle(/500|Error/i)
+  - URL: /people
+  - VERIFY: The page has loaded successfully
+    js: expect(page).not.toHaveTitle(/500|Error/i)

@@ -1,0 +1,94 @@
+goal: Complete CRUD (Create, Read, Update, Delete) cycle for a Catalog item
+
+statements:
+  # 0. Set site context (just like navigation test)
+  - URL: /projects
+  - intent: Select the first available project
+    action: click
+    locator: "getByRole('button', { name: 'Select' }).first()"
+
+  - WAIT_UNTIL: The user is navigated to the default project page
+    js: "page.url().includes('/robots')"
+    timeout_seconds: 5
+
+  # 1. CREATE
+  - URL: /catalog
+  - intent: Click the Add Item button to open the creation dialog
+    action: click
+    locator: "getByRole('button', { name: /Add item|Agregar/i })"
+
+  - intent: Type a new category name in the dependency selector
+    action: fill
+    locator: "getByPlaceholder('Select category...')"
+    value: "Automated Catalog Category"
+
+  - intent: Create the category on the fly with Use
+    action: click
+    locator: "getByText('Use \"Automated Catalog Category\"')"
+
+  - intent: Fill in the product name
+    action: fill
+    locator: "locator('input[name=\"name\"]')"
+    value: "Automated Test Product"
+
+  - intent: Fill in the SKU
+    action: fill
+    locator: "locator('input[name=\"sku\"]')"
+    value: "TEST-01"
+
+  - intent: Fill in the target sale price
+    action: fill
+    locator: "locator('input[name=\"target_sale_price\"]')"
+    value: "99.99"
+
+  - intent: Click the Create item button
+    action: click
+    locator: "getByRole('button', { name: /Create item/i })"
+
+  - WAIT_UNTIL: The new product appears in the list
+    js: "page.getByText('Automated Test Product').count() > 0"
+    timeout_seconds: 15
+
+  - intent: Open the catalog item details
+    action: click
+    locator: "getByText('Automated Test Product').first()"
+
+  - WAIT_UNTIL: The details page is open
+    js: "page.url().includes('/catalog/') && !page.url().endsWith('/catalog')"
+    timeout_seconds: 10
+
+  # 2. READ / VERIFY
+  - VERIFY: The details page shows the correct product name
+    js: "expect(page.getByDisplayValue('Automated Test Product').first()).toBeVisible()"
+
+  - VERIFY: The details page shows the correct SKU
+    js: "expect(page.getByDisplayValue('TEST-01')).toBeVisible()"
+
+  # 3. UPDATE
+  - intent: Update the product name in the details form
+    action: fill
+    locator: "locator('input[name=\"name\"]')"
+    value: "Automated Test Product - Edited"
+
+  - intent: Click the Save Changes button
+    action: click
+    locator: "getByRole('button', { name: /Save Changes|Guardar/i })"
+
+  - VERIFY: A success toast notification is shown confirming the save
+    js: "expect(page.locator('text=/Saved successfully/i')).toBeVisible({ timeout: 5000 })"
+
+  # 4. DELETE / ARCHIVE
+  - intent: Click the Archive / Delete button or Trash icon
+    action: click
+    locator: "getByRole('button', { name: /Archive|Trash/i }).or(locator('button svg.lucide-trash-2').locator('..'))"
+
+  - intent: Confirm the archiving in the alert dialog
+    action: click
+    locator: "getByRole('button', { name: /Archive Product/i })"
+
+  - WAIT_UNTIL: We are redirected back to the catalog list
+    js: "page.url().endsWith('/catalog')"
+    timeout_seconds: 10
+
+  - VERIFY: The product is no longer present in the list
+    js: "expect(page.getByText('Automated Test Product - Edited')).not.toBeVisible()"

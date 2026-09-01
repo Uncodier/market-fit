@@ -1,0 +1,31 @@
+goal: Smoke test workspace navigation across Marketing Area
+
+statements:
+  - URL: /projects
+  - VERIFY: The page has loaded successfully
+    js: expect(page).toHaveURL(/.*\/projects/)
+
+  - intent: Select the first available project
+    action: click
+    locator: "getByRole('button', { name: 'Select' }).first()"
+
+  - WAIT_UNTIL: The user is navigated to the default project page
+    js: "page.url().includes('/robots')"
+    timeout_seconds: 5
+
+  # Marketing
+  - URL: /campaigns
+  - VERIFY: The page has loaded successfully
+    js: expect(page).not.toHaveTitle(/500|Error/i)
+  - URL: /segments
+  - VERIFY: The page has loaded successfully
+    js: expect(page).not.toHaveTitle(/500|Error/i)
+  - URL: /promotions
+  - VERIFY: The page has loaded successfully
+    js: expect(page).not.toHaveTitle(/500|Error/i)
+  - URL: /content
+  - VERIFY: The page has loaded successfully
+    js: expect(page).not.toHaveTitle(/500|Error/i)
+  - URL: /assets
+  - VERIFY: The page has loaded successfully
+    js: expect(page).not.toHaveTitle(/500|Error/i)

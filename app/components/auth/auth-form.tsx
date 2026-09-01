@@ -520,7 +520,7 @@ export function AuthForm({ mode = 'login', returnTo, defaultAuthType, signupData
       }
       
       setResetPasswordSuccess(true)
-      setErrorMessage("Check your email for a password reset link. The link will expire in 1 hour.")
+      setErrorMessage(t('auth.checkEmailReset') || "Check your email for a password reset link. The link will expire in 1 hour.")
     } catch (error: any) {
       console.error('Reset password error:', error)
       setErrorMessage(error.message || 'Failed to send reset password email. Please try again.')
@@ -918,7 +918,7 @@ export function AuthForm({ mode = 'login', returnTo, defaultAuthType, signupData
             >
               {t('auth.rememberPassword') || 'Remember your password?'} {" "}
               <span className="text-primary font-medium hover:underline">
-                Sign in
+                {t('auth.signInLink') || 'Sign in'}
               </span>
             </button>
           ) : (

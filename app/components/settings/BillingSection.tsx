@@ -151,7 +151,7 @@ export function BillingSection() {
                       <div className="font-medium mb-2">Enterprise</div>
                       <div className="text-2xl font-bold mb-2">$500</div>
                       <div className="text-sm text-muted-foreground">Enterprise features</div>
-                      <div className="text-sm text-muted-foreground mt-1">1000 credits/month</div>
+                      <div className="text-sm text-muted-foreground mt-1">500 credits/month</div>
                     </div>
                   </div>
                 </FormControl>

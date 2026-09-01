@@ -276,8 +276,8 @@ export default function PromotionDetail(props: { params: Promise<{ id: string }>
             <SectionCardContent className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>{t("promotions.detail.name") || "Name"}</Label>
-                  <Input value={promo.name} onChange={e => setPromo({...promo, name: e.target.value})} />
+                  <Label htmlFor="name">{t("promotions.detail.name") || "Name"}</Label>
+                  <Input id="name" value={promo.name} onChange={e => setPromo({...promo, name: e.target.value})} />
                 </div>
                 <div className="space-y-2">
                   <Label>

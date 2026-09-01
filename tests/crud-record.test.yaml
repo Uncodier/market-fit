@@ -1,0 +1,48 @@
+goal: Complete CRUD cycle for a Record
+
+statements:
+  - URL: /projects
+  - intent: Select the first available project
+    action: click
+    locator: "getByRole('button', { name: 'Select' }).first()"
+
+  - WAIT_UNTIL: The user is navigated to the default project page
+    js: "page.url().includes('/robots')"
+    timeout_seconds: 10
+
+  - URL: /records
+  - intent: Click New Record in the top bar to create an Untitled Record
+    action: click
+    locator: "getByRole('button', { name: 'New Record' })"
+
+  - WAIT_UNTIL: The record details route is open
+    js: "page.url().includes('/records/') && !page.url().endsWith('/records')"
+    timeout_seconds: 15
+
+  - intent: Update the record title
+    action: fill
+    locator: "getByPlaceholder('Record Title')"
+    value: "Automated Test Record"
+
+  - intent: Save the record
+    action: click
+    locator: "getByRole('button', { name: 'Save' })"
+
+  - WAIT_UNTIL: The save control is idle again
+    js: "page.getByRole('button', { name: 'Save' }).count() > 0"
+    timeout_seconds: 10
+
+  - intent: Open the delete confirmation for this record
+    action: click
+    locator: "getByRole('button', { name: /Delete/i }).last()"
+
+  - intent: Confirm Delete in the Delete Record dialog
+    action: click
+    locator: "getByRole('button', { name: 'Delete' }).last()"
+
+  - WAIT_UNTIL: The user is back on the records list
+    js: "page.url().endsWith('/records')"
+    timeout_seconds: 15
+
+  - VERIFY: The test record is gone from the list
+    js: "expect(page.getByText('Automated Test Record')).toHaveCount(0)"

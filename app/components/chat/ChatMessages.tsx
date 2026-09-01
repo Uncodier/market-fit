@@ -1004,12 +1004,25 @@ export function ChatMessages({
   const isDelivered = (message: ChatMessage) =>
     message.metadata?.status === "delivered" || message.metadata?.status === "sent"
 
-  const renderMessageTime = (msg: ChatMessage, className = "text-xs opacity-70", showDate = false) => (
+  const renderMessageTime = (msg: ChatMessage, className = "text-xs opacity-70", forceShowDate = false) => {
+    const msgDate = new Date(msg.timestamp);
+    const now = new Date();
+    const isToday = isSameDay(msgDate, now);
+    const isThisYear = msgDate.getFullYear() === now.getFullYear();
+    const showDate = forceShowDate || !isToday;
+
+    return (
     <p className={`${className} inline-flex items-center gap-1 whitespace-nowrap shrink-0`}>
       {showDate && (
-        <span>{new Date(msg.timestamp).toLocaleDateString("en-US", { month: "short", day: "numeric" })}</span>
+        <span className="mr-1">
+          {msgDate.toLocaleDateString("en-US", { 
+            month: "short", 
+            day: "numeric",
+            year: isThisYear ? undefined : "numeric"
+          })}
+        </span>
       )}
-      {new Date(msg.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+      {msgDate.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
       {isDelivered(msg) && (
         <TooltipProvider>
           <Tooltip>
@@ -1025,7 +1038,7 @@ export function ChatMessages({
         </TooltipProvider>
       )}
     </p>
-  )
+  )}
 
   // Check if a conversation is selected
   const hasSelectedConversation = conversationId && conversationId !== "" && !conversationId.startsWith("new-");

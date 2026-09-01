@@ -3,9 +3,9 @@
 import React, { createContext, useContext, useState, useEffect, useLayoutEffect, ReactNode } from 'react';
 import enTranslations from './locales/en.json';
 
-export type SupportedLocale = 'en' | 'es' | 'fr' | 'de' | 'ja';
+export type SupportedLocale = 'en';
 
-const SUPPORTED_LOCALES: SupportedLocale[] = ['en', 'es', 'fr', 'de', 'ja'];
+const SUPPORTED_LOCALES: SupportedLocale[] = ['en'];
 const LOCALE_COOKIE = 'makinari-locale';
 
 export function isSupportedLocale(value: unknown): value is SupportedLocale {
@@ -25,35 +25,20 @@ interface LocalizationContextType {
 
 const defaultLocale: SupportedLocale = 'en';
 
-const countryToLocale: Record<string, SupportedLocale> = {
-  'ES': 'es', 'MX': 'es', 'AR': 'es', 'CO': 'es', 'CL': 'es', 'PE': 'es', 'VE': 'es',
-  'EC': 'es', 'GT': 'es', 'CU': 'es', 'DO': 'es', 'HN': 'es', 'PY': 'es', 'SV': 'es',
-  'NI': 'es', 'CR': 'es', 'PA': 'es', 'UY': 'es', 'BO': 'es', 'GQ': 'es', 'PR': 'es',
-  'FR': 'fr', 'BE': 'fr', 'CH': 'fr', 'CA': 'fr', 'MC': 'fr', 'LU': 'fr',
-  'DE': 'de', 'AT': 'de', 'LI': 'de',
-  'JP': 'ja',
-};
+const countryToLocale: Record<string, SupportedLocale> = {};
 
 const LocalizationContext = createContext<LocalizationContextType | undefined>(undefined);
 
-const localeLoaders: Record<SupportedLocale, () => Promise<Record<string, string>>> = {
+const localeLoaders: Record<SupportedLocale, () => Promise<any>> = {
   en: async () => enTranslations,
-  es: () => import('./locales/es.json').then((m) => m.default),
-  fr: () => import('./locales/fr.json').then((m) => m.default),
-  de: () => import('./locales/de.json').then((m) => m.default),
-  ja: () => import('./locales/ja.json').then((m) => m.default),
 };
 
-const translationCache: Partial<Record<SupportedLocale, Record<string, string>>> = {
+const translationCache: any = {
   en: enTranslations,
 };
 
 const localizedAssets: Record<SupportedLocale, Record<string, string>> = {
   en: { 'logo.main': '/images/logo.png', 'hero.image': '/images/hero-en.png' },
-  es: { 'logo.main': '/images/logo.png', 'hero.image': '/images/hero-es.png' },
-  fr: { 'logo.main': '/images/logo.png', 'hero.image': '/images/hero-fr.png' },
-  de: { 'logo.main': '/images/logo.png', 'hero.image': '/images/hero-de.png' },
-  ja: { 'logo.main': '/images/logo.png', 'hero.image': '/images/hero-ja.png' },
 };
 
 function readStoredLocale(): SupportedLocale | null {
@@ -96,7 +81,7 @@ function resolveInitialLocale(initialCountry?: string): SupportedLocale {
 if (typeof window !== 'undefined') {
   const stored = readStoredLocale();
   if (stored && stored !== 'en' && !translationCache[stored]) {
-    void localeLoaders[stored]().then((loaded) => {
+    void (localeLoaders[stored] as any)().then((loaded: any) => {
       translationCache[stored] = loaded;
     });
   }
@@ -104,7 +89,7 @@ if (typeof window !== 'undefined') {
 
 export const LocalizationProvider = ({ children, initialCountry }: { children: ReactNode, initialCountry?: string }) => {
   const [locale, setLocaleState] = useState<SupportedLocale>(defaultLocale);
-  const [messages, setMessages] = useState<Record<string, string>>(enTranslations);
+  const [messages, setMessages] = useState<any>(enTranslations);
   const [mounted, setMounted] = useState(false);
 
   useLayoutEffect(() => {
@@ -131,7 +116,7 @@ export const LocalizationProvider = ({ children, initialCountry }: { children: R
       clearLocalePending();
       return;
     }
-    localeLoaders[locale]().then((loaded) => {
+    (localeLoaders[locale] as any)().then((loaded: any) => {
       if (cancelled) return;
       translationCache[locale] = loaded;
       setMessages(loaded);

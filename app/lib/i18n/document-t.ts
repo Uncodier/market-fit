@@ -1,28 +1,16 @@
 import enTranslations from "@/app/context/locales/en.json"
-import esTranslations from "@/app/context/locales/es.json"
-import frTranslations from "@/app/context/locales/fr.json"
-import deTranslations from "@/app/context/locales/de.json"
-import jaTranslations from "@/app/context/locales/ja.json"
 
-export type DocumentLocale = "en" | "es" | "fr" | "de" | "ja"
+export type DocumentLocale = "en"
 
 const translations: Record<DocumentLocale, Record<string, string>> = {
   en: enTranslations as Record<string, string>,
-  es: esTranslations as Record<string, string>,
-  fr: frTranslations as Record<string, string>,
-  de: deTranslations as Record<string, string>,
-  ja: jaTranslations as Record<string, string>,
 }
 
 const LOCALE_TO_BCP47: Record<DocumentLocale, string> = {
   en: "en-US",
-  es: "es",
-  fr: "fr",
-  de: "de",
-  ja: "ja",
 }
 
-const SUPPORTED: DocumentLocale[] = ["en", "es", "fr", "de", "ja"]
+const SUPPORTED: DocumentLocale[] = ["en"]
 
 export function resolveDocumentLocale(value?: string | null): DocumentLocale {
   if (value && SUPPORTED.includes(value as DocumentLocale)) {
