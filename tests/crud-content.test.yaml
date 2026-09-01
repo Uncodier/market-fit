@@ -2,21 +2,25 @@ goal: Complete CRUD cycle for Content
 
 statements:
   - URL: /projects
-  - intent: Select the first available project
-    action: click
-    locator: "getByRole('button', { name: 'Select' }).first()"
 
   - WAIT_UNTIL: The user is navigated to the default project page
     js: "page.url().includes('/robots')"
-    timeout_seconds: 10
+    timeout_seconds: 5
 
   - URL: /content
   - intent: Click New Content in the top bar
     action: click
     locator: "getByRole('button', { name: 'New Content' })"
 
-  - description: Fill the content title with a unique value
-    js: "await page.locator('#title').fill(`Automated Test Content ${Date.now()}`)"
+  - intent: Fill the content title
+    action: fill
+    locator: "locator('#title')"
+    value: "Automated Test Content"
+
+  - intent: Fill the content description
+    action: fill
+    locator: "locator('#description')"
+    value: "Automated Test Content Description"
 
   - intent: Type a new segment name in the dependency selector
     action: fill
@@ -41,26 +45,28 @@ statements:
     locator: "getByRole('button', { name: 'Create Content' })"
 
   - WAIT_UNTIL: The new content appears in the list
-    js: "page.getByText(/Automated Test Content \\d+/).count() > 0"
+    js: "page.getByText('Automated Test Content').count() > 0"
     timeout_seconds: 15
 
   - intent: Open the content details page
     action: click
-    locator: "getByText(/Automated Test Content \\d+/).first()"
+    locator: "getByText('Automated Test Content').first()"
 
-  - WAIT_UNTIL: The content details route is open
-    js: "page.url().includes('/content/') && !page.url().endsWith('/content')"
-    timeout_seconds: 10
+  - WAIT_UNTIL: The content details route is open and loaded
+    js: "await page.getByPlaceholder('Enter content title').count() > 0"
+    timeout_seconds: 15
 
-  - description: Update the content title
-    js: "await page.getByPlaceholder('Enter title').fill(`Automated Test Content ${Date.now()} - Edited`)"
+  - intent: Update the content title
+    action: fill
+    locator: "getByPlaceholder('Enter content title')"
+    value: "Automated Test Content - Edited"
 
   - intent: Save the content
     action: click
     locator: "getByRole('button', { name: 'Save' })"
 
   - WAIT_UNTIL: The edited title is visible
-    js: "page.getByDisplayValue(/Automated Test Content \\d+ - Edited/).count() > 0"
+    js: "page.getByDisplayValue('Automated Test Content - Edited').count() > 0"
     timeout_seconds: 10
 
   - intent: Open the delete confirmation for this content
@@ -72,8 +78,8 @@ statements:
     locator: "getByRole('button', { name: 'Delete' }).last()"
 
   - WAIT_UNTIL: The user is back on the content list
-    js: "page.url().endsWith('/content')"
+    js: "page.url().match(/\\/content(?:\\?.*)?$/) !== null"
     timeout_seconds: 15
 
   - VERIFY: The edited content is gone from the list
-    js: "expect(page.getByText(/Automated Test Content \\d+ - Edited/)).toHaveCount(0)"
+    js: "await expect(page.getByText('Automated Test Content - Edited')).toHaveCount(0)"

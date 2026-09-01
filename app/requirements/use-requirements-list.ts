@@ -194,6 +194,16 @@ export function useRequirementsList() {
     loadRequirements()
   }, [siteId, activeTab, filters, loadRequirements])
 
+  useEffect(() => {
+    const handleReload = () => {
+      loadRequirements()
+    }
+    window.addEventListener('requirements:reload', handleReload)
+    return () => {
+      window.removeEventListener('requirements:reload', handleReload)
+    }
+  }, [loadRequirements])
+
   const filteredRequirements = useMemo(() => {
     let filtered = [...requirements]
     if (searchQuery) {

@@ -32,8 +32,8 @@ export function OverviewClient() {
     tooltipBackground: isDarkMode ? "#1E293B" : "white",
     tooltipBorder: isDarkMode ? "#475569" : "#e5e7eb",
     tooltipText: isDarkMode ? "#F8FAFC" : "#111827",
-    barFill: isDarkMode ? "#818CF8" : "#6366F1", // Un tono más claro de indigo para modo oscuro
-    barHover: isDarkMode ? "#A5B4FC" : "rgba(99, 102, 241, 0.1)",
+    barFill: isDarkMode ? "#E0FF17" : "#D1ED1C", // Colores verdes del badge
+    barHover: isDarkMode ? "#f4ff99" : "#E0FF17",
   }
 
   return (

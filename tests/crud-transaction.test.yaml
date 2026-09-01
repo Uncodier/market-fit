@@ -2,13 +2,10 @@ goal: Complete CRUD cycle for an Expense transaction
 
 statements:
   - URL: /projects
-  - intent: Select the first available project
-    action: click
-    locator: "getByRole('button', { name: 'Select' }).first()"
 
   - WAIT_UNTIL: The user is navigated to the default project page
     js: "page.url().includes('/robots')"
-    timeout_seconds: 10
+    timeout_seconds: 5
 
   - URL: /transactions
   - intent: Click Add Expense in the top bar
@@ -38,6 +35,10 @@ statements:
     action: click
     locator: "getByRole('button', { name: 'Save' })"
 
+  - WAIT_UNTIL: The create expense modal closes
+    js: "page.getByRole('button', { name: 'Save' }).count() === 0"
+    timeout_seconds: 10
+
   - WAIT_UNTIL: The new expense appears in the list
     js: "page.getByText('Automated Test Expense').count() > 0"
     timeout_seconds: 15
@@ -46,12 +47,12 @@ statements:
     action: click
     locator: "getByText('Automated Test Expense').first()"
 
-  - WAIT_UNTIL: The transaction details route is open
-    js: "page.url().includes('/transactions/') && !page.url().endsWith('/transactions')"
-    timeout_seconds: 10
+  - WAIT_UNTIL: The transaction details route is open and loaded
+    js: "await page.getByRole('button', { name: 'Delete' }).count() > 0"
+    timeout_seconds: 15
 
   - VERIFY: The expense notes are visible
-    js: "expect(page.getByText('Automated Test Expense').first()).toBeVisible()"
+    js: "await expect(page.getByText('Automated Test Expense').first()).toBeVisible()"
 
   - intent: Click Delete on the expense details toolbar
     action: click
@@ -62,8 +63,8 @@ statements:
     locator: "getByRole('button', { name: 'Delete' }).last()"
 
   - WAIT_UNTIL: The user is back on the transactions list
-    js: "page.url().endsWith('/transactions')"
+    js: "page.url().match(/\\/transactions(?:\\?.*)?$/) !== null"
     timeout_seconds: 15
 
   - VERIFY: The expense is gone from the list
-    js: "expect(page.getByText('Automated Test Expense')).toHaveCount(0)"
+    js: "await expect(page.getByText('Automated Test Expense')).toHaveCount(0)"

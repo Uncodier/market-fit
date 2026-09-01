@@ -2,12 +2,6 @@ goal: Smoke test workspace navigation across Dashboard, Settings & Agents Area
 
 statements:
   - URL: /projects
-  - VERIFY: The page has loaded successfully
-    js: expect(page).toHaveURL(/.*\/projects/)
-
-  - intent: Select the first available project
-    action: click
-    locator: "getByRole('button', { name: 'Select' }).first()"
 
   - WAIT_UNTIL: The user is navigated to the default project page
     js: "page.url().includes('/robots')"

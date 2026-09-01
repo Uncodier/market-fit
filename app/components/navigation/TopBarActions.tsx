@@ -986,8 +986,8 @@ export function TopBarActions({
         return { error: result.error };
       }
 
-      // Recargar la página para mostrar el nuevo requerimiento
-      safeReload(false, "New requirement created");
+      window.dispatchEvent(new Event('requirements:reload'));
+      
       return { data: result.data };
     } catch (error) {
       console.error("Error creating requirement:", error);

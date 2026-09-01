@@ -434,12 +434,12 @@ export function Overview({ startDate: propStartDate, endDate: propEndDate, segme
         <svg width="0" height="0" className="absolute">
           <defs>
             <linearGradient id="barGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-              <stop offset="0%" stopColor={isDarkMode ? "#818cf8" : "#6366f1"} />
-              <stop offset="100%" stopColor={isDarkMode ? "#6366f1" : "#4f46e5"} />
+              <stop offset="0%" stopColor={isDarkMode ? "#E0FF17" : "#E0FF17"} />
+              <stop offset="100%" stopColor={isDarkMode ? "#D1ED1C" : "#D1ED1C"} />
             </linearGradient>
             <linearGradient id="barGradientHover" x1="0%" y1="0%" x2="0%" y2="100%">
-              <stop offset="0%" stopColor={isDarkMode ? "#a5b4fc" : "#818cf8"} />
-              <stop offset="100%" stopColor={isDarkMode ? "#818cf8" : "#6366f1"} />
+              <stop offset="0%" stopColor={isDarkMode ? "#f4ff99" : "#f4ff99"} />
+              <stop offset="100%" stopColor={isDarkMode ? "#E0FF17" : "#E0FF17"} />
             </linearGradient>
           </defs>
         </svg>
@@ -474,7 +474,7 @@ export function Overview({ startDate: propStartDate, endDate: propEndDate, segme
                     }}
                   >
                     <p className={`font-semibold ${isDarkMode ? "text-slate-100" : "text-gray-900"}`}>{item.name}</p>
-                    <p className={isDarkMode ? "text-indigo-300" : "text-indigo-600"}>
+                    <p className={isDarkMode ? "text-[#E0FF17]" : "text-[#7a8a0f]"}>
                       <span className="font-medium">Total:</span> {formatCurrencyExact(item.total || 0)}
                     </p>
                   </div>
@@ -488,20 +488,14 @@ export function Overview({ startDate: propStartDate, endDate: propEndDate, segme
                       height: `${height}%`,
                       animation: `growUp 1s ease-out forwards`,
                       animationDelay: `${index * 0.05}s`,
-                      background: isDarkMode 
-                        ? "linear-gradient(to bottom, #818cf8, #6366f1)" 
-                        : "linear-gradient(to bottom, #6366f1, #4f46e5)",
+                      background: "linear-gradient(to bottom, #E0FF17, #D1ED1C)",
                       boxShadow: 'rgba(0, 0, 0, 0.05) 0px 1px 2px'
                     }}
                     onMouseOver={(e) => {
-                      e.currentTarget.style.background = isDarkMode 
-                        ? "linear-gradient(to bottom, #a5b4fc, #818cf8)" 
-                        : "linear-gradient(to bottom, #818cf8, #6366f1)";
+                      e.currentTarget.style.background = "linear-gradient(to bottom, #f4ff99, #E0FF17)";
                     }}
                     onMouseOut={(e) => {
-                      e.currentTarget.style.background = isDarkMode 
-                        ? "linear-gradient(to bottom, #818cf8, #6366f1)" 
-                        : "linear-gradient(to bottom, #6366f1, #4f46e5)";
+                      e.currentTarget.style.background = "linear-gradient(to bottom, #E0FF17, #D1ED1C)";
                     }}
                   />
                 ) : (

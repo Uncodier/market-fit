@@ -172,14 +172,14 @@ export function ShopSection({ active, onSave, siteId }: ShopSectionProps) {
       {/* Marketplace URL & QR Code */}
       <div id="shop-share" className="space-y-4">
         <div>
-          <h3 className="text-lg font-semibold flex items-center gap-2">
-            <Link className="h-5 w-5 text-gray-500" />
+          <h3 className="text-lg font-semibold flex items-center gap-2 text-foreground">
+            <Link className="h-5 w-5 text-muted-foreground" />
             Share & Promote
           </h3>
-          <p className="text-sm text-gray-500 mt-1">Share your marketplace link and QR code.</p>
+          <p className="text-sm text-muted-foreground mt-1">Share your marketplace link and QR code.</p>
         </div>
         
-        <div className="flex flex-col md:flex-row gap-6 items-center border rounded-xl p-4 md:p-6 bg-white shadow-sm">
+        <div className="flex flex-col md:flex-row gap-6 items-center border rounded-xl p-4 md:p-6 bg-card text-card-foreground shadow-sm">
           <div className="flex items-center gap-4 w-full md:w-auto shrink-0 justify-center">
             <div id="marketplace-qr-code-container" className="shrink-0 bg-white p-1.5 rounded-lg border shadow-sm">
               <QRCode
@@ -208,13 +208,13 @@ export function ShopSection({ active, onSave, siteId }: ShopSectionProps) {
             <FormDescription className="text-xs">
               This is your public marketplace URL. Share it with your customers on social media, in campaigns, or directly via messages.
             </FormDescription>
-            <div className="flex items-center gap-2 mt-2 bg-gray-50 border rounded-lg p-1.5 pl-3">
+            <div className="flex items-center gap-2 mt-2 bg-muted/50 border rounded-lg p-1.5 pl-3">
               <span className="flex-1 text-sm font-mono text-muted-foreground truncate select-all">{siteUrl}</span>
               <div className="flex items-center gap-1 shrink-0">
-                <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-gray-500 hover:text-gray-900" onClick={handleCopyUrl} title="Copy Link">
+                <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground" onClick={handleCopyUrl} title="Copy Link">
                   <Copy className="h-4 w-4" />
                 </Button>
-                <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-gray-500 hover:text-gray-900" onClick={() => window.open(siteUrl, '_blank')} title="Open Link">
+                <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground" onClick={() => window.open(siteUrl, '_blank')} title="Open Link">
                   <ExternalLink className="h-4 w-4" />
                 </Button>
               </div>
@@ -227,10 +227,10 @@ export function ShopSection({ active, onSave, siteId }: ShopSectionProps) {
       <SectionCard id="shop-hero">
         <SectionCardHeader>
           <SectionCardTitle className="flex items-center gap-2">
-            <Store className="h-5 w-5 text-gray-500" />
+            <Store className="h-5 w-5 text-muted-foreground" />
             Storefront Hero
           </SectionCardTitle>
-          <p className="text-sm text-gray-500 mt-1">Configure the main banner of your shop. Leave empty to hide.</p>
+          <p className="text-sm text-muted-foreground mt-1">Configure the main banner of your shop. Leave empty to hide.</p>
         </SectionCardHeader>
         <SectionCardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -419,7 +419,7 @@ export function ShopSection({ active, onSave, siteId }: ShopSectionProps) {
                       {...getHeroRootProps()}
                       className={cn(
                         "relative flex flex-col items-center justify-center gap-4 p-6 border-2 border-dashed rounded-lg cursor-pointer transition-colors",
-                        isHeroDragActive ? "border-blue-500 bg-blue-50" : "border-gray-300 hover:bg-gray-50",
+                        isHeroDragActive ? "border-primary bg-primary/10" : "border-border hover:bg-muted/50",
                         isUploadingImage && "opacity-50 cursor-not-allowed hover:bg-transparent"
                       )}
                     >
@@ -445,12 +445,12 @@ export function ShopSection({ active, onSave, siteId }: ShopSectionProps) {
                         </div>
                       ) : (
                         <>
-                          <ImageIcon className="h-10 w-10 text-gray-400" />
+                          <ImageIcon className="h-10 w-10 text-muted-foreground" />
                           <div className="text-center">
-                            <p className="text-sm font-medium text-gray-600">
+                            <p className="text-sm font-medium text-foreground">
                               {isUploadingImage ? "Uploading..." : "Drag an image or click to select"}
                             </p>
-                            <p className="text-xs text-gray-500 mt-1">
+                            <p className="text-xs text-muted-foreground mt-1">
                               PNG, JPG, or GIF (max. 4MB)
                             </p>
                           </div>
@@ -480,10 +480,10 @@ export function ShopSection({ active, onSave, siteId }: ShopSectionProps) {
       <SectionCard id="shop-trust">
         <SectionCardHeader>
           <SectionCardTitle className="flex items-center gap-2">
-            <ShieldCheck className="h-5 w-5 text-gray-500" />
+            <ShieldCheck className="h-5 w-5 text-muted-foreground" />
             Trust & Policies
           </SectionCardTitle>
-          <p className="text-sm text-gray-500 mt-1">Configure shipping thresholds and trust signals to boost conversions.</p>
+          <p className="text-sm text-muted-foreground mt-1">Configure shipping thresholds and trust signals to boost conversions.</p>
         </SectionCardHeader>
         <SectionCardContent className="space-y-4">
           
@@ -496,7 +496,7 @@ export function ShopSection({ active, onSave, siteId }: ShopSectionProps) {
                   <FormLabel>Global Shipping Cost</FormLabel>
                   <FormControl>
                     <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
                       <Input 
                         type="number" 
                         placeholder="0.00" 
@@ -526,7 +526,7 @@ export function ShopSection({ active, onSave, siteId }: ShopSectionProps) {
                   <FormLabel>Free Shipping Threshold</FormLabel>
                   <FormControl>
                     <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
                       <Input 
                         type="number" 
                         placeholder="50" 
@@ -640,7 +640,7 @@ export function ShopSection({ active, onSave, siteId }: ShopSectionProps) {
                 />
               ) : (
                 badgesList.map((badge, index) => (
-                  <div key={index} className="flex items-start gap-4 p-4 border rounded-xl bg-gray-50/50">
+                  <div key={index} className="flex items-start gap-4 p-4 border rounded-xl bg-muted/30">
                     <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-4">
                       <FormField
                         control={form.control}
@@ -723,16 +723,16 @@ export function ShopSection({ active, onSave, siteId }: ShopSectionProps) {
       <SectionCard id="shop-payments">
         <SectionCardHeader>
           <SectionCardTitle className="flex items-center gap-2">
-            <CreditCard className="h-5 w-5 text-gray-500" />
+            <CreditCard className="h-5 w-5 text-muted-foreground" />
             Payment & Delivery Policy
           </SectionCardTitle>
-          <p className="text-sm text-gray-500 mt-1">Configure default payment methods and delivery options for your marketplace items. Products can still override these settings.</p>
+          <p className="text-sm text-muted-foreground mt-1">Configure default payment methods and delivery options for your marketplace items. Products can still override these settings.</p>
         </SectionCardHeader>
         <SectionCardContent className="space-y-4">
           <div className="grid grid-cols-1 gap-8">
             <div className="space-y-4">
               <h4 className="text-sm font-semibold">Accepted Payment Methods</h4>
-              <p className="text-sm text-gray-500 mb-4">Choose how customers can pay during checkout.</p>
+              <p className="text-sm text-muted-foreground mb-4">Choose how customers can pay during checkout.</p>
               
               <div className="space-y-4 border rounded-xl p-4 bg-muted/20">
                 <FormField
@@ -901,7 +901,7 @@ export function ShopSection({ active, onSave, siteId }: ShopSectionProps) {
 
             <div className="space-y-4">
               <h4 className="text-sm font-semibold">Default Delivery Options</h4>
-              <p className="text-sm text-gray-500 mb-4">Fallback options for physical products without specific delivery settings.</p>
+              <p className="text-sm text-muted-foreground mb-4">Fallback options for physical products without specific delivery settings.</p>
               
               <div className="space-y-4 border rounded-xl p-4 bg-muted/20">
                 <FormField

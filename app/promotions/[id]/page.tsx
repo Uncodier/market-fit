@@ -31,6 +31,17 @@ import {
   SectionCardContent,
   SectionCardFooter,
 } from "@/app/components/ui/section-card"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/app/components/ui/alert-dialog"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/app/components/ui/tabs"
 import { ActionFooter } from "@/app/components/ui/card-footer"
 import { toast } from "sonner"
@@ -209,16 +220,10 @@ export default function PromotionDetail(props: { params: Promise<{ id: string }>
     setUpdatingStatus(false)
   }
 
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+
   const handleDelete = async () => {
     if (!promo) return
-    if (
-      !confirm(
-        t("promotions.detail.confirmDelete") ||
-          "Are you sure you want to delete this promotion?",
-      )
-    ) {
-      return
-    }
     
     const { error } = await deletePromotion(promo.id)
     if (error) {
@@ -458,14 +463,31 @@ export default function PromotionDetail(props: { params: Promise<{ id: string }>
                       "Permanently delete this promotion"}
                   </p>
                 </div>
-                <Button
-                  variant="destructive"
-                  type="button"
-                  onClick={handleDelete}
-                >
-                  <Trash2 className="h-4 w-4 mr-2" />
-                  {t("promotions.detail.delete") || "Delete Promotion"}
-                </Button>
+                <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      variant="destructive"
+                      type="button"
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      {t("promotions.detail.delete") || "Delete Promotion"}
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        {t("promotions.detail.confirmDelete") || "Are you sure you want to delete this promotion? This action cannot be undone."}
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                        {t("common.delete") || "Delete"}
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
               </div>
             </div>
           </div>

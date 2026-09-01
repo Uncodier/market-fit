@@ -2,13 +2,10 @@ goal: Complete CRUD cycle for a Promotion
 
 statements:
   - URL: /projects
-  - intent: Select the first available project
-    action: click
-    locator: "getByRole('button', { name: 'Select' }).first()"
 
   - WAIT_UNTIL: The user is navigated to the default project page
     js: "page.url().includes('/robots')"
-    timeout_seconds: 10
+    timeout_seconds: 5
 
   - URL: /promotions
   - intent: Click Create Promotion in the top bar
@@ -20,6 +17,10 @@ statements:
     locator: "getByPlaceholder('Select campaign...')"
     value: "Automated Promo Campaign"
 
+  - WAIT_UNTIL: The create campaign on the fly option is visible
+    js: "page.getByText('Use \"Automated Promo Campaign\"').count() > 0"
+    timeout_seconds: 5
+
   - intent: Create the campaign on the fly with Use
     action: click
     locator: "getByText('Use \"Automated Promo Campaign\"')"
@@ -29,12 +30,17 @@ statements:
     locator: "locator('#name')"
     value: "Automated Test Promotion"
 
+  - intent: Fill the discount value
+    action: fill
+    locator: "locator('#discount_value')"
+    value: "10"
+
   - intent: Submit the create promotion form
     action: click
     locator: "getByRole('button', { name: 'Create promotion' })"
 
   - WAIT_UNTIL: The promotion details page is open
-    js: "page.url().includes('/promotions/') && !page.url().endsWith('/promotions')"
+    js: "page.url().match(/\\/promotions\\/[^?]+$/) !== null"
     timeout_seconds: 15
 
   - intent: Update the promotion name
@@ -50,16 +56,17 @@ statements:
     js: "page.getByText('Automated Test Promotion - Edited').count() > 0"
     timeout_seconds: 10
 
-  - description: Accept the native confirm dialog for promotion delete
-    js: "page.once('dialog', (dialog) => dialog.accept())"
-
   - intent: Click Delete Promotion in the danger zone
     action: click
-    locator: "getByRole('button', { name: 'Delete Promotion' })"
+    locator: "getByRole('button', { name: /Delete/i }).last()"
+
+  - intent: Confirm Delete in the Delete Promotion dialog
+    action: click
+    locator: "getByRole('button', { name: 'Delete' }).last()"
 
   - WAIT_UNTIL: The user is back on the promotions list
-    js: "page.url().endsWith('/promotions')"
+    js: "page.url().match(/\\/promotions(?:\\?.*)?$/) !== null"
     timeout_seconds: 15
 
   - VERIFY: The edited promotion is gone from the list
-    js: "expect(page.getByText('Automated Test Promotion - Edited')).toHaveCount(0)"
+    js: "await expect(page.getByText('Automated Test Promotion - Edited')).toHaveCount(0)"

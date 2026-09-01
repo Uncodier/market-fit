@@ -2,13 +2,10 @@ goal: Complete CRUD cycle for a Bill
 
 statements:
   - URL: /projects
-  - intent: Select the first available project
-    action: click
-    locator: "getByRole('button', { name: 'Select' }).first()"
 
   - WAIT_UNTIL: The user is navigated to the default project page
     js: "page.url().includes('/robots')"
-    timeout_seconds: 10
+    timeout_seconds: 5
 
   - URL: /bills
   - intent: Click New bill in the top bar
@@ -34,7 +31,7 @@ statements:
     timeout_seconds: 15
 
   - VERIFY: The created bill title is visible
-    js: "expect(page.getByText('Automated Test Bill').first()).toBeVisible()"
+    js: "await expect(page.getByText('Automated Test Bill').first()).toBeVisible()"
 
   - intent: Click Delete on the bill details toolbar
     action: click
@@ -49,4 +46,4 @@ statements:
     timeout_seconds: 15
 
   - VERIFY: The bill is gone from the list
-    js: "expect(page.getByText('Automated Test Bill')).toHaveCount(0)"
+    js: "await expect(page.getByText('Automated Test Bill')).toHaveCount(0)"

@@ -135,6 +135,9 @@ export async function findOrCreateSegment(site_id: string, name: string) {
     const { segment, error } = await createSegment({
       site_id,
       name: trimmed,
+      audience: "general",
+      description: "Auto-generated segment",
+      language: "en"
     })
 
     return { segment, error }
@@ -221,6 +224,7 @@ export async function createSegment(data: CreateSegmentInput): Promise<{ error?:
   } catch (error: any) {
     console.error("Error creating segment:", error?.message || error)
     if (error instanceof z.ZodError) {
+      console.error("ZodError details:", JSON.stringify(error.errors, null, 2))
       return { error: "Datos de entrada inválidos" }
     }
     return { error: "Error al crear el segmento" }

@@ -1,5 +1,13 @@
 {
   "mcpServers": {
+    "appsumo": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "mcp-remote@latest",
+        "https://appsumo.com/mcp/"
+      ]
+    },
     "shiplight": {
       "command": "npx",
       "args": [
