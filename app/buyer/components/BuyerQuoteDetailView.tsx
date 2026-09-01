@@ -236,7 +236,7 @@ export function BuyerQuoteDetailView({
                   <Button
                     size="lg"
                     variant="outline"
-                    className="flex-1 text-base h-14 text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700 dark:border-red-500/30 dark:hover:bg-red-500/10"
+                    className="w-full sm:flex-1 text-base h-12 sm:h-14 text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700 dark:border-red-500/30 dark:hover:bg-red-500/10"
                     onClick={handleReject}
                     disabled={busy}
                   >
@@ -254,7 +254,7 @@ export function BuyerQuoteDetailView({
                   </Button>
                   <Button
                     size="lg"
-                    className="flex-1 text-base h-14"
+                    className="w-full sm:flex-1 text-base h-12 sm:h-14"
                     onClick={handleAccept}
                     disabled={busy}
                   >
