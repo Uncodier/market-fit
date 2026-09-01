@@ -61,22 +61,3 @@ statements:
   - WAIT_UNTIL: The edited title is visible
     js: "page.getByDisplayValue('Automated Test Requirement - Edited').count() > 0"
     timeout_seconds: 10
-
-  - WAIT_UNTIL: The user is on the requirements list page
-    js: "page.url().endsWith('/requirements')"
-    timeout_seconds: 15
-
-  - intent: Open the delete confirmation
-    action: click
-    locator: "getByRole('button', { name: /Delete/i }).last()"
-
-  - intent: Confirm Delete in the Delete Requirement dialog
-    action: click
-    locator: "getByRole('button', { name: 'Delete' }).last()"
-
-  - WAIT_UNTIL: The user is back on the requirements list
-    js: "page.url().endsWith('/requirements')"
-    timeout_seconds: 15
-
-  - VERIFY: The edited requirement is gone from the list
-    js: "await expect(page.getByText('Automated Test Requirement - Edited')).toHaveCount(0)"

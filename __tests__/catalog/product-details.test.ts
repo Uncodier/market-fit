@@ -1,4 +1,4 @@
-import { getDefaultSpecCategorySlugsForItem, getListingMetaChips } from "@/app/catalog/product-details";
+import { getDefaultSpecCategorySlugsForItem, getListingMetaChips, getPdpCustomSpecs, getPdpFilledAttributeFields, getPdpSpecDisplay } from "@/app/catalog/product-details";
 import { CatalogItem } from "@/app/types";
 
 describe("product-details item_spec helpers", () => {
@@ -80,6 +80,70 @@ describe("product-details item_spec helpers", () => {
         { value: 'Legacy Venue' },
         { value: '2026-12-31' }
       ]);
+    });
+  });
+
+  describe("getPdpSpecDisplay", () => {
+    it("groups custom specs by category and skips system ones", () => {
+      const item = {
+        kind: "service",
+        item_specs: [
+          { id: "1", name: "Proyección Especial", category: { name: "Detalles Del Evento", is_system: false } },
+          { id: "2", name: "Vocal Selections", image_url: "https://cdn.example/vocal.jpg", category: { name: "Detalles Del Evento", is_system: false } },
+          { id: "3", name: "Studio A", category: { name: "Venue", slug: "venue", is_system: true } },
+        ],
+        metadata: {
+          specs: [{ label: "Runtime", value: "60 min" }],
+        },
+      } as unknown as CatalogItem;
+
+      expect(getPdpSpecDisplay(item)).toEqual({
+        groups: [
+          {
+            title: "Detalles Del Evento",
+            items: [
+              { id: "1", name: "Proyección Especial", image_url: undefined, video_url: undefined },
+              { id: "2", name: "Vocal Selections", image_url: "https://cdn.example/vocal.jpg", video_url: undefined },
+            ],
+          },
+        ],
+        rows: [{ label: "Runtime", value: "60 min" }],
+      });
+    });
+  });
+
+  describe("getPdpCustomSpecs", () => {
+    it("renders custom spec categories and skips system ones", () => {
+      const item = {
+        kind: "service",
+        item_specs: [
+          { name: "Proyección Especial", category: { name: "Detalles Del Evento", is_system: false } },
+          { name: "Vocal Selections", category: { name: "Detalles Del Evento", is_system: false } },
+          { name: "Studio A", category: { name: "Venue", slug: "venue", is_system: true } },
+        ],
+        metadata: {
+          specs: [{ label: "Runtime", value: "60 min" }],
+        },
+      } as unknown as CatalogItem;
+
+      expect(getPdpCustomSpecs(item)).toEqual([
+        { label: "Detalles Del Evento", value: "Proyección Especial" },
+        { label: "Detalles Del Evento", value: "Vocal Selections" },
+        { label: "Runtime", value: "60 min" },
+      ]);
+    });
+  });
+
+  describe("getPdpFilledAttributeFields", () => {
+    it("returns only filled attribute fields for the item kind", () => {
+      const item = {
+        kind: "service",
+        metadata: {
+          attributes: { duration: "60 min", level: "  ", language: "Spanish" },
+        },
+      } as unknown as CatalogItem;
+
+      expect(getPdpFilledAttributeFields(item)).toEqual(["duration", "language"]);
     });
   });
 });

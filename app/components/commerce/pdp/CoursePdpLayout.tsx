@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { CatalogItem } from "@/app/types"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { resolveItemImage } from "@/app/lib/image-utils"
-import { resolveItemSpecDisplay } from "@/app/catalog/product-details"
+import { resolveItemSpecDisplay, getPdpSpecDisplay, countPdpSpecDisplay, getPdpFilledAttributeFields } from "@/app/catalog/product-details"
 import { usePdpCart } from "./usePdpCart"
 import { toast } from "sonner"
 import { useRouter } from "next/navigation"
@@ -19,6 +19,8 @@ import { CheckCircle } from "@/app/components/ui/icons"
 import { PdpExperience } from "./pdp-experience"
 import { CourseLessonPlayer } from "./CourseLessonPlayer"
 import { SubscriptionManagePanel } from "./SubscriptionManagePanel"
+import { PdpProductDetails } from "./PdpProductDetails"
+import { hasPdpProductDetails } from "./pdp-item-description"
 
 export function CoursePdpLayout({ item, backUrl, experience, catalogSize = 0 }: { item: CatalogItem & { _shop?: any }, backUrl: string, experience?: PdpExperience, catalogSize?: number }) {
   const { t } = useLocalization()
@@ -48,6 +50,15 @@ export function CoursePdpLayout({ item, backUrl, experience, catalogSize = 0 }: 
   const instructor = resolveItemSpecDisplay(item, 'instructor')
   const author = resolveItemSpecDisplay(item, 'author')
   const primaryPerson = instructor || author
+
+  const specDisplay = getPdpSpecDisplay(item)
+  const attrFields = getPdpFilledAttributeFields(item)
+
+  const hasExtraDetails = hasPdpProductDetails({
+    description: null,
+    attrCount: attrFields.length,
+    specCount: countPdpSpecDisplay(specDisplay),
+  })
 
   const handleAdd = () => {
     addToCartStorage(item)
@@ -171,11 +182,14 @@ export function CoursePdpLayout({ item, backUrl, experience, catalogSize = 0 }: 
           </div>
 
           <div className="lg:col-span-2 space-y-10 sm:space-y-12">
-            {item.description && (
-              <div className="prose prose-base sm:prose-lg dark:prose-invert max-w-none text-muted-foreground leading-relaxed">
-                <h3 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6 text-foreground">{t('marketplace.catalogDetails.about') || 'About the course'}</h3>
-                <p className="whitespace-pre-wrap">{item.description}</p>
-              </div>
+            {(item.description || hasExtraDetails) && (
+              <PdpProductDetails
+                description={item.description}
+                attrFields={attrFields}
+                attributes={attributes}
+                specGroups={specDisplay.groups}
+                specs={specDisplay.rows}
+              />
             )}
 
             {videos.length > 0 && (
@@ -219,10 +233,15 @@ export function CoursePdpLayout({ item, backUrl, experience, catalogSize = 0 }: 
             </PdpCtaButton>
           </div>
           
-          {item.description && (
-            <div className="prose prose-base sm:prose-lg dark:prose-invert max-w-none text-muted-foreground leading-relaxed pt-8 border-t border-border/50">
-              <h3 className="text-xl font-bold mb-4 text-foreground">{t('marketplace.catalogDetails.about') || 'About the course'}</h3>
-              <p className="whitespace-pre-wrap">{item.description}</p>
+          {(item.description || hasExtraDetails) && (
+            <div className="pt-8 border-t border-border/50">
+              <PdpProductDetails
+                description={item.description}
+                attrFields={attrFields}
+                attributes={attributes}
+                specGroups={specDisplay.groups}
+                specs={specDisplay.rows}
+              />
             </div>
           )}
         </div>

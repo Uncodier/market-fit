@@ -1128,6 +1128,7 @@ function RobotsPageContent() {
         try {
           const url = new URL(artifact.url, window.location.origin)
           url.searchParams.set('theme', theme === 'dark' ? 'dark' : 'light')
+          url.searchParams.set('artifact', 'true')
           if (currentSite?.id) {
             url.searchParams.set('siteId', currentSite.id)
           }

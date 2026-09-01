@@ -27,6 +27,7 @@ export const routes: RouteConfig[] = [
   { path: "/integrations", hasLayout: true },
   { path: "/chat", hasLayout: true },
   { path: "/notifications", hasLayout: true },
+  { path: "/billing/success", hasLayout: false },
   { path: "/billing", hasLayout: true },
   { path: "/settings", hasLayout: true },
   { path: "/skills", hasLayout: true },
@@ -75,18 +76,23 @@ function pathStartsWithRoute(pathname: string, routePath: string): boolean {
 }
 
 /** Workspace data providers (site, permissions, robots). Shop/cart keep a lean tree. */
-export function shouldUseWorkspaceProviders(pathname: string): boolean {
+export function shouldUseWorkspaceProviders(rawPathname: string): boolean {
+  const pathname = rawPathname.split('?')[0]
   if (shouldUseLayout(pathname)) return true
   return (
     pathname.startsWith("/buyer") ||
     pathname.startsWith("/create-site") ||
     pathname.startsWith("/projects") ||
     pathname.startsWith("/demo") ||
-    pathname.startsWith("/checkout")
+    pathname.startsWith("/checkout") ||
+    pathname.startsWith("/billing/success")
   )
 }
 
-export function shouldUseLayout(pathname: string): boolean {
+export function shouldUseLayout(rawPathname: string): boolean {
+  // Strip query parameters for matching
+  const pathname = rawPathname.split('?')[0]
+  
   // Check if the pathname matches any of our defined routes
   const route = routes.find(route => pathStartsWithRoute(pathname, route.path))
   

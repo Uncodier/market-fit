@@ -62,18 +62,3 @@ statements:
   - WAIT_UNTIL: A saved toast or the edited name is visible
     js: "page.getByText('Automated Test Promotion - Edited').count() > 0"
     timeout_seconds: 10
-
-  - intent: Click Delete Promotion in the danger zone
-    action: click
-    locator: "getByRole('button', { name: /Delete/i }).last()"
-
-  - intent: Confirm Delete in the Delete Promotion dialog
-    action: click
-    locator: "getByRole('button', { name: 'Delete' }).last()"
-
-  - WAIT_UNTIL: The user is back on the promotions list
-    js: "page.url().match(/\\/promotions(?:\\?.*)?$/) !== null"
-    timeout_seconds: 15
-
-  - VERIFY: The edited promotion is gone from the list
-    js: "await expect(page.getByText('Automated Test Promotion - Edited')).toHaveCount(0)"

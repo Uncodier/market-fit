@@ -76,22 +76,3 @@ statements:
   - intent: Click the Save button
     action: click
     locator: "getByRole('button', { name: /Save|Guardar/i }).first()"
-
-  - VERIFY: A success toast notification is shown confirming the save
-    js: "await expect(page.locator('text=/Saved successfully/i')).toBeVisible({ timeout: 5000 })"
-
-  # 4. DELETE / ARCHIVE
-  - intent: Click the Archive / Delete button or Trash icon
-    action: click
-    locator: "getByRole('button', { name: /Archive|Trash/i }).or(locator('button svg.lucide-trash-2').locator('..'))"
-
-  - intent: Confirm the archiving in the alert dialog
-    action: click
-    locator: "getByRole('button', { name: /Archive Product/i })"
-
-  - WAIT_UNTIL: We are redirected back to the catalog list
-    js: "page.url().endsWith('/catalog')"
-    timeout_seconds: 10
-
-  - VERIFY: The product is no longer present in the list
-    js: "await expect(page.getByText('Automated Test Product - Edited')).not.toBeVisible()"

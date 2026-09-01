@@ -166,14 +166,24 @@ export function TopBarTitle({
 
   // Convert history items to breadcrumb format
   const breadcrumbItems = hasHistory ? historyItems.map((item, index) => {
-    const pathSegments = item.path.split("?")[0].split("/").filter(Boolean)
-    const translatedRoot = pathSegments.length === 1 ? getRouteTitle(pathSegments[0]) : undefined
+    const [pathnameOnly, queryString] = item.path.split("?")
+    const pathSegments = pathnameOnly.split("/").filter(Boolean)
+    // Only translate bare roots (/chat). /chat?id=x must keep its own label,
+    // otherwise both crumbs become "Conversations".
+    const isBareRoot = pathSegments.length === 1 && !queryString
+    const translatedRoot = isBareRoot ? getRouteTitle(pathSegments[0]) : undefined
     return {
       href: item.path,
       label: translatedRoot || item.label,
-      isCurrent: index === historyItems.length - 1
+      originalIndex: index
     }
-  }) : null;
+  }).filter((item, index, array) => {
+    if (index === 0) return true
+    return item.label !== array[index - 1].label
+  }).map((item, index, array) => ({
+    ...item,
+    isCurrent: index === array.length - 1
+  })) : null;
  
   return (
     <div className={cn("flex items-center gap-4 min-w-0", className)}>
@@ -228,7 +238,7 @@ export function TopBarTitle({
                     ) : (
                       <button
                         onClick={() => {
-                          const historyItem = historyItems[index]
+                          const historyItem = historyItems[item.originalIndex]
                           if (historyItem) {
                             navigateTo(historyItem)
                           }

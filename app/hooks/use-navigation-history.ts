@@ -324,8 +324,8 @@ export function useNavigationHistory() {
             const lastItem = prev.items[prev.items.length - 1]
             const lastPathname = lastItem?.path.split('?')[0]
 
-            // Empty history or missing parent: build [parent, current]
-            if (prev.items.length === 0 || parentIndex === -1) {
+            // Empty history: build [parent, current]
+            if (prev.items.length === 0) {
               const newHistory: NavigationHistory = {
                 items: [
                   {
@@ -333,6 +333,39 @@ export function useNavigationHistory() {
                     label: parent.title,
                     timestamp: Date.now() - 1,
                   },
+                  {
+                    path: currentPath,
+                    label: title,
+                    timestamp: Date.now(),
+                  },
+                ],
+              }
+              saveHistory(newHistory)
+              return newHistory
+            }
+
+            // Parent is not in the trail (cross-section, e.g. Conversations → Lead).
+            // Keep the origin and only update/append the current page — do not
+            // replace the trail with the destination section parent.
+            if (parentIndex === -1) {
+              if (lastPathname === currentPathname) {
+                if (lastItem.label === title && lastItem.path === currentPath) {
+                  return prev
+                }
+                const newItems = [...prev.items]
+                newItems[newItems.length - 1] = {
+                  ...lastItem,
+                  path: currentPath,
+                  label: title,
+                }
+                const newHistory = { items: newItems }
+                saveHistory(newHistory)
+                return newHistory
+              }
+
+              const newHistory: NavigationHistory = {
+                items: [
+                  ...prev.items,
                   {
                     path: currentPath,
                     label: title,
@@ -828,42 +861,23 @@ export function useNavigationHistory() {
       const baseExists = history.items.some(item => item.path === basePath)
       
       if (!baseExists) {
-        const baseLabel = generateLabel(basePath, null)
-        const baseItem: HistoryItem = {
-          path: basePath,
-          label: baseLabel,
-          timestamp: Date.now() - 1
+        if (history.items.length === 0) {
+          const baseLabel = generateLabel(basePath, null)
+          const baseItem: HistoryItem = {
+            path: basePath,
+            label: baseLabel,
+            timestamp: Date.now() - 1
+          }
+          
+          const newHistory: NavigationHistory = {
+            items: [baseItem, newItem]
+          }
+          setHistory(newHistory)
+          saveHistory(newHistory)
+          previousPathRef.current = fullPath
+          return
         }
-        
-        // When navigating to a detail page of a completely different section (e.g. from Content to Makina/Robot),
-        // we should start a fresh breadcrumb rather than appending to the previous section.
-        const newHistory: NavigationHistory = {
-          items: [baseItem, newItem]
-        }
-        setHistory(newHistory)
-        saveHistory(newHistory)
-        previousPathRef.current = fullPath
-        return
-      }
-    } else if (lastItem) {
-      // If there is no ID, and the base path changed, we are navigating to the root of a different section.
-      // We should start a fresh breadcrumb rather than accumulating!
-      const lastPathname = lastItem.path.split('?')[0]
-      const lastSegments = lastPathname.split('/').filter(Boolean)
-      let lastBasePath = lastSegments.length > 0 ? `/${lastSegments[0]}` : lastPathname
-      
-      if (lastSegments[0] === 'applications' && lastSegments[1] === 'database') {
-        lastBasePath = '/applications/database'
-      }
-      
-      if (basePath !== lastBasePath) {
-        const newHistory: NavigationHistory = {
-          items: [newItem]
-        }
-        setHistory(newHistory)
-        saveHistory(newHistory)
-        previousPathRef.current = fullPath
-        return
+        // If history is not empty, we simply fall through to append newItem
       }
     }
     

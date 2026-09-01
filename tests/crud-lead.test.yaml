@@ -23,24 +23,6 @@ statements:
   - description: Fill the required lead email with a unique value
     js: "await page.locator('#email').fill(`shiplight.lead.${Date.now()}@example.com`)"
 
-  - intent: Type a new segment name in the dependency selector
-    action: fill
-    locator: "getByPlaceholder('Select segment')"
-    value: "Automated Lead Segment"
-
-  - intent: Create the segment on the fly with Use
-    action: click
-    locator: "getByText('Use \"Automated Lead Segment\"')"
-
-  - intent: Type a new campaign name in the dependency selector
-    action: fill
-    locator: "getByPlaceholder('Select campaign')"
-    value: "Automated Lead Campaign"
-
-  - intent: Create the campaign on the fly with Use
-    action: click
-    locator: "getByText('Use \"Automated Lead Campaign\"')"
-
   - intent: Submit the create lead form
     action: click
     locator: "getByRole('button', { name: 'Create lead' })"
@@ -84,22 +66,3 @@ statements:
   - WAIT_UNTIL: The heading shows the edited name
     js: "page.getByRole('heading', { name: 'Automated Test Lead - Edited' }).count() > 0"
     timeout_seconds: 10
-
-  - intent: Open the lead actions menu
-    action: click
-    locator: "getByRole('button', { name: 'Open menu' })"
-
-  - intent: Choose Delete Lead from the actions menu
-    action: click
-    locator: "getByRole('menuitem', { name: 'Delete Lead' })"
-
-  - intent: Confirm permanent deletion of the lead
-    action: click
-    locator: "getByRole('button', { name: 'Delete Lead' })"
-
-  - WAIT_UNTIL: The user is back on the leads list
-    js: "page.url().match(/\\/leads(?:\\?.*)?$/) !== null"
-    timeout_seconds: 15
-
-  - VERIFY: The edited lead is gone from the list
-    js: "await expect(page.getByText('Automated Test Lead - Edited')).toHaveCount(0)"

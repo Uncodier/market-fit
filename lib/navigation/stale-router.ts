@@ -1,3 +1,5 @@
+import { appendArtifactIfNeeded } from "./artifact-url"
+
 const WATCHDOG_MS = 1200
 
 function markUiNavigation(): void {
@@ -92,7 +94,7 @@ export function assignLocation(href: string): void {
   clientRouterStale = false
   watchdogGeneration += 1
   if (typeof window === "undefined") return
-  window.location.assign(resolveHref(href))
+  window.location.assign(resolveHref(appendArtifactIfNeeded(href)))
 }
 
 export function startNavigationWatchdog(href: string): void {
@@ -114,26 +116,28 @@ export function navigateOrAssign(
   href: string,
   options: NavigateOrAssignOptions = {}
 ): void {
+  const targetHref = appendArtifactIfNeeded(href)
+
   if (options.markUI !== false) markUiNavigation()
 
   if (typeof window === "undefined") {
-    if (options.replace) router.replace(href)
-    else router.push(href)
+    if (options.replace) router.replace(targetHref)
+    else router.push(targetHref)
     return
   }
 
   if (clientRouterStale) {
-    assignLocation(href)
+    assignLocation(targetHref)
     return
   }
 
-  if (isSameDestination(href)) {
-    if (options.replace) router.replace(href)
-    else router.push(href)
+  if (isSameDestination(targetHref)) {
+    if (options.replace) router.replace(targetHref)
+    else router.push(targetHref)
     return
   }
 
-  if (options.replace) router.replace(href)
-  else router.push(href)
-  startNavigationWatchdog(href)
+  if (options.replace) router.replace(targetHref)
+  else router.push(targetHref)
+  startNavigationWatchdog(targetHref)
 }

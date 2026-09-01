@@ -3,8 +3,7 @@
 import { CatalogItem } from "@/app/types"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { buildPdpGalleryEntries, resolveItemImage } from "@/app/lib/image-utils"
-import { resolveItemSpecDisplay } from "@/app/catalog/product-details"
-import { getAttributeFieldsForItem, isAccessOnlyItem } from "@/app/catalog/product-details"
+import { resolveItemSpecDisplay, isAccessOnlyItem, getPdpSpecDisplay, countPdpSpecDisplay, getPdpFilledAttributeFields } from "@/app/catalog/product-details"
 import { usePdpCart } from "./usePdpCart"
 import { toast } from "sonner"
 import { useRouter, usePathname } from "next/navigation"
@@ -168,13 +167,9 @@ export function ProductPdpLayout({ item, backUrl, experience: _experience, catal
       "full",
     )
   
-  const customSpecsFromDB = (item.item_specs || []).filter(s => !s.category?.is_system);
-  const specs = [
-    ...customSpecsFromDB.map(s => ({ label: s.category?.name || 'Custom', value: s.name })),
-    ...(Array.isArray(metadata.specs) ? metadata.specs.filter(s => s.label || s.value) : [])
-  ]
+  const specDisplay = getPdpSpecDisplay(item)
   const attributes = metadata.attributes || {}
-  const attrFields = getAttributeFieldsForItem(item).filter(f => attributes[f]?.trim())
+  const attrFields = getPdpFilledAttributeFields(item)
 
   const brand = resolveItemSpecDisplay(item, 'brand')
   const collection = resolveItemSpecDisplay(item, 'collection')
@@ -265,13 +260,14 @@ export function ProductPdpLayout({ item, backUrl, experience: _experience, catal
       description={item.description}
       attrFields={attrFields}
       attributes={attributes}
-      specs={specs}
+      specGroups={specDisplay.groups}
+      specs={specDisplay.rows}
     />
   )
   const showDetailsBelow = hasPdpProductDetails({
     description: item.description,
     attrCount: attrFields.length,
-    specCount: specs.length,
+    specCount: countPdpSpecDisplay(specDisplay),
   })
 
   if (isDynamic) {

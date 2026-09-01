@@ -2,8 +2,8 @@
 
 import { CatalogItem } from "@/app/types"
 import { useLocalization } from "@/app/context/LocalizationContext"
-import { resolveItemImage } from "@/app/lib/image-utils"
-import { resolveItemSpecDisplay, resolveVenueLocation } from "@/app/catalog/product-details"
+import { buildPdpGalleryEntries } from "@/app/lib/image-utils"
+import { resolveItemSpecDisplay, resolveVenueLocation, getPdpSpecDisplay, countPdpSpecDisplay, getPdpFilledAttributeFields } from "@/app/catalog/product-details"
 import { VenueLocationSection } from "./VenueLocationSection"
 import { MapPin, User, Clock } from "@/app/components/ui/icons"
 import { PdpMetricChips } from "./PdpMetricChips"
@@ -15,6 +15,9 @@ import {
   DynamicQuotePdpRail,
 } from "./DynamicQuotePdpPanel"
 import { PdpExperience } from "./pdp-experience"
+import { PdpProductDetails } from "./PdpProductDetails"
+import { hasPdpProductDetails } from "./pdp-item-description"
+import { PdpHeroGallery } from "./PdpHeroGallery"
 
 export function ServiceDynamicQuoteLayout({
   item,
@@ -30,14 +33,21 @@ export function ServiceDynamicQuoteLayout({
   const attributes = metadata.attributes || {}
   const instructor = resolveItemSpecDisplay(item, "instructor") || resolveItemSpecDisplay(item, "host")
   const venueLocation = resolveVenueLocation(item)
-  const heroImageUrl = resolveItemImage(item, "full")
+  const galleryEntries = buildPdpGalleryEntries({ parent: item, size: "full" })
+  const specDisplay = getPdpSpecDisplay(item)
+  const attrFields = getPdpFilledAttributeFields(item)
+  const hasExtraDetails = hasPdpProductDetails({
+    description: null,
+    attrCount: attrFields.length,
+    specCount: countPdpSpecDisplay(specDisplay),
+  })
 
   return (
     <DynamicQuotePdpProvider item={item} backUrl={backUrl}>
       <div className="pb-28 lg:pb-0">
         <div className="w-full px-4 md:px-8">
           <div className="w-full h-36 sm:h-44 md:h-52 bg-muted relative rounded-2xl sm:rounded-[1.5rem] overflow-hidden">
-            <img src={heroImageUrl} alt={item.name} className="absolute inset-0 h-full w-full object-cover object-center" />
+            <PdpHeroGallery entries={galleryEntries} itemName={item.name} />
           </div>
         </div>
 
@@ -97,14 +107,15 @@ export function ServiceDynamicQuoteLayout({
                 </div>
               )}
 
-              {item.description && (
+              {(item.description || hasExtraDetails) && (
                 <div className="pt-4 border-t">
-                  <h3 className="font-bold text-2xl mb-4">
-                    {t("marketplace.catalogDetails.about")}
-                  </h3>
-                  <div className="prose prose-base sm:prose-lg dark:prose-invert max-w-none text-muted-foreground leading-relaxed whitespace-pre-wrap">
-                    <p>{item.description}</p>
-                  </div>
+                  <PdpProductDetails
+                    description={item.description}
+                  attrFields={attrFields}
+                  attributes={attributes as Record<string, string | undefined>}
+                  specGroups={specDisplay.groups}
+                    specs={specDisplay.rows}
+                  />
                 </div>
               )}
 

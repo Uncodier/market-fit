@@ -12,6 +12,8 @@ import {
 } from '@/lib/navigation/stale-router'
 import { markUINavigation } from '@/app/hooks/use-navigation-history'
 
+import { appendArtifactIfNeeded } from '@/lib/navigation/artifact-url'
+
 function isModifiedClick(event: React.MouseEvent<HTMLAnchorElement>): boolean {
   return event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0
 }
@@ -21,6 +23,8 @@ function isModifiedClick(event: React.MouseEvent<HTMLAnchorElement>): boolean {
  */
 export const NavigationLink = forwardRef<HTMLAnchorElement, React.ComponentProps<typeof Link>>(
   function NavigationLink({ href, children, onClick, prefetch = false, ...props }, ref) {
+    const finalHref = typeof window !== 'undefined' ? appendArtifactIfNeeded(hrefToString(href)) : href
+
     const handleClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
       if (isModifiedClick(e)) {
         markUINavigation()
@@ -28,7 +32,7 @@ export const NavigationLink = forwardRef<HTMLAnchorElement, React.ComponentProps
         return
       }
 
-      const hrefString = hrefToString(href)
+      const hrefString = hrefToString(finalHref)
 
       if (isClientRouterStale()) {
         e.preventDefault()
@@ -45,7 +49,7 @@ export const NavigationLink = forwardRef<HTMLAnchorElement, React.ComponentProps
     }
     
     return (
-      <Link ref={ref} href={href} prefetch={prefetch} onClick={handleClick} {...props}>
+      <Link ref={ref} href={finalHref} prefetch={prefetch} onClick={handleClick} {...props}>
         {children}
       </Link>
     )

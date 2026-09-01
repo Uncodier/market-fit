@@ -8,6 +8,7 @@ import {
   navigateOrAssign,
   startNavigationWatchdog,
 } from "@/lib/navigation/stale-router"
+import { rememberArtifactSession } from "@/lib/navigation/artifact-url"
 
 function mockLocation(overrides: {
   pathname?: string
@@ -34,6 +35,7 @@ describe("stale-router", () => {
   beforeEach(() => {
     jest.useFakeTimers()
     clearClientRouterStale()
+    delete (window as any)._isArtifactSession
     mockLocation({})
   })
 
@@ -111,5 +113,19 @@ describe("stale-router", () => {
     assignLocation("/profile")
     expect(assign).toHaveBeenCalledWith("http://localhost/profile")
     expect(isClientRouterStale()).toBe(false)
+  })
+
+  it("preserves artifact flag when navigating with navigateOrAssign", () => {
+    rememberArtifactSession()
+    const router = { push: jest.fn(), replace: jest.fn() }
+    navigateOrAssign(router, "/leads")
+    expect(router.push).toHaveBeenCalledWith("/leads?artifact=true")
+  })
+
+  it("preserves artifact flag in assignLocation", () => {
+    rememberArtifactSession()
+    const { assign } = mockLocation({})
+    assignLocation("/leads")
+    expect(assign).toHaveBeenCalledWith(expect.stringContaining("/leads?artifact=true"))
   })
 })

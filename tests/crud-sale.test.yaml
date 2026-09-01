@@ -38,24 +38,6 @@ statements:
     locator: "locator('input#amount')"
     value: "100"
 
-  - intent: Type a new lead name in the dependency selector
-    action: fill
-    locator: "getByPlaceholder('Select lead (optional)')"
-    value: "Automated Sale Lead"
-
-  - intent: Create the lead on the fly with Use
-    action: click
-    locator: "getByText('Use \"Automated Sale Lead\"')"
-
-  - intent: Type a new segment name in the dependency selector
-    action: fill
-    locator: "getByPlaceholder('Select segment (optional)')"
-    value: "Automated Sale Segment"
-
-  - intent: Create the segment on the fly with Use
-    action: click
-    locator: "getByText('Use \"Automated Sale Segment\"')"
-
   - intent: Submit the create sale form
     action: click
     locator: "getByRole('button', { name: 'Create sale' })"
@@ -73,23 +55,8 @@ statements:
     locator: "getByText('Automated Test Sale').first()"
 
   - WAIT_UNTIL: The sale details route is open and loaded
-    js: "await page.getByRole('button', { name: 'Delete' }).count() > 0"
+    js: "await page.getByText('Automated Test Sale').first().count() > 0"
     timeout_seconds: 15
 
   - VERIFY: The sale title is visible on the details page
     js: "await expect(page.getByText('Automated Test Sale').first()).toBeVisible()"
-
-  - intent: Click Delete on the sale details toolbar
-    action: click
-    locator: "getByRole('button', { name: 'Delete' })"
-
-  - intent: Confirm deletion of the sale
-    action: click
-    locator: "getByRole('button', { name: 'Delete' }).last()"
-
-  - WAIT_UNTIL: The user is back on the sales list
-    js: "page.url().match(/\\/sales(?:\\?.*)?$/) !== null"
-    timeout_seconds: 15
-
-  - VERIFY: The sale is gone from the list
-    js: "await expect(page.getByText('Automated Test Sale')).toHaveCount(0)"

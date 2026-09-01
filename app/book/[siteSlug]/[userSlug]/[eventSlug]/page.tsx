@@ -40,7 +40,8 @@ import {
   Sun,
   Moon,
 } from "@/app/components/ui/icons";
-import { EmptyCard } from "@/app/components/ui/empty-card";
+import { AddToCalendarButtons } from "@/app/components/commerce/booking/AddToCalendarButtons";
+import { zonedMeetingRange } from "@/lib/calendar/invite";
 import {
   format,
   addMonths,
@@ -146,6 +147,7 @@ export default function UserBookingPage(props: {
   const [guestsString, setGuestsString] = useState("");
   const [notes, setNotes] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [createdTaskId, setCreatedTaskId] = useState<string | null>(null);
 
   useEffect(() => {
     async function loadData() {
@@ -314,11 +316,12 @@ export default function UserBookingPage(props: {
         }
       });
 
-      await bookMeeting({
+      const result = await bookMeeting({
         userId: profile.id,
         siteId: siteInfo?.id || "default",
         date: format(selectedDate, "yyyy-MM-dd"),
         time: selectedSlot,
+        timezone: userTimezone,
         name,
         email,
         guests: guestsString
@@ -332,59 +335,29 @@ export default function UserBookingPage(props: {
         title: `${eventType.title} with ${profile.name || userSlug}`,
         duration: eventType.duration,
         metadata,
+        locale,
       });
+      if (result.task?.id) {
+        setCreatedTaskId(result.task.id);
+      }
       setActiveStep("success");
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
-      toast.error("Failed to book meeting. Please try again.");
+      toast.error(error?.message || "Failed to book meeting. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const handleDownloadCalendar = () => {
-    if (!selectedDate || !selectedSlot || !eventType) return;
-
-    const [hours, minutes] = selectedSlot.split(":").map(Number);
-    const startDate = new Date(selectedDate);
-    startDate.setHours(hours, minutes, 0, 0);
-
-    const endDate = new Date(startDate.getTime() + eventType.duration * 60000);
-
-    const formatDate = (date: Date) => {
-      return date.toISOString().replace(/[-:]/g, "").split(".")[0] + "Z";
-    };
-
-    const icsContent = [
-      "BEGIN:VCALENDAR",
-      "VERSION:2.0",
-      "PRODID:-//Uncodie//Market Fit//EN",
-      "BEGIN:VEVENT",
-      `UID:${new Date().getTime()}@uncodie.com`,
-      `DTSTAMP:${formatDate(new Date())}`,
-      `DTSTART:${formatDate(startDate)}`,
-      `DTEND:${formatDate(endDate)}`,
-      `SUMMARY:${eventType.title} with ${profile.name || userSlug}`,
-      `DESCRIPTION:${notes || ""}`,
-      eventType.location ? `LOCATION:${eventType.location}` : "",
-      "END:VEVENT",
-      "END:VCALENDAR",
-    ].filter(Boolean).join("\r\n");
-
-    const blob = new Blob([icsContent], { type: "application/octet-stream" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `meeting-${format(startDate, "yyyyMMdd-HHmm")}.ics`;
-    document.body.appendChild(link);
-    link.click();
-    
-    // Clean up with a small delay to ensure download starts
-    setTimeout(() => {
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-    }, 100);
-  };
+  const meetingRange =
+    selectedDate && selectedSlot
+      ? zonedMeetingRange({
+          date: format(selectedDate, "yyyy-MM-dd"),
+          time: selectedSlot,
+          durationMins: eventType.duration,
+          timeZone: userTimezone,
+        })
+      : null;
 
   return (
     <div
@@ -449,7 +422,7 @@ export default function UserBookingPage(props: {
                   </div>
                 )}
               {eventType.description && (
-                <p className="text-muted-foreground text-sm leading-relaxed text-center md:text-left w-full">
+                <p className="text-muted-foreground text-sm leading-relaxed text-center md:text-left w-full line-clamp-[8]">
                   {eventType.description}
                 </p>
               )}
@@ -934,16 +907,18 @@ export default function UserBookingPage(props: {
                         </p>
                       )}
                     </div>
-                    <div className="pt-6 mt-2 w-full max-w-[280px]">
-                      <Button 
-                        onClick={handleDownloadCalendar} 
-                        className="w-full font-semibold shadow-sm flex items-center justify-center gap-2"
-                        variant="outline"
-                      >
-                        <CalendarIcon className="h-4 w-4" />
-                        {t("booking.addToCalendar")}
-                      </Button>
-                    </div>
+                    {meetingRange && (
+                      <AddToCalendarButtons
+                        event={{
+                          title: `${eventType.title} with ${profile.name || userSlug}`,
+                          description: notes || "",
+                          location: eventType.location,
+                          start: meetingRange.start,
+                          end: meetingRange.end,
+                          uid: createdTaskId ? `${createdTaskId}@uncodie.com` : `${Date.now()}@uncodie.com`,
+                        }}
+                      />
+                    )}
                   </>
                 ) : (
                   <div className="flex flex-col items-center justify-center h-full space-y-4 opacity-50">

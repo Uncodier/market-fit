@@ -32,6 +32,7 @@ const nextConfig = {
       { protocol: 'https', hostname: 'github.com' },
       { protocol: 'https', hostname: 'cloudfront.cdn.uncodie.com' },
       { protocol: 'https', hostname: '*.supabase.co' },
+      { protocol: 'https', hostname: 'db.makinari.com' },
     ],
   },
   // Headers configuration for CSP

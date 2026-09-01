@@ -2,20 +2,8 @@
 
 import { useEffect } from "react"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
-
-function appendArtifactIfNeeded(href: string): string {
-  if (typeof href !== "string") return href
-  const currentUrlParams = new URLSearchParams(window.location.search)
-  if (currentUrlParams.get("artifact") !== "true") return href
-  if (!(href.startsWith("/") || href.startsWith("?") || href.startsWith("#"))) return href
-
-  const [pathAndSearch, hash] = href.split("#")
-  const [path, search] = pathAndSearch.split("?")
-  const params = new URLSearchParams(search || "")
-  if (params.has("artifact")) return href
-  params.set("artifact", "true")
-  return `${path}?${params.toString()}${hash !== undefined ? `#${hash}` : ""}`
-}
+import { appendArtifactIfNeeded, shouldPreserveArtifact } from "@/lib/navigation/artifact-url"
+import { navigateOrAssign } from "@/lib/navigation/stale-router"
 
 /**
  * Keep client navigations and DOM links on ?artifact=true when the current URL has it.
@@ -25,12 +13,12 @@ export function useArtifactRouterPatch(): void {
   const pathname = usePathname()
   const searchParams = useSearchParams()
 
+  // 1. programmatic nav and link mutation patch
   useEffect(() => {
     if (typeof window === "undefined") return
     if (!router || !router.push) return
 
-    const isArtifactInUrl = new URLSearchParams(window.location.search).get("artifact") === "true"
-    if (!isArtifactInUrl) return
+    if (!shouldPreserveArtifact()) return
 
     if (!(router as any)._patchedForArtifact) {
       const originalPush = router.push
@@ -89,5 +77,50 @@ export function useArtifactRouterPatch(): void {
     })
 
     return () => observer.disconnect()
-  }, [router, pathname, searchParams])
+  }, [router])
+
+  // 2. capture-phase click listener for plain Next.js links or raw anchors that escaped the mutation
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    if (!shouldPreserveArtifact()) return
+
+    const handleClick = (e: MouseEvent) => {
+      if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return
+      if (!shouldPreserveArtifact()) return
+
+      let target = e.target as HTMLElement | null
+      while (target && target.tagName !== "A") {
+        target = target.parentElement
+      }
+      if (!target) return
+
+      const anchor = target as HTMLAnchorElement
+      if (anchor.hasAttribute("download")) return
+      const linkTarget = anchor.getAttribute("target")
+      if (linkTarget && linkTarget !== "_self") return
+
+      const href = anchor.getAttribute("href")
+      if (!href || href.startsWith("http") || href.startsWith("mailto:") || href.startsWith("tel:")) return
+      if (href.startsWith("#") || href.startsWith("javascript:")) return
+      if (!(href.startsWith("/") || href.startsWith("?"))) return
+
+      e.preventDefault()
+      e.stopPropagation()
+      navigateOrAssign(router, appendArtifactIfNeeded(href))
+    }
+
+    document.addEventListener("click", handleClick, { capture: true })
+    return () => document.removeEventListener("click", handleClick, { capture: true })
+  }, [router])
+
+  // 3. restore logic
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    if (shouldPreserveArtifact() && searchParams.get("artifact") !== "true") {
+      const p = new URLSearchParams(searchParams.toString())
+      p.set("artifact", "true")
+      const newUrl = `${pathname}?${p.toString()}`
+      router.replace(newUrl)
+    }
+  }, [pathname, searchParams, router])
 }

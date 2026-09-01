@@ -3,14 +3,13 @@
 import { useState, useEffect, useMemo } from "react"
 import { CatalogItem } from "@/app/types"
 import { useLocalization } from "@/app/context/LocalizationContext"
-import { optimizeForPreset, resolveItemImage } from "@/app/lib/image-utils"
-import { resolveItemSpecDisplay, resolveVenueLocation } from "@/app/catalog/product-details"
+import { optimizeForPreset, resolveItemImage, buildPdpGalleryEntries } from "@/app/lib/image-utils"
+import { resolveItemSpecDisplay, resolveVenueLocation, isAccessOnlyItem, getPdpSpecDisplay, countPdpSpecDisplay, getPdpFilledAttributeFields } from "@/app/catalog/product-details"
 import { VenueLocationDetails } from "./VenueLocationDetails"
 import { VenueLocationSection } from "./VenueLocationSection"
 import { MapPin, User, Clock, CheckCircle, Calendar } from "@/app/components/ui/icons"
 import { usePdpCart } from "./usePdpCart"
 import { toast } from "sonner"
-import { isAccessOnlyItem } from "@/app/catalog/product-details"
 import { getActivePassEntitlementForReservable } from "@/app/buyer/entitlement-queries"
 
 import { PdpCtaButton } from "./PdpCtaButton"
@@ -27,6 +26,9 @@ import { formatSlotTime, formatSlotTimeZoneName } from "@/app/components/commerc
 import { SubscriptionManagePanel } from "./SubscriptionManagePanel"
 import { DynamicQuotePdpProvider } from "./DynamicQuotePdpPanel"
 import { ServiceDynamicQuoteLayout } from "./ServiceDynamicQuoteLayout"
+import { PdpProductDetails } from "./PdpProductDetails"
+import { hasPdpProductDetails } from "./pdp-item-description"
+import { PdpHeroGallery } from "./PdpHeroGallery"
 import {
   getDynamicPricingConfig,
   isDynamicPricedItem,
@@ -61,6 +63,15 @@ export function ServicePdpLayout({
   const axes = metadata.variant_axes || []
   const hasVariants = axes.length > 0
   const children = item._shop?.children || []
+
+  const specDisplay = getPdpSpecDisplay(item)
+  const attrFields = getPdpFilledAttributeFields(item)
+
+  const hasExtraDetails = hasPdpProductDetails({
+    description: null,
+    attrCount: attrFields.length,
+    specCount: countPdpSpecDisplay(specDisplay),
+  })
 
   const resolvedChild = useMemo(() => {
     if (!hasVariants) return item
@@ -150,6 +161,8 @@ export function ServicePdpLayout({
     ? `${formatSlotTime(reservation.start_time, venueTimeZone)} – ${formatSlotTime(reservation.end_time, venueTimeZone)} (${formatSlotTimeZoneName(venueTimeZone)})`
     : null
 
+  const galleryEntries = buildPdpGalleryEntries({ parent: item, size: "full" })
+
   if (isDynamic && !isReservationExperience) {
     return (
       <ServiceDynamicQuoteLayout
@@ -165,7 +178,7 @@ export function ServicePdpLayout({
     <div className={isReservationExperience ? "pb-8" : ""}>
       <div className="w-full px-4 md:px-8">
         <div className="w-full h-[28vh] min-h-[200px] sm:h-[36vh] md:h-[42vh] bg-muted relative rounded-[1.5rem] sm:rounded-[2rem] overflow-hidden">
-          <img src={heroImageUrl} alt={item.name} className="absolute inset-0 h-full w-full object-cover object-center" />
+          <PdpHeroGallery entries={galleryEntries} itemName={item.name} />
         </div>
       </div>
 
@@ -255,7 +268,7 @@ export function ServicePdpLayout({
                       parentDescription: item.description,
                       category: item._shop?.categoryName || null,
                       siteDescription:
-                        item._shop?.siteDescription || item.site?.description || null,
+                        item._shop?.siteDescription || (item as any).site?.description || null,
                     }}
                   />
                 )}
@@ -381,16 +394,15 @@ export function ServicePdpLayout({
               </div>
             )}
 
-            {(item.description || isReservationExperience) && (
+            {(item.description || isReservationExperience || hasExtraDetails) && (
               <div className="pt-4 lg:pt-8">
-                <h3 className="font-bold text-2xl mb-6">
-                  {t("marketplace.catalogDetails.about")}
-                </h3>
-                <div className="prose prose-base sm:prose-lg dark:prose-invert max-w-none text-muted-foreground leading-relaxed whitespace-pre-wrap">
-                  <p>
-                    {item.description || t("buyer.reservations.aboutFallback")}
-                  </p>
-                </div>
+                <PdpProductDetails
+                  description={item.description || (isReservationExperience ? t("buyer.reservations.aboutFallback") : null)}
+                  attrFields={attrFields}
+                  attributes={attributes as Record<string, string | undefined>}
+                  specGroups={specDisplay.groups}
+                  specs={specDisplay.rows}
+                />
               </div>
             )}
 

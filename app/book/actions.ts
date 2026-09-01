@@ -17,6 +17,10 @@ import {
   isSameDay,
 } from "date-fns";
 
+import { sendBookingConfirmationEmail } from "./send-booking-email";
+import { zonedMeetingRange } from "@/lib/calendar/invite";
+import { formatInTimeZone } from "date-fns-tz";
+
 export async function getProfileBySlug(
   slug: string,
 ): Promise<ProfileData | null> {
@@ -130,6 +134,7 @@ export async function bookRRMeeting(data: {
   memberEmails: string[];
   date: string;
   time: string;
+  timezone: string;
   name: string;
   email: string;
   guests?: string[];
@@ -138,12 +143,13 @@ export async function bookRRMeeting(data: {
   title: string;
   duration?: number;
   metadata?: Record<string, string>;
+  locale?: string;
 }) {
   const supabase = await createServiceClient(true);
 
   // 1. Find least busy member for that day
-  const start = startOfDay(parseISO(date)).toISOString();
-  const end = endOfDay(parseISO(date)).toISOString();
+  const start = startOfDay(parseISO(data.date)).toISOString();
+  const end = endOfDay(parseISO(data.date)).toISOString();
 
   // Get all members' user IDs
   const { data: profiles } = await supabase
@@ -180,6 +186,7 @@ export async function bookRRMeeting(data: {
     siteId: data.siteId,
     date: data.date,
     time: data.time,
+    timezone: data.timezone,
     name: data.name,
     email: data.email,
     guests: data.guests,
@@ -188,6 +195,7 @@ export async function bookRRMeeting(data: {
     title: data.title,
     duration: data.duration,
     metadata: data.metadata,
+    locale: data.locale,
   });
 }
 
@@ -542,6 +550,7 @@ export async function bookMeeting(data: {
   siteId: string;
   date: string; // YYYY-MM-DD
   time: string; // HH:mm
+  timezone?: string; // e.g. America/Mexico_City
   name: string;
   email: string;
   guests?: string[];
@@ -550,6 +559,7 @@ export async function bookMeeting(data: {
   title: string;
   duration?: number;
   metadata?: Record<string, string>;
+  locale?: string;
 }) {
   const supabase = await createServiceClient(true);
 
@@ -577,48 +587,83 @@ export async function bookMeeting(data: {
   }
 
   // 2. Find or Create Lead
+  const safeEmail = data.email.trim();
+  const safeName = data.name.trim();
+
   let { data: lead } = await supabase
     .from("leads")
-    .select("id, metadata")
-    .eq("email", data.email)
+    .select("id, metadata, name")
+    .eq("email", safeEmail)
     .eq("site_id", siteId)
-    .single();
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
 
   if (!lead) {
     const { data: newLead, error: leadError } = await supabase
       .from("leads")
       .insert({
-        name: data.name,
-        email: data.email,
+        name: safeName,
+        email: safeEmail,
         site_id: siteId,
         user_id: data.userId, // Attributed to the calendar owner
         status: "new",
         origin: "Public Booking",
         metadata: data.metadata || {},
       })
-      .select("id")
-      .single();
+      .select("id, metadata, name")
+      .maybeSingle();
 
-    if (leadError) throw leadError;
-    lead = newLead;
-  } else if (data.metadata && Object.keys(data.metadata).length > 0) {
-    // If lead exists and we have new metadata, merge it
-    const existingMetadata = lead.metadata || {};
-    const newMetadata = { ...existingMetadata, ...data.metadata };
+    if (leadError) {
+      if (leadError.code === "23505") { // Unique violation
+        // Refetch in case it was created concurrently
+        const { data: existingLead } = await supabase
+          .from("leads")
+          .select("id, metadata, name")
+          .eq("email", safeEmail)
+          .eq("site_id", siteId)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+          
+        if (existingLead) {
+          lead = existingLead;
+        } else {
+          throw new Error(leadError.message || "Failed to book meeting. Please try again.");
+        }
+      } else {
+        throw new Error(leadError.message || "Failed to book meeting. Please try again.");
+      }
+    } else {
+      lead = newLead;
+    }
+  }
+  
+  if (lead) {
+    const updates: any = {};
+    let needsUpdate = false;
     
-    const { error: updateError } = await supabase
-      .from("leads")
-      .update({ metadata: newMetadata })
-      .eq("id", lead.id);
-      
-    if (updateError) console.error("Error updating lead metadata:", updateError);
+    if (data.metadata && Object.keys(data.metadata).length > 0) {
+      const existingMetadata = lead.metadata || {};
+      updates.metadata = { ...existingMetadata, ...data.metadata };
+      needsUpdate = true;
+    }
+
+    if (needsUpdate) {
+      const { error: updateError } = await supabase
+        .from("leads")
+        .update(updates)
+        .eq("id", lead.id);
+        
+      if (updateError) console.error("Error updating lead metadata:", updateError);
+    }
   }
 
   // 3. Create Task
   const scheduledDate = parseISO(`${data.date}T${data.time}:00`);
 
-  const taskNotes = (data.notes || `Meeting booked via public page by ${data.name} (${data.email})`) +
-    (data.guests && data.guests.length > 0 ? `\n\nAttendees: ${[data.email, ...data.guests].join(', ')}` : '') +
+  const taskNotes = (data.notes || `Meeting booked via public page by ${safeName} (${safeEmail})`) +
+    (data.guests && data.guests.length > 0 ? `\n\nAttendees: ${[safeEmail, ...data.guests].join(', ')}` : '') +
     (data.location ? `\n\nLocation / Meeting Room: ${data.location}` : '');
     
   let endDateIso = undefined
@@ -662,7 +707,60 @@ export async function bookMeeting(data: {
     .select()
     .single();
 
-  if (taskError) throw taskError;
+  if (taskError) throw new Error(taskError.message || "Failed to book meeting. Please try again.");
+
+  // Send confirmation email (never fail the booking if mail fails)
+  try {
+    const timeZone = data.timezone || "America/Mexico_City";
+    const { start, end } = zonedMeetingRange({
+      date: data.date,
+      time: data.time,
+      durationMins,
+      timeZone,
+    });
+
+    const { data: hostProfile } = await supabase
+      .from("profiles")
+      .select("name, email")
+      .eq("id", data.userId)
+      .maybeSingle();
+    const { data: siteInfo } = await supabase
+      .from("sites")
+      .select("name, logo_url")
+      .eq("id", siteId)
+      .maybeSingle();
+
+    const dateStr = formatInTimeZone(start, timeZone, "MMMM d, yyyy");
+    const timeStr = formatInTimeZone(start, timeZone, "HH:mm");
+
+    await sendBookingConfirmationEmail({
+      toEmail: safeEmail,
+      toName: safeName,
+      ccEmails: data.guests,
+      bccEmail: hostProfile?.email,
+      hostName: hostProfile?.name || hostProfile?.email || "Host",
+      siteName: siteInfo?.name || "Makinari",
+      siteLogoUrl: siteInfo?.logo_url,
+      eventName: data.title,
+      dateStr,
+      timeStr,
+      timezone: timeZone,
+      location: data.location,
+      calendarEvent: {
+        title: data.title,
+        description: taskNotes,
+        location: data.location,
+        start,
+        end,
+        uid: `${task.id}@uncodie.com`,
+        organizer: hostProfile?.email,
+        attendees: [safeEmail, ...(data.guests || [])],
+      },
+      locale: data.locale,
+    });
+  } catch (error) {
+    console.error("[bookMeeting] Error sending confirmation email:", error);
+  }
 
   return { success: true, task };
 }

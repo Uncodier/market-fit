@@ -2,27 +2,41 @@
 
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { PdpItemDescription } from "./PdpItemDescription"
-
-type SpecRow = { label: string; value: string }
+import { PdpSpecGroups } from "./PdpSpecGroups"
+import type { PdpSpecGroup, PdpSpecRow } from "@/app/catalog/product-details"
 
 export function PdpProductDetails({
   description,
   attrFields,
   attributes,
   specs,
+  specGroups = [],
+  aboutLabel,
+  showShortDescription = false,
 }: {
   description?: string | null
   attrFields: string[]
   attributes: Record<string, string | undefined>
-  specs: SpecRow[]
+  specs: PdpSpecRow[]
+  specGroups?: PdpSpecGroup[]
+  aboutLabel?: string
+  showShortDescription?: boolean
 }) {
   const { t } = useLocalization()
+  const hasAttrs = attrFields.length > 0
+  const hasGroups = specGroups.length > 0
+  const hasRows = specs.length > 0
 
   return (
     <>
-      <PdpItemDescription description={description} variant="section" />
+      <PdpItemDescription
+        description={description}
+        variant="section"
+        aboutLabel={aboutLabel}
+        showShort={showShortDescription}
+      />
 
-      {attrFields.length > 0 && (
+      {hasAttrs && (
         <div className="mb-10 sm:mb-12 grid grid-cols-2 gap-x-6 sm:gap-x-8 gap-y-6">
           {attrFields.map((f) => {
             const camelCaseKey = f.replace(/_([a-z])/g, (g) => g[1].toUpperCase())
@@ -38,10 +52,16 @@ export function PdpProductDetails({
         </div>
       )}
 
-      {specs.length > 0 && (
-        <div className="pt-8 border-t">
+      {hasGroups && (
+        <div className={hasAttrs ? "pt-2" : ""}>
+          <PdpSpecGroups groups={specGroups} />
+        </div>
+      )}
+
+      {hasRows && (
+        <div className={hasAttrs || hasGroups ? "pt-8 mt-8 border-t" : ""}>
           <h3 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6">
-            {t("marketplace.catalogDetails.specs") || "Technical Specifications"}
+            {t("marketplace.catalogDetails.specs") || "Specifications"}
           </h3>
           <div className="border rounded-2xl sm:rounded-[1.5rem] overflow-hidden">
             {specs.map((s, i) => (

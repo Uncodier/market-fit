@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { CatalogItem } from "@/app/types"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { resolveItemImage } from "@/app/lib/image-utils"
-import { resolveItemSpecDisplay, resolveVenueLocation } from "@/app/catalog/product-details"
+import { resolveItemSpecDisplay, resolveVenueLocation, getPdpSpecDisplay, countPdpSpecDisplay, getPdpFilledAttributeFields } from "@/app/catalog/product-details"
 import { VenueLocationSection } from "./VenueLocationSection"
 import { CheckCircle, MapPin, User } from "@/app/components/ui/icons"
 import { usePdpCart } from "./usePdpCart"
@@ -21,6 +21,8 @@ import { PdpMobileBuyBar } from "./PdpMobileBuyBar"
 import { PdpExperience } from "./pdp-experience"
 import { PassBookingPanel } from "./PassBookingPanel"
 import { SubscriptionManagePanel } from "./SubscriptionManagePanel"
+import { PdpProductDetails } from "./PdpProductDetails"
+import { hasPdpProductDetails } from "./pdp-item-description"
 
 export function PassPdpLayout({ item, backUrl, experience, catalogSize = 0 }: { item: CatalogItem & { _shop?: any }, backUrl: string, experience?: PdpExperience, catalogSize?: number }) {
   const { t } = useLocalization()
@@ -60,6 +62,15 @@ export function PassPdpLayout({ item, backUrl, experience, catalogSize = 0 }: { 
 
   const venueLocation = resolveVenueLocation(item)
   const organizer = resolveItemSpecDisplay(item, 'instructor') || resolveItemSpecDisplay(item, 'organizer') || resolveItemSpecDisplay(item, 'host')
+
+  const specDisplay = getPdpSpecDisplay(item)
+  const attrFields = getPdpFilledAttributeFields(item)
+
+  const hasExtraDetails = hasPdpProductDetails({
+    description: null,
+    attrCount: attrFields.length,
+    specCount: countPdpSpecDisplay(specDisplay),
+  })
 
   const handleAdd = () => {
     addToCartStorage(item)
@@ -124,10 +135,13 @@ export function PassPdpLayout({ item, backUrl, experience, catalogSize = 0 }: { 
             ]}
           />
 
-          <div className="prose prose-base sm:prose-lg dark:prose-invert max-w-none text-muted-foreground leading-relaxed">
-            <h3 className="text-xl font-bold mb-4 text-foreground">{t('marketplace.catalogDetails.about') || 'Acerca de este artículo'}</h3>
-            <p className="whitespace-pre-wrap">{item.description || 'Access all benefits and premium services.'}</p>
-          </div>
+          <PdpProductDetails
+            description={item.description || 'Access all benefits and premium services.'}
+            attrFields={attrFields}
+            attributes={attributes}
+            specGroups={specDisplay.groups}
+            specs={specDisplay.rows}
+          />
 
           {(item.pass_uses || venueLocation.name) && (
             <div className="pt-8 border-t">

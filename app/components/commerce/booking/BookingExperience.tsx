@@ -329,7 +329,7 @@ export function BookingExperience({
               </div>
 
               {item.description && (
-                <p className="text-muted-foreground text-sm leading-relaxed text-center md:text-left w-full">
+                <p className="text-muted-foreground text-sm leading-relaxed text-center md:text-left w-full line-clamp-[8]">
                   {item.description}
                 </p>
               )}

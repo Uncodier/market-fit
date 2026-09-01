@@ -75,30 +75,21 @@ export function CatalogItemDetailsMarketingCard({ formData, setFormData, handleS
               <Plus className="w-4 h-4 mr-2" /> Add Image
             </Button>
           </div>
-          <div className="flex flex-col gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
             {gallery.map((url: string, idx: number) => (
-              <div key={idx} className="flex gap-2 items-center">
-                <div className="flex-1">
-                  <ImageUpload 
-                    value={url} 
-                    onChange={val => {
-                      const newG = [...gallery];
-                      newG[idx] = val;
-                      updateMetadata('gallery', newG);
-                    }} 
-                    onRemove={() => {
-                      const newG = [...gallery];
-                      newG[idx] = '';
-                      updateMetadata('gallery', newG);
-                    }} 
-                  />
-                </div>
-                <Button variant="ghost" size="icon" className="text-destructive" onClick={() => {
-                  const newG = gallery.filter((_: any, i: number) => i !== idx);
-                  updateMetadata('gallery', newG);
-                }}>
-                  <Trash2 className="w-4 h-4" />
-                </Button>
+              <div key={idx} className="relative">
+                <ImageUpload 
+                  value={url} 
+                  onChange={val => {
+                    const newG = [...gallery];
+                    newG[idx] = val;
+                    updateMetadata('gallery', newG);
+                  }} 
+                  onRemove={() => {
+                    const newG = gallery.filter((_: any, i: number) => i !== idx);
+                    updateMetadata('gallery', newG);
+                  }} 
+                />
               </div>
             ))}
           </div>

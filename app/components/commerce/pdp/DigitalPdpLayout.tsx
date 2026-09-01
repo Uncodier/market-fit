@@ -3,7 +3,7 @@
 import { CatalogItem } from "@/app/types"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { resolveItemImage } from "@/app/lib/image-utils"
-import { resolveItemSpecDisplay } from "@/app/catalog/product-details"
+import { resolveItemSpecDisplay, getPdpSpecDisplay, countPdpSpecDisplay, getPdpFilledAttributeFields } from "@/app/catalog/product-details"
 import { usePdpCart } from "./usePdpCart"
 import { useState, useEffect } from "react"
 import { toast } from "sonner"
@@ -18,6 +18,8 @@ import { PdpMetricChips } from "./PdpMetricChips"
 import { PdpMobileBuyBar } from "./PdpMobileBuyBar"
 import { CheckCircle } from "@/app/components/ui/icons"
 import { PdpExperience } from "./pdp-experience"
+import { PdpProductDetails } from "./PdpProductDetails"
+import { hasPdpProductDetails } from "./pdp-item-description"
 
 export function DigitalPdpLayout({ item, backUrl, experience, catalogSize = 0 }: { item: CatalogItem & { _shop?: any }, backUrl: string, experience?: PdpExperience, catalogSize?: number }) {
   const { t } = useLocalization()
@@ -48,6 +50,15 @@ export function DigitalPdpLayout({ item, backUrl, experience, catalogSize = 0 }:
   const attributes = metadata.attributes || {}
   const author = resolveItemSpecDisplay(item, 'author')
   const publisher = resolveItemSpecDisplay(item, 'publisher')
+
+  const specDisplay = getPdpSpecDisplay(item)
+  const attrFields = getPdpFilledAttributeFields(item)
+
+  const hasExtraDetails = hasPdpProductDetails({
+    description: null,
+    attrCount: attrFields.length,
+    specCount: countPdpSpecDisplay(specDisplay),
+  })
 
   const handleAdd = () => {
     addToCartStorage(item)
@@ -115,36 +126,17 @@ export function DigitalPdpLayout({ item, backUrl, experience, catalogSize = 0 }:
           <div className="lg:hidden mb-8">
             <PdpPriceBlock price={item.target_sale_price || 0} currency={item.currency || 'USD'} />
           </div>
-          <div className="prose prose-base sm:prose-lg dark:prose-invert max-w-none text-muted-foreground leading-relaxed mb-8 sm:mb-10">
-            <p>{item.description}</p>
-          </div>
-          
-          <div className="grid grid-cols-2 gap-3 sm:gap-4 mb-10 sm:mb-12">
-            {attributes.format && (
-              <div className="p-4 sm:p-5 bg-card rounded-2xl sm:rounded-[2rem] border shadow-sm flex flex-col justify-center">
-                <div className="text-[10px] sm:text-xs text-muted-foreground font-bold uppercase tracking-wider mb-1 sm:mb-2">Format</div>
-                <div className="font-bold text-base sm:text-lg">{attributes.format}</div>
-              </div>
-            )}
-            {attributes.file_size && (
-              <div className="p-4 sm:p-5 bg-card rounded-2xl sm:rounded-[2rem] border shadow-sm flex flex-col justify-center">
-                <div className="text-[10px] sm:text-xs text-muted-foreground font-bold uppercase tracking-wider mb-1 sm:mb-2">Size</div>
-                <div className="font-bold text-base sm:text-lg">{attributes.file_size}</div>
-              </div>
-            )}
-            {attributes.license_type && (
-              <div className="p-4 sm:p-5 bg-card rounded-2xl sm:rounded-[2rem] border shadow-sm flex flex-col justify-center">
-                <div className="text-[10px] sm:text-xs text-muted-foreground font-bold uppercase tracking-wider mb-1 sm:mb-2">License</div>
-                <div className="font-bold text-base sm:text-lg line-clamp-1">{attributes.license_type}</div>
-              </div>
-            )}
-            {attributes.seats && (
-              <div className="p-4 sm:p-5 bg-card rounded-2xl sm:rounded-[2rem] border shadow-sm flex flex-col justify-center">
-                <div className="text-[10px] sm:text-xs text-muted-foreground font-bold uppercase tracking-wider mb-1 sm:mb-2">Seats</div>
-                <div className="font-bold text-base sm:text-lg">{attributes.seats}</div>
-              </div>
-            )}
-          </div>
+          {(item.description || hasExtraDetails) && (
+            <div className="mb-8 sm:mb-10">
+              <PdpProductDetails
+                description={item.description}
+                attrFields={attrFields}
+                attributes={attributes}
+                specGroups={specDisplay.groups}
+                specs={specDisplay.rows}
+              />
+            </div>
+          )}
 
           {ownedEntitlement ? (
             <div className="mb-10 sm:mb-12 overflow-hidden rounded-3xl border border-primary/10 bg-gradient-to-b from-primary/5 to-transparent relative p-6 sm:p-8 flex flex-col sm:flex-row items-center gap-6 justify-between">

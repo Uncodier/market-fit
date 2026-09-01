@@ -5,7 +5,7 @@ import { useState, useRef, useEffect } from "react"
 import { SearchInput } from "@/app/components/ui/search-input"
 import { ArrowLeft, Star } from "@/app/components/ui/icons"
 import { Button } from "@/app/components/ui/button"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { navigateOrAssign } from "@/lib/navigation/stale-router"
 import { NAVIGATION_AREAS, AreaNavItem, buildNavItemHref, getNavItemTitle, NAVIGATION_MENU_AREA_ORDER } from "@/app/config/navigation-areas"
 import { AREA_ICON, NAV_ITEM_ICON, getAreaFamilyAccent } from "@/app/config/module-visuals"
@@ -22,6 +22,7 @@ interface NavigationPageProps {
 export default function NavigationPage({ isOverlay, onClose }: NavigationPageProps) {
   const { t } = useLocalization()
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [searchQuery, setSearchQuery] = useState("")
   const inputRef = useRef<HTMLInputElement>(null)
   const sidebarNavKeys = useSidebarNavKeys()
@@ -35,7 +36,7 @@ export default function NavigationPage({ isOverlay, onClose }: NavigationPagePro
   }, [])
 
   const buildHref = (item: AreaNavItem) => {
-    return buildNavItemHref(item);
+    return buildNavItemHref(item, searchParams)
   }
 
   const getTitle = (item: AreaNavItem) => getNavItemTitle(item, t)

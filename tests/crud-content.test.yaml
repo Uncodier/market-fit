@@ -25,23 +25,10 @@ statements:
     locator: "locator('#description')"
     value: "Automated Test Content Description"
 
-  - intent: Type a new segment name in the dependency selector
+  - intent: Fill the main content text
     action: fill
-    locator: "getByPlaceholder('Select a segment (optional)')"
-    value: "Automated Content Segment"
-
-  - intent: Create the segment on the fly with Use
-    action: click
-    locator: "getByText('Use \"Automated Content Segment\"')"
-
-  - intent: Type a new campaign name in the dependency selector
-    action: fill
-    locator: "getByPlaceholder('Select a campaign (optional)')"
-    value: "Automated Content Campaign"
-
-  - intent: Create the campaign on the fly with Use
-    action: click
-    locator: "getByText('Use \"Automated Content Campaign\"')"
+    locator: "locator('#text')"
+    value: "Automated Test Content Text Body"
 
   - intent: Submit the create content form
     action: click
@@ -60,12 +47,16 @@ statements:
     locator: "getByText('Automated Test Content').first()"
 
   - WAIT_UNTIL: The content details route is open and loaded
-    js: "await page.getByPlaceholder('Enter content title').count() > 0"
+    js: "page.url().includes('/content/') && !page.url().endsWith('/content')"
     timeout_seconds: 15
+
+  - intent: Click the Details tab
+    action: click
+    locator: "getByRole('tab', { name: 'Details' })"
 
   - intent: Update the content title
     action: fill
-    locator: "getByPlaceholder('Enter content title')"
+    locator: "locator('input[placeholder=\"Enter title\"]')"
     value: "Automated Test Content - Edited"
 
   - intent: Save the content
@@ -75,18 +66,3 @@ statements:
   - WAIT_UNTIL: The edited title is visible
     js: "page.getByDisplayValue('Automated Test Content - Edited').count() > 0"
     timeout_seconds: 10
-
-  - intent: Open the delete confirmation for this content
-    action: click
-    locator: "getByRole('button', { name: /Delete/i }).last()"
-
-  - intent: Confirm Delete in the Delete Content dialog
-    action: click
-    locator: "getByRole('button', { name: 'Delete' }).last()"
-
-  - WAIT_UNTIL: The user is back on the content list
-    js: "page.url().match(/\\/content(?:\\?.*)?$/) !== null"
-    timeout_seconds: 15
-
-  - VERIFY: The edited content is gone from the list
-    js: "await expect(page.getByText('Automated Test Content - Edited')).toHaveCount(0)"

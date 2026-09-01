@@ -213,7 +213,8 @@ const MenuBar = ({
   hasChanges,
   contentType,
   contentStatus,
-  onTeleprompter
+  onTeleprompter,
+  isEditorFocused
 }: {
   editor: any,
   instructionsEditor: any,

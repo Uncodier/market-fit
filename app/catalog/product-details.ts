@@ -129,6 +129,74 @@ export type AttributeField =
   | 'material' | 'dimensions' | 'weight' | 'warranty'
   | 'format' | 'file_size' | 'license_type' | 'seats';
 
+export type PdpSpecRow = { label: string; value: string }
+
+export type PdpSpecHighlight = {
+  id?: string
+  name: string
+  image_url?: string | null
+  video_url?: string | null
+}
+
+export type PdpSpecGroup = {
+  title: string
+  items: PdpSpecHighlight[]
+}
+
+export type PdpSpecDisplay = {
+  groups: PdpSpecGroup[]
+  rows: PdpSpecRow[]
+}
+
+/** Custom (non-system) item_specs grouped by category, plus legacy metadata.specs. */
+export function getPdpSpecDisplay(item: CatalogItem): PdpSpecDisplay {
+  const metadata = item.metadata || {}
+  const groupsByTitle = new Map<string, PdpSpecHighlight[]>()
+
+  for (const spec of item.item_specs || []) {
+    if (spec.category?.is_system) continue
+    const title = spec.category?.name?.trim() || "Highlights"
+    const items = groupsByTitle.get(title) || []
+    items.push({
+      id: spec.id,
+      name: spec.name,
+      image_url: spec.image_url,
+      video_url: spec.video_url,
+    })
+    groupsByTitle.set(title, items)
+  }
+
+  const groups = Array.from(groupsByTitle.entries()).map(([title, items]) => ({
+    title,
+    items,
+  }))
+  const rows = Array.isArray(metadata.specs)
+    ? metadata.specs.filter((s) => s.label || s.value)
+    : []
+
+  return { groups, rows }
+}
+
+export function countPdpSpecDisplay(display: PdpSpecDisplay): number {
+  return display.groups.reduce((n, group) => n + group.items.length, 0) + display.rows.length
+}
+
+/** Flat spec rows for PDP tables. Prefer getPdpSpecDisplay for grouped highlights. */
+export function getPdpCustomSpecs(item: CatalogItem): PdpSpecRow[] {
+  const { groups, rows } = getPdpSpecDisplay(item)
+  return [
+    ...groups.flatMap((group) =>
+      group.items.map((item) => ({ label: group.title, value: item.name })),
+    ),
+    ...rows,
+  ]
+}
+
+export function getPdpFilledAttributeFields(item: CatalogItem): AttributeField[] {
+  const attributes = item.metadata?.attributes || {}
+  return getAttributeFieldsForItem(item).filter((f) => attributes[f]?.trim())
+}
+
 export function getAttributeFieldsForItem(item: CatalogItem): AttributeField[] {
   const { kind, digital_subtype } = item;
 

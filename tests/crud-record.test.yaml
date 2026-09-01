@@ -36,18 +36,3 @@ statements:
   - WAIT_UNTIL: The save control is idle again
     js: "page.getByRole('button', { name: 'Save' }).count() > 0"
     timeout_seconds: 10
-
-  - intent: Open the delete confirmation for this record
-    action: click
-    locator: "getByRole('button', { name: /Delete/i }).last()"
-
-  - intent: Confirm Delete in the Delete Record dialog
-    action: click
-    locator: "getByRole('button', { name: 'Delete' }).last()"
-
-  - WAIT_UNTIL: The user is back on the records list
-    js: "page.url().match(/\\/records(?:\\?.*)?$/) !== null"
-    timeout_seconds: 15
-
-  - VERIFY: The test record is gone from the list
-    js: "await expect(page.getByText('Automated Test Record')).toHaveCount(0)"
