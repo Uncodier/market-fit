@@ -41,6 +41,7 @@ import {
   Moon,
 } from "@/app/components/ui/icons";
 import { AddToCalendarButtons } from "@/app/components/commerce/booking/AddToCalendarButtons";
+import { EmptyCard } from "@/app/components/ui/empty-card";
 import { zonedMeetingRange } from "@/lib/calendar/invite";
 import {
   format,
