@@ -1,4 +1,4 @@
-import { resolveDisplayLocale } from '../../app/context/LocalizationContext';
+import { loadLocaleMessages, resolveDisplayLocale } from '../../app/context/LocalizationContext';
 
 describe('Display locale priority', () => {
   it('uses the user stored preference over anything else', () => {
@@ -61,5 +61,21 @@ describe('Display locale priority', () => {
         browserLanguage: 'ja-JP',
       }),
     ).toBe('ja');
+  });
+});
+
+describe('loadLocaleMessages', () => {
+  it.each(['es', 'fr', 'de', 'ja'] as const)(
+    'does not throw and falls back to English when %s has no loader',
+    async (locale) => {
+      await expect(loadLocaleMessages(locale)).resolves.toBeDefined();
+      const messages = await loadLocaleMessages(locale);
+      expect(messages['checkout.success.title']).toBe('Order Confirmed');
+    },
+  );
+
+  it('returns English catalog for en', async () => {
+    const messages = await loadLocaleMessages('en');
+    expect(messages['checkout.success.title']).toBe('Order Confirmed');
   });
 });

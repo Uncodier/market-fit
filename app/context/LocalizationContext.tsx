@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect, useLayoutEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useLayoutEffect, useCallback, ReactNode } from 'react';
 import enTranslations from './locales/en.json';
 
 export type SupportedLocale = 'en' | 'es' | 'fr' | 'de' | 'ja';
@@ -41,13 +41,29 @@ const countryToLocale: Record<string, SupportedLocale> = {
 
 const LocalizationContext = createContext<LocalizationContextType | undefined>(undefined);
 
-const localeLoaders: Record<SupportedLocale, () => Promise<any>> = {
+const localeLoaders: Partial<Record<SupportedLocale, () => Promise<any>>> = {
   en: async () => enTranslations,
 };
 
 const translationCache: any = {
   en: enTranslations,
 };
+
+export async function loadLocaleMessages(locale: SupportedLocale): Promise<any> {
+  if (translationCache[locale]) return translationCache[locale];
+  const loader = localeLoaders[locale];
+  if (typeof loader === 'function') {
+    try {
+      const loaded = await loader();
+      translationCache[locale] = loaded;
+      return loaded;
+    } catch {
+      // Fallback
+    }
+  }
+  translationCache[locale] = translationCache.en;
+  return translationCache.en;
+}
 
 const localizedAssets: Record<SupportedLocale, Record<string, string>> = {
   en: { 'logo.main': '/images/logo.png', 'hero.image': '/images/hero-en.png' },
@@ -109,9 +125,7 @@ function resolveInitialLocale(): SupportedLocale {
 if (typeof window !== 'undefined') {
   const stored = readStoredLocale();
   if (stored && stored !== 'en' && !translationCache[stored]) {
-    void (localeLoaders[stored] as any)().then((loaded: any) => {
-      translationCache[stored] = loaded;
-    });
+    void loadLocaleMessages(stored);
   }
 }
 
@@ -144,9 +158,8 @@ export const LocalizationProvider = ({ children }: { children: ReactNode }) => {
       clearLocalePending();
       return;
     }
-    (localeLoaders[locale] as any)().then((loaded: any) => {
+    loadLocaleMessages(locale).then((loaded: any) => {
       if (cancelled) return;
-      translationCache[locale] = loaded;
       setMessages(loaded);
       document.documentElement.lang = locale;
       clearLocalePending();
@@ -162,7 +175,7 @@ export const LocalizationProvider = ({ children }: { children: ReactNode }) => {
     document.documentElement.lang = newLocale;
   };
 
-  const applyUnresolvedLocale = (siteLocale?: string | null) => {
+  const applyUnresolvedLocale = useCallback((siteLocale?: string | null) => {
     if (readStoredLocale()) return; // User preference wins
     
     const browserLang = typeof navigator !== 'undefined' ? navigator.language : undefined;
@@ -174,7 +187,7 @@ export const LocalizationProvider = ({ children }: { children: ReactNode }) => {
     
     setLocaleState(resolved);
     document.documentElement.lang = resolved;
-  };
+  }, []);
 
   const t = (key: string, params?: Record<string, string | number>): string => {
     const raw = messages[key] || translationCache.en?.[key] || key;
