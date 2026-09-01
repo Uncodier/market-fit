@@ -1,4 +1,4 @@
-import { applyNotFilter, applySelectEmbeds, parseSelectEmbeds } from "@/lib/demo-data/mock-query"
+import { applyNotFilter, applySelectEmbeds, getRowValue, parseSelectEmbeds } from "@/lib/demo-data/mock-query"
 
 describe("demo mock query embeds", () => {
   it("parses alias, inner, fk hint, and nested embeds", () => {
@@ -61,5 +61,22 @@ describe("demo mock query embeds", () => {
       { id: "variant", parent_id: "parent" },
     ]
     expect(applyNotFilter(rows, "parent_id", "is", null).map((row) => row.id)).toEqual(["variant"])
+  })
+
+  it("embeds journal entries onto journal lines via entry_id", () => {
+    const memory = {
+      journal_lines: [{ id: "l1", entry_id: "e1", account_code: "4000", debit: 0, credit: 80 }],
+      journal_entries: [{ id: "e1", site_id: "demo-ecom-es-456", entry_date: "2026-08-20", source_type: "sale" }],
+    }
+
+    const lines = applySelectEmbeds(
+      memory.journal_lines,
+      "journal_lines",
+      "account_code, debit, credit, journal_entries!inner(entry_date, source_type, site_id)",
+      memory
+    )
+
+    expect(lines[0].journal_entries.site_id).toBe("demo-ecom-es-456")
+    expect(getRowValue(lines[0], "journal_entries.entry_date")).toBe("2026-08-20")
   })
 })

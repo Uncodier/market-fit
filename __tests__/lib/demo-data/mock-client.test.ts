@@ -68,6 +68,24 @@ describe("demo mock client", () => {
     expect(data.commerce).toBeTruthy()
   })
 
+  it("filters journal lines through journal_entries embeds", async () => {
+    const client = await createDemoMockClientImpl("demo-ecom-es-456")
+    const fromDate = new Date(Date.now() - 40 * 86400000).toISOString().slice(0, 10)
+    const toDate = new Date().toISOString().slice(0, 10)
+    const { data, error } = await client
+      .from("journal_lines")
+      .select("account_code, debit, credit, journal_entries!inner(entry_date, source_type, site_id)")
+      .eq("journal_entries.site_id", "demo-ecom-es-456")
+      .gte("journal_entries.entry_date", fromDate)
+      .lte("journal_entries.entry_date", toDate)
+      .neq("journal_entries.source_type", "opening")
+
+    expect(error).toBeNull()
+    expect(data.length).toBeGreaterThan(0)
+    expect(data.some((line: { account_code: string; credit: number }) => line.account_code === "4000" && line.credit > 0)).toBe(true)
+    expect(data.every((line: { journal_entries: { site_id: string } }) => line.journal_entries.site_id === "demo-ecom-es-456")).toBe(true)
+  })
+
   it("loads workflow nodes with type in() filter", async () => {
     const client = await createDemoMockClientImpl("demo-ecom-es-456")
     const { data } = await client

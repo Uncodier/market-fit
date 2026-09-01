@@ -1,4 +1,10 @@
+import { attachDemoAccounting } from "./accounting"
 import { mergeDemoData } from "./merge"
+import { applyDemoTimeline } from "./timeline"
+
+function finalizeDemoData(data: Record<string, any>) {
+  return attachDemoAccounting(applyDemoTimeline(data))
+}
 
 export const availableDemos = [
   {
@@ -33,13 +39,13 @@ export const getDemoData = async (siteId: string | null) => {
         import('./saas/workflows'),
         import('./saas/context'),
       ]);
-      return mergeDemoData(
+      return finalizeDemoData(mergeDemoData(
         base.saas_en_123_data,
         commerce.saasCommerce,
         records.saasRecords,
         workflows.saasWorkflows,
         context.saasContext
-      );
+      ));
     }
     if (siteId === 'demo-ecom-es-456') {
       const [base, commerce, records, workflows, context] = await Promise.all([
@@ -49,13 +55,13 @@ export const getDemoData = async (siteId: string | null) => {
         import('./ecom/workflows'),
         import('./ecom/context'),
       ]);
-      return mergeDemoData(
+      return finalizeDemoData(mergeDemoData(
         base.ecom_es_456_data,
         commerce.ecomCommerce,
         records.ecomRecords,
         workflows.ecomWorkflows,
         context.ecomContext
-      );
+      ));
     }
     if (siteId === 'demo-habituall') {
       const [base, commerce, records, workflows, context] = await Promise.all([
@@ -65,13 +71,13 @@ export const getDemoData = async (siteId: string | null) => {
         import('./habituall/workflows'),
         import('./habituall/context'),
       ]);
-      return mergeDemoData(
+      return finalizeDemoData(mergeDemoData(
         base.habituall_data,
         commerce.habituallCommerce,
         records.habituallRecords,
         workflows.habituallWorkflows,
         context.habituallContext
-      );
+      ));
     }
   } catch (error) {
     console.error(`Error loading demo data for ${siteId}:`, error);

@@ -27,7 +27,18 @@ const KNOWN_TABLES = new Set([
   "quotations",
   "profiles",
   "messages",
+  "journal_entries",
+  "journal_lines",
+  "accounting_accounts",
 ])
+
+const BELONGS_TO_FK: Record<string, string> = {
+  "journal_lines:journal_entries": "entry_id",
+}
+
+const HAS_MANY_FK: Record<string, string> = {
+  "journal_entries:journal_lines": "entry_id",
+}
 
 function singularize(name: string): string {
   if (name.endsWith("ies")) return `${name.slice(0, -3)}y`
@@ -97,11 +108,24 @@ export function parseSelectEmbeds(select: string): EmbedSpec[] {
   return embeds
 }
 
+export function getRowValue(item: Record<string, any>, column: string) {
+  if (!column || !column.includes(".")) return item?.[column]
+  return column.split(".").reduce((acc, key) => acc?.[key], item)
+}
+
 function pickFk(
   row: Record<string, unknown>,
   spec: EmbedSpec,
   sourceTable: string
 ): { kind: "belongsTo" | "hasMany"; column: string } {
+  const relationKey = `${sourceTable}:${spec.table || spec.alias}`
+  if (BELONGS_TO_FK[relationKey]) {
+    return { kind: "belongsTo", column: BELONGS_TO_FK[relationKey] }
+  }
+  if (HAS_MANY_FK[relationKey]) {
+    return { kind: "hasMany", column: HAS_MANY_FK[relationKey] }
+  }
+
   if (spec.hint && Object.prototype.hasOwnProperty.call(row, spec.hint)) {
     return { kind: "belongsTo", column: spec.hint }
   }

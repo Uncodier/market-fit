@@ -1,5 +1,5 @@
 import { getDemoData } from "./index";
-import { applyNotFilter, applySelectEmbeds } from "./mock-query";
+import { applyNotFilter, applySelectEmbeds, getRowValue } from "./mock-query";
 
 // Mock instance for the demo data cache 
 const memoryCache: Record<string, Record<string, any[]>> = {};
@@ -43,11 +43,11 @@ export async function createDemoMockClientImpl(demoSiteId: string) {
     const queryBuilder: any = {
       select: () => queryBuilder,
       eq: (column: string, value: any) => {
-        result = result.filter(item => item[column] === value);
+        result = result.filter(item => getRowValue(item, column) === value);
         return queryBuilder;
       },
       neq: (column: string, value: any) => {
-        result = result.filter(item => item[column] !== value);
+        result = result.filter(item => getRowValue(item, column) !== value);
         return queryBuilder;
       },
       match: (query: Record<string, any>) => {
@@ -61,27 +61,27 @@ export async function createDemoMockClientImpl(demoSiteId: string) {
         return queryBuilder;
       },
       in: (column: string, values: any[]) => {
-        result = result.filter(item => values.includes(item[column]));
+        result = result.filter(item => values.includes(getRowValue(item, column)));
         return queryBuilder;
       },
       gte: (column: string, value: any) => {
-        result = result.filter(item => item[column] >= value);
+        result = result.filter(item => getRowValue(item, column) >= value);
         return queryBuilder;
       },
       lte: (column: string, value: any) => {
-        result = result.filter(item => item[column] <= value);
+        result = result.filter(item => getRowValue(item, column) <= value);
         return queryBuilder;
       },
       gt: (column: string, value: any) => {
-        result = result.filter(item => item[column] > value);
+        result = result.filter(item => getRowValue(item, column) > value);
         return queryBuilder;
       },
       lt: (column: string, value: any) => {
-        result = result.filter(item => item[column] < value);
+        result = result.filter(item => getRowValue(item, column) < value);
         return queryBuilder;
       },
       is: (column: string, value: any) => {
-        result = result.filter(item => value === null ? item[column] == null : item[column] === value);
+        result = result.filter(item => value === null ? getRowValue(item, column) == null : getRowValue(item, column) === value);
         return queryBuilder;
       },
       not: (column: string, operator: string, value: any) => {
@@ -117,8 +117,10 @@ export async function createDemoMockClientImpl(demoSiteId: string) {
       },
       order: (column: string, { ascending } = { ascending: true }) => {
         result = result.sort((a, b) => {
-          if (a[column] < b[column]) return ascending ? -1 : 1;
-          if (a[column] > b[column]) return ascending ? 1 : -1;
+          const left = getRowValue(a, column)
+          const right = getRowValue(b, column)
+          if (left < right) return ascending ? -1 : 1;
+          if (left > right) return ascending ? 1 : -1;
           return 0;
         });
         return queryBuilder;

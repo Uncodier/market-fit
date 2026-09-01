@@ -49,6 +49,13 @@ describe("demo commerce seed", () => {
     expect(data?.settings?.[0]?.shop?.hero_title).toBeTruthy()
     expect(data?.settings?.[0]?.social_media?.length).toBeGreaterThan(0)
     expect(data?.copywriting?.length).toBeGreaterThan(0)
+    expect(data?.accounting_accounts?.some((account: { code: string }) => account.code === "4000")).toBe(true)
+    expect(data?.journal_entries?.length).toBeGreaterThan(0)
+    expect(data?.journal_lines?.some((line: { account_code: string; credit: number }) => line.account_code === "4000" && line.credit > 0)).toBe(true)
+    const lastMonth = new Date()
+    lastMonth.setDate(lastMonth.getDate() - 30)
+    const recent = (data?.journal_entries || []).filter((entry: { entry_date: string }) => entry.entry_date >= lastMonth.toISOString().slice(0, 10))
+    expect(recent.length).toBeGreaterThan(0)
   })
 
   it.each([
