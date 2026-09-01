@@ -987,7 +987,7 @@
   "booking.selectService": "Select Service",
   "booking.selectTime": "Select Time",
   "booking.serviceDesc": "Service Desc",
-  "booking.success.desc": "Desc",
+  "booking.success.desc": "Your meeting has been scheduled and assigned to a team member.",
   "booking.success.descRR": "Your meeting has been scheduled and assigned to a team member.",
   "booking.success.pending": "Confirm booking",
   "booking.success.pendingDesc": "Fill your details to confirm",

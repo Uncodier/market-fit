@@ -28,7 +28,7 @@ export default function Providers({ children, country }: ProvidersProps) {
     <SWRProvider>
     <AuthProvider>
       <ThemeProvider>
-        <LocalizationProvider initialCountry={country}>
+        <LocalizationProvider>
           <DisplayCurrencyProvider initialCountry={country}>
             {useWorkspace ? (
               <WorkspaceProviders>

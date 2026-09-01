@@ -1,24 +1,19 @@
 "use client"
 
 import { useEffect } from "react"
-import {
-  isSupportedLocale,
-  useLocalization,
-} from "@/app/context/LocalizationContext"
+import { useLocalization } from "@/app/context/LocalizationContext"
 
 /**
- * Applies the site default locale for shop storefront base load when the
- * visitor has no saved makinari-locale preference. Does not persist.
+ * Applies the site default locale (or falls back to browser location) for base load 
+ * when the visitor has no saved makinari-locale preference. Does not persist.
  */
 export function SiteLocaleBootstrap({ locale }: { locale?: string | null }) {
-  const { applySiteDefaultLocale, isReady } = useLocalization()
+  const { applyUnresolvedLocale, isReady } = useLocalization()
 
   useEffect(() => {
     if (!isReady) return
-    if (isSupportedLocale(locale)) {
-      applySiteDefaultLocale(locale)
-    }
-  }, [locale, isReady, applySiteDefaultLocale])
+    applyUnresolvedLocale(locale)
+  }, [locale, isReady, applyUnresolvedLocale])
 
   return null
 }

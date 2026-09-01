@@ -3,9 +3,9 @@
 import React, { createContext, useContext, useState, useEffect, useLayoutEffect, ReactNode } from 'react';
 import enTranslations from './locales/en.json';
 
-export type SupportedLocale = 'en';
+export type SupportedLocale = 'en' | 'es' | 'fr' | 'de' | 'ja';
 
-const SUPPORTED_LOCALES: SupportedLocale[] = ['en'];
+const SUPPORTED_LOCALES: SupportedLocale[] = ['en', 'es', 'fr', 'de', 'ja'];
 const LOCALE_COOKIE = 'makinari-locale';
 
 export function isSupportedLocale(value: unknown): value is SupportedLocale {
@@ -17,15 +17,27 @@ interface LocalizationContextType {
   /** True after the initial localStorage / geo / browser resolution has run. */
   isReady: boolean;
   setLocale: (locale: SupportedLocale) => void;
-  /** Apply site default when the visitor has no saved preference. Does not persist. */
-  applySiteDefaultLocale: (locale: SupportedLocale) => void;
+  /** Apply site default or browser location when the visitor has no saved preference. Does not persist. */
+  applyUnresolvedLocale: (siteLocale?: string | null) => void;
   t: (key: string, params?: Record<string, string | number>) => string;
   getAsset: (key: string) => string;
 }
 
 const defaultLocale: SupportedLocale = 'en';
 
-const countryToLocale: Record<string, SupportedLocale> = {};
+const countryToLocale: Record<string, SupportedLocale> = {
+  US: 'en',
+  GB: 'en',
+  CA: 'en',
+  AU: 'en',
+  MX: 'es',
+  ES: 'es',
+  AR: 'es',
+  CO: 'es',
+  FR: 'fr',
+  DE: 'de',
+  JP: 'ja',
+};
 
 const LocalizationContext = createContext<LocalizationContextType | undefined>(undefined);
 
@@ -41,7 +53,28 @@ const localizedAssets: Record<SupportedLocale, Record<string, string>> = {
   en: { 'logo.main': '/images/logo.png', 'hero.image': '/images/hero-en.png' },
 };
 
-function readStoredLocale(): SupportedLocale | null {
+export function resolveDisplayLocale({
+  storedLocale,
+  siteLocale,
+  country,
+  browserLanguage,
+}: {
+  storedLocale?: string | null;
+  siteLocale?: string | null;
+  country?: string | null;
+  browserLanguage?: string | null;
+}): SupportedLocale {
+  if (isSupportedLocale(storedLocale)) return storedLocale;
+  if (isSupportedLocale(siteLocale)) return siteLocale;
+  if (country && countryToLocale[country.toUpperCase()]) return countryToLocale[country.toUpperCase()];
+  if (browserLanguage) {
+    const lang = browserLanguage.split('-')[0];
+    if (isSupportedLocale(lang)) return lang;
+  }
+  return defaultLocale;
+}
+
+export function readStoredLocale(): SupportedLocale | null {
   if (typeof window === 'undefined') return null;
   try {
     const fromStorage = localStorage.getItem('makinari-locale');
@@ -67,14 +100,9 @@ function persistLocale(locale: SupportedLocale) {
   document.cookie = `${LOCALE_COOKIE}=${locale}; path=/; max-age=31536000; SameSite=Lax`;
 }
 
-function resolveInitialLocale(initialCountry?: string): SupportedLocale {
+function resolveInitialLocale(): SupportedLocale {
   const stored = readStoredLocale();
   if (stored) return stored;
-  if (initialCountry && countryToLocale[initialCountry]) return countryToLocale[initialCountry];
-  if (typeof navigator !== 'undefined') {
-    const browserLang = navigator.language.split('-')[0];
-    if (isSupportedLocale(browserLang)) return browserLang;
-  }
   return defaultLocale;
 }
 
@@ -87,13 +115,13 @@ if (typeof window !== 'undefined') {
   }
 }
 
-export const LocalizationProvider = ({ children, initialCountry }: { children: ReactNode, initialCountry?: string }) => {
+export const LocalizationProvider = ({ children }: { children: ReactNode }) => {
   const [locale, setLocaleState] = useState<SupportedLocale>(defaultLocale);
   const [messages, setMessages] = useState<any>(enTranslations);
   const [mounted, setMounted] = useState(false);
 
   useLayoutEffect(() => {
-    const next = resolveInitialLocale(initialCountry);
+    const next = resolveInitialLocale();
     const cached = translationCache[next];
     setLocaleState(next);
     if (cached) {
@@ -104,7 +132,7 @@ export const LocalizationProvider = ({ children, initialCountry }: { children: R
     setMounted(true);
     const timeout = window.setTimeout(clearLocalePending, 2000);
     return () => window.clearTimeout(timeout);
-  }, [initialCountry]);
+  }, []);
 
   useEffect(() => {
     if (!mounted) return;
@@ -134,11 +162,18 @@ export const LocalizationProvider = ({ children, initialCountry }: { children: R
     document.documentElement.lang = newLocale;
   };
 
-  const applySiteDefaultLocale = (siteLocale: SupportedLocale) => {
-    if (!isSupportedLocale(siteLocale)) return;
-    if (readStoredLocale()) return;
-    setLocaleState(siteLocale);
-    document.documentElement.lang = siteLocale;
+  const applyUnresolvedLocale = (siteLocale?: string | null) => {
+    if (readStoredLocale()) return; // User preference wins
+    
+    const browserLang = typeof navigator !== 'undefined' ? navigator.language : undefined;
+    const resolved = resolveDisplayLocale({
+      storedLocale: null,
+      siteLocale,
+      browserLanguage: browserLang,
+    });
+    
+    setLocaleState(resolved);
+    document.documentElement.lang = resolved;
   };
 
   const t = (key: string, params?: Record<string, string | number>): string => {
@@ -156,7 +191,7 @@ export const LocalizationProvider = ({ children, initialCountry }: { children: R
   };
 
   return (
-    <LocalizationContext.Provider value={{ locale, isReady: mounted, setLocale, applySiteDefaultLocale, t, getAsset }}>
+    <LocalizationContext.Provider value={{ locale, isReady: mounted, setLocale, applyUnresolvedLocale, t, getAsset }}>
       {children}
     </LocalizationContext.Provider>
   );

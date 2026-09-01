@@ -74,7 +74,7 @@ export function MarketplaceClient({
   discountsFeed?: StorefrontPromoCard[],
   promoBadgesByItemId?: Record<string, PromoBadge>,
 }) {
-  const { t, locale, setLocale } = useLocalization()
+  const { t, locale, setLocale, applyUnresolvedLocale, isReady } = useLocalization()
   const { setStoreCurrency } = useDisplayCurrency()
   const { user, isLoading: authLoading } = useAuth()
   const searchParams = useSearchParams()
@@ -97,6 +97,10 @@ export function MarketplaceClient({
   useEffect(() => {
     setStoreCurrency(null)
   }, [setStoreCurrency])
+
+  useEffect(() => {
+    if (isReady) applyUnresolvedLocale(null)
+  }, [isReady, applyUnresolvedLocale])
 
   const setSelectedKind = (kind: string) => {
     const qs = buildMarketplaceCategorySearch(searchParams, {
