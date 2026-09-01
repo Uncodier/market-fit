@@ -54,12 +54,7 @@ function mockAlreadyAnswered() {
 }
 
 function mockUnanswered() {
-  fromMock
-    .mockReturnValueOnce(createChain({
-      data: [{ id: 'user-1', created_at: '2026-08-31T17:10:00.000Z' }],
-      error: null,
-    }))
-    .mockReturnValueOnce(createChain({ data: [], error: null }))
+  fromMock.mockReturnValue(createChain({ data: [], error: null }))
 }
 
 function setDocumentHidden(hidden: boolean) {
@@ -297,23 +292,57 @@ describe('postWithRetry', () => {
     expect(postMock).not.toHaveBeenCalled()
   })
 
-  it('does not POST while the tab is hidden, then skips if a reply appeared', async () => {
+  it('does not retry while the tab is hidden, then skips if a reply appeared', async () => {
     setDocumentHidden(true)
+    mockUnanswered() // Base case
+    postMock.mockResolvedValueOnce({ success: false, status: 503, error: { message: 'unavailable' } })
 
     const pending = postWithRetry('/api/workflow/promptRobot', { message: 'hello' }, {
       instanceId: 'inst-1',
       message: 'hello',
     })
 
-    await Promise.resolve()
-    expect(postMock).not.toHaveBeenCalled()
+    // First attempt happens immediately, even if hidden
+    await jest.advanceTimersByTimeAsync(0)
+    expect(postMock).toHaveBeenCalledTimes(1)
 
+    // Wait some time, but tab is still hidden so attempt 2 doesn't happen
+    await jest.advanceTimersByTimeAsync(1000)
+    expect(postMock).toHaveBeenCalledTimes(1)
+
+    // Reply appears while hidden
     mockAlreadyAnswered()
+
+    // Tab becomes visible
     setDocumentHidden(false)
     document.dispatchEvent(new Event('visibilitychange'))
 
     const result = await pending
     expect(result.success).toBe(true)
-    expect(postMock).not.toHaveBeenCalled()
+    // No second POST because it was already answered
+    expect(postMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('waitUntilTabVisible resolves after timeout if tab never becomes visible', async () => {
+    setDocumentHidden(true)
+    mockUnanswered() // Base case
+    postMock
+      .mockResolvedValueOnce({ success: false, status: 503, error: { message: 'unavailable' } })
+      .mockResolvedValueOnce({ success: true, data: { ok: true } })
+
+    const pending = postWithRetry('/api/workflow/promptRobot', { message: 'hello' }, {
+      instanceId: 'inst-1',
+      message: 'hello',
+    })
+
+    await jest.advanceTimersByTimeAsync(0)
+    expect(postMock).toHaveBeenCalledTimes(1)
+
+    // Fast-forward past the 2s timeout for waitUntilTabVisible
+    await jest.advanceTimersByTimeAsync(2500)
+
+    const result = await pending
+    expect(result.success).toBe(true)
+    expect(postMock).toHaveBeenCalledTimes(2)
   })
 })

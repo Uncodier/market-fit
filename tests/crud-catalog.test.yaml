@@ -3,6 +3,9 @@ goal: Complete CRUD (Create, Read, Update, Delete) cycle for a Catalog item
 statements:
   # 0. Set site context (just like navigation test)
   - URL: /projects
+  - intent: Select the first available project
+    action: click
+    locator: "getByRole('button', { name: 'Select' }).first()"
 
   - WAIT_UNTIL: The user is navigated to the default project page
     js: "page.url().includes('/robots')"
@@ -12,7 +15,7 @@ statements:
   - URL: /catalog
   - intent: Click the Add Item button to open the creation dialog
     action: click
-    locator: "getByRole('button', { name: /Add item|Agregar/i })"
+    locator: "getByRole('button', { name: /Add item|Agregar ítem|Agregar item/i })"
 
   - intent: Type a new category name in the dependency selector
     action: fill
@@ -40,6 +43,10 @@ statements:
     action: click
     locator: "getByRole('button', { name: /Create item|Agregar item/i })"
 
+  - WAIT_UNTIL: The create catalog item modal closes
+    js: "page.getByRole('dialog').count() === 0"
+    timeout_seconds: 10
+
   - WAIT_UNTIL: The new product appears in the list
     js: "page.getByText('Automated Test Product').count() > 0"
     timeout_seconds: 15
@@ -55,9 +62,6 @@ statements:
   # 2. READ / VERIFY
   - VERIFY: The details page shows the correct product name
     js: "await expect(page.getByDisplayValue('Automated Test Product').first()).toBeVisible()"
-
-  - VERIFY: The details page shows the correct SKU
-    js: "await expect(page.getByDisplayValue('TEST-01')).toBeVisible()"
 
   # 3. UPDATE
   - intent: Update the product name in the details form

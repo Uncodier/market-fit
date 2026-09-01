@@ -45,13 +45,35 @@ export function waitUntilTabVisible(): Promise<void> {
   }
 
   return new Promise((resolve) => {
+    let timeoutId: NodeJS.Timeout
+
     const onVisible = () => {
       if (document.visibilityState === 'visible') {
-        document.removeEventListener('visibilitychange', onVisible)
+        cleanup()
         resolve()
       }
     }
+
+    const onFocusOrPageShow = () => {
+      cleanup()
+      resolve()
+    }
+
+    const cleanup = () => {
+      document.removeEventListener('visibilitychange', onVisible)
+      window.removeEventListener('focus', onFocusOrPageShow)
+      window.removeEventListener('pageshow', onFocusOrPageShow)
+      clearTimeout(timeoutId)
+    }
+
     document.addEventListener('visibilitychange', onVisible)
+    window.addEventListener('focus', onFocusOrPageShow)
+    window.addEventListener('pageshow', onFocusOrPageShow)
+
+    timeoutId = setTimeout(() => {
+      cleanup()
+      resolve()
+    }, 2000)
   })
 }
 
@@ -264,7 +286,9 @@ export async function postWithRetry<T = any>(
   let lastResponse: ApiPostResult<T> | null = null
 
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-    await waitUntilTabVisible()
+    if (attempt > 1) {
+      await waitUntilTabVisible()
+    }
 
     const skipped = await skipIfAlreadyAnswered<T>(instanceId, message)
     if (skipped) return skipped

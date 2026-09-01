@@ -1093,8 +1093,7 @@ function RobotsPageContent() {
   const isBrowserVisible = Boolean(
     (hasRequirementPreview || artifacts.length > 0) &&
     !pendingInstanceId &&
-    !isCanvasMode &&
-    activeBrowserTab.kind !== 'artifact'
+    !isCanvasMode
   )
 
   const rawActiveUrlToDisplay = (() => {

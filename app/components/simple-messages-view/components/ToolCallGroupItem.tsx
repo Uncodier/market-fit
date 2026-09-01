@@ -60,7 +60,7 @@ export const ToolCallGroupItem: React.FC<ToolCallGroupItemProps> = ({
           )}
           {renderToolIcon(toolName)}
           <span className="font-medium text-muted-foreground">
-            Llamada a herramienta: {displayName}
+            Tool call: {displayName}
           </span>
           <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full font-inter text-xs font-medium bg-primary/10 text-primary">
             {totalCount}

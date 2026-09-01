@@ -246,7 +246,7 @@ export function BookingExperience({
 
         <div className="max-w-4xl w-full mx-auto">
         <div className="grid md:grid-cols-3 gap-8">
-          <div className="md:col-span-1 space-y-6 flex flex-col justify-center items-center md:items-start text-center md:text-left bg-muted/30 relative z-10 md:-mr-8 md:pr-8">
+          <div className="md:col-span-1 space-y-6 flex flex-col justify-center items-center md:items-start text-center md:text-left">
             <div className="space-y-4 flex flex-col items-center md:items-start w-full">
               {imageUrl ? (
                 <div className="h-16 w-16 sm:h-20 sm:w-20 rounded-full border border-primary/10 overflow-hidden shadow-sm shrink-0 mb-2">

@@ -287,6 +287,11 @@ export default function CampaignsPage() {
           icon={<Target className="h-12 w-12 text-muted-foreground" />}
           title={emptyTitle}
           description={emptyDescription}
+          action={
+            <Button onClick={() => window.dispatchEvent(new Event('campaigns:create'))}>
+              {t("campaigns.empty.action") || "New Campaign"}
+            </Button>
+          }
           features={[
             {
               title: t("campaigns.empty.feature.title") || "Campaign Management",

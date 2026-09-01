@@ -58,7 +58,7 @@ export const StepIndicator: React.FC<StepIndicatorProps> = ({
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   {assets.length > 0 ? <Folder className="h-4 w-4" /> : <Target className="h-4 w-4" />}
                   <span className="font-medium">
-                    {assets.length > 0 ? `Files (${assets.length})` : 'Plan steps'}
+                    {assets.length > 0 ? `Archivos (${assets.length})` : 'Pasos del plan'}
                   </span>
                 </div>
                 <Button
@@ -123,7 +123,7 @@ export const StepIndicator: React.FC<StepIndicatorProps> = ({
                     </>
                   ) : (
                     <>
-                      <span className="font-medium whitespace-nowrap">Step {currentStep?.order || 1} of {steps.length}</span>
+                      <span className="font-medium whitespace-nowrap">Paso {currentStep?.order || 1} de {steps.length}</span>
                       <span className="text-xs truncate">- {currentStep?.title}</span>
                     </>
                   )}
@@ -274,8 +274,8 @@ export const StepIndicator: React.FC<StepIndicatorProps> = ({
                   </div>
                 )}
               </div>
-              <span className="font-medium ml-1">Files ({assets.length})</span>
-              <span className="text-xs">- Click to view</span>
+              <span className="font-medium ml-1">Archivos ({assets.length})</span>
+              <span className="text-xs">- Haz clic para ver</span>
               <ChevronDown className="h-3 w-3 ml-auto" />
             </div>
           ) : steps.length > 0 ? (
@@ -283,12 +283,12 @@ export const StepIndicator: React.FC<StepIndicatorProps> = ({
               {allCompleted ? (
                 <>
                   <CheckCircle className="h-4 w-4 text-green-500" />
-                  <span className="font-medium whitespace-nowrap text-green-600">All steps completed!</span>
-                  <span className="text-xs text-green-600/70">Back to step 1</span>
+                  <span className="font-medium whitespace-nowrap text-green-600">¡Todos los pasos completados!</span>
+                  <span className="text-xs text-green-600/70">Volver al paso 1</span>
                 </>
               ) : (
                 <>
-                  <span className="font-medium whitespace-nowrap">Step {currentStep?.order || 1} of {steps.length}</span>
+                  <span className="font-medium whitespace-nowrap">Paso {currentStep?.order || 1} de {steps.length}</span>
                   <span className="text-xs truncate">- {currentStep?.title}</span>
                 </>
               )}
@@ -363,14 +363,14 @@ export const StepIndicator: React.FC<StepIndicatorProps> = ({
                       </div>
                     )}
                   </div>
-                  <span className="font-medium ml-1">Files ({assets.length})</span>
-                  <span className="text-xs">- Click to view</span>
+                  <span className="font-medium ml-1">Archivos ({assets.length})</span>
+                  <span className="text-xs">- Haz clic para ver</span>
                   <ChevronDown className="h-3 w-3 ml-auto" />
                 </>
               ) : (
                 <>
-                  <span className="font-medium">No plan available</span>
-                  <span className="text-xs">- The agent will generate a plan upon starting</span>
+                  <span className="font-medium">No hay plan disponible</span>
+                  <span className="text-xs">- El agente generará un plan al comenzar</span>
                 </>
               )}
             </div>

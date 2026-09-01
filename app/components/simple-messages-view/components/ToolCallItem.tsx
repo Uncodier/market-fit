@@ -176,14 +176,14 @@ export const ToolCallItem: React.FC<ToolCallItemProps> = ({
         }}
         title={
           hasCollapsibleElements
-            ? (collapsedToolDetails.has(log.id) ? "Haz clic para mostrar detalles" : "Haz clic para ocultar detalles")
-            : "Llamada a herramienta completada"
+            ? (collapsedToolDetails.has(log.id) ? "Click to show details" : "Click to hide details")
+            : "Tool call completed"
         }
       >
         <div className="flex items-center gap-2">
           {toolName && renderToolIcon(toolName)}
           <span className="font-medium text-muted-foreground">
-            {log.log_type === 'tool_call' ? 'Llamada a herramienta' : 'Resultado de herramienta'}: {toolName ? formatToolDisplayName(toolName) : 'Desconocido'}
+            {log.log_type === 'tool_call' ? 'Tool call' : 'Tool result'}: {toolName ? formatToolDisplayName(toolName) : 'Unknown'}
           </span>
           
           {/* Status badge - only show for pending status */}

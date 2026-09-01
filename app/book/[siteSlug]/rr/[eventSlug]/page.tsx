@@ -206,7 +206,7 @@ export default function RoundRobinBookingPage(props: {
         <main className="flex-1 flex items-center justify-center p-4">
           <div className="max-w-4xl w-full mx-auto">
             <div className="grid md:grid-cols-3 gap-8">
-              <div className="md:col-span-1 space-y-6 flex flex-col justify-center items-center md:items-start text-center md:text-left bg-background relative z-10 md:-mr-8 md:pr-8">
+              <div className="md:col-span-1 space-y-6 flex flex-col justify-center items-center md:items-start text-center md:text-left">
               <div className="flex items-center justify-center md:justify-start gap-3 mb-6 w-full">
                 <Skeleton className="h-10 w-10 rounded" />
                 <Skeleton className="h-8 w-32" />
@@ -385,7 +385,7 @@ export default function RoundRobinBookingPage(props: {
       <main className="flex-1 flex items-center justify-center p-4">
         <div className="max-w-4xl w-full mx-auto">
           <div className="grid md:grid-cols-3 gap-8">
-            <div className="md:col-span-1 space-y-6 flex flex-col justify-center items-center md:items-start text-center md:text-left bg-background relative z-10 md:-mr-8 md:pr-8">
+            <div className="md:col-span-1 space-y-6 flex flex-col justify-center items-center md:items-start text-center md:text-left">
             {siteInfo && (
               <div className="flex items-center justify-center md:justify-start gap-3 mb-6 w-full">
                 {siteInfo.logo_url ? (

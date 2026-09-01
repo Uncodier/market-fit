@@ -21,7 +21,7 @@ export function VisitFormAside({
   const { t } = useLocalization()
 
   return (
-    <aside className="md:col-span-1 space-y-6 flex flex-col justify-center items-center md:items-start text-center md:text-left bg-background relative z-10 md:-mr-8 md:pr-8">
+    <aside className="md:col-span-1 space-y-6 flex flex-col justify-center items-center md:items-start text-center md:text-left">
       <div className="flex items-center gap-3 w-full justify-center md:justify-start">
         {siteLogo ? (
           // eslint-disable-next-line @next/next/no-img-element

@@ -364,10 +364,10 @@ export function ContextSelectorModal({ onContextChange, selectedContext, isBrows
             variant="secondary"
             size="sm"
             className="h-8 hover:bg-secondary/80 transition-colors duration-200 px-3"
-            title="Agregar contexto"
+            title="Add context"
           >
             @
-            <span className="ml-1">contexto</span>
+            <span className="ml-1">context</span>
             {hideChips && totalSelected > 0 && (
               <Badge variant="outline" className="ml-1.5 h-5 px-1.5 py-0 text-[10px] flex items-center justify-center">
                 {totalSelected}

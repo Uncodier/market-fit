@@ -170,6 +170,15 @@ export const useMessageSending = ({
     setIsSendingMessage(true)
     onClearMessage?.()
 
+    const safetyUnlockTimeout = setTimeout(() => {
+      if (activeRequestIdRef.current === requestId) {
+        console.warn('⏰ Send safety timeout reached, unlocking send button')
+        sendingLockRef.current = false
+        setIsSendingMessage(false)
+        activeRequestIdRef.current = null
+      }
+    }, 35000)
+
     if (!activeRobotInstance) {
       setNewMakinaThinking()
       setHasMessageBeenSent(true)
@@ -193,6 +202,7 @@ export const useMessageSending = ({
         clearThinkingState()
       }
     } finally {
+      clearTimeout(safetyUnlockTimeout)
       sendingLockRef.current = false
       if (activeRequestIdRef.current === requestId) {
         setIsSendingMessage(false)

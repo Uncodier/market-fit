@@ -420,6 +420,11 @@ export default function RecordsPage() {
                   icon={<ClipboardList className="h-8 w-8 text-muted-foreground" />}
                   title={t("records.empty.title") || "No records found"}
                   description={t("records.empty.desc") || "Create a new record or adjust your filters."}
+                  action={
+                    <Button onClick={handleCreateRecord}>
+                      {t("records.new") || "New Record"}
+                    </Button>
+                  }
                   variant="fancy"
                 />
               </div>
