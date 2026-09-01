@@ -38,6 +38,14 @@ const nextConfig = {
   // Headers configuration for CSP
   async headers() {
     return [
+      ...(process.env.NODE_ENV === 'development'
+        ? [{
+            source: '/_next/:path*',
+            headers: [
+              { key: 'Cache-Control', value: 'no-store, must-revalidate' },
+            ],
+          }]
+        : []),
       {
         source: '/(.*)',
         headers: [

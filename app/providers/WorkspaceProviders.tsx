@@ -8,11 +8,13 @@ import { ScreenAccessProvider } from '@/app/context/ScreenAccessContext';
 import { WidgetProvider } from '../context/WidgetContext';
 import { RobotsProvider } from '../context/RobotsContext';
 import { TooltipProvider } from '../components/ui/tooltip';
+import { SiteCurrencyBootstrap } from '../components/commerce/SiteCurrencyBootstrap';
 
 export default function WorkspaceProviders({ children }: { children: React.ReactNode }) {
   return (
     <LayoutProvider>
       <SiteProvider>
+        <SiteCurrencyBootstrap />
         <PermissionProvider>
           <ScreenAccessProvider>
             <RobotsProvider>

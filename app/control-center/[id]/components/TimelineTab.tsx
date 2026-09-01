@@ -17,7 +17,7 @@ import { Switch } from "@/app/components/ui/switch"
 import { Label } from "@/app/components/ui/label"
 import { Input } from "@/app/components/ui/input"
 import { getUserData } from "@/app/services/user-service"
-import { navigateToLead } from "@/app/hooks/use-navigation-history"
+import { navigateToLead } from "@/lib/navigation/navigation-helpers"
 import { cn } from "@/lib/utils"
 import { extractUrlsFromText, generateTitleFromUrl } from "@/app/utils/url-cleaning"
 import {

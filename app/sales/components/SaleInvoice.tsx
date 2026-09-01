@@ -9,7 +9,7 @@ import { format } from "date-fns"
 import { es, fr, de, ja, enUS } from "date-fns/locale"
 import { Table, TableHeader, TableBody, TableCell, TableRow, TableHead } from "@/app/components/ui/table"
 import { useLocalization } from "@/app/context/LocalizationContext"
-import { navigateToOrder } from "@/app/hooks/use-navigation-history"
+import { navigateToOrder } from "@/lib/navigation/navigation-helpers"
 import { useRouter } from "next/navigation"
 
 const STATUS_STYLES: Record<string, string> = {

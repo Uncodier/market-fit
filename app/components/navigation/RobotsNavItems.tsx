@@ -7,9 +7,13 @@ import { Bot, Printer, Workflow } from "@/app/components/ui/icons"
 import { RobotsBadge } from "./RobotsBadge"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { useLayout } from "@/app/context/LayoutContext"
-import { requestNavigationHistoryReset } from "@/app/hooks/use-navigation-history"
 import { NAV_ITEM_ICON } from "@/app/config/module-visuals"
 import { useOptionalScreenAccess } from "@/app/context/ScreenAccessContext"
+
+function resetBreadcrumbTrail() {
+  if (typeof window === "undefined") return
+  window.dispatchEvent(new CustomEvent("navigation-history:reset"))
+}
 
 interface RobotsNavItemsProps {
   isCollapsed: boolean
@@ -71,7 +75,7 @@ export function RobotsNavItems({ isCollapsed }: RobotsNavItemsProps) {
         isActive={overviewActive}
         isCollapsed={isCollapsed}
         onClick={() => {
-          requestNavigationHistoryReset()
+          resetBreadcrumbTrail()
         }}
       />
       )}
@@ -83,7 +87,7 @@ export function RobotsNavItems({ isCollapsed }: RobotsNavItemsProps) {
         isCollapsed={isCollapsed}
         onClick={() => {
           setRobotsViewMode("agent")
-          requestNavigationHistoryReset()
+          resetBreadcrumbTrail()
         }}
       >
         <RobotsBadge isActive={agentActive} />
@@ -97,7 +101,7 @@ export function RobotsNavItems({ isCollapsed }: RobotsNavItemsProps) {
         isCollapsed={isCollapsed}
         onClick={() => {
           setRobotsViewMode("imprenta")
-          requestNavigationHistoryReset()
+          resetBreadcrumbTrail()
         }}
       />
       )}
@@ -110,7 +114,7 @@ export function RobotsNavItems({ isCollapsed }: RobotsNavItemsProps) {
         isCollapsed={isCollapsed}
         onClick={() => {
           setRobotsViewMode("workflow")
-          requestNavigationHistoryReset()
+          resetBreadcrumbTrail()
         }}
       />
       )}

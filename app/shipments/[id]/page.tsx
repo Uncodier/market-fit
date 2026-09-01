@@ -29,7 +29,7 @@ import { Save, MapPin, User, Archive, CheckCircle2, ListOrdered } from "@/app/co
 import { Skeleton } from "@/app/components/ui/skeleton"
 import { format } from "date-fns"
 import Link from "next/link"
-import { navigateToOrder } from "@/app/hooks/use-navigation-history"
+import { navigateToOrder } from "@/lib/navigation/navigation-helpers"
 import { useRouter } from "next/navigation"
 
 export default function ShipmentDetail(props: { params: Promise<{ id: string }> }) {

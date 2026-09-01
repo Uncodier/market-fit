@@ -30,7 +30,7 @@ import { buildPublicDocPath } from "@/app/documents/public-token"
 import { Skeleton } from "@/app/components/ui/skeleton"
 import { useRouter } from "next/navigation"
 import { useSite } from "@/app/context/SiteContext"
-import { navigateToShipment } from "@/app/hooks/use-navigation-history"
+import { navigateToShipment } from "@/lib/navigation/navigation-helpers"
 import { OrderInvoiceDocument } from "../components/OrderInvoiceDocument"
 import { OrderStatusBar } from "../components/OrderStatusBar"
 import {

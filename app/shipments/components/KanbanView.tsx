@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils"
 import { format, formatDistanceToNow } from "date-fns"
 import { Send, ExternalLink } from "@/app/components/ui/icons"
 import Link from "next/link"
-import { navigateToOrder } from "@/app/hooks/use-navigation-history"
+import { navigateToOrder } from "@/lib/navigation/navigation-helpers"
 import { useRouter } from "next/navigation"
 
 const STATUS_STYLES: Record<string, string> = {

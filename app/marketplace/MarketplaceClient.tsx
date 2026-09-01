@@ -17,6 +17,7 @@ import {
   parseMarketplaceSubtype,
 } from "./marketplace-category-url"
 import { useLocalization } from "@/app/context/LocalizationContext"
+import { useDisplayCurrency } from "@/app/context/DisplayCurrencyContext"
 import { isAccessOnlyItem, requiresVariantSelection } from "@/app/catalog/product-details"
 import { shouldUseCompactMobileListing } from "@/app/components/commerce/CommerceProductGrid"
 import { getSiteInfoBySlug } from "@/app/book/actions"
@@ -74,6 +75,7 @@ export function MarketplaceClient({
   promoBadgesByItemId?: Record<string, PromoBadge>,
 }) {
   const { t, locale, setLocale } = useLocalization()
+  const { setStoreCurrency } = useDisplayCurrency()
   const { user, isLoading: authLoading } = useAuth()
   const searchParams = useSearchParams()
   const pathname = usePathname() || "/marketplace"
@@ -91,6 +93,10 @@ export function MarketplaceClient({
   const searchPlaceholder = t("marketplace.searchPlaceholder") || "Search everything..."
   const searchLabel = t("common.search") || "Search"
   const showingDiscounts = selectedKind === "discounts"
+
+  useEffect(() => {
+    setStoreCurrency(null)
+  }, [setStoreCurrency])
 
   const setSelectedKind = (kind: string) => {
     const qs = buildMarketplaceCategorySearch(searchParams, {

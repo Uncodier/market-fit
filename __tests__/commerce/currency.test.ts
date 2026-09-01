@@ -1,4 +1,9 @@
-import { resolveLocalCurrency, currencyFlag, flagEmoji } from '../../app/lib/locale-currency';
+import {
+  resolveLocalCurrency,
+  resolveDisplayCurrency,
+  currencyFlag,
+  flagEmoji,
+} from '../../app/lib/locale-currency';
 import { convertAmount, formatDisplayCurrency } from '../../app/lib/fx';
 
 describe('Locale and Currency Resolution', () => {
@@ -29,6 +34,75 @@ describe('Locale and Currency Resolution', () => {
     
     // Language es-MX (MXN) should win over uiLocale ja (JPY)
     expect(resolveLocalCurrency({ language: 'es-MX', uiLocale: 'ja' })).toBe('MXN');
+  });
+});
+
+describe('Display currency priority', () => {
+  it('uses the site currency when the visitor has no preference', () => {
+    expect(
+      resolveDisplayCurrency({
+        mode: 'store',
+        storeCurrency: 'MXN',
+        localCurrency: 'GBP',
+        sourceCurrency: 'USD',
+      }),
+    ).toBe('MXN');
+  });
+
+  it('defaults to store mode when mode is omitted', () => {
+    expect(
+      resolveDisplayCurrency({
+        storeCurrency: 'MXN',
+        localCurrency: 'GBP',
+        sourceCurrency: 'USD',
+      }),
+    ).toBe('MXN');
+  });
+
+  it('uses local currency only when the user chose local', () => {
+    expect(
+      resolveDisplayCurrency({
+        mode: 'local',
+        storeCurrency: 'USD',
+        localCurrency: 'MXN',
+        sourceCurrency: 'EUR',
+      }),
+    ).toBe('MXN');
+  });
+
+  it('falls back to the product currency when the site has none', () => {
+    expect(
+      resolveDisplayCurrency({
+        mode: 'store',
+        storeCurrency: null,
+        localCurrency: 'GBP',
+        sourceCurrency: 'EUR',
+      }),
+    ).toBe('EUR');
+  });
+
+  it('does not let IP/local region win over site or an explicit preference', () => {
+    expect(
+      resolveDisplayCurrency({
+        mode: 'store',
+        storeCurrency: 'USD',
+        localCurrency: 'EUR',
+        sourceCurrency: 'MXN',
+      }),
+    ).toBe('USD');
+    expect(
+      resolveDisplayCurrency({
+        mode: 'EUR',
+        storeCurrency: 'USD',
+        localCurrency: 'MXN',
+        sourceCurrency: 'GBP',
+      }),
+    ).toBe('EUR');
+  });
+
+  it('falls back to USD when nothing is set', () => {
+    expect(resolveDisplayCurrency({})).toBe('USD');
+    expect(resolveDisplayCurrency({ mode: 'store', localCurrency: 'JPY' })).toBe('USD');
   });
 });
 

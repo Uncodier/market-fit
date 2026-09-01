@@ -14,13 +14,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Missing required parameters" }, { status: 400 });
   }
 
-  // Handle demo sites to prevent invalid UUID database errors
-  if (siteId.startsWith("demo-")) {
-    return NextResponse.json({
-      data: [],
-      metadata: { warning: "Demo site detected" }
-    });
-  }
 
   const supabase = await createServiceClient(); // Use service client to bypass RLS for analytics data
 

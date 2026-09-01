@@ -1,3 +1,5 @@
+import { mergeDemoData } from "./merge"
+
 export const availableDemos = [
   {
     id: 'demo-habituall',
@@ -24,16 +26,46 @@ export const getDemoData = async (siteId: string | null) => {
   
   try {
     if (siteId === 'demo-saas-en-123') {
-      const module = await import('./demo-saas-en-123');
-      return module.saas_en_123_data;
+      const [base, commerce, records, workflows] = await Promise.all([
+        import('./demo-saas-en-123'),
+        import('./saas/commerce'),
+        import('./saas/records'),
+        import('./saas/workflows'),
+      ]);
+      return mergeDemoData(
+        base.saas_en_123_data,
+        commerce.saasCommerce,
+        records.saasRecords,
+        workflows.saasWorkflows
+      );
     }
     if (siteId === 'demo-ecom-es-456') {
-      const module = await import('./demo-ecom-es-456');
-      return module.ecom_es_456_data;
+      const [base, commerce, records, workflows] = await Promise.all([
+        import('./demo-ecom-es-456'),
+        import('./ecom/commerce'),
+        import('./ecom/records'),
+        import('./ecom/workflows'),
+      ]);
+      return mergeDemoData(
+        base.ecom_es_456_data,
+        commerce.ecomCommerce,
+        records.ecomRecords,
+        workflows.ecomWorkflows
+      );
     }
     if (siteId === 'demo-habituall') {
-      const module = await import('./demo-habituall');
-      return module.habituall_data;
+      const [base, commerce, records, workflows] = await Promise.all([
+        import('./demo-habituall'),
+        import('./habituall/commerce'),
+        import('./habituall/records'),
+        import('./habituall/workflows'),
+      ]);
+      return mergeDemoData(
+        base.habituall_data,
+        commerce.habituallCommerce,
+        records.habituallRecords,
+        workflows.habituallWorkflows
+      );
     }
   } catch (error) {
     console.error(`Error loading demo data for ${siteId}:`, error);

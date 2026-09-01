@@ -13,7 +13,7 @@ import { useLocalization } from "@/app/context/LocalizationContext"
 import { createClient } from "@/lib/supabase/client"
 import { getSales } from "@/app/sales/actions"
 import { useRouter } from "next/navigation"
-import { navigateToSale } from "@/app/hooks/use-navigation-history"
+import { navigateToSale } from "@/lib/navigation/navigation-helpers"
 import { EmptyCard } from "@/app/components/ui/empty-card"
 import {
   DocumentListHead,

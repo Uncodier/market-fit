@@ -1,6 +1,5 @@
 import { getDemoData } from "./index";
-
-import { Database } from '../database.types';
+import { applyNotFilter, applySelectEmbeds } from "./mock-query";
 
 // Mock instance for the demo data cache 
 const memoryCache: Record<string, Record<string, any[]>> = {};
@@ -82,10 +81,13 @@ export async function createDemoMockClientImpl(demoSiteId: string) {
         return queryBuilder;
       },
       is: (column: string, value: any) => {
-        result = result.filter(item => item[column] === value);
+        result = result.filter(item => value === null ? item[column] == null : item[column] === value);
         return queryBuilder;
       },
-      not: (column: string, operator: string, value: any) => queryBuilder,
+      not: (column: string, operator: string, value: any) => {
+        result = applyNotFilter(result, column, operator, value);
+        return queryBuilder;
+      },
       filter: (column: string, operator: string, value: any) => queryBuilder,
       ilike: (column: string, value: string) => {
         const regex = new RegExp(value.replace(/%/g, '.*'), 'i');
@@ -147,23 +149,12 @@ export async function createDemoMockClientImpl(demoSiteId: string) {
       let tableData = memoryData[table] || [];
       return {
         select: (columns?: string, options?: any) => {
-          let enrichedData = [...tableData];
-          
-          // Embed relations for conversations if requested
-          if (columns && typeof columns === 'string' && table === 'conversations') {
-            if (columns.includes('messages')) {
-               enrichedData = enrichedData.map(conv => ({
-                 ...conv,
-                 messages: (memoryData['messages'] || []).filter((m: any) => m.conversation_id === conv.id)
-               }));
-            }
-            if (columns.includes('leads')) {
-               enrichedData = enrichedData.map(conv => ({
-                 ...conv,
-                 leads: (memoryData['leads'] || []).find((l: any) => l.id === conv.lead_id) || null
-               }));
-            }
-          }
+          const enrichedData = applySelectEmbeds(
+            [...tableData],
+            table,
+            typeof columns === "string" ? columns : undefined,
+            memoryData
+          );
 
           // If asking for count, add it
           const query = buildQuery(enrichedData, table);

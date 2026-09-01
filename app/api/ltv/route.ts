@@ -254,21 +254,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Site ID is required' }, { status: 400 });
   }
 
-  // Handle demo sites to prevent invalid UUID database errors
-  if (siteId.startsWith("demo-")) {
-    return NextResponse.json({
-      actual: 0,
-      currency: "USD",
-      percentChange: 0,
-      periodType: "monthly",
-      noData: true,
-      metadata: { warning: "Demo site detected" },
-      details: {
-        purchaseTasksCount: 0,
-        convertedLeadsCount: 0
-      }
-    });
-  }
   
   console.log('[LTV API] Request for site ID:', siteId, segmentId ? `and segment ID: ${segmentId}` : '');
   

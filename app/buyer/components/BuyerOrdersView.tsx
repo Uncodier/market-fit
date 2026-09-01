@@ -17,7 +17,7 @@ import { resolveItemImage } from "@/app/lib/image-utils"
 import { formatCurrency } from "@/app/lib/formatters"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { useRouter } from "next/navigation"
-import { navigateToPurchaseOrder } from "@/app/hooks/use-navigation-history"
+import { navigateToPurchaseOrder } from "@/lib/navigation/navigation-helpers"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
 import { StatusDot } from "@/app/components/documents/document-list"
 

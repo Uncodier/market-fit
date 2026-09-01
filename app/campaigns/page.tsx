@@ -27,7 +27,7 @@ import { createClient } from "@/lib/supabase/client"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { cn } from "@/lib/utils"
 import { useRouter } from "next/navigation"
-import { navigateToCampaign } from "@/app/hooks/use-navigation-history"
+import { navigateToCampaign } from "@/lib/navigation/navigation-helpers"
 import { CampaignsTable, CampaignsTableSkeleton } from "./components/CampaignsTable"
 import { CampaignsKanban, CampaignsKanbanSkeleton } from "./components/CampaignsKanban"
 

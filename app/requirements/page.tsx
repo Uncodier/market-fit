@@ -21,7 +21,7 @@ import { SearchInput } from "@/app/components/ui/search-input"
 import { FilterModal } from "@/app/components/ui/filter-modal"
 import { ViewSelector } from "@/app/components/view-selector"
 import { useMobileView } from "@/app/hooks/use-mobile-view"
-import { navigateToRequirement } from "@/app/hooks/use-navigation-history"
+import { navigateToRequirement } from "@/lib/navigation/navigation-helpers"
 import { safeReload } from "@/app/utils/safe-reload"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import {

@@ -24,10 +24,6 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Site ID is required" }, { status: 400 });
   }
 
-  if (siteId.startsWith("demo-")) {
-    console.log(`[Sales API] Demo site detected, returning empty array for ${siteId}`);
-    return NextResponse.json([]);
-  }
 
   try {
     console.log(`[Sales API] Processing request for site: ${siteId}`);

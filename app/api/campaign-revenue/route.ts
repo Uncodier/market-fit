@@ -31,14 +31,6 @@ export async function GET(request: Request) {
     );
   }
   
-  // Handle demo sites to prevent invalid UUID database errors
-  if (siteId.startsWith("demo-")) {
-    return NextResponse.json({
-      campaigns: [],
-      debug: { message: "Demo site detected, returning empty data" },
-      noData: true
-    });
-  }
   
   try {
     console.log(`[Campaign Revenue API] Consulta para sitio: ${siteId}`);

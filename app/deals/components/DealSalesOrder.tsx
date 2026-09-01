@@ -9,7 +9,7 @@ import { CreditCard, ExternalLink, FileText, Plus } from "@/app/components/ui/ic
 import { getSaleById } from "@/app/sales/actions"
 import { Sale } from "@/app/types"
 import { useRouter } from "next/navigation"
-import { navigateToSale } from "@/app/hooks/use-navigation-history"
+import { navigateToSale } from "@/lib/navigation/navigation-helpers"
 import { RegisterPaymentDialog } from "@/app/sales/components/RegisterPaymentDialog"
 import { format } from "date-fns"
 import { createClient } from "@/lib/supabase/client"

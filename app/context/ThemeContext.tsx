@@ -61,6 +61,24 @@ export function ThemeProvider({
   const [isDarkMode, setIsDarkMode] = useState<boolean>(false)
 
   useEffect(() => {
+    const urlTheme = new URLSearchParams(window.location.search).get("theme")
+    const inIframe = window.self !== window.top
+    if (urlTheme === "dark" || urlTheme === "light") {
+      if (inIframe) {
+        sessionStorage.setItem("demo-iframe-theme", urlTheme)
+      } else {
+        localStorage.setItem(storageKey, urlTheme)
+      }
+      setTheme(urlTheme)
+      return
+    }
+    if (inIframe) {
+      const iframeTheme = sessionStorage.getItem("demo-iframe-theme")
+      if (iframeTheme === "dark" || iframeTheme === "light") {
+        setTheme(iframeTheme)
+        return
+      }
+    }
     const savedTheme = localStorage.getItem(storageKey) as Theme
     if (savedTheme) {
       setTheme(savedTheme)

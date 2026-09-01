@@ -20,17 +20,6 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Handle demo sites to prevent invalid UUID database errors
-    if (siteId.startsWith("demo-")) {
-      return NextResponse.json({
-        actual: 0,
-        previous: 0,
-        percentChange: 0,
-        periodType: "monthly",
-        noData: true,
-        metadata: { warning: "Demo site detected" }
-      });
-    }
 
     // Parse dates
     const endDate = endDateParam ? new Date(endDateParam) : new Date();

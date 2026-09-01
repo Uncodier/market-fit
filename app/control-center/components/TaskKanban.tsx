@@ -14,7 +14,7 @@ import { Task } from "@/app/types"
 import { createClient } from "@/utils/supabase/client"
 import { useSite } from "@/app/context/SiteContext"
 import { toast } from "sonner"
-import { navigateToLead } from "@/app/hooks/use-navigation-history"
+import { navigateToLead } from "@/lib/navigation/navigation-helpers"
 
 import { useLocalization } from "@/app/context/LocalizationContext"
 

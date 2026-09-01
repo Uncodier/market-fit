@@ -6,7 +6,7 @@ import { ChevronDown, ChevronRight } from "@/app/components/ui/icons"
 import "./kanban.css"
 import { cn } from "@/lib/utils"
 import { useRouter } from "next/navigation"
-import { navigateToCampaign } from "@/app/hooks/use-navigation-history"
+import { navigateToCampaign } from "@/lib/navigation/navigation-helpers"
 import { useLocalization } from "@/app/context/LocalizationContext"
 
 interface KanbanColumnProps {

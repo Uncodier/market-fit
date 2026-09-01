@@ -11,7 +11,7 @@ import {
 import { HelpButton } from "../ui/help-button"
 import { useEffect, useState, useCallback } from "react"
 import { cn } from "@/lib/utils"
-import { useNavigationHistory } from "@/app/hooks/use-navigation-history"
+import { useNavigationHistory } from "@/app/hooks/use-breadcrumb-history"
 import { useLocalization } from "@/app/context/LocalizationContext"
 
 interface TopBarTitleProps extends React.HTMLAttributes<HTMLDivElement> {
@@ -165,25 +165,21 @@ export function TopBarTitle({
   }, []);
 
   // Convert history items to breadcrumb format
-  const breadcrumbItems = hasHistory ? historyItems.map((item, index) => {
+  const breadcrumbItems = hasHistory ? historyItems.map((item, index, array) => {
     const [pathnameOnly, queryString] = item.path.split("?")
     const pathSegments = pathnameOnly.split("/").filter(Boolean)
-    // Only translate bare roots (/chat). /chat?id=x must keep its own label,
-    // otherwise both crumbs become "Conversations".
+    
+    // Only translate bare roots (/chat).
     const isBareRoot = pathSegments.length === 1 && !queryString
     const translatedRoot = isBareRoot ? getRouteTitle(pathSegments[0]) : undefined
+    
     return {
       href: item.path,
       label: translatedRoot || item.label,
-      originalIndex: index
+      originalIndex: index,
+      isCurrent: index === array.length - 1
     }
-  }).filter((item, index, array) => {
-    if (index === 0) return true
-    return item.label !== array[index - 1].label
-  }).map((item, index, array) => ({
-    ...item,
-    isCurrent: index === array.length - 1
-  })) : null;
+  }) : null;
  
   return (
     <div className={cn("flex items-center gap-4 min-w-0", className)}>

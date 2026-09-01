@@ -38,13 +38,6 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "Missing required parameters" }, { status: 400 });
     }
 
-    // Handle demo sites to prevent invalid UUID database errors
-    if (siteId.startsWith("demo-")) {
-      return NextResponse.json({
-        leadCohorts: [],
-        metadata: { warning: "Demo site detected" }
-      });
-    }
 
     const supabase = await createClient();
 

@@ -90,13 +90,6 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Site ID is required" }, { status: 400 })
     }
 
-    if (siteId.startsWith("demo-")) {
-      return NextResponse.json(
-        emptyPayload({
-          metadata: { warning: "Demo site detected" },
-        })
-      )
-    }
 
     const supabase = await createClient()
 

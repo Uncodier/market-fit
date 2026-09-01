@@ -49,13 +49,6 @@ export async function GET(request: Request) {
     );
   }
 
-  // Handle demo sites to prevent invalid UUID database errors
-  if (siteId.startsWith("demo-")) {
-    return NextResponse.json({
-      visitorCohorts: [],
-      metadata: { warning: "Demo site detected" }
-    });
-  }
   
   try {
     console.log(`[Visitor Cohorts API] Received request for site: ${siteId}, segment: ${segmentId || 'all'}`);

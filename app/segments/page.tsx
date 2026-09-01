@@ -22,7 +22,7 @@ import { useSite } from "@/app/context/SiteContext"
 import { Segment } from "@/app/types/segments"
 import { SearchInput } from "@/app/components/ui/search-input"
 import { useRouter } from "next/navigation"
-import { navigateToSegment } from "@/app/hooks/use-navigation-history"
+import { navigateToSegment } from "@/lib/navigation/navigation-helpers"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { SegmentsTable, SegmentsTableSkeleton } from "./components/SegmentsTable"
 

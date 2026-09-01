@@ -5,7 +5,7 @@ import { PlusCircle } from "@/app/components/ui/icons"
 import { toast } from "sonner"
 import { createClient } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
-import { navigateToRequirement } from "@/app/hooks/use-navigation-history"
+import { navigateToRequirement } from "@/lib/navigation/navigation-helpers"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { formatCurrency } from "@/app/lib/formatters"
 import {

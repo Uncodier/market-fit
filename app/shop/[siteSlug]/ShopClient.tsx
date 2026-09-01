@@ -174,9 +174,7 @@ export default function ShopClient({
   const { setStoreCurrency } = useDisplayCurrency()
 
   useEffect(() => {
-    if (site?.settings?.currency) {
-      setStoreCurrency(site.settings.currency);
-    }
+    setStoreCurrency(site?.settings?.currency ?? null)
   }, [site?.settings?.currency, setStoreCurrency])
 
   const buyerLocation = useBuyerLocation({

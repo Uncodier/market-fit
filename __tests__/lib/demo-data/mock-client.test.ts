@@ -31,4 +31,39 @@ describe("demo mock client", () => {
     const { data } = await client.from("reservations").select("*").eq("id", "res-1")
     expect(data[0].status).toBe("completed")
   })
+
+  it("embeds record categories and filters catalog variants with not()", async () => {
+    const habituall = await createDemoMockClientImpl("demo-habituall")
+    const { data: records } = await habituall
+      .from("records")
+      .select("*, category:record_categories(*)")
+      .eq("id", "rec-hab-1")
+
+    expect(records[0].title).toContain("Yoga")
+    expect(records[0].category?.name).toBe("Class attendance")
+
+    const ecom = await createDemoMockClientImpl("demo-ecom-es-456")
+    const { data: variants } = await ecom
+      .from("catalog_items")
+      .select("*")
+      .not("parent_id", "is", null)
+
+    expect(variants.length).toBeGreaterThan(0)
+    expect(variants.every((item: { parent_id: string | null }) => item.parent_id != null)).toBe(true)
+  })
+
+  it("loads workflow nodes with type in() filter", async () => {
+    const client = await createDemoMockClientImpl("demo-ecom-es-456")
+    const { data } = await client
+      .from("instance_nodes")
+      .select("*")
+      .eq("instance_id", "remote-ecom-1")
+      .in("type", ["wf-trigger", "wf-step", "wf-condition"])
+
+    expect(data.some((node: { type: string }) => node.type === "wf-trigger")).toBe(true)
+    expect(data.filter((node: { type: string }) => node.type === "wf-step").length).toBeGreaterThan(0)
+    expect(data.every((node: { type: string }) => node.type.startsWith("wf-"))).toBe(true)
+  })
 })
+
+

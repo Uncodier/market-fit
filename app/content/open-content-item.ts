@@ -1,6 +1,6 @@
 import { createContent, type ContentItem } from "./actions"
 import { createAsset, attachAssetToContent } from "@/app/assets/actions"
-import { navigateToContent } from "@/app/hooks/use-navigation-history"
+import { navigateToContent } from "@/lib/navigation/navigation-helpers"
 import { toast } from "sonner"
 import type { AppRouterInstance } from "next/dist/shared/lib/app-router-context.shared-runtime"
 

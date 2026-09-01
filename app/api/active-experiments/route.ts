@@ -253,16 +253,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Site ID is required' }, { status: 400 });
   }
 
-  // Handle demo sites to prevent invalid UUID database errors
-  if (siteId.startsWith("demo-")) {
-    return NextResponse.json({
-      actual: 0,
-      percentChange: 0,
-      periodType: "monthly",
-      noData: true,
-      metadata: { warning: "Demo site detected" }
-    });
-  }
   
   console.log('[ActiveExperimentsAPI] Request for site ID:', siteId, segmentId ? `with segment ID: ${segmentId}` : '');
   

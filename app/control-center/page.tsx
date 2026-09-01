@@ -28,7 +28,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { toast } from "react-hot-toast"
 import { getUserData } from "@/app/services/user-service"
 import { useCommandK } from "@/app/hooks/use-command-k"
-import { navigateToTask } from "@/app/hooks/use-navigation-history"
+import { navigateToTask } from "@/lib/navigation/navigation-helpers"
 import React from "react"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { useControlCenterData, ExtendedTask } from "./hooks/useControlCenterData"

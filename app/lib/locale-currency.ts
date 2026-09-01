@@ -108,3 +108,41 @@ export function resolveLocalCurrency({
 
   return 'USD';
 }
+
+export const DEFAULT_DISPLAY_CURRENCY_MODE = 'store';
+
+export function normalizeCurrencyCode(value?: string | null): string | null {
+  const trimmed = value?.trim();
+  return trimmed ? trimmed.toUpperCase() : null;
+}
+
+/**
+ * Display currency: user preference → site → product → local/geo last.
+ * `local` (browser / IP region) is only used when mode is explicitly `local`.
+ */
+export function resolveDisplayCurrency({
+  mode,
+  storeCurrency,
+  localCurrency,
+  sourceCurrency,
+}: {
+  mode?: string | null;
+  storeCurrency?: string | null;
+  localCurrency?: string | null;
+  sourceCurrency?: string | null;
+}): string {
+  const resolvedMode = mode?.trim() || DEFAULT_DISPLAY_CURRENCY_MODE;
+  const store = normalizeCurrencyCode(storeCurrency);
+  const local = normalizeCurrencyCode(localCurrency);
+  const source = normalizeCurrencyCode(sourceCurrency);
+
+  if (resolvedMode === 'local') {
+    return local || store || source || 'USD';
+  }
+
+  if (resolvedMode === 'store') {
+    return store || source || 'USD';
+  }
+
+  return normalizeCurrencyCode(resolvedMode) || store || source || 'USD';
+}

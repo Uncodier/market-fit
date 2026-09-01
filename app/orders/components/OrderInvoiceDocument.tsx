@@ -12,7 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
 import { Save, ExternalLink, Calendar, Send } from "@/app/components/ui/icons"
 import { cn } from "@/lib/utils"
-import { navigateToLead, navigateToSale, navigateToShipment } from "@/app/hooks/use-navigation-history"
+import { navigateToLead, navigateToSale, navigateToShipment } from "@/lib/navigation/navigation-helpers"
 
 const ROW_STATUS_STYLES: Record<string, string> = {
   draft: "bg-gray-50/50 dark:bg-gray-900/50",

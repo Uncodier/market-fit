@@ -39,17 +39,6 @@ export async function GET(request: Request) {
     );
   }
 
-  // Handle demo sites to prevent invalid UUID database errors
-  if (siteId.startsWith("demo-")) {
-    return NextResponse.json({
-      visitors: { current: 0, previous: 0, percentChange: 0 },
-      clicks: { current: 0, previous: 0, percentChange: 0 },
-      conversions: { current: 0, previous: 0, percentChange: 0 },
-      ctr: { current: 0, previous: 0, percentChange: 0 },
-      periodType: "all-time",
-      metadata: { warning: "Demo site detected" }
-    });
-  }
   
   try {
     const supabase = await createClient();

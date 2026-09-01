@@ -2,7 +2,12 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { useLocalization } from './LocalizationContext';
-import { resolveLocalCurrency } from '../lib/locale-currency';
+import {
+  DEFAULT_DISPLAY_CURRENCY_MODE,
+  normalizeCurrencyCode,
+  resolveDisplayCurrency,
+  resolveLocalCurrency,
+} from '../lib/locale-currency';
 import { convertAmount, formatDisplayCurrency } from '../lib/fx';
 
 export type CurrencyMode = string;
@@ -13,8 +18,8 @@ interface DisplayCurrencyContextType {
   localCurrency: string;
   displayCurrency: string;
   rates: Record<string, number>;
-  storeCurrency: string;
-  setStoreCurrency: (currency: string) => void;
+  storeCurrency: string | null;
+  setStoreCurrency: (currency: string | null) => void;
   formatPrice: (amount: number, sourceCurrency?: string) => string;
 }
 
@@ -22,14 +27,13 @@ const DisplayCurrencyContext = createContext<DisplayCurrencyContextType | undefi
 
 export const DisplayCurrencyProvider = ({ children, initialCountry }: { children: ReactNode, initialCountry?: string }) => {
   const { locale } = useLocalization();
-  const [mode, setModeState] = useState<CurrencyMode>('local');
+  const [mode, setModeState] = useState<CurrencyMode>(DEFAULT_DISPLAY_CURRENCY_MODE);
   const [localCurrency, setLocalCurrency] = useState<string>('USD');
-  const [storeCurrency, setStoreCurrency] = useState<string>('USD');
+  const [storeCurrency, setStoreCurrencyState] = useState<string | null>(null);
   const [rates, setRates] = useState<Record<string, number>>({});
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    // 1. Resolve local currency
     const browserLang = typeof navigator !== 'undefined' ? navigator.language : undefined;
     const resolved = resolveLocalCurrency({
       country: initialCountry,
@@ -38,14 +42,11 @@ export const DisplayCurrencyProvider = ({ children, initialCountry }: { children
     });
     setLocalCurrency(resolved);
 
-    // 2. Load preferred mode from localStorage
     const savedMode = localStorage.getItem('makinari-currency-mode');
     if (savedMode) {
       setModeState(savedMode);
     }
 
-    // 3. Fetch FX rates.
-    // On www, try same-origin rewrite first, then app.makinari.com.
     const isWww = typeof window !== 'undefined' && window.location.hostname === 'www.makinari.com';
     const fxUrls = isWww
       ? ['/api/fx/rates', 'https://app.makinari.com/api/fx/rates']
@@ -75,7 +76,7 @@ export const DisplayCurrencyProvider = ({ children, initialCountry }: { children
           console.warn(`[fx] Fetch to ${fxUrl} threw error:`, error);
         }
       }
-      console.warn('Failed to load FX rates, falling back to local currency without conversion.');
+      console.warn('Failed to load FX rates, falling back to source currency without conversion.');
     })();
 
     setMounted(true);
@@ -86,26 +87,40 @@ export const DisplayCurrencyProvider = ({ children, initialCountry }: { children
     localStorage.setItem('makinari-currency-mode', newMode);
   };
 
-  const displayCurrency = mode === 'local' ? localCurrency : mode === 'store' ? storeCurrency : mode;
+  const setStoreCurrency = useCallback((currency: string | null) => {
+    setStoreCurrencyState(normalizeCurrencyCode(currency));
+  }, []);
+
+  const displayCurrency = resolveDisplayCurrency({
+    mode,
+    storeCurrency,
+    localCurrency,
+  });
 
   const formatPrice = useCallback((amount: number, sourceCurrency: string = 'USD'): string => {
     if (!mounted) {
       return formatDisplayCurrency(amount, sourceCurrency);
     }
-    
-    if (sourceCurrency.toUpperCase() === displayCurrency.toUpperCase()) {
-      return formatDisplayCurrency(amount, displayCurrency);
+
+    const target = resolveDisplayCurrency({
+      mode,
+      storeCurrency,
+      localCurrency,
+      sourceCurrency,
+    });
+
+    if (sourceCurrency.toUpperCase() === target.toUpperCase()) {
+      return formatDisplayCurrency(amount, target);
     }
 
-    const converted = convertAmount(amount, sourceCurrency, displayCurrency, rates);
-    
+    const converted = convertAmount(amount, sourceCurrency, target, rates);
+
     if (converted !== null) {
-      return formatDisplayCurrency(converted, displayCurrency);
+      return formatDisplayCurrency(converted, target);
     }
 
-    // Fallback if no rates available
     return formatDisplayCurrency(amount, sourceCurrency);
-  }, [mounted, displayCurrency, rates]);
+  }, [mounted, mode, storeCurrency, localCurrency, rates]);
 
   return (
     <DisplayCurrencyContext.Provider value={{ mode, setMode, localCurrency, displayCurrency, rates, storeCurrency, setStoreCurrency, formatPrice }}>

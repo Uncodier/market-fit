@@ -281,15 +281,6 @@ export async function GET(request: Request) {
     );
   }
 
-  // Handle demo sites to prevent invalid UUID database errors
-  if (siteId.startsWith("demo-")) {
-    return NextResponse.json({
-      actual: 0,
-      percentChange: 0,
-      periodType: "monthly",
-      noData: true
-    });
-  }
 
   // Normalize dates to eliminate time component
   const startDate = normalizeDate(startDateParam ? new Date(startDateParam) : subDays(new Date(), 30));

@@ -20,7 +20,7 @@ import { subDays, isWithinInterval, parseISO, startOfDay, endOfDay } from "date-
 import { Sale } from "@/app/types"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/app/components/ui/dialog"
 import { useRouter } from "next/navigation"
-import { navigateToSale } from "@/app/hooks/use-navigation-history"
+import { navigateToSale } from "@/lib/navigation/navigation-helpers"
 import { RegisterPaymentDialog } from "./components/RegisterPaymentDialog"
 import { ViewSelector } from "@/app/components/view-selector"
 import { useMobileView } from "@/app/hooks/use-mobile-view"

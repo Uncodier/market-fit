@@ -28,7 +28,7 @@ import { useSite } from "@/app/context/SiteContext"
 import { DatePicker } from "@/app/components/ui/date-picker"
 import { TimeSelect } from "@/app/components/ui/time-select"
 import { Badge } from "@/app/components/ui/badge"
-import { navigateToControlCenter } from "@/app/hooks/use-navigation-history"
+import { navigateToControlCenter } from "@/lib/navigation/navigation-helpers"
 
 interface DetailsTabProps {
   task: Task

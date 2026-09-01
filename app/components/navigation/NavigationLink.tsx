@@ -10,7 +10,7 @@ import {
   navigateOrAssign,
   startNavigationWatchdog,
 } from '@/lib/navigation/stale-router'
-import { markUINavigation } from '@/app/hooks/use-navigation-history'
+import { markUINavigation } from '@/lib/navigation/navigation-helpers'
 
 import { appendArtifactIfNeeded } from '@/lib/navigation/artifact-url'
 

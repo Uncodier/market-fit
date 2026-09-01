@@ -18,7 +18,8 @@ export function CurrencySelector({ className, storeCurrency: propStoreCurrency }
   const { mode, setMode, localCurrency, displayCurrency, rates, storeCurrency: contextStoreCurrency } = useDisplayCurrency()
   const { t } = useLocalization()
 
-  const storeCurrency = propStoreCurrency || contextStoreCurrency || 'USD'
+  const resolvedStore = propStoreCurrency || contextStoreCurrency || null
+  const storeCurrency = resolvedStore || 'USD'
 
   const activeFlag = currencyFlag(displayCurrency)
 
@@ -27,9 +28,9 @@ export function CurrencySelector({ className, storeCurrency: propStoreCurrency }
     set.add('USD') // Base currency is always available if we have rates
     Object.keys(rates).forEach(c => set.add(c))
     set.delete(localCurrency)
-    set.delete(storeCurrency)
+    if (resolvedStore) set.delete(storeCurrency)
     return Array.from(set).sort()
-  }, [rates, localCurrency, storeCurrency])
+  }, [rates, localCurrency, storeCurrency, resolvedStore])
 
   return (
     <DropdownMenu>
@@ -50,7 +51,7 @@ export function CurrencySelector({ className, storeCurrency: propStoreCurrency }
           {t('commerce.currency.local') || 'Local'} ({localCurrency})
         </DropdownMenuItem>
         
-        {localCurrency !== storeCurrency && (
+        {resolvedStore && localCurrency !== storeCurrency && (
           <DropdownMenuItem
             onClick={() => setMode('store')}
             className={mode === 'store' ? "font-semibold bg-gray-100 dark:bg-gray-800" : undefined}

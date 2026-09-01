@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/app/components/ui/table";
 import { formatCurrency } from "@/app/lib/formatters";
 import type { PromotionRedemption } from "@/app/promotions/redemption-map";
-import { navigateToOrder } from "@/app/hooks/use-navigation-history";
+import { navigateToOrder } from "@/lib/navigation/navigation-helpers";
 import {
   DocumentListHead,
   DocumentListRow,

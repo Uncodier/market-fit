@@ -27,7 +27,6 @@ import { RequirementsBadge, CampaignsBadge } from "./RequirementsBadge"
 import { ChatsBadge } from "./ChatsBadge"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { useLayout } from "@/app/context/LayoutContext"
-import { requestNavigationHistoryReset } from "@/app/hooks/use-navigation-history"
 
 import { AREA_ICON, NAV_ITEM_ICON } from "@/app/config/module-visuals"
 import { useOptionalScreenAccess } from "@/app/context/ScreenAccessContext"
@@ -151,7 +150,9 @@ export function NavigationAreaGroups({
           item.robotsMode
             ? () => {
                 setRobotsViewMode(item.robotsMode as "agent" | "imprenta" | "workflow")
-                requestNavigationHistoryReset()
+                if (typeof window !== "undefined") {
+                  window.dispatchEvent(new CustomEvent("navigation-history:reset"))
+                }
               }
             : undefined
         }

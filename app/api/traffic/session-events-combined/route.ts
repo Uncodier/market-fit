@@ -15,14 +15,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Site ID is required' }, { status: 400 });
   }
 
-  if (siteId.startsWith("demo-")) {
-    return NextResponse.json({
-      chartData: [],
-      referrersData: [],
-      totals: { pageVisits: 0, uniqueVisitors: 0, referralVisits: 0 },
-      metadata: { warning: "Demo site detected" }
-    });
-  }
 
   if (!startDate || !endDate) {
     return NextResponse.json({ error: 'Start date and end date are required' }, { status: 400 });

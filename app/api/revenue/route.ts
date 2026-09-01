@@ -58,13 +58,6 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    if (siteId.startsWith('demo-')) {
-      return NextResponse.json(
-        emptyRevenuePayload({
-          metadata: { warning: 'Demo site detected' },
-        })
-      );
-    }
 
     const endDate = parseDateParam(endDateParam, new Date());
     const startDate = parseDateParam(startDateParam, subDays(endDate, 30));
