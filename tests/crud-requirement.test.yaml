@@ -34,7 +34,7 @@ statements:
     locator: "getByRole('button', { name: 'Create requirement' })"
 
   - WAIT_UNTIL: The create requirement modal closes
-    js: "page.getByRole('button', { name: 'Create requirement' }).count() === 0"
+    js: "page.getByRole('dialog').count() === 0"
     timeout_seconds: 10
 
   - WAIT_UNTIL: The new requirement appears in the list

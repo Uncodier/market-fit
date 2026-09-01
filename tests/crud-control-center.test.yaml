@@ -11,6 +11,11 @@ statements:
     timeout_seconds: 5
 
   - URL: /control-center
+
+  - WAIT_UNTIL: The user is on the control center list page
+    js: "page.url().endsWith('/control-center')"
+    timeout_seconds: 15
+
   - intent: Click New Task in the top bar
     action: click
     locator: "getByRole('button', { name: 'New Task' })"
@@ -39,7 +44,7 @@ statements:
     locator: "getByRole('button', { name: 'Create task' })"
 
   - WAIT_UNTIL: The create task modal closes
-    js: "page.getByRole('button', { name: 'Create task' }).count() === 0"
+    js: "page.getByRole('dialog').count() === 0"
     timeout_seconds: 10
 
   - WAIT_UNTIL: The new task appears

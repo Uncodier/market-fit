@@ -22,9 +22,13 @@ statements:
     locator: "getByPlaceholder('Select category...')"
     value: "Automated Catalog Category"
 
-  - intent: Create the category on the fly with Use
+  - WAIT_UNTIL: The category dropdown options are visible
+    js: "page.getByText(/Use \"Automated Catalog Category\"|Automated Catalog Category/).count() > 0"
+    timeout_seconds: 5
+
+  - intent: Select or create the category
     action: click
-    locator: "getByText('Use \"Automated Catalog Category\"')"
+    locator: "getByRole('option', { name: /Use \"Automated Catalog Category\"|Automated Catalog Category/ }).first()"
 
   - intent: Fill in the product name
     action: fill

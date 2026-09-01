@@ -61,7 +61,7 @@ statements:
     locator: "getByRole('button', { name: 'Create sale' })"
 
   - WAIT_UNTIL: The create sale modal closes
-    js: "page.getByRole('button', { name: 'Create sale' }).count() === 0"
+    js: "page.getByRole('dialog').count() === 0"
     timeout_seconds: 10
 
   - WAIT_UNTIL: The new sale appears in the list

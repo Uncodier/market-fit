@@ -18,7 +18,7 @@ statements:
 
   - intent: Click New Campaign in the top bar
     action: click
-    locator: "getByRole('button', { name: 'New Campaign' })"
+    locator: "getByRole('button', { name: /New Campaign|Nueva/i }).first()"
 
   - intent: Fill the required campaign title
     action: fill

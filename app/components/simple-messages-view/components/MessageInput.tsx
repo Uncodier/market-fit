@@ -197,7 +197,7 @@ const MessageInputComponent: React.FC<MessageInputProps> = ({
   return (
     <div className="flex-none transition-all duration-300 ease-in-out w-full" style={{ width: '100%' }}>
       <div className="mx-auto w-full max-w-[800px]">
-        <form className="relative w-full" onSubmit={(e) => {
+        <form id="message-form" name="messageForm" className="relative w-full" onSubmit={(e) => {
           e.preventDefault()
           if (!mentionState) onSubmit()
         }}>
@@ -211,6 +211,12 @@ const MessageInputComponent: React.FC<MessageInputProps> = ({
             )}
             
             <OptimizedTextarea
+              id="message-input"
+              name="message"
+              data-1p-ignore="true"
+              data-gramm="false"
+              data-gramm_editor="false"
+              data-enable-grammarly="false"
               ref={textareaRef}
               defaultValue={message}
               onChange={(e) => {

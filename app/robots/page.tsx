@@ -980,13 +980,20 @@ function RobotsPageContent() {
     return () => window.removeEventListener('robot:toggle-source-code', handleToggle)
   }, [])
 
-  const handleAddShortcut = useCallback(() => {
+  const handleAddShortcut = useCallback((e?: React.MouseEvent, screenArg?: string) => {
     try {
+      if (e) {
+        e.preventDefault()
+        e.stopPropagation()
+      }
+      
       let rawUrl = "about:blank"
-      if (activeBrowserTab.kind === 'artifact' && activeBrowserTab.screen === 'database') {
+      const targetScreen = screenArg || (activeBrowserTab.kind === 'artifact' ? activeBrowserTab.screen : null)
+      
+      if (activeBrowserTab.kind === 'artifact' && targetScreen === 'database') {
         return; // Don't allow adding shortcuts for the database artifact
-      } else if (activeBrowserTab.kind === 'artifact') {
-        const artifact = artifacts.find(a => a.screen === activeBrowserTab.screen)
+      } else if (targetScreen) {
+        const artifact = artifacts.find(a => a.screen === targetScreen)
         if (artifact) rawUrl = artifact.url
       }
       if (rawUrl === "about:blank") return
@@ -1026,7 +1033,7 @@ function RobotsPageContent() {
         artifactSearchParams.delete('theme')
         const searchString = artifactSearchParams.toString()
         const cleanUrl = pathname + (searchString ? `?${searchString}` : '')
-        router.push(cleanUrl)
+        // router.push(cleanUrl)
       } else {
         // Fallback: create a custom shortcut if it doesn't match an exact navigation area
         const saved = localStorage.getItem("navigationShortcuts_v3")
@@ -1047,8 +1054,8 @@ function RobotsPageContent() {
         if (!exists) {
           shortcuts.push({
             id: customId,
-            title: activeBrowserTab.kind === 'artifact' && activeBrowserTab.screen 
-              ? formatScreenName(activeBrowserTab.screen) 
+            title: targetScreen 
+              ? formatScreenName(targetScreen) 
               : 'App Screen',
             href: cleanUrl,
             isCustom: true
@@ -1057,7 +1064,21 @@ function RobotsPageContent() {
           window.dispatchEvent(new Event("shortcuts-updated"))
         }
         
-        router.push(cleanUrl)
+        // router.push(cleanUrl)
+      }
+      
+      // Close the artifact after pinning
+      if (targetScreen) {
+        const supabase = createClient()
+        const artifactsToDelete = artifacts.filter(a => a.screen === targetScreen)
+        if (artifactsToDelete.length > 0) {
+          const ids = artifactsToDelete.map(a => a.id)
+          supabase.from('instance_artifacts').delete().in('id', ids).then(() => {})
+          
+          if (activeBrowserTab.kind === 'artifact' && activeBrowserTab.screen === targetScreen) {
+            setActiveBrowserTab({ kind: 'preview' })
+          }
+        }
       }
     } catch (e) {
       console.error("Error adding shortcut:", e)
@@ -1138,6 +1159,24 @@ function RobotsPageContent() {
   }, [rawActiveUrlToDisplay]);
 
   const { displayUrl: displayedIframeUrl, iframeSrc, handleIframeLoad } = useIframeUrl(iframeRef, activeUrlToDisplay)
+
+  const handleCloseArtifact = async (e: React.MouseEvent, screen: string) => {
+    e.stopPropagation();
+    try {
+      const supabase = createClient()
+      const artifactsToDelete = artifacts.filter(a => a.screen === screen)
+      if (artifactsToDelete.length > 0) {
+        const ids = artifactsToDelete.map(a => a.id)
+        await supabase.from('instance_artifacts').delete().in('id', ids)
+        
+        if (activeBrowserTab.kind === 'artifact' && activeBrowserTab.screen === screen) {
+          setActiveBrowserTab({ kind: 'preview' })
+        }
+      }
+    } catch (err) {
+      console.error("Error deleting artifact:", err)
+    }
+  }
 
   // Calculate scale based on container width and selected viewport
   const calculateScale = useCallback(() => {
@@ -1817,22 +1856,12 @@ function RobotsPageContent() {
                       <div className="flex-1 min-w-0" />
                     )}
 
-                    {activeBrowserTab.kind === 'artifact' && activeBrowserTab.screen !== 'database' && (
-                      <div className="hidden sm:flex items-center gap-1 px-1">
-                        <button
-                          onClick={handleAddShortcut}
-                          className="group relative shrink-0 h-6 w-6 flex items-center justify-center rounded-full transition-colors overflow-hidden"
-                          title="Add as shortcut to menu"
-                        >
-                          <div className="absolute inset-0 bg-muted/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-full"></div>
-                          <Plus className="h-3.5 w-3.5 text-muted-foreground group-hover:text-foreground relative z-10" />
-                        </button>
-                      </div>
-                    )}
 
                     <div className="flex items-center gap-1 bg-black/5 dark:bg-white/10 border border-transparent rounded-full p-0.5 mx-1 min-w-0">
                       {visibleArtifacts.map(item => {
                         const Icon = item.icon;
+                        const isCloseable = item.kind === 'artifact' && item.screen && item.screen !== 'database';
+                        
                         return (
                           <button
                             key={item.id}
@@ -1843,11 +1872,41 @@ function RobotsPageContent() {
                                 setActiveBrowserTab({ kind: item.kind });
                               }
                             }}
-                            className={`shrink-0 h-6 px-3 flex items-center justify-center rounded-full transition-colors text-xs font-medium ${item.isActive ? 'bg-white dark:bg-white/10 shadow-sm text-foreground' : 'text-muted-foreground hover:bg-black/5 dark:hover:bg-white/5 hover:text-foreground'}`}
+                            className={`group relative shrink-0 h-6 px-1 flex items-center justify-center rounded-full transition-all duration-300 text-xs font-medium ${item.isActive ? 'bg-white dark:bg-white/10 shadow-sm text-foreground' : 'text-muted-foreground hover:bg-black/5 dark:hover:bg-white/5 hover:text-foreground'}`}
                             title={item.label}
                           >
-                            {Icon && <Icon className="h-3.5 w-3.5 mr-1.5" />}
-                            {item.label}
+                            {isCloseable ? (
+                              <div className="flex items-center justify-center transition-opacity duration-300 w-6 opacity-0 group-hover:opacity-100 shrink-0">
+                                <div 
+                                  className="flex items-center justify-center h-4 w-4 rounded-full hover:bg-black/10 dark:hover:bg-white/10 shrink-0"
+                                  onClick={(e) => handleAddShortcut(e, item.screen!)}
+                                  title="Pin to navigation"
+                                >
+                                  <Plus className="h-2.5 w-2.5" />
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="w-2 shrink-0"></div>
+                            )}
+
+                            <div className="flex items-center px-1">
+                              {Icon && <Icon className="h-3.5 w-3.5 mr-1.5" />}
+                              <span>{item.label}</span>
+                            </div>
+                            
+                            {isCloseable ? (
+                              <div className="flex items-center justify-center transition-opacity duration-300 w-6 opacity-0 group-hover:opacity-100 shrink-0">
+                                <div 
+                                  className="flex items-center justify-center h-4 w-4 rounded-full hover:bg-black/10 dark:hover:bg-white/10 shrink-0"
+                                  onClick={(e) => handleCloseArtifact(e, item.screen!)}
+                                  title="Close artifact"
+                                >
+                                  <X className="h-2.5 w-2.5" />
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="w-2 shrink-0"></div>
+                            )}
                           </button>
                         );
                       })}
@@ -1865,6 +1924,8 @@ function RobotsPageContent() {
                           <DropdownMenuContent align="end" className="w-[180px]">
                             {hiddenArtifacts.map(item => {
                               const Icon = item.icon;
+                              const isCloseable = item.kind === 'artifact' && item.screen && item.screen !== 'database';
+                              
                               return (
                                 <DropdownMenuItem 
                                   key={item.id} 
@@ -1875,10 +1936,30 @@ function RobotsPageContent() {
                                       setActiveBrowserTab({ kind: item.kind });
                                     }
                                   }}
-                                  className={item.isActive ? 'bg-muted' : ''}
+                                  className={`flex justify-between items-center w-full ${item.isActive ? 'bg-muted' : ''}`}
                                 >
-                                  {Icon && <Icon className="h-3.5 w-3.5 mr-2" />}
-                                  {item.label}
+                                  <div className="flex items-center">
+                                    {Icon && <Icon className="h-3.5 w-3.5 mr-2" />}
+                                    {item.label}
+                                  </div>
+                                  {isCloseable && (
+                                    <div className="flex items-center gap-1">
+                                      <div 
+                                        className="flex items-center justify-center h-6 w-6 rounded-md hover:bg-black/10 dark:hover:bg-white/10"
+                                        onClick={(e) => handleAddShortcut(e, item.screen!)}
+                                        title="Pin to navigation"
+                                      >
+                                        <Plus className="h-3 w-3 text-muted-foreground" />
+                                      </div>
+                                      <div 
+                                        className="flex items-center justify-center h-6 w-6 rounded-md hover:bg-black/10 dark:hover:bg-white/10"
+                                        onClick={(e) => handleCloseArtifact(e, item.screen!)}
+                                        title="Close artifact"
+                                      >
+                                        <X className="h-3 w-3 text-muted-foreground" />
+                                      </div>
+                                    </div>
+                                  )}
                                 </DropdownMenuItem>
                               );
                             })}

@@ -6,6 +6,7 @@ import { useMemo, useEffect, useState } from "react"
 import { useSite } from "@/app/context/SiteContext"
 import { AgentEmailSection } from "@/app/components/settings/AgentEmailSection"
 import { WhatsAppSection } from "@/app/components/settings/WhatsAppSection"
+import { SmtpEmailSection } from "@/app/components/settings/SmtpEmailSection"
 import { siteFormSchema, type SiteFormValues } from "@/app/components/settings/form-schema"
 import { adaptSiteToForm } from "@/app/components/settings/data-adapter"
 import { handleSaveChannels } from "@/app/components/settings/save-handlers"
@@ -55,6 +56,11 @@ export function ChannelsSection() {
     <FormProvider {...form}>
       <div className="space-y-6">
         <AgentEmailSection
+          active={true}
+          siteId={currentSite.id}
+          onSave={onSaveChannels}
+        />
+        <SmtpEmailSection
           active={true}
           siteId={currentSite.id}
           onSave={onSaveChannels}

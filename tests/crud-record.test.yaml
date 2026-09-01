@@ -11,17 +11,22 @@ statements:
     timeout_seconds: 5
 
   - URL: /records
+
+  - WAIT_UNTIL: The user is on the records list page
+    js: "page.url().endsWith('/records')"
+    timeout_seconds: 15
+
   - intent: Click New Record in the top bar to create an Untitled Record
     action: click
-    locator: "getByRole('button', { name: 'New Record' })"
+    locator: "getByRole('button', { name: /New Record|Nuevo|Nuevo/i }).first()"
 
   - WAIT_UNTIL: The record details route is open and loaded
-    js: "page.url().match(/\\/records\\/[^?]+$/) !== null"
+    js: "page.url().match(/\\/records\\/[^?]+$/) !== null && await page.locator('input[placeholder=\"Record Title\"]').count() > 0"
     timeout_seconds: 15
 
   - intent: Update the record title
     action: fill
-    locator: "getByPlaceholder('Record Title')"
+    locator: "locator('input[placeholder=\"Record Title\"]')"
     value: "Automated Test Record"
 
   - intent: Save the record

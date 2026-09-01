@@ -49,6 +49,10 @@ statements:
     js: "page.getByRole('dialog').count() === 0"
     timeout_seconds: 10
 
+  - WAIT_UNTIL: The create lead modal closes
+    js: "page.getByRole('button', { name: 'Create lead' }).count() === 0"
+    timeout_seconds: 10
+
   - WAIT_UNTIL: The new lead appears in the list
     js: "page.getByText('Automated Test Lead').count() > 0"
     timeout_seconds: 15
