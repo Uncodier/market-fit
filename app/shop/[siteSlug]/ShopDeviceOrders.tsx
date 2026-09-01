@@ -5,10 +5,9 @@ import Link from "next/link"
 import { format } from "date-fns"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { useDisplayCurrency } from "@/app/context/DisplayCurrencyContext"
-import { buildPublicDocPath } from "@/app/documents/public-token"
-import { withInternalFrom } from "@/app/documents/internal-back"
 import { resolveItemImage } from "@/app/lib/image-utils"
 import { CommerceProductGrid } from "@/app/components/commerce/CommerceProductGrid"
+import { getDeviceOrderHref } from "@/app/commerce/device-order-href"
 import { getDeviceOrderSnapshots } from "@/app/commerce/device-order-snapshots"
 import { applyDeviceOrderSnapshots } from "@/app/commerce/device-order-sync"
 import type { DeviceOrder, DeviceOrderItem } from "@/app/commerce/device-order-storage"
@@ -122,10 +121,7 @@ function DeviceOrderCard({
 }) {
   const { t } = useLocalization()
   const { formatPrice } = useDisplayCurrency()
-  const href = withInternalFrom(
-    buildPublicDocPath("so", order.publicAccessToken),
-    fromHref
-  )
+  const href = getDeviceOrderHref(order, fromHref)
   const statusKey = (order.status || "pending").toLowerCase()
   const statusLabel =
     t(`orders.status.${statusKey}`) === `orders.status.${statusKey}`

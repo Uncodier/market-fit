@@ -1,6 +1,7 @@
 import { processPostPaymentFulfillment } from "../../app/commerce/post-payment";
 import { createShipment } from "../../app/shipments/actions";
 import { ensureCommerceLeadConverted } from "../../app/commerce/ensure-commerce-lead-converted";
+import { grantFromOrder } from "../../app/commerce/entitlements";
 
 jest.mock("../../lib/supabase/server", () => ({
   createServiceClient: jest.fn(),
@@ -12,6 +13,10 @@ jest.mock("../../app/shipments/actions", () => ({
 
 jest.mock("../../app/commerce/ensure-commerce-lead-converted", () => ({
   ensureCommerceLeadConverted: jest.fn().mockResolvedValue(undefined),
+}));
+
+jest.mock("../../app/commerce/entitlements", () => ({
+  grantFromOrder: jest.fn().mockResolvedValue(undefined),
 }));
 
 describe("processPostPaymentFulfillment", () => {
@@ -91,6 +96,7 @@ describe("processPostPaymentFulfillment", () => {
     expect(itemsChain.update).toHaveBeenCalledWith(expect.objectContaining({ status: "completed" }));
     // No shipment created
     expect(createShipment).not.toHaveBeenCalled();
+    expect(grantFromOrder).toHaveBeenCalledWith("order-1", true);
     expect(ensureCommerceLeadConverted).toHaveBeenCalledWith(expect.objectContaining({
       siteId: "site-1",
       leadId: "lead-1",

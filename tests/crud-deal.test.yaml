@@ -7,7 +7,7 @@ statements:
     locator: "getByRole('button', { name: 'Select' }).first()"
 
   - WAIT_UNTIL: The user is navigated to the default project page
-    js: "page.url().includes('/robots')"
+    js: "await page.url().includes('/robots')"
     timeout_seconds: 5
 
   - URL: /deals
@@ -48,11 +48,11 @@ statements:
     locator: "getByRole('button', { name: 'Create deal' })"
 
   - WAIT_UNTIL: The create deal modal closes
-    js: "page.getByRole('dialog').count() === 0"
+    js: "await page.getByRole('dialog').count() === 0"
     timeout_seconds: 10
 
   - WAIT_UNTIL: The new deal appears in the list
-    js: "page.getByText('Automated Test Deal').count() > 0"
+    js: "await page.getByText('Automated Test Deal').count() > 0"
     timeout_seconds: 15
 
   - intent: Open the deal details page
@@ -60,7 +60,7 @@ statements:
     locator: "getByText('Automated Test Deal').first()"
 
   - WAIT_UNTIL: The deal details route is open
-    js: "page.url().includes('/deals/') && !page.url().endsWith('/deals')"
+    js: "await page.url().includes('/deals/') && !page.url().endsWith('/deals')"
     timeout_seconds: 10
 
   - VERIFY: The details heading shows the created deal name
@@ -80,7 +80,7 @@ statements:
     keys: Enter
 
   - WAIT_UNTIL: The heading shows the edited name
-    js: "page.getByRole('heading', { name: 'Automated Test Deal - Edited' }).count() > 0"
+    js: "await page.getByRole('heading', { name: 'Automated Test Deal - Edited' }).count() > 0"
     timeout_seconds: 10
 
   - VERIFY: The edited deal name is visible

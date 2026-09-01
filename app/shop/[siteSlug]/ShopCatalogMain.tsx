@@ -276,6 +276,8 @@ export const ShopCatalogMain = React.memo(function ShopCatalogMain({
       }
       getLocationAvailable={resolveLocationAvailable}
       getPromoBadge={(item) => promoBadgesByItemId[item.id] || null}
+      getIsOwned={(item) => ownedAccessMap.has(item.id)}
+      getCanBook={(item) => Boolean(ownedAccessMap.get(item.id))}
     />
   )
 
@@ -291,7 +293,8 @@ export const ShopCatalogMain = React.memo(function ShopCatalogMain({
         !(item as any)._shop?.sellable && (item as any)._shop?.availableQty === 0
       }
       disabledLabel={t("shop.soldOut") || "Sold Out"}
-      isOwned={false}
+      isOwned={ownedAccessMap.has(item.id)}
+      canBook={ownedAccessMap.get(item.id)}
       compactMobile={compactMobile}
       locationAvailable={resolveLocationAvailable(item)}
       promoBadge={promoBadgesByItemId[item.id] || null}

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect } from "react"
 import { CatalogItem } from "@/app/types"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { buildPdpGalleryEntries, resolveItemImage } from "@/app/lib/image-utils"
@@ -10,43 +10,39 @@ import { usePdpCart } from "./usePdpCart"
 import { toast } from "sonner"
 import { useRouter } from "next/navigation"
 
-import { Download } from "@/app/components/ui/icons"
-import { Button } from "@/app/components/ui/button"
-import { downloadAccessPass } from "@/app/lib/download-access-pass"
-
 import { PdpPriceBlock } from "./PdpPriceBlock"
 import { PdpPurchaseCtas } from "./PdpPurchaseCtas"
 import { afterAddToCartHref } from "./pdp-purchase-cta"
 import { PdpMobileBuyBar } from "./PdpMobileBuyBar"
 import { PdpExperience } from "./pdp-experience"
-import QRCode from "react-qr-code"
 import { SubscriptionManagePanel } from "./SubscriptionManagePanel"
 import { PdpProductDetails } from "./PdpProductDetails"
 import { hasPdpProductDetails } from "./pdp-item-description"
 import { TicketEventMeta } from "./TicketEventMeta"
 import { TicketPurchaseCard } from "./TicketPurchaseCard"
+import { TicketManagePanel } from "./TicketManagePanel"
 import { PdpHeroGallery } from "./PdpHeroGallery"
 
 export function TicketPdpLayout({ item, backUrl, experience, catalogSize = 0 }: { item: CatalogItem & { _shop?: any }, backUrl: string, experience?: PdpExperience, catalogSize?: number }) {
   const { t } = useLocalization()
   const router = useRouter()
   const { addToCartStorage, startBuyNow } = usePdpCart(item.site_id)
-  const qrRef = useRef<HTMLDivElement>(null)
-  const [isDownloading, setIsDownloading] = useState(false)
   
   const [ownedEntitlement, setOwnedEntitlement] = useState<any>(null)
   
   useEffect(() => {
+    if (experience?.kind === "entitlement" && experience.entitlement) return
     async function checkOwnership() {
-      // Import dynamically to avoid top-level import
       const { getActiveDigitalEntitlementForCatalogItem } = await import("@/app/buyer/entitlement-queries")
       try {
         const ent = await getActiveDigitalEntitlementForCatalogItem(item.id)
         if (ent) setOwnedEntitlement(ent)
-      } catch (e) {}
+      } catch {
+        // user probably not logged in
+      }
     }
     checkOwnership()
-  }, [item.id])
+  }, [item.id, experience?.kind, experience?.entitlement?.id])
 
   const metadata = item.metadata || {}
   const attributes = metadata.attributes || {}
@@ -77,94 +73,8 @@ export function TicketPdpLayout({ item, backUrl, experience, catalogSize = 0 }: 
     startBuyNow(item, 1, backUrl)
   }
 
-  if (experience?.kind === 'entitlement' && experience.entitlement) {
-    return (
-      <div className="pb-16 max-w-7xl mx-auto w-full px-4 md:px-8 space-y-8">
-        <div>
-          <h1 className="text-3xl md:text-4xl lg:text-5xl font-black tracking-tight leading-tight mb-2">
-            {event?.name || item.name}
-          </h1>
-          <div className="text-muted-foreground font-medium flex flex-wrap items-center gap-2">
-            {t('buyer.library.actions.ticket') || 'Ticket'}
-            {attributes.event_date && (
-              <>
-                <span className="w-1 h-1 rounded-full bg-border" />
-                <span>{attributes.event_date}</span>
-              </>
-            )}
-          </div>
-        </div>
-
-        <div className="flex flex-col items-center justify-center p-6 sm:p-12 bg-white dark:bg-background border rounded-3xl shadow-sm">
-          <div ref={qrRef} className="relative bg-white p-4 rounded-xl shadow-sm border mb-6">
-            <QRCode
-              value={experience.entitlement.metadata?.access_token || experience.entitlement.metadata?.ticket_token || experience.entitlement.id}
-              size={200}
-              level="H"
-              style={{ opacity: experience.entitlement.status === 'used' || experience.entitlement.uses_remaining === 0 ? 0.3 : 1 }}
-            />
-            {(experience.entitlement.status === 'used' || experience.entitlement.uses_remaining === 0) && (
-              <div className="absolute inset-0 flex items-center justify-center">
-                <div className="bg-background/90 text-foreground font-black px-6 py-3 rounded-xl border shadow-lg text-lg tracking-widest uppercase rotate-12">
-                  {t("ticket.checkedIn") || "Checked In"}
-                </div>
-              </div>
-            )}
-          </div>
-          <div className="text-center">
-            <p className="text-sm font-mono text-muted-foreground mb-1 uppercase tracking-wider">{t("ticket.ticketId") || "Ticket ID"}</p>
-            <p className="font-mono font-medium text-foreground mb-4">{experience.entitlement.id}</p>
-            {experience.entitlement.status !== 'used' && experience.entitlement.uses_remaining !== 0 && (
-              <Button
-                variant="outline"
-                onClick={async () => {
-                  const svg = qrRef.current?.querySelector("svg")
-                  if (!svg) return
-                  setIsDownloading(true)
-                  try {
-                    const code =
-                      experience.entitlement.metadata?.access_token ||
-                      experience.entitlement.metadata?.ticket_token ||
-                      experience.entitlement.id
-                    await downloadAccessPass({
-                      qrSvg: svg,
-                      title: event?.name || item.name,
-                      brandName: (item as any)._shop?.site_name || "Market Fit",
-                      kind: "ticket",
-                      dateLabel: attributes.event_date,
-                      timeLabel: (attributes as any).event_time || (attributes as any).doors_open,
-                      venueLabel: [venueLocation.name, venueLocation.city].filter(Boolean).join(" · ") || undefined,
-                      codeLabel: code,
-                      footnote: t("buyer.reservations.presentQr") || "Present this QR at the entrance",
-                      filename: `ticket-${experience.entitlement.id.slice(0, 8)}.png`,
-                    })
-                  } finally {
-                    setIsDownloading(false)
-                  }
-                }}
-                disabled={isDownloading}
-              >
-                <Download className="w-4 h-4 mr-2" />
-                {isDownloading
-                  ? "..."
-                  : t("buyer.reservations.downloadPass") || "Download Pass"}
-              </Button>
-            )}
-          </div>
-
-          {(venueLocation.name || venueLocation.address || venueLocation.city) && (
-            <div className="mt-8 w-full max-w-lg text-left">
-              <VenueLocationSection
-                name={venueLocation.name}
-                address={venueLocation.address}
-                city={venueLocation.city}
-              />
-            </div>
-          )}
-        </div>
-      </div>
-    )
-  }
+  const isTicketExperience = experience?.kind === 'entitlement' && experience.entitlement
+  const activeEntitlement = isTicketExperience ? experience.entitlement : ownedEntitlement
 
   const heroImageUrl = resolveItemImage(item, "full")
   const galleryEntries = buildPdpGalleryEntries({ parent: item, size: "full" })
@@ -177,14 +87,21 @@ export function TicketPdpLayout({ item, backUrl, experience, catalogSize = 0 }: 
       <div className="w-full px-4 md:px-8">
         <div className="w-full h-[28vh] min-h-[200px] sm:h-[36vh] md:h-[42vh] bg-muted relative rounded-[1.5rem] sm:rounded-[2rem] overflow-hidden">
           <PdpHeroGallery entries={galleryEntries} itemName={item.name} />
+          {activeEntitlement && (
+            <span className="absolute top-3 left-3 z-20 rounded-md bg-emerald-600 px-2.5 py-1 text-xs font-bold text-white shadow-sm uppercase tracking-wider">
+              {t('shop.yourTicket') || 'Your ticket'}
+            </span>
+          )}
         </div>
       </div>
 
       <div className="max-w-7xl mx-auto px-4 md:px-8 py-8 md:py-12">
         <div className="mb-8 lg:mb-12 max-w-4xl">
-          <div className="lg:hidden mb-4">
-            <PdpPriceBlock price={item.target_sale_price || 0} currency={item.currency || 'USD'} />
-          </div>
+          {!activeEntitlement && (
+            <div className="lg:hidden mb-4">
+              <PdpPriceBlock price={item.target_sale_price || 0} currency={item.currency || 'USD'} />
+            </div>
+          )}
           <h1 className="text-4xl md:text-5xl lg:text-6xl font-black tracking-tight leading-tight mb-8">
             {event?.name || item.name}
           </h1>
@@ -219,10 +136,59 @@ export function TicketPdpLayout({ item, backUrl, experience, catalogSize = 0 }: 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-12">
           {/* Main content column */}
           <div className="lg:col-span-2 space-y-8 order-2 lg:order-1">
-            {(item.description || hasExtraDetails) && (
+            {isTicketExperience && ((item as any)._shop?.site_name || (event?.name && event.name !== item.name) || venueLocation.name || artists.length > 0) && (
+              <div className="rounded-3xl border border-border/50 bg-card shadow-sm shadow-black/5 p-6 sm:p-8 space-y-6">
+                <h3 className="font-bold text-xl">
+                  {t("buyer.ticket.details") || "Ticket details"}
+                </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 text-sm">
+                  {(item as any)._shop?.site_name && (
+                    <div>
+                      <div className="text-[10px] sm:text-xs text-muted-foreground font-bold uppercase tracking-wider mb-1.5">
+                        {t("buyer.reservations.provider")}
+                      </div>
+                      <div className="font-semibold text-base">{(item as any)._shop.site_name}</div>
+                    </div>
+                  )}
+                  {event?.name && event.name !== item.name && (
+                    <div>
+                      <div className="text-[10px] sm:text-xs text-muted-foreground font-bold uppercase tracking-wider mb-1.5">
+                        {t("pdp.aboutThisEvent") || "Event"}
+                      </div>
+                      <div className="font-semibold text-base">{event.name}</div>
+                    </div>
+                  )}
+                  {venueLocation.name && (
+                    <div>
+                      <div className="text-[10px] sm:text-xs text-muted-foreground font-bold uppercase tracking-wider mb-1.5">
+                        {t("buyer.reservations.venue")}
+                      </div>
+                      <div className="font-semibold text-base">{venueLocation.name}</div>
+                      {(venueLocation.address || venueLocation.city) && (
+                        <div className="text-muted-foreground mt-1 text-sm">
+                          {[venueLocation.address, venueLocation.city].filter(Boolean).join(", ")}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  {artists.length > 0 && (
+                    <div>
+                      <div className="text-[10px] sm:text-xs text-muted-foreground font-bold uppercase tracking-wider mb-1.5">
+                        {t("pdp.artists") || "Artists"}
+                      </div>
+                      <div className="font-semibold text-base">
+                        {artists.map((artist) => artist.name).join(", ")}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {(item.description || isTicketExperience || hasExtraDetails) && (
               <div className="pt-4 lg:pt-8 border-t border-transparent lg:border-border">
                 <PdpProductDetails
-                  description={item.description}
+                  description={item.description || (isTicketExperience ? t("buyer.reservations.aboutFallback") : null)}
                   attrFields={attrFields}
                   attributes={attributes as Record<string, string | undefined>}
                   specGroups={specDisplay.groups}
@@ -251,28 +217,38 @@ export function TicketPdpLayout({ item, backUrl, experience, catalogSize = 0 }: 
           </div>
 
           {/* Sticky purchase rail */}
-          <div className="lg:col-span-1 order-1 lg:order-2 hidden lg:block">
-            <div className="lg:sticky lg:top-32">
-              <TicketPurchaseCard
-                price={item.target_sale_price || 0}
-                currency={item.currency || 'USD'}
-                imageUrl={heroImageUrl}
-                itemName={item.name}
-                date={attributes.event_date}
-                time={timeLabel}
-                isSellable={isSellable}
-                catalogSize={catalogSize}
-                onAdd={handleAdd}
-                onBuyNow={handleBuyNow}
-                onViewTicket={() => router.push(`/buyer/ticket/${ownedEntitlement.id}`)}
-                ownedEntitlement={ownedEntitlement}
+          <div className="lg:col-span-1 order-1 lg:order-2">
+            {activeEntitlement ? (
+              <TicketManagePanel
+                entitlement={activeEntitlement}
+                item={item}
+                event={event}
+                venueLocation={venueLocation}
+                attributes={attributes}
               />
-            </div>
+            ) : (
+              <div className="hidden lg:block lg:sticky lg:top-32">
+                <TicketPurchaseCard
+                  price={item.target_sale_price || 0}
+                  currency={item.currency || 'USD'}
+                  imageUrl={heroImageUrl}
+                  itemName={item.name}
+                  date={attributes.event_date}
+                  time={timeLabel}
+                  isSellable={isSellable}
+                  catalogSize={catalogSize}
+                  onAdd={handleAdd}
+                  onBuyNow={handleBuyNow}
+                  onViewTicket={() => router.push(`/buyer/ticket/${ownedEntitlement?.id}`)}
+                  ownedEntitlement={ownedEntitlement}
+                />
+              </div>
+            )}
           </div>
         </div>
       </div>
 
-      {!ownedEntitlement && !experience && (
+      {!activeEntitlement && (
         <PdpMobileBuyBar price={item.target_sale_price || 0} fullWidthCta={true}>
           <PdpPurchaseCtas
             catalogSize={catalogSize}

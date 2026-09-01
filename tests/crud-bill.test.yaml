@@ -7,7 +7,7 @@ statements:
     locator: "getByRole('button', { name: 'Select' }).first()"
 
   - WAIT_UNTIL: The user is navigated to the default project page
-    js: "page.url().includes('/robots')"
+    js: "await page.url().includes('/robots')"
     timeout_seconds: 5
 
   - URL: /bills
@@ -30,11 +30,11 @@ statements:
     locator: "getByRole('button', { name: 'Create bill' })"
 
   - WAIT_UNTIL: The create bill modal closes
-    js: "page.getByRole('dialog').count() === 0"
+    js: "await page.getByRole('dialog').count() === 0"
     timeout_seconds: 10
 
   - WAIT_UNTIL: The bill details page is open
-    js: "page.url().includes('/bills/') && !page.url().endsWith('/bills')"
+    js: "await page.url().includes('/bills/') && !page.url().endsWith('/bills')"
     timeout_seconds: 15
 
   - VERIFY: The created bill title is visible
@@ -49,7 +49,7 @@ statements:
     locator: "getByRole('button', { name: 'Delete' }).last()"
 
   - WAIT_UNTIL: The user is back on the bills list
-    js: "page.url().endsWith('/bills')"
+    js: "await page.url().endsWith('/bills')"
     timeout_seconds: 15
 
   - VERIFY: The bill is gone from the list

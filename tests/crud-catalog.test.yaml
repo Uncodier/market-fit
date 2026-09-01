@@ -8,7 +8,7 @@ statements:
     locator: "getByRole('button', { name: 'Select' }).first()"
 
   - WAIT_UNTIL: The user is navigated to the default project page
-    js: "page.url().includes('/robots')"
+    js: "await page.url().includes('/robots')"
     timeout_seconds: 5
 
   # 1. CREATE
@@ -23,7 +23,7 @@ statements:
     value: "Automated Catalog Category"
 
   - WAIT_UNTIL: The category dropdown options are visible
-    js: "page.getByText(/Use \"Automated Catalog Category\"|Automated Catalog Category/).count() > 0"
+    js: "await page.getByText(/Use \"Automated Catalog Category\"|Automated Catalog Category/).count() > 0"
     timeout_seconds: 5
 
   - intent: Select or create the category
@@ -48,19 +48,19 @@ statements:
     locator: "getByRole('button', { name: /Create item|Agregar item/i })"
 
   - WAIT_UNTIL: The create catalog item modal closes
-    js: "page.getByRole('dialog').count() === 0"
+    js: "await page.getByRole('dialog').count() === 0"
     timeout_seconds: 10
 
   - WAIT_UNTIL: The new product appears in the list
-    js: "page.getByText('Automated Test Product').count() > 0"
+    js: "await page.getByText('Automated Test Product').count() > 0"
     timeout_seconds: 15
 
   - intent: Open the catalog item details
     action: click
-    locator: "getByRole('cell', { name: 'Automated Test Product' }).first()"
+    locator: "getByRole('row', { name: /Automated Test Product/i }).getByRole('link').first()"
 
   - WAIT_UNTIL: The details page is open and loaded
-    js: "page.url().includes('/catalog/') && !page.url().endsWith('/catalog')"
+    js: "await page.url().includes('/catalog/') && !page.url().endsWith('/catalog')"
     timeout_seconds: 15
 
   # 2. READ / VERIFY

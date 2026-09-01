@@ -7,7 +7,7 @@ statements:
     locator: "getByRole('button', { name: 'Select' }).first()"
 
   - WAIT_UNTIL: The user is navigated to the default project page
-    js: "page.url().includes('/robots')"
+    js: "await page.url().includes('/robots')"
     timeout_seconds: 5
 
   - URL: /content
@@ -35,11 +35,11 @@ statements:
     locator: "getByRole('button', { name: 'Create Content' })"
 
   - WAIT_UNTIL: The create content modal closes
-    js: "page.getByRole('dialog').count() === 0"
+    js: "await page.getByRole('dialog').count() === 0"
     timeout_seconds: 10
 
   - WAIT_UNTIL: The new content appears in the list
-    js: "page.getByText('Automated Test Content').count() > 0"
+    js: "await page.getByText('Automated Test Content').count() > 0"
     timeout_seconds: 15
 
   - intent: Open the content details page
@@ -47,7 +47,7 @@ statements:
     locator: "getByText('Automated Test Content').first()"
 
   - WAIT_UNTIL: The content details route is open and loaded
-    js: "page.url().includes('/content/') && !page.url().endsWith('/content')"
+    js: "await page.url().includes('/content/') && !page.url().endsWith('/content')"
     timeout_seconds: 15
 
   - intent: Click the Details tab
@@ -64,5 +64,5 @@ statements:
     locator: "getByRole('button', { name: 'Save' })"
 
   - WAIT_UNTIL: The edited title is visible
-    js: "page.getByDisplayValue('Automated Test Content - Edited').count() > 0"
+    js: "await page.getByDisplayValue('Automated Test Content - Edited').count() > 0"
     timeout_seconds: 10

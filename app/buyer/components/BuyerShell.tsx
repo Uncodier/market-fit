@@ -106,7 +106,7 @@ export function BuyerShell({ children, requireAuth = true }: BuyerShellProps) {
   return (
     <div className={cn(
       "flex min-h-screen w-full flex-col bg-muted/30",
-      isMiniExperience && "md:h-[100dvh] md:overflow-hidden overflow-x-hidden w-full max-w-[100vw]"
+      isMiniExperience && "h-[100dvh] overflow-hidden w-full max-w-[100vw]"
     )}>
       {!isMiniExperience && (
         <>
@@ -260,7 +260,9 @@ export function BuyerShell({ children, requireAuth = true }: BuyerShellProps) {
       <main
         className={cn(
           "flex-1 flex flex-col min-w-0 w-full relative",
-          !isMiniExperience && "max-w-7xl mx-auto px-4 md:px-8 py-6 md:py-8"
+          isMiniExperience
+            ? "min-h-0 overflow-y-auto"
+            : "max-w-7xl mx-auto px-4 md:px-8 py-6 md:py-8"
         )}
       >
         {isAuthLoading ? (

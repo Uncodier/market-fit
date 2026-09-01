@@ -34,7 +34,16 @@ export async function grantFromOrder(orderId: string, forceServiceRole: boolean 
   }
 
   // 2. Fetch catalog items to identify digital assets
-  const catalogItemIds = order.items.map((item: any) => item.id || item.catalog_item_id)
+  let orderLines = Array.isArray(order.items) ? order.items : []
+  if (orderLines.length === 0) {
+    const { data: saleOrderItems } = await supabase
+      .from("sale_order_items")
+      .select("catalog_item_id, name, quantity")
+      .eq("sale_order_id", order.id)
+    orderLines = saleOrderItems || []
+  }
+
+  const catalogItemIds = orderLines.map((item: any) => item.id || item.catalog_item_id)
   
   if (catalogItemIds.length === 0) return
 
@@ -50,7 +59,7 @@ export async function grantFromOrder(orderId: string, forceServiceRole: boolean 
   // 3. Create entitlements
   const entitlements = []
   
-  for (const item of order.items) {
+  for (const item of orderLines) {
     const itemId = item.id || item.catalog_item_id
     const catalogDef = digitalItems.find((d: any) => d.id === itemId)
     

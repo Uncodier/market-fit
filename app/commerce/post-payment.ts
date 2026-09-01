@@ -1,6 +1,7 @@
 import { createServiceClient } from "@/lib/supabase/server"
 import { createShipment } from "@/app/shipments/actions"
 import { ensureCommerceLeadConverted } from "./ensure-commerce-lead-converted"
+import { grantFromOrder } from "./entitlements"
 
 export async function processPostPaymentFulfillment(
   orderId: string, 
@@ -69,6 +70,13 @@ export async function processPostPaymentFulfillment(
       .update({ status: newStatus, sent_at: sentAt })
       .in('id', saleOrderItems.map(i => i.id))
       .eq('status', 'draft'); // Only promote draft items
+  }
+
+  // Card checkouts start as draft; entitlements are only granted once paid.
+  try {
+    await grantFromOrder(orderId, true)
+  } catch (e) {
+    console.error("Failed to grant entitlements after payment:", e)
   }
 
   // 4. Create shipment if applicable

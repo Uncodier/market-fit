@@ -1,4 +1,4 @@
-import { getDefaultSpecCategorySlugsForItem, getListingMetaChips, getPdpCustomSpecs, getPdpFilledAttributeFields, getPdpSpecDisplay } from "@/app/catalog/product-details";
+import { getDefaultSpecCategorySlugsForItem, getListingCtaLabel, getListingMetaChips, getPdpCustomSpecs, getPdpFilledAttributeFields, getPdpSpecDisplay } from "@/app/catalog/product-details";
 import { CatalogItem } from "@/app/types";
 
 describe("product-details item_spec helpers", () => {
@@ -146,4 +146,21 @@ describe("product-details item_spec helpers", () => {
       expect(getPdpFilledAttributeFields(item)).toEqual(["duration", "language"]);
     });
   });
+
+  describe("getListingCtaLabel owned access", () => {
+    const ticket = { kind: "digital_asset", digital_subtype: "ticket" } as CatalogItem
+    const pass = { kind: "digital_asset", digital_subtype: "pass" } as CatalogItem
+
+    it("uses View Ticket for an owned ticket", () => {
+      expect(getListingCtaLabel(ticket, { isOwned: true })).toBe("buyer.library.actions.ticket")
+    })
+
+    it("keeps Book for an owned pass that can book", () => {
+      expect(getListingCtaLabel(pass, { isOwned: true, canBook: true })).toBe("marketplace.listing.cta.book")
+    })
+
+    it("keeps Get Tickets for an unowned ticket", () => {
+      expect(getListingCtaLabel(ticket)).toBe("marketplace.listing.cta.getTickets")
+    })
+  })
 });

@@ -8,6 +8,7 @@ import {
 import { clearCart } from "@/app/commerce/cart-storage"
 import {
   rememberDeviceOrder,
+  toDeviceOrderItem,
   type GuestShippingAddress,
 } from "@/app/commerce/device-order-storage"
 import type { CatalogItem } from "@/app/types"
@@ -47,11 +48,7 @@ function cacheDeviceOrder(
     total: res.total,
     currency: res.currency,
     createdAt: res.createdAt,
-    items: cart.map((c) => ({
-      name: c.name,
-      imageUrl: c.image_url ?? null,
-      unitPrice: c.cartPrice ?? c.target_sale_price ?? null,
-    })),
+    items: cart.map(toDeviceOrderItem),
     customerName: guest.customerName,
     customerEmail: guest.customerEmail,
     shippingAddress: guest.shippingAddress,

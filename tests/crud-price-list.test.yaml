@@ -7,7 +7,7 @@ statements:
     locator: "getByRole('button', { name: 'Select' }).first()"
 
   - WAIT_UNTIL: The user is navigated to the default project page
-    js: "page.url().includes('/robots')"
+    js: "await page.url().includes('/robots')"
     timeout_seconds: 5
 
   - URL: /price-lists
@@ -25,11 +25,11 @@ statements:
     locator: "getByRole('button', { name: 'Create List' }).last()"
 
   - WAIT_UNTIL: The create price list modal closes
-    js: "page.getByRole('dialog').count() === 0"
+    js: "await page.getByRole('dialog').count() === 0"
     timeout_seconds: 10
 
   - WAIT_UNTIL: The new price list appears in the list
-    js: "page.getByText('Automated Test Price List').count() > 0"
+    js: "await page.getByText('Automated Test Price List').count() > 0"
     timeout_seconds: 15
 
   - intent: Open the price list details page
@@ -37,7 +37,7 @@ statements:
     locator: "getByText('Automated Test Price List').first()"
 
   - WAIT_UNTIL: The price list details route is open
-    js: "page.url().includes('/price-lists/') && !page.url().endsWith('/price-lists')"
+    js: "await page.url().includes('/price-lists/') && !page.url().endsWith('/price-lists')"
     timeout_seconds: 10
 
   - intent: Open the Edit list dialog from the top bar
@@ -54,7 +54,7 @@ statements:
     locator: "getByRole('button', { name: 'Save' })"
 
   - WAIT_UNTIL: The edited name is visible
-    js: "page.getByText('Automated Test Price List - Edited').count() > 0"
+    js: "await page.getByText('Automated Test Price List - Edited').count() > 0"
     timeout_seconds: 10
 
   - VERIFY: The edited price list name is visible

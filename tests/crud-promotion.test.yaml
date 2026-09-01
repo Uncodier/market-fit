@@ -7,7 +7,7 @@ statements:
     locator: "getByRole('button', { name: 'Select' }).first()"
 
   - WAIT_UNTIL: The user is navigated to the default project page
-    js: "page.url().includes('/robots')"
+    js: "await page.url().includes('/robots')"
     timeout_seconds: 5
 
   - URL: /promotions
@@ -21,7 +21,7 @@ statements:
     value: "Automated Promo Campaign"
 
   - WAIT_UNTIL: The create campaign on the fly option is visible
-    js: "page.getByText('Use \"Automated Promo Campaign\"').count() > 0"
+    js: "await page.getByText('Use \"Automated Promo Campaign\"').count() > 0"
     timeout_seconds: 5
 
   - intent: Create the campaign on the fly with Use
@@ -43,11 +43,11 @@ statements:
     locator: "getByRole('button', { name: 'Create promotion' })"
 
   - WAIT_UNTIL: The create promotion modal closes
-    js: "page.getByRole('dialog').count() === 0"
+    js: "await page.getByRole('dialog').count() === 0"
     timeout_seconds: 10
 
   - WAIT_UNTIL: The promotion details page is open
-    js: "page.url().match(/\\/promotions\\/[^?]+$/) !== null"
+    js: "await page.url().match(/\\/promotions\\/[^?]+$/) !== null"
     timeout_seconds: 15
 
   - intent: Update the promotion name
@@ -60,5 +60,5 @@ statements:
     locator: "getByRole('button', { name: 'Save Changes' })"
 
   - WAIT_UNTIL: A saved toast or the edited name is visible
-    js: "page.getByText('Automated Test Promotion - Edited').count() > 0"
+    js: "await page.getByText('Automated Test Promotion - Edited').count() > 0"
     timeout_seconds: 10

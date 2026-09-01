@@ -126,9 +126,15 @@ export const FeaturedListingPoster = React.memo(function FeaturedListingPoster({
           </Link>
         )}
         {typeLabelKey !== "marketplace.listing.badge.product" && !isReservable && (
-          <span className="rounded-md bg-white px-2.5 py-1 text-xs font-bold text-black shadow-sm uppercase tracking-wider">
-            {t(typeLabelKey) || typeLabelKey.split(".").pop()}
-          </span>
+          isOwned && item.kind === 'digital_asset' && item.digital_subtype === 'ticket' ? (
+            <span className="rounded-md bg-emerald-600 px-2.5 py-1 text-xs font-bold text-white shadow-sm uppercase tracking-wider">
+              {t('shop.yourTicket') || 'Your ticket'}
+            </span>
+          ) : (
+            <span className="rounded-md bg-white px-2.5 py-1 text-xs font-bold text-black shadow-sm uppercase tracking-wider">
+              {t(typeLabelKey) || typeLabelKey.split(".").pop()}
+            </span>
+          )
         )}
         {!locationAvailable && (
           <span className="rounded-md bg-red-600/95 backdrop-blur-sm px-2.5 py-1 text-xs font-bold text-white shadow-sm uppercase tracking-wider">
@@ -219,10 +225,13 @@ export const FeaturedListingPoster = React.memo(function FeaturedListingPoster({
               type="button"
               disabled={actionDisabled}
               onClick={handlePrimary}
-              className={`inline-flex w-full items-center justify-center rounded-xl bg-white px-6 font-bold text-black shadow-[0_4px_18px_rgba(0,0,0,0.35)] transition-colors duration-200 hover:bg-black hover:text-white active:scale-95 disabled:cursor-not-allowed disabled:bg-white/30 disabled:text-black/40 disabled:shadow-none sm:w-auto ${
+              className={`inline-flex w-full items-center justify-center gap-2 rounded-xl bg-white px-6 font-bold text-black shadow-[0_4px_18px_rgba(0,0,0,0.35)] transition-colors duration-200 hover:bg-black hover:text-white active:scale-95 disabled:cursor-not-allowed disabled:bg-white/30 disabled:text-black/40 disabled:shadow-none sm:w-auto ${
                 isHero ? "h-12 text-base" : "h-11 text-sm"
               }`}
             >
+              {ctaLabelKey === 'buyer.library.actions.ticket' && (
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z"/><path d="M13 5v2"/><path d="M13 17v2"/><path d="M13 11v2"/></svg>
+              )}
               {actionDisabled
                 ? finalDisabledLabel
                 : t(ctaLabelKey) || ctaLabelKey.split(".").pop()}
@@ -242,6 +251,7 @@ interface FeaturedListingsRailProps {
   getPrimaryDisabled?: (item: FeaturedItem) => boolean
   disabledLabel?: string
   isOwned?: boolean
+  getIsOwned?: (item: FeaturedItem) => boolean
   getCanBook?: (item: FeaturedItem) => boolean
   locationAvailable?: boolean
   getLocationAvailable?: (item: FeaturedItem) => boolean
@@ -257,6 +267,7 @@ export const FeaturedListingsRail = React.memo(function FeaturedListingsRail({
   getPrimaryDisabled,
   disabledLabel,
   isOwned = false,
+  getIsOwned,
   getCanBook,
   locationAvailable = true,
   getLocationAvailable,
@@ -274,7 +285,7 @@ export const FeaturedListingsRail = React.memo(function FeaturedListingsRail({
         showSeller={showSeller}
         primaryDisabled={getPrimaryDisabled?.(item)}
         disabledLabel={disabledLabel}
-        isOwned={isOwned}
+        isOwned={getIsOwned ? getIsOwned(item) : isOwned}
         canBook={getCanBook?.(item)}
         size="hero"
         locationAvailable={getLocationAvailable ? getLocationAvailable(item) : locationAvailable}
@@ -294,7 +305,7 @@ export const FeaturedListingsRail = React.memo(function FeaturedListingsRail({
           showSeller={showSeller}
           primaryDisabled={getPrimaryDisabled?.(item)}
           disabledLabel={disabledLabel}
-          isOwned={isOwned}
+          isOwned={getIsOwned ? getIsOwned(item) : isOwned}
           canBook={getCanBook?.(item)}
           size="tile"
           locationAvailable={getLocationAvailable ? getLocationAvailable(item) : locationAvailable}

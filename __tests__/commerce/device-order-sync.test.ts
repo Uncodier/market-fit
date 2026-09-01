@@ -1,5 +1,6 @@
 import {
   applyDeviceOrderSnapshots,
+  attachPurchaseEntitlements,
   mapDeviceOrderSnapshot,
   mergeDeviceOrderSnapshot,
 } from "@/app/commerce/device-order-sync"
@@ -77,6 +78,60 @@ describe("device-order-sync", () => {
     expect(merged.customerName).toBe("Jane Doe")
     expect(merged.customerEmail).toBe("jane@example.com")
     expect(merged.status).toBe("completed")
+  })
+
+  it("maps catalog type from a public snapshot row", () => {
+    const snapshot = mapDeviceOrderSnapshot({
+      id: "ord-1",
+      public_access_token: "tok_abc",
+      order_number: "ORD-1",
+      status: "completed",
+      sale_order_items: [
+        {
+          name: "Hadestown",
+          unit_price: 70,
+          catalog_item_id: "cat-1",
+          catalog_item: {
+            name: "Hadestown",
+            image_url: "/h.jpg",
+            kind: "digital_asset",
+            digital_subtype: "ticket",
+          },
+        },
+      ],
+    })
+
+    expect(snapshot.items).toEqual([
+      {
+        name: "Hadestown",
+        imageUrl: "/h.jpg",
+        unitPrice: 70,
+        catalogItemId: "cat-1",
+        kind: "digital_asset",
+        digital_subtype: "ticket",
+      },
+    ])
+  })
+
+  it("attaches purchase entitlements to matching catalog items", () => {
+    const [order] = attachPurchaseEntitlements(
+      [
+        {
+          ...cached,
+          items: [
+            {
+              name: "Hadestown",
+              catalogItemId: "cat-1",
+              kind: "digital_asset",
+              digital_subtype: "ticket",
+            },
+          ],
+        },
+      ],
+      [{ id: "ent-1", source_id: "ord-1", catalog_item_id: "cat-1" }]
+    )
+
+    expect(order.items?.[0].entitlementId).toBe("ent-1")
   })
 
   it("does not mark unchanged snapshots as dirty", () => {

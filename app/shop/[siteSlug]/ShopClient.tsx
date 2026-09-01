@@ -252,8 +252,11 @@ export default function ShopClient({
   }, [catalogItems, fulfillment]);
 
   const ownedItems = useMemo(() => {
-    return ownedItemsDataState.filter((item) => isItemCompatibleWithFulfillment(item, fulfillment));
-  }, [ownedItemsDataState, fulfillment]);
+    return ownedItemsDataState.filter((item) => 
+      isItemCompatibleWithFulfillment(item, fulfillment) && 
+      ownedAccessMap.get(item.id)
+    );
+  }, [ownedItemsDataState, fulfillment, ownedAccessMap]);
 
   const addToCart = useCallback((item: CatalogItem) => {
     if (ownedAccessMap.has(item.id)) {

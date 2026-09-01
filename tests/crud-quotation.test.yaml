@@ -7,7 +7,7 @@ statements:
     locator: "getByRole('button', { name: 'Select' }).first()"
 
   - WAIT_UNTIL: The user is navigated to the default project page
-    js: "page.url().includes('/robots')"
+    js: "await page.url().includes('/robots')"
     timeout_seconds: 5
 
   - URL: /quotations
@@ -48,11 +48,11 @@ statements:
     locator: "getByRole('button', { name: 'Create Quotation' }).last()"
 
   - WAIT_UNTIL: The create quotation modal closes
-    js: "page.getByRole('dialog').count() === 0"
+    js: "await page.getByRole('dialog').count() === 0"
     timeout_seconds: 10
 
   - WAIT_UNTIL: The quotation details page is open
-    js: "page.url().includes('/quotations/') && !page.url().endsWith('/quotations')"
+    js: "await page.url().includes('/quotations/') && !page.url().endsWith('/quotations')"
     timeout_seconds: 15
 
   - VERIFY: The quotation page loaded
@@ -67,5 +67,5 @@ statements:
     locator: "getByRole('button', { name: 'Delete' }).last()"
 
   - WAIT_UNTIL: The user is back on the quotations list
-    js: "page.url().endsWith('/quotations')"
+    js: "await page.url().endsWith('/quotations')"
     timeout_seconds: 15

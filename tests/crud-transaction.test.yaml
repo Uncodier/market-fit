@@ -7,7 +7,7 @@ statements:
     locator: "getByRole('button', { name: 'Select' }).first()"
 
   - WAIT_UNTIL: The user is navigated to the default project page
-    js: "page.url().includes('/robots')"
+    js: "await page.url().includes('/robots')"
     timeout_seconds: 5
 
   - URL: /transactions
@@ -32,18 +32,18 @@ statements:
 
   - intent: Create the campaign on the fly with Use
     action: click
-    locator: "getByText('Use \"Automated Expense Campaign\"')"
+    locator: "getByRole('option', { name: /Use \"Automated Expense Campaign\"|Automated Expense Campaign/ }).first()"
 
   - intent: Save the new expense
     action: click
     locator: "getByRole('button', { name: 'Save' })"
 
   - WAIT_UNTIL: The create expense modal closes
-    js: "page.getByRole('dialog').count() === 0"
+    js: "await page.getByRole('dialog').count() === 0"
     timeout_seconds: 10
 
   - WAIT_UNTIL: The new expense appears in the list
-    js: "page.getByText('Automated Test Expense').count() > 0"
+    js: "await page.getByText('Automated Test Expense').count() > 0"
     timeout_seconds: 15
 
   - intent: Open the expense details page
@@ -66,7 +66,7 @@ statements:
     locator: "getByRole('button', { name: 'Delete' }).last()"
 
   - WAIT_UNTIL: The user is back on the transactions list
-    js: "page.url().match(/\\/transactions(?:\\?.*)?$/) !== null"
+    js: "await page.url().match(/\\/transactions(?:\\?.*)?$/) !== null"
     timeout_seconds: 15
 
   - VERIFY: The expense is gone from the list

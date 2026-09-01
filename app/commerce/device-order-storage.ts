@@ -2,6 +2,10 @@ export type DeviceOrderItem = {
   name: string
   imageUrl?: string | null
   unitPrice?: number | null
+  kind?: string | null
+  digital_subtype?: string | null
+  catalogItemId?: string | null
+  entitlementId?: string | null
 }
 
 export type GuestShippingAddress = {
@@ -52,7 +56,31 @@ function slimItems(items?: DeviceOrderItem[] | null): DeviceOrderItem[] {
       name: i.name,
       imageUrl: i.imageUrl ?? null,
       unitPrice: typeof i.unitPrice === "number" ? i.unitPrice : null,
+      ...(i.kind ? { kind: i.kind } : {}),
+      ...(i.digital_subtype ? { digital_subtype: i.digital_subtype } : {}),
+      ...(i.catalogItemId ? { catalogItemId: i.catalogItemId } : {}),
+      ...(i.entitlementId ? { entitlementId: i.entitlementId } : {}),
     }))
+}
+
+/** Cart/checkout line → cached shop “Your orders” item. */
+export function toDeviceOrderItem(item: {
+  name: string
+  image_url?: string | null
+  cartPrice?: number | null
+  target_sale_price?: number | null
+  kind?: string | null
+  digital_subtype?: string | null
+  id?: string | null
+}): DeviceOrderItem {
+  return {
+    name: item.name,
+    imageUrl: item.image_url ?? null,
+    unitPrice: item.cartPrice ?? item.target_sale_price ?? null,
+    ...(item.kind ? { kind: item.kind } : {}),
+    ...(item.digital_subtype ? { digital_subtype: item.digital_subtype } : {}),
+    ...(item.id ? { catalogItemId: item.id } : {}),
+  }
 }
 
 export function slimShippingAddress(

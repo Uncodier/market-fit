@@ -329,6 +329,9 @@ export function getListingCtaLabel(item: CatalogItem, options?: { isOwned?: bool
 
   if (isOwned) {
     if (canBook) return 'marketplace.listing.cta.book';
+    if (item.kind === 'digital_asset' && item.digital_subtype === 'ticket') {
+      return 'buyer.library.actions.ticket';
+    }
     return 'marketplace.listing.cta.viewDetails';
   }
 

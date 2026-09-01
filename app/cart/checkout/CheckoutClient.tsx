@@ -5,7 +5,7 @@ import { useSearchParams, useRouter } from "next/navigation"
 import { useAuthContext as useAuth } from "@/app/components/auth/auth-provider"
 import { getCartItems, clearCart, CartMode } from "@/app/commerce/cart-storage"
 import { cartLineExtendedTotal } from "@/app/commerce/cart-modifiers"
-import { rememberDeviceOrder, getDeviceOrders } from "@/app/commerce/device-order-storage"
+import { rememberDeviceOrder, getDeviceOrders, toDeviceOrderItem } from "@/app/commerce/device-order-storage"
 import { useGuestCheckoutPrefill } from "@/app/commerce/use-guest-checkout-prefill"
 import { CheckoutLine } from "@/app/commerce/checkout"
 import { checkoutCartRequest, createStripeOrderCheckout } from "@/app/commerce/checkout-client"
@@ -419,11 +419,7 @@ export default function CheckoutClient({
         total: res.total,
         currency: res.currency,
         createdAt: res.createdAt,
-        items: items.map((c) => ({
-          name: c.name,
-          imageUrl: c.image_url ?? null,
-          unitPrice: c.cartPrice ?? c.target_sale_price ?? null,
-        })),
+        items: items.map(toDeviceOrderItem),
         customerName: resolvedName,
         customerEmail: resolvedEmail,
         shippingAddress: fulfillment === "ship" ? shippingAddress : undefined,

@@ -7,7 +7,7 @@ statements:
     locator: "getByRole('button', { name: 'Select' }).first()"
 
   - WAIT_UNTIL: The user is navigated to the default project page
-    js: "page.url().includes('/robots')"
+    js: "await page.url().includes('/robots')"
     timeout_seconds: 5
 
   - URL: /segments
@@ -27,7 +27,11 @@ statements:
 
   - intent: Open audience dropdown
     action: click
-    locator: "getByRole('combobox').filter({ hasText: 'Select audience type' })"
+    locator: "getByRole('combobox').nth(0)"
+
+  - WAIT_UNTIL: Dropdown animation finishes
+    js: "await page.waitForTimeout(500)"
+    timeout_seconds: 5
 
   - intent: Select audience type
     action: click
@@ -35,7 +39,11 @@ statements:
 
   - intent: Open language dropdown
     action: click
-    locator: "getByRole('combobox').filter({ hasText: 'Select language' })"
+    locator: "getByRole('combobox').nth(1)"
+
+  - WAIT_UNTIL: Dropdown animation finishes
+    js: "await page.waitForTimeout(500)"
+    timeout_seconds: 5
 
   - intent: Select language
     action: click
@@ -46,11 +54,11 @@ statements:
     locator: "getByRole('button', { name: 'Create Segment' })"
 
   - WAIT_UNTIL: The create segment modal closes
-    js: "page.getByRole('dialog').count() === 0"
+    js: "await page.getByRole('dialog').count() === 0"
     timeout_seconds: 10
 
   - WAIT_UNTIL: The new segment appears in the list
-    js: "page.getByText('Automated Test Segment').count() > 0"
+    js: "await page.getByText('Automated Test Segment').count() > 0"
     timeout_seconds: 15
 
   - intent: Open the segment details page
@@ -58,7 +66,7 @@ statements:
     locator: "getByText('Automated Test Segment').first()"
 
   - WAIT_UNTIL: The segment details route is open
-    js: "page.url().includes('/segments/') && !page.url().endsWith('/segments')"
+    js: "await page.url().includes('/segments/') && !page.url().endsWith('/segments')"
     timeout_seconds: 10
 
   - intent: Switch to Details tab
@@ -75,7 +83,7 @@ statements:
     locator: "getByRole('button', { name: 'Save Basic Information' })"
 
   - WAIT_UNTIL: The save finishes
-    js: "page.getByRole('button', { name: 'Save Basic Information' }).count() > 0"
+    js: "await page.getByRole('button', { name: 'Save Basic Information' }).count() > 0"
     timeout_seconds: 10
 
   - intent: Click Delete in the danger zone
@@ -87,7 +95,7 @@ statements:
     locator: "getByRole('button', { name: 'Delete Segment' })"
 
   - WAIT_UNTIL: The user is back on the segments list
-    js: "page.url().endsWith('/segments')"
+    js: "await page.url().endsWith('/segments')"
     timeout_seconds: 15
 
   - VERIFY: The edited segment is gone from the list

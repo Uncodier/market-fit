@@ -7,6 +7,7 @@ import {
   getGuestCheckoutPrefill,
   rememberDeviceOrder,
   setDeviceOrders,
+  toDeviceOrderItem,
 } from "@/app/commerce/device-order-storage"
 
 describe("device-order-storage", () => {
@@ -83,6 +84,56 @@ describe("device-order-storage", () => {
     })
 
     expect(getGuestCheckoutPrefill("site-1")).toBeNull()
+  })
+
+  it("persists digital type and entitlement on cached items", () => {
+    rememberDeviceOrder("site-1", {
+      orderId: "ord-1",
+      publicAccessToken: "tok_abc",
+      items: [
+        {
+          name: "Hadestown",
+          imageUrl: "/h.jpg",
+          unitPrice: 70,
+          kind: "digital_asset",
+          digital_subtype: "ticket",
+          catalogItemId: "cat-1",
+          entitlementId: "ent-1",
+        },
+      ],
+    })
+
+    expect(getDeviceOrders("site-1")[0].items).toEqual([
+      {
+        name: "Hadestown",
+        imageUrl: "/h.jpg",
+        unitPrice: 70,
+        kind: "digital_asset",
+        digital_subtype: "ticket",
+        catalogItemId: "cat-1",
+        entitlementId: "ent-1",
+      },
+    ])
+  })
+
+  it("maps cart lines into cached device-order items", () => {
+    expect(
+      toDeviceOrderItem({
+        id: "cat-1",
+        name: "Proshot",
+        image_url: "/p.jpg",
+        cartPrice: 70,
+        kind: "digital_asset",
+        digital_subtype: "ticket",
+      })
+    ).toEqual({
+      name: "Proshot",
+      imageUrl: "/p.jpg",
+      unitPrice: 70,
+      kind: "digital_asset",
+      digital_subtype: "ticket",
+      catalogItemId: "cat-1",
+    })
   })
 
   it("keeps guest identity when rewriting device orders", () => {
