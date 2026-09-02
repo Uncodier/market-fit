@@ -1,6 +1,7 @@
 import { render } from "@testing-library/react"
 import { ShopHomeSkeleton } from "@/app/shop/[siteSlug]/ShopHomeSkeleton"
 import { resolveShopHomeSkeletonLayout } from "@/app/shop/[siteSlug]/shop-home-skeleton-layout"
+import { LocalizationProvider } from "@/app/context/LocalizationContext"
 
 const clementeLike = {
   name: "Clemente",
@@ -67,7 +68,9 @@ describe("resolveShopHomeSkeletonLayout", () => {
 describe("ShopHomeSkeleton", () => {
   it("does not paint fulfillment or trust chrome for a Clemente-like shop", () => {
     const { getByTestId, queryByTestId } = render(
-      <ShopHomeSkeleton site={clementeLike} hasCategories />
+      <LocalizationProvider>
+        <ShopHomeSkeleton site={clementeLike} hasCategories />
+      </LocalizationProvider>
     )
     expect(getByTestId("shop-skeleton-hero")).toBeTruthy()
     expect(queryByTestId("shop-skeleton-fulfillment")).toBeNull()
@@ -78,7 +81,11 @@ describe("ShopHomeSkeleton", () => {
   })
 
   it("centers a 40% search field like ShopHeader on desktop", () => {
-    const { container } = render(<ShopHomeSkeleton site={clementeLike} />)
+    const { container } = render(
+      <LocalizationProvider>
+        <ShopHomeSkeleton site={clementeLike} />
+      </LocalizationProvider>
+    )
     const searchWrap = container.querySelector('[class*="w-2/5"]')
     expect(searchWrap).toBeTruthy()
     expect(searchWrap?.className).toContain("-translate-x-1/2")
@@ -86,10 +93,12 @@ describe("ShopHomeSkeleton", () => {
 
   it("uses a trending heading instead of chips when there are no categories", () => {
     const { getByTestId, queryByTestId } = render(
-      <ShopHomeSkeleton
-        site={{ name: "Small", settings: { shop: {} } }}
-        hasCategories={false}
-      />
+      <LocalizationProvider>
+        <ShopHomeSkeleton
+          site={{ name: "Small", settings: { shop: {} } }}
+          hasCategories={false}
+        />
+      </LocalizationProvider>
     )
     expect(queryByTestId("shop-skeleton-categories")).toBeNull()
     expect(getByTestId("shop-skeleton-trending")).toBeTruthy()

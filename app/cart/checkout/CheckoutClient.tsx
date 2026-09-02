@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useEffect } from "react"
+import React, { useState, useEffect, useLayoutEffect } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
 import { useAuthContext as useAuth } from "@/app/components/auth/auth-provider"
 import { getCartItems, clearCart, CartMode } from "@/app/commerce/cart-storage"
@@ -43,7 +43,7 @@ export default function CheckoutClient({
 }: {
   buyerGeo?: BuyerGeo
 } = {}) {
-  const { t, locale } = useLocalization()
+  const { t, locale, applyUnresolvedLocale } = useLocalization()
   const router = useRouter()
   const searchParams = useSearchParams()
   const { user, isLoading: authLoading } = useAuth()
@@ -179,6 +179,11 @@ export default function CheckoutClient({
       }).catch(console.error);
     }
   }, [siteId, source, items, allowedLocationIds, buyerGeo]);
+
+  useLayoutEffect(() => {
+    if (!siteSettings?.default_locale) return
+    applyUnresolvedLocale(siteSettings.default_locale)
+  }, [siteSettings?.default_locale, applyUnresolvedLocale]);
 
   useEffect(() => {
     if (typeof window === "undefined") return

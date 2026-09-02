@@ -165,7 +165,7 @@ export function BuyerShell({ children, requireAuth = true }: BuyerShellProps) {
                       <button className={shellClasses.iconButton}>
                         <Globe className="h-5 w-5" />
                         <span className="sr-only">
-                          {t("buyer.layout.footer.toggleLanguage") || "Toggle language"}
+                          {t("commerce.language.change") || "Change language"}
                         </span>
                       </button>
                     </DropdownMenuTrigger>

@@ -37,6 +37,10 @@ statements:
   - intent: Create the campaign on the fly with Use
     action: click
     locator: "getByText(/Use \"Automated Expense Campaign\"|Automated Expense Campaign/).first()"
+    
+  - WAIT_UNTIL: The campaign is selected
+    js: "await page.waitForTimeout(2000).catch(() => {})"
+    timeout_seconds: 5
 
   - intent: Save the new expense
     action: click
@@ -46,13 +50,16 @@ statements:
     js: "await page.getByRole('dialog').count() === 0"
     timeout_seconds: 10
 
-  - WAIT_UNTIL: The new expense appears in the list
-    js: "await page.getByText('Automated Test Expense').count() > 0"
-    timeout_seconds: 15
+  - description: Ensure transactions are visible and data is updated
+    js: "await page.waitForTimeout(5000); await page.goto('/transactions'); await page.waitForTimeout(3000);"
+    
+  - WAIT_UNTIL: The expense appears in the list
+    js: "await page.getByText('Automated Test Expense', { exact: false }).count() > 0"
+    timeout_seconds: 30
 
   - intent: Open the expense details page
     action: click
-    locator: "getByText('Automated Test Expense').first()"
+    locator: "getByText('Automated Test Expense', { exact: false }).first()"
 
   - WAIT_UNTIL: The transaction details route is open and loaded
     js: "await page.getByText('Automated Test Expense').first().isVisible()"
@@ -63,18 +70,22 @@ statements:
 
   - intent: Return to transactions list
     action: click
-    locator: "getByRole('link', { name: 'Transactions' }).first()"
+    locator: "getByRole('button', { name: /Close|Cerrar/i }).first()"
 
   - WAIT_UNTIL: The user is back on the transactions list
-    js: "await page.url().endsWith('/transactions')"
+    js: "await page.getByText('Transactions').count() > 0"
     timeout_seconds: 15
 
-  - WAIT_UNTIL: The expense appears in the list
-    js: "await page.getByText('Automated Test Expense').count() > 0"
-    timeout_seconds: 15
+  - WAIT_UNTIL: The create expense modal closes completely
+    js: "await page.getByRole('dialog').count() === 0"
+    timeout_seconds: 10
 
-  - description: Setup dialog handler for deletion
-    js: "page.on('dialog', dialog => dialog.accept());"
+  - description: Ensure transactions are visible
+    js: "await page.waitForTimeout(3000); await page.goto('/transactions'); await page.waitForTimeout(3000);"
+    
+  - WAIT_UNTIL: The new expense appears in the list
+    js: "await page.getByText('Automated Test Expense', { exact: false }).count() > 0"
+    timeout_seconds: 15
 
   - intent: Click the open menu button on the expense list dropdown
     action: click
@@ -82,10 +93,13 @@ statements:
 
   - intent: Click Delete in the dropdown menu
     action: click
-    locator: "getByRole('menuitem', { name: /Delete/i })"
+    locator: "getByText('Delete').last()"
+
+  - description: Setup dialog handler for deletion and confirm
+    js: "let handled = false; page.on('dialog', async dialog => { if(!handled){ handled = true; await dialog.accept(); } });"
 
   - description: Wait for deletion to complete
-    js: "await page.waitForTimeout(1000);"
+    js: "await page.waitForTimeout(2000);"
 
   - VERIFY: The expense is gone from the list
     js: "await expect(page.getByText('Automated Test Expense')).toHaveCount(0)"

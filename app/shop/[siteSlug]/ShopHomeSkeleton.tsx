@@ -1,3 +1,5 @@
+"use client"
+
 import { Skeleton } from "@/app/components/ui/skeleton"
 import {
   Search,
@@ -9,6 +11,7 @@ import {
 } from "@/app/components/ui/icons"
 import { CommerceShellHeader, shellClasses } from "@/app/components/commerce/CommerceShellHeader"
 import { CatalogListingCardSkeleton } from "@/app/components/commerce/CatalogListingCardSkeleton"
+import { useLocalization } from "@/app/context/LocalizationContext"
 import {
   resolveShopHomeSkeletonLayout,
   type ShopHomeSkeletonSite,
@@ -21,6 +24,7 @@ function ShopSkeletonHeader({
   logoUrl: string | null
   siteName: string
 }) {
+  const { t } = useLocalization()
   return (
     <>
       <div className="h-4 w-full shrink-0" />
@@ -93,7 +97,7 @@ function ShopSkeletonHeader({
                 <User className="h-4 w-4" />
               </button>
               <span className={`hidden md:inline-flex ${shellClasses.primaryCta} ml-1`}>
-                Sign In
+                {t("shop.signIn") || "Sign In"}
               </span>
             </div>
           </div>

@@ -19,14 +19,14 @@ const LOCALES: { value: SupportedLocale; label: string }[] = [
 ]
 
 export function LocaleSelector({ className }: { className?: string }) {
-  const { locale, setLocale } = useLocalization()
+  const { locale, setLocale, t } = useLocalization()
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" size="icon" className={className}>
           <Globe className="h-5 w-5" />
-          <span className="sr-only">Change language</span>
+          <span className="sr-only">{t("commerce.language.change") || "Change language"}</span>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">

@@ -207,7 +207,7 @@ export function GeneralSection({ active, onSave }: GeneralSectionProps) {
                   </Select>
                   <FormDescription>
                     {t("settings.general.defaultLocaleDescription") ||
-                      "Language used for quotes, emails, and other outbound documents."}
+                      "The default language for this site's storefront UI (buttons, checkout, auth) when a visitor has not chosen a different language. Also used for quotes, emails, and other outbound documents."}
                   </FormDescription>
                   <FormMessage className="text-xs mt-2" />
                 </FormItem>

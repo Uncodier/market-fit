@@ -91,7 +91,8 @@ export default function TransactionsPage() {
     currentSite?.id
       ? { siteId: currentSite.id, page, pageSize, category: categoryFilter, campaignId: campaignFilter, locationId: locationFilter }
       : null,
-    fetcher
+    fetcher,
+    { refreshInterval: 5000 } // Auto refresh every 5 seconds to catch newly created transactions
   )
 
   const handleCreate = () => {

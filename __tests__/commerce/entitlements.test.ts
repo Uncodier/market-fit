@@ -1,4 +1,4 @@
-import { grantFromOrder } from "../../app/commerce/entitlements";
+import { grantFromOrder, revokeFromOrder } from "../../app/commerce/entitlements";
 
 // Mock Supabase client
 const mockSupabase = {
@@ -7,6 +7,7 @@ const mockSupabase = {
   eq: jest.fn().mockReturnThis(),
   in: jest.fn().mockReturnThis(),
   insert: jest.fn().mockReturnThis(),
+  update: jest.fn().mockReturnThis(),
   limit: jest.fn().mockReturnThis(),
   single: jest.fn(),
 };
@@ -140,5 +141,24 @@ describe("Entitlements: grantFromOrder", () => {
     // Check if token was minted
     expect(insertCall[0].metadata.ticket_token).toBeDefined();
     expect(typeof insertCall[0].metadata.ticket_token).toBe("string");
+  });
+});
+
+describe("Entitlements: revokeFromOrder", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it("revokes active and used purchase entitlements for the order", async () => {
+    mockSupabase.in.mockResolvedValueOnce({ error: null });
+
+    await revokeFromOrder("order-9");
+
+    expect(mockSupabase.update).toHaveBeenCalledWith(
+      expect.objectContaining({ status: "revoked" })
+    );
+    expect(mockSupabase.eq).toHaveBeenCalledWith("source_type", "purchase");
+    expect(mockSupabase.eq).toHaveBeenCalledWith("source_id", "order-9");
+    expect(mockSupabase.in).toHaveBeenCalledWith("status", ["active", "used"]);
   });
 });

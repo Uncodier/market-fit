@@ -65,17 +65,27 @@ describe('Display locale priority', () => {
 });
 
 describe('loadLocaleMessages', () => {
+  const expectedTickets: Record<'es' | 'fr' | 'de' | 'ja', string> = {
+    es: 'Obtener entradas',
+    fr: 'Obtenir des billets',
+    de: 'Tickets holen',
+    ja: 'チケットを取得',
+  };
+
   it.each(['es', 'fr', 'de', 'ja'] as const)(
-    'does not throw and falls back to English when %s has no loader',
+    'loads translated storefront keys overlaid on English for %s',
     async (locale) => {
-      await expect(loadLocaleMessages(locale)).resolves.toBeDefined();
       const messages = await loadLocaleMessages(locale);
-      expect(messages['checkout.success.title']).toBe('Order Confirmed');
+      expect(messages['pdp.getTickets']).toBe(expectedTickets[locale]);
+      expect(messages['marketplace.add']).not.toBe('Add to Cart');
+      expect(messages['checkout.success.title']).not.toBe('Order Confirmed');
+      expect(messages['dashboard.analytics.clientCohort.title']).toBe('Client Cohort Analysis');
     },
   );
 
   it('returns English catalog for en', async () => {
     const messages = await loadLocaleMessages('en');
     expect(messages['checkout.success.title']).toBe('Order Confirmed');
+    expect(messages['pdp.getTickets']).toBe('Get Tickets');
   });
 });

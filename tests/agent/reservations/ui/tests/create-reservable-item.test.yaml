@@ -1,0 +1,37 @@
+# Draft spec for creating a reservable item
+goal: Create a reservable item in the catalog
+base_url: "http://localhost:3000"
+
+statements:
+  - URL: /catalog
+  
+  - intent: Open create item dialog
+    action: click
+    locator: "getByRole('button', { name: /Agregar ítem|Add Item/i }).first()"
+    
+  - intent: Fill item name
+    action: fill
+    locator: "locator('#name')"
+    value: "Reservable Item Agent"
+    
+  - intent: Toggle is_reservation
+    action: click
+    locator: "locator('#is_reservation')"
+    
+  - intent: Click create
+    action: click
+    locator: "getByRole('button', { name: /Crear ítem|Create item/i }).first()"
+    
+  - WAIT_UNTIL: Wait for dialog to close
+    js: "await page.locator('dialog').count() === 0"
+    timeout_seconds: 10
+    
+  - description: Save item id to evidence
+    js: |
+      const href = await page.locator("tr:has-text('Reservable Item Agent') a[href*='/catalog/']").first().getAttribute('href');
+      const id = href.split('/').pop();
+      const fs = require('fs');
+      const path = require('path');
+      const runtimeDir = path.resolve(process.cwd(), 'tests/agent/reservations/.runtime');
+      if (!fs.existsSync(runtimeDir)) fs.mkdirSync(runtimeDir, { recursive: true });
+      fs.writeFileSync(path.join(runtimeDir, 'evidence.json'), JSON.stringify({ item_id: id }));

@@ -10,6 +10,7 @@ import { createClient } from "@/lib/supabase/client"
 import { toast } from "sonner"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/app/components/ui/tabs"
 import { User, ShieldCheck, Loader2, Check } from "@/app/components/ui/icons"
+import { CheckoutOtpCodeForm } from "@/app/components/commerce/CheckoutOtpCodeForm"
 
 type Mode = "choose" | "guest" | "otp_email" | "otp_code" | "signed_in"
 
@@ -109,10 +110,10 @@ export function CheckoutIdentityPicker({
     }
   }
 
-  const handleVerifyOtp = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const handleVerifyOtp = async (e?: React.FormEvent) => {
+    e?.preventDefault()
 
-    if (otpCode.length < 6) return
+    if (otpCode.replace(/ /g, "").length < 6) return
 
     setLoading(true)
     try {
@@ -149,7 +150,7 @@ export function CheckoutIdentityPicker({
       otpEmail
 
     return (
-      <div className="space-y-4">
+      <div className="space-y-4 notranslate" translate="no">
         {email && (
           <div className="flex items-center gap-3 p-3 rounded-xl border bg-secondary/20">
             <div className="w-8 h-8 rounded-full bg-green-500/10 flex items-center justify-center shrink-0">
@@ -174,8 +175,33 @@ export function CheckoutIdentityPicker({
     )
   }
 
+  if (mode === "otp_code") {
+    return (
+      <div className="space-y-4 notranslate" translate="no">
+        <CheckoutOtpCodeForm
+          otpEmail={otpEmail}
+          otpCode={otpCode}
+          setOtpCode={setOtpCode}
+          loading={loading}
+          timer={timer}
+          onBack={() => {
+            setMode("otp_email")
+            setOtpCode("")
+          }}
+          onResend={() => {
+            void handleSendOtp()
+          }}
+          onVerify={() => {
+            void handleVerifyOtp()
+          }}
+          t={t}
+        />
+      </div>
+    )
+  }
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 notranslate" translate="no">
       {requiresAuth && mode === "otp_email" && (
         <div className="text-sm text-blue-600 bg-blue-50 dark:bg-blue-900/20 dark:text-blue-400 p-3 rounded-lg border border-blue-100 dark:border-blue-800">
           {t("checkout.identity.signInToAccess") ||
@@ -183,9 +209,9 @@ export function CheckoutIdentityPicker({
         </div>
       )}
 
-      {(mode === "guest" || mode === "otp_email" || mode === "otp_code" || mode === "choose") && (
+      {(mode === "guest" || mode === "otp_email" || mode === "choose") && (
         <Tabs
-          value={mode === "otp_code" ? "otp_email" : mode === "choose" ? "guest" : mode}
+          value={mode === "choose" ? "guest" : mode}
           onValueChange={(v) => {
             if (v === "guest" || v === "otp_email") {
               setMode(v as Mode)
@@ -205,18 +231,18 @@ export function CheckoutIdentityPicker({
                   className="flex-1 rounded-lg text-xs py-2.5 gap-1.5 data-[state=active]:bg-white dark:data-[state=active]:bg-zinc-700 data-[state=active]:text-primary data-[state=active]:shadow-sm data-[state=active]:ring-1 data-[state=active]:ring-black/5 dark:data-[state=active]:ring-white/10"
                 >
                   <User className="w-3.5 h-3.5 shrink-0" />
-                  {t("checkout.identity.continueAsGuest") || "Continue as guest"}
+                  <span>{t("checkout.identity.continueAsGuest") || "Continue as guest"}</span>
                 </TabsTrigger>
                 <TabsTrigger
                   value="otp_email"
                   className="flex-1 rounded-lg text-xs py-2.5 gap-1.5 data-[state=active]:bg-white dark:data-[state=active]:bg-zinc-700 data-[state=active]:text-primary data-[state=active]:shadow-sm data-[state=active]:ring-1 data-[state=active]:ring-black/5 dark:data-[state=active]:ring-white/10"
                 >
                   <ShieldCheck className="w-3.5 h-3.5 shrink-0" />
-                  {t("checkout.identity.signIn") || "Sign in"}
+                  <span>{t("checkout.identity.signIn") || "Sign in"}</span>
                 </TabsTrigger>
               </TabsList>
               <p className="text-xs text-muted-foreground leading-relaxed">
-                {(mode === "otp_email" || mode === "otp_code")
+                {mode === "otp_email"
                   ? (t("checkout.identity.signInHelper") ||
                       "Access your digital products, manage subscriptions, and save your details.")
                   : (t("checkout.identity.guestHelper") ||
@@ -260,153 +286,42 @@ export function CheckoutIdentityPicker({
           </TabsContent>
 
           <TabsContent value="otp_email" className="space-y-4 mt-0 border-0 p-0 outline-none">
-            {mode === "otp_email" ? (
-              <div className="space-y-4 animate-in fade-in slide-in-from-left-2 duration-300">
-                <div>
-                  <Label className="text-[10px] sm:text-xs font-bold uppercase tracking-widest text-muted-foreground mb-1.5 block">
-                    {t("checkout.emailAddress") || "Email Address"}
-                  </Label>
-                  <Input
-                    required
-                    type="email"
-                    placeholder="jane@example.com"
-                    value={otpEmail}
-                    onChange={(e) => setOtpEmail(e.target.value)}
-                    className="h-12 rounded-xl w-full"
-                    disabled={loading}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        e.preventDefault()
-                        handleSendOtp()
-                      }
-                    }}
-                  />
-                </div>
-                <Button
-                  type="button"
-                  onClick={handleSendOtp}
-                  disabled={loading || !isValidEmail(otpEmail)}
-                  className="h-12 rounded-xl w-full"
-                >
-                  {loading ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    t("checkout.identity.sendCode") || "Send Verification Code"
-                  )}
-                </Button>
-              </div>
-            ) : mode === "otp_code" ? (
-            <div className="space-y-4 animate-in fade-in slide-in-from-right-2 duration-300">
-              <div className="flex justify-between items-center mb-2">
-                <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">
-                  {t("checkout.identity.verification") || "Verification"}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMode("otp_email")
-                    setOtpCode("")
-                  }}
-                  className="text-xs text-primary hover:underline"
-                >
-                  {t("checkout.identity.useDifferentEmail") || "Use a different email"}
-                </button>
-              </div>
+            <div className="space-y-4">
               <div>
-                <div className="flex justify-between items-center mb-1.5">
-                  <Label className="text-[10px] sm:text-xs font-bold uppercase tracking-widest text-muted-foreground block mb-0">
-                    {t("checkout.identity.enterCode") || "Enter the 6-digit code"}
-                  </Label>
-                  <button
-                    type="button"
-                    onClick={handleSendOtp}
-                    disabled={loading || timer > 0}
-                    className="text-[10px] font-medium text-primary hover:underline disabled:opacity-50 disabled:no-underline shrink-0"
-                  >
-                    {timer > 0
-                      ? `${t("checkout.identity.resendIn") || "Resend in"} ${timer}s`
-                      : t("checkout.identity.resendCode") || "Resend code"}
-                  </button>
-                </div>
-                <div className="flex flex-col gap-4">
-                  <div className="flex gap-2 justify-between">
-                    {[0, 1, 2, 3, 4, 5].map((index) => {
-                      const char = otpCode[index] && otpCode[index] !== " " ? otpCode[index] : "";
-                      return (
-                        <Input
-                          key={index}
-                          id={`otp-input-${index}`}
-                          type="text"
-                          inputMode="numeric"
-                          placeholder="-"
-                          value={char}
-                          onChange={(e) => {
-                            const val = e.target.value.replace(/[^0-9]/g, "");
-                            let chars = otpCode.padEnd(6, " ").split("");
-                            
-                            if (val) {
-                              chars[index] = val.slice(-1);
-                              setOtpCode(chars.join(""));
-                              if (index < 5) {
-                                document.getElementById(`otp-input-${index + 1}`)?.focus();
-                              }
-                            } else {
-                              chars[index] = " ";
-                              setOtpCode(chars.join(""));
-                            }
-                          }}
-                          onKeyDown={(e) => {
-                            if (e.key === "Backspace" && !char && index > 0) {
-                              document.getElementById(`otp-input-${index - 1}`)?.focus();
-                            }
-                            if (e.key === "Enter") {
-                              e.preventDefault()
-                              if (otpCode.replace(/ /g, "").length === 6) handleVerifyOtp(e as any)
-                            }
-                          }}
-                          onPaste={(e) => {
-                            e.preventDefault();
-                            const pasted = e.clipboardData.getData("text").replace(/[^0-9]/g, "").substring(0, 6);
-                            if (pasted) {
-                              setOtpCode(pasted.padEnd(6, " "));
-                              const focusIndex = Math.min(pasted.length - 1, 5);
-                              setTimeout(() => {
-                                document.getElementById(`otp-input-${focusIndex}`)?.focus();
-                              }, 10);
-                            }
-                          }}
-                          className="h-12 w-full rounded-xl text-center text-lg font-mono p-0"
-                          disabled={loading}
-                          autoComplete={index === 0 ? "one-time-code" : "off"}
-                          maxLength={1}
-                        />
-                      );
-                    })}
-                  </div>
-                  <Button
-                    type="button"
-                    onClick={handleVerifyOtp}
-                    disabled={loading || otpCode.replace(/ /g, "").length < 6}
-                    className="h-12 rounded-xl w-full"
-                  >
-                    {loading ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                      t("checkout.identity.verify") || "Verify"
-                    )}
-                  </Button>
-                </div>
-                <div className="mt-3">
-                  <p className="text-xs text-gray-500 truncate">
-                    {t("checkout.identity.codeSentTo") || "Code sent to"}{" "}
-                    <span className="font-medium text-gray-700 dark:text-gray-300">
-                      {otpEmail}
-                    </span>
-                  </p>
-                </div>
+                <Label className="text-[10px] sm:text-xs font-bold uppercase tracking-widest text-muted-foreground mb-1.5 block">
+                  {t("checkout.emailAddress") || "Email Address"}
+                </Label>
+                <Input
+                  required
+                  type="email"
+                  placeholder="jane@example.com"
+                  value={otpEmail}
+                  onChange={(e) => setOtpEmail(e.target.value)}
+                  className="h-12 rounded-xl w-full"
+                  disabled={loading}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault()
+                      void handleSendOtp()
+                    }
+                  }}
+                />
               </div>
+              <Button
+                type="button"
+                onClick={() => {
+                  void handleSendOtp()
+                }}
+                disabled={loading || !isValidEmail(otpEmail)}
+                className="h-12 rounded-xl w-full"
+              >
+                {loading ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  t("checkout.identity.sendCode") || "Send Verification Code"
+                )}
+              </Button>
             </div>
-            ) : null}
           </TabsContent>
         </Tabs>
       )}

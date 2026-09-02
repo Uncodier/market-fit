@@ -1,0 +1,10 @@
+{
+  "smoke": [
+    {
+      "id": "example-smoke",
+      "case": "tests/agent/example/smoke.md",
+      "required": true,
+      "timeout_minutes": 30
+    }
+  ]
+}

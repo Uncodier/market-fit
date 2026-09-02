@@ -11,6 +11,8 @@ const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET!
 // Maximum age for webhook events
 const MAX_EVENT_AGE_SECONDS = 5 * 60 // 5 minutes for new events
 const MAX_FAILED_EVENT_AGE_SECONDS = 3 * 24 * 60 * 60 // 3 days for retried events
+const MAX_REFUND_EVENT_AGE_SECONDS = 90 * 24 * 60 * 60 // refunds/disputes often arrive days later
+const LATE_STRIPE_EVENTS = new Set(["charge.refunded", "charge.dispute.created"])
 
 /*
  * Currently handling these Stripe events:
@@ -19,12 +21,13 @@ const MAX_FAILED_EVENT_AGE_SECONDS = 3 * 24 * 60 * 60 // 3 days for retried even
  * ✅ customer.subscription.updated - Subscription changes (plan, status, etc.)
  * ✅ customer.subscription.deleted - Subscription cancellation
  * ✅ invoice.payment_succeeded - Recurring subscription payments
+ * ✅ charge.refunded - Commerce sale refunds (revoke tickets + restock)
+ * ✅ charge.dispute.created - Chargebacks (same as a full refund)
  * 
  * Additional events you might want to consider:
  * - invoice.payment_failed - Handle failed recurring payments
  * - customer.subscription.paused_collection.voided - Subscription pause/resume
  * - payment_intent.payment_failed - Failed one-time payments (credits)
- * - charge.dispute.created - Handle payment disputes/chargebacks
  */
 
 export async function POST(request: NextRequest) {
@@ -90,8 +93,17 @@ export async function POST(request: NextRequest) {
   // Check event age with different limits based on event status
   const eventAge = Math.floor(Date.now() / 1000) - event.created
   const isRetryOfFailedEvent = existingEvent?.status === 'failed'
-  const maxAge = isRetryOfFailedEvent ? MAX_FAILED_EVENT_AGE_SECONDS : MAX_EVENT_AGE_SECONDS
-  const ageDescription = isRetryOfFailedEvent ? '3 days (retry)' : '5 minutes (new)'
+  const isLateStripeEvent = LATE_STRIPE_EVENTS.has(event.type)
+  const maxAge = isLateStripeEvent
+    ? MAX_REFUND_EVENT_AGE_SECONDS
+    : isRetryOfFailedEvent
+      ? MAX_FAILED_EVENT_AGE_SECONDS
+      : MAX_EVENT_AGE_SECONDS
+  const ageDescription = isLateStripeEvent
+    ? '90 days (refund/dispute)'
+    : isRetryOfFailedEvent
+      ? '3 days (retry)'
+      : '5 minutes (new)'
 
   if (eventAge > maxAge) {
     console.error('❌ Webhook event is too old:', {
@@ -675,6 +687,39 @@ export async function POST(request: NextRequest) {
         }
       }
       break
+
+    case 'charge.refunded':
+    case 'charge.dispute.created': {
+      const stripeObject = event.data.object as any
+      const {
+        isFullStripeChargeRefund,
+        handleStripeSaleRefund,
+        resolveStripeRefundPaymentIntent,
+      } = await import('@/app/commerce/handle-stripe-sale-refund')
+
+      const paymentIntentId = await resolveStripeRefundPaymentIntent(
+        stripeObject,
+        async (chargeId) => stripe.charges.retrieve(chargeId),
+      )
+      const shouldRefund =
+        event.type === 'charge.dispute.created' || isFullStripeChargeRefund(stripeObject)
+
+      if (!shouldRefund) {
+        console.log('↩️ Partial Stripe refund ignored for commerce entitlements', {
+          objectId: stripeObject.id,
+          paymentIntentId,
+        })
+        break
+      }
+
+      const result = await handleStripeSaleRefund(supabase, paymentIntentId)
+      console.log('↩️ Stripe commerce refund processed', {
+        eventType: event.type,
+        paymentIntentId,
+        ...result,
+      })
+      break
+    }
 
     case 'payment_intent.payment_failed':
       console.log('💸 Processing payment_intent.payment_failed (credits purchase)')

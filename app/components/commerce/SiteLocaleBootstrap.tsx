@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect } from "react"
+import { useLayoutEffect } from "react"
 import { useLocalization } from "@/app/context/LocalizationContext"
 
 /**
@@ -10,7 +10,7 @@ import { useLocalization } from "@/app/context/LocalizationContext"
 export function SiteLocaleBootstrap({ locale }: { locale?: string | null }) {
   const { applyUnresolvedLocale, isReady } = useLocalization()
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!isReady) return
     applyUnresolvedLocale(locale)
   }, [locale, isReady, applyUnresolvedLocale])

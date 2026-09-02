@@ -12,6 +12,7 @@ import TrackingInit from './components/TrackingInit'
 import SafariIconFix from './components/SafariIconFix'
 import MuseoFont from './components/MuseoFont'
 import { inter } from './lib/fonts'
+import { DOM_RECONCILE_GUARD_INLINE_SCRIPT } from '@/lib/dom-reconcile-guard'
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || 'https://makinari.com'),
@@ -56,6 +57,9 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{
             __html: `(function(){try{var t=new URLSearchParams(location.search).get('theme');if(t!=='dark'&&t!=='light'&&window.self!==window.top)t=sessionStorage.getItem('demo-iframe-theme');if(t==='dark'||t==='light'){document.documentElement.classList.remove('light','dark');document.documentElement.classList.add(t);if(window.self!==window.top)sessionStorage.setItem('demo-iframe-theme',t)}var m=document.cookie.match(/(?:^|; )makinari-locale=([^;]+)/);var l=m&&m[1];if(l==='en'||l==='es'||l==='fr'||l==='de'||l==='ja'){document.documentElement.lang=l;if(l!=='en')document.documentElement.classList.add('locale-pending')}}catch(e){}var href='https://fonts.googleapis.com/css2?family=Museo+Moderno:wght@400;600;700&display=swap';var link=document.createElement('link');link.rel='stylesheet';link.href=href;link.media='print';link.onload=function(){link.media='all';document.documentElement.classList.add('museo-ready')};document.head.appendChild(link)})();`,
           }}
+        />
+        <script
+          dangerouslySetInnerHTML={{ __html: DOM_RECONCILE_GUARD_INLINE_SCRIPT }}
         />
         <meta name="application-name" content="MAKINARI" />
         <meta name="apple-mobile-web-app-title" content="MAKINARI" />

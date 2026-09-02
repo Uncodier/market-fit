@@ -1,0 +1,57 @@
+# Draft spec for reserving in Shop
+goal: Purchase and reserve the item through the Shop storefront
+base_url: "http://localhost:3000"
+
+statements:
+  - URL: "/shop/demo-site"
+  
+  - WAIT_UNTIL: Shop loads
+    js: "await page.locator('text=Reservable Item Agent').count() > 0"
+    timeout_seconds: 15
+
+  - intent: Select the reservable item
+    action: click
+    locator: "locator('text=Reservable Item Agent').first()"
+    
+  - WAIT_UNTIL: PDP loads
+    js: "await page.url().includes('/shop/demo-site/')"
+    timeout_seconds: 10
+
+  - intent: Click Select a Time / Book
+    action: click
+    locator: "getByRole('button', { name: /Select a Time|Book/i }).first()"
+    
+  - WAIT_UNTIL: Booking calendar page loads
+    js: "await page.url().includes('/book')"
+    timeout_seconds: 10
+
+  - description: Select an available date
+    js: |
+      const btn = await page.locator('button:not([disabled])').filter({ hasText: /^([1-9]|[12][0-9]|3[01])$/ }).first();
+      await btn.click();
+      
+  - WAIT_UNTIL: Wait for time slots to load
+    js: "await page.locator('button:has-text(\":\")').count() > 0"
+    timeout_seconds: 5
+
+  - intent: Select first time slot
+    action: click
+    locator: "locator('button:has-text(\":\")').first()"
+    
+  - intent: Fill customer name
+    action: fill
+    locator: "locator('#name')"
+    value: "Shop Shopper"
+
+  - intent: Fill customer email
+    action: fill
+    locator: "locator('#email')"
+    value: "shopper@marketfit.test"
+
+  - intent: Confirm reservation details
+    action: click
+    locator: "getByRole('button', { name: /Confirm|Confirmar/i })"
+    
+  - WAIT_UNTIL: Wait for checkout redirect
+    js: "await page.url().includes('/checkout')"
+    timeout_seconds: 10

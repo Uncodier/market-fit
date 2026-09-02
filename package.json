@@ -17,6 +17,7 @@
     "test:e2e": "shiplight test",
     "test:e2e:headed": "shiplight test --headed",
     "test:e2e:report": "SHIPLIGHT_REPORT_TO_CLOUD=1 shiplight report",
+    "agent:verify": "npx tsx tests/agent/run-agent-verification.ts",
     "test:magic-links": "npx tsx scripts/test-magic-links.ts",
     "test:api-invitations": "npx tsx scripts/test-api-invitations.ts"
   },

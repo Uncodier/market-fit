@@ -3,6 +3,12 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { Sale, SaleData } from "@/app/types";
+import {
+  fulfillLinkedOrderAfterPayment,
+  revokeOrderFulfillment,
+  shouldFulfillPaidSale,
+  shouldRevokeSale,
+} from "@/app/commerce/order-fulfillment-sync";
 
 /**
  * Get all sales for a site
@@ -164,6 +170,13 @@ export async function updateSale(siteId: string, updatedSale: Sale) {
           )[0]?.method
         : undefined;
 
+    const { data: previousSale } = await supabase
+      .from("sales")
+      .select("status, user_id, lead_id")
+      .eq("id", updatedSale.id)
+      .eq("site_id", siteId)
+      .maybeSingle();
+
     const amountDue = Number(updatedSale.amount_due) || 0;
     let status = updatedSale.status;
     if (amountDue === 0 && status === "pending") {
@@ -196,6 +209,31 @@ export async function updateSale(siteId: string, updatedSale: Sale) {
     if (error) {
       console.error("Error updating sale:", error);
       return { error: error.message };
+    }
+
+    const previousStatus = previousSale?.status as string | undefined;
+
+    if (shouldFulfillPaidSale(previousStatus, status, amountDue)) {
+      await fulfillLinkedOrderAfterPayment({
+        supabase,
+        siteId,
+        saleId: updatedSale.id,
+        leadId: updatedSale.leadId || previousSale?.lead_id,
+        userId: updatedSale.userId || previousSale?.user_id,
+      });
+    }
+
+    if (shouldRevokeSale(previousStatus, status)) {
+      const { data: currentOrder } = await supabase
+        .from("sale_orders")
+        .select("id")
+        .eq("sale_id", updatedSale.id)
+        .eq("site_id", siteId)
+        .maybeSingle();
+
+      if (currentOrder) {
+        await revokeOrderFulfillment(supabase, currentOrder.id, { cancelOrder: true });
+      }
     }
 
     const { tryUpsertPolizaForSale } = await import("@/app/accounting/ensure");

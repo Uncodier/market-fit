@@ -1,0 +1,65 @@
+# Draft spec for reserving manually from Reservations page
+goal: Create a reservation manually from the back office
+base_url: "http://localhost:3000"
+
+statements:
+  - URL: "/reservations"
+  
+  - WAIT_UNTIL: Reservations page loads
+    js: "await page.locator('button:has-text(\"Create Reservation\")').count() > 0"
+    timeout_seconds: 15
+
+  - intent: Open new reservation dialog
+    action: click
+    locator: "getByRole('button', { name: 'Create Reservation' }).first()"
+
+  - WAIT_UNTIL: Reservation dialog opens
+    js: "await page.getByRole('dialog').count() > 0"
+    timeout_seconds: 5
+
+  - intent: Open service select dropdown
+    action: click
+    locator: "getByRole('combobox').first()"
+
+  - intent: Select the Reservable Item
+    action: fill
+    locator: "getByPlaceholder(/Search|Buscar/i)"
+    value: "Reservable Item Agent"
+    
+  - intent: Click item
+    action: click
+    locator: "getByRole('option', { name: 'Reservable Item Agent' }).first()"
+
+  - intent: Open customer dropdown
+    action: click
+    locator: "getByRole('combobox').nth(1)"
+
+  - intent: Search for customer
+    action: fill
+    locator: "getByPlaceholder(/Search|Buscar/i)"
+    value: "Admin"
+
+  - intent: Select customer
+    action: click
+    locator: "getByRole('option').first()"
+
+  - description: Select an available date
+    js: |
+      const btn = await page.locator('button:not([disabled])').filter({ hasText: /^([1-9]|[12][0-9]|3[01])$/ }).first();
+      await btn.click();
+      
+  - WAIT_UNTIL: Wait for time slots to load
+    js: "await page.locator('button:has-text(\":\")').count() > 0"
+    timeout_seconds: 5
+
+  - intent: Select first time slot
+    action: click
+    locator: "locator('button:has-text(\":\")').first()"
+
+  - intent: Create reservation
+    action: click
+    locator: "getByRole('button', { name: /Create|Crear/i }).last()"
+    
+  - WAIT_UNTIL: Wait for dialog to close
+    js: "await page.getByRole('dialog').count() === 0"
+    timeout_seconds: 10

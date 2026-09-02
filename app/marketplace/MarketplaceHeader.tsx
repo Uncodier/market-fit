@@ -17,7 +17,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/app/components/ui/dropdown-menu"
-import type { SupportedLocale } from "@/app/context/LocalizationContext"
+import { useLocalization, type SupportedLocale } from "@/app/context/LocalizationContext"
 
 type SessionLike = {
   user: {
@@ -63,6 +63,7 @@ export function MarketplaceHeader({
 }: Props) {
   const searchCollapsed = useMobileShellSearchCollapsed(false)
   const { href: signInHref, onClick: onSignInClick } = useCommerceSignInHref()
+  const { t } = useLocalization()
 
   return (
     <>
@@ -137,7 +138,7 @@ export function MarketplaceHeader({
                 <DropdownMenuTrigger asChild>
                   <button type="button" className={shellClasses.iconButton}>
                     <Globe className="h-5 w-5" />
-                    <span className="sr-only">Change language</span>
+                    <span className="sr-only">{t("commerce.language.change") || "Change language"}</span>
                   </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">

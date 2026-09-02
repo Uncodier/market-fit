@@ -1,0 +1,21 @@
+{
+  "target": "local",
+  "suite": "smoke",
+  "engine": "custom-template",
+  "results": [
+    {
+      "id": "reserve-across-channels",
+      "casePath": "tests/agent/reservations/reserve-across-channels.md",
+      "required": true,
+      "status": "MISSING_REPORT",
+      "reportPath": "agent-test-reports/reserve-across-channels-local-20260902-005114-001.md",
+      "exitCode": 0,
+      "attempts": 1,
+      "timing": {
+        "engine": "custom-template",
+        "wallMs": 11
+      },
+      "engine": "custom-template"
+    }
+  ]
+}

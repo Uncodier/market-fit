@@ -1,0 +1,10 @@
+{
+  "smoke": [
+    {
+      "id": "reserve-across-channels",
+      "case": "tests/agent/reservations/reserve-across-channels.md",
+      "required": true,
+      "timeout_minutes": 30
+    }
+  ]
+}

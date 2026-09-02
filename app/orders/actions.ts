@@ -5,6 +5,8 @@ import { createClient } from "@/lib/supabase/server";
 import { OrderParams, OrderWithRelations } from "./types";
 import { SaleOrderData } from "@/app/types";
 import { shouldCancelLinkedSale } from "./cancel-linked-sale";
+import { grantFromOrder } from "@/app/commerce/entitlements";
+import { revokeOrderFulfillment } from "@/app/commerce/order-fulfillment-sync";
 
 export async function listOrders({ siteId, status, paymentStatus, q, locationId, page = 1, pageSize = 50, startDate, endDate }: OrderParams) {
   try {
@@ -156,30 +158,35 @@ export async function updateOrderStatus(siteId: string, orderId: string, status:
             .eq("id", paidSale.id)
             .eq("site_id", siteId);
         }
+
+        if (Number(paidSale?.amount_due) === 0) {
+          await grantFromOrder(orderId, true);
+        }
       }
     }
 
-    if (status === "cancelled" && currentOrder?.sale_id) {
-      await supabase
-        .from("sale_order_items")
-        .update({ status: 'cancelled' })
-        .eq("sale_order_id", orderId);
+    if (status === "cancelled") {
+      await revokeOrderFulfillment(supabase, orderId, {
+        previousStatus: currentOrder?.status,
+      });
 
-      const { data: sale } = await supabase
-        .from("sales")
-        .select("id, status, payments, amount, amount_due")
-        .eq("id", currentOrder.sale_id)
-        .eq("site_id", siteId)
-        .single();
-
-      if (sale && shouldCancelLinkedSale(currentOrder.status, sale)) {
-        await supabase
+      if (currentOrder?.sale_id) {
+        const { data: sale } = await supabase
           .from("sales")
-          .update({ status: "cancelled" })
-          .eq("id", sale.id)
-          .eq("site_id", siteId);
-        revalidatePath("/sales");
-        revalidatePath(`/sales/${sale.id}`);
+          .select("id, status, payments, amount, amount_due")
+          .eq("id", currentOrder.sale_id)
+          .eq("site_id", siteId)
+          .single();
+
+        if (sale && shouldCancelLinkedSale(currentOrder.status, sale)) {
+          await supabase
+            .from("sales")
+            .update({ status: "cancelled" })
+            .eq("id", sale.id)
+            .eq("site_id", siteId);
+          revalidatePath("/sales");
+          revalidatePath(`/sales/${sale.id}`);
+        }
       }
     }
 

@@ -1,0 +1,4 @@
+projects:
+  - name: "Reservations Agent UI"
+    use:
+      storageState: "../.runtime/storageState.json"

@@ -1,0 +1,7 @@
+{
+  "name": "reservations-ui-tests",
+  "private": true,
+  "dependencies": {
+    "shiplightai": "^0.1.102"
+  }
+}

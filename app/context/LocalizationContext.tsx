@@ -1,7 +1,11 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect, useLayoutEffect, useCallback, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useLayoutEffect, useCallback, useRef, ReactNode } from 'react';
 import enTranslations from './locales/en.json';
+import esOverlay from './locales/es.json';
+import frOverlay from './locales/fr.json';
+import deOverlay from './locales/de.json';
+import jaOverlay from './locales/ja.json';
 
 export type SupportedLocale = 'en' | 'es' | 'fr' | 'de' | 'ja';
 
@@ -18,7 +22,7 @@ interface LocalizationContextType {
   isReady: boolean;
   setLocale: (locale: SupportedLocale) => void;
   /** Apply site default or browser location when the visitor has no saved preference. Does not persist. */
-  applyUnresolvedLocale: (siteLocale?: string | null) => void;
+  applyUnresolvedLocale: (siteLocale?: string | null) => Promise<void>;
   t: (key: string, params?: Record<string, string | number>) => string;
   getAsset: (key: string) => string;
 }
@@ -41,12 +45,24 @@ const countryToLocale: Record<string, SupportedLocale> = {
 
 const LocalizationContext = createContext<LocalizationContextType | undefined>(undefined);
 
-const localeLoaders: Partial<Record<SupportedLocale, () => Promise<any>>> = {
-  en: async () => enTranslations,
+function mergeOverlay(overlay: Record<string, string>) {
+  return { ...enTranslations, ...overlay };
+}
+
+const translationCache: Record<SupportedLocale, Record<string, string>> = {
+  en: enTranslations,
+  es: mergeOverlay(esOverlay),
+  fr: mergeOverlay(frOverlay),
+  de: mergeOverlay(deOverlay),
+  ja: mergeOverlay(jaOverlay),
 };
 
-const translationCache: any = {
-  en: enTranslations,
+const localeLoaders: Partial<Record<SupportedLocale, () => Promise<Record<string, string>>>> = {
+  en: async () => translationCache.en,
+  es: async () => translationCache.es,
+  fr: async () => translationCache.fr,
+  de: async () => translationCache.de,
+  ja: async () => translationCache.ja,
 };
 
 export async function loadLocaleMessages(locale: SupportedLocale): Promise<any> {
@@ -55,8 +71,9 @@ export async function loadLocaleMessages(locale: SupportedLocale): Promise<any> 
   if (typeof loader === 'function') {
     try {
       const loaded = await loader();
-      translationCache[locale] = loaded;
-      return loaded;
+      const merged = { ...translationCache.en, ...loaded };
+      translationCache[locale] = merged;
+      return merged;
     } catch {
       // Fallback
     }
@@ -175,7 +192,15 @@ export const LocalizationProvider = ({ children }: { children: ReactNode }) => {
     document.documentElement.lang = newLocale;
   };
 
-  const applyUnresolvedLocale = useCallback((siteLocale?: string | null) => {
+  const localeApplyGeneration = useRef(0);
+
+  useEffect(() => {
+    return () => {
+      localeApplyGeneration.current += 1;
+    };
+  }, []);
+
+  const applyUnresolvedLocale = useCallback(async (siteLocale?: string | null) => {
     if (readStoredLocale()) return; // User preference wins
     
     const browserLang = typeof navigator !== 'undefined' ? navigator.language : undefined;
@@ -184,9 +209,30 @@ export const LocalizationProvider = ({ children }: { children: ReactNode }) => {
       siteLocale,
       browserLanguage: browserLang,
     });
-    
-    setLocaleState(resolved);
-    document.documentElement.lang = resolved;
+
+    const applyGeneration = ++localeApplyGeneration.current;
+    const applyResolved = (loaded: Record<string, string>) => {
+      if (applyGeneration !== localeApplyGeneration.current) return;
+      setLocaleState(resolved);
+      setMessages(loaded);
+      document.documentElement.lang = resolved;
+      clearLocalePending();
+    };
+
+    const cached = translationCache[resolved];
+    if (cached) {
+      applyResolved(cached);
+      return;
+    }
+
+    try {
+      const loaded = await loadLocaleMessages(resolved);
+      applyResolved(loaded);
+    } catch {
+      if (applyGeneration === localeApplyGeneration.current) {
+        clearLocalePending();
+      }
+    }
   }, []);
 
   const t = (key: string, params?: Record<string, string | number>): string => {

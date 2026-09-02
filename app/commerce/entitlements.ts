@@ -219,6 +219,20 @@ export async function revokeForSubscription(subscriptionId: string, forceService
     .eq('status', 'active')
 }
 
+export async function revokeFromOrder(orderId: string, forceServiceRole: boolean = false) {
+  const supabase = await (forceServiceRole ? createServiceClient(true) : createClient())
+  
+  await supabase
+    .from('entitlements')
+    .update({ 
+      status: 'revoked', 
+      updated_at: new Date().toISOString() 
+    })
+    .eq('source_type', 'purchase')
+    .eq('source_id', orderId)
+    .in('status', ['active', 'used'])
+}
+
 export async function markUsedEntitlement(id: string, forceServiceRole: boolean = false) {
   const supabase = await (forceServiceRole ? createServiceClient(true) : createClient())
   
