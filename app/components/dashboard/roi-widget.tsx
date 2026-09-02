@@ -50,7 +50,7 @@ export function ROIWidget({
     <BaseKpiWidget
       title={t('dashboard.widgets.roi') || 'ROI'}
       tooltipText="Return on Investment"
-      value={roi ? `${roi.actual}${roi.unit}` : "0%"}
+      value={roi?.actual != null ? `${roi.actual}${roi.unit}` : "0%"}
       changeText={`${roi?.percentChange || 0}% from ${formatPeriodType(roi?.periodType || "monthly")}`}
       isPositiveChange={(roi?.percentChange || 0) > 0}
       isLoading={isLoading}

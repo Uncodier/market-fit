@@ -99,7 +99,7 @@ export function EditSaleDialog({
   useEffect(() => {
     if (sale) {
       setTitle(sale.title)
-      setAmount(sale.amount.toString())
+      setAmount(String(sale.amount || 0))
       setAmountDue((sale.amount_due || 0).toString())
       setStatus(sale.status)
       setSource(sale.source)

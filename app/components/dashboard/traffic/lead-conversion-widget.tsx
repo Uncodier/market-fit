@@ -114,7 +114,7 @@ export function LeadConversionWidget({
     fetchLeadConversion();
   }, [shouldExecuteWidgets, segmentId, startDate, endDate, currentSite, user, isAuthLoading]);
 
-  const formattedValue = leadConversion ? `${leadConversion.actual.toFixed(1)}%` : "0%";
+  const formattedValue = leadConversion?.actual != null ? `${leadConversion.actual.toFixed(1)}%` : "0%";
   const changeText = `${leadConversion?.percentChange || 0}% from ${formatPeriodType(leadConversion?.periodType || "monthly")}`;
   const isPositiveChange = (leadConversion?.percentChange || 0) > 0;
 

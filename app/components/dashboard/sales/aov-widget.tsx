@@ -102,7 +102,7 @@ export function AOVWidget({
     percentChange: 0
   };
 
-  const formattedValue = formatCurrency(aov.actual);
+  const formattedValue = aov?.actual != null ? formatCurrency(aov.actual) : "$0";
   const changeText = `${aov.percentChange.toFixed(1)}% from ${formatPeriodType(salesData?.periodType || "monthly")}`;
   const isPositiveChange = aov.percentChange > 0;
   

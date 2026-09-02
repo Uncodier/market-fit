@@ -80,7 +80,7 @@ export function KanbanView({
     if (uncategorizedItems.length > 0 || cols.length === 0) {
       cols.push({
         id: "uncategorized",
-        name: t('catalog.uncategorized') || "Sin categoría",
+        name: t('catalog.uncategorized') || "Uncategorized",
         items: uncategorizedItems
       })
     }
@@ -89,7 +89,7 @@ export function KanbanView({
     if (variantItems.length > 0) {
       cols.push({
         id: "variants",
-        name: "Variantes",
+        name: t('catalog.kind.variant') || "Variants",
         items: variantItems
       })
     }
@@ -206,7 +206,7 @@ export function KanbanView({
                                             </div>
                                             {item.parent && (
                                               <div className="text-xs text-primary/80 font-medium mb-1 truncate">
-                                                Variante de: {item.parent.name}
+                                                {t("catalog.variants.variantOf") || "Variant of:"} {item.parent.name}
                                               </div>
                                             )}
                                             {item.sku && (
@@ -222,8 +222,8 @@ export function KanbanView({
                                                 {item.is_dynamic_price ? (
                                                   <span className="text-sm">
                                                     {item.lowest_sale_price != null || item.metadata?.dynamic_pricing?.min_price != null
-                                                      ? `Desde ${new Intl.NumberFormat('en-US', { style: 'currency', currency: item.currency || 'USD' }).format(Number(item.metadata?.dynamic_pricing?.min_price ?? item.lowest_sale_price))}`
-                                                      : (t('catalog.dynamicPricing.quote') || 'Cotizar')}
+                                                      ? `${t('catalog.dynamicPricing.from') || 'From '} ${new Intl.NumberFormat('en-US', { style: 'currency', currency: item.currency || 'USD' }).format(Number(item.metadata?.dynamic_pricing?.min_price ?? item.lowest_sale_price))}`
+                                                      : (t('catalog.dynamicPricing.quote') || 'Quote')}
                                                   </span>
                                                 ) : item.target_sale_price != null 
                                                   ? new Intl.NumberFormat('en-US', { style: 'currency', currency: item.currency || 'USD' }).format(item.target_sale_price)
@@ -234,7 +234,11 @@ export function KanbanView({
 
                                             <div className="flex flex-wrap gap-2 mt-2">
                                               <Badge variant="secondary" className="capitalize text-[10px]">
-                                                {item.availability_mode}
+                                                {item.availability_mode === 'inventory' 
+                                                  ? (t('catalog.status.inventory') || 'Inventory') 
+                                                  : item.availability_mode === 'always'
+                                                  ? (t('catalog.status.always') || 'Always')
+                                                  : (t('catalog.status.manual') || 'Manual')}
                                               </Badge>
                                             </div>
                                           </div>
@@ -245,7 +249,7 @@ export function KanbanView({
                                   {column.items.length > visibleItems.length && (
                                     <div className="pt-2 pb-4 flex justify-center">
                                       <Button variant="ghost" size="sm" onClick={() => loadMore(column.id, column.items.length)}>
-                                        {t('common.loadMore') || 'Cargar 10 más'}
+                                        {t('common.loadMore') || 'Load 10 more'}
                                       </Button>
                                     </div>
                                   )}

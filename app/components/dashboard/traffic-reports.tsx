@@ -145,6 +145,7 @@ export function TrafficReports({
         params.append("userId", user.id);
         params.append("startDate", format(safeStartDate, 'yyyy-MM-dd'));
         params.append("endDate", format(safeEndDate, 'yyyy-MM-dd'));
+        params.append("useDemoData", "true");
         
         // Additional validation of the constructed URL - check for actual future years only
         const urlParams = params.toString();

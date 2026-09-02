@@ -123,7 +123,7 @@ export function CostReports({
   const dateQuery = `startDate=${format(startDate, "yyyy-MM-dd")}&endDate=${format(endDate, "yyyy-MM-dd")}`
   const filterQuery = `${segmentId !== "all" ? `&segmentId=${segmentId}` : ""}${
     campaignId !== "all" ? `&campaignId=${campaignId}` : ""
-  }`
+  }&useDemoData=true`
   const costsUrl = siteId ? `/api/costs?siteId=${siteId}&${dateQuery}${filterQuery}` : null
   const revenueUrl = siteId ? `/api/revenue?siteId=${siteId}&${dateQuery}${
     segmentId !== "all" ? `&segmentId=${segmentId}` : ""
@@ -155,8 +155,8 @@ export function CostReports({
     const overhead = overheadFromCategories(costData.costCategories)
     const currentRevenue = fetchedRevenueData?.totalSales?.actual || 0
     const prevRevenue = fetchedRevenueData?.totalSales?.previous || 0
-    const currentRatio = efficiencyRatio(currentRevenue, costData.totalCosts.actual)
-    const prevRatio = efficiencyRatio(prevRevenue, costData.totalCosts.previous)
+    const currentRatio = efficiencyRatio(currentRevenue, costData.totalCosts?.actual || 0)
+    const prevRatio = efficiencyRatio(prevRevenue, costData.totalCosts?.previous || 0)
     const ratioChange =
       prevRatio > 0 ? ((currentRatio - prevRatio) / prevRatio) * 100 : currentRatio > 0 ? 100 : 0
 

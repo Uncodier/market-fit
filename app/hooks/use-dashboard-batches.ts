@@ -20,6 +20,7 @@ function buildParams(
     segmentId,
     startDate: startDate.toISOString(),
     endDate: endDate.toISOString(),
+    useDemoData: "true",
   })
   if (userId) params.set("userId", userId)
   return params

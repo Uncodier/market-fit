@@ -237,10 +237,6 @@ async function findOrCreateKpi(
 }
 
 export async function GET(request: NextRequest) {
-  const cookieStore = cookies();
-  // Use service client with elevated permissions to avoid RLS restrictions
-  const supabase = createServiceApiClient();
-  
   const searchParams = request.nextUrl.searchParams;
   const siteId = searchParams.get('siteId');
   const userId = searchParams.get('userId');
@@ -252,6 +248,10 @@ export async function GET(request: NextRequest) {
   if (!siteId) {
     return NextResponse.json({ error: 'Site ID is required' }, { status: 400 });
   }
+
+  const cookieStore = cookies();
+  // Use service client with elevated permissions to avoid RLS restrictions
+  const supabase = createServiceApiClient(siteId);
   
   
   console.log(`[ActiveCampaignsAPI] Processing request for site: ${siteId}`);

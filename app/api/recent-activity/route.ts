@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
     }
 
 
-    const supabase = createServiceApiClient()
+    const supabase = createServiceApiClient(siteId)
     const activities = await buildRecentActivityFeed(supabase, {
       siteId,
       limit,

@@ -89,10 +89,10 @@ export default function CatalogPage() {
         toast.error(result.error)
         return
       }
-      toast.success("Tipo de ítem actualizado")
+      toast.success(t("catalog.itemTypeUpdated") || "Item type updated")
       mutate()
     } catch (error) {
-      toast.error("Error al actualizar ítem")
+      toast.error(t("catalog.itemTypeUpdateError") || "Error updating item type")
     }
   }
 
@@ -170,7 +170,7 @@ export default function CatalogPage() {
     })
 
     if (res.error) {
-      toast.error("Error al guardar el orden")
+      toast.error(t("catalog.orderUpdateError") || "Error saving order")
       mutate() // rollback
     }
   }
@@ -190,43 +190,43 @@ export default function CatalogPage() {
                 <div className="flex flex-col md:flex-row items-stretch md:items-center gap-6 md:gap-4 w-full flex-1 min-w-0">
                   <div className="md:hidden w-full">
                     <form onSubmit={handleSearch} className="w-full">
-                      <SearchInput  placeholder={t('catalog.search') || "Buscar en catálogo..."} value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} alwaysExpanded={true}    className="w-full h-10 md:h-9"  containerClassName="w-full" />
+                      <SearchInput  placeholder={t('catalog.search') || "Search in catalog..."} value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} alwaysExpanded={true}    className="w-full h-10 md:h-9"  containerClassName="w-full" />
                     </form>
                   </div>
                   
                   <div className="flex flex-col gap-2 w-full md:w-auto">
-                    <span className="text-xs font-semibold text-muted-foreground md:hidden mb-1 uppercase">{t('catalog.kind.label') === 'catalog.kind.label' ? 'Tipo de Artículo' : t('catalog.kind.label')}</span>
+                    <span className="text-xs font-semibold text-muted-foreground md:hidden mb-1 uppercase">{t('catalog.kind.label') === 'catalog.kind.label' ? 'Item Type' : t('catalog.kind.label')}</span>
                     <Tabs 
                       value={kindFilter} 
                       onValueChange={(val) => { setKindFilter(val as any); setPage(1); }}
                       className="w-full md:w-auto flex-shrink-0"
                     >
                       <TabsList className="h-auto md:h-8 p-0 md:p-0.5 bg-transparent md:bg-muted/30 rounded-lg md:rounded-full flex flex-col md:flex-row w-full md:max-w-full overflow-y-auto md:overflow-x-auto justify-start items-stretch md:items-center gap-1 md:gap-0">
-                        <TabsTrigger value="all" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent whitespace-normal md:whitespace-nowrap">{t('catalog.kind.all') || 'Todos los ítems'}</TabsTrigger>
-                        <TabsTrigger value="product" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent gap-2 whitespace-normal md:whitespace-nowrap"><Archive className="shrink-0 h-4 w-4 md:hidden"/> {t('catalog.kind.product') || 'Productos'}</TabsTrigger>
-                        <TabsTrigger value="service" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent gap-2 whitespace-normal md:whitespace-nowrap"><DatabaseIcon className="shrink-0 h-4 w-4 md:hidden"/> {t('catalog.kind.service') || 'Servicios'}</TabsTrigger>
-                        <TabsTrigger value="variant" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent gap-2 whitespace-normal md:whitespace-nowrap"><Boxes className="shrink-0 h-4 w-4 md:hidden"/> Variantes</TabsTrigger>
+                        <TabsTrigger value="all" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent whitespace-normal md:whitespace-nowrap">{t('catalog.kind.all') || 'All items'}</TabsTrigger>
+                        <TabsTrigger value="product" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent gap-2 whitespace-normal md:whitespace-nowrap"><Archive className="shrink-0 h-4 w-4 md:hidden"/> {t('catalog.kind.product') || 'Products'}</TabsTrigger>
+                        <TabsTrigger value="service" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent gap-2 whitespace-normal md:whitespace-nowrap"><DatabaseIcon className="shrink-0 h-4 w-4 md:hidden"/> {t('catalog.kind.service') || 'Services'}</TabsTrigger>
+                        <TabsTrigger value="variant" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent gap-2 whitespace-normal md:whitespace-nowrap"><Boxes className="shrink-0 h-4 w-4 md:hidden"/> {t('catalog.kind.variant') || 'Variants'}</TabsTrigger>
                       </TabsList>
                     </Tabs>
                   </div>
                   
                   <div className="flex flex-col gap-2 w-full md:w-auto">
-                    <span className="text-xs font-semibold text-muted-foreground md:hidden mb-1 uppercase">{t('common.status') === 'common.status' ? 'Estado' : t('common.status')}</span>
+                    <span className="text-xs font-semibold text-muted-foreground md:hidden mb-1 uppercase">{t('common.status') === 'common.status' ? 'Status' : t('common.status')}</span>
                     <Tabs 
                       value={statusFilter} 
                       onValueChange={(val) => { setStatusFilter(val as any); setPage(1); }}
                       className="w-full md:w-auto flex-shrink-0"
                     >
                       <TabsList className="h-auto md:h-8 p-0 md:p-0.5 bg-transparent md:bg-muted/30 rounded-lg md:rounded-full flex flex-col md:flex-row w-full md:max-w-full overflow-y-auto md:overflow-x-auto justify-start items-stretch md:items-center gap-1 md:gap-0">
-                        <TabsTrigger value="active" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent whitespace-normal md:whitespace-nowrap">{t('status.active') || 'Activos'}</TabsTrigger>
-                        <TabsTrigger value="archived" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent whitespace-normal md:whitespace-nowrap">{t('status.archived') || 'Archivados'}</TabsTrigger>
+                        <TabsTrigger value="active" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent whitespace-normal md:whitespace-nowrap">{t('status.active') || 'Active'}</TabsTrigger>
+                        <TabsTrigger value="archived" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent whitespace-normal md:whitespace-nowrap">{t('status.archived') || 'Archived'}</TabsTrigger>
                       </TabsList>
                     </Tabs>
                   </div>
 
                   <div className="hidden md:flex items-center gap-2 w-full md:w-auto">
                     <form onSubmit={handleSearch} className="w-full md:w-auto">
-                      <SearchInput  placeholder={t('catalog.search') || "Buscar en catálogo..."} value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}    className="w-full"  containerClassName="w-64" />
+                      <SearchInput  placeholder={t('catalog.search') || "Search in catalog..."} value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}    className="w-full"  containerClassName="w-64" />
                     </form>
                   </div>
                 </div>
@@ -255,7 +255,7 @@ export default function CatalogPage() {
               </div>
             ) : error ? (
               <div className="p-6 text-center text-red-500">
-                Error al cargar el catálogo. {error.message}
+                Error loading catalog. {error.message}
               </div>
             ) : (
               <div className="h-full">
@@ -292,12 +292,12 @@ export default function CatalogPage() {
                         <div className="pt-4 px-4 md:px-6">
                           <EmptyCard
                             icon={<Archive className="h-6 w-6" />}
-                            title={t('catalog.empty.title') || "No se encontraron ítems"}
-                            description={t('catalog.empty.description') || (searchQuery ? "Ningún ítem coincide con tu búsqueda." : "Empieza agregando productos o servicios a tu catálogo.")}
+                            title={t('catalog.empty.title') || "No items found"}
+                            description={t('catalog.empty.description') || (searchQuery ? "No items match your search." : "Start by adding products or services to your catalog.")}
                             actionButton={
                               <Button onClick={() => setIsCreateOpen(true)} variant="outline">
                                 <Plus className="mr-2 h-4 w-4" />
-                                {t('catalog.addItem') || 'Agregar ítem'}
+                                {t('catalog.addItem') || 'Add item'}
                               </Button>
                             } />
                         </div>

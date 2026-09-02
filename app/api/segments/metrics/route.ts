@@ -71,7 +71,7 @@ export async function GET(request: Request) {
 
   
   try {
-    const supabase = createApiClient();
+    const supabase = createApiClient(siteId);
     console.log(`[Segment Metrics API] Received request for site: ${siteId}, segment: ${segmentId || 'all'}`);
     
     // Fechas

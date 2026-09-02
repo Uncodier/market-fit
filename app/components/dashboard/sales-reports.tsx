@@ -139,6 +139,7 @@ export function SalesReports({
         params.append("siteId", currentSite.id);
         params.append("startDate", format(startDate, "yyyy-MM-dd"));
         params.append("endDate", format(endDate, "yyyy-MM-dd"));
+        params.append("useDemoData", "true");
         if (segmentId !== "all") {
           params.append("segmentId", segmentId);
         }

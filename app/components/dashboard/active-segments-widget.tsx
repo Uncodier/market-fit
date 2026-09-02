@@ -65,7 +65,7 @@ export function ActiveSegmentsWidget({
     formattedValue = "0";
     customStatus = <p className="text-xs text-muted-foreground">No active segments</p>;
   } else {
-    formattedValue = activeSegments ? activeSegments.actual.toLocaleString() : "0";
+    formattedValue = activeSegments?.actual != null ? activeSegments.actual.toLocaleString() : "0";
     changeText = `${activeSegments?.percentChange || 0}% from ${formatPeriodType(activeSegments?.periodType || "monthly")}`;
     isPositiveChange = (activeSegments?.percentChange || 0) > 0;
   }

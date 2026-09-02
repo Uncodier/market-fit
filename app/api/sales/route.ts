@@ -94,7 +94,7 @@ export async function GET(request: Request) {
     const formattedEndDate = endDate.toISOString();
     
     // Create Supabase client with service role key to bypass RLS
-    const supabase = createServiceApiClient();
+    const supabase = createServiceApiClient(siteId);
     
     // Build query
     let query = supabase

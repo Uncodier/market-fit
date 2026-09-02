@@ -61,7 +61,7 @@ export function CPLWidget({
     <BaseKpiWidget
       title={t('dashboard.widgets.cpl') || 'CPL'}
       tooltipText="Cost Per Lead"
-      value={cpl ? formatCurrency(cpl.actual) : "$0"}
+      value={cpl?.actual != null ? formatCurrency(cpl.actual) : "$0"}
       changeText={`${cpl?.percentChange || 0}% from ${formatPeriodType(cpl?.periodType || "monthly")}`}
       isPositiveChange={(cpl?.percentChange || 0) < 0}
       isLoading={isLoading}

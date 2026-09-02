@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
     console.log(`[CronStatusAPI] Fetching cron status for site: ${siteId}, page: ${validatedPage}, limit: ${validatedLimit}`)
 
     // Use service client with elevated permissions to bypass RLS restrictions
-    const supabase = createServiceApiClient()
+    const supabase = createServiceApiClient(siteId)
 
     // First, test general access to the table
     console.log('[CronStatusAPI] Testing general access to cron_status table...')

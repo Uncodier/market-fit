@@ -113,7 +113,7 @@ export function SessionsWidget({
     fetchSessions();
   }, [shouldExecuteWidgets, segmentId, startDate, endDate, currentSite, user, isAuthLoading]);
 
-  const formattedValue = sessions ? sessions.actual.toLocaleString() : "0";
+  const formattedValue = sessions?.actual != null ? sessions.actual.toLocaleString() : "0";
   const changeText = `${sessions?.percentChange || 0}% from ${formatPeriodType(sessions?.periodType || "monthly")}`;
   const isPositiveChange = (sessions?.percentChange || 0) > 0;
 

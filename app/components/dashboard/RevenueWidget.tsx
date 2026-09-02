@@ -107,7 +107,7 @@ export function RevenueWidget({
     setEndDate(end);
   };
 
-  const formattedValue = revenue ? formatCurrency(revenue.actual) : "$0";
+  const formattedValue = revenue?.actual != null ? formatCurrency(revenue.actual) : "$0";
   const changeText = `${revenue?.percentChange || 0}% from ${formatPeriodType(revenue?.periodType || "monthly")}`;
   const isPositiveChange = (revenue?.percentChange || 0) > 0;
   

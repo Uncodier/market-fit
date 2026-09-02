@@ -301,7 +301,7 @@ export async function GET(request: Request) {
   
   try {
     // Use service client for reading data (same as Sales API)
-    const supabase = createServiceApiClient();
+    const supabase = createServiceApiClient(siteId);
     
     console.log(`[PaidActiveUsersAPI] Using service client (same as Sales API that works)`);
     

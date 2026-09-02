@@ -361,9 +361,9 @@ export function CreateCatalogItemDialog({ open, onOpenChange, onSuccess }: Creat
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="manual">Manual (I toggle Available/Sold Out)</SelectItem>
-                  <SelectItem value="inventory">Inventory (Based on stock levels)</SelectItem>
-                  <SelectItem value="always">Always Sellable (Never sold out)</SelectItem>
+                  <SelectItem value="manual">{t("catalog.status.manual") || "Manual"}</SelectItem>
+                  <SelectItem value="inventory">{t("catalog.status.inventory") || "Inventory"}</SelectItem>
+                  <SelectItem value="always">{t("catalog.status.always") || "Always Available"}</SelectItem>
                 </SelectContent>
               </Select>
             </div>

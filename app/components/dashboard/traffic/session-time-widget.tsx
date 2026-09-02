@@ -128,7 +128,7 @@ export function SessionTimeWidget({
     fetchSessionTime();
   }, [shouldExecuteWidgets, segmentId, startDate, endDate, currentSite, user, isAuthLoading]);
 
-  const formattedValue = sessionTime ? formatSessionTime(sessionTime.actual) : "0s";
+  const formattedValue = sessionTime?.actual != null ? formatSessionTime(sessionTime.actual) : "0s";
   const changeText = `${sessionTime?.percentChange || 0}% from ${formatPeriodType(sessionTime?.periodType || "monthly")}`;
   const isPositiveChange = (sessionTime?.percentChange || 0) > 0;
 

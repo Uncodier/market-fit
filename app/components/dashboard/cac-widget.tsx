@@ -55,7 +55,7 @@ export function CACWidget({
   }, [propStartDate, propEndDate]);
 
   const { data: cac, isLoading } = useOverviewSlice<CACData>("cac", startDate, endDate, segmentId);
-  const changeText = cac && cac.actual === -1
+  const changeText = cac?.actual === -1
     ? "No conversions"
     : `${cac?.percentChange || 0}% from ${formatPeriodType(cac?.periodType || "monthly")}`;
 
@@ -63,7 +63,7 @@ export function CACWidget({
     <BaseKpiWidget
       title={t('dashboard.widgets.cac') || 'CAC'}
       tooltipText="Customer Acquisition Cost"
-      value={cac ? formatCurrency(cac.actual) : "$0"}
+      value={cac?.actual != null ? formatCurrency(cac.actual) : "$0"}
       changeText={changeText}
       isPositiveChange={(cac?.percentChange || 0) < 0}
       isLoading={isLoading}

@@ -52,7 +52,7 @@ export function RegisterPurchasePaymentDialog({
 
   useEffect(() => {
     if (open && purchase) {
-      setPaymentAmount(purchase.amountDue.toString())
+      setPaymentAmount(String(purchase.amountDue || 0))
       setPaymentMethod("bank_transfer")
       setNotes("")
     }

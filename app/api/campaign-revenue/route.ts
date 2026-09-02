@@ -36,7 +36,7 @@ export async function GET(request: Request) {
     console.log(`[Campaign Revenue API] Consulta para sitio: ${siteId}`);
     
     // Cliente con permisos elevados
-    const supabase = createServiceApiClient();
+    const supabase = createServiceApiClient(siteId);
     
     // Fechas
     const startDate = startDateParam ? new Date(startDateParam) : subDays(new Date(), 30);

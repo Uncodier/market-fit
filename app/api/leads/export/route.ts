@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Create service client with elevated permissions
-    const supabase = createServiceApiClient()
+    const supabase = createServiceApiClient(siteId)
     
     // Get all leads for the site with segment name
     const { data: leads, error } = await supabase

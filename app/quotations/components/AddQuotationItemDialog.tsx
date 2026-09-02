@@ -74,7 +74,7 @@ export function AddQuotationItemDialog({ open, onOpenChange, quotationId, onSucc
         return
       }
       if (selected && selected.target_sale_price !== undefined && selected.target_sale_price !== null) {
-        setValue('unitPrice', selected.target_sale_price.toString())
+        setValue('unitPrice', String(selected.target_sale_price || 0))
       }
     }
   }

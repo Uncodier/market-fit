@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/utils/supabase/server';
+import { createApiClient, createServiceApiClient } from "@/lib/supabase/server-client";
 import { addDays, endOfDay, startOfDay, subDays } from 'date-fns';
 import {
   addCalendarDays,
@@ -81,7 +81,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const supabase = await createClient();
+    const supabase = createServiceApiClient(siteId);
     const currentStart = toDateOnly(startDate);
     const currentEnd = toDateOnly(endDate);
     const periodLength = endDate.getTime() - startDate.getTime();

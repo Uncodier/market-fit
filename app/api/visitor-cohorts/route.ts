@@ -54,7 +54,7 @@ export async function GET(request: Request) {
     console.log(`[Visitor Cohorts API] Received request for site: ${siteId}, segment: ${segmentId || 'all'}`);
     
     // Use service client with appropriate permissions
-    const supabase = createServiceApiClient();
+    const supabase = createServiceApiClient(siteId);
     
     // Verify that the site exists before continuing
     const { data: siteData, error: siteError } = await supabase

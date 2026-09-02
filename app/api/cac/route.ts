@@ -256,7 +256,7 @@ export async function GET(request: NextRequest) {
   
   try {
     // Usar el cliente de servicio con permisos elevados para evitar restricciones RLS
-    const supabase = createServiceApiClient();
+    const supabase = createServiceApiClient(siteId);
     
     // Calculate period dates
     let periodStart = startDateStr ? new Date(startDateStr) : subDays(new Date(), 30);

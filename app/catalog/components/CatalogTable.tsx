@@ -33,14 +33,14 @@ interface CatalogTableProps {
 
 function itemTypeLabel(item: CatalogItem, t: (key: string) => string): string | null {
   if (item.is_recurring) return t('catalog.type.plan') || 'Plan'
-  if (item.digital_subtype === 'pass') return t('catalog.type.pass') || 'Pase'
-  if (item.digital_subtype === 'ticket') return t('catalog.type.ticket') || 'Boleto'
-  if (item.digital_subtype === 'course') return t('catalog.type.course') || 'Curso'
-  if (item.digital_subtype === 'file') return t('catalog.type.file') || 'Archivo'
-  if (item.digital_subtype === 'license') return t('catalog.type.license') || 'Licencia'
+  if (item.digital_subtype === 'pass') return t('catalog.type.pass') || 'Pass'
+  if (item.digital_subtype === 'ticket') return t('catalog.type.ticket') || 'Ticket'
+  if (item.digital_subtype === 'course') return t('catalog.type.course') || 'Course'
+  if (item.digital_subtype === 'file') return t('catalog.type.file') || 'File'
+  if (item.digital_subtype === 'license') return t('catalog.type.license') || 'License'
   if (item.is_reservation) return t('catalog.type.reservable') || 'Reservable'
-  if (item.kind === 'service') return t('catalog.kind.service') || 'Servicio'
-  if (item.kind === 'product') return t('catalog.kind.product') || 'Producto'
+  if (item.kind === 'service') return t('catalog.kind.service') || 'Service'
+  if (item.kind === 'product') return t('catalog.kind.product') || 'Product'
   if (item.kind === 'digital_asset') return t('catalog.kind.digitalAsset') || 'Digital'
   return null
 }
@@ -70,13 +70,13 @@ function catalogAccent(item: CatalogItem): boolean {
 }
 
 function availabilityStatus(item: CatalogItem, t: (key: string) => string): { status: string; label: string } {
-  if (item.status === "archived") return { status: "archived", label: t('catalog.status.archived') || "Archivado" }
-  if (item.availability_mode === "always") return { status: "always", label: t('catalog.status.always') || "Siempre disponible" }
-  if (item.availability_mode === "inventory") return { status: "active", label: t('catalog.status.inventory') || "Inventario" }
+  if (item.status === "archived") return { status: "archived", label: t('catalog.status.archived') || "Archived" }
+  if (item.availability_mode === "always") return { status: "always", label: t('catalog.status.always') || "Always Available" }
+  if (item.availability_mode === "inventory") return { status: "active", label: t('catalog.status.inventory') || "Inventory" }
   const map: Record<string, string> = {
-    available: t('catalog.status.available') || "Disponible",
-    sold_out: t('catalog.status.soldOut') || "Agotado",
-    unavailable: t('catalog.status.unavailable') || "No disponible",
+    available: t('catalog.status.available') || "Available",
+    sold_out: t('catalog.status.soldOut') || "Sold Out",
+    unavailable: t('catalog.status.unavailable') || "Unavailable",
   }
   return { status: item.availability_status || "available", label: map[item.availability_status] || item.availability_status }
 }
@@ -106,9 +106,9 @@ export function CatalogTable({
     })
     
     toast.promise(promise, {
-      loading: 'Actualizando disponibilidad...',
-      success: 'Disponibilidad actualizada',
-      error: 'Error al actualizar disponibilidad'
+      loading: t('catalog.availability.updating') || 'Updating availability...',
+      success: t('catalog.availability.updated') || 'Availability updated',
+      error: t('catalog.availability.error') || 'Error updating availability'
     })
 
     await promise
@@ -141,7 +141,7 @@ export function CatalogTable({
     if (uncategorizedItems.length > 0 || sections.length === 0) {
       sections.push({
         id: "uncategorized",
-        name: t('catalog.uncategorized') || "Sin categoría",
+        name: t('catalog.uncategorized') || "Uncategorized",
         items: uncategorizedItems
       })
     }
@@ -150,7 +150,7 @@ export function CatalogTable({
     if (variantItems.length > 0) {
       sections.push({
         id: "variants",
-        name: "Variantes",
+        name: t('catalog.kind.variant') || "Variants",
         items: variantItems
       })
     }
@@ -172,14 +172,14 @@ export function CatalogTable({
       <div className="p-8">
         <EmptyCard
           icon={<Archive className="h-6 w-6 text-muted-foreground" />}
-          title={t('catalog.empty.title') || "No se encontraron ítems"}
-          description={t('catalog.empty.description') || "Empieza agregando productos o servicios a tu catálogo."}
+          title={t('catalog.empty.title') || "No items found"}
+          description={t('catalog.empty.description') || "Start by adding products or services to your catalog."}
           className="border-0 shadow-none bg-transparent"
           actionButton={
             onCreateOpen ? (
               <Button onClick={onCreateOpen} variant="outline">
                 <Plus className="mr-2 h-4 w-4" />
-                {t('catalog.addItem') || 'Agregar ítem'}
+                {t('catalog.addItem') || 'Add item'}
               </Button>
             ) : undefined
           }
@@ -269,9 +269,9 @@ export function CatalogTable({
                                     <TableHeader>
                                       <TableRow className="hover:bg-transparent">
                                         {isDragEnabled && <DocumentListHead className="w-8"></DocumentListHead>}
-                                        <DocumentListHead className="w-[42%]">{t("catalog.name") || "Nombre"}</DocumentListHead>
-                                        <DocumentListHead className="w-[22%]">{t("catalog.status") || "Disponibilidad"}</DocumentListHead>
-                                        <DocumentListHead className="w-[22%]" align="right">{t("catalog.price") || "Precio"}</DocumentListHead>
+                                        <DocumentListHead className="w-[42%]">{t("catalog.name") || "Name"}</DocumentListHead>
+                                        <DocumentListHead className="w-[22%]">{t("catalog.status") || "Availability"}</DocumentListHead>
+                                        <DocumentListHead className="w-[22%]" align="right">{t("catalog.price") || "Price"}</DocumentListHead>
                                         <DocumentListHead className="w-[14%]" />
                                       </TableRow>
                                     </TableHeader>
@@ -284,14 +284,14 @@ export function CatalogTable({
                                           const avail = availabilityStatus(item, t)
                                           const priceLabel = item.is_dynamic_price
                                             ? (item.lowest_sale_price != null || item.metadata?.dynamic_pricing?.min_price != null
-                                              ? `Desde ${formatCurrency(Number(item.metadata?.dynamic_pricing?.min_price ?? item.lowest_sale_price), item.currency || "USD")}`
-                                              : (t("catalog.dynamicPricing.quote") || "Cotizar"))
+                                              ? `${t('catalog.dynamicPricing.from') || 'From '} ${formatCurrency(Number(item.metadata?.dynamic_pricing?.min_price ?? item.lowest_sale_price), item.currency || "USD")}`
+                                              : (t("catalog.dynamicPricing.quote") || "Quote"))
                                             : item.target_sale_price != null
                                               ? formatCurrency(item.target_sale_price, item.currency || "USD")
                                               : "—"
                                           const metaParts = [
                                             typeLabel,
-                                            item.track_inventory ? (t("catalog.tracksStock") || "Rastrea stock") : null,
+                                            item.track_inventory ? (t("catalog.tracksStock") || "Tracks stock") : null,
                                           ].filter(Boolean)
 
                                           return (
@@ -336,20 +336,20 @@ export function CatalogTable({
                                                           <p className="truncate font-mono text-[11px] leading-tight text-muted-foreground">{item.sku}</p>
                                                         ) : null}
                                                         {item.parent ? (
-                                                          <p className="truncate text-[11px] leading-tight text-primary/80 font-medium">Variante de: {item.parent.name}</p>
+                                                          <p className="truncate text-[11px] leading-tight text-primary/80 font-medium">{t("catalog.variants.variantOf") || "Variant of:"} {item.parent.name}</p>
                                                         ) : null}
                                                         {metaParts.length > 0 ? (
                                                           <p className="truncate text-[11px] leading-tight text-muted-foreground/80">{metaParts.join(" · ")}</p>
                                                         ) : null}
                                                         {item.is_recurring && (
                                                           <RelatedChips
-                                                            label={t("catalog.relations.includes") || "Incluye"}
+                                                            label={t("catalog.relations.includes") || "Includes"}
                                                             items={planIncludes}
                                                           />
                                                         )}
                                                         {item.digital_subtype === "pass" && (
                                                           <RelatedChips
-                                                            label={t("catalog.relations.redeems") || "Canjea"}
+                                                            label={t("catalog.relations.redeems") || "Redeems"}
                                                             items={passRedeems}
                                                           />
                                                         )}
@@ -367,13 +367,13 @@ export function CatalogTable({
                                                         </SelectTrigger>
                                                         <SelectContent>
                                                           <SelectItem value="available">
-                                                            <StatusDot status="available" label={t("catalog.status.available") || "Disponible"} />
+                                                            <StatusDot status="available" label={t("catalog.status.available") || "Available"} />
                                                           </SelectItem>
                                                           <SelectItem value="sold_out">
-                                                            <StatusDot status="sold_out" label={t("catalog.status.soldOut") || "Agotado"} />
+                                                            <StatusDot status="sold_out" label={t("catalog.status.soldOut") || "Sold Out"} />
                                                           </SelectItem>
                                                           <SelectItem value="unavailable">
-                                                            <StatusDot status="unavailable" label={t("catalog.status.unavailable") || "No disponible"} />
+                                                            <StatusDot status="unavailable" label={t("catalog.status.unavailable") || "Unavailable"} />
                                                           </SelectItem>
                                                         </SelectContent>
                                                       </Select>
@@ -408,7 +408,7 @@ export function CatalogTable({
                                         <TableRow>
                                           <TableCell colSpan={isDragEnabled ? 5 : 4} className="h-24 text-center">
                                             <span className="text-muted-foreground/50 text-sm">
-                                              {t('catalog.emptyCategory') || "No hay ítems en esta categoría."}
+                                              {t('catalog.emptyCategory') || "No items in this category."}
                                             </span>
                                           </TableCell>
                                         </TableRow>
@@ -419,7 +419,7 @@ export function CatalogTable({
                                   {section.items.length > visibleItems.length && (
                                     <div className="flex justify-center p-2 py-3 border-t bg-muted/10">
                                       <Button variant="ghost" size="sm" onClick={() => loadMore(section.id)}>
-                                        {t('common.loadMore') || 'Cargar 10 más'}
+                                        {t('common.loadMore') || 'Load 10 more'}
                                       </Button>
                                     </div>
                                   )}

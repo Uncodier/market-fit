@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/utils/supabase/server';
+import { createApiClient, createServiceApiClient } from "@/lib/supabase/server-client";
 import { subDays } from 'date-fns';
 
 export const dynamic = 'force-dynamic';
@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
     const previousPeriodStart = new Date(previousPeriodEnd.getTime() - periodLength);
 
     // Initialize Supabase client
-    const supabase = await createClient();
+    const supabase = createServiceApiClient(siteId);
 
     // Calculate period type
     let periodType = "custom";

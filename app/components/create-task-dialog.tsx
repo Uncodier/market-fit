@@ -339,7 +339,7 @@ export function CreateTaskDialog({ trigger, onTaskCreated }: CreateTaskDialogPro
               <div className="grid gap-2">
                 <Label>Priority</Label>
                 <Select
-                  value={formData.priority.toString()}
+                  value={String(formData.priority)}
                   onValueChange={(value) =>
                     setFormData({ ...formData, priority: parseInt(value) })
                   }

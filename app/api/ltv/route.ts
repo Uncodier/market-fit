@@ -237,10 +237,6 @@ async function findOrCreateKpi(
 }
 
 export async function GET(request: NextRequest) {
-  const cookieStore = cookies();
-  // Usar el cliente de servicio con permisos elevados para evitar restricciones RLS
-  const supabase = createServiceApiClient();
-  
   const searchParams = request.nextUrl.searchParams;
   const siteId = searchParams.get('siteId');
   const userId = searchParams.get('userId');
@@ -253,6 +249,10 @@ export async function GET(request: NextRequest) {
   if (!siteId) {
     return NextResponse.json({ error: 'Site ID is required' }, { status: 400 });
   }
+
+  const cookieStore = cookies();
+  // Usar el cliente de servicio con permisos elevados para evitar restricciones RLS
+  const supabase = createServiceApiClient(siteId);
 
   
   console.log('[LTV API] Request for site ID:', siteId, segmentId ? `and segment ID: ${segmentId}` : '');

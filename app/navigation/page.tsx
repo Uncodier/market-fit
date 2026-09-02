@@ -100,8 +100,8 @@ export default function NavigationPage({ isOverlay, onClose }: NavigationPagePro
           </div>
         </div>
       </div>
-      <div className={cn("flex-1 px-4 lg:px-8 py-8 flex flex-col items-center w-full")}>
-        <div className="flex flex-col gap-12 max-w-[1200px] w-full pb-12">
+      <div className={cn("flex-1 px-4 sm:px-8 md:px-12 lg:px-16 xl:px-24 2xl:px-32 py-8 flex flex-col items-center w-full")}>
+        <div className="flex flex-col gap-12 w-full pb-12">
           {sectionsOrder.map((areaKey) => {
             const area = NAVIGATION_AREAS[areaKey]
             const items = area.items.filter(item => {

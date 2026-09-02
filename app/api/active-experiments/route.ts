@@ -238,7 +238,7 @@ async function findOrCreateKpi(
 export async function GET(request: NextRequest) {
   const cookieStore = cookies();
   // Usar el cliente de servicio con permisos elevados para evitar restricciones RLS
-  const supabase = createServiceApiClient();
+  const supabase = createServiceApiClient(siteId);
   
   const searchParams = request.nextUrl.searchParams;
   const siteId = searchParams.get('siteId');

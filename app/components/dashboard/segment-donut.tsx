@@ -100,6 +100,7 @@ export function SegmentDonut({
         }
         params.append("startDate", safeStartDate.toISOString());
         params.append("endDate", safeEndDate.toISOString());
+        params.append("useDemoData", "true");
         if (segmentId && segmentId !== "all") {
           params.append("segmentId", segmentId);
         }

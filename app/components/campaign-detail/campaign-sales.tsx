@@ -106,7 +106,7 @@ export function CampaignSales({ campaign }: { campaign: any }) {
     setEditingSale({
       id: sale.id,
       title: sale.title,
-      amount: sale.amount.toString(),
+      amount: String(sale.amount || 0),
       status: sale.status || "completed",
       productName: sale.productName || "",
       saleDate: sale.saleDate,

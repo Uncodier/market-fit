@@ -238,20 +238,20 @@ async function findOrCreateKpi(
 }
 
 export async function GET(request: NextRequest) {
-  const cookieStore = cookies();
-  const supabase = createServiceApiClient();
-  
   const searchParams = request.nextUrl.searchParams;
   const siteId = searchParams.get('siteId');
   const userId = searchParams.get('userId');
   const startDateStr = searchParams.get('startDate');
   const endDateStr = searchParams.get('endDate');
   const skipKpiCreation = searchParams.get('skipKpiCreation') === 'true';
-  
+
   // Validate required parameters
   if (!siteId) {
     return NextResponse.json({ error: 'Site ID is required' }, { status: 400 });
   }
+
+  const cookieStore = cookies();
+  const supabase = createServiceApiClient(siteId);
 
   
   console.log('[ActiveSegmentsAPI] Request for site ID:', siteId);

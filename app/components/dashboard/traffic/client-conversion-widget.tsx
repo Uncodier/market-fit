@@ -105,7 +105,7 @@ export function ClientConversionWidget({
     fetchClientConversion();
   }, [shouldExecuteWidgets, segmentId, startDate, endDate, currentSite, user, ]);
 
-  const formattedValue = conversionData ? `${conversionData.actual}%` : "0%";
+  const formattedValue = conversionData?.actual != null ? `${conversionData.actual}%` : "0%";
   const changeText = `${conversionData?.percentChange || 0}% from ${formatPeriodType(conversionData?.periodType || "monthly")}`;
   const isPositiveChange = (conversionData?.percentChange || 0) > 0;
 

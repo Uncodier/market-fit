@@ -150,7 +150,7 @@ export function UniqueVisitorsWidget({
     fetchUniqueVisitors();
   }, [shouldExecuteWidgets, segmentId, startDate, endDate, currentSite, user, ]);
 
-  const formattedValue = uniqueVisitors ? uniqueVisitors.actual.toLocaleString() : "0";
+  const formattedValue = uniqueVisitors?.actual != null ? uniqueVisitors.actual.toLocaleString() : "0";
   const changeText = `${uniqueVisitors?.percentChange || 0}% from ${formatPeriodType(uniqueVisitors?.periodType || "monthly")}`;
   const isPositiveChange = (uniqueVisitors?.percentChange || 0) > 0;
 

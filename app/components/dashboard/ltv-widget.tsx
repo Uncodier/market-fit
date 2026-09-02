@@ -61,7 +61,7 @@ export function LTVWidget({
     <BaseKpiWidget
       title={t('dashboard.widgets.ltv') || 'Lifetime Value'}
       tooltipText="Average customer lifetime value"
-      value={ltv ? formatCurrency(ltv.actual) : "$0"}
+      value={ltv?.actual != null ? formatCurrency(ltv.actual) : "$0"}
       changeText={`${ltv?.percentChange || 0}% from ${formatPeriodType(ltv?.periodType || "monthly")}`}
       isPositiveChange={(ltv?.percentChange || 0) > 0}
       isLoading={isLoading}

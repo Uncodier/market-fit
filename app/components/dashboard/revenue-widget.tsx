@@ -71,7 +71,7 @@ export function RevenueWidget({
     <BaseKpiWidget
       title={t('dashboard.widgets.revenue') || 'Revenue'}
       tooltipText={t('dashboard.widgets.revenue.tooltip') || 'Total revenue for the selected period'}
-      value={revenue ? formatCurrency(revenue.actual) : "$0"}
+      value={revenue?.actual != null ? formatCurrency(revenue.actual) : "$0"}
       changeText={`${revenue?.percentChange || 0}% from ${formatPeriodType(revenue?.periodType || "monthly", t)}`}
       isPositiveChange={(revenue?.percentChange || 0) > 0}
       isLoading={isLoading}

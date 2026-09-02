@@ -15,6 +15,7 @@ interface ActiveCampaignsData {
   actual: number;
   percentChange: number;
   periodType: string;
+  error?: string;
 }
 
 function formatPeriodType(periodType: string, t: (key: string) => string): string {
@@ -47,14 +48,29 @@ export function ActiveCampaignsWidget({
     endDate
   );
 
+  const hasError = Boolean(activeCampaigns?.error);
+  let customStatus = null;
+  let formattedValue = null;
+  let changeText = null;
+  let isPositiveChange = undefined;
+
+  if (hasError) {
+    customStatus = <div className="text-sm text-red-500">Error loading campaigns data</div>;
+  } else {
+    formattedValue = activeCampaigns?.actual != null ? activeCampaigns.actual.toString() : "0";
+    changeText = `${activeCampaigns?.percentChange || 0}% from ${formatPeriodType(activeCampaigns?.periodType || "monthly", t)}`;
+    isPositiveChange = (activeCampaigns?.percentChange || 0) > 0;
+  }
+
   return (
     <BaseKpiWidget
       title={t('dashboard.widgets.activeCampaigns') || 'Active Campaigns'}
       tooltipText={t('dashboard.widgets.activeCampaigns.tooltip') || 'Campaigns running in the selected time period'}
-      value={activeCampaigns ? activeCampaigns.actual.toString() : "0"}
-      changeText={`${activeCampaigns?.percentChange || 0}% from ${formatPeriodType(activeCampaigns?.periodType || "monthly", t)}`}
-      isPositiveChange={(activeCampaigns?.percentChange || 0) > 0}
+      value={formattedValue}
+      changeText={changeText || ""}
+      isPositiveChange={isPositiveChange}
       isLoading={isLoading}
+      customStatus={customStatus}
       showDatePicker={!propStartDate && !propEndDate}
       startDate={startDate}
       endDate={endDate}

@@ -170,7 +170,7 @@ export function VariantsCard({ item, onUpdate }: VariantsCardProps) {
   const handleSaveChildren = async () => {
     const updates = Object.entries(pendingChildUpdates)
     if (updates.length === 0) {
-      toast.success(t("catalog.variants.skusSaved") || "SKUs guardados")
+      toast.success(t("catalog.variants.skusSaved") || "SKUs saved")
       return
     }
     setSavingChildren(true)
@@ -188,7 +188,7 @@ export function VariantsCard({ item, onUpdate }: VariantsCardProps) {
     setChildren(updatedChildren)
     setSavingChildren(false)
     if (!hasError) {
-      toast.success(t("catalog.variants.skusSaved") || "SKUs guardados")
+      toast.success(t("catalog.variants.skusSaved") || "SKUs saved")
       setPendingChildUpdates({})
     }
   }
@@ -377,7 +377,7 @@ export function VariantsCard({ item, onUpdate }: VariantsCardProps) {
           <ActionFooter>
             <div className="flex flex-wrap gap-2">
               <Button variant="outline" type="button" size="sm" onClick={handleSaveChildren} disabled={savingChildren}>
-                {savingChildren ? t("common.saving") || "Guardando..." : t("catalog.variants.saveSkus") || "Guardar SKUs"}
+                {savingChildren ? t("common.saving") || "Saving..." : t("catalog.variants.saveSkus") || "Save SKUs"}
               </Button>
             </div>
           </ActionFooter>

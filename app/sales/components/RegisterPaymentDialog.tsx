@@ -44,7 +44,7 @@ export function RegisterPaymentDialog({ sale, open, onOpenChange, onSuccess }: R
   // Reset form based on sale when dialog opens
   const resetForm = () => {
     if (sale) {
-      setPaymentAmount(sale.amount_due.toString());
+      setPaymentAmount(String(sale.amount_due || 0));
       setPaymentMethod(sale.paymentMethod || "credit_card");
       setNotes("");
     }

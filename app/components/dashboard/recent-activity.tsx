@@ -144,6 +144,7 @@ export function RecentActivity({
         const queryParams = new URLSearchParams();
         queryParams.append("siteId", currentSite.id);
         queryParams.append("limit", validLimit.toString());
+        queryParams.append("useDemoData", "true");
 
         if (startDate) {
           queryParams.append("startDate", format(startDate, "yyyy-MM-dd"));

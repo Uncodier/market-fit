@@ -125,7 +125,7 @@ export function CPLWidget({
     setEndDate(end);
   };
 
-  const formattedValue = cpl ? formatCurrency(cpl.actual) : "$0";
+  const formattedValue = cpl?.actual != null ? formatCurrency(cpl.actual) : "$0";
   const changeText = `${cpl?.percentChange || 0}% from ${formatPeriodType(cpl?.periodType || "monthly")}`;
   const isPositiveChange = (cpl?.percentChange || 0) < 0; // Note: For CPL, a decrease is positive
   

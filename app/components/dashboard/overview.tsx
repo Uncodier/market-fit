@@ -124,6 +124,7 @@ export function Overview({ startDate: propStartDate, endDate: propEndDate, segme
         params.append("siteId", currentSite.id)
         params.append("startDate", safeStartDate.toISOString())
         params.append("endDate", safeEndDate.toISOString())
+        params.append("useDemoData", "true")
         if (segmentId && segmentId !== "all") {
           params.append("segmentId", segmentId)
         }
@@ -186,7 +187,7 @@ export function Overview({ startDate: propStartDate, endDate: propEndDate, segme
           
           // Sum amounts
           const total = salesInInterval.reduce((sum, sale) => 
-            sum + parseFloat(sale.amount.toString()), 0);
+            sum + parseFloat(String(sale.amount || 0)), 0);
           
           return {
             name,

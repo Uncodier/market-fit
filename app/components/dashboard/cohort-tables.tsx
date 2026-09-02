@@ -105,6 +105,7 @@ export function CohortTables({ segmentId = "all", startDate: propStartDate, endD
         }
         params.append("startDate", startDate.toISOString());
         params.append("endDate", endDate.toISOString());
+        params.append("useDemoData", "true");
         if (segmentId && segmentId !== "all") {
           params.append("segmentId", segmentId);
         }

@@ -315,7 +315,7 @@ export default function PriceListDetail(props: { params: Promise<{ id: string }>
                           <DropdownMenuContent align="end">
                             <DropdownMenuItem onClick={() => {
                               setEditItem(item)
-                              setEditPrice(item.unit_price.toString())
+                              setEditPrice(String(item.unit_price || 0))
                               setIsEditOpen(true)
                             }}>
                               <Edit className="mr-2 h-4 w-4" />

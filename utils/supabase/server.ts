@@ -1,9 +1,12 @@
+import { createDemoMockClient } from "@/lib/demo-data/mock-client"
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { Database } from '@/types/supabase'
 
 export const createClient = async () => {
   const cookieStore = await cookies()
+  const demoSiteId = cookieStore.get("market_fit_demo_site_id")?.value;
+  if (demoSiteId) return createDemoMockClient(demoSiteId) as any;
 
   return createServerClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,

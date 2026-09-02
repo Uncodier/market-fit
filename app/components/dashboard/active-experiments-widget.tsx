@@ -120,7 +120,7 @@ export function ActiveExperimentsWidget({
     setEndDate(end);
   };
 
-  const formattedValue = activeExperiments ? activeExperiments.actual.toString() : "0";
+  const formattedValue = activeExperiments?.actual != null ? activeExperiments.actual.toString() : "0";
   const changeText = `${activeExperiments?.percentChange || 0}% from ${formatPeriodType(activeExperiments?.periodType || "monthly")}`;
   const isPositiveChange = (activeExperiments?.percentChange || 0) > 0;
   
