@@ -47,16 +47,34 @@ export function isRealSiteId(id: string | null | undefined): boolean {
   return !isDemoSiteId(id)
 }
 
-/** True when the browser still has demo cookie or manual-demo flag. */
+/** True when the browser still has demo cookie, URL client, or a demo site id. */
 export function isDemoModeActive(): boolean {
-  if (typeof document === "undefined") return false
+  return getDemoSiteId() !== null
+}
+
+/** Prefer URL `?client=` over cookie so a first paint does not wait on Set-Cookie. */
+export function getDemoSiteId(): string | null {
+  if (typeof window === "undefined" || typeof document === "undefined") return null
   try {
+    const urlClient = new URLSearchParams(window.location.search).get("client")
+    if (isDemoSiteId(urlClient)) return urlClient
+
     const match = document.cookie.match(/(?:^|; )market_fit_demo_site_id=([^;]*)/)
     const cookieId = match?.[1] ? decodeURIComponent(match[1]).trim() : ""
-    if (isDemoSiteId(cookieId)) return true
-    if (localStorage.getItem("market_fit_manual_demo") === "true") return true
-    return isDemoSiteId(localStorage.getItem("currentSiteId"))
+    if (isDemoSiteId(cookieId)) return cookieId
+
+    const currentSite = localStorage.getItem("currentSiteId")
+    if (isDemoSiteId(currentSite)) return currentSite
+
+    return null
   } catch {
-    return false
+    return null
   }
+}
+
+export function resolvePreferredSiteId(input: {
+  savedSiteId: string | null
+  demoSiteId: string | null
+}): string | null {
+  return input.demoSiteId || input.savedSiteId
 }

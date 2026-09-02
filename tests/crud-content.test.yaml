@@ -64,5 +64,5 @@ statements:
     locator: "getByRole('button', { name: 'Save' })"
 
   - WAIT_UNTIL: The edited title is visible
-    js: "await page.getByDisplayValue('Automated Test Content - Edited').count() > 0"
+    js: "await page.locator('input[value=\"Automated Test Content - Edited\"]').count() > 0"
     timeout_seconds: 10

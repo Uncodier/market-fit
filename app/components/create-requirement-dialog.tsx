@@ -110,6 +110,7 @@ export function CreateRequirementDialog({ segments, campaigns = [], onCreateRequ
 
   // Form submission handler
   const onSubmit = async (data: z.infer<typeof requirementFormSchema>) => {
+    console.log("CreateRequirementDialog SUBMIT DATA:", data);
     if (!user?.id || !currentSite?.id) {
       toast.error("Missing user or site information");
       return;
@@ -171,7 +172,7 @@ export function CreateRequirementDialog({ segments, campaigns = [], onCreateRequ
         )}
       </DialogTrigger>
       <DialogContent size="lg" busy={isLoading}>
-        <DialogForm onSubmit={form.handleSubmit(onSubmit)} ref={formRef}>
+        <DialogForm onSubmit={form.handleSubmit(onSubmit, (errors) => console.log("CreateRequirementDialog VALIDATION ERRORS:", errors))} ref={formRef}>
           <DialogHeader>
             <DialogTitle>New requirement</DialogTitle>
             <DialogDescription>

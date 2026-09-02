@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/client"
 import { useRouter, usePathname } from "next/navigation"
 import type { BillingData } from "../services/billing-types"
 import { toast } from "react-hot-toast"
-import { isDemoModeActive, isRealSiteId } from "@/lib/demo-utils"
+import { getDemoSiteId, isDemoModeActive, isRealSiteId } from "@/lib/demo-utils"
 import { clearCurrentSiteCookie, persistCurrentSiteCookie } from "@/lib/auth/current-site-cookie"
 import { getWorkspaceSiteRedirect } from "@/lib/auth/workspace-site-redirect"
 import { navigateOrAssign } from "@/lib/navigation/stale-router"
@@ -188,6 +188,16 @@ export function SiteProvider({ children }: SiteProviderProps) {
       subscription.unsubscribe()
     }
   }, [isMounted])
+
+  // Shop clears the demo cookie; workspace pages restore it via ?client=.
+  // Rebind the supabase client and reload so we do not keep a real site selected.
+  useEffect(() => {
+    if (!isMounted || !isInitialized || isLoading) return
+    const demoSiteId = getDemoSiteId()
+    if (!demoSiteId || currentSite?.id === demoSiteId) return
+    supabaseRef.current = createClient()
+    void loadSites()
+  }, [pathname, isMounted, isInitialized, isLoading, currentSite?.id])
 
   // Efecto separado para manejar las suscripciones, solo después de la inicialización
   useEffect(() => {

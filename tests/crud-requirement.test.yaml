@@ -10,7 +10,56 @@ statements:
     js: "await page.url().includes('/robots')"
     timeout_seconds: 5
 
+  - URL: /segments
+  - intent: Click New Segment in the top bar
+    action: click
+    locator: "getByRole('button', { name: 'New Segment' })"
+
+  - intent: Fill the segment name
+    action: fill
+    locator: "locator('#name')"
+    value: "Segment for Requirement"
+
+  - intent: Fill the segment description
+    action: fill
+    locator: "locator('#description')"
+    value: "Description"
+
+  - intent: Open audience dropdown
+    action: click
+    locator: "getByRole('combobox').nth(0)"
+
+  - WAIT_UNTIL: Dropdown animation finishes
+    js: "await page.waitForTimeout(500)"
+    timeout_seconds: 5
+
+  - intent: Select audience type
+    action: click
+    locator: "getByRole('option', { name: 'Technology' })"
+
+  - intent: Open language dropdown
+    action: click
+    locator: "getByRole('combobox').nth(1)"
+
+  - WAIT_UNTIL: Dropdown animation finishes
+    js: "await page.waitForTimeout(500)"
+    timeout_seconds: 5
+
+  - intent: Select language
+    action: click
+    locator: "getByRole('option', { name: 'English' })"
+
+  - intent: Submit the create segment form
+    action: click
+    locator: "getByRole('button', { name: 'Create Segment' })"
+
+  - WAIT_UNTIL: The create segment modal closes
+    js: "await page.getByRole('dialog').count() === 0"
+    timeout_seconds: 10
+
   - URL: /requirements
+  
+  # Ensure a segment exists
   - intent: Click New Requirement in the top bar
     action: click
     locator: "getByRole('button', { name: 'New Requirement' })"
@@ -59,5 +108,5 @@ statements:
     locator: "getByRole('button', { name: 'Save' })"
 
   - WAIT_UNTIL: The edited title is visible
-    js: "await page.getByDisplayValue('Automated Test Requirement - Edited').count() > 0"
+    js: "await page.locator('input[value=\"Automated Test Requirement - Edited\"]').count() > 0"
     timeout_seconds: 10

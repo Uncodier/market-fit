@@ -65,7 +65,7 @@ statements:
 
   # 2. READ / VERIFY
   - VERIFY: The details page shows the correct product name
-    js: "await expect(page.getByDisplayValue('Automated Test Product').first()).toBeVisible()"
+    js: "await expect(page.locator('input[name=\"name\"]')).toHaveValue('Automated Test Product')"
 
   # 3. UPDATE
   - intent: Update the product name in the details form

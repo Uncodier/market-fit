@@ -2,7 +2,7 @@
 
 import type { Site } from "./site-types"
 import { getLocalStorage } from "./site-storage"
-import { isDemoModeActive } from "@/lib/demo-utils"
+import { isDemoModeActive, getDemoSiteId, resolvePreferredSiteId } from "@/lib/demo-utils"
 import { unauthorizedSitesLoadAction } from "@/lib/auth/workspace-site-redirect"
 import { fetchAccessibleSitesClient } from "@/lib/sites/fetch-accessible-sites"
 import { postgrestErrorMessage } from "@/lib/supabase/postgrest-error"
@@ -84,7 +84,9 @@ export async function loadAccessibleSites(deps: LoadSitesDeps) {
         return
       }
 
-      if (unauthorized) {
+      const demoActive = isDemoModeActive()
+
+      if (unauthorized && !demoActive) {
         const action = unauthorizedSitesLoadAction({
           hasLocalUser: Boolean(userId),
           retriesSoFar: unauthorizedRetryRef.current,
@@ -117,7 +119,7 @@ export async function loadAccessibleSites(deps: LoadSitesDeps) {
         return
       }
 
-      if (sitesError) {
+      if (sitesError && !demoActive) {
         console.error(
           "Error fetching accessible sites:",
           postgrestErrorMessage(sitesError, "Failed to load sites")
@@ -217,8 +219,13 @@ export async function loadAccessibleSites(deps: LoadSitesDeps) {
       
       // Si hay sitios, intentamos restaurar el sitio guardado (no auto-seleccionar el primero)
       if (sitesWithData.length > 0) {
-        const savedSiteId = getLocalStorage("currentSiteId")
-        const savedSite = savedSiteId ? sitesWithData.find((site: any) => site.id === savedSiteId) : null
+        const preferredSiteId = resolvePreferredSiteId({
+          savedSiteId: getLocalStorage("currentSiteId"),
+          demoSiteId: getDemoSiteId(),
+        })
+        const savedSite = preferredSiteId
+          ? sitesWithData.find((site: any) => site.id === preferredSiteId)
+          : null
         
         // PRIORIDAD 1: Si hay un sitio guardado válido, usarlo siempre
         if (savedSite) {

@@ -30,18 +30,26 @@ statements:
     locator: "getByPlaceholder('Search company...')"
     value: "Automated Deal Company"
 
+  - WAIT_UNTIL: The company dropdown options are visible
+    js: "await page.getByText(/Use \"Automated Deal Company\"|Automated Deal Company/).count() > 0"
+    timeout_seconds: 5
+
   - intent: Create the company on the fly with Use
     action: click
-    locator: "getByText('Use \"Automated Deal Company\"')"
+    locator: "getByText(/Use \"Automated Deal Company\"|Automated Deal Company/).first()"
 
   - intent: Type a new lead name in the dependency selector
     action: fill
     locator: "getByPlaceholder('Search lead...')"
     value: "Automated Deal Contact"
 
+  - WAIT_UNTIL: The lead dropdown options are visible
+    js: "await page.getByText(/Use \"Automated Deal Contact\"|Automated Deal Contact/).count() > 0"
+    timeout_seconds: 5
+
   - intent: Create the lead on the fly with Use
     action: click
-    locator: "getByText('Use \"Automated Deal Contact\"')"
+    locator: "getByText(/Use \"Automated Deal Contact\"|Automated Deal Contact/).first()"
 
   - intent: Submit the create deal form
     action: click

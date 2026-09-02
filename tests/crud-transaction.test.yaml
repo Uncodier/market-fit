@@ -30,9 +30,13 @@ statements:
     locator: "getByPlaceholder('Select campaign (optional)')"
     value: "Automated Expense Campaign"
 
+  - WAIT_UNTIL: The campaign dropdown options are visible
+    js: "await page.getByText(/Use \"Automated Expense Campaign\"|Automated Expense Campaign/).count() > 0"
+    timeout_seconds: 5
+
   - intent: Create the campaign on the fly with Use
     action: click
-    locator: "getByRole('option', { name: /Use \"Automated Expense Campaign\"|Automated Expense Campaign/ }).first()"
+    locator: "getByText(/Use \"Automated Expense Campaign\"|Automated Expense Campaign/).first()"
 
   - intent: Save the new expense
     action: click
@@ -51,23 +55,37 @@ statements:
     locator: "getByText('Automated Test Expense').first()"
 
   - WAIT_UNTIL: The transaction details route is open and loaded
-    js: "await page.getByRole('button', { name: 'Delete' }).count() > 0"
+    js: "await page.getByText('Automated Test Expense').first().isVisible()"
     timeout_seconds: 15
 
   - VERIFY: The expense notes are visible
     js: "await expect(page.getByText('Automated Test Expense').first()).toBeVisible()"
 
-  - intent: Click Delete on the expense details toolbar
+  - intent: Return to transactions list
     action: click
-    locator: "getByRole('button', { name: 'Delete' })"
-
-  - intent: Confirm deletion of the expense
-    action: click
-    locator: "getByRole('button', { name: 'Delete' }).last()"
+    locator: "getByRole('link', { name: 'Transactions' }).first()"
 
   - WAIT_UNTIL: The user is back on the transactions list
-    js: "await page.url().match(/\\/transactions(?:\\?.*)?$/) !== null"
+    js: "await page.url().endsWith('/transactions')"
     timeout_seconds: 15
+
+  - WAIT_UNTIL: The expense appears in the list
+    js: "await page.getByText('Automated Test Expense').count() > 0"
+    timeout_seconds: 15
+
+  - description: Setup dialog handler for deletion
+    js: "page.on('dialog', dialog => dialog.accept());"
+
+  - intent: Click the open menu button on the expense list dropdown
+    action: click
+    locator: "getByRole('button', { name: /Open menu/ }).first()"
+
+  - intent: Click Delete in the dropdown menu
+    action: click
+    locator: "getByRole('menuitem', { name: /Delete/i })"
+
+  - description: Wait for deletion to complete
+    js: "await page.waitForTimeout(1000);"
 
   - VERIFY: The expense is gone from the list
     js: "await expect(page.getByText('Automated Test Expense')).toHaveCount(0)"

@@ -1,6 +1,7 @@
 import { createBrowserClient } from '@supabase/ssr'
 import { getDemoData } from '@/lib/demo-data'
 import { createDemoMockClient } from '@/lib/demo-data/mock-client'
+import { getDemoSiteId } from '@/lib/demo-utils'
 import { wrapSupabaseClient } from '@/lib/permissions/mutation-guard'
 import { notifyPermissionDenied } from '@/lib/permissions/notify'
 
@@ -14,19 +15,9 @@ let clientCreationError: Error | null = null
 let clientCreationErrorTimestamp: number | null = null
 const ERROR_RECOVERY_MS = 30_000
 
-/**
- * Helper para leer la cookie del modo demo
- */
 function getDemoSiteIdFromCookie(): string | null {
-  if (isServerSide()) return null;
-  try {
-    return document.cookie
-      .split('; ')
-      .find((row) => row.startsWith('market_fit_demo_site_id='))
-      ?.split('=')[1] || null;
-  } catch (e) {
-    return null;
-  }
+  if (isServerSide()) return null
+  return getDemoSiteId()
 }
 
 /**

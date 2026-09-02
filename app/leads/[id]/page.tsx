@@ -263,8 +263,6 @@ export default function LeadDetailPage(props: { params: Promise<{ id: string }> 
   }
   
   if (loading) {
-    // Set a default title while loading
-    document.title = 'Leads | Market Fit'
     return <LeadDetailSkeleton />
   }
   

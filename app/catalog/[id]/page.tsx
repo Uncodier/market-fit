@@ -234,8 +234,10 @@ export default function CatalogItemDetail(props: { params: Promise<{ id: string 
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2 col-span-2 md:col-span-1">
-                  <Label>{t('catalog.form.name') || 'Name'}</Label>
+                  <Label htmlFor="name">{t('catalog.form.name') || 'Name'}</Label>
                   <Input 
+                    id="name"
+                    name="name"
                     value={formData.name || ''} 
                     onChange={e => setFormData({...formData, name: e.target.value})} />
                 </div>
