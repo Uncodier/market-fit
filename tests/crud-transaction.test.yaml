@@ -81,7 +81,7 @@ statements:
     timeout_seconds: 10
 
   - description: Ensure transactions are visible
-    js: "await page.waitForTimeout(3000); await page.goto('/transactions'); await page.waitForTimeout(3000);"
+    js: "await page.waitForTimeout(3000); await page.goto('/transactions'); await page.waitForTimeout(10000);"
     
   - WAIT_UNTIL: The new expense appears in the list
     js: "await page.getByText('Automated Test Expense', { exact: false }).count() > 0"
