@@ -11,32 +11,53 @@ import {
   resolvePostAuthRedirect,
 } from "@/lib/auth/post-auth-redirect"
 
-type ConfirmationState = 'loading' | 'success' | 'error' | 'redirect'
+type ConfirmationState = 'needs_click' | 'loading' | 'success' | 'error' | 'redirect' | 'otp_channel_block'
 
 function ConfirmContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const [state, setState] = useState<ConfirmationState>('loading')
+  const [state, setState] = useState<ConfirmationState>('needs_click')
   const [message, setMessage] = useState('')
   const [redirectUrl, setRedirectUrl] = useState<string | null>(null)
 
   useEffect(() => {
-    const handleConfirmation = async () => {
-      try {
-        const tokenHash = searchParams.get('token_hash')
-        const type = searchParams.get('type')
-        const redirectTo = searchParams.get('redirect_to')
-        const invitationType = searchParams.get('invitationType')
-        const postAuthPath = resolvePostAuthRedirect(authReturnToFromSearchParams(searchParams))
-        const setPasswordUrl = `/auth/set-password?returnTo=${encodeURIComponent(postAuthPath)}`
+    const tokenHash = searchParams.get('token_hash')
+    const redirectTo = searchParams.get('redirect_to') || ''
+    const isOtpChannel =
+      searchParams.get('auth_channel') === 'otp' || redirectTo.includes('auth_channel=otp')
 
-        if (!tokenHash) {
-          setState('error')
-          setMessage('Missing confirmation token')
-          return
-        }
+    if (isOtpChannel) {
+      setState('otp_channel_block')
+      return
+    }
 
-        const supabase = createClient()
+    if (!tokenHash) {
+      setState('error')
+      setMessage('Missing confirmation token')
+    }
+  }, [searchParams])
+
+  const handleConfirmation = async () => {
+    setState('loading')
+    try {
+      const tokenHash = searchParams.get('token_hash')
+      const type = searchParams.get('type')
+      const redirectTo = searchParams.get('redirect_to')
+      const invitationType = searchParams.get('invitationType')
+      const postAuthPath = resolvePostAuthRedirect(authReturnToFromSearchParams(searchParams))
+      const setPasswordUrl = `/auth/set-password?returnTo=${encodeURIComponent(postAuthPath)}`
+
+      if (!tokenHash) return
+
+      const isOtpChannel =
+        searchParams.get('auth_channel') === 'otp' ||
+        (redirectTo || '').includes('auth_channel=otp')
+      if (isOtpChannel) {
+        setState('otp_channel_block')
+        return
+      }
+
+      const supabase = createClient()
 
         // Handle different types of confirmations
         // Check if it's any kind of team invitation (admin invite or magic link)
@@ -171,10 +192,7 @@ function ConfirmContent() {
         setState('error')
         setMessage('An unexpected error occurred during confirmation')
       }
-    }
-
-    handleConfirmation()
-  }, [searchParams])
+  }
 
   const handleManualRedirect = () => {
     if (redirectUrl) {
@@ -197,6 +215,26 @@ function ConfirmContent() {
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="flex flex-col items-center text-center">
+              {state === 'otp_channel_block' && (
+                <>
+                  <XCircle className="h-12 w-12 text-muted-foreground mb-4" />
+                  <p className="text-foreground font-medium mb-2">Checkout code required</p>
+                  <p className="text-muted-foreground text-sm">
+                    This link is not meant to be clicked. Please go back to the checkout page and enter the 6-digit code we sent you.
+                  </p>
+                </>
+              )}
+
+              {state === 'needs_click' && (
+                <>
+                  <CheckCircle2 className="h-12 w-12 text-primary mb-4" />
+                  <p className="text-muted-foreground mb-4">Click below to securely confirm your sign in.</p>
+                  <Button onClick={handleConfirmation} className="w-full">
+                    Confirm Sign In
+                  </Button>
+                </>
+              )}
+
               {state === 'loading' && (
                 <>
                   <div className="h-12 w-12 mb-4 animate-pulse bg-primary/20 rounded-full" />

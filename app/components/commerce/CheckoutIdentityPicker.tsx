@@ -37,7 +37,7 @@ export function CheckoutIdentityPicker({
   setOwnerSiteId,
   lockedDestination = false
 }: CheckoutIdentityPickerProps) {
-  const { t } = useLocalization()
+  const { t, locale } = useLocalization()
   const supabase = createClient()
 
   const [mode, setMode] = useState<Mode>(() => {
@@ -95,6 +95,12 @@ export function CheckoutIdentityPicker({
         email: otpEmail.trim(),
         options: {
           shouldCreateUser: true,
+          emailRedirectTo: `${window.location.origin}/auth/confirm?auth_channel=otp&returnTo=${encodeURIComponent(window.location.pathname + window.location.search)}`,
+          data: {
+            auth_channel: 'otp',
+            locale,
+            site_id: ownerSiteId || undefined,
+          }
         },
       })
 
@@ -117,13 +123,31 @@ export function CheckoutIdentityPicker({
 
     setLoading(true)
     try {
-      const { data, error } = await supabase.auth.verifyOtp({
+      let result = await supabase.auth.verifyOtp({
         email: otpEmail.trim(),
         token: otpCode.replace(/ /g, ""),
         type: "email",
       })
 
-      if (error) throw error
+      if (result.error) {
+        result = await supabase.auth.verifyOtp({
+          email: otpEmail.trim(),
+          token: otpCode.replace(/ /g, ""),
+          type: "magiclink",
+        })
+      }
+
+      if (result.error) {
+        result = await supabase.auth.verifyOtp({
+          email: otpEmail.trim(),
+          token: otpCode.replace(/ /g, ""),
+          type: "signup",
+        })
+      }
+
+      if (result.error) throw result.error
+      const { data } = result;
+
       if (data.session) {
         const email = data.session.user.email || ""
         setCustomerEmail(email)

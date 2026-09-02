@@ -3,23 +3,9 @@
 import { createServiceClient } from "@/lib/supabase/server";
 import { ProfileData } from "@/app/services/profile.service";
 import type { RoundRobinCalendar } from "@/app/context/SiteContext";
-import {
-  addMinutes,
-  format,
-  parseISO,
-  startOfDay,
-  endOfDay,
-  isAfter,
-  isBefore,
-  setHours,
-  setMinutes,
-  eachDayOfInterval,
-  isSameDay,
-} from "date-fns";
-
 import { sendBookingConfirmationEmail } from "./send-booking-email";
 import { zonedMeetingRange } from "@/lib/calendar/invite";
-import { formatInTimeZone } from "date-fns-tz";
+import { formatInTimeZone, fromZonedTime } from "date-fns-tz";
 
 export async function getProfileBySlug(
   slug: string,
@@ -101,33 +87,12 @@ export async function getRRCalendarBySlug(
   return { calendar, siteId: data.site_id };
 }
 
-export async function getRRAvailability(
-  memberEmails: string[],
-  date: string,
-  duration: number,
-  buffer: number,
-) {
-  const supabase = await createServiceClient(true);
-
-  // 1. Get all members' profiles
-  const { data: profiles } = await supabase
-    .from("profiles")
-    .select("id, email, settings")
-    .in("email", memberEmails);
-
-  if (!profiles || profiles.length === 0) return [];
-
-  // 2. For each profile, get slots and aggregate
-  const allSlotsSet = new Set<string>();
-
-  for (const profile of profiles) {
-    const slots = await getAvailableSlots(profile.id, date, duration, buffer);
-    slots.forEach((slot) => allSlotsSet.add(slot));
-  }
-
-  return Array.from(allSlotsSet).sort();
-}
-
+export {
+  getAvailableSlots,
+  getMonthAvailability,
+  getRRAvailability,
+  getRRMonthAvailability,
+} from "./availability";
 export async function bookRRMeeting(data: {
   calendarId: string;
   siteId: string;
@@ -147,9 +112,10 @@ export async function bookRRMeeting(data: {
 }) {
   const supabase = await createServiceClient(true);
 
-  // 1. Find least busy member for that day
-  const start = startOfDay(parseISO(data.date)).toISOString();
-  const end = endOfDay(parseISO(data.date)).toISOString();
+  // 1. Find least busy member for that guest-local day
+  const timeZone = data.timezone || "America/Mexico_City";
+  const start = fromZonedTime(`${data.date}T00:00:00`, timeZone).toISOString();
+  const end = fromZonedTime(`${data.date}T23:59:59`, timeZone).toISOString();
 
   // Get all members' user IDs
   const { data: profiles } = await supabase
@@ -197,352 +163,6 @@ export async function bookRRMeeting(data: {
     metadata: data.metadata,
     locale: data.locale,
   });
-}
-
-export async function getMonthAvailability(
-  userId: string,
-  startDate: string,
-  endDate: string,
-  duration: number,
-  buffer: number,
-) {
-  const supabase = await createServiceClient(true);
-
-  // 1. Get user profile for availability settings
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("settings")
-    .eq("id", userId)
-    .single();
-
-  let availabilitySettings = profile?.settings?.calendar?.availability;
-  let effectiveDuration =
-    duration || profile?.settings?.calendar?.duration || 30;
-  let effectiveBuffer = buffer || profile?.settings?.calendar?.buffer || 0;
-
-  // 2. Fallback to site business hours if user hasn't configured availability
-  if (!availabilitySettings) {
-    const { data: member } = await supabase
-      .from("site_members")
-      .select("site_id")
-      .eq("user_id", userId)
-      .limit(1)
-      .single();
-
-    if (member) {
-      const { data: siteSettings } = await supabase
-        .from("settings")
-        .select("business_hours")
-        .eq("site_id", member.site_id)
-        .single();
-
-      if (
-        siteSettings?.business_hours &&
-        siteSettings.business_hours.length > 0
-      ) {
-        const bh = siteSettings.business_hours[0];
-        availabilitySettings = bh.days;
-      }
-    }
-  }
-
-  if (!availabilitySettings) return {};
-
-  // 3. Get existing tasks for the whole date range
-  const start = startOfDay(parseISO(startDate)).toISOString();
-  const end = endOfDay(parseISO(endDate)).toISOString();
-
-  const { data: tasks } = await supabase
-    .from("tasks")
-    .select("scheduled_date")
-    .eq("assignee", userId)
-    .gte("scheduled_date", start)
-    .lte("scheduled_date", end)
-    .neq("status", "failed");
-
-  const result: Record<string, boolean> = {};
-
-  // 4. Iterate over each day and generate slots
-  const days = eachDayOfInterval({ start: parseISO(startDate), end: parseISO(endDate) });
-
-  for (const dateObj of days) {
-    const dateStr = format(dateObj, "yyyy-MM-dd");
-    const dayOfWeek = format(dateObj, "eeee").toLowerCase();
-    const dayAvailability = availabilitySettings[dayOfWeek];
-
-    if (
-      !dayAvailability?.enabled ||
-      !dayAvailability.start ||
-      !dayAvailability.end ||
-      isBefore(startOfDay(dateObj), startOfDay(new Date()))
-    ) {
-      result[dateStr] = false;
-      continue;
-    }
-
-    let interval = effectiveDuration;
-    if (effectiveDuration > 60) {
-      interval = 60;
-    }
-
-    const [startH, startM] = dayAvailability.start.split(":").map(Number);
-    const [endH, endM] = dayAvailability.end.split(":").map(Number);
-
-    const dayStart = setMinutes(setHours(dateObj, startH), startM);
-    const dayEnd = setMinutes(setHours(dateObj, endH), endM);
-
-    // Filter tasks for this day
-    const dayTasks = (tasks || []).filter(t => {
-      const taskDate = new Date(t.scheduled_date);
-      return isSameDay(taskDate, dateObj);
-    });
-
-    const busyTasks = dayTasks.map((t) => new Date(t.scheduled_date));
-    const busyPeriods = busyTasks.map((busyStart) => ({
-      start: busyStart,
-      end: addMinutes(busyStart, effectiveDuration + effectiveBuffer),
-    }));
-
-    const candidatesSet = new Set<number>();
-
-    // A. Generate standard grid slots
-    let current = dayStart;
-    while (isBefore(current, dayEnd)) {
-      const slotEnd = addMinutes(current, effectiveDuration);
-      if (isBefore(slotEnd, dayEnd) || isSameTime(slotEnd, dayEnd)) {
-        candidatesSet.add(current.getTime());
-      }
-      current = addMinutes(current, interval);
-    }
-
-    // B. Generate slots immediately after busy periods
-    for (const period of busyPeriods) {
-      const nextSlot = period.end;
-      const slotEnd = addMinutes(nextSlot, effectiveDuration);
-      if (
-        (isBefore(nextSlot, dayEnd) || isSameTime(nextSlot, dayEnd)) &&
-        (isBefore(slotEnd, dayEnd) || isSameTime(slotEnd, dayEnd))
-      ) {
-        candidatesSet.add(nextSlot.getTime());
-      }
-    }
-
-    // C. Check if there's at least one available slot
-    let hasAvailability = false;
-    const sortedCandidates = Array.from(candidatesSet).sort((a, b) => a - b);
-
-    for (const time of sortedCandidates) {
-      const slotStart = new Date(time);
-      const slotEnd = addMinutes(slotStart, effectiveDuration);
-
-      if (isBefore(slotStart, new Date())) {
-        continue;
-      }
-
-      let isBusy = false;
-      for (const period of busyPeriods) {
-        if (isBefore(slotStart, period.end) && isAfter(slotEnd, period.start)) {
-          isBusy = true;
-          break;
-        }
-      }
-
-      if (!isBusy) {
-        hasAvailability = true;
-        break;
-      }
-    }
-
-    result[dateStr] = hasAvailability;
-  }
-
-  return result;
-}
-
-export async function getRRMonthAvailability(
-  memberEmails: string[],
-  startDate: string,
-  endDate: string,
-  duration: number,
-  buffer: number,
-) {
-  const supabase = await createServiceClient(true);
-
-  // 1. Get all members' profiles
-  const { data: profiles } = await supabase
-    .from("profiles")
-    .select("id, email, settings")
-    .in("email", memberEmails);
-
-  if (!profiles || profiles.length === 0) return {};
-
-  const result: Record<string, boolean> = {};
-
-  // For each profile, get month availability and OR them together
-  for (const profile of profiles) {
-    const profileAvailability = await getMonthAvailability(
-      profile.id,
-      startDate,
-      endDate,
-      duration,
-      buffer
-    );
-    
-    // Merge into result
-    for (const [date, isAvailable] of Object.entries(profileAvailability)) {
-      result[date] = result[date] || isAvailable;
-    }
-  }
-
-  return result;
-}
-
-export async function getAvailableSlots(
-  userId: string,
-  date: string,
-  duration: number,
-  buffer: number,
-) {
-  const supabase = await createServiceClient(true);
-
-  // 1. Get user profile for availability settings
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("settings")
-    .eq("id", userId)
-    .single();
-
-  let availabilitySettings = profile?.settings?.calendar?.availability;
-  let effectiveDuration =
-    duration || profile?.settings?.calendar?.duration || 30;
-  let effectiveBuffer = buffer || profile?.settings?.calendar?.buffer || 0;
-
-  // 2. Fallback to site business hours if user hasn't configured availability
-  if (!availabilitySettings) {
-    const { data: member } = await supabase
-      .from("site_members")
-      .select("site_id")
-      .eq("user_id", userId)
-      .limit(1)
-      .single();
-
-    if (member) {
-      const { data: siteSettings } = await supabase
-        .from("settings")
-        .select("business_hours")
-        .eq("site_id", member.site_id)
-        .single();
-
-      if (
-        siteSettings?.business_hours &&
-        siteSettings.business_hours.length > 0
-      ) {
-        // Use the first business hours found
-        const bh = siteSettings.business_hours[0];
-        availabilitySettings = bh.days;
-      }
-    }
-  }
-
-  if (!availabilitySettings) return [];
-
-  const dayOfWeek = format(parseISO(date), "eeee").toLowerCase();
-  const dayAvailability = availabilitySettings[dayOfWeek];
-
-  if (
-    !dayAvailability?.enabled ||
-    !dayAvailability.start ||
-    !dayAvailability.end
-  )
-    return [];
-
-  // 3. Get existing tasks for that day
-  const start = startOfDay(parseISO(date)).toISOString();
-  const end = endOfDay(parseISO(date)).toISOString();
-
-  const { data: tasks } = await supabase
-    .from("tasks")
-    .select("scheduled_date")
-    .eq("assignee", userId)
-    .gte("scheduled_date", start)
-    .lte("scheduled_date", end)
-    .neq("status", "failed");
-
-  // 4. Generate slots
-  let interval = effectiveDuration;
-  if (effectiveDuration > 60) {
-    interval = 60;
-  }
-
-  const [startH, startM] = dayAvailability.start.split(":").map(Number);
-  const [endH, endM] = dayAvailability.end.split(":").map(Number);
-
-  const dayStart = setMinutes(setHours(parseISO(date), startH), startM);
-  const dayEnd = setMinutes(setHours(parseISO(date), endH), endM);
-
-  const busyTasks = (tasks || []).map((t) => new Date(t.scheduled_date));
-  const busyPeriods = busyTasks.map((busyStart) => ({
-    start: busyStart,
-    end: addMinutes(busyStart, effectiveDuration + effectiveBuffer),
-  }));
-
-  const candidatesSet = new Set<number>();
-
-  // A. Generate standard grid slots
-  let current = dayStart;
-  while (isBefore(current, dayEnd)) {
-    const slotEnd = addMinutes(current, effectiveDuration);
-    if (isBefore(slotEnd, dayEnd) || isSameTime(slotEnd, dayEnd)) {
-      candidatesSet.add(current.getTime());
-    }
-    current = addMinutes(current, interval);
-  }
-
-  // B. Generate slots immediately after busy periods
-  for (const period of busyPeriods) {
-    const nextSlot = period.end;
-    const slotEnd = addMinutes(nextSlot, effectiveDuration);
-    if (
-      (isBefore(nextSlot, dayEnd) || isSameTime(nextSlot, dayEnd)) &&
-      (isBefore(slotEnd, dayEnd) || isSameTime(slotEnd, dayEnd))
-    ) {
-      candidatesSet.add(nextSlot.getTime());
-    }
-  }
-
-  // C. Filter candidates
-  const slots: string[] = [];
-  const sortedCandidates = Array.from(candidatesSet).sort((a, b) => a - b);
-
-  for (const time of sortedCandidates) {
-    const slotStart = new Date(time);
-    const slotEnd = addMinutes(slotStart, effectiveDuration);
-
-    // Check if slot is in the past (if date is today)
-    if (isBefore(slotStart, new Date())) {
-      continue;
-    }
-
-    // Check for overlap with busy periods
-    let isBusy = false;
-    for (const period of busyPeriods) {
-      // Overlap condition: slotStart < period.end && slotEnd > period.start
-      if (isBefore(slotStart, period.end) && isAfter(slotEnd, period.start)) {
-        isBusy = true;
-        break;
-      }
-    }
-
-    if (!isBusy) {
-      slots.push(format(slotStart, "HH:mm"));
-    }
-  }
-
-  return slots;
-}
-
-function isSameTime(d1: Date, d2: Date) {
-  return d1.getTime() === d2.getTime();
 }
 
 export async function bookMeeting(data: {
@@ -660,13 +280,10 @@ export async function bookMeeting(data: {
   }
 
   // 3. Create Task
-  const scheduledDate = parseISO(`${data.date}T${data.time}:00`);
-
   const taskNotes = (data.notes || `Meeting booked via public page by ${safeName} (${safeEmail})`) +
     (data.guests && data.guests.length > 0 ? `\n\nAttendees: ${[safeEmail, ...data.guests].join(', ')}` : '') +
     (data.location ? `\n\nLocation / Meeting Room: ${data.location}` : '');
     
-  let endDateIso = undefined
   let durationMins = 30
   if (data.duration) {
      durationMins = data.duration
@@ -676,9 +293,14 @@ export async function bookMeeting(data: {
      if (minMatch) durationMins = parseInt(minMatch[1]);
      else if (hrMatch) durationMins = parseInt(hrMatch[1]) * 60;
   }
-  
-  const endObj = new Date(scheduledDate.getTime() + (durationMins * 60000))
-  endDateIso = endObj.toISOString()
+
+  const timeZone = data.timezone || "America/Mexico_City";
+  const { start, end } = zonedMeetingRange({
+    date: data.date,
+    time: data.time,
+    durationMins,
+    timeZone,
+  });
 
   const { data: task, error: taskError } = await supabase
     .from("tasks")
@@ -692,13 +314,13 @@ export async function bookMeeting(data: {
           origin: "book",
           catalog_item_name: data.title,
           duration: `${durationMins} min`,
-          end_time: endDateIso,
+          end_time: end.toISOString(),
           location: data.location || null,
           ...(data.metadata || {})
         }
       },
       status: "pending",
-      scheduled_date: scheduledDate.toISOString(),
+      scheduled_date: start.toISOString(),
       assignee: data.userId,
       site_id: siteId,
       lead_id: lead?.id,
@@ -711,14 +333,6 @@ export async function bookMeeting(data: {
 
   // Send confirmation email (never fail the booking if mail fails)
   try {
-    const timeZone = data.timezone || "America/Mexico_City";
-    const { start, end } = zonedMeetingRange({
-      date: data.date,
-      time: data.time,
-      durationMins,
-      timeZone,
-    });
-
     const { data: hostProfile } = await supabase
       .from("profiles")
       .select("name, email")

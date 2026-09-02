@@ -181,13 +181,20 @@ export default function UserBookingPage(props: {
           format(selectedDate!, "yyyy-MM-dd"),
           eventType!.duration,
           eventType!.buffer,
+          userTimezone,
         );
         setAvailableSlots(slots);
         setIsLoadingSlots(false);
       }
       loadSlots();
     }
-  }, [selectedDate, profile, eventType]);
+  }, [selectedDate, profile, eventType, userTimezone]);
+
+  useEffect(() => {
+    if (selectedSlot && !availableSlots.includes(selectedSlot)) {
+      setSelectedSlot(null);
+    }
+  }, [availableSlots, selectedSlot]);
 
   useEffect(() => {
     if (profile?.id && eventType && currentMonth) {
@@ -202,12 +209,13 @@ export default function UserBookingPage(props: {
           end,
           eventType!.duration,
           eventType!.buffer,
+          userTimezone,
         );
         setMonthAvailability(availability);
       }
       loadMonthAvailability();
     }
-  }, [currentMonth, profile, eventType]);
+  }, [currentMonth, profile, eventType, userTimezone]);
 
   if (isLoading) {
     return (

@@ -22,6 +22,9 @@ describe("bookMeeting", () => {
       eq: jest.fn().mockReturnThis(),
       order: jest.fn().mockReturnThis(),
       limit: jest.fn().mockReturnThis(),
+      gte: jest.fn().mockReturnThis(),
+      lte: jest.fn().mockReturnThis(),
+      neq: jest.fn().mockReturnThis(),
       maybeSingle: jest.fn().mockResolvedValue({ data: null, error: null }),
       insert: jest.fn().mockReturnThis(),
       update: jest.fn().mockReturnThis(),
@@ -203,6 +206,62 @@ describe("bookMeeting", () => {
     );
   });
 
+  it("stores Mexico 16:00 as 22:00Z in scheduled_date and end_time", async () => {
+    mockSupabase.maybeSingle.mockResolvedValueOnce({
+      data: { id: "existing-lead", name: "Javier" },
+      error: null,
+    });
+    mockSupabase.single.mockResolvedValueOnce({ data: { id: "task-1" }, error: null });
+
+    await bookMeeting({
+      userId: "u1",
+      siteId: "s1",
+      date: "2026-09-02",
+      time: "16:00",
+      timezone: "America/Mexico_City",
+      name: "Javier",
+      email: "javier@improvitz.com",
+      title: "Meeting",
+      duration: 30,
+    });
+
+    expect(mockSupabase.insert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        scheduled_date: "2026-09-02T22:00:00.000Z", // UTC-6
+        metadata: expect.objectContaining({
+          _calendar_context: expect.objectContaining({
+            end_time: "2026-09-02T22:30:00.000Z",
+          }),
+        }),
+      }),
+    );
+  });
+
+  it("stores Mexico 11:00 as 17:00Z in scheduled_date", async () => {
+    mockSupabase.maybeSingle.mockResolvedValueOnce({
+      data: { id: "existing-lead", name: "Sergio" },
+      error: null,
+    });
+    mockSupabase.single.mockResolvedValueOnce({ data: { id: "task-2" }, error: null });
+
+    await bookMeeting({
+      userId: "u1",
+      siteId: "s1",
+      date: "2026-09-02",
+      time: "11:00",
+      timezone: "America/Mexico_City",
+      name: "Sergio",
+      email: "sergio@example.com",
+      title: "Meeting",
+    });
+
+    expect(mockSupabase.insert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        scheduled_date: "2026-09-02T17:00:00.000Z",
+      }),
+    );
+  });
+
   it("still succeeds when confirmation email throws", async () => {
     const { sendBookingConfirmationEmail } = require("../../app/book/send-booking-email");
     sendBookingConfirmationEmail.mockRejectedValueOnce(new Error("sendgrid down"));
@@ -226,5 +285,80 @@ describe("bookMeeting", () => {
 
     expect(result.success).toBe(true);
     expect(result.task.id).toBe("task-1");
+  });
+
+  describe("getAvailableSlots", () => {
+    const { getAvailableSlots } = require("../../app/book/actions");
+
+    it("generates slots based on host timezone and labels them in guest timezone", async () => {
+      // Profile has a schedule in Mexico City 09:00 - 17:00
+      mockSupabase.single.mockResolvedValueOnce({
+        data: {
+          settings: {
+            calendar: {
+              timezone: "America/Mexico_City",
+              duration: 60,
+              availability: {
+                wednesday: { enabled: true, start: "09:00", end: "17:00" },
+              },
+            },
+          },
+        },
+        error: null,
+      });
+
+      // No tasks
+      mockSupabase.neq = jest.fn().mockResolvedValue({ data: [], error: null });
+
+      jest.useFakeTimers().setSystemTime(new Date("2026-08-01T12:00:00Z"));
+
+      // Aug 12 2026 is Wednesday
+      const guestMexicoSlots = await getAvailableSlots(
+        "u1",
+        "2026-08-12",
+        60,
+        0,
+        "America/Mexico_City"
+      );
+
+      // Expect labels like "09:00", "10:00" in Mexico
+      expect(guestMexicoSlots).toContain("09:00");
+      expect(guestMexicoSlots).toContain("11:00");
+      expect(guestMexicoSlots).toContain("16:00");
+      expect(guestMexicoSlots).not.toContain("17:00"); // ends at 17:00
+
+      // Re-setup mock for second call
+      mockSupabase.single.mockResolvedValueOnce({
+        data: {
+          settings: {
+            calendar: {
+              timezone: "America/Mexico_City",
+              duration: 60,
+              availability: {
+                wednesday: { enabled: true, start: "09:00", end: "17:00" },
+              },
+            },
+          },
+        },
+        error: null,
+      });
+
+      // Aug 12 2026 in New York (EDT, UTC-4). Mexico is UTC-6. So NY is 2 hours ahead.
+      const guestNewYorkSlots = await getAvailableSlots(
+        "u1",
+        "2026-08-12",
+        60,
+        0,
+        "America/New_York"
+      );
+
+      // The 09:00 Mexico slot is 15:00Z. In NY, that's 11:00.
+      expect(guestNewYorkSlots).toContain("11:00");
+      expect(guestNewYorkSlots).toContain("13:00");
+      expect(guestNewYorkSlots).toContain("18:00");
+      expect(guestNewYorkSlots).not.toContain("09:00");
+
+      jest.useRealTimers();
+    });
   });
 })

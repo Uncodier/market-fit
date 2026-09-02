@@ -23,6 +23,7 @@ jest.mock("../../../lib/supabase/client", () => ({
 jest.mock("@/app/context/LocalizationContext", () => ({
   useLocalization: () => ({
     t: (key: string) => key,
+    locale: "en",
   }),
 }))
 
@@ -65,7 +66,7 @@ describe("CheckoutIdentityPicker", () => {
   it("leaves the tabs tree and shows the code form after OTP is sent", async () => {
     signInWithOtpMock.mockResolvedValue({ error: null })
 
-    renderPicker({ requiresAuth: true })
+    renderPicker({ requiresAuth: true, ownerSiteId: "test-site-id" })
 
     const email = screen.getByPlaceholderText("jane@example.com")
     fireEvent.change(email, { target: { value: "buyer@example.com" } })
@@ -74,7 +75,15 @@ describe("CheckoutIdentityPicker", () => {
     await waitFor(() => {
       expect(signInWithOtpMock).toHaveBeenCalledWith({
         email: "buyer@example.com",
-        options: { shouldCreateUser: true },
+        options: { 
+          shouldCreateUser: true,
+          emailRedirectTo: expect.stringContaining("auth_channel=otp"),
+          data: {
+            auth_channel: "otp",
+            locale: "en",
+            site_id: "test-site-id"
+          }
+        },
       })
     })
 
@@ -93,5 +102,39 @@ describe("CheckoutIdentityPicker", () => {
     fireEvent.click(screen.getByRole("button", { name: "checkout.identity.sendCode" }))
 
     expect(signInWithOtpMock).not.toHaveBeenCalled()
+  })
+
+  it("falls back to magiclink and signup types on verifyOtp error", async () => {
+    signInWithOtpMock.mockResolvedValue({ error: null })
+    verifyOtpMock
+      .mockResolvedValueOnce({ data: null, error: new Error("invalid") })
+      .mockResolvedValueOnce({ data: null, error: new Error("invalid") })
+      .mockResolvedValueOnce({ data: { session: { user: { email: "buyer@example.com" } } }, error: null })
+
+    renderPicker({ requiresAuth: true })
+
+    const email = screen.getByPlaceholderText("jane@example.com")
+    fireEvent.change(email, { target: { value: "buyer@example.com" } })
+    fireEvent.click(screen.getByRole("button", { name: "checkout.identity.sendCode" }))
+
+    await screen.findByText("checkout.identity.verification")
+
+    const verifyBtn = screen.getByRole("button", { name: "checkout.identity.verify" })
+    
+    // Fill in OTP code 
+    // The CheckoutOtpCodeForm spreads the code into 6 inputs
+    const inputs = screen.getAllByRole("textbox")
+    inputs.forEach((input, idx) => {
+      fireEvent.change(input, { target: { value: String(idx) } })
+    })
+
+    fireEvent.click(verifyBtn)
+
+    await waitFor(() => {
+      expect(verifyOtpMock).toHaveBeenNthCalledWith(1, { email: "buyer@example.com", token: "012345", type: "email" })
+      expect(verifyOtpMock).toHaveBeenNthCalledWith(2, { email: "buyer@example.com", token: "012345", type: "magiclink" })
+      expect(verifyOtpMock).toHaveBeenNthCalledWith(3, { email: "buyer@example.com", token: "012345", type: "signup" })
+      expect(toastSuccess).toHaveBeenCalledWith("checkout.identity.signedIn")
+    })
   })
 })

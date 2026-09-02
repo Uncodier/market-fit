@@ -170,13 +170,20 @@ export default function RoundRobinBookingPage(props: {
           format(selectedDate!, "yyyy-MM-dd"),
           calendar!.duration,
           calendar!.buffer,
+          userTimezone,
         );
         setAvailableSlots(slots);
         setIsLoadingSlots(false);
       }
       loadSlots();
     }
-  }, [selectedDate, calendar]);
+  }, [selectedDate, calendar, userTimezone]);
+
+  useEffect(() => {
+    if (selectedSlot && !availableSlots.includes(selectedSlot)) {
+      setSelectedSlot(null);
+    }
+  }, [availableSlots, selectedSlot]);
 
   useEffect(() => {
     if (calendar && currentMonth) {
@@ -191,12 +198,13 @@ export default function RoundRobinBookingPage(props: {
           end,
           calendar!.duration,
           calendar!.buffer,
+          userTimezone,
         );
         setMonthAvailability(availability);
       }
       loadMonthAvailability();
     }
-  }, [currentMonth, calendar]);
+  }, [currentMonth, calendar, userTimezone]);
 
   if (isLoading) {
     return (
