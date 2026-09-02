@@ -87,12 +87,6 @@ export async function getRRCalendarBySlug(
   return { calendar, siteId: data.site_id };
 }
 
-export {
-  getAvailableSlots,
-  getMonthAvailability,
-  getRRAvailability,
-  getRRMonthAvailability,
-} from "./availability";
 export async function bookRRMeeting(data: {
   calendarId: string;
   siteId: string;

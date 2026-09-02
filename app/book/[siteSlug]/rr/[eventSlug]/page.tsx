@@ -4,11 +4,13 @@ import { useState, useEffect, use, useRef } from "react";
 import { useParams, useSearchParams } from "next/navigation";
 import {
   getRRCalendarBySlug,
-  getRRAvailability,
   bookRRMeeting,
   getSiteInfoBySlug,
-  getRRMonthAvailability,
 } from "@/app/book/actions";
+import {
+  getRRAvailability,
+  getRRMonthAvailability,
+} from "@/app/book/availability";
 import { RoundRobinCalendar } from "@/app/context/SiteContext";
 import {
   Card,

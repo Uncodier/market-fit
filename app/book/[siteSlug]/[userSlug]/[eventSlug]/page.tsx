@@ -4,11 +4,13 @@ import { useState, useEffect, use, useRef } from "react";
 import { useParams, useSearchParams } from "next/navigation";
 import {
   getProfileBySlug,
-  getAvailableSlots,
   bookMeeting,
   getSiteInfoBySlug,
-  getMonthAvailability,
 } from "@/app/book/actions";
+import {
+  getAvailableSlots,
+  getMonthAvailability,
+} from "@/app/book/availability";
 import { ProfileData, EventType } from "@/app/services/profile.service";
 import {
   Card,
