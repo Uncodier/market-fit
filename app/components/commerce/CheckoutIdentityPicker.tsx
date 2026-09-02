@@ -11,6 +11,7 @@ import { toast } from "sonner"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/app/components/ui/tabs"
 import { User, ShieldCheck, Loader2, Check } from "@/app/components/ui/icons"
 import { CheckoutOtpCodeForm } from "@/app/components/commerce/CheckoutOtpCodeForm"
+import { shopOtpEmailRedirectTo } from "@/lib/auth/shop-otp-email-redirect"
 
 type Mode = "choose" | "guest" | "otp_email" | "otp_code" | "signed_in"
 
@@ -95,7 +96,7 @@ export function CheckoutIdentityPicker({
         email: otpEmail.trim(),
         options: {
           shouldCreateUser: true,
-          emailRedirectTo: `${window.location.origin}/auth/confirm?auth_channel=otp&returnTo=${encodeURIComponent(window.location.pathname + window.location.search)}`,
+          emailRedirectTo: shopOtpEmailRedirectTo(),
           data: {
             auth_channel: 'otp',
             locale,
