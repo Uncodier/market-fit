@@ -99,7 +99,7 @@ export function MarketplaceClient({
   }, [setStoreCurrency])
 
   useEffect(() => {
-    if (isReady) applyUnresolvedLocale(null)
+    if (isReady) void applyUnresolvedLocale(null)
   }, [isReady, applyUnresolvedLocale])
 
   const setSelectedKind = (kind: string) => {

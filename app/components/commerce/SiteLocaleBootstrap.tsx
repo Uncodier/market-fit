@@ -12,7 +12,7 @@ export function SiteLocaleBootstrap({ locale }: { locale?: string | null }) {
 
   useLayoutEffect(() => {
     if (!isReady) return
-    applyUnresolvedLocale(locale)
+    void applyUnresolvedLocale(locale)
   }, [locale, isReady, applyUnresolvedLocale])
 
   return null

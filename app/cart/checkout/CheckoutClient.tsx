@@ -182,7 +182,7 @@ export default function CheckoutClient({
 
   useLayoutEffect(() => {
     if (!siteSettings?.default_locale) return
-    applyUnresolvedLocale(siteSettings.default_locale)
+    void applyUnresolvedLocale(siteSettings.default_locale)
   }, [siteSettings?.default_locale, applyUnresolvedLocale]);
 
   useEffect(() => {
