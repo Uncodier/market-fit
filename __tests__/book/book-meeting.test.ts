@@ -288,7 +288,7 @@ describe("bookMeeting", () => {
   });
 
   describe("getAvailableSlots", () => {
-    const { getAvailableSlots } = require("../../app/book/actions");
+    const { getAvailableSlots } = require("../../app/book/availability");
 
     it("generates slots based on host timezone and labels them in guest timezone", async () => {
       // Profile has a schedule in Mexico City 09:00 - 17:00
