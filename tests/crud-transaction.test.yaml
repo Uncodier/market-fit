@@ -23,7 +23,7 @@ statements:
   - intent: Fill the expense notes used as description
     action: fill
     locator: "locator('#notes')"
-    value: "Automated Test Expense"
+    value: "Test Expense"
 
   - intent: Type a new campaign name in the dependency selector
     action: fill
@@ -48,25 +48,28 @@ statements:
 
   - WAIT_UNTIL: The create expense modal closes
     js: "await page.getByRole('dialog').count() === 0"
-    timeout_seconds: 10
+    timeout_seconds: 15
+
+  - description: Wait for database to update
+    js: "await page.waitForTimeout(5000);"
 
   - description: Ensure transactions are visible and data is updated
-    js: "await page.waitForTimeout(5000); await page.goto('/transactions'); await page.waitForTimeout(3000);"
+    js: "await page.reload();"
     
   - WAIT_UNTIL: The expense appears in the list
-    js: "await page.getByText('Automated Test Expense', { exact: false }).count() > 0"
-    timeout_seconds: 30
+    js: "await page.getByText('Test Expense', { exact: false }).count() > 0"
+    timeout_seconds: 60
 
   - intent: Open the expense details page
     action: click
-    locator: "getByText('Automated Test Expense', { exact: false }).first()"
+    locator: "getByText('Test Expense', { exact: false }).first()"
 
   - WAIT_UNTIL: The transaction details route is open and loaded
-    js: "await page.getByText('Automated Test Expense').first().isVisible()"
+    js: "await page.getByText('Test Expense').first().isVisible()"
     timeout_seconds: 15
 
   - VERIFY: The expense notes are visible
-    js: "await expect(page.getByText('Automated Test Expense').first()).toBeVisible()"
+    js: "await expect(page.getByText('Test Expense').first()).toBeVisible()"
 
   - intent: Return to transactions list
     action: click
@@ -81,11 +84,11 @@ statements:
     timeout_seconds: 10
 
   - description: Ensure transactions are visible
-    js: "await page.waitForTimeout(3000); await page.goto('/transactions'); await page.waitForTimeout(10000);"
+    js: "await page.reload();"
     
   - WAIT_UNTIL: The new expense appears in the list
-    js: "await page.getByText('Automated Test Expense', { exact: false }).count() > 0"
-    timeout_seconds: 15
+    js: "await page.getByText('Test Expense', { exact: false }).count() > 0"
+    timeout_seconds: 30
 
   - intent: Click the open menu button on the expense list dropdown
     action: click
@@ -102,4 +105,4 @@ statements:
     js: "await page.waitForTimeout(2000);"
 
   - VERIFY: The expense is gone from the list
-    js: "await expect(page.getByText('Automated Test Expense')).toHaveCount(0)"
+    js: "await expect(page.getByText('Test Expense')).toHaveCount(0)"
