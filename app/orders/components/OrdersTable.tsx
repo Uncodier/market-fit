@@ -6,13 +6,14 @@ import { Button } from "@/app/components/ui/button"
 import { Skeleton } from "@/app/components/ui/skeleton"
 import { EmptyCard } from "@/app/components/ui/empty-card"
 import { Pagination } from "@/app/components/ui/pagination"
-import { ExternalLink, ListOrdered } from "@/app/components/ui/icons"
+import { ExternalLink, ListOrdered, Clock } from "@/app/components/ui/icons"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/app/components/ui/tooltip"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { format } from "date-fns"
 import { cn } from "@/lib/utils"
 import { formatCurrency } from "@/app/lib/formatters"
 import { OrderWithRelations } from "@/app/orders/types"
+import { formatScheduledFor, scheduledForClassName } from "@/app/orders/format-scheduled-for"
 import {
   DocumentListHead,
   DocumentListRow,
@@ -100,6 +101,7 @@ export function OrdersTable({
                 .join(" · ") || null
               const statusLabel = t(`orders.status.${order.status}`) || String(order.status).replace("_", " ")
               const currency = order.currency || "USD"
+              const scheduledLabel = formatScheduledFor(order.scheduled_for)
 
               return (
                 <DocumentListRow
@@ -127,6 +129,12 @@ export function OrdersTable({
                     <div className="text-[11px] text-muted-foreground/80">
                       {format(new Date(order.created_at), "h:mm a")}
                     </div>
+                    {scheduledLabel && (
+                      <div className={cn("text-[11px] font-medium mt-1 flex items-center gap-1", scheduledForClassName(order.scheduled_for))}>
+                        <Clock className="h-3 w-3" />
+                        {t("orders.table.scheduled") || "Scheduled"} {scheduledLabel}
+                      </div>
+                    )}
                   </TableCell>
                   <TableCell className="py-3.5">
                     <MoneyCell

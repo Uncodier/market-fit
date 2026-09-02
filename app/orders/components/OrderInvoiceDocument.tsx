@@ -10,23 +10,19 @@ import { Badge } from "@/app/components/ui/badge"
 import { ActionFooter } from "@/app/components/ui/card-footer"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/app/components/ui/table"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
-import { Save, ExternalLink, Calendar, Send } from "@/app/components/ui/icons"
+import { Save, ExternalLink, Calendar, Send, Clock } from "@/app/components/ui/icons"
 import { cn } from "@/lib/utils"
 import { navigateToLead, navigateToSale, navigateToShipment } from "@/lib/navigation/navigation-helpers"
-
-const ROW_STATUS_STYLES: Record<string, string> = {
-  draft: "bg-gray-50/50 dark:bg-gray-900/50",
-  new: "bg-amber-50/50 dark:bg-amber-950/30",
-  preparing: "bg-blue-50/50 dark:bg-blue-950/30",
-  completed: "bg-green-50/50 dark:bg-green-950/30",
-}
-
-const LINE_STATUS_STYLES: Record<string, string> = {
-  draft: "bg-white text-gray-700 border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700",
-  new: "bg-white text-amber-700 border-amber-200 dark:bg-amber-950/50 dark:text-amber-400 dark:border-amber-900",
-  preparing: "bg-white text-blue-700 border-blue-200 dark:bg-blue-950/50 dark:text-blue-400 dark:border-blue-900",
-  completed: "bg-white text-green-700 border-green-200 dark:bg-green-950/50 dark:text-green-400 dark:border-green-900",
-}
+import { formatScheduledFor, scheduledForClassName } from "@/app/orders/format-scheduled-for"
+import {
+  ORDER_ROW_STATUS_STYLES,
+  ORDER_LINE_STATUS_STYLES,
+  paymentMethodLabel,
+  displayPaymentMethod,
+  orderSourceLabel,
+  fulfillmentLabel,
+  parseItemName,
+} from "./order-invoice-helpers"
 
 interface OrderInvoiceDocumentProps {
   order: OrderWithRelations
@@ -48,59 +44,12 @@ export function OrderInvoiceDocument({
   const { t } = useLocalization()
   const router = useRouter()
   const isPaid = !!order.sales && Number(order.sales.amount_due || 0) === 0 && order.sales.status !== 'cancelled'
+  const scheduledLabel = formatScheduledFor(order.scheduled_for)
   const formatMoney = (amount: number) =>
     new Intl.NumberFormat('en-US', { style: 'currency', currency: order.currency || 'USD' }).format(amount || 0)
-
-  const paymentMethodLabel = (method?: string | null) => {
-    if (!method) return t('common.na') || 'N/A'
-    const key = method.toLowerCase()
-    const map: Record<string, string> = {
-      cash: t('sales.paymentMethod.cash') || 'Cash',
-      credit_card: t('sales.paymentMethod.creditCard') || 'Credit Card',
-      debit_card: t('sales.paymentMethod.debitCard') || 'Debit Card',
-      bank_transfer: t('sales.paymentMethod.bankTransfer') || 'Bank Transfer',
-      wire_transfer: t('sales.paymentMethod.wireTransfer') || 'Wire Transfer',
-      check: t('sales.paymentMethod.check') || 'Check',
-      crypto: t('sales.paymentMethod.crypto') || 'Cryptocurrency',
-      card: t('sales.paymentMethod.creditCard') || 'Card',
-      stripe: 'Stripe',
-    }
-    return map[key] || method.replace(/_/g, ' ')
-  }
-
-  const displayPaymentMethod = (sale?: any) => {
-    if (!sale) return null;
-    if (sale.payments && sale.payments.length > 0) {
-      const latestPayment = [...sale.payments].sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
-      return latestPayment.method;
-    }
-    return sale.payment_method;
-  };
-
-  const sourceLabel = (source?: string | null) => {
-    if (!source) return t('common.na') || 'N/A'
-    if (source === 'online' || source === 'shop' || source === 'marketplace') {
-      return t('orders.kanban.sourceOnline') || t('sales.source.online') || 'Online'
-    }
-    if (source === 'retail') return t('sales.source.retail') || 'Retail'
-    return t('orders.kanban.sourcePos') || t('sales.source.pos') || 'POS'
-  }
-
-  const fulfillmentLabel = (method?: string | null) => {
-    if (!method || method === 'none') return null
-    return t(`orders.kanban.fulfillment.${method}`) || method.replace(/_/g, ' ')
-  }
-
-  const parseItemName = (name: string, parentNameFromMeta?: string | null) => {
-    if (parentNameFromMeta) {
-      return { parentName: parentNameFromMeta, variantName: name };
-    }
-    if (name.includes(' -> ')) {
-      const parts = name.split(' -> ');
-      return { parentName: parts[0], variantName: parts.slice(1).join(' -> ') };
-    }
-    return { parentName: null, variantName: name };
-  }
+  const methodLabel = (method?: string | null) => paymentMethodLabel(method, t)
+  const sourceLabel = (source?: string | null) => orderSourceLabel(source, t)
+  const fulfillment = (method?: string | null) => fulfillmentLabel(method, t)
 
   return (
               <div
@@ -115,9 +64,17 @@ export function OrderInvoiceDocument({
                         {t('orders.detail.orderNumber') || 'Order Number'}
                       </div>
                       <h2 className="text-2xl font-semibold tracking-tight">{order.order_number}</h2>
-                      <div className="flex items-center gap-2 mt-2 text-sm text-muted-foreground">
-                        <Calendar className="h-4 w-4" />
-                        {format(new Date(order.created_at), 'MMM d, yyyy · h:mm a')}
+                      <div className="flex flex-col gap-1 mt-2">
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <Calendar className="h-4 w-4" />
+                          {format(new Date(order.created_at), 'MMM d, yyyy · h:mm a')}
+                        </div>
+                        {scheduledLabel && (
+                          <div className={cn("flex items-center gap-2 text-sm font-medium mt-0.5", scheduledForClassName(order.scheduled_for))}>
+                            <Clock className="h-4 w-4" />
+                            {t('orders.detail.scheduledFor') || 'Scheduled for'} {scheduledLabel}
+                          </div>
+                        )}
                       </div>
                     </div>
                     {order.sales && (
@@ -191,7 +148,7 @@ export function OrderInvoiceDocument({
                               {t('orders.detail.paymentMethod') || 'Payment Method'}
                             </td>
                             <td className="py-2 px-3">
-                              {paymentMethodLabel(displayPaymentMethod(order.sales))}
+                              {methodLabel(displayPaymentMethod(order.sales))}
                             </td>
                           </tr>
                           <tr className="border-b border-border">
@@ -200,12 +157,22 @@ export function OrderInvoiceDocument({
                             </td>
                             <td className="py-2 px-3">{sourceLabel(order.sales?.source)}</td>
                           </tr>
-                          {fulfillmentLabel(order.fulfillment_method) && (
-                            <tr className={cn((order.promotions || order.price_lists || order.sale_id) ? "border-b border-border" : "")}>
+                          {fulfillment(order.fulfillment_method) && (
+                            <tr className={cn((order.scheduled_for || order.promotions || order.price_lists || order.sale_id) ? "border-b border-border" : "")}>
                               <td className="py-2 px-3 bg-muted/50 font-medium">
                                 {t('orders.detail.fulfillment') || 'Fulfillment'}
                               </td>
-                              <td className="py-2 px-3">{fulfillmentLabel(order.fulfillment_method)}</td>
+                              <td className="py-2 px-3">{fulfillment(order.fulfillment_method)}</td>
+                            </tr>
+                          )}
+                          {scheduledLabel && (
+                            <tr className={cn((order.promotions || order.price_lists || order.sale_id) ? "border-b border-border" : "")}>
+                              <td className="py-2 px-3 bg-muted/50 font-medium">
+                                {t('orders.detail.scheduledFor') || 'Scheduled for'}
+                              </td>
+                              <td className={cn("py-2 px-3 font-medium", scheduledForClassName(order.scheduled_for))}>
+                                {scheduledLabel}
+                              </td>
                             </tr>
                           )}
                           {order.promotions && (
@@ -275,7 +242,7 @@ export function OrderInvoiceDocument({
                         {t('orders.detail.paymentMethod') || 'Payment Method'}
                       </div>
                       <div className="text-sm font-semibold">
-                        {paymentMethodLabel(displayPaymentMethod(order.sales))}
+                        {methodLabel(displayPaymentMethod(order.sales))}
                       </div>
                     </div>
                     <div>
@@ -283,7 +250,7 @@ export function OrderInvoiceDocument({
                         {t('orders.detail.fulfillment') || 'Fulfillment'}
                       </div>
                       <div className="text-sm font-semibold">
-                        {fulfillmentLabel(order.fulfillment_method) || (t('common.na') || 'N/A')}
+                        {fulfillment(order.fulfillment_method) || (t('common.na') || 'N/A')}
                       </div>
                     </div>
                   </div>
@@ -322,7 +289,7 @@ export function OrderInvoiceDocument({
 
                             return (
                               <React.Fragment key={item.id || idx}>
-                                <div className={cn("p-4 md:px-6", ROW_STATUS_STYLES[item.status || 'draft'])}>
+                                <div className={cn("p-4 md:px-6", ORDER_ROW_STATUS_STYLES[item.status || 'draft'])}>
                                   <div className="flex flex-col md:flex-row md:items-center gap-4">
                                     <div className="flex-1 flex flex-col">
                                       <div className="font-medium text-base text-foreground">
@@ -337,7 +304,7 @@ export function OrderInvoiceDocument({
                                         <div className="text-sm text-muted-foreground line-clamp-2 mt-1">{item.description}</div>
                                       )}
                                       <div className="flex items-center gap-2 mt-2 md:hidden">
-                                        <Badge variant="outline" className={LINE_STATUS_STYLES[item.status || 'draft']}>
+                                        <Badge variant="outline" className={ORDER_LINE_STATUS_STYLES[item.status || 'draft']}>
                                           {t(`orders.status.${item.status || 'draft'}`) || item.status || 'Draft'}
                                         </Badge>
                                         <span className="text-sm text-muted-foreground">
@@ -353,7 +320,7 @@ export function OrderInvoiceDocument({
                                           onValueChange={(val) => onLineStatusChange(item.id, val)}
                                           disabled={!item.id}
                                         >
-                                          <SelectTrigger className={cn("h-8 text-[10px] uppercase tracking-wider w-full", LINE_STATUS_STYLES[item.status || 'draft'])}>
+                                          <SelectTrigger className={cn("h-8 text-[10px] uppercase tracking-wider w-full", ORDER_LINE_STATUS_STYLES[item.status || 'draft'])}>
                                             <SelectValue />
                                           </SelectTrigger>
                                           <SelectContent>
@@ -393,7 +360,7 @@ export function OrderInvoiceDocument({
                                       onValueChange={(val) => onLineStatusChange(item.id, val)}
                                       disabled={!item.id}
                                     >
-                                      <SelectTrigger className={cn("h-8 text-[10px] uppercase tracking-wider flex-1", LINE_STATUS_STYLES[item.status || 'draft'])}>
+                                      <SelectTrigger className={cn("h-8 text-[10px] uppercase tracking-wider flex-1", ORDER_LINE_STATUS_STYLES[item.status || 'draft'])}>
                                         <SelectValue />
                                       </SelectTrigger>
                                       <SelectContent>

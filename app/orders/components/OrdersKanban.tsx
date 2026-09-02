@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { EmptyCard } from "@/app/components/ui/empty-card"
 import { Skeleton } from "@/app/components/ui/skeleton"
+import { formatScheduledFor, scheduledForClassName } from "@/app/orders/format-scheduled-for"
 
 interface OrdersKanbanProps {
   orders: OrderWithRelations[]
@@ -162,6 +163,7 @@ export function OrdersKanban({ orders, onOrderClick, onUpdateOrderStatus }: Orde
                           const leadName = (order.leads as any)?.name || t('orders.kanban.unknownCustomer') || 'Unknown Customer';
                           const leadEmail = (order.leads as any)?.email;
                           const hasNewItems = order.sale_order_items?.some((item: any) => item.status === 'new') || false;
+                          const scheduledLabel = formatScheduledFor(order.scheduled_for);
 
                           return (
                             <Draggable key={order.id} draggableId={order.id} index={index}>
@@ -214,6 +216,21 @@ export function OrdersKanban({ orders, onOrderClick, onUpdateOrderStatus }: Orde
                                               <span className="opacity-40">·</span>
                                               <span className="truncate">
                                                 {t(`orders.kanban.fulfillment.${order.fulfillment_method}`) || order.fulfillment_method}
+                                              </span>
+                                            </>
+                                          )}
+                                          {scheduledLabel && (
+                                            <>
+                                              <span className="opacity-40">·</span>
+                                              <span
+                                                className={cn(
+                                                  "truncate flex items-center gap-1 font-medium",
+                                                  scheduledForClassName(order.scheduled_for)
+                                                )}
+                                              >
+                                                <Clock className="h-3 w-3" />
+                                                <span className="sr-only">{t("orders.kanban.scheduled") || "Scheduled"} </span>
+                                                {scheduledLabel}
                                               </span>
                                             </>
                                           )}

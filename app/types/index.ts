@@ -201,6 +201,7 @@ export interface SaleOrderData {
   promotion_id?: string;
   price_list_id?: string;
   fulfillment_method?: 'pickup' | 'ship' | 'dine_in' | 'none' | null;
+  scheduled_for?: string | null;
   created_at: string;
   updated_at: string;
 }
