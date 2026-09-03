@@ -3342,6 +3342,7 @@
   "dashboard.tabs.overview": "Overview",
   "dashboard.tabs.performance": "Performance",
   "dashboard.tabs.sales": "Sales Reports",
+  "dashboard.tabs.social": "Social",
   "dashboard.tabs.traffic": "Traffic",
   "dashboard.traffic.events": "Events",
   "dashboard.traffic.noReferrers": "No Referrers Found",

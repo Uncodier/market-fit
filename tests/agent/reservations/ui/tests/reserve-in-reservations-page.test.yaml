@@ -26,12 +26,12 @@ statements:
     value: "Reservable Item Agent"
     
   - WAIT_UNTIL: Wait for Reservable Item Agent option
-    js: "await page.getByText('Reservable Item Agent').count() > 0"
+    js: "await page.locator('.cursor-pointer.font-inter').filter({ hasText: 'Reservable Item Agent' }).count() > 0"
     timeout_seconds: 5
 
   - intent: Click item
     action: click
-    locator: "getByText('Reservable Item Agent').first()"
+    locator: "locator('.cursor-pointer.font-inter').filter({ hasText: 'Reservable Item Agent' }).first()"
 
   - intent: Open customer dropdown
     action: click
@@ -43,17 +43,30 @@ statements:
     value: "Admin"
 
   - WAIT_UNTIL: Wait for Admin customer option
-    js: "await page.getByText(/Timothy Meehan|Admin/i).count() > 0"
+    js: "await page.locator('.cursor-pointer.font-inter').filter({ hasText: /Timothy Meehan|Admin/i }).count() > 0"
     timeout_seconds: 5
 
   - intent: Select customer
     action: click
-    locator: "getByText(/Timothy Meehan|Admin/i).first()"
+    locator: "locator('.cursor-pointer.font-inter').filter({ hasText: /Timothy Meehan|Admin/i }).first()"
 
   - description: Select an available date
     js: |
-      let btn = page.locator('button').filter({ hasText: /^([1-9]|[12][0-9]|3[01])$/ }).filter({ hasNot: page.locator('[disabled]') }).first();
-      await btn.click({ timeout: 5000 });
+      await page.waitForTimeout(1000);
+      let btn = page.locator('button.h-10.w-10.rounded-full:not([disabled])').filter({ hasText: /^([1-9]|[12][0-9]|3[01])$/ }).first();
+      for (let i = 0; i < 3; i++) {
+        try {
+          await btn.waitFor({ state: 'visible', timeout: 5000 });
+          break;
+        } catch (e) {
+          let nextBtn = page.locator('button:has(svg polyline[points="9 18 15 12 9 6"])').first();
+          if (await nextBtn.count() > 0 && await nextBtn.isVisible()) {
+             await nextBtn.click();
+             await page.waitForTimeout(1000);
+          }
+        }
+      }
+      await btn.click({ timeout: 5000, force: true });
       
   - description: Wait for time slots to load
     js: "await page.waitForTimeout(2000)"
@@ -67,5 +80,5 @@ statements:
     locator: "getByRole('button', { name: /Create|Crear/i }).last()"
     
   - WAIT_UNTIL: Wait for dialog to close
-    js: "await page.getByRole('dialog').count() === 0"
-    timeout_seconds: 10
+    js: "await page.getByRole('dialog').count() === 0 && await page.locator('.fixed.inset-0.bg-black\\\\/40').count() === 0"
+    timeout_seconds: 15

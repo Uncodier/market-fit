@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { createSocialSupabaseClient } from "@/app/api/social/supabase-client"
 import { syncImplicitOutstandCallback } from "@/app/api/social/lib/sync-outstand-accounts"
+import { getOutstandIntegrationUrl } from "@/lib/api-server-url"
 
 export async function POST(request: Request) {
   try {
@@ -22,55 +23,27 @@ export async function POST(request: Request) {
       )
     }
 
-    // Call Outstand API
-    const outstandApiUrl = process.env.OUTSTAND_API_URL || "https://api.outstand.so"
-    const outstandApiKey = process.env.OUTSTAND_API_KEY
-
-    if (!outstandApiKey) {
-      return NextResponse.json(
-        { success: false, error: "Outstand API key not configured" },
-        { status: 500 }
-      )
-    }
-
-    console.log(`[Bluesky Connect] Initiating connection for handle: ${handle}`)
-
-    const res = await fetch(`${outstandApiUrl}/v1/social-accounts/bluesky`, {
+    const res = await fetch(getOutstandIntegrationUrl("/social-accounts/bluesky"), {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${outstandApiKey}`,
-        "X-Tenant-ID": siteId,
-      },
-      body: JSON.stringify({ handle, app_password }),
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ handle, app_password, siteId }),
     })
 
     const text = await res.text()
-    if (!res.ok) {
-      console.error("[Bluesky Connect] Outstand API error:", text)
-      let errMsg = "Failed to connect Bluesky account"
-      try {
-        const j = JSON.parse(text)
-        errMsg = j.error || j.message || errMsg
-      } catch (e) {
-        errMsg = text || errMsg
-      }
+    let data: any = {}
+    try {
+      data = text ? JSON.parse(text) : {}
+    } catch {
+      data = { error: text }
+    }
+
+    if (!res.ok || data.success === false) {
       return NextResponse.json(
-        { success: false, error: errMsg },
-        { status: res.status }
+        { success: false, error: data.error || data.message || "Failed to connect Bluesky account" },
+        { status: res.status || 500 }
       )
     }
 
-    let data
-    try {
-      data = JSON.parse(text)
-    } catch (e) {
-      data = { text }
-    }
-
-    console.log(`[Bluesky Connect] Outstand returned success. Syncing accounts...`)
-
-    // Now sync the accounts into settings.social_media
     const syncRes = await syncImplicitOutstandCallback({
       supabase,
       siteId,
@@ -78,15 +51,13 @@ export async function POST(request: Request) {
     })
 
     if (!syncRes.ok) {
-      console.error("[Bluesky Connect] Sync error:", syncRes.message)
-      // Even if sync failed, the connection on Outstand worked, but let's report the error
       return NextResponse.json(
         { success: false, error: syncRes.message, connected: true },
         { status: 500 }
       )
     }
 
-    return NextResponse.json({ success: true, data, sync: syncRes })
+    return NextResponse.json({ success: true, data: data.data || data, sync: syncRes })
   } catch (error: any) {
     console.error("[Bluesky Connect] Internal error:", error)
     return NextResponse.json(

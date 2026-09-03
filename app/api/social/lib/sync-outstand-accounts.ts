@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
 import { CALLBACK_NETWORK_TO_OUTSTAND, getOutstandNetworkFromPath } from "@/app/api/social/network-map"
+import { getOutstandIntegrationUrl } from "@/lib/api-server-url"
 
 export type OutstandSocialAccount = {
   id: string
@@ -105,14 +106,8 @@ export async function fetchOutstandAccountsForTenant(
   tenantId: string,
   network: string
 ): Promise<{ accounts: OutstandSocialAccount[]; error?: string }> {
-  const outstandApiUrl = process.env.OUTSTAND_API_URL || "https://api.outstand.so"
-  const outstandApiKey = process.env.OUTSTAND_API_KEY
-  if (!outstandApiKey) {
-    return { accounts: [], error: "Outstand API key not configured" }
-  }
-
-  const url = new URL(`${outstandApiUrl}/v1/social-accounts`)
-  url.searchParams.set("tenantId", tenantId)
+  const url = new URL(getOutstandIntegrationUrl("/social-accounts"))
+  url.searchParams.set("tenant_id", tenantId)
   url.searchParams.set("network", network)
   url.searchParams.set("limit", "100")
 
@@ -120,7 +115,6 @@ export async function fetchOutstandAccountsForTenant(
     method: "GET",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${outstandApiKey}`,
     },
   })
 

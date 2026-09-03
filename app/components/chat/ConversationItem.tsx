@@ -4,7 +4,7 @@ import React from "react"
 import { Button } from "@/app/components/ui/button"
 import { Badge } from "@/app/components/ui/badge"
 import { Mail, Phone, MessageSquare } from "@/app/components/ui/icons"
-import { WhatsAppIcon, InstagramIcon, TelegramIcon, MessengerIcon } from "@/app/components/ui/social-icons"
+import { WhatsAppIcon, InstagramIcon, TelegramIcon, MessengerIcon, FacebookIcon, ThreadsIcon, LinkedInIcon, TwitterIcon, YouTubeIcon } from "@/app/components/ui/social-icons"
 import { cn } from "@/lib/utils"
 import { ConversationListItem } from "@/app/types/chat"
 import { useTheme } from "@/app/context/ThemeContext"
@@ -73,6 +73,16 @@ function getChannelIcon(channel: string | undefined, isAgentConversation?: boole
       return <InstagramIcon size={15} className="text-muted-foreground/60" />
     case 'messenger':
       return <MessengerIcon size={15} className="text-muted-foreground/60" />
+    case 'facebook':
+      return <FacebookIcon size={15} className="text-muted-foreground/60" />
+    case 'threads':
+      return <ThreadsIcon size={15} className="text-muted-foreground/60" />
+    case 'linkedin':
+      return <LinkedInIcon size={15} className="text-muted-foreground/60" />
+    case 'x':
+      return <TwitterIcon size={15} className="text-muted-foreground/60" />
+    case 'youtube':
+      return <YouTubeIcon size={15} className="text-muted-foreground/60" />
     case 'sms':
       return <MessageSquare size={15} className="text-muted-foreground/60" />
     case 'telegram':

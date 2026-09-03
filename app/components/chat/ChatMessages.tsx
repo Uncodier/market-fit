@@ -32,6 +32,7 @@ import { getUserData } from "@/app/services/user-service"
 import { cn } from "@/lib/utils"
 import { useLayout } from "@/app/context/LayoutContext"
 import { resolveTeamMemberSender } from "@/app/components/chat/resolveTeamMemberSender"
+import { CommentSourceLinks } from "./CommentSourceLinks"
 
 // Helper function to format date as "Month Day, Year"
 const formatDate = (date: Date) => {
@@ -118,18 +119,29 @@ const isSameDay = (date1: Date, date2: Date) => {
 // Helper function to render message content with email detection
 const renderMessageContent = (msg: ChatMessage, markdownComponents: any) => {
   const formattedContent = formatMessageContent(msg.text, msg.metadata);
-  console.log('🔍 [renderMessageContent] Message text length:', msg.text?.length);
-  console.log('🔍 [renderMessageContent] Formatted content:', formattedContent);
-  console.log('🔍 [renderMessageContent] Is email content?', formattedContent === 'email-content-token');
   
-  return formattedContent === 'email-content-token' ? (
-    <EmailViewer 
-      emailContent={msg.text}
-      className="w-full"
-    />
-  ) : (
-    <div className="text-sm leading-relaxed prose prose-sm max-w-none dark:prose-invert prose-headings:font-medium prose-p:leading-relaxed prose-pre:bg-muted w-full overflow-hidden break-words word-wrap hyphens-auto" style={{ wordWrap: 'break-word', overflowWrap: 'break-word', wordBreak: 'break-word' }}>
-      <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>{formattedContent}</ReactMarkdown>
+  const isComment = msg.metadata?.source === 'comment' || msg.metadata?.outstand_post_id;
+  
+  return (
+    <div className="flex flex-col gap-2 w-full">
+      {formattedContent === 'email-content-token' ? (
+        <EmailViewer 
+          emailContent={msg.text}
+          className="w-full"
+        />
+      ) : (
+        <div className="text-sm leading-relaxed prose prose-sm max-w-none dark:prose-invert prose-headings:font-medium prose-p:leading-relaxed prose-pre:bg-muted w-full overflow-hidden break-words word-wrap hyphens-auto" style={{ wordWrap: 'break-word', overflowWrap: 'break-word', wordBreak: 'break-word' }}>
+          <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>{formattedContent}</ReactMarkdown>
+        </div>
+      )}
+      
+      {isComment && (
+        <CommentSourceLinks
+          contentId={typeof msg.metadata?.content_id === "string" ? msg.metadata.content_id : undefined}
+          outstandPostId={typeof msg.metadata?.outstand_post_id === "string" ? msg.metadata.outstand_post_id : undefined}
+          platformPostUrl={typeof msg.metadata?.platform_post_url === "string" ? msg.metadata.platform_post_url : undefined}
+        />
+      )}
     </div>
   );
 };
@@ -842,43 +854,18 @@ export function ChatMessages({
     setAcceptingMessageId(message.id)
 
     try {
-      const supabase = createClient()
+      const response = await fetch('/api/conversations/accept-message', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messageId: message.id })
+      })
 
-      // Get current custom_data to preserve other metadata
-      const { data: currentMessage, error: fetchError } = await supabase
-        .from("messages")
-        .select("custom_data")
-        .eq("id", message.id)
-        .single()
-
-      if (fetchError) {
-        console.error("Error fetching message:", fetchError)
-        toast.error("Failed to fetch message data")
-        setAcceptingMessageId(null)
-        return
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to accept message')
       }
-
-      // Update custom_data with accepted status
-      const currentCustomData = (currentMessage?.custom_data as Record<string, any>) || {}
-      const updatedCustomData = {
-        ...currentCustomData,
-        status: "accepted"
-      }
-
-      const { error: updateError } = await supabase
-        .from("messages")
-        .update({
-          custom_data: updatedCustomData,
-          updated_at: new Date().toISOString()
-        })
-        .eq("id", message.id)
-
-      if (updateError) {
-        console.error("Error updating message status:", updateError)
-        toast.error("Failed to accept message")
-        setAcceptingMessageId(null)
-        return
-      }
+      
+      const { updatedCustomData } = await response.json()
 
       // Update local state
       // 1. Add to accepted actions set (for immediate UI feedback)

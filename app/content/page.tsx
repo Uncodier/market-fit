@@ -17,6 +17,7 @@ import { getContent, updateContentStatus, type ContentItem } from "./actions"
 import { combineOutstandContent, filterAndSortContent } from "./content-list"
 import { openContentItem } from "./open-content-item"
 import { fetchOutstandPosts } from "./outstand"
+import { getSocialPerformanceSnapshots } from "@/app/components/dashboard/social-actions"
 import { getContentAssetsByContentIds } from "@/app/assets/actions"
 import { getSegments } from "@/app/segments/actions"
 import { getCampaigns } from "@/app/campaigns/actions/campaigns/read"
@@ -92,6 +93,19 @@ export default function ContentPage() {
         count: result.count || 0,
         assetsByContentId: byContentId || {}
       };
+    },
+    {}
+  );
+
+  const { data: performanceData } = useSWR(
+    currentSite?.id ? ['content_performance', currentSite.id] : null,
+    async ([_, siteId]) => {
+      const res = await getSocialPerformanceSnapshots(siteId);
+      if (res.error) {
+        console.error("Failed to load content performance:", res.error);
+        return { byContentId: {}, byPostId: {} };
+      }
+      return { byContentId: res.byContentId, byPostId: res.byPostId };
     },
     {}
   );
@@ -432,6 +446,7 @@ export default function ContentPage() {
                   isLoadingCampaigns={isLoadingCampaigns}
                   assetsByContentId={assetsByContentId}
                   outstandPosts={outstandPosts}
+                  performanceData={performanceData}
                   onUpdateContentStatus={handleUpdateContentStatus}
                   onContentClick={handleContentClick}
                   onRatingChange={handleContentRatingChange}

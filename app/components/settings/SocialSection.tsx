@@ -258,17 +258,19 @@ export function SocialSection({ active, onSave, siteId }: SocialSectionProps) {
         note: 'IMPORTANT: This redirect_uri MUST be whitelisted in outstand.so system. Contact support if you get "Missing code or state parameter" error.'
       })
       
-      // Call our API to get the auth URL
-      const response = await fetch(`/api/social/${social.platform}/auth-url?siteId=${siteId}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          redirect_uri: redirectUri,
-          tenant_id: siteId, // Use siteId as tenant_id
-        }),
-      })
+      const response = await fetch(
+        `/api/social/${encodeURIComponent(social.platform)}/auth-url?siteId=${encodeURIComponent(siteId)}`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            redirect_uri: redirectUri,
+            tenant_id: siteId,
+          }),
+        }
+      )
       
       const result = await response.json()
       

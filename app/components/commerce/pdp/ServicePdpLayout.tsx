@@ -244,18 +244,17 @@ export function ServicePdpLayout({
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-12">
           {/* Submit / price card — below form on mobile, right column on desktop */}
           <div className={`lg:col-span-1 order-2 lg:order-2 flex flex-col gap-4 ${isReservationExperience ? "order-1 lg:order-2" : ""}`}>
-            <div className="hidden lg:block">
-              <ServicePdpMerch item={item} t={t} />
-            </div>
             {isReservationExperience ? (
               <ReservationManagePanel
                 reservation={reservation}
                 schedules={experience?.extras?.schedules || []}
+                merchNode={<div className="hidden lg:block"><ServicePdpMerch item={item} t={t} /></div>}
               />
             ) : (
               <div className="lg:sticky lg:top-32 lg:bg-card lg:border lg:border-border/50 lg:rounded-3xl lg:p-8 lg:shadow-2xl lg:shadow-black/5 relative">
                 <div className="hidden lg:block mb-6 lg:mb-8">
                   <PdpPriceBlock price={displayPrice} currency={item.currency || "USD"} />
+                  <div className="mt-4"><ServicePdpMerch item={item} t={t} /></div>
                 </div>
 
                 <>

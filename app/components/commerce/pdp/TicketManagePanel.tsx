@@ -13,13 +13,15 @@ export function TicketManagePanel({
   item,
   event,
   venueLocation,
-  attributes
+  attributes,
+  merchNode
 }: { 
   entitlement: any
   item: any
   event: any
   venueLocation: any
   attributes: any
+  merchNode?: React.ReactNode
 }) {
   const { t } = useLocalization()
   const qrRef = useRef<HTMLDivElement>(null)
@@ -128,6 +130,7 @@ export function TicketManagePanel({
             </Button>
           )}
         </div>
+        {merchNode && <div className="mt-6 pt-6 border-t border-border/50">{merchNode}</div>}
       </div>
     </div>
   )

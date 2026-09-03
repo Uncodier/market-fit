@@ -68,6 +68,7 @@ interface ContentTableProps {
   onRatingChange?: (contentId: string, rating: number) => void
   assetsByContentId?: Record<string, ContentAssetWithDetails[]>
   outstandPosts?: any[]
+  performanceData?: { byContentId: Record<string, any>, byPostId: Record<string, any> }
 }
 
 export function ContentTable({
@@ -83,6 +84,7 @@ export function ContentTable({
   onRatingChange,
   assetsByContentId = {},
   outstandPosts,
+  performanceData,
 }: ContentTableProps) {
   const { t } = useLocalization()
   const totalPages = Math.ceil(totalContent / itemsPerPage)

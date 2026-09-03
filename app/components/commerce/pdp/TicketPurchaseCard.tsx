@@ -20,6 +20,7 @@ interface TicketPurchaseCardProps {
   onViewTicket?: () => void
   ownedEntitlement?: any
   className?: string
+  merchNode?: React.ReactNode
 }
 
 export function TicketPurchaseCard({
@@ -36,6 +37,7 @@ export function TicketPurchaseCard({
   onViewTicket,
   ownedEntitlement,
   className = "",
+  merchNode,
 }: TicketPurchaseCardProps) {
   const { t } = useLocalization()
 
@@ -81,6 +83,7 @@ export function TicketPurchaseCard({
             <>
               <div className="mb-6">
                 <PdpPriceBlock price={price} currency={currency} />
+                {merchNode && <div className="mt-4">{merchNode}</div>}
               </div>
               
               <div className="hidden lg:block">

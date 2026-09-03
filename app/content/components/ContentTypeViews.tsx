@@ -21,6 +21,7 @@ interface ContentTypeViewsProps {
   isLoadingCampaigns?: boolean
   assetsByContentId: Record<string, ContentAssetWithDetails[]>
   outstandPosts: any[]
+  performanceData?: { byContentId: Record<string, any>, byPostId: Record<string, any> }
   onUpdateContentStatus: (contentId: string, newStatus: string) => Promise<void>
   onContentClick: (content: ContentItem) => void
   onRatingChange: (contentId: string, rating: number) => void
@@ -40,6 +41,7 @@ export function ContentTypeViews({
   isLoadingCampaigns,
   assetsByContentId,
   outstandPosts,
+  performanceData,
   onUpdateContentStatus,
   onContentClick,
   onRatingChange,
@@ -70,6 +72,7 @@ export function ContentTypeViews({
                 isLoadingCampaigns={isLoadingCampaigns}
                 assetsByContentId={assetsByContentId}
                 outstandPosts={outstandPosts}
+                performanceData={performanceData}
                 onPublish={onPublish}
               />
             ) : (
@@ -86,6 +89,7 @@ export function ContentTypeViews({
                 onRatingChange={onRatingChange}
                 assetsByContentId={assetsByContentId}
                 outstandPosts={outstandPosts}
+                performanceData={performanceData}
               />
             )}
           </TabsContent>

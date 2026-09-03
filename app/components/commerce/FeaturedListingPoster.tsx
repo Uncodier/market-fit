@@ -4,6 +4,7 @@ import React from "react"
 import Link from "next/link"
 import { CatalogItem } from "@/app/types"
 import { ProgressiveImage } from "@/app/components/commerce/ProgressiveImage"
+import removeMd from "remove-markdown"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { useDisplayCurrency } from "@/app/context/DisplayCurrencyContext"
 import {
@@ -180,13 +181,13 @@ export const FeaturedListingPoster = React.memo(function FeaturedListingPoster({
           </h3>
 
           {item.description && (
-            <p
+            <div
               className={`mt-2 text-white/85 ${
                 isHero ? "text-sm sm:text-base line-clamp-2 sm:line-clamp-3" : "text-sm line-clamp-2"
               }`}
             >
-              {item.description}
-            </p>
+              {removeMd(item.description).replace(/\n+/g, " ").replace(/[«»]/g, '"')}
+            </div>
           )}
 
           {metaChips.length > 0 && (

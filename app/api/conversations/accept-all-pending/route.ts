@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
     // Fetch all pending messages for this site directly via inner join
     const { data: msgs, error: msgsError } = await supabaseAdmin
       .from("messages")
-      .select("id, conversation_id, custom_data, conversations!inner(site_id, is_archived)")
+      .select("id, content, conversation_id, custom_data, agent_id, user_id, conversations!inner(site_id, is_archived, lead_id, channel, custom_data)")
       .eq("conversations.site_id", siteId)
       .eq("conversations.is_archived", false)
       .eq("custom_data->>status", "pending")
@@ -88,7 +88,7 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    const conversationIds = [...new Set(allMessages.map(m => m.conversation_id))]
+    const conversationIds = [...new Set(allMessages.map((m: any) => m.conversation_id))]
 
     // Step 3: update status to 'active' for all affected conversations
     if (conversationIds.length > 0) {

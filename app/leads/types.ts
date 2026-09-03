@@ -56,6 +56,7 @@ export interface Lead {
     youtube?: string | null
     whatsapp?: string | null
     pinterest?: string | null
+    threads?: string | null
     [key: string]: string | null | undefined
   } | null
   address: {

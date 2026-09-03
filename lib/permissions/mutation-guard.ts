@@ -132,7 +132,7 @@ function wrapWriteMethods(builder: unknown, options: GuardOptions): unknown {
   })
 }
 
-const UNGUARDED_TABLES = new Set(["site_members"])
+const UNGUARDED_TABLES = new Set(["site_members", "instance_artifacts"])
 
 export function wrapSupabaseClient<T extends { from: any; rpc?: any }>(
   client: T,

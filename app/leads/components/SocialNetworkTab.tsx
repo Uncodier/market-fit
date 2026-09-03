@@ -10,15 +10,17 @@ import {
   YouTube,
   WhatsApp,
   Pinterest,
+  Threads,
 } from "./custom-icons"
 import { Lead } from "@/app/leads/types"
 import { PropertyRow, ShowEmptyFieldsToggle, hasPropertyValue } from "./PropertyRow"
 
 const NETWORKS = [
   { key: "linkedin", label: "LinkedIn", icon: Linkedin, placeholder: "LinkedIn profile URL" },
-  { key: "twitter", label: "Twitter", icon: Twitter, placeholder: "Twitter profile URL" },
+  { key: "twitter", label: "X", icon: Twitter, placeholder: "X profile URL" },
   { key: "facebook", label: "Facebook", icon: Facebook, placeholder: "Facebook profile URL" },
   { key: "instagram", label: "Instagram", icon: Instagram, placeholder: "Instagram profile URL" },
+  { key: "threads", label: "Threads", icon: Threads, placeholder: "Threads profile URL" },
   { key: "tiktok", label: "TikTok", icon: TikTok, placeholder: "TikTok profile URL" },
   { key: "youtube", label: "YouTube", icon: YouTube, placeholder: "YouTube channel URL" },
   { key: "whatsapp", label: "WhatsApp", icon: WhatsApp, placeholder: "WhatsApp number with country code" },

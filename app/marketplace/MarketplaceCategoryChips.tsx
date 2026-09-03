@@ -90,8 +90,8 @@ export function MarketplaceCategoryChips({
   const { t } = useLocalization()
 
   return (
-    <div className="md:hidden sticky top-[72px] z-30 pointer-events-none -mx-4 pt-1 pb-3 mb-6 space-y-3">
-      <div className="flex overflow-x-auto gap-3 scrollbar-hide w-full items-center pointer-events-auto pb-2 px-4">
+    <div className="md:hidden sticky top-[72px] z-30 pointer-events-none -mx-4 pt-2 pb-4 mb-6 space-y-3">
+      <div className="flex overflow-x-auto gap-3 scrollbar-hide w-full items-center pointer-events-auto py-2 px-4">
         {leadingChip}
         {KIND_OPTIONS.map(([value, key, fallback]) => (
           <Chip
@@ -105,7 +105,7 @@ export function MarketplaceCategoryChips({
       </div>
 
       {effectiveKind === "digital_asset" && (
-        <div className="flex overflow-x-auto gap-3 scrollbar-hide w-full items-center pointer-events-auto pb-2 px-4">
+        <div className="flex overflow-x-auto gap-3 scrollbar-hide w-full items-center pointer-events-auto py-2 px-4">
           {SUBTYPE_OPTIONS.map(([value, key, fallback]) => (
             <Chip
               key={value}

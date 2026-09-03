@@ -56,6 +56,7 @@ import {
   Code,
   TableRows,
   Workflow,
+  ThumbsUp,
 } from "@/app/components/ui/icons"
 
 export const AREA_ICON: Record<WorkspaceArea, React.ComponentType<any>> = {
@@ -118,6 +119,7 @@ export const NAV_ITEM_ICON: Record<string, React.ComponentType<any>> = {
   reportTraffic: Globe,
   reportCosts: TrendingDown,
   reportSales: ActivitySquare,
+  reportSocial: ThumbsUp,
   financeReports: Building,
   journalEntries: ClipboardList,
   chartOfAccounts: FileText,
@@ -127,7 +129,7 @@ export const NAV_ITEM_ICON: Record<string, React.ComponentType<any>> = {
   settingsVisits: MapPin,
   team: Users,
   calendar: Calendar,
-  social: Share,
+  social: ThumbsUp,
   integrations: Plug,
   billing: CreditCard,
   security: Shield,
@@ -306,6 +308,7 @@ export const MODULE_VARIANTS: Record<string, ModuleVariant> = {
   reportTraffic: buildVariant(85, 70, 90, 75, 40, "mesh-2", false),
   reportCosts: buildVariant(55, 75, 310, 88, 42, "mesh-3", false),
   reportSales: buildVariant(80, 95, 160, 82, 40, "mesh-4", false),
+  reportSocial: buildVariant(75, 85, 135, 80, 42, "mesh-5", false),
 
   // —— Settings (steel → slate → indigo) ——
   settingsGeneral: buildVariant(205, 220, 135, 58, 48, "mesh-4", true, true),

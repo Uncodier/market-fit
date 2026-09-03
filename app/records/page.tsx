@@ -17,6 +17,7 @@ import { Badge } from "@/app/components/ui/badge"
 import { Tabs, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/app/components/ui/dropdown-menu"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/app/components/ui/dialog"
 import { CalendarDateRangePicker } from "@/app/components/ui/date-range-picker"
 import { ListOrdered, Check, ChevronDown, Loader, Tag, Trash2, Folder } from "@/app/components/ui/icons"
 import { subDays, isWithinInterval, parseISO, startOfDay, endOfDay } from "date-fns"
@@ -57,6 +58,9 @@ export default function RecordsPage() {
   const [itemsPerPage, setItemsPerPage] = useState(10)
   const [selectedRecords, setSelectedRecords] = useState<Set<string>>(new Set())
   const [isBulkActionLoading, setIsBulkActionLoading] = useState(false)
+  const [isCategorySelectOpen, setIsCategorySelectOpen] = useState(false)
+  const [categoryToCreateIn, setCategoryToCreateIn] = useState<string>("")
+  const [isCreatingRecord, setIsCreatingRecord] = useState(false)
 
   const handleBulkDelete = async () => {
     if (!confirm(t("records.bulk.confirmDelete", { count: selectedRecords.size }) || `Are you sure you want to delete ${selectedRecords.size} records?`)) return
@@ -183,23 +187,38 @@ export default function RecordsPage() {
     refreshData()
   }
 
-  const handleCreateRecord = async () => {
+  const handleCreateRecord = async (specificCategoryId?: string) => {
     if (!currentSite?.id) return
-    const categoryId = selectedCategory === "all" ? (categories[0]?.id || null) : selectedCategory
+    
+    let categoryId = typeof specificCategoryId === "string" ? specificCategoryId : undefined
+    
     if (!categoryId) {
-      toast.error(t("records.toast.selectCategory") || "Please select or create a category first")
-      return
+      if (selectedCategory !== "all") {
+        categoryId = selectedCategory
+      } else if (categories.length === 1) {
+        categoryId = categories[0].id
+      } else if (categories.length > 1) {
+        setCategoryToCreateIn(categories[0].id)
+        setIsCategorySelectOpen(true)
+        return
+      } else {
+        toast.error(t("records.toast.selectCategory") || "Please select or create a category first")
+        return
+      }
     }
 
+    setIsCreatingRecord(true)
     const { record, error } = await createRecord({
       site_id: currentSite.id,
       category_id: categoryId,
       title: t("records.untitled") || "Untitled Record"
     })
+    setIsCreatingRecord(false)
 
     if (error) {
       toast.error(error)
     } else if (record) {
+      setIsCategorySelectOpen(false)
       router.push(`/records/${record.id}`)
     }
   }
@@ -421,7 +440,7 @@ export default function RecordsPage() {
                   title={t("records.empty.title") || "No records found"}
                   description={t("records.empty.desc") || "Create a new record or adjust your filters."}
                   action={
-                    <Button onClick={handleCreateRecord}>
+                    <Button onClick={() => handleCreateRecord()}>
                       {t("records.new") || "New Record"}
                     </Button>
                   }
@@ -500,6 +519,42 @@ export default function RecordsPage() {
           categories={categories}
           onSave={handleSaveCategory}
         />
+      )}
+
+      {isCategorySelectOpen && (
+        <Dialog open={isCategorySelectOpen} onOpenChange={setIsCategorySelectOpen}>
+          <DialogContent size="sm">
+            <DialogHeader>
+              <DialogTitle>{t("records.selectCategoryToCreate") || "Select Category"}</DialogTitle>
+            </DialogHeader>
+            <div className="py-4">
+              <Select value={categoryToCreateIn} onValueChange={setCategoryToCreateIn}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder={t("records.toast.selectCategory") || "Select a category"} />
+                </SelectTrigger>
+                <SelectContent>
+                  {categories.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <DialogFooter>
+              <Button variant="ghost" onClick={() => setIsCategorySelectOpen(false)}>
+                {t("common.cancel") || "Cancel"}
+              </Button>
+              <Button 
+                onClick={() => handleCreateRecord(categoryToCreateIn)} 
+                disabled={isCreatingRecord || !categoryToCreateIn}
+              >
+                {isCreatingRecord ? <Loader className="h-4 w-4 animate-spin mr-2" /> : null}
+                {t("common.create") || "Create"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       )}
     </div>
   )

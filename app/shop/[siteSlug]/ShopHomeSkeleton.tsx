@@ -274,9 +274,9 @@ export function ShopHomeSkeleton({
         {layout.hasCategories && (
           <div
             data-testid="shop-skeleton-categories"
-            className="sticky top-[72px] z-30 -mx-4 md:mx-0 pt-1 pb-3 mb-6"
+            className="sticky top-[72px] z-30 -mx-4 md:mx-0 pt-2 pb-4 mb-6"
           >
-            <div className="flex overflow-x-auto gap-3 scrollbar-hide w-full items-center px-4 md:px-0 pb-2">
+            <div className="flex overflow-x-auto gap-3 scrollbar-hide w-full items-center px-4 md:px-0 py-2">
               {[36, 24, 32, 28, 20].map((w, i) => (
                 <Skeleton
                   key={i}

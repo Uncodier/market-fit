@@ -3,6 +3,11 @@ export const COMMUNICATION_CHANNELS = [
   "messenger",
   "telegram",
   "instagram",
+  "facebook",
+  "threads",
+  "linkedin",
+  "x",
+  "youtube",
   "sms",
   "email",
   "voice",
@@ -22,6 +27,7 @@ export type SiteChannelSource = {
       website?: { enable_chat?: boolean }
       connections?: Array<{ type?: string | null; status?: string | null }>
     } | null
+    social_media?: Array<{ platform?: string | null; network?: string | null; isActive?: boolean | number }> | null
   } | null
 }
 
@@ -31,6 +37,11 @@ const CHANNEL_LABELS: Record<string, string> = {
   email: "Email",
   whatsapp: "WhatsApp",
   instagram: "Instagram",
+  facebook: "Facebook",
+  threads: "Threads",
+  linkedin: "LinkedIn",
+  x: "X",
+  youtube: "YouTube",
   messenger: "Messenger",
   sms: "SMS",
   telegram: "Telegram",
@@ -43,6 +54,11 @@ const CHANNEL_DESCRIPTIONS: Record<string, string> = {
   email: "Send via email",
   whatsapp: "Send via WhatsApp",
   instagram: "Send via Instagram",
+  facebook: "Send via Facebook",
+  threads: "Send via Threads",
+  linkedin: "Send via LinkedIn",
+  x: "Send via X",
+  youtube: "Send via YouTube",
   messenger: "Send via Messenger",
   sms: "Send via SMS",
   telegram: "Send via Telegram",
@@ -54,6 +70,7 @@ const CONNECTED_STATUSES = new Set(["connected", "active", "synced"])
 export function normalizeChannel(channel?: string | null): CommunicationChannel | string {
   if (!channel) return "web"
   if (channel === "website_chat") return "web"
+  if (channel.toLowerCase() === "twitter") return "x"
   return channel
 }
 
@@ -110,5 +127,33 @@ export function getEnabledSiteChannels(site?: SiteChannelSource | null): Communi
     }
   }
 
+  const SUPPORTED_SOCIAL_NETWORKS = new Set(["facebook", "instagram", "threads", "linkedin", "x", "youtube"])
+  for (const account of site?.settings?.social_media || []) {
+    if (!account.isActive) continue
+    const type = normalizeChannel(account.network || account.platform)
+    if (SUPPORTED_SOCIAL_NETWORKS.has(type as string) && (COMMUNICATION_CHANNELS as readonly string[]).includes(type)) {
+      addChannel(enabled, type as CommunicationChannel)
+    }
+  }
+
   return COMMUNICATION_CHANNELS.filter((channel) => enabled.includes(channel))
+}
+
+export function leadHasChannel(lead: any, channel: string): boolean {
+  if (!lead) return false
+  const c = normalizeChannel(channel)
+  
+  if (c === "web") return true
+  if (c === "email") return !!lead.email
+  if (c === "whatsapp" || c === "sms" || c === "voice") return !!lead.phone
+  
+  const sn = lead.social_networks || {}
+  
+  if (c === "instagram") return !!sn.instagram
+  if (c === "messenger") return !!sn.facebook || !!sn.messenger
+  if (c === "telegram") return !!lead.phone || !!sn.telegram
+  if (c === "facebook" || c === "threads" || c === "linkedin" || c === "youtube") return !!sn[c]
+  if (c === "x") return !!sn.twitter || !!sn.x
+  
+  return false
 }

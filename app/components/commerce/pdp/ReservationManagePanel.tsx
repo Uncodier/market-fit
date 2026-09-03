@@ -16,10 +16,12 @@ import { toast } from "sonner"
 
 export function ReservationManagePanel({ 
   reservation, 
-  schedules = [] 
+  schedules = [],
+  merchNode
 }: { 
   reservation: any, 
-  schedules?: any[] 
+  schedules?: any[],
+  merchNode?: React.ReactNode 
 }) {
   const { t } = useLocalization()
   const router = useRouter()
@@ -258,6 +260,8 @@ export function ReservationManagePanel({
           </div>
         </DialogContent>
       </Dialog>
+      
+      {merchNode && <div className="mt-6 pt-6 border-t border-border/50">{merchNode}</div>}
     </div>
   )
 }

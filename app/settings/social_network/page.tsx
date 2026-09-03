@@ -113,7 +113,7 @@ export default function SocialNetworkCallbackPage() {
         setStatus("loading")
         setMessage("Loading available pages...")
         
-        const response = await fetch(`/api/social/accounts/pending/${session}`)
+        const response = await fetch(`/api/social/accounts/pending/${encodeURIComponent(session)}`)
         const result = await response.json()
         
         if (result.success && result.data) {
@@ -160,7 +160,7 @@ export default function SocialNetworkCallbackPage() {
       setIsFinalizing(true)
       setMessage("Connecting selected pages...")
       
-      const response = await fetch(`/api/social/accounts/pending/${session}/finalize`, {
+      const response = await fetch(`/api/social/accounts/pending/${encodeURIComponent(session || "")}/finalize`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

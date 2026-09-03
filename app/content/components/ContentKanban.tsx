@@ -47,6 +47,7 @@ export function ContentKanban({
   isLoadingCampaigns,
   assetsByContentId = {},
   outstandPosts,
+  performanceData,
   onPublish
 }: {
   contentItems: ContentItem[]
@@ -58,6 +59,7 @@ export function ContentKanban({
   isLoadingCampaigns?: boolean
   assetsByContentId?: Record<string, ContentAssetWithDetails[]>
   outstandPosts?: any[]
+  performanceData?: { byContentId: Record<string, any>, byPostId: Record<string, any> }
   onPublish?: (content: ContentItem) => void
 }) {
   const { t } = useLocalization()
@@ -210,8 +212,9 @@ export function ContentKanban({
                                 onClick={onContentClick}
                                 onRatingChange={handleRatingChange}
                                 isLoadingCampaigns={isLoadingCampaigns}
-                                assets={assetsByContentId[item.id] || []}
+                                assets={assetsByContentId?.[item.id] || []}
                                 outstandPosts={status.id === 'published' ? outstandPosts : undefined}
+                                performanceData={performanceData}
                               />
                             </div>
                           )}

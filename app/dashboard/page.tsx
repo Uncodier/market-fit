@@ -29,8 +29,12 @@ const TrafficReports = dynamic(
   () => import("@/app/components/dashboard/traffic-reports").then((m) => m.TrafficReports),
   { ssr: false }
 )
+const SocialReports = dynamic(
+  () => import("@/app/components/dashboard/social-reports").then((m) => m.SocialReports),
+  { ssr: false }
+)
 
-const VALID_TABS = ["performance", "overview", "analytics", "traffic", "costs", "sales"] as const
+const VALID_TABS = ["performance", "overview", "analytics", "traffic", "costs", "sales", "social"] as const
 
 function DashboardPageContent() {
   const { t } = useLocalization()
@@ -189,6 +193,13 @@ function DashboardPageContent() {
           )}
           {activeTab === "sales" && (
             <SalesReports
+              startDate={dateRange.startDate}
+              endDate={dateRange.endDate}
+              segmentId={selectedSegment}
+            />
+          )}
+          {activeTab === "social" && (
+            <SocialReports
               startDate={dateRange.startDate}
               endDate={dateRange.endDate}
               segmentId={selectedSegment}

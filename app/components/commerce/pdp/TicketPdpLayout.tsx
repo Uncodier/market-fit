@@ -221,10 +221,6 @@ export function TicketPdpLayout({ item, backUrl, experience, catalogSize = 0 }: 
           {/* Sticky purchase rail */}
           <div className="lg:col-span-1 order-1 lg:order-2">
             <div className="lg:sticky lg:top-32 flex flex-col gap-4">
-              <div className="hidden lg:block">
-                <TicketPdpMerch item={item} t={t} />
-              </div>
-              
               {activeEntitlement ? (
                 <TicketManagePanel
                   entitlement={activeEntitlement}
@@ -232,6 +228,7 @@ export function TicketPdpLayout({ item, backUrl, experience, catalogSize = 0 }: 
                   event={event}
                   venueLocation={venueLocation}
                   attributes={attributes}
+                  merchNode={<div className="hidden lg:block"><TicketPdpMerch item={item} t={t} /></div>}
                 />
               ) : (
                 <TicketPurchaseCard
@@ -247,6 +244,7 @@ export function TicketPdpLayout({ item, backUrl, experience, catalogSize = 0 }: 
                   onBuyNow={handleBuyNow}
                   onViewTicket={() => router.push(`/buyer/ticket/${ownedEntitlement?.id}`)}
                   ownedEntitlement={ownedEntitlement}
+                  merchNode={<div className="hidden lg:block"><TicketPdpMerch item={item} t={t} /></div>}
                 />
               )}
             </div>

@@ -145,6 +145,7 @@ export const NAVIGATION_AREAS: Record<
       { key: "reportTraffic", href: "/dashboard", dashboardTab: "traffic" },
       { key: "reportCosts", href: "/costs" },
       { key: "reportSales", href: "/dashboard", dashboardTab: "sales" },
+      { key: "reportSocial", href: "/dashboard", dashboardTab: "social" },
     ],
   },
   settings: {

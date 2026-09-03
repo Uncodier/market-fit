@@ -6,6 +6,11 @@ import {
   InstagramIcon,
   TelegramIcon,
   MessengerIcon,
+  FacebookIcon,
+  ThreadsIcon,
+  LinkedInIcon,
+  TwitterIcon,
+  YouTubeIcon,
 } from "@/app/components/ui/social-icons"
 import { cn } from "@/lib/utils"
 import { getChannelLabel, normalizeChannel } from "@/lib/site-channels"
@@ -15,6 +20,11 @@ const CHANNEL_BADGE_CLASS: Record<string, string> = {
   messenger: "bg-sky-100 dark:bg-sky-900/40 hover:bg-sky-200 dark:hover:bg-sky-800/60",
   telegram: "bg-sky-100 dark:bg-sky-900/40 hover:bg-sky-200 dark:hover:bg-sky-800/60",
   instagram: "bg-pink-100 dark:bg-pink-900/40 hover:bg-pink-200 dark:hover:bg-pink-800/60",
+  facebook: "bg-blue-100 dark:bg-blue-900/40 hover:bg-blue-200 dark:hover:bg-blue-800/60",
+  threads: "bg-neutral-100 dark:bg-neutral-900/40 hover:bg-neutral-200 dark:hover:bg-neutral-800/60",
+  linkedin: "bg-blue-100 dark:bg-blue-900/40 hover:bg-blue-200 dark:hover:bg-blue-800/60",
+  x: "bg-neutral-100 dark:bg-neutral-900/40 hover:bg-neutral-200 dark:hover:bg-neutral-800/60",
+  youtube: "bg-red-100 dark:bg-red-900/40 hover:bg-red-200 dark:hover:bg-red-800/60",
   sms: "bg-teal-100 dark:bg-teal-900/40 hover:bg-teal-200 dark:hover:bg-teal-800/60",
   email: "bg-blue-100 dark:bg-blue-900/40 hover:bg-blue-200 dark:hover:bg-blue-800/60",
   voice: "bg-orange-100 dark:bg-orange-900/40 hover:bg-orange-200 dark:hover:bg-orange-800/60",
@@ -26,6 +36,11 @@ const CHANNEL_ICON_CLASS: Record<string, string> = {
   messenger: "text-sky-600 dark:text-sky-400",
   telegram: "text-sky-600 dark:text-sky-400",
   instagram: "text-pink-600 dark:text-pink-400",
+  facebook: "text-blue-600 dark:text-blue-400",
+  threads: "text-neutral-700 dark:text-neutral-300",
+  linkedin: "text-blue-700 dark:text-blue-500",
+  x: "text-neutral-700 dark:text-neutral-300",
+  youtube: "text-red-600 dark:text-red-400",
   sms: "text-teal-600 dark:text-teal-400",
   email: "text-blue-600 dark:text-blue-400",
   voice: "text-orange-600 dark:text-orange-400",
@@ -47,6 +62,16 @@ export function ChannelIcon({ channel, size = 16, className }: ChannelIconProps)
       return <WhatsAppIcon size={size} className={iconClass} />
     case "instagram":
       return <InstagramIcon size={size} className={iconClass} />
+    case "facebook":
+      return <FacebookIcon size={size} className={iconClass} />
+    case "threads":
+      return <ThreadsIcon size={size} className={iconClass} />
+    case "linkedin":
+      return <LinkedInIcon size={size} className={iconClass} />
+    case "x":
+      return <TwitterIcon size={size} className={iconClass} />
+    case "youtube":
+      return <YouTubeIcon size={size} className={iconClass} />
     case "messenger":
       return <MessengerIcon size={size} className={iconClass} />
     case "telegram":

@@ -16,6 +16,7 @@ import { DatePicker } from "@/app/components/ui/date-picker"
 import { updateContent, updateContentStatus, deleteContent, getContentById, type ContentItem } from "../actions"
 import { getContentTypeName, haveTagsChanged, processMarkdownText, markdownToHTML } from "../utils"
 import { ContentAssetsGrid } from "./components/ContentAssetsGrid"
+import { ContentPerformancePanel } from "../components/ContentPerformancePanel"
 import { UploadAssetDialog } from "@/app/components/upload-asset-dialog"
 import { createAsset } from "@/app/assets/actions"
 import { publishOutstandPost } from "../outstand"
@@ -23,6 +24,7 @@ import { EmptyCard } from "@/app/components/ui/empty-card"
 import { isSocialMediaEntryConnected } from "@/app/components/settings/data-adapter"
 import { RelationSelect, RelationSelectValue } from "@/app/components/ui/relation-select"
 import { resolveRelationId } from "@/app/commerce/resolve-relation"
+import { ContentSkeleton } from "./content-detail-skeleton"
 
 // Function to convert HTML back to markdown
 const htmlToMarkdown = (html: string): string => {
@@ -494,62 +496,6 @@ const MenuBar = ({
   )
 }
 
-const ContentSkeleton = () => {
-  return (
-    <div className="flex h-[calc(100vh-var(--topbar-height,64px))]">
-      {/* Main Content Area Skeleton */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <div className="flex-none border-b p-2 h-[71px]">
-          <div className="flex gap-1 h-full items-center">
-            <div className="h-8 w-36 bg-muted animate-pulse rounded"></div>
-            <div className="ml-auto h-8 w-32 bg-muted animate-pulse rounded"></div>
-          </div>
-        </div>
-        <div className="flex-1 overflow-auto p-4">
-          <div className="space-y-4">
-            <div className="h-8 bg-muted animate-pulse rounded w-3/4"></div>
-            <div className="h-4 bg-muted animate-pulse rounded w-full"></div>
-            <div className="h-4 bg-muted animate-pulse rounded w-5/6"></div>
-            <div className="h-4 bg-muted animate-pulse rounded w-4/5"></div>
-            <div className="h-4 bg-muted animate-pulse rounded w-full"></div>
-            <div className="h-4 bg-muted animate-pulse rounded w-3/4"></div>
-            <div className="h-8 bg-muted animate-pulse rounded w-1/2 mt-8"></div>
-            <div className="h-4 bg-muted animate-pulse rounded w-full"></div>
-            <div className="h-4 bg-muted animate-pulse rounded w-5/6"></div>
-            <div className="h-4 bg-muted animate-pulse rounded w-4/5"></div>
-          </div>
-        </div>
-      </div>
-
-      {/* AI Assistant Panel Skeleton */}
-      <div className="w-80 border-l bg-muted/30 flex flex-col h-full">
-        <div className="h-[71px] border-b flex items-center justify-center">
-          <div className="w-60 h-8 bg-muted animate-pulse rounded"></div>
-        </div>
-        <div className="p-4 space-y-6">
-          <div className="h-10 bg-muted animate-pulse rounded"></div>
-          <div className="space-y-3">
-            <div className="h-4 bg-muted animate-pulse rounded w-1/2"></div>
-            <div className="h-8 bg-muted animate-pulse rounded w-full"></div>
-          </div>
-          <div className="space-y-3">
-            <div className="h-4 bg-muted animate-pulse rounded w-2/3"></div>
-            <div className="h-20 bg-muted animate-pulse rounded w-full"></div>
-          </div>
-          <div className="space-y-2 mt-6">
-            <div className="h-6 bg-muted animate-pulse rounded w-1/3"></div>
-            <div className="grid grid-cols-2 gap-2">
-              <div className="h-9 bg-muted animate-pulse rounded"></div>
-              <div className="h-9 bg-muted animate-pulse rounded"></div>
-              <div className="h-9 bg-muted animate-pulse rounded"></div>
-              <div className="h-9 bg-muted animate-pulse rounded"></div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
 
 // Modificar el componente AiGenerationSkeleton
 const AiGenerationSkeleton = () => {
@@ -2019,6 +1965,9 @@ export default function ContentDetailPage(props: { params: Promise<{ id: string 
     return <ContentSkeleton />
   }
 
+  const outstandIdTag = content?.tags?.find((t: string) => t.startsWith('outstand_id_'))
+  const outstandPostId = outstandIdTag ? outstandIdTag.replace('outstand_id_', '') : undefined
+
   return (
     <div className="flex h-[calc(100vh-var(--topbar-height,64px))]">
       {content?.id && (
@@ -2101,12 +2050,15 @@ export default function ContentDetailPage(props: { params: Promise<{ id: string 
         <Tabs defaultValue="ai" className="flex flex-col h-full">
           {/* Tabs Header */}
           <div className="h-[71px] border-b flex items-center justify-center px-4">
-            <TabsList className="grid grid-cols-2 w-full">
-              <TabsTrigger value="ai">
+            <TabsList className="grid grid-cols-3 w-full">
+              <TabsTrigger value="ai" className="px-1 text-xs">
                 AI Assistant
               </TabsTrigger>
-              <TabsTrigger value="details">
+              <TabsTrigger value="details" className="px-1 text-xs">
                 Details
+              </TabsTrigger>
+              <TabsTrigger value="performance" className="px-1 text-xs">
+                Performance
               </TabsTrigger>
             </TabsList>
           </div>
@@ -2682,6 +2634,14 @@ export default function ContentDetailPage(props: { params: Promise<{ id: string 
                   </div>
                 </ScrollArea>
               </div>
+            </TabsContent>
+            <TabsContent value="performance" className="h-full mt-0">
+              <ScrollArea className="h-full">
+                <ContentPerformancePanel
+                  contentId={content.id}
+                  outstandPostId={outstandPostId}
+                />
+              </ScrollArea>
             </TabsContent>
           </div>
         </Tabs>

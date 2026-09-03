@@ -8,7 +8,7 @@ import { Badge } from "@/app/components/ui/badge"
 import {
   FileText, Filter, PlayCircle, Mail, BarChart, LayoutGrid, MessageSquare, FileVideo, Globe,
   PenSquare, Users, RotateCcw, CalendarIcon, Eye, ChevronLeft, ChevronRight, X, CheckCircle2,
-  Pencil, ChevronUp, ChevronDown, Target, Microscope, Megaphone, ListOrdered, Check
+  Pencil, ChevronUp, ChevronDown, Target, Microscope, Megaphone, ListOrdered, Check, Activity
 } from "@/app/components/ui/icons"
 import { Switch } from "@/app/components/ui/switch"
 import { DatePicker } from "@/app/components/ui/date-picker"
@@ -35,7 +35,7 @@ import { RelationSelect, RelationSelectValue } from "@/app/components/ui/relatio
 import { resolveRelationId } from "@/app/commerce/resolve-relation"
 import { CONTENT_TYPE_ICONS, getNetworkIcon } from "../content-shared"
 
-export function ContentCard({ content, segments, campaigns, onClick, onRatingChange, isLoadingCampaigns, assets = [], outstandPosts }: { 
+export function ContentCard({ content, segments, campaigns, onClick, onRatingChange, isLoadingCampaigns, assets = [], outstandPosts, performanceData }: { 
   content: ContentItem, 
   segments: Array<{ id: string; name: string }>,
   campaigns: Array<{ id: string; title: string }>,
@@ -43,7 +43,8 @@ export function ContentCard({ content, segments, campaigns, onClick, onRatingCha
   onRatingChange?: (contentId: string, rating: number) => void,
   isLoadingCampaigns?: boolean,
   assets?: ContentAssetWithDetails[],
-  outstandPosts?: any[]
+  outstandPosts?: any[],
+  performanceData?: { byContentId: Record<string, any>, byPostId: Record<string, any> }
 }) {
 
   const [carouselIndex, setCarouselIndex] = useState(0)
@@ -154,6 +155,18 @@ export function ContentCard({ content, segments, campaigns, onClick, onRatingCha
     day: 'numeric' 
   })
 
+  const outstandIdTag = content?.tags?.find((t: string) => t.startsWith('outstand_id_'))
+  const explicitOutstandPostId = outstandIdTag ? outstandIdTag.replace('outstand_id_', '') : undefined
+  const virtualPostId = content.id.startsWith('outstand-') ? content.id.slice('outstand-'.length) : undefined
+  const postPerformance = performanceData?.byContentId?.[content.id]
+    || (explicitOutstandPostId && performanceData?.byPostId?.[explicitOutstandPostId])
+    || (virtualPostId && performanceData?.byPostId?.[virtualPostId])
+
+  const numberFormatter = new Intl.NumberFormat("en-US", { notation: "compact", maximumFractionDigits: 1 })
+  const engagementRate = Number(postPerformance?.engagement_rate) || 0
+  const percentFormatter = new Intl.NumberFormat("en-US", { style: "percent", minimumFractionDigits: 1 })
+  const engagementLabel = percentFormatter.format(engagementRate > 1 ? engagementRate / 100 : engagementRate)
+
   return (
     <Card 
       className="mb-2 cursor-pointer transition-shadow duration-200 hover:shadow-md"
@@ -255,6 +268,19 @@ export function ContentCard({ content, segments, campaigns, onClick, onRatingCha
                   {getCampaignName(content.campaign_id, campaigns)}
                 </span>
               )}
+            </div>
+          </div>
+        )}
+        
+        {postPerformance && (
+          <div className="flex mt-2 border-t pt-2 gap-4 items-center">
+            <div className="flex items-center gap-1 text-xs text-muted-foreground" title="Views">
+              <Eye className="h-3 w-3" />
+              {numberFormatter.format(postPerformance.views || 0)}
+            </div>
+            <div className="flex items-center gap-1 text-xs text-muted-foreground" title="Engagement">
+              <Activity className="h-3 w-3" />
+              {engagementLabel}
             </div>
           </div>
         )}

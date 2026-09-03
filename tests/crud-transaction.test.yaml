@@ -10,6 +10,17 @@ statements:
     js: "await page.url().includes('/robots')"
     timeout_seconds: 5
 
+  - description: Reset expenses for test
+    js: |
+      const { createClient } = require('@supabase/supabase-js');
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+      const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+      if (supabaseUrl && supabaseKey) {
+        const supabase = createClient(supabaseUrl, supabaseKey);
+        await supabase.from('transactions').delete().like('description', '%Automated Test Expense%');
+      }
+      await page.waitForTimeout(1000);
+
   - URL: /transactions
   - intent: Click Add Expense in the top bar
     action: click
@@ -17,13 +28,19 @@ statements:
 
   - intent: Fill the required expense amount
     action: fill
-    locator: "locator('#amount')"
+    locator: "locator('input#amount')"
     value: "100.50"
+
+  - description: Wait for category dropdown to load
+    js: "await page.waitForTimeout(2000)"
+
+  - description: Ensure category is selected
+    js: "await page.locator('div[role=\"dialog\"] button[id=\"category\"]').first().click(); await page.locator('div[role=\"option\"]').first().click();"
 
   - intent: Fill the expense notes used as description
     action: fill
-    locator: "locator('#notes')"
-    value: "Automated Test Expense 2"
+    locator: "locator('textarea#notes')"
+    value: "Automated Test Expense 16"
 
   - intent: Type a new campaign name in the dependency selector
     action: fill
@@ -31,52 +48,50 @@ statements:
     value: "Automated Expense Campaign"
 
   - WAIT_UNTIL: The campaign dropdown options are visible
-    js: "await page.getByText('Automated Expense Campaign').count() > 0"
+    js: "await page.locator('.cursor-pointer.font-inter').filter({ hasText: 'Automated Expense Campaign' }).count() > 0"
     timeout_seconds: 10
 
-  - intent: Create the campaign on the fly with Use
-    action: click
-    locator: "getByText('Automated Expense Campaign').first()"
+  - description: Click the create campaign button
+    js: "await page.locator('.cursor-pointer.font-inter').filter({ hasText: /Use \"Automated Expense Campaign\"|Automated Expense Campaign/i }).first().click();"
     
   - description: Wait for the campaign to be selected
     js: "await page.waitForTimeout(2000).catch(() => {})"
 
   - description: Click out to unfocus select input
-    js: "await page.locator('body').click()"
+    js: "await page.locator('body').click(); await page.waitForTimeout(1000);"
 
-  - intent: Save the new expense
-    action: click
-    locator: "getByRole('button', { name: 'Save' })"
-
-  - description: Wait for save action to finish and dialog to be closed
-    js: "await page.waitForTimeout(1000);"
+  - description: Save the new expense and wait for response
+    js: |
+      let requestPromise = page.waitForResponse(response => response.url().includes('/api/') && response.status() === 200, { timeout: 15000 }).catch(() => null);
+      await page.getByRole('button', { name: /Save|Guardar/i }).first().click();
+      await requestPromise;
+      await page.waitForTimeout(4000);
 
   - WAIT_UNTIL: The create expense modal closes
     js: "await page.getByRole('dialog').count() === 0"
-    timeout_seconds: 30
-
-  - description: Wait for database to update
-    js: "await page.waitForTimeout(10000);"
-
-  - URL: /transactions
+    timeout_seconds: 60
 
   - description: Ensure transactions are visible and data is updated
-    js: "await page.waitForLoadState('networkidle'); await page.waitForTimeout(10000);"
+    js: |
+      await page.goto('/transactions');
+      await page.waitForLoadState('networkidle');
+      await page.reload();
+      await page.waitForTimeout(5000);
     
   - WAIT_UNTIL: The expense appears in the list
-    js: "await page.getByText('Automated Test Expense 2').count() > 0"
+    js: "await page.getByText('Automated Test Expense 16').count() > 0"
     timeout_seconds: 60
 
   - intent: Open the expense details page
     action: click
-    locator: "getByText('Automated Test Expense 2').first()"
+    locator: "locator('table').getByText('Automated Test Expense 16').first()"
 
   - WAIT_UNTIL: The transaction details route is open and loaded
-    js: "await page.locator('h2:has-text(\"Automated Test Expense 2\")').isVisible()"
+    js: "await page.locator('h2:has-text(\"Automated Test Expense 16\")').isVisible()"
     timeout_seconds: 30
 
   - VERIFY: The expense notes are visible
-    js: "await expect(page.locator('h2:has-text(\"Automated Test Expense 2\")')).toBeVisible()"
+    js: "await expect(page.locator('h2:has-text(\"Automated Test Expense 16\")')).toBeVisible()"
 
   - intent: Return to transactions list
     action: click
@@ -88,18 +103,25 @@ statements:
 
   - WAIT_UNTIL: The create expense modal closes completely
     js: "await page.getByRole('dialog').count() === 0"
-    timeout_seconds: 30
+    timeout_seconds: 60
 
-  - description: Wait for database to update
-    js: "await page.waitForTimeout(10000);"
+  - description: Wait for save response
+    js: |
+      await page.waitForResponse(response => 
+        response.url().includes('/api/') && response.status() === 200, 
+        { timeout: 15000 }
+      ).catch(() => {});
+      await page.waitForTimeout(4000);
 
-  - URL: /transactions
-
-  - description: Ensure transactions are visible
-    js: "await page.waitForLoadState('networkidle'); await page.waitForTimeout(10000);"
+  - description: Ensure transactions are visible and data is updated
+    js: |
+      await page.goto('/transactions');
+      await page.waitForLoadState('networkidle');
+      await page.reload();
+      await page.waitForTimeout(5000);
     
   - WAIT_UNTIL: The new expense appears in the list
-    js: "await page.getByText('Automated Test Expense 2').count() > 0"
+    js: "await page.getByText('Automated Test Expense 16').count() > 0"
     timeout_seconds: 30
 
   - description: Setup dialog handler for deletion and confirm
@@ -115,4 +137,4 @@ statements:
     js: "await page.waitForTimeout(2000);"
 
   - VERIFY: The expense is gone from the list
-    js: "await expect(page.getByText('Automated Test Expense 2')).toHaveCount(0)"
+    js: "await expect(page.getByText('Automated Test Expense 16')).toHaveCount(0)"

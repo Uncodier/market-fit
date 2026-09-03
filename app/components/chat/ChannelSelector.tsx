@@ -4,7 +4,7 @@ import React, { memo } from "react"
 import { Tabs, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
 import * as Icons from "@/app/components/ui/icons"
 import { LoadingSkeleton } from "@/app/components/ui/loading-skeleton"
-import { WhatsAppIcon, InstagramIcon, TelegramIcon, MessengerIcon } from "@/app/components/ui/social-icons"
+import { WhatsAppIcon, InstagramIcon, TelegramIcon, MessengerIcon, FacebookIcon, ThreadsIcon, LinkedInIcon, TwitterIcon, YouTubeIcon } from "@/app/components/ui/social-icons"
 import { cn } from "@/lib/utils"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/app/components/ui/tooltip"
 
@@ -52,6 +52,31 @@ const channelConfig: Record<string, {
     icon: ({ className }: { className?: string }) => <MessengerIcon size={16} className={className} />,
     label: "Messenger",
     description: "Send via Messenger"
+  },
+  facebook: {
+    icon: ({ className }: { className?: string }) => <FacebookIcon size={16} className={className} />,
+    label: "Facebook",
+    description: "Send via Facebook"
+  },
+  threads: {
+    icon: ({ className }: { className?: string }) => <ThreadsIcon size={16} className={className} />,
+    label: "Threads",
+    description: "Send via Threads"
+  },
+  linkedin: {
+    icon: ({ className }: { className?: string }) => <LinkedInIcon size={16} className={className} />,
+    label: "LinkedIn",
+    description: "Send via LinkedIn"
+  },
+  x: {
+    icon: ({ className }: { className?: string }) => <TwitterIcon size={16} className={className} />,
+    label: "X",
+    description: "Send via X"
+  },
+  youtube: {
+    icon: ({ className }: { className?: string }) => <YouTubeIcon size={16} className={className} />,
+    label: "YouTube",
+    description: "Send via YouTube"
   },
   sms: {
     icon: Icons.MessageSquare,

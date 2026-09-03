@@ -7,6 +7,7 @@ import { CatalogItem } from "@/app/types"
 import type { PromoBadge } from "@/app/promotions/promotion-merchandising"
 import { promoBadgeLabel } from "@/app/promotions/promotion-merchandising"
 import { ProgressiveImage } from "@/app/components/commerce/ProgressiveImage"
+import removeMd from "remove-markdown"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { useDisplayCurrency } from "@/app/context/DisplayCurrencyContext"
 import {
@@ -220,9 +221,9 @@ export const CatalogListingCard = React.memo(function CatalogListingCard({
         )}
 
         {item.description && descriptionLineClamp !== "none" && (
-          <p className={`text-xs text-muted-foreground mt-1 ${descClamp || "line-clamp-1"}`}>
-            {item.description}
-          </p>
+          <div className={`text-xs text-muted-foreground mt-1 ${descClamp || "line-clamp-1"}`}>
+            {removeMd(item.description).replace(/\n+/g, " ").replace(/[«»]/g, '"')}
+          </div>
         )}
 
         <StorefrontListingMerch

@@ -1,7 +1,9 @@
-import { useState, useEffect, useMemo, useCallback, useRef } from "react"
+import { useState, useEffect, useMemo, useCallback } from "react"
 import { useSite } from "@/app/context/SiteContext"
+import { getEnabledSiteChannels, leadHasChannel, normalizeChannel } from "@/lib/site-channels"
 
 type Channel = 'web' | 'email' | 'whatsapp' | 'instagram' | 'messenger' | 'sms' | 'telegram' | 'voice' | 'website_chat' | string
+
 
 interface UseChannelSelectorProps {
   conversationId?: string
@@ -35,12 +37,6 @@ export function useChannelSelector({
   // Debug log para tracking
   console.log(`[useChannelSelector] Hook called - conversationId: ${conversationId}, selectedChannel: ${selectedChannel}`)
 
-  // Memoize site channels to avoid unnecessary recalculations
-  const siteChannels = useMemo(() => 
-    currentSite?.settings?.channels, 
-    [currentSite?.settings?.channels]
-  )
-
   // Memoize available channels calculation
   const availableChannels = useMemo(() => {
     const channels: Channel[] = ['web'] // Web chat is always available
@@ -58,81 +54,30 @@ export function useChannelSelector({
       return channels
     }
 
-    // Check email channel availability
-    if (siteChannels?.email?.enabled && 
-        siteChannels.email.status === 'synced' &&
-        leadData?.email) {
-      channels.push('email')
-      console.log(`[availableChannels] Added email channel`)
-    } else {
-      console.log(`[availableChannels] Email not available:`, {
-        enabled: siteChannels?.email?.enabled,
-        status: siteChannels?.email?.status,
-        hasEmail: !!leadData?.email
-      })
-    }
-
-    // Check WhatsApp channel availability
-    if (siteChannels?.whatsapp?.enabled && 
-        siteChannels.whatsapp.status === 'active' &&
-        leadData?.phone) {
-      channels.push('whatsapp')
-      console.log(`[availableChannels] Added whatsapp channel`)
-    } else {
-      console.log(`[availableChannels] WhatsApp not available:`, {
-        enabled: siteChannels?.whatsapp?.enabled,
-        status: siteChannels?.whatsapp?.status,
-        hasPhone: !!leadData?.phone
-      })
-    }
-
-    // Check connections for other channels (instagram, messenger, sms, telegram, voice)
-    if (siteChannels?.connections && Array.isArray(siteChannels.connections)) {
-      const activeConnections = siteChannels.connections.filter(c => c.status === 'connected')
+    const enabledChannels = getEnabledSiteChannels(currentSite)
+    
+    for (const channel of enabledChannels) {
+      if (channel === 'web') continue // already added
       
-      for (const connection of activeConnections) {
-        if (!connection.type) continue;
-        
-        switch (connection.type) {
-          case 'whatsapp':
-            if (leadData?.phone && !channels.includes('whatsapp')) channels.push('whatsapp')
-            break
-          case 'email':
-            if (leadData?.email && !channels.includes('email')) channels.push('email')
-            break
-          case 'instagram':
-            if (leadData?.social_networks?.instagram && !channels.includes('instagram')) channels.push('instagram')
-            break
-          case 'messenger':
-            if ((leadData?.social_networks?.facebook || leadData?.social_networks?.messenger) && !channels.includes('messenger')) {
-              channels.push('messenger')
-            }
-            break
-          case 'sms':
-            if (leadData?.phone && !channels.includes('sms')) channels.push('sms')
-            break
-          case 'telegram':
-            if ((leadData?.phone || leadData?.social_networks?.telegram) && !channels.includes('telegram')) {
-              channels.push('telegram')
-            }
-            break
-          case 'voice':
-            if (leadData?.phone && !channels.includes('voice')) channels.push('voice')
-            break
-        }
+      if (leadHasChannel(leadData, channel)) {
+        channels.push(channel)
+        console.log(`[availableChannels] Added ${channel} channel`)
+      } else {
+        console.log(`[availableChannels] ${channel} not available for lead`)
       }
     }
 
     // IMPORTANT: Always include the conversation's selected channel if it's not already included
     // This ensures the conversation's original channel is always available for selection
-    if (selectedChannel && !channels.includes(selectedChannel)) {
-      channels.push(selectedChannel)
-      console.log(`[availableChannels] Added conversation's channel ${selectedChannel} to available channels`)
+    const normalizedSelected = normalizeChannel(selectedChannel) as Channel
+    if (normalizedSelected && !channels.includes(normalizedSelected)) {
+      channels.push(normalizedSelected)
+      console.log(`[availableChannels] Added conversation's channel ${normalizedSelected} to available channels`)
     }
 
     console.log(`[availableChannels] Final channels:`, channels)
     return channels
-  }, [siteChannels, leadData?.email, leadData?.phone, isAgentOnlyConversation, selectedChannel])
+  }, [currentSite, leadData, isAgentOnlyConversation, selectedChannel])
 
   // Enhanced setSelectedChannel with database update
   const setSelectedChannel = useCallback(async (channel: Channel) => {
@@ -255,10 +200,13 @@ export function useChannelSelector({
           console.log(`[getConversationChannel] No channel found in DB, defaulting to: ${conversationChannel}`)
         }
         
-        // Normalize website_chat to web since they are the same
+        // Normalize channels like website_chat to web, twitter to x
         if (conversationChannel === 'website_chat' as any) {
           conversationChannel = 'web'
           console.log(`[getConversationChannel] Normalized website_chat to web`)
+        } else if (conversationChannel === 'twitter' as any) {
+          conversationChannel = 'x'
+          console.log(`[getConversationChannel] Normalized twitter to x`)
         }
         
         console.log(`📺 Channel loaded from conversation ${conversationId}: ${conversationChannel}`)
