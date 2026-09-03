@@ -37,7 +37,7 @@ export function BuyerHomeView({
   basePath?: string
 }) {
   const { t } = useLocalization()
-  const { sites } = useSite()
+  const { sites, isLoading: isSitesLoading } = useSite()
   const managedSites = (sites || []).filter((site) => !isDemoSiteId(site.id))
   const hasBusinesses = managedSites.length > 0
   
@@ -74,9 +74,9 @@ export function BuyerHomeView({
         ? (t("buyer.home.cards.businesses.desc") || "Switch businesses or create a new one.")
         : (t("buyer.home.cards.startSelling.desc") || "Create your business and start selling on Makinari."),
       icon: <Store className="w-6 h-6 text-foreground/70" />,
-      href: hasBusinesses ? `${workspaceUrl}/projects?manage=1` : `${workspaceUrl}/create-site`,
+      href: `${workspaceUrl}/projects?manage=1`,
       isPrimary: true,
-      count: hasBusinesses ? managedSites.length : undefined,
+      count: isSitesLoading ? undefined : managedSites.length,
       alwaysShow: true
     }] : []),
     {

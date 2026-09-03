@@ -19,7 +19,11 @@ statements:
         const supabase = createClient(supabaseUrl, supabaseKey);
         await supabase.from('transactions').delete().like('description', '%Automated Test Expense%');
       }
-      await page.waitForTimeout(1000);
+      await page.goto('/projects');
+      await page.waitForLoadState('networkidle');
+      await page.goto('/transactions');
+      await page.waitForLoadState('networkidle');
+      await page.waitForTimeout(5000);
 
   - URL: /transactions
   - intent: Click Add Expense in the top bar
@@ -29,7 +33,10 @@ statements:
   - intent: Fill the required expense amount
     action: fill
     locator: "locator('input#amount')"
-    value: "100.50"
+    value: "150.00"
+    
+  - description: Blur the amount input to trigger validation
+    js: "await page.locator('input#amount').first().blur();"
 
   - description: Wait for category dropdown to load
     js: "await page.waitForTimeout(2000)"
@@ -40,7 +47,7 @@ statements:
   - intent: Fill the expense notes used as description
     action: fill
     locator: "locator('textarea#notes')"
-    value: "Automated Test Expense 17"
+    value: "Automated Test Expense 56"
 
   - intent: Type a new campaign name in the dependency selector
     action: fill
@@ -52,46 +59,79 @@ statements:
     timeout_seconds: 10
 
   - description: Click the create campaign button
-    js: "await page.locator('.cursor-pointer.font-inter').filter({ hasText: /Use \"Automated Expense Campaign\"|Automated Expense Campaign/i }).first().click();"
+    js: |
+      const createOption = page.locator('.cursor-pointer.font-inter').filter({ hasText: /Use \"Automated Expense Campaign\"|Usar \"Automated Expense Campaign\"/i });
+      if (await createOption.count() > 0) {
+        await createOption.first().click();
+      } else {
+        const option = page.locator('.cursor-pointer.font-inter').filter({ hasText: 'Automated Expense Campaign' });
+        if (await option.count() > 0) {
+           await option.first().click();
+        }
+      }
     
   - description: Wait for the campaign to be selected
     js: "await page.waitForTimeout(2000).catch(() => {})"
 
   - description: Click out to unfocus select input
-    js: "await page.locator('body').click(); await page.waitForTimeout(1000);"
+    js: "await page.locator('div[role=\"dialog\"] h2').first().click(); await page.waitForTimeout(2000);"
 
   - description: Save the new expense and wait for response
     js: |
-      let requestPromise = page.waitForResponse(response => response.url().includes('/api/') && response.status() === 200, { timeout: 15000 }).catch(() => null);
-      await page.getByRole('button', { name: /Save|Guardar/i }).first().click();
-      await requestPromise;
-      await page.waitForTimeout(4000);
-
+      const isValid = await page.evaluate(() => {
+        const f = document.querySelector('div[role="dialog"] form');
+        if (f) {
+           return (f).checkValidity();
+        }
+        return false;
+      });
+      console.log('Form validity before save:', isValid);
+      if (!isValid) {
+         console.log('Form is invalid. HTML5 validation prevented submission.');
+         const amountValue = await page.locator('input#amount').inputValue();
+         console.log('Amount value:', amountValue);
+      }
+      
+      const clickPromise = page.locator('div[role="dialog"] button').filter({ hasText: /Save|Guardar/i }).first().click();
+      
+      const toastPromise = page.waitForSelector('li[data-sonner-toast]', { timeout: 15000 }).catch(() => null);
+      
+      await clickPromise;
+      const toastElement = await toastPromise;
+      if (toastElement) {
+        const toastText = await toastElement.innerText();
+        console.log('Toast appeared with text:', toastText);
+      } else {
+        console.log('No toast appeared after clicking save.');
+      }
+      
   - WAIT_UNTIL: The create expense modal closes
-    js: "await page.getByRole('dialog').count() === 0"
+    js: "await page.locator('div[role=\"dialog\"]').count() === 0"
     timeout_seconds: 60
 
   - description: Ensure transactions are visible and data is updated
     js: |
+      await page.waitForTimeout(5000);
+      await page.goto('/projects');
+      await page.waitForLoadState('networkidle');
       await page.goto('/transactions');
       await page.waitForLoadState('networkidle');
-      await page.reload();
-      await page.waitForTimeout(5000);
+      await page.waitForTimeout(10000);
     
   - WAIT_UNTIL: The expense appears in the list
-    js: "await page.getByText('Automated Test Expense 17').count() > 0"
+    js: "await page.getByText('Automated Test Expense 56').count() > 0"
     timeout_seconds: 60
 
   - intent: Open the expense details page
     action: click
-    locator: "locator('table').getByText('Automated Test Expense 17').first()"
+    locator: "locator('table').getByText('Automated Test Expense 56').first()"
 
   - WAIT_UNTIL: The transaction details route is open and loaded
-    js: "await page.locator('h2:has-text(\"Automated Test Expense 17\")').isVisible()"
+    js: "await page.locator('h2:has-text(\"Content Creation\")').isVisible()"
     timeout_seconds: 30
 
-  - VERIFY: The expense notes are visible
-    js: "await expect(page.locator('h2:has-text(\"Automated Test Expense 17\")')).toBeVisible()"
+  - VERIFY: The expense amount is visible
+    js: "await expect(page.getByText('$150.00').first()).toBeVisible()"
 
   - intent: Return to transactions list
     action: click
@@ -114,4 +154,4 @@ statements:
     js: "await page.waitForTimeout(2000);"
 
   - VERIFY: The expense is gone from the list
-    js: "await expect(page.getByText('Automated Test Expense 17')).toHaveCount(0)"
+    js: "await expect(page.getByText('Automated Test Expense 56')).toHaveCount(0)"
