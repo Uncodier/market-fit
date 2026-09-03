@@ -83,7 +83,7 @@ export function ContentPublishDialog({
         }
         return id;
       }))).filter(n => 
-        !['facebook', 'twitter', 'instagram', 'linkedin', 'youtube', 'tiktok', 'pinterest', 'github', 'reddit', 'medium', 'x'].includes(n.toLowerCase())
+        !['facebook', 'twitter', 'instagram', 'linkedin', 'youtube', 'tiktok', 'pinterest', 'github', 'reddit', 'medium', 'x', 'threads', 'bluesky'].includes(n.toLowerCase())
       );
 
       if (validAccounts.length === 0) {

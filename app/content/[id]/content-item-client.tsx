@@ -1541,7 +1541,7 @@ export default function ContentDetailPage(props: { params: Promise<{ id: string 
         const settings = await getSettings(currentSite.id);
         if (settings?.social_media && Array.isArray(settings.social_media)) {
           // Filter to only include the allowed OAuth platforms that are active
-          const allowedPlatforms = ['facebook', 'linkedin', 'tiktok', 'twitter', 'x', 'instagram'];
+          const allowedPlatforms = ['facebook', 'linkedin', 'tiktok', 'twitter', 'x', 'instagram', 'youtube', 'threads', 'pinterest', 'bluesky'];
           const activeSocialMedia = settings.social_media.filter(
             (s: any) => s.isActive && allowedPlatforms.includes(s.platform?.toLowerCase())
           );
@@ -1609,7 +1609,7 @@ export default function ContentDetailPage(props: { params: Promise<{ id: string 
         }
         return id;
       }))).filter(n => 
-        !['facebook', 'twitter', 'instagram', 'linkedin', 'youtube', 'tiktok', 'pinterest', 'github', 'reddit', 'medium', 'x'].includes(n.toLowerCase())
+        !['facebook', 'twitter', 'instagram', 'linkedin', 'youtube', 'tiktok', 'pinterest', 'github', 'reddit', 'medium', 'x', 'threads', 'bluesky'].includes(n.toLowerCase())
       );
 
       if (validAccounts.length === 0) {

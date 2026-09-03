@@ -17,7 +17,9 @@ import { Badge } from "../ui/badge"
 import { PlusCircle, Trash2 } from "../ui/icons"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select"
 import { useCallback, useMemo, useState, useEffect } from "react"
+import { toast } from "sonner"
 import { EmptyCard } from "../ui/empty-card"
+import { BlueskyConnectForm } from "./BlueskyConnectForm"
 import { 
   SocialIcon,
   FacebookIcon,
@@ -34,6 +36,7 @@ import {
   TelegramIcon,
   DiscordIcon,
   ThreadsIcon,
+  BlueskyIcon,
   GlobeIcon
 } from "../ui/social-icons"
 
@@ -46,6 +49,7 @@ const SOCIAL_PLATFORMS = [
   { value: "youtube", label: "YouTube" },
   { value: "tiktok", label: "TikTok" },
   { value: "pinterest", label: "Pinterest" },
+  { value: "bluesky", label: "Bluesky" },
   { value: "github", label: "GitHub" },
   { value: "reddit", label: "Reddit" },
   { value: "medium", label: "Medium" },
@@ -64,10 +68,16 @@ const OAUTH_CONNECT_PLATFORM_VALUES = new Set([
   "x",
   "youtube",
   "tiktok",
+  "linkedin",
+  "pinterest"
 ])
 
 function isOAuthConnectablePlatform(platform: string | undefined): boolean {
   return !!platform && OAUTH_CONNECT_PLATFORM_VALUES.has(platform)
+}
+
+function isConnectablePlatform(platform: string | undefined): boolean {
+  return isOAuthConnectablePlatform(platform) || platform === "bluesky"
 }
 
 // Country codes for phone fields
@@ -153,6 +163,7 @@ const getPlatformIcon = (platform: string | undefined, size: number = 16) => {
     case 'youtube': return <YouTubeIcon size={size} />;
     case 'tiktok': return <TikTokIcon size={size} />;
     case 'pinterest': return <PinterestIcon size={size} />;
+    case 'bluesky': return <BlueskyIcon size={size} />;
     case 'github': return <GitHubIcon size={size} />;
     case 'reddit': return <RedditIcon size={size} />;
     case 'medium': return <MediumIcon size={size} />;
@@ -232,7 +243,7 @@ export function SocialSection({ active, onSave, siteId }: SocialSectionProps) {
       // 3-leg flow for Facebook and LinkedIn: OAuth redirects to OUR callback (/api/social/callback/:network).
       // We exchange code+state with outstand.so for a session token, then redirect to /settings/social_network.
       // Other networks: outstand.so receives the OAuth callback and redirects to /settings/social_network with session.
-      const is3Leg = social.platform === 'facebook' || social.platform === 'instagram' || social.platform === 'threads' || social.platform === 'twitter' || social.platform === 'x' || social.platform === 'youtube' || social.platform === 'tiktok'
+      const is3Leg = social.platform === 'facebook' || social.platform === 'instagram' || social.platform === 'threads' || social.platform === 'twitter' || social.platform === 'x' || social.platform === 'youtube' || social.platform === 'tiktok' || social.platform === 'linkedin' || social.platform === 'pinterest'
       const redirectUri = is3Leg
         ? `${redirectOrigin}/api/social/callback/${social.platform}?siteId=${encodeURIComponent(siteId)}`
         : `${redirectOrigin}/settings/social_network?siteId=${siteId}&network=${social.platform}${isDevelopment ? `&returnTo=${encodeURIComponent(window.location.origin)}` : ''}`
@@ -418,7 +429,7 @@ export function SocialSection({ active, onSave, siteId }: SocialSectionProps) {
                                       {getPlatformIcon(platform.value, 16)}
                                       <span className="truncate">{platform.label}</span>
                                     </div>
-                                    {isOAuthConnectablePlatform(platform.value) && (
+                                    {isConnectablePlatform(platform.value) && (
                                       <Badge
                                         variant="secondary"
                                         className="text-[10px] font-medium shrink-0 bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300 border-0"
@@ -474,6 +485,18 @@ export function SocialSection({ active, onSave, siteId }: SocialSectionProps) {
                           Reconnect
                         </Button>
                       )}
+                      {social.platform === "bluesky" && siteId && (
+                        <Button
+                          variant="outline"
+                          type="button"
+                          onClick={() => {
+                            form.setValue(`social_media.${index}.isActive`, false)
+                          }}
+                          className="whitespace-nowrap"
+                        >
+                          Reconnect
+                        </Button>
+                      )}
                     </div>
                   )}
 
@@ -515,8 +538,19 @@ export function SocialSection({ active, onSave, siteId }: SocialSectionProps) {
                     </div>
                   )}
                   
+                  {/* Bluesky App Password Connect */}
+                  {hasPlatform && !isActive && social.platform === 'bluesky' && siteId && (
+                    <BlueskyConnectForm
+                      siteId={siteId}
+                      onConnected={() => {
+                        toast.success("Bluesky connected successfully")
+                        window.location.reload()
+                      }}
+                    />
+                  )}
+
                   {/* Manual fields only when the account is not OAuth-linked (username/URL come from the provider when linked) */}
-                  {hasPlatform && !isActive && (
+                  {hasPlatform && !isActive && !isOAuthConnectablePlatform(social.platform) && social.platform !== 'bluesky' && (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
                        {getPlatformFields(social.platform).fields.includes("url") && (
                          <FormField

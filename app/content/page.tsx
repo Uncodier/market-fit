@@ -134,7 +134,8 @@ export default function ContentPage() {
         try {
           const settings = await getSettings(currentSite.id)
           if (settings?.social_media) {
-            setSocialMedia(settings.social_media.filter((s: any) => s.isActive && (s.platform === 'facebook' || s.platform === 'linkedin' || s.platform === 'tiktok' || s.platform === 'twitter' || s.platform === 'x' || s.platform === 'instagram')))
+            const allowedPlatforms = ['facebook', 'linkedin', 'tiktok', 'twitter', 'x', 'instagram', 'youtube', 'threads', 'pinterest', 'bluesky']
+            setSocialMedia(settings.social_media.filter((s: any) => s.isActive && allowedPlatforms.includes(s.platform?.toLowerCase())))
           }
         } catch (e) {
           console.error('Failed to load social media settings', e)

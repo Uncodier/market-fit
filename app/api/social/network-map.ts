@@ -10,6 +10,8 @@ export const CALLBACK_NETWORK_TO_OUTSTAND: Record<string, string> = {
   twitter: "x",
   x: "x",
   youtube: "youtube",
+  pinterest: "pinterest",
+  bluesky: "bluesky",
 }
 
 export function getOutstandNetworkFromPath(pathNetwork: string | undefined): string | null {

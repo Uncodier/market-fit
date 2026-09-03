@@ -31,12 +31,12 @@ statements:
     value: "Automated Expense Campaign"
 
   - WAIT_UNTIL: The campaign dropdown options are visible
-    js: "await page.getByText(/Use \"Automated Expense Campaign\"|Usar \"Automated Expense Campaign\"/i).count() > 0"
+    js: "await page.getByText('Automated Expense Campaign').count() > 0"
     timeout_seconds: 10
 
   - intent: Create the campaign on the fly with Use
     action: click
-    locator: "getByText(/Use \"Automated Expense Campaign\"|Usar \"Automated Expense Campaign\"/i).first()"
+    locator: "getByText('Automated Expense Campaign').first()"
     
   - description: Wait for the campaign to be selected
     js: "await page.waitForTimeout(2000).catch(() => {})"
