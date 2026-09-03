@@ -23,18 +23,19 @@ function HighlightMedia({ item }: { item: PdpSpecHighlight }) {
   }
 
   return (
-    <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-      <CheckCircle className="w-5 h-5 text-primary" />
+    <div className="flex items-center justify-center shrink-0">
+      <CheckCircle className="w-6 h-6 text-muted-foreground" />
     </div>
   )
 }
 
 function HighlightCard({ item }: { item: PdpSpecHighlight }) {
+  const hasMedia = !!item.image_url;
   const body = (
-    <div className="flex w-full items-center gap-3 sm:gap-4 p-3 sm:p-4 rounded-2xl bg-muted/30 border">
+    <div className={`flex w-full items-center gap-4 ${hasMedia ? 'p-3 sm:p-4 rounded-2xl bg-muted/30 border' : 'py-2 sm:py-3'}`}>
       <HighlightMedia item={item} />
       <div className="min-w-0 flex-1">
-        <div className="font-semibold text-sm sm:text-base text-foreground leading-snug">
+        <div className={`text-sm sm:text-base text-foreground font-medium leading-snug ${hasMedia ? 'font-semibold' : ''}`}>
           {item.name}
         </div>
       </div>
@@ -48,7 +49,7 @@ function HighlightCard({ item }: { item: PdpSpecHighlight }) {
       href={item.video_url}
       target="_blank"
       rel="noopener noreferrer"
-      className="block hover:opacity-90 transition-opacity"
+      className="block hover:opacity-80 transition-opacity"
     >
       {body}
     </a>
@@ -60,16 +61,21 @@ export function PdpSpecGroups({ groups }: { groups: PdpSpecGroup[] }) {
 
   return (
     <div className="space-y-8 sm:space-y-10">
-      {groups.map((group) => (
-        <section key={group.title}>
-          <h3 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-5">{group.title}</h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {group.items.map((item, index) => (
-              <HighlightCard key={item.id || `${group.title}-${item.name}-${index}`} item={item} />
-            ))}
-          </div>
-        </section>
-      ))}
+      {groups.map((group) => {
+        // Si al menos un item del grupo tiene imagen, usamos el layout de cards/grid original
+        const hasAnyMedia = group.items.some(item => !!item.image_url);
+        
+        return (
+          <section key={group.title}>
+            <h3 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6">{group.title}</h3>
+            <div className={`grid grid-cols-1 gap-x-6 sm:gap-x-8 ${hasAnyMedia ? 'sm:grid-cols-2 gap-y-3' : 'sm:grid-cols-2 gap-y-2 sm:gap-y-4'}`}>
+              {group.items.map((item, index) => (
+                <HighlightCard key={item.id || `${group.title}-${item.name}-${index}`} item={item} />
+              ))}
+            </div>
+          </section>
+        );
+      })}
     </div>
   )
 }

@@ -40,7 +40,7 @@ statements:
   - intent: Fill the expense notes used as description
     action: fill
     locator: "locator('textarea#notes')"
-    value: "Automated Test Expense 16"
+    value: "Automated Test Expense 17"
 
   - intent: Type a new campaign name in the dependency selector
     action: fill
@@ -79,19 +79,19 @@ statements:
       await page.waitForTimeout(5000);
     
   - WAIT_UNTIL: The expense appears in the list
-    js: "await page.getByText('Automated Test Expense 16').count() > 0"
+    js: "await page.getByText('Automated Test Expense 17').count() > 0"
     timeout_seconds: 60
 
   - intent: Open the expense details page
     action: click
-    locator: "locator('table').getByText('Automated Test Expense 16').first()"
+    locator: "locator('table').getByText('Automated Test Expense 17').first()"
 
   - WAIT_UNTIL: The transaction details route is open and loaded
-    js: "await page.locator('h2:has-text(\"Automated Test Expense 16\")').isVisible()"
+    js: "await page.locator('h2:has-text(\"Automated Test Expense 17\")').isVisible()"
     timeout_seconds: 30
 
   - VERIFY: The expense notes are visible
-    js: "await expect(page.locator('h2:has-text(\"Automated Test Expense 16\")')).toBeVisible()"
+    js: "await expect(page.locator('h2:has-text(\"Automated Test Expense 17\")')).toBeVisible()"
 
   - intent: Return to transactions list
     action: click
@@ -99,29 +99,6 @@ statements:
 
   - WAIT_UNTIL: The user is back on the transactions list
     js: "await page.getByRole('button', { name: 'Add Expense' }).count() > 0"
-    timeout_seconds: 30
-
-  - WAIT_UNTIL: The create expense modal closes completely
-    js: "await page.getByRole('dialog').count() === 0"
-    timeout_seconds: 60
-
-  - description: Wait for save response
-    js: |
-      await page.waitForResponse(response => 
-        response.url().includes('/api/') && response.status() === 200, 
-        { timeout: 15000 }
-      ).catch(() => {});
-      await page.waitForTimeout(4000);
-
-  - description: Ensure transactions are visible and data is updated
-    js: |
-      await page.goto('/transactions');
-      await page.waitForLoadState('networkidle');
-      await page.reload();
-      await page.waitForTimeout(5000);
-    
-  - WAIT_UNTIL: The new expense appears in the list
-    js: "await page.getByText('Automated Test Expense 16').count() > 0"
     timeout_seconds: 30
 
   - description: Setup dialog handler for deletion and confirm
@@ -137,4 +114,4 @@ statements:
     js: "await page.waitForTimeout(2000);"
 
   - VERIFY: The expense is gone from the list
-    js: "await expect(page.getByText('Automated Test Expense 16')).toHaveCount(0)"
+    js: "await expect(page.getByText('Automated Test Expense 17')).toHaveCount(0)"
