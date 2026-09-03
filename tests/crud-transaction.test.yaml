@@ -31,20 +31,18 @@ statements:
     value: "Automated Expense Campaign"
 
   - WAIT_UNTIL: The campaign dropdown options are visible
-    js: "await page.locator('div[role=\"option\"]:has-text(\"Automated Expense Campaign\")').count() > 0"
+    js: "await page.getByText(/Use \"Automated Expense Campaign\"|Usar \"Automated Expense Campaign\"/i).count() > 0"
     timeout_seconds: 10
 
   - intent: Create the campaign on the fly with Use
     action: click
-    locator: "locator('div[role=\"option\"]:has-text(\"Automated Expense Campaign\")').first()"
+    locator: "getByText(/Use \"Automated Expense Campaign\"|Usar \"Automated Expense Campaign\"/i).first()"
     
-  - WAIT_UNTIL: The campaign is selected
+  - description: Wait for the campaign to be selected
     js: "await page.waitForTimeout(2000).catch(() => {})"
-    timeout_seconds: 10
 
-  - WAIT_UNTIL: Click out to unfocus select input
+  - description: Click out to unfocus select input
     js: "await page.locator('body').click()"
-    timeout_seconds: 10
 
   - intent: Save the new expense
     action: click

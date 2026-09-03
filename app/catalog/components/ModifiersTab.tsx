@@ -102,9 +102,9 @@ export function ModifiersTab({ catalogItemId }: { catalogItemId: string }) {
   if (loading) {
     return (
       <SectionCard>
-        <SectionCardContent>
-          <Skeleton className="h-10 w-full" />
-          <Skeleton className="h-20 w-full" />
+        <SectionCardContent className="pt-6 space-y-4">
+          <div className="h-10 bg-muted/50 rounded animate-pulse" />
+          <div className="h-20 bg-muted/50 rounded animate-pulse" />
         </SectionCardContent>
       </SectionCard>
     )

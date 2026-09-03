@@ -52,6 +52,8 @@ import { CatalogItemPricingSection } from "../components/CatalogItemPricingSecti
 import { MarketplaceTab } from "../components/MarketplaceTab"
 import { ChannelsTab } from "../components/ChannelsTab"
 import { ModifiersTab } from "../components/ModifiersTab"
+import { StorefrontDisplayCard } from "../components/StorefrontDisplayCard"
+import { ProductInventoryCard } from "../components/ProductInventoryCard"
 
 export default function CatalogItemDetail(props: { params: Promise<{ id: string }> }) {
   const params = React.use(props.params)
@@ -371,6 +373,12 @@ export default function CatalogItemDetail(props: { params: Promise<{ id: string 
                 </ActionFooter>
               </SectionCard>
 
+              <StorefrontDisplayCard
+                formData={formData}
+                setFormData={setFormData}
+                handleSave={handleSave}
+                saving={saving} />
+
               {item && <ProductTaxesCard catalogItemId={item.id} />}
               {item && (
                 <CatalogItemDetailsMarketingCard
@@ -492,10 +500,7 @@ export default function CatalogItemDetail(props: { params: Promise<{ id: string 
 
           <TabsContent value="inventory" className="m-0 border-0 p-4 md:p-6 w-full focus-visible:outline-none">
             <div className="mx-auto max-w-[800px]">
-              <EmptyCard
-                icon={<Activity className="h-12 w-12 text-muted-foreground/50" />}
-                title={t('catalog.tabs.inventoryTracking') || "Inventory Tracking (Coming Soon)"}
-                description={t('catalog.tabs.inventoryTrackingDesc') || "View stock levels and movement history across locations."} />
+              {item && <ProductInventoryCard catalogItemId={item.id} />}
             </div>
           </TabsContent>
 

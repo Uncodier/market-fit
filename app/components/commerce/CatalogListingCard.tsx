@@ -15,11 +15,16 @@ import {
   getListingPriceSuffix
 } from "@/app/catalog/product-details"
 
+import { StorefrontListingMerch } from "@/app/components/commerce/StorefrontListingMerch"
+
 interface CatalogListingCardProps {
   item: CatalogItem & { 
     site?: { id: string; name: string; logo_url?: string | null };
     _shop?: {
       availableQty?: number
+      nextSlotAvailable?: number
+      buyers?: { id: string; name: string | null; avatar_url: string | null }[]
+      buyerCount?: number
       sellable?: boolean
       categoryName?: string
       hasVariants?: boolean
@@ -220,15 +225,12 @@ export const CatalogListingCard = React.memo(function CatalogListingCard({
           </p>
         )}
 
-        {!showSeller &&
-          item._shop?.availableQty !== undefined &&
-          item._shop.availableQty <= 5 &&
-          item._shop.availableQty > 0 && (
-            <span className="mt-1.5 text-xs font-medium text-destructive">
-              {t('shop.onlyLeft', { count: item._shop.availableQty }) ||
-                `Only ${item._shop.availableQty} left`}
-            </span>
-          )}
+        <StorefrontListingMerch
+          item={item}
+          shop={item._shop}
+          showSeller={showSeller}
+          t={t}
+        />
       </Link>
     </div>
   )

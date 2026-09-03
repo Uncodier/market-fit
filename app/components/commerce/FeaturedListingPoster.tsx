@@ -15,9 +15,18 @@ import {
 import type { PromoBadge } from "@/app/promotions/promotion-merchandising"
 import { promoBadgeLabel } from "@/app/promotions/promotion-merchandising"
 
+import { StorefrontListingMerch } from "@/app/components/commerce/StorefrontListingMerch"
+
 type FeaturedItem = CatalogItem & {
   site?: { id: string; name: string; logo_url?: string | null }
-  _shop?: { availableQty?: number; sellable?: boolean; categoryName?: string }
+  _shop?: { 
+    availableQty?: number
+    nextSlotAvailable?: number
+    buyers?: { id: string; name: string | null; avatar_url: string | null }[]
+    buyerCount?: number
+    sellable?: boolean
+    categoryName?: string
+  }
 }
 
 function formatListingPrice(
@@ -209,15 +218,14 @@ export const FeaturedListingPoster = React.memo(function FeaturedListingPoster({
                 </span>
               )}
             </div>
-            {!showSeller &&
-              item._shop?.availableQty !== undefined &&
-              item._shop.availableQty <= 5 &&
-              item._shop.availableQty > 0 && (
-                <span className="mt-1.5 inline-block rounded-md bg-red-500/20 px-2 py-0.5 text-xs font-medium text-red-100">
-                  {t("shop.onlyLeft", { count: item._shop.availableQty }) ||
-                    `Only ${item._shop.availableQty} left`}
-                </span>
-              )}
+            
+            <StorefrontListingMerch
+              item={item}
+              shop={item._shop}
+              showSeller={showSeller}
+              t={t}
+              tone="onDark"
+            />
           </div>
 
           <div className="pointer-events-auto relative z-20 flex w-full shrink-0 justify-stretch sm:w-auto sm:justify-end">

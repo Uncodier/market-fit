@@ -137,4 +137,28 @@ describe("CheckoutIdentityPicker", () => {
       expect(toastSuccess).toHaveBeenCalledWith("checkout.identity.signedIn")
     })
   })
+
+  it("accepts a 6-digit autofill code on the first input", async () => {
+    signInWithOtpMock.mockResolvedValue({ error: null })
+    renderPicker({ requiresAuth: true })
+    
+    const email = screen.getByPlaceholderText("jane@example.com")
+    fireEvent.change(email, { target: { value: "buyer@example.com" } })
+    fireEvent.click(screen.getByRole("button", { name: "checkout.identity.sendCode" }))
+
+    await screen.findByText("checkout.identity.verification")
+
+    const inputs = screen.getAllByRole("textbox")
+    fireEvent.change(inputs[0], { target: { value: "654321" } })
+
+    const verifyBtn = screen.getByRole("button", { name: "checkout.identity.verify" })
+    expect(verifyBtn).not.toBeDisabled()
+    
+    verifyOtpMock.mockResolvedValueOnce({ data: { session: { user: { email: "buyer@example.com" } } }, error: null })
+    fireEvent.click(verifyBtn)
+
+    await waitFor(() => {
+      expect(verifyOtpMock).toHaveBeenCalledWith({ email: "buyer@example.com", token: "654321", type: "email" })
+    })
+  })
 })

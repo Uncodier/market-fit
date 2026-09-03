@@ -117,7 +117,7 @@
     "remark-breaks": "4.0.0",
     "remark-gfm": "4.0.1",
     "shadcn-ui": "^0.9.4",
-    "shiplightai": "^0.1.102",
+    "shiplightai": "0.1.103",
     "sonner": "^2.0.1",
     "stream-browserify": "3.0.0",
     "stripe": "18.2.1",

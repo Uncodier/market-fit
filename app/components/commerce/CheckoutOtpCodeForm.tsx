@@ -31,6 +31,17 @@ export function CheckoutOtpCodeForm({
   onVerify,
   t,
 }: CheckoutOtpCodeFormProps) {
+  const applyDigits = (raw: string) => {
+    const pasted = raw.replace(/[^0-9]/g, "").substring(0, 6)
+    if (pasted) {
+      setOtpCode(pasted.padEnd(6, " "))
+      const focusIndex = Math.min(pasted.length - 1, 5)
+      setTimeout(() => {
+        document.getElementById(`otp-input-${focusIndex}`)?.focus()
+      }, 10)
+    }
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center mb-2">
@@ -69,16 +80,22 @@ export function CheckoutOtpCodeForm({
                 <Input
                   key={index}
                   id={`otp-input-${index}`}
+                  name={index === 0 ? "one-time-code" : undefined}
                   type="text"
                   inputMode="numeric"
                   placeholder="-"
                   value={char}
                   onChange={(e) => {
                     const val = e.target.value.replace(/[^0-9]/g, "")
-                    const chars = otpCode.padEnd(6, " ").split("")
+                    
+                    if (val.length > 1) {
+                      applyDigits(val)
+                      return
+                    }
 
+                    const chars = otpCode.padEnd(6, " ").split("")
                     if (val) {
-                      chars[index] = val.slice(-1)
+                      chars[index] = val
                       setOtpCode(chars.join(""))
                       if (index < 5) {
                         document.getElementById(`otp-input-${index + 1}`)?.focus()
@@ -99,22 +116,13 @@ export function CheckoutOtpCodeForm({
                   }}
                   onPaste={(e) => {
                     e.preventDefault()
-                    const pasted = e.clipboardData
-                      .getData("text")
-                      .replace(/[^0-9]/g, "")
-                      .substring(0, 6)
-                    if (pasted) {
-                      setOtpCode(pasted.padEnd(6, " "))
-                      const focusIndex = Math.min(pasted.length - 1, 5)
-                      setTimeout(() => {
-                        document.getElementById(`otp-input-${focusIndex}`)?.focus()
-                      }, 10)
-                    }
+                    applyDigits(e.clipboardData.getData("text"))
                   }}
                   className="h-12 w-full rounded-xl text-center text-lg font-mono p-0"
                   disabled={loading}
                   autoComplete={index === 0 ? "one-time-code" : "off"}
-                  maxLength={1}
+                  maxLength={index === 0 ? 6 : 1}
+                  autoFocus={index === 0}
                 />
               )
             })}

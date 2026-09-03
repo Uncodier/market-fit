@@ -1,6 +1,5 @@
 # Draft spec for reserving manually from Reservations page
 goal: Create a reservation manually from the back office
-base_url: "http://localhost:3000"
 
 statements:
   - URL: "/reservations"
@@ -19,33 +18,41 @@ statements:
 
   - intent: Open service select dropdown
     action: click
-    locator: "getByRole('combobox').first()"
+    locator: "getByPlaceholder(/Select a reservable service/i)"
 
   - intent: Select the Reservable Item
     action: fill
-    locator: "getByPlaceholder(/Search|Buscar/i)"
+    locator: "getByPlaceholder(/Select a reservable service/i)"
     value: "Reservable Item Agent"
     
+  - WAIT_UNTIL: Wait for Reservable Item Agent option
+    js: "await page.locator('div[role=\"option\"]').filter({ hasText: 'Reservable Item Agent' }).count() > 0"
+    timeout_seconds: 5
+
   - intent: Click item
     action: click
-    locator: "getByRole('option', { name: 'Reservable Item Agent' }).first()"
+    locator: "locator('div[role=\"option\"]').filter({ hasText: 'Reservable Item Agent' }).first()"
 
   - intent: Open customer dropdown
     action: click
-    locator: "getByRole('combobox').nth(1)"
+    locator: "getByPlaceholder(/Select customer/i)"
 
   - intent: Search for customer
     action: fill
-    locator: "getByPlaceholder(/Search|Buscar/i)"
+    locator: "getByPlaceholder(/Select customer/i)"
     value: "Admin"
+
+  - WAIT_UNTIL: Wait for Admin customer option
+    js: "await page.locator('div[role=\"option\"]').filter({ hasText: 'Admin' }).count() > 0"
+    timeout_seconds: 5
 
   - intent: Select customer
     action: click
-    locator: "getByRole('option').first()"
+    locator: "locator('div[role=\"option\"]').filter({ hasText: 'Admin' }).first()"
 
   - description: Select an available date
     js: |
-      const btn = await page.locator('button:not([disabled])').filter({ hasText: /^([1-9]|[12][0-9]|3[01])$/ }).first();
+      const btn = await page.locator('.rdp-button_reset.rdp-button:not([disabled])').filter({ hasText: /^([1-9]|[12][0-9]|3[01])$/ }).first();
       await btn.click();
       
   - WAIT_UNTIL: Wait for time slots to load

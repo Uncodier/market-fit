@@ -1,6 +1,5 @@
 # Draft spec for reserving in Shop
 goal: Purchase and reserve the item through the Shop storefront
-base_url: "http://localhost:3000"
 
 statements:
   - URL: "/shop/demo-site"

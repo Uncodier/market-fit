@@ -228,7 +228,7 @@ export async function getAvailableSlotsForItem(
   if (!schedules || schedules.length === 0) return []
 
   const dateStrs = eachDateString(startDateStr, endDateStr)
-  const result: { start: string; end: string; available: number; timezone: string }[] = []
+  const result: { start: string; end: string; available: number; capacity: number; timezone: string }[] = []
 
   // Pad query window so evening slots near UTC day boundaries are included
   const rangeStart = addDays(parseISO(`${toDateStr(startDateStr)}T00:00:00Z`), -1)
@@ -309,11 +309,13 @@ export async function getAvailableSlotsForItem(
             const existing = result.find(r => r.start === current.toISOString() && r.end === slotEnd.toISOString())
             if (existing) {
               existing.available = Math.max(existing.available, available)
+              existing.capacity = Math.max(existing.capacity, capacity)
             } else {
               result.push({
                 start: current.toISOString(),
                 end: slotEnd.toISOString(),
                 available,
+                capacity,
                 timezone: timeZone,
               })
             }

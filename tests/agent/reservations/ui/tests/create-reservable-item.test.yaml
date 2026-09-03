@@ -1,6 +1,5 @@
 # Draft spec for creating a reservable item
 goal: Create a reservable item in the catalog
-base_url: "http://localhost:3000"
 
 statements:
   - URL: /catalog

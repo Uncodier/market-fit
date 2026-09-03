@@ -3,6 +3,7 @@ import { attachSiteSettings } from "@/app/marketplace/attach-site-settings"
 import { applyChannelPricesToItems } from "@/app/price-lists/apply-channel-prices"
 import { loadVariantListingPreviews } from "@/app/catalog/variant-resolve"
 import { applyStorefrontAvailability } from "@/app/catalog/storefront-availability"
+import { loadStorefrontDisplay } from "@/app/commerce/storefront-display"
 import { NextResponse } from "next/server"
 
 export async function GET(request: Request) {
@@ -59,16 +60,42 @@ export async function GET(request: Request) {
 
     const withSettings = await attachSiteSettings(supabase, data || [])
     const priced = await applyChannelPricesToItems(supabase, withSettings, "marketplace")
-    const variantPreviews = await loadVariantListingPreviews(
-      supabase,
-      priced.map((item) => ({ id: item.id, name: item.name }))
-    )
+    
+    const [variantPreviews, displayMap, inventoryRes] = await Promise.all([
+      loadVariantListingPreviews(
+        supabase,
+        priced.map((item) => ({ id: item.id, name: item.name }))
+      ),
+      loadStorefrontDisplay(supabase, priced),
+      supabase.from("inventory_levels").select("catalog_item_id, quantity").in("catalog_item_id", priced.map(i => i.id))
+    ])
+
+    const inventoryMap = new Map<string, number>();
+    for (const level of inventoryRes.data || []) {
+      inventoryMap.set(
+        level.catalog_item_id,
+        (inventoryMap.get(level.catalog_item_id) || 0) + Number(level.quantity)
+      );
+    }
+
     const enrichedData = priced.map(item => {
       const preview = variantPreviews.get(item.id)
+      const displayData = displayMap.get(item.id)
+      
+      let sellable = true;
+      let availableQty: number | undefined;
+      const policy = (item as any).site?.settings?.commerce?.stock_shortage_policy || "allow";
+
+      if (item.availability_mode === "manual") {
+        sellable = item.availability_status === "available";
+      } else if (item.availability_mode === "inventory") {
+        availableQty = inventoryMap.get(item.id) || 0;
+        sellable = availableQty > 0 || policy !== "block";
+      }
+
       const hasVariants = Boolean(preview?.hasVariants) ||
         Boolean(item.metadata?.variant_axes?.length && item.is_purchasable === false);
 
-      let sellable = (item as any)._shop?.sellable ?? true;
       if (item.is_purchasable === false && !hasVariants) {
         sellable = false;
       }
@@ -80,7 +107,9 @@ export async function GET(request: Request) {
           ...(item as any)._shop,
           hasVariants,
           sellable,
+          availableQty,
           variantLabels: preview?.labels || [],
+          ...(displayData || {})
         },
       }
     })

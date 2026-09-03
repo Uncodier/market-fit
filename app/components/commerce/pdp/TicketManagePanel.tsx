@@ -94,7 +94,7 @@ export function TicketManagePanel({
           )}
         </div>
 
-        <div className="flex flex-col items-center justify-center p-4 bg-white dark:bg-background border rounded-2xl">
+        <div className="flex flex-col items-center justify-center">
           <div ref={qrRef} className="relative bg-white p-3 rounded-xl shadow-sm border mb-3">
             <QRCode
               value={entitlement.metadata?.access_token || entitlement.metadata?.ticket_token || entitlement.id}

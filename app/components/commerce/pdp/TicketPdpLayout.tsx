@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, type ReactNode } from "react"
 import { CatalogItem } from "@/app/types"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { buildPdpGalleryEntries, resolveItemImage } from "@/app/lib/image-utils"
@@ -22,6 +22,8 @@ import { TicketEventMeta } from "./TicketEventMeta"
 import { TicketPurchaseCard } from "./TicketPurchaseCard"
 import { TicketManagePanel } from "./TicketManagePanel"
 import { PdpHeroGallery } from "./PdpHeroGallery"
+import { BuyerAvatarStack } from "@/app/components/commerce/BuyerAvatarStack"
+import { getInventoryDisplayRule } from "@/app/commerce/storefront-display-helpers"
 
 export function TicketPdpLayout({ item, backUrl, experience, catalogSize = 0 }: { item: CatalogItem & { _shop?: any }, backUrl: string, experience?: PdpExperience, catalogSize?: number }) {
   const { t } = useLocalization()
@@ -114,7 +116,7 @@ export function TicketPdpLayout({ item, backUrl, experience, catalogSize = 0 }: 
             venueAddress={venueLocation.address}
             venueCity={venueLocation.city}
           />
-          
+
           {artists.length > 0 && (
             <div className="mt-8 flex flex-wrap gap-4">
               {artists.map(artist => (
@@ -218,16 +220,20 @@ export function TicketPdpLayout({ item, backUrl, experience, catalogSize = 0 }: 
 
           {/* Sticky purchase rail */}
           <div className="lg:col-span-1 order-1 lg:order-2">
-            {activeEntitlement ? (
-              <TicketManagePanel
-                entitlement={activeEntitlement}
-                item={item}
-                event={event}
-                venueLocation={venueLocation}
-                attributes={attributes}
-              />
-            ) : (
-              <div className="hidden lg:block lg:sticky lg:top-32">
+            <div className="lg:sticky lg:top-32 flex flex-col gap-4">
+              <div className="hidden lg:block">
+                <TicketPdpMerch item={item} t={t} />
+              </div>
+              
+              {activeEntitlement ? (
+                <TicketManagePanel
+                  entitlement={activeEntitlement}
+                  item={item}
+                  event={event}
+                  venueLocation={venueLocation}
+                  attributes={attributes}
+                />
+              ) : (
                 <TicketPurchaseCard
                   price={item.target_sale_price || 0}
                   currency={item.currency || 'USD'}
@@ -242,8 +248,8 @@ export function TicketPdpLayout({ item, backUrl, experience, catalogSize = 0 }: 
                   onViewTicket={() => router.push(`/buyer/ticket/${ownedEntitlement?.id}`)}
                   ownedEntitlement={ownedEntitlement}
                 />
-              </div>
-            )}
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -260,6 +266,50 @@ export function TicketPdpLayout({ item, backUrl, experience, catalogSize = 0 }: 
             presentation="mobile"
           />
         </PdpMobileBuyBar>
+      )}
+    </div>
+  )
+}
+
+function TicketPdpMerch({
+  item,
+  t,
+}: {
+  item: CatalogItem & { _shop?: any }
+  t: (key: string) => string
+}) {
+  const shop = item._shop || {}
+  const rule = getInventoryDisplayRule(item, shop)
+  const hasBuyers = Boolean(item.metadata?.show_buyers && shop.buyers?.length)
+
+  let inventoryLine: ReactNode = null
+  if (rule.type === "spots_left") {
+    inventoryLine = (
+      <span className={`w-fit inline-flex items-center text-sm ${rule.isUrgent ? "font-semibold text-destructive" : "font-medium text-muted-foreground"}`}>
+        {rule.count} {t("pdp.spotsLeftNextSlot") || "spots left in the next slot"}
+      </span>
+    )
+  } else if (rule.type === "only_left") {
+    inventoryLine = (
+      <span className={`w-fit inline-flex items-center text-sm ${rule.isUrgent ? "font-semibold text-destructive" : "font-medium text-muted-foreground"}`}>
+        {t("pdp.onlyUnitsLeft") || "Only"} {rule.count}{" "}
+        {t("pdp.ticketsLeft") || "tickets left"}
+      </span>
+    )
+  }
+
+  if (!inventoryLine && !hasBuyers) return null
+
+  return (
+    <div className="flex flex-col gap-2 mb-2">
+      {inventoryLine}
+      {hasBuyers && (
+        <div className="flex items-center gap-2">
+          <BuyerAvatarStack buyers={shop.buyers} size="md" totalCount={shop.buyerCount} />
+          <span className="text-sm font-medium text-muted-foreground">
+            {shop.buyerCount} {t("pdp.going") || "going"}
+          </span>
+        </div>
       )}
     </div>
   )

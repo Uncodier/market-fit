@@ -5,6 +5,7 @@ import { mergeParentIntoCatalogItem } from "@/app/catalog/product-details";
 import { resolveVariantAxesForDisplay } from "@/app/catalog/variant-resolve";
 import { loadChannelPriceMap } from "@/app/price-lists/apply-channel-prices";
 import { applyStorefrontAvailability } from "@/app/catalog/storefront-availability";
+import { loadStorefrontDisplay } from "@/app/commerce/storefront-display";
 
 const PDP_REVALIDATE_SECONDS = 60
 
@@ -157,6 +158,21 @@ async function loadPdpCatalogItem(itemId: string, options?: PdpLoadOptions) {
     : item.category?.name
   const siteDescription = siteRow?.description || null
 
+  const displayMap = await loadStorefrontDisplay(supabase, [item, ...children]);
+  const parentDisplay = displayMap.get(item.id);
+
+  // We should also attach display data to children? The UI only reads from the top-level _shop mostly,
+  // but if children need it, we'll map them.
+  const childrenWithDisplay = children.map(c => {
+    return {
+      ...c,
+      _shop: {
+        ...(c as any)._shop,
+        ...(displayMap.get(c.id) || {})
+      }
+    }
+  })
+
   const withSpecs = {
     ...item,
     metadata: {
@@ -178,8 +194,9 @@ async function loadPdpCatalogItem(itemId: string, options?: PdpLoadOptions) {
       siteDescription,
       sellable: hasVariants ? false : sellable,
       availableQty,
-      children,
+      children: childrenWithDisplay,
       hasVariants,
+      ...(parentDisplay || {}),
     }
   };
 

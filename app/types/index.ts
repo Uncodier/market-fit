@@ -721,6 +721,8 @@ export interface CatalogItemMetadata {
   shipping_cost?: number | null;
   shipping_cost_mode?: 'extra' | 'covers_order';
   reservation_mode?: 'parent' | 'override' | 'independent';
+  show_available_inventory?: boolean;
+  show_buyers?: boolean;
 }
 
 /** Lightweight catalog link for list/table relation chips */

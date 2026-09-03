@@ -7,6 +7,7 @@ export interface InventoryLevelWithCatalog extends InventoryLevel {
 export interface InventoryParams {
   siteId: string;
   locationId?: string;
+  catalogItemId?: string;
   q?: string;
   page?: number;
   pageSize?: number;

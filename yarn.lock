@@ -9277,10 +9277,10 @@ shebang-regex@^3.0.0:
   resolved "https://registry.npmjs.org/shebang-regex/-/shebang-regex-3.0.0.tgz"
   integrity sha512-7++dFhtcx3353uBaq8DDR4NuxBetBzC7ZQOhmTQInHEd6bSrXdiEyzCvG07Z44UYdLShWUyXt5M/yhz8ekcb1A==
 
-shiplightai@^0.1.102:
-  version "0.1.102"
-  resolved "https://registry.npmjs.org/shiplightai/-/shiplightai-0.1.102.tgz"
-  integrity sha512-Wwv7qCPxIg9QZoL9br3sM+yQKkf86Kh1HvghbYklJZkA7neRnlyR7Y4cp9ckQuruRKlYQk4kDMlO4L1QcuUl3w==
+shiplightai@0.1.103:
+  version "0.1.103"
+  resolved "https://registry.npmjs.org/shiplightai/-/shiplightai-0.1.103.tgz"
+  integrity sha512-TivMBMFCzJpOiQh7nj25VsaIwinbIIiAHJe1kjcfaE+isB1jJP/LR86JuHnAdWwmclREB73AbQ4NhETz9QEPCw==
   dependencies:
     "@ai-sdk/anthropic" "^4.0.24"
     "@ai-sdk/google" "^4.0.28"

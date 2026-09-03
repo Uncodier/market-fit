@@ -1,6 +1,5 @@
 # Draft spec for reserving in POS
 goal: Add the reservable item to POS cart and checkout
-base_url: "http://localhost:3000"
 
 statements:
   - URL: /pos
@@ -19,19 +18,23 @@ statements:
 
   - intent: Select customer
     action: click
-    locator: "getByRole('combobox').first()"
+    locator: "getByPlaceholder('Select a customer')"
 
-  - intent: Click create new customer option
+  - intent: Type new customer name
     action: fill
-    locator: "getByPlaceholder(/Search by name|Buscar/i)"
+    locator: "getByPlaceholder('Select a customer')"
     value: "POS Reservator"
 
-  - intent: Click create option
+  - WAIT_UNTIL: Wait for create option to appear
+    js: "await page.locator('div[role=\"option\"]').filter({ hasText: 'POS Reservator' }).count() > 0"
+    timeout_seconds: 10
+
+  - intent: Click create new customer option
     action: click
-    locator: "getByText(/Create \"POS Reservator\"|Crear \"POS Reservator\"/i)"
+    locator: "locator('div[role=\"option\"]').filter({ hasText: 'POS Reservator' }).first()"
 
   - WAIT_UNTIL: Customer details dialog opens
-    js: "await page.getByText(/New Lead|Nuevo/).count() > 0"
+    js: "await page.locator('.fixed.inset-0.z-\\\\[1000000\\\\]').count() > 0 && await page.getByText(/New Lead|Nuevo/).count() > 0"
 
   - intent: Fill customer email
     action: fill
@@ -43,12 +46,12 @@ statements:
     locator: "getByRole('button', { name: /Save|Guardar/i })"
 
   - WAIT_UNTIL: Wait for details dialog to close
-    js: "await page.getByText(/New Lead|Nuevo/).count() === 0"
+    js: "await page.locator('.fixed.inset-0.z-\\\\[1000000\\\\]').count() === 0"
     timeout_seconds: 5
 
   - description: Select an available date
     js: |
-      const btn = await page.locator('button:not([disabled])').filter({ hasText: /^([1-9]|[12][0-9]|3[01])$/ }).first();
+      const btn = await page.locator('.rdp-button_reset.rdp-button:not([disabled])').filter({ hasText: /^([1-9]|[12][0-9]|3[01])$/ }).first();
       await btn.click();
 
   - WAIT_UNTIL: Wait for time slots to load

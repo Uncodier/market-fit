@@ -34,6 +34,9 @@ import {
   isDynamicPricedItem,
 } from "@/app/catalog/dynamic-pricing"
 
+import { BuyerAvatarStack } from "@/app/components/commerce/BuyerAvatarStack"
+import { getInventoryDisplayRule } from "@/app/commerce/storefront-display-helpers"
+
 export function ServicePdpLayout({
   item,
   backUrl,
@@ -221,6 +224,7 @@ export function ServicePdpLayout({
           {!isReservationExperience && (
             <div className="mt-4 lg:hidden">
               <PdpPriceBlock price={displayPrice} currency={item.currency || "USD"} />
+              <ServicePdpMerch item={item} t={t} />
             </div>
           )}
           {(venueLocation.name || venueLocation.address || venueLocation.city) && (
@@ -239,7 +243,10 @@ export function ServicePdpLayout({
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-12">
           {/* Submit / price card — below form on mobile, right column on desktop */}
-          <div className={`lg:col-span-1 order-2 lg:order-2 ${isReservationExperience ? "order-1 lg:order-2" : ""}`}>
+          <div className={`lg:col-span-1 order-2 lg:order-2 flex flex-col gap-4 ${isReservationExperience ? "order-1 lg:order-2" : ""}`}>
+            <div className="hidden lg:block">
+              <ServicePdpMerch item={item} t={t} />
+            </div>
             {isReservationExperience ? (
               <ReservationManagePanel
                 reservation={reservation}
@@ -447,5 +454,52 @@ export function ServicePdpLayout({
       )}
     </div>
     </DynamicQuotePdpProvider>
+  )
+}
+
+function ServicePdpMerch({
+  item,
+  t,
+}: {
+  item: CatalogItem & { _shop?: any }
+  t: (key: string) => string
+}) {
+  const shop = item._shop || {}
+  const rule = getInventoryDisplayRule(item, shop)
+  const hasBuyers = Boolean(item.metadata?.show_buyers && shop.buyers?.length)
+
+  let inventoryLine: React.ReactNode = null
+  if (rule.type === "spots_left") {
+    inventoryLine = (
+      <span className={`w-fit inline-flex items-center text-sm ${rule.isUrgent ? "font-semibold text-destructive" : "font-medium text-muted-foreground"}`}>
+        {rule.count} {t("pdp.spotsLeftNextSlot") || "spots left in the next slot"}
+      </span>
+    )
+  } else if (rule.type === "only_left") {
+    inventoryLine = (
+      <span className={`w-fit inline-flex items-center text-sm ${rule.isUrgent ? "font-semibold text-destructive" : "font-medium text-muted-foreground"}`}>
+        {t("pdp.onlyUnitsLeft") || "Only"} {rule.count}{" "}
+        {t("pdp.spotsLeft") || "spots left"}
+      </span>
+    )
+  }
+
+  if (!inventoryLine && !hasBuyers) return null
+
+  return (
+    <div className="flex flex-col gap-2 mb-2">
+      {inventoryLine}
+      {hasBuyers && (
+        <div className="flex items-center gap-2">
+          <BuyerAvatarStack buyers={shop.buyers} size="md" totalCount={shop.buyerCount} />
+          <span className="text-sm font-medium text-muted-foreground">
+            {shop.buyerCount}{" "}
+            {item.is_reservation
+              ? t("pdp.going") || "going"
+              : t("pdp.boughtThis") || "bought this"}
+          </span>
+        </div>
+      )}
+    </div>
   )
 }

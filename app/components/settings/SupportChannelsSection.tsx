@@ -23,6 +23,7 @@ import { v4 as uuidv4 } from "uuid"
 import { apiClient } from "@/app/services/api-client-service"
 import { TelegramChannelSetup } from "./TelegramChannelSetup"
 import { EmailChannelSetup } from "./EmailChannelSetup"
+import { useZavuInvitationSync } from "./use-zavu-invitation-sync"
 
 const CHANNEL_TYPES = [
   { value: "whatsapp", label: "WhatsApp" },
@@ -57,6 +58,14 @@ export function SupportChannelsSection({ active, siteId, onSave }: SupportChanne
   })
   const connections = form.watch("channels.connections") || []
   const [connectingIndex, setConnectingIndex] = useState<number | null>(null)
+  const [checkingIndex, setCheckingIndex] = useState<number | null>(null)
+  const { checkStatus } = useZavuInvitationSync({
+    connections,
+    enabled: active,
+    update,
+    getValues: form.getValues,
+    onSave,
+  })
 
   const addChannel = useCallback(() => {
     prepend({
@@ -157,7 +166,9 @@ export function SupportChannelsSection({ active, siteId, onSave }: SupportChanne
           const hasType = !!type
           const isConnected = channel.status === "connected"
           const invitationUrl = channel.metadata?.invitation_url
+          const failureReason = channel.metadata?.failure_reason
           const label = channel.name || channelLabel(type)
+          const waitingForAuth = !!invitationUrl && channel.status !== "failed"
 
           return (
             <SectionCard key={field.id} id={`support-channel-${index}`}>
@@ -288,23 +299,25 @@ export function SupportChannelsSection({ active, siteId, onSave }: SupportChanne
                           </div>
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-medium truncate text-orange-800 dark:text-orange-200">
-                              Action Required
+                              {channel.status === "failed" ? "Setup failed" : "Action Required"}
                             </p>
                             <p className="text-sm text-muted-foreground">
-                              {invitationUrl
-                                ? "Finish authentication to connect this channel"
-                                : "Authenticate to connect this account"}
+                              {channel.status === "failed"
+                                ? failureReason || "Authorization did not finish. You can retry the same link."
+                                : waitingForAuth
+                                  ? "Waiting for Meta authorization…"
+                                  : "Authenticate to connect this account"}
                             </p>
                           </div>
                         </div>
                       </div>
                     </SectionCardContent>
-                    <SectionCardFooter>
+                    <SectionCardFooter className="flex flex-wrap gap-2">
                       <Button
                         variant="default"
                         type="button"
                         onClick={() => handleConnect(index)}
-                        disabled={connectingIndex === index}
+                        disabled={connectingIndex === index || checkingIndex === index}
                       >
                         {connectingIndex === index
                           ? "Connecting..."
@@ -312,6 +325,23 @@ export function SupportChannelsSection({ active, siteId, onSave }: SupportChanne
                             ? "Continue Setup"
                             : "Connect Account"}
                       </Button>
+                      {invitationUrl && (
+                        <Button
+                          variant="outline"
+                          type="button"
+                          disabled={checkingIndex === index}
+                          onClick={async () => {
+                            setCheckingIndex(index)
+                            try {
+                              await checkStatus()
+                            } finally {
+                              setCheckingIndex(null)
+                            }
+                          }}
+                        >
+                          {checkingIndex === index ? "Checking..." : "Check setup status"}
+                        </Button>
+                      )}
                     </SectionCardFooter>
                   </>
                 )}
