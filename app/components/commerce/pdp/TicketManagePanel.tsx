@@ -67,15 +67,17 @@ export function TicketManagePanel({
   return (
     <div className="lg:sticky lg:top-32 bg-card border border-border/50 rounded-3xl p-6 lg:p-8 shadow-sm shadow-black/5 relative">
       <div className="mb-6">
-        <div className={`inline-flex items-center justify-center px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wide mb-4 ${
-          isUsed 
-            ? "bg-muted text-muted-foreground" 
-            : statusKey === 'cancelled' 
-              ? "bg-destructive/10 text-destructive"
-              : "bg-primary/10 text-primary"
-        }`}>
-          {statusLabel()}
-        </div>
+        {statusKey !== 'active' && (
+          <div className={`inline-flex items-center justify-center px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wide mb-4 ${
+            isUsed 
+              ? "bg-muted text-muted-foreground" 
+              : statusKey === 'cancelled' 
+                ? "bg-destructive/10 text-destructive"
+                : "bg-primary/10 text-primary"
+          }`}>
+            {statusLabel()}
+          </div>
+        )}
         
         <div className="flex flex-col gap-3 text-muted-foreground mb-6">
           {attributes.event_date && (
