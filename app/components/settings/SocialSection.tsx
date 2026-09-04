@@ -39,6 +39,7 @@ import {
   BlueskyIcon,
   GlobeIcon
 } from "../ui/social-icons"
+import { ConfirmDialog } from "../ui/confirm-dialog"
 import { getAccountLimit, countConnectedAccounts, canConnectAccounts } from "@/lib/billing-limits"
 import { useSite } from "@/app/context/SiteContext"
 import { useBillingLimit } from "@/app/context/BillingLimitContext"
@@ -197,6 +198,7 @@ export function SocialSection({ active, onSave, siteId }: SocialSectionProps) {
   const [savingCard, setSavingCard] = useState<number | null>(null)
   const socialMedia = form.watch("social_media") || []
   const [imageErrors, setImageErrors] = useState<Record<number, boolean>>({})
+  const [socialToDelete, setSocialToDelete] = useState<number | null>(null)
 
   // Emit social networks update event whenever socialMedia changes
   useEffect(() => {
@@ -324,11 +326,14 @@ export function SocialSection({ active, onSave, siteId }: SocialSectionProps) {
     }
   }, [socialMedia, siteId, currentSite, showBillingLimitFromError])
 
-  const removeSocialMedia = useCallback((index: number) => {
+  const removeSocialMedia = useCallback(async (index: number) => {
     const currentSocialMedia = form.getValues("social_media") || []
     const newSocialMedia = currentSocialMedia.filter((_, i) => i !== index)
-    form.setValue("social_media", newSocialMedia)
-  }, [form])
+    form.setValue("social_media", newSocialMedia, { shouldDirty: true })
+    if (onSave) {
+      await onSave(form.getValues())
+    }
+  }, [form, onSave])
 
   // Memoize platform-specific configuration
   const getPlatformFields = useMemo(() => {
@@ -429,7 +434,7 @@ export function SocialSection({ active, onSave, siteId }: SocialSectionProps) {
                     size="icon"
                     variant="ghost"
                     type="button"
-                    onClick={() => removeSocialMedia(index)}
+                    onClick={() => setSocialToDelete(index)}
                     className="h-9 w-9 text-destructive hover:text-destructive hover:bg-destructive/10"
                     title="Remove Network"
                    >
@@ -715,6 +720,20 @@ export function SocialSection({ active, onSave, siteId }: SocialSectionProps) {
           />
         )}
       </div>
+
+      <ConfirmDialog
+        open={socialToDelete !== null}
+        onOpenChange={(open) => {
+          if (!open) setSocialToDelete(null)
+        }}
+        title="Delete Social Network"
+        description="This will remove the social network from your site. This action cannot be undone."
+        confirmLabel="Delete"
+        variant="destructive"
+        onConfirm={async () => {
+          if (socialToDelete !== null) await removeSocialMedia(socialToDelete)
+        }}
+      />
     </div>
   )
 }

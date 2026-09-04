@@ -17,6 +17,7 @@ import { PlusCircle, Trash2 } from "@/app/components/ui/icons"
 import { EmptyCard } from "@/app/components/ui/empty-card"
 import { GlobeIcon } from "@/app/components/ui/social-icons"
 import { ChannelIcon } from "@/app/components/channels/channel-icon"
+import { ConfirmDialog } from "@/app/components/ui/confirm-dialog"
 import { getChannelLabel } from "@/lib/site-channels"
 import { toast } from "sonner"
 import { v4 as uuidv4 } from "uuid"
@@ -72,6 +73,7 @@ export function SupportChannelsSection({ active, siteId, onSave }: SupportChanne
   const connections = form.watch("channels.connections") || []
   const [connectingIndex, setConnectingIndex] = useState<number | null>(null)
   const [checkingIndex, setCheckingIndex] = useState<number | null>(null)
+  const [channelToDelete, setChannelToDelete] = useState<number | null>(null)
   const { checkStatus } = useZavuInvitationSync({
     connections,
     enabled: active,
@@ -214,7 +216,7 @@ export function SupportChannelsSection({ active, siteId, onSave }: SupportChanne
                     size="icon"
                     variant="ghost"
                     type="button"
-                    onClick={() => handleRemove(index)}
+                    onClick={() => setChannelToDelete(index)}
                     className="h-9 w-9 text-destructive hover:text-destructive hover:bg-destructive/10"
                     title="Remove Channel"
                   >
@@ -415,6 +417,20 @@ export function SupportChannelsSection({ active, siteId, onSave }: SupportChanne
           />
         )}
       </div>
+
+      <ConfirmDialog
+        open={channelToDelete !== null}
+        onOpenChange={(open) => {
+          if (!open) setChannelToDelete(null)
+        }}
+        title="Delete Channel"
+        description="This will remove the channel and disconnect it from your site. This action cannot be undone."
+        confirmLabel="Delete"
+        variant="destructive"
+        onConfirm={() => {
+          if (channelToDelete !== null) handleRemove(channelToDelete)
+        }}
+      />
     </div>
   )
 }

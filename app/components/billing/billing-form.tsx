@@ -20,6 +20,8 @@ import { SubscriptionPlans, type BillingPlan } from "./subscription-plans"
 import { StripePaymentMethod } from "./stripe-payment-method"
 import { ConnectedAccountsAddons } from "./connected-accounts-addons"
 import { getAccountLimit, countConnectedAccounts, getRequiredAddons } from "@/lib/billing-limits"
+import { settingsAfterKeepingAccounts } from "./downgrade-accounts"
+import { DowngradeChannelsModal } from "./downgrade-channels-modal"
 
 const billingFormSchema = z.object({
   plan: z.enum(["commission", "starter", "startup", "enterprise"]).default("commission"),
@@ -50,15 +52,27 @@ interface BillingFormProps {
   onSubmitEnd?: () => void
 }
 
+const PLAN_ORDER: Record<BillingPlan, number> = {
+  commission: 0,
+  starter: 1,
+  startup: 2,
+  enterprise: 3,
+}
+
 export function BillingForm({ id, initialData, onSuccess, onSubmitStart, onSubmitEnd }: BillingFormProps) {
   const { t } = useLocalization()
-  const { currentSite, updateBilling, refreshSites } = useSite()
+  const { currentSite, updateBilling, refreshSites, updateSettings } = useSite()
   const { user } = useAuth()
   const [isSavingPlan, setIsSavingPlan] = useState(false)
   const [isSavingTaxId, setIsSavingTaxId] = useState(false)
   const [isSavingBillingAddress, setIsSavingBillingAddress] = useState(false)
   const [selectedPackage, setSelectedPackage] = useState<CreditPackage | null>(null)
   
+  // Downgrade modal state
+  const [downgradeModalOpen, setDowngradeModalOpen] = useState(false)
+  const [pendingDowngradePlan, setPendingDowngradePlan] = useState<BillingPlan | null>(null)
+  const [downgradeTargetLimit, setDowngradeTargetLimit] = useState(0)
+
   const form = useForm<BillingFormValues>({
     resolver: zodResolver(billingFormSchema),
     defaultValues: {
@@ -116,13 +130,27 @@ export function BillingForm({ id, initialData, onSuccess, onSubmitStart, onSubmi
     }
   }
 
-  const handleChangePlan = async (plan: BillingPlan) => {
+  const handleChangePlan = async (plan: BillingPlan, skipLimitCheck = false) => {
     if (!currentSite || !user) {
       toast.error("No site selected or user not authenticated")
       return
     }
 
     if (plan === currentPlan) return
+    
+    // Check for downgrade limits if not explicitly skipped
+    if (!skipLimitCheck) {
+      const isDowngrade = PLAN_ORDER[plan] < PLAN_ORDER[currentPlan]
+      if (isDowngrade) {
+        const targetLimit = getAccountLimit(plan, addonsCount)
+        if (totalConnectedAccounts > targetLimit) {
+          setPendingDowngradePlan(plan)
+          setDowngradeTargetLimit(targetLimit)
+          setDowngradeModalOpen(true)
+          return
+        }
+      }
+    }
 
     form.setValue("plan", plan)
 
@@ -166,6 +194,24 @@ export function BillingForm({ id, initialData, onSuccess, onSubmitStart, onSubmi
       console.error("Error saving plan:", error)
       toast.error("An unexpected error occurred while updating plan")
     } finally {
+      setIsSavingPlan(false)
+    }
+  }
+  
+  const handleDowngradeConfirm = async (keepKeys: string[]) => {
+    if (!currentSite || !pendingDowngradePlan) return
+
+    const planToApply = pendingDowngradePlan
+    setDowngradeModalOpen(false)
+    setPendingDowngradePlan(null)
+    setIsSavingPlan(true)
+
+    try {
+      await updateSettings(currentSite.id, settingsAfterKeepingAccounts(currentSite.settings, keepKeys))
+      await handleChangePlan(planToApply, true)
+    } catch (error) {
+      console.error("Error updating settings for downgrade:", error)
+      toast.error("Failed to remove accounts before downgrading")
       setIsSavingPlan(false)
     }
   }
@@ -458,6 +504,14 @@ export function BillingForm({ id, initialData, onSuccess, onSubmitStart, onSubmi
         {...selectedPackage}
       />
     )}
+    
+    <DowngradeChannelsModal
+      open={downgradeModalOpen}
+      onOpenChange={setDowngradeModalOpen}
+      site={currentSite}
+      targetLimit={downgradeTargetLimit}
+      onConfirm={handleDowngradeConfirm}
+    />
     </>
   )
 } 
