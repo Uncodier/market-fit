@@ -118,10 +118,25 @@ export function BillingSection() {
                       )}
                       onClick={() => field.onChange("commission")}
                     >
-                      <div className="font-medium mb-2">12-Month POC</div>
-                      <div className="text-2xl font-bold mb-2">$27</div>
+                      <div className="font-medium mb-2">Free</div>
+                      <div className="text-2xl font-bold mb-2">$0</div>
                       <div className="text-sm text-muted-foreground">Basic features</div>
-                      <div className="text-sm text-muted-foreground mt-1">USD/year paid at the end of the year</div>
+                      <div className="text-sm text-muted-foreground mt-1">1 credit/month</div>
+                    </div>
+                    
+                    <div 
+                      className={cn(
+                        "border rounded-lg p-4 cursor-pointer transition-all",
+                        field.value === "starter" 
+                          ? "border-blue-500 bg-blue-50 dark:bg-blue-950" 
+                          : "dark:border-white/5 border-black/5 hover:border-blue-300"
+                      )}
+                      onClick={() => field.onChange("starter")}
+                    >
+                      <div className="font-medium mb-2">Starter</div>
+                      <div className="text-2xl font-bold mb-2">$23</div>
+                      <div className="text-sm text-muted-foreground">Starter features</div>
+                      <div className="text-sm text-muted-foreground mt-1">20 credits/mo + 1 account</div>
                     </div>
                     
                     <div 
@@ -136,7 +151,7 @@ export function BillingSection() {
                       <div className="font-medium mb-2">Startup</div>
                       <div className="text-2xl font-bold mb-2">$99</div>
                       <div className="text-sm text-muted-foreground">Startup features</div>
-                      <div className="text-sm text-muted-foreground mt-1">100 credits/month</div>
+                      <div className="text-sm text-muted-foreground mt-1">100 credits/mo + 3 accounts</div>
                     </div>
                     
                     <div 
@@ -151,7 +166,7 @@ export function BillingSection() {
                       <div className="font-medium mb-2">Enterprise</div>
                       <div className="text-2xl font-bold mb-2">$500</div>
                       <div className="text-sm text-muted-foreground">Enterprise features</div>
-                      <div className="text-sm text-muted-foreground mt-1">500 credits/month</div>
+                      <div className="text-sm text-muted-foreground mt-1">500 credits/mo + 10 accounts</div>
                     </div>
                   </div>
                 </FormControl>

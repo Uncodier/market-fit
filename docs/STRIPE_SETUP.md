@@ -13,8 +13,10 @@ NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_...
 STRIPE_WEBHOOK_SECRET=whsec_...
 
 # Stripe Price IDs para suscripciones
+STRIPE_STARTER_PRICE_ID=price_1UBn8dIFbIhqNGTbYqsD5GGQ
 STRIPE_STARTUP_PRICE_ID=price_...
 STRIPE_ENTERPRISE_PRICE_ID=price_...
+STRIPE_ACCOUNT_ADDON_PRICE_ID=price_1UBn8eIFbIhqNGTbNI7d4FAj
 ```
 
 ## Configuración en Stripe Dashboard
@@ -22,8 +24,10 @@ STRIPE_ENTERPRISE_PRICE_ID=price_...
 ### 1. Crear Productos y Precios
 
 #### Productos de Suscripción:
-- **Startup Plan**: $99/mes
-- **Enterprise Plan**: $500/mes
+- **Starter Plan**: $23/mes (1 account, 20 credits/mo)
+- **Startup Plan**: $99/mes (3 accounts, 100 credits/mo)
+- **Enterprise Plan**: $500/mes (10 accounts, 500 credits/mo)
+- **Account Addon**: $10/mes (1 extra account, 5 extra credits/mo)
 
 #### Productos de Créditos (one-time payments):
 - **20 Credits**: $20

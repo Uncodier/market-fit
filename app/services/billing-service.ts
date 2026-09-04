@@ -284,8 +284,9 @@ class BillingService {
    */
   async createSubscriptionCheckoutSession(
     siteId: string,
-    plan: 'startup' | 'enterprise',
-    userEmail: string
+    plan: 'starter' | 'startup' | 'enterprise',
+    userEmail: string,
+    addonsCount: number = 0
   ): Promise<{ success: boolean; url?: string; error?: string }> {
     try {
       if (await isDemoModeActive()) {
@@ -302,6 +303,7 @@ class BillingService {
           plan,
           siteId,
           userEmail,
+          addonsCount,
           successUrl: `${window.location.origin}/billing/success?plan=${plan}`,
           cancelUrl: `${window.location.origin}/checkout`,
         }),

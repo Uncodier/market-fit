@@ -31,8 +31,8 @@ export function useBillingCheck(): BillingCheckResult {
     const plan = billing.plan
     const creditsAvailable = billing.credits_available || 0
     
-    // Check if plan is startup or enterprise (paid plans)
-    const hasStartupPlan = plan === 'startup' || plan === 'enterprise'
+    // Check if plan is starter, startup or enterprise (paid plans)
+    const hasStartupPlan = plan === 'starter' || plan === 'startup' || plan === 'enterprise'
     
     // Check if has active credits
     const hasActiveCredits = creditsAvailable > 0

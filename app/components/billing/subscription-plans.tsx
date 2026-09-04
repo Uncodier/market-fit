@@ -4,12 +4,13 @@ import { Button } from "../ui/button"
 import { cn } from "@/lib/utils"
 import { useLocalization } from "@/app/context/LocalizationContext"
 
-export type BillingPlan = "commission" | "startup" | "enterprise"
+export type BillingPlan = "commission" | "starter" | "startup" | "enterprise"
 
 const PLAN_ORDER: Record<BillingPlan, number> = {
   commission: 0,
-  startup: 1,
-  enterprise: 2,
+  starter: 1,
+  startup: 2,
+  enterprise: 3,
 }
 
 const PLANS: Array<{
@@ -22,11 +23,19 @@ const PLANS: Array<{
 }> = [
   {
     id: "commission",
-    titleKey: "billing.plan.poc.title",
-    titleFallback: "12-Month POC",
-    price: "$27",
-    period: "/year",
-    detail: (t) => t("billing.plan.poc.desc") || "Paid at the end of the year",
+    titleKey: "billing.plan.erp.title",
+    titleFallback: "ERP",
+    price: "$0",
+    period: "/month",
+    detail: (t) => `1 ${t("billing.plan.creditsPerMonth") || "credit/month"} + 0 accounts`,
+  },
+  {
+    id: "starter",
+    titleKey: "billing.plan.starter.title",
+    titleFallback: "Starter",
+    price: "$23",
+    period: "/month",
+    detail: (t) => `20 ${t("billing.plan.creditsPerMonth") || "credits/month"} + 1 account`,
   },
   {
     id: "startup",
@@ -34,7 +43,7 @@ const PLANS: Array<{
     titleFallback: "Startup",
     price: "$99",
     period: "/month",
-    detail: (t) => `100 ${t("billing.plan.creditsPerMonth") || "credits/month"}`,
+    detail: (t) => `100 ${t("billing.plan.creditsPerMonth") || "credits/month"} + 3 accounts`,
   },
   {
     id: "enterprise",
@@ -42,7 +51,7 @@ const PLANS: Array<{
     titleFallback: "Enterprise",
     price: "$500",
     period: "/month",
-    detail: (t) => `500 ${t("billing.plan.creditsPerMonth") || "credits/month"}`,
+    detail: (t) => `500 ${t("billing.plan.creditsPerMonth") || "credits/month"} + 10 accounts`,
   },
 ]
 

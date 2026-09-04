@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/client";
 import { getDemoData } from "@/lib/demo-data";
+import { emitBillingLimit, parseBillingLimitError } from "@/lib/billing-limit-errors";
 
 // Helper functions for URL validation
 const isValidUrl = (url: string): boolean => {
@@ -111,6 +112,16 @@ export async function isDemoModeActive(): Promise<boolean> {
   return !!id;
 }
 
+function notifyBillingLimitError(...sources: unknown[]) {
+  for (const source of sources) {
+    const payload = parseBillingLimitError(source)
+    if (payload) {
+      emitBillingLimit(payload)
+      return
+    }
+  }
+}
+
 export class ApiClientService {
   private static instance: ApiClientService;
   private apiServerUrl: string;
@@ -215,8 +226,8 @@ export class ApiClientService {
             (typeof errorData.message === 'string' ? errorData.message : '') ||
             `Server error: ${response.status} ${response.statusText}`;
         }
-        return {
-          success: false,
+        const errorResult = {
+          success: false as const,
           error: {
             message,
             code: errorData.code ?? (typeof nested === 'object' ? nested?.code : undefined),
@@ -224,6 +235,8 @@ export class ApiClientService {
           },
           status: response.status
         };
+        notifyBillingLimitError(errorResult.error, errorData)
+        return errorResult;
       } catch (parseError) {
         console.error('Server returned non-JSON error:', responseText);
         return {
@@ -249,8 +262,8 @@ export class ApiClientService {
         if (d && d !== msg) {
           msg = `${msg}: ${d}`;
         }
-        return {
-          success: false,
+        const limitResult = {
+          success: false as const,
           error: {
             message: msg,
             code: err?.code,
@@ -258,6 +271,8 @@ export class ApiClientService {
           },
           status: response.status
         };
+        notifyBillingLimitError(limitResult.error, data)
+        return limitResult;
       }
 
       // Return successful response

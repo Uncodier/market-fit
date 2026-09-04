@@ -35,7 +35,8 @@ export interface Site {
     tracking_code?: string;
   }
   billing?: {
-    plan: 'commission' | 'startup' | 'enterprise'
+    plan: 'commission' | 'starter' | 'startup' | 'enterprise'
+    addons_count?: number
     masked_card_number?: string
     card_name?: string
     card_expiry?: string

@@ -435,6 +435,8 @@ export async function POST(request: NextRequest) {
           // Update billing table with plan information
           console.log(`🏢 Updating billing for subscription...`)
           
+          const addonsCount = parseInt(session.metadata.addons_count || '0', 10)
+
           const { data: billingResult, error: billingError } = await supabase.rpc('upsert_billing', {
             p_site_id: siteId,
             p_plan: plan,
@@ -449,6 +451,17 @@ export async function POST(request: NextRequest) {
           if (billingError) {
             console.error('❌ Error updating billing for subscription:', billingError)
             throw new Error(`Failed to update billing for subscription: ${billingError.message}`)
+          }
+
+          if (addonsCount > 0) {
+            const { error: addonsUpdateError } = await supabase
+              .from('billing')
+              .update({ addons_count: addonsCount })
+              .eq('site_id', siteId)
+            
+            if (addonsUpdateError) {
+              console.error('❌ Error updating addons_count:', addonsUpdateError)
+            }
           }
 
           // Record the initial subscription payment
@@ -491,6 +504,26 @@ export async function POST(request: NextRequest) {
             console.log('✅ Subscription payment recorded successfully:', paymentInsert)
           }
 
+          // Grant initial subscription credits
+          const baseCredits = plan === 'enterprise' ? 500 : plan === 'startup' ? 100 : plan === 'starter' ? 20 : 0
+          const addonsCredits = addonsCount * 5
+          const creditsToGrant = baseCredits + addonsCredits
+          
+          if (creditsToGrant > 0) {
+            console.log(`💰 Granting ${creditsToGrant} initial subscription credits via RPC (base: ${baseCredits}, addons: ${addonsCredits})...`)
+            const { data: creditsResult, error: creditsError } = await supabase.rpc('add_credits', {
+              p_site_id: siteId,
+              p_credits: creditsToGrant
+            })
+            
+            console.log('💰 Subscription credits add result:', { creditsResult, creditsError })
+
+            if (creditsError) {
+              console.error('❌ Error adding subscription credits:', creditsError)
+              throw new Error(`Failed to add subscription credits: ${creditsError.message}`)
+            }
+          }
+
           console.log(`✅ Successfully activated ${plan} subscription for site ${siteId}`)
           
         } catch (error) {
@@ -520,8 +553,19 @@ export async function POST(request: NextRequest) {
 
         const subscriptionStatus = subscription.status
         const plan = subscription.metadata?.plan || 'startup' // Default to startup if no plan specified
+        let resolvedAddonsCount = parseInt(subscription.metadata?.addons_count || '0', 10)
         
-        console.log(`📋 Processing subscription ${event.type}: ${subscription.id} for site ${siteId}, status: ${subscriptionStatus}, plan: ${plan}`)
+        // Ensure we capture real quantity if user modifies it from Stripe Portal
+        if (subscription.items && subscription.items.data) {
+          const addonItem = subscription.items.data.find((item: any) => 
+            item.price.id === process.env.STRIPE_ACCOUNT_ADDON_PRICE_ID
+          )
+          if (addonItem && addonItem.quantity !== undefined) {
+            resolvedAddonsCount = addonItem.quantity
+          }
+        }
+        
+        console.log(`📋 Processing subscription ${event.type}: ${subscription.id} for site ${siteId}, status: ${subscriptionStatus}, plan: ${plan}, addons: ${resolvedAddonsCount}`)
 
         // Update billing record
         const { data: billingResult, error } = await supabase.rpc('upsert_billing', {
@@ -537,6 +581,15 @@ export async function POST(request: NextRequest) {
         if (error) {
           console.error('❌ Error updating subscription:', error)
           throw new Error(`Failed to update subscription: ${error.message}`)
+        }
+
+        const { error: addonsUpdateError } = await supabase
+          .from('billing')
+          .update({ addons_count: resolvedAddonsCount })
+          .eq('site_id', siteId)
+
+        if (addonsUpdateError) {
+          console.error('❌ Error updating addons_count from subscription:', addonsUpdateError)
         }
 
         console.log(`✅ Updated subscription ${subscription.id} for site ${siteId}: ${subscriptionStatus} ${plan ? `(${plan})` : ''}`)
@@ -625,6 +678,45 @@ export async function POST(request: NextRequest) {
           }
 
           console.log(`✅ Recorded subscription payment for site ${siteId}: $${amount}`)
+          
+          // If this is a subscription renewal, grant monthly credits
+          if (invoice.billing_reason === 'subscription_cycle') {
+            console.log(`🔄 Processing subscription cycle renewal for site ${siteId}`)
+            
+            const { data: billingInfo, error: billingQueryError } = await supabase
+              .from('billing')
+              .select('plan, addons_count')
+              .eq('site_id', siteId)
+              .single()
+              
+            if (billingQueryError) {
+              console.error('❌ Error fetching billing info for subscription cycle credits:', billingQueryError)
+              throw new Error(`Failed to fetch billing info: ${billingQueryError.message}`)
+            }
+            
+            const currentPlan = billingInfo?.plan
+            const addonsCount = billingInfo?.addons_count || 0
+            
+            const baseCredits = currentPlan === 'enterprise' ? 500 : currentPlan === 'startup' ? 100 : currentPlan === 'starter' ? 20 : 0
+            const addonsCredits = addonsCount * 5
+            const creditsToGrant = baseCredits + addonsCredits
+            
+            if (creditsToGrant > 0) {
+              console.log(`💰 Granting ${creditsToGrant} monthly subscription credits via RPC (base: ${baseCredits}, addons: ${addonsCredits})...`)
+              const { data: creditsResult, error: creditsError } = await supabase.rpc('add_credits', {
+                p_site_id: siteId,
+                p_credits: creditsToGrant
+              })
+              
+              console.log('💰 Monthly subscription credits add result:', { creditsResult, creditsError })
+
+              if (creditsError) {
+                console.error('❌ Error adding monthly subscription credits:', creditsError)
+                throw new Error(`Failed to add monthly subscription credits: ${creditsError.message}`)
+              }
+              console.log(`✅ Successfully granted ${creditsToGrant} monthly credits for plan ${currentPlan}`)
+            }
+          }
           
         } catch (error) {
           console.error('❌ Error processing invoice payment:', error)

@@ -16,6 +16,7 @@ import { useLocalization } from "@/app/context/LocalizationContext"
   const getBillingInfoSections = (t: (key: string) => string): QuickNavSection[] => [
     { id: "credits", title: t('billing.nav.credits') || "Credits" },
     { id: "subscription-plan", title: t('billing.nav.plan') || "Subscription Plan" },
+    { id: "addons", title: t('billing.nav.addons') || "Connected Accounts" },
     { id: "payment-method", title: t('billing.nav.payment') || "Payment Method" },
     { id: "tax-id", title: t('billing.nav.tax') || "Tax ID" },
     { id: "billing-address", title: t('billing.nav.address') || "Billing Address" },
@@ -116,6 +117,7 @@ export default function BillingPage() {
                 <BillingForm 
                   initialData={{
                     plan: currentSite.billing?.plan || "commission",
+                    addons_count: currentSite.billing?.addons_count || 0,
                     card_name: currentSite.billing?.card_name,
                     card_expiry: currentSite.billing?.card_expiry,
                     card_address: currentSite.billing?.card_address,

@@ -18,9 +18,12 @@ import { PurchaseCreditsDialog } from "./purchase-credits-dialog"
 import { CreditPackages, type CreditPackage } from "./credit-packages"
 import { SubscriptionPlans, type BillingPlan } from "./subscription-plans"
 import { StripePaymentMethod } from "./stripe-payment-method"
+import { ConnectedAccountsAddons } from "./connected-accounts-addons"
+import { getAccountLimit, countConnectedAccounts, getRequiredAddons } from "@/lib/billing-limits"
 
 const billingFormSchema = z.object({
-  plan: z.enum(["commission", "startup", "enterprise"]).default("commission"),
+  plan: z.enum(["commission", "starter", "startup", "enterprise"]).default("commission"),
+  addons_count: z.number().optional().default(0),
   card_name: z.string().optional(),
   card_number: z.string().optional(),
   card_expiry: z.string().optional(),
@@ -60,6 +63,7 @@ export function BillingForm({ id, initialData, onSuccess, onSubmitStart, onSubmi
     resolver: zodResolver(billingFormSchema),
     defaultValues: {
       plan: initialData?.plan || "commission",
+      addons_count: initialData?.addons_count || 0,
       card_name: initialData?.card_name || "",
       card_number: "", // Never prefill card number for security
       card_expiry: initialData?.card_expiry || "",
@@ -79,6 +83,16 @@ export function BillingForm({ id, initialData, onSuccess, onSubmitStart, onSubmi
 
   const currentPlan = (currentSite?.billing?.plan || "commission") as BillingPlan
   const isPaidPlan = currentPlan !== "commission"
+
+  const addonsCount = currentSite?.billing?.addons_count || 0
+  const totalConnectedAccounts = countConnectedAccounts(currentSite)
+  const includedAccounts = getAccountLimit(currentPlan, 0)
+  const limitAccounts = getAccountLimit(currentPlan, addonsCount)
+  const requiredAddons = getRequiredAddons(currentSite)
+  const missingAddons = Math.max(0, requiredAddons - addonsCount)
+  const accountsUsagePercentage = limitAccounts === 0
+    ? (totalConnectedAccounts > 0 ? 100 : 0)
+    : Math.min(100, Math.max(0, (totalConnectedAccounts / limitAccounts) * 100))
 
   const handleManageSubscription = async () => {
     if (!currentSite) return
@@ -115,11 +129,17 @@ export function BillingForm({ id, initialData, onSuccess, onSubmitStart, onSubmi
     try {
       setIsSavingPlan(true)
 
-      if (plan === "startup" || plan === "enterprise") {
+      if (plan === "commission" && isPaidPlan) {
+        await handleManageSubscription()
+        return
+      }
+
+      if (plan === "starter" || plan === "startup" || plan === "enterprise") {
         const result = await billingService.createSubscriptionCheckoutSession(
           currentSite.id,
           plan,
-          user.email!
+          user.email!,
+          addonsCount
         )
 
         if (result.success && result.url) {
@@ -244,7 +264,7 @@ export function BillingForm({ id, initialData, onSuccess, onSubmitStart, onSubmi
             title={t('billing.plan.title') || 'Subscription Plan'}
             description={t('billing.plan.changeHint') || 'Upgrade or downgrade instantly from the plan you want.'}
           />
-          <SectionCardContent>
+          <SectionCardContent className="space-y-6">
               <SubscriptionPlans
                 currentPlan={currentPlan}
                 isSaving={isSavingPlan}
@@ -253,6 +273,19 @@ export function BillingForm({ id, initialData, onSuccess, onSubmitStart, onSubmi
             </SectionCardContent>
         </SectionCard>
           
+        <ConnectedAccountsAddons
+          totalConnectedAccounts={totalConnectedAccounts}
+          includedAccounts={includedAccounts}
+          addonsCount={addonsCount}
+          limitAccounts={limitAccounts}
+          requiredAddons={requiredAddons}
+          missingAddons={missingAddons}
+          accountsUsagePercentage={accountsUsagePercentage}
+          isPaidPlan={isPaidPlan}
+          isSaving={isSavingPlan}
+          onManageAddons={handleManageSubscription}
+        />
+
         {isPaidPlan && (
         <SectionCard id="payment-method">
           <SectionCardHeader 

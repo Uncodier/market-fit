@@ -39,6 +39,9 @@ import {
   BlueskyIcon,
   GlobeIcon
 } from "../ui/social-icons"
+import { getAccountLimit, countConnectedAccounts, canConnectAccounts } from "@/lib/billing-limits"
+import { useSite } from "@/app/context/SiteContext"
+import { useBillingLimit } from "@/app/context/BillingLimitContext"
 
 const SOCIAL_PLATFORMS = [
   { value: "facebook", label: "Facebook" },
@@ -182,6 +185,15 @@ interface SocialSectionProps {
 
 export function SocialSection({ active, onSave, siteId }: SocialSectionProps) {
   const form = useFormContext<SiteFormValues>()
+  const { currentSite } = useSite()
+  const { showBillingLimit, showBillingLimitFromError } = useBillingLimit()
+  const openAccountLimit = () => {
+    showBillingLimit({
+      kind: "accounts",
+      current: countConnectedAccounts(currentSite),
+      limit: getAccountLimit(currentSite?.billing?.plan, currentSite?.billing?.addons_count),
+    })
+  }
   const [savingCard, setSavingCard] = useState<number | null>(null)
   const socialMedia = form.watch("social_media") || []
   const [imageErrors, setImageErrors] = useState<Record<number, boolean>>({})
@@ -216,18 +228,34 @@ export function SocialSection({ active, onSave, siteId }: SocialSectionProps) {
 
   // Memoized functions for better performance
   const addSocialMedia = useCallback(() => {
+    const limit = getAccountLimit(currentSite?.billing?.plan, currentSite?.billing?.addons_count)
+    const currentCount = countConnectedAccounts(currentSite)
+    if (!canConnectAccounts(currentSite)) {
+      showBillingLimit({ kind: "accounts", current: currentCount, limit })
+      return
+    }
+
     const currentSocialMedia = form.getValues("social_media") || []
     const newSocialMedia = [{ 
       platform: "",
       isActive: false
     } as any, ...currentSocialMedia]
     form.setValue("social_media", newSocialMedia)
-  }, [form])
+  }, [form, currentSite, socialMedia.length, showBillingLimit])
 
   const handleConnectAccount = useCallback(async (index: number) => {
     const social = socialMedia[index]
     if (!social?.platform || !siteId) return
     if (!isOAuthConnectablePlatform(social.platform)) return
+
+    // Validate account limits
+    const limit = getAccountLimit(currentSite?.billing?.plan, currentSite?.billing?.addons_count)
+    const currentCount = countConnectedAccounts(currentSite)
+    
+    if (!social.isActive && !canConnectAccounts(currentSite)) {
+      showBillingLimit({ kind: "accounts", current: currentCount, limit })
+      return
+    }
 
     try {
       setSavingCard(index)
@@ -281,16 +309,20 @@ export function SocialSection({ active, onSave, siteId }: SocialSectionProps) {
         window.location.href = result.data.auth_url
       } else {
         console.error('[Social Auth] Failed to get auth URL:', result)
+        if (showBillingLimitFromError(result) || showBillingLimitFromError(result.error)) {
+          return
+        }
         throw new Error(result.error || 'Failed to get authentication URL')
       }
     } catch (error) {
       console.error('Error connecting social account:', error)
-      // You might want to show a toast error here
-      alert(error instanceof Error ? error.message : 'Failed to connect account')
+      if (!showBillingLimitFromError(error)) {
+        toast.error(error instanceof Error ? error.message : 'Failed to connect account')
+      }
     } finally {
       setSavingCard(null)
     }
-  }, [socialMedia, siteId])
+  }, [socialMedia, siteId, currentSite, showBillingLimitFromError])
 
   const removeSocialMedia = useCallback((index: number) => {
     const currentSocialMedia = form.getValues("social_media") || []
@@ -546,6 +578,7 @@ export function SocialSection({ active, onSave, siteId }: SocialSectionProps) {
                   
                   {/* Bluesky App Password Connect */}
                   {hasPlatform && !isActive && social.platform === 'bluesky' && siteId && (
+                    canConnectAccounts(currentSite) ? (
                     <BlueskyConnectForm
                       siteId={siteId}
                       onConnected={() => {
@@ -553,6 +586,11 @@ export function SocialSection({ active, onSave, siteId }: SocialSectionProps) {
                         window.location.reload()
                       }}
                     />
+                    ) : (
+                      <Button type="button" variant="outline" size="sm" onClick={openAccountLimit}>
+                        Upgrade to connect
+                      </Button>
+                    )
                   )}
 
                   {/* Manual fields only when the account is not OAuth-linked (username/URL come from the provider when linked) */}

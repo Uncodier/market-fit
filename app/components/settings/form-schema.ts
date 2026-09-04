@@ -421,7 +421,8 @@ export const siteFormSchema = z.object({
   }),
   // Billing fields
   billing: z.object({
-    plan: z.enum(["commission", "startup", "enterprise"]).default("commission"),
+    plan: z.enum(["commission", "starter", "startup", "enterprise"]).default("commission"),
+    addons_count: z.number().optional().default(0),
     auto_renew: z.boolean().default(true),
     card_name: z.string().optional(),
     card_number: z.string().optional(),

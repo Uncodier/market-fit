@@ -25,14 +25,19 @@ export function CreditsWidget({ className, isCollapsed }: CreditsWidgetProps) {
   const creditsAvailable = currentSite?.billing?.credits_available || 0
   const creditsUsed = currentSite?.billing?.credits_used || 0
   const plan = currentSite?.billing?.plan || 'commission'
+  const addonsCount = currentSite?.billing?.addons_count || 0
   
   // Determine base limit based on plan
-  let baseLimit = 30; // default/commission/free
-  if (plan === 'startup') {
+  let baseLimit = 1; // default/commission/free
+  if (plan === 'starter') {
+    baseLimit = 20;
+  } else if (plan === 'startup') {
     baseLimit = 100;
   } else if (plan === 'enterprise') {
     baseLimit = 500;
   }
+  
+  baseLimit += addonsCount * 5;
   
   // Calculate total limit 
   // We want the denominator to always be the base limit of the plan.

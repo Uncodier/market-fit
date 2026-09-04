@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createSocialSupabaseClient } from "@/app/api/social/supabase-client"
 import { getOutstandIntegrationUrl } from "@/lib/api-server-url"
+import { getAccountLimit, countConnectedAccounts } from "@/lib/billing-limits"
+import { billingLimitApiError } from "@/lib/billing-limit-errors"
 
 export async function POST(
   request: NextRequest,
@@ -18,6 +20,39 @@ export async function POST(
 
     const { sessionToken } = await params
     const body = await request.json().catch(() => ({}))
+    const siteId = body.siteId
+    
+    if (siteId) {
+      const { data: site } = await supabase
+        .from("sites")
+        .select("*, settings!left(*), billing!left(*)")
+        .eq("id", siteId)
+        .single()
+        
+      if (site) {
+        const parsedSettings = Array.isArray(site.settings) ? site.settings[0] : site.settings
+        const parsedBilling = Array.isArray(site.billing) ? site.billing[0] : site.billing
+        
+        const mappedSite = {
+          ...site,
+          settings: parsedSettings,
+          billing: parsedBilling
+        }
+
+        // Enforce account limit
+        const limit = getAccountLimit(mappedSite.billing?.plan, mappedSite.billing?.addons_count)
+        const currentCount = countConnectedAccounts(mappedSite)
+        const newAccountsCount = body.accountIds?.length || 0
+        
+        if (currentCount + newAccountsCount > limit) {
+          return NextResponse.json(
+            billingLimitApiError("accounts", currentCount + newAccountsCount, limit),
+            { status: 403 }
+          )
+        }
+      }
+    }
+
     const response = await fetch(
       getOutstandIntegrationUrl(`/social-accounts/pending/${sessionToken}/finalize`),
       {

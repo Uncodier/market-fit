@@ -188,6 +188,7 @@ export async function loadAccessibleSites(deps: LoadSitesDeps) {
           // Add billing data if available
           billing: isDemoSite ? demoBilling : (siteBilling ? {
             plan: siteBilling.plan || 'commission',
+            addons_count: siteBilling.addons_count || 0,
             masked_card_number: siteBilling.masked_card_number,
             card_name: siteBilling.card_name,
             card_expiry: siteBilling.card_expiry,

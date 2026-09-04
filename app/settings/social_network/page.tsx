@@ -2,6 +2,9 @@
 
 import { useEffect, useState } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
+import { useSite } from "@/app/context/SiteContext"
+import { getAccountLimit, countConnectedAccounts } from "@/lib/billing-limits"
+import { useBillingLimit } from "@/app/context/BillingLimitContext"
 import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/card"
 import { Button } from "@/app/components/ui/button"
 import { CheckCircle, XCircle, Loader } from "@/app/components/ui/icons"
@@ -18,6 +21,8 @@ interface AvailablePage {
 export default function SocialNetworkCallbackPage() {
   const searchParams = useSearchParams()
   const router = useRouter()
+  const { currentSite } = useSite()
+  const { showBillingLimit, showBillingLimitFromError } = useBillingLimit()
   const [status, setStatus] = useState<"loading" | "selecting" | "success" | "error">("loading")
   const [message, setMessage] = useState<string>("")
   const [availablePages, setAvailablePages] = useState<AvailablePage[]>([])
@@ -157,6 +162,18 @@ export default function SocialNetworkCallbackPage() {
       return
     }
 
+    const limit = getAccountLimit(currentSite?.billing?.plan, currentSite?.billing?.addons_count)
+    const currentCount = countConnectedAccounts(currentSite)
+    
+    if (currentCount + selectedPages.length > limit) {
+      showBillingLimit({
+        kind: "accounts",
+        current: currentCount + selectedPages.length,
+        limit,
+      })
+      return
+    }
+
     try {
       setIsFinalizing(true)
       setMessage("Connecting selected pages...")
@@ -166,7 +183,7 @@ export default function SocialNetworkCallbackPage() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ accountIds: selectedPages }),
+        body: JSON.stringify({ accountIds: selectedPages, siteId: currentSite?.id }),
       })
       
       const result = await response.json()
@@ -183,10 +200,20 @@ export default function SocialNetworkCallbackPage() {
           router.push(redirectUrl)
         }, 2000)
       } else {
-        throw new Error(result.error || "Failed to finalize connection")
+        if (showBillingLimitFromError(result) || showBillingLimitFromError(result.error)) {
+          return
+        }
+        throw new Error(
+          typeof result.error === "string"
+            ? result.error
+            : result.error?.message || "Failed to finalize connection"
+        )
       }
     } catch (error) {
       console.error("Error finalizing connection:", error)
+      if (showBillingLimitFromError(error)) {
+        return
+      }
       setStatus("error")
       setMessage(error instanceof Error ? error.message : "Failed to finalize connection")
     } finally {

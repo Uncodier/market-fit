@@ -8,7 +8,7 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 
 export async function POST(request: NextRequest) {
   try {
-    const { plan, siteId, userEmail, successUrl, cancelUrl } = await request.json()
+    const { plan, siteId, userEmail, addonsCount, successUrl, cancelUrl } = await request.json()
 
     if (!plan || !siteId || !userEmail) {
       return NextResponse.json(
@@ -19,6 +19,10 @@ export async function POST(request: NextRequest) {
 
     // Validate subscription plans
     const planPrices: Record<string, { priceId: string; amount: number }> = {
+      starter: {
+        priceId: process.env.STRIPE_STARTER_PRICE_ID || 'price_starter',
+        amount: 23
+      },
       startup: { 
         priceId: process.env.STRIPE_STARTUP_PRICE_ID || 'price_startup',
         amount: 99 
@@ -98,27 +102,39 @@ export async function POST(request: NextRequest) {
     }
 
     // Create checkout session for subscription
+    const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = [
+      {
+        price: planConfig.priceId,
+        quantity: 1
+      }
+    ]
+
+    const parsedAddons = parseInt(addonsCount || '0', 10)
+    if (parsedAddons > 0) {
+      lineItems.push({
+        price: process.env.STRIPE_ACCOUNT_ADDON_PRICE_ID || 'price_addon',
+        quantity: parsedAddons
+      })
+    }
+
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       payment_method_types: ['card'],
-      line_items: [
-        {
-          price: planConfig.priceId,
-          quantity: 1
-        }
-      ],
+      line_items: lineItems,
       mode: 'subscription',
       success_url: successUrl,
       cancel_url: cancelUrl,
       metadata: {
         site_id: siteId,
         plan: plan,
+        addons_count: parsedAddons.toString(),
         type: 'subscription'
       },
       subscription_data: {
         metadata: {
           site_id: siteId,
-          plan: plan
+          plan: plan,
+          addons_count: parsedAddons.toString()
         }
       }
     })

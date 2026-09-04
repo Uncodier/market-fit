@@ -25,6 +25,10 @@ import { TelegramChannelSetup } from "./TelegramChannelSetup"
 import { EmailChannelSetup } from "./EmailChannelSetup"
 import { useZavuInvitationSync } from "./use-zavu-invitation-sync"
 
+import { getAccountLimit, countConnectedAccounts, canConnectAccounts } from "@/lib/billing-limits"
+import { useSite } from "@/app/context/SiteContext"
+import { useBillingLimit } from "@/app/context/BillingLimitContext"
+
 const CHANNEL_TYPES = [
   { value: "whatsapp", label: "WhatsApp" },
   { value: "messenger", label: "Messenger" },
@@ -52,6 +56,15 @@ interface SupportChannelsSectionProps {
 
 export function SupportChannelsSection({ active, siteId, onSave }: SupportChannelsSectionProps) {
   const form = useFormContext<SiteFormValues>()
+  const { currentSite } = useSite()
+  const { showBillingLimit, showBillingLimitFromError } = useBillingLimit()
+  const openAccountLimit = () => {
+    showBillingLimit({
+      kind: "accounts",
+      current: countConnectedAccounts(currentSite),
+      limit: getAccountLimit(currentSite?.billing?.plan, currentSite?.billing?.addons_count),
+    })
+  }
   const { fields, prepend, remove, update } = useFieldArray({
     control: form.control,
     name: "channels.connections",
@@ -68,13 +81,20 @@ export function SupportChannelsSection({ active, siteId, onSave }: SupportChanne
   })
 
   const addChannel = useCallback(() => {
+    const limit = getAccountLimit(currentSite?.billing?.plan, currentSite?.billing?.addons_count)
+    const currentCount = countConnectedAccounts(currentSite)
+    if (!canConnectAccounts(currentSite)) {
+      showBillingLimit({ kind: "accounts", current: currentCount, limit })
+      return
+    }
+
     prepend({
       id: uuidv4(),
       type: "" as any,
       name: "",
       status: "pending",
     })
-  }, [prepend])
+  }, [prepend, currentSite, connections.length, showBillingLimit])
 
   const handleConnect = async (index: number) => {
     const channel = form.getValues(`channels.connections.${index}`)
@@ -82,6 +102,16 @@ export function SupportChannelsSection({ active, siteId, onSave }: SupportChanne
       toast.error("Please save the site first")
       return
     }
+    
+    // Validate account limits
+    const limit = getAccountLimit(currentSite?.billing?.plan, currentSite?.billing?.addons_count)
+    const currentCount = countConnectedAccounts(currentSite)
+    
+    if (channel.status !== "connected" && !canConnectAccounts(currentSite)) {
+      showBillingLimit({ kind: "accounts", current: currentCount, limit })
+      return
+    }
+
     if (!channel?.type) {
       toast.error("Select a channel type first")
       return
@@ -129,7 +159,9 @@ export function SupportChannelsSection({ active, siteId, onSave }: SupportChanne
         await onSave(form.getValues())
       }
     } catch (error: any) {
-      toast.error(error.message || "An error occurred")
+      if (!showBillingLimitFromError(error)) {
+        toast.error(error.message || "An error occurred")
+      }
     } finally {
       setConnectingIndex(null)
     }
@@ -261,20 +293,37 @@ export function SupportChannelsSection({ active, siteId, onSave }: SupportChanne
                 )}
 
                 {hasType && type === "email" && siteId && (
+                  isConnected || canConnectAccounts(currentSite) ? (
                   <EmailChannelSetup
                     siteId={siteId}
                     channel={channel}
                     onUpdated={(payload) => {
+                      if (payload?.status === "connected" && !canConnectAccounts(currentSite)) {
+                        openAccountLimit()
+                        return
+                      }
                       update(index, { ...channel, ...payload })
                     }}
                   />
+                  ) : (
+                    <SectionCardContent className="pt-0">
+                      <Button type="button" variant="outline" size="sm" onClick={openAccountLimit}>
+                        Upgrade to connect
+                      </Button>
+                    </SectionCardContent>
+                  )
                 )}
 
                 {hasType && !isConnected && type === "telegram" && siteId && (
+                  canConnectAccounts(currentSite) ? (
                   <TelegramChannelSetup
                     siteId={siteId}
                     channel={channel}
                     onConnected={(payload) => {
+                      if (!canConnectAccounts(currentSite)) {
+                        openAccountLimit()
+                        return
+                      }
                       update(index, {
                         ...channel,
                         status: "connected",
@@ -287,6 +336,13 @@ export function SupportChannelsSection({ active, siteId, onSave }: SupportChanne
                       })
                     }}
                   />
+                  ) : (
+                    <SectionCardContent className="pt-0">
+                      <Button type="button" variant="outline" size="sm" onClick={openAccountLimit}>
+                        Upgrade to connect
+                      </Button>
+                    </SectionCardContent>
+                  )
                 )}
 
                 {hasType && !isConnected && type !== "telegram" && type !== "email" && (

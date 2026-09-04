@@ -6,6 +6,7 @@ import { SiteProvider } from '@/app/context/SiteContext';
 import { PermissionProvider } from '@/app/context/PermissionContext';
 import { ScreenAccessProvider } from '@/app/context/ScreenAccessContext';
 import { WidgetProvider } from '../context/WidgetContext';
+import { BillingLimitProvider } from '../context/BillingLimitContext';
 import { RobotsProvider } from '../context/RobotsContext';
 import { TooltipProvider } from '../components/ui/tooltip';
 import { SiteCurrencyBootstrap } from '../components/commerce/SiteCurrencyBootstrap';
@@ -31,9 +32,11 @@ export default function WorkspaceProviders({ children }: { children: React.React
           <ScreenAccessProvider>
             <RobotsProvider>
               <WidgetProvider>
-                <TooltipProvider>
-                  {children}
-                </TooltipProvider>
+                <BillingLimitProvider>
+                  <TooltipProvider>
+                    {children}
+                  </TooltipProvider>
+                </BillingLimitProvider>
               </WidgetProvider>
             </RobotsProvider>
           </ScreenAccessProvider>

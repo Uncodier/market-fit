@@ -1,5 +1,6 @@
 export interface BillingData {
-  plan: "commission" | "startup" | "enterprise"
+  plan: "commission" | "starter" | "startup" | "enterprise"
+  addons_count?: number
   card_name?: string
   card_number?: string
   card_expiry?: string

@@ -32,6 +32,7 @@ import { useSite } from "@/app/context/SiteContext"
 import { getSegments } from "@/app/segments/actions"
 import { createClient } from "@/lib/supabase/client"
 import { useBillingCheck } from "@/app/hooks/use-billing-check"
+import { useBillingLimit } from "@/app/context/BillingLimitContext"
 import { useIsMobile } from "@/app/hooks/use-mobile-view"
 import pricingConfig from "@/app/config/pricing.json"
 import { useLocalization } from "@/app/context/LocalizationContext"
@@ -512,6 +513,7 @@ export default function PeopleSearchPage() {
   const [isSegmentModalOpen, setIsSegmentModalOpen] = useState(false)
   
   const { creditsAvailable } = useBillingCheck()
+  const { showBillingLimit, showBillingLimitFromError } = useBillingLimit()
   const enrichmentCostPerLead = pricingConfig.pricing_map.find(p => p.name === "Enrichment (Details)")?.cost_per_call || 0.1
   const requiredCredits = Math.ceil(totalResults * enrichmentCostPerLead * 10) / 10 // rounding to 1 decimal
   const hasEnoughCredits = creditsAvailable >= requiredCredits
@@ -1259,7 +1261,9 @@ export default function PeopleSearchPage() {
       setIcpName("")
     } catch (e: any) {
       console.error('[People] Add to leads error:', e)
-      toast.error(e?.message || 'Failed to add leads')
+      if (!showBillingLimitFromError(e)) {
+        toast.error(e?.message || 'Failed to add leads')
+      }
     } finally {
       setAddingToLeads(false)
     }
@@ -3091,9 +3095,23 @@ export default function PeopleSearchPage() {
                 </span>
               </div>
               {!hasEnoughCredits && (
-                <p className="text-xs text-destructive mt-2">
-                  You don't have enough credits to execute this enrichment query. Please add more credits or reduce the search scope.
-                </p>
+                <div className="mt-2 space-y-2">
+                  <p className="text-xs text-destructive">
+                    You don't have enough credits to execute this enrichment query.
+                  </p>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => showBillingLimit({
+                      kind: "credits",
+                      current: creditsAvailable,
+                      limit: requiredCredits,
+                    })}
+                  >
+                    Buy credits
+                  </Button>
+                </div>
               )}
             </div>
             <p className="text-xs text-muted-foreground">Segment</p>
