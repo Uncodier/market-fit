@@ -66,3 +66,4 @@ shiplight-report/
 .shiplight/
 *.yaml.spec.ts
 .auth
+mac-x64.zip
