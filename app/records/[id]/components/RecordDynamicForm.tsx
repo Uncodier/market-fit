@@ -1,12 +1,10 @@
-import React, { useEffect, useState } from "react"
+import React, { useMemo } from "react"
 import { Input } from "@/app/components/ui/input"
-import { Label } from "@/app/components/ui/label"
 import { Textarea } from "@/app/components/ui/textarea"
 import { Switch } from "@/app/components/ui/switch"
 import { DatePicker } from "@/app/components/ui/date-picker"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
-import { RelationSelect, RelationSelectOption } from "@/app/components/ui/relation-select"
-import { UploadAssetDialog } from "@/app/components/upload-asset-dialog"
+import { RelationSelect } from "@/app/components/ui/relation-select"
 import { Button } from "@/app/components/ui/button"
 import { 
   ImageIcon, 
@@ -20,16 +18,14 @@ import {
   LinkIcon, 
   TableRows,
   Activity,
-  Folder,
-  Clock
 } from "@/app/components/ui/icons"
 import { AIFieldPreview } from "./AIFieldPreview"
 import { TableWidget } from "./TableWidget"
-import { createClient } from "@/lib/supabase/client"
 import { useSite } from "@/app/context/SiteContext"
 import { RecordItem } from "../../actions"
 import { resolveRelationId } from "@/app/commerce/resolve-relation"
 import { toast } from "sonner"
+import { useRelationOptions } from "./use-relation-options"
 
 interface RecordDynamicFormProps {
   fields: any[]
@@ -43,132 +39,15 @@ interface RecordDynamicFormProps {
 
 export function RecordDynamicForm({ fields, formData, relationsData, status, record, onChange, onStatusChange }: RecordDynamicFormProps) {
   const { currentSite } = useSite()
-  const [relationOptions, setRelationOptions] = useState<Record<string, RelationSelectOption[]>>({})
-  const searchTimeouts = React.useRef<Record<string, NodeJS.Timeout>>({})
-
-  useEffect(() => {
-    if (!currentSite?.id || !fields.length) return
-
-    const fetchRelations = async () => {
-      const supabase = createClient()
-      const optionsMap: Record<string, RelationSelectOption[]> = {}
-      
-      const relationFields = fields.filter((f: any) => f.type === "relation")
-      
-      for (const field of relationFields) {
-        const target = field.relationTarget || "lead"
-        if (optionsMap[target]) continue // already fetched this target
-
-        let table = target
-        let selectFields = "id"
-        let nameField = "name"
-        
-        if (target === "lead") { table = "leads"; selectFields = "id, name, company"; nameField = "name" }
-        else if (target === "company") { table = "companies"; selectFields = "id, name"; nameField = "name" }
-        else if (target === "sales_order") { table = "orders"; selectFields = "id, order_number"; nameField = "order_number" }
-        else if (target === "deal") { table = "deals"; selectFields = "id, title"; nameField = "title" }
-        else if (target === "person") { table = "users"; selectFields = "id, name, email"; nameField = "name" }
-        else if (target === "campaign") { table = "campaigns"; selectFields = "id, title"; nameField = "title" }
-        else if (target === "catalog_item") { table = "products"; selectFields = "id, name"; nameField = "name" }
-        else if (target === "content") { table = "content"; selectFields = "id, title"; nameField = "title" }
-      else if (target === "task") { table = "tasks"; selectFields = "id, title"; nameField = "title" }
-      else if (target === "sale") { table = "sales"; selectFields = "id, title"; nameField = "title" }
-      else if (target === "purchase") { table = "purchases"; selectFields = "id, title"; nameField = "title" }
-      else if (target === "quotation") { table = "quotations"; selectFields = "id, title"; nameField = "title" }
-      else if (target === "record") { table = "records"; selectFields = "id, title"; nameField = "title" }
-        else if (target === "record_category") { table = "record_categories"; selectFields = "id, name"; nameField = "name" }
-
-        try {
-          const { data } = await supabase
-            .from(table)
-            .select(selectFields)
-            .eq("site_id", currentSite.id)
-            .limit(100) // Load first 100 on initial mount
-
-          if (data) {
-            optionsMap[target] = data.map((item: any) => ({
-              id: item.id,
-              label: item[nameField] || item.id,
-              searchText: Object.values(item).filter(Boolean).join(" ")
-            }))
-          }
-        } catch (error) {
-          console.error(`Error fetching options for ${target}:`, error)
-          optionsMap[target] = []
-        }
-      }
-      
-      setRelationOptions(optionsMap)
-    }
-
-    fetchRelations()
-  }, [fields, currentSite?.id])
-
-  const handleSearchChange = (target: string, query: string) => {
-    if (!currentSite?.id) return
-    
-    // Clear previous timeout
-    if (searchTimeouts.current[target]) {
-      clearTimeout(searchTimeouts.current[target])
-    }
-    
-    // Only search if we have a reasonable query string
-    if (!query || query.trim().length < 2) return
-
-    searchTimeouts.current[target] = setTimeout(async () => {
-      const supabase = createClient()
-      
-      let table = target
-      let selectFields = "id"
-      let nameField = "name"
-      
-      if (target === "lead") { table = "leads"; selectFields = "id, name, company"; nameField = "name" }
-      else if (target === "company") { table = "companies"; selectFields = "id, name"; nameField = "name" }
-      else if (target === "sales_order") { table = "orders"; selectFields = "id, order_number"; nameField = "order_number" }
-      else if (target === "deal") { table = "deals"; selectFields = "id, title"; nameField = "title" }
-      else if (target === "person") { table = "users"; selectFields = "id, name, email"; nameField = "name" }
-      else if (target === "campaign") { table = "campaigns"; selectFields = "id, title"; nameField = "title" }
-      else if (target === "catalog_item") { table = "products"; selectFields = "id, name"; nameField = "name" }
-      else if (target === "content") { table = "content"; selectFields = "id, title"; nameField = "title" }
-      else if (target === "task") { table = "tasks"; selectFields = "id, title"; nameField = "title" }
-      else if (target === "sale") { table = "sales"; selectFields = "id, title"; nameField = "title" }
-      else if (target === "purchase") { table = "purchases"; selectFields = "id, title"; nameField = "title" }
-      else if (target === "quotation") { table = "quotations"; selectFields = "id, title"; nameField = "title" }
-      else if (target === "record") { table = "records"; selectFields = "id, title"; nameField = "title" }
-      else if (target === "record_category") { table = "record_categories"; selectFields = "id, name"; nameField = "name" }
-
-      try {
-        const { data } = await supabase
-          .from(table)
-          .select(selectFields)
-          .eq("site_id", currentSite.id)
-          .ilike(nameField, `%${query.trim()}%`)
-          .limit(20)
-
-        if (data && data.length > 0) {
-          setRelationOptions(prev => {
-            const currentOptions = prev[target] || []
-            const newOptionsMap = new Map(currentOptions.map(opt => [opt.id, opt]))
-            
-            data.forEach((item: any) => {
-              newOptionsMap.set(item.id, {
-                id: item.id,
-                label: item[nameField] || item.id,
-                searchText: Object.values(item).filter(Boolean).join(" ")
-              })
-            })
-            
-            return {
-              ...prev,
-              [target]: Array.from(newOptionsMap.values())
-            }
-          })
-        }
-      } catch (error) {
-        console.error(`Error searching options for ${target}:`, error)
-      }
-    }, 300)
-  }
+  const selectedRelationIds = useMemo(
+    () => Object.values(relationsData).filter((value): value is string => typeof value === "string"),
+    [relationsData],
+  )
+  const { relationOptions, setRelationOptions, handleSearchChange } = useRelationOptions(
+    fields,
+    currentSite?.id,
+    selectedRelationIds,
+  )
   
   const renderField = (field: any) => {
     const commonInputClass = "bg-transparent border-0 hover:bg-muted/30 focus-visible:ring-1 focus-visible:ring-primary/30 focus-visible:bg-transparent shadow-none px-2 h-8 rounded-md w-full"

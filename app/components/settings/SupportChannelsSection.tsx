@@ -29,6 +29,7 @@ import { useZavuInvitationSync } from "./use-zavu-invitation-sync"
 import { getAccountLimit, countConnectedAccounts, canConnectAccounts } from "@/lib/billing-limits"
 import { useSite } from "@/app/context/SiteContext"
 import { useBillingLimit } from "@/app/context/BillingLimitContext"
+import { disconnectZavuChannel } from "./disconnect-remote-accounts"
 
 const CHANNEL_TYPES = [
   { value: "whatsapp", label: "WhatsApp" },
@@ -169,10 +170,17 @@ export function SupportChannelsSection({ active, siteId, onSave }: SupportChanne
     }
   }
 
-  const handleRemove = (index: number) => {
+  const handleRemove = async (index: number) => {
+    const channel = form.getValues(`channels.connections.${index}`)
+    try {
+      await disconnectZavuChannel(channel || {})
+    } catch (error: any) {
+      toast.error(error.message || "Failed to disconnect channel")
+      throw error
+    }
     remove(index)
     if (onSave) {
-      onSave(form.getValues())
+      await onSave(form.getValues())
     }
   }
 
@@ -427,8 +435,8 @@ export function SupportChannelsSection({ active, siteId, onSave }: SupportChanne
         description="This will remove the channel and disconnect it from your site. This action cannot be undone."
         confirmLabel="Delete"
         variant="destructive"
-        onConfirm={() => {
-          if (channelToDelete !== null) handleRemove(channelToDelete)
+        onConfirm={async () => {
+          if (channelToDelete !== null) await handleRemove(channelToDelete)
         }}
       />
     </div>

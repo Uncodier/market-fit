@@ -112,16 +112,24 @@ export function RelationSelect({
     (value?.label === "Loading..." ||
       (value?.label?.trim() === "" && options.length === 0))
 
+  const notifySearchChange = (query: string) => {
+    if (!onSearchChange) return
+    if (selectedLabel && query === selectedLabel) return
+    onSearchChange(query)
+  }
+
   const handleClear = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation()
     onValueChange(null)
     setSearchQuery("")
+    onSearchChange?.("")
     inputRef.current?.focus()
   }
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = e.target.value
     setSearchQuery(newValue)
+    notifySearchChange(newValue)
     if (!open) setOpen(true)
   }
 
@@ -172,13 +180,6 @@ export function RelationSelect({
       setSearchQuery(value.label || "")
     }
   }, [value, clearAfterSelect])
-
-  // Notify parent component of search query changes
-  React.useEffect(() => {
-    if (onSearchChange) {
-      onSearchChange(searchQuery)
-    }
-  }, [searchQuery, onSearchChange])
 
   return (
     <div className={cn("w-full", label ? "space-y-2" : "")}>
@@ -268,6 +269,7 @@ export function RelationSelect({
                 onClick={() => {
                   pinnedAction.onSelect()
                   setSearchQuery("")
+                  onSearchChange?.("")
                   setOpen(false)
                 }}
               >

@@ -113,7 +113,7 @@ const RecordDetailSkeleton = () => {
   return (
     <div className="flex h-[calc(100vh-64px)] min-h-0 bg-background">
       {/* Left side: Main Content / Form */}
-      <div className="flex-1 flex flex-col min-w-0 border-r border-border bg-muted/10 relative">
+      <div className="flex-1 flex flex-col min-w-0 bg-muted/10 relative">
         {/* Formatting Toolbar Skeleton */}
         <div className="border-b pl-[20px] pr-4 py-2 flex items-center h-[71px] bg-background gap-2 overflow-x-auto">
           <Skeleton className="h-9 w-24 rounded-md" />
@@ -377,7 +377,7 @@ export default function RecordDetailPage() {
   return (
     <div className="flex h-[calc(100vh-64px)] min-h-0 bg-background">
       {/* Left side: Main Content / Form */}
-      <div className="flex-1 flex flex-col min-w-0 border-r border-border bg-muted/10 relative">
+      <div className="flex-1 flex flex-col min-w-0 bg-muted/10 relative">
         {/* Formatting Toolbar */}
         <div className="border-b pl-[20px] pr-4 py-2 flex items-center h-[71px] bg-background gap-1 overflow-x-auto">
           <Button
@@ -625,7 +625,7 @@ export default function RecordDetailPage() {
                   value={title}
                   onChange={(e) => { setTitle(e.target.value); setHasChanges(true); }}
                   placeholder="Record Title"
-                  className="text-4xl font-bold border-none px-0 shadow-none focus-visible:ring-0 h-auto flex-none"
+                  className="bg-transparent text-4xl font-bold border-none px-0 shadow-none focus-visible:ring-0 h-auto flex-none"
                 />
                 <EditorContent editor={editor} className="flex-1 flex flex-col min-h-0" />
               </div>
@@ -636,7 +636,7 @@ export default function RecordDetailPage() {
                     value={title}
                     onChange={(e) => { setTitle(e.target.value); setHasChanges(true); }}
                     placeholder="Record Title"
-                    className="text-4xl font-bold border-none px-0 shadow-none focus-visible:ring-0 h-auto"
+                    className="bg-transparent text-4xl font-bold border-none px-0 shadow-none focus-visible:ring-0 h-auto"
                   />
                 </div>
                 

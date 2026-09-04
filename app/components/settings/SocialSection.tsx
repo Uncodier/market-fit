@@ -40,6 +40,7 @@ import {
   GlobeIcon
 } from "../ui/social-icons"
 import { ConfirmDialog } from "../ui/confirm-dialog"
+import { disconnectOutstandSocial } from "./disconnect-remote-accounts"
 import { getAccountLimit, countConnectedAccounts, canConnectAccounts } from "@/lib/billing-limits"
 import { useSite } from "@/app/context/SiteContext"
 import { useBillingLimit } from "@/app/context/BillingLimitContext"
@@ -328,12 +329,19 @@ export function SocialSection({ active, onSave, siteId }: SocialSectionProps) {
 
   const removeSocialMedia = useCallback(async (index: number) => {
     const currentSocialMedia = form.getValues("social_media") || []
+    const social = currentSocialMedia[index]
+    try {
+      await disconnectOutstandSocial(social || {}, siteId)
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to disconnect social account")
+      throw error
+    }
     const newSocialMedia = currentSocialMedia.filter((_, i) => i !== index)
     form.setValue("social_media", newSocialMedia, { shouldDirty: true })
     if (onSave) {
       await onSave(form.getValues())
     }
-  }, [form, onSave])
+  }, [form, onSave, siteId])
 
   // Memoize platform-specific configuration
   const getPlatformFields = useMemo(() => {

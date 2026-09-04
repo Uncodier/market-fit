@@ -5,13 +5,14 @@ import useSWR from "swr"
 import { useRouter, useSearchParams, usePathname } from "next/navigation"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
-import { Settings, Globe, Target, Pause, Play, MicroPause, MicroPlay, X, Plus, MoreHorizontal, ExternalLink, RotateCw, Loader, Monitor, Laptop, Tablet, Smartphone, Folder, Download, Archive, PanelRightClose, PanelRightOpen, Database } from "@/app/components/ui/icons"
+import { Settings, Globe, Target, Pause, Play, MicroPause, MicroPlay, X, Plus, MoreHorizontal, ExternalLink, RotateCw, Loader, Monitor, Laptop, Tablet, Smartphone, Folder, Download, Archive, PanelRightClose, PanelRightOpen, Database, Palette, LayoutGrid, Megaphone, Workflow } from "@/app/components/ui/icons"
 import { Button } from "@/app/components/ui/button"
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/app/components/ui/dropdown-menu"
 import { useLayout } from "@/app/context/LayoutContext"
 import { useTheme } from "@/app/context/ThemeContext"
 import { useSite } from "@/app/context/SiteContext"
 import { useRobots } from "@/app/context/RobotsContext"
+import { useLocalization } from "@/app/context/LocalizationContext"
 import { SimpleMessagesView } from "@/app/components/simple-messages-view"
 import { RobotsPageSkeleton } from "@/app/components/skeletons/robots-page-skeleton"
 import { BrowserSkeleton } from "@/app/components/skeletons/browser-skeleton"
@@ -58,10 +59,36 @@ interface Robot {
 
 const EMPTY_AVATARS = {};
 
-const formatScreenName = (screen?: string) => {
-  if (!screen) return "App";
-  if (screen === 'contentCreator') return 'Content Creator';
-  return (screen.charAt(0).toUpperCase() + screen.slice(1).replace(/([A-Z])/g, ' $1')).trim();
+const getScreenMetadata = (screen: string | undefined, t: (k: string) => string) => {
+  if (!screen) return { label: "App", icon: LayoutGrid };
+  
+  if (screen === 'contentCreator' || screen === 'imprenta') {
+    return { label: t('layout.sidebar.imprenta') || 'Content Creator', icon: Palette };
+  }
+  if (screen === 'database') {
+    return { label: t('layout.sidebar.database') || 'Database', icon: Database };
+  }
+  if (screen === 'workflow' || screen === 'workflows') {
+    return { label: t('layout.sidebar.workflows') || 'Workflows', icon: Workflow };
+  }
+  if (screen === 'marketing') {
+    return { label: t('layout.sidebar.marketing') || 'Marketing', icon: Megaphone };
+  }
+  if (screen === 'sales') {
+    return { label: t('layout.sidebar.sales') || 'Sales', icon: Target };
+  }
+  if (screen === 'settings') {
+    return { label: t('layout.sidebar.settings') || 'Settings', icon: Settings };
+  }
+  
+  // Fallback label trying translation first, then formatting the camel case
+  const translationKey = `layout.sidebar.${screen}`;
+  let label = t(translationKey);
+  if (label === translationKey) {
+    label = (screen.charAt(0).toUpperCase() + screen.slice(1).replace(/([A-Z])/g, ' $1')).trim();
+  }
+  
+  return { label, icon: LayoutGrid };
 };
 
 // Wrapper component for Suspense  
@@ -75,6 +102,7 @@ export default function RobotsPage() {
 
 // Main content component
 function RobotsPageContent() {
+  const { t } = useLocalization()
   const { isLayoutCollapsed, robotsViewMode, setRobotsViewMode } = useLayout()
   const { currentSite, refreshSites } = useSite()
   const { getAllInstances, getInstanceById, refreshRobots, isLoading: isLoadingRobots, refreshCount } = useRobots()
@@ -828,7 +856,7 @@ function RobotsPageContent() {
     }
   }, [activeRobotInstance?.id])
 
-  const { artifacts } = useInstanceArtifacts({ instanceId: activeRobotInstance?.id })
+  const { artifacts, removeArtifactLocally } = useInstanceArtifacts({ instanceId: activeRobotInstance?.id })
   
   const artifactScreens = useMemo(() => {
     const screensMap = new Map<string, typeof artifacts[0]>()
@@ -1055,7 +1083,7 @@ function RobotsPageContent() {
           shortcuts.push({
             id: customId,
             title: targetScreen 
-              ? formatScreenName(targetScreen) 
+              ? getScreenMetadata(targetScreen, t).label
               : 'App Screen',
             href: cleanUrl,
             isCustom: true
@@ -1073,11 +1101,15 @@ function RobotsPageContent() {
         const artifactsToDelete = artifacts.filter(a => a.screen === targetScreen)
         if (artifactsToDelete.length > 0) {
           const ids = artifactsToDelete.map(a => a.id)
-          supabase.from('instance_artifacts').delete().in('id', ids).then(() => {})
           
+          // Optimistically remove locally
+          removeArtifactLocally(targetScreen)
+
           if (activeBrowserTab.kind === 'artifact' && activeBrowserTab.screen === targetScreen) {
             setActiveBrowserTab({ kind: 'preview' })
           }
+
+          supabase.from('instance_artifacts').delete().in('id', ids).then(() => {})
         }
       }
     } catch (e) {
@@ -1168,11 +1200,15 @@ function RobotsPageContent() {
       const artifactsToDelete = artifacts.filter(a => a.screen === screen)
       if (artifactsToDelete.length > 0) {
         const ids = artifactsToDelete.map(a => a.id)
-        await supabase.from('instance_artifacts').delete().in('id', ids)
+        
+        // Optimistically remove locally
+        removeArtifactLocally(screen)
         
         if (activeBrowserTab.kind === 'artifact' && activeBrowserTab.screen === screen) {
           setActiveBrowserTab({ kind: 'preview' })
         }
+
+        await supabase.from('instance_artifacts').delete().in('id', ids)
       }
     } catch (err) {
       console.error("Error deleting artifact:", err)
@@ -1269,12 +1305,13 @@ function RobotsPageContent() {
     artifactScreens.forEach(a => {
       if (hasRequirementPreview && a.screen === 'database') return;
       const isActive = activeBrowserTab.kind === 'artifact' && activeBrowserTab.screen === a.screen;
+      const metadata = getScreenMetadata(a.screen, t);
       items.push({
         id: `artifact-${a.screen}`,
         kind: 'artifact',
         screen: a.screen,
-        label: formatScreenName(a.screen),
-        icon: null,
+        label: metadata.label,
+        icon: metadata.icon,
         isActive
       });
     });
@@ -2001,7 +2038,7 @@ function RobotsPageContent() {
                               key={`artifact-${activeBrowserTab.screen}-${artifactReloadCounter}-${theme}`}
                               src={rawActiveUrlToDisplay}
                               className="absolute inset-0 w-full h-full border-0 bg-background contained-iframe"
-                              title={formatScreenName(activeBrowserTab.screen)}
+                              title={getScreenMetadata(activeBrowserTab.screen, t).label}
                               allowFullScreen
                               allow="fullscreen; autoplay; camera; microphone; clipboard-read; clipboard-write"
                               style={{ isolation: 'isolate' }}

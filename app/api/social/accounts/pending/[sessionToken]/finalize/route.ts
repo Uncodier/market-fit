@@ -42,7 +42,7 @@ export async function POST(
         // Enforce account limit
         const limit = getAccountLimit(mappedSite.billing?.plan, mappedSite.billing?.addons_count)
         const currentCount = countConnectedAccounts(mappedSite)
-        const newAccountsCount = body.accountIds?.length || 0
+        const newAccountsCount = (body.selectedPageIds || body.accountIds)?.length || 0
         
         if (currentCount + newAccountsCount > limit) {
           return NextResponse.json(

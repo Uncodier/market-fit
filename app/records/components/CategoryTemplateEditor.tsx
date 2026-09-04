@@ -14,6 +14,8 @@ import {
   SectionCardTitle,
   SectionCardContent,
 } from "@/app/components/ui/section-card"
+import { EmojiPicker } from "@/app/components/ui/emoji-picker"
+import { isEmojiIcon } from "./category-icon"
 
 interface CategoryTemplateEditorProps {
   isOpen: boolean
@@ -112,7 +114,17 @@ export function CategoryTemplateEditor({ isOpen, onClose, category, categories =
           <div className="space-y-4">
             <div className="space-y-2">
               <Label>Category Name</Label>
-              <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g., Knowledge Base" />
+              <div className="relative flex items-center">
+                <div className="absolute left-1 flex items-center justify-center">
+                  <EmojiPicker value={isEmojiIcon(icon) ? icon : ""} onChange={setIcon} />
+                </div>
+                <Input 
+                  value={name} 
+                  onChange={(e) => setName(e.target.value)} 
+                  placeholder="e.g., Knowledge Base" 
+                  className="pl-11"
+                />
+              </div>
             </div>
             
             {categories.length > 0 && (
@@ -136,11 +148,6 @@ export function CategoryTemplateEditor({ isOpen, onClose, category, categories =
                 </Select>
               </div>
             )}
-
-            <div className="space-y-2">
-              <Label>Category Icon Name</Label>
-              <Input value={icon} onChange={(e) => setIcon(e.target.value)} placeholder="e.g., FileText, Users, Building" />
-            </div>
 
             <div className="space-y-2">
               <Label>Description</Label>

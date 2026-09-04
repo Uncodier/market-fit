@@ -12,6 +12,10 @@ export const useInstanceArtifacts = ({ instanceId }: UseInstanceArtifactsProps) 
   const [isLoading, setIsLoading] = useState(false)
   const { toast } = useToast()
 
+  const removeArtifactLocally = (screen: string) => {
+    setArtifacts(prev => prev.filter(a => a.screen !== screen))
+  }
+
   // Fetch artifacts for the instance
   const fetchArtifacts = async () => {
     if (!instanceId) {
@@ -105,6 +109,7 @@ export const useInstanceArtifacts = ({ instanceId }: UseInstanceArtifactsProps) 
   return {
     artifacts,
     isLoading,
-    refetchArtifacts: fetchArtifacts
+    refetchArtifacts: fetchArtifacts,
+    removeArtifactLocally
   }
 }

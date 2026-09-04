@@ -20,8 +20,9 @@ import { SubscriptionPlans, type BillingPlan } from "./subscription-plans"
 import { StripePaymentMethod } from "./stripe-payment-method"
 import { ConnectedAccountsAddons } from "./connected-accounts-addons"
 import { getAccountLimit, countConnectedAccounts, getRequiredAddons } from "@/lib/billing-limits"
-import { settingsAfterKeepingAccounts } from "./downgrade-accounts"
+import { accountsToDisconnect, settingsAfterKeepingAccounts } from "./downgrade-accounts"
 import { DowngradeChannelsModal } from "./downgrade-channels-modal"
+import { disconnectOutstandSocial, disconnectZavuChannel } from "@/app/components/settings/disconnect-remote-accounts"
 
 const billingFormSchema = z.object({
   plan: z.enum(["commission", "starter", "startup", "enterprise"]).default("commission"),
@@ -202,16 +203,44 @@ export function BillingForm({ id, initialData, onSuccess, onSubmitStart, onSubmi
     if (!currentSite || !pendingDowngradePlan) return
 
     const planToApply = pendingDowngradePlan
-    setDowngradeModalOpen(false)
-    setPendingDowngradePlan(null)
     setIsSavingPlan(true)
 
+    const removed = accountsToDisconnect(currentSite, keepKeys)
+    const failedKeys: string[] = []
+
     try {
-      await updateSettings(currentSite.id, settingsAfterKeepingAccounts(currentSite.settings, keepKeys))
+      for (const item of removed.channels) {
+        try {
+          await disconnectZavuChannel(item.channel)
+        } catch (error) {
+          console.error("Error disconnecting channel from Zavu:", error)
+          failedKeys.push(item.key)
+        }
+      }
+      for (const item of removed.socials) {
+        try {
+          await disconnectOutstandSocial(item.social, currentSite.id)
+        } catch (error) {
+          console.error("Error disconnecting social account from Outstand:", error)
+          failedKeys.push(item.key)
+        }
+      }
+
+      const nextKeepKeys = [...keepKeys, ...failedKeys]
+      await updateSettings(currentSite.id, settingsAfterKeepingAccounts(currentSite.settings, nextKeepKeys))
+
+      if (failedKeys.length > 0) {
+        toast.error("Some accounts could not be disconnected. The plan was not changed.")
+        return
+      }
+
+      setDowngradeModalOpen(false)
+      setPendingDowngradePlan(null)
       await handleChangePlan(planToApply, true)
     } catch (error) {
       console.error("Error updating settings for downgrade:", error)
       toast.error("Failed to remove accounts before downgrading")
+    } finally {
       setIsSavingPlan(false)
     }
   }
@@ -510,6 +539,7 @@ export function BillingForm({ id, initialData, onSuccess, onSubmitStart, onSubmi
       onOpenChange={setDowngradeModalOpen}
       site={currentSite}
       targetLimit={downgradeTargetLimit}
+      busy={isSavingPlan}
       onConfirm={handleDowngradeConfirm}
     />
     </>

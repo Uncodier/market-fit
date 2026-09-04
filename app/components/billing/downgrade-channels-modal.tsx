@@ -22,6 +22,7 @@ interface DowngradeChannelsModalProps {
   onOpenChange: (open: boolean) => void
   site: Partial<Site> | null | undefined
   targetLimit: number
+  busy?: boolean
   onConfirm: (keepKeys: string[]) => void
 }
 
@@ -30,6 +31,7 @@ export function DowngradeChannelsModal({
   onOpenChange,
   site,
   targetLimit,
+  busy = false,
   onConfirm,
 }: DowngradeChannelsModalProps) {
   const [accounts, setAccounts] = useState<ConnectedAccount[]>([])
@@ -61,8 +63,13 @@ export function DowngradeChannelsModal({
   }
 
   return (
-    <AlertDialog open={open} onOpenChange={onOpenChange}>
-      <AlertDialogContent className="sm:max-w-[500px]">
+    <AlertDialog
+      open={open}
+      onOpenChange={(next) => {
+        if (!busy) onOpenChange(next)
+      }}
+    >
+      <AlertDialogContent className="sm:max-w-[500px]" busy={busy}>
         <AlertDialogHeader>
           <AlertDialogTitle>Choose accounts to keep</AlertDialogTitle>
           <AlertDialogDescription>
@@ -107,14 +114,14 @@ export function DowngradeChannelsModal({
         </div>
 
         <AlertDialogFooter>
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogCancel disabled={busy}>Cancel</AlertDialogCancel>
           <Button
             type="button"
             variant="destructive"
-            disabled={isOverLimit}
+            disabled={isOverLimit || busy}
             onClick={() => onConfirm(Array.from(selected))}
           >
-            Confirm Downgrade
+            {busy ? "Disconnecting..." : "Confirm Downgrade"}
           </Button>
         </AlertDialogFooter>
       </AlertDialogContent>

@@ -5,7 +5,14 @@ import { useSearchParams, useRouter } from "next/navigation"
 import { useSite } from "@/app/context/SiteContext"
 import { getAccountLimit, countConnectedAccounts } from "@/lib/billing-limits"
 import { useBillingLimit } from "@/app/context/BillingLimitContext"
-import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/card"
+import {
+  SectionCard,
+  SectionCardHeader,
+  SectionCardTitle,
+  SectionCardDescription,
+  SectionCardContent,
+  SectionCardFooter,
+} from "@/app/components/ui/section-card"
 import { Button } from "@/app/components/ui/button"
 import { CheckCircle, XCircle, Loader } from "@/app/components/ui/icons"
 import { Checkbox } from "@/app/components/ui/checkbox"
@@ -183,7 +190,11 @@ export default function SocialNetworkCallbackPage() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ accountIds: selectedPages, siteId: currentSite?.id }),
+        body: JSON.stringify({ 
+          accountIds: selectedPages, 
+          selectedPageIds: selectedPages,
+          siteId: currentSite?.id 
+        }),
       })
       
       const result = await response.json()
@@ -228,15 +239,20 @@ export default function SocialNetworkCallbackPage() {
     router.push(redirectUrl)
   }
 
+  const title = network
+    ? `${network.charAt(0).toUpperCase() + network.slice(1)} Authentication`
+    : "Social Network Authentication"
+
   return (
     <div className="flex-1 flex items-center justify-center p-8">
-      <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle className="text-xl font-semibold">
-            {network ? `${network.charAt(0).toUpperCase() + network.slice(1)} Authentication` : "Social Network Authentication"}
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
+      <SectionCard className="w-full max-w-md">
+        <SectionCardHeader>
+          <SectionCardTitle>{title}</SectionCardTitle>
+          {status === "selecting" && message && (
+            <SectionCardDescription>{message}</SectionCardDescription>
+          )}
+        </SectionCardHeader>
+        <SectionCardContent>
           {status === "loading" && (
             <div className="flex flex-col items-center gap-4 py-8">
               <Loader className="h-8 w-8 text-primary" />
@@ -247,59 +263,38 @@ export default function SocialNetworkCallbackPage() {
           )}
 
           {status === "selecting" && (
-            <div className="space-y-4">
-              <p className="text-sm text-muted-foreground text-center">
-                {message}
-              </p>
-              <div className="space-y-3 max-h-64 overflow-y-auto">
-                {availablePages.map((page) => (
-                  <div
-                    key={page.id}
-                    className="flex items-center gap-3 p-3 border rounded-lg hover:bg-muted/50 cursor-pointer"
-                    onClick={() => handleTogglePage(page.id)}
-                  >
-                    <Checkbox
-                      checked={selectedPages.includes(page.id)}
-                      onCheckedChange={() => handleTogglePage(page.id)}
+            <div className="space-y-3 max-h-64 overflow-y-auto">
+              {availablePages.map((page) => (
+                <div
+                  key={page.id}
+                  className="flex items-center gap-4 w-full p-4 bg-muted/20 rounded-lg border dark:border-white/5 border-black/5 hover:bg-muted/50 cursor-pointer"
+                  onClick={() => handleTogglePage(page.id)}
+                >
+                  <Checkbox
+                    checked={selectedPages.includes(page.id)}
+                    onCheckedChange={() => handleTogglePage(page.id)}
+                  />
+                  {page.profile_picture_url && !imageErrors[page.id] && (
+                    <img
+                      src={page.profile_picture_url}
+                      alt={page.name}
+                      className="w-12 h-12 rounded-full font-inter flex-shrink-0 border dark:border-white/5 border-black/5"
+                      onError={() => setImageErrors(prev => ({ ...prev, [page.id]: true }))}
                     />
-                    {page.profile_picture_url && !imageErrors[page.id] && (
-                      <img
-                        src={page.profile_picture_url}
-                        alt={page.name}
-                        className="w-10 h-10 rounded-full"
-                        onError={() => setImageErrors(prev => ({ ...prev, [page.id]: true }))}
-                      />
-                    )}
-                    {(!page.profile_picture_url || imageErrors[page.id]) && (
-                      <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center font-bold text-muted-foreground uppercase">
-                        {page.name?.charAt(0) || '?'}
-                      </div>
-                    )}
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate">{page.name}</p>
-                      {page.username && (
-                        <p className="text-xs text-muted-foreground truncate">{page.username}</p>
-                      )}
+                  )}
+                  {(!page.profile_picture_url || imageErrors[page.id]) && (
+                    <div className="w-12 h-12 rounded-full font-inter font-bold bg-muted flex items-center justify-center flex-shrink-0 border dark:border-white/5 border-black/5 text-muted-foreground uppercase">
+                      {page.name?.charAt(0) || "?"}
                     </div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-base font-medium truncate">{page.name}</p>
+                    {page.username && (
+                      <p className="text-xs text-muted-foreground truncate">{page.username}</p>
+                    )}
                   </div>
-                ))}
-              </div>
-              <div className="flex gap-2 pt-4">
-                <Button
-                  variant="outline"
-                  onClick={handleBackToSettings}
-                  className="flex-1"
-                >
-                  Cancel
-                </Button>
-                <Button
-                  onClick={handleFinalize}
-                  disabled={selectedPages.length === 0 || isFinalizing}
-                  className="flex-1"
-                >
-                  {isFinalizing ? "Connecting..." : `Connect ${selectedPages.length} Page(s)`}
-                </Button>
-              </div>
+                </div>
+              ))}
             </div>
           )}
 
@@ -362,13 +357,31 @@ Please:
                   </Button>
                 </div>
               )}
-              <Button onClick={handleBackToSettings} variant="outline" className="mt-4">
-                Back to Settings
-              </Button>
             </div>
           )}
-        </CardContent>
-      </Card>
+        </SectionCardContent>
+        {status === "selecting" && (
+          <SectionCardFooter>
+            <Button variant="outline" size="sm" onClick={handleBackToSettings}>
+              Cancel
+            </Button>
+            <Button
+              size="sm"
+              onClick={handleFinalize}
+              disabled={selectedPages.length === 0 || isFinalizing}
+            >
+              {isFinalizing ? "Connecting..." : `Connect ${selectedPages.length} Page(s)`}
+            </Button>
+          </SectionCardFooter>
+        )}
+        {status === "error" && (
+          <SectionCardFooter>
+            <Button variant="outline" size="sm" onClick={handleBackToSettings}>
+              Back to Settings
+            </Button>
+          </SectionCardFooter>
+        )}
+      </SectionCard>
     </div>
   )
 }

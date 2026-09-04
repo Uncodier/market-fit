@@ -63,6 +63,27 @@ export function listConnectedAccounts(site: Partial<Site> | null | undefined): C
   return [...channels, ...socials]
 }
 
+export function accountsToDisconnect(site: Partial<Site> | null | undefined, keepKeys: string[]) {
+  const keep = new Set(keepKeys)
+  const connections = site?.settings?.channels?.connections || []
+  const channels = connections.flatMap((conn, index) => {
+    if (conn.status !== "connected") return []
+    const key = channelAccountKey(conn, index)
+    if (keep.has(key)) return []
+    return [{ key, channel: conn }]
+  })
+
+  const socials = (site?.settings?.social_media || []).flatMap((item, index) => {
+    const social = item as SocialAccount
+    if (!isActiveSocial(social)) return []
+    const key = socialAccountKey(social, index)
+    if (keep.has(key)) return []
+    return [{ key, social }]
+  })
+
+  return { channels, socials }
+}
+
 export function settingsAfterKeepingAccounts(
   settings: SiteSettings | undefined,
   keepKeys: string[]

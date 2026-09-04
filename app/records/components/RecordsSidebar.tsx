@@ -1,12 +1,11 @@
 import { useState, useEffect } from "react"
 import { RecordCategory, RecordItem, resolveRelationsForSidebar } from "../actions"
 import { Button } from "@/app/components/ui/button"
-import { Folder, Settings, Search, PlusCircle, Plus, ChevronRight, ChevronDown, FileText, Users, Building, Briefcase, Megaphone, CheckSquare, Banknote, ShoppingCart, Quotes } from "@/app/components/ui/icons"
-import * as Icons from "@/app/components/ui/icons"
+import { Folder, Settings, Plus, ChevronRight, ChevronDown, FileText, Users, Building, Briefcase, Megaphone, CheckSquare, Banknote, ShoppingCart, Quotes } from "@/app/components/ui/icons"
 import { ScrollArea } from "@/app/components/ui/scroll-area"
 import { Skeleton } from "@/app/components/ui/skeleton"
-import { cn } from "@/lib/utils"
 import { useLocalization } from "@/app/context/LocalizationContext"
+import { getCategoryIconComponent, isEmojiIcon } from "./category-icon"
 
 interface RecordsSidebarProps {
   categories: RecordCategory[]
@@ -134,8 +133,14 @@ function CategoryItem({
           }}
         >
           {(() => {
-            const IconComponent = category.icon && (Icons as any)[category.icon] ? (Icons as any)[category.icon] : Folder;
-            return <IconComponent className="mr-[6.5px] h-3.5 w-3.5 text-muted-foreground shrink-0" />;
+            const IconComponent = getCategoryIconComponent(category.icon)
+            if (IconComponent) {
+              return <IconComponent className="mr-[6.5px] h-3.5 w-3.5 text-muted-foreground shrink-0" />
+            }
+            if (isEmojiIcon(category.icon)) {
+              return <span className="mr-[6.5px] text-sm leading-none shrink-0 flex items-center justify-center h-3.5 w-3.5">{category.icon}</span>
+            }
+            return <Folder className="mr-[6.5px] h-3.5 w-3.5 text-muted-foreground shrink-0" />
           })()}
           <span className="truncate flex-1 text-left">{category.name}</span>
           
