@@ -145,6 +145,7 @@ export function LinkContactDialog({ deal, isOpen, onOpenChange, onLinked }: Link
               options={leads.map((l) => ({ id: l.id, label: l.name + (l.email ? ` (${l.email})` : "") }))}
               value={leadValue}
               onValueChange={setLeadValue}
+              onSearchChange={setSearchTerm}
               placeholder="Select a contact..."
               emptyMessage="No contacts found"
             />

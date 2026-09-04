@@ -56,6 +56,7 @@ interface RelationSelectProps {
     selected?: boolean
     onSelect: () => void
   }
+  onSearchChange?: (query: string) => void
 }
 
 export function RelationSelect({
@@ -75,6 +76,7 @@ export function RelationSelect({
   endAction,
   createLabel = (q) => `Use "${q}"`,
   pinnedAction,
+  onSearchChange,
 }: RelationSelectProps) {
   const options = rawOptions || []
   const [open, setOpen] = React.useState(false)
@@ -170,6 +172,13 @@ export function RelationSelect({
       setSearchQuery(value.label || "")
     }
   }, [value, clearAfterSelect])
+
+  // Notify parent component of search query changes
+  React.useEffect(() => {
+    if (onSearchChange) {
+      onSearchChange(searchQuery)
+    }
+  }, [searchQuery, onSearchChange])
 
   return (
     <div className={cn("w-full", label ? "space-y-2" : "")}>
