@@ -22,7 +22,10 @@ export async function POST(
       getOutstandIntegrationUrl(`/social-accounts/pending/${sessionToken}/finalize`),
       {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "x-api-key": process.env.SERVICE_API_KEY || ""
+        },
         body: JSON.stringify(body),
       }
     )

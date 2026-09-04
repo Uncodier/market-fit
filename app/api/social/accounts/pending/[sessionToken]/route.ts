@@ -17,7 +17,11 @@ export async function GET(
     }
 
     const { sessionToken } = await params
-    const response = await fetch(getOutstandIntegrationUrl(`/social-accounts/pending/${sessionToken}`))
+    const response = await fetch(getOutstandIntegrationUrl(`/social-accounts/pending/${sessionToken}`), {
+      headers: {
+        "x-api-key": process.env.SERVICE_API_KEY || ""
+      }
+    })
     const data = await response.json().catch(() => ({}))
     return NextResponse.json(data, { status: response.status })
   } catch (error) {

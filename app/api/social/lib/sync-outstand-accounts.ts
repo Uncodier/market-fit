@@ -115,6 +115,7 @@ export async function fetchOutstandAccountsForTenant(
     method: "GET",
     headers: {
       "Content-Type": "application/json",
+      "x-api-key": process.env.SERVICE_API_KEY || ""
     },
   })
 

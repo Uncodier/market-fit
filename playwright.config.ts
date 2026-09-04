@@ -21,6 +21,7 @@ export default defineConfig({
     video: 'on',
     screenshot: 'on',
     trace: 'on',
+    executablePath: '/Users/prado/Library/Caches/ms-playwright/chromium_headless_shell-1223/chrome-headless-shell-mac-arm64/chrome-headless-shell',
   },
   projects: [
     {

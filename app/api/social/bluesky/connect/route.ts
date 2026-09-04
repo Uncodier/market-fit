@@ -25,7 +25,10 @@ export async function POST(request: Request) {
 
     const res = await fetch(getOutstandIntegrationUrl("/social-accounts/bluesky"), {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { 
+        "Content-Type": "application/json",
+        "x-api-key": process.env.SERVICE_API_KEY || ""
+      },
       body: JSON.stringify({ handle, app_password, siteId }),
     })
 

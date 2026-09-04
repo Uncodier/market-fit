@@ -22,6 +22,7 @@ export default function SocialNetworkCallbackPage() {
   const [message, setMessage] = useState<string>("")
   const [availablePages, setAvailablePages] = useState<AvailablePage[]>([])
   const [selectedPages, setSelectedPages] = useState<string[]>([])
+  const [imageErrors, setImageErrors] = useState<Record<string, boolean>>({})
   const [isFinalizing, setIsFinalizing] = useState(false)
   
   const siteId = searchParams.get("siteId")
@@ -234,12 +235,18 @@ export default function SocialNetworkCallbackPage() {
                       checked={selectedPages.includes(page.id)}
                       onCheckedChange={() => handleTogglePage(page.id)}
                     />
-                    {page.profile_picture_url && (
+                    {page.profile_picture_url && !imageErrors[page.id] && (
                       <img
                         src={page.profile_picture_url}
                         alt={page.name}
                         className="w-10 h-10 rounded-full"
+                        onError={() => setImageErrors(prev => ({ ...prev, [page.id]: true }))}
                       />
+                    )}
+                    {(!page.profile_picture_url || imageErrors[page.id]) && (
+                      <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center font-bold text-muted-foreground uppercase">
+                        {page.name?.charAt(0) || '?'}
+                      </div>
                     )}
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium truncate">{page.name}</p>

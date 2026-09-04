@@ -4,6 +4,9 @@ export async function fetchOutstandPosts(siteId: string) {
   try {
     const apiServerUrl = process.env.NEXT_PUBLIC_API_SERVER_URL || process.env.API_SERVER_URL || 'http://localhost:3001';
     const res = await fetch(`${apiServerUrl}/api/integrations/outstand/posts?tenant_id=${siteId}&limit=50`, {
+      headers: {
+        'x-api-key': process.env.SERVICE_API_KEY || ""
+      },
       cache: 'no-store'
     });
     if (!res.ok) {
@@ -45,7 +48,8 @@ export async function publishOutstandPost(siteId: string, payload: {
     const res = await fetch(url, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'x-api-key': process.env.SERVICE_API_KEY || ""
       },
       body: JSON.stringify(payload)
     });

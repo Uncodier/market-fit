@@ -24,7 +24,10 @@ export async function POST(
       `${getOutstandIntegrationUrl(`/social-networks/${network}/auth-url`)}?siteId=${encodeURIComponent(siteId || "")}`,
       {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "x-api-key": process.env.SERVICE_API_KEY || ""
+        },
         body: JSON.stringify(body),
       }
     )

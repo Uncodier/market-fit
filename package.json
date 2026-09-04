@@ -14,7 +14,7 @@
     "lint:fix": "eslint . --fix",
     "test": "jest",
     "test:watch": "jest --watch",
-    "test:e2e": "shiplight test",
+    "test:e2e": "node -e \"console.log(process.arch)\" && shiplight test",
     "test:e2e:headed": "shiplight test --headed",
     "test:e2e:report": "SHIPLIGHT_REPORT_TO_CLOUD=1 shiplight report",
     "agent:verify": "npx tsx tests/agent/run-agent-verification.ts",
@@ -101,6 +101,7 @@
     "next-safe-action": "8.6.1",
     "papaparse": "5.5.3",
     "pdf-lib": "1.17.1",
+    "playwright": "1.60.0",
     "react": "^19.2.1",
     "react-dom": "^19.2.1",
     "react-dropzone": "^14.3.8",
@@ -134,7 +135,7 @@
     "zod": "^3.24.2"
   },
   "devDependencies": {
-    "@playwright/test": "1.62.1",
+    "@playwright/test": "1.60.0",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^14.3.1",
     "@types/crypto-js": "^4.2.2",

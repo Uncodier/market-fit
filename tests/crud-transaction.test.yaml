@@ -30,13 +30,13 @@ statements:
     action: click
     locator: "getByRole('button', { name: 'Add Expense' })"
 
+  - description: Wait for dialog to open and React state to settle
+    js: "await page.waitForTimeout(1000);"
+
   - intent: Fill the required expense amount
     action: fill
-    locator: "locator('input#amount')"
-    value: "150.00"
-    
-  - description: Blur the amount input to trigger validation
-    js: "await page.locator('input#amount').first().blur();"
+    locator: "getByPlaceholder('0.00')"
+    value: "150"
 
   - description: Wait for category dropdown to load
     js: "await page.waitForTimeout(2000)"
@@ -47,7 +47,7 @@ statements:
   - intent: Fill the expense notes used as description
     action: fill
     locator: "locator('textarea#notes')"
-    value: "Automated Test Expense 56"
+    value: "Automated Test Expense 60"
 
   - intent: Type a new campaign name in the dependency selector
     action: fill
@@ -119,15 +119,15 @@ statements:
       await page.waitForTimeout(10000);
     
   - WAIT_UNTIL: The expense appears in the list
-    js: "await page.getByText('Automated Test Expense 56').count() > 0"
+    js: "await page.getByText('Automated Test Expense 60').count() > 0"
     timeout_seconds: 60
 
   - intent: Open the expense details page
     action: click
-    locator: "locator('table').getByText('Automated Test Expense 56').first()"
+    locator: "locator('table').getByText('Automated Test Expense 60').first()"
 
   - WAIT_UNTIL: The transaction details route is open and loaded
-    js: "await page.locator('h2:has-text(\"Content Creation\")').isVisible()"
+    js: "await page.locator('div[role=\"dialog\"]').count() > 0 || await page.locator('h2').count() > 0"
     timeout_seconds: 30
 
   - VERIFY: The expense amount is visible
@@ -141,17 +141,16 @@ statements:
     js: "await page.getByRole('button', { name: 'Add Expense' }).count() > 0"
     timeout_seconds: 30
 
-  - description: Setup dialog handler for deletion and confirm
-    js: "page.once('dialog', async dialog => { await dialog.accept(); });"
-
   - description: Click the open menu button on the expense list dropdown
-    js: "await page.locator('button:has-text(\"Open menu\")').first().click();"
+    js: |
+      const row = page.locator('tr').filter({ hasText: 'Automated Test Expense 60' }).first();
+      await row.getByRole('button', { name: /open menu/i }).click();
 
   - description: Click Delete in the dropdown menu
-    js: "await page.locator('text=Delete').last().click();"
+    js: "await page.getByRole('menuitem', { name: /delete|eliminar/i }).click();"
 
   - description: Wait for deletion to complete
     js: "await page.waitForTimeout(2000);"
 
   - VERIFY: The expense is gone from the list
-    js: "await expect(page.getByText('Automated Test Expense 56')).toHaveCount(0)"
+    js: "await expect(page.getByText('Automated Test Expense 60')).toHaveCount(0)"

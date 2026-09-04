@@ -184,6 +184,7 @@ export function SocialSection({ active, onSave, siteId }: SocialSectionProps) {
   const form = useFormContext<SiteFormValues>()
   const [savingCard, setSavingCard] = useState<number | null>(null)
   const socialMedia = form.watch("social_media") || []
+  const [imageErrors, setImageErrors] = useState<Record<number, boolean>>({})
 
   // Emit social networks update event whenever socialMedia changes
   useEffect(() => {
@@ -454,14 +455,17 @@ export function SocialSection({ active, onSave, siteId }: SocialSectionProps) {
                   {isActive && hasPlatform && (
                     <div className="flex items-center gap-4 w-full p-4 bg-muted/20 rounded-lg border dark:border-white/5 border-black/5">
                       <div className="flex items-center gap-3 flex-1 min-w-0">
-                        {social.profile_picture_url && (
+                        {social.profile_picture_url && !imageErrors[index] && (
                           <img 
                             src={social.profile_picture_url} 
                             alt={social.nickname || social.username || social.handle || social.platform}
                             className="w-12 h-12 rounded-full font-inter flex-shrink-0 border dark:border-white/5 border-black/5"
+                            onError={() => {
+                              setImageErrors(prev => ({ ...prev, [index]: true }))
+                            }}
                           />
                         )}
-                        {!social.profile_picture_url && (
+                        {(!social.profile_picture_url || imageErrors[index]) && (
                           <div className="w-12 h-12 rounded-full font-inter font-bold bg-muted flex items-center justify-center flex-shrink-0 border dark:border-white/5 border-black/5">
                             {getPlatformIcon(social.platform || social.network, 24)}
                           </div>

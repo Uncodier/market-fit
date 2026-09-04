@@ -79,42 +79,44 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 4. Generate the embedding using Gemini
-    const apiKey = process.env.GEMINI_API_KEY?.trim();
-    
-    if (!apiKey) {
-      return NextResponse.json({ error: 'Gemini API key not configured' }, { status: 500 })
+    // 4. Generate the embedding via the central API (Portkey + text-embedding-3-small)
+    const apiServerUrl = (process.env.NEXT_PUBLIC_API_SERVER_URL || process.env.API_SERVER_URL || '').trim();
+    const serviceApiKey = process.env.SERVICE_API_KEY?.trim();
+
+    if (!apiServerUrl) {
+      return NextResponse.json({ error: 'API_SERVER_URL is not configured' }, { status: 500 });
+    }
+    if (!serviceApiKey) {
+      return NextResponse.json({ error: 'SERVICE_API_KEY is not configured' }, { status: 500 });
     }
 
-    // El modelo exacto según la API de Gemini es models/text-embedding-004
-    const aiEndpoint = `https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent?key=${apiKey}`;
+    const aiEndpoint = `${apiServerUrl.replace(/\/$/, '')}/api/ai/embeddings`;
 
     const response = await fetch(aiEndpoint, {
-      method: "POST",
+      method: 'POST',
       headers: {
-        "Content-Type": "application/json"
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+        'x-api-key': serviceApiKey,
       },
       body: JSON.stringify({
-        content: {
-          parts: [{ text: textToEmbed }]
-        },
-        // We explicitly request 1536 dimensions to match Supabase's vector(1536) type
-        outputDimensionality: 1536
-      })
-    })
+        input: textToEmbed,
+        modelId: 'text-embedding-3-small',
+      }),
+    });
 
     if (!response.ok) {
       const errText = await response.text();
-      console.error("Gemini embedding error:", errText);
-      return NextResponse.json({ error: 'Failed to generate embedding with Gemini' }, { status: 500 })
+      console.error('Central API embedding error:', errText);
+      return NextResponse.json({ error: 'Failed to generate embedding with Central API' }, { status: 500 });
     }
 
-    const embedData = await response.json()
-    const embedding = embedData.embedding?.values
+    const embedData = await response.json();
+    const embedding = embedData.embedding;
 
     if (!embedding || !Array.isArray(embedding)) {
-      console.error("Gemini embedding returned no values:", embedData);
-      return NextResponse.json({ error: 'No embedding returned from Gemini' }, { status: 500 })
+      console.error('Central API embedding returned no values:', embedData);
+      return NextResponse.json({ error: 'No embedding returned from Central API' }, { status: 500 });
     }
 
     // 5. Update the record
