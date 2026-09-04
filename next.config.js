@@ -70,6 +70,7 @@ const nextConfig = {
       },
     ];
   },
+  transpilePackages: ['react-force-graph-2d', 'force-graph'],
   // Desactivar TypeScript durante la compilación
   typescript: {
     // ⚠️ Solución temporal para permitir la compilación 

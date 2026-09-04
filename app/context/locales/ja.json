@@ -440,6 +440,8 @@
   "commerce.share.trigger": "共有",
   "common.add": "追加",
   "common.adding": "追加中",
+  "common.filters": "フィルター",
+  "common.results": "結果",
   "common.search": "検索",
   "marketplace.add": "カートに追加",
   "marketplace.addedToCart": "カートに追加しました",
@@ -752,5 +754,7 @@
   "ticket.checkedIn": "チェックイン済み",
   "ticket.ticketId": "チケットID",
   "ticket.valid": "有効なチケット",
-  "buyer.ticket.details": "チケット詳細"
+  "buyer.ticket.details": "チケット詳細",
+  "records.selectCategoryToCreate": "Select Category to Create",
+  "records.new": "New Record"
 }

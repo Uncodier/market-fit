@@ -160,7 +160,7 @@ export default function TransactionsPage() {
       <StickyHeader>
         <div className="w-full pt-0">
           <div className="flex items-center justify-between gap-2 w-full">
-            <MobileFiltersDrawer triggerText={t('common.search') || "Buscar"}>
+            <MobileFiltersDrawer triggerText={t('common.search') || "Search"}>
               <div className="flex flex-col md:flex-row items-stretch md:items-center gap-6 md:gap-4 w-full flex-1 min-w-0">
                 <div className="flex flex-col gap-2 w-full md:w-auto">
                   <span className="text-xs font-semibold text-muted-foreground md:hidden mb-1 uppercase">{t('common.category') || 'Categoría'}</span>

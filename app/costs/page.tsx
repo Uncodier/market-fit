@@ -77,7 +77,7 @@ function CostsPageContent() {
       <StickyHeader>
         <div className="w-full pt-0">
           <div className="flex w-full items-center justify-end gap-8">
-            <MobileFiltersDrawer triggerText={t('common.filters') || "Filtros"}>
+            <MobileFiltersDrawer triggerText={t('common.filters') || "Filters"}>
               <div className="flex flex-col md:flex-row items-stretch md:items-center gap-6 md:gap-4 w-full flex-1 md:justify-end min-w-0">
                 <div className="flex flex-col md:flex-row items-stretch md:items-center gap-4">
                   <div className="flex flex-col md:flex-row items-stretch md:items-center gap-2">

@@ -63,6 +63,7 @@ import TextAlign from '@tiptap/extension-text-align'
 import HardBreak from '@tiptap/extension-hard-break'
 import LinkExtension from '@tiptap/extension-link'
 import ImageExtension from '@tiptap/extension-image'
+import { useDebounce, useDebouncedCallback } from 'use-debounce'
 import "@/app/content/styles/editor.css"
 import { markdownToHTML } from "@/app/content/utils"
 
@@ -216,6 +217,14 @@ export default function RecordDetailPage() {
   const [isHeadingDropdownOpen, setIsHeadingDropdownOpen] = useState(false)
   const blurTimeoutRef = React.useRef<NodeJS.Timeout>()
 
+  const [debouncedTitle] = useDebounce(title, 500)
+  const [debouncedFormData] = useDebounce(formData, 500)
+
+  const handleEditorUpdate = useDebouncedCallback(({ editor }) => {
+    setDescription(htmlToMarkdown(editor.getHTML()))
+    setHasChanges(true)
+  }, 500)
+
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
@@ -249,10 +258,7 @@ export default function RecordDetailPage() {
         setIsEditorFocused(false)
       }, 150)
     },
-    onUpdate: ({ editor }) => {
-      setDescription(htmlToMarkdown(editor.getHTML()))
-      setHasChanges(true)
-    },
+    onUpdate: handleEditorUpdate,
     editorProps: {
       attributes: {
         class: 'prose-lg prose-headings:my-4 prose-p:my-3 prose-ul:my-3 outline-none !min-h-0 flex-1',
@@ -265,13 +271,13 @@ export default function RecordDetailPage() {
     window.dispatchEvent(
       new CustomEvent("breadcrumb:update", {
         detail: {
-          title: title || (isLoading ? (t("common.loading") || "Loading...") : "Record"),
+          title: debouncedTitle || (isLoading ? (t("common.loading") || "Loading...") : "Record"),
           parentTitle: "Records",
           parentPath: "/records",
         },
       })
     )
-  }, [title, isLoading])
+  }, [debouncedTitle, isLoading])
 
   useEffect(() => {
     const handleSaveEvent = () => {
@@ -678,7 +684,7 @@ export default function RecordDetailPage() {
                 {activeRightTab === "insights" && (
                   <InsightsTab 
                     fields={templateFields} 
-                    formData={formData} 
+                    formData={debouncedFormData} 
                     description={description}
                     record={record}
                     relationsData={relationsData}

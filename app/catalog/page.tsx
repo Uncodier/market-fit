@@ -186,7 +186,7 @@ export default function CatalogPage() {
       <StickyHeader>
         <div className="w-full pt-0">
           <div className="flex items-center justify-between gap-2 w-full">
-            <MobileFiltersDrawer triggerText={t('common.search') || "Buscar"}>
+            <MobileFiltersDrawer triggerText={t('common.search') || "Search"}>
                 <div className="flex flex-col md:flex-row items-stretch md:items-center gap-6 md:gap-4 w-full flex-1 min-w-0">
                   <div className="md:hidden w-full">
                     <form onSubmit={handleSearch} className="w-full">

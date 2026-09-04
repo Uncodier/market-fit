@@ -12,6 +12,8 @@ import { ExternalLink, Info } from "@/app/components/ui/icons"
 import { createClient } from "@/lib/supabase/client"
 import { toast } from "sonner"
 import { useLocalization } from "@/app/context/LocalizationContext"
+import { robotsInstanceHref } from "@/lib/navigation/robots-instance"
+import Link from "next/link"
 
 interface RequirementStatus {
   id: string
@@ -153,15 +155,13 @@ export function RequirementStatusList({
                       </a>
                     )}
                     {status.instance_id && (
-                      <a 
-                        href={`/robots?instance_id=${status.instance_id}`}
-                        target="_blank" 
-                        rel="noopener noreferrer"
+                      <Link
+                        href={robotsInstanceHref(status.instance_id)}
                         className="inline-flex items-center gap-1.5 text-xs text-foreground/50 hover:text-foreground/80 hover:underline"
                       >
                         <Info className="h-3 w-3" />
                         Instance
-                      </a>
+                      </Link>
                     )}
                   </div>
                 </div>

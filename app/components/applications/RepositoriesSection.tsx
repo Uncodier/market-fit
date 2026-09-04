@@ -13,6 +13,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/app
 import { ViewType } from "@/app/components/view-selector"
 import { EmptyCard } from "@/app/components/ui/empty-card"
 import { useLocalization } from "@/app/context/LocalizationContext"
+import { robotsInstanceHref } from "@/lib/navigation/robots-instance"
 
 interface RequirementStatusRepo {
   id: string
@@ -280,7 +281,7 @@ function RepositoryItem({
               className="h-8 text-xs transition-colors"
               onClick={(e) => {
                 e.stopPropagation()
-                router.push(`/robots?instanceId=${repo.instance_id}`)
+                router.push(robotsInstanceHref(repo.instance_id))
               }}
             >
               <Bot className="h-3 w-3 mr-1.5 opacity-70" />
@@ -425,7 +426,7 @@ function RepositoryItem({
                 className="h-8 text-xs flex-1 transition-colors min-w-[100px]"
                 onClick={(e) => {
                   e.stopPropagation()
-                  router.push(`/robots?instanceId=${repo.instance_id}`)
+                  router.push(robotsInstanceHref(repo.instance_id))
                 }}
               >
                 <Bot className="h-3 w-3 mr-1.5 opacity-70" />

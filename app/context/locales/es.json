@@ -440,6 +440,8 @@
   "commerce.share.trigger": "Compartir",
   "common.add": "Añadir",
   "common.adding": "Agregando",
+  "common.filters": "Filtros",
+  "common.results": "Resultados",
   "common.search": "Buscar",
   "marketplace.add": "Añadir al carrito",
   "marketplace.addedToCart": "añadido al carrito",
@@ -768,5 +770,7 @@
   "ticket.checkedIn": "Check-in realizado",
   "ticket.ticketId": "ID de la entrada",
   "ticket.valid": "Entrada válida",
-  "buyer.ticket.details": "Detalles de la entrada"
+  "buyer.ticket.details": "Detalles de la entrada",
+  "records.selectCategoryToCreate": "Select Category to Create",
+  "records.new": "New Record"
 }

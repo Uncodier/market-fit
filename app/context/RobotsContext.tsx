@@ -5,6 +5,7 @@ import useSWR from 'swr'
 import { usePathname } from "next/navigation"
 import { useSite } from "@/app/context/SiteContext"
 import { createClient } from "@/lib/supabase/client"
+import { sortRobotInstances } from "@/lib/navigation/robots-instance"
 
 function shouldLoadRobots(pathname: string | null): boolean {
   if (!pathname) return false
@@ -211,19 +212,7 @@ export function RobotsProvider({ children }: RobotsProviderProps) {
     })
 
     Object.keys(organized).forEach(activityName => {
-      organized[activityName].sort((a, b) => {
-        const playStatuses = ['running', 'active', 'starting', 'pending', 'initializing'];
-        const aIsPlay = playStatuses.includes(a.status) ? 1 : 0;
-        const bIsPlay = playStatuses.includes(b.status) ? 1 : 0;
-        
-        if (aIsPlay !== bIsPlay) {
-          return bIsPlay - aIsPlay;
-        }
-        
-        const dateA = new Date(a.updated_at || a.created_at || 0).getTime()
-        const dateB = new Date(b.updated_at || b.created_at || 0).getTime()
-        return dateB - dateA
-      })
+      organized[activityName] = sortRobotInstances(organized[activityName])
     })
 
     return { robotsByActivity: organized, totalRunningRobots: runningCount }

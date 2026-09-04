@@ -162,15 +162,15 @@ export default function OrdersPage() {
         <StickyHeader className="border-b min-h-[71px] bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/80">
           <div className="w-full pt-0">
             <div className="flex items-center justify-between w-full">
-              <MobileFiltersDrawer triggerText={t('common.search') || "Buscar"} results={renderOrdersTable()}>
+              <MobileFiltersDrawer triggerText={t('common.search') || "Search"} results={searchQuery ? renderOrdersTable() : null}>
                 <div className="flex flex-col md:flex-row items-stretch md:items-center gap-6 md:gap-4 w-full flex-1 min-w-0">
                   <div className="md:hidden w-full">
                     <form onSubmit={handleSearch}>
                       <SearchInput  placeholder={t('orders.search') || "Search order number..."} value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} alwaysExpanded={true}    className="w-full h-10 md:h-9"  containerClassName="w-full" />
                     </form>
                   </div>
-                  <div className="flex flex-col gap-2">
-                    <span className="text-xs font-semibold text-muted-foreground md:hidden mb-1 uppercase">{t('common.filters') || 'Filtros'}</span>
+                  <div className={cn("flex flex-col gap-2", searchQuery && "max-md:hidden")}>
+                    <span className="text-xs font-semibold text-muted-foreground md:hidden mb-1 uppercase">{t('common.filters') || 'Filters'}</span>
                     <TabsList className="h-auto md:h-8 p-0 md:p-0.5 bg-transparent md:bg-muted/30 rounded-lg md:rounded-full flex flex-col md:flex-row w-full md:max-w-full overflow-y-auto md:overflow-x-auto justify-start items-stretch md:items-center gap-1 md:gap-0">
                       <TabsTrigger value="all" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent whitespace-nowrap" title={t('orders.tabs.all') || "All Orders"}>
                         <LayoutGrid size={13} className="shrink-0 md:!hidden" />
@@ -196,23 +196,25 @@ export default function OrdersPage() {
                   </div>
                 
                   {locations.length > 0 && (
-                    <Select
-                      value={locationFilter}
-                      onValueChange={(val) => { setLocationFilter(val); setPage(1); }}
-                    >
-                      <SelectTrigger className="w-full md:w-[160px] h-10 md:h-8 text-sm md:text-xs bg-background md:bg-muted/30 border md:border-0 rounded-md md:rounded-full">
-                        <SelectValue placeholder={t('allLocations') || 'All Locations'} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">{t('allLocations') || 'All Locations'}</SelectItem>
-                        {locations.map((loc) => (
-                          <SelectItem key={loc.id} value={loc.id}>{loc.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <div className={cn(searchQuery && "max-md:hidden")}>
+                      <Select
+                        value={locationFilter}
+                        onValueChange={(val) => { setLocationFilter(val); setPage(1); }}
+                      >
+                        <SelectTrigger className="w-full md:w-[160px] h-10 md:h-8 text-sm md:text-xs bg-background md:bg-muted/30 border md:border-0 rounded-md md:rounded-full">
+                          <SelectValue placeholder={t('allLocations') || 'All Locations'} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">{t('allLocations') || 'All Locations'}</SelectItem>
+                          {locations.map((loc) => (
+                            <SelectItem key={loc.id} value={loc.id}>{loc.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
                   )}
 
-                  <div className="md:hidden flex flex-col md:flex-row items-stretch md:items-center gap-2">
+                  <div className={cn("md:hidden flex flex-col md:flex-row items-stretch md:items-center gap-2", searchQuery && "hidden")}>
                     <CalendarDateRangePicker 
                       onRangeChange={handleDateRangeChange} 
                       initialStartDate={dateRange.startDate}

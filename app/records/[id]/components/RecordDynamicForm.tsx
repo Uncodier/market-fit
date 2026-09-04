@@ -28,6 +28,8 @@ import { TableWidget } from "./TableWidget"
 import { createClient } from "@/lib/supabase/client"
 import { useSite } from "@/app/context/SiteContext"
 import { RecordItem } from "../../actions"
+import { resolveRelationId } from "@/app/commerce/resolve-relation"
+import { toast } from "sonner"
 
 interface RecordDynamicFormProps {
   fields: any[]
@@ -182,19 +184,22 @@ export function RecordDynamicForm({ fields, formData, relationsData, status, rec
       case "select":
         return (
           <div className="w-full flex items-center">
-            <Select
-              value={formData[field.name] || ""}
-              onValueChange={(val) => onChange(field.name, val, "field")}
-            >
-              <SelectTrigger className="bg-transparent border-0 hover:bg-muted/30 focus-visible:ring-1 focus-visible:ring-primary/30 shadow-none px-2 h-8 rounded-md w-full sm:w-auto min-w-[200px]">
-                <SelectValue placeholder="Empty" />
-              </SelectTrigger>
-              <SelectContent>
-                {(field.options || []).map((opt: string) => (
-                  <SelectItem key={opt} value={opt}>{opt}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <RelationSelect
+              options={(field.options || []).map((opt: string) => ({ id: opt, label: opt }))}
+              value={formData[field.name] ? { mode: "existing", id: formData[field.name], label: formData[field.name] } : null}
+              onValueChange={(val) => {
+                if (!val) {
+                  onChange(field.name, "", "field")
+                } else if (val.mode === "existing") {
+                  onChange(field.name, val.id, "field")
+                } else if (val.mode === "create") {
+                  onChange(field.name, val.label, "field")
+                }
+              }}
+              allowCreate={true}
+              placeholder="Empty"
+              className="bg-transparent border-0 hover:bg-muted/30 focus-visible:ring-1 focus-visible:ring-primary/30 shadow-none px-2 h-8 rounded-md w-full"
+            />
           </div>
         )
 
@@ -220,8 +225,46 @@ export function RecordDynamicForm({ fields, formData, relationsData, status, rec
             <RelationSelect
               options={options}
               value={selectedId ? { mode: "existing", id: selectedId, label: selectedOption?.label || selectedId } : null}
-              onValueChange={(val) => onChange(field.name, val?.mode === "existing" ? val.id : null, "relation")}
-              allowCreate={false}
+              onValueChange={async (val) => {
+                if (!val) {
+                  onChange(field.name, null, "relation")
+                  return
+                }
+                
+                if (val.mode === "existing") {
+                  onChange(field.name, val.id, "relation")
+                  return
+                }
+                
+                if (val.mode === "create") {
+                  if (!currentSite?.id) {
+                    toast.error("Please select a site first")
+                    return
+                  }
+                  
+                  const toastId = toast.loading(`Creating ${target}...`)
+                  try {
+                    const { id, error } = await resolveRelationId(target as any, val, currentSite.id)
+                    
+                    if (error) throw new Error(error)
+                    
+                    if (id) {
+                      onChange(field.name, id, "relation")
+                      toast.success(`Created successfully`, { id: toastId })
+                      
+                      setRelationOptions(prev => {
+                        const targetOptions = [...(prev[target] || [])]
+                        targetOptions.push({ id, label: val.label, searchText: val.label })
+                        return { ...prev, [target]: targetOptions }
+                      })
+                    }
+                  } catch (error) {
+                    console.error("Error resolving relation:", error)
+                    toast.error(error instanceof Error ? error.message : "Failed to create", { id: toastId })
+                  }
+                }
+              }}
+              allowCreate={true}
               placeholder="Empty"
               className="bg-transparent border-0 hover:bg-muted/30 focus-visible:ring-1 focus-visible:ring-primary/30 shadow-none px-2 h-8 rounded-md w-full"
             />

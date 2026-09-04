@@ -1328,7 +1328,7 @@ export default function LeadsPage() {
               </div>
             ) : (
               <div className="flex items-center justify-between w-full">
-                <MobileFiltersDrawer triggerText={t('common.search') || "Buscar"}>
+                <MobileFiltersDrawer triggerText={t('common.search') || "Search"}>
                 <div className="flex flex-col md:flex-row items-stretch md:items-center gap-6 md:gap-4 w-full flex-1 min-w-0">
                   <div className="flex md:hidden items-center gap-2 w-full">
                     <SearchInput  

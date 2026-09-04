@@ -28,6 +28,7 @@ import { RecordsSidebar } from "./components/RecordsSidebar"
 import { RecordsTable, RecordsTableSkeleton } from "./components/RecordsTable"
 import { RecordsKanban, RecordsKanbanSkeleton } from "./components/RecordsKanban"
 import { RecordsCalendar, RecordsCalendarSkeleton } from "./components/RecordsCalendar"
+import { RecordsGraph } from "./components/RecordsGraph"
 
 import { CategoryTemplateEditor } from "./components/CategoryTemplateEditor"
 import { createRecordCategory, updateRecordCategory, RecordCategory, createRecord, deleteRecord, updateRecord } from "./actions"
@@ -47,7 +48,7 @@ export default function RecordsPage() {
   const [selectedCategory, setSelectedCategory] = useState<string>("all")
   const [selectedRelation, setSelectedRelation] = useState<{ fieldName: string, targetId: string } | null>(null)
   const [recordSearchQuery, setRecordSearchQuery] = useState("")
-  const [viewType, setViewType] = useState<"table" | "kanban" | "calendar">("table")
+  const [viewType, setViewType] = useState<"table" | "kanban" | "calendar" | "graph">("table")
   const [groupBy, setGroupBy] = useState<"status" | "category" | "date" | "team_member">("status")
   const [sortBy, setSortBy] = useState<"newest" | "oldest" | "title_asc" | "title_desc">("newest")
   const [dateRange, setDateRange] = useState({
@@ -409,6 +410,7 @@ export default function RecordsPage() {
                     currentView={viewType}
                     onViewChange={(view) => setViewType(view as any)}
                     showCalendar={true}
+                    showGraph={true}
                   />
                 </div>
               )
@@ -416,7 +418,7 @@ export default function RecordsPage() {
           />
         </div>
 
-        <div className="flex-1 overflow-y-auto min-w-0 bg-muted/30 transition-colors duration-300 ease-in-out pt-[71px]">
+        <div className={cn("flex-1 min-w-0 bg-muted/30 transition-colors duration-300 ease-in-out pt-[71px]", viewType === "graph" ? "overflow-hidden" : "overflow-y-auto")}>
           <div 
             className="min-h-full flex flex-col transition-all duration-300 ease-in-out"
             style={{ 
@@ -424,11 +426,13 @@ export default function RecordsPage() {
             }}
           >
             {isLoading ? (
-              <div className={cn("min-h-full min-w-0", viewType === "kanban" ? "py-4 md:py-8" : "p-4 md:p-8")}>
+              <div className={cn("min-h-full min-w-0", viewType === "graph" ? "" : viewType === "kanban" ? "py-4 md:py-8" : "p-4 md:p-8")}>
                 {viewType === "table" ? (
                   <RecordsTableSkeleton />
                 ) : viewType === "calendar" ? (
                   <RecordsCalendarSkeleton />
+                ) : viewType === "graph" ? (
+                  <div className="w-full h-[calc(100vh-135px)] min-h-[600px] bg-muted/20 animate-pulse" />
                 ) : (
                   <RecordsKanbanSkeleton />
                 )}
@@ -448,7 +452,7 @@ export default function RecordsPage() {
                 />
               </div>
             ) : (
-              <div className={cn("min-h-full min-w-0", viewType === "kanban" ? "py-4 md:py-8" : "p-4 md:p-8")}>
+              <div className={cn("min-h-full min-w-0 flex flex-col", viewType === "graph" ? "" : viewType === "kanban" ? "py-4 md:py-8 px-4" : "p-4 md:p-8")}>
                 {viewType === "table" ? (
                   <RecordsTable
                     records={filteredRecords.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)}
@@ -472,6 +476,15 @@ export default function RecordsPage() {
                   <RecordsCalendar
                     records={filteredRecords}
                     onRecordClick={(record) => router.push(`/records/${record.id}`)}
+                  />
+                ) : viewType === "graph" ? (
+                  <RecordsGraph
+                    records={filteredRecords}
+                    toolsOffsetLeft={
+                      isMobile
+                        ? 16
+                        : (isLayoutCollapsed ? 92 : 268) + (!isSidebarCollapsed ? 319 : 0)
+                    }
                   />
                 ) : (
                   <RecordsKanban

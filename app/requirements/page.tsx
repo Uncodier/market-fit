@@ -147,13 +147,13 @@ export default function RequirementsPage() {
         <StickyHeader>
           <div className="w-full pt-0">
               <div className="flex w-full items-center justify-between gap-4">
-              <MobileFiltersDrawer triggerText={t('common.search') || "Buscar"}>
+              <MobileFiltersDrawer triggerText={t('common.search') || "Search"}>
                 <div className="flex flex-col md:flex-row items-stretch md:items-center gap-6 md:gap-4 w-full flex-1 min-w-0">
                   <div className="md:hidden w-full">
                     <SearchInput  placeholder={t("requirements.search") || "Search requirements..."} value={list.searchQuery} onSearch={list.setSearchQuery} ref={searchInputRef} alwaysExpanded={true}    className="w-full h-10 md:h-9"  containerClassName="w-full" />
                   </div>
                   <div className="flex flex-col gap-2 w-full md:w-auto">
-                    <span className="text-xs font-semibold text-muted-foreground md:hidden mb-1 uppercase">{t('common.filters') || 'Filtros'}</span>
+                    <span className="text-xs font-semibold text-muted-foreground md:hidden mb-1 uppercase">{t('common.filters') || 'Filters'}</span>
                     <TabsList className="h-auto md:h-8 p-0 md:p-0.5 bg-transparent md:bg-muted/30 rounded-lg md:rounded-full flex flex-col md:flex-row w-full md:max-w-full overflow-y-auto md:overflow-x-auto justify-start items-stretch md:items-center gap-1 md:gap-0">
                       <TabsTrigger value="all" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent whitespace-nowrap" title={t("requirements.tabs.all") || "All Requirements"}>
                         <LayoutGrid size={13} className="shrink-0 md:!hidden" />

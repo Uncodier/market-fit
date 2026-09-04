@@ -440,6 +440,8 @@
   "commerce.share.trigger": "Partager",
   "common.add": "Ajouter",
   "common.adding": "Ajout en cours",
+  "common.filters": "Filtres",
+  "common.results": "Résultats",
   "common.search": "Rechercher",
   "marketplace.add": "Ajouter au panier",
   "marketplace.addedToCart": "ajouté au panier",
@@ -752,5 +754,7 @@
   "ticket.checkedIn": "Enregistré",
   "ticket.ticketId": "ID du billet",
   "ticket.valid": "Billet valide",
-  "buyer.ticket.details": "Détails du billet"
+  "buyer.ticket.details": "Détails du billet",
+  "records.selectCategoryToCreate": "Select Category to Create",
+  "records.new": "New Record"
 }

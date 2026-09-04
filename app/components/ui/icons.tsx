@@ -2273,6 +2273,20 @@ export const QrCode = ({ className = "", size = 18, ...props }: IconProps) => (
   </IconWrapper>
 )
 
+export const Waypoints = ({ className = "", size = 18, ...props }: IconProps) => (
+  <IconWrapper className={className} size={size} {...props}>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="4.5" r="2.5" />
+      <path d="m10.2 6.3-3.9 3.9" />
+      <circle cx="4.5" cy="12" r="2.5" />
+      <path d="M7 12h10" />
+      <circle cx="19.5" cy="12" r="2.5" />
+      <path d="m13.8 17.7 3.9-3.9" />
+      <circle cx="12" cy="19.5" r="2.5" />
+    </svg>
+  </IconWrapper>
+)
+
 export const Share = ({ className = "", size = 18, ...props }: IconProps) => (
   <IconWrapper className={className} size={size} {...props}>
     <svg viewBox="0 0 24 24" width="100%" height="100%" fill="currentColor">

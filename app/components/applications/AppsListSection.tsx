@@ -13,6 +13,7 @@ import { Button } from "@/app/components/ui/button"
 import { ViewType } from "@/app/components/view-selector"
 import { EmptyCard } from "@/app/components/ui/empty-card"
 import { formatDistanceToNow } from "date-fns"
+import { robotsInstanceHref } from "@/lib/navigation/robots-instance"
 
 interface TenantRecord {
   requirement_id: string
@@ -280,7 +281,7 @@ export function AppsListSection({ searchQuery = "", viewMode = "kanban", robotIn
                                   className="h-8 text-xs w-full transition-colors justify-between"
                                   onClick={(e) => {
                                     e.stopPropagation()
-                                    router.push(`/robots?instanceId=${app.instance_id}`)
+                                    router.push(robotsInstanceHref(app.instance_id))
                                   }}
                                 >
                                   Go to Instance
@@ -396,7 +397,7 @@ export function AppsListSection({ searchQuery = "", viewMode = "kanban", robotIn
                             className="h-8 text-xs flex-1 transition-colors"
                             onClick={(e) => {
                               e.stopPropagation()
-                              router.push(`/robots?instanceId=${app.instance_id}`)
+                              router.push(robotsInstanceHref(app.instance_id))
                             }}
                           >
                             Instance

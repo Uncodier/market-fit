@@ -301,7 +301,7 @@ export async function deleteRecord(id: string) {
 
 export async function getVectorRelatedRecords(
   recordId: string,
-  matchThreshold: number = 0.1, // Bajamos el umbral para ser más permisivos (antes 0.5)
+  matchThreshold: number = 0.1,
   matchCount: number = 5
 ): Promise<{ records: any[] | null; error: string | null }> {
   try {
@@ -340,6 +340,151 @@ export async function getHistoricalRelatedRecords(
   } catch (error: any) {
     console.error("Error in getHistoricalRelatedRecords:", error)
     return { records: null, error: error.message || "Failed to fetch historical records" }
+  }
+}
+
+export type EntityPreview = {
+  label: string
+  summary: string
+  fields: { label: string; value: string }[]
+}
+
+const ENTITY_PREVIEW_CONFIG: Record<string, {
+  table: string
+  idField: string
+  labelField: string
+  select: string
+  fields: { col: string; label: string }[]
+}> = {
+  lead: { table: "leads", idField: "id", labelField: "name", select: "id, name, email, company, status", fields: [
+    { col: "company", label: "Company" },
+    { col: "email", label: "Email" },
+    { col: "status", label: "Status" },
+  ]},
+  company: { table: "companies", idField: "id", labelField: "name", select: "id, name, industry", fields: [
+    { col: "industry", label: "Industry" },
+  ]},
+  sales_order: { table: "orders", idField: "id", labelField: "order_number", select: "id, order_number, total, status", fields: [
+    { col: "total", label: "Total" },
+    { col: "status", label: "Status" },
+  ]},
+  deal: { table: "deals", idField: "id", labelField: "title", select: "id, title, value, stage", fields: [
+    { col: "value", label: "Value" },
+    { col: "stage", label: "Stage" },
+  ]},
+  person: { table: "users", idField: "id", labelField: "name", select: "id, name, email", fields: [
+    { col: "email", label: "Email" },
+  ]},
+  team_member: { table: "site_users", idField: "user_id", labelField: "name", select: "user_id, name", fields: []},
+  campaign: { table: "campaigns", idField: "id", labelField: "name", select: "id, name, status", fields: [
+    { col: "status", label: "Status" },
+  ]},
+  catalog_item: { table: "products", idField: "id", labelField: "name", select: "id, name, price", fields: [
+    { col: "price", label: "Price" },
+  ]},
+  content: { table: "content", idField: "id", labelField: "title", select: "id, title, status", fields: [
+    { col: "status", label: "Status" },
+  ]},
+  task: { table: "tasks", idField: "id", labelField: "title", select: "id, title, status", fields: [
+    { col: "status", label: "Status" },
+  ]},
+  sale: { table: "sales", idField: "id", labelField: "title", select: "id, title, status", fields: [
+    { col: "status", label: "Status" },
+  ]},
+  purchase: { table: "purchases", idField: "id", labelField: "title", select: "id, title, status", fields: [
+    { col: "status", label: "Status" },
+  ]},
+  quotation: { table: "quotations", idField: "id", labelField: "title", select: "id, title, status", fields: [
+    { col: "status", label: "Status" },
+  ]},
+  record: { table: "records", idField: "id", labelField: "title", select: "id, title, description, status", fields: [
+    { col: "status", label: "Status" },
+    { col: "description", label: "Summary" },
+  ]},
+  record_category: { table: "record_categories", idField: "id", labelField: "name", select: "id, name, description", fields: [
+    { col: "description", label: "Description" },
+  ]},
+}
+
+function formatPreviewValue(value: unknown): string {
+  if (value == null || value === "") return ""
+  if (typeof value === "number") return Number.isInteger(value) ? String(value) : value.toLocaleString()
+  if (typeof value === "object") {
+    const obj = value as Record<string, unknown>
+    const nested = obj.name ?? obj.title ?? obj.email ?? obj.company ?? obj.label
+    if (nested && nested !== value) return formatPreviewValue(nested)
+    return ""
+  }
+  const text = String(value).replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim()
+  if (!text || text === "[object Object]") return ""
+  return text.length > 80 ? `${text.slice(0, 80).trim()}…` : text
+}
+
+export async function resolveEntityPreviews(
+  entitiesToResolve: { target: string; ids: string[] }[]
+): Promise<Record<string, EntityPreview>> {
+  try {
+    const supabase = await createServiceClient()
+    const result: Record<string, EntityPreview> = {}
+
+    for (const { target, ids } of entitiesToResolve) {
+      if (!ids.length) continue
+      const config = ENTITY_PREVIEW_CONFIG[target]
+      if (!config) continue
+
+      const { data, error } = await supabase
+        .from(config.table)
+        .select(config.select)
+        .in(config.idField, ids)
+
+      if (error || !data) {
+        console.error(`Error resolving ${target} previews:`, error)
+        continue
+      }
+
+      for (const item of data as any[]) {
+        const id = item[config.idField]
+        const label = formatPreviewValue(item[config.labelField]) || "Unnamed"
+        const fields = config.fields
+          .map((field) => ({
+            label: field.label,
+            value: formatPreviewValue(item[field.col]),
+          }))
+          .filter((field) => field.value)
+
+        result[id] = {
+          label,
+          summary: fields.map((field) => `${field.label}: ${field.value}`).join(" · ") || label,
+          fields,
+        }
+      }
+    }
+
+    return result
+  } catch (error) {
+    console.error("Error in resolveEntityPreviews:", error)
+    return {}
+  }
+}
+
+export async function getRecordsSimilarityEdges(
+  siteId: string,
+  matchThreshold: number = 0.5,
+  matchPerRecord: number = 5
+): Promise<{ edges: { source_id: string; target_id: string; similarity: number }[] | null; error: string | null }> {
+  try {
+    const supabase = await createServiceClient()
+    const { data, error } = await supabase.rpc('get_records_similarity_edges', {
+      p_site_id: siteId,
+      match_threshold: matchThreshold,
+      match_per_record: matchPerRecord
+    })
+
+    if (error) throw error
+    return { edges: data, error: null }
+  } catch (error: any) {
+    console.error("Error in getRecordsSimilarityEdges:", error)
+    return { edges: null, error: error.message || "Failed to fetch similarity edges" }
   }
 }
 
