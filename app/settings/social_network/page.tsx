@@ -244,32 +244,35 @@ export default function SocialNetworkCallbackPage() {
     : "Social Network Authentication"
 
   return (
-    <div className="flex-1 flex items-center justify-center p-8">
-      <SectionCard className="w-full max-w-md">
-        <SectionCardHeader>
-          <SectionCardTitle>{title}</SectionCardTitle>
-          {status === "selecting" && message && (
-            <SectionCardDescription>{message}</SectionCardDescription>
-          )}
-        </SectionCardHeader>
-        <SectionCardContent>
-          {status === "loading" && (
-            <div className="flex flex-col items-center gap-4 py-8">
-              <Loader className="h-8 w-8 text-primary" />
-              <p className="text-sm text-muted-foreground text-center">
-                {message || "Processing authentication..."}
-              </p>
-            </div>
-          )}
+    <div className="flex-1">
+      <div className="py-8 pb-16 mt-4">
+        <div className="flex gap-8 justify-center max-w-[1200px] mx-auto">
+          <div className="flex-1 max-w-[880px] px-4 md:px-16">
+            <SectionCard>
+              <SectionCardHeader>
+                <SectionCardTitle>{title}</SectionCardTitle>
+                {status === "selecting" && message && (
+                  <SectionCardDescription>{message}</SectionCardDescription>
+                )}
+              </SectionCardHeader>
+              <SectionCardContent>
+                {status === "loading" && (
+                  <div className="flex flex-col items-center gap-4 py-8">
+                    <Loader className="h-8 w-8 text-primary" />
+                    <p className="text-sm text-muted-foreground text-center">
+                      {message || "Processing authentication..."}
+                    </p>
+                  </div>
+                )}
 
-          {status === "selecting" && (
-            <div className="space-y-3 max-h-64 overflow-y-auto">
-              {availablePages.map((page) => (
-                <div
-                  key={page.id}
-                  className="flex items-center gap-4 w-full p-4 bg-muted/20 rounded-lg border dark:border-white/5 border-black/5 hover:bg-muted/50 cursor-pointer"
-                  onClick={() => handleTogglePage(page.id)}
-                >
+                {status === "selecting" && (
+                  <div className="space-y-3">
+                    {availablePages.map((page) => (
+                      <div
+                        key={page.id}
+                        className="flex items-center gap-4 w-full p-4 bg-muted/20 rounded-lg border dark:border-white/5 border-black/5 hover:bg-muted/50 cursor-pointer"
+                        onClick={() => handleTogglePage(page.id)}
+                      >
                   <Checkbox
                     checked={selectedPages.includes(page.id)}
                     onCheckedChange={() => handleTogglePage(page.id)}
@@ -357,31 +360,32 @@ Please:
                   </Button>
                 </div>
               )}
-            </div>
-          )}
-        </SectionCardContent>
-        {status === "selecting" && (
-          <SectionCardFooter>
-            <Button variant="outline" size="sm" onClick={handleBackToSettings}>
-              Cancel
-            </Button>
-            <Button
-              size="sm"
-              onClick={handleFinalize}
-              disabled={selectedPages.length === 0 || isFinalizing}
-            >
-              {isFinalizing ? "Connecting..." : `Connect ${selectedPages.length} Page(s)`}
-            </Button>
-          </SectionCardFooter>
-        )}
-        {status === "error" && (
-          <SectionCardFooter>
-            <Button variant="outline" size="sm" onClick={handleBackToSettings}>
-              Back to Settings
-            </Button>
-          </SectionCardFooter>
-        )}
-      </SectionCard>
+            </SectionCardContent>
+            {status === "selecting" && (
+              <SectionCardFooter>
+                <Button variant="outline" size="sm" onClick={handleBackToSettings}>
+                  Cancel
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={handleFinalize}
+                  disabled={selectedPages.length === 0 || isFinalizing}
+                >
+                  {isFinalizing ? "Connecting..." : `Connect ${selectedPages.length} Page(s)`}
+                </Button>
+              </SectionCardFooter>
+            )}
+            {status === "error" && (
+              <SectionCardFooter>
+                <Button variant="outline" size="sm" onClick={handleBackToSettings}>
+                  Back to Settings
+                </Button>
+              </SectionCardFooter>
+            )}
+          </SectionCard>
+        </div>
+      </div>
     </div>
+  </div>
   )
 }

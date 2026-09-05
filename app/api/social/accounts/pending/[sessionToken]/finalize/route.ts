@@ -53,6 +53,7 @@ export async function POST(
       }
     }
 
+    const selectedPageIds = body.selectedPageIds || body.accountIds || []
     const response = await fetch(
       getOutstandIntegrationUrl(`/social-accounts/pending/${sessionToken}/finalize`),
       {
@@ -61,7 +62,11 @@ export async function POST(
           "Content-Type": "application/json",
           "x-api-key": process.env.SERVICE_API_KEY || ""
         },
-        body: JSON.stringify(body),
+        body: JSON.stringify({
+          selectedPageIds,
+          accountIds: body.accountIds || selectedPageIds,
+          siteId: body.siteId,
+        }),
       }
     )
     const data = await response.json().catch(() => ({}))
