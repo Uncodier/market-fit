@@ -53,35 +53,18 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const { data: deleted, error: deleteError } = await supabase
+    // Table DELETE is granted to service_role only. Authorize above, then delete.
+    const service = await createServiceClient()
+    const { error: deleteError } = await service
       .from("instance_artifacts")
       .delete()
-      .in("id", ids)
-      .select("id")
+      .in("id", rows.map((row) => row.id))
 
     if (deleteError) {
       return NextResponse.json(
         { success: false, error: { message: deleteError.message } },
         { status: 500 }
       )
-    }
-
-    const deletedIds = new Set((deleted ?? []).map((row) => row.id))
-    const remaining = rows.map((row) => row.id).filter((id) => !deletedIds.has(id))
-
-    if (remaining.length > 0) {
-      const service = await createServiceClient()
-      const { error: serviceError } = await service
-        .from("instance_artifacts")
-        .delete()
-        .in("id", remaining)
-
-      if (serviceError) {
-        return NextResponse.json(
-          { success: false, error: { message: serviceError.message } },
-          { status: 500 }
-        )
-      }
     }
 
     return NextResponse.json({ success: true })
