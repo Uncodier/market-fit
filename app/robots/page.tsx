@@ -5,7 +5,7 @@ import useSWR from "swr"
 import { useRouter, useSearchParams, usePathname } from "next/navigation"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
-import { Settings, Globe, Target, Pause, Play, MicroPause, MicroPlay, X, Plus, MoreHorizontal, ExternalLink, RotateCw, Loader, Monitor, Laptop, Tablet, Smartphone, Folder, Download, Archive, PanelRightClose, PanelRightOpen, Database, Palette, LayoutGrid, Megaphone, Workflow } from "@/app/components/ui/icons"
+import { Globe, Pause, Play, MicroPause, MicroPlay, X, Plus, MoreHorizontal, ExternalLink, RotateCw, Loader, Monitor, Laptop, Tablet, Smartphone, Folder, Download, Archive, PanelRightClose, PanelRightOpen, LayoutGrid } from "@/app/components/ui/icons"
 import { Button } from "@/app/components/ui/button"
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/app/components/ui/dropdown-menu"
 import { useLayout } from "@/app/context/LayoutContext"
@@ -19,6 +19,8 @@ import { BrowserSkeleton } from "@/app/components/skeletons/browser-skeleton"
 import { DeleteRobotModal } from "@/app/components/robots/DeleteRobotModal"
 import { InstanceBrowserModal } from "@/app/components/robots/InstanceBrowserModal"
 import { createClient } from "@/lib/supabase/client"
+import { useToast } from "@/app/components/ui/use-toast"
+import { deleteInstanceArtifacts } from "./actions"
 import { LoadingSkeleton } from "@/app/components/ui/loading-skeleton"
 import dynamic from "next/dynamic"
 
@@ -35,7 +37,8 @@ import "@/app/styles/iframe-containment.css"
 import { useRequirementStatus } from "@/app/components/simple-messages-view/hooks/useRequirementStatus"
 import { useInstanceArtifacts } from "@/app/components/simple-messages-view/hooks/useInstanceArtifacts"
 import { useIframeUrl } from "@/app/hooks/use-iframe-url"
-import { NAVIGATION_AREAS, isNavItemActive } from "@/app/config/navigation-areas"
+import { NAVIGATION_AREAS, getModuleArea, getNavItemTitle, isNavItemActive, type AreaNavItem } from "@/app/config/navigation-areas"
+import { AREA_ICON, NAV_ITEM_ICON } from "@/app/config/module-visuals"
 import {
   resolveInstanceIdParam,
   resolveSelectedInstanceId,
@@ -59,37 +62,50 @@ interface Robot {
 
 const EMPTY_AVATARS = {};
 
+const SCREEN_ALIASES: Record<string, string> = {
+  database: "applicationsDatabase",
+  imprenta: "contentCreator",
+  workflow: "workflows",
+}
+
+function findNavItem(key: string): AreaNavItem | undefined {
+  for (const area of Object.values(NAVIGATION_AREAS)) {
+    const item = area.items.find((entry) => entry.key === key)
+    if (item) return item
+  }
+  return undefined
+}
+
 const getScreenMetadata = (screen: string | undefined, t: (k: string) => string) => {
-  if (!screen) return { label: "App", icon: LayoutGrid };
-  
-  if (screen === 'contentCreator' || screen === 'imprenta') {
-    return { label: t('layout.sidebar.imprenta') || 'Content Creator', icon: Palette };
+  if (!screen) return { label: "App", icon: LayoutGrid }
+
+  const key = SCREEN_ALIASES[screen] ?? screen
+  const item = findNavItem(key)
+  if (item) {
+    const area = getModuleArea(item.key)
+    return {
+      label: getNavItemTitle(item, t),
+      icon: NAV_ITEM_ICON[item.key] ?? (area ? AREA_ICON[area] : LayoutGrid),
+    }
   }
-  if (screen === 'database') {
-    return { label: t('layout.sidebar.database') || 'Database', icon: Database };
+
+  if (key in AREA_ICON) {
+    const categoryKey = `layout.category.${key}`
+    const categoryLabel = t(categoryKey)
+    return {
+      label: categoryLabel !== categoryKey ? categoryLabel : key,
+      icon: AREA_ICON[key as keyof typeof AREA_ICON],
+    }
   }
-  if (screen === 'workflow' || screen === 'workflows') {
-    return { label: t('layout.sidebar.workflows') || 'Workflows', icon: Workflow };
-  }
-  if (screen === 'marketing') {
-    return { label: t('layout.sidebar.marketing') || 'Marketing', icon: Megaphone };
-  }
-  if (screen === 'sales') {
-    return { label: t('layout.sidebar.sales') || 'Sales', icon: Target };
-  }
-  if (screen === 'settings') {
-    return { label: t('layout.sidebar.settings') || 'Settings', icon: Settings };
-  }
-  
-  // Fallback label trying translation first, then formatting the camel case
-  const translationKey = `layout.sidebar.${screen}`;
-  let label = t(translationKey);
+
+  const translationKey = `layout.sidebar.${key}`
+  let label = t(translationKey)
   if (label === translationKey) {
-    label = (screen.charAt(0).toUpperCase() + screen.slice(1).replace(/([A-Z])/g, ' $1')).trim();
+    label = (screen.charAt(0).toUpperCase() + screen.slice(1).replace(/([A-Z])/g, " $1")).trim()
   }
-  
-  return { label, icon: LayoutGrid };
-};
+
+  return { label, icon: NAV_ITEM_ICON[key] ?? LayoutGrid }
+}
 
 // Wrapper component for Suspense  
 export default function RobotsPage() {
@@ -103,6 +119,7 @@ export default function RobotsPage() {
 // Main content component
 function RobotsPageContent() {
   const { t } = useLocalization()
+  const { toast } = useToast()
   const { isLayoutCollapsed, robotsViewMode, setRobotsViewMode } = useLayout()
   const { currentSite, refreshSites } = useSite()
   const { getAllInstances, getInstanceById, refreshRobots, isLoading: isLoadingRobots, refreshCount } = useRobots()
@@ -1097,7 +1114,6 @@ function RobotsPageContent() {
       
       // Close the artifact after pinning
       if (targetScreen) {
-        const supabase = createClient()
         const artifactsToDelete = artifacts.filter(a => a.screen === targetScreen)
         if (artifactsToDelete.length > 0) {
           const ids = artifactsToDelete.map(a => a.id)
@@ -1109,13 +1125,15 @@ function RobotsPageContent() {
             setActiveBrowserTab({ kind: 'preview' })
           }
 
-          supabase.from('instance_artifacts').delete().in('id', ids).then(() => {})
+          deleteInstanceArtifacts(ids).catch((error) => {
+            console.error("Supabase error deleting artifact:", error)
+          })
         }
       }
     } catch (e) {
       console.error("Error adding shortcut:", e)
     }
-  }, [artifacts, activeBrowserTab, router])
+  }, [artifacts, activeBrowserTab, router, t, removeArtifactLocally])
 
 
   // So the iframe remounts when the preview row is updated in DB, even if the URL string is unchanged
@@ -1196,7 +1214,6 @@ function RobotsPageContent() {
   const handleCloseArtifact = async (e: React.MouseEvent, screen: string) => {
     e.stopPropagation();
     try {
-      const supabase = createClient()
       const artifactsToDelete = artifacts.filter(a => a.screen === screen)
       if (artifactsToDelete.length > 0) {
         const ids = artifactsToDelete.map(a => a.id)
@@ -1208,7 +1225,12 @@ function RobotsPageContent() {
           setActiveBrowserTab({ kind: 'preview' })
         }
 
-        await supabase.from('instance_artifacts').delete().in('id', ids)
+        try {
+          await deleteInstanceArtifacts(ids)
+        } catch (error: any) {
+          console.error("Supabase error deleting artifact:", error)
+          toast({ title: 'Error', description: error.message || 'Failed to delete artifact', variant: 'destructive' })
+        }
       }
     } catch (err) {
       console.error("Error deleting artifact:", err)
@@ -1292,12 +1314,13 @@ function RobotsPageContent() {
         icon: Folder,
         isActive: activeBrowserTab.kind === 'source'
       });
+      const databaseMeta = getScreenMetadata('database', t)
       items.push({
         id: 'database',
         kind: 'artifact',
         screen: 'database',
-        label: 'Database',
-        icon: Database,
+        label: databaseMeta.label,
+        icon: databaseMeta.icon,
         isActive: activeBrowserTab.kind === 'artifact' && activeBrowserTab.screen === 'database'
       });
     }
@@ -1317,7 +1340,7 @@ function RobotsPageContent() {
     });
     
     return items;
-  }, [hasRequirementPreview, activeBrowserTab, artifactScreens]);
+  }, [hasRequirementPreview, activeBrowserTab, artifactScreens, t]);
 
   const { visibleArtifacts, hiddenArtifacts } = useMemo(() => {
     // Determine max visible based on containerWidth (or fallback to windowWidth/default)
