@@ -360,7 +360,9 @@ Please:
                   </Button>
                 </div>
               )}
-            </SectionCardContent>
+            </div>
+          )}
+        </SectionCardContent>
             {status === "selecting" && (
               <SectionCardFooter>
                 <Button variant="outline" size="sm" onClick={handleBackToSettings}>
