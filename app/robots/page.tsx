@@ -20,7 +20,7 @@ import { DeleteRobotModal } from "@/app/components/robots/DeleteRobotModal"
 import { InstanceBrowserModal } from "@/app/components/robots/InstanceBrowserModal"
 import { createClient } from "@/lib/supabase/client"
 import { useToast } from "@/app/components/ui/use-toast"
-import { deleteInstanceArtifacts } from "./actions"
+import { deleteInstanceArtifacts } from "./delete-instance-artifacts"
 import { LoadingSkeleton } from "@/app/components/ui/loading-skeleton"
 import dynamic from "next/dynamic"
 
@@ -873,7 +873,7 @@ function RobotsPageContent() {
     }
   }, [activeRobotInstance?.id])
 
-  const { artifacts, removeArtifactLocally } = useInstanceArtifacts({ instanceId: activeRobotInstance?.id })
+  const { artifacts, removeArtifactLocally, refetchArtifacts } = useInstanceArtifacts({ instanceId: activeRobotInstance?.id })
   
   const artifactScreens = useMemo(() => {
     const screensMap = new Map<string, typeof artifacts[0]>()
@@ -1126,14 +1126,15 @@ function RobotsPageContent() {
           }
 
           deleteInstanceArtifacts(ids).catch((error) => {
-            console.error("Supabase error deleting artifact:", error)
+            console.error("Error deleting artifact:", error)
+            refetchArtifacts()
           })
         }
       }
     } catch (e) {
       console.error("Error adding shortcut:", e)
     }
-  }, [artifacts, activeBrowserTab, router, t, removeArtifactLocally])
+  }, [artifacts, activeBrowserTab, router, t, removeArtifactLocally, refetchArtifacts])
 
 
   // So the iframe remounts when the preview row is updated in DB, even if the URL string is unchanged
@@ -1228,7 +1229,8 @@ function RobotsPageContent() {
         try {
           await deleteInstanceArtifacts(ids)
         } catch (error: any) {
-          console.error("Supabase error deleting artifact:", error)
+          console.error("Error deleting artifact:", error)
+          refetchArtifacts()
           toast({ title: 'Error', description: error.message || 'Failed to delete artifact', variant: 'destructive' })
         }
       }
