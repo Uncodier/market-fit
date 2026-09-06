@@ -1,4 +1,15 @@
-export function getMentionQuery(text: string, cursorPosition: number): { query: string, start: number, end: number } | null {
+export type MentionQuery = { query: string; start: number; end: number }
+
+export function areMentionsEqual(
+  a: MentionQuery | null,
+  b: MentionQuery | null
+): boolean {
+  if (a === b) return true
+  if (!a || !b) return false
+  return a.query === b.query && a.start === b.start && a.end === b.end
+}
+
+export function getMentionQuery(text: string, cursorPosition: number): MentionQuery | null {
   if (cursorPosition < 0 || cursorPosition > text.length) return null
 
   // Find the text before the cursor

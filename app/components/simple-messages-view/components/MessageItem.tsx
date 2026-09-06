@@ -9,6 +9,7 @@ import remarkGfm from 'remark-gfm'
 import { markdownComponents } from '../utils/markdownComponents'
 import { InstanceNodeChildren } from './InstanceNodeChildren'
 import { InstanceLogCopyFeedbackBar } from './InstanceLogCopyFeedbackBar'
+import { UserWorkflowMeta } from './UserWorkflowMeta'
 
 interface MessageItemProps {
   log: InstanceLog
@@ -16,12 +17,16 @@ interface MessageItemProps {
   isBrowserVisible?: boolean
   collapsedSystemMessages?: Set<string>
   onToggleSystemMessageCollapse?: (messageId: string) => void
+  onCancelWorkflow?: (logId: string) => void
+  isCancellingWorkflow?: boolean
 }
 
 export const MessageItem: React.FC<MessageItemProps> = ({
   log,
   isDarkMode,
-  isBrowserVisible = false
+  isBrowserVisible = false,
+  onCancelWorkflow,
+  isCancellingWorkflow = false,
 }: MessageItemProps) => {
   const { userProfile } = useUserProfile(log.user_id || null)
   
@@ -76,6 +81,11 @@ export const MessageItem: React.FC<MessageItemProps> = ({
               <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
                 {log.message}
               </ReactMarkdown>
+              <UserWorkflowMeta
+                log={log}
+                onCancel={onCancelWorkflow}
+                isCancelling={isCancellingWorkflow}
+              />
             </div>
             
             {/* Display attachments if they exist */}

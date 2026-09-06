@@ -19,12 +19,14 @@ interface BacklogIndicatorProps {
   backlog: BacklogData | string
   expanded: boolean
   onToggleExpanded: () => void
+  onEditItem?: (item: BacklogItem) => void
 }
 
 export const BacklogIndicator: React.FC<BacklogIndicatorProps> = ({
   backlog,
   expanded,
   onToggleExpanded,
+  onEditItem,
 }) => {
   // Parse backlog if it's a string
   let parsedBacklog: BacklogData | null = null
@@ -56,7 +58,7 @@ export const BacklogIndicator: React.FC<BacklogIndicatorProps> = ({
   const allCompleted = items.length > 0 && items.every(item => item.status === 'done' || item.status === 'completed')
 
   return (
-    <div className="step-indicator-root flex-none w-full mb-4 shrink-0">
+    <div className="step-indicator-root flex-none w-full shrink-0">
       <div className="mx-auto" style={{ width: '100%', maxWidth: '800px' }}>
         <div className="rounded-lg backdrop-blur-md border shadow-lg transition-all duration-500 bg-background/80 dark:bg-background/80 dark:border-white/10 border-black/10">
         <div style={{padding: '0.75rem'}}>
@@ -92,20 +94,21 @@ export const BacklogIndicator: React.FC<BacklogIndicatorProps> = ({
                 )}
               </div>
 
-              {!allCompleted && (
-                <div className="space-y-1 max-h-48 overflow-y-auto">
-                  {sortedItems.map((item, index) => {
+              <div className="space-y-1 max-h-48 overflow-y-auto">
+                  {sortedItems.map((item) => {
                     const isCompleted = item.status === 'done' || item.status === 'completed'
                     const isInProgress = item.status === 'in_progress' || item.status === 'in-progress'
                     
                     return (
                       <div 
                         key={item.id} 
-                        className={`text-sm py-1.5 px-2 rounded-md flex items-center justify-between ${
+                        onClick={() => onEditItem && onEditItem(item)}
+                        className={`text-sm py-1.5 px-2 rounded-md flex items-center justify-between ${onEditItem ? 'cursor-pointer ' : ''}${
                           isInProgress 
                             ? 'bg-muted border border-border dark:border-white/5' 
                             : 'hover:bg-muted/50 border border-transparent'
                         }`}
+                        title={onEditItem ? "Edit backlog item" : undefined}
                       >
                         <div className="flex items-center gap-2 overflow-hidden mr-2">
                           {isCompleted ? (
@@ -135,7 +138,6 @@ export const BacklogIndicator: React.FC<BacklogIndicatorProps> = ({
                     )
                   })}
                 </div>
-              )}
             </div>
           ) : (
             <div 

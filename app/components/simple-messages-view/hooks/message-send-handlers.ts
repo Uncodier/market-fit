@@ -87,6 +87,7 @@ export async function sendAssistantMessage(params: {
       expected_results_amount: expectedResults,
       request_id: requestId,
       client_persisted: true,
+      activity: selectedActivity,
     }
 
     const instanceId = activeRobotInstance?.id
@@ -98,6 +99,8 @@ export async function sendAssistantMessage(params: {
         userId: user?.id,
         message: messageToSend,
         requestId,
+        activity: selectedActivity,
+        context: selectedContext,
       })
     }
 
@@ -192,6 +195,7 @@ export async function sendRobotMessage(params: {
         userId: user?.id,
         message: messageToSend,
         requestId,
+        activity: 'robot',
       })
 
       response = await postWithRetry('/api/workflow/promptRobot', promptPayload, {

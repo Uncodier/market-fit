@@ -1,4 +1,4 @@
-import { getMentionQuery } from "@/app/components/context/mention-query"
+import { areMentionsEqual, getMentionQuery } from "@/app/components/context/mention-query"
 
 describe("getMentionQuery", () => {
   it("should extract query after @ at the beginning of string", () => {
@@ -41,5 +41,25 @@ describe("getMentionQuery", () => {
     const text = "Hello @acmecorp testing"
     const result = getMentionQuery(text, 10) // Cursor between 'acm' and 'ecorp'
     expect(result).toEqual({ query: "acm", start: 6, end: 15 }) // 'acmecorp' is the full word
+  })
+})
+
+describe("areMentionsEqual", () => {
+  it("treats identical mention ranges as equal", () => {
+    expect(areMentionsEqual(
+      { query: "acme", start: 0, end: 5 },
+      { query: "acme", start: 0, end: 5 }
+    )).toBe(true)
+  })
+
+  it("does not re-open a mention when both sides are null", () => {
+    expect(areMentionsEqual(null, null)).toBe(true)
+  })
+
+  it("detects query or range changes", () => {
+    expect(areMentionsEqual(
+      { query: "ac", start: 0, end: 3 },
+      { query: "acm", start: 0, end: 4 }
+    )).toBe(false)
   })
 })

@@ -1,13 +1,14 @@
 import React from 'react'
-import { CheckCircle, XCircle } from "@/app/components/ui/icons"
+import { CheckCircle, XCircle, Pencil } from "@/app/components/ui/icons"
 import { InstancePlan, PlanStep } from '../types'
 import { useTheme } from "@/app/context/ThemeContext"
 
 interface CompletedPlanCardProps {
   plan: InstancePlan
+  onEditPlan?: (plan: InstancePlan) => void
 }
 
-export const CompletedPlanCard: React.FC<CompletedPlanCardProps> = ({ plan }) => {
+export const CompletedPlanCard: React.FC<CompletedPlanCardProps> = ({ plan, onEditPlan }) => {
   const { isDarkMode } = useTheme()
   const isCompleted = plan.status === 'completed'
   const isFailed = plan.status === 'failed'
@@ -84,7 +85,24 @@ export const CompletedPlanCard: React.FC<CompletedPlanCardProps> = ({ plan }) =>
 
   return (
     <div className="space-y-4 w-full min-w-[min(100%,450px)] overflow-hidden max-w-[calc(100%-80px)] lg:max-w-3xl mx-auto">
-      <div className={`${baseClasses.container} border rounded-lg p-4`}>
+      <div
+        className={`${baseClasses.container} border rounded-lg p-4 relative group ${onEditPlan ? 'cursor-pointer' : ''}`}
+        onClick={() => onEditPlan?.(plan)}
+        title={onEditPlan ? 'Click to edit plan' : undefined}
+      >
+        {onEditPlan && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation()
+              onEditPlan(plan)
+            }}
+            className="absolute top-4 right-4 p-1 rounded hover:bg-black/5 dark:hover:bg-white/5"
+            title="Edit plan"
+          >
+            <Pencil className="h-4 w-4 text-muted-foreground" />
+          </button>
+        )}
         <div className="mb-3">
           <span className={`text-xs px-2 py-1 rounded ${baseClasses.labelWrap}`}>
             {baseClasses.label}

@@ -1,21 +1,26 @@
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useRef, useEffect, useCallback, type MutableRefObject } from 'react'
 import { useSite } from '@/app/context/SiteContext'
 import { useToast } from '@/app/components/ui/use-toast'
 import { type SelectedContextIds } from '@/app/services/context-service'
-import { ImageParameters, VideoParameters, AudioParameters } from '../types'
+import { ImageParameters, VideoParameters, AudioParameters, InstanceLog } from '../types'
 import { sendAssistantMessage, sendRobotMessage } from './message-send-handlers'
+import { findRunningUserLog } from './useRunningWorkflow'
+import { shouldQueueCommand } from './command-queue'
+import { buildPendingWorkPayload, enqueuePendingWork } from './pending-work'
 
 interface UseMessageSendingProps {
   activeRobotInstance?: any
   selectedActivity: string
   selectedContext: SelectedContextIds
   messageRef: React.MutableRefObject<string>
+  logsRef?: MutableRefObject<InstanceLog[]>
   onMessageSent?: (hasMessageBeenSent: boolean) => void
   onClearMessage?: () => void
   onScrollToBottom?: () => void
   onNewInstanceCreated?: (instanceId: string, shouldNavigate?: boolean) => void
   startInstancePolling?: (activityName: string, instanceId?: string, shouldAutoNavigate?: boolean) => Promise<void>
-  onAddOptimisticMessage?: (message: string) => void
+  onAddOptimisticMessage?: (message: string, extraDetails?: Record<string, unknown>) => void
+  onPendingEnqueued?: () => void
   imageParameters?: ImageParameters
   videoParameters?: VideoParameters
   audioParameters?: AudioParameters
@@ -26,11 +31,13 @@ export const useMessageSending = ({
   selectedActivity,
   selectedContext,
   messageRef,
+  logsRef,
   onMessageSent,
   onClearMessage,
   onNewInstanceCreated,
   startInstancePolling,
   onAddOptimisticMessage,
+  onPendingEnqueued,
   imageParameters,
   videoParameters,
   audioParameters
@@ -98,12 +105,12 @@ export const useMessageSending = ({
     }, 30000)
   }, [activeRobotInstance?.id, clearThinkingState])
 
-  const handleAssistantMessage = useCallback(async (messageToSend: string) => {
+  const handleAssistantMessage = useCallback(async (messageToSend: string, activity = selectedActivity) => {
     if (!currentSite?.id) return
     await sendAssistantMessage({
       messageToSend,
       siteId: currentSite.id,
-      selectedActivity,
+      selectedActivity: activity,
       selectedContext,
       activeRobotInstance,
       imageParameters,
@@ -157,49 +164,25 @@ export const useMessageSending = ({
   handleRobotMessageRef.current = handleRobotMessage
   handleAssistantMessageRef.current = handleAssistantMessage
 
-  const handleSendMessage = useCallback(async () => {
-    const currentMessage = typeof messageRef.current === 'string' ? messageRef.current : ''
-    if (!currentMessage.trim() || !currentSite?.id || sendingLockRef.current || isSendingMessage) return
-
-    const messageToSend = currentMessage.trim()
-    sendingLockRef.current = true
-
+  const dispatchPreparedMessage = useCallback(async (messageToSend: string, activity: string) => {
     const requestId = Date.now().toString()
     activeRequestIdRef.current = requestId
-
+    sendingLockRef.current = true
     setIsSendingMessage(true)
-    onClearMessage?.()
 
     const safetyUnlockTimeout = setTimeout(() => {
       if (activeRequestIdRef.current === requestId) {
-        console.warn('⏰ Send safety timeout reached, unlocking send button')
         sendingLockRef.current = false
         setIsSendingMessage(false)
         activeRequestIdRef.current = null
       }
     }, 35000)
 
-    if (!activeRobotInstance) {
-      setNewMakinaThinking()
-      setHasMessageBeenSent(true)
-      onMessageSent?.(true)
-    } else {
-      onAddOptimisticMessage?.(messageToSend)
-      setThinkingStateWithTimeout()
-    }
-
     try {
-      if (selectedActivity === 'robot') {
+      if (activity === 'robot') {
         await handleRobotMessageRef.current(messageToSend)
       } else {
-        await handleAssistantMessageRef.current(messageToSend)
-      }
-    } catch (error) {
-      console.error('Error sending message:', error)
-      if (!activeRobotInstance) {
-        clearNewMakinaThinking()
-      } else {
-        clearThinkingState()
+        await handleAssistantMessageRef.current(messageToSend, activity)
       }
     } finally {
       clearTimeout(safetyUnlockTimeout)
@@ -209,18 +192,93 @@ export const useMessageSending = ({
         activeRequestIdRef.current = null
       }
     }
+  }, [])
+
+  const handleSendMessage = useCallback(async () => {
+    const currentMessage = typeof messageRef.current === 'string' ? messageRef.current : ''
+    if (!currentMessage.trim() || !currentSite?.id) return
+
+    const messageToSend = currentMessage.trim()
+    const isBusy = shouldQueueCommand(Boolean(findRunningUserLog(logsRef?.current || [])) || sendingLockRef.current || isSendingMessage)
+
+    if (isBusy && activeRobotInstance?.id) {
+      const payload = await buildPendingWorkPayload({
+        siteId: currentSite.id,
+        activity: selectedActivity,
+        selectedContext,
+        imageParameters,
+        videoParameters,
+        audioParameters,
+      })
+      const queued = await enqueuePendingWork({
+        instanceId: activeRobotInstance.id,
+        siteId: currentSite.id,
+        userId: payload.userId,
+        message: messageToSend,
+        activity: selectedActivity,
+        context: payload.context,
+        systemPrompt: payload.systemPrompt,
+      })
+      if (!queued) {
+        toast({
+          title: 'Error',
+          description: 'Failed to save the pending command.',
+          variant: 'destructive',
+        })
+        return
+      }
+      onClearMessage?.()
+      onPendingEnqueued?.()
+      return
+    }
+
+    if (sendingLockRef.current || isSendingMessage) return
+
+    if (!activeRobotInstance) {
+      setNewMakinaThinking()
+      setHasMessageBeenSent(true)
+      onMessageSent?.(true)
+    } else {
+      onAddOptimisticMessage?.(messageToSend, {
+        status: 'running',
+        request_type: selectedActivity,
+        context: selectedContext,
+      })
+      setThinkingStateWithTimeout()
+    }
+
+    onClearMessage?.()
+
+    try {
+      await dispatchPreparedMessage(messageToSend, selectedActivity)
+    } catch (error) {
+      console.error('Error sending message:', error)
+      if (!activeRobotInstance) {
+        clearNewMakinaThinking()
+      } else {
+        clearThinkingState()
+      }
+    }
   }, [
     currentSite?.id,
     isSendingMessage,
     activeRobotInstance,
     selectedActivity,
+    selectedContext,
+    imageParameters,
+    videoParameters,
+    audioParameters,
+    logsRef,
+    toast,
     onClearMessage,
     setNewMakinaThinking,
     onMessageSent,
     onAddOptimisticMessage,
+    onPendingEnqueued,
     setThinkingStateWithTimeout,
     clearNewMakinaThinking,
     clearThinkingState,
+    dispatchPreparedMessage,
     messageRef,
   ])
 

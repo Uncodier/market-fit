@@ -1857,8 +1857,9 @@ export const ArrowLeft = ({ className = "", size = 18, ...props }: IconProps) =>
 // ArrowUp
 export const ArrowUp = ({ className = "", size = 18, ...props }: IconProps) => (
   <IconWrapper className={className} size={size} {...props}>
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round">
-      <path d="m5 15 7-7 7 7" />
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round">
+      <path d="m5 12 7-7 7 7" />
+      <path d="M12 19V5" />
     </svg>
   </IconWrapper>
 )
@@ -1866,8 +1867,9 @@ export const ArrowUp = ({ className = "", size = 18, ...props }: IconProps) => (
 // ArrowDown
 export const ArrowDown = ({ className = "", size = 18, ...props }: IconProps) => (
   <IconWrapper className={className} size={size} {...props}>
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round">
-      <path d="m19 9-7 7-7-7" />
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 5v14" />
+      <path d="m19 12-7 7-7-7" />
     </svg>
   </IconWrapper>
 )

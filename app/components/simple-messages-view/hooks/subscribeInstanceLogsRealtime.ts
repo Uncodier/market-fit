@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/client'
 import { InstanceLog } from '../types'
+import { markUserLogWorkflowStatus } from './send-message-reliability'
 import type { Dispatch, MutableRefObject, SetStateAction } from 'react'
 
 type SetLogs = (updater: (prevLogs: InstanceLog[]) => InstanceLog[]) => void
@@ -37,6 +38,7 @@ export function subscribeInstanceLogsRealtime(params: {
 
     if (payload.eventType === 'INSERT') {
       const newLog = payload.new as InstanceLog
+      if (newLog.log_type === 'user_action' && newLog.details?.status === 'queued') return
 
       setLogs((prevLogs: InstanceLog[]) => {
         if (newLog.log_type === 'user_action') {
@@ -93,6 +95,25 @@ export function subscribeInstanceLogsRealtime(params: {
 
       if ((hasToolName || isToolCall) && (hasToolResult || hasDetails || hasScreenshot)) {
         setCollapsedToolDetails((prev: Set<string>) => new Set(prev).add(newLog.id))
+      }
+
+      const isPlaceholderResponse = (newLog.message || '').includes('placeholder response')
+      if (
+        (newLog.log_type === 'agent_action' || newLog.log_type === 'tool_result') &&
+        !isPlaceholderResponse
+      ) {
+        setLogs((prevLogs: InstanceLog[]) => {
+          const running = [...prevLogs]
+            .reverse()
+            .find((log) => log.log_type === 'user_action' && log.details?.status === 'running')
+          if (!running) return prevLogs
+          void markUserLogWorkflowStatus({ logId: running.id, status: 'stopped' })
+          return prevLogs.map((log) =>
+            log.id === running.id
+              ? { ...log, details: { ...(log.details || {}), status: 'stopped' } }
+              : log
+          )
+        })
       }
     } else if (payload.eventType === 'UPDATE') {
       setLogs((prevLogs: InstanceLog[]) => prevLogs.map((log: InstanceLog) => log.id === payload.new.id ? payload.new as InstanceLog : log))

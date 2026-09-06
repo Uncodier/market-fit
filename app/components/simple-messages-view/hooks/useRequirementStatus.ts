@@ -12,7 +12,7 @@ export const useRequirementStatus = (activeRobotInstance?: { id?: string } | nul
       const supabase = createClient()
       const { data, error } = await supabase
         .from("requirement_status")
-        .select("*, requirements(title)")
+        .select("*, requirements(id, title, backlog)")
         .eq("instance_id", id)
         .order("created_at", { ascending: true })
 

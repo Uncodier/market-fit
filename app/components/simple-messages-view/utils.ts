@@ -186,7 +186,7 @@ export interface ToolCallGroup {
   groupId: string
 }
 
-export type TimelineItemType = 'log' | 'completed_plan' | 'tool_group' | 'requirement_status'
+export type TimelineItemType = 'log' | 'completed_plan' | 'tool_group' | 'process_group' | 'requirement_status'
 
 export interface ProcessedTimelineItem {
   type: TimelineItemType

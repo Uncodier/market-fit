@@ -3,6 +3,7 @@ import { createSocialSupabaseClient } from "@/app/api/social/supabase-client"
 import { getOutstandIntegrationUrl } from "@/lib/api-server-url"
 import { getAccountLimit, countConnectedAccounts } from "@/lib/billing-limits"
 import { billingLimitApiError } from "@/lib/billing-limit-errors"
+import { syncImplicitOutstandCallback } from "@/app/api/social/lib/sync-outstand-accounts"
 
 export async function POST(
   request: NextRequest,
@@ -70,6 +71,26 @@ export async function POST(
       }
     )
     const data = await response.json().catch(() => ({}))
+
+    if (response.ok && siteId && typeof body.network === "string" && body.network) {
+      let sync = await syncImplicitOutstandCallback({
+        supabase,
+        siteId,
+        pathNetwork: body.network,
+      })
+      if (!sync.ok) {
+        await new Promise((resolve) => setTimeout(resolve, 800))
+        sync = await syncImplicitOutstandCallback({
+          supabase,
+          siteId,
+          pathNetwork: body.network,
+        })
+      }
+      if (!sync.ok) {
+        console.warn("[Finalize] Outstand account sync failed:", sync.message)
+      }
+    }
+
     return NextResponse.json(data, { status: response.status })
   } catch (error) {
     console.error("Error proxying finalize:", error)

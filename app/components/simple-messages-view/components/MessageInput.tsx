@@ -1,19 +1,27 @@
-import React, { useState, useEffect, useRef } from 'react'
-import { MessageSquare, Image as ImageIcon, PlayCircle, Speaker, ChevronRight, Plus, X, File, ListTodo, CheckSquare, Zap, Smartphone, Monitor } from "@/app/components/ui/icons"
+import React, { useEffect, useRef, useState } from 'react'
+import { ArrowUp, Plus } from "@/app/components/ui/icons"
 import { ContextSelectorModal } from "@/app/components/ui/context-selector-modal"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
 import { Button } from "@/app/components/ui/button"
 import { OptimizedTextarea } from "@/app/components/ui/optimized-textarea"
 import { type SelectedContextIds } from '@/app/services/context-service'
 import { MediaParametersToolbar } from './MediaParametersToolbar'
-import { ImageParameters, VideoParameters, AudioParameters, MessageAttachment } from '../types'
+import { ActivitySelector } from './ActivitySelector'
+import { ImageParameters, VideoParameters, AudioParameters } from '../types'
 import { useAttachmentUpload } from '../hooks/useAttachmentUpload'
 import { useRequirementStatus } from '../hooks/useRequirementStatus'
-import { useRouter } from 'next/navigation'
 import { useSite } from '@/app/context/SiteContext'
 import { useLocalization } from '@/app/context/LocalizationContext'
-import { getMentionQuery } from '@/app/components/context/mention-query'
+import { areMentionsEqual, getMentionQuery } from '@/app/components/context/mention-query'
 import { ContextMentionPicker } from '@/app/components/context/context-mention-picker'
+
+const COMPOSER_TEXTAREA_STYLE: React.CSSProperties = {
+  lineHeight: '1.5',
+  overflowY: 'hidden',
+  wordWrap: 'break-word',
+  paddingBottom: '60px',
+  height: '135px',
+  width: '100%',
+}
 
 interface MessageInputProps {
   message: string
@@ -60,12 +68,9 @@ const MessageInputComponent: React.FC<MessageInputProps> = ({
   activeRobotInstance,
   isBrowserVisible = false
 }) => {
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false)
-  const [dropdownDirection, setDropdownDirection] = useState<'down' | 'up'>('down')
   const [mentionState, setMentionState] = useState<{ query: string, start: number, end: number } | null>(null)
-  const dropdownRef = useRef<HTMLDivElement>(null)
+  const [hasInput, setHasInput] = useState(() => message.trim().length > 0)
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const router = useRouter()
   const { currentSite } = useSite()
   const { t } = useLocalization()
   const { uploadFile, isUploading } = useAttachmentUpload({ 
@@ -76,9 +81,12 @@ const MessageInputComponent: React.FC<MessageInputProps> = ({
   // Fetch requirement status for this instance
   const { requirementStatuses } = useRequirementStatus(activeRobotInstance)
   const latestRequirementStatus = requirementStatuses.length > 0 ? requirementStatuses[requirementStatuses.length - 1] : null
-  const requirementId = latestRequirementStatus?.requirement_id
   const rawRequirements = latestRequirementStatus?.requirements
   const requirementName = Array.isArray(rawRequirements) ? rawRequirements[0]?.title : rawRequirements?.title
+
+  useEffect(() => {
+    setHasInput(message.trim().length > 0)
+  }, [message])
 
   // Calculate dynamic placeholder based on context and requirements
   const contextCount = Object.values(selectedContext).reduce((acc: number, curr: any) => acc + (curr?.length || 0), 0) as number
@@ -103,54 +111,20 @@ const MessageInputComponent: React.FC<MessageInputProps> = ({
     }
   }
 
-  // Close dropdown when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsDropdownOpen(false)
-      }
-    }
+  const applyComposerValue = (value: string, event?: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const nextHasInput = value.trim().length > 0
+    setHasInput((prev) => (prev === nextHasInput ? prev : nextHasInput))
 
-    if (isDropdownOpen) {
-      document.addEventListener('mousedown', handleClickOutside)
-    }
+    const cursorPosition = event?.target.selectionStart ?? value.length
+    const mention = getMentionQuery(value, cursorPosition)
+    setMentionState((prev) => (areMentionsEqual(prev, mention) ? prev : mention))
 
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside)
-    }
-  }, [isDropdownOpen])
-
-  // Calculate dropdown direction based on position
-  const handleDropdownToggle = () => {
-    if (!isDropdownOpen && dropdownRef.current) {
-      const rect = dropdownRef.current.getBoundingClientRect()
-      const viewportHeight = window.innerHeight
-      const spaceBelow = viewportHeight - rect.bottom
-      const dropdownHeight = 80 // Approximate height of dropdown
-      
-      // Since this dropdown is at the bottom of the screen, always check if there's enough space
-      // If less than 100px below, open upward
-      if (spaceBelow < 100) {
-        setDropdownDirection('up')
-      } else {
-        setDropdownDirection('down')
-      }
-    }
-    setIsDropdownOpen(!isDropdownOpen)
-  }
-
-  // Handle file selection
-  const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = event.target.files
-    if (!files || files.length === 0) return
-
-    for (const file of Array.from(files)) {
-      await uploadFile(file)
-    }
-
-    // Reset file input
-    if (fileInputRef.current) {
-      fileInputRef.current.value = ''
+    if (handleMessageChange && event) {
+      handleMessageChange(event)
+    } else if (handleMessageChange) {
+      handleMessageChange({ target: { value } } as React.ChangeEvent<HTMLTextAreaElement>)
+    } else {
+      onMessageChange(value)
     }
   }
 
@@ -168,14 +142,7 @@ const MessageInputComponent: React.FC<MessageInputProps> = ({
       const newText = before + after
       
       textareaRef.current.value = newText
-      
-      // Update state
-      if (handleMessageChange) {
-        // Mock event
-        handleMessageChange({ target: { value: newText } } as any)
-      } else {
-        onMessageChange(newText)
-      }
+      applyComposerValue(newText, { target: textareaRef.current } as React.ChangeEvent<HTMLTextAreaElement>)
       
       // Reset cursor
       const newCursorPos = mentionState.start
@@ -190,12 +157,22 @@ const MessageInputComponent: React.FC<MessageInputProps> = ({
     setMentionState(null)
   }
 
-  // Handle attachment button click
-  const handleAttachmentClick = () => {
-    fileInputRef.current?.click()
+  // Handle file selection
+  const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files
+    if (!files || files.length === 0) return
+
+    for (const file of Array.from(files)) {
+      await uploadFile(file)
+    }
+
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''
+    }
   }
+
   return (
-    <div className="flex-none transition-all duration-300 ease-in-out w-full" style={{ width: '100%' }}>
+    <div className="flex-none w-full" style={{ width: '100%' }}>
       <div className="mx-auto w-full max-w-[800px]">
         <form id="message-form" name="messageForm" className="relative w-full" onSubmit={(e) => {
           e.preventDefault()
@@ -219,36 +196,12 @@ const MessageInputComponent: React.FC<MessageInputProps> = ({
               data-enable-grammarly="false"
               ref={textareaRef}
               defaultValue={message}
-              onChange={(e) => {
-                // Determine cursor position
-                const cursorPosition = e.target.selectionStart
-                const currentText = e.target.value
-                const mention = getMentionQuery(currentText, cursorPosition)
-                setMentionState(mention)
-                
-                if (handleMessageChange) {
-                  handleMessageChange(e)
-                } else {
-                  onMessageChange(currentText)
-                }
-              }}
-              onKeyUp={(e) => {
-                const target = e.target as HTMLTextAreaElement
-                const cursorPosition = target.selectionStart
-                const currentText = target.value
-                const mention = getMentionQuery(currentText, cursorPosition)
-                setMentionState(mention)
-              }}
+              onChange={(e) => applyComposerValue(e.target.value, e)}
               onKeyDown={(e) => {
                 if (mentionState) {
-                  // If mention picker is open, let it handle Enter/Arrow keys
-                  if (e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'Enter') {
-                    // Let the command list capture it. But Command is outside this input.
-                    // Actually, if we just want it to not submit on Enter when mention is open:
-                    if (e.key === 'Enter') {
-                      e.preventDefault()
-                      return
-                    }
+                  if (e.key === 'Enter') {
+                    e.preventDefault()
+                    return
                   }
                 }
                 
@@ -260,17 +213,10 @@ const MessageInputComponent: React.FC<MessageInputProps> = ({
                 }
               }}
               placeholder={dynamicPlaceholder}
-              className="resize-none min-h-[135px] w-full py-4 pl-[27px] pr-[27px] rounded-2xl border border-input focus-visible:outline-none bg-background/80 backdrop-blur-md supports-[backdrop-filter]:bg-background/80 text-base box-border transition-all duration-300 ease-in-out peer"
+              className="resize-none min-h-[135px] w-full py-4 pl-[27px] pr-[27px] rounded-2xl border border-input focus-visible:outline-none bg-background text-base box-border peer"
               disabled={disabled}
               style={{
-                lineHeight: '1.5',
-                overflowY: 'hidden',
-                wordWrap: 'break-word',
-                paddingBottom: '60px',
-                backdropFilter: 'blur(12px)',
-                WebkitBackdropFilter: 'blur(12px)',
-                height: '135px', // Initial height, will be auto-adjusted
-                width: '100%',
+                ...COMPOSER_TEXTAREA_STYLE,
                 opacity: disabled ? 1 : undefined
               }}
             />
@@ -287,187 +233,11 @@ const MessageInputComponent: React.FC<MessageInputProps> = ({
             {/* Context selector button in bottom left */}
             <div className="absolute bottom-[15px] left-[15px] z-50">
               <div className="flex items-center gap-2">
-                {/* Activity selector - Show text when no robot view, icon when robot view */}
-                <div className="relative" ref={dropdownRef}>
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    size="sm"
-                    className="h-8 hover:bg-secondary/80 transition-all duration-200 px-2 md:px-3 w-auto md:w-40 justify-center md:justify-start"
-                    onClick={handleDropdownToggle}
-                    title={
-                      selectedActivity === 'ask' ? 'Ask' : 
-                      selectedActivity === 'plan' ? 'Plan' :
-                      selectedActivity === 'generate-image' ? 'Generate Image' :
-                      selectedActivity === 'generate-video' ? 'Generate Video' :
-                      selectedActivity === 'create-automation' ? 'Create Automation' :
-                      selectedActivity === 'create-app' ? 'Create App' :
-                      selectedActivity === 'create-presentation' ? 'Create Presentation' :
-                      selectedActivity === 'create-document' ? 'Create Document' :
-                      'Select activity'
-                    }
-                  >
-                    <div className="flex items-center w-full justify-center md:justify-start">
-                      <div className="flex items-center justify-center safari-icon-fix w-[16.2px] h-[16.2px]">
-                        {selectedActivity === 'ask' && <MessageSquare className="h-[16.2px] w-[16.2px] shrink-0 text-blue-600" />}
-                        {selectedActivity === 'plan' && <ListTodo className="h-[16.2px] w-[16.2px] shrink-0 text-purple-600" />}
-                        {selectedActivity === 'generate-image' && <ImageIcon className="h-[16.2px] w-[16.2px] shrink-0 text-green-600" />}
-                        {selectedActivity === 'generate-video' && <PlayCircle className="h-[16.2px] w-[16.2px] shrink-0 text-red-600" />}
-                        {selectedActivity === 'create-automation' && <Zap className="h-[16.2px] w-[16.2px] shrink-0 text-yellow-600" />}
-                        {selectedActivity === 'create-app' && <Smartphone className="h-[16.2px] w-[16.2px] shrink-0 text-sky-600" />}
-                        {selectedActivity === 'create-presentation' && <Monitor className="h-[16.2px] w-[16.2px] shrink-0 text-indigo-600" />}
-                        {selectedActivity === 'create-document' && <File className="h-[16.2px] w-[16.2px] shrink-0 text-teal-600" />}
-                      </div>
-                      <div className="hidden md:flex flex-col min-w-0 ml-2">
-                        <span className="truncate">
-                          {selectedActivity === 'ask' ? 'Ask' : 
-                           selectedActivity === 'plan' ? 'Plan' :
-                           selectedActivity === 'generate-image' ? 'Generate Image' :
-                           selectedActivity === 'generate-video' ? 'Generate Video' :
-                           selectedActivity === 'create-automation' ? 'Create Automation' :
-                           selectedActivity === 'create-app' ? 'Create App' :
-                           selectedActivity === 'create-presentation' ? 'Create Presentation' :
-                           selectedActivity === 'create-document' ? 'Create Document' :
-                           'Select activity'}
-                        </span>
-                      </div>
-                    </div>
-                  </Button>
-                  
-                  {isDropdownOpen && (
-                    <div className={`absolute left-0 bg-background border dark:border-white/5 border-black/5 rounded-md shadow-lg z-50 w-40 ${
-                      dropdownDirection === 'up' 
-                        ? 'bottom-full mb-1' 
-                        : 'top-full mt-1'
-                    }`}>
-                      <div className="p-1">
-                        <div 
-                          className="flex items-center hover:bg-accent cursor-pointer rounded-sm px-2 py-1.5"
-                          onClick={() => {
-                            onActivityChange('ask')
-                            setIsDropdownOpen(false)
-                          }}
-                          title="Ask"
-                        >
-                          <div className="flex items-center justify-center safari-icon-fix w-[16.2px] h-[16.2px]">
-                            <MessageSquare className="h-[16.2px] w-[16.2px] shrink-0 text-blue-600" />
-                          </div>
-                          <div className="flex flex-col min-w-0 ml-2">
-                            <span className="truncate">Ask</span>
-                          </div>
-                        </div>
-                        <div 
-                          className="flex items-center hover:bg-accent cursor-pointer rounded-sm px-2 py-1.5"
-                          onClick={() => {
-                            onActivityChange('plan')
-                            setIsDropdownOpen(false)
-                          }}
-                          title="Plan"
-                        >
-                          <div className="flex items-center justify-center safari-icon-fix w-[16.2px] h-[16.2px]">
-                            <ListTodo className="h-[16.2px] w-[16.2px] shrink-0 text-purple-600" />
-                          </div>
-                          <div className="flex flex-col min-w-0 ml-2">
-                            <span className="truncate">Plan</span>
-                          </div>
-                        </div>
-                        {/* Robot option hidden - removed per user request */}
-                        <div 
-                          className="flex items-center hover:bg-accent cursor-pointer rounded-sm px-2 py-1.5"
-                          onClick={() => {
-                            onActivityChange('generate-image')
-                            setIsDropdownOpen(false)
-                          }}
-                          title="Generate Image"
-                        >
-                          <div className="flex items-center justify-center safari-icon-fix w-[16.2px] h-[16.2px]">
-                            <ImageIcon className="h-[16.2px] w-[16.2px] shrink-0 text-green-600" />
-                          </div>
-                          <div className="flex flex-col min-w-0 ml-2">
-                            <span className="truncate">Generate Image</span>
-                          </div>
-                        </div>
-                        <div 
-                          className="flex items-center hover:bg-accent cursor-pointer rounded-sm px-2 py-1.5"
-                          onClick={() => {
-                            onActivityChange('generate-video')
-                            setIsDropdownOpen(false)
-                          }}
-                          title="Generate Video"
-                        >
-                          <div className="flex items-center justify-center safari-icon-fix w-[16.2px] h-[16.2px]">
-                            <PlayCircle className="h-[16.2px] w-[16.2px] shrink-0 text-red-600" />
-                          </div>
-                          <div className="flex flex-col min-w-0 ml-2">
-                            <span className="truncate">Generate Video</span>
-                          </div>
-                        </div>
-                        <div 
-                          className="flex items-center hover:bg-accent cursor-pointer rounded-sm px-2 py-1.5"
-                          onClick={() => {
-                            onActivityChange('create-automation')
-                            setIsDropdownOpen(false)
-                          }}
-                          title="Create Automation"
-                        >
-                          <div className="flex items-center justify-center safari-icon-fix w-[16.2px] h-[16.2px]">
-                            <Zap className="h-[16.2px] w-[16.2px] shrink-0 text-yellow-600" />
-                          </div>
-                          <div className="flex flex-col min-w-0 ml-2">
-                            <span className="truncate">Create Automation</span>
-                          </div>
-                        </div>
-                        <div 
-                          className="flex items-center hover:bg-accent cursor-pointer rounded-sm px-2 py-1.5"
-                          onClick={() => {
-                            onActivityChange('create-app')
-                            setIsDropdownOpen(false)
-                          }}
-                          title="Create App"
-                        >
-                          <div className="flex items-center justify-center safari-icon-fix w-[16.2px] h-[16.2px]">
-                            <Smartphone className="h-[16.2px] w-[16.2px] shrink-0 text-sky-600" />
-                          </div>
-                          <div className="flex flex-col min-w-0 ml-2">
-                            <span className="truncate">Create App</span>
-                          </div>
-                        </div>
-                        <div 
-                          className="flex items-center hover:bg-accent cursor-pointer rounded-sm px-2 py-1.5"
-                          onClick={() => {
-                            onActivityChange('create-presentation')
-                            setIsDropdownOpen(false)
-                          }}
-                          title="Create Presentation"
-                        >
-                          <div className="flex items-center justify-center safari-icon-fix w-[16.2px] h-[16.2px]">
-                            <Monitor className="h-[16.2px] w-[16.2px] shrink-0 text-indigo-600" />
-                          </div>
-                          <div className="flex flex-col min-w-0 ml-2">
-                            <span className="truncate">Create Presentation</span>
-                          </div>
-                        </div>
-                        <div 
-                          className="flex items-center hover:bg-accent cursor-pointer rounded-sm px-2 py-1.5"
-                          onClick={() => {
-                            onActivityChange('create-document')
-                            setIsDropdownOpen(false)
-                          }}
-                          title="Create Document"
-                        >
-                          <div className="flex items-center justify-center safari-icon-fix w-[16.2px] h-[16.2px]">
-                            <File className="h-[16.2px] w-[16.2px] shrink-0 text-teal-600" />
-                          </div>
-                          <div className="flex flex-col min-w-0 ml-2">
-                            <span className="truncate">Create Document</span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
+                <ActivitySelector
+                  selectedActivity={selectedActivity}
+                  onActivityChange={onActivityChange}
+                />
                 
-                {/* Media Parameters Toolbar */}
                 <MediaParametersToolbar
                   selectedActivity={selectedActivity}
                   imageParameters={imageParameters}
@@ -479,7 +249,6 @@ const MessageInputComponent: React.FC<MessageInputProps> = ({
                   isBrowserVisible={isBrowserVisible}
                 />
                 
-                {/* Context button, same height */}
                 <ContextSelectorModal 
                   selectedContext={selectedContext}
                   onContextChange={onContextChange}
@@ -491,33 +260,31 @@ const MessageInputComponent: React.FC<MessageInputProps> = ({
             
             {/* Attachment and Send buttons on the right */}
             <div className="absolute bottom-[15px] right-[15px] flex items-center gap-2" style={{ zIndex: 51 }}>
-              {/* Attachment button */}
               <Button 
                 type="button"
                 size="icon"
                 variant="ghost"
                 disabled={disabled || isUploading || !activeRobotInstance?.id}
-                onClick={handleAttachmentClick}
+                onClick={() => fileInputRef.current?.click()}
                 className={`rounded-[9999px] h-[35.1px] w-[35.1px] transition-all duration-200 ${
                   !disabled && !isUploading && activeRobotInstance?.id
                     ? 'text-muted-foreground hover:text-foreground hover:bg-accent'
                     : 'text-muted-foreground opacity-50 hover:bg-transparent'
                 }`}
-                title={!activeRobotInstance?.id ? 'Inicia una conversación primero para subir archivos' : 'Adjuntar archivo'}
+                title={!activeRobotInstance?.id ? 'Start a conversation first to attach files' : 'Attach file'}
               >
                 <Plus className="h-4.5 w-4.5" />
-                <span className="sr-only">Adjuntar archivo</span>
+                <span className="sr-only">Attach file</span>
               </Button>
               
-              {/* Send button */}
               <Button 
                 type="submit" 
                 size="icon"
-                disabled={disabled || !message.trim()}
-                className="h-[35.1px] w-[35.1px] shrink-0"
+                disabled={disabled || !hasInput}
+                className="h-[35.1px] w-[35.1px] shrink-0 rounded-full bg-foreground text-background hover:bg-foreground/90 disabled:opacity-50"
               >
-                <ChevronRight className="h-4.5 w-4.5" />
-                <span className="sr-only">Enviar</span>
+                <ArrowUp className="h-4.5 w-4.5" />
+                <span className="sr-only">Send</span>
               </Button>
             </div>
           </div>

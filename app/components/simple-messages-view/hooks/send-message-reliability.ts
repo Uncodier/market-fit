@@ -146,18 +146,44 @@ export async function hasAgentResponseForMessage(params: {
   return Boolean(responses?.[0]?.id)
 }
 
+function buildWorkflowDetails(
+  extras: {
+    requestId?: string
+    activity?: string
+    context?: unknown
+    attachments?: unknown
+    status?: 'running'
+  },
+  existing?: Record<string, unknown> | null
+): Record<string, unknown> {
+  return {
+    ...(existing || {}),
+    prompt_source: 'frontend',
+    client_persisted: true,
+    status: extras.status || existing?.status || 'running',
+    request_type: extras.activity || existing?.request_type || 'ask',
+    ...(extras.requestId ? { request_id: extras.requestId } : {}),
+    ...(extras.context !== undefined ? { context: extras.context } : {}),
+    ...(extras.attachments !== undefined ? { attachments: extras.attachments } : {}),
+  }
+}
+
 export async function persistUserActionLog(params: {
   instanceId: string
   siteId: string
   userId?: string | null
   message: string
   requestId?: string
+  activity?: string
+  context?: unknown
+  attachments?: unknown
+  status?: 'running'
 }): Promise<{ id: string } | null> {
   const supabase = createClient()
 
   const { data: existing, error: lookupError } = await supabase
     .from('instance_logs')
-    .select('id')
+    .select('id, details')
     .eq('instance_id', params.instanceId)
     .eq('log_type', 'user_action')
     .eq('message', params.message)
@@ -167,6 +193,11 @@ export async function persistUserActionLog(params: {
   if (lookupError) {
     console.error('Failed to check existing user message:', lookupError)
   } else if (existing?.[0]?.id) {
+    const merged = buildWorkflowDetails(params, existing[0].details || {})
+    await supabase
+      .from('instance_logs')
+      .update({ details: merged })
+      .eq('id', existing[0].id)
     return { id: existing[0].id }
   }
 
@@ -176,11 +207,7 @@ export async function persistUserActionLog(params: {
       log_type: 'user_action',
       level: 'info',
       message: params.message,
-      details: {
-        prompt_source: 'frontend',
-        client_persisted: true,
-        ...(params.requestId ? { request_id: params.requestId } : {}),
-      },
+      details: buildWorkflowDetails(params),
       instance_id: params.instanceId,
       site_id: params.siteId,
       user_id: params.userId || null,
@@ -194,6 +221,40 @@ export async function persistUserActionLog(params: {
   }
 
   return { id: data.id }
+}
+
+export async function markUserLogWorkflowStatus(params: {
+  logId: string
+  status: 'running' | 'stopped' | 'cancelled'
+}): Promise<boolean> {
+  const supabase = createClient()
+  const { data: userLog, error: lookupError } = await supabase
+    .from('instance_logs')
+    .select('id, details')
+    .eq('id', params.logId)
+    .single()
+
+  if (lookupError || !userLog?.id) {
+    console.error('Failed to look up workflow log:', lookupError)
+    return false
+  }
+
+  const { error } = await supabase
+    .from('instance_logs')
+    .update({
+      details: {
+        ...(userLog.details || {}),
+        status: params.status,
+      },
+    })
+    .eq('id', params.logId)
+
+  if (error) {
+    console.error('Failed to update workflow status:', error)
+    return false
+  }
+
+  return true
 }
 
 export async function markRobotInstanceError(params: {

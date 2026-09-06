@@ -28,6 +28,7 @@ export async function POST(request: NextRequest) {
       expected_results_amount,
       client_persisted,
       request_id,
+      activity,
     } = body
 
     // -------------------------------------------------------------
@@ -126,12 +127,12 @@ export async function POST(request: NextRequest) {
     }
 
     // Create a log entry for the user message unless the client already persisted it
-    let userLog: { id: string } | null = null
+    let userLog: { id: string, details?: any } | null = null
 
     if (client_persisted && actualInstanceId) {
       const { data: existingRows, error: existingError } = await supabase
         .from('instance_logs')
-        .select('id')
+        .select('id, details')
         .eq('instance_id', actualInstanceId)
         .eq('log_type', 'user_action')
         .eq('message', message)
@@ -142,6 +143,18 @@ export async function POST(request: NextRequest) {
         console.error('Error looking up client-persisted user log:', existingError)
       } else if (existingRows?.[0]?.id) {
         userLog = existingRows[0]
+        const mergedDetails = {
+          ...(userLog.details || {}),
+          status: 'running',
+          request_type: activity || userLog.details?.request_type || 'ask',
+          ...(context !== undefined ? { context } : {}),
+          ...(attachments !== undefined ? { attachments } : {}),
+        }
+        await supabase
+          .from('instance_logs')
+          .update({ details: mergedDetails })
+          .eq('id', userLog.id)
+        userLog = { ...userLog, details: mergedDetails }
       }
     }
 
@@ -162,6 +175,8 @@ export async function POST(request: NextRequest) {
             instance_node_id: instance_node_id || null,
             expected_results_amount: expected_results_amount || 1,
             ...(request_id ? { request_id } : {}),
+            status: 'running',
+            request_type: activity || 'ask',
           }
         })
         .select()

@@ -193,7 +193,8 @@ export default function SocialNetworkCallbackPage() {
         body: JSON.stringify({ 
           accountIds: selectedPages, 
           selectedPageIds: selectedPages,
-          siteId: currentSite?.id 
+          siteId: currentSite?.id,
+          network
         }),
       })
       
@@ -203,12 +204,14 @@ export default function SocialNetworkCallbackPage() {
         setStatus("success")
         setMessage(`Successfully connected ${selectedPages.length} page(s)!`)
         
-        // Redirect back to settings after a delay
+        // Full navigation so SiteContext reloads social_media from the DB.
+        // router.push keeps the in-memory site, and refreshSites is a no-op on /settings.
         setTimeout(() => {
-          const redirectUrl = returnTo 
-            ? `${returnTo}/settings?tab=social` 
-            : `/settings?tab=social`
-          router.push(redirectUrl)
+          const params = new URLSearchParams({ tab: "social", oauth_connected: "1" })
+          if (currentSite?.id) params.set("oauth_site", currentSite.id)
+          if (network) params.set("oauth_network", network)
+          const path = `/settings?${params.toString()}`
+          window.location.assign(returnTo ? `${returnTo}${path}` : path)
         }, 2000)
       } else {
         if (showBillingLimitFromError(result) || showBillingLimitFromError(result.error)) {

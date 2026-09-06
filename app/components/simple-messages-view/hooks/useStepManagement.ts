@@ -20,6 +20,13 @@ export const useStepManagement = ({
   const [editingStep, setEditingStep] = useState<PlanStep | null>(null)
   const [editTitle, setEditTitle] = useState('')
   const [editDescription, setEditDescription] = useState('')
+
+  // Plan editing state
+  const [isEditPlanModalOpen, setIsEditPlanModalOpen] = useState(false)
+  const [editingPlan, setEditingPlan] = useState<InstancePlan | null>(null)
+  const [editPlanTitle, setEditPlanTitle] = useState('')
+  const [editPlanDescription, setEditPlanDescription] = useState('')
+
   const { toast } = useToast()
 
   // Check if a step can be edited or deleted (completed steps cannot be edited/deleted)
@@ -535,6 +542,58 @@ export const useStepManagement = ({
     }
   }
 
+  // Plan editing functions
+  const openEditPlanModal = (plan: InstancePlan) => {
+    setEditingPlan(plan)
+    setEditPlanTitle(plan.title || '')
+    setEditPlanDescription(plan.description || '')
+    setIsEditPlanModalOpen(true)
+  }
+
+  const closeEditPlanModal = () => {
+    setIsEditPlanModalOpen(false)
+    setEditingPlan(null)
+    setEditPlanTitle('')
+    setEditPlanDescription('')
+  }
+
+  const savePlan = async () => {
+    if (!editingPlan || !editPlanTitle.trim() || !activeRobotInstance?.id) return
+
+    try {
+      const supabase = createClient()
+      
+      const { error } = await supabase
+        .from('instance_plans')
+        .update({
+          title: editPlanTitle.trim(),
+          description: editPlanDescription.trim() || null,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', editingPlan.id)
+
+      if (error) {
+        console.error('Error updating plan:', error)
+        toast({
+          title: "Error saving plan",
+          description: error.message || "Failed to update the plan",
+          variant: "destructive"
+        })
+        return
+      }
+
+      closeEditPlanModal()
+    } catch (error) {
+      console.error('Error saving plan:', error)
+      toast({
+        title: "Error saving plan",
+        description: error instanceof Error ? error.message : "An unexpected error occurred",
+        variant: "destructive"
+      })
+      closeEditPlanModal()
+    }
+  }
+
   return {
     isEditModalOpen,
     editingStep,
@@ -551,6 +610,15 @@ export const useStepManagement = ({
     resumePlan,
     cancelPlan,
     canEditOrDeleteStep,
-    addStep
+    addStep,
+    isEditPlanModalOpen,
+    editingPlan,
+    editPlanTitle,
+    editPlanDescription,
+    setEditPlanTitle,
+    setEditPlanDescription,
+    openEditPlanModal,
+    closeEditPlanModal,
+    savePlan
   }
 }

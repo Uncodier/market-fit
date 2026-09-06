@@ -13,6 +13,7 @@ interface StepIndicatorProps {
   onTogglePause: (planId: string) => void
   onToggleResume: (planId: string) => void
   onCancelPlan?: (planId: string) => void
+  onEditPlan?: (plan: InstancePlan) => void
   onEditStep: (step: PlanStep) => void
   onDeleteStep: (stepId: string) => void
   onToggleStepStatus: (stepId: string) => void
@@ -33,6 +34,7 @@ export const StepIndicator: React.FC<StepIndicatorProps> = ({
   onTogglePause,
   onToggleResume,
   onCancelPlan,
+  onEditPlan,
   onEditStep,
   onDeleteStep,
   onToggleStepStatus,
@@ -46,7 +48,7 @@ export const StepIndicator: React.FC<StepIndicatorProps> = ({
 
   return (
     <div
-      className="step-indicator-root flex-none w-full mb-4 shrink-0"
+      className="step-indicator-root flex-none w-full shrink-0"
     >
       <div className="mx-auto" style={{ width: '100%', maxWidth: '800px' }}>
         <div className="rounded-lg backdrop-blur-sm border shadow-lg transition-all duration-500 bg-background/95 dark:border-white/5 border-black/5">
@@ -128,8 +130,24 @@ export const StepIndicator: React.FC<StepIndicatorProps> = ({
                     </>
                   )}
                   
-                  {/* Play/Pause/Cancel buttons */}
+                  {/* Play/Pause/Cancel/Edit buttons */}
                   <div className="flex items-center gap-1 ml-auto">
+                    {onEditPlan && (instancePlans.some(plan => plan.status === 'in_progress' || plan.status === 'paused' || plan.status === 'pending')) && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          const activePlan = instancePlans.find(plan => plan.status === 'in_progress' || plan.status === 'paused' || plan.status === 'pending')
+                          if (activePlan) {
+                            onEditPlan(activePlan)
+                          }
+                        }}
+                        className="h-6 w-6 p-0 hover:bg-muted dark:hover:bg-muted"
+                        title="Edit plan"
+                      >
+                        <Pencil className="h-3 w-3 text-muted-foreground" />
+                      </Button>
+                    )}
                     {onCancelPlan && (instancePlans.some(plan => plan.status === 'in_progress' || plan.status === 'paused' || plan.status === 'pending')) && (
                       <Button
                         variant="ghost"

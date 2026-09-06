@@ -49,6 +49,47 @@ function platformMatchesSlot(
   return false
 }
 
+function isInactiveSlot(sm: Record<string, unknown>): boolean {
+  return sm.isActive !== true && sm.isActive !== 1
+}
+
+function normalizeHandle(value: unknown): string {
+  return String(value || "").trim().toLowerCase().replace(/^@/, "")
+}
+
+function findMergeSlotIndex(
+  socialMedia: Record<string, unknown>[],
+  account: OutstandSocialAccount,
+  pathNetwork: string,
+  outstandNetwork: string
+): number {
+  const byId = socialMedia.findIndex((sm) => sm.id === account.id)
+  if (byId >= 0) return byId
+
+  const emptyId = socialMedia.findIndex(
+    (sm) =>
+      platformMatchesSlot(sm, pathNetwork, outstandNetwork) &&
+      (!sm.id || String(sm.id).trim() === "")
+  )
+  if (emptyId >= 0) return emptyId
+
+  const accountHandle = normalizeHandle(account.username)
+  if (accountHandle) {
+    const byHandle = socialMedia.findIndex((sm) => {
+      if (!platformMatchesSlot(sm, pathNetwork, outstandNetwork) || !isInactiveSlot(sm)) {
+        return false
+      }
+      const slotHandle = normalizeHandle(sm.username || sm.handle)
+      return slotHandle === accountHandle
+    })
+    if (byHandle >= 0) return byHandle
+  }
+
+  return socialMedia.findIndex(
+    (sm) => platformMatchesSlot(sm, pathNetwork, outstandNetwork) && isInactiveSlot(sm)
+  )
+}
+
 /**
  * Merges Outstand account metadata into site settings.social_media for accounts not yet stored by id.
  */
@@ -70,28 +111,16 @@ export function mergeOutstandIntoSocialMedia(
   let mergedCount = 0
 
   for (const account of relevant) {
-    const byId = socialMedia.findIndex((sm) => sm.id === account.id)
-    if (byId >= 0) {
-      socialMedia[byId] = {
-        ...socialMedia[byId],
-        ...mapOutstandRow(account, String(socialMedia[byId].platform || uiPlatform)),
+    const slotIdx = findMergeSlotIndex(socialMedia, account, pathNetwork, outstandNetwork)
+    if (slotIdx >= 0) {
+      const previousId = socialMedia[slotIdx].id
+      socialMedia[slotIdx] = {
+        ...socialMedia[slotIdx],
+        ...mapOutstandRow(account, String(socialMedia[slotIdx].platform || uiPlatform)),
       }
-      continue
-    }
-
-    const stubIdx = socialMedia.findIndex(
-      (sm) =>
-        platformMatchesSlot(sm, pathNetwork, outstandNetwork) &&
-        (!sm.id || String(sm.id).trim() === "")
-    )
-
-    if (stubIdx >= 0) {
-      const prevPlatform = String(socialMedia[stubIdx].platform || uiPlatform)
-      socialMedia[stubIdx] = {
-        ...socialMedia[stubIdx],
-        ...mapOutstandRow(account, prevPlatform),
+      if (!previousId || String(previousId).trim() === "" || previousId !== account.id) {
+        mergedCount += 1
       }
-      mergedCount += 1
       continue
     }
 

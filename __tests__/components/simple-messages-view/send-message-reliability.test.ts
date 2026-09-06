@@ -146,6 +146,8 @@ describe('persistUserActionLog', () => {
         details: expect.objectContaining({
           client_persisted: true,
           request_id: 'req-1',
+          status: 'running',
+          request_type: 'ask',
         }),
       })
     )

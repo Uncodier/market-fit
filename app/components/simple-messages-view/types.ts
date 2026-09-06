@@ -86,7 +86,7 @@ export interface InstanceLog {
   id: string
   instance_id?: string
   site_id?: string
-  log_type: 'system' | 'user_action' | 'agent_action' | 'tool_call' | 'tool_result' | 'error' | 'performance'
+  log_type: 'system' | 'user_action' | 'agent_action' | 'thinking' | 'infrastructure' | 'tool_call' | 'tool_result' | 'error' | 'performance'
   level: 'debug' | 'info' | 'warn' | 'error' | 'critical'
   message: string
   /** Merged server-side; `user_feedback` is written from the robots UI for copy/feedback actions */

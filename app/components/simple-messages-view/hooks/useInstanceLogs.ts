@@ -3,6 +3,7 @@ import useSWR from 'swr'
 import { createClient } from '@/lib/supabase/client'
 import { InstanceLog } from '../types'
 import { collapseDuplicateUserActions } from './send-message-reliability'
+import { excludeQueuedUserLogs } from './command-queue'
 import { subscribeInstanceLogsRealtime } from './subscribeInstanceLogsRealtime'
 
 interface UseInstanceLogsProps {
@@ -68,8 +69,10 @@ export const useInstanceLogs = ({
     { revalidateOnFocus: false }
   )
 
-  const logs = collapseDuplicateUserActions(
-    (logsData || []).filter((log: InstanceLog) => !log.instance_id || log.instance_id === activeRobotInstance?.id)
+  const logs = excludeQueuedUserLogs(
+    collapseDuplicateUserActions(
+      (logsData || []).filter((log: InstanceLog) => !log.instance_id || log.instance_id === activeRobotInstance?.id)
+    )
   )
   
   const setLogs = useCallback((updater: any) => {
@@ -249,21 +252,38 @@ export const useInstanceLogs = ({
     }
   }, [activeRobotInstance?.id, hasMoreLogs, logs, setLogs])
 
-  const addOptimisticUserMessage = useCallback((message: string) => {
+  const addOptimisticUserMessage = useCallback((
+    message: string,
+    extraDetails?: Record<string, unknown>
+  ) => {
     if (!activeRobotInstance?.id) return
 
     const newMessage: InstanceLog = {
-      id: `optimistic-${Date.now()}`,
+      id: typeof extraDetails?.id === 'string' ? extraDetails.id : `optimistic-${Date.now()}`,
       instance_id: activeRobotInstance.id,
       log_type: 'user_action',
       message: message,
       level: 'info',
       created_at: new Date().toISOString(),
-      details: { temp_message: true }
+      details: {
+        temp_message: true,
+        status: 'running',
+        ...extraDetails,
+      }
     }
 
     setLogs(prev => [...prev, newMessage])
   }, [activeRobotInstance?.id, setLogs])
+
+  const patchLogDetails = useCallback((logId: string, patch: Record<string, unknown>) => {
+    setLogs((prevLogs: InstanceLog[]) =>
+      prevLogs.map((log) =>
+        log.id === logId
+          ? { ...log, details: { ...(log.details || {}), ...patch } }
+          : log
+      )
+    )
+  }, [setLogs])
 
   // Collapsing toggles
   const toggleSystemMessageCollapse = (logId: string) => {
@@ -362,6 +382,7 @@ export const useInstanceLogs = ({
     loadInstanceLogs,
     loadMoreLogs,
     addOptimisticUserMessage,
+    patchLogDetails,
     toggleSystemMessageCollapse,
     toggleAllSystemMessages,
     toggleToolDetails,

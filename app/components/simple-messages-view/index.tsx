@@ -30,6 +30,7 @@ import { useRequirementStatus } from './hooks/useRequirementStatus'
 import { useRobotInstance } from './hooks/useRobotInstance'
 import { useMessageSending } from './hooks/useMessageSending'
 import { useStepManagement } from './hooks/useStepManagement'
+import { useBacklogManagement } from './hooks/useBacklogManagement'
 import { useInstanceAssets } from './hooks/useInstanceAssets'
 
 // Import components
@@ -37,19 +38,25 @@ import { LoadingIndicator } from './components/LoadingIndicator'
 import { EmptyStateOrbs } from './components/EmptyStateOrbs'
 import { MessageInput } from './components/MessageInput'
 import { MessageItem } from './components/MessageItem'
-import { ToolCallItem } from './components/ToolCallItem'
-import { ToolCallGroupItem } from './components/ToolCallGroupItem'
+import { ProcessGroupItem } from './components/ProcessGroupItem'
 import { CompletedPlanCard } from './components/CompletedPlanCard'
 import { RequirementStatusCard } from './components/RequirementStatusCard'
 import { StepIndicator } from './components/StepIndicator'
 import { BacklogIndicator } from './components/BacklogIndicator'
 import { EditStepModal } from './components/EditStepModal'
+import { EditPlanModal } from './components/EditPlanModal'
+import { EditBacklogModal } from './components/EditBacklogModal'
+import { EditPendingWorkModal } from './components/EditPendingWorkModal'
 import { StepCompletedItem } from './components/StepCompletedItem'
 import { ArtifactShownItem } from './components/ArtifactShownItem'
 import { EmptyStatePrompts } from './components/EmptyStatePrompts'
+import { UserWorkflowMeta } from './components/UserWorkflowMeta'
+import { CommandQueueBar } from './components/CommandQueueBar'
+import { usePendingWork } from './hooks/usePendingWork'
+import { useRunningWorkflow } from './hooks/useRunningWorkflow'
 
 // Import utilities
-import { getActivityName, getToolName, groupTimelineToolCalls } from './utils'
+import { groupTimelineProcess } from './group-timeline-process'
 
 const SCROLL_BOTTOM_THRESHOLD_PX = 80
 
@@ -120,6 +127,43 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
   const [selectedActivity, setSelectedActivity] = useState<string>('ask')
   const [isStepIndicatorExpanded, setIsStepIndicatorExpanded] = useState(false)
   const [isBacklogIndicatorExpanded, setIsBacklogIndicatorExpanded] = useState(false)
+  const [bottomPadding, setBottomPadding] = useState(180)
+  const bottomContainerRef = useRef<HTMLDivElement>(null)
+
+  const [isEditPendingModalOpen, setIsEditPendingModalOpen] = useState(false)
+  const [editPendingId, setEditPendingId] = useState('')
+  const [editPendingMessage, setEditPendingMessage] = useState('')
+
+  const shouldForceScrollRef = useRef(false)
+
+  useEffect(() => {
+    if (!bottomContainerRef.current) return
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        // Use bounding client rect for more accurate total height
+        const rect = (entry.target as HTMLElement).getBoundingClientRect()
+        // If we are currently at the bottom, mark that we should force scroll after the padding updates
+        if (stickToBottomRef.current) {
+          shouldForceScrollRef.current = true
+        }
+        // Add 80px as extra buffer to ensure the last message is well above the input area
+        setBottomPadding(Math.max(180, rect.height + 80))
+      }
+    })
+    observer.observe(bottomContainerRef.current)
+    
+    return () => observer.disconnect()
+  }, [])
+
+  useEffect(() => {
+    // Re-scroll to bottom if the padding pushed content up and we were stuck to bottom before the change
+    if (messagesContainerRef.current && (stickToBottomRef.current || shouldForceScrollRef.current)) {
+      shouldForceScrollRef.current = false
+      scrollContainerToBottomImmediateRef.current?.()
+    }
+  }, [bottomPadding])
+  const scrollToBottomImmediateRef = useRef<(() => void) | null>(null)
+
   const [recentUserMessageIds, setRecentUserMessageIds] = useState<Set<string>>(new Set())
   const [lastUserMessage, setLastUserMessage] = useState<string>('')
   
@@ -185,12 +229,15 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
     setShowJumpToLatest(false)
   }, [activeRobotInstance?.id])
 
+  const scrollContainerToBottomImmediateRef = useRef<(() => void) | null>(null)
+
   const scrollContainerToBottomImmediate = useCallback(() => {
     const container = messagesContainerRef.current
     if (container) {
       container.scrollTop = container.scrollHeight
     }
   }, [])
+  scrollContainerToBottomImmediateRef.current = scrollContainerToBottomImmediate
 
   /** Used after fetching logs: only snap down if the user was already following the tail. */
   const scrollToBottomImmediateIfStuck = useCallback(() => {
@@ -199,6 +246,7 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
       requestAnimationFrame(() => updateStickToBottomFromScroll())
     }
   }, [scrollContainerToBottomImmediate, updateStickToBottomFromScroll])
+  scrollToBottomImmediateRef.current = scrollToBottomImmediateIfStuck
 
   const jumpToLatestLogs = useCallback(() => {
     stickToBottomRef.current = true
@@ -222,16 +270,15 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
   }, [])
 
 
-  // Handle message sent - capture the user message and scroll to bottom
+  // Handle message sent - capture from the live ref before the composer is cleared
   const handleMessageSent = useCallback((sent: boolean) => {
-    if (sent && message) {
-      setLastUserMessage(message)
-      // Small delay to let the optimistic message render before scrolling
-      const t = setTimeout(() => scrollToBottom(), 80)
-      return () => clearTimeout(t)
+    if (sent) {
+      const typed = messageRef.current
+      if (typed) setLastUserMessage(typed)
+      window.setTimeout(() => scrollToBottom(), 80)
     }
     onMessageSent?.(sent)
-  }, [message, onMessageSent, scrollToBottom])
+  }, [onMessageSent, scrollToBottom])
 
   // Ref to store the reset function to avoid circular dependency
   const resetMessageSentStateRef = useRef<(() => void) | null>(null)
@@ -277,7 +324,12 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
   const clearNewMakinaThinkingRef = useRef<(() => void) | null>(null)
   
   // Create ref for addOptimisticUserMessage function
-  const addOptimisticUserMessageRef = useRef<((message: string) => void) | null>(null)
+  const addOptimisticUserMessageRef = useRef<((
+    message: string,
+    extraDetails?: Record<string, unknown>
+  ) => void) | null>(null)
+  const instanceLogsRef = useRef<InstanceLog[]>([])
+  const reloadPendingWorkRef = useRef<() => void>(() => {})
 
   const {
     isStartingRobot,
@@ -309,12 +361,18 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
     selectedActivity,
     selectedContext,
     messageRef,
+    logsRef: instanceLogsRef,
     onMessageSent: handleMessageSent,
     onClearMessage: clearMessage,
     onScrollToBottom: scrollToBottom,
     onNewInstanceCreated: handleNewInstanceCreated,
     startInstancePolling,
-    onAddOptimisticMessage: (message: string) => addOptimisticUserMessageRef.current?.(message),
+    onAddOptimisticMessage: (message: string, extraDetails?: Record<string, unknown>) => addOptimisticUserMessageRef.current?.(message, extraDetails || {
+      status: 'running',
+      request_type: selectedActivity,
+      context: selectedContext,
+    }),
+    onPendingEnqueued: () => reloadPendingWorkRef.current(),
     imageParameters,
     videoParameters,
     audioParameters
@@ -331,6 +389,7 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
     loadInstanceLogs,
     loadMoreLogs,
     addOptimisticUserMessage,
+    patchLogDetails,
     toggleSystemMessageCollapse,
     toggleAllSystemMessages,
     toggleToolDetails,
@@ -344,7 +403,8 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
     onResponseReceived: clearThinkingState,
     currentSiteId: currentSite?.id
   })
-  
+
+  instanceLogsRef.current = logs
 
   // Update the ref with the real function
   useEffect(() => {
@@ -398,10 +458,24 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
 
   const latestRequirementStatus = requirementStatuses.length > 0 ? requirementStatuses[requirementStatuses.length - 1] : null
   const rawRequirements = latestRequirementStatus?.requirements
-  
-  // Try to get backlog from the active instance first, then fallback to requirement status
-  const requirementBacklog = (activeRobotInstance as any)?.requirement_backlog || 
+  const sourceBacklog = (activeRobotInstance as any)?.requirement_backlog ||
     (Array.isArray(rawRequirements) ? rawRequirements[0]?.backlog : rawRequirements?.backlog)
+
+  const {
+    requirementBacklog,
+    isEditBacklogModalOpen,
+    editBacklogTitle,
+    setEditBacklogTitle,
+    openEditBacklogModal,
+    closeEditBacklogModal,
+    saveBacklogItem,
+  } = useBacklogManagement({
+    activeRobotInstance,
+    requirementIdFromStatus:
+      latestRequirementStatus?.requirement_id ||
+      (Array.isArray(rawRequirements) ? rawRequirements[0]?.id : rawRequirements?.id),
+    sourceBacklog,
+  })
 
   const {
     isEditModalOpen,
@@ -419,7 +493,15 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
     resumePlan,
     cancelPlan,
     canEditOrDeleteStep,
-    addStep
+    addStep,
+    isEditPlanModalOpen,
+    editPlanTitle,
+    editPlanDescription,
+    setEditPlanTitle,
+    setEditPlanDescription,
+    openEditPlanModal,
+    closeEditPlanModal,
+    savePlan
   } = useStepManagement({
     activeRobotInstance,
     steps,
@@ -427,7 +509,6 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
     onSetSteps: () => {}
   })
 
-  // Instance assets management
   const {
     assets,
     isLoading: isLoadingAssets,
@@ -435,6 +516,16 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
   } = useInstanceAssets({
     instanceId: activeRobotInstance?.id
   })
+
+  const { runningUserLog, cancelWorkflow, isCancelling } = useRunningWorkflow({
+    logs,
+    instanceId: activeRobotInstance?.id,
+    patchLogDetails,
+    toast,
+  })
+
+  const { pendingWork, removePending, editPending, sendNow, sendingId, reloadPendingWork } = usePendingWork(activeRobotInstance?.id)
+  reloadPendingWorkRef.current = reloadPendingWork
 
   // Timeline is now created inline in the render to ensure proper chronological order
 
@@ -659,24 +750,12 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
     return timeA - timeB
   })
 
-  const isToolCallLog = (log: any) => {
-    const isToolCall = log.log_type === 'tool_call' || log.log_type === 'tool_result'
-    const hasToolName = log.tool_name || log.toolName
-    const toolNameLower = (log.tool_name || log.toolName)?.toLowerCase()
-    const isStructuredOutput = toolNameLower === 'structured_output'
-    const isShowArtifact = toolNameLower === 'show_artifact'
-    return (isToolCall || hasToolName) && !isStructuredOutput && !isShowArtifact
-  }
+  const processedTimeline = groupTimelineProcess(sortedTimeline)
+  const lastProcessGroupId = [...processedTimeline]
+    .reverse()
+    .find((item) => item.type === 'process_group')
+    ?.data?.groupId
 
-  const processedTimeline = groupTimelineToolCalls(
-    sortedTimeline,
-    getToolName,
-    isToolCallLog
-  )
-  
-  // Check if instance is running
-  const isInstanceRunning = activeRobotInstance && ['running', 'active'].includes(activeRobotInstance.status)
-  
   // Explorer is empty only if there's no timeline (instance running or not doesn't matter for the chat state)
   const isEmptyExplorer = !shouldShowNewMakina && sortedTimeline.length === 0
   const isEmpty = isEmptyNewMakina || isEmptyExplorer
@@ -684,6 +763,7 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
   const allStepsCompleted = areAllStepsCompleted()
   const showFloatingPlanAppendix =
     assets.length > 0 || (steps.length > 0 && !allStepsCompleted)
+  const showPinnedRunningBubble = Boolean(runningUserLog && showJumpToLatest)
     
   let backlogHasItems = false;
   if (requirementBacklog) {
@@ -691,12 +771,6 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
     else backlogHasItems = !!requirementBacklog.items && requirementBacklog.items.length > 0;
   }
   const showFloatingBacklog = backlogHasItems;
-
-  const messagesBottomPaddingClass = !(showFloatingPlanAppendix || showFloatingBacklog)
-    ? "pb-[220px]"
-    : (isStepIndicatorExpanded || isBacklogIndicatorExpanded)
-      ? "pb-[420px]"
-      : "pb-[270px]"
 
   return (
     <div className={cn("flex flex-col w-full min-w-0 h-full min-h-0", className, !className?.includes('absolute') && "relative")}>
@@ -706,13 +780,15 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
       <div
         ref={messagesContainerRef}
         className={cn(
-          "flex-1 min-h-0 overflow-y-auto overflow-x-hidden w-full min-w-0 transition-[padding-bottom,colors] duration-300 ease-in-out",
-          messagesBottomPaddingClass
+          "flex-1 min-h-0 overflow-y-auto overflow-x-hidden w-full min-w-0 transition-colors duration-300 ease-in-out",
         )}
         style={{ transform: 'translateZ(0)', backfaceVisibility: 'hidden' }}
         onScroll={handleScroll}
       >
-        <div className="w-full max-w-4xl mx-auto px-4 min-w-0">
+        <div 
+          className="w-full max-w-4xl mx-auto px-4 min-w-0 transition-[padding-bottom] duration-300 ease-in-out"
+          style={{ paddingBottom: isEmpty ? 0 : `${bottomPadding}px` }}
+        >
           {/* Spacer for sticky header and topbar blur effect */}
           <div className={cn("h-[135px] shrink-0", !hasTopHeaderSpace && "hidden lg:block")} aria-hidden="true" />
           <div className="space-y-6 pt-6 pb-6">
@@ -824,18 +900,20 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
 
                 let content = null;
 
-                if (item.type === 'tool_group') {
+                if (item.type === 'process_group') {
                   const group = item.data
                   content = (
-                    <ToolCallGroupItem
+                    <ProcessGroupItem
                       key={group.groupId}
                       group={group}
                       isDarkMode={isDarkMode}
                       isExpanded={expandedToolGroups.has(group.groupId)}
+                      isLive={Boolean(runningUserLog) && group.groupId === lastProcessGroupId}
                       onToggleExpand={toggleToolGroup}
                       collapsedToolDetails={collapsedToolDetails}
                       onToggleToolDetails={toggleToolDetails}
                       isBrowserVisible={isBrowserVisible}
+                      onEditPlan={openEditPlanModal}
                     />
                   )
                 } else if (item.type === 'log') {
@@ -874,6 +952,8 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
                         collapsedSystemMessages={collapsedSystemMessages}
                         onToggleSystemMessageCollapse={toggleSystemMessageCollapse}
                         isBrowserVisible={isBrowserVisible}
+                        onCancelWorkflow={cancelWorkflow}
+                        isCancellingWorkflow={isCancelling}
                       />
                     )
                   }
@@ -882,6 +962,7 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
                     <CompletedPlanCard 
                       key={`plan-${item.data.id}`}
                       plan={item.data}
+                      onEditPlan={openEditPlanModal}
                     />
                   )
                 } else if (item.type === 'requirement_status') {
@@ -944,13 +1025,14 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
           )}
         />
         <div 
+          ref={bottomContainerRef}
           className={cn(
             "w-full max-w-[800px] px-4 pointer-events-auto relative z-10 !bg-transparent !p-0 mx-auto transition-all duration-300",
-            isEmpty ? "flex flex-col gap-3 -mt-12" : "flex flex-col w-full"
+            isEmpty ? "flex flex-col gap-3 -mt-12" : "flex flex-col w-full gap-2"
           )}
         >
         {showJumpToLatest && !isEmpty && (
-          <div className="flex w-full shrink-0 justify-center pb-2">
+          <div className="flex w-full shrink-0 justify-center">
             <Button
               type="button"
               variant="secondary"
@@ -971,35 +1053,62 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
               backlog={requirementBacklog}
               expanded={isBacklogIndicatorExpanded}
               onToggleExpanded={() => setIsBacklogIndicatorExpanded(!isBacklogIndicatorExpanded)}
+              onEditItem={openEditBacklogModal}
             />
           </div>
         )}
         {/* Floating Step Indicator - Expandable */}
         {showFloatingPlanAppendix && (
-          <StepIndicator
-            steps={steps}
-            instancePlans={instancePlans}
-            currentStep={getCurrentStep()}
-            allCompleted={allStepsCompleted}
-            expanded={isStepIndicatorExpanded}
-            onToggleExpanded={() => setIsStepIndicatorExpanded(!isStepIndicatorExpanded)}
-            onTogglePause={(planId: string) => {
-              pausePlan(planId)
-            }}
-            onToggleResume={(planId: string) => {
-              resumePlan(planId)
-            }}
-            onCancelPlan={(planId: string) => {
-              cancelPlan(planId)
-            }}
-            onEditStep={openEditModal}
-            onDeleteStep={deleteStep}
-            onToggleStepStatus={toggleStepStatus}
-            canEditOrDeleteStep={canEditOrDeleteStep}
-            assets={assets}
-            onDeleteAsset={deleteAsset}
-            isBrowserVisible={isBrowserVisible}
-          />
+          <div className="w-full relative pointer-events-auto">
+            <StepIndicator
+              steps={steps}
+              instancePlans={instancePlans}
+              currentStep={getCurrentStep()}
+              allCompleted={allStepsCompleted}
+              expanded={isStepIndicatorExpanded}
+              onToggleExpanded={() => setIsStepIndicatorExpanded(!isStepIndicatorExpanded)}
+              onTogglePause={(planId: string) => {
+                pausePlan(planId)
+              }}
+              onToggleResume={(planId: string) => {
+                resumePlan(planId)
+              }}
+              onCancelPlan={(planId: string) => {
+                cancelPlan(planId)
+              }}
+              onEditPlan={openEditPlanModal}
+              onEditStep={openEditModal}
+              onDeleteStep={deleteStep}
+              onToggleStepStatus={toggleStepStatus}
+              canEditOrDeleteStep={canEditOrDeleteStep}
+              assets={assets}
+              onDeleteAsset={deleteAsset}
+              isBrowserVisible={isBrowserVisible}
+            />
+          </div>
+        )}
+        <CommandQueueBar
+          items={pendingWork}
+          onRemove={removePending}
+          onEdit={(item) => {
+            setEditPendingId(item.id)
+            setEditPendingMessage(item.message)
+            setIsEditPendingModalOpen(true)
+          }}
+          onSendNow={sendNow}
+          sendingId={sendingId}
+        />
+        {showPinnedRunningBubble && runningUserLog && (
+          <div className="w-full relative pointer-events-auto">
+            <div className="mx-auto max-w-[800px] rounded-2xl border border-border/80 bg-background/95 px-4 py-3 shadow-sm">
+              <p className="text-sm text-foreground line-clamp-2 break-words">{runningUserLog.message}</p>
+              <UserWorkflowMeta
+                log={runningUserLog}
+                onCancel={cancelWorkflow}
+                isCancelling={isCancelling}
+              />
+            </div>
+          </div>
         )}
         {/* Prompt suggestion carousel - shown only when chat is empty, fades out when content appears */}
         {isEmpty && (
@@ -1021,8 +1130,8 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
           onActivityChange={setSelectedActivity}
           onContextChange={setSelectedContext}
           onSubmit={handleSendMessage}
-          disabled={isSendingMessage || isStartingRobot}
-          placeholder={activeRobotInstance ? (isSendingMessage ? "Enviando mensaje..." : "¿Cómo te puedo ayudar hoy?") : (isStartingRobot ? "Iniciando agent..." : "¿Cómo te puedo ayudar hoy?")}
+          disabled={isStartingRobot}
+          placeholder={activeRobotInstance ? (runningUserLog ? "Queued until the current command finishes..." : "How can I help you today?") : (isStartingRobot ? "Starting agent..." : "How can I help you today?")}
           textareaRef={textareaRef}
           imageParameters={imageParameters}
           videoParameters={videoParameters}
@@ -1045,6 +1154,38 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
         onDescriptionChange={setEditDescription}
         onSave={saveStep}
         onClose={closeEditModal}
+      />
+
+      {/* Edit Plan Modal */}
+      <EditPlanModal
+        open={isEditPlanModalOpen}
+        title={editPlanTitle}
+        description={editPlanDescription}
+        onTitleChange={setEditPlanTitle}
+        onDescriptionChange={setEditPlanDescription}
+        onSave={savePlan}
+        onClose={closeEditPlanModal}
+      />
+
+      {/* Edit Backlog Item Modal */}
+      <EditBacklogModal
+        open={isEditBacklogModalOpen}
+        title={editBacklogTitle}
+        onTitleChange={setEditBacklogTitle}
+        onSave={saveBacklogItem}
+        onClose={closeEditBacklogModal}
+      />
+
+      {/* Edit Pending Work Modal */}
+      <EditPendingWorkModal
+        open={isEditPendingModalOpen}
+        message={editPendingMessage}
+        onMessageChange={setEditPendingMessage}
+        onSave={() => {
+          editPending(editPendingId, editPendingMessage)
+          setIsEditPendingModalOpen(false)
+        }}
+        onClose={() => setIsEditPendingModalOpen(false)}
       />
     </div>
   )

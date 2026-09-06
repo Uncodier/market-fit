@@ -156,15 +156,13 @@ export const ChatInput = memo(function ChatInput({
                 onChange={handleChange}
                 onKeyDown={handleKeyDownInternal}
                 placeholder="Message..."
-                className="resize-none w-full py-4 pl-8 pr-[54px] rounded-2xl border border-input bg-background/80 backdrop-blur-md supports-[backdrop-filter]:bg-background/80 focus-visible:outline-none text-base box-border transition-all duration-300 ease-in-out pt-4 peer"
+                className="resize-none w-full py-4 pl-8 pr-[54px] rounded-2xl border border-input bg-background focus-visible:outline-none text-base box-border pt-4 peer"
                 disabled={isLoading}
                 style={{
                   lineHeight: '1.5',
                   overflowY: 'hidden',
                   wordWrap: 'break-word',
                   paddingBottom: '50px',
-                  backdropFilter: 'blur(12px)',
-                  WebkitBackdropFilter: 'blur(12px)',
                   height: '121.5px',
                   opacity: isLoading ? 1 : undefined
                 }}
@@ -176,12 +174,12 @@ export const ChatInput = memo(function ChatInput({
                   type="submit" 
                   size="icon"
                   disabled={!canSend}
-                  className="h-[35.1px] w-[35.1px] shrink-0"
+                  className="h-[35.1px] w-[35.1px] shrink-0 rounded-full bg-foreground text-background hover:bg-foreground/90 disabled:opacity-50"
                 >
                   {isLoading ? (
                     <LoadingSkeleton size="sm" />
                   ) : (
-                    <Icons.ChevronRight className="h-4.5 w-4.5" />
+                    <Icons.ArrowUp className="h-4.5 w-4.5" />
                   )}
                   <span className="sr-only">Send</span>
                 </Button>

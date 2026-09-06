@@ -494,6 +494,7 @@ export default function SettingsPage() {
       description: "Your social settings have been updated.",
     })
     refreshSites().catch(() => {})
+    setFormKey((key) => key + 1)
     stripOAuthParams()
   }, [searchParams, currentSite?.id, router, refreshSites])
 
