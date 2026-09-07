@@ -165,10 +165,10 @@ export default function RecordsPage() {
     }
     return true
   }).sort((a, b) => {
-    const dateA = new Date(a.created_at || a.createdAt || 0).getTime();
-    const dateB = new Date(b.created_at || b.createdAt || 0).getTime();
-    const updateA = new Date(a.updated_at || a.updatedAt || a.created_at || a.createdAt || 0).getTime();
-    const updateB = new Date(b.updated_at || b.updatedAt || b.created_at || b.createdAt || 0).getTime();
+    const dateA = new Date(a.created_at || 0).getTime();
+    const dateB = new Date(b.created_at || 0).getTime();
+    const updateA = new Date(a.updated_at || a.created_at || 0).getTime();
+    const updateB = new Date(b.updated_at || b.created_at || 0).getTime();
     
     if (sortBy === "newest") return dateB - dateA
     if (sortBy === "oldest") return dateA - dateB

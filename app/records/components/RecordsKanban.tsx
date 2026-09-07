@@ -75,7 +75,7 @@ interface KanbanPaginationState {
 
 interface RecordsKanbanProps {
   records: RecordItem[]
-  sortBy: "newest" | "oldest" | "title_asc" | "title_desc"
+  sortBy: "newest" | "oldest" | "updated_at" | "title_asc" | "title_desc"
   onUpdateRecordStatus: (recordId: string, newStatus: string) => Promise<void>
   onRecordClick: (record: RecordItem) => void
   kanbanPagination: Record<string, KanbanPaginationState>
@@ -119,8 +119,12 @@ export function RecordsKanban({
   const sortRecords = React.useCallback((recordA: RecordItem, recordB: RecordItem) => {
     const createdA = new Date(recordA.created_at || 0).getTime()
     const createdB = new Date(recordB.created_at || 0).getTime()
+    const updateA = new Date(recordA.updated_at || recordA.created_at || 0).getTime()
+    const updateB = new Date(recordB.updated_at || recordB.created_at || 0).getTime()
+
     if (sortBy === "newest") return createdB - createdA
     if (sortBy === "oldest") return createdA - createdB
+    if (sortBy === "updated_at") return updateB - updateA
     if (sortBy === "title_asc") return recordA.title.localeCompare(recordB.title)
     if (sortBy === "title_desc") return recordB.title.localeCompare(recordA.title)
     return 0
