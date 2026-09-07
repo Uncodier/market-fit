@@ -1,14 +1,11 @@
 "use client"
 
 import dynamic from "next/dynamic"
+import { RecordDetailSkeleton } from "./components/RecordDetailSkeleton"
 
 const RecordDetailPage = dynamic(() => import("./record-item-client"), {
   ssr: false,
-  loading: () => (
-    <div className="flex flex-1 items-center justify-center p-8 text-sm text-muted-foreground">
-      Loading...
-    </div>
-  ),
+  loading: () => <RecordDetailSkeleton />
 })
 
 export default function Page() {

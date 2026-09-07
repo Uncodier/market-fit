@@ -60,7 +60,28 @@ export function useRelationOptions(
       return
     }
 
-    const incoming = mapRowsToOptions((data || []) as Array<Record<string, unknown>>, config.nameField)
+    let allData = (data || []) as Array<Record<string, unknown>>
+    
+    // If we have selected IDs that are not in the current data, fetch them specifically
+    if (selectedIdSet.size > 0 && query.trim() === "") {
+      const dataIds = new Set(allData.map(d => String(d.id)))
+      const missingIds = Array.from(selectedIdSet).filter(id => !dataIds.has(id))
+      
+      if (missingIds.length > 0) {
+        // Only fetch missing IDs that look like UUIDs or valid IDs to prevent query errors
+        const { data: missingData, error: missingError } = await supabase
+          .from(config.table)
+          .select(config.selectFields)
+          .eq("site_id", siteId)
+          .in("id", missingIds)
+          
+        if (!missingError && missingData) {
+          allData = [...allData, ...missingData as Array<Record<string, unknown>>]
+        }
+      }
+    }
+
+    const incoming = mapRowsToOptions(allData, config.nameField)
     setRelationOptions((prev) => ({
       ...prev,
       [target]: keepSelectedRelationOptions(incoming, prev[target] || [], selectedIdSet),

@@ -6,13 +6,14 @@ import { findOrCreateCampaign } from "@/app/campaigns/actions/campaigns/create"
 import { findOrCreateCatalogCategory, findOrCreateCatalogItem } from "@/app/catalog/actions"
 import { findOrCreateLocation } from "@/app/inventory/actions"
 import { findOrCreateItemSpec } from "@/app/catalog/item-spec-actions"
+import { findOrCreateDeal } from "@/app/deals/actions"
 
 export function isPendingCreate(value: RelationSelectValue): boolean {
   return value?.mode === "create"
 }
 
 export async function resolveRelationId(
-  entity: "lead" | "segment" | "company" | "campaign" | "catalog_category" | "catalog_item" | "location" | "item_spec",
+  entity: "lead" | "segment" | "company" | "campaign" | "catalog_category" | "catalog_item" | "location" | "item_spec" | "deal",
   value: RelationSelectValue,
   siteId: string,
   createDefaults?: Record<string, any>
@@ -61,6 +62,10 @@ export async function resolveRelationId(
     case "location":
       const locationRes = await findOrCreateLocation(siteId, name)
       return { id: locationRes.location?.id || null, error: locationRes.error || null }
+
+    case "deal":
+      const dealRes = await findOrCreateDeal(siteId, name)
+      return { id: dealRes.deal?.id || null, error: dealRes.error || null }
 
     case "item_spec":
       if (!createDefaults?.categoryId) {

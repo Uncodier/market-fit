@@ -199,6 +199,36 @@ export async function getDealById(id: string) {
   }
 }
 
+export async function findOrCreateDeal(siteId: string, name: string) {
+  try {
+    const supabase = createClient()
+    const { data: existing, error: searchError } = await supabase
+      .from("deals")
+      .select("id")
+      .eq("site_id", siteId)
+      .eq("name", name)
+      .limit(1)
+      .maybeSingle()
+
+    if (searchError) throw searchError
+    if (existing) return { deal: existing, error: null }
+
+    const { deal, error: createError } = await createDeal({
+      site_id: siteId,
+      name,
+      stage: "prospecting",
+      status: "open",
+      currency: "usd",
+    })
+
+    if (createError) throw new Error(createError)
+    return { deal, error: null }
+  } catch (error: any) {
+    console.error("Error in findOrCreateDeal:", error)
+    return { deal: null, error: error.message }
+  }
+}
+
 export async function createDeal(data: Partial<Deal>) {
   try {
     const supabase = createClient()

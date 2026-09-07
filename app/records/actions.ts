@@ -145,10 +145,10 @@ export async function resolveRelationsForSidebar(
       if (target === "lead") { table = "leads"; nameField = "name" }
       else if (target === "company") { table = "companies"; nameField = "name" }
       else if (target === "sales_order") { table = "orders"; nameField = "order_number" }
-      else if (target === "deal") { table = "deals"; nameField = "title" }
+      else if (target === "deal") { table = "deals"; nameField = "name" }
       else if (target === "person") { table = "users"; nameField = "name" }
-      else if (target === "campaign") { table = "campaigns"; nameField = "name" }
-      else if (target === "catalog_item") { table = "products"; nameField = "name" }
+      else if (target === "campaign") { table = "campaigns"; nameField = "title" }
+      else if (target === "catalog_item") { table = "catalog_items"; nameField = "name" }
       else if (target === "content") { table = "content"; nameField = "title" }
       else if (target === "task") { table = "tasks"; nameField = "title" }
       else if (target === "sale") { table = "sales"; nameField = "title" }
@@ -374,20 +374,18 @@ const ENTITY_PREVIEW_CONFIG: Record<string, {
     { col: "total", label: "Total" },
     { col: "status", label: "Status" },
   ]},
-  deal: { table: "deals", idField: "id", labelField: "title", select: "id, title, value, stage", fields: [
-    { col: "value", label: "Value" },
+  deal: { table: "deals", idField: "id", labelField: "name", select: "id, name, amount, stage", fields: [
+    { col: "amount", label: "Amount" },
     { col: "stage", label: "Stage" },
   ]},
   person: { table: "users", idField: "id", labelField: "name", select: "id, name, email", fields: [
     { col: "email", label: "Email" },
   ]},
   team_member: { table: "site_users", idField: "user_id", labelField: "name", select: "user_id, name", fields: []},
-  campaign: { table: "campaigns", idField: "id", labelField: "name", select: "id, name, status", fields: [
+  campaign: { table: "campaigns", idField: "id", labelField: "title", select: "id, title, status", fields: [
     { col: "status", label: "Status" },
   ]},
-  catalog_item: { table: "products", idField: "id", labelField: "name", select: "id, name, price", fields: [
-    { col: "price", label: "Price" },
-  ]},
+  catalog_item: { table: "catalog_items", idField: "id", labelField: "name", select: "id, name", fields: []},
   content: { table: "content", idField: "id", labelField: "title", select: "id, title, status", fields: [
     { col: "status", label: "Status" },
   ]},
