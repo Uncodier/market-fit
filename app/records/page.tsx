@@ -18,6 +18,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/app/components/ui/dropdown-menu"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/app/components/ui/dialog"
+import { SortDropdown } from "@/app/components/ui/sort-dropdown"
 import { CalendarDateRangePicker } from "@/app/components/ui/date-range-picker"
 import { ListOrdered, Check, ChevronDown, Loader, Tag, Trash2, Folder } from "@/app/components/ui/icons"
 import { subDays, isWithinInterval, parseISO, startOfDay, endOfDay } from "date-fns"
@@ -36,6 +37,10 @@ import { toast } from "sonner"
 import { useLocalization } from "@/app/context/LocalizationContext"
 
 export default function RecordsPage() {
+  const searchParams = useSearchParams()
+  const urlSort = searchParams ? searchParams.get('sort') : null
+  const defaultSort = urlSort === 'updated_at' ? 'updated_at' : (urlSort === 'created_at' || urlSort === 'newest' ? 'newest' : (urlSort === 'oldest' ? 'oldest' : (urlSort === 'title_asc' ? 'title_asc' : (urlSort === 'title_desc' ? 'title_desc' : 'newest'))))
+
   const { t } = useLocalization()
   const router = useRouter()
   const { currentSite } = useSite()
@@ -50,7 +55,7 @@ export default function RecordsPage() {
   const [recordSearchQuery, setRecordSearchQuery] = useState("")
   const [viewType, setViewType] = useState<"table" | "kanban" | "calendar" | "graph">("table")
   const [groupBy, setGroupBy] = useState<"status" | "category" | "date" | "team_member">("status")
-  const [sortBy, setSortBy] = useState<"newest" | "oldest" | "title_asc" | "title_desc">("newest")
+  const [sortBy, setSortBy] = useState<"newest" | "oldest" | "title_asc" | "title_desc" | "updated_at">(defaultSort as any)
   const [dateRange, setDateRange] = useState({
     startDate: startOfDay(subDays(new Date(), 30)),
     endDate: endOfDay(new Date())
@@ -160,20 +165,14 @@ export default function RecordsPage() {
     }
     return true
   }).sort((a, b) => {
-      const dateA = new Date(a.created_at || a.createdAt || 0).getTime();
-      const dateB = new Date(b.created_at || b.createdAt || 0).getTime();
-      const updateA = new Date(a.updated_at || a.updatedAt || a.created_at || a.createdAt || 0).getTime();
-      const updateB = new Date(b.updated_at || b.updatedAt || b.created_at || b.createdAt || 0).getTime();
-      if (sortBy === 'newest') return dateB - dateA;
-      if (sortBy === 'oldest') return dateA - dateB;
-      if (sortBy === 'updated_at') return updateB - updateA;
-      return 0;
-    }).sort((a, b) => {
-    const dateA = new Date(a.created_at || 0).getTime()
-    const dateB = new Date(b.created_at || 0).getTime()
+    const dateA = new Date(a.created_at || a.createdAt || 0).getTime();
+    const dateB = new Date(b.created_at || b.createdAt || 0).getTime();
+    const updateA = new Date(a.updated_at || a.updatedAt || a.created_at || a.createdAt || 0).getTime();
+    const updateB = new Date(b.updated_at || b.updatedAt || b.created_at || b.createdAt || 0).getTime();
     
     if (sortBy === "newest") return dateB - dateA
     if (sortBy === "oldest") return dateA - dateB
+    if (sortBy === "updated_at") return updateB - updateA
     if (sortBy === "title_asc") return a.title.localeCompare(b.title)
     if (sortBy === "title_desc") return b.title.localeCompare(a.title)
     return 0
@@ -372,42 +371,6 @@ export default function RecordsPage() {
                       </SelectContent>
                     </Select>
                   </div>
-                  
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="secondary" size="sm" className="h-9 gap-2 rounded-full px-4" title={t("records.sort.by") || "Sort by"}>
-                        <ListOrdered className="h-4 w-4" />
-                        <span className="hidden sm:inline font-normal">
-                          {sortBy === "newest"
-                            ? (t("records.sort.newest") || "Newest")
-                            : sortBy === "oldest"
-                              ? (t("records.sort.oldest") || "Oldest")
-                              : sortBy === "title_asc"
-                                ? (t("records.sort.titleAsc") || "Title (A-Z)")
-                                : (t("records.sort.titleDesc") || "Title (Z-A)")}
-                        </span>
-                        <ChevronDown className="h-3 w-3 opacity-50" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-40">
-                      <DropdownMenuItem className="cursor-pointer" onClick={() => setSortBy("newest")}>
-                        <Check className={cn("mr-2 h-4 w-4", sortBy === "newest" ? "opacity-100" : "opacity-0")} />
-                        {t("records.sort.newest") || "Newest"}
-                      </DropdownMenuItem>
-                      <DropdownMenuItem className="cursor-pointer" onClick={() => setSortBy("oldest")}>
-                        <Check className={cn("mr-2 h-4 w-4", sortBy === "oldest" ? "opacity-100" : "opacity-0")} />
-                        {t("records.sort.oldest") || "Oldest"}
-                      </DropdownMenuItem>
-                      <DropdownMenuItem className="cursor-pointer" onClick={() => setSortBy("title_asc")}>
-                        <Check className={cn("mr-2 h-4 w-4", sortBy === "title_asc" ? "opacity-100" : "opacity-0")} />
-                        {t("records.sort.titleAsc") || "Title (A-Z)"}
-                      </DropdownMenuItem>
-                      <DropdownMenuItem className="cursor-pointer" onClick={() => setSortBy("title_desc")}>
-                        <Check className={cn("mr-2 h-4 w-4", sortBy === "title_desc" ? "opacity-100" : "opacity-0")} />
-                        {t("records.sort.titleDesc") || "Title (Z-A)"}
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
 
                   <CalendarDateRangePicker 
                     onRangeChange={(start, end) => setDateRange({ startDate: start, endDate: end })} 
@@ -415,7 +378,15 @@ export default function RecordsPage() {
                     initialEndDate={dateRange.endDate}
                   />
 
-              <ViewSelector
+                  <SortDropdown sortBy={sortBy} setSortBy={setSortBy} options={[
+                    { value: "newest", label: t("records.sort.newest") || "Newest" },
+                    { value: "oldest", label: t("records.sort.oldest") || "Oldest" },
+                    { value: "updated_at", label: "Updated At" },
+                    { value: "title_asc", label: t("records.sort.titleAsc") || "Title (A-Z)" },
+                    { value: "title_desc", label: t("records.sort.titleDesc") || "Title (Z-A)" }
+                  ]} />
+
+                  <ViewSelector
                     currentView={viewType}
                     onViewChange={(view) => setViewType(view as any)}
                     showCalendar={true}

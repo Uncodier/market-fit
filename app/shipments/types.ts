@@ -8,6 +8,7 @@ export interface ShipmentParams {
   locationId?: string;
   page?: number;
   pageSize?: number;
+  sort?: string;
 }
 
 export interface ShipmentWithRelations extends Shipment {

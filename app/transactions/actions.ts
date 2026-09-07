@@ -29,6 +29,7 @@ export async function listExpenses(params: {
   category?: string;
   campaignId?: string;
   locationId?: string;
+  sort?: string;
 }) {
   try {
     const supabase = await createClient()
@@ -60,7 +61,13 @@ export async function listExpenses(params: {
     const from = (page - 1) * pageSize
     const to = from + pageSize - 1
 
-    query = query.range(from, to).order("date", { ascending: false }).order("created_at", { ascending: false })
+    if (params.sort === 'oldest') {
+      query = query.range(from, to).order("created_at", { ascending: true })
+    } else if (params.sort === 'updated_at') {
+      query = query.range(from, to).order("updated_at", { ascending: false }).order("created_at", { ascending: false })
+    } else {
+      query = query.range(from, to).order("date", { ascending: false }).order("created_at", { ascending: false })
+    }
 
     const { data, count, error } = await query
 

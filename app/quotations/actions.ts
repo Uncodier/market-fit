@@ -21,13 +21,15 @@ export async function listQuotations({
   status,
   q,
   page = 1,
-  pageSize = 50
+  pageSize = 50,
+  sort
 }: {
   siteId: string
   status?: string
   q?: string
   page?: number
   pageSize?: number
+  sort?: string
 }) {
   const supabase = await createClient()
 
@@ -43,7 +45,13 @@ export async function listQuotations({
   const from = (page - 1) * pageSize
   const to = from + pageSize - 1
 
-  query = query.range(from, to).order('created_at', { ascending: false })
+  if (sort === 'oldest') {
+    query = query.range(from, to).order('created_at', { ascending: true })
+  } else if (sort === 'updated_at') {
+    query = query.range(from, to).order('updated_at', { ascending: false }).order('created_at', { ascending: false })
+  } else {
+    query = query.range(from, to).order('created_at', { ascending: false })
+  }
 
   const { data, count, error } = await query
 

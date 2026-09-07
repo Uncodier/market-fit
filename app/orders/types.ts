@@ -10,6 +10,7 @@ export interface OrderParams {
   pageSize?: number;
   startDate?: string;
   endDate?: string;
+  sort?: string;
 }
 
 export interface OrderWithRelations extends SaleOrderData {

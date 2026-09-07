@@ -14,12 +14,17 @@ export async function POST(req: Request) {
     // 1. Fetch order details (include catalog image for Stripe Checkout summary)
     const { data: order, error: orderError } = await supabase
       .from('sale_orders')
-      .select('*, items:sale_order_items(*, catalog_item:catalog_items(image_url))')
+      .select('*, items:sale_order_items(*, catalog_item:catalog_items(image_url)), sales:sales(id, status, stripe_checkout_session_id)')
       .eq('id', orderId)
       .single()
       
     if (orderError || !order) {
       return NextResponse.json({ error: 'Order not found' }, { status: 404 })
+    }
+
+    if (order.sales && order.sales.stripe_checkout_session_id) {
+       // if they already have an active checkout session that isn't paid, we might want to redirect them there. 
+       // but for now, stripe.checkout.sessions.create creates a new one which is also fine.
     }
     
     const { data: site } = await supabase.from('sites').select('name').eq('id', siteId).single()

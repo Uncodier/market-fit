@@ -20,6 +20,7 @@ export async function listPurchases(params: {
   status?: string
   locationId?: string
   q?: string
+  sort?: string
 }) {
   try {
     const supabase = await createClient()
@@ -38,9 +39,15 @@ export async function listPurchases(params: {
       .from("purchases")
       .select("*, vendor:companies!vendor_company_id(id, name)", { count: "exact" })
       .eq("site_id", params.siteId)
-      .order("purchase_date", { ascending: false })
-      .order("created_at", { ascending: false })
       .range(from, to)
+
+    if (params.sort === 'oldest') {
+      query = query.order("created_at", { ascending: true })
+    } else if (params.sort === 'updated_at') {
+      query = query.order("updated_at", { ascending: false }).order("created_at", { ascending: false })
+    } else {
+      query = query.order("purchase_date", { ascending: false }).order("created_at", { ascending: false })
+    }
 
     if (params.status && params.status !== "all") {
       query = query.eq("status", params.status)

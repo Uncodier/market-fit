@@ -30,8 +30,14 @@ import { Button } from "@/app/components/ui/button"
 import { PrinterSyncBadge } from "@/app/components/printer/PrinterSyncBadge"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "@/app/components/ui/dropdown-menu"
 import { cn } from "@/lib/utils"
+import { SortDropdown } from "@/app/components/ui/sort-dropdown"
 
 export default function OrdersPage() {
+  const searchParams = useSearchParams()
+  const urlSort = searchParams ? searchParams.get('sort') : null
+  const defaultSort = urlSort === 'updated_at' ? 'updated_at' : (urlSort === 'created_at' || urlSort === 'newest' ? 'newest' : (urlSort === 'oldest' ? 'oldest' : 'newest'))
+  const [sortBy, setSortBy] = useState(defaultSort)
+
   const { currentSite } = useSite()
   const { t } = useLocalization()
   const router = useRouter()
@@ -75,7 +81,8 @@ export default function OrdersPage() {
           status: statusFilter, 
           locationId: locationFilter,
           startDate: dateRange.startDate.toISOString(),
-          endDate: dateRange.endDate.toISOString()
+          endDate: dateRange.endDate.toISOString(),
+          sort: sortBy
         }
       : null,
     fetcher
@@ -229,7 +236,7 @@ export default function OrdersPage() {
                 </div>
               </MobileFiltersDrawer>
 
-              <div className="ml-auto flex items-center gap-3">
+              <div className="ml-auto flex items-center gap-3 shrink-0">
                 <div className="hidden md:flex items-center gap-2">
                   <CalendarDateRangePicker 
                     onRangeChange={handleDateRangeChange} 
@@ -239,6 +246,7 @@ export default function OrdersPage() {
                 
                 <PrinterSyncBadge module="orders" />
 
+                <SortDropdown sortBy={sortBy} setSortBy={setSortBy} />
                 <ViewSelector currentView={viewType} onViewChange={setViewType} />
               </div>
             </div>

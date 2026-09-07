@@ -104,7 +104,7 @@ export async function deleteLocation(locationId: string, siteId: string) {
 }
 
 // Inventory Levels
-export async function listInventoryLevels({ siteId, locationId, catalogItemId, q, page = 1, pageSize = 50 }: InventoryParams) {
+export async function listInventoryLevels({ siteId, locationId, catalogItemId, q, page = 1, pageSize = 50, sort }: InventoryParams) {
   try {
     const supabase = await createClient();
     
@@ -131,7 +131,14 @@ export async function listInventoryLevels({ siteId, locationId, catalogItemId, q
 
     const from = (page - 1) * pageSize;
     const to = from + pageSize - 1;
-    query = query.range(from, to);
+
+    if (sort === 'oldest') {
+      query = query.range(from, to).order("created_at", { ascending: true });
+    } else if (sort === 'updated_at') {
+      query = query.range(from, to).order("updated_at", { ascending: false }).order("created_at", { ascending: false });
+    } else {
+      query = query.range(from, to).order("created_at", { ascending: false });
+    }
 
     const { data, count, error } = await query;
 

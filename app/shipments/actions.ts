@@ -35,7 +35,7 @@ async function attachAssigneeProfiles(
   }));
 }
 
-export async function listShipments({ siteId, status, leadId, q, locationId, page = 1, pageSize = 50 }: ShipmentParams) {
+export async function listShipments({ siteId, status, leadId, q, locationId, page = 1, pageSize = 50, sort }: ShipmentParams) {
   try {
     const supabase = await createClient();
 
@@ -47,8 +47,15 @@ export async function listShipments({ siteId, status, leadId, q, locationId, pag
         sale_orders (order_number, total),
         locations!origin_location_id (name)
       `, { count: "exact" })
-      .eq("site_id", siteId)
-      .order("created_at", { ascending: false });
+      .eq("site_id", siteId);
+      
+    if (sort === "oldest") {
+      query = query.order("created_at", { ascending: true });
+    } else if (sort === "updated_at") {
+      query = query.order("updated_at", { ascending: false });
+    } else {
+      query = query.order("created_at", { ascending: false });
+    }
 
     if (status && status !== "all") {
       query = query.eq("status", status);

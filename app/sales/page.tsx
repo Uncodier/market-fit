@@ -29,6 +29,7 @@ import { CreateSaleDialog } from "./components/CreateSaleDialog"
 import { SalesTable, SalesTableSkeleton } from "./components/SalesTable"
 import { useCommandK } from "@/app/hooks/use-command-k"
 import { CalendarDateRangePicker } from "@/app/components/ui/date-range-picker"
+import { SortDropdown } from "@/app/components/ui/sort-dropdown"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/app/components/ui/dropdown-menu"
 import { cn } from "@/lib/utils"
 
@@ -355,44 +356,6 @@ export default function SalesPage() {
                   )}
 
                   <div className="flex flex-col md:flex-row items-stretch md:items-center gap-2 w-full md:w-auto">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="secondary" size="sm" className="w-full md:w-auto h-10 md:h-8 gap-2 rounded-md md:rounded-full px-4 justify-between md:justify-center" title="Sort by">
-                          <div className="flex items-center gap-2">
-                            <ListOrdered className="h-4 w-4" />
-                            <span className="font-normal">
-                              {sortBy === "newest"
-                                ? "Newest"
-                                : sortBy === "oldest"
-                                  ? "Oldest"
-                                  : sortBy === "value_desc"
-                                    ? "Highest Value"
-                                    : "Lowest Value"}
-                            </span>
-                          </div>
-                          <ChevronDown className="h-3 w-3 opacity-50" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-40">
-                        <DropdownMenuItem className="cursor-pointer" onClick={() => setSortBy("newest")}>
-                          <Check className={cn("mr-2 h-4 w-4", sortBy === "newest" ? "opacity-100" : "opacity-0")} />
-                          Newest
-                        </DropdownMenuItem>
-                        <DropdownMenuItem className="cursor-pointer" onClick={() => setSortBy("oldest")}>
-                          <Check className={cn("mr-2 h-4 w-4", sortBy === "oldest" ? "opacity-100" : "opacity-0")} />
-                          Oldest
-                        </DropdownMenuItem>
-                        <DropdownMenuItem className="cursor-pointer" onClick={() => setSortBy("value_desc")}>
-                          <Check className={cn("mr-2 h-4 w-4", sortBy === "value_desc" ? "opacity-100" : "opacity-0")} />
-                          Highest Value
-                        </DropdownMenuItem>
-                        <DropdownMenuItem className="cursor-pointer" onClick={() => setSortBy("value_asc")}>
-                          <Check className={cn("mr-2 h-4 w-4", sortBy === "value_asc" ? "opacity-100" : "opacity-0")} />
-                          Lowest Value
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-
                     <CalendarDateRangePicker 
                       onRangeChange={handleDateRangeChange} 
                       initialStartDate={dateRange.startDate}
@@ -406,6 +369,12 @@ export default function SalesPage() {
               </MobileFiltersDrawer>
                 
               <div className="ml-auto flex flex-wrap justify-end items-center gap-2 shrink-0">
+                <SortDropdown sortBy={sortBy} setSortBy={setSortBy} options={[
+                  { value: "newest", label: "Newest" },
+                  { value: "oldest", label: "Oldest" },
+                  { value: "value_desc", label: "Highest Value" },
+                  { value: "value_asc", label: "Lowest Value" }
+                ]} />
                 <ViewSelector currentView={viewType} onViewChange={setViewType} />
               </div>
             </div>

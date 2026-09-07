@@ -9,7 +9,7 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET!
 
 // Maximum age for webhook events
-const MAX_EVENT_AGE_SECONDS = 5 * 60 // 5 minutes for new events
+const MAX_EVENT_AGE_SECONDS = 3 * 24 * 60 * 60 // 3 days for all events to support manual resends
 const MAX_FAILED_EVENT_AGE_SECONDS = 3 * 24 * 60 * 60 // 3 days for retried events
 const MAX_REFUND_EVENT_AGE_SECONDS = 90 * 24 * 60 * 60 // refunds/disputes often arrive days later
 const LATE_STRIPE_EVENTS = new Set(["charge.refunded", "charge.dispute.created"])
@@ -140,7 +140,19 @@ export async function POST(request: NextRequest) {
     switch (event.type) {
     case 'checkout.session.completed':
       console.log('🛒 Processing checkout.session.completed')
-      const session = event.data.object as any
+      const payloadSession = event.data.object as any
+      
+      // LIVE STATE VALIDATION: Fetch the session directly from Stripe to ensure it's still valid and paid
+      console.log(`🔒 Validating session state directly from Stripe for session: ${payloadSession.id}`)
+      const liveSession = await stripe.checkout.sessions.retrieve(payloadSession.id)
+      
+      if (liveSession.payment_status !== 'paid') {
+        console.error(`❌ Session ${liveSession.id} payment_status is '${liveSession.payment_status}', not 'paid'. Ignoring event.`)
+        return NextResponse.json({ error: 'Session is not paid' }, { status: 400 })
+      }
+      
+      // Use the live session metadata, which is secure and up to date
+      const session = { ...payloadSession, ...liveSession, metadata: liveSession.metadata || payloadSession.metadata }
       
       console.log('🛒 Session details:', {
         sessionId: session.id,
@@ -602,7 +614,18 @@ export async function POST(request: NextRequest) {
 
     case 'invoice.payment_succeeded':
       console.log('💰 Processing invoice.payment_succeeded')
-      const invoice = event.data.object as any
+      const payloadInvoice = event.data.object as any
+      
+      // LIVE STATE VALIDATION: Fetch the invoice directly from Stripe
+      console.log(`🔒 Validating invoice state directly from Stripe for invoice: ${payloadInvoice.id}`)
+      const liveInvoice = await stripe.invoices.retrieve(payloadInvoice.id)
+      
+      if (liveInvoice.status !== 'paid') {
+        console.error(`❌ Invoice ${liveInvoice.id} status is '${liveInvoice.status}', not 'paid'. Ignoring event.`)
+        return NextResponse.json({ error: 'Invoice is not paid' }, { status: 400 })
+      }
+      
+      const invoice = { ...payloadInvoice, ...liveInvoice }
       
       if (invoice.subscription) {
         try {

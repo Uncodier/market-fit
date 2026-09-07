@@ -28,6 +28,7 @@ import { useLocalization } from "@/app/context/LocalizationContext"
 import { cn } from "@/lib/utils"
 import { useRouter, useSearchParams } from "next/navigation"
 import { navigateToCampaign } from "@/lib/navigation/navigation-helpers"
+import { SortDropdown } from "@/app/components/ui/sort-dropdown"
 import { CampaignsTable, CampaignsTableSkeleton } from "./components/CampaignsTable"
 import { CampaignsKanban, CampaignsKanbanSkeleton } from "./components/CampaignsKanban"
 
@@ -225,42 +226,6 @@ export default function CampaignsPage() {
                     </DropdownMenuContent>
                   </DropdownMenu>
 
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="secondary" size="sm" className="w-full md:w-auto h-10 md:h-9 gap-2 rounded-md md:rounded-full px-4 justify-between md:justify-center" title="Sort by">
-                        <div className="flex items-center gap-2">
-                          <ListOrdered className="h-4 w-4" />
-                          <span className="font-normal">
-                            {sortBy === "due_date"
-                              ? "Due date"
-                              : sortBy === "oldest"
-                                ? "Oldest"
-                                : sortBy === "newest"
-                                  ? "Newest"
-                                  : sortBy === "budget"
-                                    ? "Budget"
-                                    : "ROI"}
-                          </span>
-                        </div>
-                        <ChevronDown className="h-3 w-3 opacity-50" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-52">
-                      {([
-                        ["due_date", "Due date"],
-                        ["oldest", "Oldest"],
-                        ["newest", "Newest"],
-                        ["budget", "Budget"],
-                        ["roi", "ROI"],
-                      ] as const).map(([value, label]) => (
-                        <DropdownMenuItem key={value} className="cursor-pointer" onClick={() => setSortBy(value)}>
-                          <Check className={cn("mr-2 h-4 w-4", sortBy === value ? "opacity-100" : "opacity-0")} />
-                          {label}
-                        </DropdownMenuItem>
-                      ))}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-
                   <CalendarDateRangePicker />
                 </div>
 
@@ -271,7 +236,14 @@ export default function CampaignsPage() {
             </MobileFiltersDrawer>
           </div>
 
-          <div className="flex items-center shrink-0 ml-4">
+          <div className="flex items-center gap-2 shrink-0 ml-4">
+            <SortDropdown sortBy={sortBy} setSortBy={setSortBy} options={[
+              { value: "due_date", label: "Due date" },
+              { value: "oldest", label: "Oldest" },
+              { value: "newest", label: "Newest" },
+              { value: "budget", label: "Budget" },
+              { value: "roi", label: "ROI" }
+            ]} />
             <ViewSelector currentView={viewType} onViewChange={setViewType} />
           </div>
         </div>

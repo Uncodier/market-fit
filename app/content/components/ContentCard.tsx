@@ -210,12 +210,12 @@ export function ContentCard({ content, segments, campaigns, onClick, onRatingCha
                 <div className="flex items-center gap-1 mt-1.5 flex-wrap">
                   {outstandPlatforms.length > 0 ? (
                     outstandPlatforms.map((network, index) => (
-                      <div key={index} title={network} className="shrink-0 flex items-center justify-center bg-muted/50 rounded-md w-6 h-6 border border-border/50">
+                      <div key={index} title={network} className="shrink-0 flex items-center justify-center bg-background rounded-full w-7 h-7 border shadow-sm">
                         {getNetworkIcon(network)}
                       </div>
                     ))
                   ) : (
-                    <div title="Published in Social" className="shrink-0 flex items-center justify-center bg-muted/50 rounded-md w-6 h-6 border border-border/50">
+                    <div title="Published in Social" className="shrink-0 flex items-center justify-center bg-background rounded-full w-7 h-7 border shadow-sm">
                       <Globe className="w-4 h-4 text-muted-foreground" />
                     </div>
                   )}
@@ -242,18 +242,6 @@ export function ContentCard({ content, segments, campaigns, onClick, onRatingCha
               <span className="text-xs text-muted-foreground whitespace-nowrap">{content.word_count} words</span>
             )}
           </div>
-          <div 
-            onClick={(e) => e.stopPropagation()} 
-            className="flex-shrink-0 flex items-center justify-end scale-75 origin-right"
-          >
-            <StarRating 
-              rating={content.performance_rating} 
-              onRatingChange={handleRatingChange}
-              readonly={false}
-              size="sm"
-              className="justify-end"
-            />
-          </div>
         </div>
         
         {/* Campaign information - similar to requirements kanban */}
@@ -272,18 +260,38 @@ export function ContentCard({ content, segments, campaigns, onClick, onRatingCha
           </div>
         )}
         
-        {postPerformance && (
-          <div className="flex mt-2 border-t pt-2 gap-4 items-center">
-            <div className="flex items-center gap-1 text-xs text-muted-foreground" title="Views">
-              <Eye className="h-3 w-3" />
-              {numberFormatter.format(postPerformance.views || 0)}
-            </div>
-            <div className="flex items-center gap-1 text-xs text-muted-foreground" title="Engagement">
-              <Activity className="h-3 w-3" />
-              {engagementLabel}
-            </div>
+        <div className="flex mt-2 border-t pt-2 items-center justify-between">
+          <div className="flex gap-4 items-center">
+            {postPerformance ? (
+              <>
+                <div className="flex items-center gap-1 text-xs text-muted-foreground" title="Views">
+                  <Eye className="h-3 w-3" />
+                  {numberFormatter.format(postPerformance.views || 0)}
+                </div>
+                <div className="flex items-center gap-1 text-xs text-muted-foreground" title="Engagement">
+                  <Activity className="h-3 w-3" />
+                  {engagementLabel}
+                </div>
+              </>
+            ) : (
+              <div className="flex items-center gap-1 text-xs text-transparent select-none">
+                {/* Spacer to keep alignment when no performance data */}
+              </div>
+            )}
           </div>
-        )}
+          <div 
+            onClick={(e) => e.stopPropagation()} 
+            className="flex-shrink-0 flex items-center justify-end scale-75 origin-right"
+          >
+            <StarRating 
+              rating={content.performance_rating} 
+              onRatingChange={handleRatingChange}
+              readonly={false}
+              size="sm"
+              className="justify-end"
+            />
+          </div>
+        </div>
         </div>
       </CardContent>
     </Card>

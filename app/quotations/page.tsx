@@ -38,7 +38,7 @@ export default function QuotationsPage() {
     setIsLoading(true)
     try {
       const res = await retryOnError(async () => {
-        const result = await listQuotations({ siteId: currentSite.id, page, pageSize, q: searchQuery, status: statusFilter })
+        const result = await listQuotations({ siteId: currentSite.id, page, pageSize, q: searchQuery, status: statusFilter, sort: sortBy })
         if (result.error) throw new Error(result.error)
         return result
       })
@@ -55,7 +55,7 @@ export default function QuotationsPage() {
 
   useEffect(() => {
     fetchData()
-  }, [currentSite?.id, page, pageSize, searchQuery, statusFilter])
+  }, [currentSite?.id, page, pageSize, searchQuery, statusFilter, sortBy])
 
   const mutate = () => {
     fetchData()
@@ -127,13 +127,15 @@ export default function QuotationsPage() {
                 </div>
 
                 <div className="hidden md:flex items-center gap-2 w-full md:w-auto">
-                  <SortDropdown sortBy={sortBy} setSortBy={setSortBy} />
                   <form onSubmit={handleSearch} className="w-auto">
                     <SearchInput  placeholder={t("quotations.list.search") || "Search quotations..."} value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}    className="w-full"  containerClassName="w-full md:w-[240px]" />
                   </form>
                 </div>
               </div>
             </MobileFiltersDrawer>
+            <div className="flex items-center gap-2 w-auto justify-end shrink-0 ml-4">
+              <SortDropdown sortBy={sortBy} setSortBy={setSortBy} />
+            </div>
           </div>
         </StickyHeader>
 

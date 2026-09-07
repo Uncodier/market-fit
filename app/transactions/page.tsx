@@ -1,6 +1,7 @@
 "use client"
 
 import { MobileFiltersDrawer } from "@/app/components/ui/mobile-filters-drawer"
+import { SortDropdown } from "@/app/components/ui/sort-dropdown"
 
 import React, { useState, useEffect } from "react"
 import useSWR from "swr"
@@ -19,9 +20,14 @@ import { createClient } from "@/lib/supabase/client"
 import { getActiveExpenseAccounts } from "@/app/accounting/chart"
 import { AccountingAccount } from "@/app/types"
 import { upsertPolizaForExpense, removePolizaForSource } from "@/app/accounting/ensure"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 
 export default function TransactionsPage() {
+  const searchParams = useSearchParams()
+  const urlSort = searchParams ? searchParams.get('sort') : null
+  const defaultSort = urlSort === 'updated_at' ? 'updated_at' : (urlSort === 'created_at' || urlSort === 'newest' ? 'newest' : (urlSort === 'oldest' ? 'oldest' : 'newest'))
+  const [sortBy, setSortBy] = useState(defaultSort)
+
   const { currentSite } = useSite()
   const { t } = useLocalization()
   const router = useRouter()
@@ -89,7 +95,7 @@ export default function TransactionsPage() {
 
   const { data, error, isLoading, mutate } = useSWR(
     currentSite?.id
-      ? { siteId: currentSite.id, page, pageSize, category: categoryFilter, campaignId: campaignFilter, locationId: locationFilter }
+      ? { siteId: currentSite.id, page, pageSize, category: categoryFilter, campaignId: campaignFilter, locationId: locationFilter, sort: sortBy }
       : null,
     fetcher,
     { refreshInterval: 5000 } // Auto refresh every 5 seconds to catch newly created transactions
@@ -197,24 +203,28 @@ export default function TransactionsPage() {
                   </Select>
                 )}
 
-                <div className="flex flex-col md:flex-row items-stretch md:items-center gap-2 w-full md:w-auto">
-                  <Select value={campaignFilter} onValueChange={(val) => { setCampaignFilter(val); setPage(1); }}>
-                    <SelectTrigger className="w-full md:w-[200px] h-10 md:h-9">
-                      <SelectValue placeholder={t("expenses.filters.allCampaigns") || "All Campaigns"} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">{t("expenses.filters.allCampaigns") || "All Campaigns"}</SelectItem>
-                      {campaigns.map((c) => (
-                        <SelectItem key={c.id} value={c.id}>{c.title}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <div className="flex flex-col md:flex-row items-stretch md:items-center gap-2 w-full md:w-auto">
+                    <Select value={campaignFilter} onValueChange={(val) => { setCampaignFilter(val); setPage(1); }}>
+                      <SelectTrigger className="w-full md:w-[200px] h-10 md:h-9">
+                        <SelectValue placeholder={t("expenses.filters.allCampaigns") || "All Campaigns"} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">{t("expenses.filters.allCampaigns") || "All Campaigns"}</SelectItem>
+                        {campaigns.map((c) => (
+                          <SelectItem key={c.id} value={c.id}>{c.title}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
+              </MobileFiltersDrawer>
+              
+              <div className="flex items-center gap-2 w-auto justify-end shrink-0 ml-4">
+                <SortDropdown sortBy={sortBy} setSortBy={setSortBy} />
               </div>
-            </MobileFiltersDrawer>
+            </div>
           </div>
-        </div>
-      </StickyHeader>
+        </StickyHeader>
 
       <div className="flex-1 p-4 md:p-6 overflow-auto">
         {isLoading ? (

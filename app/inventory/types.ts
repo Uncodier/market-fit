@@ -11,4 +11,5 @@ export interface InventoryParams {
   q?: string;
   page?: number;
   pageSize?: number;
+  sort?: string;
 }

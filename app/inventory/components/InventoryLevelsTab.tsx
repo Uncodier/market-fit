@@ -40,6 +40,7 @@ export function InventoryLevelsTab({
   pageSize: number
   q: string
   selectedLocation: string
+  sort?: string
 }) {
   const { printJob } = usePrinter()
   const { currentSite } = useSite()
@@ -52,12 +53,13 @@ export function InventoryLevelsTab({
       pageSize,
       q,
       locationId: selectedLocation === "all" ? undefined : selectedLocation,
+      sort,
     })
     return res
   }
 
   const { data, error, isLoading, mutate } = useSWR(
-    siteId ? ["inventory_levels", siteId, page, q, selectedLocation] : null,
+    siteId ? ["inventory_levels", siteId, page, q, selectedLocation, sort] : null,
     fetcher,
   )
 

@@ -192,7 +192,7 @@ export default function SegmentsPage() {
                   <span className="tab-label">{t("segments.tabs.draft") || "Draft"}</span>
                 </TabsTrigger>
               </TabsList>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 ml-auto">
                     <SortDropdown sortBy={sortBy} setSortBy={setSortBy} />
                     <SearchInput  
                       data-command-k-input

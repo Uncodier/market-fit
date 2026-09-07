@@ -66,7 +66,7 @@ export async function getOrderByPublicToken(token: string) {
   const { data: order, error } = await supabase
     .from("sale_orders")
     .select(
-      "*, sale_order_items(*, catalog_item:catalog_item_id(id, name, image_url)), site:sites!site_id(id, name, logo_url, url), sales:sale_id(id, status, amount_due, payment_method, payments, leads(id, name, email))"
+      "*, sale_order_items(*, catalog_item:catalog_item_id(id, name, image_url)), site:sites!site_id(id, name, logo_url, url), sales:sale_id(id, status, amount_due, payment_method, payment_details, payments, stripe_checkout_session_id, stripe_payment_intent_id, leads(id, name, email))"
     )
     .eq("public_access_token", token)
     .single()
@@ -95,7 +95,7 @@ export async function getOrderByPublicToken(token: string) {
   if (!sale && order.sale_id) {
     const { data: saleData } = await supabase
       .from("sales")
-      .select("id, status, amount_due, payment_method, payments, leads(id, name, email)")
+      .select("id, status, amount_due, payment_method, payment_details, payments, stripe_checkout_session_id, stripe_payment_intent_id, leads(id, name, email)")
       .eq("id", order.sale_id)
       .single()
     sale = saleData || null
@@ -148,7 +148,7 @@ export async function sendSaleOrder(id: string) {
   if (order.sale_id) {
     const { data: saleData } = await supabase
       .from("sales")
-      .select("id, status, amount_due, payment_method, payments, leads(id, name, email)")
+      .select("id, status, amount_due, payment_method, payment_details, payments, stripe_checkout_session_id, stripe_payment_intent_id, leads(id, name, email)")
       .eq("id", order.sale_id)
       .single()
     sale = saleData || null

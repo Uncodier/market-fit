@@ -21,7 +21,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/app/components/ui/ta
 import { ActionFooter } from "@/app/components/ui/card-footer"
 import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/app/components/ui/table"
 import { toast } from "sonner"
-import { Save, ExternalLink, CheckCircle2, FileText, Send, Loader2, Mail, Link, Printer } from "@/app/components/ui/icons"
+import { Save, ExternalLink, CheckCircle2, FileText, Send, Loader2, Mail, Link, Printer, CreditCard } from "@/app/components/ui/icons"
 import {
   ensureOrderPublicAccessToken,
   sendSaleOrder,
@@ -339,12 +339,17 @@ export default function OrderDetail(props: { params: Promise<{ id: string }> }) 
                 {order.status !== "cancelled" && Number(order.sales?.amount_due) > 0 && (
                   <>
                     <Button
-                      variant="outline"
+                      variant="ghost"
                       size="sm"
                       onClick={handleOpenPayment}
                       disabled={isLoadingSale}
+                      className="flex items-center gap-1"
                     >
-                      {isLoadingSale ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
+                      {isLoadingSale ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <CreditCard className="h-4 w-4" />
+                      )}
                       {t("orders.detail.payNow") || "Pay Now"}
                     </Button>
                     <div className="w-px h-6 bg-border mx-1" />

@@ -1383,13 +1383,6 @@ export default function LeadsPage() {
                 </div>
 
                 <div className="flex flex-col md:flex-row items-stretch md:items-center gap-2 w-full md:w-auto mt-2 md:mt-0">
-                  <SortDropdown sortBy={sortBy} setSortBy={setSortBy} options={[
-                    { value: "newest", label: t('leads.sort.newest') || 'Newest' },
-                    { value: "oldest", label: t('leads.sort.oldest') || 'Oldest' },
-                    { value: "nearest_due_date", label: "Nearest due date" },
-                    { value: "last_updated", label: "Last updated" }
-                  ]} />
-
                   <Button 
                     variant="secondary" 
                     size={(filters.status.length > 0 || filters.segments.length > 0 || filters.origin.length > 0) ? "default" : "sm"}
@@ -1430,6 +1423,12 @@ export default function LeadsPage() {
             </MobileFiltersDrawer>
             
             <div className="ml-auto flex flex-wrap items-center justify-end gap-2 shrink-0">
+              <SortDropdown sortBy={sortBy} setSortBy={setSortBy} options={[
+                { value: "newest", label: t('leads.sort.newest') || 'Newest' },
+                { value: "oldest", label: t('leads.sort.oldest') || 'Oldest' },
+                { value: "nearest_due_date", label: "Nearest due date" },
+                { value: "last_updated", label: "Last updated" }
+              ]} />
               <ViewSelector currentView={viewType} onViewChange={setViewType} />
             </div>
           </div>

@@ -114,7 +114,6 @@ export default function InventoryPage() {
                   </div>
                   {activeTab === "levels" && (
                     <div className="hidden md:flex items-center gap-2">
-                      <SortDropdown sortBy={sortBy} setSortBy={setSortBy} />
                       <form onSubmit={handleSearch} className="w-full md:w-64">
                         <SearchInput   
                           placeholder="Search catalog..." 
@@ -128,6 +127,9 @@ export default function InventoryPage() {
             </div>
             
             <div className="flex items-center gap-2">
+              {activeTab === "levels" && (
+                <SortDropdown sortBy={sortBy} setSortBy={setSortBy} />
+              )}
               <PrinterSyncBadge module="inventory" />
               {activeTab === "levels" && (
                 <Select value={selectedLocation} onValueChange={(v) => { setSelectedLocation(v); setPage(1); }}>
@@ -158,7 +160,8 @@ export default function InventoryPage() {
                 setPage={setPage}
                 pageSize={pageSize}
                 q={q}
-                selectedLocation={selectedLocation} />
+                selectedLocation={selectedLocation}
+                sort={sortBy} />
             </TabsContent>
             
             <TabsContent value="locations">

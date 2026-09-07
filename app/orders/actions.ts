@@ -8,7 +8,7 @@ import { shouldCancelLinkedSale } from "./cancel-linked-sale";
 import { grantFromOrder } from "@/app/commerce/entitlements";
 import { revokeOrderFulfillment } from "@/app/commerce/order-fulfillment-sync";
 
-export async function listOrders({ siteId, status, paymentStatus, q, locationId, page = 1, pageSize = 50, startDate, endDate }: OrderParams) {
+export async function listOrders({ siteId, status, paymentStatus, q, locationId, page = 1, pageSize = 50, startDate, endDate, sort }: OrderParams) {
   try {
     const supabase = await createClient();
     
@@ -30,8 +30,15 @@ export async function listOrders({ siteId, status, paymentStatus, q, locationId,
     let query = supabase
       .from("sale_orders")
       .select(selectString, { count: "exact" })
-      .eq("site_id", siteId)
-      .order("created_at", { ascending: false });
+      .eq("site_id", siteId);
+      
+    if (sort === "oldest") {
+      query = query.order("created_at", { ascending: true });
+    } else if (sort === "updated_at") {
+      query = query.order("updated_at", { ascending: false });
+    } else {
+      query = query.order("created_at", { ascending: false });
+    }
 
     if (status && status !== 'all') {
       if (status.includes(',')) {

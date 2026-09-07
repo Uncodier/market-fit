@@ -55,7 +55,7 @@ export default function BillsPage() {
     return () => window.removeEventListener("bills:create", handleCreate)
   }, [])
 
-  const fetcher = async (params: { siteId: string; page: number; pageSize: number; status: string; locationId: string; q: string }) => {
+  const fetcher = async (params: { siteId: string; page: number; pageSize: number; status: string; locationId: string; q: string; sort: string }) => {
     const res = await listPurchases(params)
     if (res.error) throw new Error(res.error)
     return res
@@ -63,7 +63,7 @@ export default function BillsPage() {
 
   const { data, error, isLoading, mutate } = useSWR(
     currentSite?.id
-      ? { siteId: currentSite.id, page, pageSize, status: statusFilter, locationId: locationFilter, q: searchQuery }
+      ? { siteId: currentSite.id, page, pageSize, status: statusFilter, locationId: locationFilter, q: searchQuery, sort: sortBy }
       : null,
     fetcher
   )
@@ -139,7 +139,6 @@ export default function BillsPage() {
                 )}
 
                 <div className="hidden md:flex items-center gap-2 w-full md:w-auto">
-                  <SortDropdown sortBy={sortBy} setSortBy={setSortBy} />
                   <form onSubmit={handleSearch} className="w-full md:w-auto">
                     <SearchInput  placeholder={t('bills.search') || "Search bills..."} value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}    className="w-full bg-background border-border focus:border-muted-foreground/20 focus:ring-muted-foreground/20"  containerClassName="w-full md:w-[240px]" />
                   </form>
@@ -147,7 +146,8 @@ export default function BillsPage() {
               </div>
             </MobileFiltersDrawer>
 
-            <div className="flex items-center gap-2 w-auto justify-end shrink-0">
+            <div className="flex items-center gap-2 w-auto justify-end shrink-0 ml-4">
+              <SortDropdown sortBy={sortBy} setSortBy={setSortBy} />
             </div>
           </div>
         </div>

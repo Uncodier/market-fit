@@ -347,59 +347,59 @@ export default function ContentPage() {
                       )}
                     </Button>
 
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="secondary" size="sm" className="w-full md:w-auto h-10 md:h-9 gap-2 rounded-md md:rounded-full px-4 justify-between md:justify-center" title={t('content.sortBy') === 'content.sortBy' ? 'Sort by' : t('content.sortBy')}>
-                          <div className="flex items-center gap-2">
-                            <ListOrdered className="h-4 w-4" />
-                            <span className="font-normal">
-                              {sortBy === "newest"
-                                ? (t('content.sort.newest') === 'content.sort.newest' ? 'Newest' : t('content.sort.newest'))
-                                : sortBy === "oldest"
-                                  ? (t('content.sort.oldest') === 'content.sort.oldest' ? 'Oldest' : t('content.sort.oldest'))
-                                  : sortBy === "rate_desc"
-                                    ? (t('content.sort.rateDesc') === 'content.sort.rateDesc' ? 'Highest Rated' : t('content.sort.rateDesc'))
-                                    : (t('content.sort.rateAsc') === 'content.sort.rateAsc' ? 'Lowest Rated' : t('content.sort.rateAsc'))}
-                            </span>
-                          </div>
-                          <ChevronDown className="h-3 w-3 opacity-50" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="start" className="w-40">
-                        <DropdownMenuItem 
-                          className="cursor-pointer"
-                          onClick={() => setSortBy("newest")}
-                        >
-                          <Check className={cn("mr-2 h-4 w-4", sortBy === "newest" ? "opacity-100" : "opacity-0")} />
-                          {t('content.sort.newest') === 'content.sort.newest' ? 'Newest' : t('content.sort.newest')}
-                        </DropdownMenuItem>
-                        <DropdownMenuItem 
-                          className="cursor-pointer"
-                          onClick={() => setSortBy("oldest")}
-                        >
-                          <Check className={cn("mr-2 h-4 w-4", sortBy === "oldest" ? "opacity-100" : "opacity-0")} />
-                          {t('content.sort.oldest') === 'content.sort.oldest' ? 'Oldest' : t('content.sort.oldest')}
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          className="cursor-pointer"
-                          onClick={() => setSortBy("rate_desc")}
-                        >
-                          <Check className={cn("mr-2 h-4 w-4", sortBy === "rate_desc" ? "opacity-100" : "opacity-0")} />
-                          {t('content.sort.rateDesc') === 'content.sort.rateDesc' ? 'Highest Rated' : t('content.sort.rateDesc')}
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          className="cursor-pointer"
-                          onClick={() => setSortBy("rate_asc")}
-                        >
-                          <Check className={cn("mr-2 h-4 w-4", sortBy === "rate_asc" ? "opacity-100" : "opacity-0")} />
-                          {t('content.sort.rateAsc') === 'content.sort.rateAsc' ? 'Lowest Rated' : t('content.sort.rateAsc')}
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
                   </div>
                 </div>
               </MobileFiltersDrawer>
-              <div className="ml-auto shrink-0 mt-2 md:mt-0">
+              <div className="ml-auto shrink-0 mt-2 md:mt-0 flex items-center gap-2">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="secondary" size="sm" className="w-full md:w-auto h-10 md:h-9 gap-2 rounded-md md:rounded-full px-4 justify-between md:justify-center" title={t('content.sortBy') === 'content.sortBy' ? 'Sort by' : t('content.sortBy')}>
+                      <div className="flex items-center gap-2">
+                        <ListOrdered className="h-4 w-4" />
+                        <span className="font-normal">
+                          {sortBy === "newest"
+                            ? (t('content.sort.newest') === 'content.sort.newest' ? 'Newest' : t('content.sort.newest'))
+                            : sortBy === "oldest"
+                              ? (t('content.sort.oldest') === 'content.sort.oldest' ? 'Oldest' : t('content.sort.oldest'))
+                              : sortBy === "rate_desc"
+                                ? (t('content.sort.rateDesc') === 'content.sort.rateDesc' ? 'Highest Rated' : t('content.sort.rateDesc'))
+                                : (t('content.sort.rateAsc') === 'content.sort.rateAsc' ? 'Lowest Rated' : t('content.sort.rateAsc'))}
+                        </span>
+                      </div>
+                      <ChevronDown className="h-3 w-3 opacity-50" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-40">
+                    <DropdownMenuItem 
+                      className="cursor-pointer"
+                      onClick={() => setSortBy("newest")}
+                    >
+                      <Check className={cn("mr-2 h-4 w-4", sortBy === "newest" ? "opacity-100" : "opacity-0")} />
+                      {t('content.sort.newest') === 'content.sort.newest' ? 'Newest' : t('content.sort.newest')}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem 
+                      className="cursor-pointer"
+                      onClick={() => setSortBy("oldest")}
+                    >
+                      <Check className={cn("mr-2 h-4 w-4", sortBy === "oldest" ? "opacity-100" : "opacity-0")} />
+                      {t('content.sort.oldest') === 'content.sort.oldest' ? 'Oldest' : t('content.sort.oldest')}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      className="cursor-pointer"
+                      onClick={() => setSortBy("rate_desc")}
+                    >
+                      <Check className={cn("mr-2 h-4 w-4", sortBy === "rate_desc" ? "opacity-100" : "opacity-0")} />
+                      {t('content.sort.rateDesc') === 'content.sort.rateDesc' ? 'Highest Rated' : t('content.sort.rateDesc')}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      className="cursor-pointer"
+                      onClick={() => setSortBy("rate_asc")}
+                    >
+                      <Check className={cn("mr-2 h-4 w-4", sortBy === "rate_asc" ? "opacity-100" : "opacity-0")} />
+                      {t('content.sort.rateAsc') === 'content.sort.rateAsc' ? 'Lowest Rated' : t('content.sort.rateAsc')}
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
                 <ViewSelector 
                   currentView={viewType} 
                   onViewChange={(view) => setViewType(view)} />

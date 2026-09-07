@@ -233,7 +233,6 @@ function ReservationsPageContent() {
                 )}
 
                 <div className="hidden md:flex items-center gap-2 w-full md:w-auto">
-                  <SortDropdown sortBy={sortBy} setSortBy={setSortBy} />
                   <SearchInput  placeholder={t("reservations.search.placeholder") || "Search reservations..."} value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)}    className="w-full"  containerClassName="w-64" />
                 </div>
               </div>
@@ -241,27 +240,10 @@ function ReservationsPageContent() {
 
             <div className="flex items-center gap-2 w-auto justify-end shrink-0">
               {viewType === "list" && viewMode !== "schedules" && (
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="sm" className="h-9 font-medium gap-2 hidden md:flex">
-                      <ListOrdered className="h-4 w-4" />
-                      {sortBy === "newest"
-                        ? t("reservations.sort.newest") || "Newest First"
-                        : t("reservations.sort.oldest") || "Oldest First"}
-                      <ChevronDown className="h-4 w-4 opacity-50" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-[160px]">
-                    <DropdownMenuItem onClick={() => setSortBy("newest")} className="justify-between">
-                      {t("reservations.sort.newest") || "Newest First"}
-                      {sortBy === "newest" && <Check className="h-4 w-4" />}
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => setSortBy("oldest")} className="justify-between">
-                      {t("reservations.sort.oldest") || "Oldest First"}
-                      {sortBy === "oldest" && <Check className="h-4 w-4" />}
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                <SortDropdown sortBy={sortBy} setSortBy={setSortBy} options={[
+                  { value: "newest", label: t("reservations.sort.newest") || "Newest First" },
+                  { value: "oldest", label: t("reservations.sort.oldest") || "Oldest First" }
+                ]} />
               )}
 
               <div className="w-[180px]">

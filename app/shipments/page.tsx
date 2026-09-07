@@ -24,7 +24,14 @@ import { useRouter , useSearchParams} from "next/navigation"
 import { CreateShipmentDialog } from "./components/CreateShipmentDialog"
 import { EmptyCard } from "@/app/components/ui/empty-card"
 
+import { SortDropdown } from "@/app/components/ui/sort-dropdown"
+
 export default function ShipmentsPage() {
+  const searchParams = useSearchParams()
+  const urlSort = searchParams ? searchParams.get('sort') : null
+  const defaultSort = urlSort === 'updated_at' ? 'updated_at' : (urlSort === 'created_at' || urlSort === 'newest' ? 'newest' : (urlSort === 'oldest' ? 'oldest' : 'newest'))
+  const [sortBy, setSortBy] = useState(defaultSort)
+
   const { currentSite } = useSite()
   const { t } = useLocalization()
   const router = useRouter()
@@ -50,7 +57,7 @@ export default function ShipmentsPage() {
 
   const { data, error, isLoading, mutate } = useSWR(
     currentSite?.id
-      ? { siteId: currentSite.id, page, pageSize, q: searchQuery, status: statusFilter, locationId: locationFilter }
+      ? { siteId: currentSite.id, page, pageSize, q: searchQuery, status: statusFilter, locationId: locationFilter, sort: sortBy }
       : null,
     fetcher
   )
@@ -171,9 +178,8 @@ export default function ShipmentsPage() {
                 </div>
               </MobileFiltersDrawer>
               <div className="flex items-center gap-2 w-auto justify-end shrink-0">
-                <div className="flex">
+                <SortDropdown sortBy={sortBy} setSortBy={setSortBy} />
                 <ViewSelector currentView={viewType} onViewChange={setViewType} />
-                </div>
               </div>
             </div>
           </div>

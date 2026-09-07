@@ -194,6 +194,12 @@ export async function getRecords(siteId: string, categoryId?: string): Promise<{
     const { data, error } = await query
 
     if (error) throw error
+    
+    if (categoryId) {
+      // client-side sorting since we are overriding order above based on sort
+      const sortBy = 'newest' // hardcoded fallback, page sorts
+    }
+    
     return { records: data as RecordItem[], error: null }
   } catch (error: any) {
     console.error("Error in getRecords:", error)
