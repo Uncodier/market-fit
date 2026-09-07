@@ -24,7 +24,7 @@ import { getCampaigns } from "@/app/campaigns/actions/campaigns/read"
 import { toast } from "sonner"
 import React from "react"
 import { ViewSelector, ViewType } from "@/app/components/view-selector"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { CreateContentDialog } from "./components"
 import { useCommandK } from "@/app/hooks/use-command-k"
 import { safeReload } from "@/app/utils/safe-reload"
@@ -135,8 +135,12 @@ export default function ContentPage() {
     [contentItems, outstandPosts, currentSite?.id]
   )
 
+  const searchParams = useSearchParams()
+  const urlSort = searchParams ? searchParams.get('sort') : null
+  const defaultSort = urlSort === 'updated_at' ? 'newest' : (urlSort === 'created_at' || urlSort === 'newest' ? 'newest' : (urlSort === 'oldest' ? 'oldest' : (urlSort === 'rate_desc' ? 'rate_desc' : (urlSort === 'rate_asc' ? 'rate_asc' : 'newest'))))
+
   // Sort state
-  const [sortBy, setSortBy] = useState<"newest" | "oldest" | "rate_desc" | "rate_asc">("newest")
+  const [sortBy, setSortBy] = useState<"newest" | "oldest" | "rate_desc" | "rate_asc">(defaultSort as any)
 
   // Initialize command+k hook
   useCommandK()

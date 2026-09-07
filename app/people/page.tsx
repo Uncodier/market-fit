@@ -36,6 +36,7 @@ import { useBillingLimit } from "@/app/context/BillingLimitContext"
 import { useIsMobile } from "@/app/hooks/use-mobile-view"
 import pricingConfig from "@/app/config/pricing.json"
 import { useLocalization } from "@/app/context/LocalizationContext"
+import { useSearchParams } from "next/navigation"
 
 type Person = {
   id: string
@@ -423,6 +424,11 @@ async function lookupFetcher(type: string, q: string, siteId?: string): Promise<
 }
 
 export default function PeopleSearchPage() {
+  const searchParams = useSearchParams()
+  const urlSort = searchParams ? searchParams.get('sort') : null
+  const defaultSort = urlSort === 'updated_at' ? 'updated_at' : (urlSort === 'created_at' || urlSort === 'newest' ? 'newest' : (urlSort === 'oldest' ? 'oldest' : 'newest'))
+  const [sortBy, setSortBy] = useState(defaultSort)
+
   const { t } = useLocalization()
   const { isLayoutCollapsed } = useLayout()
   const isMobile = useIsMobile()

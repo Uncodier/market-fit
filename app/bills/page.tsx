@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react"
 import useSWR from "swr"
-import { useRouter } from "next/navigation"
+import { useRouter , useSearchParams} from "next/navigation"
 import { useSite } from "@/app/context/SiteContext"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { listPurchases, deletePurchase } from "@/app/purchases/actions"
@@ -18,8 +18,14 @@ import { toast } from "sonner"
 import { CreatePurchaseDialog } from "./components/CreatePurchaseDialog"
 import { BillsTable, BillsTableSkeleton } from "./components/BillsTable"
 import { Purchase } from "@/app/types"
+import { SortDropdown } from "@/app/components/ui/sort-dropdown"
 
 export default function BillsPage() {
+  const searchParams = useSearchParams()
+  const urlSort = searchParams ? searchParams.get('sort') : null
+  const defaultSort = urlSort === 'updated_at' ? 'updated_at' : (urlSort === 'created_at' || urlSort === 'newest' ? 'newest' : (urlSort === 'oldest' ? 'oldest' : 'newest'))
+  const [sortBy, setSortBy] = useState(defaultSort)
+
   const { currentSite } = useSite()
   const { t } = useLocalization()
   const router = useRouter()
@@ -133,6 +139,7 @@ export default function BillsPage() {
                 )}
 
                 <div className="hidden md:flex items-center gap-2 w-full md:w-auto">
+                  <SortDropdown sortBy={sortBy} setSortBy={setSortBy} />
                   <form onSubmit={handleSearch} className="w-full md:w-auto">
                     <SearchInput  placeholder={t('bills.search') || "Search bills..."} value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}    className="w-full bg-background border-border focus:border-muted-foreground/20 focus:ring-muted-foreground/20"  containerClassName="w-full md:w-[240px]" />
                   </form>

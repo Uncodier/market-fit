@@ -235,20 +235,57 @@ export default function QuotationDetail({ params }: { params: Promise<{ id: stri
   }
 
   const handleCopyClientLink = async () => {
-    setUpdating(true)
-    const tokenRes = await ensureQuotationPublicAccessToken(quotation.id)
-    if (tokenRes.error || !tokenRes.token) {
-      toast.error(tokenRes.error || "Failed to create public link")
-      setUpdating(false)
+    if (quotation.public_access_token) {
+      const clientLink = `${window.location.origin}${buildPublicQuotePath(quotation.public_access_token)}`
+      try {
+        await navigator.clipboard.writeText(clientLink)
+        toast.success(t("quotations.detail.linkCopied") || "Link copied to clipboard")
+      } catch (err) {
+        toast.error("Failed to copy link")
+      }
       return
     }
-    const clientLink = `${window.location.origin}${buildPublicQuotePath(tokenRes.token)}`
-    await navigator.clipboard.writeText(clientLink)
-    toast.success(t("quotations.detail.linkCopied") || "Link copied to clipboard")
-    if (!quotation.public_access_token) {
-      setQuotation({ ...quotation, public_access_token: tokenRes.token })
+
+    setUpdating(true)
+    try {
+      const tokenPromise = ensureQuotationPublicAccessToken(quotation.id)
+      
+      const textPromise = tokenPromise.then(tokenRes => {
+        if (tokenRes.error || !tokenRes.token) {
+          throw new Error(tokenRes.error || "Failed to create public link")
+        }
+        return `${window.location.origin}${buildPublicQuotePath(tokenRes.token)}`
+      })
+
+      if (typeof window.ClipboardItem !== "undefined" && navigator.clipboard.write) {
+        const blobPromise = textPromise.then(text => new Blob([text], { type: "text/plain" }))
+        try {
+          await navigator.clipboard.write([
+            new ClipboardItem({
+              "text/plain": blobPromise
+            })
+          ])
+          toast.success(t("quotations.detail.linkCopied") || "Link copied to clipboard")
+        } catch (err) {
+          const text = await textPromise
+          await navigator.clipboard.writeText(text)
+          toast.success(t("quotations.detail.linkCopied") || "Link copied to clipboard")
+        }
+      } else {
+        const text = await textPromise
+        await navigator.clipboard.writeText(text)
+        toast.success(t("quotations.detail.linkCopied") || "Link copied to clipboard")
+      }
+
+      const tokenRes = await tokenPromise
+      if (tokenRes.token) {
+        setQuotation(prev => prev ? { ...prev, public_access_token: tokenRes.token } : prev)
+      }
+    } catch (error: any) {
+      toast.error(error.message || "Failed to create or copy public link")
+    } finally {
+      setUpdating(false)
     }
-    setUpdating(false)
   }
 
   if (loading) {

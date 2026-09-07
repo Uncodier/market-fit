@@ -26,7 +26,7 @@ import { ViewSelector, ViewType } from "@/app/components/view-selector"
 import { useMobileView } from "@/app/hooks/use-mobile-view"
 import { KanbanView, LeadFilters } from "@/app/components/kanban-view"
 import { LeadFilterModal } from "@/app/components/ui/lead-filter-modal"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { navigateToLead } from "@/lib/navigation/navigation-helpers"
 import { Lead, AttributionData } from "@/app/leads/types"
 import { Campaign } from "@/app/types"
@@ -36,6 +36,7 @@ import { EmptyCard } from "@/app/components/ui/empty-card"
 import { assignLeadToUser } from "@/app/leads/actions"
 import { useAuth } from "@/app/hooks/use-auth"
 import { Sparkles, User as UserIcon } from "@/app/components/ui/icons"
+import { SortDropdown } from "@/app/components/ui/sort-dropdown"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/app/components/ui/dropdown-menu"
 import { MoreHorizontal, Eye, Trash2 } from "@/app/components/ui/icons"
 import { createClient } from "@/lib/supabase/client"
@@ -267,6 +268,10 @@ const LeadsContext = React.createContext<LeadsContextType>({
 const useLeadsContext = () => React.useContext(LeadsContext)
 
 export default function LeadsPage() {
+  const searchParams = useSearchParams()
+  const urlSort = searchParams ? searchParams.get('sort') : null
+  const defaultSort = urlSort === 'updated_at' || urlSort === 'last_updated' ? 'last_updated' : (urlSort === 'created_at' || urlSort === 'newest' ? 'newest' : (urlSort === 'oldest' ? 'oldest' : (urlSort === 'nearest_due_date' ? 'nearest_due_date' : 'newest')))
+
   const { t } = useLocalization()
   const router = useRouter()
   const [currentPage, setCurrentPage] = useState(1)
@@ -283,6 +288,7 @@ export default function LeadsPage() {
   })
   const { currentSite } = useSite()
   const { user } = useAuth()
+  const [sortBy, setSortBy] = useState<LeadSortOption>(defaultSort as any)
   
   // Debounced search query for SWR
   const [searchQuery, setSearchQuery] = useState("")
@@ -381,7 +387,6 @@ export default function LeadsPage() {
   const [leadJourneyStages, setLeadJourneyStages] = useState<Record<string, string>>({})
   const [isLoadingJourneyStages, setIsLoadingJourneyStages] = useState(false)
   const [reloadingLeads, setReloadingLeads] = useState<Set<string>>(new Set())
-  const [sortBy, setSortBy] = useState<LeadSortOption>("newest")
   const [selectedLeads, setSelectedLeads] = useState<Set<string>>(new Set())
   const [isBulkActionLoading, setIsBulkActionLoading] = useState(false)
 
@@ -1378,55 +1383,12 @@ export default function LeadsPage() {
                 </div>
 
                 <div className="flex flex-col md:flex-row items-stretch md:items-center gap-2 w-full md:w-auto mt-2 md:mt-0">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="secondary" size="sm" className="w-full md:w-auto h-10 md:h-9 gap-2 rounded-md md:rounded-full px-4 justify-between md:justify-center" title={t('leads.sortBy') === 'leads.sortBy' ? 'Sort by' : t('leads.sortBy')}>
-                        <div className="flex items-center gap-2">
-                          <ListOrdered className="h-4 w-4" />
-                          <span className="font-normal">
-                            {sortBy === "newest"
-                              ? (t('leads.sort.newest') === 'leads.sort.newest' ? 'Newest' : t('leads.sort.newest'))
-                              : sortBy === "oldest"
-                                ? (t('leads.sort.oldest') === 'leads.sort.oldest' ? 'Oldest' : t('leads.sort.oldest'))
-                                : sortBy === "nearest_due_date"
-                                  ? "Nearest due date"
-                                  : "Last updated"}
-                          </span>
-                        </div>
-                        <ChevronDown className="h-3 w-3 opacity-50" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="start" className="w-52 md:w-auto md:align-end">
-                      <DropdownMenuItem 
-                        className="cursor-pointer"
-                        onClick={() => setSortBy("newest")}
-                      >
-                        <Check className={cn("mr-2 h-4 w-4", sortBy === "newest" ? "opacity-100" : "opacity-0")} />
-                        {t('leads.sort.newest') === 'leads.sort.newest' ? 'Newest' : t('leads.sort.newest')}
-                      </DropdownMenuItem>
-                      <DropdownMenuItem 
-                        className="cursor-pointer"
-                        onClick={() => setSortBy("oldest")}
-                      >
-                        <Check className={cn("mr-2 h-4 w-4", sortBy === "oldest" ? "opacity-100" : "opacity-0")} />
-                        {t('leads.sort.oldest') === 'leads.sort.oldest' ? 'Oldest' : t('leads.sort.oldest')}
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        className="cursor-pointer"
-                        onClick={() => setSortBy("nearest_due_date")}
-                      >
-                        <Check className={cn("mr-2 h-4 w-4", sortBy === "nearest_due_date" ? "opacity-100" : "opacity-0")} />
-                        Nearest due date
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        className="cursor-pointer"
-                        onClick={() => setSortBy("last_updated")}
-                      >
-                        <Check className={cn("mr-2 h-4 w-4", sortBy === "last_updated" ? "opacity-100" : "opacity-0")} />
-                        Last updated
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                  <SortDropdown sortBy={sortBy} setSortBy={setSortBy} options={[
+                    { value: "newest", label: t('leads.sort.newest') || 'Newest' },
+                    { value: "oldest", label: t('leads.sort.oldest') || 'Oldest' },
+                    { value: "nearest_due_date", label: "Nearest due date" },
+                    { value: "last_updated", label: "Last updated" }
+                  ]} />
 
                   <Button 
                     variant="secondary" 

@@ -755,6 +755,7 @@
   "ticket.ticketId": "ID du billet",
   "ticket.valid": "Billet valide",
   "buyer.ticket.details": "Détails du billet",
+  "orders.detail.payNow": "Payer maintenant",
   "records.selectCategoryToCreate": "Select Category to Create",
   "records.new": "New Record"
 }

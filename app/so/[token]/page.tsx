@@ -7,6 +7,9 @@ import { PublicDocumentViewSkeleton } from "@/app/documents/components/PublicDoc
 import { resolveSalePaymentMethod } from "@/app/documents/document-meta"
 import { mapDocumentLineItems } from "@/app/documents/map-document-items"
 import { documentT } from "@/app/lib/i18n/document-t"
+import { Button } from "@/app/components/ui/button"
+import { CreditCard, Loader2 } from "@/app/components/ui/icons"
+import { toast } from "sonner"
 
 export default function PublicOrderPage(props: {
   params: Promise<{ token: string }>
@@ -14,6 +17,8 @@ export default function PublicOrderPage(props: {
   const params = React.use(props.params)
   const [error, setError] = useState<string | null>(null)
   const [view, setView] = useState<any>(null)
+  const [orderData, setOrderData] = useState<any>(null)
+  const [isCheckingOut, setIsCheckingOut] = useState(false)
 
   useEffect(() => {
     async function load() {
@@ -50,9 +55,47 @@ export default function PublicOrderPage(props: {
         paymentMethod: resolveSalePaymentMethod(order.sales),
         shippingAddress: order.shipping_address,
       })
+      setOrderData(order)
     }
     load()
   }, [params.token])
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const urlParams = new URLSearchParams(window.location.search)
+      if (urlParams.get("success") === "true") {
+        toast.success("Payment successful! Your order is being processed.")
+        // Remove the query param so it doesn't show again on refresh
+        window.history.replaceState({}, document.title, window.location.pathname)
+      } else if (urlParams.get("canceled") === "true") {
+        toast.error("Payment was canceled.")
+        window.history.replaceState({}, document.title, window.location.pathname)
+      }
+    }
+  }, [])
+
+  const handleCheckout = async () => {
+    if (!orderData) return
+    setIsCheckingOut(true)
+    try {
+      const res = await fetch("/api/stripe/checkout/order", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          orderId: orderData.id,
+          siteId: orderData.site_id || orderData.owner_site_id || view.siteId,
+          returnUrl: window.location.href.split('?')[0], // strip any existing query params
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || "Failed to initiate checkout")
+      window.location.href = data.url
+    } catch (err: any) {
+      console.error(err)
+      toast.error(err.message || "Failed to start checkout")
+      setIsCheckingOut(false)
+    }
+  }
 
   if (error) {
     return (
@@ -61,8 +104,49 @@ export default function PublicOrderPage(props: {
       </div>
     )
   }
-  if (!view) {
+  if (!view || !orderData) {
     return <PublicDocumentViewSkeleton />
   }
-  return <PublicDocumentView {...view} />
+
+  const amountDue = Number(orderData.sales?.amount_due) || 0
+  const isCancelled = orderData.status === "cancelled" || orderData.sales?.status === "cancelled"
+  const canPay = !isCancelled && amountDue > 0
+
+  const paymentTitleKey = "orders.payment.title"
+  const paymentDescKey = "orders.payment.description"
+  const paymentBtnKey = "orders.payment.payNow"
+
+  const paymentTitle = documentT(view.locale, paymentTitleKey) === paymentTitleKey ? "Payment Required" : documentT(view.locale, paymentTitleKey)
+  const paymentDesc = documentT(view.locale, paymentDescKey) === paymentDescKey ? "Please complete your payment to process this order." : documentT(view.locale, paymentDescKey)
+  const paymentBtn = documentT(view.locale, paymentBtnKey) === paymentBtnKey ? "Pay Now" : documentT(view.locale, paymentBtnKey)
+
+  return (
+    <PublicDocumentView {...view}>
+      {canPay && (
+        <div className="bg-white dark:bg-[#0a0a0a] p-6 sm:p-8 rounded-lg shadow-sm border border-black/5 dark:border-white/10 print:hidden flex flex-col sm:flex-row items-center justify-between gap-6">
+          <div>
+            <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-1">
+              {paymentTitle}
+            </h3>
+            <p className="text-base text-gray-500 dark:text-gray-400">
+              {paymentDesc}
+            </p>
+          </div>
+          <Button
+            size="lg"
+            onClick={handleCheckout}
+            disabled={isCheckingOut}
+            className="w-full sm:w-auto h-12 px-8 text-base shadow-sm"
+          >
+            {isCheckingOut ? (
+              <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+            ) : (
+              <CreditCard className="mr-2 h-5 w-5" />
+            )}
+            {paymentBtn}
+          </Button>
+        </div>
+      )}
+    </PublicDocumentView>
+  )
 }

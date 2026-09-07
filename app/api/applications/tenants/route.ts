@@ -72,7 +72,7 @@ export async function GET(request: Request) {
     // First get the requirements for this site from the main database
     let requirementsQuery = mainSupabase
       .from("requirements")
-      .select("id, title, status")
+      .select("id, title, status, created_at, updated_at")
       
     if (robotInstanceId) {
       // If we have an instance ID, we only want requirements tied to this instance
@@ -129,12 +129,24 @@ export async function GET(request: Request) {
     }
 
     // Merge tenants into requirements
-    const merged = (requirements || [])
+    let merged = (requirements || [])
       .map((req) => ({
         ...req,
         apps_tenants: tenantsByRequirement.get(req.id) ?? [],
       }))
       .filter(app => app.apps_tenants.length > 0)
+
+    const sort = searchParams.get("sort") || "newest"
+    merged.sort((a, b) => {
+      const dateA = new Date(a.created_at || 0).getTime()
+      const dateB = new Date(b.created_at || 0).getTime()
+      const updateA = new Date(a.updated_at || a.created_at || 0).getTime()
+      const updateB = new Date(b.updated_at || b.created_at || 0).getTime()
+      
+      if (sort === 'oldest') return dateA - dateB
+      if (sort === 'updated_at') return updateB - updateA
+      return dateB - dateA // newest (default)
+    })
 
     return NextResponse.json({
       tenants: merged

@@ -4,10 +4,19 @@ import { useState, useEffect, useMemo } from "react"
 import { Button } from "@/app/components/ui/button"
 import { Input } from "@/app/components/ui/input"
 import { Tabs, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
-import { Globe, LayoutGrid, CheckCircle2, PenSquare } from "@/app/components/ui/icons"
+import { useSearchParams } from "next/navigation"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/app/components/ui/dropdown-menu"
+import { ListOrdered, Check, ChevronDown, Globe, LayoutGrid, CheckCircle2, PenSquare } from "@/app/components/ui/icons"
 import { LoadingSkeleton } from "@/app/components/ui/loading-skeleton"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
 import { MobileFiltersDrawer } from "@/app/components/ui/mobile-filters-drawer"
+import { cn } from "@/lib/utils"
+import { SortDropdown } from "@/app/components/ui/sort-dropdown"
 import {
   Dialog,
   DialogContent,
@@ -27,6 +36,11 @@ import { useLocalization } from "@/app/context/LocalizationContext"
 import { SegmentsTable, SegmentsTableSkeleton } from "./components/SegmentsTable"
 
 export default function SegmentsPage() {
+  const searchParams = useSearchParams()
+  const urlSort = searchParams ? searchParams.get('sort') : null
+  const defaultSort = urlSort === 'updated_at' ? 'updated_at' : (urlSort === 'created_at' || urlSort === 'newest' ? 'newest' : (urlSort === 'oldest' ? 'oldest' : 'newest'))
+  const [sortBy, setSortBy] = useState(defaultSort)
+
   const { t } = useLocalization()
   const { currentSite } = useSite()
   const router = useRouter()
@@ -88,8 +102,17 @@ export default function SegmentsPage() {
         .join(" ")
         .toLowerCase()
       return haystack.includes(query)
+    }).sort((a, b) => {
+      const dateA = new Date(a.created_at || a.createdAt || 0).getTime();
+      const dateB = new Date(b.created_at || b.createdAt || 0).getTime();
+      const updateA = new Date(a.updated_at || a.updatedAt || a.created_at || a.createdAt || 0).getTime();
+      const updateB = new Date(b.updated_at || b.updatedAt || b.created_at || b.createdAt || 0).getTime();
+      if (sortBy === 'newest') return dateB - dateA;
+      if (sortBy === 'oldest') return dateA - dateB;
+      if (sortBy === 'updated_at') return updateB - updateA;
+      return 0;
     })
-  }, [segments, searchTerm, statusFilter, activeSegments])
+  }, [segments, searchTerm, statusFilter, activeSegments, sortBy])
 
   const toggleSegmentStatus = async (id: string) => {
     const previous = activeSegments[id]
@@ -169,12 +192,14 @@ export default function SegmentsPage() {
                   <span className="tab-label">{t("segments.tabs.draft") || "Draft"}</span>
                 </TabsTrigger>
               </TabsList>
-              <SearchInput  
-                data-command-k-input
-                placeholder={t("segments.searchPlaceholder") || "Search segments..."}
-                
-                value={searchTerm}
-                onChange={(event) => setSearchTerm(event.target.value)}  className="w-full h-10 md:h-9"  containerClassName="w-full" />
+                  <div className="flex items-center gap-2">
+                    <SortDropdown sortBy={sortBy} setSortBy={setSortBy} />
+                    <SearchInput  
+                      data-command-k-input
+                      placeholder={t("segments.searchPlaceholder") || "Search segments..."}
+                      value={searchTerm}
+                      onChange={(event) => setSearchTerm(event.target.value)}  className="w-full h-10 md:h-9"  containerClassName="w-full" />
+                  </div>
             </div>
           </div>
         </StickyHeader>

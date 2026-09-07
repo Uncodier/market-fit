@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useRef } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter , useSearchParams} from "next/navigation"
 import { Button } from "@/app/components/ui/button"
 import { Badge } from "@/app/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/app/components/ui/tabs"

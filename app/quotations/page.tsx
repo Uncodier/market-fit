@@ -9,11 +9,17 @@ import { MobileFiltersDrawer } from "@/app/components/ui/mobile-filters-drawer"
 import { SearchInput } from "@/app/components/ui/search-input"
 import { Tabs, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
 import { LayoutGrid, FileText, CheckCircle2, Ban, Send } from "@/app/components/ui/icons"
-import { useRouter } from "next/navigation"
+import { useRouter , useSearchParams} from "next/navigation"
 import { QuotesTable, QuotesTableSkeleton } from "@/app/components/documents/quotes-table"
 import { retryOnError, useOptimisticLoadState } from "@/app/hooks/use-optimistic-error"
+import { SortDropdown } from "@/app/components/ui/sort-dropdown"
 
 export default function QuotationsPage() {
+  const searchParams = useSearchParams()
+  const urlSort = searchParams ? searchParams.get('sort') : null
+  const defaultSort = urlSort === 'updated_at' ? 'updated_at' : (urlSort === 'created_at' || urlSort === 'newest' ? 'newest' : (urlSort === 'oldest' ? 'oldest' : 'newest'))
+  const [sortBy, setSortBy] = useState(defaultSort)
+
   const { currentSite } = useSite()
   const { t } = useLocalization()
   const router = useRouter()
@@ -121,6 +127,7 @@ export default function QuotationsPage() {
                 </div>
 
                 <div className="hidden md:flex items-center gap-2 w-full md:w-auto">
+                  <SortDropdown sortBy={sortBy} setSortBy={setSortBy} />
                   <form onSubmit={handleSearch} className="w-auto">
                     <SearchInput  placeholder={t("quotations.list.search") || "Search quotations..."} value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}    className="w-full"  containerClassName="w-full md:w-[240px]" />
                   </form>

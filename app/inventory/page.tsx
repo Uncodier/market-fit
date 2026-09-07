@@ -20,8 +20,15 @@ import { CreateInventoryStockDialog } from "./components/CreateInventoryStockDia
 import { InventoryLevelsTab } from "./components/InventoryLevelsTab"
 import { InventoryLocationsTable } from "./components/InventoryLocationsTable"
 import { PrinterSyncBadge } from "@/app/components/printer/PrinterSyncBadge"
+import { useSearchParams } from "next/navigation"
+import { SortDropdown } from "@/app/components/ui/sort-dropdown"
 
 export default function InventoryPage() {
+  const searchParams = useSearchParams()
+  const urlSort = searchParams ? searchParams.get('sort') : null
+  const defaultSort = urlSort === 'updated_at' ? 'updated_at' : (urlSort === 'created_at' || urlSort === 'newest' ? 'newest' : (urlSort === 'oldest' ? 'oldest' : 'newest'))
+  const [sortBy, setSortBy] = useState(defaultSort)
+
   const { currentSite } = useSite()
   const { t } = useLocalization()
   
@@ -106,7 +113,8 @@ export default function InventoryPage() {
                     </Tabs>
                   </div>
                   {activeTab === "levels" && (
-                    <div className="hidden md:block">
+                    <div className="hidden md:flex items-center gap-2">
+                      <SortDropdown sortBy={sortBy} setSortBy={setSortBy} />
                       <form onSubmit={handleSearch} className="w-full md:w-64">
                         <SearchInput   
                           placeholder="Search catalog..." 

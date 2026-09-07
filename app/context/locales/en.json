@@ -5843,6 +5843,7 @@
   "orders.detail.paymentInfo": "Payment",
   "orders.detail.paymentMethod": "Payment Method",
   "orders.detail.paymentStatus": "Payment Status",
+  "orders.detail.payNow": "Pay Now",
   "orders.detail.priceList": "Price List",
   "orders.detail.promotion": "Promotion",
   "orders.detail.qty": "Qty",

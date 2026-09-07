@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import useSWR from "swr"
-import { useRouter } from "next/navigation"
+import { useRouter , useSearchParams} from "next/navigation"
 import { useSite } from "@/app/context/SiteContext"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { listPriceLists } from "./actions"
@@ -14,8 +14,14 @@ import { SearchInput } from "@/app/components/ui/search-input"
 import { Tabs, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
 import { PriceListDialog } from "./components/PriceListDialog"
 import { PriceListsTable, PriceListsTableSkeleton } from "./components/PriceListsTable"
+import { SortDropdown } from "@/app/components/ui/sort-dropdown"
 
 export default function PriceListsPage() {
+  const searchParams = useSearchParams()
+  const urlSort = searchParams ? searchParams.get('sort') : null
+  const defaultSort = urlSort === 'updated_at' ? 'updated_at' : (urlSort === 'created_at' || urlSort === 'newest' ? 'newest' : (urlSort === 'oldest' ? 'oldest' : 'newest'))
+  const [sortBy, setSortBy] = useState(defaultSort)
+
   const { currentSite } = useSite()
   const { t } = useLocalization()
   const router = useRouter()
@@ -102,6 +108,7 @@ export default function PriceListsPage() {
                 </div>
 
                 <div className="hidden md:flex items-center gap-2 w-full md:w-auto">
+                  <SortDropdown sortBy={sortBy} setSortBy={setSortBy} />
                   <SearchInput  placeholder={t("priceLists.search") || "Search price lists..."} value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}    className="w-full"  containerClassName="w-64" />
                 </div>
               </div>

@@ -1,6 +1,7 @@
 "use client"
 
 import { MobileFiltersDrawer } from "@/app/components/ui/mobile-filters-drawer"
+import { SortDropdown } from "@/app/components/ui/sort-dropdown"
 
 import React, { useEffect, useMemo, useState, useCallback, Suspense } from "react"
 import { useRouter, useSearchParams, usePathname } from "next/navigation"
@@ -232,6 +233,7 @@ function ReservationsPageContent() {
                 )}
 
                 <div className="hidden md:flex items-center gap-2 w-full md:w-auto">
+                  <SortDropdown sortBy={sortBy} setSortBy={setSortBy} />
                   <SearchInput  placeholder={t("reservations.search.placeholder") || "Search reservations..."} value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)}    className="w-full"  containerClassName="w-64" />
                 </div>
               </div>

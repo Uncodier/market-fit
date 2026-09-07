@@ -10,6 +10,8 @@ import { StickyHeader } from "@/app/components/ui/sticky-header"
 import { Tabs, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
 import { Skeleton } from "@/app/components/ui/skeleton"
 import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/card"
+import { useSearchParams } from "next/navigation"
+import { SortDropdown } from "@/app/components/ui/sort-dropdown"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -239,6 +241,11 @@ const customerJourneySections: QuickNavSection[] = [
 ]
 
 export default function ContextPage() {
+  const searchParams = useSearchParams()
+  const urlSort = searchParams ? searchParams.get('sort') : null
+  const defaultSort = urlSort === 'updated_at' ? 'updated_at' : (urlSort === 'created_at' || urlSort === 'newest' ? 'newest' : (urlSort === 'oldest' ? 'oldest' : 'newest'))
+  const [sortBy, setSortBy] = useState(defaultSort)
+
   const { currentSite, updateSite, deleteSite, isLoading, updateSettings, refreshSites } = useSite()
   const { theme } = useTheme()
   const { user } = useAuthContext()

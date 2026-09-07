@@ -755,6 +755,7 @@
   "ticket.ticketId": "チケットID",
   "ticket.valid": "有効なチケット",
   "buyer.ticket.details": "チケット詳細",
+  "orders.detail.payNow": "今すぐ支払う",
   "records.selectCategoryToCreate": "Select Category to Create",
   "records.new": "New Record"
 }

@@ -1,6 +1,7 @@
 "use client"
 
 import { MobileFiltersDrawer } from "@/app/components/ui/mobile-filters-drawer"
+import { SortDropdown } from "@/app/components/ui/sort-dropdown"
 
 import { useState, useEffect } from "react"
 import useSWR from "swr"
@@ -16,6 +17,11 @@ import { CreatePromotionDialog } from "./components/CreatePromotionDialog"
 import { PromotionsTable, PromotionsTableSkeleton } from "./components/PromotionsTable"
 
 export default function PromotionsPage() {
+  const searchParams = useSearchParams()
+  const urlSort = searchParams ? searchParams.get('sort') : null
+  const defaultSort = urlSort === 'updated_at' ? 'updated_at' : (urlSort === 'created_at' || urlSort === 'newest' ? 'newest' : (urlSort === 'oldest' ? 'oldest' : 'newest'))
+  const [sortBy, setSortBy] = useState(defaultSort)
+
   const { currentSite } = useSite()
   const { t } = useLocalization()
   const router = useRouter()
@@ -87,6 +93,7 @@ export default function PromotionsPage() {
                 </div>
                 
                 <div className="hidden md:flex items-center gap-2 w-full md:w-auto">
+                  <SortDropdown sortBy={sortBy} setSortBy={setSortBy} />
                   <form onSubmit={handleSearch} className="w-auto">
                     <SearchInput  placeholder={t("promotions.search") || "Search name or code..."} value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}    className="w-full"  containerClassName="w-64" />
                   </form>

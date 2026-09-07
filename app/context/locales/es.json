@@ -772,5 +772,6 @@
   "ticket.valid": "Entrada válida",
   "buyer.ticket.details": "Detalles de la entrada",
   "records.selectCategoryToCreate": "Select Category to Create",
+  "orders.detail.payNow": "Pagar ahora",
   "records.new": "New Record"
 }

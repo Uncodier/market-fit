@@ -1,6 +1,7 @@
 "use client"
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useSearchParams } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import { useSite } from "@/app/context/SiteContext"
 import { useToast } from "@/app/components/ui/use-toast"
@@ -29,6 +30,10 @@ export function useRequirementsList() {
   const { t } = useLocalization()
   const { toast } = useToast()
   const { currentSite } = useSite()
+  const searchParams = useSearchParams()
+  const urlSort = searchParams ? searchParams.get('sort') : null
+  const defaultSort = urlSort === 'updated_at' ? 'newest' : (urlSort === 'created_at' || urlSort === 'newest' ? 'newest' : (urlSort === 'budget' ? 'budget' : 'priority'))
+  
   const siteId = currentSite?.id
   const requestIdRef = useRef(0)
 
@@ -38,7 +43,7 @@ export function useRequirementsList() {
   const [visibleError, setVisibleError] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState("all")
   const [searchQuery, setSearchQuery] = useState("")
-  const [sortBy, setSortBy] = useState<"priority" | "newest" | "budget">("priority")
+  const [sortBy, setSortBy] = useState<"priority" | "newest" | "budget">(defaultSort as any)
   const [filters, setFilters] = useState<RequirementFilters>(EMPTY_FILTERS)
 
   const loadRequirements = useCallback(async () => {

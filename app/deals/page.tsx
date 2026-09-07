@@ -4,7 +4,7 @@
 
 import { useState, useEffect } from "react"
 import useSWR from "swr"
-import { useRouter } from "next/navigation"
+import { useRouter , useSearchParams} from "next/navigation"
 import { useSite } from "@/app/context/SiteContext"
 import { getDeals } from "./actions"
 import { Deal } from "./types"
@@ -28,6 +28,7 @@ import { Button } from "@/app/components/ui/button"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/app/components/ui/table"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/app/components/ui/tabs"
 import { LayoutGrid, Target, XCircle, TrendingUp } from "@/app/components/ui/icons"
+import { SortDropdown } from "@/app/components/ui/sort-dropdown"
 
 function DealsTableSkeleton() {
   return (
@@ -224,53 +225,12 @@ export default function DealsPage() {
                 </div>
               </MobileFiltersDrawer>
               <div className="ml-auto flex items-center gap-4">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="secondary" size="sm" className="h-9 gap-2 rounded-full px-4" title={t('deals.sortBy') === 'deals.sortBy' ? 'Sort by' : t('deals.sortBy')}>
-                        <ListOrdered className="h-4 w-4" />
-                        <span className="hidden sm:inline font-normal">
-                          {sortBy === "newest"
-                            ? (t('deals.sort.newest') === 'deals.sort.newest' ? 'Newest' : t('deals.sort.newest'))
-                            : sortBy === "oldest"
-                              ? (t('deals.sort.oldest') === 'deals.sort.oldest' ? 'Oldest' : t('deals.sort.oldest'))
-                              : sortBy === "value_desc"
-                                ? (t('deals.sort.valueDesc') === 'deals.sort.valueDesc' ? 'Highest Value' : t('deals.sort.valueDesc'))
-                                : (t('deals.sort.valueAsc') === 'deals.sort.valueAsc' ? 'Lowest Value' : t('deals.sort.valueAsc'))}
-                        </span>
-                        <ChevronDown className="h-3 w-3 opacity-50" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-40">
-                      <DropdownMenuItem 
-                        className="cursor-pointer"
-                        onClick={() => setSortBy("newest")}
-                      >
-                        <Check className={cn("mr-2 h-4 w-4", sortBy === "newest" ? "opacity-100" : "opacity-0")} />
-                        {t('deals.sort.newest') === 'deals.sort.newest' ? 'Newest' : t('deals.sort.newest')}
-                      </DropdownMenuItem>
-                      <DropdownMenuItem 
-                        className="cursor-pointer"
-                        onClick={() => setSortBy("oldest")}
-                      >
-                        <Check className={cn("mr-2 h-4 w-4", sortBy === "oldest" ? "opacity-100" : "opacity-0")} />
-                        {t('deals.sort.oldest') === 'deals.sort.oldest' ? 'Oldest' : t('deals.sort.oldest')}
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        className="cursor-pointer"
-                        onClick={() => setSortBy("value_desc")}
-                      >
-                        <Check className={cn("mr-2 h-4 w-4", sortBy === "value_desc" ? "opacity-100" : "opacity-0")} />
-                        {t('deals.sort.valueDesc') === 'deals.sort.valueDesc' ? 'Highest Value' : t('deals.sort.valueDesc')}
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        className="cursor-pointer"
-                        onClick={() => setSortBy("value_asc")}
-                      >
-                        <Check className={cn("mr-2 h-4 w-4", sortBy === "value_asc" ? "opacity-100" : "opacity-0")} />
-                        {t('deals.sort.valueAsc') === 'deals.sort.valueAsc' ? 'Lowest Value' : t('deals.sort.valueAsc')}
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                <SortDropdown sortBy={sortBy} setSortBy={setSortBy} options={[
+                  { value: "newest", label: t('deals.sort.newest') || 'Newest' },
+                  { value: "oldest", label: t('deals.sort.oldest') || 'Oldest' },
+                  { value: "value_desc", label: t('deals.sort.valueDesc') || 'Highest Value' },
+                  { value: "value_asc", label: t('deals.sort.valueAsc') || 'Lowest Value' }
+                ]} />
                 <ViewSelector currentView={viewType} onViewChange={setViewType} />
               </div>
             </div>

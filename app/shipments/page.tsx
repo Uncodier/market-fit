@@ -20,7 +20,7 @@ import { ShipmentsTable, ShipmentsTableSkeleton } from "./components/ShipmentsTa
 import { listLocations } from "@/app/inventory/actions"
 import { cn } from "@/lib/utils"
 import { navigateToShipment } from "@/lib/navigation/navigation-helpers"
-import { useRouter } from "next/navigation"
+import { useRouter , useSearchParams} from "next/navigation"
 import { CreateShipmentDialog } from "./components/CreateShipmentDialog"
 import { EmptyCard } from "@/app/components/ui/empty-card"
 
@@ -160,7 +160,7 @@ export default function ShipmentsPage() {
                     </Select>
                   )}
 
-                  <div className="hidden md:block">
+                  <div className="hidden md:flex items-center gap-2 w-full md:w-auto">
                     <form onSubmit={handleSearch} className="w-full md:w-auto">
                       <SearchInput  
                         placeholder={t("shipments.search") || "Search tracking or customer..."}
@@ -172,7 +172,7 @@ export default function ShipmentsPage() {
               </MobileFiltersDrawer>
               <div className="flex items-center gap-2 w-auto justify-end shrink-0">
                 <div className="flex">
-                  <ViewSelector currentView={viewType} onViewChange={setViewType} />
+                <ViewSelector currentView={viewType} onViewChange={setViewType} />
                 </div>
               </div>
             </div>

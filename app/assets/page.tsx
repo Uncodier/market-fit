@@ -22,6 +22,7 @@ import { cn } from "@/lib/utils"
 import { AssetCardSkeleton } from "./components/AssetCardSkeleton"
 import { AssetsTabBody } from "./components/AssetsTabBody"
 import { isAssetCompatibleWithAgent, type AssetViewType } from "./components/asset-utils"
+import { SortDropdown } from "@/app/components/ui/sort-dropdown"
 
 function AssetViewSelector({ currentView, onViewChange }: { currentView: AssetViewType, onViewChange: (view: AssetViewType) => void }) {
   return (
@@ -76,6 +77,7 @@ function AssetsLoadingPage() {
                     placeholder={t('assets.searchPlaceholder')}
                     
                     disabled  className="w-full h-10 md:h-9"  containerClassName="w-full" />
+                <SortDropdown sortBy={sortBy} setSortBy={setSortBy} />
               </div>
               <div className="ml-auto">
                 {/* Any other buttons would go here */}

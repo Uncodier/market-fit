@@ -174,7 +174,7 @@ export function DocumentListHead({
   className,
   align = "left",
 }: {
-  children: React.ReactNode
+  children?: React.ReactNode
   className?: string
   align?: "left" | "right"
 }) {

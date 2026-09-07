@@ -11,8 +11,15 @@ import { CreateSubscriptionDialog } from "./components/CreateSubscriptionDialog"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
 import { MobileFiltersDrawer } from "@/app/components/ui/mobile-filters-drawer"
 import { SearchInput } from "@/app/components/ui/search-input"
+import { useSearchParams } from "next/navigation"
+import { SortDropdown } from "@/app/components/ui/sort-dropdown"
 
 export default function SubscriptionsPage() {
+  const searchParams = useSearchParams()
+  const urlSort = searchParams ? searchParams.get('sort') : null
+  const defaultSort = urlSort === 'updated_at' ? 'updated_at' : (urlSort === 'created_at' || urlSort === 'newest' ? 'newest' : (urlSort === 'oldest' ? 'oldest' : 'newest'))
+  const [sortBy, setSortBy] = useState(defaultSort)
+
   const { t } = useLocalization()
   const { currentSite } = useSite()
   const [isCreateOpen, setIsCreateOpen] = useState(false)
@@ -54,8 +61,17 @@ export default function SubscriptionsPage() {
         .join(" ")
         .toLowerCase()
       return haystack.includes(query)
+    }).sort((a, b) => {
+      const dateA = new Date(a.created_at || a.createdAt || 0).getTime();
+      const dateB = new Date(b.created_at || b.createdAt || 0).getTime();
+      const updateA = new Date(a.updated_at || a.updatedAt || a.created_at || a.createdAt || 0).getTime();
+      const updateB = new Date(b.updated_at || b.updatedAt || b.created_at || b.createdAt || 0).getTime();
+      if (sortBy === 'newest') return dateB - dateA;
+      if (sortBy === 'oldest') return dateA - dateB;
+      if (sortBy === 'updated_at') return updateB - updateA;
+      return 0;
     })
-  }, [subscriptions, statusFilter, searchQuery])
+  }, [subscriptions, statusFilter, searchQuery, sortBy])
 
   return (
     <div className="flex-1 flex flex-col h-[calc(100vh-var(--topbar-height,64px))] bg-muted/30">
@@ -92,6 +108,7 @@ export default function SubscriptionsPage() {
                 </div>
 
                 <div className="hidden md:flex items-center gap-2 w-full md:w-auto">
+                  <SortDropdown sortBy={sortBy} setSortBy={setSortBy} />
                   <SearchInput  placeholder={t("subscriptions.search") || "Search subscriptions..."} value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)}    className="w-full"  containerClassName="w-64" />
                 </div>
               </div>

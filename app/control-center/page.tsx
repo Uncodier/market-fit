@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter , useSearchParams} from "next/navigation"
 import { useSite } from "@/app/context/SiteContext"
 import { useLayout } from "@/app/context/LayoutContext"
 import { useIsMobile } from "@/app/hooks/use-mobile-view"
@@ -386,6 +386,15 @@ export default function ControlCenterPage() {
 
     return true
   }).sort((a, b) => {
+      const dateA = new Date(a.created_at || a.createdAt || 0).getTime();
+      const dateB = new Date(b.created_at || b.createdAt || 0).getTime();
+      const updateA = new Date(a.updated_at || a.updatedAt || a.created_at || a.createdAt || 0).getTime();
+      const updateB = new Date(b.updated_at || b.updatedAt || b.created_at || b.createdAt || 0).getTime();
+      if (sortBy === 'newest') return dateB - dateA;
+      if (sortBy === 'oldest') return dateA - dateB;
+      if (sortBy === 'updated_at') return updateB - updateA;
+      return 0;
+    }).sort((a, b) => {
     if (sortBy === 'priority') {
       const priorityDiff = (b.priority || 0) - (a.priority || 0)
       if (priorityDiff !== 0) return priorityDiff
@@ -635,7 +644,7 @@ export default function ControlCenterPage() {
                   </DropdownMenuContent>
                 </DropdownMenu>
 
-                <ViewSelector
+              <ViewSelector
                   currentView={viewType}
                   onViewChange={(view) => setViewType(view)}
                   showCalendar={true}

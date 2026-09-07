@@ -8,6 +8,7 @@ import { SearchInput } from "@/app/components/ui/search-input"
 import { ViewSelector, ViewType } from "@/app/components/view-selector"
 import { useMobileView } from "@/app/hooks/use-mobile-view"
 import { useSearchParams } from "next/navigation"
+import { SortDropdown } from "@/app/components/ui/sort-dropdown"
 
 function DatabasePageContent() {
   const { t } = useLocalization()
@@ -17,6 +18,10 @@ function DatabasePageContent() {
   const searchParams = useSearchParams()
   const isArtifact = searchParams.get("artifact") === "true"
   const robotInstanceId = searchParams.get("robotInstanceId")
+  
+  const urlSort = searchParams ? searchParams.get('sort') : null
+  const defaultSort = urlSort === 'updated_at' ? 'updated_at' : (urlSort === 'created_at' || urlSort === 'newest' ? 'newest' : (urlSort === 'oldest' ? 'oldest' : 'newest'))
+  const [sortBy, setSortBy] = useState(defaultSort)
 
   const handleSearch = (value: string) => {
     setSearchQuery(value)
@@ -38,6 +43,7 @@ function DatabasePageContent() {
                     className="bg-background border-border focus:border-muted-foreground/20 focus:ring-muted-foreground/20"
                     alwaysExpanded={false}
                   />
+                <SortDropdown sortBy={sortBy} setSortBy={setSortBy} />
                 </div>
               )}
             </div>
@@ -52,11 +58,11 @@ function DatabasePageContent() {
         {viewMode === 'kanban' ? (
           <div className="overflow-x-auto pb-4 -mx-8">
             <div className="min-w-fit px-8">
-              <AppsListSection searchQuery={searchQuery} viewMode={viewMode} robotInstanceId={robotInstanceId || undefined} />
+              <AppsListSection searchQuery={searchQuery} viewMode={viewMode} robotInstanceId={robotInstanceId || undefined} sortBy={sortBy} />
             </div>
           </div>
         ) : (
-          <AppsListSection searchQuery={searchQuery} viewMode={viewMode} robotInstanceId={robotInstanceId || undefined} />
+          <AppsListSection searchQuery={searchQuery} viewMode={viewMode} robotInstanceId={robotInstanceId || undefined} sortBy={sortBy} />
         )}
       </div>
     </div>

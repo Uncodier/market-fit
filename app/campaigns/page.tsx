@@ -26,7 +26,7 @@ import type { Campaign } from "@/app/types"
 import { createClient } from "@/lib/supabase/client"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { cn } from "@/lib/utils"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { navigateToCampaign } from "@/lib/navigation/navigation-helpers"
 import { CampaignsTable, CampaignsTableSkeleton } from "./components/CampaignsTable"
 import { CampaignsKanban, CampaignsKanbanSkeleton } from "./components/CampaignsKanban"
@@ -42,9 +42,12 @@ function asCampaignList(value: unknown): Campaign[] {
 export default function CampaignsPage() {
   const { t } = useLocalization()
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const urlSort = searchParams ? searchParams.get('sort') : null
+  const defaultSort = urlSort === 'updated_at' ? 'newest' : (urlSort === 'created_at' || urlSort === 'newest' ? 'newest' : (urlSort === 'oldest' ? 'oldest' : (urlSort === 'budget' ? 'budget' : (urlSort === 'roi' ? 'roi' : 'due_date'))))
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedPriorities, setSelectedPriorities] = useState<string[]>(["high", "medium", "low"])
-  const [sortBy, setSortBy] = useState<"due_date" | "oldest" | "newest" | "budget" | "roi">("due_date")
+  const [sortBy, setSortBy] = useState<"due_date" | "oldest" | "newest" | "budget" | "roi">(defaultSort as any)
   const [activeTab, setActiveTab] = useState("all")
   const [viewType, setViewType] = useMobileView("table")
   const { currentSite } = useSite()

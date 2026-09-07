@@ -24,8 +24,15 @@ import { useMobileView } from "@/app/hooks/use-mobile-view"
 import { KanbanView } from "./components/KanbanView"
 import { upsertCatalogItem } from "./actions"
 import { cn } from "@/lib/utils"
+import { useSearchParams } from "next/navigation"
+import { SortDropdown } from "@/app/components/ui/sort-dropdown"
 
 export default function CatalogPage() {
+  const searchParams = useSearchParams()
+  const urlSort = searchParams ? searchParams.get('sort') : null
+  const defaultSort = urlSort === 'updated_at' ? 'updated_at' : (urlSort === 'created_at' || urlSort === 'newest' ? 'newest' : (urlSort === 'oldest' ? 'oldest' : 'newest'))
+  const [sortBy, setSortBy] = useState(defaultSort)
+
   const { currentSite } = useSite()
   const { t } = useLocalization()
   
@@ -234,7 +241,8 @@ export default function CatalogPage() {
               
               <div className="flex items-center gap-2 w-auto justify-end shrink-0">
                 <div className="flex ml-2">
-                  <ViewSelector currentView={viewType} onViewChange={setViewType} />
+                  <SortDropdown sortBy={sortBy} setSortBy={setSortBy} />
+                <ViewSelector currentView={viewType} onViewChange={setViewType} />
                 </div>
               </div>
             </div>

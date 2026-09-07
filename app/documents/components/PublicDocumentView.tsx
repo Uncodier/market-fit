@@ -49,6 +49,7 @@ export type PublicDocumentViewProps = {
   fulfillmentMethod?: string | null
   paymentMethod?: string | null
   shippingAddress?: DocumentShippingAddress | null
+  children?: React.ReactNode
 }
 
 export function PublicDocumentView(props: PublicDocumentViewProps) {
@@ -288,6 +289,12 @@ export function PublicDocumentView(props: PublicDocumentViewProps) {
             </div>
           </div>
         </div>
+
+        {props.children && (
+          <div className="mt-8 max-w-4xl mx-auto">
+            {props.children}
+          </div>
+        )}
       </div>
     </div>
   )

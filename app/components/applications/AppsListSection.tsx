@@ -40,9 +40,10 @@ interface AppsListSectionProps {
   searchQuery?: string
   viewMode?: ViewType
   robotInstanceId?: string
+  sortBy?: string
 }
 
-export function AppsListSection({ searchQuery = "", viewMode = "kanban", robotInstanceId }: AppsListSectionProps) {
+export function AppsListSection({ searchQuery = "", viewMode = "kanban", robotInstanceId, sortBy = "newest" }: AppsListSectionProps) {
   const { currentSite } = useSite()
   const { t } = useLocalization()
   const router = useRouter()
@@ -74,7 +75,7 @@ export function AppsListSection({ searchQuery = "", viewMode = "kanban", robotIn
       setLoading(true)
 
       try {
-        let url = `/api/applications/tenants?siteId=${effectiveSiteId}`
+        let url = `/api/applications/tenants?siteId=${effectiveSiteId}&sort=${sortBy}`
         if (robotInstanceId) {
           url += `&robotInstanceId=${robotInstanceId}`
         }

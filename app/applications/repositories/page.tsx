@@ -8,6 +8,7 @@ import { useLocalization } from "@/app/context/LocalizationContext"
 import { SearchInput } from "@/app/components/ui/search-input"
 import { ViewSelector, ViewType } from "@/app/components/view-selector"
 import { useMobileView } from "@/app/hooks/use-mobile-view"
+import { SortDropdown } from "@/app/components/ui/sort-dropdown"
 
 function RepositoriesPageContent() {
   const { t } = useLocalization()
@@ -16,6 +17,10 @@ function RepositoriesPageContent() {
   const [searchQuery, setSearchQuery] = useState("")
   const searchInputRef = useRef<HTMLInputElement>(null)
   const [viewMode, setViewMode] = useMobileView("table")
+
+  const urlSort = searchParams ? searchParams.get('sort') : null
+  const defaultSort = urlSort === 'updated_at' ? 'updated_at' : (urlSort === 'created_at' || urlSort === 'newest' ? 'newest' : (urlSort === 'oldest' ? 'oldest' : 'newest'))
+  const [sortBy, setSortBy] = useState(defaultSort)
 
   return (
     <div className={`flex-1 min-w-0 w-full p-0 flex flex-col ${isArtifact ? 'h-full min-h-full' : 'min-h-[calc(100dvh-64px)]'}`}>
@@ -38,7 +43,8 @@ function RepositoriesPageContent() {
               )}
             </div>
             <div className="ml-auto flex items-center gap-4">
-              <ViewSelector currentView={viewMode} onViewChange={setViewMode} />
+              <SortDropdown sortBy={sortBy} setSortBy={setSortBy} />
+                <ViewSelector currentView={viewMode} onViewChange={setViewMode} />
             </div>
           </div>
         </div>

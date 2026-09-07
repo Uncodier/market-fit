@@ -14,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { LayoutGrid, Clock, CheckCircle2, Ban, PlayCircle, Search } from "@/app/components/ui/icons"
 import { subDays, startOfDay, endOfDay } from "date-fns"
 import { CalendarDateRangePicker } from "@/app/components/ui/date-range-picker"
-import { useRouter } from "next/navigation"
+import { useRouter , useSearchParams} from "next/navigation"
 import { ViewSelector } from "@/app/components/view-selector"
 import { useMobileView } from "@/app/hooks/use-mobile-view"
 import { OrdersKanban, OrdersKanbanSkeleton } from "./components/OrdersKanban"

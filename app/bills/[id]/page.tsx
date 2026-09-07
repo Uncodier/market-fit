@@ -187,17 +187,55 @@ export default function BillDetailPage(props: { params: Promise<{ id: string }> 
 
   const handleCopyVendorLink = async () => {
     if (!purchase) return
+
+    if (purchase.publicAccessToken) {
+      const link = `${window.location.origin}${buildPublicDocPath("vb", purchase.publicAccessToken)}`
+      try {
+        await navigator.clipboard.writeText(link)
+        toast.success(t("bills.detail.linkCopied") || "Link copied to clipboard")
+      } catch (err) {
+        toast.error("Failed to copy link")
+      }
+      return
+    }
+
     setSending(true)
     try {
-      const tokenRes = await ensureBillPublicAccessToken(purchase.id)
-      if (tokenRes.error || !tokenRes.token) {
-        toast.error(tokenRes.error || "Failed to create public link")
-        return
+      const tokenPromise = ensureBillPublicAccessToken(purchase.id)
+
+      const textPromise = tokenPromise.then(tokenRes => {
+        if (tokenRes.error || !tokenRes.token) {
+          throw new Error(tokenRes.error || "Failed to create public link")
+        }
+        return `${window.location.origin}${buildPublicDocPath("vb", tokenRes.token)}`
+      })
+
+      if (typeof window.ClipboardItem !== "undefined" && navigator.clipboard.write) {
+        const blobPromise = textPromise.then(text => new Blob([text], { type: "text/plain" }))
+        try {
+          await navigator.clipboard.write([
+            new ClipboardItem({
+              "text/plain": blobPromise
+            })
+          ])
+          toast.success(t("bills.detail.linkCopied") || "Link copied to clipboard")
+        } catch (err) {
+          const text = await textPromise
+          await navigator.clipboard.writeText(text)
+          toast.success(t("bills.detail.linkCopied") || "Link copied to clipboard")
+        }
+      } else {
+        const text = await textPromise
+        await navigator.clipboard.writeText(text)
+        toast.success(t("bills.detail.linkCopied") || "Link copied to clipboard")
       }
-      const link = `${window.location.origin}${buildPublicDocPath("vb", tokenRes.token)}`
-      await navigator.clipboard.writeText(link)
-      toast.success(t("bills.detail.linkCopied") || "Link copied to clipboard")
-      setPurchase({ ...purchase, publicAccessToken: tokenRes.token })
+
+      const tokenRes = await tokenPromise
+      if (tokenRes.token) {
+        setPurchase({ ...purchase, publicAccessToken: tokenRes.token })
+      }
+    } catch (error: any) {
+      toast.error(error.message || "Failed to create or copy public link")
     } finally {
       setSending(false)
     }

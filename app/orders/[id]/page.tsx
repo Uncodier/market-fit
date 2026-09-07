@@ -33,6 +33,9 @@ import { useSite } from "@/app/context/SiteContext"
 import { navigateToShipment } from "@/lib/navigation/navigation-helpers"
 import { OrderInvoiceDocument } from "../components/OrderInvoiceDocument"
 import { OrderStatusBar } from "../components/OrderStatusBar"
+import { RegisterPaymentDialog } from "@/app/sales/components/RegisterPaymentDialog"
+import { getSaleById } from "@/app/sales/actions"
+import { Sale } from "@/app/types"
 import {
   DocumentListHead,
   DocumentListRow,
@@ -57,6 +60,10 @@ export default function OrderDetail(props: { params: Promise<{ id: string }> }) 
   const [isCreatingShipment, setIsCreatingShipment] = useState(false)
   const [modifiedLines, setModifiedLines] = useState<Record<string, string>>({})
   const [sending, setSending] = useState(false)
+  
+  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false)
+  const [currentSale, setCurrentSale] = useState<Sale | null>(null)
+  const [isLoadingSale, setIsLoadingSale] = useState(false)
 
   useEffect(() => {
     async function load() {
@@ -165,7 +172,7 @@ export default function OrderDetail(props: { params: Promise<{ id: string }> }) 
         saleId: order.sale_id || undefined,
         leadId: order.leads?.id || (order.sales as any)?.lead_id || undefined,
         originLocationId: defaultLocation.id,
-        userId: order.user_id,
+        userId: (order as any).user_id,
       })
       if (res.error) throw new Error(res.error)
       if (res.data) {
@@ -239,19 +246,82 @@ export default function OrderDetail(props: { params: Promise<{ id: string }> }) 
   }
 
   const handleCopyClientLink = async () => {
+    if ((order as any).public_access_token) {
+      const link = `${window.location.origin}${buildPublicDocPath("so", (order as any).public_access_token)}`
+      try {
+        await navigator.clipboard.writeText(link)
+        toast.success(t("orders.detail.linkCopied") || "Link copied to clipboard")
+      } catch (err) {
+        toast.error("Failed to copy link")
+      }
+      return
+    }
+
     setSending(true)
     try {
-      const tokenRes = await ensureOrderPublicAccessToken(order.id)
-      if (tokenRes.error || !tokenRes.token) {
-        toast.error(tokenRes.error || "Failed to create public link")
-        return
+      const tokenPromise = ensureOrderPublicAccessToken(order.id)
+      
+      const textPromise = tokenPromise.then(tokenRes => {
+        if (tokenRes.error || !tokenRes.token) {
+          throw new Error(tokenRes.error || "Failed to create public link")
+        }
+        return `${window.location.origin}${buildPublicDocPath("so", tokenRes.token)}`
+      })
+
+      if (typeof window.ClipboardItem !== "undefined" && navigator.clipboard.write) {
+        const blobPromise = textPromise.then(text => new Blob([text], { type: "text/plain" }))
+        try {
+          await navigator.clipboard.write([
+            new ClipboardItem({
+              "text/plain": blobPromise
+            })
+          ])
+          toast.success(t("orders.detail.linkCopied") || "Link copied to clipboard")
+        } catch (err) {
+          const text = await textPromise
+          await navigator.clipboard.writeText(text)
+          toast.success(t("orders.detail.linkCopied") || "Link copied to clipboard")
+        }
+      } else {
+        const text = await textPromise
+        await navigator.clipboard.writeText(text)
+        toast.success(t("orders.detail.linkCopied") || "Link copied to clipboard")
       }
-      const link = `${window.location.origin}${buildPublicDocPath("so", tokenRes.token)}`
-      await navigator.clipboard.writeText(link)
-      toast.success(t("orders.detail.linkCopied") || "Link copied to clipboard")
-      setOrder({ ...order, public_access_token: tokenRes.token } as any)
+
+      const tokenRes = await tokenPromise
+      if (tokenRes.token) {
+        setOrder(prev => prev ? { ...prev, public_access_token: tokenRes.token } as any : prev)
+      }
+    } catch (error: any) {
+      toast.error(error.message || "Failed to create or copy public link")
     } finally {
       setSending(false)
+    }
+  }
+
+  const handleOpenPayment = async () => {
+    if (!order || !currentSite || !order.sale_id) return
+    setIsLoadingSale(true)
+    try {
+      const res = await getSaleById(currentSite.id, order.sale_id)
+      if (res.error || !res.sale) {
+        toast.error(res.error || "Failed to load sale information")
+      } else {
+        setCurrentSale(res.sale)
+        setIsPaymentModalOpen(true)
+      }
+    } finally {
+      setIsLoadingSale(false)
+    }
+  }
+
+  const handlePaymentSuccess = async () => {
+    // Refresh the order to get updated payment status/amount
+    if (order) {
+      const { data } = await getOrder(order.id)
+      if (data) {
+        setOrder(data)
+      }
     }
   }
 
@@ -266,6 +336,20 @@ export default function OrderDetail(props: { params: Promise<{ id: string }> }) 
                 <TabsTrigger value="shipments">{t('orders.detail.tabs.shipments') || 'Shipments'}</TabsTrigger>
               </TabsList>
               <div className="flex items-center gap-1">
+                {order.status !== "cancelled" && Number(order.sales?.amount_due) > 0 && (
+                  <>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleOpenPayment}
+                      disabled={isLoadingSale}
+                    >
+                      {isLoadingSale ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
+                      {t("orders.detail.payNow") || "Pay Now"}
+                    </Button>
+                    <div className="w-px h-6 bg-border mx-1" />
+                  </>
+                )}
                 {order.status !== "cancelled" && (
                   <>
                     <Button
@@ -497,6 +581,12 @@ export default function OrderDetail(props: { params: Promise<{ id: string }> }) 
           </TabsContent>
         </div>
       </Tabs>
+      <RegisterPaymentDialog
+        open={isPaymentModalOpen}
+        onOpenChange={setIsPaymentModalOpen}
+        sale={currentSale}
+        onSuccess={handlePaymentSuccess}
+      />
     </div>
   )
 }
