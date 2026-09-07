@@ -19,7 +19,7 @@ import { formatCurrency } from "@/app/components/dashboard/campaign-revenue-donu
 import { subDays, isWithinInterval, parseISO, startOfDay, endOfDay } from "date-fns"
 import { Sale } from "@/app/types"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/app/components/ui/dialog"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { navigateToSale } from "@/lib/navigation/navigation-helpers"
 import { RegisterPaymentDialog } from "./components/RegisterPaymentDialog"
 import { ViewSelector } from "@/app/components/view-selector"
@@ -86,11 +86,12 @@ export default function SalesPage() {
   })
   const { currentSite } = useSite()
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const urlSort = searchParams ? searchParams.get('sort') : null
+  const defaultSort = urlSort === 'updated_at' ? 'newest' : (urlSort === 'created_at' || urlSort === 'newest' ? 'newest' : (urlSort === 'oldest' ? 'oldest' : (urlSort === 'value_desc' ? 'value_desc' : (urlSort === 'value_asc' ? 'value_asc' : 'newest'))))
   
   // Use the command+k hook
   useCommandK()
-  
-  // States for dialog controls
   const [printDialogOpen, setPrintDialogOpen] = useState(false)
   const [registerPaymentOpen, setRegisterPaymentOpen] = useState(false)
   const [selectedSale, setSelectedSale] = useState<Sale | null>(null)

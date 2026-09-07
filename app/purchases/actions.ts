@@ -103,6 +103,33 @@ export async function getPurchaseById(siteId: string, id: string) {
   }
 }
 
+export async function getPurchaseWithoutContext(id: string) {
+  try {
+    const supabase = await createClient()
+
+    const { data, error } = await supabase
+      .from("purchases")
+      .select(`
+        *,
+        vendor:companies!vendor_company_id(id, name, email),
+        purchase_items(*, catalog_items(id, name, kind)),
+        site:sites(id, name, url, logo_url, settings)
+      `)
+      .eq("id", id)
+      .single()
+
+    if (error) throw new Error(error.message)
+    return { purchase: mapPurchase(data), site: data.site, error: null }
+  } catch (error) {
+    console.error("Error in getPurchaseWithoutContext:", error)
+    return {
+      purchase: null,
+      site: null,
+      error: error instanceof Error ? error.message : "Unknown error",
+    }
+  }
+}
+
 export async function createPurchase(values: {
   siteId: string
   title: string

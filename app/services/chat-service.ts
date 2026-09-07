@@ -127,7 +127,11 @@ if (!supabase.auth) {
 // Test connection
 supabase.auth.getSession().then((result) => {
   if (result.error) {
-    console.error("Error verifying Supabase session in chat-service:", result.error);
+    if (result.error.message.includes('mock') || result.error.message.includes('No hay sesión disponible')) {
+      console.log("Mock client skipped session check:", result.error.message);
+    } else {
+      console.error("Error verifying Supabase session in chat-service:", result.error);
+    }
   } else {
     console.log("Supabase client initialized successfully in chat-service.ts");
     if (result.data.session) {

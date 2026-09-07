@@ -138,6 +138,13 @@ async function findOrCreateKpi(
     period_start: formattedStart,
     period_end: formattedEnd
   };
+
+  // Skip query if siteId or segmentId are not valid UUIDs to prevent postgres crash
+  const isUUID = (id: string) => typeof id === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+  if (!isUUID(kpiParams.siteId) || (kpiParams.segmentId && !isUUID(kpiParams.segmentId))) {
+    console.warn(`Invalid UUID detected in KPI params: siteId=${kpiParams.siteId}, segmentId=${kpiParams.segmentId}. Skipping DB query.`);
+    return { kpi: null, created: false };
+  }
   
   // Build query to find existing KPI by attributes (not using the deterministic ID yet)
   let query = supabase

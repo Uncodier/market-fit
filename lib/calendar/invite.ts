@@ -95,11 +95,20 @@ export interface ZonedMeetingRangeParams {
 export function zonedMeetingRange(params: ZonedMeetingRangeParams): { start: Date; end: Date } {
   const { date, time, durationMins, timeZone } = params;
   
+  if (!date || !time) {
+    throw new Error("Invalid time value");
+  }
+  
   // Combine date and time to ISO format (local in the given timezone)
   const [h = "00", m = "00"] = time.split(":");
   const dateTimeStr = `${date}T${h.padStart(2, "0")}:${m.padStart(2, "0")}:00`;
   
   const start = fromZonedTime(dateTimeStr, timeZone);
+  
+  if (isNaN(start.getTime())) {
+    throw new Error("Invalid time value");
+  }
+  
   const end = addMinutes(start, durationMins);
   
   return { start, end };

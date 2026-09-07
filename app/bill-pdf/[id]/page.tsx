@@ -1,29 +1,27 @@
 "use client"
 
 import React, { useEffect, useState } from "react"
-import { useSite } from "@/app/context/SiteContext"
-import { getPurchaseById } from "@/app/purchases/actions"
+import { getPurchaseWithoutContext } from "@/app/purchases/actions"
 import { PublicDocumentView } from "@/app/documents/components/PublicDocumentView"
 import { PublicDocumentViewSkeleton } from "@/app/documents/components/PublicDocumentViewSkeleton"
 import { documentT } from "@/app/lib/i18n/document-t"
 
 export default function BillPdfPage(props: { params: Promise<{ id: string }> }) {
   const params = React.use(props.params)
-  const { currentSite } = useSite()
   const [error, setError] = useState<string | null>(null)
   const [view, setView] = useState<any>(null)
 
   useEffect(() => {
     async function load() {
-      if (!currentSite?.id) return
-      const res = await getPurchaseById(currentSite.id, params.id)
+      const res = await getPurchaseWithoutContext(params.id)
       if (res.error || !res.purchase) {
         setError(res.error || "Bill not found")
         return
       }
       const purchase = res.purchase
-      const locale = currentSite.settings?.default_locale || "en"
-      const items = (purchase.items || []).map((item) => ({
+      const site = res.site
+      const locale = site?.settings?.default_locale || "en"
+      const items = (purchase.items || []).map((item: any) => ({
         name: item.name || "Item",
         quantity: Number(item.quantity) || 0,
         unit_price: Number(item.unitCost) || 0,
@@ -48,17 +46,17 @@ export default function BillPdfPage(props: { params: Promise<{ id: string }> }) 
           name: purchase.vendorName,
           email: purchase.vendorEmail,
         },
-        siteId: currentSite.id,
-        siteName: currentSite.name || "Bill",
-        siteUrl: currentSite.url,
-        logoUrl: currentSite.logo_url,
-        location: currentSite.settings?.locations?.[0],
+        siteId: site?.id,
+        siteName: site?.name || "Bill",
+        siteUrl: site?.url,
+        logoUrl: site?.logo_url,
+        location: site?.settings?.locations?.[0],
         locale,
         statusKind: "bills" as const,
       })
     }
     load()
-  }, [params.id, currentSite])
+  }, [params.id])
 
   if (error) {
     return (

@@ -1,7 +1,6 @@
 "use client"
 
 import React, { useEffect, useState } from "react"
-import { useSite } from "@/app/context/SiteContext"
 import { getOrder } from "@/app/orders/actions"
 import { PublicDocumentView } from "@/app/documents/components/PublicDocumentView"
 import { PublicDocumentViewSkeleton } from "@/app/documents/components/PublicDocumentViewSkeleton"
@@ -11,7 +10,6 @@ import { documentT } from "@/app/lib/i18n/document-t"
 
 export default function OrderPdfPage(props: { params: Promise<{ id: string }> }) {
   const params = React.use(props.params)
-  const { currentSite } = useSite()
   const [error, setError] = useState<string | null>(null)
   const [view, setView] = useState<any>(null)
 
@@ -23,7 +21,7 @@ export default function OrderPdfPage(props: { params: Promise<{ id: string }> })
         return
       }
       const order = res.data as any
-      const locale = currentSite?.settings?.default_locale || "en"
+      const locale = order.sites?.settings?.default_locale || "en"
       const items = mapDocumentLineItems(
         order.sale_order_items?.length
           ? order.sale_order_items
@@ -36,7 +34,7 @@ export default function OrderPdfPage(props: { params: Promise<{ id: string }> })
         kindLabel: documentT(locale, "orders.detail.breadcrumbOrder") || "Order",
         docRef: String(order.order_number || order.id).substring(0, 12),
         status: order.status,
-        currency: order.currency || currentSite?.settings?.currency,
+        currency: order.currency || order.sites?.settings?.currency,
         createdAt: order.created_at,
         subtotal: order.subtotal,
         taxTotal: order.tax_total,
@@ -47,11 +45,11 @@ export default function OrderPdfPage(props: { params: Promise<{ id: string }> })
           name: order.leads?.name,
           email: order.leads?.email,
         },
-        siteId: currentSite?.id || order.site_id || order.owner_site_id || null,
-        siteName: currentSite?.name || "Order",
-        siteUrl: currentSite?.url,
-        logoUrl: currentSite?.logo_url,
-        location: currentSite?.settings?.locations?.[0],
+        siteId: order.sites?.id || order.site_id || order.owner_site_id || null,
+        siteName: order.sites?.name || "Order",
+        siteUrl: order.sites?.url,
+        logoUrl: order.sites?.logo_url,
+        location: order.sites?.settings?.locations?.[0],
         locale,
         statusKind: "orders" as const,
         fulfillmentMethod: order.fulfillment_method,
@@ -60,7 +58,7 @@ export default function OrderPdfPage(props: { params: Promise<{ id: string }> })
       })
     }
     load()
-  }, [params.id, currentSite])
+  }, [params.id])
 
   if (error) {
     return (

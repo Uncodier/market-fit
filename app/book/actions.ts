@@ -289,12 +289,21 @@ export async function bookMeeting(data: {
   }
 
   const timeZone = data.timezone || "America/Mexico_City";
-  const { start, end } = zonedMeetingRange({
-    date: data.date,
-    time: data.time,
-    durationMins,
-    timeZone,
-  });
+  let start: Date;
+  let end: Date;
+  
+  try {
+    const range = zonedMeetingRange({
+      date: data.date,
+      time: data.time,
+      durationMins,
+      timeZone,
+    });
+    start = range.start;
+    end = range.end;
+  } catch (error) {
+    throw new Error("Invalid date or time provided. Please check the meeting details and try again.");
+  }
 
   const { data: task, error: taskError } = await supabase
     .from("tasks")

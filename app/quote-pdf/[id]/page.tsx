@@ -1,7 +1,6 @@
 "use client"
 
 import React, { useEffect, useState } from "react"
-import { useSite } from "@/app/context/SiteContext"
 import { getQuotation } from "@/app/quotations/actions"
 import { ensureQuotationPublicAccessToken } from "@/app/quotations/public-actions"
 import { buildPublicQuoteUrl } from "@/app/quotations/public-token"
@@ -11,7 +10,6 @@ import { PrintableQuotation } from "@/app/quotations/components/PrintableQuotati
 
 export default function QuotePdfPage(props: { params: Promise<{ id: string }> }) {
   const unwrappedParams = React.use(props.params)
-  const { currentSite } = useSite()
   const [quotation, setQuotation] = useState<any>(null)
   const [buyerLink, setBuyerLink] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
@@ -52,12 +50,12 @@ export default function QuotePdfPage(props: { params: Promise<{ id: string }> })
     }
   }, [quotation])
 
-  const siteId = quotation?.site?.id || quotation?.site_id || currentSite?.id || null
-  const siteName = quotation?.site?.name || currentSite?.name || ""
-  const siteUrl = quotation?.site?.url || currentSite?.url || ""
-  const logoUrl = quotation?.site?.logo_url || currentSite?.logo_url || ""
-  const locale = currentSite?.settings?.default_locale || "en"
-  const location = currentSite?.settings?.locations?.[0] || null
+  const siteId = quotation?.site?.id || quotation?.site_id || null
+  const siteName = quotation?.site?.name || ""
+  const siteUrl = quotation?.site?.url || ""
+  const logoUrl = quotation?.site?.logo_url || ""
+  const locale = quotation?.site?.settings?.default_locale || "en"
+  const location = quotation?.site?.settings?.locations?.[0] || null
 
   if (loading) {
     return <PublicDocumentViewSkeleton />
@@ -69,7 +67,7 @@ export default function QuotePdfPage(props: { params: Promise<{ id: string }> })
         siteId={siteId}
         siteName={siteName}
         logoUrl={logoUrl}
-        currency={quotation?.currency || currentSite?.settings?.currency}
+        currency={quotation?.currency || quotation?.site?.settings?.currency}
       />
       <div className="py-8 print:py-0">
         {quotation ? (
