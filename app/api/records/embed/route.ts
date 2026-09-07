@@ -32,6 +32,29 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'SERVICE_API_KEY is not configured' }, { status: 500 });
     }
 
+    // We'll perform the heavy tasks in the background so we don't block the client
+    generateEmbeddingsInBackground(record_id, record.site_id, apiServerUrl, serviceApiKey).catch(
+      (err) => console.error("Background task failed:", err)
+    )
+
+    // Return success immediately
+    return NextResponse.json({ success: true, message: 'Processing started in the background' })
+
+  } catch (error: any) {
+    console.error('Error in record embed API:', error)
+    return NextResponse.json({ error: error.message || 'Internal error' }, { status: 500 })
+  }
+}
+
+async function generateEmbeddingsInBackground(
+  record_id: string,
+  site_id: string,
+  apiServerUrl: string,
+  serviceApiKey: string
+) {
+  try {
+    const supabase = await createServiceClient()
+
     // 2. Generate summary via the central API helper
     const summaryEndpoint = `${apiServerUrl.replace(/\/$/, '')}/api/ai/summary`;
     
@@ -47,14 +70,14 @@ export async function POST(request: NextRequest) {
           collection: 'records',
           id: record_id
         },
-        site_id: record.site_id
+        site_id: site_id
       }),
     });
 
     if (!summaryResponse.ok) {
       const errText = await summaryResponse.text();
       console.error('Central API summary error:', errText);
-      return NextResponse.json({ error: 'Failed to generate summary with Central API' }, { status: 500 });
+      return;
     }
 
     const summaryData = await summaryResponse.json();
@@ -62,7 +85,7 @@ export async function POST(request: NextRequest) {
 
     if (!generatedSummary) {
       console.error('Central API summary returned no text:', summaryData);
-      return NextResponse.json({ error: 'No summary returned from Central API' }, { status: 500 });
+      return;
     }
 
     // 3. Generate the embedding via the central API using the generated summary
@@ -84,7 +107,7 @@ export async function POST(request: NextRequest) {
     if (!embeddingsResponse.ok) {
       const errText = await embeddingsResponse.text();
       console.error('Central API embedding error:', errText);
-      return NextResponse.json({ error: 'Failed to generate embedding with Central API' }, { status: 500 });
+      return;
     }
 
     const embedData = await embeddingsResponse.json();
@@ -92,7 +115,7 @@ export async function POST(request: NextRequest) {
 
     if (!embedding || !Array.isArray(embedding)) {
       console.error('Central API embedding returned no values:', embedData);
-      return NextResponse.json({ error: 'No embedding returned from Central API' }, { status: 500 });
+      return;
     }
 
     // 4. Update the record with both the summary and embedding
@@ -102,13 +125,9 @@ export async function POST(request: NextRequest) {
       .eq('id', record_id)
 
     if (updateError) {
-      return NextResponse.json({ error: 'Failed to save summary and embedding' }, { status: 500 })
+      console.error('Failed to save summary and embedding:', updateError);
     }
-
-    return NextResponse.json({ success: true, summary: generatedSummary })
-
-  } catch (error: any) {
-    console.error('Error in record embed API:', error)
-    return NextResponse.json({ error: error.message || 'Internal error' }, { status: 500 })
+  } catch (err) {
+    console.error('Unhandled background task error:', err);
   }
 }

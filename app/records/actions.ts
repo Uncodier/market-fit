@@ -156,7 +156,7 @@ export async function resolveRelationsForSidebar(
       else if (target === "quotation") { table = "quotations"; nameField = "title" }
       else if (target === "record") { table = "records"; nameField = "title" }
       else if (target === "record_category") { table = "record_categories"; nameField = "name" }
-      else if (target === "team_member") { table = "site_users"; nameField = "name" }
+      else if (target === "team_member") { table = "site_members"; nameField = "name" }
 
       const { data, error } = await supabase
         .from(table)
@@ -381,11 +381,19 @@ const ENTITY_PREVIEW_CONFIG: Record<string, {
   person: { table: "users", idField: "id", labelField: "name", select: "id, name, email", fields: [
     { col: "email", label: "Email" },
   ]},
-  team_member: { table: "site_users", idField: "user_id", labelField: "name", select: "user_id, name", fields: []},
+  team_member: { table: "site_members", idField: "user_id", labelField: "name", select: "user_id, name, email, role, status", fields: [
+    { col: "email", label: "Email" },
+    { col: "role", label: "Role" },
+    { col: "status", label: "Status" }
+  ]},
   campaign: { table: "campaigns", idField: "id", labelField: "title", select: "id, title, status", fields: [
     { col: "status", label: "Status" },
   ]},
-  catalog_item: { table: "catalog_items", idField: "id", labelField: "name", select: "id, name", fields: []},
+  catalog_item: { table: "catalog_items", idField: "id", labelField: "name", select: "id, name, kind, status, target_sale_price", fields: [
+    { col: "kind", label: "Type" },
+    { col: "status", label: "Status" },
+    { col: "target_sale_price", label: "Price" }
+  ]},
   content: { table: "content", idField: "id", labelField: "title", select: "id, title, status", fields: [
     { col: "status", label: "Status" },
   ]},

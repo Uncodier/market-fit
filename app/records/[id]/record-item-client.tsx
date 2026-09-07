@@ -125,7 +125,6 @@ export default function RecordDetailPage() {
   const [description, setDescription] = useState("")
   const [status, setStatus] = useState("draft")
   const [isLoading, setIsLoading] = useState(true)
-  const [isSaving, setIsSaving] = useState(false)
   const [hasChanges, setHasChanges] = useState(false)
 
   const [activeRightTab, setActiveRightTab] = useState<"insights" | "relations">("insights")
@@ -240,9 +239,9 @@ export default function RecordDetailPage() {
     }
   }, [editor, record])
 
-  const handleSave = async () => {
+  const handleSave = () => {
     if (!record) return
-    setIsSaving(true)
+    
     const updates = {
       title,
       description,
@@ -250,20 +249,32 @@ export default function RecordDetailPage() {
       data: formData,
       relations: relationsData
     }
-    const { error } = await updateRecord(record.id, updates)
-    if (error) {
-      toast.error(error)
-    } else {
-      toast.success("Record saved")
-      setHasChanges(false)
-      // trigger embedding generation asynchronously
-      fetch("/api/records/embed", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ record_id: record.id })
-      }).catch(err => console.error("Failed to generate embedding", err))
-    }
-    setIsSaving(false)
+
+    // Optimistically update UI
+    setHasChanges(false)
+
+    toast.promise(
+      updateRecord(record.id, updates).then(({ error }) => {
+        if (error) throw new Error(error)
+        
+        // trigger embedding generation asynchronously
+        fetch("/api/records/embed", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ record_id: record.id })
+        }).catch(err => console.error("Failed to generate embedding", err))
+        
+        return true
+      }),
+      {
+        loading: t("common.saving") || "Saving...",
+        success: t("common.saved") || "Record saved",
+        error: (err) => {
+          setHasChanges(true)
+          return err.message
+        }
+      }
+    )
   }
 
   const handleDelete = async () => {
@@ -303,10 +314,10 @@ export default function RecordDetailPage() {
           <Button
             variant="secondary"
             onClick={handleSave}
-            disabled={isSaving || !hasChanges}
+            disabled={!hasChanges}
             className="flex items-center gap-2 mr-2"
           >
-            {isSaving ? <Loader className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+            <Save className="h-4 w-4" />
             {t("common.save") || "Save"}
           </Button>
           <div className="w-px h-6 bg-border mx-1" />

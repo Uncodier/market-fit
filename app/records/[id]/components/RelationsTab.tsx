@@ -140,18 +140,20 @@ export function RelationsTab({ recordId, fields, relationsData }: RelationsTabPr
       
       const target = fieldDef.relationTarget || 'lead'
       const label = resolvedRelations[targetId] || `${target} (${targetId.substring(0, 8)})`
+      const preview = entityPreviews[targetId]
       
       list.push({
         id: targetId,
         fieldName,
         target,
         label,
-        isRecord: target === 'record'
+        isRecord: target === 'record',
+        preview
       })
     })
     
     return list
-  }, [relationsData, fields, resolvedRelations])
+  }, [relationsData, fields, resolvedRelations, entityPreviews])
 
   return (
     <div className="space-y-6">
@@ -191,36 +193,60 @@ export function RelationsTab({ recordId, fields, relationsData }: RelationsTabPr
             {explicitRelationsList.map(rel => (
               rel.isRecord ? (
                 <Link key={rel.id} href={`/records/${rel.id}`}>
-                  <div className="p-3 border border-border/50 bg-muted/20 rounded-lg flex items-center justify-between group hover:bg-muted/40 transition-colors mb-3">
+                  <div className="p-3 border border-border/50 bg-muted/20 rounded-lg flex flex-col group hover:bg-muted/40 transition-colors mb-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="h-8 w-8 rounded-md bg-background border flex items-center justify-center text-muted-foreground shrink-0">
+                          <FileText className="h-4 w-4" />
+                        </div>
+                        <div>
+                          <div className="text-sm font-medium">{rel.label}</div>
+                          <div className="text-xs text-muted-foreground capitalize">
+                            {rel.fieldName} • Record
+                          </div>
+                        </div>
+                      </div>
+                      <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <LinkIcon className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    {rel.preview?.fields && rel.preview.fields.length > 0 && (
+                      <div className="mt-3 pt-3 border-t border-border/50 space-y-1.5">
+                        {rel.preview.fields.map((field: any) => (
+                          <div key={field.label} className="flex justify-between items-center text-xs">
+                            <span className="text-muted-foreground">{field.label}</span>
+                            <span className="font-medium text-right">{field.value}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </Link>
+              ) : (
+                <div key={rel.id} className="p-3 border border-border/50 bg-muted/20 rounded-lg flex flex-col mb-3">
+                  <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <div className="h-8 w-8 rounded-md bg-background border flex items-center justify-center text-muted-foreground">
-                        <FileText className="h-4 w-4" />
+                      <div className="h-8 w-8 rounded-md bg-background border flex items-center justify-center text-muted-foreground shrink-0">
+                        <ExternalLink className="h-4 w-4" />
                       </div>
                       <div>
                         <div className="text-sm font-medium">{rel.label}</div>
                         <div className="text-xs text-muted-foreground capitalize">
-                          {rel.fieldName} • Record
+                          {rel.fieldName} • {rel.target.replace('_', ' ')}
                         </div>
                       </div>
                     </div>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <LinkIcon className="h-4 w-4" />
-                    </Button>
                   </div>
-                </Link>
-              ) : (
-                <div key={rel.id} className="p-3 border border-border/50 bg-muted/20 rounded-lg flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-3">
-                    <div className="h-8 w-8 rounded-md bg-background border flex items-center justify-center text-muted-foreground">
-                      <ExternalLink className="h-4 w-4" />
+                  {rel.preview?.fields && rel.preview.fields.length > 0 && (
+                    <div className="mt-3 pt-3 border-t border-border/50 space-y-1.5">
+                      {rel.preview.fields.map((field: any) => (
+                        <div key={field.label} className="flex justify-between items-center text-xs">
+                          <span className="text-muted-foreground">{field.label}</span>
+                          <span className="font-medium text-right">{field.value}</span>
+                        </div>
+                      ))}
                     </div>
-                    <div>
-                      <div className="text-sm font-medium">{rel.label}</div>
-                      <div className="text-xs text-muted-foreground capitalize">
-                        {rel.fieldName} • {rel.target.replace('_', ' ')}
-                      </div>
-                    </div>
-                  </div>
+                  )}
                 </div>
               )
             ))}
