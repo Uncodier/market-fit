@@ -340,7 +340,7 @@ export function Overview({ startDate: propStartDate, endDate: propEndDate, segme
 
   if (isLoading) {
     return (
-      <div className="w-full h-full flex flex-col pl-2 md:pl-4 overflow-hidden">
+      <div className="w-full h-full flex flex-col pl-2 md:pl-4">
         {/* Esqueleto para el eje Y con valores */}
         <div className="flex flex-1 relative mt-4">
           <div className="absolute left-0 top-0 bottom-0 w-14 flex flex-col justify-between pr-2">
@@ -410,7 +410,7 @@ export function Overview({ startDate: propStartDate, endDate: propEndDate, segme
   }
 
   return (
-    <div className="w-full h-full flex flex-col pl-2 md:pl-4 overflow-hidden">
+    <div className="w-full h-full flex flex-col pl-2 md:pl-4">
       {/* Agregar ejes Y con valores */}
       <div className="flex flex-1 relative mt-4">
         {/* Eje Y con valores */}
@@ -455,36 +455,13 @@ export function Overview({ startDate: propStartDate, endDate: propEndDate, segme
             return (
               <div 
                 key={index} 
-                className="flex-1 flex flex-col items-center justify-end h-full group relative px-1"
+                className="flex-1 flex flex-col items-center justify-end h-full px-1"
               >
-                {/* Tooltip mejorado adaptado al tema */}
-                {hasData && (
-                  <div 
-                    className={`
-                      absolute bottom-full mb-2 opacity-0 group-hover:opacity-100 
-                      transition-opacity duration-200 rounded-md shadow-md p-2 
-                      text-sm z-10 whitespace-nowrap translate-x-[-50%] left-1/2
-                      ${isDarkMode ? 
-                        "bg-slate-800 border border-slate-600" : 
-                        "bg-white border border-gray-200"}
-                    `}
-                    style={{ 
-                      boxShadow: isDarkMode 
-                        ? '0 4px 6px -1px rgba(0, 0, 0, 0.5), 0 2px 4px -2px rgba(0, 0, 0, 0.3)' 
-                        : '0 1px 3px 0 rgba(0, 0, 0, 0.1)' 
-                    }}
-                  >
-                    <p className={`font-semibold ${isDarkMode ? "text-slate-100" : "text-gray-900"}`}>{item.name}</p>
-                    <p className={isDarkMode ? "text-[#E0FF17]" : "text-[#7a8a0f]"}>
-                      <span className="font-medium">Total:</span> {formatCurrencyExact(item.total || 0)}
-                    </p>
-                  </div>
-                )}
                 
                 {/* Barra con animación al cargar y gradiente */}
                 {hasData ? (
                   <div 
-                    className="w-full transition-all rounded-t-sm origin-bottom group-hover:scale-x-105"
+                    className="w-full transition-all rounded-t-sm origin-bottom hover:scale-x-105 group relative"
                     style={{ 
                       height: `${height}%`,
                       animation: `growUp 1s ease-out forwards`,
@@ -498,7 +475,30 @@ export function Overview({ startDate: propStartDate, endDate: propEndDate, segme
                     onMouseOut={(e) => {
                       e.currentTarget.style.background = "linear-gradient(to bottom, #E0FF17, #D1ED1C)";
                     }}
-                  />
+                  >
+                    {/* Tooltip mejorado adaptado al tema */}
+                    <div 
+                      className={`
+                        absolute bottom-full mb-2 opacity-0 group-hover:opacity-100 
+                        transition-opacity duration-200 rounded-md shadow-md p-2 
+                        text-sm z-50 whitespace-nowrap translate-x-[-50%] left-1/2
+                        pointer-events-none
+                        ${isDarkMode ? 
+                          "bg-slate-800 border border-slate-600" : 
+                          "bg-white border border-gray-200"}
+                      `}
+                      style={{ 
+                        boxShadow: isDarkMode 
+                          ? '0 4px 6px -1px rgba(0, 0, 0, 0.5), 0 2px 4px -2px rgba(0, 0, 0, 0.3)' 
+                          : '0 1px 3px 0 rgba(0, 0, 0, 0.1)' 
+                      }}
+                    >
+                      <p className={`font-semibold ${isDarkMode ? "text-slate-100" : "text-gray-900"}`}>{item.name}</p>
+                      <p className={isDarkMode ? "text-[#E0FF17]" : "text-[#7a8a0f]"}>
+                        <span className="font-medium">Total:</span> {formatCurrencyExact(item.total || 0)}
+                      </p>
+                    </div>
+                  </div>
                 ) : (
                   // Empty placeholder for no data
                   <div className="w-full h-0 border-t border-dashed border-slate-300 dark:border-slate-600 mt-[1px]" />

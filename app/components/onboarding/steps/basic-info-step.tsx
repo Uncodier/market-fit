@@ -106,15 +106,15 @@ export function BasicInfoStep({ form }: BasicInfoStepProps) {
           />
         </div>
 
-        <div className="flex items-center justify-center">
+        <div className="flex justify-center md:justify-end md:pr-4 pt-1">
           <FormField
             control={form.control}
             name="logo_url"
             render={({ field }) => (
-              <FormItem>
+              <FormItem className="w-full max-w-[200px]">
                 <FormLabel>Logo (Optional)</FormLabel>
                 <FormControl>
-                  <div className="w-[240px] h-[240px] relative">
+                  <div className="w-full aspect-square relative">
                     {field.value ? (
                       <div className="w-full h-full relative group">
                         <Image
@@ -134,11 +134,11 @@ export function BasicInfoStep({ form }: BasicInfoStepProps) {
                     ) : (
                       <div
                         {...getRootProps()}
-                        className="w-full h-full rounded-lg border-2 border-dashed border-muted-foreground/25 bg-muted/20 flex flex-col items-center justify-center gap-2 cursor-pointer hover:border-muted-foreground/50 hover:bg-muted/30 transition-colors"
+                        className="w-full h-full rounded-lg border-2 border-dashed border-muted-foreground/25 bg-muted/20 flex flex-col items-center justify-center gap-3 cursor-pointer hover:border-muted-foreground/50 hover:bg-muted/30 transition-colors p-4"
                       >
                         <input {...getInputProps()} />
-                        <UploadCloud className="h-8 w-8 text-muted-foreground" />
-                        <div className="text-center">
+                        <UploadCloud className="h-10 w-10 text-muted-foreground" />
+                        <div className="text-center space-y-1">
                           <p className="text-sm font-medium text-foreground">Click to upload</p>
                           <p className="text-xs text-muted-foreground">PNG, JPG, GIF up to 5MB</p>
                         </div>

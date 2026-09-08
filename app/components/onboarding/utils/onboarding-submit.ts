@@ -63,11 +63,11 @@ function clampFocusMode(value: unknown): number {
 }
 
 function sanitizeDay(
-  day: { enabled?: boolean; start?: string; end?: string } | undefined,
-  fallback: { enabled: boolean; start: string; end: string }
+  day: any,
+  fallback: { enabled: boolean; start?: string; end?: string }
 ) {
-  const start = day?.start || fallback.start
-  const end = day?.end || fallback.end
+  const start = day?.start || fallback.start || "09:00"
+  const end = day?.end || fallback.end || "18:00"
   const enabled = Boolean(day?.enabled)
   if (enabled && start >= end) {
     return { enabled: false, start, end }
@@ -162,7 +162,7 @@ export function getRequiredFieldErrors(values: SiteOnboardingValues): {
   else if (name.length < 2) errors.name = "Project name must be at least 2 characters"
 
   if (!url) errors.url = "Site URL is required"
-  else if (!isUsableSiteUrl(url)) errors.url = "Must be a valid URL"
+  else if (!isUsableSiteUrl(url)) errors.url = "Must be a valid URL (e.g. https://example.com)"
 
   return errors
 }

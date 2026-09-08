@@ -14,22 +14,23 @@ export function isUsableSiteUrl(raw: string): boolean {
   try {
     const parsed = new URL(value)
     if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return false
-    return parsed.hostname.replace(/\.$/, "").length > 0
+    // Asegurarse de que tenga un TLD válido (mínimo algo como .com)
+    return parsed.hostname.replace(/\.$/, "").length > 0 && parsed.hostname.includes('.')
   } catch {
     return false
   }
 }
 
-const money = z.coerce.number().finite().min(0).optional().catch(0)
+const money = z.coerce.number({ invalid_type_error: "Must be a valid number" }).finite().min(0, "Must be ≥ 0").optional()
 
 const dayHoursSchema = z.object({
   enabled: z.boolean(),
-  start: z.string().optional(),
-  end: z.string().optional(),
+  start: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Invalid time").optional(),
+  end: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Invalid time").optional(),
 })
 
 const addressSchema = z.object({
-  name: z.string().optional().default(""),
+  name: z.string().min(1, "Address name is required"),
   address: z.string().optional(),
   city: z.string().optional(),
   state: z.string().optional(),
@@ -38,7 +39,7 @@ const addressSchema = z.object({
 })
 
 const offerSchema = z.object({
-  name: z.string().min(1),
+  name: z.string().min(1, "Name is required"),
   description: z.string().optional(),
   cost: money,
   lowest_sale_price: money,
@@ -51,7 +52,7 @@ export const siteOnboardingSchema = z.object({
     .string()
     .trim()
     .min(1, "Site URL is required")
-    .refine(isUsableSiteUrl, "Must be a valid URL"),
+    .refine(isUsableSiteUrl, "Must be a valid URL (e.g. https://example.com)"),
   description: z.string().optional(),
   logo_url: z.string().optional(),
   focusMode: z.coerce.number().min(0).max(100).catch(50),
@@ -111,7 +112,7 @@ export const siteOnboardingSchema = z.object({
     available: money,
   }).optional(),
   marketing_channels: z.array(z.object({
-    name: z.string(),
+    name: z.string().min(1, "Channel name is required"),
   })).optional().default([]),
   products: z.array(offerSchema).optional().default([]),
   services: z.array(offerSchema).optional().default([]),

@@ -140,6 +140,33 @@ export function SiteOnboarding({
     return canProceedFromStep(stepId, currentValues)
   }
 
+  const isStepEmpty = (stepId: number, values: SiteOnboardingValues) => {
+    switch (stepId) {
+      case 1: 
+        return false; // Basic info is required
+      case 2: 
+        return false; // Focus mode has a default value (50), so it's never technically "empty"
+      case 3: 
+        return !values.business_hours || values.business_hours.length === 0 || values.business_hours.every((h: any) => !h.name || !h.name.trim());
+      case 4: 
+        return !values.locations || values.locations.length === 0 || values.locations.every((l: any) => !l.name || !l.name.trim());
+      case 5: 
+        return !values.about && !values.company_size && !values.industry && 
+               (!values.swot || (!values.swot.strengths && !values.swot.weaknesses && !values.swot.opportunities && !values.swot.threats)) &&
+               (!values.goals || (!values.goals.quarterly && !values.goals.yearly && !values.goals.fiveYear && !values.goals.tenYear));
+      case 6: 
+        return (!values.marketing_budget?.total && !values.marketing_budget?.available) && 
+               (!values.marketing_channels || values.marketing_channels.length === 0 || values.marketing_channels.every((c: any) => !c.name || !c.name.trim()));
+      case 7: 
+        return (!values.products || values.products.length === 0 || values.products.every((p: any) => !p.name || !p.name.trim())) && 
+               (!values.services || values.services.length === 0 || values.services.every((s: any) => !s.name || !s.name.trim()));
+      default: 
+        return false;
+    }
+  }
+
+  const emptyCurrentStep = isStepEmpty(currentStep, currentValues);
+
   const updateStepErrors = () => {
     const newErrors = new Set<number>()
     
@@ -187,18 +214,28 @@ export function SiteOnboarding({
     }
   }, [currentStep])
 
-  const nextStep = () => {
+  const nextStep = async () => {
     setHasValidated(true)
     syncAutofilledBasicFields()
 
+    let fieldsToValidate: any[] = [];
+    if (currentStep === 1) fieldsToValidate = ["name", "url", "description", "logo_url"];
+    else if (currentStep === 2) fieldsToValidate = ["focusMode"];
+    else if (currentStep === 3) fieldsToValidate = ["business_hours"];
+    else if (currentStep === 4) fieldsToValidate = ["locations"];
+    else if (currentStep === 5) fieldsToValidate = ["about", "company_size", "industry", "swot", "goals"];
+    else if (currentStep === 6) fieldsToValidate = ["marketing_budget", "marketing_channels"];
+
+    if (fieldsToValidate.length > 0) {
+      const isValid = await form.trigger(fieldsToValidate);
+      if (!isValid) {
+        updateStepErrors();
+        return; // Don't proceed if current step has validation errors
+      }
+    }
+
     if (currentStep === 1) {
       const fieldErrors = getRequiredFieldErrors(form.getValues())
-      if (fieldErrors.name) {
-        form.setError("name", { type: "manual", message: fieldErrors.name })
-      }
-      if (fieldErrors.url) {
-        form.setError("url", { type: "manual", message: fieldErrors.url })
-      }
       if (fieldErrors.name || fieldErrors.url) {
         updateStepErrors()
         toast.error(fieldErrors.name || fieldErrors.url)
@@ -223,10 +260,16 @@ export function SiteOnboarding({
     }
   }
 
-  const handleComplete = () => {
+  const handleComplete = async () => {
     if (isLoading) return
     setHasValidated(true)
     syncAutofilledBasicFields()
+
+    const isValid = await form.trigger(["products", "services"]);
+    if (!isValid) {
+      updateStepErrors();
+      return;
+    }
 
     const prepared = prepareOnboardingSubmit(form.getValues())
     applySanitizedValues(prepared.data)
@@ -641,7 +684,7 @@ export function SiteOnboarding({
                   </div>
                 </SectionCardHeader>
 
-                <SectionCardContent className="pb-12">
+                <SectionCardContent className="pb-12 px-8">
                   {currentStep === 1 && (
                     <BasicInfoStep form={form} />
                   )}
@@ -708,13 +751,12 @@ export function SiteOnboarding({
                   )}
                 </SectionCardContent>
 
-                <ActionFooter>
-                  {currentStep < 8 && (
+                <ActionFooter className="px-8 py-6">
+                  {currentStep > 1 && currentStep < 8 && (
                     <Button
                       type="button"
                       variant="outline"
                       onClick={prevStep}
-                      disabled={currentStep === 1}
                       size="lg"
                     >
                       <ChevronLeft className="h-4 w-4 mr-2" />
@@ -722,13 +764,16 @@ export function SiteOnboarding({
                     </Button>
                   )}
 
+                  {currentStep === 1 && <div />} {/* Espaciador para mantener "Next" a la derecha */}
+
                   {currentStep < 7 ? (
                     <Button
                       type="submit"
+                      variant="outline"
                       size="lg"
                       disabled={!canGoNext}
                     >
-                      Next
+                      {emptyCurrentStep ? "Skip" : "Next"}
                       <ChevronRight className="h-4 w-4 ml-2" />
                     </Button>
                   ) : currentStep === 7 ? (
@@ -743,8 +788,12 @@ export function SiteOnboarding({
                           <div className="h-4 w-4 animate-pulse bg-muted rounded" />
                           <span>Creating</span>
                         </div>
-                      ) : "Create Project"}
-                      <Check className="h-4 w-4 ml-2" />
+                      ) : (
+                        <>
+                          <Check className="h-4 w-4 mr-2" />
+                          {emptyCurrentStep ? "Skip & Create Project" : "Create Project"}
+                        </>
+                      )}
                     </Button>
                   ) : (
                     <div className="flex gap-4 w-full">

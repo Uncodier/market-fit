@@ -2,8 +2,8 @@ import { Site } from "@/app/context/site-types"
 
 export function getAccountLimit(plan?: string | null, addonsCount: number = 0): number {
   if (!plan || plan === 'commission') return 0 + addonsCount
-  if (plan === 'starter') return 1 + addonsCount
-  if (plan === 'startup') return 3 + addonsCount
+  if (plan === 'engine') return 1 + addonsCount
+  if (plan === 'foundry') return 3 + addonsCount
   if (plan === 'enterprise') return 10 + addonsCount
   return 0 + addonsCount
 }

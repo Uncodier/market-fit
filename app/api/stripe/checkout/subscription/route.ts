@@ -20,11 +20,11 @@ export async function POST(request: NextRequest) {
     // Validate subscription plans
     const planPrices: Record<string, { priceId: string; amount: number }> = {
       engine: {
-        priceId: process.env.STRIPE_ENGINE_PRICE_ID || 'price_engine',
+        priceId: process.env.STRIPE_STARTER_PRICE_ID || 'price_engine',
         amount: 23
       },
       foundry: { 
-        priceId: process.env.STRIPE_FOUNDRY_PRICE_ID || 'price_foundry',
+        priceId: process.env.STRIPE_STARTUP_PRICE_ID || 'price_foundry',
         amount: 99 
       },
       enterprise: { 

@@ -385,7 +385,7 @@ export interface Database {
         Row: {
           id: string
           site_id: string
-          plan: 'commission' | 'starter' | 'startup' | 'enterprise'
+          plan: 'commission' | 'engine' | 'foundry' | 'enterprise'
           addons_count: number
           masked_card_number: string | null
           card_name: string | null
@@ -410,7 +410,7 @@ export interface Database {
         Insert: {
           id?: string
           site_id: string
-          plan?: 'commission' | 'starter' | 'startup' | 'enterprise'
+          plan?: 'commission' | 'engine' | 'foundry' | 'enterprise'
           addons_count?: number
           masked_card_number?: string | null
           card_name?: string | null
@@ -435,7 +435,7 @@ export interface Database {
         Update: {
           id?: string
           site_id?: string
-          plan?: 'commission' | 'starter' | 'startup' | 'enterprise'
+          plan?: 'commission' | 'engine' | 'foundry' | 'enterprise'
           addons_count?: number
           masked_card_number?: string | null
           card_name?: string | null
