@@ -192,7 +192,7 @@ export default function CatalogPage() {
     <div className="flex-1 flex flex-col min-h-[calc(100vh-var(--topbar-height,64px))] min-h-0">
       <StickyHeader>
         <div className="w-full pt-0">
-          <div className="flex items-center justify-between gap-2 w-full">
+          <div className="flex items-center justify-between gap-4 md:gap-6 w-full">
             <MobileFiltersDrawer triggerText={t('common.search') || "Search"}>
                 <div className="flex flex-col md:flex-row items-stretch md:items-center gap-6 md:gap-4 w-full flex-1 min-w-0">
                   <div className="md:hidden w-full">
@@ -201,12 +201,12 @@ export default function CatalogPage() {
                     </form>
                   </div>
                   
-                  <div className="flex flex-col gap-2 w-full md:w-auto">
+                  <div className="flex flex-col gap-2 w-full md:w-auto min-w-0">
                     <span className="text-xs font-semibold text-muted-foreground md:hidden mb-1 uppercase">{t('catalog.kind.label') === 'catalog.kind.label' ? 'Item Type' : t('catalog.kind.label')}</span>
                     <Tabs 
                       value={kindFilter} 
                       onValueChange={(val) => { setKindFilter(val as any); setPage(1); }}
-                      className="w-full md:w-auto flex-shrink-0"
+                      className="w-full md:w-auto min-w-0"
                     >
                       <TabsList className="h-auto md:h-8 p-0 md:p-0.5 bg-transparent md:bg-muted/30 rounded-lg md:rounded-full flex flex-col md:flex-row w-full md:max-w-full overflow-y-auto md:overflow-x-auto justify-start items-stretch md:items-center gap-1 md:gap-0">
                         <TabsTrigger value="all" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent whitespace-normal md:whitespace-nowrap">{t('catalog.kind.all') || 'All items'}</TabsTrigger>
@@ -217,12 +217,12 @@ export default function CatalogPage() {
                     </Tabs>
                   </div>
                   
-                  <div className="flex flex-col gap-2 w-full md:w-auto">
+                  <div className="flex flex-col gap-2 w-full md:w-auto min-w-0">
                     <span className="text-xs font-semibold text-muted-foreground md:hidden mb-1 uppercase">{t('common.status') === 'common.status' ? 'Status' : t('common.status')}</span>
                     <Tabs 
                       value={statusFilter} 
                       onValueChange={(val) => { setStatusFilter(val as any); setPage(1); }}
-                      className="w-full md:w-auto flex-shrink-0"
+                      className="w-full md:w-auto min-w-0"
                     >
                       <TabsList className="h-auto md:h-8 p-0 md:p-0.5 bg-transparent md:bg-muted/30 rounded-lg md:rounded-full flex flex-col md:flex-row w-full md:max-w-full overflow-y-auto md:overflow-x-auto justify-start items-stretch md:items-center gap-1 md:gap-0">
                         <TabsTrigger value="active" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent whitespace-normal md:whitespace-nowrap">{t('status.active') || 'Active'}</TabsTrigger>
@@ -239,11 +239,9 @@ export default function CatalogPage() {
                 </div>
               </MobileFiltersDrawer>
               
-              <div className="flex items-center gap-2 w-auto justify-end shrink-0">
-                <div className="flex ml-2">
-                  <SortDropdown sortBy={sortBy} setSortBy={setSortBy} />
+              <div className="ml-auto flex items-center gap-3 shrink-0">
+                <SortDropdown sortBy={sortBy} setSortBy={setSortBy} />
                 <ViewSelector currentView={viewType} onViewChange={setViewType} />
-                </div>
               </div>
             </div>
         </div>
