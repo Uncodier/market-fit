@@ -86,7 +86,7 @@ class BillingService {
   /**
    * Create or update payment method with Stripe and save billing info
    */
-  async saveBillingInfo(siteId: string, billingData: BillingData): Promise<{ success: boolean; error?: string }> {
+  async saveBillingInfo(siteId: string, billingData: Partial<BillingData>): Promise<{ success: boolean; error?: string }> {
     try {
       if (await isDemoModeActive()) {
         console.log('🤖 DEMO MODE: Simulated saving billing info');
@@ -284,7 +284,7 @@ class BillingService {
    */
   async createSubscriptionCheckoutSession(
     siteId: string,
-    plan: 'starter' | 'startup' | 'enterprise',
+    plan: 'engine' | 'foundry' | 'enterprise',
     userEmail: string,
     addonsCount: number = 0
   ): Promise<{ success: boolean; url?: string; error?: string }> {

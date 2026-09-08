@@ -9,6 +9,44 @@ export type Json =
 export interface Database {
   public: {
     Tables: {
+      partner_licenses: {
+        Row: {
+          id: string
+          license_key: string
+          parent_license_key: string | null
+          partner: string
+          status: string
+          plan_name: string
+          user_id: string | null
+          site_id: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          license_key: string
+          parent_license_key?: string | null
+          partner: string
+          status: string
+          plan_name: string
+          user_id?: string | null
+          site_id?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          license_key?: string
+          parent_license_key?: string | null
+          partner?: string
+          status?: string
+          plan_name?: string
+          user_id?: string | null
+          site_id?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
       segments: {
         Row: {
           id: string

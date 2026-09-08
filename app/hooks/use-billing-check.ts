@@ -3,7 +3,7 @@ import { useSite } from '@/app/context/SiteContext'
 
 export interface BillingCheckResult {
   canStartRobot: boolean
-  hasStartupPlan: boolean
+  hasEnginePlan: boolean
   hasActiveCredits: boolean
   billingPlan: string | null
   creditsAvailable: number
@@ -19,7 +19,7 @@ export function useBillingCheck(): BillingCheckResult {
     if (!currentSite?.billing) {
       return {
         canStartRobot: false,
-        hasStartupPlan: false,
+        hasEnginePlan: false,
         hasActiveCredits: false,
         billingPlan: null,
         creditsAvailable: 0,
@@ -31,18 +31,18 @@ export function useBillingCheck(): BillingCheckResult {
     const plan = billing.plan
     const creditsAvailable = billing.credits_available || 0
     
-    // Check if plan is starter, startup or enterprise (paid plans)
-    const hasStartupPlan = plan === 'starter' || plan === 'startup' || plan === 'enterprise'
+    // Check if plan is engine, foundry or enterprise (paid plans)
+    const hasEnginePlan = plan === 'engine' || plan === 'foundry' || plan === 'enterprise'
     
     // Check if has active credits
     const hasActiveCredits = creditsAvailable > 0
     
-    // Can start robot if has startup+ plan OR has active credits
-    const canStartRobot = hasStartupPlan || hasActiveCredits
+    // Can start robot if has engine+ plan OR has active credits
+    const canStartRobot = hasEnginePlan || hasActiveCredits
 
     return {
       canStartRobot,
-      hasStartupPlan,
+      hasEnginePlan,
       hasActiveCredits,
       billingPlan: plan,
       creditsAvailable,

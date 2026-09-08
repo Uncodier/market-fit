@@ -64,32 +64,32 @@ export const steps = [
   },
   {
     id: 2,
-    title: "AI Focus Mode",
+    title: "AI Focus Mode (Optional)",
     description: "Sales vs Growth balance"
   },
   {
     id: 3,
-    title: "Business Hours",
+    title: "Business Hours (Optional)",
     description: "Schedules & timezones"
   },
   {
     id: 4,
-    title: "Locations",
+    title: "Locations (Optional)",
     description: "Physical presence"
   },
   {
     id: 5,
-    title: "Company Information",
+    title: "Company Information (Optional)",
     description: "About, goals & SWOT"
   },
   {
     id: 6,
-    title: "Marketing",
+    title: "Marketing (Optional)",
     description: "Budget & channels"
   },
   {
     id: 7,
-    title: "Products & Services",
+    title: "Products & Services (Optional)",
     description: "Offerings & pricing"
   },
   {

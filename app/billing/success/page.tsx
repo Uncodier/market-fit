@@ -22,12 +22,13 @@ function SuccessContent() {
   const [currentDate, setCurrentDate] = useState('')
   
   // Determine transaction type
-  const isSubscription = plan && ['startup', 'enterprise'].includes(plan)
+  const isSubscription = plan && ['engine', 'foundry', 'enterprise'].includes(plan)
   
   // Get plan details
   const planDetails = {
-    startup: { name: 'Startup Plan', price: '$99/month', features: ['Advanced analytics', 'Priority support', 'Custom integrations'] },
-    enterprise: { name: 'Enterprise Plan', price: '$500/month', features: ['All Startup features', 'Dedicated account manager', 'White-label options', 'Custom development'] }
+    engine: { name: 'Engine Plan', price: '$23/month', features: ['20 credits / mo', '1 connected account', 'Standard support'] },
+    foundry: { name: 'Foundry Plan', price: '$99/month', features: ['100 credits / mo', '3 connected accounts', 'Priority support'] },
+    enterprise: { name: 'Enterprise Plan', price: '$500/month', features: ['500 credits / mo', 'Unlimited connected accounts', 'Custom development'] }
   }
   
   const currentPlan = plan ? planDetails[plan as keyof typeof planDetails] : null

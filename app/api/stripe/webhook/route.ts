@@ -517,7 +517,7 @@ export async function POST(request: NextRequest) {
           }
 
           // Grant initial subscription credits
-          const baseCredits = plan === 'enterprise' ? 500 : plan === 'startup' ? 100 : plan === 'starter' ? 20 : 0
+          const baseCredits = plan === 'enterprise' ? 500 : plan === 'foundry' ? 100 : plan === 'engine' ? 20 : 0
           const addonsCredits = addonsCount * 5
           const creditsToGrant = baseCredits + addonsCredits
           
@@ -564,7 +564,7 @@ export async function POST(request: NextRequest) {
         }
 
         const subscriptionStatus = subscription.status
-        const plan = subscription.metadata?.plan || 'startup' // Default to startup if no plan specified
+        const plan = subscription.metadata?.plan || 'foundry' // Default to foundry if no plan specified
         let resolvedAddonsCount = parseInt(subscription.metadata?.addons_count || '0', 10)
         
         // Ensure we capture real quantity if user modifies it from Stripe Portal
@@ -720,7 +720,7 @@ export async function POST(request: NextRequest) {
             const currentPlan = billingInfo?.plan
             const addonsCount = billingInfo?.addons_count || 0
             
-            const baseCredits = currentPlan === 'enterprise' ? 500 : currentPlan === 'startup' ? 100 : currentPlan === 'starter' ? 20 : 0
+            const baseCredits = currentPlan === 'enterprise' ? 500 : currentPlan === 'foundry' ? 100 : currentPlan === 'engine' ? 20 : 0
             const addonsCredits = addonsCount * 5
             const creditsToGrant = baseCredits + addonsCredits
             

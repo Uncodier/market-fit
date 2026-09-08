@@ -25,7 +25,7 @@ import { DowngradeChannelsModal } from "./downgrade-channels-modal"
 import { disconnectOutstandSocial, disconnectZavuChannel } from "@/app/components/settings/disconnect-remote-accounts"
 
 const billingFormSchema = z.object({
-  plan: z.enum(["commission", "starter", "startup", "enterprise"]).default("commission"),
+  plan: z.enum(["commission", "engine", "foundry", "enterprise"]).default("commission"),
   addons_count: z.number().optional().default(0),
   card_name: z.string().optional(),
   card_number: z.string().optional(),
@@ -55,8 +55,8 @@ interface BillingFormProps {
 
 const PLAN_ORDER: Record<BillingPlan, number> = {
   commission: 0,
-  starter: 1,
-  startup: 2,
+  engine: 1,
+  foundry: 2,
   enterprise: 3,
 }
 
@@ -163,7 +163,7 @@ export function BillingForm({ id, initialData, onSuccess, onSubmitStart, onSubmi
         return
       }
 
-      if (plan === "starter" || plan === "startup" || plan === "enterprise") {
+      if (plan === "engine" || plan === "foundry" || plan === "enterprise") {
         const result = await billingService.createSubscriptionCheckoutSession(
           currentSite.id,
           plan,
@@ -255,7 +255,7 @@ export function BillingForm({ id, initialData, onSuccess, onSubmitStart, onSubmi
       setIsSavingTaxId(true)
       
       const values = form.getValues()
-      const billingData: BillingData = {
+      const billingData: Partial<BillingData> = {
         tax_id: values.tax_id
       }
       
@@ -285,7 +285,7 @@ export function BillingForm({ id, initialData, onSuccess, onSubmitStart, onSubmi
       setIsSavingBillingAddress(true)
       
       const values = form.getValues()
-      const billingData: BillingData = {
+      const billingData: Partial<BillingData> = {
         billing_address: values.billing_address,
         billing_city: values.billing_city,
         billing_postal_code: values.billing_postal_code,

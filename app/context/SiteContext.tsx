@@ -377,7 +377,7 @@ export function SiteProvider({ children }: SiteProviderProps) {
     }
   }
 
-  const updateBilling = async (siteId: string, billingData: BillingData) => {
+  const updateBilling = async (siteId: string, billingData: Partial<BillingData>) => {
     try {
       setIsLoading(true);
       const { billingService } = await import("../services/billing-service")

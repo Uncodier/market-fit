@@ -29,9 +29,9 @@ export function CreditsWidget({ className, isCollapsed }: CreditsWidgetProps) {
   
   // Determine base limit based on plan
   let baseLimit = 1; // default/commission/free
-  if (plan === 'starter') {
+  if (plan === 'engine') {
     baseLimit = 20;
-  } else if (plan === 'startup') {
+  } else if (plan === 'foundry') {
     baseLimit = 100;
   } else if (plan === 'enterprise') {
     baseLimit = 500;

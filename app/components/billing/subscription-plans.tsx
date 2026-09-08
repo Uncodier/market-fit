@@ -4,12 +4,12 @@ import { Button } from "../ui/button"
 import { cn } from "@/lib/utils"
 import { useLocalization } from "@/app/context/LocalizationContext"
 
-export type BillingPlan = "commission" | "starter" | "startup" | "enterprise"
+export type BillingPlan = "commission" | "engine" | "foundry" | "enterprise"
 
 const PLAN_ORDER: Record<BillingPlan, number> = {
   commission: 0,
-  starter: 1,
-  startup: 2,
+  engine: 1,
+  foundry: 2,
   enterprise: 3,
 }
 
@@ -30,17 +30,17 @@ const PLANS: Array<{
     detail: (t) => `1 ${t("billing.plan.creditsPerMonth") || "credit/month"} + 0 accounts`,
   },
   {
-    id: "starter",
-    titleKey: "billing.plan.starter.title",
-    titleFallback: "Starter",
+    id: "engine",
+    titleKey: "billing.plan.engine.title",
+    titleFallback: "Engine",
     price: "$23",
     period: "/month",
     detail: (t) => `20 ${t("billing.plan.creditsPerMonth") || "credits/month"} + 1 account`,
   },
   {
-    id: "startup",
-    titleKey: "billing.plan.startup.title",
-    titleFallback: "Startup",
+    id: "foundry",
+    titleKey: "billing.plan.foundry.title",
+    titleFallback: "Foundry",
     price: "$99",
     period: "/month",
     detail: (t) => `100 ${t("billing.plan.creditsPerMonth") || "credits/month"} + 3 accounts`,

@@ -35,7 +35,7 @@ export interface Site {
     tracking_code?: string;
   }
   billing?: {
-    plan: 'commission' | 'starter' | 'startup' | 'enterprise'
+    plan: 'commission' | 'engine' | 'foundry' | 'enterprise'
     addons_count?: number
     masked_card_number?: string
     card_name?: string
@@ -411,7 +411,7 @@ export interface SiteContextType {
   refreshSites: () => Promise<void>
   updateSettings: (siteId: string, settings: Partial<SiteSettings>) => Promise<void>
   getSettings: (siteId: string) => Promise<SiteSettings | null>
-  updateBilling: (siteId: string, billingData: BillingData) => Promise<{ success: boolean; error?: string }>
+  updateBilling: (siteId: string, billingData: Partial<BillingData>) => Promise<{ success: boolean; error?: string }>
   getBillingInfo: (siteId: string) => Promise<any>
   purchaseCredits: (siteId: string, amount: number) => Promise<{ success: boolean; error?: string }>
 }

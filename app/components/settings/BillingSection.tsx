@@ -127,30 +127,30 @@ export function BillingSection() {
                     <div 
                       className={cn(
                         "border rounded-lg p-4 cursor-pointer transition-all",
-                        field.value === "starter" 
+                        field.value === "engine" 
                           ? "border-blue-500 bg-blue-50 dark:bg-blue-950" 
                           : "dark:border-white/5 border-black/5 hover:border-blue-300"
                       )}
-                      onClick={() => field.onChange("starter")}
+                      onClick={() => field.onChange("engine")}
                     >
-                      <div className="font-medium mb-2">Starter</div>
+                      <div className="font-medium mb-2">Engine</div>
                       <div className="text-2xl font-bold mb-2">$23</div>
-                      <div className="text-sm text-muted-foreground">Starter features</div>
+                      <div className="text-sm text-muted-foreground">Engine features</div>
                       <div className="text-sm text-muted-foreground mt-1">20 credits/mo + 1 account</div>
                     </div>
                     
                     <div 
                       className={cn(
                         "border rounded-lg p-4 cursor-pointer transition-all",
-                        field.value === "startup" 
+                        field.value === "foundry" 
                           ? "border-blue-500 bg-blue-50 dark:bg-blue-950" 
                           : "dark:border-white/5 border-black/5 hover:border-blue-300"
                       )}
-                      onClick={() => field.onChange("startup")}
+                      onClick={() => field.onChange("foundry")}
                     >
-                      <div className="font-medium mb-2">Startup</div>
+                      <div className="font-medium mb-2">Foundry</div>
                       <div className="text-2xl font-bold mb-2">$99</div>
-                      <div className="text-sm text-muted-foreground">Startup features</div>
+                      <div className="text-sm text-muted-foreground">Foundry features</div>
                       <div className="text-sm text-muted-foreground mt-1">100 credits/mo + 3 accounts</div>
                     </div>
                     

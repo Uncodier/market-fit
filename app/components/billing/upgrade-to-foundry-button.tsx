@@ -7,19 +7,19 @@ import { useSite } from "@/app/context/SiteContext"
 import { useRouter } from "next/navigation"
 import { TrendingUp } from "@/app/components/ui/icons"
 
-interface UpgradeToStartupButtonProps {
+interface UpgradeToFoundryButtonProps {
   className?: string
   variant?: "default" | "secondary" | "outline" | "ghost" | "destructive"
   size?: "default" | "sm" | "lg" | "icon"
   children?: React.ReactNode
 }
 
-export function UpgradeToStartupButton({ 
+export function UpgradeToFoundryButton({ 
   className = "",
   variant = "default",
   size = "default",
   children
-}: UpgradeToStartupButtonProps) {
+}: UpgradeToFoundryButtonProps) {
   const router = useRouter()
   const { currentSite } = useSite()
 
@@ -44,7 +44,7 @@ export function UpgradeToStartupButton({
       ) : (
         <>
           <TrendingUp className="mr-2 h-4 w-4" />
-          Upgrade to Startup
+          Upgrade to Foundry
         </>
       )}
     </Button>
