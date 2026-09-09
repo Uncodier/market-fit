@@ -27,6 +27,6 @@ export default async function Image({
     fit: item.image_url || item.metadata?.gallery?.[0] ? "cover" : "contain",
     title: item.name,
     subtitle: item.description || undefined,
-    eyebrow: item.site?.name || "Product",
+    eyebrow: (item as any).site?.name || "Product",
   })
 }
