@@ -26,5 +26,8 @@ export default async function Image({
   return renderCommerceOgImage({
     source: visual.source,
     fit: visual.fit,
+    title: visual.title,
+    subtitle: visual.subtitle,
+    eyebrow: "Shop",
   })
 }

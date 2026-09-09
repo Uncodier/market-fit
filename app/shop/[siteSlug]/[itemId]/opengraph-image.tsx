@@ -25,5 +25,8 @@ export default async function Image({
   return renderCommerceOgImage({
     source: resolveCatalogItemShareImageSource(item as any),
     fit: item.image_url || item.metadata?.gallery?.[0] ? "cover" : "contain",
+    title: item.name,
+    subtitle: item.description || undefined,
+    eyebrow: item.site?.name || "Product",
   })
 }
