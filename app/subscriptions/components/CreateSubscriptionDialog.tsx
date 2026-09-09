@@ -122,11 +122,12 @@ export function CreateSubscriptionDialog({ open, onOpenChange, onSuccess }: Crea
         site_id: currentSite.id,
         catalog_item_id: resolvedCatalogItemId,
         lead_id: finalLeadId,
-        buyer_user_id: finalBuyerUserId || undefined,
-        start_date: new Date(data.start_date).toISOString(),
-        end_date: data.end_date ? new Date(data.end_date).toISOString() : null,
-        amount: parseFloat(data.amount),
-        status: 'active'
+      buyer_user_id: finalBuyerUserId || undefined,
+      start_date: new Date(data.start_date).toISOString(),
+      next_billing_date: new Date(data.start_date).toISOString(),
+      end_date: data.end_date ? new Date(data.end_date).toISOString() : null,
+      amount: parseFloat(data.amount),
+      status: 'active'
       })
 
       if (res.error) throw new Error(res.error)

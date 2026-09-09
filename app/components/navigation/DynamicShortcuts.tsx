@@ -75,7 +75,7 @@ function withoutConfigurationShortcuts(entries: ShortcutEntry[]): ShortcutEntry[
     if (typeof entry === "string") return !isSettingsNavKey(entry)
     try {
       const url = new URL(entry.href, "http://local")
-      return !isConfigurationNavPath(url.pathname, url.searchParams)
+      return !isConfigurationNavPath(url.pathname, url.searchParams) && url.pathname !== "/onboarding" && url.pathname !== "/navigation"
     } catch {
       return true
     }
@@ -223,6 +223,7 @@ export function DynamicShortcuts({ isCollapsed }: DynamicShortcutsProps) {
         pathname !== "/" && 
         pathname !== "/robots" && 
         !pathname.startsWith("/robots/") &&
+        pathname !== "/navigation" &&
         !(pathname.startsWith("/dashboard") && navSearchParams.get("tab") === "overview") &&
         pathname !== "/notifications" &&
         !pathname.startsWith("/notifications/") &&

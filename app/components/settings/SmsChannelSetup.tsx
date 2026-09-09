@@ -29,7 +29,7 @@ function formatPhoneNumber(phoneNumber: string): string {
   return phoneNumber;
 }
 
-export function VoiceChannelSetup({ 
+export function SmsChannelSetup({ 
   siteId, 
   channel, 
   onConnected 
@@ -112,7 +112,7 @@ export function VoiceChannelSetup({
 
     setIsConnecting(true)
     try {
-      const response = await apiClient.post("/api/integrations/zavu/voice", {
+      const response = await apiClient.post("/api/integrations/zavu/sms", {
         siteId,
         channelId: channel.id,
         name: channel.name,
@@ -121,11 +121,11 @@ export function VoiceChannelSetup({
       })
 
       if (!response.success) {
-        throw new Error(response.error?.message || "Failed to connect Voice channel")
+        throw new Error(response.error?.message || "Failed to connect SMS channel")
       }
 
       onConnected(response.data)
-      toast.success("Voice channel connected successfully and tools registered.")
+      toast.success("SMS channel connected successfully.")
     } catch (error: any) {
       toast.error(error.message || "An error occurred")
     } finally {
@@ -137,9 +137,9 @@ export function VoiceChannelSetup({
     <>
       <SectionCardContent className="space-y-4 pt-0">
         <div className="space-y-2">
-          <h4 className="text-sm font-medium">Connect Voice/Audio Agent</h4>
+          <h4 className="text-sm font-medium">Connect SMS Channel</h4>
           <p className="text-xs text-muted-foreground">
-            Activate the autonomous Voice agent. Select an existing number or search for a new one.
+            Activate two-way SMS messaging. Select an existing number or search for a new one.
           </p>
         </div>
 
@@ -258,7 +258,7 @@ export function VoiceChannelSetup({
           onClick={handleConnect} 
           disabled={isConnecting || !selectedNumber}
         >
-          {isConnecting ? "Activating Voice Agent..." : "Activate Voice Agent"}
+          {isConnecting ? "Activating SMS Channel..." : "Activate SMS Channel"}
         </Button>
       </SectionCardFooter>
     </>

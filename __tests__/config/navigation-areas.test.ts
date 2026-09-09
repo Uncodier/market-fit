@@ -22,6 +22,8 @@ describe('navigation-areas', () => {
     expect(isConfigurationNavPath('/integrations')).toBe(true)
     expect(isConfigurationNavPath('/billing')).toBe(true)
     expect(isConfigurationNavPath('/security')).toBe(true)
+    expect(isConfigurationNavPath('/onboarding')).toBe(true)
+    expect(isConfigurationNavPath('/navigation')).toBe(true)
   })
 
   it('still allows printer and automation settings tabs as shortcuts', () => {

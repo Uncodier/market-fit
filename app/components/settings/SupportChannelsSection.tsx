@@ -25,6 +25,7 @@ import { apiClient } from "@/app/services/api-client-service"
 import { TelegramChannelSetup } from "./TelegramChannelSetup"
 import { EmailChannelSetup } from "./EmailChannelSetup"
 import { VoiceChannelSetup } from "./VoiceChannelSetup"
+import { SmsChannelSetup } from "./SmsChannelSetup"
 import { useZavuInvitationSync } from "./use-zavu-invitation-sync"
 
 import { countAgentChannels, getAgentChannelLimit, canConnectAgentChannel } from "@/lib/billing-limits"
@@ -37,6 +38,7 @@ const CHANNEL_TYPES = [
   { value: "messenger", label: "Messenger" },
   { value: "telegram", label: "Telegram" },
   { value: "email", label: "Email" },
+  { value: "sms", label: "SMS" },
   { value: "voice", label: "Voice / Audio Agent" },
 ] as const
 
@@ -259,8 +261,10 @@ export function SupportChannelsSection({ active, siteId, onSave }: SupportChanne
                                 {CHANNEL_TYPES.map((item) => (
                                   <SelectItem key={item.value} value={item.value}>
                                     <div className="flex items-center gap-2 w-full min-w-0 justify-between">
-                                      <div className="flex items-center gap-2 min-w-0">
-                                        {getChannelIcon(item.value, 16)}
+                                      <div className="flex items-center gap-2 min-w-0 flex-1">
+                                        <div className="w-4 h-4 flex items-center justify-center flex-shrink-0">
+                                          {getChannelIcon(item.value, 16)}
+                                        </div>
                                         <span className="truncate">{item.label}</span>
                                       </div>
                                       {PARTNER_LINK_TYPES.has(item.value) && (
@@ -352,6 +356,32 @@ export function SupportChannelsSection({ active, siteId, onSave }: SupportChanne
                   )
                 )}
 
+                {hasType && !isConnected && type === "sms" && siteId && (
+                  canConnectAgentChannel(currentSite) ? (
+                  <SmsChannelSetup
+                    siteId={siteId}
+                    channel={channel}
+                    onConnected={(payload) => {
+                      if (!canConnectAgentChannel(currentSite)) {
+                        openAccountLimit()
+                        return
+                      }
+                      update(index, {
+                        ...channel,
+                        status: "connected",
+                        zavu_sender_id: payload.senderId,
+                      })
+                    }}
+                  />
+                  ) : (
+                    <SectionCardContent className="pt-0">
+                      <Button type="button" variant="outline" size="sm" onClick={openAccountLimit}>
+                        Upgrade to connect
+                      </Button>
+                    </SectionCardContent>
+                  )
+                )}
+
                 {hasType && !isConnected && type === "telegram" && siteId && (
                   canConnectAgentChannel(currentSite) ? (
                   <TelegramChannelSetup
@@ -383,7 +413,7 @@ export function SupportChannelsSection({ active, siteId, onSave }: SupportChanne
                   )
                 )}
 
-                {hasType && !isConnected && type !== "telegram" && type !== "email" && type !== "voice" && (
+                {hasType && !isConnected && type !== "telegram" && type !== "email" && type !== "voice" && type !== "sms" && (
                   <>
                     <SectionCardContent className="pt-0">
                       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 bg-orange-50 dark:bg-orange-900/10 rounded-lg border border-orange-100 dark:border-orange-900/30">

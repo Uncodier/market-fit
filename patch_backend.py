@@ -6,9 +6,11 @@ with open(client_file, 'r') as f:
     content = f.read()
 
 injection = """
-export async function searchAvailableNumbers(params: { countryCode: string, areaCode?: string }): Promise<any> {
+export async function searchAvailableNumbers(params: { countryCode: string, areaCode?: string, smsEnabled?: boolean, voiceEnabled?: boolean }): Promise<any> {
   const query = new URLSearchParams({ countryCode: params.countryCode });
   if (params.areaCode) query.append("areaCode", params.areaCode);
+  if (params.smsEnabled) query.append("smsEnabled", "true");
+  if (params.voiceEnabled) query.append("voiceEnabled", "true");
   return zavuFetch(`/phone-numbers/available?${query.toString()}`);
 }
 
@@ -102,6 +104,8 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const countryCode = searchParams.get("countryCode");
     const areaCode = searchParams.get("areaCode");
+    const smsEnabled = searchParams.get("smsEnabled") === "true";
+    const voiceEnabled = searchParams.get("voiceEnabled") === "true";
 
     if (!countryCode) {
       return NextResponse.json({ error: "countryCode is required" }, { status: 400 });
@@ -109,7 +113,9 @@ export async function GET(request: NextRequest) {
 
     const data = await searchAvailableNumbers({ 
       countryCode, 
-      areaCode: areaCode || undefined 
+      areaCode: areaCode || undefined,
+      smsEnabled,
+      voiceEnabled
     });
 
     return NextResponse.json(data.items || data.results || data);

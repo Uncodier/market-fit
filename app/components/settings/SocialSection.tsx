@@ -473,8 +473,10 @@ export function SocialSection({ active, onSave, siteId }: SocialSectionProps) {
                               {SOCIAL_PLATFORMS.map((platform) => (
                                 <SelectItem key={platform.value} value={platform.value}>
                                   <div className="flex items-center gap-2 w-full min-w-0 justify-between">
-                                    <div className="flex items-center gap-2 min-w-0">
-                                      {getPlatformIcon(platform.value, 16)}
+                                    <div className="flex items-center gap-2 min-w-0 flex-1">
+                                      <div className="w-4 h-4 flex items-center justify-center flex-shrink-0">
+                                        {getPlatformIcon(platform.value, 16)}
+                                      </div>
                                       <span className="truncate">{platform.label}</span>
                                     </div>
                                     {isConnectablePlatform(platform.value) && (

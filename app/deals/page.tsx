@@ -188,8 +188,8 @@ export default function DealsPage() {
   }
 
   return (
-    <div className="flex-1 min-w-0 w-full p-0 bg-muted/30 min-h-[calc(100vh-var(--topbar-height,64px))]">
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+    <div className="flex-1 min-w-0 w-full p-0 bg-muted/30 h-[calc(100vh-var(--topbar-height,64px))] flex flex-col">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full flex-1 flex flex-col min-h-0">
         <StickyHeader className="border-b min-h-[71px] bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/80">
           <div className="w-full pt-0">
               <div className="flex items-center justify-between w-full">
