@@ -5,7 +5,7 @@ import { SortDropdown } from "@/app/components/ui/sort-dropdown"
 
 import { useState, useEffect } from "react"
 import useSWR from "swr"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { useSite } from "@/app/context/SiteContext"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { listPromotions } from "./actions"

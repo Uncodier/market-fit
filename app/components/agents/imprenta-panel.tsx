@@ -1272,6 +1272,9 @@ const ImprentaNodeCardInner = memo(({
                                   const siteUrl = currentSite?.url && String(currentSite.url).trim();
                                   const isEmailDistributionAvailable = currentSite?.settings?.channels?.email?.status === 'synced';
                                   const isWhatsappAvailable = currentSite?.settings?.channels?.whatsapp?.status === 'active' || currentSite?.settings?.channels?.agent_whatsapp?.status === 'active';
+                                  const isTelegramAvailable = currentSite?.settings?.channels?.telegram?.status === 'active';
+                                  const isSmsAvailable = currentSite?.settings?.channels?.sms?.status === 'active';
+                                  const isVoiceAvailable = currentSite?.settings?.channels?.voice?.status === 'active';
                                   const rawDestinations = (node.settings as any)?.publish_destinations;
                                   // Treat unset destinations as blog-on-by-default when the site has a URL,
                                   // so new publish nodes land preconfigured for the most common case.
@@ -1360,6 +1363,24 @@ const ImprentaNodeCardInner = memo(({
                                           'WhatsApp',
                                           <SocialIcon platform="whatsapp" size={12} color="currentColor" />,
                                           'Send this content through your connected WhatsApp channel.'
+                                        )}
+                                        {isTelegramAvailable && renderToggle(
+                                          'telegram',
+                                          'Telegram',
+                                          <SocialIcon platform="telegram" size={12} color="currentColor" />,
+                                          'Send this content through your connected Telegram channel.'
+                                        )}
+                                        {isSmsAvailable && renderToggle(
+                                          'sms',
+                                          'SMS',
+                                          <Phone size={12} />,
+                                          'Send this content as an SMS message.'
+                                        )}
+                                        {isVoiceAvailable && renderToggle(
+                                          'voice',
+                                          'Voice',
+                                          <Play size={12} />,
+                                          'Broadcast this content as a voice message.'
                                         )}
                                       </div>
                                     </TooltipProvider>

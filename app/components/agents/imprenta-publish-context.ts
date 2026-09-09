@@ -20,7 +20,7 @@ export function destinationsRequireAudience(dest: string[] | undefined): boolean
   if (!dest?.length) return false
   return dest.some((d) => {
     const lower = d.toLowerCase()
-    return lower === "mail" || lower === "whatsapp" || lower === "newsletter" || lower === "sms" || lower === "mensaje" || lower === "message" || lower === "email"
+    return lower === "mail" || lower === "whatsapp" || lower === "telegram" || lower === "audio" || lower === "voice" || lower === "newsletter" || lower === "sms" || lower === "mensaje" || lower === "message" || lower === "email"
   })
 }
 
@@ -503,7 +503,7 @@ export function validatePublishNodeInputs(
     ? ((node.settings as any).publish_destinations as string[])
     : []
   if (destinationsRequireAudience(dest) && !hasPublishAudienceInput(contexts, node.id, nodes)) {
-    return "Mail, WhatsApp, SMS, Message, Email, and Newsletter require an Audience link: from an Audience node or a node whose parent is Audience."
+    return "Mail, WhatsApp, Telegram, Audio, Voice, SMS, Message, Email, and Newsletter require an Audience link: from an Audience node or a node whose parent is Audience."
   }
   return null
 }
