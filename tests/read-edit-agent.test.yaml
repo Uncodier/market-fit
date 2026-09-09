@@ -1,0 +1,37 @@
+goal: Read and Edit an Agent
+
+statements:
+  - URL: /projects
+  - intent: Select the first available project
+    action: click
+    locator: "getByRole('button', { name: 'Select' }).first()"
+
+  - WAIT_UNTIL: The user is navigated to the default project page
+    js: "await page.url().includes('/robots')"
+    timeout_seconds: 5
+
+  - URL: /agents
+  - WAIT_UNTIL: The agents page is loaded
+    js: "await page.url().endsWith('/agents')"
+    timeout_seconds: 15
+
+  - intent: Open the first agent's details
+    action: click
+    locator: "locator('table').getByRole('row').nth(1)"
+
+  - WAIT_UNTIL: The agent details page is open
+    js: "await page.url().includes('/agents/') && !page.url().endsWith('/agents')"
+    timeout_seconds: 15
+
+  - intent: Edit the agent name
+    action: fill
+    locator: "getByRole('textbox').first()"
+    value: "Updated Agent Name"
+
+  - intent: Save the agent changes
+    action: click
+    locator: "getByRole('button', { name: /Save|Guardar/i }).first()"
+
+  - WAIT_UNTIL: The user is back on the list or changes are saved
+    js: "await page.waitForTimeout(2000)"
+    timeout_seconds: 5

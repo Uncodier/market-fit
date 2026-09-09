@@ -201,11 +201,10 @@ export function WorkflowStepBody({
   const tabs = STEP_TABS
 
   useEffect(() => {
-    // El catálogo MCP ahora se maneja internamente. Se comentó la llamada fallida para evitar errores.
-    // void apiClient.get<{ tools?: McpCatalogTool[] }>("/api/workflows/mcp-catalog").then((res) => {
-    //   const tools = (res.data as { tools?: McpCatalogTool[] })?.tools
-    //   if (Array.isArray(tools)) setCatalog(tools)
-    // })
+    void apiClient.get<{ tools?: McpCatalogTool[] }>("/api/workflows/mcp-catalog").then((res) => {
+      const tools = (res.data as { tools?: McpCatalogTool[] })?.tools
+      if (Array.isArray(tools)) setCatalog(tools)
+    })
   }, [])
 
   const persist = (nextSettings: Record<string, unknown>, promptText?: string) => {
