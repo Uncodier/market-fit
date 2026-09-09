@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
 import { useSite } from "@/app/context/SiteContext"
-import { getAccountLimit, countConnectedAccounts } from "@/lib/billing-limits"
+import { getSocialAccountLimit, countSocialAccounts, canConnectSocialAccount } from "@/lib/billing-limits"
 import { useBillingLimit } from "@/app/context/BillingLimitContext"
 import {
   SectionCard,
@@ -169,10 +169,10 @@ export default function SocialNetworkCallbackPage() {
       return
     }
 
-    const limit = getAccountLimit(currentSite?.billing?.plan, currentSite?.billing?.addons_count)
-    const currentCount = countConnectedAccounts(currentSite)
+    const limit = getSocialAccountLimit(currentSite?.billing?.plan) + (currentSite?.billing?.addons_count || 0)
+    const currentCount = countSocialAccounts(currentSite)
     
-    if (currentCount + selectedPages.length > limit) {
+    if (!canConnectSocialAccount(currentSite, selectedPages.length)) {
       showBillingLimit({
         kind: "accounts",
         current: currentCount + selectedPages.length,

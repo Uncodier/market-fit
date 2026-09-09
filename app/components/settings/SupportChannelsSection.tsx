@@ -27,7 +27,7 @@ import { EmailChannelSetup } from "./EmailChannelSetup"
 import { VoiceChannelSetup } from "./VoiceChannelSetup"
 import { useZavuInvitationSync } from "./use-zavu-invitation-sync"
 
-import { getAccountLimit, countConnectedAccounts, canConnectAccounts } from "@/lib/billing-limits"
+import { countAgentChannels, getAgentChannelLimit, canConnectAgentChannel } from "@/lib/billing-limits"
 import { useSite } from "@/app/context/SiteContext"
 import { useBillingLimit } from "@/app/context/BillingLimitContext"
 import { disconnectZavuChannel } from "./disconnect-remote-accounts"
@@ -65,8 +65,8 @@ export function SupportChannelsSection({ active, siteId, onSave }: SupportChanne
   const openAccountLimit = () => {
     showBillingLimit({
       kind: "accounts",
-      current: countConnectedAccounts(currentSite),
-      limit: getAccountLimit(currentSite?.billing?.plan, currentSite?.billing?.addons_count),
+      current: countAgentChannels(currentSite),
+      limit: getAgentChannelLimit(currentSite?.billing?.plan) + (currentSite?.billing?.addons_count || 0),
     })
   }
   const { fields, prepend, remove, update } = useFieldArray({
@@ -86,9 +86,9 @@ export function SupportChannelsSection({ active, siteId, onSave }: SupportChanne
   })
 
   const addChannel = useCallback(() => {
-    const limit = getAccountLimit(currentSite?.billing?.plan, currentSite?.billing?.addons_count)
-    const currentCount = countConnectedAccounts(currentSite)
-    if (!canConnectAccounts(currentSite)) {
+    const limit = getAgentChannelLimit(currentSite?.billing?.plan) + (currentSite?.billing?.addons_count || 0)
+    const currentCount = countAgentChannels(currentSite)
+    if (!canConnectAgentChannel(currentSite)) {
       showBillingLimit({ kind: "accounts", current: currentCount, limit })
       return
     }
@@ -109,10 +109,10 @@ export function SupportChannelsSection({ active, siteId, onSave }: SupportChanne
     }
     
     // Validate account limits
-    const limit = getAccountLimit(currentSite?.billing?.plan, currentSite?.billing?.addons_count)
-    const currentCount = countConnectedAccounts(currentSite)
+    const limit = getAgentChannelLimit(currentSite?.billing?.plan) + (currentSite?.billing?.addons_count || 0)
+    const currentCount = countAgentChannels(currentSite)
     
-    if (channel.status !== "connected" && !canConnectAccounts(currentSite)) {
+    if (channel.status !== "connected" && !canConnectAgentChannel(currentSite)) {
       showBillingLimit({ kind: "accounts", current: currentCount, limit })
       return
     }
@@ -305,12 +305,12 @@ export function SupportChannelsSection({ active, siteId, onSave }: SupportChanne
                 )}
 
                 {hasType && type === "email" && siteId && (
-                  isConnected || canConnectAccounts(currentSite) ? (
+                  isConnected || canConnectAgentChannel(currentSite) ? (
                   <EmailChannelSetup
                     siteId={siteId}
                     channel={channel}
                     onUpdated={(payload) => {
-                      if (payload?.status === "connected" && !canConnectAccounts(currentSite)) {
+                      if (payload?.status === "connected" && !canConnectAgentChannel(currentSite)) {
                         openAccountLimit()
                         return
                       }
@@ -327,12 +327,12 @@ export function SupportChannelsSection({ active, siteId, onSave }: SupportChanne
                 )}
 
                 {hasType && !isConnected && type === "voice" && siteId && (
-                  canConnectAccounts(currentSite) ? (
+                  canConnectAgentChannel(currentSite) ? (
                   <VoiceChannelSetup
                     siteId={siteId}
                     channel={channel}
                     onConnected={(payload) => {
-                      if (!canConnectAccounts(currentSite)) {
+                      if (!canConnectAgentChannel(currentSite)) {
                         openAccountLimit()
                         return
                       }
@@ -353,12 +353,12 @@ export function SupportChannelsSection({ active, siteId, onSave }: SupportChanne
                 )}
 
                 {hasType && !isConnected && type === "telegram" && siteId && (
-                  canConnectAccounts(currentSite) ? (
+                  canConnectAgentChannel(currentSite) ? (
                   <TelegramChannelSetup
                     siteId={siteId}
                     channel={channel}
                     onConnected={(payload) => {
-                      if (!canConnectAccounts(currentSite)) {
+                      if (!canConnectAgentChannel(currentSite)) {
                         openAccountLimit()
                         return
                       }

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createSocialSupabaseClient } from "@/app/api/social/supabase-client"
 import { getOutstandIntegrationUrl } from "@/lib/api-server-url"
-import { getAccountLimit, countConnectedAccounts } from "@/lib/billing-limits"
+import { getSocialAccountLimit, countSocialAccounts, canConnectSocialAccount } from "@/lib/billing-limits"
 import { billingLimitApiError } from "@/lib/billing-limit-errors"
 import { syncImplicitOutstandCallback } from "@/app/api/social/lib/sync-outstand-accounts"
 
@@ -41,11 +41,11 @@ export async function POST(
         }
 
         // Enforce account limit
-        const limit = getAccountLimit(mappedSite.billing?.plan, mappedSite.billing?.addons_count)
-        const currentCount = countConnectedAccounts(mappedSite)
+        const limit = getSocialAccountLimit(mappedSite.billing?.plan) + (mappedSite.billing?.addons_count || 0)
+        const currentCount = countSocialAccounts(mappedSite)
         const newAccountsCount = (body.selectedPageIds || body.accountIds)?.length || 0
         
-        if (currentCount + newAccountsCount > limit) {
+        if (!canConnectSocialAccount(mappedSite, newAccountsCount)) {
           return NextResponse.json(
             billingLimitApiError("accounts", currentCount + newAccountsCount, limit),
             { status: 403 }

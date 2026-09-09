@@ -24,26 +24,26 @@ const PLANS: Array<{
   {
     id: "commission",
     titleKey: "billing.plan.erp.title",
-    titleFallback: "ERP",
+    titleFallback: "Toolbox",
     price: "$0",
     period: "/month",
-    detail: (t) => `1 ${t("billing.plan.creditsPerMonth") || "credit/month"} + 0 accounts`,
+    detail: (t) => `1 ${t("billing.plan.creditsPerMonth") || "credit/month"} + 1 social account`,
   },
   {
     id: "engine",
     titleKey: "billing.plan.engine.title",
-    titleFallback: "Engine",
+    titleFallback: "Starter",
     price: "$23",
     period: "/month",
-    detail: (t) => `20 ${t("billing.plan.creditsPerMonth") || "credits/month"} + 1 account`,
+    detail: (t) => `20 ${t("billing.plan.creditsPerMonth") || "credits/month"} + 1 agent channel, 3 social accounts`,
   },
   {
     id: "foundry",
     titleKey: "billing.plan.foundry.title",
-    titleFallback: "Foundry",
+    titleFallback: "Pro",
     price: "$99",
     period: "/month",
-    detail: (t) => `100 ${t("billing.plan.creditsPerMonth") || "credits/month"} + 3 accounts`,
+    detail: (t) => `100 ${t("billing.plan.creditsPerMonth") || "credits/month"} + 3 agent channels, 6 social accounts`,
   },
   {
     id: "enterprise",
@@ -51,7 +51,7 @@ const PLANS: Array<{
     titleFallback: "Enterprise",
     price: "$500",
     period: "/month",
-    detail: (t) => `500 ${t("billing.plan.creditsPerMonth") || "credits/month"} + 10 accounts`,
+    detail: (t) => `500 ${t("billing.plan.creditsPerMonth") || "credits/month"} + 10 agent channels, 10 social accounts`,
   },
 ]
 

@@ -17,7 +17,11 @@ statements:
 
   - intent: Open the first person's details
     action: click
-    locator: "locator('table').getByRole('row').nth(1)"
+    locator: "locator('table tbody tr:nth-child(1) td').first()"
+    
+  - intent: Click View or Edit
+    action: click
+    locator: "getByRole('menuitem', { name: /view|edit|ver|editar/i }).first()"
 
   - WAIT_UNTIL: The person details page is open
     js: "await page.url().includes('/people/') && !page.url().endsWith('/people')"

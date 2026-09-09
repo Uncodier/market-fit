@@ -41,7 +41,7 @@ import {
 } from "../ui/social-icons"
 import { ConfirmDialog } from "../ui/confirm-dialog"
 import { disconnectOutstandSocial } from "./disconnect-remote-accounts"
-import { getAccountLimit, countConnectedAccounts, canConnectAccounts } from "@/lib/billing-limits"
+import { countSocialAccounts, getSocialAccountLimit, canConnectSocialAccount } from "@/lib/billing-limits"
 import { useSite } from "@/app/context/SiteContext"
 import { useBillingLimit } from "@/app/context/BillingLimitContext"
 
@@ -192,8 +192,8 @@ export function SocialSection({ active, onSave, siteId }: SocialSectionProps) {
   const openAccountLimit = () => {
     showBillingLimit({
       kind: "accounts",
-      current: countConnectedAccounts(currentSite),
-      limit: getAccountLimit(currentSite?.billing?.plan, currentSite?.billing?.addons_count),
+      current: countSocialAccounts(currentSite),
+      limit: getSocialAccountLimit(currentSite?.billing?.plan) + (currentSite?.billing?.addons_count || 0),
     })
   }
   const [savingCard, setSavingCard] = useState<number | null>(null)
@@ -231,9 +231,9 @@ export function SocialSection({ active, onSave, siteId }: SocialSectionProps) {
 
   // Memoized functions for better performance
   const addSocialMedia = useCallback(() => {
-    const limit = getAccountLimit(currentSite?.billing?.plan, currentSite?.billing?.addons_count)
-    const currentCount = countConnectedAccounts(currentSite)
-    if (!canConnectAccounts(currentSite)) {
+    const limit = getSocialAccountLimit(currentSite?.billing?.plan) + (currentSite?.billing?.addons_count || 0)
+    const currentCount = countSocialAccounts(currentSite)
+    if (!canConnectSocialAccount(currentSite)) {
       showBillingLimit({ kind: "accounts", current: currentCount, limit })
       return
     }
@@ -252,10 +252,10 @@ export function SocialSection({ active, onSave, siteId }: SocialSectionProps) {
     if (!isOAuthConnectablePlatform(social.platform)) return
 
     // Validate account limits
-    const limit = getAccountLimit(currentSite?.billing?.plan, currentSite?.billing?.addons_count)
-    const currentCount = countConnectedAccounts(currentSite)
+    const limit = getSocialAccountLimit(currentSite?.billing?.plan) + (currentSite?.billing?.addons_count || 0)
+    const currentCount = countSocialAccounts(currentSite)
     
-    if (!social.isActive && !canConnectAccounts(currentSite)) {
+    if (!social.isActive && !canConnectSocialAccount(currentSite)) {
       showBillingLimit({ kind: "accounts", current: currentCount, limit })
       return
     }
@@ -591,7 +591,7 @@ export function SocialSection({ active, onSave, siteId }: SocialSectionProps) {
                   
                   {/* Bluesky App Password Connect */}
                   {hasPlatform && !isActive && social.platform === 'bluesky' && siteId && (
-                    canConnectAccounts(currentSite) ? (
+                    canConnectSocialAccount(currentSite) ? (
                     <BlueskyConnectForm
                       siteId={siteId}
                       onConnected={() => {

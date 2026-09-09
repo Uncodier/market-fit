@@ -157,7 +157,6 @@ function LayoutClientInner({
   breadcrumbFromEvent,
   customTitle,
   fetchError,
-  isCreateEditRoute,
 }: {
   children: React.ReactNode
   pathname: string
@@ -165,7 +164,6 @@ function LayoutClientInner({
   breadcrumbFromEvent: React.ReactNode
   customTitle: string | null
   fetchError: string | null
-  isCreateEditRoute: boolean
 }) {
   const searchParams = useSearchParams()
   const isArtifact = searchParams.get("artifact") === "true"
@@ -274,7 +272,7 @@ function LayoutClientInner({
             {t('layout.topbar.error') || 'Error'}: {visibleFetchError === 'LAYOUT_ERROR_LOADING_SEGMENTS' ? (t('layout.topbar.errorLoadingSegments') || 'Error loading segments') : visibleFetchError}
           </div>
         )}
-        {isLoginPage || isCreateEditRoute || pathname.startsWith("/navigation") ? (
+        {isLoginPage || pathname.startsWith("/navigation") ? (
           // Para la página de login o rutas sin layout, mostrar el contenido con el Tour si aplica
           <div className="min-h-[100dvh] w-full relative">
             {!isLoginPage && <GuidedTour />}
@@ -430,7 +428,6 @@ export default function LayoutClient({
         breadcrumbFromEvent={breadcrumbFromEvent}
         customTitle={customTitle}
         fetchError={fetchError}
-        isCreateEditRoute={isCreateEditRoute}
       >
         {children}
       </LayoutClientInner>

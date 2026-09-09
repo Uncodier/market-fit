@@ -4,26 +4,30 @@ import { Button } from "../ui/button"
 import { SectionCard, SectionCardHeader, SectionCardContent } from "../ui/section-card"
 
 interface ConnectedAccountsAddonsProps {
-  totalConnectedAccounts: number
-  includedAccounts: number
+  totalSocialAccounts: number
+  totalAgentChannels: number
+  socialLimit: number
+  agentLimit: number
   addonsCount: number
-  limitAccounts: number
   requiredAddons: number
   missingAddons: number
-  accountsUsagePercentage: number
+  socialUsagePercentage: number
+  agentUsagePercentage: number
   isPaidPlan: boolean
   isSaving: boolean
   onManageAddons: () => void
 }
 
 export function ConnectedAccountsAddons({
-  totalConnectedAccounts,
-  includedAccounts,
+  totalSocialAccounts,
+  totalAgentChannels,
+  socialLimit,
+  agentLimit,
   addonsCount,
-  limitAccounts,
   requiredAddons,
   missingAddons,
-  accountsUsagePercentage,
+  socialUsagePercentage,
+  agentUsagePercentage,
   isPaidPlan,
   isSaving,
   onManageAddons,
@@ -32,32 +36,48 @@ export function ConnectedAccountsAddons({
     <SectionCard id="addons">
       <SectionCardHeader
         title="Connected Accounts & Add-ons"
-        description="Manage your account connection limits. Each add-on costs $10/month and grants you 1 extra account connection (WhatsApp, Messenger, Instagram, Email, Outstand, etc.) and +5 credits/month."
+        description="Manage your account connection limits. Each add-on costs $10/month and grants you 1 extra account connection (either Social or Agent channel) and +5 credits/month."
       />
       <SectionCardContent className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h4 className="text-sm font-medium mb-1">Connected Accounts</h4>
+            <h4 className="text-sm font-medium mb-1">Social Accounts</h4>
             <div className="text-sm text-muted-foreground">
-              {totalConnectedAccounts} connected / {includedAccounts} included in plan
-              {addonsCount > 0 ? ` + ${addonsCount} add-on${addonsCount === 1 ? "" : "s"}` : ""}
-              {` (${totalConnectedAccounts}/${limitAccounts} available)`}
+              {totalSocialAccounts} connected / {socialLimit} included in plan
             </div>
-            {missingAddons > 0 && (
-              <div className="text-sm text-red-600 mt-1">
-                Your current setup requires {requiredAddons} add-on{requiredAddons === 1 ? "" : "s"}. You still need {missingAddons} more.
-              </div>
-            )}
           </div>
           <div className="w-[120px]">
             <div className="h-2 w-full bg-muted overflow-hidden rounded-full">
               <div
-                className={`h-full ${totalConnectedAccounts > limitAccounts ? "bg-red-500" : "bg-primary"}`}
-                style={{ width: `${accountsUsagePercentage}%` }}
+                className={`h-full ${totalSocialAccounts > socialLimit && totalSocialAccounts - socialLimit > addonsCount ? "bg-red-500" : "bg-primary"}`}
+                style={{ width: `${socialUsagePercentage}%` }}
               />
             </div>
           </div>
         </div>
+
+        <div className="flex items-center justify-between">
+          <div>
+            <h4 className="text-sm font-medium mb-1">Agent Channels (Zavu)</h4>
+            <div className="text-sm text-muted-foreground">
+              {totalAgentChannels} connected / {agentLimit} included in plan
+            </div>
+          </div>
+          <div className="w-[120px]">
+            <div className="h-2 w-full bg-muted overflow-hidden rounded-full">
+              <div
+                className={`h-full ${totalAgentChannels > agentLimit && totalAgentChannels - agentLimit > (addonsCount - Math.max(0, totalSocialAccounts - socialLimit)) ? "bg-red-500" : "bg-primary"}`}
+                style={{ width: `${agentUsagePercentage}%` }}
+              />
+            </div>
+          </div>
+        </div>
+
+        {missingAddons > 0 && (
+          <div className="text-sm text-red-600 mt-1">
+            Your current setup requires {requiredAddons} add-on{requiredAddons === 1 ? "" : "s"}. You still need {missingAddons} more.
+          </div>
+        )}
 
         {isPaidPlan ? (
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 border rounded-lg">

@@ -19,7 +19,7 @@ import { CreditPackages, type CreditPackage } from "./credit-packages"
 import { SubscriptionPlans, type BillingPlan } from "./subscription-plans"
 import { StripePaymentMethod } from "./stripe-payment-method"
 import { ConnectedAccountsAddons } from "./connected-accounts-addons"
-import { getAccountLimit, countConnectedAccounts, getRequiredAddons } from "@/lib/billing-limits"
+import { countSocialAccounts, countAgentChannels, getSocialAccountLimit, getAgentChannelLimit, getRequiredAddons } from "@/lib/billing-limits"
 import { accountsToDisconnect, settingsAfterKeepingAccounts } from "./downgrade-accounts"
 import { DowngradeChannelsModal } from "./downgrade-channels-modal"
 import { disconnectOutstandSocial, disconnectZavuChannel } from "@/app/components/settings/disconnect-remote-accounts"
@@ -72,7 +72,9 @@ export function BillingForm({ id, initialData, onSuccess, onSubmitStart, onSubmi
   // Downgrade modal state
   const [downgradeModalOpen, setDowngradeModalOpen] = useState(false)
   const [pendingDowngradePlan, setPendingDowngradePlan] = useState<BillingPlan | null>(null)
-  const [downgradeTargetLimit, setDowngradeTargetLimit] = useState(0)
+  const [downgradeTargetSocialLimit, setDowngradeTargetSocialLimit] = useState(0)
+  const [downgradeTargetAgentLimit, setDowngradeTargetAgentLimit] = useState(0)
+  const [downgradeTargetAddonsCount, setDowngradeTargetAddonsCount] = useState(0)
 
   const form = useForm<BillingFormValues>({
     resolver: zodResolver(billingFormSchema),
@@ -100,14 +102,22 @@ export function BillingForm({ id, initialData, onSuccess, onSubmitStart, onSubmi
   const isPaidPlan = currentPlan !== "commission"
 
   const addonsCount = currentSite?.billing?.addons_count || 0
-  const totalConnectedAccounts = countConnectedAccounts(currentSite)
-  const includedAccounts = getAccountLimit(currentPlan, 0)
-  const limitAccounts = getAccountLimit(currentPlan, addonsCount)
+  const totalSocialAccounts = countSocialAccounts(currentSite)
+  const totalAgentChannels = countAgentChannels(currentSite)
+  
+  const socialLimit = getSocialAccountLimit(currentPlan)
+  const agentLimit = getAgentChannelLimit(currentPlan)
+  
   const requiredAddons = getRequiredAddons(currentSite)
   const missingAddons = Math.max(0, requiredAddons - addonsCount)
-  const accountsUsagePercentage = limitAccounts === 0
-    ? (totalConnectedAccounts > 0 ? 100 : 0)
-    : Math.min(100, Math.max(0, (totalConnectedAccounts / limitAccounts) * 100))
+  
+  const socialUsagePercentage = socialLimit === 0 
+    ? (totalSocialAccounts > 0 ? 100 : 0)
+    : Math.min(100, Math.max(0, (totalSocialAccounts / (socialLimit + addonsCount)) * 100))
+    
+  const agentUsagePercentage = agentLimit === 0
+    ? (totalAgentChannels > 0 ? 100 : 0)
+    : Math.min(100, Math.max(0, (totalAgentChannels / (agentLimit + addonsCount)) * 100))
 
   const handleManageSubscription = async () => {
     if (!currentSite) return
@@ -143,10 +153,21 @@ export function BillingForm({ id, initialData, onSuccess, onSubmitStart, onSubmi
     if (!skipLimitCheck) {
       const isDowngrade = PLAN_ORDER[plan] < PLAN_ORDER[currentPlan]
       if (isDowngrade) {
-        const targetLimit = getAccountLimit(plan, addonsCount)
-        if (totalConnectedAccounts > targetLimit) {
+        const targetSocialLimit = getSocialAccountLimit(plan)
+        const targetAgentLimit = getAgentChannelLimit(plan)
+        
+        const totalSocialAccounts = countSocialAccounts(currentSite)
+        const totalAgentChannels = countAgentChannels(currentSite)
+        
+        const missingSocial = Math.max(0, totalSocialAccounts - targetSocialLimit)
+        const missingAgent = Math.max(0, totalAgentChannels - targetAgentLimit)
+        const requiredForTarget = missingSocial + missingAgent
+
+        if (requiredForTarget > addonsCount) {
           setPendingDowngradePlan(plan)
-          setDowngradeTargetLimit(targetLimit)
+          setDowngradeTargetSocialLimit(targetSocialLimit)
+          setDowngradeTargetAgentLimit(targetAgentLimit)
+          setDowngradeTargetAddonsCount(addonsCount)
           setDowngradeModalOpen(true)
           return
         }
@@ -349,13 +370,15 @@ export function BillingForm({ id, initialData, onSuccess, onSubmitStart, onSubmi
         </SectionCard>
           
         <ConnectedAccountsAddons
-          totalConnectedAccounts={totalConnectedAccounts}
-          includedAccounts={includedAccounts}
+          totalSocialAccounts={totalSocialAccounts}
+          totalAgentChannels={totalAgentChannels}
+          socialLimit={socialLimit}
+          agentLimit={agentLimit}
           addonsCount={addonsCount}
-          limitAccounts={limitAccounts}
           requiredAddons={requiredAddons}
           missingAddons={missingAddons}
-          accountsUsagePercentage={accountsUsagePercentage}
+          socialUsagePercentage={socialUsagePercentage}
+          agentUsagePercentage={agentUsagePercentage}
           isPaidPlan={isPaidPlan}
           isSaving={isSavingPlan}
           onManageAddons={handleManageSubscription}
@@ -538,7 +561,9 @@ export function BillingForm({ id, initialData, onSuccess, onSubmitStart, onSubmi
       open={downgradeModalOpen}
       onOpenChange={setDowngradeModalOpen}
       site={currentSite}
-      targetLimit={downgradeTargetLimit}
+      targetSocialLimit={downgradeTargetSocialLimit}
+      targetAgentLimit={downgradeTargetAgentLimit}
+      targetAddonsCount={downgradeTargetAddonsCount}
       busy={isSavingPlan}
       onConfirm={handleDowngradeConfirm}
     />

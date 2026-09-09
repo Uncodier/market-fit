@@ -21,7 +21,9 @@ interface DowngradeChannelsModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   site: Partial<Site> | null | undefined
-  targetLimit: number
+  targetSocialLimit: number
+  targetAgentLimit: number
+  targetAddonsCount: number
   busy?: boolean
   onConfirm: (keepKeys: string[]) => void
 }
@@ -30,7 +32,9 @@ export function DowngradeChannelsModal({
   open,
   onOpenChange,
   site,
-  targetLimit,
+  targetSocialLimit,
+  targetAgentLimit,
+  targetAddonsCount,
   busy = false,
   onConfirm,
 }: DowngradeChannelsModalProps) {
@@ -41,11 +45,50 @@ export function DowngradeChannelsModal({
     if (!open) return
     const connected = listConnectedAccounts(site)
     setAccounts(connected)
-    setSelected(new Set(connected.slice(0, targetLimit).map((account) => account.key)))
-  }, [open, site, targetLimit])
+    
+    // Auto-select up to limits
+    const socials = connected.filter(a => a.kind === "social")
+    const channels = connected.filter(a => a.kind === "channel")
+    
+    let remainingAddons = targetAddonsCount
+    const toKeep = new Set<string>()
+    
+    // Keep socials up to base limit
+    socials.slice(0, targetSocialLimit).forEach(a => toKeep.add(a.key))
+    const extraSocials = socials.slice(targetSocialLimit)
+    
+    // Keep channels up to base limit
+    channels.slice(0, targetAgentLimit).forEach(a => toKeep.add(a.key))
+    const extraChannels = channels.slice(targetAgentLimit)
+    
+    // Use addons for remaining
+    for (const a of extraSocials) {
+      if (remainingAddons > 0) {
+        toKeep.add(a.key)
+        remainingAddons--
+      }
+    }
+    
+    for (const a of extraChannels) {
+      if (remainingAddons > 0) {
+        toKeep.add(a.key)
+        remainingAddons--
+      }
+    }
+    
+    setSelected(toKeep)
+  }, [open, site, targetSocialLimit, targetAgentLimit, targetAddonsCount])
 
-  const selectedCount = selected.size
-  const isOverLimit = selectedCount > targetLimit
+  const selectedSocialCount = Array.from(selected).filter(key => accounts.find(a => a.key === key)?.kind === "social").length
+  const selectedAgentCount = Array.from(selected).filter(key => accounts.find(a => a.key === key)?.kind === "channel").length
+
+  const missingSocial = Math.max(0, selectedSocialCount - targetSocialLimit)
+  const missingAgent = Math.max(0, selectedAgentCount - targetAgentLimit)
+  const usedAddons = missingSocial + missingAgent
+  
+  const isOverLimit = usedAddons > targetAddonsCount
+  const canSelectMore = usedAddons < targetAddonsCount
+
   const channels = accounts.filter((account) => account.kind === "channel")
   const socials = accounts.filter((account) => account.kind === "social")
 
@@ -53,7 +96,24 @@ export function DowngradeChannelsModal({
     setSelected((current) => {
       const next = new Set(current)
       if (checked) {
-        if (next.size >= targetLimit && !next.has(key)) return current
+        // Find if this new selection would exceed the limits
+        const acc = accounts.find(a => a.key === key)
+        if (!acc) return current
+        
+        let newMissingSocial = missingSocial
+        let newMissingAgent = missingAgent
+        
+        if (acc.kind === "social") {
+          if (selectedSocialCount >= targetSocialLimit) newMissingSocial++
+        } else {
+          if (selectedAgentCount >= targetAgentLimit) newMissingAgent++
+        }
+        
+        if (newMissingSocial + newMissingAgent > targetAddonsCount) {
+          // Cannot add
+          return current
+        }
+        
         next.add(key)
       } else {
         next.delete(key)
@@ -73,8 +133,8 @@ export function DowngradeChannelsModal({
         <AlertDialogHeader>
           <AlertDialogTitle>Choose accounts to keep</AlertDialogTitle>
           <AlertDialogDescription>
-            Your new plan includes {targetLimit} connected {targetLimit === 1 ? "account" : "accounts"}.
-            You currently have {accounts.length}. Select the ones you want to keep.
+            Your new plan includes {targetSocialLimit} social accounts and {targetAgentLimit} agent channels, plus {targetAddonsCount} add-on slots.
+            You currently have {accounts.length} connected. Select the ones you want to keep.
             Unselected accounts will be removed.
           </AlertDialogDescription>
         </AlertDialogHeader>
@@ -83,7 +143,7 @@ export function DowngradeChannelsModal({
           <div className="mb-2 flex items-center justify-between px-1 text-sm">
             <span className="font-medium text-muted-foreground">Accounts to keep</span>
             <span className={isOverLimit ? "font-semibold text-destructive" : "font-semibold"}>
-              {selectedCount} / {targetLimit} selected
+              {usedAddons} / {targetAddonsCount} add-ons used
             </span>
           </div>
 
@@ -91,21 +151,19 @@ export function DowngradeChannelsModal({
             <div className="space-y-4">
               {channels.length > 0 && (
                 <AccountGroup
-                  title="Channels"
+                  title={`Agent Channels (${selectedAgentCount} / ${targetAgentLimit} base)`}
                   accounts={channels}
                   selected={selected}
-                  targetLimit={targetLimit}
-                  selectedCount={selectedCount}
+                  canSelectMore={canSelectMore || selectedAgentCount < targetAgentLimit}
                   onToggle={handleToggle}
                 />
               )}
               {socials.length > 0 && (
                 <AccountGroup
-                  title="Social Networks"
+                  title={`Social Networks (${selectedSocialCount} / ${targetSocialLimit} base)`}
                   accounts={socials}
                   selected={selected}
-                  targetLimit={targetLimit}
-                  selectedCount={selectedCount}
+                  canSelectMore={canSelectMore || selectedSocialCount < targetSocialLimit}
                   onToggle={handleToggle}
                 />
               )}
@@ -133,15 +191,13 @@ function AccountGroup({
   title,
   accounts,
   selected,
-  targetLimit,
-  selectedCount,
+  canSelectMore,
   onToggle,
 }: {
   title: string
   accounts: ConnectedAccount[]
   selected: Set<string>
-  targetLimit: number
-  selectedCount: number
+  canSelectMore: boolean
   onToggle: (key: string, checked: boolean) => void
 }) {
   return (
@@ -156,7 +212,7 @@ function AccountGroup({
                 id={account.key}
                 checked={isSelected}
                 onCheckedChange={(checked) => onToggle(account.key, checked === true)}
-                disabled={!isSelected && selectedCount >= targetLimit}
+                disabled={!isSelected && !canSelectMore}
               />
               <label
                 htmlFor={account.key}
