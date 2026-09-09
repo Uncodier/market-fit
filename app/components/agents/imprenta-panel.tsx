@@ -2603,10 +2603,19 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
         contextObj.publish_destinations = dest
         const emailReady = currentSite?.settings?.channels?.email?.status === 'synced'
         const hasEmailDistributionSelection = dest.some(d => d === 'mail' || d === 'newsletter')
-        if (emailReady || hasEmailDistributionSelection) {
+        
+        const telegramReady = currentSite?.settings?.channels?.telegram?.status === 'active'
+        const smsReady = currentSite?.settings?.channels?.sms?.status === 'active'
+        const whatsappReady = currentSite?.settings?.channels?.whatsapp?.status === 'active' || currentSite?.settings?.channels?.agent_whatsapp?.status === 'active'
+        
+        if (emailReady || hasEmailDistributionSelection || telegramReady || smsReady || whatsappReady) {
           contextObj.distributionModes = {
             mail: dest.includes('mail'),
-            newsletter: dest.includes('newsletter')
+            newsletter: dest.includes('newsletter'),
+            whatsapp: dest.includes('whatsapp'),
+            telegram: dest.includes('telegram'),
+            sms: dest.includes('sms'),
+            voice: dest.includes('voice')
           }
         }
       }
