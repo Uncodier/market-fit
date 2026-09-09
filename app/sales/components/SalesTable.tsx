@@ -75,8 +75,9 @@ export function SalesTable({
     return segment?.name || null
   }
 
-  const totalAmount = sales.reduce((sum, sale) => sum + (sale.amount || 0), 0)
-  const totalAmountDue = sales.reduce((sum, sale) => sum + (sale.amount_due || 0), 0)
+  const activeSales = sales.filter((sale) => !["cancelled", "canceled", "refunded", "failed", "rejected", "expired"].includes(sale.status))
+  const totalAmount = activeSales.reduce((sum, sale) => sum + (sale.amount || 0), 0)
+  const totalAmountDue = activeSales.reduce((sum, sale) => sum + (sale.amount_due || 0), 0)
 
   if (sales.length === 0) {
     return (
@@ -110,15 +111,15 @@ export function SalesTable({
             const sourceLabel = t(`sales.source.${sourceKey}`) || sourceKey
             const due = sale.amount_due || 0
             const amount = sale.amount || 0
-            const cancelled = sale.status === "cancelled" || sale.status === "refunded"
+            const isCancelled = ["cancelled", "canceled", "refunded", "failed", "rejected", "expired"].includes(sale.status)
             const dueLabel =
-              !cancelled && due > 0
+              !isCancelled && due > 0
                 ? `${formatCurrency(due)} ${t("sales.table.due") || "due"}`
                 : null
             const paidLabel =
-              !cancelled && due <= 0
+              !isCancelled && due <= 0
                 ? t("sales.table.paid") || "Paid"
-                : cancelled
+                : isCancelled
                   ? statusLabel
                   : null
             const productLine = [sale.productName, sale.title].filter(Boolean).find((value) => value && !String(value).startsWith("Order -"))
@@ -147,13 +148,13 @@ export function SalesTable({
                     amountLabel={formatCurrency(amount)}
                     dueLabel={dueLabel}
                     paidLabel={paidLabel}
-                    cancelled={cancelled}
+                    cancelled={isCancelled}
                     paidRatio={amount > 0 ? Math.max(0, (amount - due) / amount) : 1}
                   />
                 </TableCell>
                 <TableCell className="py-3.5 text-right" onClick={(e) => e.stopPropagation()}>
                   <div className="flex justify-end gap-0.5">
-                      {due > 0 && !cancelled && (
+                      {due > 0 && !isCancelled && (
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <Button

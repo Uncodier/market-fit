@@ -225,7 +225,15 @@ export function getProcessHeader(
   isLive: boolean,
   endedAt?: string | null
 ): { label: string; kind: ProcessActivityKind } {
-  const latest = entries[entries.length - 1]
+  // Find the last actual action log (ignoring empty thinking messages unless it's all we have)
+  const latestActualAction = [...entries].reverse().find(e => {
+    if (e.type !== 'log') return true
+    const activity = getProcessActivity(e.data)
+    return activity.label !== 'Thinking'
+  })
+  
+  const latest = latestActualAction || entries[entries.length - 1]
+  
   if (isLive) {
     return latest ? getProcessEntryActivity(latest) : { label: 'Thinking', kind: 'thinking' }
   }
