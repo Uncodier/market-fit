@@ -4,6 +4,11 @@ import { isDemoModeActive, isDemoSiteId } from "@/lib/demo-utils"
 export type ZavuChannelDisconnect = {
   zavu_sender_id?: string
   zavu_invitation_id?: string
+  phoneNumber?: string
+  metadata?: {
+    phone_number?: string
+    [key: string]: any
+  }
 }
 
 export type OutstandSocialDisconnect = {
@@ -16,8 +21,10 @@ function isAlreadyGone(status?: number) {
 
 export async function disconnectZavuChannel(channel: ZavuChannelDisconnect): Promise<void> {
   if (channel.zavu_sender_id) {
+    const phoneNumber = channel.metadata?.phone_number || channel.phoneNumber
+    const query = phoneNumber ? `?phoneNumber=${encodeURIComponent(phoneNumber)}` : ''
     const response = await apiClient.delete(
-      `/api/integrations/zavu/senders/${encodeURIComponent(channel.zavu_sender_id)}`
+      `/api/integrations/zavu/senders/${encodeURIComponent(channel.zavu_sender_id)}${query}`
     )
     if (!response.success && !isAlreadyGone(response.status)) {
       throw new Error(response.error?.message || "Failed to disconnect channel from Zavu")

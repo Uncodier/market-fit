@@ -1,0 +1,29 @@
+--- ../API/src/lib/services/zavu/client.ts
++++ ../API/src/lib/services/zavu/client.ts
+@@ -194,6 +194,22 @@
+   await zavuFetch(`/senders/${senderId}`, { method: "DELETE" });
+ }
+ 
++export async function searchAvailableNumbers(params: { countryCode: string, areaCode?: string }): Promise<any> {
++  const query = new URLSearchParams({ countryCode: params.countryCode });
++  if (params.areaCode) query.append("areaCode", params.areaCode);
++  
++  return zavuFetch(`/phone-numbers/available?${query.toString()}`);
++}
++
++export async function purchaseNumber(phoneNumber: string): Promise<any> {
++  return zavuFetch("/phone-numbers", {
++    method: "POST",
++    body: JSON.stringify({ phoneNumber }),
++  });
++}
++
++export async function assignNumberToSender(senderId: string, phoneNumber: string): Promise<any> {
++  return zavuFetch(`/senders/${senderId}/phone-numbers`, {
++    method: "POST",
++    body: JSON.stringify({ phoneNumber }),
++  });
++}
++
+ export async function connectTelegram(senderId: string, botToken: string): Promise<any> {
+   return zavuFetch(`/senders/${senderId}/telegram`, {
