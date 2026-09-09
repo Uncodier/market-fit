@@ -11,6 +11,10 @@ statements:
     timeout_seconds: 5
 
   - URL: /catalog/modifier-groups
+  - WAIT_UNTIL: The page is loaded
+    js: "await page.url().endsWith('/catalog/modifier-groups')"
+    timeout_seconds: 15
+
   - intent: Click New modifier group in the top bar
     action: click
     locator: "getByRole('button', { name: 'New modifier group' })"

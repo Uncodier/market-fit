@@ -941,7 +941,7 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
                       group={group}
                       isDarkMode={isDarkMode}
                       isExpanded={expandedToolGroups.has(group.groupId)}
-                      isLive={Boolean(runningUserLog) && group.groupId === lastProcessGroupId}
+                      isLive={group.groupId === lastProcessGroupId && (Boolean(runningUserLog) || (activeRobotInstance && ['running', 'active'].includes(activeRobotInstance.status)))}
                       onToggleExpand={toggleToolGroup}
                       collapsedToolDetails={collapsedToolDetails}
                       onToggleToolDetails={toggleToolDetails}

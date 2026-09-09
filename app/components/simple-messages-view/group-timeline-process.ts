@@ -125,6 +125,11 @@ export function getProcessActivity(log: InstanceLog): { label: string; kind: Pro
     return { label: 'Thinking', kind: 'thinking' }
   }
 
+  // Si el mensaje es corto, lo mostramos como la acción actual
+  if (message.length < 80 && !message.includes('\n')) {
+    return { label: message, kind: 'responding' }
+  }
+
   return { label: 'Responding', kind: 'responding' }
 }
 

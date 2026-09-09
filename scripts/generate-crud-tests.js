@@ -26,6 +26,10 @@ statements:
     timeout_seconds: 5
 
   - URL: ${entity.path}
+  - WAIT_UNTIL: The page is loaded
+    js: "await page.url().endsWith('${entity.path}')"
+    timeout_seconds: 15
+
   - intent: Click ${entity.addBtn} in the top bar
     action: click
     locator: "getByRole('button', { name: '${entity.addBtn}' })"

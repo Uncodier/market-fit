@@ -214,12 +214,18 @@ export function EmailChannelSetup({
             </span>
           </div>
           <p className="text-xs text-muted-foreground">
-            Add these CNAME records to your DNS provider for {metadata.domain}
+            Add these DNS records to your DNS provider for {metadata.domain}
           </p>
 
           <div className="space-y-3">
             {dnsRecords.map((record: any, idx: number) => (
               <div key={idx} className="p-3 bg-background rounded border text-xs font-mono space-y-2">
+                {record.type && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-muted-foreground">Type:</span>
+                    <span className="font-bold">{record.type}</span>
+                  </div>
+                )}
                 <div className="flex justify-between items-center">
                   <span className="text-muted-foreground">Name/Host:</span>
                   <div className="flex items-center gap-2">

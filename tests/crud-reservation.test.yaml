@@ -11,6 +11,10 @@ statements:
     timeout_seconds: 5
 
   - URL: /reservations
+  - WAIT_UNTIL: The page is loaded
+    js: "await page.url().endsWith('/reservations')"
+    timeout_seconds: 15
+
   - intent: Click New reservation in the top bar
     action: click
     locator: "getByRole('button', { name: 'New reservation' })"

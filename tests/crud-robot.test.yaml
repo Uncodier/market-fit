@@ -11,6 +11,10 @@ statements:
     timeout_seconds: 5
 
   - URL: /robots
+  - WAIT_UNTIL: The page is loaded
+    js: "await page.url().endsWith('/robots')"
+    timeout_seconds: 15
+
   - intent: Click New robot in the top bar
     action: click
     locator: "getByRole('button', { name: 'New robot' })"
