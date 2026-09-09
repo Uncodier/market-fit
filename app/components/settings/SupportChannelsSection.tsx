@@ -24,6 +24,7 @@ import { v4 as uuidv4 } from "uuid"
 import { apiClient } from "@/app/services/api-client-service"
 import { TelegramChannelSetup } from "./TelegramChannelSetup"
 import { EmailChannelSetup } from "./EmailChannelSetup"
+import { VoiceChannelSetup } from "./VoiceChannelSetup"
 import { useZavuInvitationSync } from "./use-zavu-invitation-sync"
 
 import { getAccountLimit, countConnectedAccounts, canConnectAccounts } from "@/lib/billing-limits"
@@ -36,6 +37,7 @@ const CHANNEL_TYPES = [
   { value: "messenger", label: "Messenger" },
   { value: "telegram", label: "Telegram" },
   { value: "email", label: "Email" },
+  { value: "voice", label: "Voice / Audio Agent" },
 ] as const
 
 const PARTNER_LINK_TYPES = new Set(["whatsapp", "messenger"])
@@ -324,6 +326,32 @@ export function SupportChannelsSection({ active, siteId, onSave }: SupportChanne
                   )
                 )}
 
+                {hasType && !isConnected && type === "voice" && siteId && (
+                  canConnectAccounts(currentSite) ? (
+                  <VoiceChannelSetup
+                    siteId={siteId}
+                    channel={channel}
+                    onConnected={(payload) => {
+                      if (!canConnectAccounts(currentSite)) {
+                        openAccountLimit()
+                        return
+                      }
+                      update(index, {
+                        ...channel,
+                        status: "connected",
+                        zavu_sender_id: payload.senderId,
+                      })
+                    }}
+                  />
+                  ) : (
+                    <SectionCardContent className="pt-0">
+                      <Button type="button" variant="outline" size="sm" onClick={openAccountLimit}>
+                        Upgrade to connect
+                      </Button>
+                    </SectionCardContent>
+                  )
+                )}
+
                 {hasType && !isConnected && type === "telegram" && siteId && (
                   canConnectAccounts(currentSite) ? (
                   <TelegramChannelSetup
@@ -355,7 +383,7 @@ export function SupportChannelsSection({ active, siteId, onSave }: SupportChanne
                   )
                 )}
 
-                {hasType && !isConnected && type !== "telegram" && type !== "email" && (
+                {hasType && !isConnected && type !== "telegram" && type !== "email" && type !== "voice" && (
                   <>
                     <SectionCardContent className="pt-0">
                       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 bg-orange-50 dark:bg-orange-900/10 rounded-lg border border-orange-100 dark:border-orange-900/30">
