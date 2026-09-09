@@ -541,6 +541,36 @@ export const Circle = ({ className = "", size = 18, ...props }: IconProps) => (
   </IconWrapper>
 )
 
+export const CursorLogo = ({ className = "", size = 18, ...props }: IconProps) => (
+  <IconWrapper className={className} size={size} {...props}>
+    <img src="/images/agents/cursor.svg" alt="Cursor Logo" className="w-full h-full object-contain" />
+  </IconWrapper>
+)
+
+export const OpenClawLogo = ({ className = "", size = 18, ...props }: IconProps) => (
+  <IconWrapper className={className} size={size} {...props}>
+    <img src="/images/agents/openclaw.svg" alt="Open Claw Logo" className="w-full h-full object-contain" />
+  </IconWrapper>
+)
+
+export const HermesLogo = ({ className = "", size = 18, ...props }: IconProps) => (
+  <IconWrapper className={className} size={size} {...props}>
+    <img src="/images/agents/hermes.png" alt="Hermes Logo" className="w-full h-full object-contain" />
+  </IconWrapper>
+)
+
+export const OpenAILogo = ({ className = "", size = 18, ...props }: IconProps) => (
+  <IconWrapper className={className} size={size} {...props}>
+    <img src="/images/agents/openai.svg" alt="OpenAI Logo" className="w-full h-full object-contain" />
+  </IconWrapper>
+)
+
+export const ClaudeLogo = ({ className = "", size = 18, ...props }: IconProps) => (
+  <IconWrapper className={className} size={size} {...props}>
+    <img src="/images/agents/claude.svg" alt="Claude Logo" className="w-full h-full object-contain" />
+  </IconWrapper>
+)
+
 // CalendarIcon
 export const CalendarIcon = ({ className = "", size = 18, ...props }: IconProps) => (
   <IconWrapper className={className} size={size} {...props}>

@@ -60,6 +60,7 @@ export const routes: RouteConfig[] = [
   { path: "/buyer", hasLayout: false },
   
   // Routes without layout (default)
+  { path: "/navigation", hasLayout: false },
   { path: "/cart", hasLayout: false },
   { path: "/login", hasLayout: false },
   { path: "/register", hasLayout: false },
@@ -80,12 +81,14 @@ export function shouldUseWorkspaceProviders(rawPathname: string): boolean {
   const pathname = rawPathname.split('?')[0]
   if (shouldUseLayout(pathname)) return true
   return (
+    pathname.startsWith("/navigation") ||
     pathname.startsWith("/buyer") ||
     pathname.startsWith("/create-site") ||
     pathname.startsWith("/projects") ||
     pathname.startsWith("/demo") ||
     pathname.startsWith("/checkout") ||
-    pathname.startsWith("/billing/success")
+    pathname.startsWith("/billing/success") ||
+    pathname.startsWith("/partner-license")
   )
 }
 

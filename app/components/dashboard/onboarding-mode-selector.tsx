@@ -1,6 +1,6 @@
 "use client"
 
-import { Megaphone, Send, Bot } from "@/app/components/ui/icons"
+import { Megaphone, Send, ShoppingCart, Zap, ArrowRight } from "@/app/components/ui/icons"
 import { Tabs, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import type { OnboardingTasksState } from "./hooks/use-onboarding-validation"
@@ -13,7 +13,8 @@ import {
 const MODES = [
   { id: "inbound" as const, i18nKey: "inbound", Icon: Megaphone },
   { id: "outbound" as const, i18nKey: "outbound", Icon: Send },
-  { id: "ai_tasks" as const, i18nKey: "aiTasks", Icon: Bot },
+  { id: "ecommerce" as const, i18nKey: "ecommerce", Icon: ShoppingCart },
+  { id: "automation" as const, i18nKey: "automation", Icon: Zap },
 ]
 
 interface OnboardingModeSelectorProps {
@@ -38,7 +39,7 @@ export function OnboardingModeSelector({
         }}
         className="w-full"
       >
-        <TabsList className="h-9 p-1 bg-muted/50 rounded-lg w-full grid grid-cols-3">
+        <TabsList className="h-9 p-1 bg-muted/50 rounded-lg w-full grid grid-cols-4">
           {MODES.map((mode) => {
             const launchTasks = getLaunchTasks(mode.id)
             const completed = launchTasks.filter((task) => completedTasks[task.id]).length
@@ -75,31 +76,56 @@ export function OnboardingModeSelector({
           {t("dashboard.onboarding.selector.subtitle")}
         </p>
       </div>
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {MODES.map((mode) => {
           const launchTasks = getLaunchTasks(mode.id)
           const completed = launchTasks.filter((task) => completedTasks[task.id]).length
           const total = launchTasks.length
           const Icon = mode.Icon
+          const progress = total > 0 ? (completed / total) * 100 : 0
+          
           return (
             <button
               key={mode.id}
               type="button"
               onClick={() => onSelect(mode.id)}
-              className="flex flex-col items-start text-left rounded-xl border border-border/70 bg-card p-5 transition-colors hover:bg-muted/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset"
+              className="group relative flex flex-col items-start text-left rounded-2xl border border-border/60 bg-gradient-to-br from-card to-card/50 p-6 transition-all duration-300 hover:shadow-md hover:border-border hover:-translate-y-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary overflow-hidden"
             >
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-muted text-foreground mb-4">
-                <Icon size={18} />
+              {/* Decorative background glow */}
+              <div className="absolute -top-10 -right-10 w-32 h-32 bg-primary/5 rounded-full blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+              
+              <div className="flex w-full items-start justify-between mb-5">
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary transition-colors group-hover:bg-primary group-hover:text-primary-foreground shadow-sm">
+                  <Icon size={22} className="transition-transform duration-300 group-hover:scale-110" />
+                </div>
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted/50 text-muted-foreground opacity-0 -translate-x-2 transition-all duration-300 group-hover:opacity-100 group-hover:translate-x-0">
+                  <ArrowRight size={16} />
+                </div>
               </div>
-              <div className="text-sm font-semibold text-foreground">
+              
+              <div className="text-lg font-semibold text-foreground mb-1 tracking-tight">
                 {t(`dashboard.onboarding.mode.${mode.i18nKey}`)}
               </div>
-              <p className="mt-1 text-sm text-muted-foreground leading-snug">
-                {t(`dashboard.onboarding.mode.${mode.i18nKey}.tagline`)}
+              <p className="text-sm text-muted-foreground leading-relaxed mb-6">
+                {t(`dashboard.onboarding.mode.${mode.i18nKey}.desc`)}
               </p>
-              <p className="mt-4 text-xs tabular-nums text-muted-foreground">
-                {t("dashboard.onboarding.progressDone", { completed, total })}
-              </p>
+              
+              <div className="w-full mt-auto pt-4 border-t border-border/50">
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-xs font-medium text-foreground">
+                    {t(`dashboard.onboarding.mode.${mode.i18nKey}.tagline`)}
+                  </span>
+                  <span className="text-xs tabular-nums text-muted-foreground bg-muted/50 px-2 py-0.5 rounded-full">
+                    {completed}/{total}
+                  </span>
+                </div>
+                <div className="h-1.5 w-full bg-muted/50 rounded-full overflow-hidden">
+                  <div 
+                    className="h-full bg-primary/70 transition-all duration-500 ease-in-out group-hover:bg-primary rounded-full" 
+                    style={{ width: `${progress}%` }}
+                  />
+                </div>
+              </div>
             </button>
           )
         })}

@@ -150,7 +150,7 @@ export const ChatInput = memo(function ChatInput({
       <div className="w-full">
         <div className="w-full mx-auto relative pb-[20px] px-4 md:px-8 lg:px-12 xl:px-24">
           <form onSubmit={handleSubmit} className="relative w-full">
-            <div className="relative w-full">
+            <div className="relative w-full" id="tour-chat-input">
         <OptimizedTextarea
                 ref={externalRef ?? internalRef}
                 onChange={handleChange}

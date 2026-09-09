@@ -94,6 +94,11 @@ export const steps = [
   },
   {
     id: 8,
+    title: "Summary",
+    description: "Review & create"
+  },
+  {
+    id: 9,
     title: "Next Steps",
     description: "Ready to go!"
   }

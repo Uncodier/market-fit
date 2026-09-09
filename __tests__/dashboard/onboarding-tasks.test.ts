@@ -10,46 +10,57 @@ import {
 describe("onboarding task catalog", () => {
   it("keeps 18 unique task ids", () => {
     const catalogIds = ONBOARDING_TASKS.map((task) => task.id)
-    expect(new Set(catalogIds).size).toBe(18)
+    expect(new Set(catalogIds).size).toBe(19)
     expect(catalogIds.sort()).toEqual([
+      "add_catalog_items",
       "assign_attribution_link",
-      "complete_requirement",
-      "configure_agents",
       "configure_channels",
+      "configure_store",
       "create_campaign",
-      "create_coordination_task",
+      "create_workflows",
       "fine_tune_segments",
       "import_leads",
       "install_tracking_script",
       "invite_team",
       "pay_first_campaign",
       "personalize_customer_journey",
-      "publish_and_feedback",
       "set_business_hours",
       "setup_billing",
       "setup_branding",
       "setup_content",
+      "setup_content_flows",
+      "take_guided_tour",
       "validate_geographic_restrictions",
     ])
   })
 
   it("keeps three launch tasks per mode and shared later tasks", () => {
     expect(getLaunchTasks("inbound").map((task) => task.id)).toEqual([
+      "take_guided_tour",
       "install_tracking_script",
       "configure_channels",
       "create_campaign",
     ])
     expect(getLaunchTasks("outbound").map((task) => task.id)).toEqual([
+      "take_guided_tour",
       "import_leads",
       "fine_tune_segments",
       "setup_billing",
     ])
-    expect(getLaunchTasks("ai_tasks").map((task) => task.id)).toEqual([
-      "configure_agents",
-      "create_coordination_task",
-      "publish_and_feedback",
+    expect(getLaunchTasks("automation").map((task) => task.id)).toEqual([
+      "take_guided_tour",
+      "configure_channels",
+      "create_workflows",
+      "setup_content_flows",
     ])
-    expect(getLaterTasks("inbound")).toHaveLength(9)
+    expect(getLaunchTasks("ecommerce").map((task) => task.id)).toEqual([
+      "take_guided_tour",
+      "install_tracking_script",
+      "setup_billing",
+      "configure_store",
+      "add_catalog_items",
+    ])
+    expect(getLaterTasks("inbound")).toHaveLength(8)
     expect(getScopedTasks("inbound")).toHaveLength(12)
   })
 

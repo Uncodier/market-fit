@@ -130,6 +130,20 @@ function RobotsPageContent() {
   const isCanvasMode = viewMode === 'imprenta' || viewMode === 'workflow'
   const { theme, isDarkMode } = useTheme()
   
+  // 🆕 Wait for site context to be fully synchronized before proceeding
+  const [isSiteContextReady, setIsSiteContextReady] = useState(false)
+  
+  useEffect(() => {
+    // 🆕 Homologated site ID validation (same pattern as RobotsProvider)
+    const siteId = currentSite?.id
+    if (siteId) {
+      // 🆕 Eliminado delay artificial para mayor velocidad
+      setIsSiteContextReady(true)
+    } else {
+      setIsSiteContextReady(false)
+    }
+  }, [currentSite?.id])
+
   // Verify subscription on re-entry
   useEffect(() => {
     const handleVisibilityChange = () => {
@@ -148,18 +162,62 @@ function RobotsPageContent() {
     }
   }, [refreshSites])
 
-  // Legacy bookmarks used ?mode= — sync to context, no longer stripping the parameter.
+  // Detect mode/activity changes
   useEffect(() => {
-    if (pathname !== "/robots") return
-    const raw = searchParams.get("mode")
-    if (raw === "imprenta") {
+    const rawMode = searchParams.get("mode")
+    const rawActivity = searchParams.get("activity")
+    
+    if (rawMode === "imprenta") {
       setRobotsViewMode("imprenta")
-    } else if (raw === "workflow") {
+    } else if (rawMode === "workflow") {
       setRobotsViewMode("workflow")
     } else {
       setRobotsViewMode("agent")
     }
-  }, [pathname, searchParams, setRobotsViewMode])
+    
+    // Check if we need to auto-create an instance or start a new conversation
+    if (rawActivity === 'robot') {
+      const isNewRequest = searchParams.get("new") === "true" || searchParams.get("instance") === "new"
+      const currentQuery = searchParams.get("query")
+      
+      // If a new conversation is explicitly requested
+      if (isNewRequest) {
+        setLocalSelectedInstanceId('new')
+      }
+      
+      // If we have a query, wait for everything to settle then trigger the query
+      if (currentQuery) {
+        let retries = 0;
+        const maxRetries = 20; // 4 seconds total
+        
+        const checkReadyInterval = setInterval(() => {
+          retries++;
+          
+          // Ensure we have a current site and robots are loaded
+          // Also check that we are either fully created, or the system is stable
+          const isReady = isSiteContextReady && !isLoadingRobots;
+          
+          if (isReady || retries >= maxRetries) {
+            clearInterval(checkReadyInterval)
+            
+            // Clean up the URL by removing the query param so it doesn't re-trigger on refresh
+            const newParams = new URLSearchParams(searchParams.toString())
+            newParams.delete("query")
+            newParams.delete("new") // Also clean up the 'new' flag
+            router.replace(`/robots?${newParams.toString()}`, { scroll: false })
+            
+            // Dispatch a custom event to the simple messages view to prefill and send the query
+            setTimeout(() => {
+              const decodedQuery = decodeURIComponent(currentQuery).replace(/\+/g, ' ')
+              window.dispatchEvent(new CustomEvent('robot:send-query-from-url', {
+                detail: { query: decodedQuery }
+              }))
+            }, 300)
+          }
+        }, 200)
+      }
+    }
+  }, [pathname, searchParams, setRobotsViewMode, isSiteContextReady, isLoadingRobots, router])
   
   // No campaigns view here
 
@@ -200,21 +258,6 @@ function RobotsPageContent() {
       prevSiteIdRef.current = siteId
     }
   }, [currentSite?.id, refreshRobots])
-
-  // 🆕 Wait for site context to be fully synchronized before proceeding
-  const [isSiteContextReady, setIsSiteContextReady] = useState(false)
-  
-  useEffect(() => {
-    // 🆕 Homologated site ID validation (same pattern as RobotsProvider)
-    const siteId = currentSite?.id
-    if (siteId) {
-      // 🆕 Eliminado delay artificial para mayor velocidad
-      setIsSiteContextReady(true)
-    } else {
-      setIsSiteContextReady(false)
-    }
-  }, [currentSite?.id])
-
 
   // Instance selection via URL param (`instance`, `instance_id`, or `instanceId`)
   const selectedInstanceParam = resolveInstanceIdParam(searchParams)

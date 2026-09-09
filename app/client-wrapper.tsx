@@ -7,6 +7,7 @@ import { shouldUseLayout } from "./config/routes"
 import DemoBanner from "./components/DemoBanner"
 import VersionCheck from "./components/VersionCheck"
 import { rememberInternalPath } from "./documents/internal-back"
+import { GuidedTour } from "./components/onboarding/GuidedTour"
 
 const LayoutClient = dynamic(() => import("./layout-client"), { ssr: true })
 const ViewOnlyBanner = dynamic(
@@ -41,6 +42,7 @@ export default function ClientWrapper({
 
   return (
     <>
+      <GuidedTour />
       {children}
       <DemoBanner />
       <VersionCheck />

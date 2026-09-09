@@ -178,7 +178,7 @@ export const AREA_FAMILY: Record<WorkspaceArea, AreaFamilyConfig> = {
   applications: { centerHue: 230, defaultPattern: "mesh-6" },
   finance: { centerHue: 152, defaultPattern: "mesh-5" },
   reports: { centerHue: 75, defaultPattern: "mesh-7" },
-  settings: { centerHue: 205, defaultPattern: "mesh-4" },
+  settings: { centerHue: 305, defaultPattern: "mesh-4" },
 }
 
 export const FLAGSHIP_MODULE_KEYS = new Set([
@@ -310,17 +310,17 @@ export const MODULE_VARIANTS: Record<string, ModuleVariant> = {
   reportSales: buildVariant(80, 95, 160, 82, 40, "mesh-4", false),
   reportSocial: buildVariant(75, 85, 135, 80, 42, "mesh-5", false),
 
-  // —— Settings (steel → slate → indigo) ——
-  settingsGeneral: buildVariant(205, 220, 135, 58, 48, "mesh-4", true, true),
-  company: buildVariant(198, 185, 45, 52, 46, "mesh-5", false),
-  marketplace: buildVariant(210, 230, 200, 60, 50, "mesh-6", false),
-  settingsVisits: buildVariant(192, 175, 90, 55, 48, "mesh-7", false),
-  team: buildVariant(218, 235, 310, 62, 52, "mesh-1", false),
-  calendar: buildVariant(200, 215, 160, 50, 46, "mesh-2", false),
-  social: buildVariant(225, 245, 50, 58, 50, "mesh-3", false),
-  integrations: buildVariant(212, 195, 120, 65, 48, "mesh-4", false),
-  billing: buildVariant(188, 205, 220, 70, 46, "mesh-5", false),
-  security: buildVariant(230, 250, 180, 55, 44, "mesh-6", false),
+  // —— Settings (Magenta → Fuchsia → Pink) ——
+  settingsGeneral: buildVariant(310, 295, 135, 75, 52, "mesh-4", true, true),
+  company: buildVariant(295, 285, 45, 68, 48, "mesh-5", false),
+  marketplace: buildVariant(320, 305, 200, 80, 54, "mesh-6", false),
+  settingsVisits: buildVariant(290, 310, 90, 72, 46, "mesh-7", false),
+  team: buildVariant(315, 300, 310, 85, 56, "mesh-1", false),
+  calendar: buildVariant(305, 290, 160, 70, 50, "mesh-2", false),
+  social: buildVariant(298, 315, 50, 78, 52, "mesh-3", false),
+  integrations: buildVariant(318, 305, 120, 82, 55, "mesh-4", false),
+  billing: buildVariant(288, 298, 220, 65, 45, "mesh-5", false),
+  security: buildVariant(312, 325, 180, 88, 58, "mesh-6", false),
 }
 
 function hashString(str: string) {
@@ -342,7 +342,10 @@ function deriveVariant(area: WorkspaceArea, itemKey: string): ModuleVariant {
   let sat = 68 + (hash % 18)
   let light = 46 + (hash % 12)
   if (area === "applications") sat = 45 + (hash % 16)
-  if (area === "settings") sat = 50 + (hash % 16)
+  if (area === "settings") {
+    sat = 75 + (hash % 15)
+    light = 50 + (hash % 8)
+  }
   if (area === "finance") {
     sat = 70 + (hash % 14)
     light = 40 + (hash % 8)
@@ -373,6 +376,6 @@ export function getAreaFamilyAccent(area: WorkspaceArea): string {
   if (area === "reports") return "hsl(72 95% 40%)"
   if (area === "finance") return "hsl(152 72% 38%)"
   if (area === "applications") return "hsl(230 52% 50%)"
-  if (area === "settings") return "hsl(205 48% 46%)"
+  if (area === "settings") return "hsl(305 78% 52%)"
   return `hsl(${family.centerHue} 78% 50%)`
 }

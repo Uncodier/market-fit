@@ -66,7 +66,7 @@ export async function GET(req: NextRequest) {
       return res
     }
 
-    // 4. Update the license and user's billing
+    // 4. Update the license and redirect to selection screen
     const supabaseAdmin = await createServiceClient()
     
     // Check if license exists in our db
@@ -92,67 +92,8 @@ export async function GET(req: NextRequest) {
       }).eq('license_key', license_key)
     }
 
-    // Assign plan based on AppSumo tier
-    // We assume the webhook previously saved the real plan_name in `partner_licenses`.
-    // We might need to map it. Example: plan_name from AppSumo might be "market-fit-engine"
-    let targetPlan: 'engine' | 'foundry' = 'engine' // Default
-    let baseCredits = 20
-    
-    const actualPlanName = licenseDb?.plan_name?.toLowerCase() || ''
-    if (actualPlanName.includes('foundry') || actualPlanName.includes('tier 2') || actualPlanName.includes('tier2')) {
-      targetPlan = 'foundry'
-      baseCredits = 100
-    }
-
-    // Look for the user's current site to update billing
-    const { data: siteData } = await supabaseAdmin
-      .from('site_members')
-      .select('site_id')
-      .eq('user_id', user.id)
-      .limit(1)
-
-    if (siteData && siteData.length > 0) {
-      const siteId = siteData[0].site_id
-      
-      // Update license with site_id
-      await supabaseAdmin.from('partner_licenses').update({
-        site_id: siteId
-      }).eq('license_key', license_key)
-
-      // Get current billing to respect extra credits purchased
-      const { data: currentBilling } = await supabaseAdmin
-        .from('billing')
-        .select('credits_available')
-        .eq('site_id', siteId)
-        .single()
-        
-      // AppSumo "top-up maxed" logic:
-      // The user gets `baseCredits` each month. Any extra credits purchased (if any) shouldn't be lost.
-      // Since AppSumo doesn't have a recurring monthly event, we have a cron or we just set it here.
-      // If current is less than baseCredits, top it up. If it's more, leave it (they bought extras).
-      const currentCredits = currentBilling?.credits_available || 0
-      const newCredits = Math.max(currentCredits, baseCredits)
-
-      // AppSumo is a lifetime deal, so no Stripe customer ID needed
-      const { error: billingError } = await supabaseAdmin.from('billing').update({
-        plan: targetPlan,
-        credits_available: newCredits,
-        subscription_status: 'active',
-        auto_renew: false,
-        updated_at: new Date().toISOString()
-      }).eq('site_id', siteId)
-      
-      if (billingError) {
-        console.error("Error updating billing for AppSumo:", billingError)
-      }
-    }
-
-    // Also we should mark the license as 'active' by responding to AppSumo API if they require it?
-    // Actually, AppSumo marks it active once the partner's webhook returns 200 for the `activate` event.
-    // We already do that in the webhook.
-
-    // Clear pending cookie
-    const res = NextResponse.redirect(new URL('/dashboard', req.url))
+    // Instead of auto-applying to a random site, we redirect the user to the selection screen
+    const res = NextResponse.redirect(new URL(`/partner-license/select-site?license=${license_key}`, req.url))
     res.cookies.delete('appsumo_pending_license')
     return res
 

@@ -97,7 +97,7 @@ export function OnboardingItinerary({ userName }: OnboardingItineraryProps) {
     laterTasks.find((task) => !onboardingTasks[task.id])
 
   const modeLabel = selectedMode
-    ? t(`dashboard.onboarding.mode.${selectedMode === "ai_tasks" ? "aiTasks" : selectedMode}`)
+    ? t(`dashboard.onboarding.mode.${selectedMode}`)
     : null
 
   const goToTask = useCallback(

@@ -47,7 +47,11 @@ export default function NavigationPage({ isOverlay, onClose }: NavigationPagePro
     if (onClose) {
       onClose()
     } else {
-      router.back()
+      if (searchParams?.get("showTour") === "true") {
+        router.push("/dashboard?tab=overview")
+      } else {
+        router.back()
+      }
     }
   }
 

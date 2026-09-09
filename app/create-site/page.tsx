@@ -20,7 +20,8 @@ function CreateSitePageContent() {
   const siteContext = useOptionalSite()
   const { user } = useAuth()
   const router = useRouter()
-  useSearchParams()
+  const searchParams = useSearchParams()
+  const applyLicense = searchParams?.get('applyLicense')
 
   // Simple refresh prevention specifically for create-site page
   useSimpleRefreshPrevention()
@@ -149,6 +150,18 @@ function CreateSitePageContent() {
       if (createdSite) {
         await setCurrentSite(createdSite)
       }
+      
+      if (applyLicense) {
+        try {
+          await fetch('/api/partner-license/apply', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ license_key: applyLicense, site_id: createdSiteId }),
+          })
+        } catch (err) {
+          console.error("Failed to auto-apply license:", err)
+        }
+      }
     }
     router.push("/dashboard")
   }
@@ -159,6 +172,18 @@ function CreateSitePageContent() {
       const createdSite = sites.find(site => site.id === createdSiteId)
       if (createdSite) {
         await setCurrentSite(createdSite)
+      }
+      
+      if (applyLicense) {
+        try {
+          await fetch('/api/partner-license/apply', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ license_key: applyLicense, site_id: createdSiteId }),
+          })
+        } catch (err) {
+          console.error("Failed to auto-apply license:", err)
+        }
       }
     }
     router.push("/settings")

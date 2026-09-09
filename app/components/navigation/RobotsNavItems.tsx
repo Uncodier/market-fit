@@ -80,6 +80,7 @@ export function RobotsNavItems({ isCollapsed }: RobotsNavItemsProps) {
       />
       )}
       <MenuItem
+        id="tour-agents-nav"
         href={agentHref}
         icon={Bot}
         title={t("layout.sidebar.agents") || "Agents"}
@@ -94,6 +95,7 @@ export function RobotsNavItems({ isCollapsed }: RobotsNavItemsProps) {
       </MenuItem>
       {showContentCreator && (
       <MenuItem
+        id="tour-content-nav"
         href={imprentaHref}
         icon={Printer}
         title={t("layout.sidebar.imprenta") || "Content Creator"}
@@ -107,6 +109,7 @@ export function RobotsNavItems({ isCollapsed }: RobotsNavItemsProps) {
       )}
       {showWorkflows && (
       <MenuItem
+        id="tour-workflows-nav"
         href={workflowHref}
         icon={Workflow}
         title={t("layout.sidebar.workflows") || "Workflows"}

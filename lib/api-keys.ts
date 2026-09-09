@@ -26,7 +26,7 @@ export interface ApiKey {
 export interface CreateApiKeyParams {
   name: string;
   scopes: string[];
-  site_id: string;
+  site_id?: string | null;
   user_id: string;
   expirationDays?: number;
   prefix?: string;

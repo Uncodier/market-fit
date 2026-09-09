@@ -9,6 +9,12 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Missing siteId parameter" }, { status: 400 });
   }
 
+  // Validate that siteId is a valid UUID to prevent Postgres errors
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (!uuidRegex.test(siteId)) {
+    return NextResponse.json({ hasSessions: false, error: "Invalid siteId parameter" }, { status: 400 });
+  }
+
   const supabase = await createServiceClient(); // Use service client to bypass RLS
 
   try {

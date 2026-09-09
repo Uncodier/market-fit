@@ -134,6 +134,7 @@ export function ModuleTile({ area, itemKey, title, icon: Icon, onClick, inMenu =
 
   return (
     <div
+      id={`tour-app-${itemKey}`}
       onClick={onClick}
       className="flex flex-col items-center group outline-none cursor-pointer focus-visible:outline-none w-[112px]"
       role="button"

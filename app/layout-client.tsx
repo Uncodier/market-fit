@@ -17,6 +17,7 @@ import { useIsMobile } from "./hooks/use-mobile-view"
 import { useLocalization } from "./context/LocalizationContext"
 import { ScreenAccessRedirect } from "./components/navigation/ScreenAccessRedirect"
 import { useOptimisticError } from "./hooks/use-optimistic-error"
+import { GuidedTour } from "./components/onboarding/GuidedTour"
 
 const pathToNavKey: Record<string, string> = {
   "/dashboard": "dashboard",
@@ -156,6 +157,7 @@ function LayoutClientInner({
   breadcrumbFromEvent,
   customTitle,
   fetchError,
+  isCreateEditRoute,
 }: {
   children: React.ReactNode
   pathname: string
@@ -163,6 +165,7 @@ function LayoutClientInner({
   breadcrumbFromEvent: React.ReactNode
   customTitle: string | null
   fetchError: string | null
+  isCreateEditRoute: boolean
 }) {
   const searchParams = useSearchParams()
   const isArtifact = searchParams.get("artifact") === "true"
@@ -271,15 +274,15 @@ function LayoutClientInner({
             {t('layout.topbar.error') || 'Error'}: {visibleFetchError === 'LAYOUT_ERROR_LOADING_SEGMENTS' ? (t('layout.topbar.errorLoadingSegments') || 'Error loading segments') : visibleFetchError}
           </div>
         )}
-        {isLoginPage ? (
-          // Para la página de login, solo mostrar el contenido sin layout
-          <div className="min-h-[100dvh] w-full">
+        {isLoginPage || isCreateEditRoute || pathname.startsWith("/navigation") ? (
+          // Para la página de login o rutas sin layout, mostrar el contenido con el Tour si aplica
+          <div className="min-h-[100dvh] w-full relative">
+            {!isLoginPage && <GuidedTour />}
             {children}
           </div>
         ) : (
           // Para el resto de páginas, mostrar el layout completo
           <div className="flex overflow-visible relative min-h-[100dvh] w-full">
-            <ScreenAccessRedirect />
             <Sidebar 
               isCollapsed={isLayoutCollapsed} 
               onCollapse={handleCollapse}
@@ -287,6 +290,9 @@ function LayoutClientInner({
               onMobileClose={() => setIsMobileSidebarOpen(false)}
               className="flex-none fixed left-0 top-0 h-screen z-[210]"
             />
+            {/* TOUR EXPLICITAMENTE RENDERIZADO */}
+            <GuidedTour />
+            <ScreenAccessRedirect />
             <div 
               className="flex-1 flex flex-col min-w-0 transition-[padding] duration-300 ease-in-out"
               style={{ paddingLeft: isMobile ? 0 : isLayoutCollapsed ? 64 : 256 }}
@@ -424,6 +430,7 @@ export default function LayoutClient({
         breadcrumbFromEvent={breadcrumbFromEvent}
         customTitle={customTitle}
         fetchError={fetchError}
+        isCreateEditRoute={isCreateEditRoute}
       >
         {children}
       </LayoutClientInner>

@@ -1,6 +1,6 @@
 import type { OnboardingTaskId } from "@/app/components/dashboard/hooks/use-onboarding-validation"
 
-export type OnboardingMode = "inbound" | "outbound" | "ai_tasks"
+export type OnboardingMode = "inbound" | "outbound" | "automation" | "ecommerce"
 export type OnboardingTier = "launch" | "later"
 export type OnboardingTaskIcon =
   | "code"
@@ -20,6 +20,8 @@ export type OnboardingTaskIcon =
   | "sparkles"
   | "external-link"
   | "globe"
+  | "shopping-cart"
+  | "zap"
 
 export interface OnboardingTaskDef {
   id: OnboardingTaskId
@@ -32,11 +34,19 @@ export interface OnboardingTaskDef {
 
 export const ONBOARDING_TASKS: OnboardingTaskDef[] = [
   {
+    id: "take_guided_tour",
+    href: "#",
+    estimatedMinutes: 2,
+    tier: "launch",
+    modes: ["inbound", "outbound", "automation", "ecommerce"],
+    icon: "globe",
+  },
+  {
     id: "install_tracking_script",
     href: "/settings?tab=channels",
     estimatedMinutes: 5,
     tier: "launch",
-    modes: ["inbound"],
+    modes: ["inbound", "ecommerce"],
     icon: "code",
   },
   {
@@ -44,7 +54,7 @@ export const ONBOARDING_TASKS: OnboardingTaskDef[] = [
     href: "/settings?tab=channels",
     estimatedMinutes: 8,
     tier: "launch",
-    modes: ["inbound"],
+    modes: ["inbound", "automation"],
     icon: "settings",
   },
   {
@@ -76,39 +86,47 @@ export const ONBOARDING_TASKS: OnboardingTaskDef[] = [
     href: "/settings?tab=channels",
     estimatedMinutes: 8,
     tier: "launch",
-    modes: ["outbound"],
+    modes: ["outbound", "ecommerce"],
     icon: "mail",
   },
   {
-    id: "configure_agents",
-    href: "/agents",
+    id: "configure_store",
+    href: "/settings?tab=store",
     estimatedMinutes: 15,
     tier: "launch",
-    modes: ["ai_tasks"],
-    icon: "bot",
+    modes: ["ecommerce"],
+    icon: "shopping-cart",
   },
   {
-    id: "create_coordination_task",
+    id: "add_catalog_items",
+    href: "/catalog",
+    estimatedMinutes: 10,
+    tier: "launch",
+    modes: ["ecommerce"],
+    icon: "tag",
+  },
+  {
+    id: "create_workflows",
+    href: "/robots?mode=workflow",
+    estimatedMinutes: 15,
+    tier: "launch",
+    modes: ["automation"],
+    icon: "zap",
+  },
+  {
+    id: "setup_content_flows",
     href: "/requirements",
-    estimatedMinutes: 6,
+    estimatedMinutes: 10,
     tier: "launch",
-    modes: ["ai_tasks"],
-    icon: "calendar",
-  },
-  {
-    id: "publish_and_feedback",
-    href: "/content",
-    estimatedMinutes: 15,
-    tier: "launch",
-    modes: ["ai_tasks"],
-    icon: "star",
+    modes: ["automation"],
+    icon: "file-text",
   },
   {
     id: "setup_branding",
     href: "/context",
     estimatedMinutes: 10,
     tier: "later",
-    modes: ["inbound", "outbound", "ai_tasks"],
+    modes: ["inbound", "outbound", "automation", "ecommerce"],
     icon: "palette",
   },
   {
@@ -116,7 +134,7 @@ export const ONBOARDING_TASKS: OnboardingTaskDef[] = [
     href: "/context",
     estimatedMinutes: 3,
     tier: "later",
-    modes: ["inbound", "outbound", "ai_tasks"],
+    modes: ["inbound", "outbound", "automation", "ecommerce"],
     icon: "clock",
   },
   {
@@ -124,7 +142,7 @@ export const ONBOARDING_TASKS: OnboardingTaskDef[] = [
     href: "/billing",
     estimatedMinutes: 4,
     tier: "later",
-    modes: ["inbound", "outbound", "ai_tasks"],
+    modes: ["inbound", "outbound", "automation", "ecommerce"],
     icon: "credit-card",
   },
   {
@@ -132,7 +150,7 @@ export const ONBOARDING_TASKS: OnboardingTaskDef[] = [
     href: "/settings?tab=team",
     estimatedMinutes: 5,
     tier: "later",
-    modes: ["inbound", "outbound", "ai_tasks"],
+    modes: ["inbound", "outbound", "automation", "ecommerce"],
     icon: "users",
   },
   {
@@ -140,7 +158,7 @@ export const ONBOARDING_TASKS: OnboardingTaskDef[] = [
     href: "/content",
     estimatedMinutes: 8,
     tier: "later",
-    modes: ["inbound", "outbound", "ai_tasks"],
+    modes: ["inbound", "outbound", "automation"],
     icon: "file-text",
   },
   {
@@ -148,7 +166,7 @@ export const ONBOARDING_TASKS: OnboardingTaskDef[] = [
     href: "/context",
     estimatedMinutes: 18,
     tier: "later",
-    modes: ["inbound", "outbound", "ai_tasks"],
+    modes: ["inbound", "outbound", "automation", "ecommerce"],
     icon: "sparkles",
   },
   {
@@ -156,31 +174,23 @@ export const ONBOARDING_TASKS: OnboardingTaskDef[] = [
     href: "/dashboard?tab=traffic",
     estimatedMinutes: 8,
     tier: "later",
-    modes: ["inbound", "outbound", "ai_tasks"],
+    modes: ["inbound", "outbound", "automation", "ecommerce"],
     icon: "external-link",
-  },
-  {
-    id: "complete_requirement",
-    href: "/requirements",
-    estimatedMinutes: 20,
-    tier: "later",
-    modes: ["inbound", "outbound", "ai_tasks"],
-    icon: "target",
   },
   {
     id: "validate_geographic_restrictions",
     href: "/context",
     estimatedMinutes: 8,
     tier: "later",
-    modes: ["inbound", "outbound", "ai_tasks"],
+    modes: ["inbound", "outbound", "automation", "ecommerce"],
     icon: "globe",
   },
 ]
 
-export const ONBOARDING_MODES: OnboardingMode[] = ["inbound", "outbound", "ai_tasks"]
+export const ONBOARDING_MODES: OnboardingMode[] = ["inbound", "outbound", "automation", "ecommerce"]
 
 export function isOnboardingMode(value: unknown): value is OnboardingMode {
-  return value === "inbound" || value === "outbound" || value === "ai_tasks"
+  return value === "inbound" || value === "outbound" || value === "automation" || value === "ecommerce"
 }
 
 export function onboardingModeStorageKey(siteId: string) {

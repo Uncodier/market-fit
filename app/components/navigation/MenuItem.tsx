@@ -121,6 +121,7 @@ import { AnimatedIcon } from "./AnimatedIcon"
 
 interface MenuItemProps {
   href: string
+  id?: string
   icon?: LucideIcon
   customIcon?: React.ReactNode
   emoji?: string
@@ -137,6 +138,7 @@ interface MenuItemProps {
 
 export function MenuItem({ 
   href, 
+  id,
   icon: Icon, 
   customIcon,
   emoji,
@@ -214,6 +216,7 @@ export function MenuItem({
 
   const linkContent = (
     <NavigationLink
+      id={id}
       ref={linkRef}
       href={href}
       className={cn(

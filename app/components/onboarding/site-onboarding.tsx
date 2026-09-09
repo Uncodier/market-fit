@@ -47,6 +47,7 @@ import { FocusModeStep } from "./steps/focus-mode-step"
 import { CompanyInfoStep } from "./steps/company-info-step"
 import { MarketingStep } from "./steps/marketing-step"
 import { ProductsServicesStep } from "./steps/products-services-step"
+import { SummaryStep } from "./steps/summary-step"
 import { LocationsOnboardingStep } from "./LocationsOnboardingStep"
 
 import { cn } from "@/lib/utils"
@@ -78,10 +79,10 @@ export function SiteOnboarding({
   const formRef = useRef<HTMLFormElement>(null)
   const router = useRouter()
 
-  // Move to step 8 when project is successfully created
+  // Move to step 9 when project is successfully created
   useEffect(() => {
     if (isSuccess) {
-      setCurrentStep(8)
+      setCurrentStep(9)
     }
   }, [isSuccess])
 
@@ -225,6 +226,7 @@ export function SiteOnboarding({
     else if (currentStep === 4) fieldsToValidate = ["locations"];
     else if (currentStep === 5) fieldsToValidate = ["about", "company_size", "industry", "swot", "goals"];
     else if (currentStep === 6) fieldsToValidate = ["marketing_budget", "marketing_channels"];
+    else if (currentStep === 7) fieldsToValidate = ["products", "services"];
 
     if (fieldsToValidate.length > 0) {
       const isValid = await form.trigger(fieldsToValidate);
@@ -246,7 +248,7 @@ export function SiteOnboarding({
     applySanitizedValues(sanitizeOnboardingValues(form.getValues()))
     updateStepErrors()
     
-    if (currentStep < 7) {
+    if (currentStep < 8) {
       setCurrentStep(currentStep + 1)
     }
   }
@@ -265,7 +267,7 @@ export function SiteOnboarding({
     setHasValidated(true)
     syncAutofilledBasicFields()
 
-    const isValid = await form.trigger(["products", "services"]);
+    const isValid = await form.trigger();
     if (!isValid) {
       updateStepErrors();
       return;
@@ -575,15 +577,15 @@ export function SiteOnboarding({
             </div>
 
             {/* Steps list */}
-            <div className="space-y-4">
+            <div className="flex flex-col">
               {steps.map((step, index) => {
                 // Check if this step should be disabled
                 const isStepDisabled = () => {
                   // Always allow going to completed steps or current step
                   if (step.id <= currentStep) return false
                   
-                  // If site is not created (currentStep < 8), don't allow jumping to success step
-                  if (step.id === 8 && currentStep < 8) return true
+                  // If site is not created (currentStep < 9), don't allow jumping to success step
+                  if (step.id === 9 && currentStep < 9) return true
                   
                   // Don't allow jumping ahead if required fields in previous steps are empty
                   for (let i = 1; i < step.id; i++) {
@@ -597,60 +599,64 @@ export function SiteOnboarding({
                 const disabled = isStepDisabled()
                 
                 return (
-                  <button
-                    key={step.id}
-                    onClick={() => {
-                      if (disabled) return
-                      setHasValidated(true)
-                      updateStepErrors()
-                      setCurrentStep(step.id)
-                    }}
-                    disabled={disabled}
-                    className={cn(
-                      "flex items-center gap-4 w-full text-left rounded-lg p-2 transition-colors",
-                      disabled 
-                        ? "cursor-not-allowed opacity-50" 
-                        : "hover:bg-muted/30"
-                    )}
-                  >
-                  <div
-                    className={cn(
-                      "w-8 h-8 rounded-full font-inter flex items-center justify-center text-sm font-medium transition-colors",
-                      hasValidated && stepErrors.has(step.id)
-                        ? "bg-red-600 text-white"
-                        : step.id < currentStep
-                        ? "bg-green-600 text-white"
-                        : step.id === currentStep
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-muted text-muted-foreground"
-                    )}
-                  >
-                    {hasValidated && stepErrors.has(step.id) ? (
-                      <X className="h-4 w-4" />
-                    ) : step.id < currentStep ? (
-                      <Check className="h-4 w-4" />
-                    ) : (
-                      step.id
-                    )}
-                  </div>
-                  <div className="flex-1">
-                    <div
+                  <div key={step.id}>
+                    <button
+                      onClick={() => {
+                        if (disabled) return
+                        setHasValidated(true)
+                        updateStepErrors()
+                        setCurrentStep(step.id)
+                      }}
+                      disabled={disabled}
                       className={cn(
-                        "font-medium",
-                        step.id === currentStep
-                          ? "text-foreground"
-                          : step.id < currentStep
-                          ? "text-muted-foreground"
-                          : "text-muted-foreground"
+                        "flex items-center gap-4 w-full text-left rounded-lg p-2 transition-colors relative z-10",
+                        disabled 
+                          ? "cursor-not-allowed opacity-50" 
+                          : "hover:bg-muted/30"
                       )}
                     >
-                      {step.title}
+                    <div
+                      className={cn(
+                        "w-8 h-8 rounded-full font-inter flex items-center justify-center text-sm font-medium transition-colors ring-4 ring-background shrink-0",
+                        hasValidated && stepErrors.has(step.id)
+                          ? "bg-red-600 text-white"
+                          : step.id < currentStep
+                          ? "bg-green-600 text-white"
+                          : step.id === currentStep
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-muted text-muted-foreground"
+                      )}
+                    >
+                      {hasValidated && stepErrors.has(step.id) ? (
+                        <X className="h-4 w-4" />
+                      ) : step.id < currentStep ? (
+                        <Check className="h-4 w-4" />
+                      ) : (
+                        step.id
+                      )}
                     </div>
-                    <div className="text-sm text-muted-foreground">
-                      {step.description}
+                    <div className="flex-1">
+                      <div
+                        className={cn(
+                          "font-medium",
+                          step.id === currentStep
+                            ? "text-foreground"
+                            : step.id < currentStep
+                            ? "text-muted-foreground"
+                            : "text-muted-foreground"
+                        )}
+                      >
+                        {step.title}
+                      </div>
+                      <div className="text-sm text-muted-foreground">
+                        {step.description}
+                      </div>
                     </div>
+                  </button>
+                  {index < steps.length - 1 && (
+                    <div className="ml-6 w-px h-5 bg-border my-1" />
+                  )}
                   </div>
-                </button>
                 )
               })}
             </div>
@@ -665,10 +671,10 @@ export function SiteOnboarding({
                 autoComplete="on"
                 onSubmit={(event) => {
                   event.preventDefault()
-                  if (currentStep < 7) {
+                  if (currentStep < 8) {
                     if (!canGoNext) return
                     nextStep()
-                  } else if (currentStep === 7) handleComplete()
+                  } else if (currentStep === 8) handleComplete()
                 }}
               >
               <SectionCard className="bg-card rounded-xl border shadow-lg overflow-hidden">
@@ -693,7 +699,7 @@ export function SiteOnboarding({
                     <FocusModeStep form={form} />
                   )}
 
-                  {currentStep === 8 ? (
+                  {currentStep === 9 ? (
                     <SuccessStep 
                       projectName={form.watch("name")}
                       onNavigateToSettings={navigateToSiteSettings}
@@ -747,12 +753,19 @@ export function SiteOnboarding({
                           toggleServiceExpanded={toggleServiceExpanded}
                         />
                       )}
+
+                      {currentStep === 8 && (
+                        <SummaryStep 
+                          values={form.getValues()}
+                          onEditStep={setCurrentStep}
+                        />
+                      )}
                     </>
                   )}
                 </SectionCardContent>
 
                 <ActionFooter className="px-8 py-6">
-                  {currentStep > 1 && currentStep < 8 && (
+                  {currentStep > 1 && currentStep < 9 && (
                     <Button
                       type="button"
                       variant="outline"
@@ -766,7 +779,7 @@ export function SiteOnboarding({
 
                   {currentStep === 1 && <div />} {/* Espaciador para mantener "Next" a la derecha */}
 
-                  {currentStep < 7 ? (
+                  {currentStep < 8 ? (
                     <Button
                       type="submit"
                       variant="outline"
@@ -776,7 +789,7 @@ export function SiteOnboarding({
                       {emptyCurrentStep ? "Skip" : "Next"}
                       <ChevronRight className="h-4 w-4 ml-2" />
                     </Button>
-                  ) : currentStep === 7 ? (
+                  ) : currentStep === 8 ? (
                     <Button
                       type="submit"
                       disabled={isLoading}
@@ -791,7 +804,7 @@ export function SiteOnboarding({
                       ) : (
                         <>
                           <Check className="h-4 w-4 mr-2" />
-                          {emptyCurrentStep ? "Skip & Create Project" : "Create Project"}
+                          Create Project
                         </>
                       )}
                     </Button>

@@ -120,6 +120,18 @@ export function useOnboardingValidation() {
         } catch { /* ignore */ }
       }
 
+      // Automatically validate the tour if the user has completed it
+      // Using site specific setting rather than user metadata since user might want
+      // to review the tour for a new project, or we don't want to enforce global tracking strictly yet
+      // await check("take_guided_tour", async () => {
+      //   try {
+      //     const { data: { user } } = await supabase.auth.getUser()
+      //     return user?.user_metadata?.has_completed_tour === true
+      //   } catch {
+      //     return false
+      //   }
+      // }, true)
+
       await check("install_tracking_script", async () => {
         const hasCode = currentSite.tracking?.tracking_code
         let hasSessions = false
@@ -162,11 +174,6 @@ export function useOnboardingValidation() {
         } catch { return false }
       }, true)
 
-      await check("configure_agents", async () => {
-        const { data } = await supabase.from("agents").select("id").eq("site_id", currentSite.id).limit(1)
-        return !!data?.length
-      }, true)
-
       await check("create_campaign", async () => {
         const { data } = await supabase.from("campaigns").select("id").eq("site_id", currentSite.id).limit(1)
         return !!data?.length
@@ -186,13 +193,30 @@ export function useOnboardingValidation() {
         } catch { return false }
       }, true)
 
-      await check("complete_requirement", async () => {
-        const { data } = await supabase.from("requirements").select("id").eq("site_id", currentSite.id).eq("completion_status", "completed").limit(1)
+      await check("configure_store", async () => {
+        const commerce = currentSite.settings?.commerce as any
+        // Check if there are specific non-default commerce settings
+        if (commerce && (commerce.stripe_account_id || commerce.currency !== 'USD' || commerce.shipping_methods?.length > 0)) {
+          return true
+        }
+        
+        const { data } = await supabase.from("catalog_items").select("id").eq("site_id", currentSite.id).limit(1)
+        return !!data?.length // Fallback: if they have items, they likely configured the store
+      }, true)
+
+      await check("add_catalog_items", async () => {
+        const { data } = await supabase.from("catalog_items").select("id").eq("site_id", currentSite.id).limit(1)
         return !!data?.length
       }, true)
 
-      await check("publish_and_feedback", async () => {
-        const { data } = await supabase.from("content").select("id").eq("site_id", currentSite.id).eq("status", "published").gte("performance_rating", 1).limit(1)
+      await check("create_workflows", async () => {
+        const { data } = await supabase.from("workflows").select("id").eq("site_id", currentSite.id).limit(1)
+        return !!data?.length
+      }, true)
+
+      await check("setup_content_flows", async () => {
+        // Checking if there are content requirements setup, can evolve as schemas get more complex
+        const { data } = await supabase.from("requirements").select("id").eq("site_id", currentSite.id).limit(1)
         return !!data?.length
       }, true)
 

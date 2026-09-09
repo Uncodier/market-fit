@@ -96,6 +96,7 @@ export function OnboardingProgressWidget({
         <Tooltip>
           <TooltipTrigger asChild>
             <div
+              id="tour-onboarding-widget"
               className={cn(
                 "flex items-center justify-center cursor-pointer hover:bg-accent/50 transition-colors rounded-full",
                 "w-[32px] h-[32px]",
@@ -141,7 +142,7 @@ export function OnboardingProgressWidget({
   }
 
   return (
-    <div className={cn("px-3 py-2", className)}>
+    <div className={cn("px-3 py-2", className)} id="tour-onboarding-widget">
       <TooltipProvider>
         <Tooltip>
           <TooltipTrigger asChild>

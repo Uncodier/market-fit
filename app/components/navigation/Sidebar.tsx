@@ -256,6 +256,7 @@ export function Sidebar({
             
             <div className={cn("relative", renderCollapsed ? "w-[42px] mx-auto flex flex-col items-center" : "w-full px-1")}>
               <MenuItem
+                id="tour-apps-nav"
                 href="/navigation"
                 icon={LayoutGrid}
                 title={t("layout.sidebar.apps") === "layout.sidebar.apps" ? "Apps" : t("layout.sidebar.apps")}

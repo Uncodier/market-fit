@@ -77,7 +77,7 @@ export function OnboardingTaskList({
               task={task}
               isDone={!!completed[task.id]}
               isActive={task.id === activeTaskId && !completed[task.id]}
-              onContinue={() => onContinue(task.href)}
+              onContinue={onContinue}
               onToggle={() => onToggle(task.id, !completed[task.id])}
               t={t}
             />
@@ -99,10 +99,13 @@ function OnboardingTaskRow({
   task: OnboardingTaskDef
   isDone: boolean
   isActive: boolean
-  onContinue: () => void
+  onContinue: (href: string) => void
   onToggle: () => void
   t: (key: string, params?: Record<string, string | number>) => string
 }) {
+  const [expanded, setExpanded] = useState(isActive)
+  const isExpanded = isActive || expanded
+
   const title = t(`dashboard.onboarding.task.${task.id}.title`)
   const description = t(`dashboard.onboarding.task.${task.id}.desc`)
   const why = t(`dashboard.onboarding.task.${task.id}.why`)
@@ -111,9 +114,14 @@ function OnboardingTaskRow({
   return (
     <li
       className={cn(
-        "border-b border-border/70 last:border-b-0 px-5",
-        isActive ? "bg-muted/30 py-5" : "py-3.5"
+        "border-b border-border/70 last:border-b-0 px-5 transition-colors cursor-pointer",
+        isExpanded ? "bg-muted/30 py-5" : "py-3.5 hover:bg-muted/10"
       )}
+      onClick={(e) => {
+        // Prevent expansion toggle when clicking the checkbox or buttons
+        if ((e.target as HTMLElement).closest('button')) return
+        setExpanded(!expanded)
+      }}
     >
       <div className="flex items-start gap-3">
         <button
@@ -121,7 +129,10 @@ function OnboardingTaskRow({
           role="checkbox"
           aria-checked={isDone}
           aria-label={title}
-          onClick={onToggle}
+          onClick={(e) => {
+            e.stopPropagation()
+            onToggle()
+          }}
           className={cn(
             "mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border transition-colors",
             isDone
@@ -146,14 +157,22 @@ function OnboardingTaskRow({
               {formatOnboardingTime(task.estimatedMinutes)}
             </span>
           </div>
-          {isActive ? (
-            <div className="mt-2 space-y-3">
+          {isExpanded ? (
+            <div className="mt-2 space-y-3" onClick={e => e.stopPropagation()}>
               <p className="text-sm text-muted-foreground leading-relaxed">{description}</p>
               {why && why !== `dashboard.onboarding.task.${task.id}.why` ? (
                 <p className="text-sm text-foreground/80 leading-relaxed">{why}</p>
               ) : null}
               <div className="flex flex-wrap items-center gap-2">
-                <Button size="sm" onClick={onContinue}>
+                <Button size="sm" onClick={() => {
+                  console.log("NATIVE BUTTON CLICKED", task.id);
+                  if (task.id === "take_guided_tour") {
+                    console.log("Emitiendo evento tour:start!");
+                    window.dispatchEvent(new CustomEvent("tour:start"));
+                  } else {
+                    onContinue(task.href);
+                  }
+                }}>
                   {cta}
                 </Button>
                 <Button
