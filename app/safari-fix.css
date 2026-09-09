@@ -91,8 +91,8 @@ html.safari .chrome-only-svg {
 [role="option"] svg,
 [class*="select-item"] svg {
   position: static !important;
-  width: 14px !important;
-  height: 14px !important;
+  width: 16px !important;
+  height: 16px !important;
   display: block !important;
   margin: 0 !important;
 }
@@ -183,11 +183,9 @@ html.safari .chrome-only-svg {
     }
     
     /* Fix para componentes Switch en Safari */
-    [data-radix-collection-item] [data-state="checked"] span,
-    [data-radix-collection-item] [data-state="unchecked"] span,
-    [role="switch"] span,
-    [class*="switch"] span,
-    [class*="radix-switch"] span {
+    [role="switch"] > span,
+    [class*="switch"] > span,
+    [class*="radix-switch"] > span {
       margin-left: -20px !important;
     }
   }
@@ -317,8 +315,8 @@ html.safari [data-radix-select-item] svg,
 html.safari [role="option"] svg,
 html.safari [class*="select-item"] svg {
   position: static !important;
-  width: 14px !important;
-  height: 14px !important;
+  width: 16px !important;
+  height: 16px !important;
   display: block !important;
   margin: 0 !important;
   visibility: visible !important;
@@ -341,15 +339,12 @@ html.safari [data-radix-select-trigger] .safari-icon-fix {
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
-  width: 18px !important;
-  height: 18px !important;
-  margin-right: 8px !important;
   flex-shrink: 0 !important;
 }
 
 html.safari [data-radix-select-trigger] .safari-icon-fix svg {
-  width: 18px !important;
-  height: 18px !important;
+  width: 100% !important;
+  height: 100% !important;
   display: block !important;
   position: static !important;
   margin: 0 !important;
@@ -387,7 +382,8 @@ html.safari [data-radix-select-item] {
   padding: 0 !important;
 }
 
-html.safari [data-radix-select-item] > div {
+html.safari [data-radix-select-item] > div,
+html.safari [data-radix-select-item] > span {
   display: flex !important;
   align-items: center !important;
   width: 100% !important;
@@ -398,15 +394,12 @@ html.safari [data-radix-select-item] .safari-icon-fix {
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
-  width: 18px !important;
-  height: 18px !important;
-  margin-right: 8px !important;
   flex-shrink: 0 !important;
 }
 
 html.safari [data-radix-select-item] .safari-icon-fix svg {
-  width: 18px !important;
-  height: 18px !important;
+  width: 100% !important;
+  height: 100% !important;
   display: block !important;
   position: static !important;
   margin: 0 !important;
@@ -788,11 +781,9 @@ html.safari .sidebar-light-bg[data-collapsed="true"] a[href*="settings"] > div:f
 }
 
 /* Fix específico para componentes Switch en Safari */
-html.safari [data-radix-collection-item] [data-state="checked"] span,
-html.safari [data-radix-collection-item] [data-state="unchecked"] span,
-html.safari [role="switch"] span,
-html.safari [class*="switch"] span,
-html.safari [class*="radix-switch"] span {
+html.safari [role="switch"] > span,
+html.safari [class*="switch"] > span,
+html.safari [class*="radix-switch"] > span {
   margin-left: -20px !important;
 }
 
@@ -805,9 +796,8 @@ html.safari [role="switch"] span {
 }
 
 /* Arreglo más específico para el componente Switch de Radix */
-html.safari [data-radix-collection-item] [data-state="checked"] span,
-html.safari [data-radix-collection-item] [data-state="unchecked"] span,
-html.safari [class*="radix-switch"] span,
+html.safari [role="switch"] > span,
+html.safari [class*="radix-switch"] > span,
 html.safari [class*="switch-thumb"] {
   margin-left: -20px !important;
   transform: translateX(20px) !important;

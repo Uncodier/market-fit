@@ -12,7 +12,8 @@ import {
   SectionCardFooter,
 } from "@/app/components/ui/section-card"
 import { Button } from "@/app/components/ui/button"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
+import { Popover, PopoverContent, PopoverTrigger, PopoverClose } from "@/app/components/ui/popover"
+import { ChevronDown } from "@/app/components/ui/icons"
 import { PlusCircle, Trash2 } from "@/app/components/ui/icons"
 import { EmptyCard } from "@/app/components/ui/empty-card"
 import { GlobeIcon } from "@/app/components/ui/social-icons"
@@ -27,6 +28,8 @@ import { EmailChannelSetup } from "./EmailChannelSetup"
 import { VoiceChannelSetup } from "./VoiceChannelSetup"
 import { SmsChannelSetup } from "./SmsChannelSetup"
 import { useZavuInvitationSync } from "./use-zavu-invitation-sync"
+import { WhatsAppIcon, MessengerIcon, TelegramIcon } from "@/app/components/ui/social-icons"
+import { Mail, MessageSquare, Phone } from "@/app/components/ui/icons"
 
 import { countAgentChannels, getAgentChannelLimit, canConnectAgentChannel } from "@/lib/billing-limits"
 import { useSite } from "@/app/context/SiteContext"
@@ -34,12 +37,12 @@ import { useBillingLimit } from "@/app/context/BillingLimitContext"
 import { disconnectZavuChannel } from "./disconnect-remote-accounts"
 
 const CHANNEL_TYPES = [
-  { value: "whatsapp", label: "WhatsApp" },
-  { value: "messenger", label: "Messenger" },
-  { value: "telegram", label: "Telegram" },
-  { value: "email", label: "Email" },
-  { value: "sms", label: "SMS" },
-  { value: "voice", label: "Voice / Audio Agent" },
+  { value: "whatsapp", label: "WhatsApp", icon: WhatsAppIcon },
+  { value: "messenger", label: "Messenger", icon: MessengerIcon },
+  { value: "telegram", label: "Telegram", icon: TelegramIcon },
+  { value: "email", label: "Email", icon: Mail },
+  { value: "sms", label: "SMS", icon: MessageSquare },
+  { value: "voice", label: "Voice / Audio Agent", icon: Phone },
 ] as const
 
 const PARTNER_LINK_TYPES = new Set(["whatsapp", "messenger"])
@@ -245,26 +248,43 @@ export function SupportChannelsSection({ active, siteId, onSave }: SupportChanne
                       render={({ field: typeField }) => (
                         <FormItem>
                           <FormLabel>Channel</FormLabel>
-                          <Select
-                            value={typeField.value}
-                            onValueChange={(value) => {
-                              typeField.onChange(value)
-                              form.setValue(`channels.connections.${index}.name`, channelLabel(value))
-                            }}
-                          >
+                          <Popover>
                             <FormControl>
-                              <SelectTrigger className="h-10 w-full">
-                                <SelectValue placeholder="Select Channel" />
-                              </SelectTrigger>
+                              <PopoverTrigger asChild>
+                                <Button
+                                  variant="outline"
+                                  className="flex h-10 w-full min-w-0 font-inter items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm text-left overflow-hidden font-normal"
+                                >
+                                  {typeField.value ? (() => {
+                                    const selectedItem = CHANNEL_TYPES.find(item => item.value === typeField.value)
+                                    const Icon = selectedItem?.icon
+                                    return (
+                                      <div className="flex items-center gap-2 overflow-hidden">
+                                        {Icon && <Icon size={16} className="flex-shrink-0" />}
+                                        <span className="truncate">{channelLabel(typeField.value)}</span>
+                                      </div>
+                                    )
+                                  })() : (
+                                    <span className="text-muted-foreground">Select Channel</span>
+                                  )}
+                                  <ChevronDown className="h-3.5 w-3.5 opacity-50 flex-shrink-0 ml-2" />
+                                </Button>
+                              </PopoverTrigger>
                             </FormControl>
-                              <SelectContent className="z-[50]">
-                                {CHANNEL_TYPES.map((item) => (
-                                  <SelectItem key={item.value} value={item.value}>
-                                    <div className="flex items-center gap-2 w-full min-w-0 justify-between">
+                            <PopoverContent className="z-[50] w-[var(--radix-popover-trigger-width)] min-w-[200px] p-1" align="start">
+                              {CHANNEL_TYPES.map((item) => {
+                                const Icon = item.icon
+                                return (
+                                  <PopoverClose asChild key={item.value}>
+                                    <div
+                                      onClick={() => {
+                                        typeField.onChange(item.value)
+                                        form.setValue(`channels.connections.${index}.name`, channelLabel(item.value))
+                                      }}
+                                      className="cursor-pointer flex items-center justify-between w-full min-w-0 gap-2 px-2 py-1.5 rounded-sm hover:bg-accent hover:text-accent-foreground text-sm"
+                                    >
                                       <div className="flex items-center gap-2 min-w-0 flex-1">
-                                        <div className="w-4 h-4 flex items-center justify-center flex-shrink-0">
-                                          {getChannelIcon(item.value, 16)}
-                                        </div>
+                                        <Icon size={16} className="flex-shrink-0" />
                                         <span className="truncate">{item.label}</span>
                                       </div>
                                       {PARTNER_LINK_TYPES.has(item.value) && (
@@ -273,10 +293,11 @@ export function SupportChannelsSection({ active, siteId, onSave }: SupportChanne
                                         </div>
                                       )}
                                     </div>
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                          </Select>
+                                  </PopoverClose>
+                                )
+                              })}
+                            </PopoverContent>
+                          </Popover>
                           <FormMessage />
                         </FormItem>
                       )}

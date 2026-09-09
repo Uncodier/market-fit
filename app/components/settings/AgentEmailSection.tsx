@@ -46,6 +46,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from "../ui/dialog"
+import { secretsService } from "../../services/secrets-service"
 
 interface AgentEmailSectionProps {
   active: boolean
@@ -64,6 +65,9 @@ export function AgentEmailSection({ active, siteId, onSave }: AgentEmailSectionP
   const [cooldownSeconds, setCooldownSeconds] = useState(0)
   const [showDnsModal, setShowDnsModal] = useState(false)
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null)
+  const [apiKey, setApiKey] = useState("")
+  const [isApiKeyStored, setIsApiKeyStored] = useState(false)
+  const [isSavingApiKey, setIsSavingApiKey] = useState(false)
   const { currentSite, updateSettings } = useSite()
 
   const handleSave = async () => {
@@ -77,6 +81,61 @@ export function AgentEmailSection({ active, siteId, onSave }: AgentEmailSectionP
       console.error("Error saving agent email settings:", error)
     } finally {
       setIsSaving(false)
+    }
+  }
+
+  useEffect(() => {
+    const checkApiKey = async () => {
+      if (siteId) {
+        const exists = await secretsService.checkSecretExists(siteId, 'agentmail', 'integrations')
+        setIsApiKeyStored(exists)
+      }
+    }
+    checkApiKey()
+  }, [siteId])
+
+  const handleSaveApiKey = async () => {
+    if (!siteId || !apiKey) return
+    setIsSavingApiKey(true)
+    try {
+      const success = await secretsService.storeSecret(
+        siteId, 
+        'agentmail', 
+        'integrations', 
+        'AgentMail API Key (BYOK)', 
+        apiKey
+      )
+      if (success) {
+        setIsApiKeyStored(true)
+        setApiKey("") // Clear it from memory
+        toast.success("AgentMail API Key saved securely")
+      } else {
+        toast.error("Failed to save AgentMail API Key")
+      }
+    } catch (error) {
+      console.error(error)
+      toast.error("Failed to save AgentMail API Key")
+    } finally {
+      setIsSavingApiKey(false)
+    }
+  }
+
+  const handleDeleteApiKey = async () => {
+    if (!siteId) return
+    setIsSavingApiKey(true)
+    try {
+      const success = await secretsService.deleteSecret(siteId, 'agentmail', 'integrations')
+      if (success) {
+        setIsApiKeyStored(false)
+        toast.success("AgentMail API Key removed")
+      } else {
+        toast.error("Failed to remove AgentMail API Key")
+      }
+    } catch (error) {
+      console.error(error)
+      toast.error("Failed to remove AgentMail API Key")
+    } finally {
+      setIsSavingApiKey(false)
     }
   }
 
@@ -551,6 +610,38 @@ export function AgentEmailSection({ active, siteId, onSave }: AgentEmailSectionP
         </p>
       </SectionCardHeader>
       <SectionCardContent className="pb-4 space-y-4">
+        <div className="space-y-2 pb-4 border-b dark:border-white/5 border-black/5">
+          <Label className="text-sm font-medium text-foreground">AgentMail API Key (BYOK)</Label>
+          <p className="text-xs text-muted-foreground mb-4">
+            Bring your own API key to bypass system rate limits and use your own AgentMail account.
+          </p>
+          {isApiKeyStored ? (
+            <div className="flex items-center gap-2 mt-2 p-3 bg-muted/20 rounded-md border">
+              <CheckCircle2 className="h-4 w-4 text-green-500" />
+              <span className="text-sm">API Key is securely stored in Vault</span>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="ml-auto text-destructive h-7 hover:bg-destructive/10"
+                onClick={handleDeleteApiKey}
+                disabled={isSavingApiKey}
+              >
+                Remove
+              </Button>
+            </div>
+          ) : (
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
+              <Input
+                type="password"
+                placeholder="am_live_..."
+                value={apiKey}
+                onChange={(e) => setApiKey(e.target.value)}
+                className="font-mono text-sm max-w-md"
+              />
+            </div>
+          )}
+        </div>
+
         {isNotConfigured && (
           <div className="space-y-4">
             <div>
@@ -697,6 +788,23 @@ export function AgentEmailSection({ active, siteId, onSave }: AgentEmailSectionP
           </div>
         )}
       </SectionCardContent>
+
+      {!isApiKeyStored && (
+        <ActionFooter>
+          <div className="flex items-center justify-between w-full">
+            <div className="text-sm text-muted-foreground">
+              Save your AgentMail API Key securely to Vault
+            </div>
+            <Button
+              variant="outline"
+              onClick={handleSaveApiKey}
+              disabled={!apiKey || isSavingApiKey}
+            >
+              {isSavingApiKey ? "Saving..." : "Save Key"}
+            </Button>
+          </div>
+        </ActionFooter>
+      )}
 
       {isNotConfigured && (
         <ActionFooter>

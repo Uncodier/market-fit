@@ -36,6 +36,7 @@ import {
 import { createClient as createSbClient } from "@/lib/supabase/client"
 import { TestEndpointDialog } from "@/app/components/webhooks/test-endpoint-dialog"
 import { ChannelsSection } from "@/app/components/integrations/channels-section"
+import { ComposioSection } from "@/app/components/settings/ComposioSection"
 import {
   listWebhookEndpoints,
   createWebhookEndpoint,
@@ -143,6 +144,10 @@ export default function IntegrationsPage() {
         return webhooksSections
       case "channels":
         return channelsSections
+      case "integrations":
+        return [
+          { id: "composio-integration", title: "Composio" }
+        ]
       default:
         return []
     }
@@ -377,6 +382,7 @@ export default function IntegrationsPage() {
             <TabsList className="h-8 p-0.5 bg-muted/30 rounded-full">
               <TabsTrigger value="webhooks" className="text-xs rounded-full px-4 whitespace-nowrap">Webhooks</TabsTrigger>
               <TabsTrigger value="channels" className="text-xs rounded-full px-4 whitespace-nowrap">Channels</TabsTrigger>
+              <TabsTrigger value="integrations" className="text-xs rounded-full px-4 whitespace-nowrap">Integrations</TabsTrigger>
             </TabsList>
           </Tabs>
         </div>
@@ -553,6 +559,15 @@ export default function IntegrationsPage() {
 
           {activeSegment === "channels" && (
             <ChannelsSection />
+          )}
+
+          {activeSegment === "integrations" && (
+            <div className="space-y-6">
+              <ComposioSection 
+                active={true}
+                siteId={currentSite.id}
+              />
+            </div>
           )}
             </div>
           </div>

@@ -56,7 +56,7 @@ import { usePendingWork } from './hooks/usePendingWork'
 import { useRunningWorkflow } from './hooks/useRunningWorkflow'
 
 // Import utilities
-import { groupTimelineProcess } from './group-timeline-process'
+import { groupTimelineProcess, isProcessGroupLive } from './group-timeline-process'
 
 const SCROLL_BOTTOM_THRESHOLD_PX = 80
 
@@ -941,7 +941,7 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
                       group={group}
                       isDarkMode={isDarkMode}
                       isExpanded={expandedToolGroups.has(group.groupId)}
-                      isLive={Boolean(runningUserLog) && group.groupId === lastProcessGroupId}
+                      isLive={group.groupId === lastProcessGroupId && isProcessGroupLive(group)}
                       onToggleExpand={toggleToolGroup}
                       collapsedToolDetails={collapsedToolDetails}
                       onToggleToolDetails={toggleToolDetails}

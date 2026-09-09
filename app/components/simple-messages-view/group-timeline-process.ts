@@ -276,6 +276,33 @@ export function splitProcessAnswer(logs: InstanceLog[]): {
   }
 }
 
+export function isProcessGroupLive(group: ProcessGroup): boolean {
+  if (group.entries.length === 0) return true
+  
+  const logs = processGroupLogs(group)
+  if (logs.length === 0) return true
+
+  const lastEntry = group.entries[group.entries.length - 1]
+  if (lastEntry.type === 'completed_plan' && (lastEntry.data.status === 'completed' || lastEntry.data.status === 'failed')) {
+    return false
+  }
+
+  if (lastEntry.type === 'log' && isStepCompletedLog(lastEntry.data)) {
+    return false
+  }
+  
+  const { answer } = splitProcessAnswer(logs)
+  if (answer) {
+    const index = logs.findIndex(l => l.id === answer.id)
+    const subsequentLogs = logs.slice(index + 1).filter(l => !isPlaceholderAgentAction(l))
+    if (subsequentLogs.length === 0) {
+      return false
+    }
+  }
+
+  return true
+}
+
 export function groupTimelineProcess(
   sortedTimeline: Array<{ type: string; timestamp: string; data: any }>
 ): ProcessedTimelineItem[] {

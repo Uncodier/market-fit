@@ -77,14 +77,14 @@ export function ChannelIcon({ channel, size = 16, className }: ChannelIconProps)
     case "telegram":
       return <TelegramIcon size={size} className={iconClass} />
     case "sms":
-      return <MessageSquare className={iconClass} style={{ width: size, height: size }} />
+      return <MessageSquare size={size} className={iconClass} />
     case "voice":
-      return <Phone className={iconClass} style={{ width: size, height: size }} />
+      return <Phone size={size} className={iconClass} />
     case "email":
-      return <Mail className={iconClass} style={{ width: size, height: size }} />
+      return <Mail size={size} className={iconClass} />
     case "web":
     default:
-      return <Globe className={cn(CHANNEL_ICON_CLASS.web, className)} style={{ width: size, height: size }} />
+      return <Globe size={size} className={cn(CHANNEL_ICON_CLASS.web, className)} />
   }
 }
 

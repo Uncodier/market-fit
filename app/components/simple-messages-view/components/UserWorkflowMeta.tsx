@@ -139,7 +139,7 @@ export function UserWorkflowMeta({
       <Icon className={`h-3.5 w-3.5 shrink-0 ${color}`} />
       <span className="text-xs font-medium text-foreground shrink-0">{label}</span>
       <ContextChips log={log} />
-      <Loader className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+      <Loader className="h-3.5 w-3.5 shrink-0 text-muted-foreground animate-spin" />
       <span className="text-xs text-muted-foreground truncate">Running</span>
       {onCancel && (
         <Button
@@ -151,7 +151,7 @@ export function UserWorkflowMeta({
           className="ml-auto h-6 w-6 shrink-0 rounded-full text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
           title="Cancel"
         >
-          {isCancelling ? <Loader className="h-3.5 w-3.5" /> : <X className="h-3.5 w-3.5" />}
+          {isCancelling ? <Loader className="h-3.5 w-3.5 animate-spin" /> : <X className="h-3.5 w-3.5" />}
         </Button>
       )}
     </div>

@@ -16,6 +16,8 @@ import { Button } from "../ui/button"
 import { Badge } from "../ui/badge"
 import { PlusCircle, Trash2 } from "../ui/icons"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select"
+import { Popover, PopoverContent, PopoverTrigger, PopoverClose } from "../ui/popover"
+import { ChevronDown } from "../ui/icons"
 import { useCallback, useMemo, useState, useEffect } from "react"
 import { toast } from "sonner"
 import { EmptyCard } from "../ui/empty-card"
@@ -29,12 +31,6 @@ import {
   YouTubeIcon,
   TikTokIcon,
   PinterestIcon,
-  GitHubIcon,
-  RedditIcon,
-  MediumIcon,
-  WhatsAppIcon,
-  TelegramIcon,
-  DiscordIcon,
   ThreadsIcon,
   BlueskyIcon,
   GlobeIcon
@@ -46,22 +42,15 @@ import { useSite } from "@/app/context/SiteContext"
 import { useBillingLimit } from "@/app/context/BillingLimitContext"
 
 const SOCIAL_PLATFORMS = [
-  { value: "facebook", label: "Facebook" },
-  { value: "twitter", label: "Twitter" },
-  { value: "instagram", label: "Instagram" },
-  { value: "threads", label: "Threads" },
-  { value: "linkedin", label: "LinkedIn" },
-  { value: "youtube", label: "YouTube" },
-  { value: "tiktok", label: "TikTok" },
-  { value: "pinterest", label: "Pinterest" },
-  { value: "bluesky", label: "Bluesky" },
-  { value: "github", label: "GitHub" },
-  { value: "reddit", label: "Reddit" },
-  { value: "medium", label: "Medium" },
-  { value: "whatsapp", label: "WhatsApp" },
-  { value: "telegram", label: "Telegram" },
-  { value: "discord", label: "Discord" },
-  { value: "custom", label: "Custom" }
+  { value: "facebook", label: "Facebook", icon: FacebookIcon },
+  { value: "twitter", label: "Twitter", icon: TwitterIcon },
+  { value: "instagram", label: "Instagram", icon: InstagramIcon },
+  { value: "threads", label: "Threads", icon: ThreadsIcon },
+  { value: "linkedin", label: "LinkedIn", icon: LinkedInIcon },
+  { value: "youtube", label: "YouTube", icon: YouTubeIcon },
+  { value: "tiktok", label: "TikTok", icon: TikTokIcon },
+  { value: "pinterest", label: "Pinterest", icon: PinterestIcon },
+  { value: "bluesky", label: "Bluesky", icon: BlueskyIcon },
 ]
 
 /** Platforms that support OAuth "Connect account" in this settings flow (see handleConnectAccount). */
@@ -169,12 +158,6 @@ const getPlatformIcon = (platform: string | undefined, size: number = 16) => {
     case 'tiktok': return <TikTokIcon size={size} />;
     case 'pinterest': return <PinterestIcon size={size} />;
     case 'bluesky': return <BlueskyIcon size={size} />;
-    case 'github': return <GitHubIcon size={size} />;
-    case 'reddit': return <RedditIcon size={size} />;
-    case 'medium': return <MediumIcon size={size} />;
-    case 'whatsapp': return <WhatsAppIcon size={size} />;
-    case 'telegram': return <TelegramIcon size={size} />;
-    case 'discord': return <DiscordIcon size={size} />;
     default: return <GlobeIcon size={size} />;
   }
 };
@@ -460,38 +443,50 @@ export function SocialSection({ active, onSave, siteId }: SocialSectionProps) {
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Platform</FormLabel>
-                          <Select
-                            value={field.value}
-                            onValueChange={field.onChange}
-                          >
+                          <Popover>
                             <FormControl>
-                              <SelectTrigger className="h-12 w-full">
-                                <SelectValue placeholder="Select Platform" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent className="z-[50]">
-                              {SOCIAL_PLATFORMS.map((platform) => (
-                                <SelectItem key={platform.value} value={platform.value}>
-                                  <div className="flex items-center gap-2 w-full min-w-0 justify-between">
-                                    <div className="flex items-center gap-2 min-w-0 flex-1">
-                                      <div className="w-4 h-4 flex items-center justify-center flex-shrink-0">
-                                        {getPlatformIcon(platform.value, 16)}
+                              <PopoverTrigger asChild>
+                                <Button
+                                  variant="outline"
+                                  className="flex h-12 w-full min-w-0 font-inter items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm text-left overflow-hidden font-normal"
+                                >
+                                  {field.value ? (() => {
+                                    const selectedItem = SOCIAL_PLATFORMS.find(p => p.value === field.value)
+                                    const Icon = selectedItem?.icon
+                                    return (
+                                      <div className="flex items-center gap-2 overflow-hidden">
+                                        {Icon && <Icon size={16} className="flex-shrink-0" />}
+                                        <span className="truncate">
+                                          {selectedItem?.label || field.value}
+                                        </span>
                                       </div>
-                                      <span className="truncate">{platform.label}</span>
+                                    )
+                                  })() : (
+                                    <span className="text-muted-foreground">Select Platform</span>
+                                  )}
+                                  <ChevronDown className="h-3.5 w-3.5 opacity-50 flex-shrink-0 ml-2" />
+                                </Button>
+                              </PopoverTrigger>
+                            </FormControl>
+                            <PopoverContent className="z-[50] w-[var(--radix-popover-trigger-width)] min-w-[200px] p-1" align="start">
+                              {SOCIAL_PLATFORMS.map((platform) => {
+                                const Icon = platform.icon
+                                return (
+                                  <PopoverClose asChild key={platform.value}>
+                                    <div
+                                      onClick={() => field.onChange(platform.value)}
+                                      className="cursor-pointer flex items-center justify-between w-full min-w-0 gap-2 px-2 py-1.5 rounded-sm hover:bg-accent hover:text-accent-foreground text-sm"
+                                    >
+                                      <div className="flex items-center gap-2 min-w-0 flex-1">
+                                        <Icon size={16} className="flex-shrink-0" />
+                                        <span className="truncate">{platform.label}</span>
+                                      </div>
                                     </div>
-                                    {isConnectablePlatform(platform.value) && (
-                                      <Badge
-                                        variant="secondary"
-                                        className="text-[10px] font-medium shrink-0 bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300 border-0"
-                                      >
-                                        Can connect
-                                      </Badge>
-                                    )}
-                                  </div>
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                                  </PopoverClose>
+                                )
+                              })}
+                            </PopoverContent>
+                          </Popover>
                           <FormMessage />
                         </FormItem>
                       )}

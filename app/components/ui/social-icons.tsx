@@ -28,22 +28,25 @@ const createIconComponent = (
       height: size,
       minWidth: size,
       minHeight: size,
+      display: 'inline-flex',
+      alignItems: 'center',
+      justifyContent: 'center',
       color,
       ...style
     };
 
     return (
       <div 
-        className={cn("inline-flex items-center justify-center shrink-0 [&>svg]:w-full [&>svg]:h-full", className)} 
+        className={cn("inline-flex items-center justify-center safari-icon-fix shrink-0 [&>svg]:w-full [&>svg]:h-full", className)} 
         style={iconStyles}
         onClick={onClick}
         aria-hidden="true"
         {...props}
       >
         {typeof svgPath === 'string' ? (
-          <svg viewBox="0 0 24 24" fill="currentColor" dangerouslySetInnerHTML={{ __html: svgPath }} />
+          <svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" viewBox="0 0 24 24" fill="currentColor" dangerouslySetInnerHTML={{ __html: svgPath }} />
         ) : (
-          <svg viewBox="0 0 24 24" fill="currentColor">{svgPath}</svg>
+          <svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" viewBox="0 0 24 24" fill="currentColor">{svgPath}</svg>
         )}
       </div>
     );

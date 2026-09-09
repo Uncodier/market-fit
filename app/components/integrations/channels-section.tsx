@@ -42,6 +42,7 @@ export function ChannelsSection() {
         updateSite,
         updateSettings,
         refreshSites,
+        setIsSaving
       })
     } finally {
       setIsSaving(false)
@@ -69,7 +70,7 @@ export function ChannelsSection() {
           active={true}
           siteId={currentSite.id}
           form={form}
-          onSave={onSaveChannels}
+          onSave={onSaveChannels as any}
         />
       </div>
     </FormProvider>

@@ -7,7 +7,9 @@ import { apiClient } from "@/app/services/api-client-service"
 import { SectionCardFooter, SectionCardContent } from "@/app/components/ui/section-card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
 import { RadioGroup, RadioGroupItem } from "@/app/components/ui/radio-group"
+import { Skeleton } from "@/app/components/ui/skeleton"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/app/components/ui/tabs"
+import { Badge } from "@/app/components/ui/badge"
 
 function formatPhoneNumber(phoneNumber: string): string {
   if (!phoneNumber) return phoneNumber;
@@ -27,6 +29,15 @@ function formatPhoneNumber(phoneNumber: string): string {
   }
 
   return phoneNumber;
+}
+
+function formatCapabilities(capabilities: any): string[] {
+  if (!capabilities) return [];
+  if (Array.isArray(capabilities)) return capabilities;
+  if (typeof capabilities === "object") {
+    return Object.entries(capabilities).filter(([_, v]) => v).map(([k]) => k);
+  }
+  return [String(capabilities)];
 }
 
 export function VoiceChannelSetup({ 
@@ -82,8 +93,7 @@ export function VoiceChannelSetup({
     try {
       const query = new URLSearchParams({ countryCode })
       if (areaCode) query.append("areaCode", areaCode)
-      query.append("smsEnabled", "true")
-      query.append("voiceEnabled", "true")
+      query.append("capabilities", "voice")
         
       const response = await apiClient.get(`/api/integrations/zavu/phone-numbers/available?${query.toString()}`)
       
@@ -151,7 +161,13 @@ export function VoiceChannelSetup({
           
           <TabsContent value="existing" className="mt-4 space-y-4">
             {isLoadingOwned ? (
-              <p className="text-xs text-muted-foreground text-center py-4">Loading your numbers...</p>
+              <div className="space-y-3">
+                <Skeleton className="h-4 w-48 mb-2" />
+                <div className="space-y-3">
+                  <Skeleton className="h-[74px] w-full rounded-md" />
+                  <Skeleton className="h-[74px] w-full rounded-md" />
+                </div>
+              </div>
             ) : ownedNumbers.length === 0 ? (
               <div className="text-center py-6 bg-muted/30 rounded-md">
                 <p className="text-sm text-muted-foreground">You don't have any phone numbers yet.</p>
@@ -166,13 +182,24 @@ export function VoiceChannelSetup({
                   {ownedNumbers.map((result, idx) => (
                     <div key={idx} className="flex items-center space-x-2 border rounded-md p-3 hover:bg-muted/50 cursor-pointer" onClick={() => setSelectedNumber(result.phoneNumber)}>
                       <RadioGroupItem value={result.phoneNumber} id={`owned-${idx}`} />
-                      <div className="grid flex-1">
-                        <Label htmlFor={`owned-${idx}`} className="text-sm font-medium cursor-pointer">
-                          {result.name || formatPhoneNumber(result.phoneNumber)}
-                        </Label>
-                        <p className="text-xs text-muted-foreground">
-                          {result.capabilities ? `Capabilities: ${result.capabilities.join(", ")}` : formatPhoneNumber(result.phoneNumber)}
-                        </p>
+                      <div className="flex flex-1 items-center justify-between">
+                        <div className="grid">
+                          <Label htmlFor={`owned-${idx}`} className="text-sm font-medium cursor-pointer">
+                            {result.name || formatPhoneNumber(result.phoneNumber)}
+                          </Label>
+                          <p className="text-xs text-muted-foreground">
+                            {result.capabilities ? "" : formatPhoneNumber(result.phoneNumber)}
+                          </p>
+                        </div>
+                        {result.capabilities && (
+                          <div className="flex gap-1">
+                            {formatCapabilities(result.capabilities).map((cap) => (
+                              <Badge key={cap} variant="secondary" className="capitalize">
+                                {cap}
+                              </Badge>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     </div>
                   ))}
@@ -226,21 +253,41 @@ export function VoiceChannelSetup({
               {isSearching ? "Searching..." : "Search Numbers"}
             </Button>
 
-            {searchResults.length > 0 && (
+            {isSearching ? (
+              <div className="space-y-3 mt-4 pt-4 border-t">
+                <Skeleton className="h-4 w-48 mb-2" />
+                <div className="space-y-3">
+                  <Skeleton className="h-[74px] w-full rounded-md" />
+                  <Skeleton className="h-[74px] w-full rounded-md" />
+                  <Skeleton className="h-[74px] w-full rounded-md" />
+                </div>
+              </div>
+            ) : searchResults.length > 0 && (
               <div className="space-y-3 mt-4 pt-4 border-t">
                 <Label className="text-xs font-medium">Select a Phone Number to Buy</Label>
                 <RadioGroup value={selectedNumber} onValueChange={setSelectedNumber}>
                   {searchResults.map((result, idx) => (
                     <div key={idx} className="flex items-center space-x-2 border rounded-md p-3 hover:bg-muted/50 cursor-pointer" onClick={() => setSelectedNumber(result.phoneNumber)}>
                       <RadioGroupItem value={result.phoneNumber} id={`phone-${idx}`} />
-                      <div className="grid flex-1">
-                        <Label htmlFor={`phone-${idx}`} className="text-sm font-medium cursor-pointer">
-                          {formatPhoneNumber(result.phoneNumber)}
-                        </Label>
-                        {(result.locality || result.region) && (
-                          <p className="text-xs text-muted-foreground">
-                            {[result.locality, result.region].filter(Boolean).join(", ")}
-                          </p>
+                      <div className="flex flex-1 items-center justify-between">
+                        <div className="grid">
+                          <Label htmlFor={`phone-${idx}`} className="text-sm font-medium cursor-pointer">
+                            {formatPhoneNumber(result.phoneNumber)}
+                          </Label>
+                          {(result.locality || result.region) && (
+                            <p className="text-xs text-muted-foreground">
+                              {[result.locality, result.region].filter(Boolean).join(", ")}
+                            </p>
+                          )}
+                        </div>
+                        {result.capabilities && (
+                          <div className="flex gap-1">
+                            {formatCapabilities(result.capabilities).map((cap) => (
+                              <Badge key={cap} variant="secondary" className="capitalize">
+                                {cap}
+                              </Badge>
+                            ))}
+                          </div>
                         )}
                       </div>
                     </div>
