@@ -138,8 +138,7 @@ export function ProcessGroupItem({
 
           {isExpanded && processEntries.length > 0 && (
             <div
-              className="mt-2 mb-3 rounded-lg p-3 space-y-3"
-              style={{ backgroundColor: isDarkMode ? '#2d2d3d' : '#f0f0f5' }}
+              className="mt-2 mb-3 pl-6 border-l-2 border-border/50 space-y-4"
             >
               {processEntries.map((entry) => (
                 <ProcessEntryBody

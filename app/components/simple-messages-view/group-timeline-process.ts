@@ -38,7 +38,8 @@ export function isProcessLog(log: InstanceLog): boolean {
 }
 
 export function isPlaceholderAgentAction(log: InstanceLog): boolean {
-  return (log.message || '').includes('placeholder response')
+  const msg = (log.message || '').trim()
+  return msg.includes('placeholder response') || msg === 'Assistant step execution'
 }
 
 export function isProcessTimelineItem(item: { type: string; data: any }): boolean {
