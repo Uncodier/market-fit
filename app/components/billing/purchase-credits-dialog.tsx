@@ -57,6 +57,14 @@ export function PurchaseCreditsDialog({
 
     setIsSubmitting(true)
     try {
+      const isSettingsOrigin = window.location.pathname.includes('/settings');
+      const successPath = isSettingsOrigin 
+        ? `/settings?tab=channels&credits=${credits}`
+        : `/billing/success?credits=${credits}`;
+      const cancelPath = isSettingsOrigin
+        ? `/settings?tab=channels`
+        : `/billing?tab=billing_info`;
+
       const response = await fetch('/api/stripe/checkout/credits', {
         method: 'POST',
         headers: {
@@ -67,8 +75,8 @@ export function PurchaseCreditsDialog({
           amount: price,
           siteId: currentSite.id,
           userEmail: user.email,
-          successUrl: `${window.location.origin}/billing/success?credits=${credits}`,
-          cancelUrl: `${window.location.origin}/billing?tab=billing_info`,
+          successUrl: `${window.location.origin}${successPath}`,
+          cancelUrl: `${window.location.origin}${cancelPath}`,
         }),
       })
 
