@@ -1632,6 +1632,7 @@ html.dark {
 
 [role="switch"] {
   overflow: visible;
+  justify-content: flex-start !important;
   box-shadow: var(--ctrl-track-shadow);
   transition: background-color 200ms ease, box-shadow 200ms ease, filter 200ms ease;
 }

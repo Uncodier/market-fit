@@ -56,8 +56,10 @@ export const MediaParametersToolbar: React.FC<MediaParametersToolbarProps> = ({
           hideIcon 
           className="h-8 bg-secondary hover:bg-secondary/80 border-secondary text-xs w-auto min-w-fit"
         >
-          <div className="flex items-center gap-2">
-            <Hash className="h-4 w-4" />
+          <div className="flex items-center gap-2 w-full">
+            <div className="flex items-center justify-center w-[16px] h-[16px] relative shrink-0">
+              <Hash className="w-[16px] h-[16px] absolute left-0 top-0 m-0" style={{ margin: 0, top: 0, left: 0, bottom: 0, right: 0 }} />
+            </div>
             <span>{value || 1} {value === 1 || !value ? 'result' : 'results'}</span>
           </div>
         </SelectTrigger>
@@ -88,8 +90,10 @@ export const MediaParametersToolbar: React.FC<MediaParametersToolbarProps> = ({
                 hideIcon 
                 className="h-8 bg-secondary hover:bg-secondary/80 border-secondary text-xs w-auto min-w-fit"
               >
-                <div className="flex items-center gap-2">
-                  <AlignLeft className="h-4 w-4" />
+                <div className="flex items-center gap-2 w-full">
+                  <div className="flex items-center justify-center w-[16px] h-[16px] relative shrink-0 overflow-hidden">
+                    <AlignLeft className="w-[16px] h-[16px] absolute left-0 top-0 m-0" style={{ margin: 0, top: 0, left: 0, bottom: 0, right: 0 }} />
+                  </div>
                   <span className="capitalize">{textParameters?.length || 'medium'}</span>
                 </div>
               </SelectTrigger>
@@ -113,8 +117,10 @@ export const MediaParametersToolbar: React.FC<MediaParametersToolbarProps> = ({
                 hideIcon 
                 className="h-8 bg-secondary hover:bg-secondary/80 border-secondary text-xs w-auto min-w-fit"
               >
-                <div className="flex items-center gap-2">
-                  <Type className="h-4 w-4" />
+                <div className="flex items-center gap-2 w-full">
+                  <div className="flex items-center justify-center w-[16px] h-[16px] relative shrink-0 overflow-hidden">
+                    <Type className="w-[16px] h-[16px] absolute left-0 top-0 m-0" style={{ margin: 0, top: 0, left: 0, bottom: 0, right: 0 }} />
+                  </div>
                   <span className="capitalize">{(textParameters?.styles && textParameters.styles.length > 0) ? textParameters.styles[0] : 'Estilo Default'}</span>
                 </div>
               </SelectTrigger>
@@ -145,8 +151,10 @@ export const MediaParametersToolbar: React.FC<MediaParametersToolbarProps> = ({
                 hideIcon 
                 className="h-8 bg-secondary hover:bg-secondary/80 border-secondary text-xs w-auto min-w-fit"
               >
-                <div className="flex items-center gap-2">
-                  <LayoutGrid className="h-4 w-4" />
+                <div className="flex items-center gap-2 w-full">
+                  <div className="flex items-center justify-center w-[16px] h-[16px] relative shrink-0 overflow-hidden">
+                    <LayoutGrid className="w-[16px] h-[16px] absolute left-0 top-0 m-0" style={{ margin: 0, top: 0, left: 0, bottom: 0, right: 0 }} />
+                  </div>
                   <span>{imageParameters?.aspectRatio ?? '1:1'}</span>
                 </div>
               </SelectTrigger>
@@ -174,8 +182,10 @@ export const MediaParametersToolbar: React.FC<MediaParametersToolbarProps> = ({
                 hideIcon 
                 className="h-8 bg-secondary hover:bg-secondary/80 border-secondary text-xs w-auto min-w-fit"
               >
-                <div className="flex items-center gap-2">
-                  <BarChart className="h-4 w-4" />
+                <div className="flex items-center gap-2 w-full">
+                  <div className="flex items-center justify-center w-[16px] h-[16px] relative shrink-0 overflow-hidden">
+                    <BarChart className="w-[16px] h-[16px] absolute left-0 top-0 m-0" style={{ margin: 0, top: 0, left: 0, bottom: 0, right: 0 }} />
+                  </div>
                   <span>{imageParameters?.quality ?? 100}%</span>
                 </div>
               </SelectTrigger>
@@ -207,8 +217,10 @@ export const MediaParametersToolbar: React.FC<MediaParametersToolbarProps> = ({
                 hideIcon 
                 className="h-8 bg-secondary hover:bg-secondary/80 border-secondary text-xs w-auto min-w-fit"
               >
-                <div className="flex items-center gap-2">
-                  <LayoutGrid className="h-4 w-4" />
+                <div className="flex items-center gap-2 w-full">
+                  <div className="flex items-center justify-center w-[16px] h-[16px] relative shrink-0 overflow-hidden">
+                    <LayoutGrid className="w-[16px] h-[16px] absolute left-0 top-0 m-0" style={{ margin: 0, top: 0, left: 0, bottom: 0, right: 0 }} />
+                  </div>
                   <span>{videoParameters?.aspectRatio ?? '16:9'}</span>
                 </div>
               </SelectTrigger>
@@ -234,8 +246,10 @@ export const MediaParametersToolbar: React.FC<MediaParametersToolbarProps> = ({
                 hideIcon 
                 className="h-8 bg-secondary hover:bg-secondary/80 border-secondary text-xs w-auto min-w-fit"
               >
-                <div className="flex items-center gap-2">
-                  <FileVideo className="h-4 w-4" />
+                <div className="flex items-center gap-2 w-full">
+                  <div className="flex items-center justify-center w-[16px] h-[16px] relative shrink-0 overflow-hidden">
+                    <FileVideo className="w-[16px] h-[16px] absolute left-0 top-0 m-0" style={{ margin: 0, top: 0, left: 0, bottom: 0, right: 0 }} />
+                  </div>
                   <span>{videoParameters?.resolution ?? '1080p'}</span>
                 </div>
               </SelectTrigger>
@@ -258,8 +272,10 @@ export const MediaParametersToolbar: React.FC<MediaParametersToolbarProps> = ({
                 hideIcon 
                 className="h-8 bg-secondary hover:bg-secondary/80 border-secondary text-xs w-auto min-w-fit"
               >
-                <div className="flex items-center gap-2">
-                  <Clock className="h-4 w-4" />
+                <div className="flex items-center gap-2 w-full">
+                  <div className="flex items-center justify-center w-[16px] h-[16px] relative shrink-0 overflow-hidden">
+                    <Clock className="w-[16px] h-[16px] absolute left-0 top-0 m-0" style={{ margin: 0, top: 0, left: 0, bottom: 0, right: 0 }} />
+                  </div>
                   <span>{videoParameters?.duration ?? 4}s</span>
                 </div>
               </SelectTrigger>
@@ -288,8 +304,10 @@ export const MediaParametersToolbar: React.FC<MediaParametersToolbarProps> = ({
                 hideIcon 
                 className="h-8 bg-secondary hover:bg-secondary/80 border-secondary text-xs w-auto min-w-fit"
               >
-                <div className="flex items-center gap-2">
-                  <Speaker className="h-4 w-4" />
+                <div className="flex items-center gap-2 w-full">
+                  <div className="flex items-center justify-center w-[16px] h-[16px] relative shrink-0 overflow-hidden">
+                    <Speaker className="w-[16px] h-[16px] absolute left-0 top-0 m-0" style={{ margin: 0, top: 0, left: 0, bottom: 0, right: 0 }} />
+                  </div>
                   <span>{audioParameters?.format ?? 'MP3'}</span>
                 </div>
               </SelectTrigger>
@@ -313,8 +331,10 @@ export const MediaParametersToolbar: React.FC<MediaParametersToolbarProps> = ({
                 hideIcon 
                 className="h-8 bg-secondary hover:bg-secondary/80 border-secondary text-xs w-auto min-w-fit"
               >
-                <div className="flex items-center gap-2">
-                  <BarChart className="h-4 w-4" />
+                <div className="flex items-center gap-2 w-full">
+                  <div className="flex items-center justify-center w-[16px] h-[16px] relative shrink-0 overflow-hidden">
+                    <BarChart className="w-[16px] h-[16px] absolute left-0 top-0 m-0" style={{ margin: 0, top: 0, left: 0, bottom: 0, right: 0 }} />
+                  </div>
                   <span>{audioParameters?.sampleRate ?? '44.1kHz'}</span>
                 </div>
               </SelectTrigger>
@@ -337,8 +357,10 @@ export const MediaParametersToolbar: React.FC<MediaParametersToolbarProps> = ({
                 hideIcon 
                 className="h-8 bg-secondary hover:bg-secondary/80 border-secondary text-xs w-auto min-w-fit"
               >
-                <div className="flex items-center gap-2">
-                  <Settings className="h-4 w-4" />
+                <div className="flex items-center gap-2 w-full">
+                  <div className="flex items-center justify-center w-[16px] h-[16px] relative shrink-0 overflow-hidden">
+                    <Settings className="w-[16px] h-[16px] absolute left-0 top-0 m-0" style={{ margin: 0, top: 0, left: 0, bottom: 0, right: 0 }} />
+                  </div>
                   <span>{audioParameters?.channels ?? 'stereo'}</span>
                 </div>
               </SelectTrigger>
@@ -361,8 +383,10 @@ export const MediaParametersToolbar: React.FC<MediaParametersToolbarProps> = ({
                 hideIcon 
                 className="h-8 bg-secondary hover:bg-secondary/80 border-secondary text-xs w-auto min-w-fit"
               >
-                <div className="flex items-center gap-2">
-                  <Clock className="h-4 w-4" />
+                <div className="flex items-center gap-2 w-full">
+                  <div className="flex items-center justify-center w-[16px] h-[16px] relative shrink-0 overflow-hidden">
+                    <Clock className="w-[16px] h-[16px] absolute left-0 top-0 m-0" style={{ margin: 0, top: 0, left: 0, bottom: 0, right: 0 }} />
+                  </div>
                   <span>{audioParameters?.duration ?? 15}s</span>
                 </div>
               </SelectTrigger>

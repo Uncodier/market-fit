@@ -3326,31 +3326,7 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
     if (!session || !currentSite) return;
 
     try {
-      if (insertType === PUBLISH_SLOT_CONTENT) {
-        const stale = contexts.filter(
-          (c) =>
-            c.target_node_id === targetNodeId &&
-            c.type === PUBLISH_SLOT_CONTENT
-        );
-        for (const row of stale) {
-          await supabase.from("instance_node_contexts").delete().eq("id", row.id);
-        }
-        if (stale.length) {
-          setContexts((prev) => prev.filter((c) => !stale.some((s) => s.id === c.id)));
-        }
-      } else if (insertType === PUBLISH_SLOT_REFERENCE) {
-        const stale = contexts.filter(
-          (c) =>
-            c.target_node_id === targetNodeId &&
-            isNormalPublishContextType(c.type)
-        );
-        for (const row of stale) {
-          await supabase.from("instance_node_contexts").delete().eq("id", row.id);
-        }
-        if (stale.length) {
-          setContexts((prev) => prev.filter((c) => !stale.some((s) => s.id === c.id)));
-        }
-      } else if (insertType === PUBLISH_SLOT_AUDIENCE) {
+      if (insertType === PUBLISH_SLOT_AUDIENCE) {
         const stale = contexts.filter(
           (c) => c.target_node_id === targetNodeId && c.type === PUBLISH_SLOT_AUDIENCE
         );
