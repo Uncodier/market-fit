@@ -1,21 +1,27 @@
--- Enable vault extension
-CREATE EXTENSION IF NOT EXISTS supabase_vault CASCADE;
-
 -- Create table site_secrets
-CREATE TABLE IF NOT EXISTS public.site_secrets (
+DROP TABLE IF EXISTS public.site_secrets CASCADE;
+CREATE TABLE public.site_secrets (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     site_id UUID NOT NULL REFERENCES public.sites(id) ON DELETE CASCADE,
+    instance_id UUID REFERENCES public.remote_instances(id) ON DELETE CASCADE,
     name TEXT NOT NULL,
     provider TEXT NOT NULL,
     use_case TEXT NOT NULL,
-    vault_secret_id UUID,
+    encrypted_value TEXT NOT NULL,
     metadata JSONB DEFAULT '{}'::jsonb,
     is_active BOOLEAN DEFAULT true,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
-    
-    UNIQUE(site_id, provider, use_case)
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
+
+-- Ensure uniqueness for (site_id, instance_id, provider, use_case)
+CREATE UNIQUE INDEX IF NOT EXISTS site_secrets_instance_idx 
+ON public.site_secrets (site_id, instance_id, provider, use_case) 
+WHERE instance_id IS NOT NULL;
+
+CREATE UNIQUE INDEX IF NOT EXISTS site_secrets_site_only_idx 
+ON public.site_secrets (site_id, provider, use_case) 
+WHERE instance_id IS NULL;
 
 -- Trigger to update updated_at
 CREATE OR REPLACE FUNCTION update_site_secrets_updated_at()

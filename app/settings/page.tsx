@@ -1,24 +1,46 @@
-"use client"
+"use client";
 
-import { useState, useEffect, useMemo, useRef } from "react"
-import { useSearchParams, useRouter } from "next/navigation"
-import { toast } from "sonner"
-import { useSimpleRefreshPrevention } from "@/app/hooks/use-prevent-refresh"
-import { useSite } from "@/app/context/SiteContext"
-import { useTheme } from "@/app/context/ThemeContext"
-import { type Site, type SiteSettings } from "@/app/context/SiteContext"
-import { StickyHeader } from "@/app/components/ui/sticky-header"
-import { ResponsiveTabsList, TabItem } from "@/app/components/ui/responsive-tabs-list"
-import { Tabs, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
-import { Skeleton } from "@/app/components/ui/skeleton"
-import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/card"
-import { SiteForm } from "@/app/components/settings/site-form"
-import { type SiteFormValues } from "@/app/components/settings/form-schema"
-import { adaptSiteToForm, type AdaptedSiteFormValues } from "@/app/components/settings/data-adapter"
-import { handleSaveGeneral, handleSaveCompany, handleSaveBranding, handleSaveMarketing, handleSaveCustomerJourney, handleSaveSocial, handleSaveChannels, handleSaveActivities, handleSaveShop, handleSavePrinters } from "@/app/components/settings/save-handlers"
-import { useAuthContext } from "@/app/components/auth/auth-provider"
-import { QuickNav, type QuickNavSection } from "@/app/components/ui/quick-nav"
-import { useLocalization } from "@/app/context/LocalizationContext"
+import { useState, useEffect, useMemo, useRef } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
+import { toast } from "sonner";
+import { useSimpleRefreshPrevention } from "@/app/hooks/use-prevent-refresh";
+import { useSite } from "@/app/context/SiteContext";
+import { useTheme } from "@/app/context/ThemeContext";
+import { type Site, type SiteSettings } from "@/app/context/SiteContext";
+import { StickyHeader } from "@/app/components/ui/sticky-header";
+import {
+  ResponsiveTabsList,
+  TabItem,
+} from "@/app/components/ui/responsive-tabs-list";
+import { Tabs, TabsList, TabsTrigger } from "@/app/components/ui/tabs";
+import { Skeleton } from "@/app/components/ui/skeleton";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/app/components/ui/card";
+import { SiteForm } from "@/app/components/settings/site-form";
+import { type SiteFormValues } from "@/app/components/settings/form-schema";
+import {
+  adaptSiteToForm,
+  type AdaptedSiteFormValues,
+} from "@/app/components/settings/data-adapter";
+import {
+  handleSaveGeneral,
+  handleSaveCompany,
+  handleSaveBranding,
+  handleSaveMarketing,
+  handleSaveCustomerJourney,
+  handleSaveSocial,
+  handleSaveChannels,
+  handleSaveActivities,
+  handleSaveShop,
+  handleSavePrinters,
+} from "@/app/components/settings/save-handlers";
+import { useAuthContext } from "@/app/components/auth/auth-provider";
+import { QuickNav, type QuickNavSection } from "@/app/components/ui/quick-nav";
+import { useLocalization } from "@/app/context/LocalizationContext";
 
 function SettingsFormSkeleton() {
   return (
@@ -93,7 +115,7 @@ function SettingsFormSkeleton() {
           </div>
         </CardContent>
       </Card>
-      
+
       <Card>
         <CardHeader>
           <CardTitle>
@@ -140,7 +162,7 @@ function SettingsFormSkeleton() {
           </Card>
         ))}
       </div>
-      
+
       <Card>
         <CardHeader>
           <CardTitle>
@@ -157,119 +179,210 @@ function SettingsFormSkeleton() {
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }
 
 // Section configurations for quick navigation
 const getGeneralSections = (t: (key: string) => string): QuickNavSection[] => [
-  { id: "site-information", title: t('settings.nav.siteInfo') || "Site Information" },
-  { id: "web-resources", title: t('settings.nav.webResources') || "Web Resources" },
-]
+  {
+    id: "site-information",
+    title: t("settings.nav.siteInfo") || "Site Information",
+  },
+  {
+    id: "web-resources",
+    title: t("settings.nav.webResources") || "Web Resources",
+  },
+];
 
 const getCompanySections = (t: (key: string) => string): QuickNavSection[] => [
-  { id: "company-profile", title: t('settings.nav.companyProfile') || "Company Profile" },
+  {
+    id: "company-profile",
+    title: t("settings.nav.companyProfile") || "Company Profile",
+  },
   {
     id: "office-locations",
-    title: t('settings.nav.officeLocations') || "Office Locations",
-    children: []
+    title: t("settings.nav.officeLocations") || "Office Locations",
+    children: [],
   },
   {
     id: "service-available-restrictions",
-    title: t('settings.nav.serviceRestrictions') || "Service Available Restrictions",
-    children: []
+    title:
+      t("settings.nav.serviceRestrictions") || "Service Available Restrictions",
+    children: [],
   },
   {
     id: "service-exclusions-addresses",
-    title: t('settings.nav.serviceExclusions') || "Service Exclusions Addresses",
-    children: []
+    title:
+      t("settings.nav.serviceExclusions") || "Service Exclusions Addresses",
+    children: [],
   },
   {
     id: "business-hours",
-    title: t('settings.nav.businessHours') || "Business Hours",
-    children: []
+    title: t("settings.nav.businessHours") || "Business Hours",
+    children: [],
   },
   {
     id: "goals-quarterly",
-    title: t('settings.nav.goals') || "Business Goals",
+    title: t("settings.nav.goals") || "Business Goals",
     children: [
-      { id: "goals-quarterly", title: t('settings.nav.goals.quarterly') || "Quarter Goals" },
-      { id: "goals-yearly", title: t('settings.nav.goals.yearly') || "Year Goals" },
-      { id: "goals-five-year", title: t('settings.nav.goals.fiveYear') || "5 Year Goals" },
-      { id: "goals-ten-year", title: t('settings.nav.goals.tenYear') || "10 Year Goals" },
-    ]
+      {
+        id: "goals-quarterly",
+        title: t("settings.nav.goals.quarterly") || "Quarter Goals",
+      },
+      {
+        id: "goals-yearly",
+        title: t("settings.nav.goals.yearly") || "Year Goals",
+      },
+      {
+        id: "goals-five-year",
+        title: t("settings.nav.goals.fiveYear") || "5 Year Goals",
+      },
+      {
+        id: "goals-ten-year",
+        title: t("settings.nav.goals.tenYear") || "10 Year Goals",
+      },
+    ],
   },
   {
     id: "swot-strengths",
-    title: t('settings.nav.swot') || "SWOT Analysis",
+    title: t("settings.nav.swot") || "SWOT Analysis",
     children: [
-      { id: "swot-strengths", title: t('settings.nav.swot.strengths') || "Strengths" },
-      { id: "swot-weaknesses", title: t('settings.nav.swot.weaknesses') || "Weaknesses" },
-      { id: "swot-opportunities", title: t('settings.nav.swot.opportunities') || "Opportunities" },
-      { id: "swot-threats", title: t('settings.nav.swot.threats') || "Threats" },
-    ]
+      {
+        id: "swot-strengths",
+        title: t("settings.nav.swot.strengths") || "Strengths",
+      },
+      {
+        id: "swot-weaknesses",
+        title: t("settings.nav.swot.weaknesses") || "Weaknesses",
+      },
+      {
+        id: "swot-opportunities",
+        title: t("settings.nav.swot.opportunities") || "Opportunities",
+      },
+      {
+        id: "swot-threats",
+        title: t("settings.nav.swot.threats") || "Threats",
+      },
+    ],
   },
-]
+];
 
-const getMarketplaceSections = (t: (key: string) => string): QuickNavSection[] => [
-  { id: "shop-hero", title: t('settings.nav.shopHero') || "Storefront Hero" },
-  { id: "shop-trust", title: t('settings.nav.shopTrust') || "Trust & Policies" },
-]
+const getMarketplaceSections = (
+  t: (key: string) => string,
+): QuickNavSection[] => [
+  { id: "shop-hero", title: t("settings.nav.shopHero") || "Storefront Hero" },
+  {
+    id: "shop-trust",
+    title: t("settings.nav.shopTrust") || "Trust & Policies",
+  },
+];
 
 const getVisitsSections = (t: (key: string) => string): QuickNavSection[] => [
-  { id: "visits-channels", title: t('settings.nav.visitsChannels') || "Visit channels" },
-  { id: "visits-terms", title: t('settings.nav.visitsTerms') || "Visit Terms" },
-]
+  {
+    id: "visits-channels",
+    title: t("settings.nav.visitsChannels") || "Visit channels",
+  },
+  { id: "visits-terms", title: t("settings.nav.visitsTerms") || "Visit Terms" },
+];
 
 const getChannelsSections = (t: (key: string) => string): QuickNavSection[] => [
   { id: "support-channels", title: "Support Channels" },
-  { id: "website-channel", title: t('settings.nav.websiteChannel') || "Website Channel" },
-]
-
-const getInitialSocialSections = (t: (key: string) => string): QuickNavSection[] => [
-  { 
-    id: "social-networks-section", 
-    title: t('settings.nav.socialNetworks') || "Social Networks",
-    children: []
+  {
+    id: "website-channel",
+    title: t("settings.nav.websiteChannel") || "Website Channel",
   },
-]
+];
 
-const getInitialTeamSections = (t: (key: string) => string): QuickNavSection[] => [
-  { 
-    id: "team-members", 
-    title: t('settings.nav.teamMembers') || "Team Members",
-    children: []
+const getInitialSocialSections = (
+  t: (key: string) => string,
+): QuickNavSection[] => [
+  {
+    id: "social-networks-section",
+    title: t("settings.nav.socialNetworks") || "Social Networks",
+    children: [],
   },
-]
+];
 
-const getInitialCopywritingSections = (t: (key: string) => string): QuickNavSection[] => [
-  { 
-    id: "copywriting-collection", 
-    title: t('settings.nav.copySequences') || "Copy Sequences",
-    children: []
+const getInitialTeamSections = (
+  t: (key: string) => string,
+): QuickNavSection[] => [
+  {
+    id: "team-members",
+    title: t("settings.nav.teamMembers") || "Team Members",
+    children: [],
   },
-]
+];
 
-const getActivitiesSections = (t: (key: string) => string): QuickNavSection[] => [
-  { 
-    id: "activities", 
-    title: t('settings.nav.activities') || "AI Activities",
+const getInitialCopywritingSections = (
+  t: (key: string) => string,
+): QuickNavSection[] => [
+  {
+    id: "copywriting-collection",
+    title: t("settings.nav.copySequences") || "Copy Sequences",
+    children: [],
+  },
+];
+
+const getActivitiesSections = (
+  t: (key: string) => string,
+): QuickNavSection[] => [
+  {
+    id: "activities",
+    title: t("settings.nav.activities") || "AI Activities",
     children: [
-      { id: "activity-daily_resume_and_stand_up", title: t('settings.nav.activity.dailyResume') || "Daily Resume and Stand Up" },
-      { id: "activity-local_lead_generation", title: t('settings.nav.activity.localLead') || "Local Lead Generation" },
-      { id: "activity-icp_lead_generation", title: t('settings.nav.activity.icpLead') || "ICP Lead Generation" },
-      { id: "activity-leads_initial_cold_outreach", title: t('settings.nav.activity.leadsCold') || "Leads Initial Cold Outreach" },
-      { id: "activity-leads_follow_up", title: t('settings.nav.activity.leadsFollowUp') || "Leads Follow Up" },
-      { id: "activity-email_sync", title: t('settings.nav.activity.emailSync') || "Email Sync" },
-      { id: "activity-assign_leads_to_team", title: t('settings.nav.activity.assignLeads') || "Assign Leads to Team" },
-      { id: "activity-notify_team_on_inbound_conversations", title: t('settings.nav.activity.notifyTeam') || "Notify Team on Inbound Conversations" },
-      { id: "activity-supervise_conversations", title: t('settings.nav.activity.superviseConversations') || "Supervise Conversations" },
-    ]
+      {
+        id: "activity-daily_resume_and_stand_up",
+        title:
+          t("settings.nav.activity.dailyResume") || "Daily Resume and Stand Up",
+      },
+      {
+        id: "activity-local_lead_generation",
+        title: t("settings.nav.activity.localLead") || "Local Lead Generation",
+      },
+      {
+        id: "activity-icp_lead_generation",
+        title: t("settings.nav.activity.icpLead") || "ICP Lead Generation",
+      },
+      {
+        id: "activity-leads_initial_cold_outreach",
+        title:
+          t("settings.nav.activity.leadsCold") || "Leads Initial Cold Outreach",
+      },
+      {
+        id: "activity-leads_follow_up",
+        title: t("settings.nav.activity.leadsFollowUp") || "Leads Follow Up",
+      },
+      {
+        id: "activity-email_sync",
+        title: t("settings.nav.activity.emailSync") || "Email Sync",
+      },
+      {
+        id: "activity-assign_leads_to_team",
+        title: t("settings.nav.activity.assignLeads") || "Assign Leads to Team",
+      },
+      {
+        id: "activity-notify_team_on_inbound_conversations",
+        title:
+          t("settings.nav.activity.notifyTeam") ||
+          "Notify Team on Inbound Conversations",
+      },
+      {
+        id: "activity-supervise_conversations",
+        title:
+          t("settings.nav.activity.superviseConversations") ||
+          "Supervise Conversations",
+      },
+    ],
   },
-]
+];
 
 const getCalendarSections = (t: (key: string) => string): QuickNavSection[] => [
-  { id: "calendars", title: t('settings.nav.calendars') || "Calendars" },
-]
+  { id: "calendars", title: t("settings.nav.calendars") || "Calendars" },
+];
+
+const getSecretsSections = (t: (key: string) => string): QuickNavSection[] => [
+  { id: "secrets", title: t("settings.nav.secrets") || "Secrets & Envs" },
+];
 
 const getPrintersSections = (t: (key: string) => string): QuickNavSection[] => [
   {
@@ -277,40 +390,57 @@ const getPrintersSections = (t: (key: string) => string): QuickNavSection[] => [
     title: t("settings.nav.printers") || "Printers",
     children: [],
   },
-]
+];
 
 export default function SettingsPage() {
-  const { t } = useLocalization()
-  const { currentSite, updateSite, deleteSite, isLoading, updateSettings, refreshSites } = useSite()
-  const { theme } = useTheme()
-  const { user } = useAuthContext()
-  const router = useRouter()
-  const [activeSegment, setActiveSegment] = useState("general")
-  const searchParams = useSearchParams()
-  const [formKey, setFormKey] = useState(0)
-  const [isSaving, setIsSaving] = useState(false)
-  const [teamSections, setTeamSections] = useState<QuickNavSection[]>(getInitialTeamSections(t))
-  const [copywritingSections, setCopywritingSections] = useState<QuickNavSection[]>(getInitialCopywritingSections(t))
-  const [socialSections, setSocialSections] = useState<QuickNavSection[]>(getInitialSocialSections(t))
-  const [companySectionsState, setCompanySectionsState] = useState<QuickNavSection[]>(getCompanySections(t))
-  const [printersSections, setPrintersSections] = useState<QuickNavSection[]>(getPrintersSections(t))
+  const { t } = useLocalization();
+  const {
+    currentSite,
+    updateSite,
+    deleteSite,
+    isLoading,
+    updateSettings,
+    refreshSites,
+  } = useSite();
+  const { theme } = useTheme();
+  const { user } = useAuthContext();
+  const router = useRouter();
+  const [activeSegment, setActiveSegment] = useState("general");
+  const searchParams = useSearchParams();
+  const [formKey, setFormKey] = useState(0);
+  const [isSaving, setIsSaving] = useState(false);
+  const [teamSections, setTeamSections] = useState<QuickNavSection[]>(
+    getInitialTeamSections(t),
+  );
+  const [copywritingSections, setCopywritingSections] = useState<
+    QuickNavSection[]
+  >(getInitialCopywritingSections(t));
+  const [socialSections, setSocialSections] = useState<QuickNavSection[]>(
+    getInitialSocialSections(t),
+  );
+  const [companySectionsState, setCompanySectionsState] = useState<
+    QuickNavSection[]
+  >(getCompanySections(t));
+  const [printersSections, setPrintersSections] = useState<QuickNavSection[]>(
+    getPrintersSections(t),
+  );
 
   // Keep company quick-nav labels in sync with locale
   useEffect(() => {
-    setCompanySectionsState(prev => {
-      const next = getCompanySections(t)
-      return next.map(section => {
-        const existing = prev.find(item => item.id === section.id)
+    setCompanySectionsState((prev) => {
+      const next = getCompanySections(t);
+      return next.map((section) => {
+        const existing = prev.find((item) => item.id === section.id);
         return existing?.children?.length
           ? { ...section, children: existing.children }
-          : section
-      })
-    })
-  }, [t])
+          : section;
+      });
+    });
+  }, [t]);
 
   // Simple refresh prevention specifically for settings page
-  useSimpleRefreshPrevention()
-  
+  useSimpleRefreshPrevention();
+
   // Listen for team members updates
   useEffect(() => {
     const handleTeamMembersUpdate = (event: CustomEvent) => {
@@ -318,15 +448,21 @@ export default function SettingsPage() {
       setTeamSections([
         {
           id: "team-members",
-          title: t('settings.nav.teamMembers') || 'Team Members',
-          children: members
-        }
+          title: t("settings.nav.teamMembers") || "Team Members",
+          children: members,
+        },
       ]);
     };
 
-    window.addEventListener('teamMembersUpdated', handleTeamMembersUpdate as EventListener);
+    window.addEventListener(
+      "teamMembersUpdated",
+      handleTeamMembersUpdate as EventListener,
+    );
     return () => {
-      window.removeEventListener('teamMembersUpdated', handleTeamMembersUpdate as EventListener);
+      window.removeEventListener(
+        "teamMembersUpdated",
+        handleTeamMembersUpdate as EventListener,
+      );
     };
   }, []);
 
@@ -334,17 +470,25 @@ export default function SettingsPage() {
   useEffect(() => {
     const handleBusinessHoursUpdate = (event: CustomEvent) => {
       const items = event.detail as { id: string; title: string }[];
-      setCompanySectionsState(prev => prev.map(section => {
-        if (section.id === "business-hours") {
-          return { ...section, children: items };
-        }
-        return section;
-      }));
+      setCompanySectionsState((prev) =>
+        prev.map((section) => {
+          if (section.id === "business-hours") {
+            return { ...section, children: items };
+          }
+          return section;
+        }),
+      );
     };
 
-    window.addEventListener('businessHoursUpdated', handleBusinessHoursUpdate as EventListener);
+    window.addEventListener(
+      "businessHoursUpdated",
+      handleBusinessHoursUpdate as EventListener,
+    );
     return () => {
-      window.removeEventListener('businessHoursUpdated', handleBusinessHoursUpdate as EventListener);
+      window.removeEventListener(
+        "businessHoursUpdated",
+        handleBusinessHoursUpdate as EventListener,
+      );
     };
   }, []);
 
@@ -352,17 +496,25 @@ export default function SettingsPage() {
   useEffect(() => {
     const handleOfficeLocationsUpdate = (event: CustomEvent) => {
       const items = event.detail as { id: string; title: string }[];
-      setCompanySectionsState(prev => prev.map(section => {
-        if (section.id === "office-locations") {
-          return { ...section, children: items };
-        }
-        return section;
-      }));
+      setCompanySectionsState((prev) =>
+        prev.map((section) => {
+          if (section.id === "office-locations") {
+            return { ...section, children: items };
+          }
+          return section;
+        }),
+      );
     };
 
-    window.addEventListener('officeLocationsUpdated', handleOfficeLocationsUpdate as EventListener);
+    window.addEventListener(
+      "officeLocationsUpdated",
+      handleOfficeLocationsUpdate as EventListener,
+    );
     return () => {
-      window.removeEventListener('officeLocationsUpdated', handleOfficeLocationsUpdate as EventListener);
+      window.removeEventListener(
+        "officeLocationsUpdated",
+        handleOfficeLocationsUpdate as EventListener,
+      );
     };
   }, []);
 
@@ -370,17 +522,25 @@ export default function SettingsPage() {
   useEffect(() => {
     const handleServiceAvailableRestrictionsUpdate = (event: CustomEvent) => {
       const items = event.detail as { id: string; title: string }[];
-      setCompanySectionsState(prev => prev.map(section => {
-        if (section.id === "service-available-restrictions") {
-          return { ...section, children: items };
-        }
-        return section;
-      }));
+      setCompanySectionsState((prev) =>
+        prev.map((section) => {
+          if (section.id === "service-available-restrictions") {
+            return { ...section, children: items };
+          }
+          return section;
+        }),
+      );
     };
 
-    window.addEventListener('serviceAvailableRestrictionsUpdated', handleServiceAvailableRestrictionsUpdate as EventListener);
+    window.addEventListener(
+      "serviceAvailableRestrictionsUpdated",
+      handleServiceAvailableRestrictionsUpdate as EventListener,
+    );
     return () => {
-      window.removeEventListener('serviceAvailableRestrictionsUpdated', handleServiceAvailableRestrictionsUpdate as EventListener);
+      window.removeEventListener(
+        "serviceAvailableRestrictionsUpdated",
+        handleServiceAvailableRestrictionsUpdate as EventListener,
+      );
     };
   }, []);
 
@@ -388,17 +548,25 @@ export default function SettingsPage() {
   useEffect(() => {
     const handleServiceExclusionsAddressesUpdate = (event: CustomEvent) => {
       const items = event.detail as { id: string; title: string }[];
-      setCompanySectionsState(prev => prev.map(section => {
-        if (section.id === "service-exclusions-addresses") {
-          return { ...section, children: items };
-        }
-        return section;
-      }));
+      setCompanySectionsState((prev) =>
+        prev.map((section) => {
+          if (section.id === "service-exclusions-addresses") {
+            return { ...section, children: items };
+          }
+          return section;
+        }),
+      );
     };
 
-    window.addEventListener('serviceExclusionsAddressesUpdated', handleServiceExclusionsAddressesUpdate as EventListener);
+    window.addEventListener(
+      "serviceExclusionsAddressesUpdated",
+      handleServiceExclusionsAddressesUpdate as EventListener,
+    );
     return () => {
-      window.removeEventListener('serviceExclusionsAddressesUpdated', handleServiceExclusionsAddressesUpdate as EventListener);
+      window.removeEventListener(
+        "serviceExclusionsAddressesUpdated",
+        handleServiceExclusionsAddressesUpdate as EventListener,
+      );
     };
   }, []);
 
@@ -409,15 +577,21 @@ export default function SettingsPage() {
       setCopywritingSections([
         {
           id: "copywriting-collection",
-          title: t('settings.nav.copySequences') || 'Copy Sequences',
-          children: items
-        }
+          title: t("settings.nav.copySequences") || "Copy Sequences",
+          children: items,
+        },
       ]);
     };
 
-    window.addEventListener('copywritingUpdated', handleCopywritingUpdate as EventListener);
+    window.addEventListener(
+      "copywritingUpdated",
+      handleCopywritingUpdate as EventListener,
+    );
     return () => {
-      window.removeEventListener('copywritingUpdated', handleCopywritingUpdate as EventListener);
+      window.removeEventListener(
+        "copywritingUpdated",
+        handleCopywritingUpdate as EventListener,
+      );
     };
   }, []);
 
@@ -428,15 +602,21 @@ export default function SettingsPage() {
       setSocialSections([
         {
           id: "social-networks-section",
-          title: t('settings.nav.socialNetworks') || 'Social Networks',
-          children: networks
-        }
+          title: t("settings.nav.socialNetworks") || "Social Networks",
+          children: networks,
+        },
       ]);
     };
 
-    window.addEventListener('socialNetworksUpdated', handleSocialNetworksUpdate as EventListener);
+    window.addEventListener(
+      "socialNetworksUpdated",
+      handleSocialNetworksUpdate as EventListener,
+    );
     return () => {
-      window.removeEventListener('socialNetworksUpdated', handleSocialNetworksUpdate as EventListener);
+      window.removeEventListener(
+        "socialNetworksUpdated",
+        handleSocialNetworksUpdate as EventListener,
+      );
     };
   }, []);
 
@@ -453,88 +633,117 @@ export default function SettingsPage() {
       ]);
     };
 
-    window.addEventListener("printersUpdated", handlePrintersUpdate as EventListener);
+    window.addEventListener(
+      "printersUpdated",
+      handlePrintersUpdate as EventListener,
+    );
     return () => {
-      window.removeEventListener("printersUpdated", handlePrintersUpdate as EventListener);
+      window.removeEventListener(
+        "printersUpdated",
+        handlePrintersUpdate as EventListener,
+      );
     };
   }, [t]);
 
   // Sync tab from URL (?tab=channels)
   useEffect(() => {
-    const tab = searchParams.get('tab') || searchParams.get('segment')
-    if (tab && ["general", "company", "channels", "team", "activities", "social", "calendar", "marketplace", "visits", "printers"].includes(tab)) {
-      setActiveSegment(tab)
+    const tab = searchParams.get("tab") || searchParams.get("segment");
+    if (
+      tab &&
+      [
+        "general",
+        "company",
+        "channels",
+        "team",
+        "activities",
+        "social",
+        "calendar",
+        "secrets",
+        "marketplace",
+        "visits",
+        "printers",
+      ].includes(tab)
+    ) {
+      setActiveSegment(tab);
     }
-  }, [searchParams])
+  }, [searchParams]);
 
   // OAuth implicit callback finished server-side (synced Outstand accounts into settings)
   useEffect(() => {
-    const oauthConnected = searchParams.get("oauth_connected")
-    const oauthSite = searchParams.get("oauth_site")
-    const oauthNetwork = searchParams.get("oauth_network")
-    if (oauthConnected !== "1" || !oauthSite) return
-    if (!currentSite?.id) return
+    const oauthConnected = searchParams.get("oauth_connected");
+    const oauthSite = searchParams.get("oauth_site");
+    const oauthNetwork = searchParams.get("oauth_network");
+    if (oauthConnected !== "1" || !oauthSite) return;
+    if (!currentSite?.id) return;
 
     const stripOAuthParams = () => {
-      const params = new URLSearchParams(searchParams.toString())
-      params.delete("oauth_connected")
-      params.delete("oauth_site")
-      params.delete("oauth_network")
-      const qs = params.toString()
-      router.replace(qs ? `/settings?${qs}` : "/settings", { scroll: false })
-    }
+      const params = new URLSearchParams(searchParams.toString());
+      params.delete("oauth_connected");
+      params.delete("oauth_site");
+      params.delete("oauth_network");
+      const qs = params.toString();
+      router.replace(qs ? `/settings?${qs}` : "/settings", { scroll: false });
+    };
 
     if (oauthSite !== currentSite.id) {
-      stripOAuthParams()
-      return
+      stripOAuthParams();
+      return;
     }
 
-    const label = oauthNetwork ? oauthNetwork.charAt(0).toUpperCase() + oauthNetwork.slice(1) : "Social"
+    const label = oauthNetwork
+      ? oauthNetwork.charAt(0).toUpperCase() + oauthNetwork.slice(1)
+      : "Social";
     toast.success(`${label} account connected`, {
       description: "Your social settings have been updated.",
-    })
-    refreshSites().catch(() => {})
-    setFormKey((key) => key + 1)
-    stripOAuthParams()
-  }, [searchParams, currentSite?.id, router, refreshSites])
+    });
+    refreshSites().catch(() => {});
+    setFormKey((key) => key + 1);
+    stripOAuthParams();
+  }, [searchParams, currentSite?.id, router, refreshSites]);
 
   // Debug log para verificar el estado de prevención
   useEffect(() => {
     const logPreventionStatus = () => {
-      const preventRefresh = sessionStorage.getItem('preventAutoRefresh')
-      const justBecameVisible = sessionStorage.getItem('JUST_BECAME_VISIBLE')
-      const justGainedFocus = sessionStorage.getItem('JUST_GAINED_FOCUS')
-      
-      console.log('🔍 Settings page prevention status:', {
-        preventRefresh: preventRefresh === 'true',
-        justBecameVisible: justBecameVisible === 'true',
-        justGainedFocus: justGainedFocus === 'true'
-      })
-    }
-    
+      const preventRefresh = sessionStorage.getItem("preventAutoRefresh");
+      const justBecameVisible = sessionStorage.getItem("JUST_BECAME_VISIBLE");
+      const justGainedFocus = sessionStorage.getItem("JUST_GAINED_FOCUS");
+
+      console.log("🔍 Settings page prevention status:", {
+        preventRefresh: preventRefresh === "true",
+        justBecameVisible: justBecameVisible === "true",
+        justGainedFocus: justGainedFocus === "true",
+      });
+    };
+
     // Log initial status
-    logPreventionStatus()
-    
+    logPreventionStatus();
+
     // Log status every few seconds for debugging
-    const interval = setInterval(logPreventionStatus, 3000)
-    
-    return () => clearInterval(interval)
-  }, [])
+    const interval = setInterval(logPreventionStatus, 3000);
+
+    return () => clearInterval(interval);
+  }, []);
 
   // Update form key only when the site ID actually changes (new site selected)
   // Use a ref to track the previous site ID to prevent unnecessary form resets
-  const prevSiteIdRef = useRef<string | null>(null)
-  
+  const prevSiteIdRef = useRef<string | null>(null);
+
   useEffect(() => {
     if (currentSite?.id && currentSite.id !== prevSiteIdRef.current) {
-      console.log("Settings: Site ID changed, updating formKey for site:", currentSite.id);
+      console.log(
+        "Settings: Site ID changed, updating formKey for site:",
+        currentSite.id,
+      );
       console.log("Settings: Previous site ID was:", prevSiteIdRef.current);
-      setFormKey(prev => prev + 1)
-      prevSiteIdRef.current = currentSite.id
+      setFormKey((prev) => prev + 1);
+      prevSiteIdRef.current = currentSite.id;
     } else if (currentSite && currentSite.id === prevSiteIdRef.current) {
-      console.log("Settings: Same site ID, not updating formKey:", currentSite.id);
+      console.log(
+        "Settings: Same site ID, not updating formKey:",
+        currentSite.id,
+      );
     }
-  }, [currentSite?.id])
+  }, [currentSite?.id]);
 
   // Wrapper functions for save handlers
   const saveOptions = {
@@ -543,58 +752,58 @@ export default function SettingsPage() {
     updateSettings,
     refreshSites,
     setIsSaving,
-    t
-  }
+    t,
+  };
 
   const onSaveGeneral = async (data: SiteFormValues) => {
-    if (!currentSite) return
-    await handleSaveGeneral(data, saveOptions)
-  }
+    if (!currentSite) return;
+    await handleSaveGeneral(data, saveOptions);
+  };
 
   const onSaveCompany = async (data: SiteFormValues) => {
-    if (!currentSite) return
-    await handleSaveCompany(data, saveOptions)
-  }
+    if (!currentSite) return;
+    await handleSaveCompany(data, saveOptions);
+  };
 
   const onSaveBranding = async (data: SiteFormValues) => {
-    if (!currentSite) return
-    await handleSaveBranding(data, saveOptions)
-  }
+    if (!currentSite) return;
+    await handleSaveBranding(data, saveOptions);
+  };
 
   const onSaveMarketing = async (data: SiteFormValues) => {
-    if (!currentSite) return
-    await handleSaveMarketing(data, saveOptions)
-  }
+    if (!currentSite) return;
+    await handleSaveMarketing(data, saveOptions);
+  };
 
   const onSaveCustomerJourney = async (data: SiteFormValues) => {
-    if (!currentSite) return
-    await handleSaveCustomerJourney(data, saveOptions)
-  }
+    if (!currentSite) return;
+    await handleSaveCustomerJourney(data, saveOptions);
+  };
 
   const onSaveSocial = async (data: SiteFormValues) => {
-    if (!currentSite) return
-    await handleSaveSocial(data, saveOptions)
-  }
+    if (!currentSite) return;
+    await handleSaveSocial(data, saveOptions);
+  };
 
   const onSaveChannels = async (data: SiteFormValues) => {
-    if (!currentSite) return
-    await handleSaveChannels(data, saveOptions)
-  }
+    if (!currentSite) return;
+    await handleSaveChannels(data, saveOptions);
+  };
 
   const onSaveActivities = async (data: SiteFormValues) => {
-    if (!currentSite) return
-    await handleSaveActivities(data, saveOptions)
-  }
+    if (!currentSite) return;
+    await handleSaveActivities(data, saveOptions);
+  };
 
   const onSaveShop = async (data: SiteFormValues) => {
-    if (!currentSite) return
-    await handleSaveShop(data, saveOptions)
-  }
+    if (!currentSite) return;
+    await handleSaveShop(data, saveOptions);
+  };
 
   const onSavePrinters = async (data: SiteFormValues) => {
-    if (!currentSite) return
-    await handleSavePrinters(data, saveOptions)
-  }
+    if (!currentSite) return;
+    await handleSavePrinters(data, saveOptions);
+  };
 
   // Simple approach - just track when data changes
   const adaptedSiteData = useMemo(() => {
@@ -606,49 +815,55 @@ export default function SettingsPage() {
   const getCurrentSections = (): QuickNavSection[] => {
     switch (activeSegment) {
       case "general":
-        return getGeneralSections(t)
+        return getGeneralSections(t);
       case "company":
-        return companySectionsState
+        return companySectionsState;
       case "channels":
-        return getChannelsSections(t)
+        return getChannelsSections(t);
       case "team":
-        return teamSections
+        return teamSections;
       case "activities":
-        return getActivitiesSections(t)
+        return getActivitiesSections(t);
       case "marketplace":
-        return getMarketplaceSections(t)
+        return getMarketplaceSections(t);
       case "visits":
-        return getVisitsSections(t)
+        return getVisitsSections(t);
       case "social":
-        return socialSections
+        return socialSections;
       case "calendar":
-        return getCalendarSections(t)
+        return getCalendarSections(t);
+      case "secrets":
+        return getSecretsSections(t);
       case "printers":
-        return printersSections
+        return printersSections;
       default:
-        return []
+        return [];
     }
-  }
+  };
 
   const settingsTabs: TabItem[] = [
-    { value: "general", label: t('settings.tabs.general') || 'General Settings' },
-    { value: "company", label: t('settings.tabs.company') || 'Company' },
-    { value: "marketplace", label: t('settings.tabs.marketplace') || 'Marketplace' },
-    { value: "visits", label: t('settings.tabs.visits') || 'Visits' },
-    { value: "channels", label: t('settings.tabs.channels') || 'Agent Channels' },
-    { value: "team", label: t('settings.tabs.team') || 'Team' },
-    { value: "calendar", label: t('settings.tabs.calendar') || 'Calendar' },
-    { value: "printers", label: t('settings.tabs.printers') || 'Printers' },
-    { value: "social", label: t('settings.nav.socialNetworks') || 'Social Networks' },
-  ];
-
-  const initialSettingsTabs: TabItem[] = [
-    { value: "general", label: t('settings.tabs.general') || 'General Settings' },
-    { value: "channels", label: t('settings.tabs.channels') || 'Agent Channels' },
-    { value: "team", label: t('settings.tabs.team') || 'Team' },
-    { value: "calendar", label: t('settings.tabs.calendar') || 'Calendar' },
-    { value: "printers", label: t('settings.tabs.printers') || 'Printers' },
-    { value: "social", label: t('settings.nav.socialNetworks') || 'Social Networks' },
+    {
+      value: "general",
+      label: t("settings.tabs.general") || "General Settings",
+    },
+    { value: "company", label: t("settings.tabs.company") || "Company" },
+    {
+      value: "marketplace",
+      label: t("settings.tabs.marketplace") || "Marketplace",
+    },
+    { value: "visits", label: t("settings.tabs.visits") || "Visits" },
+    {
+      value: "channels",
+      label: t("settings.tabs.channels") || "Agent Channels",
+    },
+    { value: "team", label: t("settings.tabs.team") || "Team" },
+    { value: "calendar", label: t("settings.tabs.calendar") || "Calendar" },
+    { value: "secrets", label: t("settings.tabs.secrets") || "Secrets" },
+    { value: "printers", label: t("settings.tabs.printers") || "Printers" },
+    {
+      value: "social",
+      label: t("settings.nav.socialNetworks") || "Social Networks",
+    },
   ];
 
   // Only show skeleton when initially loading, not when saving
@@ -657,12 +872,13 @@ export default function SettingsPage() {
       <div className="flex-1">
         <StickyHeader>
           <div className="flex items-center justify-between px-4 md:px-16 w-full">
-            <Tabs value="general" className="w-auto flex-1 max-w-full">
-              <ResponsiveTabsList 
-                tabs={initialSettingsTabs} 
-                activeTab="general" 
+            <Tabs value={activeSegment} className="w-auto flex-1 max-w-full">
+              <ResponsiveTabsList
+                tabs={settingsTabs}
+                activeTab={activeSegment}
                 onTabChange={() => {}}
-                className="h-8 p-0.5 bg-muted/30 rounded-full" />
+                className="h-8 p-0.5 bg-muted/30 rounded-full"
+              />
             </Tabs>
           </div>
         </StickyHeader>
@@ -674,31 +890,37 @@ export default function SettingsPage() {
           </div>
         </div>
       </div>
-    )
+    );
   }
 
   if (!currentSite) {
     return (
       <div className="flex-1 flex items-center justify-center">
-        <p className="text-gray-500">{t('settings.empty.noSite') || 'No site selected'}</p>
+        <p className="text-gray-500">
+          {t("settings.empty.noSite") || "No site selected"}
+        </p>
       </div>
-    )
+    );
   }
 
-  const showSettingsTabBar =
-    activeSegment !== "activities"
+  const showSettingsTabBar = activeSegment !== "activities";
 
   return (
     <div className="flex-1">
       {showSettingsTabBar ? (
         <StickyHeader>
           <div className="flex items-center justify-between px-4 md:px-16 w-full">
-            <Tabs value={activeSegment} onValueChange={setActiveSegment} className="w-auto flex-1 max-w-full">
-              <ResponsiveTabsList 
-                tabs={settingsTabs} 
-                activeTab={activeSegment} 
+            <Tabs
+              value={activeSegment}
+              onValueChange={setActiveSegment}
+              className="w-auto flex-1 max-w-full"
+            >
+              <ResponsiveTabsList
+                tabs={settingsTabs}
+                activeTab={activeSegment}
                 onTabChange={setActiveSegment}
-                className="h-8 p-0.5 bg-muted/30 rounded-full" />
+                className="h-8 p-0.5 bg-muted/30 rounded-full"
+              />
             </Tabs>
           </div>
         </StickyHeader>
@@ -706,26 +928,27 @@ export default function SettingsPage() {
       <div className="py-8 pb-16">
         <div className="flex gap-8 justify-center max-w-[1200px] mx-auto">
           <div className="flex-1 max-w-[880px] px-4 md:px-16">
-          <SiteForm
-            key={formKey}
-            id="settings-form"
-            initialData={adaptedSiteData || undefined}
-            onSaveGeneral={onSaveGeneral}
-            onSaveCompany={onSaveCompany}
-            onSaveBranding={onSaveBranding}
-            onSaveMarketing={onSaveMarketing}
-            onSaveCustomerJourney={onSaveCustomerJourney}
-            onSaveSocial={onSaveSocial}
-            onSaveChannels={onSaveChannels}
-            onSaveActivities={onSaveActivities}
-            onSaveShop={onSaveShop}
-            onSavePrinters={onSavePrinters}
-            activeSegment={activeSegment}
-            siteId={currentSite.id} />
+            <SiteForm
+              key={formKey}
+              id="settings-form"
+              initialData={adaptedSiteData || undefined}
+              onSaveGeneral={onSaveGeneral}
+              onSaveCompany={onSaveCompany}
+              onSaveBranding={onSaveBranding}
+              onSaveMarketing={onSaveMarketing}
+              onSaveCustomerJourney={onSaveCustomerJourney}
+              onSaveSocial={onSaveSocial}
+              onSaveChannels={onSaveChannels}
+              onSaveActivities={onSaveActivities}
+              onSaveShop={onSaveShop}
+              onSavePrinters={onSavePrinters}
+              activeSegment={activeSegment}
+              siteId={currentSite.id}
+            />
           </div>
           <QuickNav sections={getCurrentSections()} />
         </div>
       </div>
     </div>
-  )
-} 
+  );
+}

@@ -126,6 +126,7 @@ export const NAVIGATION_AREAS: Record<
     items: [
       { key: "applicationsDatabase", href: "/applications/database" },
       { key: "applicationsRepositories", href: "/applications/repositories" },
+      { key: "applicationsSecrets", href: "/settings", settingsTab: "secrets" },
     ],
   },
   finance: {

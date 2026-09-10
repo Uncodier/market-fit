@@ -1,14 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import CryptoJS from 'crypto-js';
 
-// Cliente de Supabase con rol de servicio para poder acceder a vault.secrets
+// Cliente de Supabase con rol de servicio
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY || 'Encryption-key';
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { operation, siteId, name, provider, useCase, secretValue } = body;
+    const { operation, siteId, instanceId, name, provider, useCase, secretValue } = body;
     
     if (!siteId || !provider || !useCase || !operation) {
       return NextResponse.json(
@@ -19,6 +21,25 @@ export async function POST(req: NextRequest) {
     
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     
+    // Función para encriptar con AES
+    const encryptToken = (text: string): string => {
+      const salt = CryptoJS.lib.WordArray.random(128/8).toString();
+      const encrypted = CryptoJS.AES.encrypt(text, ENCRYPTION_KEY + salt).toString();
+      return `${salt}:${encrypted}`;
+    };
+
+    // Función para desencriptar
+    const decryptToken = (encryptedValue: string): string | null => {
+      try {
+        const [salt, encrypted] = encryptedValue.split(':');
+        const decrypted = CryptoJS.AES.decrypt(encrypted, ENCRYPTION_KEY + salt);
+        return decrypted.toString(CryptoJS.enc.Utf8);
+      } catch (error) {
+        console.error('Error decrypting token:', error);
+        return null;
+      }
+    };
+
     if (operation === 'store') {
       if (!secretValue || !name) {
         return NextResponse.json(
@@ -27,44 +48,30 @@ export async function POST(req: NextRequest) {
         );
       }
       
+      const encryptedValue = encryptToken(secretValue);
+
       // 1. Check if site_secrets already exists
-      const { data: existingSiteSecret } = await supabase
+      let query = supabase
         .from('site_secrets')
-        .select('id, vault_secret_id')
+        .select('id')
         .eq('site_id', siteId)
         .eq('provider', provider)
-        .eq('use_case', useCase)
-        .maybeSingle();
-
-      let vaultSecretId = null;
-
-      if (existingSiteSecret && existingSiteSecret.vault_secret_id) {
-        await supabase.schema('vault').from('secrets').delete().eq('id', existingSiteSecret.vault_secret_id);
-      }
-
-      const { data: vaultData2, error: vaultError2 } = await supabase
-        .schema('vault')
-        .from('secrets')
-        .insert({
-          secret: secretValue,
-          name: `${siteId}_${provider}_${useCase}`,
-          description: name
-        })
-        .select('id')
-        .single();
+        .eq('use_case', useCase);
         
-      if (vaultError2) {
-          console.error('Vault insert error:', vaultError2);
-          return NextResponse.json({ error: vaultError2.message }, { status: 500 });
+      if (instanceId) {
+        query = query.eq('instance_id', instanceId);
+      } else {
+        query = query.is('instance_id', null);
       }
-      vaultSecretId = vaultData2.id;
 
-      // 3. Insert or update site_secrets
+      const { data: existingSiteSecret } = await query.maybeSingle();
+
+      // 2. Insert or update site_secrets
       if (existingSiteSecret) {
         const { error: updateError } = await supabase
           .from('site_secrets')
           .update({
-            vault_secret_id: vaultSecretId,
+            encrypted_value: encryptedValue,
             name: name
           })
           .eq('id', existingSiteSecret.id);
@@ -77,10 +84,11 @@ export async function POST(req: NextRequest) {
           .from('site_secrets')
           .insert({
             site_id: siteId,
+            instance_id: instanceId || null,
             name: name,
             provider: provider,
             use_case: useCase,
-            vault_secret_id: vaultSecretId
+            encrypted_value: encryptedValue
           });
           
         if (insertError) {
@@ -92,40 +100,49 @@ export async function POST(req: NextRequest) {
     } 
     
     else if (operation === 'retrieve') {
-      const { data: siteSecret, error: siteSecretError } = await supabase
+      let query = supabase
         .from('site_secrets')
-        .select('vault_secret_id')
+        .select('encrypted_value')
         .eq('site_id', siteId)
         .eq('provider', provider)
-        .eq('use_case', useCase)
-        .maybeSingle();
+        .eq('use_case', useCase);
+
+      if (instanceId) {
+        query = query.eq('instance_id', instanceId);
+      } else {
+        query = query.is('instance_id', null);
+      }
+
+      const { data: siteSecret, error: siteSecretError } = await query.maybeSingle();
         
-      if (siteSecretError || !siteSecret || !siteSecret.vault_secret_id) {
+      if (siteSecretError || !siteSecret || !siteSecret.encrypted_value) {
         return NextResponse.json({ error: 'Secret not found' }, { status: 404 });
       }
 
-      // Get from vault
-      const { data: vaultData, error: vaultError } = await supabase
-        .schema('vault')
-        .from('decrypted_secrets')
-        .select('decrypted_secret')
-        .eq('id', siteSecret.vault_secret_id)
-        .maybeSingle();
+      const decryptedValue = decryptToken(siteSecret.encrypted_value);
 
-      if (vaultError || !vaultData) {
-        return NextResponse.json({ error: 'Failed to retrieve from vault' }, { status: 500 });
+      if (!decryptedValue) {
+        return NextResponse.json({ error: 'Failed to decrypt secret' }, { status: 500 });
       }
 
-      return NextResponse.json({ secretValue: vaultData.decrypted_secret });
+      return NextResponse.json({ secretValue: decryptedValue });
     }
     
     else if (operation === 'check') {
-      const { count, error } = await supabase
+      let query = supabase
         .from('site_secrets')
         .select('id', { count: 'exact', head: true })
         .eq('site_id', siteId)
         .eq('provider', provider)
         .eq('use_case', useCase);
+
+      if (instanceId) {
+        query = query.eq('instance_id', instanceId);
+      } else {
+        query = query.is('instance_id', null);
+      }
+
+      const { count, error } = await query;
         
       if (error) {
         return NextResponse.json({ error: error.message }, { status: 500 });
@@ -135,22 +152,23 @@ export async function POST(req: NextRequest) {
     }
     
     else if (operation === 'delete') {
-      const { data: siteSecret } = await supabase
+      let query = supabase
         .from('site_secrets')
-        .select('id, vault_secret_id')
+        .select('id')
         .eq('site_id', siteId)
         .eq('provider', provider)
-        .eq('use_case', useCase)
-        .maybeSingle();
+        .eq('use_case', useCase);
+
+      if (instanceId) {
+        query = query.eq('instance_id', instanceId);
+      } else {
+        query = query.is('instance_id', null);
+      }
+
+      const { data: siteSecret } = await query.maybeSingle();
         
       if (siteSecret) {
-        // delete from site_secrets
         await supabase.from('site_secrets').delete().eq('id', siteSecret.id);
-        
-        // delete from vault
-        if (siteSecret.vault_secret_id) {
-          await supabase.schema('vault').from('secrets').delete().eq('id', siteSecret.vault_secret_id);
-        }
       }
       
       return NextResponse.json({ success: true });

@@ -1,28 +1,33 @@
-"use client"
+"use client";
 
-import { useForm, FormProvider } from "react-hook-form"
-import { zodResolver } from "@hookform/resolvers/zod"
-import { useState, useEffect, useCallback } from "react"
-import { toast } from "sonner"
-import { Button } from "../ui/button"
-import { siteFormSchema, type SiteFormValues, getFocusModeConfig } from "./form-schema"
-import { GeneralSection } from "./GeneralSection"
-import { WebResourcesSection } from "./WebResourcesSection"
-import { CompanySection } from "./CompanySection"
-import { BrandingSection } from "./BrandingSection"
-import { MarketingSection } from "./MarketingSection"
-import { ShopSection } from "./ShopSection"
-import { PrintersSection } from "./PrintersSection"
-import { VisitsSection } from "./VisitsSection"
-import { CustomerJourneySection } from "./CustomerJourneySection"
-import { SocialSection } from "./SocialSection"
-import { ChannelsSection } from "./ChannelsSection"
-import { TeamSection } from "./TeamSection"
-import { BillingSection } from "./BillingSection"
-import { ActivitiesSection } from "./ActivitiesSection"
-import { CalendarSection } from "./CalendarSection"
-import { useDropzone } from "react-dropzone"
-import { cn } from "../../lib/utils"
+import { useForm, FormProvider } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useState, useEffect, useCallback } from "react";
+import { toast } from "sonner";
+import { Button } from "../ui/button";
+import {
+  siteFormSchema,
+  type SiteFormValues,
+  getFocusModeConfig,
+} from "./form-schema";
+import { GeneralSection } from "./GeneralSection";
+import { WebResourcesSection } from "./WebResourcesSection";
+import { CompanySection } from "./CompanySection";
+import { BrandingSection } from "./BrandingSection";
+import { MarketingSection } from "./MarketingSection";
+import { ShopSection } from "./ShopSection";
+import { PrintersSection } from "./PrintersSection";
+import { VisitsSection } from "./VisitsSection";
+import { CustomerJourneySection } from "./CustomerJourneySection";
+import { SocialSection } from "./SocialSection";
+import { ChannelsSection } from "./ChannelsSection";
+import { TeamSection } from "./TeamSection";
+import { BillingSection } from "./BillingSection";
+import { ActivitiesSection } from "./ActivitiesSection";
+import { CalendarSection } from "./CalendarSection";
+import { SecretsSection } from "./SecretsSection";
+import { useDropzone } from "react-dropzone";
+import { cn } from "../../lib/utils";
 import {
   Form,
   FormControl,
@@ -30,20 +35,20 @@ import {
   FormField,
   FormItem,
   FormLabel,
-  FormMessage
-} from "../ui/form"
+  FormMessage,
+} from "../ui/form";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue
-} from "../ui/select"
-import { Input } from "../ui/input"
-import { Textarea } from "../ui/textarea"
-import { Slider } from "../ui/slider"
-import { Switch } from "../ui/switch"
-import Image from "next/image"
+  SelectValue,
+} from "../ui/select";
+import { Input } from "../ui/input";
+import { Textarea } from "../ui/textarea";
+import { Slider } from "../ui/slider";
+import { Switch } from "../ui/switch";
+import Image from "next/image";
 
 import {
   AppWindow,
@@ -55,31 +60,31 @@ import {
   PlusCircle,
   Tag,
   UploadCloud,
-  User
-} from "../ui/icons"
-import { SocialIcon } from "../ui/social-icons"
+  User,
+} from "../ui/icons";
+import { SocialIcon } from "../ui/social-icons";
 
 interface SiteFormProps {
-  id?: string
-  initialData?: Partial<SiteFormValues>
-  onSaveGeneral?: (data: SiteFormValues) => void
-  onSaveCompany?: (data: SiteFormValues) => void
-  onSaveBranding?: (data: SiteFormValues) => void
-  onSaveMarketing?: (data: SiteFormValues) => void
-  onSaveCustomerJourney?: (data: SiteFormValues) => void
-  onSaveSocial?: (data: SiteFormValues) => void
-  onSaveChannels?: (data: SiteFormValues) => void
-  onSaveActivities?: (data: SiteFormValues) => void
-  onSaveShop?: (data: SiteFormValues) => void
-  onSavePrinters?: (data: SiteFormValues) => void
-  onDeleteSite?: () => void
-  activeSegment: string
-  siteId?: string
+  id?: string;
+  initialData?: Partial<SiteFormValues>;
+  onSaveGeneral?: (data: SiteFormValues) => void;
+  onSaveCompany?: (data: SiteFormValues) => void;
+  onSaveBranding?: (data: SiteFormValues) => void;
+  onSaveMarketing?: (data: SiteFormValues) => void;
+  onSaveCustomerJourney?: (data: SiteFormValues) => void;
+  onSaveSocial?: (data: SiteFormValues) => void;
+  onSaveChannels?: (data: SiteFormValues) => void;
+  onSaveActivities?: (data: SiteFormValues) => void;
+  onSaveShop?: (data: SiteFormValues) => void;
+  onSavePrinters?: (data: SiteFormValues) => void;
+  onDeleteSite?: () => void;
+  activeSegment: string;
+  siteId?: string;
 }
 
-export function SiteForm({ 
-  id, 
-  initialData, 
+export function SiteForm({
+  id,
+  initialData,
   onSaveGeneral,
   onSaveCompany,
   onSaveBranding,
@@ -92,14 +97,13 @@ export function SiteForm({
   onSavePrinters,
   onDeleteSite,
   activeSegment,
-  siteId 
+  siteId,
 }: SiteFormProps) {
-  
-  const [lastSiteId, setLastSiteId] = useState<string | undefined>(siteId)
-  
+  const [lastSiteId, setLastSiteId] = useState<string | undefined>(siteId);
+
   // Simplified since component re-mounts when data changes
   const stableInitialData = initialData;
-  
+
   const form = useForm<SiteFormValues>({
     resolver: zodResolver(siteFormSchema),
     defaultValues: {
@@ -115,25 +119,29 @@ export function SiteForm({
       about: initialData?.about || "",
       company_size: initialData?.company_size || "",
       industry: initialData?.industry || "",
-      products: Array.isArray(initialData?.products) ? [...initialData.products] : [],
-      services: Array.isArray(initialData?.services) ? [...initialData.services] : [],
+      products: Array.isArray(initialData?.products)
+        ? [...initialData.products]
+        : [],
+      services: Array.isArray(initialData?.services)
+        ? [...initialData.services]
+        : [],
       locations: initialData?.locations || [],
       business_hours: initialData?.business_hours || [],
       goals: initialData?.goals || {
         quarterly: "",
         yearly: "",
         fiveYear: "",
-        tenYear: ""
+        tenYear: "",
       },
       swot: initialData?.swot || {
         strengths: "",
         weaknesses: "",
         opportunities: "",
-        threats: ""
+        threats: "",
       },
       marketing_budget: initialData?.marketing_budget || {
         total: 0,
-        available: 0
+        available: 0,
       },
       channels: initialData?.channels || {
         email: {
@@ -144,12 +152,12 @@ export function SiteForm({
           incomingPort: "",
           outgoingServer: "",
           outgoingPort: "",
-          status: "not_configured"
+          status: "not_configured",
         },
         whatsapp: {
           enabled: false,
           setupRequested: false,
-          status: "not_configured"
+          status: "not_configured",
         },
         website: {
           enabled: false,
@@ -160,21 +168,23 @@ export function SiteForm({
           chat_accent_color: "#e0ff17",
           allow_anonymous_messages: false,
           chat_position: "bottom-right",
-          welcome_message: "Welcome to our website! How can we assist you today?",
+          welcome_message:
+            "Welcome to our website! How can we assist you today?",
           chat_title: "Chat with us",
           analytics_provider: "",
           analytics_id: "",
-          tracking_code: ""
-        }
+          tracking_code: "",
+        },
       },
       marketing_channels: initialData?.marketing_channels || [],
-      social_media: initialData?.social_media?.length 
-        ? initialData.social_media 
+      social_media: initialData?.social_media?.length
+        ? initialData.social_media
         : [],
-      team_members: initialData?.team_members?.map(member => ({
-        ...member, 
-        position: member.position || ""
-      })) || [],
+      team_members:
+        initialData?.team_members?.map((member) => ({
+          ...member,
+          position: member.position || "",
+        })) || [],
       tracking: initialData?.tracking || {
         track_visitors: false,
         track_actions: false,
@@ -184,7 +194,7 @@ export function SiteForm({
         allow_anonymous_messages: false,
         chat_position: "bottom-right",
         welcome_message: "Welcome to our website! How can we assist you today?",
-        chat_title: "Chat with us"
+        chat_title: "Chat with us",
       },
       billing: initialData?.billing || {
         plan: "commission",
@@ -196,7 +206,7 @@ export function SiteForm({
         billing_address: "",
         billing_city: "",
         billing_postal_code: "",
-        billing_country: ""
+        billing_country: "",
       },
       branding: initialData?.branding || {
         brand_essence: "",
@@ -224,7 +234,7 @@ export function SiteForm({
         do_list: [],
         dont_list: [],
         emotions_to_evoke: [],
-        brand_archetype: undefined
+        brand_archetype: undefined,
       },
       customer_journey: initialData?.customer_journey || {
         awareness: { metrics: [], actions: [], tactics: [] },
@@ -232,9 +242,8 @@ export function SiteForm({
         decision: { metrics: [], actions: [], tactics: [] },
         purchase: { metrics: [], actions: [], tactics: [] },
         retention: { metrics: [], actions: [], tactics: [] },
-        referral: { metrics: [], actions: [], tactics: [] }
-      }
-      ,
+        referral: { metrics: [], actions: [], tactics: [] },
+      },
       activities: initialData?.activities || {
         daily_resume_and_stand_up: { status: "default" },
         local_lead_generation: { status: "default" },
@@ -244,7 +253,7 @@ export function SiteForm({
         email_sync: { status: "default" },
         assign_leads_to_team: { status: "inactive" },
         notify_team_on_inbound_conversations: { status: "default" },
-        supervise_conversations: { status: "inactive" }
+        supervise_conversations: { status: "inactive" },
       },
       shop: initialData?.shop || {
         hero_title: "",
@@ -258,86 +267,106 @@ export function SiteForm({
         free_shipping_threshold: null,
         return_policy_summary: "30-Day Returns",
         trust_badges: [],
-        payment_methods: ['card', 'cash_on_pickup'],
-        default_delivery_options: ['pickup', 'ship', 'dine_in'],
-        bank_transfer: {}
+        payment_methods: ["card", "cash_on_pickup"],
+        default_delivery_options: ["pickup", "ship", "dine_in"],
+        bank_transfer: {},
       },
-      printers: initialData?.printers || { devices: [] }
-    }
-  })
+      printers: initialData?.printers || { devices: [] },
+    },
+  });
 
-  const [codeCopied, setCodeCopied] = useState(false)
-  
+  const [codeCopied, setCodeCopied] = useState(false);
+
   // Debounce function to avoid too many updates to localStorage
   const debounce = (func: Function, wait: number) => {
     let timeout: NodeJS.Timeout | null = null;
-    
+
     return (...args: any[]) => {
       const later = () => {
         timeout = null;
         func(...args);
       };
-      
+
       if (timeout) {
         clearTimeout(timeout);
       }
-      
+
       timeout = setTimeout(later, wait);
     };
   };
-  
+
   // Create debounced version of saveFocusMode
-  const saveFocusMode = useCallback((value: number) => {
-    if (siteId && typeof value === 'number') {
-      try {
-        console.log(`SiteForm: Storing focusMode in localStorage: site_${siteId}_focusMode = ${value}`);
-        localStorage.setItem(`site_${siteId}_focusMode`, String(value));
-      } catch (e) {
-        console.error("Error saving focusMode to localStorage from SiteForm:", e);
+  const saveFocusMode = useCallback(
+    (value: number) => {
+      if (siteId && typeof value === "number") {
+        try {
+          console.log(
+            `SiteForm: Storing focusMode in localStorage: site_${siteId}_focusMode = ${value}`,
+          );
+          localStorage.setItem(`site_${siteId}_focusMode`, String(value));
+        } catch (e) {
+          console.error(
+            "Error saving focusMode to localStorage from SiteForm:",
+            e,
+          );
+        }
       }
-    }
-  }, [siteId]);
-  
-  const debouncedSaveFocusMode = useCallback(debounce(saveFocusMode, 300), [saveFocusMode]);
-  
+    },
+    [siteId],
+  );
+
+  const debouncedSaveFocusMode = useCallback(debounce(saveFocusMode, 300), [
+    saveFocusMode,
+  ]);
+
   // Listen for focusMode changes and save to localStorage with debounce
   useEffect(() => {
     const subscription = form.watch((value, { name }) => {
-      if (name === 'focusMode' && typeof value.focusMode === 'number') {
+      if (name === "focusMode" && typeof value.focusMode === "number") {
         debouncedSaveFocusMode(value.focusMode);
       }
     });
-    
+
     return () => subscription.unsubscribe();
   }, [form, debouncedSaveFocusMode]);
-  
+
   // Load focusMode from localStorage on initial render
   useEffect(() => {
     if (siteId) {
       try {
-        const storedFocusMode = localStorage.getItem(`site_${siteId}_focusMode`);
+        const storedFocusMode = localStorage.getItem(
+          `site_${siteId}_focusMode`,
+        );
         if (storedFocusMode) {
           const focusModeValue = parseInt(storedFocusMode, 10);
-          if (!isNaN(focusModeValue) && focusModeValue !== form.getValues('focusMode')) {
-            console.log(`SiteForm: Loading focusMode from localStorage: ${focusModeValue}`);
-            form.setValue('focusMode', focusModeValue);
+          if (
+            !isNaN(focusModeValue) &&
+            focusModeValue !== form.getValues("focusMode")
+          ) {
+            console.log(
+              `SiteForm: Loading focusMode from localStorage: ${focusModeValue}`,
+            );
+            form.setValue("focusMode", focusModeValue);
           }
         }
       } catch (e) {
-        console.error("Error loading focusMode from localStorage in SiteForm:", e);
+        console.error(
+          "Error loading focusMode from localStorage in SiteForm:",
+          e,
+        );
       }
     }
   }, [siteId, form]);
 
   useEffect(() => {
     // Exponer el formulario para depuración
-    if (typeof window !== 'undefined') {
+    if (typeof window !== "undefined") {
       (window as any).__debug_form = form;
     }
-    
+
     return () => {
       // Limpiar la referencia al salir
-      if (typeof window !== 'undefined') {
+      if (typeof window !== "undefined") {
         (window as any).__debug_form = undefined;
       }
     };
@@ -347,7 +376,13 @@ export function SiteForm({
   // Solo actualizamos cuando el ID del sitio cambia o cuando es la primera carga
   useEffect(() => {
     if (stableInitialData && siteId && siteId !== lastSiteId) {
-      console.log("SiteForm: Site changed from", lastSiteId, "to", siteId, "- resetting form");
+      console.log(
+        "SiteForm: Site changed from",
+        lastSiteId,
+        "to",
+        siteId,
+        "- resetting form",
+      );
       setLastSiteId(siteId);
       form.reset({
         ...stableInitialData,
@@ -356,39 +391,42 @@ export function SiteForm({
           quarterly: "",
           yearly: "",
           fiveYear: "",
-          tenYear: ""
-        }
+          tenYear: "",
+        },
       });
     }
-  }, [siteId, lastSiteId, form]) // CRITICAL: Don't include stableInitialData - only reset on site ID change, not after saves
+  }, [siteId, lastSiteId, form]); // CRITICAL: Don't include stableInitialData - only reset on site ID change, not after saves
 
   // Note: Removed the complex update logic since the component now re-mounts when data changes
   // Form-level submit is no longer needed - each card handles its own save
 
   const { getRootProps, getInputProps } = useDropzone({
     onDrop: (acceptedFiles) => {
-      const file = acceptedFiles[0]
+      const file = acceptedFiles[0];
       if (file) {
-        const reader = new FileReader()
+        const reader = new FileReader();
         reader.onloadend = () => {
-          form.setValue("logo_url", reader.result as string, { shouldDirty: true, shouldValidate: true })
-        }
-        reader.readAsDataURL(file)
+          form.setValue("logo_url", reader.result as string, {
+            shouldDirty: true,
+            shouldValidate: true,
+          });
+        };
+        reader.readAsDataURL(file);
       }
     },
     accept: {
-      'image/*': ['.png', '.jpg', '.jpeg', '.gif']
+      "image/*": [".png", ".jpg", ".jpeg", ".gif"],
     },
     maxSize: 5 * 1024 * 1024,
-    multiple: false
-  })
+    multiple: false,
+  });
 
   const copyTrackingCode = async () => {
     const trackingCode = `<script>
   (function() {
     window.MarketFit = window.MarketFit || {};
     
-    MarketFit.siteId = "${siteId || (initialData ? initialData.name : 'YOUR_SITE_ID')}";
+    MarketFit.siteId = "${siteId || (initialData ? initialData.name : "YOUR_SITE_ID")}";
     
     var script = document.createElement('script');
     script.async = true;
@@ -397,7 +435,7 @@ export function SiteForm({
     script.onload = function() {
       if (window.MarketFit && typeof window.MarketFit.init === 'function') {
         window.MarketFit.init({
-          siteId: "${siteId || (initialData ? initialData.name : 'YOUR_SITE_ID')}",
+          siteId: "${siteId || (initialData ? initialData.name : "YOUR_SITE_ID")}",
           trackVisitors: ${form.watch("tracking.track_visitors")},
           trackActions: ${form.watch("tracking.track_actions")},
           recordScreen: ${form.watch("tracking.record_screen")},
@@ -425,7 +463,7 @@ export function SiteForm({
       }
     }
   })();
-</script>`
+</script>`;
 
     try {
       // Try to use the modern Clipboard API first
@@ -436,24 +474,24 @@ export function SiteForm({
         setTimeout(() => setCodeCopied(false), 2000);
         return;
       }
-      
+
       // Fallback to older document.execCommand method
-      const textArea = document.createElement('textarea');
+      const textArea = document.createElement("textarea");
       textArea.value = trackingCode;
-      
+
       // Make the textarea out of viewport
-      textArea.style.position = 'fixed';
-      textArea.style.left = '-999999px';
-      textArea.style.top = '-999999px';
+      textArea.style.position = "fixed";
+      textArea.style.left = "-999999px";
+      textArea.style.top = "-999999px";
       document.body.appendChild(textArea);
-      
+
       // Select and copy
       textArea.focus();
       textArea.select();
-      
-      const success = document.execCommand('copy');
+
+      const success = document.execCommand("copy");
       document.body.removeChild(textArea);
-      
+
       if (success) {
         setCodeCopied(true);
         toast.success("Tracking code copied to clipboard");
@@ -463,89 +501,103 @@ export function SiteForm({
       }
     } catch (err) {
       console.error("Error copying tracking code:", err);
-      toast.error("Failed to copy tracking code. Please try selecting and copying manually.");
+      toast.error(
+        "Failed to copy tracking code. Please try selecting and copying manually.",
+      );
     }
-  }
+  };
 
   const renderCard = (segment: string, card: React.ReactElement) => {
     if (activeSegment === segment) {
-      return card
+      return card;
     }
-    return null
-  }
+    return null;
+  };
 
   return (
     <FormProvider {...form}>
       <form id={id} className="space-y-12">
         <div className="space-y-12">
-          {renderCard("general", 
-            <GeneralSection active={true} onSave={onSaveGeneral} />
+          {renderCard(
+            "general",
+            <GeneralSection active={true} onSave={onSaveGeneral} />,
           )}
 
-          {renderCard("general",
-            <WebResourcesSection active={true} onSave={onSaveGeneral} />
+          {renderCard(
+            "general",
+            <WebResourcesSection active={true} onSave={onSaveGeneral} />,
           )}
 
-          {renderCard("company",
-            <CompanySection active={true} onSave={onSaveCompany} />
+          {renderCard(
+            "company",
+            <CompanySection active={true} onSave={onSaveCompany} />,
           )}
 
-          {renderCard("marketplace",
-            <ShopSection active={true} onSave={onSaveShop} siteId={siteId} />
+          {renderCard(
+            "marketplace",
+            <ShopSection active={true} onSave={onSaveShop} siteId={siteId} />,
           )}
 
-          {renderCard("printers",
-            <PrintersSection active={true} onSave={onSavePrinters} />
+          {renderCard(
+            "printers",
+            <PrintersSection active={true} onSave={onSavePrinters} />,
           )}
 
-          {renderCard("visits",
-            <VisitsSection active={true} />
+          {renderCard("visits", <VisitsSection active={true} />)}
+
+          {renderCard(
+            "branding",
+            <BrandingSection active={true} onSave={onSaveBranding} />,
           )}
 
-          {renderCard("branding",
-            <BrandingSection active={true} onSave={onSaveBranding} />
+          {renderCard(
+            "marketing",
+            <MarketingSection active={true} onSave={onSaveMarketing} />,
           )}
 
-          {renderCard("marketing",
-            <MarketingSection active={true} onSave={onSaveMarketing} />
+          {renderCard(
+            "customer-journey",
+            <CustomerJourneySection
+              active={true}
+              onSave={onSaveCustomerJourney}
+            />,
           )}
 
-          {renderCard("customer-journey",
-            <CustomerJourneySection active={true} onSave={onSaveCustomerJourney} />
+          {renderCard(
+            "social",
+            <SocialSection
+              active={true}
+              onSave={onSaveSocial}
+              siteId={siteId}
+            />,
           )}
 
-          {renderCard("social",
-            <SocialSection active={true} onSave={onSaveSocial} siteId={siteId} />
+          {renderCard(
+            "activities",
+            <ActivitiesSection active={true} onSave={onSaveActivities} />,
           )}
 
-          {renderCard("activities",
-            <ActivitiesSection active={true} onSave={onSaveActivities} />
-          )}
-
-          {renderCard("channels",
-            <ChannelsSection 
-              active={true} 
-              copyTrackingCode={copyTrackingCode} 
-              codeCopied={codeCopied} 
-              siteName={initialData?.name || ''}
+          {renderCard(
+            "channels",
+            <ChannelsSection
+              active={true}
+              copyTrackingCode={copyTrackingCode}
+              codeCopied={codeCopied}
+              siteName={initialData?.name || ""}
               siteId={siteId}
               onSave={onSaveChannels}
-            />
+            />,
           )}
 
-          {renderCard("team",
-            <TeamSection active={true} siteId={siteId} />
-          )}
+          {renderCard("team", <TeamSection active={true} siteId={siteId} />)}
 
-          {renderCard("calendar",
-            <CalendarSection />
-          )}
+          {renderCard("calendar", <CalendarSection />)}
 
-          {renderCard("billing",
-            <BillingSection />
-          )}
+          {renderCard("secrets", <SecretsSection />)}
+
+          {renderCard("billing", <BillingSection />)}
         </div>
       </form>
     </FormProvider>
-  )
-} 
+  );
+}

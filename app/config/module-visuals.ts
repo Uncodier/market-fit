@@ -57,6 +57,7 @@ import {
   TableRows,
   Workflow,
   ThumbsUp,
+  Key,
 } from "@/app/components/ui/icons"
 
 export const AREA_ICON: Record<WorkspaceArea, React.ComponentType<any>> = {
@@ -101,6 +102,7 @@ export const NAV_ITEM_ICON: Record<string, React.ComponentType<any>> = {
   agentsConfiguration: Cpu,
   applicationsDatabase: DatabaseIcon,
   applicationsRepositories: Code,
+  applicationsSecrets: Key,
   sales: DollarSign,
   leads: Users,
   deals: Briefcase,
@@ -190,6 +192,7 @@ export const FLAGSHIP_MODULE_KEYS = new Set([
   "purchasesOrders",
   "agentsConfiguration",
   "applicationsDatabase",
+  "applicationsSecrets",
   "financeReports",
   "reportPerformance",
   "settingsGeneral",
@@ -295,6 +298,7 @@ export const MODULE_VARIANTS: Record<string, ModuleVariant> = {
   // —— Applications (slate → indigo, lower chroma) ——
   applicationsDatabase: buildVariant(225, 245, 135, 58, 48, "mesh-4", true, true),
   applicationsRepositories: buildVariant(235, 220, 45, 48, 50, "mesh-5", false),
+  applicationsSecrets: buildVariant(240, 230, 290, 52, 45, "mesh-1", false),
 
   // —— Finance (emerald → sage) ——
   financeReports: buildVariant(152, 168, 135, 72, 40, "mesh-5", true, true),
