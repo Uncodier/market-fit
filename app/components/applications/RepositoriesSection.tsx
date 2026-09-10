@@ -14,6 +14,15 @@ import { ViewType } from "@/app/components/view-selector"
 import { EmptyCard } from "@/app/components/ui/empty-card"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { robotsInstanceHref } from "@/lib/navigation/robots-instance"
+import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/app/components/ui/table"
+import { 
+  DocumentListHead, 
+  DocumentListRow, 
+  EntityCell, 
+  StatusDot, 
+  documentListShellClassName,
+  documentRowAccent
+} from "@/app/components/documents/document-list"
 
 interface RequirementStatusRepo {
   id: string
@@ -175,7 +184,7 @@ export function RepositoriesSection({ searchQuery = "", viewMode = "table" }: { 
     return (
       <EmptyCard 
         variant="fancy" 
-        icon={<Github />}
+        icon={<Github className="h-16 w-16 text-muted-foreground" />}
         title={t("applications.noRepositoriesFound") || "No repositories found"}
         description={t("applications.noRepositoriesMatch") || "We couldn't find any repositories matching your search criteria."}
       />
@@ -183,15 +192,26 @@ export function RepositoriesSection({ searchQuery = "", viewMode = "table" }: { 
   }
 
   return (
-    <div className={viewMode === "table" ? "space-y-4" : "grid gap-4 md:grid-cols-2"}>
-      {latestRepos.map((repo) => (
-        <RepositoryItem 
-          key={repo.id} 
-          repo={repo} 
-          copyToClipboard={copyToClipboard} 
-          viewMode={viewMode}
-        />
-      ))}
+    <div className={documentListShellClassName()}>
+      <Table className="min-w-[760px]">
+        <TableHeader className="sticky top-0 z-10 bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80">
+          <TableRow className="hover:bg-transparent">
+            <DocumentListHead className="w-[30%]">{t("applications.table.repository") || "Repository"}</DocumentListHead>
+            <DocumentListHead className="w-[15%]">{t("applications.table.stage") || "Stage"}</DocumentListHead>
+            <DocumentListHead className="w-[15%]">{t("applications.table.lastUpdate") || "Last Update"}</DocumentListHead>
+            <DocumentListHead className="w-[40%]" align="right">{t("applications.table.actions") || "Actions"}</DocumentListHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {latestRepos.map((repo) => (
+            <RepositoryItem 
+              key={repo.id} 
+              repo={repo} 
+              copyToClipboard={copyToClipboard} 
+            />
+          ))}
+        </TableBody>
+      </Table>
     </div>
   )
 }
@@ -199,81 +219,42 @@ export function RepositoriesSection({ searchQuery = "", viewMode = "table" }: { 
 function RepositoryItem({ 
   repo, 
   copyToClipboard,
-  viewMode = "table"
 }: { 
   repo: RequirementStatusRepo,
   copyToClipboard: (text: string) => void,
-  viewMode?: ViewType
 }) {
   const router = useRouter()
   const title = repo.requirements?.title || 'Unknown Requirement'
   const reqId = repo.requirements?.id || 'unknown'
+  const repoName = repo.repo_url.split('/').pop() || repo.repo_url
 
-  if (viewMode === "table") {
-    return (
-      <Card className="border border-border hover:border-foreground/20 transition-colors overflow-hidden cursor-pointer flex flex-col">
-        <div 
-          className="flex items-center hover:bg-muted/50 transition-colors w-full h-full"
-          onClick={() => {
-            if (repo.tenant_id && repo.schema) {
-              router.push(`/applications/database/${repo.tenant_id}?schema=${repo.schema}`)
-            } else {
-              router.push(`/requirements/${reqId}`)
-            }
-          }}
-        >
-          <CardContent className="flex-1 p-4 w-full overflow-x-auto pb-4">
-            <div className="flex items-start gap-4 min-w-[1000px]">
-              <div className="w-[300px] min-w-[300px] pr-2 flex-grow">
-                <div className="flex items-center gap-2 mb-1">
-                  <h3 className="font-semibold text-lg truncate" title={title}>{title}</h3>
-                </div>
-                <p className="text-sm text-muted-foreground/80 line-clamp-1">Req ID: {reqId.slice(0, 8)}</p>
-              </div>
-              
-              <div className="w-[120px] min-w-[120px] flex-shrink-0">
-                <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1 text-center">Stage</p>
-                <div className="flex justify-center">
-                  <Badge variant="outline" className="bg-background">
-                    {repo.stage}
-                  </Badge>
-                </div>
-              </div>
-
-              <div className="w-[200px] min-w-[200px] flex-shrink-0">
-                <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1 text-center">Repository</p>
-                <div className="flex items-center justify-center gap-2">
-                  <span className="font-mono text-xs truncate max-w-[150px]" title={repo.repo_url}>
-                    {repo.repo_url.split('/').pop() || repo.repo_url}
-                  </span>
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    className="h-6 w-6 shrink-0" 
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      copyToClipboard(repo.repo_url)
-                    }}
-                    title="Copy URL"
-                  >
-                    <Copy className="h-3 w-3" />
-                  </Button>
-                </div>
-              </div>
-
-              <div className="w-[150px] min-w-[150px] flex-shrink-0">
-                <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1 text-center">Last Update</p>
-                <div className="flex justify-center">
-                  <span className="text-sm font-medium">
-                    {format(new Date(repo.created_at), 'MMM d, yyyy HH:mm')}
-                  </span>
-                </div>
-              </div>
-
-            </div>
-          </CardContent>
-        </div>
-        <div className="bg-muted/40 border-t border-border px-4 py-2 flex items-center justify-end gap-2 flex-wrap">
+  return (
+    <DocumentListRow 
+      onClick={() => {
+        if (repo.tenant_id && repo.schema) {
+          router.push(`/applications/database/${repo.tenant_id}?schema=${repo.schema}`)
+        } else {
+          router.push(`/requirements/${reqId}`)
+        }
+      }}
+      accent="none"
+    >
+      <TableCell className="py-3.5">
+        <EntityCell 
+          name={title} 
+          secondary={repoName} 
+          meta={`Req ID: ${reqId.slice(0, 8)}`} 
+          secondaryMono 
+        />
+      </TableCell>
+      <TableCell className="py-3.5">
+        <StatusDot status={repo.stage} label={repo.stage} />
+      </TableCell>
+      <TableCell className="py-3.5 text-sm text-muted-foreground whitespace-nowrap">
+        {format(new Date(repo.created_at), 'MMM d, yyyy HH:mm')}
+      </TableCell>
+      <TableCell className="py-3.5 text-right">
+        <div className="flex items-center justify-end gap-2 flex-wrap">
           {repo.instance_id && (
             <Button 
               variant="secondary" 
@@ -281,7 +262,7 @@ function RepositoryItem({
               className="h-8 text-xs transition-colors"
               onClick={(e) => {
                 e.stopPropagation()
-                router.push(robotsInstanceHref(repo.instance_id))
+                router.push(robotsInstanceHref(repo.instance_id!))
               }}
             >
               <Bot className="h-3 w-3 mr-1.5 opacity-70" />
@@ -300,213 +281,55 @@ function RepositoryItem({
               }}
             >
               <Database className="h-3 w-3 mr-1.5 opacity-70" />
-              Database
+              DB
             </Button>
           )}
 
           <Button 
-            variant="secondary" 
-            size="sm" 
-            className="h-8 text-xs transition-colors"
-            onClick={(e) => {
-              e.stopPropagation()
-              router.push(`/requirements/${reqId}`)
-            }}
-          >
-            <FileText className="h-3 w-3 mr-1.5 opacity-70" />
-            Requirement
-          </Button>
-
-          <Button 
-            variant="secondary" 
-            size="sm" 
-            className="h-8 text-xs transition-colors"
+            variant="ghost" 
+            size="icon" 
+            className="h-8 w-8 text-muted-foreground hover:text-foreground"
             onClick={(e) => {
               e.stopPropagation()
               window.open(repo.repo_url, '_blank')
             }}
+            title="Repository"
           >
-            <Github className="h-3 w-3 mr-1.5 opacity-70" />
-            Repo
+            <Github className="h-4 w-4" />
           </Button>
-          
+
           {repo.source_code && (
             <Button 
-              variant="secondary" 
-              size="sm" 
-              className="h-8 text-xs transition-colors"
+              variant="ghost" 
+              size="icon" 
+              className="h-8 w-8 text-muted-foreground hover:text-foreground"
               onClick={(e) => {
                 e.stopPropagation()
                 window.open(repo.source_code!, '_blank')
               }}
+              title="Source Code"
             >
-              <Folder className="h-3 w-3 mr-1.5 opacity-70" />
-              Source
+              <Folder className="h-4 w-4" />
             </Button>
           )}
-          
+
           {repo.preview_url && (
             <Button 
-              variant="secondary" 
-              size="sm" 
-              className="h-8 text-xs transition-colors"
+              variant="ghost" 
+              size="icon" 
+              className="h-8 w-8 text-muted-foreground hover:text-foreground"
               onClick={(e) => {
                 e.stopPropagation()
                 window.open(repo.preview_url!, '_blank')
               }}
+              title="Preview URL"
             >
-              <ExternalLink className="h-3 w-3 mr-1.5 opacity-70" />
-              Preview
+              <ExternalLink className="h-4 w-4" />
             </Button>
           )}
         </div>
-      </Card>
-    )
-  }
-
-  // Kanban View
-  return (
-    <Card className="hover:shadow-md hover:border-primary/30 transition-all duration-200 overflow-hidden flex flex-col cursor-pointer"
-      onClick={() => {
-        if (repo.tenant_id && repo.schema) {
-          router.push(`/applications/database/${repo.tenant_id}?schema=${repo.schema}`)
-        } else {
-          router.push(`/requirements/${reqId}`)
-        }
-      }}
-    >
-      <CardHeader className="pb-3 border-b bg-muted/20">
-        <div className="flex justify-between items-start gap-4">
-          <div className="space-y-1 min-w-0">
-            <CardTitle className="text-base font-semibold leading-tight truncate" title={title}>{title}</CardTitle>
-            <CardDescription className="text-xs font-mono truncate">
-              Req ID: {reqId.slice(0, 8)}
-            </CardDescription>
-          </div>
-          <Badge variant="outline" className="shrink-0 bg-background">
-            {repo.stage}
-          </Badge>
-        </div>
-      </CardHeader>
-      
-      <CardContent className="p-0 flex-1 flex flex-col">
-        <div className="p-4 flex-1 flex flex-col gap-4 text-xs">
-          <div className="space-y-1.5">
-            <span className="text-muted-foreground font-medium uppercase tracking-wider text-[10px]">Repository</span>
-            <div className="flex items-center gap-2">
-              <span className="font-mono text-xs truncate bg-muted/40 px-2 py-1.5 rounded-md flex-1 border border-border/50" title={repo.repo_url}>
-                {repo.repo_url.split('/').pop() || repo.repo_url}
-              </span>
-              <Button 
-                variant="outline" 
-                size="icon" 
-                className="h-7 w-7 shrink-0" 
-                onClick={() => copyToClipboard(repo.repo_url)}
-                title="Copy URL"
-              >
-                <Copy className="h-3 w-3" />
-              </Button>
-            </div>
-          </div>
-          
-          <div className="space-y-1.5 flex-1">
-            <div className="flex justify-between items-center">
-              <span className="text-muted-foreground font-medium uppercase tracking-wider text-[10px]">Last Update</span>
-            </div>
-            <div className="text-sm font-medium text-foreground/80">
-              {format(new Date(repo.created_at), 'MMM d, yyyy HH:mm')}
-            </div>
-          </div>
-          
-          <div className="flex gap-2 pt-4 border-t mt-auto flex-wrap">
-            {repo.instance_id && (
-              <Button 
-                variant="secondary" 
-                size="sm" 
-                className="h-8 text-xs flex-1 transition-colors min-w-[100px]"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  router.push(robotsInstanceHref(repo.instance_id))
-                }}
-              >
-                <Bot className="h-3 w-3 mr-1.5 opacity-70" />
-                Instance
-              </Button>
-            )}
-
-            {repo.tenant_id && repo.schema && (
-              <Button 
-                variant="secondary" 
-                size="sm" 
-                className="h-8 text-xs flex-1 transition-colors min-w-[100px]"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  router.push(`/applications/database/${repo.tenant_id}?schema=${repo.schema}`)
-                }}
-              >
-                <Database className="h-3 w-3 mr-1.5 opacity-70" />
-                DB
-              </Button>
-            )}
-
-            <Button 
-              variant="secondary" 
-              size="sm" 
-              className="h-8 text-xs flex-1 transition-colors min-w-[100px]"
-              onClick={(e) => {
-                e.stopPropagation()
-                router.push(`/requirements/${reqId}`)
-              }}
-            >
-              <FileText className="h-3 w-3 mr-1.5 opacity-70" />
-              Req
-            </Button>
-
-            <Button 
-              variant="secondary" 
-              size="sm" 
-              className="h-8 text-xs flex-1 transition-colors min-w-[100px]"
-              onClick={(e) => {
-                e.stopPropagation()
-                window.open(repo.repo_url, '_blank')
-              }}
-            >
-              <Github className="h-3 w-3 mr-1.5 opacity-70" />
-              Repo
-            </Button>
-            
-            {repo.source_code && (
-              <Button 
-                variant="secondary" 
-                size="sm" 
-                className="h-8 text-xs flex-1 transition-colors min-w-[100px]"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  window.open(repo.source_code!, '_blank')
-                }}
-              >
-                <Folder className="h-3 w-3 mr-1.5 opacity-70" />
-                Source
-              </Button>
-            )}
-            
-            {repo.preview_url && (
-              <Button 
-                variant="secondary" 
-                size="sm" 
-                className="h-8 text-xs flex-1 transition-colors min-w-[100px]"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  window.open(repo.preview_url!, '_blank')
-                }}
-              >
-                <ExternalLink className="h-3 w-3 mr-1.5 opacity-70" />
-                Preview
-              </Button>
-            )}
-          </div>
-        </div>
-      </CardContent>
-    </Card>
+      </TableCell>
+    </DocumentListRow>
   )
 }
+

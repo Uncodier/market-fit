@@ -14,6 +14,7 @@ import { IsEmpty } from "@/app/components/ui/empty-state"
 
 import { SortToolbarButton } from "./SortToolbarButton"
 import { FilterToolbarButton } from "./FilterToolbarButton"
+import { SidebarToggle } from "@/app/control-center/components/SidebarToggle"
 
 export interface ForeignKeyReference {
   table: string
@@ -169,14 +170,11 @@ export function TenantTablesExplorer({ tenantId }: { tenantId: string }) {
     <div className="flex h-full flex-1 w-full bg-background flex-row relative overflow-hidden">
       {/* Sidebar List */}
       <div className={cn(
-        "h-full transition-all duration-300 ease-in-out z-[55] bg-background flex-shrink-0 border-r dark:border-white/5 border-black/5 absolute md:relative flex flex-col overflow-hidden",
-        "top-0 bottom-0",
-        tableParam ? "hidden md:flex" : "w-full",
-        !tableParam && "md:w-[319px]",
+        "h-full transition-all duration-300 ease-in-out z-[55] bg-background flex-shrink-0 border-r dark:border-white/5 border-black/5 flex flex-col overflow-hidden",
+        tableParam ? "hidden md:flex" : "w-full flex",
         isListCollapsed
-          ? "w-0 md:w-0 md:opacity-0 -translate-x-full md:translate-x-0 border-none pointer-events-none"
-          : "w-full md:w-[319px] translate-x-0",
-        !isListCollapsed && !tableParam && "w-full md:w-[319px]"
+          ? "w-0 md:w-0 opacity-0 border-none pointer-events-none"
+          : "md:w-[319px] w-full"
       )}>
         {!(searchParams.get("artifact") === "true") && (
           <div className="p-4 border-b h-[71px] min-h-[71px] flex items-center shrink-0">
@@ -193,7 +191,12 @@ export function TenantTablesExplorer({ tenantId }: { tenantId: string }) {
           </div>
         )}
         
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto flex flex-col relative">
+          <div className="flex items-center justify-between gap-2 px-4 py-2.5 text-xs text-muted-foreground bg-muted sticky top-0 z-20 shadow-[0_1px_0_0_hsl(var(--border))]">
+            <span className="font-medium">{t("applications.collections") || "Collections"}</span>
+            <span className="font-medium shrink-0">{t("applications.rows") || "Rows"}</span>
+          </div>
+          
           {loading ? (
             <div>
               {Array.from({ length: 5 }).map((_, i) => (
@@ -270,9 +273,9 @@ export function TenantTablesExplorer({ tenantId }: { tenantId: string }) {
 
       {/* Main Content Area */}
       <div className={cn(
-        "flex flex-col h-full transition-all duration-300 ease-in-out min-w-0 min-h-0 relative",
+        "flex flex-col h-full transition-all duration-300 ease-in-out min-w-0 min-h-0 relative flex-1 w-full",
         !tableParam ? "hidden md:flex" : "flex"
-      )} style={{ width: "100%", flex: "1" }}>
+      )}>
         
         {/* Toolbar Header */}
         <div className="w-full z-[50] flex-none border-b dark:border-white/5 border-black/5 h-[71px] flex items-center bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/80 pr-4">
@@ -303,20 +306,13 @@ export function TenantTablesExplorer({ tenantId }: { tenantId: string }) {
 
           {/* Toggle Button */}
           <div className="hidden md:flex shrink-0 items-stretch relative z-[60]">
-            <div className="z-[1000] flex items-center gap-2 h-[71px] max-h-[71px] min-h-[71px] px-2 sm:px-3 transition-all duration-300 ease-in-out shrink-0 relative w-auto">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={toggleList}
-                className="h-8 w-8 rounded-full font-inter font-bold bg-background transition-all duration-300 ease-in-out hover:bg-muted shrink-0"
-                aria-label={isListCollapsed ? "Show tables" : "Hide tables"}
-              >
-                {isListCollapsed ? (
-                  <ChevronRight className="h-4 w-4 transition-transform duration-200" />
-                ) : (
-                  <ChevronLeft className="h-4 w-4 transition-transform duration-200" />
-                )}
-              </Button>
+            <div className="z-[1000] flex items-center gap-2 h-[71px] max-h-[71px] min-h-[71px] pl-4 sm:pl-6 pr-2 transition-all duration-300 ease-in-out shrink-0 relative w-auto">
+              <SidebarToggle
+                isCollapsed={isListCollapsed}
+                onToggle={toggleList}
+                ariaLabelShow="Show tables"
+                ariaLabelHide="Hide tables"
+              />
             </div>
           </div>
 

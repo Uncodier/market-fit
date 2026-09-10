@@ -43,11 +43,11 @@ function DatabasePageContent() {
                     className="bg-background border-border focus:border-muted-foreground/20 focus:ring-muted-foreground/20"
                     alwaysExpanded={false}
                   />
-                <SortDropdown sortBy={sortBy} setSortBy={setSortBy} />
                 </div>
               )}
             </div>
             <div className="ml-auto flex items-center gap-4">
+              <SortDropdown sortBy={sortBy} setSortBy={setSortBy} />
               <ViewSelector currentView={viewMode} onViewChange={setViewMode} />
             </div>
           </div>

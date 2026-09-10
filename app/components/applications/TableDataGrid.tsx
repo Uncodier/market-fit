@@ -197,11 +197,11 @@ export function TableDataGrid({ schema, table, refreshKey = 0, isAddModalOpen = 
               <Skeleton className="h-10 w-full" />
             </div>
           ) : (
-              <table className="w-full text-sm text-left">
-                <thead className="text-xs text-muted-foreground uppercase bg-muted sticky top-0 z-20 shadow-[0_1px_0_0_hsl(var(--border))]">
+              <table className="w-full min-w-max text-[13px] text-left border-collapse">
+                <thead className="text-xs text-muted-foreground bg-muted sticky top-0 z-20 shadow-[0_1px_0_0_hsl(var(--border))] border-b border-border">
                   <tr>
                     {table.primaryKey && (
-                      <th className="px-4 py-3 font-medium whitespace-nowrap w-[40px]">
+                      <th className="px-3 py-2 font-medium whitespace-nowrap w-[40px] border-r border-border bg-muted">
                         <Checkbox 
                           checked={data.length > 0 && selectedRows.length === data.length}
                           onCheckedChange={(checked) => handleSelectAll(checked === true)}
@@ -210,18 +210,20 @@ export function TableDataGrid({ schema, table, refreshKey = 0, isAddModalOpen = 
                       </th>
                     )}
                     {table.columns.map(col => (
-                      <th key={col.name} className="px-4 py-3 font-medium whitespace-nowrap">
-                        {col.name}
-                        {col.is_primary && <span className="ml-1 text-[10px] text-primary">PK</span>}
+                      <th key={col.name} className="px-3 py-2 font-medium whitespace-nowrap border-r border-border bg-muted">
+                        <div className="flex items-center gap-1.5">
+                          {col.name}
+                          {col.is_primary && <span className="text-[10px] text-primary/70 bg-primary/10 px-1 rounded">PK</span>}
+                        </div>
                       </th>
                     ))}
-                    <th className="px-4 py-3 text-right whitespace-nowrap">Actions</th>
+                    <th className="px-3 py-2 text-right whitespace-nowrap bg-muted">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y">
+                <tbody className="divide-y divide-border border-b border-border">
                   {data.length === 0 ? (
                     <tr>
-                      <td colSpan={table.columns.length + (table.primaryKey ? 2 : 1)} className="px-4 py-8 h-32">
+                      <td colSpan={table.columns.length + (table.primaryKey ? 2 : 1)} className="px-3 py-8 h-32">
                         {/* Empty state is rendered absolutely over the table body */}
                       </td>
                     </tr>
@@ -231,11 +233,11 @@ export function TableDataGrid({ schema, table, refreshKey = 0, isAddModalOpen = 
                     return (
                     <tr 
                       key={table.primaryKey ? row[table.primaryKey] : i} 
-                      className={`hover:bg-muted/30 ${table.primaryKey ? 'cursor-pointer' : ''} ${isSelected ? 'bg-primary/5 hover:bg-primary/10' : ''}`}
+                      className={`group hover:bg-muted/30 transition-colors ${table.primaryKey ? 'cursor-pointer' : ''} ${isSelected ? 'bg-primary/5 hover:bg-primary/10' : ''}`}
                       onClick={() => handleRowClick(row)}
                     >
                       {table.primaryKey && (
-                        <td className="px-4 py-2" onClick={(e) => e.stopPropagation()}>
+                        <td className="px-3 py-1.5 border-r border-border" onClick={(e) => e.stopPropagation()}>
                           <Checkbox 
                             checked={isSelected}
                             onCheckedChange={(checked) => handleSelectRow(row, checked === true)}
@@ -244,16 +246,16 @@ export function TableDataGrid({ schema, table, refreshKey = 0, isAddModalOpen = 
                         </td>
                       )}
                       {table.columns.map(col => (
-                        <td key={col.name} className="px-4 py-2 max-w-[200px] truncate">
+                        <td key={col.name} className="px-3 py-1.5 max-w-[200px] truncate border-r border-border font-mono text-xs text-foreground/80">
                           {row[col.name] === null ? (
-                            <span className="text-muted-foreground/50 italic">null</span>
+                            <span className="text-muted-foreground/50 italic font-sans">null</span>
                           ) : typeof row[col.name] === 'object' ? (
                             JSON.stringify(row[col.name])
                           ) : col.foreign_key ? (
                             <div className="flex items-center">
                               <button
                                 type="button"
-                                className="text-primary hover:underline text-left truncate max-w-[160px]"
+                                className="text-primary hover:underline text-left truncate max-w-[160px] font-sans"
                                 onClick={(e) => {
                                   e.stopPropagation()
                                   const params = new URLSearchParams(searchParams.toString())
@@ -286,11 +288,11 @@ export function TableDataGrid({ schema, table, refreshKey = 0, isAddModalOpen = 
                           )}
                         </td>
                       ))}
-                      <td className="px-4 py-2 text-right">
+                      <td className="px-3 py-1.5 text-right">
                         <Button 
                           variant="ghost" 
                           size="sm" 
-                          className="h-8 text-xs" 
+                          className="h-7 text-xs px-2 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity" 
                           disabled={!table.primaryKey}
                           onClick={(e) => {
                             e.stopPropagation()

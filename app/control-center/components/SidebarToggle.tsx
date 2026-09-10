@@ -8,12 +8,16 @@ interface SidebarToggleProps {
   isCollapsed: boolean
   onToggle: () => void
   className?: string
+  ariaLabelShow?: string
+  ariaLabelHide?: string
 }
 
 export function SidebarToggle({ 
   isCollapsed, 
   onToggle,
-  className
+  className,
+  ariaLabelShow = "Show categories",
+  ariaLabelHide = "Hide categories"
 }: SidebarToggleProps) {
   return (
     <div className={cn(
@@ -25,7 +29,7 @@ export function SidebarToggle({
         size="icon"
         onClick={onToggle}
         className="h-8 w-8 rounded-full bg-background transition-all duration-300 ease-in-out hover:bg-muted"
-        aria-label={isCollapsed ? "Show categories" : "Hide categories"}
+        aria-label={isCollapsed ? ariaLabelShow : ariaLabelHide}
       >
         {isCollapsed ? (
           <ChevronRight className="h-4 w-4 transition-transform duration-200" />
