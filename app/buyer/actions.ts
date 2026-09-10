@@ -87,14 +87,20 @@ export async function getBuyerPortalSummary({
     recentReservationsQ = recentReservationsQ.eq('buyer_user_id', session.user.id)
   }
 
-  const [ordersRes, subsRes, quotesRes, libraryRes, recentRes, reservationsRes, recentReservationsRes] = await Promise.all([
+  let sitesPromise: Promise<any> = Promise.resolve({ data: [] })
+  if (scope === 'personal') {
+    sitesPromise = getUserSites()
+  }
+
+  const [ordersRes, subsRes, quotesRes, libraryRes, recentRes, reservationsRes, recentReservationsRes, sitesRes] = await Promise.all([
     ordersQ,
     subsQ,
     quotesQ,
     libQ,
     recentQ,
     reservationsQ,
-    recentReservationsQ
+    recentReservationsQ,
+    sitesPromise
   ])
 
   // Aggregate library counts by subtype
@@ -148,7 +154,8 @@ export async function getBuyerPortalSummary({
       courses,
       tickets,
       files,
-      passes
+      passes,
+      sites: sitesRes.data?.length || 0
     },
     newCounts: {
       orders: newOrders,

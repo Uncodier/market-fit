@@ -231,7 +231,9 @@ function RepositoryItem({
   return (
     <DocumentListRow 
       onClick={() => {
-        if (repo.tenant_id && repo.schema) {
+        if (repo.instance_id) {
+          router.push(robotsInstanceHref(repo.instance_id!, { tab: 'source' }))
+        } else if (repo.tenant_id && repo.schema) {
           router.push(`/applications/database/${repo.tenant_id}?schema=${repo.schema}`)
         } else {
           router.push(`/requirements/${reqId}`)

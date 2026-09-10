@@ -910,11 +910,22 @@ function RobotsPageContent() {
     if (currentInstanceId !== prevInstanceIdRef.current) {
       prevInstanceIdRef.current = currentInstanceId
       initialPreselectDoneRef.current = false
-      // Preselect preview when changing instances (the artifacts effect will auto-select if needed)
-      // Actually we just set it to preview, if it's an instance without requirement preview, it will be overridden by artifact if it exists.
-      setActiveBrowserTab({ kind: 'preview' })
+      
+      const requestedScreen = searchParams?.get('screen')
+      const isArtifact = searchParams?.get('artifact') === 'true'
+      const requestedTab = searchParams?.get('tab') // e.g. 'source' or 'preview'
+      
+      if (isArtifact && requestedScreen) {
+        setActiveBrowserTab({ kind: 'artifact', screen: requestedScreen })
+      } else if (requestedTab === 'source' || requestedTab === 'preview') {
+        setActiveBrowserTab({ kind: requestedTab as any })
+      } else {
+        // Preselect preview when changing instances (the artifacts effect will auto-select if needed)
+        // Actually we just set it to preview, if it's an instance without requirement preview, it will be overridden by artifact if it exists.
+        setActiveBrowserTab({ kind: 'preview' })
+      }
     }
-  }, [activeRobotInstance?.id])
+  }, [activeRobotInstance?.id, searchParams])
 
   const { artifacts, removeArtifactLocally, refetchArtifacts } = useInstanceArtifacts({ instanceId: activeRobotInstance?.id })
   
@@ -1247,7 +1258,7 @@ function RobotsPageContent() {
     rawActiveUrlToDisplay.includes('.zip?') ||
     rawActiveUrlToDisplay.endsWith('.tar.gz') ||
     rawActiveUrlToDisplay.includes('.tar.gz?')
-  )) || (activeBrowserTab.kind === 'artifact' && activeBrowserTab.screen === 'code')
+  )) || activeBrowserTab.kind === 'source' || (activeBrowserTab.kind === 'artifact' && activeBrowserTab.screen === 'code')
 
   const activeUrlToDisplay = useMemo(() => {
     return rawActiveUrlToDisplay;

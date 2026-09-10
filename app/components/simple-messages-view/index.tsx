@@ -14,7 +14,7 @@ import { useAuthContext } from '@/app/components/auth/auth-provider'
 import { useUserProfile } from './hooks/useUserProfile'
 import { MessagesSkeleton } from "@/app/components/skeletons/messages-skeleton"
 import { Avatar, AvatarFallback, AvatarImage } from "@/app/components/ui/avatar"
-import { User, ChevronDown } from "@/app/components/ui/icons"
+import { User, ChevronDown, ChevronRight, Brain, Loader } from "@/app/components/ui/icons"
 import { Button } from "@/app/components/ui/button"
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
@@ -34,8 +34,7 @@ import { useBacklogManagement } from './hooks/useBacklogManagement'
 import { useInstanceAssets } from './hooks/useInstanceAssets'
 
 // Import components
-import { LoadingIndicator } from './components/LoadingIndicator'
-import { EmptyStateOrbs } from './components/EmptyStateOrbs'
+import { EmptyStatePrompts } from './components/EmptyStatePrompts'
 import { MessageInput } from './components/MessageInput'
 import { MessageItem } from './components/MessageItem'
 import { ProcessGroupItem } from './components/ProcessGroupItem'
@@ -49,7 +48,6 @@ import { EditBacklogModal } from './components/EditBacklogModal'
 import { EditPendingWorkModal } from './components/EditPendingWorkModal'
 import { StepCompletedItem } from './components/StepCompletedItem'
 import { ArtifactShownItem } from './components/ArtifactShownItem'
-import { EmptyStatePrompts } from './components/EmptyStatePrompts'
 import { UserWorkflowMeta } from './components/UserWorkflowMeta'
 import { CommandQueueBar } from './components/CommandQueueBar'
 import { usePendingWork } from './hooks/usePendingWork'
@@ -826,12 +824,12 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
           <div className={cn("h-[135px] shrink-0", !hasTopHeaderSpace && "hidden lg:block")} aria-hidden="true" />
           <div className="space-y-6 pt-6 pb-6">
           
-          {/* Loading indicator when fetching older logs */}
-          {isLoadingMore && (
-            <div className="flex justify-center py-2">
-              <LoadingIndicator isVisible={true} isDarkMode={isDarkMode} />
-            </div>
-          )}
+            {/* Loading indicator when fetching older logs */}
+            {isLoadingMore && (
+              <div className="flex justify-center py-2">
+                <Loader className="h-4 w-4 animate-spin text-muted-foreground" />
+              </div>
+            )}
           
         {(() => {
           if (shouldShowNewMakina) {
@@ -890,8 +888,19 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
               </div>
             )}
             
-            {/* Show thinking indicator using existing LoadingIndicator component */}
-            <LoadingIndicator isVisible={isNewMakinaThinking} isDarkMode={isDarkMode} />
+            {/* Show thinking indicator using a minimalist process group style */}
+            {isNewMakinaThinking && (
+              <div className="w-full min-w-0 overflow-hidden">
+                <div className="w-full min-w-[min(100%,450px)] overflow-hidden max-w-[calc(100%-80px)] lg:max-w-3xl">
+                  <div className="flex items-center gap-2 py-1 text-left text-xs text-muted-foreground">
+                    <ChevronRight className="h-3.5 w-3.5 shrink-0 opacity-0" />
+                    <Brain className="h-3.5 w-3.5 shrink-0" />
+                    <span className="font-medium truncate">Thinking</span>
+                    <Loader className="h-3.5 w-3.5 shrink-0 text-muted-foreground animate-spin" />
+                  </div>
+                </div>
+              </div>
+            )}
           </>
             )
           } else {
@@ -1018,11 +1027,19 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
               })
             })()}
             
-            {/* Loading indicator when waiting for response */}
-            <LoadingIndicator 
-              isVisible={isWaitingForResponse || isNewMakinaThinking}
-              isDarkMode={isDarkMode}
-            />
+            {/* Loading indicator when waiting for response using minimalist process group style */}
+            {(isWaitingForResponse || isNewMakinaThinking) && (
+              <div className="w-full min-w-0 overflow-hidden">
+                <div className="w-full min-w-[min(100%,450px)] overflow-hidden max-w-[calc(100%-80px)] lg:max-w-3xl">
+                  <div className="flex items-center gap-2 py-1 text-left text-xs text-muted-foreground">
+                    <ChevronRight className="h-3.5 w-3.5 shrink-0 opacity-0" />
+                    <Brain className="h-3.5 w-3.5 shrink-0" />
+                    <span className="font-medium truncate">Thinking</span>
+                    <Loader className="h-3.5 w-3.5 shrink-0 text-muted-foreground animate-spin" />
+                  </div>
+                </div>
+              </div>
+            )}
           </>
             )
           }

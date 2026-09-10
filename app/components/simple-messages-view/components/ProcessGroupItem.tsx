@@ -133,7 +133,7 @@ export function ProcessGroupItem({
             )}
             <ActivityIcon kind={activity.kind} />
             <span className="font-medium truncate">{activity.label}</span>
-            {isLive && <Loader className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />}
+            {isLive && <Loader className="h-3.5 w-3.5 shrink-0 text-muted-foreground animate-spin" />}
           </button>
 
           {isExpanded && processEntries.length > 0 && (

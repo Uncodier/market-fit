@@ -414,7 +414,7 @@ export default function ContentPage() {
             viewType === 'kanban' ? "py-8" : "p-8 overflow-x-hidden"
           )}
           style={{
-            paddingLeft: `calc(${sidebarLeft} + ${viewType === 'kanban' ? '0px' : '2rem'})`
+            paddingLeft: `calc(${sidebarLeft} + ${isMobile ? '1rem' : '2rem'})`
           }}
         >
           {/* Trends Section - Only for Table View */}

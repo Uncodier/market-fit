@@ -280,10 +280,10 @@ const MenuBar = ({
         {/* Upload File Button */}
         {onUploadAsset && (
           <Button
-            variant="secondary"
-            size="default"
+            variant="ghost"
+            size="sm"
             onClick={onUploadAsset}
-            className="flex items-center gap-2 hover:bg-primary/10 transition-all duration-200"
+            className="flex items-center gap-2 transition-all duration-200"
           >
             <UploadCloud className="h-4 w-4" />
             Upload File

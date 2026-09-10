@@ -1,6 +1,7 @@
 "use client"
 
 import type { Site, SiteSettings } from "./site-types"
+import { saveLogoToCache } from "@/lib/sites/logo-cache"
 
 type CrudDeps = {
   supabase: any
@@ -65,6 +66,11 @@ export async function updateSiteRecord(site: Site, deps: CrudDeps) {
         .select()
       
       if (updateError) throw updateError;
+      
+      // Update the logo cache if it was changed
+      if (site.logo_url !== undefined) {
+        await saveLogoToCache(site.id, site.logo_url).catch(console.error);
+      }
       
       // If settings provided, update them as well
       if (site.settings) {
@@ -149,6 +155,10 @@ export async function createSiteRecord(newSite: Omit<Site, 'id' | 'created_at' |
       }
       if (!createdSiteData || createdSiteData.length === 0) throw new Error("Could not create site");
       
+      // Save logo to cache if provided
+      if (logoUrl) {
+        await saveLogoToCache(createdSiteData[0].id, logoUrl).catch(console.error);
+      }
       
       // Iniciar con un sitio vacío
       const createdSite = {

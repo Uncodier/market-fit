@@ -141,6 +141,11 @@ function generateLabel(pathname: string, searchParams: URLSearchParams | null): 
     }
     return label
   }
+
+  // Special case for applications/repositories
+  if (pathSegments[0] === 'applications' && pathSegments[1] === 'repositories') {
+    return 'Code'
+  }
   
   // Get the main route segment
   const mainSegment = pathSegments[0]

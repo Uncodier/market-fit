@@ -15,6 +15,7 @@ import { persistSiteSettings } from "./site-update-settings"
 import { applyCurrentSite, fetchSiteSettings } from "./site-set-current"
 import { loadAccessibleSites } from "./site-load-sites"
 import { updateSiteRecord, createSiteRecord, deleteSiteRecord } from "./site-crud"
+import { syncSiteLogosInBackground } from "@/lib/sites/logo-background-sync"
 
 export type {
   Site,
@@ -448,6 +449,13 @@ export function SiteProvider({ children }: SiteProviderProps) {
     }
     return loadSites()
   }
+
+  // ✅ NEW EFFECT: Sync logos in background
+  useEffect(() => {
+    if (isMounted && sitesLoaded && sites.length > 0) {
+      syncSiteLogosInBackground(sites, setSites, currentSite, setCurrentSite)
+    }
+  }, [sitesLoaded, isMounted, sites.length]) // only trigger when length changes or initial load completes
 
   // Valor del contexto
   const value = {

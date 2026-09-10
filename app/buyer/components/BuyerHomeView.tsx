@@ -23,8 +23,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/ca
 import { Skeleton } from "@/app/components/ui/skeleton"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/app/components/ui/dialog"
 import { useLocalization } from "@/app/context/LocalizationContext"
-import { useSite } from "@/app/context/SiteContext"
-import { isDemoSiteId } from "@/lib/demo-utils"
 import QRCode from "react-qr-code"
 
 export function BuyerHomeView({
@@ -37,9 +35,6 @@ export function BuyerHomeView({
   basePath?: string
 }) {
   const { t } = useLocalization()
-  const { sites, isLoading: isSitesLoading } = useSite()
-  const managedSites = (sites || []).filter((site) => !isDemoSiteId(site.id))
-  const hasBusinesses = managedSites.length > 0
   
   const appUrl = typeof window !== 'undefined'
     ? (window.location.hostname.startsWith('www.')
@@ -65,6 +60,8 @@ export function BuyerHomeView({
     )
   }
 
+  const hasBusinesses = (data?.counts?.sites ?? 0) > 0
+
   let settingsCards = [
     ...(scope === "personal" ? [{
       title: hasBusinesses
@@ -76,7 +73,7 @@ export function BuyerHomeView({
       icon: <Store className="w-6 h-6 text-foreground/70" />,
       href: `${workspaceUrl}/projects?manage=1`,
       isPrimary: true,
-      count: isSitesLoading ? undefined : managedSites.length,
+      count: isLoading ? undefined : (hasBusinesses ? data?.counts?.sites : undefined),
       alwaysShow: true
     }] : []),
     {

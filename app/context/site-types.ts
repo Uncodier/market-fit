@@ -94,22 +94,6 @@ export interface SiteSettings {
   updated_at?: string
   competitors?: CompetitorUrl[] | null
   focus_mode?: number
-  shop?: {
-    hero_title?: string
-    hero_subtitle?: string
-    hero_cta_label?: string
-    hero_cta_destination_type?: 'scroll' | 'category' | 'item' | 'url'
-    hero_cta_destination_value?: string
-    hero_order_bar?: boolean
-    hero_image_url?: string
-    free_shipping_threshold?: number | null
-    delivery_time_min?: number | null
-    delivery_time_max?: number | null
-    return_policy_summary?: string
-    trust_badges?: any[]
-    payment_methods?: string[]
-    default_delivery_options?: string[]
-  } | null
   business_model?: {
     b2b?: boolean
     b2c?: boolean
