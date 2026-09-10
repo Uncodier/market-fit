@@ -158,7 +158,8 @@ import {
   PlayCircle,
   Globe,
   LayoutGrid,
-  Maximize // Add Maximize icon for teleprompter
+  Maximize, // Add Maximize icon for teleprompter
+  UploadCloud
 } from "@/app/components/ui/icons"
 import { useEditor, EditorContent } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
@@ -216,6 +217,7 @@ const MenuBar = ({
   contentType,
   contentStatus,
   onTeleprompter,
+  onUploadAsset,
   isEditorFocused
 }: {
   editor: any,
@@ -228,6 +230,7 @@ const MenuBar = ({
   contentType?: string,
   contentStatus?: string,
   onTeleprompter?: () => void,
+  onUploadAsset?: () => void,
   isEditorFocused?: boolean
 }) => {
   const currentEditor = activeTab === 'copy' ? editor : instructionsEditor
@@ -271,6 +274,19 @@ const MenuBar = ({
           >
             <Maximize className="h-4 w-4" />
             Teleprompter
+          </Button>
+        )}
+
+        {/* Upload File Button */}
+        {onUploadAsset && (
+          <Button
+            variant="secondary"
+            size="default"
+            onClick={onUploadAsset}
+            className="flex items-center gap-2 hover:bg-primary/10 transition-all duration-200"
+          >
+            <UploadCloud className="h-4 w-4" />
+            Upload File
           </Button>
         )}
         
@@ -1999,6 +2015,7 @@ export default function ContentDetailPage(props: { params: Promise<{ id: string 
             onTeleprompter={() => {
               router.push(`/teleprompter/${content.id}`)
             }}
+            onUploadAsset={() => setUploadDialogOpen(true)}
             isEditorFocused={isEditorFocused}
           />
         </div>

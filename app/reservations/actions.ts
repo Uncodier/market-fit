@@ -216,6 +216,28 @@ export async function validateReservationSlot(params: {
 export async function updateReservationStatus(siteId: string, reservationId: string, status: Reservation['status']) {
   try {
     const supabase = await createClient();
+
+    if (reservationId.startsWith("task_")) {
+      const taskId = reservationId.replace("task_", "");
+      let taskStatus = "pending";
+      if (status === "confirmed") taskStatus = "in_progress";
+      else if (status === "completed") taskStatus = "completed";
+      else if (status === "cancelled") taskStatus = "failed";
+
+      const { data, error } = await supabase
+        .from("tasks")
+        .update({ status: taskStatus, updated_at: new Date().toISOString() })
+        .eq("id", taskId)
+        .eq("site_id", siteId)
+        .select()
+        .single();
+
+      if (error) return { error: error.message };
+      
+      revalidatePath("/reservations");
+      return { data: { id: reservationId, status } as any };
+    }
+
     const { data, error } = await supabase
       .from("reservations")
       .update({ status, updated_at: new Date().toISOString() })

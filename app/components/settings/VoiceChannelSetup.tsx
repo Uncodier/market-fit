@@ -10,6 +10,8 @@ import { RadioGroup, RadioGroupItem } from "@/app/components/ui/radio-group"
 import { Skeleton } from "@/app/components/ui/skeleton"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/app/components/ui/tabs"
 import { Badge } from "@/app/components/ui/badge"
+import { Alert, AlertTitle, AlertDescription } from "@/app/components/ui/alert"
+import { AlertTriangle } from "@/app/components/ui/icons"
 
 function formatPhoneNumber(phoneNumber: string): string {
   if (!phoneNumber) return phoneNumber;
@@ -209,6 +211,16 @@ export function VoiceChannelSetup({
           </TabsContent>
 
           <TabsContent value="new" className="mt-4 space-y-4">
+            {countryCode === "US" && (
+              <Alert className="bg-amber-50 dark:bg-amber-950/30 text-amber-900 dark:text-amber-200 border-amber-200 dark:border-amber-800 [&>svg]:text-amber-600 dark:[&>svg]:text-amber-400">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertTitle>Business Identity / KYC Verification</AlertTitle>
+                <AlertDescription className="mt-2 text-amber-800 dark:text-amber-300">
+                  Purchasing US numbers for Voice might require basic Business Identity / KYC verification (address and business info) depending on local carrier regulations to keep the number active.
+                </AlertDescription>
+              </Alert>
+            )}
+
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label className="text-xs">Country</Label>

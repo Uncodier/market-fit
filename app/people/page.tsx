@@ -425,6 +425,7 @@ async function lookupFetcher(type: string, q: string, siteId?: string): Promise<
 
 export default function PeopleSearchPage() {
   const searchParams = useSearchParams()
+  const isArtifact = searchParams ? searchParams.get("artifact") === "true" : false
   const urlSort = searchParams ? searchParams.get('sort') : null
   const defaultSort = urlSort === 'updated_at' ? 'updated_at' : (urlSort === 'created_at' || urlSort === 'newest' ? 'newest' : (urlSort === 'oldest' ? 'oldest' : 'newest'))
   const [sortBy, setSortBy] = useState(defaultSort)
@@ -576,8 +577,8 @@ export default function PeopleSearchPage() {
   const [savedSectionOpenDefaults, setSavedSectionOpenDefaults] = useState<Record<string, boolean>>({})
 
   useEffect(() => {
-    setSidebarLeft(isMobile ? "0px" : isLayoutCollapsed ? "64px" : "256px")
-  }, [isLayoutCollapsed, isMobile])
+    setSidebarLeft(isMobile ? "0px" : isArtifact ? "0px" : isLayoutCollapsed ? "64px" : "256px")
+  }, [isLayoutCollapsed, isMobile, isArtifact])
 
   // Debug: Monitor domain state changes
   useEffect(() => {
@@ -1219,7 +1220,7 @@ export default function PeopleSearchPage() {
     : { name: 10, role: 7, company: 10, location: 5, start: 4, end: 4, headline: 5, roleDesc: 5, current: 2, personDesc: 14, orgDesc: 5, employees: 3, revenue: 3, founded: 3, industry: 6, links: 3 }
 
   // Calculate dynamic max width for main content based on left nav and filters sidebar
-  const leftNavWidth = isLayoutCollapsed ? 64 : 256
+  const leftNavWidth = isArtifact ? 0 : (isLayoutCollapsed ? 64 : 256)
   const filtersWidth = isSidebarCollapsed ? 0 : 319
   const contentMaxWidth = `calc(100vw - ${leftNavWidth + filtersWidth}px)`
 
@@ -2686,10 +2687,10 @@ export default function PeopleSearchPage() {
         )}
         style={{
           width: typeof window !== 'undefined' && window.innerWidth >= 768 
-            ? `calc(100% - ${isLayoutCollapsed ? 64 : 256}px - ${isSidebarCollapsed ? 0 : 319}px)` 
+            ? `calc(100% - ${isArtifact ? 0 : (isLayoutCollapsed ? 64 : 256)}px - ${isSidebarCollapsed ? 0 : 319}px)` 
             : '100%',
           left: typeof window !== 'undefined' && window.innerWidth >= 768 
-            ? `${(isLayoutCollapsed ? 64 : 256) + (isSidebarCollapsed ? 0 : 319)}px` 
+            ? `${(isArtifact ? 0 : (isLayoutCollapsed ? 64 : 256)) + (isSidebarCollapsed ? 0 : 319)}px` 
             : '0px'
         }}
       >
@@ -2698,10 +2699,10 @@ export default function PeopleSearchPage() {
             className="transition-all duration-300 ease-in-out pl-0 md:pl-4 !top-[var(--topbar-height,64px)] !fixed"
             style={{
               width: typeof window !== 'undefined' && window.innerWidth >= 768 
-                ? `calc(100% - ${isLayoutCollapsed ? 64 : 256}px - ${isSidebarCollapsed ? 0 : 319}px)` 
+                ? `calc(100% - ${isArtifact ? 0 : (isLayoutCollapsed ? 64 : 256)}px - ${isSidebarCollapsed ? 0 : 319}px)` 
                 : '100%',
               left: typeof window !== 'undefined' && window.innerWidth >= 768 
-                ? `${(isLayoutCollapsed ? 64 : 256) + (isSidebarCollapsed ? 0 : 319)}px` 
+                ? `${(isArtifact ? 0 : (isLayoutCollapsed ? 64 : 256)) + (isSidebarCollapsed ? 0 : 319)}px` 
                 : '0px'
             }}
           >

@@ -28,7 +28,9 @@ export async function GET(request: NextRequest) {
     }
 
     const isAuthorized = (repositoriesUrl && targetUrl.startsWith(repositoriesUrl)) || 
-                         (supabaseUrl && targetUrl.startsWith(supabaseUrl));
+                         (supabaseUrl && targetUrl.startsWith(supabaseUrl)) ||
+                         targetUrl.includes('db.makinari.com') ||
+                         targetUrl.includes('supabase.co');
 
     if (!isAuthorized) {
       return NextResponse.json({ error: 'URL is not authorized for proxy' }, { status: 403 })

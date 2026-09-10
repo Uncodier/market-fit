@@ -1242,12 +1242,12 @@ function RobotsPageContent() {
       : (latestPreviewUrl || latestSourceCodeUrl || "about:blank")
   })()
   
-  const isZipUrl = typeof rawActiveUrlToDisplay === 'string' && (
+  const isZipUrl = (typeof rawActiveUrlToDisplay === 'string' && (
     rawActiveUrlToDisplay.endsWith('.zip') || 
     rawActiveUrlToDisplay.includes('.zip?') ||
     rawActiveUrlToDisplay.endsWith('.tar.gz') ||
     rawActiveUrlToDisplay.includes('.tar.gz?')
-  )
+  )) || (activeBrowserTab.kind === 'artifact' && activeBrowserTab.screen === 'code')
 
   const activeUrlToDisplay = useMemo(() => {
     return rawActiveUrlToDisplay;
@@ -2100,7 +2100,16 @@ function RobotsPageContent() {
                         </div>
                       ) : (!!latestPreviewUrl || !!latestSourceCodeUrl || artifacts.length > 0) ? (
                         <div className="absolute inset-0 bg-background robot-browser-session" style={{ isolation: 'isolate', zIndex: 0 }}>
-                          {activeBrowserTab.kind === 'artifact' ? (
+                          {isZipUrl ? (
+                            <div className="absolute inset-0 flex flex-col items-center justify-center bg-background">
+                              <ZipViewer
+                                key={`${activeUrlToDisplay}|${requirementPreviewFrameKey}`}
+                                url={activeUrlToDisplay}
+                                className="w-full h-full"
+                                onFileSelect={setSelectedFilePath}
+                              />
+                            </div>
+                          ) : activeBrowserTab.kind === 'artifact' ? (
                             <iframe
                               ref={iframeRef}
                               key={`artifact-${activeBrowserTab.screen}-${artifactReloadCounter}-${theme}`}
@@ -2114,15 +2123,6 @@ function RobotsPageContent() {
                                 handleIframeLoad(e)
                               }}
                             />
-                          ) : isZipUrl ? (
-                            <div className="absolute inset-0 flex flex-col items-center justify-center bg-background">
-                              <ZipViewer
-                                key={`${activeUrlToDisplay}|${requirementPreviewFrameKey}`}
-                                url={activeUrlToDisplay}
-                                className="w-full h-full"
-                                onFileSelect={setSelectedFilePath}
-                              />
-                            </div>
                           ) : (
                             <iframe
                               ref={iframeRef}

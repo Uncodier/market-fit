@@ -638,6 +638,14 @@ export function AgentEmailSection({ active, siteId, onSave }: AgentEmailSectionP
                 onChange={(e) => setApiKey(e.target.value)}
                 className="font-mono text-sm max-w-md"
               />
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleSaveApiKey}
+                disabled={!apiKey || isSavingApiKey}
+              >
+                {isSavingApiKey ? "Saving..." : "Save Key"}
+              </Button>
             </div>
           )}
         </div>
@@ -789,22 +797,6 @@ export function AgentEmailSection({ active, siteId, onSave }: AgentEmailSectionP
         )}
       </SectionCardContent>
 
-      {!isApiKeyStored && (
-        <ActionFooter>
-          <div className="flex items-center justify-between w-full">
-            <div className="text-sm text-muted-foreground">
-              Save your AgentMail API Key securely to Vault
-            </div>
-            <Button
-              variant="outline"
-              onClick={handleSaveApiKey}
-              disabled={!apiKey || isSavingApiKey}
-            >
-              {isSavingApiKey ? "Saving..." : "Save Key"}
-            </Button>
-          </div>
-        </ActionFooter>
-      )}
 
       {isNotConfigured && (
         <ActionFooter>

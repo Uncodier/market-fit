@@ -239,13 +239,6 @@ function ReservationsPageContent() {
             </MobileFiltersDrawer>
 
             <div className="flex items-center gap-2 w-auto justify-end shrink-0">
-              {viewType === "list" && viewMode !== "schedules" && (
-                <SortDropdown sortBy={sortBy} setSortBy={setSortBy} options={[
-                  { value: "newest", label: t("reservations.sort.newest") || "Newest First" },
-                  { value: "oldest", label: t("reservations.sort.oldest") || "Oldest First" }
-                ]} />
-              )}
-
               <div className="w-[180px]">
                 <Select value={selectedMember} onValueChange={setSelectedMember}>
                   <SelectTrigger className="h-9">
@@ -261,6 +254,13 @@ function ReservationsPageContent() {
                   </SelectContent>
                 </Select>
               </div>
+
+              {viewType === "list" && viewMode !== "schedules" && (
+                <SortDropdown sortBy={sortBy} setSortBy={setSortBy} options={[
+                  { value: "newest", label: t("reservations.sort.newest") || "Newest First" },
+                  { value: "oldest", label: t("reservations.sort.oldest") || "Oldest First" }
+                ]} />
+              )}
 
               {viewMode !== "schedules" && (
                 <ToggleGroup
