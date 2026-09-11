@@ -44,7 +44,12 @@ Cloudflare falla silenciosamente (hace un redirect de regreso a la app con error
 - **Hipótesis**: A pesar de que la documentación nueva dice que son delimitados por puntos, a veces el portal y los tokens siguen esperando dos puntos. Si no agregamos `offline_access` explícitamente (ya que Cloudflare dice que lo agrega automáticamente según el `grant_type`), puede que evitemos el error.
 - **Resultado**: Rebote automático.
 
-### Intento 7: Omitir parámetro `scope` y probar formato en el Dashboard -> **[PRUEBA ACTUAL]**
+### Intento 7: Omitir parámetro `scope` y probar formato en el Dashboard
 - **Configuración**: `url.searchParams.delete('scope')`
 - **Hipótesis**: Si el OAuth de Cloudflare está configurado estrictamente según los scopes asignados en su dashboard, es posible que no debamos enviar *ningún* parámetro `scope` en absoluto en la URL `/authorize`. Cloudflare podría auto-asignar los permisos seleccionados en la app (DNS Read, DNS Edit, Zone Read).
+- **Resultado**: Muestra la pantalla, pero con "0 total permissions".
+
+### Intento 8: Scopes dot-delimited simplificados `dns.write` -> **[PRUEBA ACTUAL]**
+- **Configuración**: `url.searchParams.set('scope', 'zone.read dns.write dns.read')`
+- **Hipótesis**: Varios repositorios de código abierto integrando Cloudflare OAuth y documentación moderna indican que los permisos para zona y dns en OAuth ahora se nombran como `zone.read`, `dns.read`, y `dns.write`. (No `dns_records.edit` o con dos puntos).
 - **Resultado**: *Pendiente...*

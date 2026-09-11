@@ -1969,11 +1969,11 @@ html.dark [role="checkbox"][data-state="indeterminate"]:hover:not(:disabled) {
       transparent 84%,
       rgba(196, 200, 208, 0.28) 100%
     ),
-    linear-gradient(
-      180deg,
-      rgba(255, 255, 255, 0.36) 0%,
-      rgba(255, 255, 255, 0.1) 14%,
-      rgba(255, 255, 255, 0) 38%
+    radial-gradient(
+      ellipse 70% 45% at 50% 0%,
+      rgba(255, 255, 255, 0.4) 0%,
+      rgba(255, 255, 255, 0.1) 40%,
+      rgba(255, 255, 255, 0) 100%
     ),
     radial-gradient(
       92% 68% at 50% 124%,
@@ -2194,11 +2194,11 @@ html.dark [role="checkbox"][data-state="indeterminate"]:hover:not(:disabled) {
       transparent 84%,
       rgba(186, 168, 214, 0.2) 100%
     ),
-    linear-gradient(
-      180deg,
-      rgba(214, 198, 240, 0.2) 0%,
-      rgba(214, 198, 240, 0.05) 16%,
-      rgba(255, 255, 255, 0) 40%
+    radial-gradient(
+      ellipse 70% 45% at 50% 0%,
+      rgba(214, 198, 240, 0.25) 0%,
+      rgba(214, 198, 240, 0.05) 40%,
+      rgba(255, 255, 255, 0) 100%
     ),
     radial-gradient(
       92% 68% at 50% 124%,
@@ -2337,11 +2337,11 @@ html.safari.dark .btn-primary {
       transparent 84%,
       rgb(var(--btn-tint) / 0.32) 100%
     ),
-    linear-gradient(
-      180deg,
-      rgb(var(--btn-tint) / 0.28) 0%,
-      rgb(var(--btn-tint) / 0.08) 14%,
-      rgba(255, 255, 255, 0) 38%
+    radial-gradient(
+      ellipse 70% 45% at 50% 0%,
+      rgb(var(--btn-tint) / 0.3) 0%,
+      rgb(var(--btn-tint) / 0.08) 40%,
+      rgba(255, 255, 255, 0) 100%
     ),
     radial-gradient(
       92% 68% at 50% 124%,
@@ -2409,11 +2409,11 @@ html.safari.dark .btn-primary {
       transparent 84%,
       rgb(var(--btn-tint) / 0.2) 100%
     ),
-    linear-gradient(
-      180deg,
-      rgb(var(--btn-tint) / 0.2) 0%,
-      rgb(var(--btn-tint) / 0.05) 16%,
-      rgba(255, 255, 255, 0) 40%
+    radial-gradient(
+      ellipse 70% 45% at 50% 0%,
+      rgb(var(--btn-tint) / 0.25) 0%,
+      rgb(var(--btn-tint) / 0.05) 40%,
+      rgba(255, 255, 255, 0) 100%
     ),
     radial-gradient(
       92% 68% at 50% 124%,
@@ -2482,11 +2482,11 @@ html.safari.dark .btn-primary {
       transparent 84%,
       rgb(var(--btn-tint) / 0.32) 100%
     ),
-    linear-gradient(
-      180deg,
-      rgb(var(--btn-tint) / 0.28) 0%,
-      rgb(var(--btn-tint) / 0.08) 14%,
-      rgba(255, 255, 255, 0) 38%
+    radial-gradient(
+      ellipse 70% 45% at 50% 0%,
+      rgb(var(--btn-tint) / 0.3) 0%,
+      rgb(var(--btn-tint) / 0.08) 40%,
+      rgba(255, 255, 255, 0) 100%
     ),
     radial-gradient(
       92% 68% at 50% 124%,
@@ -2554,11 +2554,11 @@ html.safari.dark .btn-primary {
       transparent 84%,
       rgb(var(--btn-tint) / 0.2) 100%
     ),
-    linear-gradient(
-      180deg,
-      rgb(var(--btn-tint) / 0.2) 0%,
-      rgb(var(--btn-tint) / 0.05) 16%,
-      rgba(255, 255, 255, 0) 40%
+    radial-gradient(
+      ellipse 70% 45% at 50% 0%,
+      rgb(var(--btn-tint) / 0.25) 0%,
+      rgb(var(--btn-tint) / 0.05) 40%,
+      rgba(255, 255, 255, 0) 100%
     ),
     radial-gradient(
       92% 68% at 50% 124%,

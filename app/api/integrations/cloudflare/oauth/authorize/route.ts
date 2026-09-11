@@ -35,8 +35,9 @@ export async function GET(request: Request) {
   // Añadimos prompt=consent para forzar a Cloudflare a mostrar la pantalla 
   // de aprobación incluso si el usuario ya había aprobado la app en el pasado.
   url.searchParams.set('prompt', 'consent')
-    // Intento 7: Eliminar por completo el scope, dejando que Cloudflare tome los del Dashboard
-  url.searchParams.delete('scope')
+    // Intento 8: Scopes dot-delimited simplificados (zone.read dns.read dns.write)
+  // basados en configuraciones comprobadas de OAuth para Cloudflare (ej. Shelter, Alchemy)
+  url.searchParams.set('scope', 'zone.read dns.read dns.write')
 
   return NextResponse.redirect(url.toString())
 }

@@ -59,7 +59,7 @@ export function buildDocumentEmailHtml(params: {
   })
   const pdfNote = documentT(locale, `${p}.email.pdfAttached`)
   const cta = documentT(locale, `${p}.email.viewCta`)
-  const payCta = documentT(locale, `${p}.payOnline`) || "Pay Now"
+  const payCta = documentT(locale, `${p}.email.payCta`) || "Pay Now"
   const orOpen = params.checkoutLink 
     ? documentT(locale, `${p}.email.orOpen`, { link: params.checkoutLink }) 
     : documentT(locale, `${p}.email.orOpen`, { link: params.viewLink })

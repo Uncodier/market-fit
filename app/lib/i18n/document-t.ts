@@ -1,16 +1,19 @@
 import enTranslations from "@/app/context/locales/en.json"
+import esTranslations from "@/app/context/locales/es.json"
 
-export type DocumentLocale = "en"
+export type DocumentLocale = "en" | "es"
 
 const translations: Record<DocumentLocale, Record<string, string>> = {
   en: enTranslations as Record<string, string>,
+  es: esTranslations as Record<string, string>,
 }
 
 const LOCALE_TO_BCP47: Record<DocumentLocale, string> = {
   en: "en-US",
+  es: "es-MX",
 }
 
-const SUPPORTED: DocumentLocale[] = ["en"]
+const SUPPORTED: DocumentLocale[] = ["en", "es"]
 
 export function resolveDocumentLocale(value?: string | null): DocumentLocale {
   if (value && SUPPORTED.includes(value as DocumentLocale)) {
