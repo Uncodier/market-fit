@@ -11,7 +11,8 @@ import { PriceListItemWithCatalog } from "../types"
 import { Button } from "@/app/components/ui/button"
 import { SearchInput } from "@/app/components/ui/search-input"
 import { Tabs, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
-import { Archive, DatabaseIcon } from "@/app/components/ui/icons"
+import { Archive, DatabaseIcon, Edit } from "@/app/components/ui/icons"
+import { Switch } from "@/app/components/ui/switch"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
 import { Input } from "@/app/components/ui/input"
 import { Label } from "@/app/components/ui/label"
@@ -254,6 +255,30 @@ export default function PriceListDetail(props: { params: Promise<{ id: string }>
                   />
                 </div>
               </div>
+            </div>
+            
+            <div className="flex items-center gap-4 shrink-0">
+              <div className="flex items-center space-x-2">
+                 <Label htmlFor="active-status" className="text-sm font-medium">Active</Label>
+                 <Switch 
+                    id="active-status" 
+                    checked={priceList?.is_active || false} 
+                    onCheckedChange={() => window.dispatchEvent(new CustomEvent("price-list:toggle-active"))} 
+                 />
+              </div>
+              <Button
+                variant="outline"
+                className="hidden sm:flex items-center justify-center gap-2 !min-w-0 sm:!min-w-[120px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
+                onClick={() =>
+                  window.dispatchEvent(new CustomEvent("price-list:edit"))
+                }
+                title={t("priceLists.editAction") || "Edit list"}
+              >
+                <Edit className="h-4 w-4 shrink-0" />
+                <span className="hidden sm:inline ml-2">
+                  {t("priceLists.editAction") || "Edit list"}
+                </span>
+              </Button>
             </div>
           </div>
         </div>

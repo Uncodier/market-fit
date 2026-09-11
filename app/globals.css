@@ -2052,6 +2052,24 @@ html.dark [role="checkbox"][data-state="indeterminate"]:hover:not(:disabled) {
   transition: opacity 160ms ease;
 }
 
+.btn-top-highlight {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  border-radius: inherit;
+  padding: 1px;
+  pointer-events: none;
+  background: radial-gradient(45% 100% at 50% 0%, rgb(var(--btn-tint, 255 255 255) / 0.45) 0%, transparent 90%);
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+}
+
 /* Circular overrides so glow isn't squashed into ovals */
 .btn-primary.btn-primary-circular::before {
   width: 140%;
@@ -2159,6 +2177,7 @@ html.dark [role="checkbox"][data-state="indeterminate"]:hover:not(:disabled) {
 
 .btn-primary:disabled::before,
 .btn-primary:disabled::after,
+.btn-primary:disabled .btn-top-highlight,
 .btn-primary:disabled .btn-glass-cursor,
 .btn-primary:disabled .btn-glass-rim {
   display: none;
@@ -2190,13 +2209,8 @@ html.dark [role="checkbox"][data-state="indeterminate"]:hover:not(:disabled) {
       transparent 64%
     ),
     linear-gradient(180deg, rgba(66, 56, 84, 0.4) 0%, rgba(20, 16, 30, 0.45) 100%);
-  border-color: rgba(186, 168, 214, 0.1);
-  border-top-color: rgba(226, 214, 246, 0.42);
-  border-right-color: rgba(186, 168, 214, 0.08);
-  border-bottom-color: rgba(186, 168, 214, 0.2);
-  border-left-color: rgba(186, 168, 214, 0.08);
+  border-color: rgba(186, 168, 214, 0.12);
   box-shadow:
-    inset 0 1px 0 rgba(226, 214, 246, 0.4),
     inset 0 2px 2px rgba(210, 196, 232, 0.12),
     inset 0 -1px 0 rgba(210, 196, 232, 0.18),
     inset 14px 0 16px -10px rgba(186, 168, 214, 0.12),
@@ -2241,12 +2255,8 @@ html.dark [role="checkbox"][data-state="indeterminate"]:hover:not(:disabled) {
 
 .dark .btn-primary:hover {
   background-color: rgb(var(--btn-fill) / 0.96) !important;
-  border-top-color: rgba(226, 214, 246, 0.52);
-  border-right-color: rgba(186, 168, 214, 0.16);
-  border-bottom-color: rgba(186, 168, 214, 0.26);
-  border-left-color: rgba(186, 168, 214, 0.16);
+  border-color: rgba(186, 168, 214, 0.18);
   box-shadow:
-    inset 0 1px 0 rgba(226, 214, 246, 0.5),
     inset 0 2px 2px rgba(210, 196, 232, 0.16),
     inset 0 -1px 0 rgba(210, 196, 232, 0.24),
     inset 16px 0 18px -10px rgba(186, 168, 214, 0.16),
@@ -2344,13 +2354,8 @@ html.safari.dark .btn-primary {
       transparent 64%
     ),
     linear-gradient(180deg, rgb(168 40 48 / 0.45) 0%, rgb(80 12 16 / 0.55) 100%);
-  border-color: rgb(var(--btn-tint) / 0.16);
-  border-top-color: rgb(var(--btn-tint) / 0.5);
-  border-right-color: rgb(var(--btn-tint) / 0.14);
-  border-bottom-color: rgb(var(--btn-tint) / 0.24);
-  border-left-color: rgb(var(--btn-tint) / 0.14);
+  border: 1px solid rgb(var(--btn-tint) / 0.18);
   box-shadow:
-    inset 0 1px 0 rgb(var(--btn-tint) / 0.5),
     inset 0 2px 2px rgb(var(--btn-tint) / 0.18),
     inset 0 -1px 0 rgb(var(--btn-tint) / 0.28),
     inset 14px 0 16px -10px rgb(var(--btn-tint) / 0.22),
@@ -2378,12 +2383,8 @@ html.safari.dark .btn-primary {
 }
 
 .btn-primary-well.btn-tint-red > .btn-primary:hover {
-  border-top-color: rgb(var(--btn-tint) / 0.62);
-  border-right-color: rgb(var(--btn-tint) / 0.2);
-  border-bottom-color: rgb(var(--btn-tint) / 0.3);
-  border-left-color: rgb(var(--btn-tint) / 0.2);
+  border-color: rgb(var(--btn-tint) / 0.22);
   box-shadow:
-    inset 0 1px 0 rgb(var(--btn-tint) / 0.6),
     inset 0 2px 2px rgb(var(--btn-tint) / 0.22),
     inset 0 -1px 0 rgb(var(--btn-tint) / 0.34),
     inset 16px 0 18px -10px rgb(var(--btn-tint) / 0.28),
@@ -2427,13 +2428,8 @@ html.safari.dark .btn-primary {
       transparent 64%
     ),
     linear-gradient(180deg, rgb(58 30 34 / 0.4) 0%, rgb(30 14 16 / 0.45) 100%);
-  border-color: rgb(var(--btn-tint) / 0.1);
-  border-top-color: rgb(var(--btn-tint) / 0.42);
-  border-right-color: rgb(var(--btn-tint) / 0.08);
-  border-bottom-color: rgb(var(--btn-tint) / 0.2);
-  border-left-color: rgb(var(--btn-tint) / 0.08);
+  border-color: rgb(var(--btn-tint) / 0.12);
   box-shadow:
-    inset 0 1px 0 rgb(var(--btn-tint) / 0.4),
     inset 0 2px 2px rgb(var(--btn-tint) / 0.12),
     inset 0 -1px 0 rgb(var(--btn-tint) / 0.18),
     inset 14px 0 16px -10px rgb(var(--btn-tint) / 0.12),
@@ -2461,12 +2457,8 @@ html.safari.dark .btn-primary {
 }
 
 .dark .btn-primary-well.btn-tint-red > .btn-primary:hover {
-  border-top-color: rgb(var(--btn-tint) / 0.52);
-  border-right-color: rgb(var(--btn-tint) / 0.16);
-  border-bottom-color: rgb(var(--btn-tint) / 0.26);
-  border-left-color: rgb(var(--btn-tint) / 0.16);
+  border-color: rgb(var(--btn-tint) / 0.18);
   box-shadow:
-    inset 0 1px 0 rgb(var(--btn-tint) / 0.5),
     inset 0 2px 2px rgb(var(--btn-tint) / 0.16),
     inset 0 -1px 0 rgb(var(--btn-tint) / 0.24),
     inset 16px 0 18px -10px rgb(var(--btn-tint) / 0.16),
@@ -2511,13 +2503,8 @@ html.safari.dark .btn-primary {
       transparent 64%
     ),
     linear-gradient(180deg, rgb(18 140 126 / 0.45) 0%, rgb(7 94 84 / 0.55) 100%);
-  border-color: rgb(var(--btn-tint) / 0.16);
-  border-top-color: rgb(var(--btn-tint) / 0.5);
-  border-right-color: rgb(var(--btn-tint) / 0.14);
-  border-bottom-color: rgb(var(--btn-tint) / 0.24);
-  border-left-color: rgb(var(--btn-tint) / 0.14);
+  border: 1px solid rgb(var(--btn-tint) / 0.18);
   box-shadow:
-    inset 0 1px 0 rgb(var(--btn-tint) / 0.5),
     inset 0 2px 2px rgb(var(--btn-tint) / 0.18),
     inset 0 -1px 0 rgb(var(--btn-tint) / 0.28),
     inset 14px 0 16px -10px rgb(var(--btn-tint) / 0.22),
@@ -2545,12 +2532,8 @@ html.safari.dark .btn-primary {
 }
 
 .btn-primary-well.btn-tint-whatsapp > .btn-primary:hover {
-  border-top-color: rgb(var(--btn-tint) / 0.62);
-  border-right-color: rgb(var(--btn-tint) / 0.2);
-  border-bottom-color: rgb(var(--btn-tint) / 0.3);
-  border-left-color: rgb(var(--btn-tint) / 0.2);
+  border-color: rgb(var(--btn-tint) / 0.22);
   box-shadow:
-    inset 0 1px 0 rgb(var(--btn-tint) / 0.6),
     inset 0 2px 2px rgb(var(--btn-tint) / 0.22),
     inset 0 -1px 0 rgb(var(--btn-tint) / 0.34),
     inset 16px 0 18px -10px rgb(var(--btn-tint) / 0.28),
@@ -2594,13 +2577,8 @@ html.safari.dark .btn-primary {
       transparent 64%
     ),
     linear-gradient(180deg, rgb(7 94 84 / 0.4) 0%, rgb(2 50 40 / 0.45) 100%);
-  border-color: rgb(var(--btn-tint) / 0.1);
-  border-top-color: rgb(var(--btn-tint) / 0.42);
-  border-right-color: rgb(var(--btn-tint) / 0.08);
-  border-bottom-color: rgb(var(--btn-tint) / 0.2);
-  border-left-color: rgb(var(--btn-tint) / 0.08);
+  border-color: rgb(var(--btn-tint) / 0.12);
   box-shadow:
-    inset 0 1px 0 rgb(var(--btn-tint) / 0.4),
     inset 0 2px 2px rgb(var(--btn-tint) / 0.12),
     inset 0 -1px 0 rgb(var(--btn-tint) / 0.18),
     inset 14px 0 16px -10px rgb(var(--btn-tint) / 0.12),
@@ -2628,12 +2606,8 @@ html.safari.dark .btn-primary {
 }
 
 .dark .btn-primary-well.btn-tint-whatsapp > .btn-primary:hover {
-  border-top-color: rgb(var(--btn-tint) / 0.52);
-  border-right-color: rgb(var(--btn-tint) / 0.16);
-  border-bottom-color: rgb(var(--btn-tint) / 0.26);
-  border-left-color: rgb(var(--btn-tint) / 0.16);
+  border-color: rgb(var(--btn-tint) / 0.18);
   box-shadow:
-    inset 0 1px 0 rgb(var(--btn-tint) / 0.5),
     inset 0 2px 2px rgb(var(--btn-tint) / 0.16),
     inset 0 -1px 0 rgb(var(--btn-tint) / 0.24),
     inset 16px 0 18px -10px rgb(var(--btn-tint) / 0.16),

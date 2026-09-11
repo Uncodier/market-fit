@@ -26,8 +26,6 @@ import { useRouter, usePathname } from "next/navigation";
 import { useState, useEffect, useRef, useMemo } from "react";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
-import { useRobots } from "@/app/context/RobotsContext";
-import { WorkflowRunButton } from "@/app/components/workflows/workflow-run-button";
 import {
   PlusCircle,
   Download,
@@ -62,712 +60,8 @@ import { subMonths, format, startOfDay, endOfDay } from "date-fns";
 import { safeReload } from "../../utils/safe-reload";
 import { useSearchParams } from "next/navigation";
 import { LoadingSkeleton } from "@/app/components/ui/loading-skeleton";
-import { AuthenticateSessionsModal } from "./AuthenticateSessionsModal";
-import { useRequirementStatus } from "@/app/components/simple-messages-view/hooks/useRequirementStatus";
 import { Switch } from "@/app/components/ui/switch";
 import { Label } from "@/app/components/ui/label";
-
-import { PublishButton } from "./PublishButton";
-
-// Robot Start Button Component
-function RobotStartButton({
-  currentSite,
-  viewMode,
-}: {
-  currentSite: any;
-  viewMode?: string;
-}) {
-  const { t } = useLocalization();
-  const [isStartingRobot, setIsStartingRobot] = useState(false);
-  const [isStoppingRobot, setIsStoppingRobot] = useState(false);
-  const [isAuthenticateModalOpen, setIsAuthenticateModalOpen] = useState(false);
-  const {
-    getAllInstances,
-    getInstanceById,
-    refreshRobots,
-    isLoading: isLoadingRobots,
-    refreshCount,
-  } = useRobots();
-  const searchParams = useSearchParams();
-
-  // Get all instances and find the appropriate one to display
-  const allInstances = getAllInstances();
-  const selectedInstanceParam = searchParams.get("instance");
-
-  // Determine the active robot instance with improved logic:
-  // 1. If URL has instance param, try to use that instance
-  // 2. Otherwise, find the first paused/pending instance from all instances
-  const activeRobotInstance = useMemo(() => {
-    // Don't calculate if data is still loading - wait for complete data
-    if (isLoadingRobots) {
-      return null;
-    }
-
-    // If URL param exists, try to get that instance first
-    if (selectedInstanceParam) {
-      if (selectedInstanceParam === "new") {
-        return null;
-      }
-      const urlInstance = getInstanceById(selectedInstanceParam);
-      if (urlInstance) {
-        return urlInstance;
-      }
-    }
-
-    // If no URL param or URL instance not found, use the most recently updated instance
-    // This matches the fallback logic in robots/page.tsx
-    if (allInstances.length > 0) {
-      const sortedInstances = [...allInstances].sort((a, b) => {
-        const playStatuses = [
-          "running",
-          "active",
-          "starting",
-          "pending",
-          "initializing",
-        ];
-        const aIsPlay = playStatuses.includes((a as any).status) ? 1 : 0;
-        const bIsPlay = playStatuses.includes((b as any).status) ? 1 : 0;
-
-        if (aIsPlay !== bIsPlay) {
-          return bIsPlay - aIsPlay;
-        }
-
-        const aTime = new Date(
-          (a as any).updated_at || (a as any).created_at || 0,
-        ).getTime();
-        const bTime = new Date(
-          (b as any).updated_at || (b as any).created_at || 0,
-        ).getTime();
-        return bTime - aTime;
-      });
-      return sortedInstances[0];
-    }
-
-    return null;
-  }, [
-    selectedInstanceParam,
-    allInstances,
-    getInstanceById,
-    isLoadingRobots,
-    refreshCount,
-  ]);
-
-  const { requirementStatuses } = useRequirementStatus(activeRobotInstance);
-
-  const [showSourceCodePreview, setShowSourceCodePreview] = useState(false);
-  useEffect(() => {
-    const handleToggle = () => setShowSourceCodePreview((prev) => !prev);
-    window.addEventListener("robot:toggle-source-code", handleToggle);
-    return () =>
-      window.removeEventListener("robot:toggle-source-code", handleToggle);
-  }, []);
-
-  const latestPreviewUrl = useMemo(() => {
-    if (!requirementStatuses || requirementStatuses.length === 0) return null;
-
-    // Find the most recent requirement_status that has a preview
-    for (let i = requirementStatuses.length - 1; i >= 0; i--) {
-      const status = requirementStatuses[i];
-      if (status.preview_url) {
-        return status.preview_url;
-      }
-      // Fallback: If no preview_url but repo_url points to a zip file in Supabase
-      if (
-        !status.preview_url &&
-        status.repo_url &&
-        (status.repo_url.endsWith(".zip") ||
-          status.repo_url.includes(".zip?") ||
-          status.repo_url.endsWith(".tar.gz") ||
-          status.repo_url.includes(".tar.gz?") ||
-          status.repo_url.endsWith(".tar") ||
-          status.repo_url.includes(".tar?"))
-      ) {
-        return status.repo_url;
-      }
-      // Fallback: Check source_code if it points to a zip
-      if (
-        !status.preview_url &&
-        status.source_code &&
-        (status.source_code.endsWith(".zip") ||
-          status.source_code.includes(".zip?") ||
-          status.source_code.endsWith(".tar.gz") ||
-          status.source_code.includes(".tar.gz?") ||
-          status.source_code.endsWith(".tar") ||
-          status.source_code.includes(".tar?"))
-      ) {
-        return status.source_code;
-      }
-    }
-
-    return null;
-  }, [requirementStatuses]);
-
-  const latestSourceCodeUrl = useMemo(() => {
-    if (!requirementStatuses || requirementStatuses.length === 0) return null;
-
-    // Find the most recent requirement_status that has source_code
-    for (let i = requirementStatuses.length - 1; i >= 0; i--) {
-      const status = requirementStatuses[i];
-      if (status.source_code) {
-        return status.source_code;
-      }
-      // Fallback: If no source_code but repo_url points to a zip file in Supabase
-      if (
-        !status.source_code &&
-        status.repo_url &&
-        (status.repo_url.endsWith(".zip") ||
-          status.repo_url.includes(".zip?") ||
-          status.repo_url.endsWith(".tar.gz") ||
-          status.repo_url.includes(".tar.gz?") ||
-          status.repo_url.endsWith(".tar") ||
-          status.repo_url.includes(".tar?"))
-      ) {
-        return status.repo_url;
-      }
-      // Fallback: Check preview_url if it points to a zip
-      if (
-        !status.source_code &&
-        status.preview_url &&
-        (status.preview_url.endsWith(".zip") ||
-          status.preview_url.includes(".zip?") ||
-          status.preview_url.endsWith(".tar.gz") ||
-          status.preview_url.includes(".tar.gz?") ||
-          status.preview_url.endsWith(".tar") ||
-          status.preview_url.includes(".tar?"))
-      ) {
-        return status.preview_url;
-      }
-    }
-
-    return null;
-  }, [requirementStatuses]);
-
-  const selectedInstanceId =
-    activeRobotInstance?.id || selectedInstanceParam || "new";
-  const activeTabRef = useRef(selectedInstanceId);
-
-  // Map tab values to activity names (fallback for create-from-new)
-  const getActivityName = (tabValue: string): string => {
-    const activityMap: Record<string, string> = {
-      ask: "Ask",
-      "channel-market-fit": "Channel Market Fit",
-      engage: "Engage in Social Networks",
-      seo: "SEO",
-      "publish-content": "Publish Content",
-      "publish-ads": "Publish Ads",
-      "ux-analysis": "UX Analysis",
-      "build-requirements": "Build Requirements",
-      "execute-plan": "Execute Plan",
-      "deep-research": "Deep Research",
-    };
-    return activityMap[tabValue] || tabValue;
-  };
-
-  // Note: Robot checking now handled by RobotsContext
-
-  // Update ref when selected instance changes
-  useEffect(() => {
-    activeTabRef.current = selectedInstanceId;
-  }, [selectedInstanceId]);
-
-  // Note: Robot state monitoring now handled by RobotsContext
-
-  // Note: Real-time monitoring now handled by RobotsContext
-  // This component just reacts to context changes
-
-  // Function to start robot (used only for New Makina)
-  const handleStartRobot = async () => {
-    if (!currentSite) {
-      toast.error("No site selected");
-      return;
-    }
-
-    setIsStartingRobot(true);
-
-    try {
-      const { apiClient } = await import("@/app/services/api-client-service");
-
-      const response = await apiClient.post("/api/workflow/startRobot", {
-        site_id: currentSite.id,
-        user_id: currentSite.user_id,
-        activity: getActivityName("execute-plan"),
-      });
-
-      if (response.success) {
-        toast.success("Robot workflow initiated - setting up browser...");
-
-        // Also resume any paused plans for this instance
-        if (activeRobotInstance?.id) {
-          try {
-            const supabase = createClient();
-            const { data: plans } = await supabase
-              .from("instance_plans")
-              .select("id")
-              .eq("instance_id", activeRobotInstance.id)
-              .eq("status", "paused");
-
-            if (plans && plans.length > 0) {
-              await supabase
-                .from("instance_plans")
-                .update({
-                  status: "in_progress",
-                  updated_at: new Date().toISOString(),
-                })
-                .in(
-                  "id",
-                  plans.map((p) => p.id),
-                );
-            }
-          } catch (err) {
-            console.error("Error resuming plans on robot start:", err);
-          }
-        }
-
-        // Small delay to allow database to update, then refresh
-        setTimeout(async () => {
-          await refreshRobots();
-        }, 1000);
-
-        // Check if robot is already running after the API call
-        if (
-          activeRobotInstance &&
-          ["running", "active"].includes(activeRobotInstance.status)
-        ) {
-          setIsStartingRobot(false);
-          return;
-        }
-
-        // Setup fallback polling in case real-time updates fail
-        let pollAttempts = 0;
-        const maxPollAttempts = 20; // 20 attempts * 2 seconds = 40 seconds
-        let pollingActive = true;
-
-        const pollForStartedInstance = async () => {
-          if (!pollingActive) return;
-
-          pollAttempts++;
-
-          try {
-            await refreshRobots();
-
-            // Check if robot is now running - if so, stop polling and clear loading state
-            const activityName = getActivityName("execute-plan");
-            const supabase = createClient();
-
-            const { data: currentInstance, error: instanceError } =
-              await supabase
-                .from("remote_instances")
-                .select("id, status, name")
-                .eq("site_id", currentSite.id)
-                .eq("name", activityName)
-                .neq("status", "error")
-                .limit(1);
-
-            if (instanceError) {
-              console.error("Error checking robot status:", instanceError);
-              // Continue polling unless max attempts reached
-            } else if (currentInstance && currentInstance.length > 0) {
-              const instance = currentInstance[0];
-              if (["running", "active"].includes(instance.status)) {
-                pollingActive = false;
-                setIsStartingRobot(false);
-
-                // Emit custom event to notify robots page to refresh
-                window.dispatchEvent(
-                  new CustomEvent("robotStarted", {
-                    detail: { instanceId: instance.id, instance },
-                  }),
-                );
-
-                return;
-              } else if (["failed", "error"].includes(instance.status)) {
-                pollingActive = false;
-                setIsStartingRobot(false);
-                toast.error("Robot failed to start - please try again");
-                return;
-              }
-            }
-
-            if (pollAttempts < maxPollAttempts && pollingActive) {
-              setTimeout(pollForStartedInstance, 2000); // Poll every 2 seconds
-            } else if (pollingActive) {
-              pollingActive = false;
-              setIsStartingRobot(false);
-              toast.warning(
-                "Robot startup is taking longer than expected. Please check the robots page.",
-              );
-              // Final refresh attempt
-              setTimeout(() => {
-                refreshRobots();
-              }, 3000);
-            }
-          } catch (pollError) {
-            console.error("Error during robot polling:", pollError);
-            if (pollAttempts >= maxPollAttempts || !pollingActive) {
-              pollingActive = false;
-              setIsStartingRobot(false);
-              toast.error(
-                "Unable to verify robot status - please check the robots page",
-              );
-            } else if (pollingActive) {
-              // Continue polling even if there's an error, but with longer delay
-              setTimeout(pollForStartedInstance, 3000);
-            }
-          }
-        };
-
-        // Start polling after 3 seconds (allow real-time to work first)
-        setTimeout(pollForStartedInstance, 3000);
-      } else {
-        // Handle API response errors
-        const errorMessage =
-          response.error?.message || "Unknown error occurred";
-        console.error("API Error starting robot:", response.error || response);
-
-        // Log additional debugging information if available
-        if (response.error?.details) {
-          console.error("Error details:", response.error.details);
-
-          // If it's a configuration issue, provide more specific guidance
-          if (response.error.details.suggestion) {
-            console.error("Suggestion:", response.error.details.suggestion);
-          }
-        }
-
-        throw new Error(errorMessage);
-      }
-    } catch (error) {
-      console.error("Error starting robot:", error);
-
-      // Provide more specific error messages based on the error type
-      let errorMessage = "Failed to start robot";
-
-      if (error instanceof Error) {
-        if (error.message.includes("fetch")) {
-          errorMessage =
-            "Network error - please check your connection and try again";
-        } else if (error.message.includes("timeout")) {
-          errorMessage = "Request timed out - please try again";
-        } else if (
-          error.message.includes("permission") ||
-          error.message.includes("unauthorized")
-        ) {
-          errorMessage =
-            "Permission denied - please refresh the page and try again";
-        } else if (error.message && error.message !== "Unknown error") {
-          errorMessage = error.message;
-        }
-      }
-
-      toast.error(errorMessage);
-      setIsStartingRobot(false);
-    }
-    // Note: Don't set setIsStartingRobot(false) here in finally block
-    // It will be set when polling detects the robot is running or fails
-  };
-
-  // Function to stop robot
-  const handleStopRobot = async () => {
-    if (!activeRobotInstance) {
-      toast.error("No active robot to stop");
-      return;
-    }
-
-    setIsStoppingRobot(true);
-
-    try {
-      const { apiClient } = await import("@/app/services/api-client-service");
-
-      const response = await apiClient.post("/api/robots/instance/stop", {
-        instance_id: activeRobotInstance.id,
-      });
-
-      if (response.success) {
-        toast.success("Robot stopped successfully");
-
-        // Also pause any active plans for this instance
-        try {
-          const supabase = createClient();
-          const { data: plans } = await supabase
-            .from("instance_plans")
-            .select("id")
-            .eq("instance_id", activeRobotInstance.id)
-            .in("status", ["in_progress", "pending"]);
-
-          if (plans && plans.length > 0) {
-            await supabase
-              .from("instance_plans")
-              .update({
-                status: "paused",
-                updated_at: new Date().toISOString(),
-              })
-              .in(
-                "id",
-                plans.map((p) => p.id),
-              );
-          }
-        } catch (err) {
-          console.error("Error pausing plans on robot stop:", err);
-        }
-
-        // Emit custom event to notify robots page
-        window.dispatchEvent(
-          new CustomEvent("robotStopped", {
-            detail: { instanceId: activeRobotInstance.id },
-          }),
-        );
-
-        // REMOVED: refreshRobots() and polling loop
-        // Real-time subscription will handle the update automatically
-      } else {
-        // Handle API response errors
-        const errorMessage = response.error?.message || "Failed to stop robot";
-        console.error("API Error stopping robot:", response.error || response);
-
-        // Log additional debugging information if available
-        if (response.error?.details) {
-          console.error("Error details:", response.error.details);
-
-          // If it's a configuration issue, provide more specific guidance
-          if (response.error.details.suggestion) {
-            console.error("Suggestion:", response.error.details.suggestion);
-          }
-        }
-
-        throw new Error(errorMessage);
-      }
-    } catch (error) {
-      console.error("Error stopping robot:", error);
-
-      // Provide more specific error messages based on the error type
-      let errorMessage = "Failed to stop robot";
-
-      if (error instanceof Error) {
-        if (error.message.includes("fetch")) {
-          errorMessage =
-            "Network error - please check your connection and try again";
-        } else if (error.message.includes("timeout")) {
-          errorMessage = "Request timed out - please try again";
-        } else if (
-          error.message.includes("permission") ||
-          error.message.includes("unauthorized")
-        ) {
-          errorMessage =
-            "Permission denied - please refresh the page and try again";
-        } else if (error.message.includes("not found")) {
-          errorMessage =
-            "Robot instance not found - it may have already stopped";
-        } else if (error.message && error.message !== "Unknown error") {
-          errorMessage = error.message;
-        }
-      }
-
-      toast.error(errorMessage);
-    } finally {
-      setIsStoppingRobot(false);
-    }
-  };
-
-  // Show nothing while loading robots
-  if (isLoadingRobots) {
-    return null;
-  }
-
-  // If there's an active robot instance (from URL param or found paused instance), decide which controls to show
-  if (activeRobotInstance && viewMode !== "imprenta" && viewMode !== "workflow") {
-    // Only show stop/authenticate buttons when robot is running or active
-    const isRunning = ["running", "active"].includes(
-      activeRobotInstance.status,
-    );
-
-    // Running-instance controls (Authenticate, Save Auth Session, Stop Robot)
-    // are intentionally disabled. We still compute `isRunning` so this behavior
-    // can be re-enabled later by flipping the flag below. Requirement status
-    // and source-code (preview) behavior remain fully active.
-    const SHOW_RUNNING_INSTANCE_CONTROLS = false;
-    const showRunningControls = SHOW_RUNNING_INSTANCE_CONTROLS && isRunning;
-
-    // Resume button hidden - removed per user request
-    // Allow rendering if we have a source code url to download or preview url to publish
-    if (!showRunningControls && !latestSourceCodeUrl && !latestPreviewUrl) {
-      return null;
-    }
-
-    const handleSaveAuthSession = async () => {
-      if (!activeRobotInstance) {
-        toast.error("No active robot instance to save auth session");
-        return;
-      }
-
-      try {
-        const { apiClient } = await import("@/app/services/api-client-service");
-
-        const response = await apiClient.post("/api/robots/auth", {
-          site_id: currentSite.id,
-          remote_instance_id: activeRobotInstance.id,
-        });
-
-        if (response.success) {
-          toast.success("Auth session saved successfully");
-        } else {
-          // Handle API response errors
-          const errorMessage =
-            response.error?.message || "Failed to save auth session";
-          console.error(
-            "API Error saving auth session:",
-            response.error || response,
-          );
-
-          // Log additional debugging information if available
-          if (response.error?.details) {
-            console.error("Error details:", response.error.details);
-
-            // If it's a configuration issue, provide more specific guidance
-            if (response.error.details.suggestion) {
-              console.error("Suggestion:", response.error.details.suggestion);
-            }
-          }
-
-          throw new Error(errorMessage);
-        }
-      } catch (error) {
-        console.error("Error saving auth session:", error);
-
-        // Provide more specific error messages based on the error type
-        let errorMessage = "Failed to save auth session";
-
-        if (error instanceof Error) {
-          if (error.message.includes("fetch")) {
-            errorMessage =
-              "Network error - please check your connection and try again";
-          } else if (error.message.includes("timeout")) {
-            errorMessage = "Request timed out - please try again";
-          } else if (
-            error.message.includes("permission") ||
-            error.message.includes("unauthorized")
-          ) {
-            errorMessage =
-              "Permission denied - please refresh the page and try again";
-          } else if (error.message.includes("not found")) {
-            errorMessage =
-              "Robot instance not found - please try refreshing the page";
-          } else if (error.message && error.message !== "Unknown error") {
-            errorMessage = error.message;
-          }
-        }
-
-        toast.error(errorMessage);
-      }
-    };
-
-    return (
-      <>
-        <div className="flex items-center gap-2">
-          {latestPreviewUrl && (
-            <PublishButton siteId={currentSite.id} previewUrl={latestPreviewUrl} />
-          )}
-          {showRunningControls && (
-            <>
-              <Button
-                variant="secondary"
-                size="default"
-                className="hidden sm:flex items-center justify-center gap-2 transition-colors duration-200 !min-w-0 sm:!min-w-[155px] md:!min-w-[200px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
-                onClick={() => setIsAuthenticateModalOpen(true)}
-                title={t("layout.topbar.authenticate")}
-              >
-                <Shield className="h-4 w-4 shrink-0" />
-                <span className="hidden sm:inline font-inter font-medium text-sm">
-                  {t("layout.topbar.authenticate")}
-                </span>
-              </Button>
-              <Button
-                variant="secondary"
-                size="default"
-                className="hidden sm:flex items-center justify-center gap-2 transition-colors duration-200 !min-w-0 sm:!min-w-[155px] md:!min-w-[200px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
-                onClick={handleSaveAuthSession}
-                title={t("layout.topbar.saveAuthSession")}
-              >
-                <Key className="h-4 w-4 shrink-0" />
-                <span className="hidden sm:inline font-inter font-medium text-sm">
-                  {t("layout.topbar.saveAuthSession")}
-                </span>
-              </Button>
-              <Button
-                size="default"
-                className="flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 transition-colors duration-200 !min-w-0 sm:!min-w-[155px] md:!min-w-[200px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
-                onClick={handleStopRobot}
-                disabled={isStoppingRobot}
-                title={t("layout.topbar.stopRobot")}
-              >
-                {isStoppingRobot ? (
-                  <>
-                    <LoadingSkeleton
-                      variant="button"
-                      size="sm"
-                      className="text-white"
-                    />
-                    <span className="hidden sm:inline font-inter font-medium text-sm">
-                      {t("layout.topbar.stopping")}
-                    </span>
-                  </>
-                ) : (
-                  <>
-                    <StopCircle className="h-4 w-4 shrink-0" />
-                    <span className="hidden sm:inline ml-2 font-inter font-medium text-sm">
-                      {t("layout.topbar.stopRobot")}
-                    </span>
-                  </>
-                )}
-              </Button>
-            </>
-          )}
-        </div>
-        {showRunningControls && (
-          <AuthenticateSessionsModal
-            isOpen={isAuthenticateModalOpen}
-            onClose={() => setIsAuthenticateModalOpen(false)}
-            instanceId={activeRobotInstance.id}
-          />
-        )}
-      </>
-    );
-  }
-
-  // Default state: if New Makina is selected or in imprenta mode, hide start
-  if (selectedInstanceId === "new" || viewMode === "imprenta" || viewMode === "workflow") return null;
-
-  // Otherwise, show start button as fallback (should rarely show)
-  return (
-    <div className="flex items-center gap-2">
-      {latestPreviewUrl && (
-        <PublishButton siteId={currentSite.id} previewUrl={latestPreviewUrl} />
-      )}
-      <Button
-        size="default"
-        className="flex items-center gap-2 bg-primary hover:bg-primary/90 transition-colors duration-200 !min-w-0 sm:!min-w-[155px] md:!min-w-[200px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
-        onClick={handleStartRobot}
-        disabled={isStartingRobot}
-        title={t("layout.topbar.startRobot")}
-      >
-        {isStartingRobot ? (
-          <>
-            <LoadingSkeleton variant="button" size="sm" className="text-white" />
-            <span className="hidden sm:inline font-inter font-medium text-sm">
-              {t("layout.topbar.startingRobot")}
-            </span>
-          </>
-        ) : (
-          <>
-            <PlayCircle className="h-4 w-4 shrink-0" />
-            <span className="hidden sm:inline ml-2 font-inter font-medium text-sm">
-              {t("layout.topbar.startRobot")}
-            </span>
-          </>
-        )}
-      </Button>
-    </div>
-  );
-}
 
 interface TopBarActionsProps {
   isPosPage?: boolean;
@@ -783,7 +77,6 @@ interface TopBarActionsProps {
   isCampaignsPage: boolean;
   isSalesPage: boolean;
   isRecordsPage?: boolean;
-  isRobotsPage: boolean;
   isSecurityPage: boolean;
   isAccountingPage?: boolean;
   isFinancePage?: boolean;
@@ -836,7 +129,6 @@ export function TopBarActions({
   isCampaignsPage,
   isSalesPage,
   isRecordsPage,
-  isRobotsPage,
   isSecurityPage,
   isAccountingPage,
   isFinancePage,
@@ -1250,18 +542,6 @@ export function TopBarActions({
       ) : null}
 
       {/* Docs Button */}
-      {isSecurityPage && (
-        <Button
-          variant="ghost"
-          size="default"
-          className="text-muted-foreground hover:text-foreground flex items-center gap-2 !min-w-0 sm:!min-w-[155px] md:!min-w-[200px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
-          onClick={() => window.open("https://docs.makinari.com", "_blank")}
-          title="Documentation"
-        >
-          <BookOpen className="h-5 w-5 shrink-0" />
-          <span className="hidden sm:inline">{t("layout.topbar.docs")}</span>
-        </Button>
-      )}
 
       {currentSite ? (
         <>
@@ -1360,59 +640,6 @@ export function TopBarActions({
       )}
       {segmentData && (
         <>
-          {(segmentData.activeTab === "analysis" ||
-            segmentData.activeTab === "icp") && (
-            <Button
-              variant="secondary"
-              size="default"
-              className="hidden sm:flex items-center justify-center gap-2 transition-colors duration-200 !min-w-0 sm:!min-w-[155px] md:!min-w-[200px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
-              onClick={() => segmentData.openAIModal("analysis")}
-              disabled={segmentData.isAnalyzing}
-              title={t("layout.topbar.analyzeWithAI")}
-            >
-              {segmentData.isAnalyzing ? (
-                <>
-                  <LoadingSkeleton variant="button" size="sm" />
-                  <span className="hidden sm:inline font-inter font-medium text-sm">
-                    {t("layout.topbar.analyzing")}
-                  </span>
-                </>
-              ) : (
-                <>
-                  <BarChart className="h-4 w-4 shrink-0" />
-                  <span className="hidden sm:inline font-inter font-medium text-sm">
-                    {t("layout.topbar.analyzeWithAI")}
-                  </span>
-                </>
-              )}
-            </Button>
-          )}
-          {segmentData.activeTab === "topics" && (
-            <Button
-              variant="secondary"
-              size="default"
-              className="hidden sm:flex items-center justify-center gap-2 transition-colors duration-200 !min-w-0 sm:!min-w-[155px] md:!min-w-[200px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
-              onClick={() => segmentData.openAIModal("topics")}
-              disabled={segmentData.isGeneratingTopics}
-              title={t("layout.topbar.getTopicsWithAI")}
-            >
-              {segmentData.isGeneratingTopics ? (
-                <>
-                  <LoadingSkeleton variant="button" size="sm" />
-                  <span className="hidden sm:inline font-inter font-medium text-sm">
-                    {t("layout.topbar.gettingTopics")}
-                  </span>
-                </>
-              ) : (
-                <>
-                  <FileText className="h-4 w-4 shrink-0" />
-                  <span className="hidden sm:inline">
-                    {t("layout.topbar.getTopicsWithAI")}
-                  </span>
-                </>
-              )}
-            </Button>
-          )}
         </>
       )}
       {isSegmentsPage &&
@@ -1477,60 +704,6 @@ export function TopBarActions({
       {isLeadsPage &&
         (currentSite ? (
           <>
-            <ImportLeadsDialog
-              segments={segments.length > 0 ? segments : propSegments || []}
-              onImportLeads={handleImportLeads}
-              trigger={
-                <Button
-                  variant="secondary"
-                  className="hidden sm:flex items-center justify-center gap-2 md:h-9 !min-w-0 sm:!min-w-[155px] md:!min-w-[200px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
-                  title={t("layout.topbar.import")}
-                >
-                  <UploadCloud className="h-4 w-4 shrink-0" />
-                  <span className="hidden sm:inline ml-2">
-                    {t("layout.topbar.import")}
-                  </span>
-                </Button>
-              }
-            />
-            <Button
-              variant="secondary"
-              className="hidden sm:flex items-center justify-center gap-2 md:h-9 !min-w-0 sm:!min-w-[155px] md:!min-w-[200px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
-              title={t("layout.topbar.export")}
-              onClick={async () => {
-                try {
-                  const response = await fetch(
-                    `/api/leads/export?siteId=${currentSite.id}`,
-                    {
-                      method: "GET",
-                      headers: {
-                        "Content-Type": "application/json",
-                      },
-                    },
-                  );
-
-                  if (!response.ok) throw new Error("Export failed");
-
-                  const blob = await response.blob();
-                  const url = window.URL.createObjectURL(blob);
-                  const a = document.createElement("a");
-                  a.href = url;
-                  a.download = `leads-${new Date().toISOString().split("T")[0]}.csv`;
-                  document.body.appendChild(a);
-                  a.click();
-                  window.URL.revokeObjectURL(url);
-                  document.body.removeChild(a);
-                } catch (error) {
-                  console.error("Error exporting leads:", error);
-                  toast.error("Failed to export leads");
-                }
-              }}
-            >
-              <Download className="h-4 w-4 shrink-0" />
-              <span className="hidden sm:inline ml-2">
-                {t("layout.topbar.export")}
-              </span>
-            </Button>
             <CreateLeadDialog
               segments={segments.length > 0 ? segments : propSegments || []}
               campaigns={campaigns}
@@ -1620,44 +793,6 @@ export function TopBarActions({
         (currentSite ? (
           <>
             <Button
-              variant="secondary"
-            className="hidden sm:flex items-center justify-center gap-2 !min-w-0 sm:!min-w-[155px] md:!min-w-[200px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
-              title={t("layout.topbar.export")}
-              onClick={async () => {
-                try {
-                  const response = await fetch(
-                    `/api/sales/export?siteId=${currentSite.id}`,
-                    {
-                      method: "GET",
-                      headers: {
-                        "Content-Type": "application/json",
-                      },
-                    },
-                  );
-
-                  if (!response.ok) throw new Error("Export failed");
-
-                  const blob = await response.blob();
-                  const url = window.URL.createObjectURL(blob);
-                  const a = document.createElement("a");
-                  a.href = url;
-                  a.download = `sales-${new Date().toISOString().split("T")[0]}.csv`;
-                  document.body.appendChild(a);
-                  a.click();
-                  window.URL.revokeObjectURL(url);
-                  document.body.removeChild(a);
-                } catch (error) {
-                  console.error("Error exporting sales:", error);
-                  toast.error("Failed to export sales");
-                }
-              }}
-            >
-              <Download className="h-4 w-4 shrink-0" />
-              <span className="hidden sm:inline ml-2">
-                {t("layout.topbar.export")}
-              </span>
-            </Button>
-            <Button
               onClick={onCreateSale}
               className="!min-w-0 sm:!min-w-[155px] md:!min-w-[200px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
               title={t("layout.topbar.addSale")}
@@ -1710,17 +845,6 @@ export function TopBarActions({
 
       {pathname === "/catalog" && currentSite && (
         <div className="flex items-center gap-2">
-          <Button
-            variant="secondary"
-            className="hidden sm:flex items-center justify-center gap-2 !min-w-0 sm:!min-w-[155px] md:!min-w-[200px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
-            onClick={() => router.push("/catalog/modifier-groups")}
-            title={t("catalog.modifiers.groupsTitle") || "Modifier groups"}
-          >
-            <ModifierGroups className="h-4 w-4 shrink-0" />
-            <span className="hidden sm:inline ml-2">
-              {t("catalog.modifiers.groupsTitle") || "Modifier groups"}
-            </span>
-          </Button>
           <Button
             className="!min-w-0 sm:!min-w-[155px] md:!min-w-[200px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
             onClick={() =>
@@ -1782,21 +906,6 @@ export function TopBarActions({
       {pathname === "/inventory" && currentSite && (
         <div className="flex items-center gap-2">
           <Button
-            variant="secondary"
-            className="hidden sm:flex items-center justify-center gap-2 !min-w-0 sm:!min-w-[155px] md:!min-w-[200px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
-            onClick={() =>
-              window.dispatchEvent(
-                new CustomEvent("inventory:open-location-dialog"),
-              )
-            }
-            title={t("inventory.addLocation") || "Add Location"}
-          >
-            <PlusCircle className="h-4 w-4 shrink-0" />
-            <span className="hidden sm:inline ml-2">
-              {t("inventory.addLocation") || "Add Location"}
-            </span>
-          </Button>
-          <Button
             className="!min-w-0 sm:!min-w-[155px] md:!min-w-[200px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
             onClick={() =>
               window.dispatchEvent(new CustomEvent("inventory:create-stock"))
@@ -1828,27 +937,6 @@ export function TopBarActions({
 
       {pathname.startsWith("/price-lists/") && pathname !== "/price-lists" && currentSite && priceListData && (
         <div className="flex items-center gap-4">
-          <div className="flex items-center space-x-2">
-             <Label htmlFor="active-status" className="text-sm font-medium">Active</Label>
-             <Switch 
-                id="active-status" 
-                checked={priceListData.is_active} 
-                onCheckedChange={() => window.dispatchEvent(new CustomEvent("price-list:toggle-active"))} 
-             />
-          </div>
-          <Button
-            variant="outline"
-            className="hidden sm:flex items-center justify-center gap-2 !min-w-0 sm:!min-w-[120px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
-            onClick={() =>
-              window.dispatchEvent(new CustomEvent("price-list:edit"))
-            }
-            title={t("priceLists.editAction") || "Edit list"}
-          >
-            <Edit className="h-4 w-4 shrink-0" />
-            <span className="hidden sm:inline ml-2">
-              {t("priceLists.editAction") || "Edit list"}
-            </span>
-          </Button>
           <Button
             className="!min-w-0 sm:!min-w-[155px] md:!min-w-[200px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm bg-primary hover:bg-primary/90 text-primary-foreground"
             onClick={() =>
@@ -1895,17 +983,6 @@ export function TopBarActions({
       {pathname === "/reservations" && currentSite && (
         <div className="flex gap-2">
           <Button
-            variant="outline"
-            className="hidden sm:flex items-center justify-center gap-2 !min-w-0 sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm text-destructive hover:text-destructive hover:bg-destructive/10 border-transparent bg-transparent shadow-none"
-            onClick={() =>
-              window.dispatchEvent(new CustomEvent("calendarBlocks:create"))
-            }
-            title="Block Time"
-          >
-            <Ban className="h-4 w-4 shrink-0" />
-            <span className="hidden sm:inline ml-2">Block Time</span>
-          </Button>
-          <Button
             className="!min-w-0 sm:!min-w-[155px] md:!min-w-[200px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
             onClick={() =>
               window.dispatchEvent(new CustomEvent("reservations:create"))
@@ -1947,14 +1024,6 @@ export function TopBarActions({
               </Button>
             }
           />
-        ) : null)}
-      {isRobotsPage &&
-        (currentSite ? (
-          viewMode === "workflow" ? (
-            <WorkflowRunButton />
-          ) : (
-            <RobotStartButton currentSite={currentSite} viewMode={viewMode} />
-          )
         ) : null)}
 
       {/* New Purchase button in toolbar */}
@@ -2049,14 +1118,6 @@ export function TopBarActions({
       {isAccountingPage && (
         <div className="flex items-center gap-2">
           <Button
-            variant="secondary"
-            className="flex items-center justify-center gap-2 !min-w-0 sm:!min-w-[155px] md:!min-w-[200px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
-            onClick={() => window.dispatchEvent(new CustomEvent('accounting:openingBalances'))}
-          >
-            <Settings className="h-4 w-4 shrink-0" />
-            <span className="hidden sm:inline ml-2">Opening Balances</span>
-          </Button>
-          <Button
             className="flex items-center justify-center gap-2 !min-w-0 sm:!min-w-[155px] md:!min-w-[200px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm bg-primary hover:bg-primary/90 text-primary-foreground"
             onClick={() => window.dispatchEvent(new CustomEvent('accounting:create'))}
           >
@@ -2069,14 +1130,6 @@ export function TopBarActions({
       {/* Finance Actions */}
       {isFinancePage && (
         <div className="flex items-center gap-2">
-          <Button
-            variant="secondary"
-            className="flex items-center justify-center gap-2 !min-w-0 sm:!min-w-[155px] md:!min-w-[200px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
-            onClick={() => window.dispatchEvent(new CustomEvent('finance:exportReport'))}
-          >
-            <Download className="h-4 w-4 shrink-0" />
-            <span className="hidden sm:inline ml-2">Export</span>
-          </Button>
           <Button
             className="flex items-center justify-center gap-2 !min-w-0 sm:!min-w-[155px] md:!min-w-[200px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm bg-primary hover:bg-primary/90 text-primary-foreground"
             onClick={() => window.dispatchEvent(new CustomEvent('finance:loadReport'))}
@@ -2091,14 +1144,6 @@ export function TopBarActions({
       {isJournalEntriesPage && (
         <div className="flex items-center gap-2">
           <Button
-            variant="secondary"
-            className="flex items-center justify-center gap-2 !min-w-0 sm:!min-w-[155px] md:!min-w-[200px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
-            onClick={() => window.dispatchEvent(new CustomEvent('journal:load'))}
-          >
-            <Repeat className="h-4 w-4 shrink-0" />
-            <span className="hidden sm:inline ml-2">{t('common.sync') || "Sync"}</span>
-          </Button>
-          <Button
             className="flex items-center justify-center gap-2 !min-w-0 sm:!min-w-[155px] md:!min-w-[200px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm bg-primary hover:bg-primary/90 text-primary-foreground"
             onClick={() => window.dispatchEvent(new CustomEvent('journal:create'))}
           >
@@ -2111,9 +1156,9 @@ export function TopBarActions({
       {/* Logout button in toolbar - only visible on profile page */}
       {pathname.startsWith("/profile") && (
         <Button
-          variant="secondary"
+          variant="default"
           size="default"
-          className="flex items-center justify-center gap-2 transition-colors duration-200 !min-w-0 sm:!min-w-[155px] md:!min-w-[200px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
+          className="flex items-center justify-center gap-2 transition-colors duration-200 !min-w-0 sm:!min-w-[155px] md:!min-w-[200px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm bg-primary hover:bg-primary/90 text-primary-foreground"
           onClick={handleLogout}
           title={
             isLoggingOut

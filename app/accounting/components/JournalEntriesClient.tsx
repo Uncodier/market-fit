@@ -10,6 +10,8 @@ import { AccountingAccount } from "@/app/types"
 import { toast } from "sonner"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
 import { Tabs, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
+import { Button } from "@/app/components/ui/button"
+import { Repeat } from "@/app/components/ui/icons"
 import { JournalEntryDialog } from "./JournalEntryDialog"
 import { SyncJournalEntriesDialog } from "./SyncJournalEntriesDialog"
 import { JournalEntriesTable, JournalEntriesTableSkeleton } from "./JournalEntriesTable"
@@ -108,6 +110,16 @@ export function JournalEntriesClient() {
               <TabsTrigger value="manual" className="text-xs rounded-md data-[state=active]:shadow-sm px-4">{t('accounting.filter.manual') || "Manual"}</TabsTrigger>
             </TabsList>
           </Tabs>
+          <div className="flex items-center justify-end gap-2 shrink-0">
+            <Button
+              variant="secondary"
+              className="flex items-center justify-center gap-2 !min-w-0 sm:!min-w-[155px] md:!min-w-[200px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
+              onClick={() => window.dispatchEvent(new CustomEvent('journal:load'))}
+            >
+              <Repeat className="h-4 w-4 shrink-0" />
+              <span className="hidden sm:inline ml-2">{t('common.sync') || "Sync"}</span>
+            </Button>
+          </div>
         </div>
       </StickyHeader>
 

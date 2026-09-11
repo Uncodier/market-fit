@@ -7,13 +7,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/app
 import { SearchInput } from "@/app/components/ui/search-input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/app/components/ui/table"
 import { Badge } from "@/app/components/ui/badge"
-import { ChevronLeft, ChevronRight, Search, User, Users, MessageSquare, Globe, FileText, Loader, Tag, X, CheckCircle2, ExternalLink, Phone, Pencil, Mail, Filter, LayoutGrid, PlusCircle, Plus, Star, TrendingDown, Ban, TrendingUp, XCircle, ListOrdered, Check, ChevronDown } from "@/app/components/ui/icons"
+import { ChevronLeft, ChevronRight, Search, User, Users, MessageSquare, Globe, FileText, Loader, Tag, X, CheckCircle2, ExternalLink, Phone, Pencil, Mail, Filter, LayoutGrid, PlusCircle, Plus, Star, TrendingDown, Ban, TrendingUp, XCircle, ListOrdered, Check, ChevronDown, Download, UploadCloud } from "@/app/components/ui/icons"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/app/components/ui/tabs"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
 import { MobileFiltersDrawer } from "@/app/components/ui/mobile-filters-drawer"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
 import { useSite } from "@/app/context/SiteContext"
-import { getLeads, createLead, updateLead, deleteLead, searchLeads, searchLeadsWithCount } from "./actions"
+import { getLeads, createLead, updateLead, deleteLead, searchLeads, searchLeadsWithCount, importLeads } from "./actions"
+import { ImportLeadsDialog } from "@/app/components/leads/import-leads-dialog"
 import { CreateLeadDialog } from "@/app/components/create-lead-dialog"
 import { toast } from "sonner"
 import { getSegments } from "@/app/segments/actions"
@@ -918,6 +919,67 @@ export default function LeadsPage() {
     setCurrentPage(1)
   }
 
+  const handleImportLeads = async (leadsData: Partial<Lead>[]) => {
+    if (!currentSite?.id) {
+      return { success: false, count: 0, errors: ["No site selected"] };
+    }
+
+    try {
+      const result = await importLeads(leadsData, currentSite.id);
+
+      if (result.success) {
+        if (result.errors && result.errors.length > 0) {
+          toast.warning(`Imported ${result.count} leads, but some rows had errors.`);
+          console.warn("Import errors:", result.errors);
+          setTimeout(() => {
+            safeReload(false, "Leads imported with some errors");
+          }, 3000);
+        } else {
+          safeReload(false, "Leads imported successfully");
+        }
+      }
+
+      return result;
+    } catch (error) {
+      console.error("Error importing leads:", error);
+      return {
+        success: false,
+        count: 0,
+        errors: ["Failed to import leads"],
+      };
+    }
+  };
+
+  const handleExportLeads = async () => {
+    if (!currentSite?.id) return;
+    try {
+      const response = await fetch(
+        `/api/leads/export?siteId=${currentSite.id}`,
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        },
+      );
+
+      if (!response.ok) throw new Error("Export failed");
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `leads-${new Date().toISOString().split("T")[0]}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (error) {
+      console.error("Error exporting leads:", error);
+      toast.error("Failed to export leads");
+    }
+  };
+
   // Helper function to normalize company field to match UpdateLeadSchema requirements
   // Returns the normalized company or undefined if it should be omitted from the update
   const normalizeCompanyField = (lead: Lead): string | { name?: string; website?: string; industry?: string; size?: string; annual_revenue?: string; founded?: string; description?: string; address?: { street?: string; city?: string; state?: string; zipcode?: string; country?: string } } | null | undefined => {
@@ -1423,6 +1485,33 @@ export default function LeadsPage() {
             </MobileFiltersDrawer>
             
             <div className="ml-auto flex flex-wrap items-center justify-end gap-2 shrink-0">
+              <ImportLeadsDialog
+                segments={segments}
+                onImportLeads={handleImportLeads}
+                trigger={
+                  <Button
+                    variant="secondary"
+                    className="hidden sm:flex items-center justify-center gap-2 md:h-9 !min-w-0 sm:!min-w-[155px] md:!min-w-[200px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
+                    title={t("layout.topbar.import")}
+                  >
+                    <UploadCloud className="h-4 w-4 shrink-0" />
+                    <span className="hidden sm:inline ml-2">
+                      {t("layout.topbar.import") || "Import"}
+                    </span>
+                  </Button>
+                }
+              />
+              <Button
+                variant="secondary"
+                className="hidden sm:flex items-center justify-center gap-2 md:h-9 !min-w-0 sm:!min-w-[155px] md:!min-w-[200px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
+                title={t("layout.topbar.export")}
+                onClick={handleExportLeads}
+              >
+                <Download className="h-4 w-4 shrink-0" />
+                <span className="hidden sm:inline ml-2">
+                  {t("layout.topbar.export") || "Export"}
+                </span>
+              </Button>
               <SortDropdown sortBy={sortBy} setSortBy={setSortBy} options={[
                 { value: "newest", label: t('leads.sort.newest') || 'Newest' },
                 { value: "oldest", label: t('leads.sort.oldest') || 'Oldest' },

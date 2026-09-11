@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import useSWR from "swr"
 import { Button } from "@/app/components/ui/button"
 import { SearchInput } from "@/app/components/ui/search-input"
-import { Filter, ListOrdered, Check, ChevronDown } from "@/app/components/ui/icons"
+import { Filter, ListOrdered, Check, ChevronDown, Download } from "@/app/components/ui/icons"
 import { Tabs, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
 import { MobileFiltersDrawer } from "@/app/components/ui/mobile-filters-drawer"
@@ -134,6 +134,36 @@ export default function SalesPage() {
     setSearchQuery(e.target.value)
     setCurrentPage(1)
   }
+
+  const handleExportSales = async () => {
+    if (!currentSite?.id) return;
+    try {
+      const response = await fetch(
+        `/api/sales/export?siteId=${currentSite.id}`,
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        },
+      );
+
+      if (!response.ok) throw new Error("Export failed");
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `sales-${new Date().toISOString().split("T")[0]}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (error) {
+      console.error("Error exporting sales:", error);
+      toast.error("Failed to export sales");
+    }
+  };
 
   // Date range change handler
   const handleDateRangeChange = (startDate: Date, endDate: Date) => {
@@ -369,6 +399,17 @@ export default function SalesPage() {
               </MobileFiltersDrawer>
                 
               <div className="ml-auto flex flex-wrap justify-end items-center gap-2 shrink-0">
+                <Button
+                  variant="secondary"
+                  className="hidden sm:flex items-center justify-center gap-2 md:h-9 !min-w-0 sm:!min-w-[155px] md:!min-w-[200px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
+                  title={t("layout.topbar.export")}
+                  onClick={handleExportSales}
+                >
+                  <Download className="h-4 w-4 shrink-0" />
+                  <span className="hidden sm:inline ml-2">
+                    {t("layout.topbar.export") || "Export"}
+                  </span>
+                </Button>
                 <SortDropdown sortBy={sortBy} setSortBy={setSortBy} options={[
                   { value: "newest", label: "Newest" },
                   { value: "oldest", label: "Oldest" },

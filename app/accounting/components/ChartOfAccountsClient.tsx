@@ -14,7 +14,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { StickyHeader } from "@/app/components/ui/sticky-header"
 import { Tabs, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
 import { Dialog, DialogBody, DialogContent, DialogDescription, DialogFooter, DialogForm, DialogHeader, DialogTitle } from "@/app/components/ui/dialog"
-import { SaveIcon, AlertTriangle } from "@/app/components/ui/icons"
+import { SaveIcon, AlertTriangle, Settings } from "@/app/components/ui/icons"
 import { ChartOfAccountsTable, ChartOfAccountsTableSkeleton } from "./ChartOfAccountsTable"
 
 export function ChartOfAccountsClient() {
@@ -198,6 +198,17 @@ export function ChartOfAccountsClient() {
               <TabsTrigger value="expense" className="text-xs rounded-md data-[state=active]:shadow-sm px-4">{t('accounting.filter.expense') || "Expenses"}</TabsTrigger>
             </TabsList>
           </Tabs>
+          
+          <div className="flex items-center justify-end gap-2 shrink-0">
+            <Button
+              variant="secondary"
+              className="flex items-center justify-center gap-2 !min-w-0 sm:!min-w-[155px] md:!min-w-[200px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
+              onClick={() => setIsOpeningsOpen(true)}
+            >
+              <Settings className="h-4 w-4 shrink-0" />
+              <span className="hidden sm:inline ml-2">Opening Balances</span>
+            </Button>
+          </div>
         </div>
       </StickyHeader>
 

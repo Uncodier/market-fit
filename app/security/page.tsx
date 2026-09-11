@@ -10,7 +10,9 @@ import {
   Key,
   Globe,
   Bot,
+  BookOpen
 } from "@/app/components/ui/icons"
+import { Button } from "@/app/components/ui/button"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/app/components/ui/tabs"
 import { ApiKeysList } from "@/app/components/api-keys/api-keys-list"
 import { RobotSessionsList } from "@/app/components/security/robot-sessions-list"
@@ -126,13 +128,23 @@ export default function SecurityPage() {
                 Allowed Domains
               </TabsTrigger>
             </TabsList>
-            <div className="flex-1">
+            <div className="flex-1 flex justify-end items-center gap-4">
               {passwordUpdated && (
                 <div className="flex items-center text-green-500">
                   <Check className="h-4 w-4 mr-2" />
                   <span>Password successfully updated</span>
                 </div>
               )}
+              <Button
+                variant="ghost"
+                size="default"
+                className="text-muted-foreground hover:text-foreground flex items-center gap-2 !min-w-0 sm:!min-w-[155px] md:!min-w-[200px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
+                onClick={() => window.open("https://docs.makinari.com", "_blank")}
+                title="Documentation"
+              >
+                <BookOpen className="h-5 w-5 shrink-0" />
+                <span className="hidden sm:inline">Docs</span>
+              </Button>
             </div>
           </div>
         </StickyHeader>

@@ -15,7 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/app/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/app/components/ui/card"
 import { toast } from "sonner"
-import { Save, MapPin, DatabaseIcon, Settings } from "@/app/components/ui/icons"
+import { Save, MapPin, DatabaseIcon, Settings, PlusCircle } from "@/app/components/ui/icons"
 import { CreateInventoryStockDialog } from "./components/CreateInventoryStockDialog"
 import { InventoryLevelsTab } from "./components/InventoryLevelsTab"
 import { InventoryLocationsTable } from "./components/InventoryLocationsTable"
@@ -127,6 +127,17 @@ export default function InventoryPage() {
             </div>
             
             <div className="flex items-center gap-2">
+              <Button
+                variant="secondary"
+                className="hidden sm:flex items-center justify-center gap-2 !min-w-0 sm:!min-w-[155px] md:!min-w-[200px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
+                onClick={() => window.dispatchEvent(new CustomEvent("inventory:open-location-dialog"))}
+                title={t("inventory.addLocation") || "Add Location"}
+              >
+                <PlusCircle className="h-4 w-4 shrink-0" />
+                <span className="hidden sm:inline ml-2">
+                  {t("inventory.addLocation") || "Add Location"}
+                </span>
+              </Button>
               {activeTab === "levels" && (
                 <SortDropdown sortBy={sortBy} setSortBy={setSortBy} />
               )}

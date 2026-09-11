@@ -35,8 +35,8 @@ export async function GET(request: Request) {
   // Añadimos prompt=consent para forzar a Cloudflare a mostrar la pantalla 
   // de aprobación incluso si el usuario ya había aprobado la app en el pasado.
   url.searchParams.set('prompt', 'consent')
-  // Bitácora Intento 4: Formato con puntos (dns_records.read)
-  url.searchParams.set('scope', 'zone.read dns_records.read dns_records.edit offline_access')
+    // Intento 7: Eliminar por completo el scope, dejando que Cloudflare tome los del Dashboard
+  url.searchParams.delete('scope')
 
   return NextResponse.redirect(url.toString())
 }

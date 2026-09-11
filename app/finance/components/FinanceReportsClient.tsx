@@ -14,7 +14,7 @@ import { Skeleton } from "@/app/components/ui/skeleton"
 import { SyncJournalEntriesDialog } from "@/app/accounting/components/SyncJournalEntriesDialog"
 import { BaseKpiWidget } from "@/app/components/dashboard/base-kpi-widget"
 import { CalendarDateRangePicker } from "@/app/components/ui/date-range-picker"
-import { AlertTriangle, TrendingUp, Building, ListOrdered } from "@/app/components/ui/icons"
+import { AlertTriangle, TrendingUp, Building, ListOrdered, Download } from "@/app/components/ui/icons"
 import { PnlStatementCard, BalanceSheetCard } from "./FinanceReportStatements"
 import { TrialBalanceTable } from "./TrialBalanceTable"
 
@@ -299,7 +299,15 @@ export function FinanceReportsClient() {
               </TabsTrigger>
             </TabsList>
           </Tabs>
-          <div className="ml-auto">
+          <div className="ml-auto flex items-center gap-2">
+            <Button
+              variant="secondary"
+              className="flex items-center justify-center gap-2 !min-w-0 sm:!min-w-[155px] md:!min-w-[200px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
+              onClick={() => window.dispatchEvent(new CustomEvent('finance:exportReport'))}
+            >
+              <Download className="h-4 w-4 shrink-0" />
+              <span className="hidden sm:inline ml-2">Export</span>
+            </Button>
             {periodPicker}
           </div>
         </div>
