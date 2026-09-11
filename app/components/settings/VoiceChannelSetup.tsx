@@ -124,6 +124,17 @@ export function VoiceChannelSetup({
 
     setIsConnecting(true)
     try {
+      if (tab === "new") {
+        // Purchase number first
+        const purchaseResponse = await apiClient.post("/api/integrations/zavu/phone-numbers", {
+          phoneNumber: selectedNumber
+        })
+        
+        if (!purchaseResponse.success) {
+          throw new Error(purchaseResponse.error?.message || "Failed to purchase phone number")
+        }
+      }
+
       const response = await apiClient.post("/api/integrations/zavu/voice", {
         siteId,
         channelId: channel.id,
@@ -317,7 +328,9 @@ export function VoiceChannelSetup({
           onClick={handleConnect} 
           disabled={isConnecting || !selectedNumber}
         >
-          {isConnecting ? "Activating Voice Agent..." : "Activate Voice Agent"}
+          {isConnecting 
+            ? (tab === "new" ? "Purchasing & Activating..." : "Activating Voice Agent...") 
+            : (tab === "new" ? "Buy Number & Activate" : "Activate Voice Agent")}
         </Button>
       </SectionCardFooter>
     </>
