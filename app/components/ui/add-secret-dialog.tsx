@@ -1,74 +1,104 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { Button } from "@/app/components/ui/button"
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/app/components/ui/dialog"
-import { Input } from "@/app/components/ui/input"
-import { Label } from "@/app/components/ui/label"
-import { useSite } from "@/app/context/SiteContext"
-import { useToast } from "@/app/components/ui/use-toast"
-import { Key, Lock } from "@/app/components/ui/icons"
+import { useState } from "react";
+import { Button } from "@/app/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogBody,
+  DialogForm,
+} from "@/app/components/ui/dialog";
+import { Input } from "@/app/components/ui/input";
+import { Label } from "@/app/components/ui/label";
+import { useSite } from "@/app/context/SiteContext";
+import { useToast } from "@/app/components/ui/use-toast";
+import { Key, Lock } from "@/app/components/ui/icons";
 
 interface AddSecretDialogProps {
-  onSecretCreated: (id: string, name: string) => void
-  trigger?: React.ReactNode
+  onSecretCreated: (id: string, name: string) => void;
+  trigger?: React.ReactNode;
 }
 
-export function AddSecretDialog({ onSecretCreated, trigger }: AddSecretDialogProps) {
-  const [open, setOpen] = useState(false)
-  const [name, setName] = useState("")
-  const [value, setValue] = useState("")
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const { currentSite } = useSite()
-  const { toast } = useToast()
+export function AddSecretDialog({
+  onSecretCreated,
+  trigger,
+}: AddSecretDialogProps) {
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState("");
+  const [provider, setProvider] = useState("custom");
+  const [useCase, setUseCase] = useState("");
+  const [value, setValue] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const { currentSite } = useSite();
+  const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    
+    e.preventDefault();
+
     if (!currentSite) {
-      toast({ title: "Error", description: "No site selected", variant: "destructive" })
-      return
+      toast({
+        title: "Error",
+        description: "No site selected",
+        variant: "destructive",
+      });
+      return;
     }
 
-    if (!name || !value) {
-      toast({ title: "Error", description: "Name and secret value are required", variant: "destructive" })
-      return
+    if (!name || !provider || !useCase || !value) {
+      toast({
+        title: "Error",
+        description: "All fields are required",
+        variant: "destructive",
+      });
+      return;
     }
 
     try {
-      setIsSubmitting(true)
-      
-      const response = await fetch('/api/secrets', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      setIsSubmitting(true);
+
+      const response = await fetch("/api/secrets", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          operation: 'store',
+          operation: "store",
           siteId: currentSite.id,
           name: name,
-          provider: 'custom',
-          useCase: name,
-          secretValue: value
-        })
-      })
-      
-      const data = await response.json()
-      
+          provider: provider,
+          useCase: useCase,
+          secretValue: value,
+        }),
+      });
+
+      const data = await response.json();
+
       if (!response.ok || data.error) {
-        throw new Error(data.error || 'Failed to create secret')
+        throw new Error(data.error || "Failed to create secret");
       }
-      
-      toast({ title: "Success", description: "Secret created securely" })
-      onSecretCreated(data.id, name)
-      setOpen(false)
-      setName("")
-      setValue("")
+
+      toast({ title: "Success", description: "Secret created securely" });
+      onSecretCreated(data.id, name);
+      setOpen(false);
+      setName("");
+      setProvider("custom");
+      setUseCase("");
+      setValue("");
     } catch (error: any) {
-      console.error("Error creating secret:", error)
-      toast({ title: "Error", description: error.message, variant: "destructive" })
+      console.error("Error creating secret:", error);
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
     } finally {
-      setIsSubmitting(false)
+      setIsSubmitting(false);
     }
-  }
+  };
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -80,50 +110,81 @@ export function AddSecretDialog({ onSecretCreated, trigger }: AddSecretDialogPro
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[425px]">
-        <form onSubmit={handleSubmit}>
+      <DialogContent size="sm" flush>
+        <DialogForm onSubmit={handleSubmit}>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Lock className="h-5 w-5 text-primary" />
-              Add Secret
+              Add New Secret
             </DialogTitle>
             <DialogDescription>
-              Store a secure token or API key. The value will be encrypted and cannot be viewed again.
+              This secret will be encrypted and securely stored.
             </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label htmlFor="name">Nombre del Secreto</Label>
+          <DialogBody className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="name">Environment Variable Name</Label>
               <Input
                 id="name"
                 value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="e.g., OPENAI_API_KEY"
+                onChange={(e) => {
+                  setName(e.target.value);
+                  // Auto-fill use case if it's empty
+                  if (!useCase)
+                    setUseCase(
+                      e.target.value.toLowerCase().replace(/[^a-z0-9]/g, "_"),
+                    );
+                }}
+                placeholder="e.g. STRIPE_API_KEY"
                 required
               />
             </div>
-            <div className="grid gap-2">
-              <Label htmlFor="value">Valor del Secreto</Label>
+            <div className="space-y-2">
+              <Label htmlFor="provider">Provider</Label>
+              <Input
+                id="provider"
+                value={provider}
+                onChange={(e) => setProvider(e.target.value)}
+                placeholder="e.g. stripe, openai, custom"
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="useCase">Use Case</Label>
+              <Input
+                id="useCase"
+                value={useCase}
+                onChange={(e) => setUseCase(e.target.value)}
+                placeholder="e.g. payments, llm"
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="value">Secret Value</Label>
               <Input
                 id="value"
                 type="password"
                 value={value}
                 onChange={(e) => setValue(e.target.value)}
-                placeholder="Enter the secret value"
+                placeholder="sk_..."
                 required
               />
             </div>
-          </div>
+          </DialogBody>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setOpen(false)}
+            >
               Cancel
             </Button>
             <Button type="submit" disabled={isSubmitting}>
               {isSubmitting ? "Saving..." : "Save Secret"}
             </Button>
           </DialogFooter>
-        </form>
+        </DialogForm>
       </DialogContent>
     </Dialog>
-  )
+  );
 }
