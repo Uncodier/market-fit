@@ -2005,6 +2005,12 @@ html.dark [role="checkbox"][data-state="indeterminate"]:hover:not(:disabled) {
     0 -0.5px 0 rgba(255, 255, 255, 0.18);
 }
 
+@media (min-width: 768px) {
+  .btn-primary {
+    min-width: 240px;
+  }
+}
+
 .btn-primary svg {
   filter:
     drop-shadow(0 1px 0.6px rgba(0, 0, 0, 0.45))
