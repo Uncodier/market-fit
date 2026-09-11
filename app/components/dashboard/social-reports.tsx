@@ -3,11 +3,12 @@
 import React, { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/app/components/ui/card"
 import { useSite } from "@/app/context/SiteContext"
-import { getSocialPerformanceData } from "./social-actions"
-import { Activity, Eye, MessageCircle, BarChart } from "@/app/components/ui/icons"
+import { getSocialPerformanceData, getTopCommentersData } from "./social-actions"
+import { Activity, Eye, MessageCircle, BarChart, Users } from "@/app/components/ui/icons"
 import { getNetworkIcon } from "@/app/content/content-shared"
 import { Skeleton } from "@/app/components/ui/skeleton"
 import { EmptyCard } from "@/app/components/ui/empty-card"
+import { Avatar, AvatarFallback, AvatarImage } from "@/app/components/ui/avatar"
 
 interface SocialReportsProps {
   startDate: Date
@@ -38,6 +39,7 @@ function KpiCard({ title, value, icon: Icon, isLoading }: { title: string; value
 export function SocialReports({ startDate, endDate }: SocialReportsProps) {
   const { currentSite } = useSite()
   const [data, setData] = useState<Awaited<ReturnType<typeof getSocialPerformanceData>> | null>(null)
+  const [topCommenters, setTopCommenters] = useState<Awaited<ReturnType<typeof getTopCommentersData>>["data"]>([])
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
@@ -48,11 +50,17 @@ export function SocialReports({ startDate, endDate }: SocialReportsProps) {
 
     let cancelled = false
     setIsLoading(true)
-    getSocialPerformanceData(currentSite.id, startDate, endDate).then((res) => {
+    
+    Promise.all([
+      getSocialPerformanceData(currentSite.id, startDate, endDate),
+      getTopCommentersData(currentSite.id, startDate, endDate)
+    ]).then(([res, commentersRes]) => {
       if (cancelled) return
       setData(res)
+      setTopCommenters(commentersRes.data || [])
       setIsLoading(false)
     })
+    
     return () => {
       cancelled = true
     }
@@ -68,30 +76,52 @@ export function SocialReports({ startDate, endDate }: SocialReportsProps) {
           <KpiCard title="Comments" isLoading icon={MessageCircle} />
         </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>By Network</CardTitle>
-            <CardDescription>Performance breakdown across connected networks</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {[1, 2].map((i) => (
-                <div key={i} className="flex items-center justify-between rounded-lg bg-muted/30 p-3">
-                  <div className="flex items-center gap-2">
-                    <Skeleton className="h-4 w-4 rounded-full" />
-                    <Skeleton className="h-4 w-20" />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>By Network</CardTitle>
+              <CardDescription>Performance breakdown across connected networks</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {[1, 2].map((i) => (
+                  <div key={i} className="flex items-center justify-between rounded-lg bg-muted/30 p-3">
+                    <div className="flex items-center gap-2">
+                      <Skeleton className="h-4 w-4 rounded-full" />
+                      <Skeleton className="h-4 w-20" />
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <Skeleton className="h-3 w-12" />
+                      <Skeleton className="h-3 w-12" />
+                      <Skeleton className="h-3 w-12" />
+                      <Skeleton className="h-3 w-12" />
+                    </div>
                   </div>
-                  <div className="flex items-center gap-4">
-                    <Skeleton className="h-3 w-12" />
-                    <Skeleton className="h-3 w-12" />
-                    <Skeleton className="h-3 w-12" />
-                    <Skeleton className="h-3 w-12" />
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Top Commenters</CardTitle>
+              <CardDescription>Most active users engaging with your content</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="flex items-center justify-between rounded-lg bg-muted/30 p-3">
+                    <div className="flex items-center gap-3">
+                      <Skeleton className="h-8 w-8 rounded-full" />
+                      <Skeleton className="h-4 w-24" />
+                    </div>
+                    <Skeleton className="h-6 w-12 rounded-md" />
                   </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
 
         <Card>
           <CardHeader>
@@ -145,40 +175,80 @@ export function SocialReports({ startDate, endDate }: SocialReportsProps) {
         <KpiCard title="Comments" value={numberFormatter.format(kpis.totalComments)} icon={MessageCircle} />
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>By Network</CardTitle>
-          <CardDescription>Performance breakdown across connected networks</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {networks.length > 0 ? (
-            <div className="space-y-3">
-              {networks.map((network) => (
-                <div key={network.network} className="flex items-center justify-between rounded-lg bg-muted/30 p-3">
-                  <div className="flex items-center gap-2 capitalize">
-                    {getNetworkIcon(network.network)}
-                    <span className="text-sm font-medium">{network.network}</span>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>By Network</CardTitle>
+            <CardDescription>Performance breakdown across connected networks</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {networks.length > 0 ? (
+              <div className="space-y-3">
+                {networks.map((network) => (
+                  <div key={network.network} className="flex items-center justify-between rounded-lg bg-muted/30 p-3">
+                    <div className="flex items-center gap-2 capitalize">
+                      {getNetworkIcon(network.network)}
+                      <span className="text-sm font-medium">{network.network}</span>
+                    </div>
+                    <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                      <span>{numberFormatter.format(network.views)} views</span>
+                      <span>{numberFormatter.format(network.reach)} reach</span>
+                      <span>{numberFormatter.format(network.likes)} likes</span>
+                      <span>{numberFormatter.format(network.comments)} comments</span>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                    <span>{numberFormatter.format(network.views)} views</span>
-                    <span>{numberFormatter.format(network.reach)} reach</span>
-                    <span>{numberFormatter.format(network.likes)} likes</span>
-                    <span>{numberFormatter.format(network.comments)} comments</span>
+                ))}
+              </div>
+            ) : (
+              <EmptyCard
+                icon={<Activity className="h-8 w-8" />}
+                title="No network data"
+                description="There is no performance data by network for this period."
+                showShadow={false}
+                variant="simple"
+              />
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Top Commenters</CardTitle>
+            <CardDescription>Most active users engaging with your content</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {topCommenters.length > 0 ? (
+              <div className="space-y-3">
+                {topCommenters.map((commenter) => (
+                  <div key={commenter.id} className="flex items-center justify-between rounded-lg bg-muted/30 p-3">
+                    <div className="flex items-center gap-3">
+                      <Avatar className="h-8 w-8">
+                        <AvatarImage src={commenter.avatar || undefined} alt={commenter.name} />
+                        <AvatarFallback className="bg-primary/10 text-primary text-xs">
+                          {commenter.name.substring(0, 2).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <span className="text-sm font-medium">{commenter.name}</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground font-medium bg-background px-2 py-1 rounded-md border">
+                      <MessageCircle className="h-3 w-3" />
+                      <span>{numberFormatter.format(commenter.count)}</span>
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <EmptyCard
-              icon={<Activity className="h-8 w-8" />}
-              title="No network data"
-              description="There is no performance data by network for this period."
-              showShadow={false}
-              variant="simple"
-            />
-          )}
-        </CardContent>
-      </Card>
+                ))}
+              </div>
+            ) : (
+              <EmptyCard
+                icon={<Users className="h-8 w-8" />}
+                title="No commenters found"
+                description="There are no comments for the selected time period."
+                showShadow={false}
+                variant="simple"
+              />
+            )}
+          </CardContent>
+        </Card>
+      </div>
 
       <Card>
         <CardHeader>

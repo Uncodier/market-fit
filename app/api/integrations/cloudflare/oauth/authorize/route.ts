@@ -35,9 +35,10 @@ export async function GET(request: Request) {
   // Añadimos prompt=consent para forzar a Cloudflare a mostrar la pantalla 
   // de aprobación incluso si el usuario ya había aprobado la app en el pasado.
   url.searchParams.set('prompt', 'consent')
-  // No enviamos el parámetro scope. Enviaremos sólo lo configurado por defecto.
-  // Ya que cualquier intento de enviarlo rebota si no es EXACTAMENTE igual al listado interno.
-  // url.searchParams.set('scope', 'zone:read zone:write')
+  // Forzamos que se envíe "offline_access" para que la respuesta pueda generar un Refresh Token.
+  // Los permisos reales a conceder (Zone, DNS, etc.) se definen en el dashboard de Cloudflare.
+  // Mandar un scope extra que Cloudflare rechaza abortará el proceso. offline_access es el único universal de OIDC.
+  url.searchParams.set('scope', 'offline_access')
 
   return NextResponse.redirect(url.toString())
 }
