@@ -1,5 +1,4 @@
 import { Metadata } from 'next'
-import { Toaster } from "sonner"
 import { SiteProvider } from "@/app/context/SiteContext"
 import "@/app/globals.css"
 
@@ -18,7 +17,6 @@ export default function TeleprompterLayout({
       <SiteProvider>
         {children}
       </SiteProvider>
-      <Toaster />
     </div>
   )
 } 

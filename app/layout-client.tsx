@@ -5,7 +5,6 @@ import { TopBar } from "./components/navigation/TopBar"
 import { usePathname, useSearchParams } from "next/navigation"
 import { useState, useEffect } from "react"
 import { cn } from "@/lib/utils"
-import { Toaster } from "./components/ui/sonner"
 import { createClient } from "@/lib/supabase/client"
 import { type Segment } from "./requirements/types"
 import { useLayout } from "./context/LayoutContext"
@@ -257,7 +256,6 @@ function LayoutClientInner({
             {children}
           </main>
         </div>
-        <Toaster />
       </div>
     )
   }
@@ -329,7 +327,6 @@ function LayoutClientInner({
             </div>
           </div>
         )}
-        <Toaster />
       </div>
   )
 }
