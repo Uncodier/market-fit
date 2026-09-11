@@ -29,12 +29,14 @@ import { VoiceChannelSetup } from "./VoiceChannelSetup"
 import { SmsChannelSetup } from "./SmsChannelSetup"
 import { useZavuInvitationSync } from "./use-zavu-invitation-sync"
 import { WhatsAppIcon, MessengerIcon, TelegramIcon } from "@/app/components/ui/social-icons"
-import { Mail, MessageSquare, Phone } from "@/app/components/ui/icons"
+import { Mail, MessageSquare, Phone, Bot } from "@/app/components/ui/icons"
 
 import { countAgentChannels, getAgentChannelLimit, canConnectAgentChannel } from "@/lib/billing-limits"
 import { useSite } from "@/app/context/SiteContext"
 import { useBillingLimit } from "@/app/context/BillingLimitContext"
 import { disconnectZavuChannel } from "./disconnect-remote-accounts"
+import { useRouter } from "next/navigation"
+import { createClient } from "@/lib/supabase/client"
 
 const CHANNEL_TYPES = [
   { value: "whatsapp", label: "WhatsApp", icon: WhatsAppIcon },
@@ -66,7 +68,31 @@ interface SupportChannelsSectionProps {
 export function SupportChannelsSection({ active, siteId, onSave }: SupportChannelsSectionProps) {
   const form = useFormContext<SiteFormValues>()
   const { currentSite } = useSite()
+  const router = useRouter()
   const { showBillingLimit, showBillingLimitFromError } = useBillingLimit()
+  
+  const handleConfigureAgent = async () => {
+    if (!currentSite?.id) return
+    try {
+      const supabase = createClient()
+      const { data: agent } = await supabase
+        .from("agents")
+        .select("id, name")
+        .eq("site_id", currentSite.id)
+        .eq("role", "Customer Support")
+        .single()
+
+      if (agent?.id) {
+        router.push(`/agents/${agent.id}`)
+      } else {
+        toast.error("Customer Support agent not found")
+      }
+    } catch (err) {
+      console.error(err)
+      toast.error("Error finding Customer Support agent")
+    }
+  }
+
   const openAccountLimit = () => {
     showBillingLimit({
       kind: "accounts",
@@ -307,24 +333,30 @@ export function SupportChannelsSection({ active, siteId, onSave }: SupportChanne
 
                 {isConnected && hasType && (
                   <SectionCardContent className="pt-0">
-                    <div className="flex items-center gap-4 w-full p-4 bg-muted/20 rounded-lg border dark:border-white/5 border-black/5">
-                      <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center flex-shrink-0 border dark:border-white/5 border-black/5">
-                        {getChannelIcon(type, 24)}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-base font-medium truncate">
-                          {type === "telegram"
-                            ? `@${channel.metadata?.bot_username || "Bot"}`
-                            : type === "email"
-                              ? channel.metadata?.from_address || label
-                              : label}
-                        </p>
-                        <div className="flex items-center gap-2 mt-1">
-                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
-                            Connected
-                          </span>
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-4 w-full p-4 bg-muted/20 rounded-lg border dark:border-white/5 border-black/5 justify-between">
+                      <div className="flex items-center gap-4 min-w-0">
+                        <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center flex-shrink-0 border dark:border-white/5 border-black/5">
+                          {getChannelIcon(type, 24)}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-base font-medium truncate">
+                            {type === "telegram"
+                              ? `@${channel.metadata?.bot_username || "Bot"}`
+                              : type === "email"
+                                ? channel.metadata?.from_address || label
+                                : label}
+                          </p>
+                          <div className="flex items-center gap-2 mt-1">
+                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
+                              Connected
+                            </span>
+                          </div>
                         </div>
                       </div>
+                      <Button variant="outline" size="sm" type="button" onClick={handleConfigureAgent} className="w-full sm:w-auto shrink-0">
+                        <Bot className="w-4 h-4 mr-2" />
+                        Edit Agent
+                      </Button>
                     </div>
                   </SectionCardContent>
                 )}

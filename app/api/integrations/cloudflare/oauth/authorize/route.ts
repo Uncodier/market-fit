@@ -32,7 +32,9 @@ export async function GET(request: Request) {
   url.searchParams.set('response_type', 'code')
   url.searchParams.set('redirect_uri', redirectUri)
   url.searchParams.set('state', state)
-  // Requerido por Cloudflare para definir los permisos (scopes) de la autorización.
+  // Añadimos prompt=consent para forzar a Cloudflare a mostrar la pantalla 
+  // de aprobación incluso si el usuario ya había aprobado la app en el pasado.
+  url.searchParams.set('prompt', 'consent')
   // We MUST provide the EXACT string from the dashboard or it fails silently or returns an error.
   url.searchParams.set('scope', 'dns_records:edit dns_records:read zone:read')
 
