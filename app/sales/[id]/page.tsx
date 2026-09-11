@@ -202,11 +202,11 @@ export default function SaleDetailPage(props: { params: Promise<{ id: string }> 
     setSending(true)
     try {
       const res = await sendSaleInvoice(sale.id)
+
       if (res.error) toast.error(res.error)
       else {
-        toast.success(
-          t("sales.detail.sentEmail") || "Invoice emailed with PDF attached"
-        )
+        toast.success(t("sales.detail.sentEmail") || "Invoice emailed with PDF attached")
+        
         if (res.data) {
           setSale({
             ...sale,

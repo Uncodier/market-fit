@@ -577,7 +577,7 @@
   "marketplace.success.desc": "Gracias por tu compra. Te hemos enviado un correo de confirmación con los detalles de tu pedido.",
   "marketplace.success.title": "Pedido confirmado",
   "marketplace.success.viewPurchases": "Ver mis compras",
-  "orders.detail.payNow": "Pagar ahora",
+  "orders.detail.payOnline": "Pagar en línea",
   "pdp.aboutThisEvent": "Acerca de este evento",
   "pdp.accessPassBadge": "Pase de acceso",
   "pdp.activeSubscription": "Suscripción activa",

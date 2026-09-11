@@ -58,6 +58,7 @@ import {
   Workflow,
   ThumbsUp,
   Key,
+  Wallet,
 } from "@/app/components/ui/icons"
 
 export const AREA_ICON: Record<WorkspaceArea, React.ComponentType<any>> = {
@@ -125,7 +126,7 @@ export const NAV_ITEM_ICON: Record<string, React.ComponentType<any>> = {
   financeReports: Building,
   journalEntries: ClipboardList,
   chartOfAccounts: FileText,
-  payments: DollarSign,
+  payments: Wallet,
   settingsGeneral: Settings,
   company: Building,
   marketplace: Store,

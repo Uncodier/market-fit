@@ -12,7 +12,7 @@ import { notifyPermissionDenied } from "@/lib/permissions/notify"
 import { PERMISSION_DENIED_TITLE } from "@/lib/permissions/types"
 
 const buttonVariants = cva(
-  "font-inter inline-flex items-center justify-center whitespace-nowrap rounded-full overflow-hidden select-none text-sm font-medium transition-all active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50",
+  "font-inter inline-flex items-center justify-center whitespace-nowrap rounded-full select-none text-sm font-medium transition-all active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50",
   {
     variants: {
       variant: {
@@ -92,10 +92,11 @@ export interface ButtonProps
     VariantProps<typeof buttonVariants> {
   asChild?: boolean
   tint?: "default" | "destructive" | "whatsapp"
+  adornment?: React.ReactNode
 }
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant, size, asChild = false, tint, children, onClick, ...props }, ref) => {
+  ({ className, variant, size, asChild = false, tint, children, onClick, adornment, ...props }, ref) => {
     const isPrimary = variant === undefined || variant === "default"
     const wellTintClass = tint === "destructive" ? "btn-tint-red" : tint === "whatsapp" ? "btn-tint-whatsapp" : undefined
     const setGlassNode = useBtnGlassMotion(isPrimary)
@@ -170,9 +171,12 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
             style={style}
           >
             <Slottable>{children}</Slottable>
-            <span className="btn-glass-cursor" aria-hidden="true" />
-            <span className="btn-glass-rim" aria-hidden="true" />
+            <span className="absolute inset-0 overflow-hidden pointer-events-none" style={{ borderRadius: "inherit" }}>
+              <span className="btn-glass-cursor" aria-hidden="true" />
+              <span className="btn-glass-rim" aria-hidden="true" />
+            </span>
           </Slot>
+          {adornment}
         </span>
       )
     }
@@ -187,6 +191,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
           style={style}
         >
           {children}
+          {adornment}
         </button>
       )
     }
@@ -202,9 +207,12 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
           style={style}
         >
           {children}
-          <span className="btn-glass-cursor" aria-hidden="true" />
-          <span className="btn-glass-rim" aria-hidden="true" />
+          <span className="absolute inset-0 overflow-hidden pointer-events-none" style={{ borderRadius: "inherit" }}>
+            <span className="btn-glass-cursor" aria-hidden="true" />
+            <span className="btn-glass-rim" aria-hidden="true" />
+          </span>
         </button>
+        {adornment}
       </span>
     )
   }

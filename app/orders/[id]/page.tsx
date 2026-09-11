@@ -216,7 +216,8 @@ export default function OrderDetail(props: { params: Promise<{ id: string }> }) 
     window.open(`/order-pdf/${order.id}`, "_blank")
   }
 
-  const handleSendEmail = async () => {
+  const handleSend = async () => {
+    if (!order || !currentSite) return
     if (!(order as any).leads?.email) {
       toast.error(
         t("orders.detail.sendMissingEmail") ||
@@ -227,11 +228,11 @@ export default function OrderDetail(props: { params: Promise<{ id: string }> }) 
     setSending(true)
     try {
       const res = await sendSaleOrder(order.id)
+
       if (res.error) toast.error(res.error)
       else {
-        toast.success(
-          t("orders.detail.sentEmail") || "Order emailed with PDF attached"
-        )
+        toast.success(t("orders.detail.sentEmail") || "Order emailed with PDF attached")
+        
         if (res.data) {
           setOrder({
             ...order,
@@ -343,14 +344,10 @@ export default function OrderDetail(props: { params: Promise<{ id: string }> }) 
                       size="sm"
                       onClick={handleOpenPayment}
                       disabled={isLoadingSale}
-                      className="flex items-center gap-1"
+                      className="flex items-center gap-1 text-green-600 hover:bg-green-50 hover:text-green-700"
                     >
-                      {isLoadingSale ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <CreditCard className="h-4 w-4" />
-                      )}
-                      {t("orders.detail.payNow") || "Pay Now"}
+                      <CreditCard className="h-4 w-4" />
+                      {t("orders.detail.payOnline") || "Pay Online"}
                     </Button>
                     <div className="w-px h-6 bg-border mx-1" />
                   </>
@@ -360,7 +357,7 @@ export default function OrderDetail(props: { params: Promise<{ id: string }> }) 
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={handleSendEmail}
+                      onClick={handleSend}
                       disabled={sending}
                       className="flex items-center gap-1"
                     >

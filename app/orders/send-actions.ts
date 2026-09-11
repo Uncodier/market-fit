@@ -1,10 +1,12 @@
 "use server"
 
 import { createClient, createServiceClient } from "@/lib/supabase/server"
+import Stripe from 'stripe'
 import {
   buildPublicDocUrl,
   generatePublicAccessToken,
   isValidPublicAccessToken,
+  buildPublicDocPath,
 } from "@/app/documents/public-token"
 import {
   buildDocumentEmailSubject,
@@ -124,6 +126,7 @@ export async function getOrderByPublicToken(token: string) {
   }
 }
 
+
 export async function sendSaleOrder(id: string) {
   const supabase = await createClient()
   // Disambiguate site_id vs owner_site_id FKs to sites.
@@ -175,6 +178,84 @@ export async function sendSaleOrder(id: string) {
   }
 
   const viewLink = buildPublicDocUrl("so", tokenRes.token)
+  const appUrl = (process.env.NEXT_PUBLIC_APP_URL || "https://makinari.com").replace(/\/$/, "")
+  const returnUrl = `${appUrl}${buildPublicDocPath("so", tokenRes.token)}`
+
+  let checkoutLink: string | null = null
+  if (sale && Number(sale.amount_due) > 0) {
+    try {
+      const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+        apiVersion: '2025-05-28.basil',
+      })
+      const orderCurrency = (order.currency || 'USD').toLowerCase()
+      const zeroDecimalCurrencies = ['jpy', 'bif', 'clp', 'djf', 'gnf', 'krw', 'mga', 'pyg', 'rwf', 'ugx', 'vnd', 'vuv', 'xaf', 'xof', 'xpf'];
+      const isZeroDecimal = zeroDecimalCurrencies.includes(orderCurrency);
+      
+      const lineItems = (order.items || []).map((item: any) => {
+        const imageUrl = item.catalog_item?.image_url
+        const images = typeof imageUrl === 'string' && /^https?:\/\//i.test(imageUrl) ? [imageUrl] : undefined
+        const rawDescription = typeof item.description === 'string' ? item.description.trim() : ''
+        const description = rawDescription ? rawDescription.slice(0, 500) : undefined
+
+        return {
+          price_data: {
+            currency: orderCurrency,
+            product_data: {
+              name: item.name,
+              ...(description ? { description } : {}),
+              ...(images ? { images } : {}),
+            },
+            unit_amount: isZeroDecimal
+              ? Math.round(item.unit_price ?? item.unitPrice ?? 0)
+              : Math.round((item.unit_price ?? item.unitPrice ?? 0) * 100),
+          },
+          quantity: item.quantity,
+        }
+      })
+
+      if (order.shipping_cost && order.shipping_cost > 0) {
+        lineItems.push({
+          price_data: {
+            currency: orderCurrency,
+            product_data: { name: 'Shipping' },
+            unit_amount: isZeroDecimal ? Math.round(order.shipping_cost) : Math.round(order.shipping_cost * 100),
+          },
+          quantity: 1,
+        })
+      }
+
+      if (order.tax_total && order.tax_total > 0) {
+        lineItems.push({
+          price_data: {
+            currency: orderCurrency,
+            product_data: { name: 'Tax' },
+            unit_amount: isZeroDecimal ? Math.round(order.tax_total) : Math.round(order.tax_total * 100),
+          },
+          quantity: 1,
+        })
+      }
+      const session = await stripe.checkout.sessions.create({
+        payment_method_types: ['card'],
+        line_items: lineItems,
+        mode: 'payment',
+        success_url: `${returnUrl}?success=true&order_id=${order.id}`,
+        cancel_url: `${returnUrl}?canceled=true`,
+        customer_email: toEmail,
+        metadata: {
+          type: 'sale_order',
+          site_id: siteId,
+          order_id: order.id,
+          sale_id: order.sale_id,
+          ...(order.buyer_user_id ? { buyer_user_id: order.buyer_user_id } : {}),
+          ...(sale?.lead_id ? { lead_id: sale.lead_id } : {})
+        }
+      })
+      if (session.url) checkoutLink = session.url
+    } catch (err) {
+      console.error('Stripe checkout error during sendSaleOrder:', err)
+    }
+  }
+
   const docRef = String(order.order_number || order.id).substring(0, 12)
   const currency = order.currency || "USD"
   const totalLabel = formatDocumentMoney(Number(order.total) || 0, currency, locale)
@@ -219,6 +300,7 @@ export async function sendSaleOrder(id: string) {
     docRef,
     totalLabel,
     viewLink,
+    checkoutLink,
     pdfBase64: uint8ToBase64(pdfBytes),
     pdfFilename: `order-${docRef}.pdf`,
     apiKey: mailConfig.apiKey,
@@ -244,3 +326,4 @@ export async function sendSaleOrder(id: string) {
 
   return { success: true, data: { ...updated, leads: lead }, emailed: true }
 }
+
