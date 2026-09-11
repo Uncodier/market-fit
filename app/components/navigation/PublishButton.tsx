@@ -14,6 +14,7 @@ import { Input } from "@/app/components/ui/input";
 import { Label } from "@/app/components/ui/label";
 import { toast } from "sonner";
 import { secretsService } from "@/app/services/secrets-service";
+import { apiClient } from "@/app/services/api-client-service";
 
 export function PublishButton({ siteId, previewUrl }: { siteId: string, previewUrl: string }) {
   const { t } = useLocalization();
@@ -38,11 +39,11 @@ export function PublishButton({ siteId, previewUrl }: { siteId: string, previewU
 
     setIsSyncing(true);
     try {
-      // 1. Add domain to Vercel
-      const vercelRes = await fetch('/api/integrations/vercel/domain', {
+      // 1. Add domain to Vercel via internal API route
+      const vercelRes = await fetch('/api/robots/instance/domain', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ domain: customDomain })
+        body: JSON.stringify({ domain: customDomain, siteId })
       });
       
       const vercelData = await vercelRes.json();

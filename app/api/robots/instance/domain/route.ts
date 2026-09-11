@@ -1,21 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { getAuthInfo } from '@/app/context/auth-context-server'
 
 export async function POST(req: NextRequest) {
   try {
-    const supabase = await createClient();
-  const { data: { user: auth } } = await supabase.auth.getUser();
+    const auth = await getAuthInfo()
     if (!auth) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     const body = await req.json()
-    const { domain } = body
+    const { domain, siteId } = body
 
     if (!domain) {
       return NextResponse.json({ error: 'Missing required parameters (domain)' }, { status: 400 })
     }
 
+    // In a real environment, VERCEL_API_TOKEN and VERCEL_PROJECT_ID 
+    // should be loaded securely in the environment variables.
     const vercelToken = process.env.VERCEL_API_TOKEN
     const projectId = process.env.VERCEL_PROJECT_ID
     const teamId = process.env.VERCEL_TEAM_ID
