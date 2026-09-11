@@ -6,6 +6,7 @@ import { useSite } from "@/app/context/SiteContext"
 import { getContentCommentConversations, getContentPerformanceForItem, type ContentCommentConversation } from "@/app/components/dashboard/social-actions"
 import { Activity, Eye, Share, MessageCircle, Heart, BarChart } from "@/app/components/ui/icons"
 import { getNetworkIcon } from "../content-shared"
+import { Skeleton } from "@/app/components/ui/skeleton"
 
 interface ContentPerformancePanelProps {
   contentId: string
@@ -34,7 +35,7 @@ function formatEngagement(rate: number | null | undefined) {
     .format(n > 1 ? n / 100 : n)
 }
 
-function KpiRow({ title, value, icon: Icon }: { title: string; value: string; icon: React.ComponentType<{ className?: string }> }) {
+function KpiRow({ title, value, icon: Icon }: { title: string; value: React.ReactNode; icon: React.ComponentType<{ className?: string }> }) {
   return (
     <div className="flex items-center justify-between rounded-lg bg-muted/40 px-3 py-2.5">
       <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -82,19 +83,31 @@ export function ContentPerformancePanel({ contentId, outstandPostId }: ContentPe
   return (
     <div className="p-5 space-y-5">
       <div className="space-y-2">
-        <KpiRow title="Views" value={isLoading ? "—" : formatCount(metrics.views)} icon={Eye} />
-        <KpiRow title="Reach" value={isLoading ? "—" : formatCount(metrics.reach)} icon={BarChart} />
-        <KpiRow title="Engagement" value={isLoading ? "—" : formatEngagement(metrics.engagement_rate)} icon={Activity} />
-        <KpiRow title="Likes" value={isLoading ? "—" : formatCount(metrics.likes)} icon={Heart} />
-        <KpiRow title="Comments" value={isLoading ? "—" : formatCount(metrics.comments)} icon={MessageCircle} />
-        <KpiRow title="Shares" value={isLoading ? "—" : formatCount(metrics.shares)} icon={Share} />
+        <KpiRow title="Views" value={isLoading ? <Skeleton className="h-4 w-12" /> : formatCount(metrics.views)} icon={Eye} />
+        <KpiRow title="Reach" value={isLoading ? <Skeleton className="h-4 w-12" /> : formatCount(metrics.reach)} icon={BarChart} />
+        <KpiRow title="Engagement" value={isLoading ? <Skeleton className="h-4 w-12" /> : formatEngagement(metrics.engagement_rate)} icon={Activity} />
+        <KpiRow title="Likes" value={isLoading ? <Skeleton className="h-4 w-12" /> : formatCount(metrics.likes)} icon={Heart} />
+        <KpiRow title="Comments" value={isLoading ? <Skeleton className="h-4 w-12" /> : formatCount(metrics.comments)} icon={MessageCircle} />
+        <KpiRow title="Shares" value={isLoading ? <Skeleton className="h-4 w-12" /> : formatCount(metrics.shares)} icon={Share} />
       </div>
 
       <div>
         <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">
           By Network
         </h4>
-        {networks.length > 0 ? (
+        {isLoading ? (
+          <div className="space-y-2">
+            {[1, 2].map((i) => (
+              <div key={i} className="flex items-center justify-between rounded-lg bg-muted/40 px-3 py-2.5">
+                <div className="flex items-center gap-2">
+                  <Skeleton className="h-4 w-4 rounded-full" />
+                  <Skeleton className="h-4 w-16" />
+                </div>
+                <Skeleton className="h-4 w-24" />
+              </div>
+            ))}
+          </div>
+        ) : networks.length > 0 ? (
           <div className="space-y-2">
             {networks.map((acc: any, i: number) => (
               <div key={i} className="flex items-center justify-between rounded-lg bg-muted/40 px-3 py-2.5">
@@ -120,7 +133,20 @@ export function ContentPerformancePanel({ contentId, outstandPostId }: ContentPe
         <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">
           Comments
         </h4>
-        {conversations.length > 0 ? (
+        {isLoading ? (
+          <div className="space-y-2">
+            {[1, 2].map((i) => (
+              <div key={i} className="block rounded-lg bg-muted/40 px-3 py-2.5">
+                <div className="flex items-center justify-between gap-2">
+                  <Skeleton className="h-4 w-32" />
+                  <Skeleton className="h-3.5 w-3.5 rounded-full" />
+                </div>
+                <Skeleton className="h-3 w-full mt-2" />
+                <Skeleton className="h-3 w-2/3 mt-1" />
+              </div>
+            ))}
+          </div>
+        ) : conversations.length > 0 ? (
           <div className="space-y-2">
             {conversations.map((thread) => (
               <Link
