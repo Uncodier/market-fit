@@ -33,7 +33,8 @@ export async function GET(request: Request) {
   url.searchParams.set('redirect_uri', redirectUri)
   url.searchParams.set('state', state)
   // Requerido por Cloudflare para definir los permisos (scopes) de la autorización.
-  url.searchParams.set('scope', 'zone:read dns_records:read dns_records:edit')
+  // We MUST provide the EXACT string from the dashboard or it fails silently or returns an error.
+  url.searchParams.set('scope', 'dns_records:edit dns_records:read zone:read')
 
   return NextResponse.redirect(url.toString())
 }
