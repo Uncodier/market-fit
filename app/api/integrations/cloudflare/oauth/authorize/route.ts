@@ -35,9 +35,8 @@ export async function GET(request: Request) {
   // Añadimos prompt=consent para forzar a Cloudflare a mostrar la pantalla 
   // de aprobación incluso si el usuario ya había aprobado la app en el pasado.
   url.searchParams.set('prompt', 'consent')
-  // Requerido por Cloudflare para definir los permisos (scopes) de la autorización.
-  // We MUST provide the EXACT string from the dashboard or it fails silently or returns an error.
-  // url.searchParams.set('scope', 'dns.edit dns.read zone.read')
+  // Cloudflare actually requires the scopes in the URL for them to appear on the consent screen.
+  url.searchParams.set('scope', 'zone:read dns_records:read dns_records:write')
 
   return NextResponse.redirect(url.toString())
 }
