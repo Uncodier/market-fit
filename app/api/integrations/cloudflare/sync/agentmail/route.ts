@@ -48,7 +48,9 @@ export async function POST(req: NextRequest) {
       }
     })
 
+    console.log("Records mapped for CF:", cfRecords)
     const results = await addDnsRecords(zone.id, cfRecords, token)
+    console.log("CF Results:", results)
 
     return NextResponse.json({ success: true, results })
   } catch (error: any) {

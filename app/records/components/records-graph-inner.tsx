@@ -106,14 +106,21 @@ export function RecordsGraphInner({ graphData, onNodeClick, onReady }: RecordsGr
     if (!fg) return
     fg.d3Force?.("link")?.distance(220)
     fg.d3Force?.("charge")?.strength(-420)
-    fg.d3Force?.("center")?.(dimensions.width / 2, dimensions.height / 2)
-  }, [dimensions.width, dimensions.height, graphData.nodes.length])
+    // ForceGraph2D uses (0,0) as logical center by default.
+  }, [])
 
+  const prevNodesLength = useRef(-1)
   useEffect(() => {
     if (!fgRef.current || graphData.nodes.length === 0) return
-    const timer = setTimeout(() => fgRef.current?.zoomToFit?.(400, 80), 350)
-    return () => clearTimeout(timer)
-  }, [graphData.nodes.length, graphData.links.length, dimensions.width, dimensions.height])
+    
+    // Only zoom to fit when the nodes list length changes, to avoid 
+    // jumping and looping animations when async links load
+    if (prevNodesLength.current !== graphData.nodes.length) {
+      prevNodesLength.current = graphData.nodes.length
+      const timer = setTimeout(() => fgRef.current?.zoomToFit?.(400, 80), 500)
+      return () => clearTimeout(timer)
+    }
+  }, [graphData.nodes.length])
 
   useEffect(() => {
     if (!onReady) return

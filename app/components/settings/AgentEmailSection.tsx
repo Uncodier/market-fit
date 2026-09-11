@@ -99,6 +99,20 @@ export function AgentEmailSection({ active, siteId, onSave }: AgentEmailSectionP
     checkSecrets()
   }, [siteId])
 
+  // Trigger sync if coming back from oauth
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('cloudflare_sync_pending') === 'true' && isCloudflareConnected && hasDnsRecords && !isSyncingCloudflare) {
+      // Clean url to avoid multiple syncs
+      const newUrl = window.location.pathname + window.location.search.replace(/&?cloudflare_sync_pending=true/, '')
+      window.history.replaceState({}, document.title, newUrl)
+      
+      // Auto trigger sync
+      handleSyncCloudflare()
+    }
+  }, [isCloudflareConnected, hasDnsRecords])
+
   const handleSaveApiKey = async () => {
     if (!siteId || !apiKey) return
     setIsSavingApiKey(true)

@@ -32,6 +32,9 @@ const ImprentaPanel = dynamic(
   () => import("@/app/components/agents/imprenta-panel").then((m) => m.ImprentaPanel),
   { ssr: false }
 )
+import { WorkflowRunButton } from "@/app/components/workflows/workflow-run-button"
+import { PublishButton } from "@/app/components/navigation/PublishButton"
+
 import { WorkflowPanel } from '@/app/components/workflows/workflow-panel'
 import "@/app/styles/iframe-containment.css"
 import { useRequirementStatus } from "@/app/components/simple-messages-view/hooks/useRequirementStatus"
@@ -1663,6 +1666,15 @@ function RobotsPageContent() {
                 >
                   <Plus className="h-4 w-4" />
                 </Button>
+              </div>
+
+              <div className="ml-auto flex items-center gap-2 shrink-0">
+                {latestPreviewUrl && currentSite && (
+                  <PublishButton siteId={currentSite.id} previewUrl={latestPreviewUrl} />
+                )}
+                {activeRobotInstance && (activeRobotInstance as any).type === "workflow" && (
+                  <WorkflowRunButton />
+                )}
               </div>
             </div>
           </div>

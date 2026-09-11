@@ -93,7 +93,12 @@ export async function addDnsRecords(zoneId: string, records: CloudflareDnsRecord
         })
       })
       const createData = await createRes.json()
-      results.push(createData)
+      if (!createRes.ok || !createData.success) {
+        console.error('Cloudflare Error adding record:', record.name, createData.errors)
+        results.push({ error: true, name: record.name, type: record.type, details: createData.errors })
+      } else {
+        results.push(createData)
+      }
     } else {
       // Ya existe, se podría hacer update o simplemente ignorar. Para sync ignoramos si ya existe.
       results.push({ skipped: true, name: record.name, type: record.type })

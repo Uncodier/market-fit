@@ -59,18 +59,25 @@ function CountCell({ value, loading }: { value?: number; loading: boolean }) {
   )
 }
 
-function InstanceAvatar({ name, avatarUrl, loading }: { name: string; avatarUrl?: string | null; loading: boolean }) {
+function InstanceAvatar({ name, avatarUrl, loading, hasMultiple }: { name: string; avatarUrl?: string | null; loading: boolean; hasMultiple?: boolean }) {
   if (loading) return <Skeleton className="h-9 w-9 rounded-full" />
-  if (avatarUrl) {
-    return (
-      <img
-        src={avatarUrl}
-        alt=""
-        className="h-9 w-9 shrink-0 rounded-full border border-border object-cover bg-muted"
-      />
-    )
-  }
-  return <EntityAvatar name={name} />
+  
+  return (
+    <div className="relative">
+      {avatarUrl ? (
+        <img
+          src={avatarUrl}
+          alt=""
+          className="h-9 w-9 shrink-0 rounded-full border border-border object-cover bg-muted"
+        />
+      ) : (
+        <EntityAvatar name={name} />
+      )}
+      {hasMultiple && (
+        <div className="absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full border-2 border-background bg-yellow-500" />
+      )}
+    </div>
+  )
 }
 
 export function InstanceBrowserTable({
@@ -136,7 +143,12 @@ export function InstanceBrowserTable({
                 >
                   <TableCell className="py-3.5">
                     <div className="flex min-w-0 items-center gap-3 pl-4">
-                      <InstanceAvatar name={displayName} avatarUrl={stats?.avatarUrl} loading={statsLoading} />
+                      <InstanceAvatar 
+                        name={displayName} 
+                        avatarUrl={stats?.avatarUrl} 
+                        loading={statsLoading}
+                        hasMultiple={((stats?.nodes ?? 0) > 1) || ((stats?.workflows ?? 0) > 1)}
+                      />
                       <div className="min-w-0 space-y-0.5">
                         <p className="truncate text-sm font-medium leading-tight text-foreground" title={displayName}>
                           {displayName}

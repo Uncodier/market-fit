@@ -119,5 +119,7 @@ export async function GET(request: Request) {
   }
 
   // Redirigir de vuelta a los settings o dashboard (donde sea que inició)
-  return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/settings?tab=channels&success=cloudflare_connected`)
+  // Agregamos el parámetro cloudflare_sync_pending=true para que la UI sepa 
+  // que recién regresamos del OAuth y necesita apretar Sync.
+  return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/settings?tab=channels&cloudflare_sync_pending=true`)
 }

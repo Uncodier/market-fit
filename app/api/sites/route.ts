@@ -27,7 +27,7 @@ export async function GET(request: Request) {
     
     const [billingResponse, detailResponse] = await Promise.all([
       siteIds.length > 0 
-        ? admin.from('billing').select('site_id, plan, credits_available, credits_used, auto_renew, masked_card_number, card_name, card_expiry, stripe_customer_id').in('site_id', siteIds)
+        ? admin.from('billing').select('site_id, plan, credits_available, credits_used, auto_renew, masked_card_number, card_name, card_expiry, stripe_customer_id, account_balance').in('site_id', siteIds)
         : Promise.resolve({ data: [], error: null }),
       
       detailId && siteIds.includes(detailId)

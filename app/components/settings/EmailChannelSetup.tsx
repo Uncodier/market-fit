@@ -38,6 +38,20 @@ export function EmailChannelSetup({
     checkSecrets()
   }, [siteId])
 
+  // Trigger sync if coming back from oauth
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('cloudflare_sync_pending') === 'true' && isCloudflareConnected && dnsRecords.length > 0 && !isSyncingCloudflare) {
+      // Clean url to avoid multiple syncs
+      const newUrl = window.location.pathname + window.location.search.replace(/&?cloudflare_sync_pending=true/, '')
+      window.history.replaceState({}, document.title, newUrl)
+      
+      // Auto trigger sync
+      handleSyncCloudflare()
+    }
+  }, [isCloudflareConnected, dnsRecords.length])
+
   const metadata = channel.metadata || {}
   const domainStatus = metadata.domain_status || "not_started" // not_started, pending, verified, failed
   const dnsRecords = metadata.dns_records || []
