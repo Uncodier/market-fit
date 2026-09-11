@@ -277,14 +277,16 @@ function ReservationsPageContent() {
                 </ToggleGroup>
               )}
 
+              <div className="w-px h-6 bg-border mx-1 hidden sm:block" />
               <Button
-                variant="outline"
-                className="hidden sm:flex items-center justify-center gap-2 !min-w-0 sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm text-destructive hover:text-destructive hover:bg-destructive/10 border-transparent bg-transparent shadow-none"
+                variant="ghost"
+                size="sm"
+                className="flex items-center gap-1 text-destructive hover:text-destructive hover:bg-destructive/10"
                 onClick={() => window.dispatchEvent(new CustomEvent("calendarBlocks:create"))}
                 title="Block Time"
               >
-                <Ban className="h-4 w-4 shrink-0" />
-                <span className="hidden sm:inline ml-2">Block Time</span>
+                <Ban className="h-4 w-4" />
+                <span className="hidden sm:inline">Block Time</span>
               </Button>
             </div>
           </div>

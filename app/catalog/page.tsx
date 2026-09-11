@@ -241,16 +241,18 @@ export default function CatalogPage() {
               
               <div className="ml-auto flex items-center gap-3 shrink-0">
                 <Button
-                  variant="secondary"
-                  className="hidden sm:flex items-center justify-center gap-2 !min-w-0 sm:!min-w-[155px] md:!min-w-[200px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
+                  variant="ghost"
+                  size="sm"
+                  className="flex items-center gap-1"
                   onClick={() => router.push("/catalog/modifier-groups")}
                   title={t("catalog.modifiers.groupsTitle") || "Modifier groups"}
                 >
-                  <ModifierGroups className="h-4 w-4 shrink-0" />
-                  <span className="hidden sm:inline ml-2">
+                  <ModifierGroups className="h-4 w-4" />
+                  <span className="hidden sm:inline">
                     {t("catalog.modifiers.groupsTitle") || "Modifier groups"}
                   </span>
                 </Button>
+                <div className="w-px h-6 bg-border mx-1 hidden sm:block" />
                 <SortDropdown sortBy={sortBy} setSortBy={setSortBy} />
                 <ViewSelector currentView={viewType} onViewChange={setViewType} />
               </div>

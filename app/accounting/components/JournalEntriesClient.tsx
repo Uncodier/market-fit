@@ -112,12 +112,13 @@ export function JournalEntriesClient() {
           </Tabs>
           <div className="flex items-center justify-end gap-2 shrink-0">
             <Button
-              variant="secondary"
-              className="flex items-center justify-center gap-2 !min-w-0 sm:!min-w-[155px] md:!min-w-[200px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
+              variant="ghost"
+              size="sm"
+              className="flex items-center gap-1"
               onClick={() => window.dispatchEvent(new CustomEvent('journal:load'))}
             >
-              <Repeat className="h-4 w-4 shrink-0" />
-              <span className="hidden sm:inline ml-2">{t('common.sync') || "Sync"}</span>
+              <Repeat className="h-4 w-4" />
+              <span className="hidden sm:inline">{t('common.sync') || "Sync"}</span>
             </Button>
           </div>
         </div>

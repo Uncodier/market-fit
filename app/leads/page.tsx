@@ -1490,28 +1490,32 @@ export default function LeadsPage() {
                 onImportLeads={handleImportLeads}
                 trigger={
                   <Button
-                    variant="secondary"
-                    className="hidden sm:flex items-center justify-center gap-2 md:h-9 !min-w-0 sm:!min-w-[155px] md:!min-w-[200px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
+                    variant="ghost"
+                    size="sm"
+                    className="flex items-center gap-1"
                     title={t("layout.topbar.import")}
                   >
-                    <UploadCloud className="h-4 w-4 shrink-0" />
-                    <span className="hidden sm:inline ml-2">
+                    <UploadCloud className="h-4 w-4" />
+                    <span className="hidden sm:inline">
                       {t("layout.topbar.import") || "Import"}
                     </span>
                   </Button>
                 }
               />
+              <div className="w-px h-6 bg-border mx-1" />
               <Button
-                variant="secondary"
-                className="hidden sm:flex items-center justify-center gap-2 md:h-9 !min-w-0 sm:!min-w-[155px] md:!min-w-[200px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
+                variant="ghost"
+                size="sm"
+                className="flex items-center gap-1"
                 title={t("layout.topbar.export")}
                 onClick={handleExportLeads}
               >
-                <Download className="h-4 w-4 shrink-0" />
-                <span className="hidden sm:inline ml-2">
+                <Download className="h-4 w-4" />
+                <span className="hidden sm:inline">
                   {t("layout.topbar.export") || "Export"}
                 </span>
               </Button>
+              <div className="w-px h-6 bg-border mx-1 hidden sm:block" />
               <SortDropdown sortBy={sortBy} setSortBy={setSortBy} options={[
                 { value: "newest", label: t('leads.sort.newest') || 'Newest' },
                 { value: "oldest", label: t('leads.sort.oldest') || 'Oldest' },
