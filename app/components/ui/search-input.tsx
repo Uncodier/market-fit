@@ -96,9 +96,6 @@ const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
     const expandedWidthClass = containerClassName || "w-64"
     const expandedHeightClass = className?.includes("h-9") ? "h-9" : "h-11"
 
-    if (isArtifact) {
-      return null
-    }
 
     return (
       <div 

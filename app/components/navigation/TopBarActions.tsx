@@ -671,7 +671,7 @@ function RobotStartButton({
               <Button
                 variant="secondary"
                 size="default"
-                className="hidden sm:flex items-center justify-center gap-2 transition-colors duration-200 !min-w-0 sm:!min-w-[155px] md:!min-w-[240px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
+                className="hidden sm:flex items-center justify-center gap-2 transition-colors duration-200 !min-w-0 sm:!min-w-[155px] md:!min-w-[200px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
                 onClick={() => setIsAuthenticateModalOpen(true)}
                 title={t("layout.topbar.authenticate")}
               >
@@ -683,7 +683,7 @@ function RobotStartButton({
               <Button
                 variant="secondary"
                 size="default"
-                className="hidden sm:flex items-center justify-center gap-2 transition-colors duration-200 !min-w-0 sm:!min-w-[155px] md:!min-w-[240px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
+                className="hidden sm:flex items-center justify-center gap-2 transition-colors duration-200 !min-w-0 sm:!min-w-[155px] md:!min-w-[200px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
                 onClick={handleSaveAuthSession}
                 title={t("layout.topbar.saveAuthSession")}
               >
@@ -694,7 +694,7 @@ function RobotStartButton({
               </Button>
               <Button
                 size="default"
-                className="flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 transition-colors duration-200 !min-w-0 sm:!min-w-[155px] md:!min-w-[240px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
+                className="flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 transition-colors duration-200 !min-w-0 sm:!min-w-[155px] md:!min-w-[200px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
                 onClick={handleStopRobot}
                 disabled={isStoppingRobot}
                 title={t("layout.topbar.stopRobot")}
@@ -744,7 +744,7 @@ function RobotStartButton({
       )}
       <Button
         size="default"
-        className="flex items-center gap-2 bg-primary hover:bg-primary/90 transition-colors duration-200 !min-w-0 sm:!min-w-[155px] md:!min-w-[240px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
+        className="flex items-center gap-2 bg-primary hover:bg-primary/90 transition-colors duration-200 !min-w-0 sm:!min-w-[155px] md:!min-w-[200px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
         onClick={handleStartRobot}
         disabled={isStartingRobot}
         title={t("layout.topbar.startRobot")}
@@ -1220,7 +1220,7 @@ export function TopBarActions({
         pathname !== "/content/deepResearch" && (
           <Button
             variant="default"
-            className="flex items-center justify-center gap-2 transition-colors duration-200 !min-w-0 sm:!min-w-[155px] md:!min-w-[240px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm bg-primary text-primary-foreground hover:bg-primary/90"
+            className="flex items-center justify-center gap-2 transition-colors duration-200 !min-w-0 sm:!min-w-[155px] md:!min-w-[200px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm bg-primary text-primary-foreground hover:bg-primary/90"
             title={t("layout.topbar.publishToSocial") || "Publish"}
             onClick={() =>
               window.dispatchEvent(new CustomEvent("content:publish"))
@@ -1237,7 +1237,7 @@ export function TopBarActions({
         <CreateTaskDialog
           trigger={
             <Button
-              className="flex items-center justify-center gap-2 !min-w-0 sm:!min-w-[155px] md:!min-w-[240px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
+              className="flex items-center justify-center gap-2 !min-w-0 sm:!min-w-[155px] md:!min-w-[200px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
               title={t("layout.topbar.newTask")}
             >
               <PlusCircle className="h-4 w-4 shrink-0" />
@@ -1254,7 +1254,7 @@ export function TopBarActions({
         <Button
           variant="ghost"
           size="default"
-          className="text-muted-foreground hover:text-foreground flex items-center gap-2 !min-w-0 sm:!min-w-[155px] md:!min-w-[240px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
+          className="text-muted-foreground hover:text-foreground flex items-center gap-2 !min-w-0 sm:!min-w-[155px] md:!min-w-[200px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
           onClick={() => window.open("https://docs.makinari.com", "_blank")}
           title="Documentation"
         >
@@ -1276,7 +1276,7 @@ export function TopBarActions({
               return true; // Default to showing it if we can't determine
             })() && (
               <Button
-                className="!min-w-0 sm:!min-w-[155px] md:!min-w-[240px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
+                className="!min-w-0 sm:!min-w-[155px] md:!min-w-[200px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
                 onClick={async () => {
                   if (!userId) {
                     toast.error("User not authenticated");
@@ -1328,7 +1328,7 @@ export function TopBarActions({
         <Button
           variant="default"
           size="default"
-          className="flex items-center justify-center gap-2 transition-colors duration-200 !min-w-0 sm:!min-w-[155px] md:!min-w-[240px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
+          className="flex items-center justify-center gap-2 transition-colors duration-200 !min-w-0 sm:!min-w-[155px] md:!min-w-[200px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
           onClick={() => {
             window.dispatchEvent(new CustomEvent("requirement:build-trigger"));
           }}
@@ -1365,7 +1365,7 @@ export function TopBarActions({
             <Button
               variant="secondary"
               size="default"
-              className="hidden sm:flex items-center justify-center gap-2 transition-colors duration-200 !min-w-0 sm:!min-w-[155px] md:!min-w-[240px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
+              className="hidden sm:flex items-center justify-center gap-2 transition-colors duration-200 !min-w-0 sm:!min-w-[155px] md:!min-w-[200px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
               onClick={() => segmentData.openAIModal("analysis")}
               disabled={segmentData.isAnalyzing}
               title={t("layout.topbar.analyzeWithAI")}
@@ -1391,7 +1391,7 @@ export function TopBarActions({
             <Button
               variant="secondary"
               size="default"
-              className="hidden sm:flex items-center justify-center gap-2 transition-colors duration-200 !min-w-0 sm:!min-w-[155px] md:!min-w-[240px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
+              className="hidden sm:flex items-center justify-center gap-2 transition-colors duration-200 !min-w-0 sm:!min-w-[155px] md:!min-w-[200px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
               onClick={() => segmentData.openAIModal("topics")}
               disabled={segmentData.isGeneratingTopics}
               title={t("layout.topbar.getTopicsWithAI")}
@@ -1421,7 +1421,7 @@ export function TopBarActions({
             onCreateSegment={handleCreateSegment}
             trigger={
               <Button
-                className="flex items-center justify-center gap-2 !min-w-0 sm:!min-w-[155px] md:!min-w-[240px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
+                className="flex items-center justify-center gap-2 !min-w-0 sm:!min-w-[155px] md:!min-w-[200px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
                 title={t("layout.topbar.newSegment")}
               >
                 <PlusCircle className="h-4 w-4 shrink-0" />
@@ -1441,7 +1441,7 @@ export function TopBarActions({
               onCreateExperiment={handleCreateExperiment}
               trigger={
                 <Button
-                  className="flex items-center justify-center gap-2 !min-w-0 sm:!min-w-[155px] md:!min-w-[240px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
+                  className="flex items-center justify-center gap-2 !min-w-0 sm:!min-w-[155px] md:!min-w-[200px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
                   title={t("layout.topbar.newExperiment")}
                 >
                   <PlusCircle className="h-4 w-4 shrink-0" />
@@ -1462,7 +1462,7 @@ export function TopBarActions({
               onCreateRequirement={handleCreateRequirement}
               trigger={
                 <Button
-                  className="flex items-center justify-center gap-2 !min-w-0 sm:!min-w-[155px] md:!min-w-[240px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
+                  className="flex items-center justify-center gap-2 !min-w-0 sm:!min-w-[155px] md:!min-w-[200px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
                   title={t("layout.topbar.newRequirement")}
                 >
                   <PlusCircle className="h-4 w-4 shrink-0" />
@@ -1483,7 +1483,7 @@ export function TopBarActions({
               trigger={
                 <Button
                   variant="secondary"
-                  className="hidden sm:flex items-center justify-center gap-2 md:h-9 !min-w-0 sm:!min-w-[155px] md:!min-w-[240px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
+                  className="hidden sm:flex items-center justify-center gap-2 md:h-9 !min-w-0 sm:!min-w-[155px] md:!min-w-[200px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
                   title={t("layout.topbar.import")}
                 >
                   <UploadCloud className="h-4 w-4 shrink-0" />
@@ -1495,7 +1495,7 @@ export function TopBarActions({
             />
             <Button
               variant="secondary"
-              className="hidden sm:flex items-center justify-center gap-2 md:h-9 !min-w-0 sm:!min-w-[155px] md:!min-w-[240px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
+              className="hidden sm:flex items-center justify-center gap-2 md:h-9 !min-w-0 sm:!min-w-[155px] md:!min-w-[200px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
               title={t("layout.topbar.export")}
               onClick={async () => {
                 try {
@@ -1537,7 +1537,7 @@ export function TopBarActions({
               onCreateLead={handleCreateLead}
               trigger={
                 <Button
-                  className="flex items-center justify-center gap-2 !min-w-0 sm:!min-w-[155px] md:!min-w-[240px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
+                  className="flex items-center justify-center gap-2 !min-w-0 sm:!min-w-[155px] md:!min-w-[200px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
                   title="Add Lead"
                 >
                   <PlusCircle className="h-4 w-4 shrink-0" />
@@ -1570,7 +1570,7 @@ export function TopBarActions({
             }}
             trigger={
               <Button
-                className="flex items-center justify-center gap-2 !min-w-0 sm:!min-w-[155px] md:!min-w-[240px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
+                className="flex items-center justify-center gap-2 !min-w-0 sm:!min-w-[155px] md:!min-w-[200px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
                 title={t("layout.topbar.newContent")}
               >
                 <PlusCircle className="h-4 w-4 shrink-0" />
@@ -1589,7 +1589,7 @@ export function TopBarActions({
             onCreateCampaign={handleCreateCampaign}
             trigger={
               <Button
-                className="flex items-center justify-center gap-2 !min-w-0 sm:!min-w-[155px] md:!min-w-[240px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
+                className="flex items-center justify-center gap-2 !min-w-0 sm:!min-w-[155px] md:!min-w-[200px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
                 title={t("layout.topbar.newCampaign")}
               >
                 <PlusCircle className="h-4 w-4 shrink-0" />
@@ -1603,7 +1603,7 @@ export function TopBarActions({
         
             {isRecordsPage && currentSite && (
               <Button
-                className="!min-w-0 sm:!min-w-[155px] md:!min-w-[240px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
+                className="!min-w-0 sm:!min-w-[155px] md:!min-w-[200px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
                 onClick={() =>
                   window.dispatchEvent(new CustomEvent("records:create"))
                 }
@@ -1621,7 +1621,7 @@ export function TopBarActions({
           <>
             <Button
               variant="secondary"
-            className="hidden sm:flex items-center justify-center gap-2 !min-w-0 sm:!min-w-[155px] md:!min-w-[240px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
+            className="hidden sm:flex items-center justify-center gap-2 !min-w-0 sm:!min-w-[155px] md:!min-w-[200px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
               title={t("layout.topbar.export")}
               onClick={async () => {
                 try {
@@ -1659,7 +1659,7 @@ export function TopBarActions({
             </Button>
             <Button
               onClick={onCreateSale}
-              className="!min-w-0 sm:!min-w-[155px] md:!min-w-[240px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
+              className="!min-w-0 sm:!min-w-[155px] md:!min-w-[200px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
               title={t("layout.topbar.addSale")}
             >
               <PlusCircle className="h-4 w-4 shrink-0" />
@@ -1675,7 +1675,7 @@ export function TopBarActions({
           <Button
             variant="secondary"
             size="default"
-            className="hidden sm:flex items-center justify-center gap-2 transition-colors duration-200 !min-w-0 sm:!min-w-[155px] md:!min-w-[240px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
+            className="hidden sm:flex items-center justify-center gap-2 transition-colors duration-200 !min-w-0 sm:!min-w-[155px] md:!min-w-[200px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
             onClick={() => { window.location.href = '/pos/check-in' }}
             title={t("pos.checkIn.title") || "Ticket Check-in"}
           >
@@ -1687,7 +1687,7 @@ export function TopBarActions({
           <Button
             variant="default"
             size="default"
-            className="hidden sm:flex items-center justify-center gap-2 transition-colors duration-200 !min-w-0 sm:!min-w-[155px] md:!min-w-[240px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm overflow-visible bg-primary text-primary-foreground hover:bg-primary/90"
+            className="hidden sm:flex items-center justify-center gap-2 transition-colors duration-200 !min-w-0 sm:!min-w-[155px] md:!min-w-[200px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm overflow-visible bg-primary text-primary-foreground hover:bg-primary/90"
             onClick={() =>
               window.dispatchEvent(new CustomEvent("pos:send-order"))
             }
@@ -1712,7 +1712,7 @@ export function TopBarActions({
         <div className="flex items-center gap-2">
           <Button
             variant="secondary"
-            className="hidden sm:flex items-center justify-center gap-2 !min-w-0 sm:!min-w-[155px] md:!min-w-[240px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
+            className="hidden sm:flex items-center justify-center gap-2 !min-w-0 sm:!min-w-[155px] md:!min-w-[200px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
             onClick={() => router.push("/catalog/modifier-groups")}
             title={t("catalog.modifiers.groupsTitle") || "Modifier groups"}
           >
@@ -1722,7 +1722,7 @@ export function TopBarActions({
             </span>
           </Button>
           <Button
-            className="!min-w-0 sm:!min-w-[155px] md:!min-w-[240px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
+            className="!min-w-0 sm:!min-w-[155px] md:!min-w-[200px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
             onClick={() =>
               window.dispatchEvent(new CustomEvent("catalog:create"))
             }
@@ -1738,7 +1738,7 @@ export function TopBarActions({
 
       {pathname === "/catalog/modifier-groups" && currentSite && (
         <Button
-          className="!min-w-0 sm:!min-w-[155px] md:!min-w-[240px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
+          className="!min-w-0 sm:!min-w-[155px] md:!min-w-[200px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
           onClick={() =>
             window.dispatchEvent(new CustomEvent("modifier-groups:create"))
           }
@@ -1753,7 +1753,7 @@ export function TopBarActions({
 
       {pathname === "/orders" && currentSite && (
         <Button
-          className="!min-w-0 sm:!min-w-[155px] md:!min-w-[240px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
+          className="!min-w-0 sm:!min-w-[155px] md:!min-w-[200px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
           onClick={() => window.dispatchEvent(new CustomEvent("orders:create"))}
           title={t("orders.add") || "Create Order"}
         >
@@ -1766,7 +1766,7 @@ export function TopBarActions({
 
       {pathname === "/shipments" && currentSite && (
         <Button
-          className="!min-w-0 sm:!min-w-[155px] md:!min-w-[240px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
+          className="!min-w-0 sm:!min-w-[155px] md:!min-w-[200px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
           onClick={() =>
             window.dispatchEvent(new CustomEvent("shipments:create"))
           }
@@ -1783,7 +1783,7 @@ export function TopBarActions({
         <div className="flex items-center gap-2">
           <Button
             variant="secondary"
-            className="hidden sm:flex items-center justify-center gap-2 !min-w-0 sm:!min-w-[155px] md:!min-w-[240px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
+            className="hidden sm:flex items-center justify-center gap-2 !min-w-0 sm:!min-w-[155px] md:!min-w-[200px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
             onClick={() =>
               window.dispatchEvent(
                 new CustomEvent("inventory:open-location-dialog"),
@@ -1797,7 +1797,7 @@ export function TopBarActions({
             </span>
           </Button>
           <Button
-            className="!min-w-0 sm:!min-w-[155px] md:!min-w-[240px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
+            className="!min-w-0 sm:!min-w-[155px] md:!min-w-[200px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
             onClick={() =>
               window.dispatchEvent(new CustomEvent("inventory:create-stock"))
             }
@@ -1813,7 +1813,7 @@ export function TopBarActions({
 
       {pathname === "/price-lists" && currentSite && (
         <Button
-          className="!min-w-0 sm:!min-w-[155px] md:!min-w-[240px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
+          className="!min-w-0 sm:!min-w-[155px] md:!min-w-[200px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
           onClick={() =>
             window.dispatchEvent(new CustomEvent("price-lists:create"))
           }
@@ -1850,7 +1850,7 @@ export function TopBarActions({
             </span>
           </Button>
           <Button
-            className="!min-w-0 sm:!min-w-[155px] md:!min-w-[240px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm bg-primary hover:bg-primary/90 text-primary-foreground"
+            className="!min-w-0 sm:!min-w-[155px] md:!min-w-[200px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm bg-primary hover:bg-primary/90 text-primary-foreground"
             onClick={() =>
               window.dispatchEvent(new CustomEvent("price-list:add-price"))
             }
@@ -1866,7 +1866,7 @@ export function TopBarActions({
 
       {pathname === "/promotions" && currentSite && (
         <Button
-          className="!min-w-0 sm:!min-w-[155px] md:!min-w-[240px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
+          className="!min-w-0 sm:!min-w-[155px] md:!min-w-[200px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
           onClick={() =>
             window.dispatchEvent(new CustomEvent("promotions:create"))
           }
@@ -1881,7 +1881,7 @@ export function TopBarActions({
 
       {pathname === "/subscriptions" && currentSite && (
         <Button
-          className="!min-w-0 sm:!min-w-[155px] md:!min-w-[240px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
+          className="!min-w-0 sm:!min-w-[155px] md:!min-w-[200px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
           onClick={() =>
             window.dispatchEvent(new CustomEvent("subscriptions:create"))
           }
@@ -1906,7 +1906,7 @@ export function TopBarActions({
             <span className="hidden sm:inline ml-2">Block Time</span>
           </Button>
           <Button
-            className="!min-w-0 sm:!min-w-[155px] md:!min-w-[240px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
+            className="!min-w-0 sm:!min-w-[155px] md:!min-w-[200px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
             onClick={() =>
               window.dispatchEvent(new CustomEvent("reservations:create"))
             }
@@ -1922,7 +1922,7 @@ export function TopBarActions({
         <CreateQuotationDialog
           trigger={
             <Button
-              className="flex items-center justify-center gap-2 !min-w-0 sm:!min-w-[155px] md:!min-w-[240px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
+              className="flex items-center justify-center gap-2 !min-w-0 sm:!min-w-[155px] md:!min-w-[200px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
               title="Create Quotation"
             >
               <PlusCircle className="h-4 w-4 shrink-0" />
@@ -1937,7 +1937,7 @@ export function TopBarActions({
             onCreateDeal={handleCreateDeal}
             trigger={
               <Button
-                className="flex items-center justify-center gap-2 !min-w-0 sm:!min-w-[155px] md:!min-w-[240px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
+                className="flex items-center justify-center gap-2 !min-w-0 sm:!min-w-[155px] md:!min-w-[200px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
                 title={t("layout.topbar.createDeal")}
               >
                 <PlusCircle className="h-4 w-4 shrink-0" />
@@ -1961,7 +1961,7 @@ export function TopBarActions({
       {pathname.startsWith("/purchases/orders") && currentSite && (
         <Button
           size="default"
-          className="flex items-center justify-center gap-2 transition-colors duration-200 !min-w-0 sm:!min-w-[155px] md:!min-w-[240px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm bg-primary hover:bg-primary/90 text-primary-foreground"
+          className="flex items-center justify-center gap-2 transition-colors duration-200 !min-w-0 sm:!min-w-[155px] md:!min-w-[200px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm bg-primary hover:bg-primary/90 text-primary-foreground"
           onClick={() => router.push(`/marketplace?ownerSiteId=${currentSite.id}&returnTo=/purchases/orders`)}
           title={t("buyer.orders.newPurchase") || "New Purchase"}
         >
@@ -1976,7 +1976,7 @@ export function TopBarActions({
       {pathname.startsWith("/purchases/subscriptions") && currentSite && (
         <Button
           size="default"
-          className="flex items-center justify-center gap-2 transition-colors duration-200 !min-w-0 sm:!min-w-[155px] md:!min-w-[240px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm bg-primary hover:bg-primary/90 text-primary-foreground"
+          className="flex items-center justify-center gap-2 transition-colors duration-200 !min-w-0 sm:!min-w-[155px] md:!min-w-[200px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm bg-primary hover:bg-primary/90 text-primary-foreground"
           onClick={() => router.push(`/marketplace?ownerSiteId=${currentSite.id}&returnTo=/purchases/subscriptions&filter=recurring`)}
           title={t("buyer.subscriptions.newSubscription") || "New Subscription"}
         >
@@ -1991,7 +1991,7 @@ export function TopBarActions({
       {pathname.startsWith("/payments") && currentSite && (
         <Button
           size="default"
-          className="flex items-center justify-center gap-2 transition-colors duration-200 !min-w-0 sm:!min-w-[155px] md:!min-w-[240px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm bg-primary hover:bg-primary/90 text-primary-foreground"
+          className="flex items-center justify-center gap-2 transition-colors duration-200 !min-w-0 sm:!min-w-[155px] md:!min-w-[200px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm bg-primary hover:bg-primary/90 text-primary-foreground"
           onClick={() => {
             const event = new CustomEvent("payouts:request-open")
             window.dispatchEvent(event)
@@ -2008,7 +2008,7 @@ export function TopBarActions({
       {pathname.startsWith("/bills") && currentSite && (
         <Button
           size="default"
-          className="flex items-center justify-center gap-2 transition-colors duration-200 !min-w-0 sm:!min-w-[155px] md:!min-w-[240px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm bg-primary hover:bg-primary/90 text-primary-foreground"
+          className="flex items-center justify-center gap-2 transition-colors duration-200 !min-w-0 sm:!min-w-[155px] md:!min-w-[200px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm bg-primary hover:bg-primary/90 text-primary-foreground"
           onClick={() => {
             if (pathname === "/bills") {
               window.dispatchEvent(new CustomEvent("bills:create"))
@@ -2030,7 +2030,7 @@ export function TopBarActions({
       {pathname === "/transactions" && currentSite && (
         <Button
           size="default"
-          className="flex items-center justify-center gap-2 transition-colors duration-200 !min-w-0 sm:!min-w-[155px] md:!min-w-[240px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm bg-primary hover:bg-primary/90 text-primary-foreground"
+          className="flex items-center justify-center gap-2 transition-colors duration-200 !min-w-0 sm:!min-w-[155px] md:!min-w-[200px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm bg-primary hover:bg-primary/90 text-primary-foreground"
           onClick={() => {
             // Desencadenamos un evento personalizado para que la página lo escuche y abra su diálogo
             const event = new CustomEvent('transactions:create');
@@ -2050,14 +2050,14 @@ export function TopBarActions({
         <div className="flex items-center gap-2">
           <Button
             variant="secondary"
-            className="flex items-center justify-center gap-2 !min-w-0 sm:!min-w-[155px] md:!min-w-[240px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
+            className="flex items-center justify-center gap-2 !min-w-0 sm:!min-w-[155px] md:!min-w-[200px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
             onClick={() => window.dispatchEvent(new CustomEvent('accounting:openingBalances'))}
           >
             <Settings className="h-4 w-4 shrink-0" />
             <span className="hidden sm:inline ml-2">Opening Balances</span>
           </Button>
           <Button
-            className="flex items-center justify-center gap-2 !min-w-0 sm:!min-w-[155px] md:!min-w-[240px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm bg-primary hover:bg-primary/90 text-primary-foreground"
+            className="flex items-center justify-center gap-2 !min-w-0 sm:!min-w-[155px] md:!min-w-[200px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm bg-primary hover:bg-primary/90 text-primary-foreground"
             onClick={() => window.dispatchEvent(new CustomEvent('accounting:create'))}
           >
             <PlusCircle className="h-4 w-4 shrink-0" />
@@ -2071,14 +2071,14 @@ export function TopBarActions({
         <div className="flex items-center gap-2">
           <Button
             variant="secondary"
-            className="flex items-center justify-center gap-2 !min-w-0 sm:!min-w-[155px] md:!min-w-[240px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
+            className="flex items-center justify-center gap-2 !min-w-0 sm:!min-w-[155px] md:!min-w-[200px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
             onClick={() => window.dispatchEvent(new CustomEvent('finance:exportReport'))}
           >
             <Download className="h-4 w-4 shrink-0" />
             <span className="hidden sm:inline ml-2">Export</span>
           </Button>
           <Button
-            className="flex items-center justify-center gap-2 !min-w-0 sm:!min-w-[155px] md:!min-w-[240px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm bg-primary hover:bg-primary/90 text-primary-foreground"
+            className="flex items-center justify-center gap-2 !min-w-0 sm:!min-w-[155px] md:!min-w-[200px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm bg-primary hover:bg-primary/90 text-primary-foreground"
             onClick={() => window.dispatchEvent(new CustomEvent('finance:loadReport'))}
           >
             <FileText className="h-4 w-4 shrink-0" />
@@ -2092,14 +2092,14 @@ export function TopBarActions({
         <div className="flex items-center gap-2">
           <Button
             variant="secondary"
-            className="flex items-center justify-center gap-2 !min-w-0 sm:!min-w-[155px] md:!min-w-[240px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
+            className="flex items-center justify-center gap-2 !min-w-0 sm:!min-w-[155px] md:!min-w-[200px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
             onClick={() => window.dispatchEvent(new CustomEvent('journal:load'))}
           >
             <Repeat className="h-4 w-4 shrink-0" />
             <span className="hidden sm:inline ml-2">{t('common.sync') || "Sync"}</span>
           </Button>
           <Button
-            className="flex items-center justify-center gap-2 !min-w-0 sm:!min-w-[155px] md:!min-w-[240px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm bg-primary hover:bg-primary/90 text-primary-foreground"
+            className="flex items-center justify-center gap-2 !min-w-0 sm:!min-w-[155px] md:!min-w-[200px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm bg-primary hover:bg-primary/90 text-primary-foreground"
             onClick={() => window.dispatchEvent(new CustomEvent('journal:create'))}
           >
             <PlusCircle className="h-4 w-4 shrink-0" />
@@ -2113,7 +2113,7 @@ export function TopBarActions({
         <Button
           variant="secondary"
           size="default"
-          className="flex items-center justify-center gap-2 transition-colors duration-200 !min-w-0 sm:!min-w-[155px] md:!min-w-[240px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
+          className="flex items-center justify-center gap-2 transition-colors duration-200 !min-w-0 sm:!min-w-[155px] md:!min-w-[200px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
           onClick={handleLogout}
           title={
             isLoggingOut

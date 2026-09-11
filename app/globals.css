@@ -2007,7 +2007,7 @@ html.dark [role="checkbox"][data-state="indeterminate"]:hover:not(:disabled) {
 
 @media (min-width: 768px) {
   .btn-primary {
-    min-width: 240px;
+    min-width: 200px;
   }
 }
 

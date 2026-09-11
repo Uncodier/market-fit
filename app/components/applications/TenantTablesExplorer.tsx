@@ -181,7 +181,7 @@ export function TenantTablesExplorer({ tenantId }: { tenantId: string }) {
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
               type="text"
-              placeholder="Search tables..."
+              placeholder={t("searchTables") || "Search tables..."}
               className="pl-9 h-9 bg-background"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}

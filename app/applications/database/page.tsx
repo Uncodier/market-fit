@@ -33,18 +33,16 @@ function DatabasePageContent() {
         <div className="w-full pt-0">
           <div className="flex items-center justify-between w-full">
             <div className="flex items-center gap-8">
-              {!isArtifact && (
-                <div className="flex items-center gap-2">
-                  <SearchInput
-                    placeholder={t('applications.search') || 'Search databases...'}
-                    value={searchQuery}
-                    onSearch={handleSearch}
-                    ref={searchInputRef}
-                    className="bg-background border-border focus:border-muted-foreground/20 focus:ring-muted-foreground/20"
-                    alwaysExpanded={false}
-                  />
-                </div>
-              )}
+              <div className="flex items-center gap-2">
+                <SearchInput
+                  placeholder={t('applications.search') || 'Search databases...'}
+                  value={searchQuery}
+                  onSearch={handleSearch}
+                  ref={searchInputRef}
+                  className="bg-background border-border focus:border-muted-foreground/20 focus:ring-muted-foreground/20"
+                  alwaysExpanded={false}
+                />
+              </div>
             </div>
             <div className="ml-auto flex items-center gap-4">
               <SortDropdown sortBy={sortBy} setSortBy={setSortBy} />
