@@ -12,6 +12,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/app/components/ui/ta
 import { Badge } from "@/app/components/ui/badge"
 import { Alert, AlertTitle, AlertDescription } from "@/app/components/ui/alert"
 import { AlertTriangle } from "@/app/components/ui/icons"
+import { PurchaseCreditsDialog } from "@/app/components/billing/purchase-credits-dialog"
 
 function formatPhoneNumber(phoneNumber: string): string {
   if (!phoneNumber) return phoneNumber;
@@ -65,6 +66,7 @@ export function SmsChannelSetup({
 
   const [selectedNumber, setSelectedNumber] = useState("")
   const [isConnecting, setIsConnecting] = useState(false)
+  const [showVerificationDialog, setShowVerificationDialog] = useState(false)
 
   useEffect(() => {
     const fetchOwnedNumbers = async () => {
@@ -227,8 +229,18 @@ export function SmsChannelSetup({
               <Alert className="bg-amber-50 dark:bg-amber-950/30 text-amber-900 dark:text-amber-200 border-amber-200 dark:border-amber-800 [&>svg]:text-amber-600 dark:[&>svg]:text-amber-400">
                 <AlertTriangle className="h-4 w-4" />
                 <AlertTitle>10DLC / KYC Verification Required</AlertTitle>
-                <AlertDescription className="mt-2 text-amber-800 dark:text-amber-300">
-                  US phone numbers for SMS require A2P 10DLC campaign registration and brand KYC verification due to local carrier regulations.
+                <AlertDescription className="space-y-3 mt-2 text-amber-800 dark:text-amber-300">
+                  <p>
+                    US phone numbers for SMS require A2P 10DLC campaign registration and brand KYC verification due to local carrier regulations.
+                  </p>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => setShowVerificationDialog(true)}
+                    className="bg-background text-foreground"
+                  >
+                    Buy Verification Credits
+                  </Button>
                 </AlertDescription>
               </Alert>
             )}
@@ -334,6 +346,14 @@ export function SmsChannelSetup({
             : (tab === "new" ? "Buy Number & Activate" : "Activate SMS Channel")}
         </Button>
       </SectionCardFooter>
+
+      <PurchaseCreditsDialog
+        open={showVerificationDialog}
+        onOpenChange={setShowVerificationDialog}
+        credits={20}
+        price={20}
+        pricePerCredit={1.0}
+      />
     </>
   )
 }
