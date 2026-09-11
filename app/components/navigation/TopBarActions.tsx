@@ -62,6 +62,7 @@ import { useSearchParams } from "next/navigation";
 import { LoadingSkeleton } from "@/app/components/ui/loading-skeleton";
 import { Switch } from "@/app/components/ui/switch";
 import { Label } from "@/app/components/ui/label";
+import { WorkflowRunButton } from "@/app/components/workflows/workflow-run-button";
 
 interface TopBarActionsProps {
   isPosPage?: boolean;
@@ -77,6 +78,7 @@ interface TopBarActionsProps {
   isCampaignsPage: boolean;
   isSalesPage: boolean;
   isRecordsPage?: boolean;
+  isRobotsPage: boolean;
   isSecurityPage: boolean;
   isAccountingPage?: boolean;
   isFinancePage?: boolean;
@@ -129,6 +131,7 @@ export function TopBarActions({
   isCampaignsPage,
   isSalesPage,
   isRecordsPage,
+  isRobotsPage,
   isSecurityPage,
   isAccountingPage,
   isFinancePage,
@@ -1024,6 +1027,12 @@ export function TopBarActions({
               </Button>
             }
           />
+        ) : null)}
+      {isRobotsPage &&
+        (currentSite ? (
+          viewMode === "workflow" ? (
+            <WorkflowRunButton />
+          ) : null
         ) : null)}
 
       {/* New Purchase button in toolbar */}

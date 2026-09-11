@@ -4961,6 +4961,7 @@
   "layout.topbar.sendOrder": "Send Order",
   "layout.topbar.signingOut": "Signing out...",
   "layout.topbar.startRobot": "Start Robot",
+  "layout.topbar.addSecret": "Add Secret",
   "layout.topbar.startingRobot": "Starting Robot...",
   "layout.topbar.stopRobot": "Stop Robot",
   "layout.topbar.stopping": "Stopping...",

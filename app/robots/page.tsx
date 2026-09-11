@@ -5,7 +5,7 @@ import useSWR from "swr"
 import { useRouter, useSearchParams, usePathname } from "next/navigation"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
-import { Globe, Pause, Play, MicroPause, MicroPlay, X, Plus, MoreHorizontal, ExternalLink, RotateCw, Loader, Monitor, Laptop, Tablet, Smartphone, Folder, Download, Archive, PanelRightClose, PanelRightOpen, LayoutGrid } from "@/app/components/ui/icons"
+import { Globe, Pause, Play, MicroPause, MicroPlay, X, Plus, MoreHorizontal, ExternalLink, RotateCw, Loader, Monitor, Laptop, Tablet, Smartphone, Folder, Download, Archive, PanelRightClose, PanelRightOpen, LayoutGrid, Shield } from "@/app/components/ui/icons"
 import { Button } from "@/app/components/ui/button"
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/app/components/ui/dropdown-menu"
 import { useLayout } from "@/app/context/LayoutContext"
@@ -18,6 +18,7 @@ import { RobotsPageSkeleton } from "@/app/components/skeletons/robots-page-skele
 import { BrowserSkeleton } from "@/app/components/skeletons/browser-skeleton"
 import { DeleteRobotModal } from "@/app/components/robots/DeleteRobotModal"
 import { InstanceBrowserModal } from "@/app/components/robots/InstanceBrowserModal"
+import { AuthenticateSessionsModal } from "@/app/components/navigation/AuthenticateSessionsModal"
 import { createClient } from "@/lib/supabase/client"
 import { useToast } from "@/app/components/ui/use-toast"
 import { deleteInstanceArtifacts } from "./delete-instance-artifacts"
@@ -32,8 +33,6 @@ const ImprentaPanel = dynamic(
   () => import("@/app/components/agents/imprenta-panel").then((m) => m.ImprentaPanel),
   { ssr: false }
 )
-import { WorkflowRunButton } from "@/app/components/workflows/workflow-run-button"
-import { PublishButton } from "@/app/components/navigation/PublishButton"
 
 import { WorkflowPanel } from '@/app/components/workflows/workflow-panel'
 import "@/app/styles/iframe-containment.css"
@@ -133,6 +132,8 @@ function RobotsPageContent() {
   const isCanvasMode = viewMode === 'imprenta' || viewMode === 'workflow'
   const { theme, isDarkMode } = useTheme()
   
+  const [isAuthenticateModalOpen, setIsAuthenticateModalOpen] = useState(false)
+
   // 🆕 Wait for site context to be fully synchronized before proceeding
   const [isSiteContextReady, setIsSiteContextReady] = useState(false)
   
@@ -1672,8 +1673,19 @@ function RobotsPageContent() {
                 {latestPreviewUrl && currentSite && (
                   <PublishButton siteId={currentSite.id} previewUrl={latestPreviewUrl} />
                 )}
-                {activeRobotInstance && (activeRobotInstance as any).type === "workflow" && (
-                  <WorkflowRunButton />
+                {activeRobotInstance && (
+                  <Button
+                    variant="secondary"
+                    size="default"
+                    className="flex items-center gap-2 transition-colors duration-200 !min-w-0 sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
+                    onClick={() => setIsAuthenticateModalOpen(true)}
+                    title={t("layout.topbar.authenticate") || "Add Secret"}
+                  >
+                    <Shield className="h-4 w-4 shrink-0" />
+                    <span className="hidden sm:inline font-inter font-medium text-sm">
+                      {t("layout.topbar.authenticate") || "Add Secret"}
+                    </span>
+                  </Button>
                 )}
               </div>
             </div>
