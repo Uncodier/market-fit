@@ -67,20 +67,24 @@ export async function POST(req: NextRequest) {
       const { data: existingSiteSecret } = await query.maybeSingle();
 
       // 2. Insert or update site_secrets
+      let secretId = null;
       if (existingSiteSecret) {
-        const { error: updateError } = await supabase
+        const { data, error: updateError } = await supabase
           .from('site_secrets')
           .update({
             encrypted_value: encryptedValue,
             name: name
           })
-          .eq('id', existingSiteSecret.id);
+          .eq('id', existingSiteSecret.id)
+          .select('id')
+          .single();
           
         if (updateError) {
           return NextResponse.json({ error: updateError.message }, { status: 500 });
         }
+        secretId = data.id;
       } else {
-        const { error: insertError } = await supabase
+        const { data, error: insertError } = await supabase
           .from('site_secrets')
           .insert({
             site_id: siteId,
@@ -89,14 +93,17 @@ export async function POST(req: NextRequest) {
             provider: provider,
             use_case: useCase,
             encrypted_value: encryptedValue
-          });
+          })
+          .select('id')
+          .single();
           
         if (insertError) {
           return NextResponse.json({ error: insertError.message }, { status: 500 });
         }
+        secretId = data.id;
       }
       
-      return NextResponse.json({ success: true });
+      return NextResponse.json({ success: true, id: secretId });
     } 
     
     else if (operation === 'retrieve') {

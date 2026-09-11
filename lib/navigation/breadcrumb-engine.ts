@@ -38,6 +38,7 @@ const SECTION_TITLES: Record<string, string> = {
   '/reservations': 'Reservations',
   '/visits': 'Visits',
   '/applications/database': 'Database',
+  '/applications/repositories': 'Code',
   '/purchases': 'Purchases',
   '/buyer': 'Buyer',
 }
@@ -61,6 +62,9 @@ export function getSection(fullPath: string): string {
   if (segments.length === 0) return '/'
   if (segments[0] === 'applications' && segments[1] === 'database') {
     return '/applications/database'
+  }
+  if (segments[0] === 'applications' && segments[1] === 'repositories') {
+    return '/applications/repositories'
   }
   return `/${segments[0]}`
 }
@@ -153,7 +157,10 @@ export function reduceBreadcrumb(items: HistoryItem[], event: BreadcrumbEvent): 
       return enforceInvariants([...items, newItem])
     }
 
-    const origin = sectionRootItem(items[0], items[0].timestamp)
+    // When jumping to a detail page of a DIFFERENT section, 
+    // the origin should be the root of the NEW section, not the old section.
+    const originPath = currentSection
+    const origin = sectionRootItem({ path: originPath, label: '', timestamp: timestamp - 1 }, timestamp - 1)
     return enforceInvariants([origin, newItem])
   }
 

@@ -141,6 +141,7 @@ export const ToolCallItem: React.FC<ToolCallItemProps> = ({
 
   // Extract status from details object
   const status = log.details?.status
+  const isPending = status === 'pending' && !toolResult && log.log_type !== 'tool_result'
 
   const isImageGeneration = toolName === 'generate_image' && toolResult?.output?.images
   const isVideoGeneration = toolName === 'generate_video' && toolResult?.output?.videos
@@ -187,7 +188,7 @@ export const ToolCallItem: React.FC<ToolCallItemProps> = ({
           </span>
           
           {/* Status badge - only show for pending status */}
-          {status === 'pending' && (
+          {isPending && (
             <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full font-inter text-xs font-medium border bg-yellow-100/90 text-yellow-800 border-yellow-200 dark:bg-yellow-900/20 dark:text-yellow-400 dark:border-yellow-800">
               <div className="w-2 h-2 bg-yellow-600 rounded-full font-inter animate-pulse"></div>
               Pendiente

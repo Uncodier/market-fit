@@ -843,6 +843,19 @@ export default function PeopleSearchPage() {
     return () => { document.title = "Market Fit" }
   }, [])
 
+  // Update TopBar breadcrumb with results count
+  useEffect(() => {
+    // Only update the breadcrumb item label with the results, let the base path stay
+    const event = new CustomEvent("breadcrumb:update", {
+      detail: {
+        title: `Find People (${(totalResults || 0).toLocaleString()} results)`,
+        path: "/people",
+        section: "Find People"
+      }
+    })
+    window.dispatchEvent(event)
+  }, [totalResults])
+
   // Load ICPs when site is available
   useEffect(() => {
     const loadIcps = async () => {
@@ -900,31 +913,6 @@ export default function PeopleSearchPage() {
       loadIcps()
     }
   }, [currentSite?.id, peopleTab])
-
-  // Update TopBar breadcrumb with results count
-  useEffect(() => {
-    const items = [
-      { href: "/people", label: "Find People" },
-      { href: "#", label: `${(totalResults || 0).toLocaleString()} results` }
-    ]
-    const event = new CustomEvent("breadcrumb:update", {
-      detail: {
-        title: "Find People",
-        breadcrumb: (
-          <Breadcrumb items={items} />
-        )
-      }
-    })
-    window.dispatchEvent(event)
-
-    return () => {
-      // Clear breadcrumb on unmount
-      const clearEvent = new CustomEvent("breadcrumb:update", {
-        detail: { title: "Find People", breadcrumb: null }
-      })
-      window.dispatchEvent(clearEvent)
-    }
-  }, [totalResults])
 
   // format YYYY-MM-DD
   const toYmd = (d?: Date) => d ? `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}` : undefined

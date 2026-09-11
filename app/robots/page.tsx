@@ -916,7 +916,11 @@ function RobotsPageContent() {
       const requestedTab = searchParams?.get('tab') // e.g. 'source' or 'preview'
       
       if (isArtifact && requestedScreen) {
-        setActiveBrowserTab({ kind: 'artifact', screen: requestedScreen })
+        if (requestedScreen === 'code' || requestedScreen === 'source_code' || requestedScreen === 'source') {
+          setActiveBrowserTab({ kind: 'source' })
+        } else {
+          setActiveBrowserTab({ kind: 'artifact', screen: requestedScreen })
+        }
       } else if (requestedTab === 'source' || requestedTab === 'preview') {
         setActiveBrowserTab({ kind: requestedTab as any })
       } else {
@@ -981,8 +985,14 @@ function RobotsPageContent() {
       }
     }
     
+    // If no source_code found in requirement_status, try to find an artifact named "code" or "source_code"
+    const codeArtifact = artifacts.find(a => a.screen === 'code' || a.screen === 'source_code')
+    if (codeArtifact) {
+      return codeArtifact.url
+    }
+    
     return null;
-  }, [requirementStatuses]);
+  }, [requirementStatuses, artifacts]);
 
   const hasRequirementPreview = !!latestPreviewUrl || !!latestSourceCodeUrl;
 
@@ -1248,17 +1258,17 @@ function RobotsPageContent() {
       }
       return "about:blank"
     }
-    return activeBrowserTab.kind === 'source'
+    return activeBrowserTab.kind === 'source' || (activeBrowserTab.kind === 'artifact' && (activeBrowserTab.screen === 'code' || activeBrowserTab.screen === 'source_code'))
       ? (latestSourceCodeUrl || latestPreviewUrl || "about:blank")
       : (latestPreviewUrl || latestSourceCodeUrl || "about:blank")
   })()
   
-  const isZipUrl = (typeof rawActiveUrlToDisplay === 'string' && (
+  const isZipUrl = activeBrowserTab.kind === 'source' || (typeof rawActiveUrlToDisplay === 'string' && (
     rawActiveUrlToDisplay.endsWith('.zip') || 
     rawActiveUrlToDisplay.includes('.zip?') ||
     rawActiveUrlToDisplay.endsWith('.tar.gz') ||
     rawActiveUrlToDisplay.includes('.tar.gz?')
-  )) || activeBrowserTab.kind === 'source' || (activeBrowserTab.kind === 'artifact' && activeBrowserTab.screen === 'code')
+  )) || (activeBrowserTab.kind === 'artifact' && (activeBrowserTab.screen === 'code' || activeBrowserTab.screen === 'source_code'))
 
   const activeUrlToDisplay = useMemo(() => {
     return rawActiveUrlToDisplay;

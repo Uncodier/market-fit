@@ -126,7 +126,10 @@ export function RepositoriesSection({ searchQuery = "", viewMode = "table" }: { 
                 const reqDetails = reqId && detailsData.details ? detailsData.details[reqId] : null
                 return {
                   ...repo,
-                  instance_id: reqDetails?.instance_id || null
+                  instance_id: reqDetails?.instance_id || repo.instance_id || null,
+                  source_code: reqDetails?.source_code || repo.source_code || null,
+                  repo_url: reqDetails?.repo_url || repo.repo_url || null,
+                  preview_url: reqDetails?.preview_url || repo.preview_url || null
                 }
               })
             }
@@ -231,13 +234,9 @@ function RepositoryItem({
   return (
     <DocumentListRow 
       onClick={() => {
-        if (repo.instance_id) {
-          router.push(robotsInstanceHref(repo.instance_id!, { tab: 'source' }))
-        } else if (repo.tenant_id && repo.schema) {
-          router.push(`/applications/database/${repo.tenant_id}?schema=${repo.schema}`)
-        } else {
-          router.push(`/requirements/${reqId}`)
-        }
+        // According to user requirements: Code should be an independent app,
+        // so we route directly to the standalone code viewer page.
+        router.push(`/applications/repositories/${reqId}?name=${encodeURIComponent(title)}`)
       }}
       accent="none"
     >

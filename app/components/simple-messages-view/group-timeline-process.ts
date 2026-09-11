@@ -284,7 +284,7 @@ export function isProcessGroupLive(group: ProcessGroup): boolean {
   if (logs.length === 0) return true
 
   const lastEntry = group.entries[group.entries.length - 1]
-  if (lastEntry.type === 'completed_plan' && (lastEntry.data.status === 'completed' || lastEntry.data.status === 'failed')) {
+  if (lastEntry.type === 'completed_plan' && (lastEntry.data.status === 'completed' || lastEntry.data.status === 'failed' || lastEntry.data.status === 'cancelled')) {
     return false
   }
 

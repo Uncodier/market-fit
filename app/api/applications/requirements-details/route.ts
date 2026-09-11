@@ -29,7 +29,7 @@ export async function POST(request: Request) {
     // Fetch requirement_status
     const { data: reqStatuses, error: reqStatusError } = await mainSupabase
       .from("requirement_status")
-      .select("requirement_id, preview_url, instance_id, created_at")
+      .select("requirement_id, preview_url, instance_id, source_code, repo_url, created_at")
       .in("requirement_id", requirementIds)
       .order("created_at", { ascending: false })
 
@@ -38,9 +38,20 @@ export async function POST(request: Request) {
     if (!reqStatusError && reqStatuses) {
       for (const status of reqStatuses) {
         if (!latestStatusByReqId.has(status.requirement_id)) {
-          latestStatusByReqId.set(status.requirement_id, status)
+          // Keep a copy of the latest status
+          latestStatusByReqId.set(status.requirement_id, { ...status })
           if (status.instance_id) {
             instanceIds.add(status.instance_id)
+          }
+        } else {
+          // Merge missing fields from older statuses (so we keep the latest values if they exist, but fallback to older if missing)
+          const existing = latestStatusByReqId.get(status.requirement_id);
+          if (!existing.preview_url && status.preview_url) existing.preview_url = status.preview_url;
+          if (!existing.source_code && status.source_code) existing.source_code = status.source_code;
+          if (!existing.repo_url && status.repo_url) existing.repo_url = status.repo_url;
+          if (!existing.instance_id && status.instance_id) {
+            existing.instance_id = status.instance_id;
+            instanceIds.add(status.instance_id);
           }
         }
       }
@@ -70,6 +81,8 @@ export async function POST(request: Request) {
       details[reqId] = {
         preview_url: status?.preview_url || null,
         instance_id: status?.instance_id || null,
+        source_code: status?.source_code || null,
+        repo_url: status?.repo_url || null,
         last_instance_log: latestLog ? { message: latestLog.message, created_at: latestLog.created_at } : null
       }
     }

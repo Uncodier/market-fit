@@ -1995,14 +1995,12 @@ function RequirementDetailContent() {
             onDelete={handleDeleteRequirement}
             hasUnsavedChanges={unsavedChanges}
             hasRequirementStatus={hasRequirementStatus}
-            handleAddNode={handleAddNode}
             showRightPanel={showRightPanel}
             setShowRightPanel={setShowRightPanel}
             canUndoWorkflow={workflowHistory.past.length > 1}
             canRedoWorkflow={workflowHistory.future.length > 0}
           onUndoWorkflow={handleUndoWorkflow}
           onRedoWorkflow={handleRedoWorkflow}
-          onAddSecret={handleAddRequirementSecret}
         />
         </div>
         <div className="flex-1 flex flex-col h-full overflow-hidden">
@@ -2035,6 +2033,28 @@ function RequirementDetailContent() {
                 dotColorDark="rgba(255, 255, 255, 0.15)"
                 dotSize="20px"
                 dotRadius="1.5px"
+                extraControls={
+                  <div className="flex items-center gap-1">
+                    <Button variant="ghost" size="sm" onClick={() => handleAddNode('trigger')} className="h-8 px-2 text-muted-foreground hover:text-foreground hover:bg-muted font-normal text-xs">
+                      <Zap className="h-3 w-3 mr-1.5 text-primary" /> Trigger
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={() => handleAddNode('action')} className="h-8 px-2 text-muted-foreground hover:text-foreground hover:bg-muted font-normal text-xs">
+                      <Code className="h-3 w-3 mr-1.5 text-primary" /> Action
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={() => handleAddNode('condition')} className="h-8 px-2 text-muted-foreground hover:text-foreground hover:bg-muted font-normal text-xs">
+                      <GitFork className="h-3 w-3 mr-1.5 text-primary" /> Condition
+                    </Button>
+                    <div className="w-px h-4 bg-border mx-1" />
+                    <AddSecretDialog 
+                      onSecretCreated={handleAddRequirementSecret}
+                      trigger={
+                        <Button variant="ghost" size="sm" className="h-8 px-2 text-muted-foreground hover:text-foreground hover:bg-muted font-normal text-xs">
+                          <Key className="h-3 w-3 mr-1.5 text-primary" /> Add Secret
+                        </Button>
+                      }
+                    />
+                  </div>
+                }
               >
                 <div className="w-full h-full relative min-h-[1000px] min-w-[1000px]">
                   {isConnecting && currentMousePos && (
@@ -2980,14 +3000,12 @@ const MenuBar = ({
   onDelete, 
   hasUnsavedChanges,
   hasRequirementStatus,
-  handleAddNode,
   showRightPanel,
   setShowRightPanel,
   canUndoWorkflow,
   canRedoWorkflow,
   onUndoWorkflow,
-  onRedoWorkflow,
-  onAddSecret
+  onRedoWorkflow
 }: { 
   editor: any, 
   onSave: () => void, 
@@ -2995,14 +3013,12 @@ const MenuBar = ({
   onDelete: () => void,
   hasUnsavedChanges?: boolean,
   hasRequirementStatus?: boolean,
-  handleAddNode: (type: string) => void,
   showRightPanel: boolean,
   setShowRightPanel: (show: boolean) => void,
   canUndoWorkflow: boolean,
   canRedoWorkflow: boolean,
   onUndoWorkflow: () => void,
-  onRedoWorkflow: () => void,
-  onAddSecret?: (id: string, name: string) => void
+  onRedoWorkflow: () => void
 }) => {
   if (!editor) {
     return null
@@ -3034,30 +3050,6 @@ const MenuBar = ({
           )}
         </Button>
         <div className="w-px h-6 bg-border mx-1" />
-
-        <Button variant="ghost" size="sm" onClick={() => handleAddNode('trigger')} className="h-9 px-3 text-muted-foreground hover:text-foreground hover:bg-muted font-normal text-sm">
-          <Zap className="h-4 w-4 mr-1.5 text-primary" /> Trigger
-        </Button>
-        <Button variant="ghost" size="sm" onClick={() => handleAddNode('action')} className="h-9 px-3 text-muted-foreground hover:text-foreground hover:bg-muted font-normal text-sm">
-          <Code className="h-4 w-4 mr-1.5 text-primary" /> Action
-        </Button>
-        <Button variant="ghost" size="sm" onClick={() => handleAddNode('condition')} className="h-9 px-3 text-muted-foreground hover:text-foreground hover:bg-muted font-normal text-sm">
-          <GitFork className="h-4 w-4 mr-1.5 text-primary" /> Condition
-        </Button>
-        
-        <div className="w-px h-6 bg-border mx-1" />
-        
-        <AddSecretDialog 
-          onSecretCreated={onAddSecret || (() => {})}
-          trigger={
-            <Button variant="ghost" size="sm" className="h-9 px-3 text-muted-foreground hover:text-foreground hover:bg-muted font-normal text-sm">
-              <Key className="h-4 w-4 mr-1.5 text-primary" /> Add Secret
-            </Button>
-          }
-        />
-        
-        <div className="w-px h-6 bg-border mx-1" />
-
         
         <Button
           variant="ghost"

@@ -515,9 +515,14 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
     instanceId: activeRobotInstance?.id
   })
 
+  const isInstanceStarting = !!(activeRobotInstance && ['starting','pending','initializing'].includes((activeRobotInstance as any).status))
+  const isInstanceRunning = !!(activeRobotInstance && ['running','active'].includes((activeRobotInstance as any).status))
+  const isInstancePausedOrUninstantiated = !!(activeRobotInstance && ['paused','pending'].includes((activeRobotInstance as any).status))
+
   const { runningUserLog, cancelWorkflow, isCancelling } = useRunningWorkflow({
     logs,
     instanceId: activeRobotInstance?.id,
+    isInstanceActive: isInstanceRunning || isInstanceStarting,
     patchLogDetails,
     toast,
   })
@@ -950,7 +955,7 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
                       group={group}
                       isDarkMode={isDarkMode}
                       isExpanded={expandedToolGroups.has(group.groupId)}
-                      isLive={group.groupId === lastProcessGroupId && isProcessGroupLive(group)}
+                      isLive={group.groupId === lastProcessGroupId && isProcessGroupLive(group) && (isInstanceRunning || isInstanceStarting)}
                       onToggleExpand={toggleToolGroup}
                       collapsedToolDetails={collapsedToolDetails}
                       onToggleToolDetails={toggleToolDetails}

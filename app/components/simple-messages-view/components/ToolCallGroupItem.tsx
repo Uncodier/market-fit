@@ -34,7 +34,7 @@ export const ToolCallGroupItem: React.FC<ToolCallGroupItemProps> = ({
   const { toolName, logs, failCount, groupId } = group
   const displayName = formatToolDisplayName(toolName)
   const totalCount = logs.length
-  const pendingCount = logs.filter(l => l.details?.status === 'pending').length
+  const pendingCount = logs.filter(l => l.details?.status === 'pending' && !l.tool_result && !l.tool_results && l.log_type !== 'tool_result').length
 
   return (
     <div className="w-full min-w-[min(100%,450px)] overflow-hidden max-w-[calc(100%-80px)] lg:max-w-3xl mx-auto">

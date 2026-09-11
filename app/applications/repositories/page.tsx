@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useRef, Suspense } from "react"
+import { useState, useRef, Suspense, useEffect } from "react"
 import { useSearchParams } from "next/navigation"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
 import { RepositoriesSection } from "@/app/components/applications/RepositoriesSection"
@@ -21,6 +21,11 @@ function RepositoriesPageContent() {
   const urlSort = searchParams ? searchParams.get('sort') : null
   const defaultSort = urlSort === 'updated_at' ? 'updated_at' : (urlSort === 'created_at' || urlSort === 'newest' ? 'newest' : (urlSort === 'oldest' ? 'oldest' : 'newest'))
   const [sortBy, setSortBy] = useState(defaultSort)
+
+  useEffect(() => {
+    document.title = "Code | Market Fit"
+    return () => { document.title = "Market Fit" }
+  }, [])
 
   return (
     <div className={`flex-1 min-w-0 w-full p-0 flex flex-col ${isArtifact ? 'h-full min-h-full' : 'min-h-[calc(100dvh-64px)]'}`}>

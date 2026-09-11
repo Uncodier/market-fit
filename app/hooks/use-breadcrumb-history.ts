@@ -124,19 +124,17 @@ function generateLabel(pathname: string, searchParams: URLSearchParams | null): 
   // Special case for applications/database
   if (pathSegments[0] === 'applications' && pathSegments[1] === 'database') {
     let label = 'Database'
-    if (pathSegments.length > 2) {
-      const customTitle = searchParams?.get('title')
-      if (customTitle) {
-        const decodedTitle = decodeURIComponent(customTitle)
-        label = decodedTitle.length > 40 ? decodedTitle.substring(0, 40) + '...' : decodedTitle
+    const customTitle = searchParams?.get('title')
+    if (customTitle) {
+      const decodedTitle = decodeURIComponent(customTitle)
+      label = decodedTitle.length > 40 ? decodedTitle.substring(0, 40) + '...' : decodedTitle
+    } else {
+      const name = searchParams?.get('name')
+      if (name) {
+        const decodedName = decodeURIComponent(name)
+        label = decodedName.length > 40 ? decodedName.substring(0, 40) + '...' : decodedName
       } else {
-        const name = searchParams?.get('name')
-        if (name) {
-          const decodedName = decodeURIComponent(name)
-          label = decodedName.length > 40 ? decodedName.substring(0, 40) + '...' : decodedName
-        } else {
-          label = 'Database Details'
-        }
+        label = pathSegments.length > 2 ? 'Database Details' : 'Database'
       }
     }
     return label
@@ -144,7 +142,21 @@ function generateLabel(pathname: string, searchParams: URLSearchParams | null): 
 
   // Special case for applications/repositories
   if (pathSegments[0] === 'applications' && pathSegments[1] === 'repositories') {
-    return 'Code'
+    let label = 'Code'
+    const customTitle = searchParams?.get('title')
+    if (customTitle) {
+      const decodedTitle = decodeURIComponent(customTitle)
+      label = decodedTitle.length > 40 ? decodedTitle.substring(0, 40) + '...' : decodedTitle
+    } else {
+      const name = searchParams?.get('name')
+      if (name) {
+        const decodedName = decodeURIComponent(name)
+        label = decodedName.length > 40 ? decodedName.substring(0, 40) + '...' : decodedName
+      } else {
+        label = pathSegments.length > 2 ? 'Code Details' : 'Code'
+      }
+    }
+    return label
   }
   
   // Get the main route segment
@@ -313,6 +325,27 @@ export function useNavigationHistory() {
     setHistory(prev => {
       const last = prev.items[prev.items.length - 1]
       if (isDirect && last && getScreenKey(last.path) === getScreenKey(fullPath)) {
+        // Even if direct, ensure the label is up-to-date and invariants hold
+        const currentLabel = generateLabel(pathname, searchParams)
+        const updatedLast = { ...last, label: currentLabel }
+        
+        // If we are on a root page but have multiple items (e.g. from a previous bug), force it to be just the root
+        if (!hasId(fullPath) && prev.items.length > 1) {
+          const newHistory = { items: [updatedLast] }
+          saveHistory(newHistory)
+          return newHistory
+        }
+        
+        const newItems = [...prev.items]
+        newItems[newItems.length - 1] = updatedLast
+        const enforced = enforceInvariants(newItems)
+        
+        // Only save and return if it changed
+        if (JSON.stringify(enforced) !== JSON.stringify(prev.items)) {
+          const newHistory = { items: enforced }
+          saveHistory(newHistory)
+          return newHistory
+        }
         return prev
       }
 

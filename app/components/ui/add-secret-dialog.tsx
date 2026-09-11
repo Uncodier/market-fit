@@ -38,15 +38,16 @@ export function AddSecretDialog({ onSecretCreated, trigger }: AddSecretDialogPro
     try {
       setIsSubmitting(true)
       
-      const response = await fetch('/api/secure-tokens', {
+      const response = await fetch('/api/secrets', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           operation: 'store',
           siteId: currentSite.id,
-          tokenType: 'custom_secret',
-          identifier: name,
-          tokenValue: value
+          name: name,
+          provider: 'custom',
+          useCase: name,
+          secretValue: value
         })
       })
       
@@ -57,7 +58,7 @@ export function AddSecretDialog({ onSecretCreated, trigger }: AddSecretDialogPro
       }
       
       toast({ title: "Success", description: "Secret created securely" })
-      onSecretCreated(data.tokenId, name)
+      onSecretCreated(data.id, name)
       setOpen(false)
       setName("")
       setValue("")

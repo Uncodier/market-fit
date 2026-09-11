@@ -1,13 +1,13 @@
-"use client"
+"use client";
 
-import { useEffect, useState } from "react"
-import type { InstanceNode } from "@/app/types/instance-nodes"
-import { Button } from "@/app/components/ui/button"
-import { Switch } from "@/app/components/ui/switch"
-import { Textarea } from "@/app/components/ui/textarea"
-import { Plus, X } from "@/app/components/ui/icons"
-import { apiClient } from "@/app/services/api-client-service"
-import { cn } from "@/lib/utils"
+import { useEffect, useState } from "react";
+import type { InstanceNode } from "@/app/types/instance-nodes";
+import { Button } from "@/app/components/ui/button";
+import { Switch } from "@/app/components/ui/switch";
+import { Textarea } from "@/app/components/ui/textarea";
+import { Plus, X } from "@/app/components/ui/icons";
+import { apiClient } from "@/app/services/api-client-service";
+import { cn } from "@/lib/utils";
 import {
   DEFAULT_MAX_RETRIES,
   DEFAULT_STEP_ROLE,
@@ -21,11 +21,12 @@ import {
   type WorkflowMcpAction,
   type WorkflowStepSettings,
   type WorkflowStepStatus,
-} from "./types"
-import { WorkflowStepValidationList } from "./workflow-step-validation"
-import { WorkflowSearchSelect } from "./workflow-search-select"
+} from "./types";
+import { WorkflowStepValidationList } from "./workflow-step-validation";
+import { WorkflowSearchSelect } from "./workflow-search-select";
+import { AddSecretDialog } from "@/app/components/ui/add-secret-dialog";
 
-type StepTab = "task" | "output" | "validation" | "environment" | "tools"
+type StepTab = "task" | "output" | "validation" | "environment" | "tools";
 
 const STEP_TABS: readonly { id: StepTab; label: string; title: string }[] = [
   { id: "task", label: "Task", title: "Task" },
@@ -33,14 +34,14 @@ const STEP_TABS: readonly { id: StepTab; label: string; title: string }[] = [
   { id: "validation", label: "Validation", title: "Validation rules" },
   { id: "environment", label: "Environment", title: "Environment settings" },
   { id: "tools", label: "Tools", title: "Required tool calls" },
-]
+];
 
 function mergeSettings(node: InstanceNode, patch: Record<string, unknown>) {
-  return { ...((node.settings as Record<string, unknown>) || {}), ...patch }
+  return { ...((node.settings as Record<string, unknown>) || {}), ...patch };
 }
 
 function stopInteract(event: React.SyntheticEvent) {
-  event.stopPropagation()
+  event.stopPropagation();
 }
 
 function WorkflowStepTaskFields({
@@ -49,16 +50,19 @@ function WorkflowStepTaskFields({
   instructions,
   onPersist,
 }: {
-  nodeId: string
-  step: WorkflowStepSettings
-  instructions: string
-  onPersist: (nextSettings: Record<string, unknown>, promptText?: string) => Promise<unknown>
+  nodeId: string;
+  step: WorkflowStepSettings;
+  instructions: string;
+  onPersist: (
+    nextSettings: Record<string, unknown>,
+    promptText?: string,
+  ) => Promise<unknown>;
 }) {
-  const skill = step.skill || DEFAULT_STEP_SKILL
-  const role = step.role || DEFAULT_STEP_ROLE
+  const skill = step.skill || DEFAULT_STEP_SKILL;
+  const role = step.role || DEFAULT_STEP_ROLE;
 
   const persistStep = (patch: Partial<WorkflowStepSettings>) =>
-    onPersist({ step: { ...step, ...patch } } as Record<string, unknown>)
+    onPersist({ step: { ...step, ...patch } } as Record<string, unknown>);
 
   return (
     <>
@@ -77,7 +81,10 @@ function WorkflowStepTaskFields({
             value={skill}
             placeholder="Skill"
             onChange={(nextSkill) =>
-              void persistStep({ skill: nextSkill, role: roleFromSkill(nextSkill) })
+              void persistStep({
+                skill: nextSkill,
+                role: roleFromSkill(nextSkill),
+              })
             }
           />
         </label>
@@ -92,7 +99,7 @@ function WorkflowStepTaskFields({
         </label>
       </div>
     </>
-  )
+  );
 }
 
 function WorkflowStepToolsList({
@@ -100,26 +107,28 @@ function WorkflowStepToolsList({
   catalog,
   onChange,
 }: {
-  actions: WorkflowMcpAction[]
-  catalog: McpCatalogTool[]
-  onChange: (actions: WorkflowMcpAction[]) => void
+  actions: WorkflowMcpAction[];
+  catalog: McpCatalogTool[];
+  onChange: (actions: WorkflowMcpAction[]) => void;
 }) {
-  const selected = new Set(actions.map((item) => item.tool).filter(Boolean))
-  const unused = catalog.filter((tool) => !selected.has(tool.name))
+  const selected = new Set(actions.map((item) => item.tool).filter(Boolean));
+  const unused = catalog.filter((tool) => !selected.has(tool.name));
 
   const addTool = () => {
-    const next = unused[0]
+    const next = unused[0];
     onChange([
       ...actions,
       next
         ? { tool: next.name, hint: `Use ${next.name} to fulfill this step` }
         : { tool: "", hint: "" },
-    ])
-  }
+    ]);
+  };
 
   const updateAt = (index: number, patch: Partial<WorkflowMcpAction>) => {
-    onChange(actions.map((item, i) => (i === index ? { ...item, ...patch } : item)))
-  }
+    onChange(
+      actions.map((item, i) => (i === index ? { ...item, ...patch } : item)),
+    );
+  };
 
   return (
     <div className="flex flex-col gap-2">
@@ -138,23 +147,37 @@ function WorkflowStepToolsList({
       </div>
 
       {actions.length === 0 ? (
-        <p className="text-xs text-muted-foreground py-1">None (agent infers)</p>
+        <p className="text-xs text-muted-foreground py-1">
+          None (agent infers)
+        </p>
       ) : (
         actions.map((action, index) => {
-          const meta = catalog.find((tool) => tool.name === action.tool)
+          const meta = catalog.find((tool) => tool.name === action.tool);
           const toolOptions = catalog
-            .filter((tool) => tool.name === action.tool || !selected.has(tool.name))
-            .map((tool) => ({ value: tool.name, label: tool.name }))
-          const actionOptions = (meta?.actions || []).map((name) => ({ value: name, label: name }))
+            .filter(
+              (tool) => tool.name === action.tool || !selected.has(tool.name),
+            )
+            .map((tool) => ({ value: tool.name, label: tool.name }));
+          const actionOptions = (meta?.actions || []).map((name) => ({
+            value: name,
+            label: name,
+          }));
           return (
-            <div key={`${action.tool}-${index}`} className="flex items-start gap-2">
+            <div
+              key={`${action.tool}-${index}`}
+              className="flex items-start gap-2"
+            >
               <div className="flex-1 min-w-0 flex flex-col gap-1.5">
                 <WorkflowSearchSelect
                   options={toolOptions}
                   value={action.tool}
                   placeholder="Tool"
                   onChange={(tool) =>
-                    updateAt(index, { tool, action: undefined, hint: tool ? `Use ${tool} to fulfill this step` : "" })
+                    updateAt(index, {
+                      tool,
+                      action: undefined,
+                      hint: tool ? `Use ${tool} to fulfill this step` : "",
+                    })
                   }
                 />
                 <WorkflowSearchSelect
@@ -162,7 +185,9 @@ function WorkflowStepToolsList({
                   value={action.action || ""}
                   placeholder="Any action"
                   clearable
-                  onChange={(next) => updateAt(index, { action: next || undefined })}
+                  onChange={(next) =>
+                    updateAt(index, { action: next || undefined })
+                  }
                 />
               </div>
               <Button
@@ -175,11 +200,11 @@ function WorkflowStepToolsList({
                 <X className="h-3.5 w-3.5" />
               </Button>
             </div>
-          )
+          );
         })
       )}
     </div>
-  )
+  );
 }
 
 export function WorkflowStepBody({
@@ -187,42 +212,57 @@ export function WorkflowStepBody({
   runStatus,
   onChange,
 }: {
-  node: InstanceNode
-  runStatus?: WorkflowStepStatus
-  onChange: (id: string, patch: Partial<InstanceNode>) => Promise<unknown>
+  node: InstanceNode;
+  runStatus?: WorkflowStepStatus;
+  onChange: (id: string, patch: Partial<InstanceNode>) => Promise<unknown>;
 }) {
-  const [catalog, setCatalog] = useState<McpCatalogTool[]>([])
-  const [tab, setTab] = useState<StepTab>("task")
-  const settings = (node.settings || {}) as { title?: string; step?: WorkflowStepSettings }
-  const step = (settings.step || {}) as WorkflowStepSettings
-  const title = String(settings.title || "")
-  const instructions = String((node.prompt as { text?: string })?.text || "")
-  const sandbox = Boolean(step.requires_sandbox)
-  const tabs = STEP_TABS
+  const [catalog, setCatalog] = useState<McpCatalogTool[]>([]);
+  const [tab, setTab] = useState<StepTab>("task");
+  const settings = (node.settings || {}) as {
+    title?: string;
+    step?: WorkflowStepSettings;
+  };
+  const step = (settings.step || {}) as WorkflowStepSettings;
+  const title = String(settings.title || "");
+  const instructions = String((node.prompt as { text?: string })?.text || "");
+  const sandbox = Boolean(step.requires_sandbox);
+  const tabs = STEP_TABS;
 
   useEffect(() => {
-    void apiClient.get<{ tools?: McpCatalogTool[] }>("/api/workflows/mcp-catalog").then((res) => {
-      const tools = (res.data as { tools?: McpCatalogTool[] })?.tools
-      if (Array.isArray(tools)) setCatalog(tools)
-    })
-  }, [])
+    void apiClient
+      .get<{ tools?: McpCatalogTool[] }>("/api/workflows/mcp-catalog")
+      .then((res) => {
+        const tools = (res.data as { tools?: McpCatalogTool[] })?.tools;
+        if (Array.isArray(tools)) setCatalog(tools);
+      });
+  }, []);
 
-  const persist = (nextSettings: Record<string, unknown>, promptText?: string) => {
-    const patch: Partial<InstanceNode> = { settings: nextSettings }
-    if (promptText !== undefined) patch.prompt = { ...(node.prompt as object), text: promptText }
-    return onChange(node.id, patch)
-  }
+  const persist = (
+    nextSettings: Record<string, unknown>,
+    promptText?: string,
+  ) => {
+    const patch: Partial<InstanceNode> = { settings: nextSettings };
+    if (promptText !== undefined)
+      patch.prompt = { ...(node.prompt as object), text: promptText };
+    return onChange(node.id, patch);
+  };
 
   const toggleSandbox = async (checked: boolean) => {
-    if (checked && typeof window !== "undefined" && !sessionStorage.getItem("wf-sandbox-confirm")) {
+    if (
+      checked &&
+      typeof window !== "undefined" &&
+      !sessionStorage.getItem("wf-sandbox-confirm")
+    ) {
       const ok = window.confirm(
         "This step starts a billed VM. Resume uses this workflow’s plan id (not a requirement). Only enable if the step needs a repo/shell.",
-      )
-      if (!ok) return
-      sessionStorage.setItem("wf-sandbox-confirm", "1")
+      );
+      if (!ok) return;
+      sessionStorage.setItem("wf-sandbox-confirm", "1");
     }
-    await persist(mergeSettings(node, { step: { ...step, requires_sandbox: checked } }))
-  }
+    await persist(
+      mergeSettings(node, { step: { ...step, requires_sandbox: checked } }),
+    );
+  };
 
   return (
     <div
@@ -234,11 +274,16 @@ export function WorkflowStepBody({
     >
       <div className="flex items-center gap-2">
         <input
-          className={cn(WF_FIELD_CLASS, "flex-1 text-sm font-medium bg-muted/30")}
+          className={cn(
+            WF_FIELD_CLASS,
+            "flex-1 text-sm font-medium bg-muted/30",
+          )}
           defaultValue={title}
           key={`${node.id}-title`}
           placeholder="Step title"
-          onBlur={(event) => void persist(mergeSettings(node, { title: event.target.value }))}
+          onBlur={(event) =>
+            void persist(mergeSettings(node, { title: event.target.value }))
+          }
         />
         {sandbox && (
           <div className="h-7 px-2.5 text-[11px] rounded-full font-medium bg-amber-500/15 text-amber-700 dark:text-amber-400 flex items-center shrink-0">
@@ -261,7 +306,9 @@ export function WorkflowStepBody({
             size="sm"
             title={tabTitle}
             className={`flex-1 h-7 text-[11px] rounded-full font-medium ${
-              tab === id ? "bg-background shadow-sm border-white/10" : "text-muted-foreground hover:text-foreground"
+              tab === id
+                ? "bg-background shadow-sm border-white/10"
+                : "text-muted-foreground hover:text-foreground"
             }`}
             onClick={() => setTab(id)}
           >
@@ -276,7 +323,9 @@ export function WorkflowStepBody({
             nodeId={node.id}
             step={step}
             instructions={instructions}
-            onPersist={(patch, promptText) => persist(mergeSettings(node, patch), promptText)}
+            onPersist={(patch, promptText) =>
+              persist(mergeSettings(node, patch), promptText)
+            }
           />
         )}
 
@@ -287,7 +336,11 @@ export function WorkflowStepBody({
             placeholder="Expected output"
             className={`${WF_TEXTAREA_CLASS} font-mono max-h-[140px]`}
             onBlur={(event) =>
-              void persist(mergeSettings(node, { step: { ...step, expected_output: event.target.value } }))
+              void persist(
+                mergeSettings(node, {
+                  step: { ...step, expected_output: event.target.value },
+                }),
+              )
             }
           />
         )}
@@ -320,7 +373,9 @@ export function WorkflowStepBody({
               nodeId={node.id}
               rules={step.validation_rules}
               onChange={(validation_rules) =>
-                void persist(mergeSettings(node, { step: { ...step, validation_rules } }))
+                void persist(
+                  mergeSettings(node, { step: { ...step, validation_rules } }),
+                )
               }
             />
           </>
@@ -329,12 +384,17 @@ export function WorkflowStepBody({
         {tab === "environment" && (
           <>
             <label className="flex items-center justify-between gap-3">
-              <span className="text-[11px] font-medium">Requires sandbox (compute)</span>
-              <Switch checked={sandbox} onCheckedChange={(checked) => void toggleSandbox(checked)} />
+              <span className="text-[11px] font-medium">
+                Requires sandbox (compute)
+              </span>
+              <Switch
+                checked={sandbox}
+                onCheckedChange={(checked) => void toggleSandbox(checked)}
+              />
             </label>
             <p className="text-[11px] text-muted-foreground leading-snug">
-              This step starts a billed VM. Resume uses this workflow’s plan id. Only enable if the step needs a
-              repo or shell.
+              This step starts a billed VM. Resume uses this workflow’s plan id.
+              Only enable if the step needs a repo or shell.
             </p>
             <label className="flex flex-col gap-1">
               <span className="text-[11px] font-medium">Max retries</span>
@@ -346,9 +406,16 @@ export function WorkflowStepBody({
                 defaultValue={step.max_retries ?? DEFAULT_MAX_RETRIES}
                 key={`${node.id}-retries`}
                 onBlur={(event) => {
-                  const value = Math.min(20, Math.max(0, Number(event.target.value) || 0))
-                  event.target.value = String(value)
-                  void persist(mergeSettings(node, { step: { ...step, max_retries: value } }))
+                  const value = Math.min(
+                    20,
+                    Math.max(0, Number(event.target.value) || 0),
+                  );
+                  event.target.value = String(value);
+                  void persist(
+                    mergeSettings(node, {
+                      step: { ...step, max_retries: value },
+                    }),
+                  );
                 }}
               />
             </label>
@@ -362,12 +429,27 @@ export function WorkflowStepBody({
                 onBlur={(event) =>
                   void persist(
                     mergeSettings(node, {
-                      step: { ...step, recovery_plan: event.target.value.trim() || undefined },
+                      step: {
+                        ...step,
+                        recovery_plan: event.target.value.trim() || undefined,
+                      },
                     }),
                   )
                 }
               />
             </label>
+            <div className="flex flex-col gap-2 mt-2 pt-2 border-t border-border/50">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-medium">
+                  Environment Secrets
+                </span>
+                <AddSecretDialog onSecretCreated={() => {}} />
+              </div>
+              <p className="text-[11px] text-muted-foreground leading-snug">
+                Add API keys and other secrets needed for this step to run. They
+                will be available securely in the environment.
+              </p>
+            </div>
           </>
         )}
 
@@ -376,11 +458,13 @@ export function WorkflowStepBody({
             actions={step.mcp_actions || []}
             catalog={catalog}
             onChange={(mcp_actions) =>
-              void persist(mergeSettings(node, { step: { ...step, mcp_actions } }))
+              void persist(
+                mergeSettings(node, { step: { ...step, mcp_actions } }),
+              )
             }
           />
         )}
       </div>
     </div>
-  )
+  );
 }
