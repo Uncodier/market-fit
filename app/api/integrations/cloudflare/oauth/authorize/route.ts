@@ -36,7 +36,7 @@ export async function GET(request: Request) {
   // de aprobación incluso si el usuario ya había aprobado la app en el pasado.
   url.searchParams.set('prompt', 'consent')
   // We MUST provide the EXACT string from the dashboard or it fails silently or returns an error.
-  url.searchParams.set('scope', 'dns_records:edit dns_records:read zone:read')
+  url.searchParams.set('scope', 'dns.edit dns.read zone.read')
 
   return NextResponse.redirect(url.toString())
 }
