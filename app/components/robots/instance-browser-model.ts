@@ -95,8 +95,8 @@ export function getInstancePreview(messages?: InstanceMessages) {
 export function instanceMatchesTab(stats: InstanceStats | undefined, tab: InstanceFilterTab) {
   if (tab === "all") return true
   if (!stats) return true
-  if (tab === "nodes") return stats.nodes > 0
-  if (tab === "workflows") return stats.workflows > 0
+  if (tab === "nodes") return stats.nodes > 1
+  if (tab === "workflows") return stats.workflows > 1
   if (tab === "files") return stats.assets > 0
   return stats.requirements > 0
 }
@@ -145,8 +145,8 @@ export function countInstancesByTab(
   instances.forEach((instance) => {
     const stats = statsById[instance.id]
     if (!stats) return
-    if (stats.nodes > 0) counts.nodes += 1
-    if (stats.workflows > 0) counts.workflows += 1
+    if (stats.nodes > 1) counts.nodes += 1
+    if (stats.workflows > 1) counts.workflows += 1
     if (stats.assets > 0) counts.files += 1
     if (stats.requirements > 0) counts.requirements += 1
   })

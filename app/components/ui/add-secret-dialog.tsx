@@ -22,11 +22,13 @@ import { Key, Lock } from "@/app/components/ui/icons";
 interface AddSecretDialogProps {
   onSecretCreated: (id: string, name: string) => void;
   trigger?: React.ReactNode;
+  instanceId?: string;
 }
 
 export function AddSecretDialog({
   onSecretCreated,
   trigger,
+  instanceId,
 }: AddSecretDialogProps) {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
@@ -68,6 +70,7 @@ export function AddSecretDialog({
         body: JSON.stringify({
           operation: "store",
           siteId: currentSite.id,
+          instanceId: instanceId,
           name: name,
           provider: provider,
           useCase: useCase,

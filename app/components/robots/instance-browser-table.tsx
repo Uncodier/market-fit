@@ -93,6 +93,34 @@ export function InstanceBrowserTable({
   emptyDescription,
   labels,
 }: InstanceBrowserTableProps) {
+  const [renderLimit, setRenderLimit] = React.useState(20)
+
+  // Reset limit when filter or instances change
+  React.useEffect(() => {
+    setRenderLimit(20)
+  }, [instances])
+
+  // Simple infinite scroll observer
+  React.useEffect(() => {
+    if (instances.length <= renderLimit) return
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          setRenderLimit((prev) => Math.min(prev + 20, instances.length))
+        }
+      },
+      { root: null, rootMargin: "400px" }
+    )
+
+    const target = document.getElementById("instance-table-bottom")
+    if (target) {
+      observer.observe(target)
+    }
+
+    return () => observer.disconnect()
+  }, [instances.length, renderLimit])
+
   if (instances.length === 0) {
     return (
       <EmptyCard
@@ -121,7 +149,7 @@ export function InstanceBrowserTable({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {instances.map((instance) => {
+            {instances.slice(0, renderLimit).map((instance) => {
               const displayName = getInstanceDisplayName(instance)
               const stats = instanceStats[instance.id]
               const previewLoading = isLoadingMessages && !instanceMessages[instance.id]
@@ -206,6 +234,15 @@ export function InstanceBrowserTable({
                 </DocumentListRow>
               )
             })}
+            {instances.length > renderLimit && (
+              <TableRow id="instance-table-bottom">
+                <TableCell colSpan={8} className="h-14">
+                  <div className="flex w-full items-center justify-center">
+                    <Loader className="h-4 w-4 animate-spin text-muted-foreground" />
+                  </div>
+                </TableCell>
+              </TableRow>
+            )}
           </TableBody>
         </Table>
       </div>

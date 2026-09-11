@@ -90,19 +90,19 @@ export function PublishButton({ siteId, previewUrl }: { siteId: string, previewU
       <Button
         variant="default"
         className="flex items-center justify-center gap-2 transition-colors duration-200 !min-w-0 sm:!min-w-[155px] md:!min-w-[200px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm bg-primary text-primary-foreground hover:bg-primary/90"
-        title="Publish / Link Domain"
+        title={t("common.publish") || "Publish"}
         onClick={() => setIsOpen(true)}
       >
         <Globe className="h-4 w-4 shrink-0" />
         <span className="hidden sm:inline font-inter font-medium text-sm">
-          Publish
+          {t("common.publish") || "Publish"}
         </span>
       </Button>
 
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Publish to Custom Domain</DialogTitle>
+            <DialogTitle>{t("common.publish") || "Publish"} to Custom Domain</DialogTitle>
             <DialogDescription>
               Link your project to a custom domain using Cloudflare automatically.
             </DialogDescription>

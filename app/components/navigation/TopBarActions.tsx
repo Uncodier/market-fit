@@ -62,7 +62,7 @@ import { useSearchParams } from "next/navigation";
 import { LoadingSkeleton } from "@/app/components/ui/loading-skeleton";
 import { Switch } from "@/app/components/ui/switch";
 import { Label } from "@/app/components/ui/label";
-import { WorkflowRunButton } from "@/app/components/workflows/workflow-run-button";
+import { RobotPrimaryActions } from "./RobotPrimaryActions";
 
 interface TopBarActionsProps {
   isPosPage?: boolean;
@@ -1028,12 +1028,9 @@ export function TopBarActions({
             }
           />
         ) : null)}
-      {isRobotsPage &&
-        (currentSite ? (
-          viewMode === "workflow" ? (
-            <WorkflowRunButton />
-          ) : null
-        ) : null)}
+      {isRobotsPage && currentSite ? (
+        <RobotPrimaryActions currentSite={currentSite} viewMode={viewMode} />
+      ) : null}
 
       {/* New Purchase button in toolbar */}
       {pathname.startsWith("/purchases/orders") && currentSite && (
