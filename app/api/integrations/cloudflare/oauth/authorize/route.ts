@@ -32,9 +32,8 @@ export async function GET(request: Request) {
   url.searchParams.set('response_type', 'code')
   url.searchParams.set('redirect_uri', redirectUri)
   url.searchParams.set('state', state)
-
-  // Cloudflare Docs: we don't necessarily need to pass scopes here if we want 
-  // the user to consent to the scopes defined during the OAuth client creation.
+  // Requerido por Cloudflare para definir los permisos (scopes) de la autorización.
+  url.searchParams.set('scope', 'zone:read dns_records:read dns_records:edit')
 
   return NextResponse.redirect(url.toString())
 }
