@@ -125,6 +125,7 @@ export const NAV_ITEM_ICON: Record<string, React.ComponentType<any>> = {
   financeReports: Building,
   journalEntries: ClipboardList,
   chartOfAccounts: FileText,
+  payments: DollarSign,
   settingsGeneral: Settings,
   company: Building,
   marketplace: Store,
@@ -304,6 +305,7 @@ export const MODULE_VARIANTS: Record<string, ModuleVariant> = {
   financeReports: buildVariant(152, 168, 135, 72, 40, "mesh-5", true, true),
   journalEntries: buildVariant(145, 160, 45, 65, 42, "mesh-3", false),
   chartOfAccounts: buildVariant(160, 140, 200, 68, 44, "mesh-6", false),
+  payments: buildVariant(155, 145, 180, 70, 45, "mesh-2", false),
 
   // —— Reports (chartreuse → brand lime) ——
   reportPerformance: buildVariant(72, 88, 135, 95, 42, "mesh-6", true, true),

@@ -533,6 +533,10 @@ export const siteFormSchema = z.object({
     delivery_time_min: z.number().nullable().optional(),
     delivery_time_max: z.number().nullable().optional(),
     return_policy_summary: z.string().optional(),
+    bank_account_name: z.string().optional(),
+    bank_name: z.string().optional(),
+    bank_routing_number: z.string().optional(),
+    bank_account_number: z.string().optional(),
     trust_badges: z.array(z.object({
       title: z.string(),
       subtitle: z.string(),

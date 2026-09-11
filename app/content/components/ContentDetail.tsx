@@ -414,11 +414,11 @@ export function ContentDetail({ content, onClose, segments, onRatingChange, onPu
               <div className="flex flex-wrap gap-2 mt-2">
                 {editForm.tags.length > 0 ? (
                   editForm.tags.map((tag, index) => (
-                    <Badge key={index} variant="secondary" className="text-xs">
-                      {tag}
+                    <Badge key={index} variant="secondary" className="text-xs max-w-full">
+                      <span className="truncate">{tag}</span>
                       <button
                         type="button"
-                        className="ml-1 hover:text-destructive"
+                        className="ml-1 shrink-0 hover:text-destructive"
                         onClick={() => handleRemoveTag(tag)}
                       >
                         ×
@@ -434,8 +434,8 @@ export function ContentDetail({ content, onClose, segments, onRatingChange, onPu
             <div className="flex flex-wrap gap-2">
               {content.tags && content.tags.length > 0 ? (
                 content.tags.map((tag, index) => (
-                  <Badge key={index} variant="outline" className="text-xs">
-                    {tag}
+                  <Badge key={index} variant="outline" className="text-xs max-w-full">
+                    <span className="truncate">{tag}</span>
                   </Badge>
                 ))
               ) : (

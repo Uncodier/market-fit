@@ -288,8 +288,13 @@ export function isProcessGroupLive(group: ProcessGroup): boolean {
     return false
   }
 
-  if (lastEntry.type === 'log' && isStepCompletedLog(lastEntry.data)) {
-    return false
+  if (lastEntry.type === 'log') {
+    if (isStepCompletedLog(lastEntry.data)) {
+      return false
+    }
+    if (lastEntry.data.log_type === 'infrastructure' && lastEntry.data.details?.event === 'cron_infra_sandbox_stop') {
+      return false
+    }
   }
   
   const { answer } = splitProcessAnswer(logs)

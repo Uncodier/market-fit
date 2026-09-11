@@ -2,12 +2,13 @@
 
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { usePathname, useSearchParams, useRouter } from 'next/navigation'
-import { reduceBreadcrumb, enforceInvariants, getScreenKey, HistoryItem } from '@/lib/navigation/breadcrumb-engine'
+import { reduceBreadcrumb, enforceInvariants, getScreenKey, hasId } from '@/lib/navigation/breadcrumb-engine'
+import type { HistoryItem } from '@/lib/navigation/breadcrumb-engine'
 import { markUINavigation } from '@/lib/navigation/navigation-helpers'
 
 const NAVIGATION_HISTORY_RESET_EVENT = 'navigation-history:reset'
 
-export type { HistoryItem } from '@/lib/navigation/breadcrumb-engine'
+export type { HistoryItem }
 
 interface NavigationHistory {
   items: HistoryItem[]

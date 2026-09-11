@@ -35,8 +35,8 @@ export function DashboardOverviewTab({
         <ROIWidget segmentId={segmentId} startDate={startDate} endDate={endDate} />
         <CPLWidget segmentId={segmentId} startDate={startDate} endDate={endDate} />
       </div>
-      <div className="grid gap-4 grid-cols-1 lg:grid-cols-2 lg:items-start">
-        <Card className="col-span-1 flex flex-col min-h-[350px] lg:h-[500px]">
+      <div className="grid gap-4 grid-cols-1 lg:grid-cols-2">
+        <Card className="col-span-1 flex flex-col min-h-[350px] lg:min-h-[500px]">
           <CardHeader className="flex-shrink-0">
             <CardTitle>{t("dashboard.overview.title") || "Overview"}</CardTitle>
           </CardHeader>
@@ -48,7 +48,7 @@ export function DashboardOverviewTab({
             </div>
           </CardContent>
         </Card>
-        <Card className="col-span-1 flex flex-col h-auto">
+        <Card className="col-span-1 flex flex-col min-h-[350px] lg:min-h-[500px]">
           <CardHeader className="flex-shrink-0">
             <CardTitle>{t("dashboard.recentActivity.title") || "Recent commercial activity"}</CardTitle>
           </CardHeader>

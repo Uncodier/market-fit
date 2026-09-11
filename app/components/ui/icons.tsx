@@ -2284,6 +2284,15 @@ export const CalendarCheck = ({ className = "", size = 18, ...props }: IconProps
 )
 
 export const Loader2 = Loader
+// Cloud
+export const Cloud = ({ className = "", size = 18, ...props }: IconProps) => (
+  <IconWrapper className={className} size={size} {...props}>
+    <svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z" />
+    </svg>
+  </IconWrapper>
+)
+
 export const FileUp = UploadCloud
 
 export const QrCode = ({ className = "", size = 18, ...props }: IconProps) => (

@@ -177,7 +177,8 @@ export async function loadAccessibleSites(deps: LoadSitesDeps) {
           card_expiry: '12/29',
           auto_renew: true,
           credits_available: 99999,
-          credits_used: 0
+          credits_used: 0,
+          account_balance: 0
         } : undefined
         
         return {
@@ -205,7 +206,8 @@ export async function loadAccessibleSites(deps: LoadSitesDeps) {
             billing_country: siteBilling.billing_country,
             auto_renew: siteBilling.auto_renew ?? true,
             credits_available: siteBilling.credits_available || 0,
-            credits_used: siteBilling.credits_used || 0
+            credits_used: siteBilling.credits_used || 0,
+            account_balance: siteBilling.account_balance || 0
           } : undefined)
         }
       })

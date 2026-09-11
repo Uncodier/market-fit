@@ -1,12 +1,13 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/app/components/ui/button"
 import { Input } from "@/app/components/ui/input"
 import { Label } from "@/app/components/ui/label"
 import { Switch } from "@/app/components/ui/switch"
 import { toast } from "sonner"
 import { apiClient } from "@/app/services/api-client-service"
-import { Copy, Check } from "@/app/components/ui/icons"
+import { Copy, Check, Cloud } from "@/app/components/ui/icons"
 import { SectionCardFooter, SectionCardContent } from "@/app/components/ui/section-card"
+import { secretsService } from "@/app/services/secrets-service"
 
 export function EmailChannelSetup({ 
   siteId, 
@@ -23,6 +24,19 @@ export function EmailChannelSetup({
 
   const [fromEmail, setFromEmail] = useState("noreply")
   const [fromName, setFromName] = useState("")
+
+  const [isCloudflareConnected, setIsCloudflareConnected] = useState(false)
+  const [isSyncingCloudflare, setIsSyncingCloudflare] = useState(false)
+
+  useEffect(() => {
+    const checkSecrets = async () => {
+      if (siteId) {
+        const cfExists = await secretsService.checkSecretExists(siteId, 'cloudflare', 'dns_sync')
+        setIsCloudflareConnected(cfExists)
+      }
+    }
+    checkSecrets()
+  }, [siteId])
 
   const metadata = channel.metadata || {}
   const domainStatus = metadata.domain_status || "not_started" // not_started, pending, verified, failed
@@ -71,6 +85,40 @@ export function EmailChannelSetup({
       toast.error(error.message || "An error occurred")
     } finally {
       setIsProcessing(false)
+    }
+  }
+
+  const handleSyncCloudflare = async () => {
+    if (!isCloudflareConnected) {
+      window.location.href = `/api/integrations/cloudflare/oauth/authorize?site_id=${siteId}`
+      return
+    }
+
+    if (!siteId || !metadata.domain || !dnsRecords.length) return
+
+    setIsSyncingCloudflare(true)
+    try {
+      const response = await fetch('/api/integrations/cloudflare/sync/zavu', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          siteId,
+          domain: metadata.domain,
+          records: dnsRecords
+        })
+      })
+
+      const data = await response.json()
+      if (response.ok && data.success) {
+        toast.success("DNS records synced with Cloudflare successfully")
+      } else {
+        toast.error(data.error || "Failed to sync DNS records")
+      }
+    } catch (error: any) {
+      console.error("Error syncing with Cloudflare:", error)
+      toast.error("An error occurred while syncing with Cloudflare")
+    } finally {
+      setIsSyncingCloudflare(false)
     }
   }
 
@@ -260,7 +308,16 @@ export function EmailChannelSetup({
           </div>
         </SectionCardContent>
 
-        <SectionCardFooter>
+        <SectionCardFooter className="justify-end gap-2 flex-wrap">
+          <Button 
+            type="button" 
+            variant="outline"
+            onClick={handleSyncCloudflare} 
+            disabled={isProcessing || isSyncingCloudflare || !dnsRecords.length}
+          >
+            <Cloud className="h-4 w-4 mr-2" />
+            {isSyncingCloudflare ? "Syncing..." : isCloudflareConnected ? "Sync with Cloudflare" : "Connect Cloudflare"}
+          </Button>
           <Button 
             type="button" 
             variant="secondary"

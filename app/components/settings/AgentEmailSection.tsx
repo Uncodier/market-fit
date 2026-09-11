@@ -16,7 +16,7 @@ import { ActionFooter } from "../ui/card-footer"
 import { Button } from "../ui/button"
 import { Input } from "../ui/input"
 import { Label } from "../ui/label"
-import { Mail, CheckCircle2, AlertCircle, Trash2, Download, Check, Copy } from "../ui/icons"
+import { Mail, CheckCircle2, AlertCircle, Trash2, Download, Check, Copy, Cloud } from "../ui/icons"
 import { type SiteFormValues } from "./form-schema"
 import { useSite } from "../../context/SiteContext"
 import { apiClient } from "../../services/api-client-service"
@@ -68,6 +68,8 @@ export function AgentEmailSection({ active, siteId, onSave }: AgentEmailSectionP
   const [apiKey, setApiKey] = useState("")
   const [isApiKeyStored, setIsApiKeyStored] = useState(false)
   const [isSavingApiKey, setIsSavingApiKey] = useState(false)
+  const [isCloudflareConnected, setIsCloudflareConnected] = useState(false)
+  const [isSyncingCloudflare, setIsSyncingCloudflare] = useState(false)
   const { currentSite, updateSettings } = useSite()
 
   const handleSave = async () => {
@@ -85,13 +87,16 @@ export function AgentEmailSection({ active, siteId, onSave }: AgentEmailSectionP
   }
 
   useEffect(() => {
-    const checkApiKey = async () => {
+    const checkSecrets = async () => {
       if (siteId) {
-        const exists = await secretsService.checkSecretExists(siteId, 'agentmail', 'integrations')
-        setIsApiKeyStored(exists)
+        const apiKeyExists = await secretsService.checkSecretExists(siteId, 'agentmail', 'integrations')
+        setIsApiKeyStored(apiKeyExists)
+        
+        const cfExists = await secretsService.checkSecretExists(siteId, 'cloudflare', 'dns_sync')
+        setIsCloudflareConnected(cfExists)
       }
     }
-    checkApiKey()
+    checkSecrets()
   }, [siteId])
 
   const handleSaveApiKey = async () => {
@@ -136,6 +141,40 @@ export function AgentEmailSection({ active, siteId, onSave }: AgentEmailSectionP
       toast.error("Failed to remove AgentMail API Key")
     } finally {
       setIsSavingApiKey(false)
+    }
+  }
+
+  const handleSyncCloudflare = async () => {
+    if (!isCloudflareConnected) {
+      window.location.href = `/api/integrations/cloudflare/oauth/authorize?site_id=${siteId}`
+      return
+    }
+
+    if (!siteId || !getDomainId() || !hasDnsRecords) return
+
+    setIsSyncingCloudflare(true)
+    try {
+      const response = await fetch('/api/integrations/cloudflare/sync/agentmail', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          siteId,
+          domain: getDomainId(),
+          records: dnsRecords
+        })
+      })
+
+      const data = await response.json()
+      if (response.ok && data.success) {
+        toast.success("DNS records synced with Cloudflare successfully")
+      } else {
+        toast.error(data.error || "Failed to sync DNS records")
+      }
+    } catch (error: any) {
+      console.error("Error syncing with Cloudflare:", error)
+      toast.error("An error occurred while syncing with Cloudflare")
+    } finally {
+      setIsSyncingCloudflare(false)
     }
   }
 
@@ -821,6 +860,15 @@ export function AgentEmailSection({ active, siteId, onSave }: AgentEmailSectionP
             <Button
               type="button"
               variant="outline"
+              onClick={handleSyncCloudflare}
+              disabled={isSyncingCloudflare || !hasDnsRecords}
+            >
+              <Cloud className="h-4 w-4 mr-2" />
+              {isSyncingCloudflare ? "Syncing..." : isCloudflareConnected ? "Sync with Cloudflare" : "Connect Cloudflare"}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
               onClick={() => setShowDnsModal(true)}
               disabled={!hasDnsRecords}
             >
@@ -1011,6 +1059,15 @@ export function AgentEmailSection({ active, siteId, onSave }: AgentEmailSectionP
             })()}
           </DialogBody>
           <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleSyncCloudflare}
+              disabled={isSyncingCloudflare || !hasDnsRecords}
+            >
+              <Cloud className="h-4 w-4 mr-2" />
+              {isSyncingCloudflare ? "Syncing..." : isCloudflareConnected ? "Sync with Cloudflare" : "Connect Cloudflare"}
+            </Button>
             <Button
               type="button"
               variant="outline"

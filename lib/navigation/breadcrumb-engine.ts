@@ -69,7 +69,7 @@ export function getSection(fullPath: string): string {
   return `/${segments[0]}`
 }
 
-function hasId(fullPath: string): boolean {
+export function hasId(fullPath: string): boolean {
   const [pathname, search] = fullPath.split('?')
   const segments = pathname.split('/').filter(Boolean)
   const sectionSegmentsCount = getSection(fullPath).split('/').filter(Boolean).length

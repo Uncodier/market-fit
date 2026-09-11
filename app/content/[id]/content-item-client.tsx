@@ -2561,14 +2561,14 @@ export default function ContentDetailPage(props: { params: Promise<{ id: string 
                           </Label>
                           <div className="flex flex-wrap gap-2">
                             {editForm.tags.map((tag, index) => (
-                              <Badge key={index} variant="secondary" className="px-3 py-1 text-xs font-medium bg-gray-100/20 text-gray-700 dark:text-gray-300 hover:bg-gray-200/20 transition-colors border border-gray-300/30">
-                                {tag}
+                              <Badge key={index} variant="secondary" className="px-3 py-1 text-xs font-medium bg-gray-100/20 text-gray-700 dark:text-gray-300 hover:bg-gray-200/20 transition-colors border border-gray-300/30 max-w-full">
+                                <span className="truncate">{tag}</span>
                                 <button
                                   onClick={() => setEditForm(prev => ({
                                     ...prev,
                                     tags: prev.tags.filter((_, i) => i !== index)
                                   }))}
-                                  className="ml-1 hover:text-destructive"
+                                  className="ml-1 shrink-0 hover:text-destructive"
                                 >
                                   <X className="h-3 w-3" />
                                 </button>

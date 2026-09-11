@@ -400,7 +400,71 @@ export async function POST(request: NextRequest) {
             }
           }
           
-          
+          // Grant Refundable Credits for the sale (minus commission)
+          try {
+            const { data: billingInfo } = await supabase
+              .from('billing')
+              .select('plan')
+              .eq('site_id', siteId)
+              .single()
+              
+            const plan = billingInfo?.plan || 'foundry'
+            let commissionRate = 0.05 // 5% default (foundry)
+            if (plan === 'enterprise') commissionRate = 0.02 // 2%
+            else if (plan === 'engine') commissionRate = 0.03 // 3%
+            
+            // Handle zero decimal currencies safely
+            const zeroDecimalCurrencies = ['jpy', 'bif', 'clp', 'djf', 'gnf', 'krw', 'mga', 'pyg', 'rwf', 'ugx', 'vnd', 'vuv', 'xaf', 'xof', 'xpf']
+            const isZeroDecimal = zeroDecimalCurrencies.includes((session.currency || 'usd').toLowerCase())
+            const totalAmount = isZeroDecimal ? (session.amount_total || 0) : (session.amount_total || 0) / 100
+            
+            const commissionAmount = totalAmount * commissionRate
+            const creditsToGrant = parseFloat((totalAmount - commissionAmount).toFixed(2)) // 2 decimal precision
+            
+            if (creditsToGrant > 0) {
+              console.log(`💰 Granting $${creditsToGrant} account balance for sale ${saleId} (Total: ${totalAmount}, Commission: ${commissionRate * 100}%)`)
+              const { error: balanceError } = await supabase.rpc('add_balance', {
+                p_site_id: siteId,
+                p_amount: creditsToGrant
+              })
+              
+              if (balanceError) {
+                console.error('❌ Error granting sale balance:', balanceError)
+              } else {
+                console.log(`✅ Successfully granted $${creditsToGrant} account balance for site ${siteId}`)
+                
+                // Record the sale payment operation for the marketplace payouts
+                const salePaymentData = {
+                  site_id: siteId,
+                  transaction_id: `sale_${saleId}_${orderId}`,
+                  transaction_type: 'sale',
+                  amount: creditsToGrant, // The amount that actually hit their balance
+                  currency: session.currency?.toUpperCase() || 'USD',
+                  status: 'completed',
+                  payment_method: 'stripe',
+                  details: {
+                    stripe_payment_intent_id: session.payment_intent,
+                    stripe_session_id: session.id,
+                    order_id: orderId,
+                    sale_id: saleId,
+                    gross_amount: totalAmount,
+                    commission_rate: commissionRate
+                  }
+                }
+                
+                const { error: paymentError } = await supabase
+                  .from('payments')
+                  .insert(salePaymentData)
+                  
+                if (paymentError) {
+                  console.error('❌ Error recording sale payment:', paymentError)
+                }
+              }
+            }
+          } catch (creditErr) {
+             console.error('❌ Error calculating/granting sale credits:', creditErr)
+          }
+
           console.log(`✅ Successfully processed sale order: ${orderId}`)
         } catch (error) {
           console.error('❌ Error processing sale order:', error)

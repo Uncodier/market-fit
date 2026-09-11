@@ -55,6 +55,7 @@ import {
   Repeat,
   ModifierGroups,
   Save,
+  ArrowUpRight
 } from "@/app/components/ui/icons";
 
 import { subMonths, format, startOfDay, endOfDay } from "date-fns";
@@ -65,6 +66,8 @@ import { AuthenticateSessionsModal } from "./AuthenticateSessionsModal";
 import { useRequirementStatus } from "@/app/components/simple-messages-view/hooks/useRequirementStatus";
 import { Switch } from "@/app/components/ui/switch";
 import { Label } from "@/app/components/ui/label";
+
+import { PublishButton } from "./PublishButton";
 
 // Robot Start Button Component
 function RobotStartButton({
@@ -585,8 +588,8 @@ function RobotStartButton({
     const showRunningControls = SHOW_RUNNING_INSTANCE_CONTROLS && isRunning;
 
     // Resume button hidden - removed per user request
-    // Allow rendering if we have a source code url to download
-    if (!showRunningControls && !latestSourceCodeUrl) {
+    // Allow rendering if we have a source code url to download or preview url to publish
+    if (!showRunningControls && !latestSourceCodeUrl && !latestPreviewUrl) {
       return null;
     }
 
@@ -660,6 +663,9 @@ function RobotStartButton({
     return (
       <>
         <div className="flex items-center gap-2">
+          {latestPreviewUrl && (
+            <PublishButton siteId={currentSite.id} previewUrl={latestPreviewUrl} />
+          )}
           {showRunningControls && (
             <>
               <Button
@@ -732,29 +738,34 @@ function RobotStartButton({
 
   // Otherwise, show start button as fallback (should rarely show)
   return (
-    <Button
-      size="default"
-      className="flex items-center gap-2 bg-primary hover:bg-primary/90 transition-colors duration-200 !min-w-0 sm:!min-w-[155px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
-      onClick={handleStartRobot}
-      disabled={isStartingRobot}
-      title={t("layout.topbar.startRobot")}
-    >
-      {isStartingRobot ? (
-        <>
-          <LoadingSkeleton variant="button" size="sm" className="text-white" />
-          <span className="hidden sm:inline font-inter font-medium text-sm">
-            {t("layout.topbar.startingRobot")}
-          </span>
-        </>
-      ) : (
-        <>
-          <PlayCircle className="h-4 w-4 shrink-0" />
-          <span className="hidden sm:inline ml-2 font-inter font-medium text-sm">
-            {t("layout.topbar.startRobot")}
-          </span>
-        </>
+    <div className="flex items-center gap-2">
+      {latestPreviewUrl && (
+        <PublishButton siteId={currentSite.id} previewUrl={latestPreviewUrl} />
       )}
-    </Button>
+      <Button
+        size="default"
+        className="flex items-center gap-2 bg-primary hover:bg-primary/90 transition-colors duration-200 !min-w-0 sm:!min-w-[155px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
+        onClick={handleStartRobot}
+        disabled={isStartingRobot}
+        title={t("layout.topbar.startRobot")}
+      >
+        {isStartingRobot ? (
+          <>
+            <LoadingSkeleton variant="button" size="sm" className="text-white" />
+            <span className="hidden sm:inline font-inter font-medium text-sm">
+              {t("layout.topbar.startingRobot")}
+            </span>
+          </>
+        ) : (
+          <>
+            <PlayCircle className="h-4 w-4 shrink-0" />
+            <span className="hidden sm:inline ml-2 font-inter font-medium text-sm">
+              {t("layout.topbar.startRobot")}
+            </span>
+          </>
+        )}
+      </Button>
+    </div>
   );
 }
 
@@ -1973,6 +1984,23 @@ export function TopBarActions({
           <span className="hidden sm:inline font-inter font-medium text-sm">
             {t("buyer.subscriptions.newSubscription") || "New Subscription"}
           </span>
+        </Button>
+      )}
+
+      {/* Payouts actions */}
+      {pathname.startsWith("/payments") && currentSite && (
+        <Button
+          size="default"
+          className="flex items-center justify-center gap-2 transition-colors duration-200 !min-w-0 sm:!min-w-[155px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm bg-primary hover:bg-primary/90 text-primary-foreground"
+          onClick={() => {
+            const event = new CustomEvent("payouts:request-open")
+            window.dispatchEvent(event)
+          }}
+          disabled={!currentSite.billing?.account_balance || currentSite.billing.account_balance <= 0}
+          title="Request Payout"
+        >
+          <ArrowUpRight className="h-4 w-4" />
+          <span className="hidden sm:inline">Request Payout</span>
         </Button>
       )}
 

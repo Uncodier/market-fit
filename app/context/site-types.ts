@@ -54,6 +54,7 @@ export interface Site {
     auto_renew: boolean
     credits_available?: number
     credits_used?: number
+    account_balance?: number
   }
   // New settings data
   settings?: SiteSettings

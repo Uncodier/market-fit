@@ -418,12 +418,12 @@ export function UploadAssetDialog({ onUploadAsset, contentId, onSuccess, open: c
                 <Badge 
                   key={tag} 
                   variant="secondary"
-                  className="bg-gray-100 text-gray-700 hover:bg-gray-200 border-gray-200 flex items-center gap-1"
+                  className="bg-gray-100 text-gray-700 hover:bg-gray-200 border-gray-200 flex items-center gap-1 max-w-full"
                 >
-                  {tag}
+                  <span className="truncate">{tag}</span>
                   <button 
                     onClick={() => handleRemoveTag(tag)}
-                    className="ml-1 hover:text-red-500"
+                    className="ml-1 shrink-0 hover:text-red-500"
                     disabled={isSubmitting}
                   >
                     <X className="h-3 w-3" />

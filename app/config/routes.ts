@@ -29,6 +29,7 @@ export const routes: RouteConfig[] = [
   { path: "/notifications", hasLayout: true },
   { path: "/billing/success", hasLayout: false },
   { path: "/billing", hasLayout: true },
+  { path: "/payments", hasLayout: true },
   { path: "/settings", hasLayout: true },
   { path: "/skills", hasLayout: true },
   { path: "/security", hasLayout: true },

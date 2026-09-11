@@ -125,7 +125,7 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
   const [selectedActivity, setSelectedActivity] = useState<string>('ask')
   const [isStepIndicatorExpanded, setIsStepIndicatorExpanded] = useState(false)
   const [isBacklogIndicatorExpanded, setIsBacklogIndicatorExpanded] = useState(false)
-  const [bottomPadding, setBottomPadding] = useState(180)
+  const [bottomPadding, setBottomPadding] = useState(150)
   const bottomContainerRef = useRef<HTMLDivElement>(null)
 
   const [isEditPendingModalOpen, setIsEditPendingModalOpen] = useState(false)
@@ -133,33 +133,6 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
   const [editPendingMessage, setEditPendingMessage] = useState('')
 
   const shouldForceScrollRef = useRef(false)
-
-  useEffect(() => {
-    if (!bottomContainerRef.current) return
-    const observer = new ResizeObserver((entries) => {
-      for (const entry of entries) {
-        // Use bounding client rect for more accurate total height
-        const rect = (entry.target as HTMLElement).getBoundingClientRect()
-        // If we are currently at the bottom, mark that we should force scroll after the padding updates
-        if (stickToBottomRef.current) {
-          shouldForceScrollRef.current = true
-        }
-        // Add 80px as extra buffer to ensure the last message is well above the input area
-        setBottomPadding(Math.max(180, rect.height + 80))
-      }
-    })
-    observer.observe(bottomContainerRef.current)
-    
-    return () => observer.disconnect()
-  }, [])
-
-  useEffect(() => {
-    // Re-scroll to bottom if the padding pushed content up and we were stuck to bottom before the change
-    if (messagesContainerRef.current && (stickToBottomRef.current || shouldForceScrollRef.current)) {
-      shouldForceScrollRef.current = false
-      scrollContainerToBottomImmediateRef.current?.()
-    }
-  }, [bottomPadding])
   const scrollToBottomImmediateRef = useRef<(() => void) | null>(null)
 
   const [recentUserMessageIds, setRecentUserMessageIds] = useState<Set<string>>(new Set())
@@ -403,6 +376,35 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
   })
 
   instanceLogsRef.current = logs
+
+  useEffect(() => {
+    if (!bottomContainerRef.current) return
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        // Use bounding client rect for more accurate total height
+        const rect = (entry.target as HTMLElement).getBoundingClientRect()
+        // If we are currently at the bottom, mark that we should force scroll after the padding updates
+        if (stickToBottomRef.current) {
+          shouldForceScrollRef.current = true
+        }
+        // Add 24px as extra buffer to ensure the last message is just above the input area and floating elements
+        setBottomPadding(Math.max(60, rect.height + 24))
+      }
+    })
+    
+    const target = bottomContainerRef.current
+    observer.observe(target)
+    
+    return () => observer.disconnect()
+  }, [isLoadingLogs])
+
+  useEffect(() => {
+    // Re-scroll to bottom if the padding pushed content up and we were stuck to bottom before the change
+    if (messagesContainerRef.current && (stickToBottomRef.current || shouldForceScrollRef.current)) {
+      shouldForceScrollRef.current = false
+      scrollContainerToBottomImmediateRef.current?.()
+    }
+  }, [bottomPadding])
 
   // Update the ref with the real function
   useEffect(() => {
@@ -816,14 +818,16 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
       <div
         ref={messagesContainerRef}
         className={cn(
-          "flex-1 min-h-0 overflow-y-auto overflow-x-hidden w-full min-w-0 transition-colors duration-300 ease-in-out",
+          "block flex-1 min-h-0 overflow-y-auto overflow-x-hidden w-full min-w-0 transition-all duration-300 ease-in-out",
         )}
-        style={{ transform: 'translateZ(0)', backfaceVisibility: 'hidden' }}
+        style={{ 
+          transform: 'translateZ(0)', 
+          backfaceVisibility: 'hidden'
+        }}
         onScroll={handleScroll}
       >
         <div 
-          className="w-full max-w-4xl mx-auto px-4 min-w-0 transition-[padding-bottom] duration-300 ease-in-out"
-          style={{ paddingBottom: isEmpty ? 0 : `${bottomPadding}px` }}
+          className="w-full max-w-4xl mx-auto px-4 min-w-0 transition-all duration-300 ease-in-out"
         >
           {/* Spacer for sticky header and topbar blur effect */}
           <div className={cn("h-[135px] shrink-0", !hasTopHeaderSpace && "hidden lg:block")} aria-hidden="true" />
@@ -1055,6 +1059,18 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
         
         {/* Invisible element for auto-scroll */}
         <div ref={messagesEndRef} />
+        </div>
+        
+        {/* Explicit spacer block for cross-browser compatibility to ensure scrollable space instead of padding-bottom */}
+        <div 
+          style={{ 
+            height: isEmpty ? 0 : `${bottomPadding}px`,
+            minHeight: isEmpty ? 0 : `${bottomPadding}px`
+          }} 
+          className="w-full shrink-0 transition-all duration-300 ease-in-out pointer-events-none opacity-0" 
+          aria-hidden="true" 
+        >
+          &nbsp;
         </div>
         </div>
       </div>

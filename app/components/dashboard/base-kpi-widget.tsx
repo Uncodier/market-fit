@@ -240,15 +240,25 @@ export function BaseKpiWidget({
             {customStatus || (
               <p className="text-xs text-muted-foreground mt-1 h-[18px] flex items-center gap-1 kpi-fade-in-delayed">
                 {isPositiveChange !== undefined ? (
-                  <>
-                    <span className={isPositiveChange ? "text-green-500" : "text-red-500"}>
-                      {/^-?[\d.,]+/.test(changeText.split(' ')[0]) && isPositiveChange ? '+' : ''}
-                      {changeText.split(' ')[0]}
-                    </span>
-                    {changeText.split(' ').length > 1 && (
-                      <span>{changeText.split(' ').slice(1).join(' ')}</span>
-                    )}
-                  </>
+                  (() => {
+                    const firstWord = changeText.split(' ')[0];
+                    const numericValue = parseFloat(firstWord.replace(/[^0-9.-]+/g, ''));
+                    const isZero = isNaN(numericValue) || numericValue === 0;
+                    
+                    const textColor = isZero ? "text-foreground font-medium" : (isPositiveChange ? "text-green-500" : "text-red-500");
+                    const arrow = isZero ? '→' : (isPositiveChange ? '↑' : '↓');
+                    
+                    return (
+                      <>
+                        <span className={textColor}>
+                          {arrow} {firstWord.replace(/^-/, '').replace(/^\+/, '')}
+                        </span>
+                        {changeText.split(' ').length > 1 && (
+                          <span>{changeText.split(' ').slice(1).join(' ')}</span>
+                        )}
+                      </>
+                    );
+                  })()
                 ) : (
                   changeText
                 )}
@@ -290,4 +300,4 @@ export function BaseKpiWidget({
       `}</style>
     </Card>
   );
-} 
+}

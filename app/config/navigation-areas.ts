@@ -135,6 +135,7 @@ export const NAVIGATION_AREAS: Record<
       { key: "financeReports", href: "/finance" },
       { key: "journalEntries", href: "/accounting/entries" },
       { key: "chartOfAccounts", href: "/accounting" },
+      { key: "payments", href: "/payments" },
     ],
   },
   reports: {
