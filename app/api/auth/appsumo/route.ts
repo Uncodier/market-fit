@@ -1,12 +1,18 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createClient, createServiceClient } from "@/lib/supabase/server"
 
+export async function HEAD(req: NextRequest) {
+  return new NextResponse(null, { status: 200 })
+}
+
 export async function GET(req: NextRequest) {
   const searchParams = req.nextUrl.searchParams
   const code = searchParams.get('code')
 
   if (!code) {
-    return NextResponse.redirect(new URL('/login?error=missing_appsumo_code', req.url))
+    // Si AppSumo hace un ping de validación sin código, devolvemos 200 OK
+    // en lugar de una redirección para asegurar que pase la validación en su UI.
+    return new NextResponse('Ready for OAuth', { status: 200 })
   }
 
   try {
