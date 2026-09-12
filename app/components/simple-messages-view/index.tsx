@@ -1067,7 +1067,7 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
             height: isEmpty ? 0 : `${bottomPadding}px`,
             minHeight: isEmpty ? 0 : `${bottomPadding}px`
           }} 
-          className="w-full shrink-0 transition-all duration-300 ease-in-out pointer-events-none opacity-0" 
+          className="w-full shrink-0 pointer-events-none opacity-0" 
           aria-hidden="true" 
         >
           &nbsp;

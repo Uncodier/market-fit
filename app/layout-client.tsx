@@ -315,7 +315,7 @@ function LayoutClientInner({
               <main 
                 className={cn(
                   "flex-1 min-w-0",
-                  (isChatPage) ? "flex flex-col overflow-hidden" : (isRobotsPage ? "flex flex-col overflow-visible" : "overflow-visible")
+                  (isChatPage) ? "flex flex-col overflow-hidden" : (isRobotsPage ? "flex flex-col overflow-hidden" : "overflow-visible")
                 )} 
                 style={{
                   ...(isAppPage ? { height: isRobotsPage ? '100dvh' : 'calc(100dvh - 64px)' } : {}),
