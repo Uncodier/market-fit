@@ -1,22 +1,19 @@
 "use client"
 
 import { useTheme } from "@/app/context/ThemeContext"
-import { Line, Area, ComposedChart, ResponsiveContainer, Tooltip, XAxis, YAxis, CartesianGrid, Legend } from "recharts"
+import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis, CartesianGrid, Legend } from "recharts"
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/app/components/ui/card"
 import { format } from "date-fns"
 
-interface WalletChartProps {
-  data?: Array<{ date: string; balance: number; operations?: number; consumed?: number }>;
+interface SalesWithdrawalsChartProps {
+  data?: Array<{ date: string; sales: number; withdrawals: number }>;
 }
 
-export function WalletChart({ data: providedData }: WalletChartProps) {
+export function SalesWithdrawalsChart({ data: providedData }: SalesWithdrawalsChartProps) {
   const { isDarkMode } = useTheme()
-  const balanceColor = isDarkMode ? "#3b82f6" : "#2563eb" // Blue
-  const operationsColor = isDarkMode ? "#34d399" : "#10b981" // Green
-  const consumedColor = isDarkMode ? "#f87171" : "#ef4444" // Red
+  const salesColor = isDarkMode ? "#34d399" : "#10b981" // Green
+  const withdrawalsColor = isDarkMode ? "#f87171" : "#ef4444" // Red
 
-  // Use provided data, but if it's missing, fall back to flat line 0 to prevent 
-  // random values from appearing when there is no data
   const data = providedData || Array.from({ length: 14 }).map((_, i) => {
     const daysAgo = 13 - i;
     const date = new Date();
@@ -24,26 +21,29 @@ export function WalletChart({ data: providedData }: WalletChartProps) {
     
     return {
       date: format(date, "MMM dd"),
-      balance: 0,
-      operations: 0,
-      consumed: 0
+      sales: 0,
+      withdrawals: 0
     }
   })
 
   return (
     <Card className="col-span-full">
       <CardHeader>
-        <CardTitle>Usage & Operations Activity</CardTitle>
-        <CardDescription>Daily breakdown over the last 14 days</CardDescription>
+        <CardTitle>Accredited Sales vs Withdrawals</CardTitle>
+        <CardDescription>Daily comparison of sales earnings and payout requests</CardDescription>
       </CardHeader>
       <CardContent>
         <div className="h-[280px] w-full mt-2">
           <ResponsiveContainer width="100%" height="100%">
-            <ComposedChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+            <AreaChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
               <defs>
-                <linearGradient id="colorBalance" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor={balanceColor} stopOpacity={0.2} />
-                  <stop offset="95%" stopColor={balanceColor} stopOpacity={0} />
+                <linearGradient id="colorSales" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor={salesColor} stopOpacity={0.25} />
+                  <stop offset="95%" stopColor={salesColor} stopOpacity={0} />
+                </linearGradient>
+                <linearGradient id="colorWithdrawals" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor={withdrawalsColor} stopOpacity={0.25} />
+                  <stop offset="95%" stopColor={withdrawalsColor} stopOpacity={0} />
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={isDarkMode ? "#ffffff10" : "#00000010"} />
@@ -60,7 +60,7 @@ export function WalletChart({ data: providedData }: WalletChartProps) {
                 axisLine={false}
                 tickLine={false}
                 tick={{ fill: isDarkMode ? "#888" : "#666", fontSize: 12 }}
-                tickFormatter={(value) => `${value}`}
+                tickFormatter={(value) => `$${value}`}
                 width={60}
               />
               <Tooltip 
@@ -72,8 +72,8 @@ export function WalletChart({ data: providedData }: WalletChartProps) {
                 }}
                 itemStyle={{ color: isDarkMode ? '#f3f4f6' : '#111827', fontWeight: 600 }}
                 formatter={(value: number, name: string) => [
-                  `${value.toFixed(0)}`, 
-                  name === "balance" ? "Available Balance" : name === "operations" ? "Daily Operations" : "Daily Consumed"
+                  `$${value.toFixed(2)}`, 
+                  name === "sales" ? "Accredited Sales" : "Withdrawals"
                 ]}
                 labelStyle={{ color: isDarkMode ? '#9ca3af' : '#6b7280', marginBottom: '4px' }}
               />
@@ -82,37 +82,30 @@ export function WalletChart({ data: providedData }: WalletChartProps) {
                 height={36} 
                 iconType="circle"
                 formatter={(value) => {
-                  if (value === "balance") return "Total Account Balance"
-                  if (value === "operations") return "Daily Operations"
-                  if (value === "consumed") return "Daily Consumed"
+                  if (value === "sales") return "Accredited Sales"
+                  if (value === "withdrawals") return "Withdrawals"
                   return value
                 }}
               />
               <Area 
                 type="monotone" 
-                dataKey="balance" 
-                stroke={balanceColor} 
-                strokeWidth={2}
+                dataKey="sales" 
+                stroke={salesColor} 
+                strokeWidth={3}
                 fillOpacity={1} 
-                fill="url(#colorBalance)"
+                fill="url(#colorSales)"
+                activeDot={{ r: 6, strokeWidth: 0 }}
               />
-              <Line 
+              <Area 
                 type="monotone" 
-                dataKey="operations" 
-                stroke={operationsColor} 
-                strokeWidth={2}
-                dot={false}
-                activeDot={{ r: 4, strokeWidth: 0 }}
+                dataKey="withdrawals" 
+                stroke={withdrawalsColor} 
+                strokeWidth={3}
+                fillOpacity={1} 
+                fill="url(#colorWithdrawals)"
+                activeDot={{ r: 6, strokeWidth: 0 }}
               />
-              <Line 
-                type="monotone" 
-                dataKey="consumed" 
-                stroke={consumedColor} 
-                strokeWidth={2}
-                dot={false}
-                activeDot={{ r: 4, strokeWidth: 0 }}
-              />
-            </ComposedChart>
+            </AreaChart>
           </ResponsiveContainer>
         </div>
       </CardContent>

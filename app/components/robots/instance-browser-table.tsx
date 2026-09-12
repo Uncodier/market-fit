@@ -60,10 +60,10 @@ function CountCell({ value, loading }: { value?: number; loading: boolean }) {
 }
 
 function InstanceAvatar({ name, avatarUrl, loading, hasMultiple }: { name: string; avatarUrl?: string | null; loading: boolean; hasMultiple?: boolean }) {
-  if (loading) return <Skeleton className="h-9 w-9 rounded-full" />
+  if (loading) return <Skeleton className="h-9 w-9 shrink-0 rounded-full" />
   
   return (
-    <div className="relative">
+    <div className="relative shrink-0">
       {avatarUrl ? (
         <img
           src={avatarUrl}

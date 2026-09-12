@@ -413,16 +413,38 @@ export async function POST(request: NextRequest) {
             if (plan === 'enterprise') commissionRate = 0.02 // 2%
             else if (plan === 'engine') commissionRate = 0.03 // 3%
             
-            // Handle zero decimal currencies safely
-            const zeroDecimalCurrencies = ['jpy', 'bif', 'clp', 'djf', 'gnf', 'krw', 'mga', 'pyg', 'rwf', 'ugx', 'vnd', 'vuv', 'xaf', 'xof', 'xpf']
-            const isZeroDecimal = zeroDecimalCurrencies.includes((session.currency || 'usd').toLowerCase())
-            const totalAmount = isZeroDecimal ? (session.amount_total || 0) : (session.amount_total || 0) / 100
+            // To properly handle multi-currency checkouts (e.g. MXN -> USD settlement), 
+            // fetch the expanded payment intent to see what actually settled to the account
+            let settlementAmount = 0;
             
-            const commissionAmount = totalAmount * commissionRate
-            const creditsToGrant = parseFloat((totalAmount - commissionAmount).toFixed(2)) // 2 decimal precision
+            if (paymentIntentId) {
+              const pi = await stripe.paymentIntents.retrieve(paymentIntentId, {
+                expand: ['latest_charge.balance_transaction']
+              });
+              
+              const charge = pi.latest_charge as Stripe.Charge;
+              if (charge && charge.balance_transaction) {
+                const bt = charge.balance_transaction as Stripe.BalanceTransaction;
+                // Use the net amount settled (converted to USD if necessary)
+                // Note: net is after Stripe fees. If you want gross amount before Stripe fees but converted,
+                // you use bt.amount. We'll use bt.amount (which is in USD cents if your default currency is USD)
+                settlementAmount = bt.amount / 100;
+                console.log(`💱 Using converted settlement amount from Balance Transaction: $${settlementAmount} (Original: ${session.amount_total} ${session.currency})`);
+              }
+            }
+            
+            if (!settlementAmount) {
+              // Fallback to naive calculation if balance transaction isn't available
+              const zeroDecimalCurrencies = ['jpy', 'bif', 'clp', 'djf', 'gnf', 'krw', 'mga', 'pyg', 'rwf', 'ugx', 'vnd', 'vuv', 'xaf', 'xof', 'xpf']
+              const isZeroDecimal = zeroDecimalCurrencies.includes((session.currency || 'usd').toLowerCase())
+              settlementAmount = isZeroDecimal ? (session.amount_total || 0) : (session.amount_total || 0) / 100
+            }
+            
+            const commissionAmount = settlementAmount * commissionRate
+            const creditsToGrant = parseFloat((settlementAmount - commissionAmount).toFixed(2)) // 2 decimal precision
             
             if (creditsToGrant > 0) {
-              console.log(`💰 Granting $${creditsToGrant} account balance for sale ${saleId} (Total: ${totalAmount}, Commission: ${commissionRate * 100}%)`)
+              console.log(`💰 Granting $${creditsToGrant} account balance for sale ${saleId} (Total: ${settlementAmount}, Commission: ${commissionRate * 100}%)`)
               const { error: balanceError } = await supabase.rpc('add_balance', {
                 p_site_id: siteId,
                 p_amount: creditsToGrant
@@ -438,8 +460,8 @@ export async function POST(request: NextRequest) {
                   site_id: siteId,
                   transaction_id: `sale_${saleId}_${orderId}`,
                   transaction_type: 'sale',
-                  amount: creditsToGrant, // The amount that actually hit their balance
-                  currency: session.currency?.toUpperCase() || 'USD',
+                  amount: settlementAmount, // Gross amount
+                  currency: 'USD', // Balance is always stored in USD equivalent
                   status: 'completed',
                   payment_method: 'stripe',
                   details: {
@@ -447,17 +469,64 @@ export async function POST(request: NextRequest) {
                     stripe_session_id: session.id,
                     order_id: orderId,
                     sale_id: saleId,
-                    gross_amount: totalAmount,
+                    gross_amount: settlementAmount,
+                    original_currency: session.currency,
+                    original_amount: session.amount_total,
                     commission_rate: commissionRate
+                  }
+                }
+                
+                const commissionPaymentData = {
+                  site_id: siteId,
+                  transaction_id: `commission_${saleId}_${orderId}`,
+                  transaction_type: 'commission',
+                  amount: commissionAmount, // Commission deducted
+                  currency: 'USD',
+                  status: 'completed',
+                  payment_method: 'system',
+                  details: {
+                    order_id: orderId,
+                    sale_id: saleId,
+                    commission_rate: commissionRate,
+                    related_transaction_id: `sale_${saleId}_${orderId}`
                   }
                 }
                 
                 const { error: paymentError } = await supabase
                   .from('payments')
-                  .insert(salePaymentData)
+                  .insert([salePaymentData, commissionPaymentData])
                   
                 if (paymentError) {
-                  console.error('❌ Error recording sale payment:', paymentError)
+                  console.error('❌ Error recording sale and commission payments:', paymentError)
+                }
+
+                // Get site owner to log the commission as a transaction/expense
+                const { data: site } = await supabase
+                  .from('sites')
+                  .select('user_id')
+                  .eq('id', siteId)
+                  .single()
+
+                if (site?.user_id) {
+                  const transactionData = {
+                    site_id: siteId,
+                    user_id: site.user_id,
+                    type: 'variable',
+                    amount: commissionAmount,
+                    description: `Platform commission for order ${orderId}`,
+                    category: 'operating', // Operating costs
+                    date: new Date().toISOString().split('T')[0],
+                    currency: 'USD',
+                    accounting_state: 'pending'
+                  }
+
+                  const { error: txError } = await supabase
+                    .from('transactions')
+                    .insert(transactionData)
+
+                  if (txError) {
+                    console.error('❌ Error recording commission transaction:', txError)
+                  }
                 }
               }
             }

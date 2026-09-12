@@ -1,6 +1,6 @@
 "use client";
 
-import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from "recharts";
+import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from "recharts";
 import { useTheme } from "@/app/context/ThemeContext";
 import { Skeleton } from "@/app/components/ui/skeleton";
 import { usePerformanceSlice } from "@/app/hooks/use-dashboard-batches";
@@ -59,7 +59,17 @@ export function LeadsTasksChart({ startDate, endDate, segmentId = "all" }: Leads
   return (
     <div className="w-full h-[300px]">
       <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={data.chartData} margin={{ top: 10, right: 10, left: 10, bottom: 5 }}>
+        <AreaChart data={data.chartData} margin={{ top: 10, right: 10, left: 10, bottom: 5 }}>
+          <defs>
+            <linearGradient id="colorLeads" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="5%" stopColor={colors.leads} stopOpacity={0.25} />
+              <stop offset="95%" stopColor={colors.leads} stopOpacity={0} />
+            </linearGradient>
+            <linearGradient id="colorTasks" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="5%" stopColor={colors.tasks} stopOpacity={0.25} />
+              <stop offset="95%" stopColor={colors.tasks} stopOpacity={0} />
+            </linearGradient>
+          </defs>
           <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={colors.grid} opacity={isDarkMode ? 0.6 : 1} />
           <XAxis
             dataKey="date"
@@ -82,18 +92,23 @@ export function LeadsTasksChart({ startDate, endDate, segmentId = "all" }: Leads
               value.toLocaleString(),
               name === 'leadsCreated' ? 'Leads' : name === 'tasks' ? 'Tasks' : name
             ]}
-            labelStyle={{ fontWeight: 'bold', color: colors.tooltipText }}
-            contentStyle={{ backgroundColor: colors.tooltipBackground, border: `1px solid ${colors.tooltipBorder}`, borderRadius: '0.375rem' }}
-            itemStyle={{ color: colors.tooltipText }}
+            labelStyle={{ color: isDarkMode ? '#9ca3af' : '#6b7280', marginBottom: '4px' }}
+            contentStyle={{ 
+              backgroundColor: isDarkMode ? '#1f2937' : '#fff',
+              border: `1px solid ${isDarkMode ? '#374151' : '#e5e7eb'}`,
+              borderRadius: '8px',
+              boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)'
+            }}
+            itemStyle={{ color: isDarkMode ? '#f3f4f6' : '#111827', fontWeight: 600 }}
             labelFormatter={(value) => {
               const date = new Date(value);
               return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
             }}
           />
-          <Legend wrapperStyle={{ paddingTop: '20px', color: colors.text }} />
-          <Line type="monotone" dataKey="leadsCreated" stroke={colors.leads} strokeWidth={2} dot={{ fill: colors.leads, strokeWidth: 2, r: 4 }} activeDot={{ r: 6, stroke: colors.leads, strokeWidth: 2 }} name="Leads" />
-          <Line type="monotone" dataKey="tasks" stroke={colors.tasks} strokeWidth={2} dot={{ fill: colors.tasks, strokeWidth: 2, r: 4 }} activeDot={{ r: 6, stroke: colors.tasks, strokeWidth: 2 }} name="Tasks" />
-        </LineChart>
+          <Legend wrapperStyle={{ paddingTop: '20px', color: colors.text }} iconType="circle" />
+          <Area type="monotone" dataKey="leadsCreated" stroke={colors.leads} strokeWidth={3} fillOpacity={1} fill="url(#colorLeads)" dot={false} activeDot={{ r: 6, strokeWidth: 0 }} name="Leads" />
+          <Area type="monotone" dataKey="tasks" stroke={colors.tasks} strokeWidth={3} fillOpacity={1} fill="url(#colorTasks)" dot={false} activeDot={{ r: 6, strokeWidth: 0 }} name="Tasks" />
+        </AreaChart>
       </ResponsiveContainer>
     </div>
   );

@@ -112,16 +112,14 @@ export function PerformanceMetricsChart({
                 name === 'meetings' ? 'Meetings' :
                 name === 'sales' ? 'Sales' : name
               ]}
-              labelStyle={{ fontWeight: 'bold', color: colors.tooltipText }}
+              labelStyle={{ color: isDarkMode ? '#9ca3af' : '#6b7280', marginBottom: '4px' }}
               contentStyle={{ 
-                backgroundColor: colors.tooltipBackground, 
-                border: `1px solid ${colors.tooltipBorder}`,
-                borderRadius: '0.375rem', 
-                boxShadow: isDarkMode 
-                  ? '0 4px 6px -1px rgba(0, 0, 0, 0.5), 0 2px 4px -2px rgba(0, 0, 0, 0.3)' 
-                  : '0 1px 3px 0 rgba(0, 0, 0, 0.1)'
+                backgroundColor: isDarkMode ? '#1f2937' : '#fff',
+                border: `1px solid ${isDarkMode ? '#374151' : '#e5e7eb'}`,
+                borderRadius: '8px',
+                boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)'
               }}
-              itemStyle={{ color: colors.tooltipText }}
+              itemStyle={{ color: isDarkMode ? '#f3f4f6' : '#111827', fontWeight: 600 }}
               labelFormatter={(value) => {
                 const date = new Date(value);
                 return date.toLocaleDateString('en-US', { 
@@ -136,6 +134,7 @@ export function PerformanceMetricsChart({
                 paddingTop: '20px',
                 color: colors.text
               }}
+              iconType="circle"
             />
             {showConversations && (
               <Line 
@@ -143,8 +142,8 @@ export function PerformanceMetricsChart({
                 dataKey="conversations" 
                 stroke={colors.conversations}
                 strokeWidth={2}
-                dot={{ fill: colors.conversations, strokeWidth: 2, r: 4 }}
-                activeDot={{ r: 6, stroke: colors.conversations, strokeWidth: 2 }}
+                dot={false}
+                activeDot={{ r: 6, strokeWidth: 0 }}
                 name="Conversations"
                 animationDuration={1500}
                 animationEasing="ease-out"
@@ -155,8 +154,8 @@ export function PerformanceMetricsChart({
               dataKey="engagement" 
               stroke={colors.engagement}
               strokeWidth={2}
-              dot={{ fill: colors.engagement, strokeWidth: 2, r: 4 }}
-              activeDot={{ r: 6, stroke: colors.engagement, strokeWidth: 2 }}
+              dot={false}
+              activeDot={{ r: 6, strokeWidth: 0 }}
               name="Engagement"
               animationDuration={1500}
               animationEasing="ease-out"
@@ -166,8 +165,8 @@ export function PerformanceMetricsChart({
               dataKey="meetings" 
               stroke={colors.meetings}
               strokeWidth={2}
-              dot={{ fill: colors.meetings, strokeWidth: 2, r: 4 }}
-              activeDot={{ r: 6, stroke: colors.meetings, strokeWidth: 2 }}
+              dot={false}
+              activeDot={{ r: 6, strokeWidth: 0 }}
               name="Meetings"
               animationDuration={1500}
               animationEasing="ease-out"
@@ -177,8 +176,8 @@ export function PerformanceMetricsChart({
               dataKey="sales" 
               stroke={colors.sales}
               strokeWidth={2}
-              dot={{ fill: colors.sales, strokeWidth: 2, r: 4 }}
-              activeDot={{ r: 6, stroke: colors.sales, strokeWidth: 2 }}
+              dot={false}
+              activeDot={{ r: 6, strokeWidth: 0 }}
               name="Sales"
               animationDuration={1500}
               animationEasing="ease-out"

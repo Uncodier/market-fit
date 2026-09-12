@@ -1,6 +1,6 @@
 "use client";
 
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
 import { useTheme } from "@/app/context/ThemeContext";
 import { Skeleton } from "@/app/components/ui/skeleton";
 import { usePerformanceSlice } from "@/app/hooks/use-dashboard-batches";
@@ -70,10 +70,20 @@ export function TokenUsageChart({
   return (
     <div className="w-full h-[300px]">
       <ResponsiveContainer width="100%" height="100%">
-        <LineChart
+        <AreaChart
           data={data.chartData}
           margin={{ top: 10, right: 10, left: 10, bottom: 5 }}
         >
+          <defs>
+            <linearGradient id="colorInput" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="5%" stopColor={colors.inputLine} stopOpacity={0.25} />
+              <stop offset="95%" stopColor={colors.inputLine} stopOpacity={0} />
+            </linearGradient>
+            <linearGradient id="colorOutput" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="5%" stopColor={colors.outputLine} stopOpacity={0.25} />
+              <stop offset="95%" stopColor={colors.outputLine} stopOpacity={0} />
+            </linearGradient>
+          </defs>
           <CartesianGrid 
             strokeDasharray="3 3" 
             vertical={false} 
@@ -101,16 +111,14 @@ export function TokenUsageChart({
               value.toLocaleString(), 
               name === 'inputTokens' ? 'Input Tokens' : 'Output Tokens'
             ]}
-            labelStyle={{ fontWeight: 'bold', color: colors.tooltipText }}
+            labelStyle={{ color: isDarkMode ? '#9ca3af' : '#6b7280', marginBottom: '4px' }}
             contentStyle={{ 
-              backgroundColor: colors.tooltipBackground, 
-              border: `1px solid ${colors.tooltipBorder}`,
-              borderRadius: '0.375rem', 
-              boxShadow: isDarkMode 
-                ? '0 4px 6px -1px rgba(0, 0, 0, 0.5), 0 2px 4px -2px rgba(0, 0, 0, 0.3)' 
-                : '0 1px 3px 0 rgba(0, 0, 0, 0.1)'
+              backgroundColor: isDarkMode ? '#1f2937' : '#fff',
+              border: `1px solid ${isDarkMode ? '#374151' : '#e5e7eb'}`,
+              borderRadius: '8px',
+              boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)'
             }}
-            itemStyle={{ color: colors.tooltipText }}
+            itemStyle={{ color: isDarkMode ? '#f3f4f6' : '#111827', fontWeight: 600 }}
             labelFormatter={(value) => {
               const date = new Date(value);
               return date.toLocaleDateString('en-US', { 
@@ -125,30 +133,35 @@ export function TokenUsageChart({
               paddingTop: '20px',
               color: colors.text
             }}
+            iconType="circle"
           />
-          <Line 
+          <Area 
             type="monotone"
             dataKey="inputTokens" 
             stroke={colors.inputLine}
-            strokeWidth={2}
-            dot={{ fill: colors.inputLine, strokeWidth: 2, r: 4 }}
-            activeDot={{ r: 6, stroke: colors.inputLine, strokeWidth: 2 }}
+            strokeWidth={3}
+            fillOpacity={1}
+            fill="url(#colorInput)"
+            dot={false}
+            activeDot={{ r: 6, strokeWidth: 0 }}
             name="Input Tokens"
             animationDuration={1500}
             animationEasing="ease-out"
           />
-          <Line 
+          <Area 
             type="monotone"
             dataKey="outputTokens" 
             stroke={colors.outputLine}
-            strokeWidth={2}
-            dot={{ fill: colors.outputLine, strokeWidth: 2, r: 4 }}
-            activeDot={{ r: 6, stroke: colors.outputLine, strokeWidth: 2 }}
+            strokeWidth={3}
+            fillOpacity={1}
+            fill="url(#colorOutput)"
+            dot={false}
+            activeDot={{ r: 6, strokeWidth: 0 }}
             name="Output Tokens"
             animationDuration={1500}
             animationEasing="ease-out"
           />
-        </LineChart>
+        </AreaChart>
       </ResponsiveContainer>
     </div>
   );
