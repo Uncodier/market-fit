@@ -1,5 +1,6 @@
 "use client"
 
+import dynamic from "next/dynamic"
 import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/card"
 import { RecentActivity } from "@/app/components/dashboard/recent-activity"
 import { Overview } from "@/app/components/dashboard/overview"
@@ -11,6 +12,14 @@ import { LTVWidget } from "@/app/components/dashboard/ltv-widget"
 import { ROIWidget } from "@/app/components/dashboard/roi-widget"
 import { CACWidget } from "@/app/components/dashboard/cac-widget"
 import { CPLWidget } from "@/app/components/dashboard/cpl-widget"
+import { Switch } from "@/app/components/ui/switch"
+import { Label } from "@/app/components/ui/label"
+import { useState } from "react"
+
+const PerformanceMetricsChart = dynamic(
+  () => import("@/app/components/dashboard/performance-metrics-chart").then((m) => m.PerformanceMetricsChart),
+  { ssr: false }
+)
 
 export function DashboardOverviewTab({
   t,
@@ -23,6 +32,8 @@ export function DashboardOverviewTab({
   startDate: Date
   endDate: Date
 }) {
+  const [showConversations, setShowConversations] = useState(false)
+
   return (
     <>
       <div className="grid gap-4 grid-cols-2 lg:grid-cols-4 min-h-[160px]">
@@ -54,6 +65,29 @@ export function DashboardOverviewTab({
           </CardHeader>
           <CardContent className="flex-1 flex flex-col">
             <RecentActivity limit={6} startDate={startDate} endDate={endDate} />
+          </CardContent>
+        </Card>
+      </div>
+      <div className="grid gap-4 grid-cols-1 mt-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <div className="flex flex-col space-y-1.5">
+              <CardTitle>{t("dashboard.metrics.performance.title") || "Performance Metrics"}</CardTitle>
+            </div>
+            <div className="flex items-center space-x-2">
+              <Switch id="overview-show-conversations" checked={showConversations} onCheckedChange={setShowConversations} />
+              <Label htmlFor="overview-show-conversations" className="text-sm text-muted-foreground cursor-pointer">
+                {t("dashboard.metrics.performance.showConversations") || "Show Conversations"}
+              </Label>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <PerformanceMetricsChart
+              segmentId={segmentId}
+              startDate={startDate}
+              endDate={endDate}
+              showConversations={showConversations}
+            />
           </CardContent>
         </Card>
       </div>
