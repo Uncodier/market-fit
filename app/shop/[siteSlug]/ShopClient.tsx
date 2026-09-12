@@ -49,6 +49,7 @@ import {
 import { useBuyerLocation } from "@/app/components/commerce/use-buyer-location"
 import { buyerLocationLeadingChip } from "@/app/components/commerce/BuyerLocationControls"
 import { useDisplayCurrency } from "@/app/context/DisplayCurrencyContext"
+import { useSiteTracking } from "@/app/hooks/useSiteTracking"
 
 interface CartItem extends CatalogItem {
   cartQty: number;
@@ -160,6 +161,13 @@ export default function ShopClient({
   const [scheduledFor, setScheduledFor] = useState<Date | null>(null)
   const userChoseFulfillmentRef = useRef(false)
   const userChosePaymentRef = useRef(false)
+
+  const { trackPageview, trackEvent } = useSiteTracking(site?.id)
+
+  // Track pageview on mount
+  useEffect(() => {
+    trackPageview()
+  }, [trackPageview])
 
   const setFulfillmentByUser = useCallback((value: CheckoutFulfillmentMethod) => {
     userChoseFulfillmentRef.current = true
@@ -278,6 +286,13 @@ export default function ShopClient({
       router.push(`/shop/${siteSlug}/${item.id}/book`)
       return
     }
+
+    trackEvent('add_to_cart', {
+      item_id: item.id,
+      item_name: item.name,
+      price: item.target_sale_price || 0,
+      currency: site?.settings?.currency || 'USD'
+    })
 
     setCart(prevCart => {
       const existing = prevCart.find(c => c.id === item.id)

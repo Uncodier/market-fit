@@ -23,6 +23,7 @@ import { PdpProductGallery } from "./PdpProductGallery"
 import { PdpModifierSkeleton } from "./PdpPageSkeleton"
 import { hasPdpProductDetails } from "./pdp-item-description"
 import { VariantPicker } from "./VariantPicker"
+import { useSiteTracking } from "@/app/hooks/useSiteTracking"
 import {
   ModifierPickerPanel,
   isModifierSelectionValid,
@@ -60,6 +61,12 @@ export function ProductPdpLayout({ item, backUrl, experience: _experience, catal
   const [selectedModifiers, setSelectedModifiers] = useState<CartModifier[]>([])
   const [modifiersReady, setModifiersReady] = useState(false)
   
+  const { trackPageview, trackEvent } = useSiteTracking(item.site_id)
+
+  useEffect(() => {
+    trackPageview()
+  }, [trackPageview])
+
   // Resolve selected child
   const resolvedChild = useMemo(() => {
     if (!hasVariants) return item
@@ -218,6 +225,13 @@ export function ProductPdpLayout({ item, backUrl, experience: _experience, catal
       return toast.error(modCheck.error)
     }
 
+    trackEvent('add_to_cart', {
+      item_id: activeItem.id,
+      item_name: activeItem.name,
+      price: activeItem.target_sale_price || item.target_sale_price || 0,
+      currency: item.currency || 'USD'
+    })
+
     addToCartStorage(activeItem, 1, undefined, undefined, selectedModifiers)
     toast.success(`${activeItem.name} ${t('marketplace.addedToCart') || 'added to cart'}`)
     router.push(afterAddToCartHref(backUrl))
@@ -231,6 +245,14 @@ export function ProductPdpLayout({ item, backUrl, experience: _experience, catal
     if (!modCheck.ok) {
       return toast.error(modCheck.error)
     }
+
+    trackEvent('buy_now', {
+      item_id: activeItem.id,
+      item_name: activeItem.name,
+      price: activeItem.target_sale_price || item.target_sale_price || 0,
+      currency: item.currency || 'USD'
+    })
+
     startBuyNow(activeItem, 1, backUrl, undefined, undefined, selectedModifiers)
   }
 

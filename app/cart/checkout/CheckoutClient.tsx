@@ -37,6 +37,7 @@ import { isBusinessOpen, getNextOpenSlot } from "@/app/commerce/business-hours"
 import { evaluateLocationRestrictions } from "@/app/commerce/location-restrictions"
 import { formatDeliveryTime } from "@/app/commerce/delivery-time"
 import { getBuyerGeoApprox, BuyerGeo } from "@/app/commerce/buyer-geo"
+import { useSiteTracking } from "@/app/hooks/useSiteTracking"
 
 export default function CheckoutClient({
   buyerGeo
@@ -261,6 +262,25 @@ export default function CheckoutClient({
     }
     return siteId || undefined
   })()
+
+  const { identifyLead } = useSiteTracking(resolvedCheckoutSiteId)
+
+  // Identify lead when contact info is sufficiently provided, with debounce to avoid spamming the API
+  useEffect(() => {
+    const resolvedName = customerName || session?.user?.user_metadata?.name || session?.user?.user_metadata?.full_name || session?.user?.email
+    const resolvedEmail = customerEmail || session?.user?.email
+    
+    if (!resolvedName && !resolvedEmail) return
+
+    const timeoutId = setTimeout(() => {
+      identifyLead({
+        name: resolvedName,
+        email: resolvedEmail
+      })
+    }, 1500) // 1.5 second debounce
+
+    return () => clearTimeout(timeoutId)
+  }, [customerName, customerEmail, session, identifyLead])
 
   const isLocationAvailable = React.useMemo(() => {
     if (!siteSettings?.locations || siteSettings.locations.length === 0) return true;

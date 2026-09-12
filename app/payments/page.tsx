@@ -126,6 +126,7 @@ function PaymentsContent() {
   const usableCredits = (currentSite?.billing?.credits_available || 0) + (currentSite?.billing?.account_balance || 0)
   const withdrawableBalance = currentSite?.billing?.account_balance || 0
   const pendingAmount = payouts?.filter((p: any) => p.status === 'pending').reduce((sum: number, p: any) => sum + Number(p.requested_credits), 0) || 0
+  const totalTransferredAmount = payouts?.filter((p: any) => p.status === 'completed').reduce((sum: number, p: any) => sum + Number(p.requested_credits), 0) || 0
   
   // Only count visible operations for the payments dashboard table
   const visibleOperations = operations?.filter(op => ['sale', 'commission'].includes(op.transaction_type)) || []
@@ -262,7 +263,7 @@ function PaymentsContent() {
                   isLoading={false}
                 />
                 <BaseKpiWidget
-                  title="Withdrawable Balance (USD)"
+                  title="Withdrawable Balance"
                   value={`$${withdrawableBalance.toFixed(2)}`}
                   changeText="From sales ready to withdraw"
                   isLoading={false}
@@ -275,8 +276,8 @@ function PaymentsContent() {
                 />
                 <BaseKpiWidget
                   title="Total Withdrawals"
-                  value={`${totalWithdrawalsCount}`}
-                  changeText="Total withdrawal requests"
+                  value={`$${totalTransferredAmount.toFixed(2)}`}
+                  changeText="Total withdrawn amount"
                   isLoading={false}
                 />
               </div>
