@@ -1,6 +1,5 @@
 "use client"
 
-import { useAuth } from "@/app/hooks/use-auth"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { Card, CardContent } from "@/app/components/ui/card"
 import { Button } from "@/app/components/ui/button"
@@ -10,10 +9,7 @@ import { useEffect } from "react"
 
 export default function SalesHomePage() {
   const { t } = useLocalization()
-  const { user } = useAuth()
   const router = useRouter()
-  const userName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User'
-
   // Update breadcrumbs and title
   useEffect(() => {
     document.title = "Sales Home | Market Fit"
@@ -90,16 +86,6 @@ export default function SalesHomePage() {
   return (
     <div className="flex-1 min-w-0 w-full p-0 h-[calc(100vh-var(--topbar-height,64px))] flex flex-col overflow-y-auto">
       <div className="p-8 space-y-8 bg-muted/30 flex-1">
-        {/* Welcome Section */}
-        <div className="flex flex-col space-y-2">
-          <h2 className="text-3xl font-bold tracking-tight">
-            Hi {userName}, Welcome to Sales 👋
-          </h2>
-          <p className="text-muted-foreground text-lg">
-            Manage your sales pipeline, track deals, and communicate with leads all in one place.
-          </p>
-        </div>
-
         {/* Quick Actions */}
         <div className="grid gap-4 md:grid-cols-3">
           <Card className="hover:border-primary/50 transition-colors cursor-pointer" onClick={handleRegisterSale}>

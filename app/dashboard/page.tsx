@@ -1,21 +1,20 @@
 "use client"
 
 import dynamic from "next/dynamic"
-import { useAuth } from "@/app/hooks/use-auth"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { useState, useEffect, useCallback, useRef, Suspense } from "react"
 import useSWR from "swr"
 import { useRouter, useSearchParams } from "next/navigation"
 import { getSegments } from "@/app/segments/actions"
 import { useSite } from "@/app/context/SiteContext"
-import { format, subMonths } from "date-fns"
+import { subMonths } from "date-fns"
 import { useProfile } from "@/app/hooks/use-profile"
 import { usePageRefreshPrevention } from "@/app/hooks/use-prevent-refresh"
 import { DashboardFilters } from "./DashboardFilters"
 import { DashboardPerformanceTab } from "./DashboardPerformanceTab"
 import { DashboardOverviewTab } from "./DashboardOverviewTab"
 import { DashboardAnalyticsTab } from "./DashboardAnalyticsTab"
-import { determineRangeType, validateDates, formatRangeLabel } from "./dashboard-dates"
+import { determineRangeType, validateDates } from "./dashboard-dates"
 
 const CostReports = dynamic(
   () => import("@/app/components/dashboard/cost-reports").then((m) => m.CostReports),
@@ -38,9 +37,7 @@ const VALID_TABS = ["performance", "overview", "analytics", "traffic", "costs", 
 
 function DashboardPageContent() {
   const { t } = useLocalization()
-  const { user } = useAuth()
   const { currentSite } = useSite()
-  const userName = user?.user_metadata?.full_name || user?.email?.split("@")[0] || "User"
   const [selectedSegment, setSelectedSegment] = useState("all")
   const { data: segments = [], isLoading: isLoadingSegments } = useSWR(
     currentSite && currentSite.id !== "default" ? ["segments", currentSite.id] : null,
@@ -109,8 +106,6 @@ function DashboardPageContent() {
     setNavigationBlocked(Boolean(shouldPreventRefresh))
   }, [shouldPreventRefresh])
 
-  const rangeTypeLabel = formatRangeLabel(selectedRangeType, t)
-
   return (
     <div className="flex-1 min-w-0 w-full p-0 min-h-[calc(100dvh-var(--topbar-height,64px))] flex flex-col">
       {navigationBlocked && (
@@ -133,19 +128,6 @@ function DashboardPageContent() {
       />
 
       <div className="p-8 space-y-4 bg-muted/30 flex-1">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight">
-            {(t("dashboard.greeting") || "Hi, {userName}! 👋").replace("{userName}", userName)}
-          </h2>
-          <p className="text-muted-foreground">
-            {(t("dashboard.subtitle") ||
-              "Welcome to your control panel - Viewing {rangeType} data ({startDate} to {endDate} {year})")
-              .replace("{rangeType}", rangeTypeLabel)
-              .replace("{startDate}", format(dateRange.startDate, "MMMM d"))
-              .replace("{endDate}", format(dateRange.endDate, "MMMM d"))
-              .replace("{year}", format(dateRange.endDate, "yyyy"))}
-          </p>
-        </div>
 
         <div className="space-y-4">
           {activeTab === "performance" && (
