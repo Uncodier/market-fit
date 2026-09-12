@@ -131,6 +131,30 @@ function RobotsPageContent() {
   const isCanvasMode = viewMode === 'imprenta' || viewMode === 'workflow'
   const { theme, isDarkMode } = useTheme()
   
+  // Prevent any body scroll on this page to fix Mac/iOS Safari scroll chaining
+  useEffect(() => {
+    // Only apply if we are strictly in the robots view
+    if (isCanvasMode) return
+    
+    const originalHtmlOverflow = document.documentElement.style.overflow
+    const originalBodyOverflow = document.body.style.overflow
+    const originalHtmlOverscroll = document.documentElement.style.overscrollBehavior
+    const originalBodyOverscroll = document.body.style.overscrollBehavior
+    
+    document.documentElement.style.overflow = 'hidden'
+    document.body.style.overflow = 'hidden'
+    // Prevent scroll chaining explicitly
+    document.documentElement.style.overscrollBehavior = 'none'
+    document.body.style.overscrollBehavior = 'none'
+    
+    return () => {
+      document.documentElement.style.overflow = originalHtmlOverflow
+      document.body.style.overflow = originalBodyOverflow
+      document.documentElement.style.overscrollBehavior = originalHtmlOverscroll
+      document.body.style.overscrollBehavior = originalBodyOverscroll
+    }
+  }, [isCanvasMode])
+  
   // 🆕 Wait for site context to be fully synchronized before proceeding
   const [isSiteContextReady, setIsSiteContextReady] = useState(false)
   

@@ -818,11 +818,13 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
       <div
         ref={messagesContainerRef}
         className={cn(
-          "block flex-1 min-h-0 overflow-y-auto overflow-x-hidden w-full min-w-0 transition-colors duration-300 ease-in-out",
+          "block flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-y-none w-full min-w-0 transition-colors duration-300 ease-in-out",
         )}
         style={{ 
           transform: 'translateZ(0)', 
-          backfaceVisibility: 'hidden'
+          backfaceVisibility: 'hidden',
+          // Prevent the browser from shifting scroll arbitrarily when padding changes
+          overflowAnchor: 'none'
         }}
         onScroll={handleScroll}
       >
