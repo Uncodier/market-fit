@@ -818,7 +818,7 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
       <div
         ref={messagesContainerRef}
         className={cn(
-          "block flex-1 min-h-0 overflow-y-auto overflow-x-hidden w-full min-w-0 transition-all duration-300 ease-in-out",
+          "block flex-1 min-h-0 overflow-y-auto overflow-x-hidden w-full min-w-0 transition-colors duration-300 ease-in-out",
         )}
         style={{ 
           transform: 'translateZ(0)', 
@@ -827,7 +827,7 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
         onScroll={handleScroll}
       >
         <div 
-          className="w-full max-w-4xl mx-auto px-4 min-w-0 transition-all duration-300 ease-in-out"
+          className="w-full max-w-4xl mx-auto px-4 min-w-0"
         >
           {/* Spacer for sticky header and topbar blur effect */}
           <div className={cn("h-[135px] shrink-0", !hasTopHeaderSpace && "hidden lg:block")} aria-hidden="true" />
@@ -1078,7 +1078,7 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
       {/* Message input - centered when empty, fixed at bottom when has content - animates between states */}
       <div 
         className={cn(
-          "absolute right-0 left-0 bottom-0 z-20 pointer-events-none flex flex-col items-center transition-all duration-500 ease-in-out chat-input-container !bg-transparent",
+          "absolute right-0 left-0 bottom-0 z-20 pointer-events-none flex flex-col items-center transition-colors duration-300 ease-in-out chat-input-container !bg-transparent",
           // Inset top by TopBar (64px) + StickyHeader (min 71px) so empty-state input + prompts center in the visible pane, not under fixed headers
           isEmpty ? "top-[calc(var(--topbar-height,64px)+71px)] justify-center pb-[10vh]" : "top-auto justify-end pb-[15px]"
         )}
@@ -1090,7 +1090,7 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
         {/* Background that only appears when not empty, at the bottom */}
         <div 
           className={cn(
-            "absolute bottom-0 left-0 right-0 bg-gradient-to-t from-background via-background/90 to-transparent transition-all duration-500 pointer-events-none",
+            "absolute bottom-0 left-0 right-0 bg-gradient-to-t from-background via-background/90 to-transparent transition-opacity duration-500 pointer-events-none",
             isEmpty ? "opacity-0 h-32" : "opacity-100",
             (isStepIndicatorExpanded || isBacklogIndicatorExpanded) ? "h-64" : "h-32"
           )}
@@ -1098,7 +1098,7 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
         <div 
           ref={bottomContainerRef}
           className={cn(
-            "w-full max-w-[800px] px-4 pointer-events-auto relative z-10 !bg-transparent !p-0 mx-auto transition-all duration-300",
+            "w-full max-w-[800px] px-4 pointer-events-auto relative z-10 !bg-transparent !p-0 mx-auto transition-colors duration-300",
             isEmpty ? "flex flex-col gap-3 -mt-12" : "flex flex-col w-full gap-2"
           )}
         >

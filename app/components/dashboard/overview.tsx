@@ -7,11 +7,10 @@ import { useWidgetContext } from "@/app/context/WidgetContext"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { 
   differenceInDays, differenceInMonths, format, 
-  addDays, addMonths, addQuarters, addYears,
-  startOfDay, startOfMonth, startOfQuarter, startOfYear, 
-  endOfMonth, endOfQuarter, endOfYear, endOfDay,
-  isSameYear, isBefore, 
-  subMonths, subYears, subQuarters, subDays
+  addDays, addMonths, addQuarters,
+  startOfDay, startOfMonth, startOfQuarter,
+  endOfMonth, endOfQuarter, endOfDay,
+  subDays
 } from "date-fns"
 import { EmptyCard } from "@/app/components/ui/empty-card"
 import { BarChart } from "@/app/components/ui/icons"
@@ -78,35 +77,23 @@ export function Overview({ startDate: propStartDate, endDate: propEndDate, segme
         let safeEndDate = new Date(endDate);
         
         // Validate and fix dates if needed
-        if (safeStartDate.getFullYear() > currentYear) {
-          console.warn(`[Overview] Future year in startDate: ${safeStartDate.toISOString()}`);
-          safeStartDate.setFullYear(currentYear - 1);
+        // Avoid clamping end date to 'now' so that the chart covers the entire selected period,
+        // even if it spans into the future (future days will just show 0 sales).
+        if (safeStartDate.getFullYear() > currentYear + 1) {
+          safeStartDate.setFullYear(currentYear);
         }
-        
-        if (safeEndDate.getFullYear() > currentYear) {
-          console.warn(`[Overview] Future year in endDate: ${safeEndDate.toISOString()}`);
-          safeEndDate = now;
-        }
-        
-        if (safeStartDate > now) {
-          console.warn(`[Overview] Future startDate: ${safeStartDate.toISOString()}`);
-          safeStartDate = new Date(now);
-          safeStartDate.setMonth(now.getMonth() - 1);
-        }
-        
-        if (safeEndDate > now) {
-          console.warn(`[Overview] Future endDate: ${safeEndDate.toISOString()}`);
-          safeEndDate = now;
+        if (safeEndDate.getFullYear() > currentYear + 1) {
+          safeEndDate.setFullYear(currentYear);
         }
 
         // Determine the interval type based on the date range
         const daysDiff = differenceInDays(safeEndDate, safeStartDate)
         const monthsDiff = differenceInMonths(safeEndDate, safeStartDate)
         
-        let intervalType: 'day' | 'week' | 'month' | 'quarter' | 'year' = 'month'
+        let intervalType: 'day' | 'week' | 'month' | 'quarter' = 'month'
         
         // Determine the appropriate interval type based on date range
-        if (daysDiff <= 14) {
+        if (daysDiff <= 31) {
           intervalType = 'day'
         } else if (daysDiff <= 90) {
           intervalType = 'week'
@@ -115,9 +102,6 @@ export function Overview({ startDate: propStartDate, endDate: propEndDate, segme
         } else {
           intervalType = 'quarter'
         }
-          
-        // Always use 12 intervals
-        const TOTAL_INTERVALS = 12
         
         // Fetch all sales data for the period
         const params = new URLSearchParams()
@@ -171,7 +155,7 @@ export function Overview({ startDate: propStartDate, endDate: propEndDate, segme
         if (!isMounted) return;
         
         // Generate intervals based on the type
-        const intervals = generateIntervals(safeStartDate, safeEndDate, intervalType, TOTAL_INTERVALS);
+        const intervals = generateIntervals(safeStartDate, safeEndDate, intervalType);
         
         // Map sales to intervals
         const data = intervals.map(interval => {
@@ -231,87 +215,57 @@ export function Overview({ startDate: propStartDate, endDate: propEndDate, segme
   const generateIntervals = (
     start: Date, 
     end: Date, 
-    intervalType: 'day' | 'week' | 'month' | 'quarter' | 'year',
-    count: number
+    intervalType: 'day' | 'week' | 'month' | 'quarter'
   ) => {
     const intervals = []
-    
-      if (intervalType === 'day') {
-      // For days, center around the selected range
-      const centerDay = new Date((start.getTime() + end.getTime()) / 2)
-      const startInterval = startOfDay(addDays(centerDay, -Math.floor(count / 2)))
-        
-      for (let i = 0; i < count; i++) {
-        const intervalStart = startOfDay(addDays(startInterval, i))
-        const intervalEnd = endOfDay(intervalStart)
-        const rangeEnd = addDays(intervalStart, 1)
-        const name = `${format(intervalStart, 'd')}-${format(rangeEnd, 'd')} ${format(intervalStart, 'MMM')}`
-        
+    let currentStart = startOfDay(start);
+    const finalEnd = endOfDay(end);
+
+    if (intervalType === 'day') {
+      while (currentStart <= finalEnd) {
+        const intervalEnd = endOfDay(currentStart);
         intervals.push({
-          startDate: intervalStart,
-          endDate: intervalEnd,
-          name
-          })
-        }
-      } else if (intervalType === 'week') {
-      // For weeks, center around the selected range
-      const centerDay = new Date((start.getTime() + end.getTime()) / 2)
-      const startInterval = startOfDay(addDays(centerDay, -Math.floor(count / 2) * 7))
-        
-      for (let i = 0; i < count; i++) {
-        const intervalStart = startOfDay(addDays(startInterval, i * 7))
-        const intervalEnd = endOfDay(addDays(intervalStart, 6))
-        const rangeEnd = addDays(intervalStart, 6)
-        const name = `${format(intervalStart, 'd')}-${format(rangeEnd, 'd')} ${format(intervalStart, 'MMM')}`
-        
-        intervals.push({
-          startDate: intervalStart,
-          endDate: intervalEnd,
-          name
-          })
-        }
-      } else if (intervalType === 'month') {
-      // For months, show consecutive months
-        let startInterval: Date
-        
-      if (isSameYear(start, end)) {
-        // If both dates are in same year, show all months of that year
-        startInterval = startOfYear(start)
-        } else {
-          // Otherwise, center around the selected range
-        const centerMonth = new Date((start.getTime() + end.getTime()) / 2)
-        startInterval = startOfMonth(subMonths(centerMonth, Math.floor(count / 2)))
-        }
-        
-      for (let i = 0; i < count; i++) {
-        const intervalStart = addMonths(startInterval, i)
-        const intervalEnd = endOfMonth(intervalStart)
-        const name = `${format(intervalStart, 'MMM')} ${format(intervalStart, 'yyyy')}`
-        
-        intervals.push({
-          startDate: intervalStart,
-          endDate: intervalEnd,
-          name
-          })
-        }
-      } else {
-      // For quarters, show consecutive quarters
-      const centerQuarter = new Date((start.getTime() + end.getTime()) / 2)
-      const startInterval = startOfQuarter(subQuarters(centerQuarter, Math.floor(count / 2)))
-        
-      for (let i = 0; i < count; i++) {
-        const intervalStart = addQuarters(startInterval, i)
-        const intervalEnd = endOfQuarter(intervalStart)
-        const name = `Q${Math.floor(intervalStart.getMonth() / 3) + 1} ${format(intervalStart, 'yyyy')}`
-        
-        intervals.push({
-          startDate: intervalStart,
-          endDate: intervalEnd,
-          name
-          })
-        }
+          startDate: new Date(currentStart),
+          endDate: new Date(intervalEnd),
+          name: format(currentStart, 'MMM d')
+        });
+        currentStart = addDays(currentStart, 1);
       }
-      
+    } else if (intervalType === 'week') {
+      while (currentStart <= finalEnd) {
+        const intervalEnd = endOfDay(addDays(currentStart, 6));
+        const actualEnd = intervalEnd > finalEnd ? finalEnd : intervalEnd;
+        intervals.push({
+          startDate: new Date(currentStart),
+          endDate: new Date(actualEnd),
+          name: `${format(currentStart, 'MMM d')} - ${format(actualEnd, 'MMM d')}`
+        });
+        currentStart = addDays(currentStart, 7);
+      }
+    } else if (intervalType === 'month') {
+      currentStart = startOfMonth(start);
+      while (currentStart <= finalEnd) {
+        const intervalEnd = endOfMonth(currentStart);
+        intervals.push({
+          startDate: new Date(currentStart),
+          endDate: new Date(intervalEnd),
+          name: format(currentStart, 'MMM yyyy')
+        });
+        currentStart = addMonths(currentStart, 1);
+      }
+    } else {
+      currentStart = startOfQuarter(start);
+      while (currentStart <= finalEnd) {
+        const intervalEnd = endOfQuarter(currentStart);
+        intervals.push({
+          startDate: new Date(currentStart),
+          endDate: new Date(intervalEnd),
+          name: `Q${Math.floor(currentStart.getMonth() / 3) + 1} ${format(currentStart, 'yyyy')}`
+        });
+        currentStart = addQuarters(currentStart, 1);
+      }
+    }
+    
     return intervals
   }
 
@@ -511,18 +465,27 @@ export function Overview({ startDate: propStartDate, endDate: propEndDate, segme
 
       {/* Eje X con etiquetas de intervalo */}
       <div className="h-10 flex ml-14 pr-4 mt-2">
-        {chartData.map((item, index) => (
-          <div key={index} className="flex-1 text-center flex items-start justify-center overflow-hidden">
-            <div className={`text-[9px] sm:text-[10px] md:text-xs font-medium leading-tight ${isDarkMode ? "text-slate-400" : "text-gray-500"}`}>
-              <span className={`md:hidden ${index % 2 !== 0 ? 'hidden' : 'block'}`}>
-                {item.name.split(' ').map((part, i) => <React.Fragment key={i}>{part}<br/></React.Fragment>)}
-              </span>
-              <span className="hidden md:block whitespace-nowrap overflow-hidden text-ellipsis px-1">
-                {item.name}
-              </span>
+        {chartData.map((item, index) => {
+          const skipLabelMobile = chartData.length > 7 && index % Math.ceil(chartData.length / 7) !== 0;
+          const skipLabelDesktop = chartData.length > 14 && index % Math.ceil(chartData.length / 14) !== 0;
+          
+          return (
+            <div key={index} className="flex-1 text-center flex items-start justify-center overflow-hidden">
+              <div className={`text-[9px] sm:text-[10px] md:text-xs font-medium leading-tight ${isDarkMode ? "text-slate-400" : "text-gray-500"}`}>
+                {!skipLabelMobile && (
+                  <span className="md:hidden block">
+                    {item.name.split(' ').map((part, i) => <React.Fragment key={i}>{part}<br/></React.Fragment>)}
+                  </span>
+                )}
+                {!skipLabelDesktop && (
+                  <span className="hidden md:block whitespace-nowrap overflow-hidden text-ellipsis px-1">
+                    {item.name}
+                  </span>
+                )}
+              </div>
             </div>
-          </div>
-        ))}
+          )
+        })}
       </div>
 
       {/* Estilos para animación */}

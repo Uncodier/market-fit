@@ -345,13 +345,13 @@ export async function getConversations(
     // Fetch pending conversations (fetch more to ensure we get enough)
     const pendingFetchCount = pageSize * 2
     const { data: pendingConversations, error: pendingError } = await pendingQuery
-      .order("last_message_at", { ascending: false, nullsFirst: false })
+      .order("last_message_at", { ascending: false })
       .order("created_at", { ascending: false })
       .limit(pendingFetchCount)
 
     // Fetch non-pending conversations
     const { data: nonPendingConversations, error: nonPendingError } = await nonPendingQuery
-      .order("last_message_at", { ascending: false, nullsFirst: false })
+      .order("last_message_at", { ascending: false })
       .order("created_at", { ascending: false })
       .limit(pageSize)
 

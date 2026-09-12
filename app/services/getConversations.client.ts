@@ -67,7 +67,7 @@ export async function getConversations(
       }
 
       const { data: allConvs, error } = await tasksQuery
-        .order('last_message_at', { ascending: false, nullsFirst: false })
+        .order('last_message_at', { ascending: false })
         .order('created_at', { ascending: false })
       if (error) {
         console.error('Error fetching conversations with tasks:', error)
@@ -210,7 +210,7 @@ export async function getConversations(
       const nonPendingBatches = isRepliedFilter ? 5 : 1 // 5 batches of ~1000 = ~5000 for replied
 
       const { data: pendingData, error: pendingError } = await pendingQuery
-        .order("last_message_at", { ascending: false, nullsFirst: false })
+        .order("last_message_at", { ascending: false })
         .order("created_at", { ascending: false })
         .limit(fetchCount)
 
@@ -225,7 +225,7 @@ export async function getConversations(
         const from = batch * 1000
         const to = from + 999
         const { data: batchData, error: batchError } = await nonPendingQuery
-          .order("last_message_at", { ascending: false, nullsFirst: false })
+          .order("last_message_at", { ascending: false })
           .order("created_at", { ascending: false })
           .range(from, to)
         if (batchError) {
@@ -246,7 +246,7 @@ export async function getConversations(
         const pendingLimit = Math.min(pageSize, totalPending - requestedFrom)
         
         const { data: pendingData, error: pendingError } = await pendingQuery
-          .order("last_message_at", { ascending: false, nullsFirst: false })
+          .order("last_message_at", { ascending: false })
           .order("created_at", { ascending: false })
           .range(pendingFrom, pendingFrom + pendingLimit - 1)
         
@@ -261,7 +261,7 @@ export async function getConversations(
         const remainingNeeded = pageSize - pendingConversations.length
         if (remainingNeeded > 0) {
           const { data: nonPendingData, error: nonPendingError } = await nonPendingQuery
-            .order("last_message_at", { ascending: false, nullsFirst: false })
+            .order("last_message_at", { ascending: false })
             .order("created_at", { ascending: false })
             .range(0, remainingNeeded - 1)
           
@@ -276,7 +276,7 @@ export async function getConversations(
         const nonPendingFrom = requestedFrom - totalPending
         
         const { data: nonPendingData, error: nonPendingError } = await nonPendingQuery
-          .order("last_message_at", { ascending: false, nullsFirst: false })
+          .order("last_message_at", { ascending: false })
           .order("created_at", { ascending: false })
           .range(nonPendingFrom, nonPendingFrom + pageSize - 1)
         
