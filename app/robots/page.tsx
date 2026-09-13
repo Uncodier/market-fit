@@ -918,7 +918,7 @@ function RobotsPageContent() {
     };
   }, [calculateMaxVisibleTabs, tabInstances.length, isLayoutCollapsed, selectedInstanceId]);
 
-  const { requirementStatuses } = useRequirementStatus(activeRobotInstance)
+  const { requirementStatuses, isLoading: isRequirementStatusesLoading, isValidating: isRequirementStatusesValidating } = useRequirementStatus(activeRobotInstance)
   
   type BrowserTab = { kind: 'preview' } | { kind: 'source' } | { kind: 'artifact'; screen: string }
   const [activeBrowserTab, setActiveBrowserTab] = useState<BrowserTab>({ kind: 'preview' })
@@ -1023,22 +1023,41 @@ function RobotsPageContent() {
 
   const prevArtifactsRef = useRef(artifacts)
 
+  // Track if we have ever confirmed the requirement preview status for the current instance
+  const isRequirementPreviewStatusKnown = !isRequirementStatusesLoading && 
+    (
+      (requirementStatuses.length > 0 && requirementStatuses[0].instance_id === activeRobotInstance?.id) ||
+      (requirementStatuses.length === 0 && !isRequirementStatusesValidating)
+    );
+
   useEffect(() => {
+    // If we have no artifacts yet, but we know the preview status, we can mark the initial preselect as done.
+    // This way, if an artifact is created later, it will be treated as newly created.
+    if (artifacts.length === 0 && isRequirementPreviewStatusKnown && !initialPreselectDoneRef.current) {
+      initialPreselectDoneRef.current = true;
+    }
+
     const prev = prevArtifactsRef.current
     if (artifacts.length > 0) {
       const newestArtifact = artifacts[0]
       const isInitialLoad = prev.length === 0;
       const isNewlyCreated = !isInitialLoad && new Date(newestArtifact.created_at).getTime() > new Date(prev[0].created_at).getTime();
       
-      // Auto-select artifact if:
-      // 1. It's a newly created artifact (not initial load)
-      // 2. OR it's initial load AND there's no requirement preview
-      if (isNewlyCreated || (isInitialLoad && !hasRequirementPreview)) {
+      if (!initialPreselectDoneRef.current && isRequirementPreviewStatusKnown) {
+        initialPreselectDoneRef.current = true;
+        // Auto-select artifact on initial load ONLY if there's no requirement preview
+        if (!hasRequirementPreview) {
+          setActiveBrowserTab({ kind: 'artifact', screen: newestArtifact.screen })
+          if (newestArtifact.should_reload && !isInitialLoad) {
+            setArtifactReloadCounter(c => c + 1)
+          }
+        }
+      } else if (isNewlyCreated || (isInitialLoad && initialPreselectDoneRef.current)) {
+        // Auto-select artifact if it's a newly created artifact.
+        // If initialPreselectDoneRef was already true, and we are going from 0 to 1 artifacts (isInitialLoad), 
+        // it means the artifact was created while the user was watching, so we should switch to it!
         setActiveBrowserTab({ kind: 'artifact', screen: newestArtifact.screen })
-        // Only increment the reload counter if it's not the initial load,
-        // because on initial load the iframe is already mounting for the first time.
-        // If it's a newly created artifact and should_reload is true, we increment.
-        if (newestArtifact.should_reload && !isInitialLoad) {
+        if (newestArtifact.should_reload) {
           setArtifactReloadCounter(c => c + 1)
         }
       } else if (activeBrowserTab.kind === 'artifact' && newestArtifact.screen === activeBrowserTab.screen && newestArtifact.should_reload) {
@@ -1051,7 +1070,7 @@ function RobotsPageContent() {
       }
     }
     prevArtifactsRef.current = artifacts
-  }, [artifacts, activeBrowserTab, hasRequirementPreview])
+  }, [artifacts, activeBrowserTab, hasRequirementPreview, isRequirementPreviewStatusKnown])
 
 
   const [selectedFilePath, setSelectedFilePath] = useState<string | null>(null)
@@ -1283,7 +1302,7 @@ function RobotsPageContent() {
       }
       return "about:blank"
     }
-    return activeBrowserTab.kind === 'source' || (activeBrowserTab.kind === 'artifact' && (activeBrowserTab.screen === 'code' || activeBrowserTab.screen === 'source_code'))
+    return activeBrowserTab.kind === 'source'
       ? (latestSourceCodeUrl || latestPreviewUrl || "about:blank")
       : (latestPreviewUrl || latestSourceCodeUrl || "about:blank")
   })()

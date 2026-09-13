@@ -6,7 +6,7 @@ import { subscribeRequirementStatusRealtime } from "./subscribeRequirementStatus
 export const useRequirementStatus = (activeRobotInstance?: { id?: string } | null) => {
   const instanceId = activeRobotInstance?.id
 
-  const { data: requirementStatuses, mutate } = useSWR(
+  const { data: requirementStatuses, mutate, isLoading, isValidating } = useSWR(
     instanceId ? ['requirement_status', instanceId] : null,
     async ([_, id]) => {
       const supabase = createClient()
@@ -38,6 +38,8 @@ export const useRequirementStatus = (activeRobotInstance?: { id?: string } | nul
 
   return {
     requirementStatuses: requirementStatuses || [],
-    loadStatuses
+    loadStatuses,
+    isLoading,
+    isValidating
   }
 }
