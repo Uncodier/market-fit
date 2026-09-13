@@ -323,7 +323,7 @@ export interface SiteSettings {
     }
   } | null
   activities?: {
-    daily_resume_and_stand_up?: 'default' | 'inactive'
+    daily_resume_and_stand_up?: 'inactive' | 'active'
     local_lead_generation?: 'default' | 'inactive'
     icp_lead_generation?: 'default' | 'inactive'
     leads_initial_cold_outreach?: 'default' | 'inactive'

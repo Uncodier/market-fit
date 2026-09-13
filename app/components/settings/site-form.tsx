@@ -245,7 +245,7 @@ export function SiteForm({
         referral: { metrics: [], actions: [], tactics: [] },
       },
       activities: initialData?.activities || {
-        daily_resume_and_stand_up: { status: "default" },
+        daily_resume_and_stand_up: { status: "inactive" },
         local_lead_generation: { status: "default" },
         icp_lead_generation: { status: "default" },
         leads_initial_cold_outreach: { status: "default" },

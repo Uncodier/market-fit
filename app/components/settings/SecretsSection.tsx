@@ -8,6 +8,7 @@ import { Label } from "@/app/components/ui/label";
 import { PlusCircle, Trash2, Eye, EyeOff } from "@/app/components/ui/icons";
 import { useToast } from "@/app/components/ui/use-toast";
 import { SectionCard } from "@/app/components/ui/section-card";
+import { ConfirmDialog } from "@/app/components/ui/confirm-dialog";
 import {
   Dialog,
   DialogContent,
@@ -27,6 +28,8 @@ export function SecretsSection({ instanceId }: { instanceId?: string }) {
   const [secrets, setSecrets] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [secretToDelete, setSecretToDelete] = useState<any>(null);
 
   const [formData, setFormData] = useState({
     name: "",
@@ -136,9 +139,6 @@ export function SecretsSection({ instanceId }: { instanceId?: string }) {
   const handleDeleteSecret = async (secret: any) => {
     if (!currentSite?.id) return;
 
-    if (!confirm(`Are you sure you want to delete the secret ${secret.name}?`))
-      return;
-
     try {
       const response = await fetch("/api/secrets", {
         method: "POST",
@@ -169,6 +169,9 @@ export function SecretsSection({ instanceId }: { instanceId?: string }) {
         description: error.message,
         variant: "destructive",
       });
+    } finally {
+      setSecretToDelete(null);
+      setDeleteModalOpen(false);
     }
   };
 
@@ -371,7 +374,10 @@ export function SecretsSection({ instanceId }: { instanceId?: string }) {
                           variant="ghost"
                           size="icon"
                           className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
-                          onClick={() => handleDeleteSecret(secret)}
+                          onClick={() => {
+                            setSecretToDelete(secret);
+                            setDeleteModalOpen(true);
+                          }}
                         >
                           <Trash2 className="w-4 h-4" />
                         </Button>
@@ -384,6 +390,28 @@ export function SecretsSection({ instanceId }: { instanceId?: string }) {
           </table>
         </div>
       </SectionCard>
+
+      <ConfirmDialog
+        open={deleteModalOpen}
+        onOpenChange={setDeleteModalOpen}
+        title="Delete Secret"
+        description={
+          <>
+            Are you sure you want to delete the secret{" "}
+            <span className="font-medium text-foreground">
+              {secretToDelete?.name}
+            </span>
+            ? This action cannot be undone.
+          </>
+        }
+        confirmLabel="Delete"
+        variant="destructive"
+        onConfirm={async () => {
+          if (secretToDelete) {
+            await handleDeleteSecret(secretToDelete);
+          }
+        }}
+      />
     </div>
   );
 }

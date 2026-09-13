@@ -153,7 +153,7 @@ export const habituallContext = {
     },
     printers: { devices: [] },
     activities: {
-      daily_resume_and_stand_up: { status: "default" },
+      daily_resume_and_stand_up: { status: "inactive" },
       local_lead_generation: { status: "default" },
       icp_lead_generation: { status: "inactive" },
       leads_initial_cold_outreach: { status: "inactive" },

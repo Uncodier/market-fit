@@ -14,8 +14,24 @@ export const encryptToken = (text: string): string => {
 export const decryptToken = (encryptedValue: string): string | null => {
   try {
     const [salt, encrypted] = encryptedValue.split(':')
-    const decrypted = CryptoJS.AES.decrypt(encrypted, ENCRYPTION_KEY + salt)
-    return decrypted.toString(CryptoJS.enc.Utf8)
+    if (!encrypted) return null;
+    
+    let result = '';
+    try {
+      const decrypted = CryptoJS.AES.decrypt(encrypted, ENCRYPTION_KEY + salt);
+      result = decrypted.toString(CryptoJS.enc.Utf8);
+    } catch (e) {
+      // Ignorar para intentar fallback
+    }
+    
+    // Fallback para legacy keys si el resultado está vacío o falló
+    if (!result) {
+      const legacyKey = process.env.LEGACY_ENCRYPTION_KEY || 'Encryption-key';
+      const decryptedLegacy = CryptoJS.AES.decrypt(encrypted, legacyKey + salt);
+      result = decryptedLegacy.toString(CryptoJS.enc.Utf8);
+    }
+    
+    return result || null;
   } catch (error) {
     console.error('Error decrypting token:', error)
     return null

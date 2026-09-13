@@ -38,6 +38,12 @@ export function EmailChannelSetup({
     checkSecrets()
   }, [siteId])
 
+  const metadata = channel.metadata || {}
+  const domainStatus = metadata.domain_status || "not_started" // not_started, pending, verified, failed
+  const dnsRecords = metadata.dns_records || []
+  const hasSender = !!channel.zavu_sender_id
+  const emailReceivingEnabled = !!metadata.emailReceivingEnabled
+
   // Trigger sync if coming back from oauth
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -51,12 +57,6 @@ export function EmailChannelSetup({
       handleSyncCloudflare()
     }
   }, [isCloudflareConnected, dnsRecords.length])
-
-  const metadata = channel.metadata || {}
-  const domainStatus = metadata.domain_status || "not_started" // not_started, pending, verified, failed
-  const dnsRecords = metadata.dns_records || []
-  const hasSender = !!channel.zavu_sender_id
-  const emailReceivingEnabled = !!metadata.emailReceivingEnabled
 
   const copyToClipboard = (text: string, id: string) => {
     navigator.clipboard.writeText(text)

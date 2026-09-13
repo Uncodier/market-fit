@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useState } from "react"
-import { Search } from "@/app/components/ui/icons"
+import { MoreVertical } from "@/app/components/ui/icons"
 import { Button } from "@/app/components/ui/button"
 import {
   Sheet,
@@ -37,7 +37,7 @@ export function MobileFiltersDrawer({ children, triggerText, results }: MobileFi
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetTrigger asChild>
           <Button variant="ghost" size="icon" className="shrink-0 h-8 w-8 rounded-full">
-            <Search className="h-4 w-4" />
+            <MoreVertical className="h-4 w-4" />
             <span className="sr-only">
               {triggerText || t('common.search') || "Search & Filters"}
             </span>

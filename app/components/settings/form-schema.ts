@@ -665,7 +665,7 @@ export const siteFormSchema = z.object({
   })).optional().default([]),
   // Activities configuration (nested object to support future params)
   activities: z.object({
-    daily_resume_and_stand_up: z.object({ status: z.enum(["default", "inactive"]).default("default") }).default({ status: "default" }),
+    daily_resume_and_stand_up: z.object({ status: z.enum(["inactive", "active"]).default("inactive") }).default({ status: "inactive" }),
     local_lead_generation: z.object({ status: z.enum(["default", "inactive"]).default("default") }).default({ status: "default" }),
     icp_lead_generation: z.object({ status: z.enum(["default", "inactive"]).default("default") }).default({ status: "default" }),
     leads_initial_cold_outreach: z.object({ status: z.enum(["default", "inactive"]).default("default") }).default({ status: "default" }),
@@ -675,7 +675,7 @@ export const siteFormSchema = z.object({
     notify_team_on_inbound_conversations: z.object({ status: z.enum(["default", "inactive"]).default("default") }).default({ status: "default" }),
     supervise_conversations: z.object({ status: z.enum(["inactive", "active"]).default("inactive") }).default({ status: "inactive" }),
   }).optional().default({
-    daily_resume_and_stand_up: { status: "default" },
+    daily_resume_and_stand_up: { status: "inactive" },
     local_lead_generation: { status: "default" },
     icp_lead_generation: { status: "default" },
     leads_initial_cold_outreach: { status: "default" },

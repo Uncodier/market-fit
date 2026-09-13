@@ -21,6 +21,7 @@ import { Checkbox } from "@/app/components/ui/checkbox"
 import { EmptyCard } from "@/app/components/ui/empty-card"
 import { siteMembersService } from "@/app/services/site-members-service"
 import { useAuth } from "@/app/hooks/use-auth"
+import { ConfirmDialog } from "@/app/components/ui/confirm-dialog"
 
 export function CalendarSection() {
   const { currentSite, updateSettings } = useSite()
@@ -60,6 +61,8 @@ export function CalendarSection() {
   }, [currentSite?.id, currentSite?.settings?.team_members, user?.email, user?.user_metadata?.name]);
 
   const [editingCalendar, setEditingCalendar] = useState<Partial<RoundRobinCalendar> | null>(null)
+  const [calendarToDelete, setCalendarToDelete] = useState<string | null>(null)
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false)
 
   const handleAddCalendar = () => {
     setEditingCalendar({
@@ -108,8 +111,6 @@ export function CalendarSection() {
   }
 
   const handleDeleteCalendar = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this calendar?")) return
-
     setIsUpdating(true)
     try {
       const updatedCalendars = calendars.filter(c => c.id !== id)
@@ -125,6 +126,8 @@ export function CalendarSection() {
       toast.error("Failed to delete calendar")
     } finally {
       setIsUpdating(false)
+      setCalendarToDelete(null)
+      setDeleteModalOpen(false)
     }
   }
 
@@ -431,7 +434,10 @@ export function CalendarSection() {
                           type="button"
                           variant="outline" 
                           className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                          onClick={() => handleDeleteCalendar(calendar.id)}
+                          onClick={() => {
+                            setCalendarToDelete(calendar.id)
+                            setDeleteModalOpen(true)
+                          }}
                         >
                           <Trash2 className="h-4 w-4 mr-2" />
                           Remove Calendar
@@ -453,6 +459,20 @@ export function CalendarSection() {
           })
         )}
       </div>
+
+      <ConfirmDialog
+        open={deleteModalOpen}
+        onOpenChange={setDeleteModalOpen}
+        title="Delete Calendar"
+        description="Are you sure you want to delete this calendar? This action cannot be undone."
+        confirmLabel="Delete"
+        variant="destructive"
+        onConfirm={async () => {
+          if (calendarToDelete) {
+            await handleDeleteCalendar(calendarToDelete)
+          }
+        }}
+      />
     </div>
   )
 }

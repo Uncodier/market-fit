@@ -3,7 +3,7 @@
 import { useEffect } from "react"
 
 const MUSEO_HREF =
-  "https://fonts.googleapis.com/css2?family=Museo+Moderno:wght@400;600;700&display=swap"
+  "https://fonts.googleapis.com/css2?family=MuseoModerno:wght@400;600;700&display=swap"
 
 export default function MuseoFont() {
   useEffect(() => {

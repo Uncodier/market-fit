@@ -118,6 +118,8 @@ export function ActivitiesSection({ active, onSave }: ActivitiesSectionProps) {
         // Check dependency for assign_leads_to_team
         const isAssignLeads = key === 'assign_leads_to_team'
         const isSuperviseConversations = key === 'supervise_conversations'
+        const isDailyResumeAndStandUp = key === 'daily_resume_and_stand_up'
+        const isOptIn = isAssignLeads || isSuperviseConversations || isDailyResumeAndStandUp
         const coldOutreachStatus = form.watch('activities.leads_initial_cold_outreach.status')
         const isDependencyInactive = isAssignLeads && coldOutreachStatus === 'inactive'
         
@@ -161,7 +163,7 @@ export function ActivitiesSection({ active, onSave }: ActivitiesSectionProps) {
                     field.onChange('inactive')
                   }
                   
-                  const options = (isAssignLeads || isSuperviseConversations) ? [
+                  const options = isOptIn ? [
                     {
                       value: "inactive",
                       title: "Inactive",
@@ -185,13 +187,16 @@ export function ActivitiesSection({ active, onSave }: ActivitiesSectionProps) {
                     }
                   ]
                   
-                  // Normalize "default" to "active" for special activities that don't support "default"
+                  // Normalize "default" for special activities that don't support it
                   let normalizedValue = field.value
-                  if ((isAssignLeads || isSuperviseConversations) && normalizedValue === "default") {
-                    normalizedValue = "active"
+                  if (isOptIn && normalizedValue === "default") {
+                    // For legacy opt-in activities, we might need to map them properly
+                    // assign_leads_to_team and supervise_conversations mapped to active previously
+                    // daily_resume_and_stand_up now maps to inactive since it's inactive by default
+                    normalizedValue = isDailyResumeAndStandUp ? "inactive" : "active"
                     // Update the field value if it was "default"
                     if (field.value === "default") {
-                      field.onChange("active")
+                      field.onChange(normalizedValue)
                     }
                   }
                   
@@ -227,7 +232,7 @@ export function ActivitiesSection({ active, onSave }: ActivitiesSectionProps) {
                                 <div className="flex-1 space-y-1">
                                   <div className="flex items-center gap-2 min-h-[20px]">
                                     <span className="font-semibold text-sm block">{option.title}</span>
-                                    {(option.value === "default" || (option.value === "inactive" && (isAssignLeads || isSuperviseConversations))) ? (
+                                    {(option.value === "default" || (option.value === "inactive" && isOptIn)) ? (
                                       <Badge variant="secondary" className="text-xs">
                                         Default
                                       </Badge>

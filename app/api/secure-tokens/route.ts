@@ -2,8 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import CryptoJS from 'crypto-js';
 
-// La clave de encriptación fija
-const ENCRYPTION_KEY = 'Encryption-key';
+// La clave de encriptación fija para tokens legacy (o usar la de entorno si existe)
+const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY || 'Encryption-key';
+const LEGACY_ENCRYPTION_KEY = process.env.LEGACY_ENCRYPTION_KEY || 'Encryption-key';
 
 // Cliente de Supabase con rol de servicio
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
@@ -56,8 +57,23 @@ export async function POST(req: NextRequest) {
     const decryptToken = (encryptedValue: string): string | null => {
       try {
         const [salt, encrypted] = encryptedValue.split(':');
-        const decrypted = CryptoJS.AES.decrypt(encrypted, ENCRYPTION_KEY + salt);
-        return decrypted.toString(CryptoJS.enc.Utf8);
+        if (!encrypted) return null;
+        
+        let result = '';
+        try {
+          const decrypted = CryptoJS.AES.decrypt(encrypted, ENCRYPTION_KEY + salt);
+          result = decrypted.toString(CryptoJS.enc.Utf8);
+        } catch (e) {
+          // Ignorar para intentar fallback
+        }
+        
+        // Fallback para legacy keys
+        if (!result) {
+          const decryptedLegacy = CryptoJS.AES.decrypt(encrypted, LEGACY_ENCRYPTION_KEY + salt);
+          result = decryptedLegacy.toString(CryptoJS.enc.Utf8);
+        }
+        
+        return result || null;
       } catch (error) {
         console.error('Error decrypting token:', error);
         return null;

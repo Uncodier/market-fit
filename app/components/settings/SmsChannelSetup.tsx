@@ -38,7 +38,7 @@ function formatCapabilities(capabilities: any): string[] {
   if (!capabilities) return [];
   if (Array.isArray(capabilities)) return capabilities;
   if (typeof capabilities === "object") {
-    return Object.entries(capabilities).filter(([_, v]) => v).map(([k]) => k);
+    return Object.entries(capabilities).filter(([_, v]) => v).map(([key]) => key);
   }
   return [String(capabilities)];
 }
