@@ -24,7 +24,7 @@ statements:
     locator: "getByRole('button', { name: /Add Calendar|New Calendar/i }).first()"
 
   - WAIT_UNTIL: The modal is open
-    js: 'await page.locator("div[role=\"dialog\"]").count() > 0'
+    js: "await page.locator('div[role=\"dialog\"]').count() > 0"
     timeout_seconds: 5
 
   - intent: Fill Calendar Name
@@ -37,7 +37,7 @@ statements:
     locator: "getByRole('button', { name: /Save|Guardar/i }).last()"
 
   - WAIT_UNTIL: The modal is closed
-    js: 'await page.locator("div[role=\"dialog\"]").count() === 0'
+    js: "await page.locator('div[role=\"dialog\"]').count() === 0"
     timeout_seconds: 10
 
   - VERIFY: The calendar is visible in the list
@@ -48,7 +48,7 @@ statements:
     locator: "page.locator('div').filter({ hasText: 'Test Calendar' }).first().getByRole('button').last()"
 
   - WAIT_UNTIL: The delete confirmation modal is open
-    js: 'await page.locator("div[role=\"alertdialog\"]").count() > 0 || await page.locator("div[role=\"dialog\"]").count() > 0'
+    js: "await page.locator('div[role=\"alertdialog\"]').count() > 0 || await page.locator('div[role=\"dialog\"]').count() > 0"
     timeout_seconds: 5
 
   - intent: Confirm deletion

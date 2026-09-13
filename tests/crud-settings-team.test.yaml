@@ -24,7 +24,7 @@ statements:
     locator: "getByRole('button', { name: /Add|Nuevo/i }).first()"
 
   - WAIT_UNTIL: The modal is open
-    js: 'await page.locator("div[role=\"dialog\"]").count() > 0'
+    js: "await page.locator('div[role=\"dialog\"]').count() > 0"
     timeout_seconds: 5
 
   - intent: Fill Email
@@ -37,7 +37,7 @@ statements:
     locator: "getByRole('button', { name: /Invite|Invitar|Save/i })"
 
   - WAIT_UNTIL: The modal is closed
-    js: 'await page.locator("div[role=\"dialog\"]").count() === 0'
+    js: "await page.locator('div[role=\"dialog\"]').count() === 0"
     timeout_seconds: 10
 
   - VERIFY: The team member is visible in the list
@@ -48,7 +48,7 @@ statements:
     locator: "page.locator('div').filter({ hasText: 'test.member@example.com' }).first().getByRole('button', { name: /Remove|Eliminar/i }).first()"
 
   - WAIT_UNTIL: The delete confirmation modal is open
-    js: 'await page.locator("div[role=\"alertdialog\"]").count() > 0 || await page.locator("div[role=\"dialog\"]").count() > 0'
+    js: "await page.locator('div[role=\"alertdialog\"]').count() > 0 || await page.locator('div[role=\"dialog\"]').count() > 0"
     timeout_seconds: 5
 
   - intent: Confirm deletion

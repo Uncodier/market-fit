@@ -75,7 +75,7 @@ statements:
     locator: "getByRole('button', { name: /Add Secret/i })"
 
   - WAIT_UNTIL: The Add Secret modal is open
-    js: 'await page.locator("div[role=\\"dialog\\"]").count() > 0'
+    js: "await page.locator('div[role=\\"dialog\\"]').count() > 0"
     timeout_seconds: 5
 
   - intent: Fill Environment Variable Name
@@ -98,7 +98,7 @@ statements:
     locator: "getByRole('button', { name: /Save Secret/i })"
 
   - WAIT_UNTIL: The modal is closed
-    js: 'await page.locator("div[role=\\"dialog\\"]").count() === 0'
+    js: "await page.locator('div[role=\\"dialog\\"]').count() === 0"
     timeout_seconds: 10
 
   - VERIFY: The secret is visible in the list
@@ -109,7 +109,7 @@ statements:
     locator: "page.locator('tr').filter({ hasText: 'TEST_VAR' }).first().getByRole('button').last()"
 
   - WAIT_UNTIL: The delete confirmation modal is open
-    js: 'await page.locator("div[role=\\"alertdialog\\"]").count() > 0 || await page.locator("div[role=\\"dialog\\"]").count() > 0'
+    js: "await page.locator('div[role=\\"alertdialog\\"]').count() > 0 || await page.locator('div[role=\\"dialog\\"]').count() > 0"
     timeout_seconds: 5
 
   - intent: Confirm deletion
@@ -120,7 +120,7 @@ statements:
     js: "await expect(page.getByText('TEST_VAR')).toHaveCount(0)"
 `;
 
-fs.writeFileSync(path.join(__dirname, '..', 'tests', 'crud-settings-secrets.test.yaml'), secretsTemplate);
+fs.writeFileSync(path.join(__dirname, '..', 'tests', 'crud-settings-secrets.test.yaml'), secretsTemplate.replace(/div\\[role=\\\\\\"dialog\\\\\\"\\]/g, "div[role='dialog']").replace(/div\\[role=\\\\\\"alertdialog\\\\\\"\\]/g, "div[role='alertdialog']"));
 console.log('Created crud-settings-secrets.test.yaml');
 
 // Specific test for Team
@@ -150,7 +150,7 @@ statements:
     locator: "getByRole('button', { name: /Add|Nuevo/i }).first()"
 
   - WAIT_UNTIL: The modal is open
-    js: 'await page.locator("div[role=\\"dialog\\"]").count() > 0'
+    js: "await page.locator('div[role=\\"dialog\\"]').count() > 0"
     timeout_seconds: 5
 
   - intent: Fill Email
@@ -163,7 +163,7 @@ statements:
     locator: "getByRole('button', { name: /Invite|Invitar|Save/i })"
 
   - WAIT_UNTIL: The modal is closed
-    js: 'await page.locator("div[role=\\"dialog\\"]").count() === 0'
+    js: "await page.locator('div[role=\\"dialog\\"]').count() === 0"
     timeout_seconds: 10
 
   - VERIFY: The team member is visible in the list
@@ -174,7 +174,7 @@ statements:
     locator: "page.locator('div').filter({ hasText: 'test.member@example.com' }).first().getByRole('button', { name: /Remove|Eliminar/i }).first()"
 
   - WAIT_UNTIL: The delete confirmation modal is open
-    js: 'await page.locator("div[role=\\"alertdialog\\"]").count() > 0 || await page.locator("div[role=\\"dialog\\"]").count() > 0'
+    js: "await page.locator('div[role=\\"alertdialog\\"]').count() > 0 || await page.locator('div[role=\\"dialog\\"]').count() > 0"
     timeout_seconds: 5
 
   - intent: Confirm deletion
@@ -182,7 +182,7 @@ statements:
     locator: "getByRole('button', { name: /Delete|Remove|Eliminar/i }).last()"
 `;
 
-fs.writeFileSync(path.join(__dirname, '..', 'tests', 'crud-settings-team.test.yaml'), teamTemplate);
+fs.writeFileSync(path.join(__dirname, '..', 'tests', 'crud-settings-team.test.yaml'), teamTemplate.replace(/div\\[role=\\\\\\"dialog\\\\\\"\\]/g, "div[role='dialog']").replace(/div\\[role=\\\\\\"alertdialog\\\\\\"\\]/g, "div[role='alertdialog']"));
 console.log('Created crud-settings-team.test.yaml');
 
 // Specific test for Calendar
@@ -212,7 +212,7 @@ statements:
     locator: "getByRole('button', { name: /Add Calendar|New Calendar/i }).first()"
 
   - WAIT_UNTIL: The modal is open
-    js: 'await page.locator("div[role=\\"dialog\\"]").count() > 0'
+    js: "await page.locator('div[role=\\"dialog\\"]').count() > 0"
     timeout_seconds: 5
 
   - intent: Fill Calendar Name
@@ -225,7 +225,7 @@ statements:
     locator: "getByRole('button', { name: /Save|Guardar/i }).last()"
 
   - WAIT_UNTIL: The modal is closed
-    js: 'await page.locator("div[role=\\"dialog\\"]").count() === 0'
+    js: "await page.locator('div[role=\\"dialog\\"]').count() === 0"
     timeout_seconds: 10
 
   - VERIFY: The calendar is visible in the list
@@ -236,7 +236,7 @@ statements:
     locator: "page.locator('div').filter({ hasText: 'Test Calendar' }).first().getByRole('button').last()"
 
   - WAIT_UNTIL: The delete confirmation modal is open
-    js: 'await page.locator("div[role=\\"alertdialog\\"]").count() > 0 || await page.locator("div[role=\\"dialog\\"]").count() > 0'
+    js: "await page.locator('div[role=\\"alertdialog\\"]').count() > 0 || await page.locator('div[role=\\"dialog\\"]').count() > 0"
     timeout_seconds: 5
 
   - intent: Confirm deletion
@@ -244,5 +244,5 @@ statements:
     locator: "getByRole('button', { name: /Delete|Remove|Eliminar/i }).last()"
 `;
 
-fs.writeFileSync(path.join(__dirname, '..', 'tests', 'crud-settings-calendar.test.yaml'), calendarTemplate);
+fs.writeFileSync(path.join(__dirname, '..', 'tests', 'crud-settings-calendar.test.yaml'), calendarTemplate.replace(/div\\[role=\\\\\\"dialog\\\\\\"\\]/g, "div[role='dialog']").replace(/div\\[role=\\\\\\"alertdialog\\\\\\"\\]/g, "div[role='alertdialog']"));
 console.log('Created crud-settings-calendar.test.yaml');

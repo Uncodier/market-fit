@@ -12,7 +12,6 @@ import {
   SectionCardFooter,
 } from "@/app/components/ui/section-card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../ui/table"
-import { ActionFooter } from "../ui/card-footer"
 import { Button } from "../ui/button"
 import { Input } from "../ui/input"
 import { Label } from "../ui/label"
@@ -72,7 +71,36 @@ export function AgentEmailSection({ active, siteId, onSave }: AgentEmailSectionP
   const [isSyncingCloudflare, setIsSyncingCloudflare] = useState(false)
   const { currentSite, updateSettings } = useSite()
 
+  // Get current values from form - watch only what user can change
+  const domain = form.watch("channels.agent_email.domain")
+  const customDomain = form.watch("channels.agent_email.customDomain") || ""
+  const username = form.watch("channels.agent_email.username") || ""
+  const displayName = form.watch("channels.agent_email.displayName") || ""
+  const setupRequested = form.watch("channels.agent_email.setupRequested") || false
+  const status = form.watch("channels.agent_email.status") || "not_configured"
+
+  const isPending = status === "pending" || setupRequested
+  const isActive = status === "active"
+  const isNotConfigured = status === "not_configured"
+  const isWaitingForVerification = status === "waiting_for_verification"
+  
+  // Get DNS records from currentSite settings - check both locations for compatibility
+  const dnsRecords = currentSite?.settings?.channels?.agent_email?.dns_records || 
+                     currentSite?.settings?.channels?.agent_email?.data?.dns_records
+  const hasDnsRecords = Array.isArray(dnsRecords) && dnsRecords.length > 0
+  
+  // Group DNS records by type
+  const mxRecords = hasDnsRecords ? dnsRecords.filter(record => record.type === "MX" || record.type === "mx") : []
+  const txtRecords = hasDnsRecords ? dnsRecords.filter(record => record.type === "TXT" || record.type === "txt") : []
+  const otherRecords = hasDnsRecords ? dnsRecords.filter(record => 
+    record.type !== "MX" && record.type !== "mx" && record.type !== "TXT" && record.type !== "txt"
+  ) : []
+
   const handleSave = async () => {
+    if (apiKey && !isApiKeyStored) {
+      await handleSaveApiKey()
+    }
+
     if (!onSave) return
     setIsSaving(true)
     try {
@@ -99,6 +127,21 @@ export function AgentEmailSection({ active, siteId, onSave }: AgentEmailSectionP
     checkSecrets()
   }, [siteId])
 
+  // Get domain ID (URL) for API calls - use domain_id from metadata if available, otherwise calculate
+  const getDomainId = () => {
+    // First try to get domain_id from stored metadata (check both locations)
+    const storedDomainId = currentSite?.settings?.channels?.agent_email?.domain_id ||
+                          currentSite?.settings?.channels?.agent_email?.data?.domain_id
+    if (storedDomainId) {
+      return storedDomainId
+    }
+    // Fallback to calculating from domain/customDomain
+    if (domain === "custom") {
+      return customDomain
+    }
+    return domain || ""
+  }
+
   // Trigger sync if coming back from oauth
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -109,10 +152,10 @@ export function AgentEmailSection({ active, siteId, onSave }: AgentEmailSectionP
       window.history.replaceState({}, document.title, newUrl)
       
       // Auto trigger sync
+      if (!siteId || !getDomainId()) return
       handleSyncCloudflare()
     }
-  }, [isCloudflareConnected, hasDnsRecords])
-
+  }, [isCloudflareConnected, hasDnsRecords, isSyncingCloudflare, siteId])
   const handleSaveApiKey = async () => {
     if (!siteId || !apiKey) return
     setIsSavingApiKey(true)
@@ -191,31 +234,6 @@ export function AgentEmailSection({ active, siteId, onSave }: AgentEmailSectionP
       setIsSyncingCloudflare(false)
     }
   }
-
-  // Get current values from form - watch only what user can change
-  const domain = form.watch("channels.agent_email.domain")
-  const customDomain = form.watch("channels.agent_email.customDomain") || ""
-  const username = form.watch("channels.agent_email.username") || ""
-  const displayName = form.watch("channels.agent_email.displayName") || ""
-  const setupRequested = form.watch("channels.agent_email.setupRequested") || false
-  const status = form.watch("channels.agent_email.status") || "not_configured"
-
-  const isPending = status === "pending" || setupRequested
-  const isActive = status === "active"
-  const isNotConfigured = status === "not_configured"
-  const isWaitingForVerification = status === "waiting_for_verification"
-  
-  // Get DNS records from currentSite settings - check both locations for compatibility
-  const dnsRecords = currentSite?.settings?.channels?.agent_email?.dns_records || 
-                     currentSite?.settings?.channels?.agent_email?.data?.dns_records
-  const hasDnsRecords = Array.isArray(dnsRecords) && dnsRecords.length > 0
-  
-  // Group DNS records by type
-  const mxRecords = hasDnsRecords ? dnsRecords.filter(record => record.type === "MX" || record.type === "mx") : []
-  const txtRecords = hasDnsRecords ? dnsRecords.filter(record => record.type === "TXT" || record.type === "txt") : []
-  const otherRecords = hasDnsRecords ? dnsRecords.filter(record => 
-    record.type !== "MX" && record.type !== "mx" && record.type !== "TXT" && record.type !== "txt"
-  ) : []
 
   const canRequest = () => {
     if (!domain || !username || !displayName) return false
@@ -465,21 +483,6 @@ export function AgentEmailSection({ active, siteId, onSave }: AgentEmailSectionP
     }
   }
 
-  // Get domain ID (URL) for API calls - use domain_id from metadata if available, otherwise calculate
-  const getDomainId = () => {
-    // First try to get domain_id from stored metadata (check both locations)
-    const storedDomainId = currentSite?.settings?.channels?.agent_email?.domain_id ||
-                          currentSite?.settings?.channels?.agent_email?.data?.domain_id
-    if (storedDomainId) {
-      return storedDomainId
-    }
-    // Fallback to calculating from domain/customDomain
-    if (domain === "custom") {
-      return customDomain
-    }
-    return domain || ""
-  }
-
   // Check if verify button is rate limited (5 minutes = 300000ms)
   const canVerify = () => {
     if (!siteId || !getDomainId()) return false
@@ -689,16 +692,8 @@ export function AgentEmailSection({ active, siteId, onSave }: AgentEmailSectionP
                 placeholder="am_live_..."
                 value={apiKey}
                 onChange={(e) => setApiKey(e.target.value)}
-                className="font-mono text-sm max-w-md"
+                className="font-mono text-sm w-full"
               />
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleSaveApiKey}
-                disabled={!apiKey || isSavingApiKey}
-              >
-                {isSavingApiKey ? "Saving..." : "Save Key"}
-              </Button>
             </div>
           )}
         </div>
@@ -851,9 +846,13 @@ export function AgentEmailSection({ active, siteId, onSave }: AgentEmailSectionP
       </SectionCardContent>
 
 
-      {isNotConfigured && (
-        <ActionFooter>
-          <div className="flex items-center justify-between w-full">
+      <SectionCardFooter
+        onSave={handleSave}
+        saving={isSaving || isSavingApiKey}
+        dirty={form.formState.isDirty || (apiKey !== "" && !isApiKeyStored)}
+      >
+        {isNotConfigured && (
+          <div className="flex items-center justify-between w-full mr-2">
             <div className="text-sm text-muted-foreground">
               Configure your agent email address above
             </div>
@@ -865,12 +864,10 @@ export function AgentEmailSection({ active, siteId, onSave }: AgentEmailSectionP
               {isRequesting ? "Requesting..." : "Request Agent Email"}
             </Button>
           </div>
-        </ActionFooter>
-      )}
+        )}
 
-      {isWaitingForVerification && (
-        <ActionFooter>
-          <div className="flex items-center justify-end w-full gap-2">
+        {isWaitingForVerification && (
+          <div className="flex items-center justify-end w-full gap-2 mr-2">
             <Button
               type="button"
               variant="outline"
@@ -911,23 +908,23 @@ export function AgentEmailSection({ active, siteId, onSave }: AgentEmailSectionP
                   : "Verify"}
             </Button>
           </div>
-        </ActionFooter>
-      )}
+        )}
 
-      {isActive && (
-        <SectionCardFooter>
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => setShowDeleteDialog(true)}
-            disabled={isDeleting}
-            className="text-destructive hover:text-destructive hover:bg-destructive/10"
-          >
-            <Trash2 className="h-4 w-4 mr-2" />
-            Delete Inbox
-          </Button>
-        </SectionCardFooter>
-      )}
+        {isActive && (
+          <div className="flex items-center justify-start w-full mr-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setShowDeleteDialog(true)}
+              disabled={isDeleting}
+              className="text-destructive hover:text-destructive hover:bg-destructive/10"
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              Delete Inbox
+            </Button>
+          </div>
+        )}
+      </SectionCardFooter>
 
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <AlertDialogContent>
