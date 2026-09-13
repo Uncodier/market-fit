@@ -73,13 +73,16 @@ Ask the user which they want. Since editing `.env` normally requires the user's
 explicit ask (`_shared/project-layout.md`), this step **is** that ask — but still
 confirm which variable before writing.
 
-- **Shiplight API token**: run `npx shiplight login` yourself via Bash — it opens
+- **Shiplight API token**: run `npx shiplight setup-api-token` yourself via Bash — it opens
   the user's local browser for device-auth approval on its own (no terminal
   interaction needed from them), polls until they approve, then creates the token
   and writes `SHIPLIGHT_API_TOKEN=...` to `.env` automatically. Tell the user to
   check their browser and approve; use a generous timeout since approval can take
   a few minutes. Don't hand-write the token into `.env` yourself — the command
-  owns that write.
+  owns that write. The device-auth session is not persisted; only the personal API
+  token remains. There is no CLI logout command: remove `SHIPLIGHT_API_TOKEN` from
+  `.env` to stop using it in this project, or revoke the token at
+  <https://app.shiplight.ai/api-tokens> to invalidate it everywhere.
 - **AI provider key**: ask the user for the key, write `<KEY>=<value>` to `.env`
   yourself, and never echo the raw value back in chat or logs.
 
@@ -109,5 +112,5 @@ Do not store raw secrets (`_shared/secrets.md`).
 
 ## Next
 
-Suggest per SKILL.md's "After a subcommand completes" table — typically `auth`
+Suggest per SKILL.md's "After a subcommand completes" table — typically `setup-test-auth`
 when the app has login, else `cover` to drive the full create-flow.

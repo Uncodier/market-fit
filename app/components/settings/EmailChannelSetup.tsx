@@ -28,6 +28,14 @@ export function EmailChannelSetup({
   const [isCloudflareConnected, setIsCloudflareConnected] = useState(false)
   const [isSyncingCloudflare, setIsSyncingCloudflare] = useState(false)
 
+  const [isMxVerified, setIsMxVerified] = useState<boolean | null>(null)
+  const [isVerifyingMx, setIsVerifyingMx] = useState(false)
+  const [localReceivingEnabled, setLocalReceivingEnabled] = useState(!!channel.metadata?.emailReceivingEnabled)
+
+  useEffect(() => {
+    setLocalReceivingEnabled(!!channel.metadata?.emailReceivingEnabled)
+  }, [channel.metadata?.emailReceivingEnabled])
+
   useEffect(() => {
     const checkSecrets = async () => {
       if (siteId) {
@@ -43,6 +51,31 @@ export function EmailChannelSetup({
   const dnsRecords = metadata.dns_records || []
   const hasSender = !!channel.zavu_sender_id
   const emailReceivingEnabled = !!metadata.emailReceivingEnabled
+
+  // Check MX record for inbound emails
+  useEffect(() => {
+    if (hasSender && metadata.domain) {
+      handleVerifyMx()
+    }
+  }, [hasSender, metadata.domain])
+
+  const handleVerifyMx = async () => {
+    if (!metadata.domain) return
+    setIsVerifyingMx(true)
+    try {
+      const res = await fetch(`/api/dns/verify-mx?domain=${metadata.domain}`)
+      const data = await res.json()
+      if (data.success && data.verified) {
+        setIsMxVerified(true)
+      } else {
+        setIsMxVerified(false)
+      }
+    } catch (e) {
+      setIsMxVerified(false)
+    } finally {
+      setIsVerifyingMx(false)
+    }
+  }
 
   // Trigger sync if coming back from oauth
   useEffect(() => {
@@ -204,7 +237,7 @@ export function EmailChannelSetup({
     }
   }
 
-  const handleToggleReceiving = async (enabled: boolean) => {
+  const handleSaveReceiving = async () => {
     if (!channel.zavu_sender_id) return
 
     setIsProcessing(true)
@@ -213,7 +246,7 @@ export function EmailChannelSetup({
         siteId,
         channelId: channel.id,
         senderId: channel.zavu_sender_id,
-        emailReceivingEnabled: enabled
+        emailReceivingEnabled: localReceivingEnabled
       })
 
       if (!response.success) throw new Error(response.error?.message || "Failed to update receiving status")
@@ -221,10 +254,10 @@ export function EmailChannelSetup({
       onUpdated({
         metadata: {
           ...metadata,
-          emailReceivingEnabled: enabled
+          emailReceivingEnabled: localReceivingEnabled
         }
       })
-      toast.success(`Email receiving ${enabled ? 'enabled' : 'disabled'}`)
+      toast.success(`Email receiving ${localReceivingEnabled ? 'enabled' : 'disabled'}`)
     } catch (error: any) {
       toast.error(error.message || "An error occurred")
     } finally {
@@ -398,35 +431,60 @@ export function EmailChannelSetup({
 
   // Step 4: Manage Existing Sender (Inbound config)
   return (
-    <SectionCardContent className="space-y-4 pt-0">
-      <div className="space-y-4 p-4 bg-muted/20 rounded-lg border dark:border-white/5 border-black/5">
-        <div className="space-y-2">
-          <h4 className="text-sm font-medium">Inbound Emails</h4>
-          <p className="text-xs text-muted-foreground">
-            To receive emails, add this MX record to your DNS:
-          </p>
-          <div className="p-3 bg-background rounded border text-xs font-mono flex justify-between items-center">
-            <span>{metadata.domain} MX 10 inbound.zavu.dev</span>
-            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => copyToClipboard(`${metadata.domain} MX 10 inbound.zavu.dev`, 'mx')}>
-              {copied === 'mx' ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
-            </Button>
-          </div>
-        </div>
-
-        <div className="flex items-center justify-between p-3 bg-background rounded border">
-          <div className="space-y-0.5">
-            <Label className="text-sm">Enable Receiving</Label>
+    <>
+      <SectionCardContent className="space-y-4 pt-0">
+        <div className="space-y-4 p-4 bg-muted/20 rounded-lg border dark:border-white/5 border-black/5">
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <h4 className="text-sm font-medium">Inbound Emails</h4>
+              {isMxVerified !== null && (
+                <span className={`text-xs px-2 py-1 rounded capitalize ${
+                  isMxVerified ? "bg-green-100 text-green-800" : "bg-orange-100 text-orange-800"
+                }`}>
+                  {isVerifyingMx ? "Checking..." : isMxVerified ? "Verified" : "Pending"}
+                </span>
+              )}
+            </div>
             <p className="text-xs text-muted-foreground">
-              Allow the agent to receive inbound emails
+              To receive emails, add this MX record to your DNS:
             </p>
+            <div className="p-3 bg-background rounded border text-xs font-mono flex items-center gap-2">
+              <span className="flex-1 truncate">{metadata.domain} MX 10 inbound.zavu.dev</span>
+              <Button variant="outline" size="sm" className="h-6 text-xs" onClick={handleVerifyMx} disabled={isVerifyingMx}>
+                {isVerifyingMx ? "Checking..." : "Verify"}
+              </Button>
+              <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" onClick={() => copyToClipboard(`${metadata.domain} MX 10 inbound.zavu.dev`, 'mx')}>
+                {copied === 'mx' ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+              </Button>
+            </div>
           </div>
-          <Switch 
-            checked={emailReceivingEnabled}
-            onCheckedChange={handleToggleReceiving}
-            disabled={isProcessing}
-          />
+
+          <div className="flex items-center justify-between p-3 bg-background rounded border">
+            <div className="space-y-0.5">
+              <Label className="text-sm">Enable Receiving</Label>
+              <p className="text-xs text-muted-foreground">
+                Allow the agent to receive inbound emails
+              </p>
+            </div>
+            <Switch 
+              checked={localReceivingEnabled}
+              onCheckedChange={setLocalReceivingEnabled}
+              disabled={isProcessing}
+            />
+          </div>
         </div>
-      </div>
-    </SectionCardContent>
+      </SectionCardContent>
+      {localReceivingEnabled !== emailReceivingEnabled && (
+        <SectionCardFooter>
+          <Button 
+            type="button" 
+            onClick={handleSaveReceiving} 
+            disabled={isProcessing}
+          >
+            {isProcessing ? "Saving..." : "Save Changes"}
+          </Button>
+        </SectionCardFooter>
+      )}
+    </>
   )
 }

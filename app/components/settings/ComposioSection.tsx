@@ -13,7 +13,7 @@ import {
 import { Button } from "../ui/button"
 import { Input } from "../ui/input"
 import { Label } from "../ui/label"
-import { CheckCircle2, Blocks } from "lucide-react"
+import { CheckCircle2, Plug as Blocks } from "../ui/icons"
 import { type SiteFormValues } from "./form-schema"
 import { secretsService } from "../../services/secrets-service"
 

@@ -18,7 +18,7 @@ import {
 } from "@/app/components/ui/section-card"
 import { Button } from "@/app/components/ui/button"
 import { toast } from "sonner"
-import { Clock, Building2, History, ArrowUpRight } from "lucide-react"
+import { Clock, Building as Building2, RotateCcw as History, ArrowUpRight } from "@/app/components/ui/icons"
 import { format, subDays } from "date-fns"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription, DialogForm, DialogBody } from "@/app/components/ui/dialog"
 import { Label } from "@/app/components/ui/label"

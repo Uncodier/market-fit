@@ -21,12 +21,16 @@ Sub-verbs (match from context; default is filing):
 Same API and token as `cloud`:
 
 ```bash
-export SHIPLIGHT_API_URL=https://nova-api.shiplight.ai
+export SHIPLIGHT_API_URL=https://api.shiplight.ai
 ```
 
 All calls send `Authorization: Bearer $SHIPLIGHT_API_TOKEN`. If no token is
-available, ask the user for their Shiplight API token; **ask before writing
-`.env`**, then add `SHIPLIGHT_API_TOKEN=<token>` there.
+available, offer to run `npx shiplight setup-api-token` from the test project
+root and get approval first because it writes `.env`. The command authenticates
+with Shiplight in the browser and owns that write; it does not persist the browser
+device-auth session. There is no CLI logout command. Remove the token from `.env`
+to stop using it in that project, or revoke it at
+<https://app.shiplight.ai/api-tokens> to invalidate it everywhere.
 
 ## Filing flow (default)
 
@@ -37,7 +41,7 @@ available, ask the user for their Shiplight API token; **ask before writing
    |---------|-----------|
    | `node_modules/shiplightai` missing | `npm install` in the project root |
    | installed CLI behind latest | `/shiplight update` |
-   | login redirect / expired session in a test or verify run | `/shiplight auth` |
+   | login redirect / expired session in a test or verify run | `/shiplight setup-test-auth` |
 
    Offer the fix if one matches. If the user still wants a human — or nothing
    matches — continue to filing; self-triage never blocks escalation. Record
