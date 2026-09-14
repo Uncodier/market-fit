@@ -55,7 +55,10 @@ export function resizeComposerTextarea(
     return currentHeight
   }
 
-  textarea.style.height = "auto"
+  // To prevent Safari from jumping the scroll position when a focused textarea shrinks,
+  // we avoid setting height to "auto" (which collapses it to near 0).
+  // Instead, we shrink it to the minHeight first, then measure the real scrollHeight.
+  textarea.style.height = `${minHeight}px`
   const scrollHeight = textarea.scrollHeight
   const newHeight = Math.min(Math.max(scrollHeight, minHeight), maxHeight)
   textarea.style.height = `${newHeight}px`

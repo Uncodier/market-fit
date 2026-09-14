@@ -53,22 +53,24 @@ export function useOptimizedMessageState(initialValue = "", cacheKey?: string): 
 
     const cached = readInputCache(cacheKey)
     const nextValue = cached !== null ? cached : initialValue
+    const previousLength = messageRef.current.length
     messageRef.current = nextValue
     setMessageState(nextValue)
     if (textareaRef.current) {
       textareaRef.current.value = nextValue
-      resizeComposerTextarea(textareaRef.current)
+      resizeComposerTextarea(textareaRef.current, { previousLength })
     }
   }, [cacheKey, initialValue])
 
   const applyValue = useCallback((newMessage: string, persistImmediately = true) => {
+    const previousLength = messageRef.current.length
     messageRef.current = newMessage
     setMessageState(newMessage)
     persistCache(newMessage, persistImmediately)
 
     if (textareaRef.current) {
       textareaRef.current.value = newMessage
-      resizeComposerTextarea(textareaRef.current)
+      resizeComposerTextarea(textareaRef.current, { previousLength })
     }
   }, [persistCache])
 
