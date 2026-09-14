@@ -49,6 +49,8 @@ import {
   splitVisibleInstances,
 } from "@/lib/navigation/robots-instance"
 
+import { cn } from "@/lib/utils"
+
 // Robot interface
 interface Robot {
   id: string;
