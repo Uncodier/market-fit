@@ -41,7 +41,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/ca
 import { Badge } from "@/app/components/ui/badge"
 import { Button } from "@/app/components/ui/button"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/app/components/ui/tooltip"
-import { Plus, Play, RotateCcw as RefreshCw, AlertCircle, FileText, Bot, Eye, Trash2, GitFork, Link, Copy, Globe, Mail, Phone, Tag, UploadCloud, Download, ZoomIn, X } from "@/app/components/ui/icons"
+import { Plus, Play, RotateCcw as RefreshCw, AlertCircle, FileText, Bot, Eye, Trash2, GitFork, Link, Copy, Globe, Mail, Phone, Tag, UploadCloud, Download, ZoomIn, X, Send } from "@/app/components/ui/icons"
 import { AudioPlayer } from "./audio-player"
 import { SocialIcon } from "@/app/components/ui/social-icons"
 import { InstanceNode } from "@/app/types/instance-nodes"
@@ -60,6 +60,7 @@ import { copyToClipboard } from "@/app/utils/clipboard"
 import { markdownComponents } from '../simple-messages-view/utils/markdownComponents'
 
 import { ImprentaSkeleton } from "@/app/components/skeletons/imprenta-skeleton"
+import { ImprentaTestPublishDialog } from "./imprenta-test-publish-dialog"
 import {
   ImprentaLazyPreviewImage,
   ImprentaLazyPreviewVideo,
@@ -345,7 +346,7 @@ const IMPRENTA_CARD_CONTENT_W = 440
 
 /** When the full card has never been measured, approximate its height from prompt + result shape (media, text, etc.). */
 function estimateImprentaNodeContentHeight(node: InstanceNode, rowH: number): number {
-  if (isImprentaVisualMediaResultCard(node, nodes)) {
+  if (isImprentaVisualMediaResultCard(node, [])) {
     return Math.min(
       Math.max(imprentaMediaBoxHeight(IMPRENTA_NODE_W, imprentaNodeMediaAspectCss(node)), 120),
       1600
@@ -948,7 +949,7 @@ const ImprentaNodeCardInner = memo(({
     handleDuplicateNode: (id: string) => Promise<void>
     handleConnectionDrop: (e: any, id: string, type?: "content" | "context" | "audience") => void
     handleConnectionStart: (e: any, id: string) => void
-    handleExecuteNode: (node: InstanceNode) => void
+    handleExecuteNode: (node: InstanceNode, testDestinations?: Record<string, string>) => void
     setNodes: any
     setZoomedMedia: any
     handleImprentaNodeHover: (id: string | null) => void
@@ -957,6 +958,7 @@ const ImprentaNodeCardInner = memo(({
     handleCreateActionFromContext: (ctx: any) => void
   }
 }) => {
+  const [isTestDialogOpen, setIsTestDialogOpen] = useState(false)
   const mediaAspect = imprentaNodeMediaAspectCss(node, actions.getParentNode(node))
   const isVisualMediaCard = isImprentaVisualMediaResultCard(node)
   const renderResultMedia = (url: string, type: "image" | "video", key: React.Key) =>
@@ -1846,11 +1848,11 @@ const ImprentaNodeCardInner = memo(({
                                   })()}
                                 </div>
                               ) : (
-                                <div className="flex w-full">
+                                <div className="flex w-full gap-2">
                                   <Button 
                                     variant="outline" 
                                     size="sm" 
-                                    className="w-full" 
+                                    className="flex-1" 
                                     title="Generate"
                                     onPointerDown={(e) => e.stopPropagation()}
                                     onMouseDown={(e) => e.stopPropagation()}
@@ -1861,6 +1863,23 @@ const ImprentaNodeCardInner = memo(({
                                   >
                                     <Play className="w-4 h-4 mr-2" /> Generate
                                   </Button>
+                                  {node.type === "publish" && (
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className="flex-[0.5]"
+                                      title={needAudience ? "Send Test" : "Only available for direct channels (email, whatsapp, call, etc)"}
+                                      disabled={!needAudience}
+                                      onPointerDown={(e) => e.stopPropagation()}
+                                      onMouseDown={(e) => e.stopPropagation()}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setIsTestDialogOpen(true);
+                                      }}
+                                    >
+                                      <Send className="w-4 h-4 mr-2" /> Test
+                                    </Button>
+                                  )}
                                 </div>
                               );
                               })()}
@@ -1868,6 +1887,16 @@ const ImprentaNodeCardInner = memo(({
                             </div>
                           </CardContent>
                         </Card>
+                        {node.type === "publish" && (
+                          <ImprentaTestPublishDialog
+                            isOpen={isTestDialogOpen}
+                            onClose={() => setIsTestDialogOpen(false)}
+                            destinations={Array.isArray((node.settings as any)?.publish_destinations) ? ((node.settings as any).publish_destinations as string[]) : []}
+                            onConfirm={(testDestinations) => {
+                              actions.handleExecuteNode(node, testDestinations)
+                            }}
+                          />
+                        )}
                       </div>
   )
 })
@@ -2544,12 +2573,14 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
     }
   }, [activeInstanceId, supabase, refreshImprentaData])
 
-  const handleExecuteNode = async (node: InstanceNode) => {
+  const handleExecuteNode = async (node: InstanceNode, testDestinations?: Record<string, string>) => {
     if (node.type === "publish") {
-      const err = validatePublishNodeInputs(node, contexts, canvasNodes)
-      if (err) {
-        toast.error(err)
-        return
+      if (!testDestinations) {
+        const err = validatePublishNodeInputs(node, contexts, canvasNodes)
+        if (err) {
+          toast.error(err)
+          return
+        }
       }
     }
     toast.info("Executing node...")
@@ -2604,8 +2635,8 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
         const emailReady = currentSite?.settings?.channels?.email?.status === 'synced'
         const hasEmailDistributionSelection = dest.some(d => d === 'mail' || d === 'newsletter')
         
-        const telegramReady = currentSite?.settings?.channels?.telegram?.status === 'active'
-        const smsReady = currentSite?.settings?.channels?.sms?.status === 'active'
+        const telegramReady = (currentSite?.settings?.channels as any)?.telegram?.status === 'active'
+        const smsReady = (currentSite?.settings?.channels as any)?.sms?.status === 'active'
         const whatsappReady = currentSite?.settings?.channels?.whatsapp?.status === 'active' || currentSite?.settings?.channels?.agent_whatsapp?.status === 'active'
         
         if (emailReady || hasEmailDistributionSelection || telegramReady || smsReady || whatsappReady) {
@@ -2623,6 +2654,11 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
       // Remove expectedResults from context to prevent the LLM from duplicating output internally
       if (contextObj.parameters.expectedResults !== undefined) {
         delete contextObj.parameters.expectedResults;
+      }
+
+      if (testDestinations) {
+        contextObj.is_test = true;
+        contextObj.test_destination = testDestinations;
       }
       
       const systemPrompt = getSystemPromptForActivity(node.type, {
