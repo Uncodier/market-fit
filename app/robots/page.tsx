@@ -2028,9 +2028,6 @@ function RobotsPageContent() {
                 placeholder="Instance name"
                 autoFocus
               />
-              <p className="text-[0.8rem] text-muted-foreground mt-2">
-                Tags functionality coming soon
-              </p>
             </div>
           </div>
           <DialogFooter>
