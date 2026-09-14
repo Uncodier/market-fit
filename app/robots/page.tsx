@@ -1708,7 +1708,12 @@ function RobotsPageContent() {
                                     />
                                   ) : (
                                     <span 
-                                      className="truncate"
+                                      className={cn(
+                                        "truncate transition-colors",
+                                        selectedInstanceId === inst.id && !(inst as any).requirement_title 
+                                          ? "hover:text-primary cursor-text decoration-primary/30 hover:underline underline-offset-4" 
+                                          : ""
+                                      )}
                                       onClick={(e) => {
                                         if (selectedInstanceId === inst.id && !(inst as any).requirement_title) {
                                           e.preventDefault()
