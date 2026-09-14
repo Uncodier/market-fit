@@ -4,6 +4,7 @@ import React, { useState, useEffect, useLayoutEffect, Suspense, useCallback, use
 import useSWR from "swr"
 import { useRouter, useSearchParams, usePathname } from "next/navigation"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/app/components/ui/dialog"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
 import { Globe, Pause, Play, MicroPause, MicroPlay, X, Plus, MoreHorizontal, ExternalLink, RotateCw, Loader, Monitor, Laptop, Tablet, Smartphone, Folder, Download, Archive, PanelRightClose, PanelRightOpen, LayoutGrid, Shield, Key } from "@/app/components/ui/icons"
 import { Button } from "@/app/components/ui/button"
