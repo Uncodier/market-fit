@@ -1,6 +1,5 @@
 import React from 'react'
 import { Sparkles, LayoutGrid } from "@/app/components/ui/icons"
-import { Avatar, AvatarFallback } from "@/app/components/ui/avatar"
 import { InstanceLog } from '../types'
 import { formatTime } from '../utils'
 import ReactMarkdown from 'react-markdown'
@@ -45,13 +44,7 @@ export const ArtifactShownItem: React.FC<ArtifactShownItemProps> = ({
   return (
     <div className="flex flex-col w-full min-w-0 items-start group mt-2 mb-2">
       <div className="flex items-center mb-1 gap-2 w-full">
-        <div className="relative">
-          <Avatar className="h-7 w-7 border border-primary/20 bg-primary/10">
-            <AvatarFallback className="bg-transparent text-primary">
-              <Sparkles className="w-3.5 h-3.5" />
-            </AvatarFallback>
-          </Avatar>
-        </div>
+        <Sparkles className="w-4 h-4 text-primary" />
         <span className="text-sm font-medium text-primary">
           Actualización de UI
         </span>

@@ -93,9 +93,13 @@ export function PerformanceMetricsChart({
               axisLine={false}
               tickLine={false}
               tick={{ fontSize: 12, fill: colors.text }}
+              tickMargin={10}
+              minTickGap={20}
               tickFormatter={(value) => {
                 const date = new Date(value);
-                return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                // Fix timezone offset for display by using UTC methods 
+                // since the date string is like "YYYY-MM-DD"
+                return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
               }}
             />
             <YAxis 

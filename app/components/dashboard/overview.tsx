@@ -109,6 +109,7 @@ export function Overview({ startDate: propStartDate, endDate: propEndDate, segme
         params.append("startDate", safeStartDate.toISOString())
         params.append("endDate", safeEndDate.toISOString())
         params.append("useDemoData", "true")
+        params.append("limit", "10000")
         if (segmentId && segmentId !== "all") {
           params.append("segmentId", segmentId)
         }
@@ -400,7 +401,7 @@ export function Overview({ startDate: propStartDate, endDate: propEndDate, segme
         </svg>
 
         {/* Contenedor de barras */}
-        <div className="w-full ml-14 pr-2 h-full flex items-end space-x-1 md:space-x-2">
+        <div className="w-full ml-14 pr-2 h-full flex items-end justify-between gap-[1px] sm:gap-[2px]">
           {chartData.map((item, index) => {
             // Calculamos la altura relativa basada en el valor máximo
             const hasData = item.total !== null
@@ -409,13 +410,13 @@ export function Overview({ startDate: propStartDate, endDate: propEndDate, segme
             return (
               <div 
                 key={index} 
-                className="flex-1 flex flex-col items-center justify-end h-full px-1"
+                className="flex-1 flex flex-col items-center justify-end h-full"
               >
                 
                 {/* Barra con animación al cargar y gradiente */}
                 {hasData ? (
                   <div 
-                    className="w-full transition-all rounded-t-sm origin-bottom hover:scale-x-105 group relative"
+                    className="w-full max-w-[48px] transition-all rounded-t-sm origin-bottom hover:scale-x-105 group relative"
                     style={{ 
                       height: `${height}%`,
                       animation: `growUp 1s ease-out forwards`,
@@ -464,13 +465,13 @@ export function Overview({ startDate: propStartDate, endDate: propEndDate, segme
       </div>
 
       {/* Eje X con etiquetas de intervalo */}
-      <div className="h-10 flex ml-14 pr-4 mt-2">
+      <div className="h-10 flex ml-14 pr-4 mt-2 gap-[1px] sm:gap-[2px]">
         {chartData.map((item, index) => {
           const skipLabelMobile = chartData.length > 7 && index % Math.ceil(chartData.length / 7) !== 0;
           const skipLabelDesktop = chartData.length > 14 && index % Math.ceil(chartData.length / 14) !== 0;
           
           return (
-            <div key={index} className="flex-1 text-center flex items-start justify-center overflow-hidden">
+            <div key={index} className="flex-1 text-center flex items-start justify-center overflow-visible">
               <div className={`text-[9px] sm:text-[10px] md:text-xs font-medium leading-tight ${isDarkMode ? "text-slate-400" : "text-gray-500"}`}>
                 {!skipLabelMobile && (
                   <span className="md:hidden block">
@@ -478,7 +479,7 @@ export function Overview({ startDate: propStartDate, endDate: propEndDate, segme
                   </span>
                 )}
                 {!skipLabelDesktop && (
-                  <span className="hidden md:block whitespace-nowrap overflow-hidden text-ellipsis px-1">
+                  <span className="hidden md:block whitespace-nowrap overflow-visible">
                     {item.name}
                   </span>
                 )}
