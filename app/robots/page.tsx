@@ -18,6 +18,7 @@ import { RobotsPageSkeleton } from "@/app/components/skeletons/robots-page-skele
 import { BrowserSkeleton } from "@/app/components/skeletons/browser-skeleton"
 import { DeleteRobotModal } from "@/app/components/robots/DeleteRobotModal"
 import { InstanceBrowserModal } from "@/app/components/robots/InstanceBrowserModal"
+import { useInstanceBrowserData } from "@/app/components/robots/use-instance-browser-data"
 import { createClient } from "@/lib/supabase/client"
 import { useToast } from "@/app/components/ui/use-toast"
 import { deleteInstanceArtifacts } from "./delete-instance-artifacts"
@@ -339,6 +340,9 @@ function RobotsPageContent() {
     }
   }, [activeRobotInstance]);
 
+  const shouldFetchStats = viewMode === "imprenta" || viewMode === "workflow"
+  const { instanceStats } = useInstanceBrowserData(shouldFetchStats, tabInstances)
+  
   // Clean up title on unmount
   useEffect(() => {
     return () => {
@@ -359,6 +363,30 @@ function RobotsPageContent() {
   const [deletingInstanceIds, setDeletingInstanceIds] = useState<Set<string>>(new Set())
   const [instanceAvatars, setInstanceAvatars] = useState<Record<string, string>>({})
   
+  const [editingInstanceId, setEditingInstanceId] = useState<string | null>(null)
+  const [editingName, setEditingName] = useState("")
+  
+  const handleInstanceNameUpdate = async (id: string, newName: string) => {
+    if (!newName.trim()) return
+    try {
+      const supabase = createClient()
+      await supabase
+        .from('remote_instances')
+        .update({ name: newName.trim(), updated_at: new Date().toISOString() })
+        .eq('id', id)
+      
+      refreshRobots(currentSite?.id)
+      
+      if (selectedInstanceId === id) {
+        const params = new URLSearchParams(searchParams.toString())
+        params.set('name', newName.trim())
+        router.replace(`/robots?${params.toString()}`, { scroll: false })
+      }
+    } catch (err) {
+      console.error('Error updating instance name:', err)
+    }
+  }
+
   // Refs and state for responsive tabs
   const tabsContainerRef = useRef<HTMLDivElement>(null)
   const tabsListRef = useRef<HTMLDivElement>(null)
@@ -1545,8 +1573,13 @@ function RobotsPageContent() {
                         <>
                           {visibleInstances.map((inst) => {
                             const isDeletingInstance = deletingInstanceIds.has(inst.id)
+                            const hasMultipleNodes = viewMode === "imprenta" 
+                              ? instanceStats[inst.id]?.nodes > 1 
+                              : viewMode === "workflow" 
+                                ? instanceStats[inst.id]?.workflows > 1 
+                                : false
                             return (
-                            <TabsTrigger key={`${inst.id}-${siteChangeKey}`} value={inst.id}>
+                            <TabsTrigger key={`${inst.id}-${siteChangeKey}`} value={inst.id} className={hasMultipleNodes ? "bg-primary/10 hover:bg-primary/20 data-[state=active]:bg-primary/15 transition-colors" : ""}>
                               <span className="flex items-center gap-2 max-w-[120px]">
                                 {(() => {
                                   const status = (inst as any).status;
@@ -1649,7 +1682,45 @@ function RobotsPageContent() {
                                     </span>
                                   );
                                 })()}
-                                  <span className="truncate">{(inst as any).requirement_title ? (inst as any).requirement_title : (inst.name || `ag-${inst.id.slice(-4)}`)}</span>
+                                  {editingInstanceId === inst.id ? (
+                                    <input 
+                                      type="text" 
+                                      autoFocus 
+                                      value={editingName} 
+                                      onChange={e => setEditingName(e.target.value)} 
+                                      onBlur={() => { 
+                                        setEditingInstanceId(null)
+                                        handleInstanceNameUpdate(inst.id, editingName) 
+                                      }} 
+                                      onKeyDown={e => { 
+                                        if (e.key === 'Enter') {
+                                          e.preventDefault()
+                                          setEditingInstanceId(null)
+                                          handleInstanceNameUpdate(inst.id, editingName) 
+                                        } else if (e.key === 'Escape') {
+                                          e.preventDefault()
+                                          setEditingInstanceId(null)
+                                        }
+                                      }} 
+                                      className="bg-background text-foreground border-none outline-none ring-1 ring-primary/50 rounded px-1 max-w-[100px] text-sm truncate" 
+                                      onClick={e => e.stopPropagation()}
+                                      onMouseDown={e => e.stopPropagation()}
+                                    />
+                                  ) : (
+                                    <span 
+                                      className="truncate"
+                                      onClick={(e) => {
+                                        if (selectedInstanceId === inst.id && !(inst as any).requirement_title) {
+                                          e.preventDefault()
+                                          e.stopPropagation()
+                                          setEditingInstanceId(inst.id)
+                                          setEditingName(inst.name || `ag-${inst.id.slice(-4)}`)
+                                        }
+                                      }}
+                                    >
+                                      {(inst as any).requirement_title ? (inst as any).requirement_title : (inst.name || `ag-${inst.id.slice(-4)}`)}
+                                    </span>
+                                  )}
                                 <span
                                   onClick={(e) => {
                                     e.stopPropagation()
