@@ -1577,11 +1577,12 @@ function RobotsPageContent() {
                         <>
                           {visibleInstances.map((inst) => {
                             const isDeletingInstance = deletingInstanceIds.has(inst.id)
-                            const hasMultipleNodes = viewMode === "imprenta" 
+                            const isSelected = selectedInstanceId === inst.id
+                            const hasMultipleNodes = !isSelected && (viewMode === "imprenta" 
                               ? instanceStats[inst.id]?.nodes > 1 
                               : viewMode === "workflow" 
                                 ? instanceStats[inst.id]?.workflows > 1 
-                                : false
+                                : false)
                             return (
                             <TabsTrigger key={`${inst.id}-${siteChangeKey}`} value={inst.id} className={hasMultipleNodes ? "bg-primary/10 hover:bg-primary/20 data-[state=active]:bg-primary/15 transition-colors" : ""}>
                               <span className="flex items-center gap-2 max-w-[120px]">
