@@ -2657,6 +2657,35 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
       }
 
       let toolOverrides: Record<string, any> | undefined = undefined;
+      let publishOverride: Record<string, any> = {};
+
+      if (node.type === 'publish') {
+        const dest = Array.isArray((node.settings as any)?.publish_destinations)
+          ? ((node.settings as any).publish_destinations as string[])
+          : [];
+        
+        const nonSocialDests = ['blog', 'mail', 'newsletter', 'whatsapp', 'telegram', 'sms', 'voice'];
+        const socialAccounts = dest.filter(d => !nonSocialDests.includes(d));
+        
+        if (socialAccounts.length > 0) {
+          publishOverride.social_accounts = socialAccounts;
+        }
+
+        // Si se seleccionaron múltiples canales de audiencia, tomamos el más prioritario
+        // ya que el tool publish solo acepta un string en `channel` por llamada.
+        // Si el usuario requiere múltiples simultáneos, habría que adaptar el tool o el override a nivel router,
+        // pero inyectar esto da la precisión determinista solicitada.
+        if (dest.includes('whatsapp')) publishOverride.channel = 'whatsapp';
+        else if (dest.includes('telegram')) publishOverride.channel = 'telegram';
+        else if (dest.includes('sms')) publishOverride.channel = 'sms';
+        else if (dest.includes('voice')) publishOverride.channel = 'voice';
+        else if (dest.includes('newsletter')) { publishOverride.channel = 'email'; publishOverride.audience_email_mode = 'newsletter'; }
+        else if (dest.includes('mail')) { publishOverride.channel = 'email'; publishOverride.audience_email_mode = 'mail'; }
+
+        if (Object.keys(publishOverride).length > 0) {
+          toolOverrides = { publish: publishOverride };
+        }
+      }
 
       if (testDestinations) {
         contextObj.is_test = true;
@@ -2664,12 +2693,9 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
         
         if (node.type === 'publish') {
           const testRecipient = testDestinations.email || testDestinations.phone;
-          toolOverrides = {
-            publish: {
-              is_test: true,
-              test_recipient: testRecipient
-            }
-          };
+          toolOverrides = toolOverrides || { publish: {} };
+          toolOverrides.publish.is_test = true;
+          toolOverrides.publish.test_recipient = testRecipient;
         }
       }
       
