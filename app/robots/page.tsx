@@ -365,6 +365,7 @@ function RobotsPageContent() {
   const [deletingInstanceIds, setDeletingInstanceIds] = useState<Set<string>>(new Set())
   const [instanceAvatars, setInstanceAvatars] = useState<Record<string, string>>({})
   
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [editingInstanceId, setEditingInstanceId] = useState<string | null>(null)
   const [editingName, setEditingName] = useState("")
   
@@ -1684,31 +1685,6 @@ function RobotsPageContent() {
                                     </span>
                                   );
                                 })()}
-                                  {editingInstanceId === inst.id ? (
-                                    <input 
-                                      type="text" 
-                                      autoFocus 
-                                      value={editingName} 
-                                      onChange={e => setEditingName(e.target.value)} 
-                                      onBlur={() => { 
-                                        setEditingInstanceId(null)
-                                        handleInstanceNameUpdate(inst.id, editingName) 
-                                      }} 
-                                      onKeyDown={e => { 
-                                        if (e.key === 'Enter') {
-                                          e.preventDefault()
-                                          setEditingInstanceId(null)
-                                          handleInstanceNameUpdate(inst.id, editingName) 
-                                        } else if (e.key === 'Escape') {
-                                          e.preventDefault()
-                                          setEditingInstanceId(null)
-                                        }
-                                      }} 
-                                      className="bg-background text-foreground border-none outline-none ring-1 ring-primary/50 rounded px-1 max-w-[100px] text-sm truncate" 
-                                      onClick={e => e.stopPropagation()}
-                                      onMouseDown={e => e.stopPropagation()}
-                                    />
-                                  ) : (
                                     <span 
                                       className={cn(
                                         "truncate transition-colors",
@@ -1722,12 +1698,12 @@ function RobotsPageContent() {
                                           e.stopPropagation()
                                           setEditingInstanceId(inst.id)
                                           setEditingName(inst.name || `ag-${inst.id.slice(-4)}`)
+                                          setIsEditModalOpen(true)
                                         }
                                       }}
                                     >
                                       {(inst as any).requirement_title ? (inst as any).requirement_title : (inst.name || `ag-${inst.id.slice(-4)}`)}
                                     </span>
-                                  )}
                                 <span
                                   onClick={(e) => {
                                     e.stopPropagation()
@@ -2026,6 +2002,48 @@ function RobotsPageContent() {
         />
       )}
       
+      {/* Edit Instance Modal */}
+      <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
+        <DialogContent size="sm">
+          <DialogHeader>
+            <DialogTitle>Edit instance</DialogTitle>
+          </DialogHeader>
+          <div className="p-4 py-6">
+            <div className="grid gap-2">
+              <label htmlFor="name" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                Name
+              </label>
+              <input
+                id="name"
+                value={editingName}
+                onChange={(e) => setEditingName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && editingInstanceId) {
+                    handleInstanceNameUpdate(editingInstanceId, editingName)
+                    setIsEditModalOpen(false)
+                  }
+                }}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                placeholder="Instance name"
+                autoFocus
+              />
+              <p className="text-[0.8rem] text-muted-foreground mt-2">
+                Tags functionality coming soon
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsEditModalOpen(false)}>Cancel</Button>
+            <Button onClick={() => {
+              if (editingInstanceId) {
+                handleInstanceNameUpdate(editingInstanceId, editingName)
+                setIsEditModalOpen(false)
+              }
+            }}>Save changes</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <div className={`absolute inset-0 flex flex-col min-h-0 ${isCanvasMode ? 'overflow-visible' : 'overflow-hidden'}`}>
         {/* Content area - no pt-[71px] here so it can go under header */}
         <div className={`flex-1 flex flex-col min-h-0 ${isCanvasMode ? 'bg-transparent' : 'bg-muted/30'} transition-colors duration-300 ease-in-out ${isCanvasMode ? 'overflow-visible' : 'overflow-hidden'}`}>
