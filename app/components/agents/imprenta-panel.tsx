@@ -2656,9 +2656,21 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
         delete contextObj.parameters.expectedResults;
       }
 
+      let toolOverrides: Record<string, any> | undefined = undefined;
+
       if (testDestinations) {
         contextObj.is_test = true;
         contextObj.test_destination = testDestinations;
+        
+        if (node.type === 'publish') {
+          const testRecipient = testDestinations.email || testDestinations.phone;
+          toolOverrides = {
+            publish: {
+              is_test: true,
+              test_recipient: testRecipient
+            }
+          };
+        }
       }
       
       const systemPrompt = getSystemPromptForActivity(node.type, {
@@ -2675,7 +2687,8 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
         instance_node_id: node.id, // Pass the current node ID instead of creating a child
         context: JSON.stringify({ ...contextObj, nodeType: node.type }), // Ensure nodeType is sent
         system_prompt: systemPrompt,
-        expected_results_amount: (node.settings as any)?.parameters?.expectedResults || 1
+        expected_results_amount: (node.settings as any)?.parameters?.expectedResults || 1,
+        ...(toolOverrides ? { tool_overrides: toolOverrides } : {})
       }
       
       const response = await apiClient.post('/api/robots/instance/assistant', requestPayload)
