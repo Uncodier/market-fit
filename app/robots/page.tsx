@@ -307,6 +307,9 @@ function RobotsPageContent() {
     params.set("instance", selectedInstanceParam)
     params.delete("instance_id")
     params.delete("instanceId")
+    params.delete('artifact')
+    params.delete('screen')
+    params.delete('tab')
     router.replace(`/robots?${params.toString()}`, { scroll: false })
   }, [searchParams, selectedInstanceParam, router])
   
@@ -532,6 +535,9 @@ function RobotsPageContent() {
               params.set('instance', newInstance.id)
               const displayName = (newInstance as any).requirement_title ? (newInstance as any).requirement_title : (newInstance.name || `ag-${newInstance.id.slice(-4)}`)
               params.set('name', displayName)
+              params.delete('artifact')
+              params.delete('screen')
+              params.delete('tab')
               router.replace(`/robots?${params.toString()}`)
               
               // Reset the auto-creating flag after a delay to allow for proper state updates
@@ -700,12 +706,21 @@ function RobotsPageContent() {
       const currentParams = new URLSearchParams(searchParams.toString())
       currentParams.set('instance', 'new')
       currentParams.delete('name')
+      // Clear artifact and tab state when changing instances
+      currentParams.delete('artifact')
+      currentParams.delete('screen')
+      currentParams.delete('tab')
       router.push(`/robots?${currentParams.toString()}`)
     } else {
       // Set the selected instance
       setLocalSelectedInstanceId(newInstance)
       const currentParams = new URLSearchParams(searchParams.toString())
       currentParams.set('instance', newInstance)
+      
+      // Clear artifact and tab state when changing instances
+      currentParams.delete('artifact')
+      currentParams.delete('screen')
+      currentParams.delete('tab')
       
       const instance = getInstanceById(newInstance)
       if (instance) {
@@ -823,6 +838,9 @@ function RobotsPageContent() {
     // We don't have the full instance object here easily, but the title effect will catch it
     // Still, try to clear the old name
     currentParams.delete('name')
+    currentParams.delete('artifact')
+    currentParams.delete('screen')
+    currentParams.delete('tab')
     router.replace(`/robots?${currentParams.toString()}`)
     // Keep Realtime enabled so INSERT/UPDATE events can populate the new instance
     setPendingInstanceId(instanceId)
@@ -1861,6 +1879,11 @@ function RobotsPageContent() {
                 const newParams = new URLSearchParams(searchParams.toString())
                 newParams.set('instance', targetInstanceId)
                 
+                // Clear artifact and tab state when changing instances after delete
+                newParams.delete('artifact')
+                newParams.delete('screen')
+                newParams.delete('tab')
+                
                 if (targetInstanceId !== 'new') {
                   const targetInstance = currentInstances.find(inst => inst.id === targetInstanceId)
                   if (targetInstance) {
@@ -1888,6 +1911,9 @@ function RobotsPageContent() {
                 const newParams = new URLSearchParams(searchParams.toString())
                 newParams.set('instance', 'new')
                 newParams.delete('name')
+                newParams.delete('artifact')
+                newParams.delete('screen')
+                newParams.delete('tab')
                 router.replace(`/robots?${newParams.toString()}`, { scroll: false })
               }
               
@@ -1904,6 +1930,9 @@ function RobotsPageContent() {
               const params = new URLSearchParams(searchParams.toString())
               params.set('instance', 'new')
               params.delete('name')
+              params.delete('artifact')
+              params.delete('screen')
+              params.delete('tab')
               router.replace(`/robots?${params.toString()}`)
             } finally {
               if (deletedInstanceId) {
