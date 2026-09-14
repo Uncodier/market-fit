@@ -71,9 +71,9 @@ export function MonthlySalesChart() {
       <ResponsiveContainer width="100%" height="100%">
         <BarChart
           data={data}
-          margin={{ top: 10, right: 10, left: 10, bottom: 5 }}
+          margin={{ top: 10, right: 10, left: 10, bottom: 25 }}
           barGap={5}
-          barCategoryGap={20}
+          maxBarSize={50}
         >
           <CartesianGrid 
             strokeDasharray="3 3" 
@@ -86,6 +86,7 @@ export function MonthlySalesChart() {
             axisLine={false}
             tickLine={false}
             tick={{ fontSize: 12, fill: colors.text }}
+            tickMargin={10}
           />
           <YAxis 
             axisLine={false}
@@ -131,7 +132,6 @@ export function MonthlySalesChart() {
             dataKey="online" 
             fill="url(#onlineSalesGradient)" 
             radius={[4, 4, 0, 0]} 
-            barSize={20}
             name="online"
             animationDuration={1500}
             animationEasing="ease-out"
@@ -140,7 +140,6 @@ export function MonthlySalesChart() {
             dataKey="retail" 
             fill="url(#retailSalesGradient)" 
             radius={[4, 4, 0, 0]} 
-            barSize={20}
             name="retail"
             animationDuration={1500}
             animationEasing="ease-out"

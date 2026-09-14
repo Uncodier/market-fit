@@ -71,8 +71,9 @@ export function MonthlyCostChart({
       <ResponsiveContainer width="100%" height="90%">
         <BarChart
           data={chartData}
-          margin={{ top: 10, right: 10, left: 10, bottom: 5 }}
+          margin={{ top: 10, right: 10, left: 10, bottom: 25 }}
           barGap={2}
+          maxBarSize={50}
         >
           <CartesianGrid 
             strokeDasharray="3 3" 
@@ -85,6 +86,7 @@ export function MonthlyCostChart({
             axisLine={false}
             tickLine={false}
             tick={{ fontSize: 12, fill: colors.text }}
+            tickMargin={10}
           />
           <YAxis 
             axisLine={false}
@@ -125,7 +127,6 @@ export function MonthlyCostChart({
             name="Fixed Costs"
             fill="url(#fixedCostsGradient)" 
             radius={[4, 4, 0, 0]} 
-            barSize={20}
             minPointSize={8}
             isAnimationActive={false}
           />
@@ -134,7 +135,6 @@ export function MonthlyCostChart({
             name="Variable Costs"
             fill="url(#variableCostsGradient)" 
             radius={[4, 4, 0, 0]} 
-            barSize={20}
             minPointSize={8}
             isAnimationActive={false}
           />
