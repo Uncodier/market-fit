@@ -1,6 +1,7 @@
 import {
   getChannelDescription,
   getChannelLabel,
+  getChannelRoutingMetadata,
   getEnabledSiteChannels,
   normalizeChannel,
   leadHasChannel
@@ -76,6 +77,40 @@ describe("site-channels", () => {
     })
 
     expect(channels).toEqual(["whatsapp", "telegram", "email", "web"])
+  })
+
+  it("exposes stable routing metadata for connected channels", () => {
+    const site = {
+      settings: {
+        channels: {
+          connections: [
+            {
+              id: "connection-1",
+              type: "sms",
+              status: "connected",
+              zavu_sender_id: "snd_1",
+              metadata: {
+                phone_number: "+14155550100",
+                phone_number_id: "pn_1",
+                capabilities: ["sms", "voice"],
+                regulatory_status: "approved",
+              },
+            },
+          ],
+        },
+      },
+    }
+
+    expect(getChannelRoutingMetadata(site, "sms")).toEqual({
+      channel: "sms",
+      connection_id: "connection-1",
+      sender_id: "snd_1",
+      phone_number_id: "pn_1",
+      phone_number: "+14155550100",
+      capabilities: ["sms", "voice"],
+      regulatory_status: "approved",
+    })
+    expect(getChannelRoutingMetadata(site, "voice")).toBeUndefined()
   })
 
   describe("leadHasChannel", () => {

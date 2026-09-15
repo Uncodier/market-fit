@@ -10,6 +10,9 @@ export type InterventionChannelSend = {
   success?: boolean
   method?: string
   workflowId?: string
+  workflow_id?: string
+  workflowRunId?: string
+  run_id?: string
   error?: string
 }
 
@@ -31,7 +34,11 @@ export function shouldTreatInterventionAsFailed(responseData: InterventionAccept
   if (!channelSend) return false
   if (channelSend.success === true) return false
   if (channelSend.method === "none") return false
-  return !channelSend.workflowId
+  return !getInterventionWorkflowId(channelSend)
+}
+
+export function getInterventionWorkflowId(channelSend?: InterventionChannelSend): string | undefined {
+  return channelSend?.workflowId || channelSend?.workflow_id || channelSend?.workflowRunId || channelSend?.run_id
 }
 
 export function buildInterventionRequestBody(

@@ -66,7 +66,7 @@ Makinari is a comprehensive growth engine platform designed to help businesses o
 
 ### Integrations & Services
 - **Payments**: Stripe for billing and subscriptions
-- **Communications**: Twilio for SMS and WhatsApp
+- **Communications**: Zavu for SMS, voice, email, Telegram, WhatsApp, and Messenger
 - **File Storage**: Supabase Storage
 - **Email**: Integrated email marketing capabilities
 

@@ -114,8 +114,8 @@ export const ChatInput = memo(function ChatInput({
 
   // Send button is enabled and filled only when there is input and not loading
   const canSend = useMemo(() => {
-    return hasInput && !isLoading
-  }, [hasInput, isLoading])
+    return hasInput && !isLoading && !isUpdatingChannel
+  }, [hasInput, isLoading, isUpdatingChannel])
   
   // If no conversation is selected, don't render the input
   if (!hasSelectedConversation) {

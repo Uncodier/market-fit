@@ -25,7 +25,20 @@ export type SiteChannelSource = {
       agent_email?: { status?: string }
       agent_whatsapp?: { status?: string }
       website?: { enable_chat?: boolean }
-      connections?: Array<{ type?: string | null; status?: string | null }>
+      connections?: Array<{
+        id?: string | null
+        type?: string | null
+        status?: string | null
+        zavu_sender_id?: string | null
+        metadata?: {
+          phone_number?: string
+          phone_number_id?: string
+          capabilities?: string[]
+          regulatory_status?: string
+          routing?: Record<string, unknown>
+          [key: string]: unknown
+        } | null
+      }>
     } | null
     social_media?: Array<{ platform?: string | null; network?: string | null; isActive?: boolean | number }> | null
   } | null
@@ -137,6 +150,27 @@ export function getEnabledSiteChannels(site?: SiteChannelSource | null): Communi
   }
 
   return COMMUNICATION_CHANNELS.filter((channel) => enabled.includes(channel))
+}
+
+export function getChannelRoutingMetadata(
+  site: SiteChannelSource | null | undefined,
+  channel: string
+): Record<string, unknown> | undefined {
+  const normalized = normalizeChannel(channel)
+  const connection = site?.settings?.channels?.connections?.find(
+    (item) => normalizeChannel(item.type) === normalized && isConnectedStatus(item.status)
+  )
+  if (!connection) return undefined
+
+  return {
+    channel: normalized,
+    connection_id: connection.id || undefined,
+    sender_id: connection.zavu_sender_id || undefined,
+    phone_number_id: connection.metadata?.phone_number_id,
+    phone_number: connection.metadata?.phone_number,
+    capabilities: connection.metadata?.capabilities,
+    regulatory_status: connection.metadata?.regulatory_status,
+  }
 }
 
 export function leadHasChannel(lead: any, channel: string): boolean {

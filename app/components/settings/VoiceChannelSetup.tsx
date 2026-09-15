@@ -12,6 +12,18 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/app/components/ui/ta
 import { Badge } from "@/app/components/ui/badge"
 import { Alert, AlertTitle, AlertDescription } from "@/app/components/ui/alert"
 import { AlertTriangle } from "@/app/components/ui/icons"
+import {
+  buildAvailablePhoneNumbersQuery,
+  canAssignPhoneNumber,
+  createPhoneConnectionMetadata,
+  formatPhoneCapabilities,
+  getRequirementSummary,
+  unwrapPurchasedPhoneNumber,
+  unwrapZavuItems,
+  type ZavuPhoneNumber,
+  type ZavuPhoneNumberType,
+  type ZavuRegulatoryRequirement,
+} from "./zavu-phone-number-utils"
 
 function formatPhoneNumber(phoneNumber: string): string {
   if (!phoneNumber) return phoneNumber;
@@ -33,15 +45,6 @@ function formatPhoneNumber(phoneNumber: string): string {
   return phoneNumber;
 }
 
-function formatCapabilities(capabilities: any): string[] {
-  if (!capabilities) return [];
-  if (Array.isArray(capabilities)) return capabilities;
-  if (typeof capabilities === "object") {
-    return Object.entries(capabilities).filter(([_, v]) => v).map(([key]) => key);
-  }
-  return [String(capabilities)];
-}
-
 export function VoiceChannelSetup({ 
   siteId, 
   channel, 
@@ -49,29 +52,32 @@ export function VoiceChannelSetup({
 }: { 
   siteId: string, 
   channel: any, 
-  onConnected: (payload: any) => void 
+  onConnected: (payload: any) => void | Promise<void>
 }) {
   const [tab, setTab] = useState<"existing" | "new">("existing")
   
   // New Number State
   const [countryCode, setCountryCode] = useState("US")
-  const [areaCode, setAreaCode] = useState("")
+  const [numberType, setNumberType] = useState<ZavuPhoneNumberType>("local")
+  const [numberContains, setNumberContains] = useState("")
   const [isSearching, setIsSearching] = useState(false)
-  const [searchResults, setSearchResults] = useState<any[]>([])
+  const [searchResults, setSearchResults] = useState<ZavuPhoneNumber[]>([])
   
   // Existing Number State
-  const [ownedNumbers, setOwnedNumbers] = useState<any[]>([])
+  const [ownedNumbers, setOwnedNumbers] = useState<ZavuPhoneNumber[]>([])
   const [isLoadingOwned, setIsLoadingOwned] = useState(true)
+  const [requirements, setRequirements] = useState<ZavuRegulatoryRequirement[]>([])
 
   const [selectedNumber, setSelectedNumber] = useState("")
   const [isConnecting, setIsConnecting] = useState(false)
+  const eligibleOwnedNumbers = ownedNumbers.filter((number) => canAssignPhoneNumber(number, "voice"))
 
   useEffect(() => {
     const fetchOwnedNumbers = async () => {
       try {
         const response = await apiClient.get('/api/integrations/zavu/phone-numbers')
         if (response.success && response.data) {
-          const numbers = Array.isArray(response.data) ? response.data : []
+          const numbers = unwrapZavuItems<ZavuPhoneNumber>(response.data)
           setOwnedNumbers(numbers)
           if (numbers.length === 0) {
             setTab("new")
@@ -93,22 +99,27 @@ export function VoiceChannelSetup({
     setSelectedNumber("")
     
     try {
-      const query = new URLSearchParams({ countryCode })
-      if (areaCode) query.append("areaCode", areaCode)
-      query.append("capabilities", "voice")
+      const query = buildAvailablePhoneNumbersQuery({
+        countryCode,
+        type: numberType,
+        contains: numberContains,
+        capabilities: ["voice"],
+      })
         
-      const response = await apiClient.get(`/api/integrations/zavu/phone-numbers/available?${query.toString()}`)
+      const response = await apiClient.get(`/api/integrations/zavu/phone-numbers/available?${query}`)
       
       if (!response.success) {
         throw new Error(response.error?.message || "Failed to search phone numbers")
       }
       
-      if (!response.data || response.data.length === 0) {
+      const numbers = unwrapZavuItems<ZavuPhoneNumber>(response.data)
+        .filter((number) => canAssignPhoneNumber(number, "voice"))
+      if (numbers.length === 0) {
         toast.info("No phone numbers found for the selected criteria")
         return
       }
       
-      setSearchResults(response.data)
+      setSearchResults(numbers)
     } catch (error: any) {
       toast.error(error.message || "An error occurred while searching")
     } finally {
@@ -123,46 +134,32 @@ export function VoiceChannelSetup({
     }
 
     setIsConnecting(true)
+    setRequirements([])
+    let purchasedNumber: ZavuPhoneNumber | undefined
     try {
+      const selected =
+        [...ownedNumbers, ...searchResults].find((number) => number.phoneNumber === selectedNumber) ||
+        { phoneNumber: selectedNumber }
+
       if (tab === "new") {
-        // Check if regulatory requirements are needed (mostly for non-US numbers)
-        let regulatoryRequirements = undefined;
-        let type = undefined;
-        
-        if (countryCode !== "US" || selectedNumber) {
-          try {
-            // First fetch the requirements for this number
-            const reqUrl = `/api/integrations/zavu/phone-numbers/requirements?phoneNumber=${encodeURIComponent(selectedNumber)}`;
-            const reqsResponse = await apiClient.get(reqUrl);
-            
-            // If the API gives us the resource, pass it along
-            if (reqsResponse.success && reqsResponse.data) {
-              regulatoryRequirements = reqsResponse.data.items || reqsResponse.data;
-              // Extract type from requirements if present
-              if (Array.isArray(regulatoryRequirements) && regulatoryRequirements.length > 0) {
-                type = regulatoryRequirements[0].phoneNumberType || "local";
-              }
-            }
-          } catch (reqErr) {
-            console.warn("Could not fetch regulatory requirements:", reqErr);
-          }
+        const reqUrl = `/api/integrations/zavu/phone-numbers/requirements?phoneNumber=${encodeURIComponent(selectedNumber)}`
+        const reqsResponse = await apiClient.get(reqUrl)
+        if (!reqsResponse.success) {
+          throw new Error(reqsResponse.error?.message || "Could not verify regulatory requirements")
         }
+        const regulatoryRequirements = unwrapZavuItems<ZavuRegulatoryRequirement>(reqsResponse.data)
+        setRequirements(regulatoryRequirements)
 
-        // Purchase number first
-        const purchasePayload: any = {
-          phoneNumber: selectedNumber
-        };
-        
-        if (regulatoryRequirements) {
-          purchasePayload.regulatoryRequirements = regulatoryRequirements;
-          if (type) purchasePayload.type = type;
-        }
-
-        const purchaseResponse = await apiClient.post("/api/integrations/zavu/phone-numbers", purchasePayload)
+        const purchaseResponse = await apiClient.post("/api/integrations/zavu/phone-numbers", {
+          phoneNumber: selectedNumber,
+          name: channel.name,
+          type: numberType,
+        })
         
         if (!purchaseResponse.success) {
           throw new Error(purchaseResponse.error?.message || "Failed to purchase phone number")
         }
+        purchasedNumber = unwrapPurchasedPhoneNumber(purchaseResponse.data)
       }
 
       const response = await apiClient.post("/api/integrations/zavu/voice", {
@@ -170,6 +167,8 @@ export function VoiceChannelSetup({
         channelId: channel.id,
         name: channel.name,
         phoneNumber: selectedNumber,
+        phoneNumberId: purchasedNumber?.id || selected.id,
+        senderId: purchasedNumber?.senderId || selected.senderId,
         active: true,
       })
 
@@ -177,10 +176,31 @@ export function VoiceChannelSetup({
         throw new Error(response.error?.message || "Failed to connect Voice channel")
       }
 
-      onConnected(response.data)
-      toast.success("Voice channel connected successfully and tools registered.")
+      const payload = createPhoneConnectionMetadata({
+        channel: "voice",
+        selected,
+        purchased: purchasedNumber,
+        responseData: response.data,
+      })
+      if (!payload.senderId) {
+        throw new Error("Zavu did not return a sender ID for the Voice channel")
+      }
+      await onConnected({
+        ...payload,
+        status: payload.regulatoryStatus === "pending_review" ? "in_progress" : "connected",
+      })
+      toast.success(
+        payload.regulatoryStatus === "pending_review"
+          ? "Number purchased. Voice will be available after regulatory approval."
+          : "Voice channel connected successfully and tools registered."
+      )
     } catch (error: any) {
-      toast.error(error.message || "An error occurred")
+      const message = error.message || "An error occurred"
+      toast.error(
+        purchasedNumber
+          ? `${message}. The number was purchased and remains available under Existing Number; retry activation there.`
+          : message
+      )
     } finally {
       setIsConnecting(false)
     }
@@ -211,7 +231,7 @@ export function VoiceChannelSetup({
                   <Skeleton className="h-[74px] w-full rounded-md" />
                 </div>
               </div>
-            ) : ownedNumbers.length === 0 ? (
+            ) : eligibleOwnedNumbers.length === 0 ? (
               <div className="text-center py-6 bg-muted/30 rounded-md">
                 <p className="text-sm text-muted-foreground">You don't have any phone numbers yet.</p>
                 <Button variant="link" onClick={() => setTab("new")} className="mt-2 h-auto p-0">
@@ -222,7 +242,7 @@ export function VoiceChannelSetup({
               <div className="space-y-3">
                 <Label className="text-xs font-medium">Select one of your numbers</Label>
                 <RadioGroup value={selectedNumber} onValueChange={setSelectedNumber}>
-                  {ownedNumbers.map((result, idx) => (
+                  {eligibleOwnedNumbers.map((result, idx) => (
                     <div key={idx} className="flex items-center space-x-2 border rounded-md p-3 hover:bg-muted/50 cursor-pointer" onClick={() => setSelectedNumber(result.phoneNumber)}>
                       <RadioGroupItem value={result.phoneNumber} id={`owned-${idx}`} />
                       <div className="flex flex-1 items-center justify-between">
@@ -236,7 +256,7 @@ export function VoiceChannelSetup({
                         </div>
                         {result.capabilities && (
                           <div className="flex gap-1">
-                            {formatCapabilities(result.capabilities).map((cap) => (
+                            {formatPhoneCapabilities(result.capabilities).map((cap) => (
                               <Badge key={cap} variant="secondary" className="capitalize">
                                 {cap}
                               </Badge>
@@ -270,7 +290,7 @@ export function VoiceChannelSetup({
               </Alert>
             )}
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
               <div className="space-y-2">
                 <Label className="text-xs">Country</Label>
                 <Select value={countryCode} onValueChange={setCountryCode}>
@@ -292,14 +312,29 @@ export function VoiceChannelSetup({
                   </SelectContent>
                 </Select>
               </div>
+
+              <div className="space-y-2">
+                <Label className="text-xs">Number Type</Label>
+                <Select value={numberType} onValueChange={(value) => setNumberType(value as ZavuPhoneNumberType)}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="local">Local</SelectItem>
+                    <SelectItem value="national">National</SelectItem>
+                    <SelectItem value="mobile">Mobile</SelectItem>
+                    <SelectItem value="tollFree">Toll-free</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
               
               <div className="space-y-2">
-                <Label className="text-xs">Area Code (Optional)</Label>
+                <Label className="text-xs">Number Contains (Optional)</Label>
                 <Input 
                   type="text" 
                   placeholder="e.g. 415" 
-                  value={areaCode}
-                  onChange={(e) => setAreaCode(e.target.value)}
+                  value={numberContains}
+                  onChange={(e) => setNumberContains(e.target.value)}
                 />
               </div>
             </div>
@@ -340,10 +375,20 @@ export function VoiceChannelSetup({
                               {[result.locality, result.region].filter(Boolean).join(", ")}
                             </p>
                           )}
+                          {result.pricing && (
+                            <p className="text-xs text-muted-foreground">
+                              {result.pricing.isFreeEligible
+                                ? "Eligible for included number"
+                                : `$${result.pricing.monthlyPrice ?? 0}/month`}
+                              {(result.pricing.upfrontPrice ?? 0) > 0
+                                ? ` + $${result.pricing.upfrontPrice} upfront`
+                                : ""}
+                            </p>
+                          )}
                         </div>
                         {result.capabilities && (
                           <div className="flex gap-1">
-                            {formatCapabilities(result.capabilities).map((cap) => (
+                            {formatPhoneCapabilities(result.capabilities).map((cap) => (
                               <Badge key={cap} variant="secondary" className="capitalize">
                                 {cap}
                               </Badge>
@@ -355,6 +400,17 @@ export function VoiceChannelSetup({
                   ))}
                 </RadioGroup>
               </div>
+            )}
+
+            {getRequirementSummary(requirements).length > 0 && (
+              <Alert>
+                <AlertTriangle className="h-4 w-4" />
+                <AlertTitle>Regulatory review required</AlertTitle>
+                <AlertDescription>
+                  Required information: {getRequirementSummary(requirements).join(", ")}. Previously submitted
+                  information will be reused when valid; otherwise Zavu will reject the purchase without charging.
+                </AlertDescription>
+              </Alert>
             )}
           </TabsContent>
         </Tabs>

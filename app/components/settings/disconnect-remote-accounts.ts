@@ -19,6 +19,19 @@ function isAlreadyGone(status?: number) {
   return status === 404
 }
 
+export function shouldDeleteZavuSender(
+  channel: ZavuChannelDisconnect,
+  connections: ZavuChannelDisconnect[],
+  channelIndex: number
+): boolean {
+  if (!channel.zavu_sender_id) return false
+  return !connections.some(
+    (candidate, candidateIndex) =>
+      candidateIndex !== channelIndex &&
+      candidate.zavu_sender_id === channel.zavu_sender_id
+  )
+}
+
 export async function disconnectZavuChannel(channel: ZavuChannelDisconnect): Promise<void> {
   if (channel.zavu_sender_id) {
     const phoneNumber = channel.metadata?.phone_number || channel.phoneNumber

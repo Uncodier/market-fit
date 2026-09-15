@@ -11,6 +11,7 @@ import {
   type InterventionRequestOptions,
 } from "@/app/services/intervention-request"
 import { withMappedCommandStatus } from "@/app/services/map-chat-command-status"
+import type { CommunicationChannel } from "@/lib/site-channels"
 
 /**
  * Generate a UUID
@@ -269,7 +270,7 @@ export async function getConversations(
   siteId: string, 
   page: number = 1, 
   pageSize: number = 20,
-  channelFilter?: 'all' | 'web' | 'email' | 'whatsapp',
+  channelFilter?: 'all' | CommunicationChannel,
   assigneeFilter?: 'all' | 'assigned' | 'ai',
   currentUserId?: string,
   searchQuery?: string,
@@ -588,7 +589,7 @@ export async function createConversation(
     visitor_id?: string;
     status?: string;
     is_agent_conversation?: boolean; // New flag to indicate this is just an agent conversation
-    channel?: 'web' | 'email' | 'whatsapp'; // Channel for the conversation
+    channel?: CommunicationChannel;
   }
 ): Promise<Conversation | null> {
   console.log("==== createConversation called ====");
@@ -1073,13 +1074,20 @@ export async function sendTeamMemberIntervention(
   console.log("Intervention request payload:", JSON.stringify(requestBody));
   
   try {
+    const supabase = createClient()
+    const { data: { session } } = await supabase.auth.getSession()
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+    }
+    if (session?.access_token) {
+      headers.Authorization = `Bearer ${session.access_token}`
+    }
+
     // Single fetch attempt
     const response = await fetch(API_URL, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-      },
+      headers,
       mode: 'cors',
       body: JSON.stringify(requestBody),
     });
@@ -1202,7 +1210,7 @@ export async function sendAgentMessage(
  */
 export async function setConversationChannel(
   conversationId: string,
-  channel: 'web' | 'email' | 'whatsapp'
+  channel: CommunicationChannel
 ): Promise<boolean> {
   try {
     const supabase = createClient();

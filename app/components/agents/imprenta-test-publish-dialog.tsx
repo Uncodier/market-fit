@@ -56,28 +56,20 @@ export function ImprentaTestPublishDialog({
     const testDestinations: Record<string, string> = {}
     
     if (leadValue) {
-      // If a lead is selected, pass its ID so the backend can use it for merge fields
-      if (typeof leadValue === 'string') {
-        testDestinations.email = leadValue
-        testDestinations.phone = leadValue
-      } else if (leadValue.id) {
-        testDestinations.email = leadValue.id
-        testDestinations.phone = leadValue.id
-      }
-    } else {
-      if (hasEmail && email.trim()) {
-        testDestinations.email = email.trim()
-      }
-      if (hasPhone && phone.trim()) {
-        testDestinations.phone = phone.trim()
-      }
+      testDestinations.lead_id = typeof leadValue === 'string' ? leadValue : leadValue.id
+    }
+    if (hasEmail && email.trim()) {
+      testDestinations.email = email.trim()
+    }
+    if (hasPhone && phone.trim()) {
+      testDestinations.phone = phone.trim()
     }
     
     onConfirm(testDestinations)
     onClose()
   }
 
-  const isComplete = leadValue !== null || ((!hasEmail || email.trim() !== "") && (!hasPhone || phone.trim() !== ""))
+  const isComplete = (!hasEmail || email.trim() !== "") && (!hasPhone || phone.trim() !== "")
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>

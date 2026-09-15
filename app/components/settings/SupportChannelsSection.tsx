@@ -28,13 +28,14 @@ import { EmailChannelSetup } from "./EmailChannelSetup"
 import { VoiceChannelSetup } from "./VoiceChannelSetup"
 import { SmsChannelSetup } from "./SmsChannelSetup"
 import { useZavuInvitationSync } from "./use-zavu-invitation-sync"
+import { useZavuPhoneStatusSync } from "./use-zavu-phone-status-sync"
 import { WhatsAppIcon, MessengerIcon, TelegramIcon } from "@/app/components/ui/social-icons"
 import { Mail, MessageSquare, Phone, Bot } from "@/app/components/ui/icons"
 
 import { countAgentChannels, getAgentChannelLimit, canConnectAgentChannel } from "@/lib/billing-limits"
 import { useSite } from "@/app/context/SiteContext"
 import { useBillingLimit } from "@/app/context/BillingLimitContext"
-import { disconnectZavuChannel } from "./disconnect-remote-accounts"
+import { disconnectZavuChannel, shouldDeleteZavuSender } from "./disconnect-remote-accounts"
 import { useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 
@@ -108,12 +109,24 @@ export function SupportChannelsSection({ active, siteId, onSave }: SupportChanne
   const [connectingIndex, setConnectingIndex] = useState<number | null>(null)
   const [checkingIndex, setCheckingIndex] = useState<number | null>(null)
   const [channelToDelete, setChannelToDelete] = useState<number | null>(null)
+  const persistConnections = useCallback(async (nextConnections: any[]) => {
+    form.setValue("channels.connections", nextConnections, { shouldDirty: true })
+    if (onSave) {
+      await onSave(form.getValues())
+    }
+  }, [form, onSave])
+
   const { checkStatus } = useZavuInvitationSync({
     connections,
     enabled: active,
     update,
     getValues: form.getValues,
     onSave,
+  })
+  useZavuPhoneStatusSync({
+    connections,
+    enabled: active,
+    onConnectionsChange: persistConnections,
   })
 
   const addChannel = useCallback(() => {
@@ -131,6 +144,46 @@ export function SupportChannelsSection({ active, siteId, onSave }: SupportChanne
       status: "pending",
     })
   }, [prepend, currentSite, connections.length, showBillingLimit])
+
+  const persistPhoneConnection = useCallback(async (
+    index: number,
+    channel: any,
+    payload: any,
+  ) => {
+    const nextChannel = {
+      ...channel,
+      status: payload.status || "connected",
+      zavu_sender_id: payload.senderId,
+      connected_account: {
+        ...(channel.connected_account || {}),
+        id: payload.senderId,
+        channel: payload.channel,
+        phoneNumber: payload.phoneNumber,
+      },
+      metadata: {
+        ...(channel.metadata || {}),
+        phone_number: payload.phoneNumber,
+        phone_number_id: payload.phoneNumberId,
+        capabilities: payload.capabilities,
+        regulatory_status: payload.regulatoryStatus,
+        routing: {
+          channel: payload.channel,
+          sender_id: payload.senderId,
+          phone_number_id: payload.phoneNumberId,
+          phone_number: payload.phoneNumber,
+        },
+      },
+    }
+
+    update(index, nextChannel)
+    form.setValue(`channels.connections.${index}`, nextChannel, {
+      shouldDirty: true,
+      shouldTouch: true,
+    })
+    if (onSave) {
+      await onSave(form.getValues())
+    }
+  }, [form, onSave, update])
 
   const handleConnect = async (index: number) => {
     const channel = form.getValues(`channels.connections.${index}`)
@@ -206,7 +259,9 @@ export function SupportChannelsSection({ active, siteId, onSave }: SupportChanne
   const handleRemove = async (index: number) => {
     const channel = form.getValues(`channels.connections.${index}`)
     try {
-      await disconnectZavuChannel(channel || {})
+      if (!channel?.zavu_sender_id || shouldDeleteZavuSender(channel, connections, index)) {
+        await disconnectZavuChannel(channel || {})
+      }
     } catch (error: any) {
       toast.error(error.message || "Failed to disconnect channel")
       throw error
@@ -388,16 +443,8 @@ export function SupportChannelsSection({ active, siteId, onSave }: SupportChanne
                   <VoiceChannelSetup
                     siteId={siteId}
                     channel={channel}
-                    onConnected={(payload) => {
-                      if (!canConnectAgentChannel(currentSite)) {
-                        openAccountLimit()
-                        return
-                      }
-                      update(index, {
-                        ...channel,
-                        status: "connected",
-                        zavu_sender_id: payload.senderId,
-                      })
+                    onConnected={async (payload) => {
+                      await persistPhoneConnection(index, channel, payload)
                     }}
                   />
                   ) : (
@@ -414,16 +461,8 @@ export function SupportChannelsSection({ active, siteId, onSave }: SupportChanne
                   <SmsChannelSetup
                     siteId={siteId}
                     channel={channel}
-                    onConnected={(payload) => {
-                      if (!canConnectAgentChannel(currentSite)) {
-                        openAccountLimit()
-                        return
-                      }
-                      update(index, {
-                        ...channel,
-                        status: "connected",
-                        zavu_sender_id: payload.senderId,
-                      })
+                    onConnected={async (payload) => {
+                      await persistPhoneConnection(index, channel, payload)
                     }}
                   />
                   ) : (

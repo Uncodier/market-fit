@@ -1,4 +1,8 @@
-import { disconnectOutstandSocial, disconnectZavuChannel } from "@/app/components/settings/disconnect-remote-accounts"
+import {
+  disconnectOutstandSocial,
+  disconnectZavuChannel,
+  shouldDeleteZavuSender,
+} from "@/app/components/settings/disconnect-remote-accounts"
 
 const deleteMock = jest.fn()
 
@@ -20,6 +24,17 @@ describe("disconnectZavuChannel", () => {
     expect(deleteMock).toHaveBeenCalledTimes(1)
   })
 
+  it("includes persisted phone metadata when deleting a sender", async () => {
+    deleteMock.mockResolvedValue({ success: true })
+    await disconnectZavuChannel({
+      zavu_sender_id: "snd_1",
+      metadata: { phone_number: "+14155550100" },
+    })
+    expect(deleteMock).toHaveBeenCalledWith(
+      "/api/integrations/zavu/senders/snd_1?phoneNumber=%2B14155550100"
+    )
+  })
+
   it("cancels the invitation when there is no sender", async () => {
     deleteMock.mockResolvedValue({ success: true })
     await disconnectZavuChannel({ zavu_invitation_id: "inv_1" })
@@ -34,6 +49,15 @@ describe("disconnectZavuChannel", () => {
   it("throws when Zavu delete fails", async () => {
     deleteMock.mockResolvedValue({ success: false, status: 500, error: { message: "Zavu down" } })
     await expect(disconnectZavuChannel({ zavu_sender_id: "snd_1" })).rejects.toThrow("Zavu down")
+  })
+
+  it("preserves a sender while another logical channel still uses it", () => {
+    const connections = [
+      { zavu_sender_id: "snd_shared" },
+      { zavu_sender_id: "snd_shared" },
+    ]
+    expect(shouldDeleteZavuSender(connections[0], connections, 0)).toBe(false)
+    expect(shouldDeleteZavuSender(connections[0], [connections[0]], 0)).toBe(true)
   })
 })
 

@@ -92,6 +92,11 @@ import {
   validatePublishNodeInputs,
 } from "@/app/components/agents/imprenta-publish-context"
 import { WF_LOAD_NODE_TYPES } from "@/app/components/workflows/types"
+import {
+  buildPublishRouting,
+  getPublishChannelAvailability,
+  getTestRecipient,
+} from "@/app/components/agents/imprenta-publish-routing"
 
 /** Treat inherited / mistaken DB copies of the parent's coordinates as invalid for child nodes. */
 function positionsNearlyEqual(
@@ -1275,11 +1280,12 @@ const ImprentaNodeCardInner = memo(({
 
                                 {node.type === 'publish' && (() => {
                                   const siteUrl = currentSite?.url && String(currentSite.url).trim();
-                                  const isEmailDistributionAvailable = currentSite?.settings?.channels?.email?.status === 'synced';
-                                  const isWhatsappAvailable = currentSite?.settings?.channels?.whatsapp?.status === 'active' || currentSite?.settings?.channels?.agent_whatsapp?.status === 'active';
-                                  const isTelegramAvailable = currentSite?.settings?.channels?.telegram?.status === 'active';
-                                  const isSmsAvailable = currentSite?.settings?.channels?.sms?.status === 'active';
-                                  const isVoiceAvailable = currentSite?.settings?.channels?.voice?.status === 'active';
+                                  const channelAvailability = getPublishChannelAvailability(currentSite);
+                                  const isEmailDistributionAvailable = channelAvailability.email;
+                                  const isWhatsappAvailable = channelAvailability.whatsapp;
+                                  const isTelegramAvailable = channelAvailability.telegram;
+                                  const isSmsAvailable = channelAvailability.sms;
+                                  const isVoiceAvailable = channelAvailability.voice;
                                   const rawDestinations = (node.settings as any)?.publish_destinations;
                                   // Treat unset destinations as blog-on-by-default when the site has a URL,
                                   // so new publish nodes land preconfigured for the most common case.
@@ -2724,29 +2730,17 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
         output_type: currentMediaType,
         parameters: { ...((node.settings as any)?.parameters || {}) }
       };
+      let publishRouting: ReturnType<typeof buildPublishRouting> | undefined
 
       if (node.type === 'publish') {
         const dest = Array.isArray((node.settings as any)?.publish_destinations)
           ? ((node.settings as any).publish_destinations as string[])
           : []
+        publishRouting = buildPublishRouting(dest, currentSite)
         contextObj.publish_destinations = dest
-        const emailReady = currentSite?.settings?.channels?.email?.status === 'synced'
-        const hasEmailDistributionSelection = dest.some(d => d === 'mail' || d === 'newsletter')
-        
-        const telegramReady = (currentSite?.settings?.channels as any)?.telegram?.status === 'active'
-        const smsReady = (currentSite?.settings?.channels as any)?.sms?.status === 'active'
-        const whatsappReady = currentSite?.settings?.channels?.whatsapp?.status === 'active' || currentSite?.settings?.channels?.agent_whatsapp?.status === 'active'
-        
-        if (emailReady || hasEmailDistributionSelection || telegramReady || smsReady || whatsappReady) {
-          contextObj.distributionModes = {
-            mail: dest.includes('mail'),
-            newsletter: dest.includes('newsletter'),
-            whatsapp: dest.includes('whatsapp'),
-            telegram: dest.includes('telegram'),
-            sms: dest.includes('sms'),
-            voice: dest.includes('voice')
-          }
-        }
+        contextObj.publish_channels = publishRouting.deliveryChannels
+        contextObj.channel_routing = publishRouting.channelRouting
+        contextObj.distributionModes = publishRouting.distributionModes
       }
 
       // Remove expectedResults from context to prevent the LLM from duplicating output internally
@@ -2755,7 +2749,6 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
       }
 
       let toolOverrides: Record<string, any> | undefined = undefined;
-      let publishOverride: Record<string, any> = {};
 
       if (node.type === 'generate-audience') {
         const channels = (node.settings as any)?.audience_channels || [];
@@ -2765,31 +2758,16 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
         }
       }
 
-      if (node.type === 'publish') {
-        const dest = Array.isArray((node.settings as any)?.publish_destinations)
-          ? ((node.settings as any).publish_destinations as string[])
-          : [];
-        
-        const nonSocialDests = ['blog', 'mail', 'newsletter', 'whatsapp', 'telegram', 'sms', 'voice'];
-        const socialAccounts = dest.filter(d => !nonSocialDests.includes(d));
-        
-        if (socialAccounts.length > 0) {
-          publishOverride.social_accounts = socialAccounts;
+      if (node.type === 'publish' && publishRouting) {
+        toolOverrides = {}
+        if (Object.keys(publishRouting.bulkMessageOverride).length > 0) {
+          toolOverrides.sendBulkMessages = publishRouting.bulkMessageOverride
         }
-
-        // Si se seleccionaron múltiples canales de audiencia, tomamos el más prioritario
-        // ya que el tool publish solo acepta un string en `channel` por llamada.
-        // Si el usuario requiere múltiples simultáneos, habría que adaptar el tool o el override a nivel router,
-        // pero inyectar esto da la precisión determinista solicitada.
-        if (dest.includes('whatsapp')) publishOverride.channel = 'whatsapp';
-        else if (dest.includes('telegram')) publishOverride.channel = 'telegram';
-        else if (dest.includes('sms')) publishOverride.channel = 'sms';
-        else if (dest.includes('voice')) publishOverride.channel = 'voice';
-        else if (dest.includes('newsletter')) { publishOverride.channel = 'email'; publishOverride.audience_email_mode = 'newsletter'; }
-        else if (dest.includes('mail')) { publishOverride.channel = 'email'; publishOverride.audience_email_mode = 'mail'; }
-
-        if (Object.keys(publishOverride).length > 0) {
-          toolOverrides = { publish: publishOverride };
+        if (Object.keys(publishRouting.publishOverride).length > 0) {
+          toolOverrides.publish = publishRouting.publishOverride
+        }
+        if (Object.keys(toolOverrides).length === 0) {
+          toolOverrides = undefined
         }
       }
 
@@ -2797,11 +2775,16 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
         contextObj.is_test = true;
         contextObj.test_destination = testDestinations;
         
-        if (node.type === 'publish') {
-          const testRecipient = testDestinations.email || testDestinations.phone;
-          toolOverrides = toolOverrides || { publish: {} };
-          toolOverrides.publish.is_test = true;
-          toolOverrides.publish.test_recipient = testRecipient;
+        if (node.type === 'publish' && publishRouting) {
+          const testRecipient = getTestRecipient(publishRouting.deliveryChannels, testDestinations)
+          toolOverrides = toolOverrides || {};
+          toolOverrides.sendBulkMessages = {
+            ...(toolOverrides.sendBulkMessages || {}),
+            is_test: true,
+          }
+          if (testRecipient) {
+            toolOverrides.sendBulkMessages.test_recipient = testRecipient;
+          }
         }
       }
       

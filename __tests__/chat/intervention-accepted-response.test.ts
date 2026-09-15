@@ -2,7 +2,10 @@ import {
   mapChatCommandStatus,
   withMappedCommandStatus,
 } from "@/app/services/map-chat-command-status"
-import { shouldTreatInterventionAsFailed } from "@/app/services/intervention-request"
+import {
+  getInterventionWorkflowId,
+  shouldTreatInterventionAsFailed,
+} from "@/app/services/intervention-request"
 
 describe("shouldTreatInterventionAsFailed", () => {
   it("does not treat 2xx accepted with workflowId as failed", () => {
@@ -43,6 +46,20 @@ describe("shouldTreatInterventionAsFailed", () => {
         },
       })
     ).toBe(true)
+  })
+
+  it.each([
+    ["workflowId", { workflowId: "wf-1" }],
+    ["workflow_id", { workflow_id: "wf-1" }],
+    ["workflowRunId", { workflowRunId: "run-1" }],
+    ["run_id", { run_id: "run-1" }],
+  ])("accepts the %s Temporal identifier shape", (_name, identifier) => {
+    const channelSend = { success: false, method: "sms", ...identifier }
+    expect(getInterventionWorkflowId(channelSend)).toBe(Object.values(identifier)[0])
+    expect(shouldTreatInterventionAsFailed({
+      success: true,
+      data: { channel_send: channelSend },
+    })).toBe(false)
   })
 })
 
