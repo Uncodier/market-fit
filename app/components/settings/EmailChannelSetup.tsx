@@ -501,13 +501,6 @@ export function EmailChannelSetup({
             </p>
             <div className="p-3 bg-background rounded border text-xs font-mono flex items-center gap-2">
               <span className="flex-1 truncate">{metadata.domain} MX 10 inbound.zavu.dev</span>
-              <Button variant="outline" size="sm" className="h-6 text-xs px-2" onClick={handleVerifyMx} disabled={isVerifyingMx}>
-                {isVerifyingMx ? "Checking..." : "Verify"}
-              </Button>
-              <Button variant="outline" size="sm" className="h-6 text-xs px-2" onClick={handleSyncMxCloudflare} disabled={isSyncingCloudflare}>
-                <Cloud className="h-3 w-3 mr-1" />
-                {isSyncingCloudflare ? "Syncing..." : "Sync CF"}
-              </Button>
               <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" onClick={() => copyToClipboard(`${metadata.domain} MX 10 inbound.zavu.dev`, 'mx')}>
                 {copied === 'mx' ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
               </Button>
@@ -529,17 +522,33 @@ export function EmailChannelSetup({
           </div>
         </div>
       </SectionCardContent>
-      {localReceivingEnabled !== emailReceivingEnabled && (
-        <SectionCardFooter>
-          <Button 
-            type="button" 
-            onClick={handleSaveReceiving} 
-            disabled={isProcessing}
-          >
-            {isProcessing ? "Saving..." : "Save Changes"}
-          </Button>
-        </SectionCardFooter>
-      )}
+      <SectionCardFooter className="justify-end gap-2 flex-wrap">
+        <Button
+          type="button"
+          variant="outline"
+          onClick={handleSyncMxCloudflare}
+          disabled={isProcessing || isSyncingCloudflare}
+        >
+          <Cloud className="h-4 w-4 mr-2" />
+          {isSyncingCloudflare ? "Syncing..." : isCloudflareConnected ? "Sync with Cloudflare" : "Connect Cloudflare"}
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={handleVerifyMx}
+          disabled={isProcessing || isVerifyingMx}
+        >
+          {isVerifyingMx ? "Checking..." : "Verify MX"}
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={handleSaveReceiving}
+          disabled={isProcessing || localReceivingEnabled === emailReceivingEnabled}
+        >
+          {isProcessing ? "Saving..." : "Save Changes"}
+        </Button>
+      </SectionCardFooter>
     </>
   )
 }

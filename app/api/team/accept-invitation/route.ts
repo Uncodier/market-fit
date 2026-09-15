@@ -3,6 +3,7 @@ import {
   createServiceSupabase,
   createUserSupabase,
 } from '@/lib/auth/site-member-request'
+import { decideInvitationAcceptance } from '@/lib/auth/team-invitation-acceptance'
 
 export async function POST(request: Request) {
   const supabase = await createUserSupabase()
@@ -43,14 +44,23 @@ export async function POST(request: Request) {
     )
   }
 
-  if (!invitation || (invitation.user_id && invitation.user_id !== user.id)) {
+  const decision = decideInvitationAcceptance(invitation, user.id)
+
+  if (decision === 'missing' || decision === 'wrong-user') {
     return NextResponse.json(
       { success: false, error: 'This invitation was not issued to your account' },
       { status: 403 }
     )
   }
 
-  if (invitation.user_id === user.id && invitation.status === 'active') {
+  if (decision === 'rejected') {
+    return NextResponse.json(
+      { success: false, error: 'This invitation is no longer active' },
+      { status: 410 }
+    )
+  }
+
+  if (decision === 'already-active') {
     return NextResponse.json({
       success: true,
       redirectTo: `/dashboard/sites/${siteId}`,
@@ -58,7 +68,7 @@ export async function POST(request: Request) {
     })
   }
 
-  const { error: updateError } = await admin
+  let updateQuery = admin
     .from('site_members')
     .update({
       user_id: user.id,
@@ -66,12 +76,20 @@ export async function POST(request: Request) {
       updated_at: new Date().toISOString(),
     })
     .eq('id', invitation.id)
-    .is('user_id', null)
+    .eq('status', 'pending')
 
-  if (updateError) {
+  updateQuery = invitation.user_id
+    ? updateQuery.eq('user_id', user.id)
+    : updateQuery.is('user_id', null)
+
+  const { data: updated, error: updateError } = await updateQuery
+    .select('id')
+    .maybeSingle()
+
+  if (updateError || !updated) {
     return NextResponse.json(
-      { success: false, error: 'Failed to accept the invitation' },
-      { status: 500 }
+      { success: false, error: 'The invitation could not be activated' },
+      { status: updateError ? 500 : 409 }
     )
   }
 
