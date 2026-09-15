@@ -164,12 +164,21 @@ export class ApiClientService {
     const contentType = response.headers.get('content-type');
 
     // Assistant/workflow endpoints stream SSE; results land in instance_logs.
-    // Do not buffer the stream — that can hang until the workflow ends or drops.
+    // Drain in the background so the caller can continue without aborting the workflow.
     if (response.ok && contentType && contentType.includes('text/event-stream')) {
-      try {
-        await response.body?.cancel();
-      } catch {
-        // Ignore cancel errors; the durable workflow keeps running.
+      const reader = response.body?.getReader();
+      if (reader) {
+        void (async () => {
+          try {
+            while (!(await reader.read()).done) {
+              // Keep the stream connected until the remote workflow finishes.
+            }
+          } catch {
+            // The durable result is read from instance_logs.
+          } finally {
+            reader.releaseLock();
+          }
+        })();
       }
       return {
         success: true,

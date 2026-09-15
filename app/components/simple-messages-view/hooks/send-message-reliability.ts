@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/client'
 
 const RETRYABLE_STATUS = new Set([408, 429, 502, 503, 504])
-const RESPONSE_LOG_TYPES = ['agent_action', 'system', 'tool_call', 'tool_result']
+const RESPONSE_LOG_TYPES = ['agent_action', 'tool_call', 'tool_result']
 export const USER_ACTION_DEDUPE_WINDOW_MS = 2 * 60 * 1000
 
 export type ApiPostResult<T = any> = {

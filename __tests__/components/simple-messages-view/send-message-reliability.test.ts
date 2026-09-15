@@ -188,6 +188,25 @@ describe('hasAgentResponseForMessage', () => {
       message: 'hello',
     })).resolves.toBe(false)
   })
+
+  it('does not treat a system acknowledgement as an agent response', async () => {
+    const userQuery = createChain({
+      data: [{ id: 'user-1', created_at: '2026-08-31T17:10:00.000Z' }],
+      error: null,
+    })
+    const responseQuery = createChain({ data: [], error: null })
+    fromMock.mockReturnValueOnce(userQuery).mockReturnValueOnce(responseQuery)
+
+    await expect(hasAgentResponseForMessage({
+      instanceId: 'inst-1',
+      message: 'hello',
+    })).resolves.toBe(false)
+
+    expect(responseQuery.in).toHaveBeenCalledWith(
+      'log_type',
+      ['agent_action', 'tool_call', 'tool_result']
+    )
+  })
 })
 
 describe('markRobotInstanceError', () => {
