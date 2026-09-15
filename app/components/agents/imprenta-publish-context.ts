@@ -67,7 +67,7 @@ const AUDIENCE_ID_LINE_RE = /audience_id\s*[\s`*_]*\s*:/i
 const AUDIENCE_ID_TYPO_RE = /audiencie_id\s*[\s`*_]*\s*:/i
 /** JSON / YAML style keys */
 const AUDIENCE_ID_JSON_KEY_RE =
-  /["'`]?audience_id["'`]?\s*:|["'`]?audienceId["'`]?\s*:/i
+  /(?:\\?["'`])?audience_id(?:\\?["'`])?\s*:|(?:\\?["'`])?audienceId(?:\\?["'`])?\s*:/i
 /** LLM / markdown may insert zero-width or exotic spaces around `_` */
 const AUDIENCE_ID_LOOSE_RE = /audience[\s\u200b\u200c\u200d\ufeff]*_[\s\u200b\u200c\u200d\ufeff]*id\s*:/i
 /** Spanish copy sometimes uses "id de audiencia" */
@@ -101,7 +101,16 @@ function deepCollectStrings(value: unknown, out: string[] = []): string[] {
 function objectGraphHasAudienceIdKey(value: unknown): boolean {
   const seen = new Set<unknown>()
   const walk = (v: unknown): boolean => {
-    if (v == null || typeof v !== "object") return false
+    if (v == null) return false
+    if (typeof v === "string") {
+      if (v.trim().startsWith("{") || v.trim().startsWith("[")) {
+        try {
+          return walk(JSON.parse(v))
+        } catch {}
+      }
+      return false
+    }
+    if (typeof v !== "object") return false
     if (seen.has(v)) return false
     seen.add(v)
     if (Array.isArray(v)) return v.some(walk)
@@ -161,10 +170,20 @@ export function collectNodeSearchBlob(node: InstanceNode): string {
 const UUID_IN_TEXT_RE = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i
 
 function extractAudienceUuidFromObject(value: unknown): string | null {
-  if (value == null || typeof value !== "object") return null
   const seen = new Set<unknown>()
   const walk = (v: unknown): string | null => {
-    if (v == null || typeof v !== "object") return null
+    if (v == null) return null
+    if (typeof v === "string") {
+      if (v.trim().startsWith("{") || v.trim().startsWith("[")) {
+        try {
+          const parsed = JSON.parse(v)
+          const nested = walk(parsed)
+          if (nested) return nested
+        } catch {}
+      }
+      return null
+    }
+    if (typeof v !== "object") return null
     if (seen.has(v)) return null
     seen.add(v)
     if (Array.isArray(v)) {
@@ -199,9 +218,9 @@ function extractAudienceUuidFromObject(value: unknown): string | null {
  */
 export function extractSegmentUuidFromAudienceBlob(blob: string): string | null {
   const n = normalizeSearchBlob(blob)
-  let m = n.match(/["']audience_id["']\s*:\s*["']([0-9a-f-]{36})["']/i)
+  let m = n.match(/(?:\\?["'])audience_id(?:\\?["'])\s*:\s*(?:\\?["'])([0-9a-f-]{36})(?:\\?["'])/i)
   if (m) return m[1].toLowerCase()
-  m = n.match(/["']audienceId["']\s*:\s*["']([0-9a-f-]{36})["']/i)
+  m = n.match(/(?:\\?["'])audienceId(?:\\?["'])\s*:\s*(?:\\?["'])([0-9a-f-]{36})(?:\\?["'])/i)
   if (m) return m[1].toLowerCase()
   for (const line of n.split(/\n/)) {
     if (!/audience|audiencie|audiencia/i.test(line)) continue
@@ -216,23 +235,117 @@ export function extractSegmentUuidFromAudienceBlob(blob: string): string | null 
 /**
  * UUID for leads belonging to this audience: current node first, then ancestors up to Audience.
  */
-function extractAudienceIdFromAudienceLeadsArray(node: InstanceNode): string | null {
-  const leads = (node.result as { audience_leads?: { audience_id?: string }[] } | undefined)?.audience_leads
-  if (!Array.isArray(leads) || leads.length === 0) return null
+function extractAudienceIdFromAudienceLeadsArray(node: InstanceNode, logs?: any[]): string | null {
+  let leads = (node.result as any)?.audience_leads || (node.result as any)?.example_leads
+  if (!leads && typeof node.result === 'object') {
+    try {
+      for (const val of Object.values(node.result as any)) {
+        if (typeof val === 'string' && (val.trim().startsWith('{') || val.trim().startsWith('['))) {
+          const parsed = JSON.parse(val);
+          if (parsed && (parsed.audience_leads || parsed.example_leads)) {
+            leads = parsed.audience_leads || parsed.example_leads;
+            break;
+          }
+        }
+      }
+    } catch {}
+  }
+  
+  if (!leads && logs && logs.length > 0) {
+    const nodeLogs = logs.filter((l: any) => 
+      l.command_id === node.id || 
+      l.details?.instance_node_id === node.id ||
+      l.details?.command_id === node.id
+    )
+    for (const log of nodeLogs) {
+      if (log.log_type === 'tool_call' || log.log_type === 'tool_result') {
+        if (log.tool_args?.audience_leads || log.tool_args?.example_leads) { leads = log.tool_args.audience_leads || log.tool_args.example_leads; break; }
+        if (log.tool_result?.audience_leads || log.tool_result?.example_leads) { leads = log.tool_result.audience_leads || log.tool_result.example_leads; break; }
+        if (log.details?.audience_leads || log.details?.example_leads) { leads = log.details.audience_leads || log.details.example_leads; break; }
+      }
+    }
+    
+    // Fallback: search ALL tool calls named 'audience' in the instance logs
+    if (!leads) {
+      const audienceLogs = logs.filter(l => (l.log_type === 'tool_call' || l.log_type === 'tool_result') && l.tool_name?.includes('audience')).reverse();
+      for (const log of audienceLogs) {
+        if (log.tool_args?.audience_leads || log.tool_args?.example_leads) { leads = log.tool_args.audience_leads || log.tool_args.example_leads; break; }
+        if (log.tool_result?.audience_leads || log.tool_result?.example_leads) { leads = log.tool_result.audience_leads || log.tool_result.example_leads; break; }
+        if (log.details?.audience_leads || log.details?.example_leads) { leads = log.details.audience_leads || log.details.example_leads; break; }
+      }
+    }
+
+    // Fallback 3: Check nested in `tool_result.output.result` for Agent `tools` wrapper
+    if (!leads) {
+      const allToolLogs = logs.filter(l => (l.log_type === 'tool_call' || l.log_type === 'tool_result')).reverse();
+      for (const log of allToolLogs) {
+        const nestedResult = log.tool_result?.output?.result;
+        if (nestedResult?.audience_leads || nestedResult?.example_leads) {
+          leads = nestedResult.audience_leads || nestedResult.example_leads;
+          break;
+        }
+      }
+    }
+  }
+  
+  if (!Array.isArray(leads) || leads.length === 0) {
+// #region agent log
+// #endregion
+    return null
+  }
   const aid = leads[0]?.audience_id
+// #region agent log
+// #endregion
   if (typeof aid === "string" && UUID_IN_TEXT_RE.test(aid)) return aid.toLowerCase()
   return null
 }
 
-export function resolveAudienceSegmentIdForImprenta(node: InstanceNode, nodes: InstanceNode[]): string | null {
+export function resolveAudienceSegmentIdForImprenta(node: InstanceNode, nodes: InstanceNode[], logs?: any[]): string | null {
+// #region agent log
+// #endregion
   let id =
-    extractAudienceIdFromAudienceLeadsArray(node) ||
+    extractAudienceIdFromAudienceLeadsArray(node, logs) ||
     extractAudienceUuidFromObject(node.result) ||
     extractAudienceUuidFromObject(node.settings) ||
     extractAudienceUuidFromObject(node.prompt) ||
     extractSegmentUuidFromAudienceBlob(collectNodeSearchBlob(node))
   if (id) return id
   
+  // Search in logs if provided
+  if (logs && logs.length > 0) {
+    const nodeLogs = logs.filter(l => 
+      l.command_id === node.id || 
+      l.details?.instance_node_id === node.id ||
+      l.details?.command_id === node.id
+    )
+    for (const log of nodeLogs) {
+      if (log.log_type === 'tool_call' || log.log_type === 'tool_result') {
+        const logId = extractAudienceUuidFromObject(log.tool_args) || extractAudienceUuidFromObject(log.tool_result) || extractAudienceUuidFromObject(log.details)
+        if (logId) return logId
+      }
+      if (log.message) {
+        const mId = extractSegmentUuidFromAudienceBlob(log.message)
+        if (mId) return mId
+      }
+    }
+    
+    // Fallback: search ALL tool calls named 'audience' in the instance logs
+    const audienceLogs = logs.filter(l => (l.log_type === 'tool_call' || l.log_type === 'tool_result') && l.tool_name?.includes('audience')).reverse();
+    for (const log of audienceLogs) {
+      const logId = extractAudienceUuidFromObject(log.tool_args) || extractAudienceUuidFromObject(log.tool_result) || extractAudienceUuidFromObject(log.details);
+      if (logId) return logId;
+    }
+
+    // Fallback 3: Check nested in `tool_result.output.result` for Agent `tools` wrapper
+    const allToolLogs = logs.filter(l => (l.log_type === 'tool_call' || l.log_type === 'tool_result')).reverse();
+    for (const log of allToolLogs) {
+      const nestedResult = log.tool_result?.output?.result;
+      const nestedId = extractAudienceUuidFromObject(nestedResult);
+      if (nestedId) return nestedId;
+      if (nestedResult?.audience_leads || nestedResult?.example_leads) return log.id;
+    }
+  }
+
   if (isValidPublishAudienceSource(node) || (node.settings as any)?.media_type === "audience") {
     return node.id
   }
@@ -245,25 +358,90 @@ export function resolveAudienceSegmentIdForImprenta(node: InstanceNode, nodes: I
     const p = nodes.find((x) => x.id === pid)
     if (!p) break
     id =
-      extractAudienceIdFromAudienceLeadsArray(p) ||
+      extractAudienceIdFromAudienceLeadsArray(p, logs) ||
       extractAudienceUuidFromObject(p.result) ||
       extractAudienceUuidFromObject(p.settings) ||
       extractAudienceUuidFromObject(p.prompt) ||
       extractSegmentUuidFromAudienceBlob(collectNodeSearchBlob(p))
     if (id) return id
+    
+    // Search in logs for parent
+    if (logs && logs.length > 0) {
+      const parentLogs = logs.filter(l => 
+        l.command_id === p.id || 
+        l.details?.instance_node_id === p.id ||
+        l.details?.command_id === p.id
+      )
+      for (const log of parentLogs) {
+        if (log.log_type === 'tool_call' || log.log_type === 'tool_result') {
+          const logId = extractAudienceUuidFromObject(log.tool_args) || extractAudienceUuidFromObject(log.tool_result) || extractAudienceUuidFromObject(log.details)
+          if (logId) return logId
+        }
+        if (log.message) {
+          const mId = extractSegmentUuidFromAudienceBlob(log.message)
+          if (mId) return mId
+        }
+        
+        // Also check if the message itself is a stringified JSON containing audience_id
+        if (log.message && (log.message.trim().startsWith('{') || log.message.trim().startsWith('['))) {
+          try {
+            const parsed = JSON.parse(log.message);
+            const mId = extractAudienceUuidFromObject(parsed);
+            if (mId) return mId;
+          } catch {}
+        }
+      }
+      
+      // Fallback: search ALL tool calls named 'audience' in the instance logs
+      const audienceLogs = logs.filter(l => (l.log_type === 'tool_call' || l.log_type === 'tool_result') && l.tool_name?.includes('audience')).reverse();
+      for (const log of audienceLogs) {
+        const logId = extractAudienceUuidFromObject(log.tool_args) || extractAudienceUuidFromObject(log.tool_result) || extractAudienceUuidFromObject(log.details);
+        if (logId) return logId;
+      }
+
+      // Fallback 2: Any tool call that has audience_leads or example_leads inside it
+      const allToolLogs = logs.filter(l => (l.log_type === 'tool_call' || l.log_type === 'tool_result')).reverse();
+      for (const log of allToolLogs) {
+        const logId = extractAudienceUuidFromObject(log.tool_args) || extractAudienceUuidFromObject(log.tool_result) || extractAudienceUuidFromObject(log.details);
+        if (logId) return logId;
+        if (log.tool_args?.audience_leads || log.tool_result?.audience_leads || log.details?.audience_leads || log.tool_args?.example_leads || log.tool_result?.example_leads || log.details?.example_leads) {
+          return log.id; // Return the log ID if no audience_id is found, as a fallback ID for the carousel
+        }
+      }
+    }
+    
     if (isValidPublishAudienceSource(p) || (p.settings as any)?.media_type === "audience") return p.id
     pid = p.parent_node_id
   }
   return null
 }
 
-export function nodeContainsAudienceIdMarker(node: InstanceNode): boolean {
+export function nodeContainsAudienceIdMarker(node: InstanceNode, logs?: any[]): boolean {
   if (objectGraphHasAudienceIdKey(node.result)) return true
   if (objectGraphHasAudienceIdKey(node.settings)) return true
   if (objectGraphHasAudienceIdKey(node.prompt)) return true
 
   const haystack = collectNodeSearchBlob(node)
-  return blobContainsAudienceIdMarker(haystack)
+  if (blobContainsAudienceIdMarker(haystack)) return true
+  
+  if (logs && logs.length > 0) {
+    const nodeLogs = logs.filter(l => 
+      l.command_id === node.id || 
+      l.details?.instance_node_id === node.id ||
+      l.details?.command_id === node.id
+    )
+    for (const log of nodeLogs) {
+      if (objectGraphHasAudienceIdKey(log.tool_args) || objectGraphHasAudienceIdKey(log.tool_result) || objectGraphHasAudienceIdKey(log.details)) return true;
+      if (log.message && blobContainsAudienceIdMarker(log.message)) return true;
+      if (log.message && (log.message.trim().startsWith('{') || log.message.trim().startsWith('['))) {
+        try {
+          if (objectGraphHasAudienceIdKey(JSON.parse(log.message))) return true;
+        } catch {}
+      }
+    }
+  }
+
+  return false
 }
 
 function audienceNodeHasNonemptyResult(node: InstanceNode): boolean {
@@ -278,11 +456,11 @@ function audienceNodeHasNonemptyResult(node: InstanceNode): boolean {
 /**
  * Audience wire: child of an Audience node, or explicit audience_id / non-empty result on an Audience node.
  */
-export function isPublishAudienceSourceReady(node: InstanceNode, nodes: InstanceNode[]): boolean {
+export function isPublishAudienceSourceReady(node: InstanceNode, nodes: InstanceNode[], logs?: any[]): boolean {
   if (isDescendantOfAudienceNode(node, nodes)) return true
   if (isValidPublishAudienceSource(node) && audienceNodeHasNonemptyResult(node)) return true
   
-  if (nodeContainsAudienceIdMarker(node)) return true
+  if (nodeContainsAudienceIdMarker(node, logs)) return true
   
   const parentNode = nodes.find(n => n.id === node.parent_node_id);
   if (parentNode && isValidPublishAudienceSource(parentNode) && audienceNodeHasNonemptyResult(node)) return true;
@@ -481,19 +659,21 @@ export function hasPublishContentInput(
 export function hasPublishAudienceInput(
   contexts: ContextRow[],
   publishNodeId: string,
-  nodes: InstanceNode[]
+  nodes: InstanceNode[],
+  logs?: any[]
 ): boolean {
   return contexts.some((c) => {
     if (c.target_node_id !== publishNodeId || c.type !== PUBLISH_SLOT_AUDIENCE) return false
     const src = nodes.find((n) => n.id === c.context_node_id)
-    return !!(src && isPublishAudienceSourceReady(src, nodes))
+    return !!(src && isPublishAudienceSourceReady(src, nodes, logs))
   })
 }
 
 export function validatePublishNodeInputs(
   node: InstanceNode,
   contexts: ContextRow[],
-  nodes: InstanceNode[]
+  nodes: InstanceNode[],
+  logs?: any[]
 ): string | null {
   if (node.type !== "publish") return null
   if (!hasPublishContentInput(contexts, node.id, nodes)) {
@@ -502,7 +682,7 @@ export function validatePublishNodeInputs(
   const dest = Array.isArray((node.settings as any)?.publish_destinations)
     ? ((node.settings as any).publish_destinations as string[])
     : []
-  if (destinationsRequireAudience(dest) && !hasPublishAudienceInput(contexts, node.id, nodes)) {
+  if (destinationsRequireAudience(dest) && !hasPublishAudienceInput(contexts, node.id, nodes, logs)) {
     return "Mail, WhatsApp, Telegram, Audio, Voice, SMS, Message, Email, and Newsletter require an Audience link: from an Audience node or a node whose parent is Audience."
   }
   return null

@@ -397,7 +397,7 @@ function estimateImprentaNodeContentHeight(node: InstanceNode, rowH: number): nu
     if (/https?:\/\/[^\s"'<>()]+\.(jpg|jpeg|png|gif|webp|svg)/i.test(text) || /!\[.*?\]\(https?:\/\/[^\s"'<>()]+\)/i.test(text)) {
       extra += mediaH
     }
-  } else if (res.audience_leads != null) {
+  } else if (res.audience_leads != null || res.example_leads != null) {
     extra += 220
   } else {
     extra += 100
@@ -444,7 +444,7 @@ function inferImprentaResultMediaType(node: InstanceNode, nodes: InstanceNode[] 
   if (!imprentaNodeHasResult(node)) return null
   const res = (node.result || {}) as any
 
-  if (Array.isArray(res.audience_leads) && res.audience_leads.length > 0) return "audience"
+  if ((Array.isArray(res.audience_leads) && res.audience_leads.length > 0) || (Array.isArray(res.example_leads) && res.example_leads.length > 0)) return "audience"
   if (node.type === "generate-audience" || (node.settings as any)?.media_type === "audience") return "audience"
   
   const parentNode = nodes.find(n => n.id === node.parent_node_id)
@@ -913,6 +913,7 @@ const ImprentaNodeCardInner = memo(({
   nodes,
   dummyNodes,
   contexts,
+  logs,
   supabase,
   generatingNodeIds,
   currentSite,
@@ -935,6 +936,7 @@ const ImprentaNodeCardInner = memo(({
   nodes: InstanceNode[]
   dummyNodes: InstanceNode[]
   contexts: any[]
+  logs?: any[]
   supabase: any
   generatingNodeIds: Set<string>
   currentSite: any
@@ -1445,16 +1447,104 @@ const ImprentaNodeCardInner = memo(({
                                 {(() => {
                                   const allNodes = [...nodes, ...dummyNodes]
                                   const parentNode = actions.getParentNode(node);
-                                  const embeddedRaw = (node.result as { audience_leads?: unknown })?.audience_leads
-                                  const embeddedLeads: AudienceLeadRow[] | undefined = Array.isArray(embeddedRaw)
-                                    ? (embeddedRaw as AudienceLeadRow[])
-                                    : undefined
-                                  const resolvedId = resolveAudienceSegmentIdForImprenta(node, allNodes)
-                                  const audienceId =
-                                    resolvedId ||
-                                    (embeddedLeads?.[0]?.audience_id
-                                      ? String(embeddedLeads[0].audience_id)
-                                      : "")
+  const rawAudienceLeads = (() => {
+    let raw = (node.result as any)?.audience_leads || (node.result as any)?.example_leads;
+    if (!raw && typeof node.result === 'object') {
+      try {
+        // Look inside stringified JSONs if present
+        for (const val of Object.values(node.result as any)) {
+          if (typeof val === 'string' && (val.trim().startsWith('{') || val.trim().startsWith('['))) {
+            const parsed = JSON.parse(val);
+            if (parsed && (parsed.audience_leads || parsed.example_leads)) {
+              raw = parsed.audience_leads || parsed.example_leads;
+              break;
+            }
+          }
+        }
+      } catch {}
+    }
+    
+        // Also search in logs if not found
+    if (!raw && logs && logs.length > 0) {
+      const nodeLogs = logs.filter((l: any) => 
+        l.command_id === node.id || 
+        l.details?.instance_node_id === node.id ||
+        l.details?.command_id === node.id
+      )
+      
+      for (const log of nodeLogs) {
+        if (log.log_type === 'tool_call' || log.log_type === 'tool_result') {
+          if (log.tool_args?.audience_leads || log.tool_args?.example_leads) return log.tool_args.audience_leads || log.tool_args.example_leads;
+          if (log.tool_result?.audience_leads || log.tool_result?.example_leads) return log.tool_result.audience_leads || log.tool_result.example_leads;
+          if (log.details?.audience_leads || log.details?.example_leads) return log.details.audience_leads || log.details.example_leads;
+        }
+      }
+      
+      // Fallback: search ALL tool calls named 'audience' in the instance logs
+      const audienceLogs = logs.filter(l => (l.log_type === 'tool_call' || l.log_type === 'tool_result') && l.tool_name?.includes('audience')).reverse();
+      for (const log of audienceLogs) {
+        if (log.tool_args?.audience_leads || log.tool_args?.example_leads) return log.tool_args.audience_leads || log.tool_args.example_leads;
+        if (log.tool_result?.audience_leads || log.tool_result?.example_leads) return log.tool_result.audience_leads || log.tool_result.example_leads;
+        if (log.details?.audience_leads || log.details?.example_leads) return log.details.audience_leads || log.details.example_leads;
+      }
+      
+      // Fallback 3: Check nested in `tool_result.output.result` for Agent `tools` wrapper
+      const allToolLogs = logs.filter(l => (l.log_type === 'tool_call' || l.log_type === 'tool_result')).reverse();
+      for (const log of allToolLogs) {
+        const nestedResult = log.tool_result?.output?.result;
+        if (nestedResult?.audience_leads || nestedResult?.example_leads) return nestedResult.audience_leads || nestedResult.example_leads;
+      }
+    }
+    
+    return raw;
+  })();
+
+  const audienceTotalCount = (() => {
+    let count = (node.result as any)?.total_count || (node.result as any)?.total_matched;
+    if (count != null) return Number(count);
+    
+    if (logs && logs.length > 0) {
+      const nodeLogs = logs.filter((l: any) => 
+        l.command_id === node.id || 
+        l.details?.instance_node_id === node.id ||
+        l.details?.command_id === node.id
+      )
+      for (const log of nodeLogs) {
+        if (log.log_type === 'tool_call' || log.log_type === 'tool_result') {
+          const c = log.tool_result?.total_count || log.tool_result?.total_matched || log.tool_args?.total_count || log.tool_args?.total_matched || log.details?.total_count || log.details?.total_matched;
+          if (c != null) return Number(c);
+        }
+      }
+      
+      const allToolLogs = logs.filter(l => (l.log_type === 'tool_call' || l.log_type === 'tool_result')).reverse();
+      for (const log of allToolLogs) {
+        const nestedResult = log.tool_result?.output?.result;
+        if (nestedResult?.total_count != null || nestedResult?.total_matched != null) {
+          return Number(nestedResult.total_count ?? nestedResult.total_matched);
+        }
+      }
+    }
+    return undefined;
+  })();
+// #region agent log
+// #endregion
+
+  const embeddedLeads: AudienceLeadRow[] | undefined = Array.isArray(rawAudienceLeads)
+    ? (rawAudienceLeads as any[]).map((l, idx) => ({
+        ...l,
+        id: l.id || `embedded-${idx}`,
+        lead_id: l.lead_id || l.id, // Fallback to id if lead_id is missing
+        audience_id: l.audience_id || (node.result as any)?.audience_id
+      }))
+    : undefined
+  const resolvedId = resolveAudienceSegmentIdForImprenta(node, allNodes, logs)
+// #region agent log
+// #endregion
+  const audienceId =
+    resolvedId ||
+    (embeddedLeads?.[0]?.audience_id
+      ? String(embeddedLeads[0].audience_id)
+      : "")
                                   
                                   const mediaType = inferImprentaResultMediaType(node, allNodes);
                                   
@@ -1472,6 +1562,7 @@ const ImprentaNodeCardInner = memo(({
                                         audienceId={audienceId || String(embeddedLeads?.[0]?.audience_id ?? "")}
                                         siteId={currentSite.id}
                                         embeddedLeads={embeddedLeads}
+                                        totalCount={audienceTotalCount}
                                       />
                                     </div>
                                   )
@@ -1910,7 +2001,7 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
   const sidebarWidth = isMobile ? 0 : isLayoutCollapsed ? 64 : 256;
   
   const supabase = createClient()
-  const { imprentaData, isLoading: isImprentaLoading, refreshImprentaData } = useImprentaData(
+  const { imprentaData, isLoading: isImprentaLoading, refreshImprentaData, logs } = useImprentaData(
     activeInstanceId,
     currentSite?.id
   )
@@ -2576,7 +2667,7 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
   const handleExecuteNode = async (node: InstanceNode, testDestinations?: Record<string, string>) => {
     if (node.type === "publish") {
       if (!testDestinations) {
-        const err = validatePublishNodeInputs(node, contexts, canvasNodes)
+        const err = validatePublishNodeInputs(node, contexts, canvasNodes, logs)
         if (err) {
           toast.error(err)
           return
@@ -2658,6 +2749,14 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
 
       let toolOverrides: Record<string, any> | undefined = undefined;
       let publishOverride: Record<string, any> = {};
+
+      if (node.type === 'generate-audience') {
+        const channels = (node.settings as any)?.audience_channels || [];
+        if (channels.length > 0) {
+          toolOverrides = toolOverrides || {};
+          toolOverrides.audience = { channels };
+        }
+      }
 
       if (node.type === 'publish') {
         const dest = Array.isArray((node.settings as any)?.publish_destinations)
@@ -3387,7 +3486,7 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
       }
       insertType = PUBLISH_SLOT_REFERENCE;
     } else if (targetNode.type === "publish" && slot === "audience") {
-      if (!isPublishAudienceSourceReady(sourceNode, nodesRef.current)) {
+      if (!isPublishAudienceSourceReady(sourceNode, nodesRef.current, logs)) {
         toast.error("Link from an Audience node or from a node whose parent is an Audience node.");
         return;
       }
@@ -4343,7 +4442,7 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
                         }
                         hasAud={
                            node.type === "publish" 
-                             ? hasPublishAudienceInput(contexts, node.id, [...nodes, ...dummyNodes]) 
+                             ? hasPublishAudienceInput(contexts, node.id, [...nodes, ...dummyNodes], logs) 
                              : false
                         }
                         needAudience={
@@ -4355,6 +4454,7 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
                         nodes={nodes}
                         dummyNodes={dummyNodes}
                         contexts={contexts}
+                        logs={logs}
                         supabase={supabase}
                         generatingNodeIds={generatingNodeIds}
                         currentSite={currentSite}

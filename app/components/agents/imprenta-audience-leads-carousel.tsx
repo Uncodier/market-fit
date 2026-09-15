@@ -32,6 +32,7 @@ type Props = {
   siteId: string
   /** When the node result already includes `audience_leads`, paginate locally (no DB). */
   embeddedLeads?: AudienceLeadRow[] | null
+  totalCount?: number
 }
 
 function CarouselNavButton({
@@ -61,7 +62,7 @@ function CarouselNavButton({
 
 const leadCache = new Map<string, any>()
 
-export function ImprentaAudienceLeadsCarousel({ audienceId, siteId, embeddedLeads }: Props) {
+export function ImprentaAudienceLeadsCarousel({ audienceId, siteId, embeddedLeads, totalCount }: Props) {
   const [page, setPage] = useState(0)
   const [total, setTotal] = useState(0)
   const [row, setRow] = useState<AudienceLeadRow | null>(null)
@@ -128,15 +129,21 @@ export function ImprentaAudienceLeadsCarousel({ audienceId, siteId, embeddedLead
   }, [audienceId, page, inViewport])
 
   useEffect(() => {
+    // If we have an audienceId, prefer fetching remote, but fallback to embedded if it fails or if we prefer it
     if (embeddedSorted.length > 0) {
-      setTotal(embeddedSorted.length)
+      setTotal(totalCount ?? embeddedSorted.length)
       setRow(embeddedSorted[page] ?? null)
       setErr(null)
       setLoading(false)
       return
     }
-    loadRemote()
-  }, [audienceId, page, embeddedSorted, loadRemote])
+    
+    if (audienceId.trim()) {
+      loadRemote()
+    } else {
+      setLoading(false)
+    }
+  }, [audienceId, page, embeddedSorted, loadRemote, totalCount])
 
   useEffect(() => {
     // Demo/embedded mode support: If the lead object is already provided
@@ -190,9 +197,9 @@ export function ImprentaAudienceLeadsCarousel({ audienceId, siteId, embeddedLead
     }
   }, [row?.id, row?.lead_id, siteId, inViewport])
 
-  const maxPage = Math.max(0, total - 1)
+  const maxPage = Math.max(0, (embeddedSorted.length > 0 ? embeddedSorted.length : total) - 1)
   const canPrev = page > 0
-  const canNext = total > 0 && page < maxPage
+  const canNext = (embeddedSorted.length > 0 ? embeddedSorted.length : total) > 0 && page < maxPage
 
   if (err) {
     return (
@@ -245,6 +252,14 @@ export function ImprentaAudienceLeadsCarousel({ audienceId, siteId, embeddedLead
         </div>
       ) : (
         <div className="space-y-2">
+          <div className="flex items-center justify-between px-1 pb-1">
+            <div className="text-[11px] font-medium text-foreground/80">
+              {total} leads in audience
+            </div>
+            <div className="text-[10px] font-medium text-muted-foreground">
+              {page + 1} / {embeddedSorted.length > 0 ? embeddedSorted.length : total} {embeddedSorted.length > 0 ? '(sample)' : ''}
+            </div>
+          </div>
           <div className="flex items-center gap-2">
             <CarouselNavButton
               direction="prev"
@@ -283,7 +298,7 @@ export function ImprentaAudienceLeadsCarousel({ audienceId, siteId, embeddedLead
           </div>
           <details className="text-[10px] text-muted-foreground border border-border/40 rounded-lg px-2 py-1.5">
             <summary className="cursor-pointer select-none font-medium text-foreground/80">
-              Audience lead row
+              Audience lead row info
             </summary>
             <div className="mt-1.5 space-y-1 font-mono break-all">
               {row.idx != null ? <div>idx: {String(row.idx)}</div> : null}

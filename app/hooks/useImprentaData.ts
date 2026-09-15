@@ -8,6 +8,7 @@ import { WF_LOAD_NODE_TYPES } from '@/app/components/workflows/types'
 export interface ImprentaData {
   nodes: InstanceNode[]
   contexts: any[]
+  logs: any[]
 }
 
 const rootCreationPending = new Set<string>()
@@ -93,6 +94,21 @@ async function ensureRootNode(instanceId: string, siteId: string): Promise<Insta
   }
 }
 
+async function fetchLogsForInstance(instanceId: string): Promise<any[]> {
+  const supabase = createClient()
+  const { data, error } = await supabase
+    .from('instance_logs')
+    .select('id, log_type, message, details, tool_name, tool_args, tool_result, command_id, created_at')
+    .eq('instance_id', instanceId)
+    .order('created_at', { ascending: true })
+
+  if (error) {
+    console.error("Error fetching instance_logs for Imprenta:", error)
+    return []
+  }
+  return data || []
+}
+
 async function fetchImprentaData([_, instanceId, siteId]: [string, string, string]): Promise<ImprentaData> {
   let nodes = await fetchAllNodes(instanceId)
 
@@ -101,8 +117,11 @@ async function fetchImprentaData([_, instanceId, siteId]: [string, string, strin
     if (root) nodes = [root]
   }
 
-  const contexts = await fetchContextsForNodes(nodes.map((n) => n.id))
-  return { nodes, contexts }
+  const [contexts, logs] = await Promise.all([
+    fetchContextsForNodes(nodes.map((n) => n.id)),
+    fetchLogsForInstance(instanceId)
+  ])
+  return { nodes, contexts, logs }
 }
 
 export function useImprentaData(instanceId?: string, siteId?: string) {
@@ -130,6 +149,7 @@ export function useImprentaData(instanceId?: string, siteId?: string) {
     imprentaData: data,
     nodes: data?.nodes || [],
     contexts: data?.contexts || [],
+    logs: data?.logs || [],
     isLoading,
     mutateImprenta: mutate,
     refreshImprentaData,

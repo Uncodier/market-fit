@@ -153,7 +153,6 @@ interface SocialIconProps extends IconProps {
 export function SocialIcon({ platform, ...props }: SocialIconProps) {
   const platformName = (platform || '').toLowerCase().trim();
   
-  console.log("SocialIcon component called with platform:", platform, "normalized to:", platformName);
   
   switch (platformName) {
     case 'facebook':
