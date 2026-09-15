@@ -7,7 +7,7 @@ import { Bot, Printer, Workflow } from "@/app/components/ui/icons"
 import { RobotsBadge } from "./RobotsBadge"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { useLayout } from "@/app/context/LayoutContext"
-import { NAV_ITEM_ICON, getModuleVisual } from "@/app/config/module-visuals"
+import { NAV_ITEM_ICON } from "@/app/config/module-visuals"
 import { useOptionalScreenAccess } from "@/app/context/ScreenAccessContext"
 
 function resetBreadcrumbTrail() {
@@ -144,7 +144,6 @@ export function RobotsNavItems({ isCollapsed }: RobotsNavItemsProps) {
         onClick={() => {
           resetBreadcrumbTrail()
         }}
-        visual={NAV_ITEM_ICON.channels ? undefined : undefined /* Use standard icon color */}
       />
       )}
     </>

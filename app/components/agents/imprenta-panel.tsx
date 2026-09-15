@@ -46,6 +46,7 @@ import { AudioPlayer } from "./audio-player"
 import { SocialIcon } from "@/app/components/ui/social-icons"
 import { InstanceNode } from "@/app/types/instance-nodes"
 import { toast } from "sonner"
+import { apiClient } from "@/app/services/api-client-service"
 import { uploadAssetFile } from "@/app/assets/actions"
 import { AnimatedConnectionLine } from "./animated-connection-line"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
@@ -2822,14 +2823,11 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
         ...(toolOverrides ? { tool_overrides: toolOverrides } : {})
       }
       
-      // Use direct fetch for internal Next.js API to bypass apiClient routing to external backend
-      const res = await fetch('/api/robots/instance/assistant', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(requestPayload)
-      })
+      // Use apiClient to ensure it hits the external backend (where the workflow is actually executed)
+      const res = await apiClient.post('/api/robots/instance/assistant', requestPayload)
       
-      const response = await res.json().catch(() => ({ success: false, error: { message: 'Failed to parse response' } }))
+      const response = res as any
+
       
       if (!response.success) {
         console.error('API Error Response:', response.error);

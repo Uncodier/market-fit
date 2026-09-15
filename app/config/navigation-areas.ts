@@ -264,7 +264,7 @@ export function isSettingsNavKey(key: string): boolean {
 }
 
 const CONFIGURATION_PATH_PREFIXES = ["/integrations", "/billing", "/security", "/onboarding", "/navigation"]
-const SHORTCUT_ELIGIBLE_SETTINGS_TABS = new Set(["printers", "channels", "activities"])
+const SHORTCUT_ELIGIBLE_SETTINGS_TABS = new Set(["printers", "activities"])
 
 /** Bottom Configuration section — do not pin these as sidebar shortcuts. */
 export function isConfigurationNavPath(
