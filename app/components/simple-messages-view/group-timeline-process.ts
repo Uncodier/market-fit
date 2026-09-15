@@ -11,6 +11,12 @@ export type ProcessGroupEntry =
 export interface ProcessGroup {
   groupId: string
   entries: ProcessGroupEntry[]
+  userPrompt?: string
+}
+
+function requestIdFromLog(log: InstanceLog | null | undefined): string | null {
+  const requestId = log?.details?.request_id
+  return typeof requestId === 'string' && requestId.trim() ? requestId : null
 }
 
 export function isStepCompletedLog(log: InstanceLog): boolean {
@@ -313,6 +319,8 @@ export function groupTimelineProcess(
   sortedTimeline: Array<{ type: string; timestamp: string; data: any }>
 ): ProcessedTimelineItem[] {
   const result: ProcessedTimelineItem[] = []
+  const userPromptsByRequestId = new Map<string, string>()
+  let latestUserPrompt = ''
   let i = 0
 
   while (i < sortedTimeline.length) {
@@ -322,6 +330,15 @@ export function groupTimelineProcess(
       if (item.type === 'log' && isPlaceholderAgentAction(item.data as InstanceLog)) {
         i++
         continue
+      }
+      if (item.type === 'log' && (item.data as InstanceLog).log_type === 'user_action') {
+        const userLog = item.data as InstanceLog
+        const prompt = (userLog.message || '').trim()
+        if (prompt) {
+          latestUserPrompt = prompt
+          const requestId = requestIdFromLog(userLog)
+          if (requestId) userPromptsByRequestId.set(requestId, prompt)
+        }
       }
       result.push({
         type: item.type as TimelineItemType,
@@ -358,11 +375,19 @@ export function groupTimelineProcess(
 
     const first = entries[0]
     const groupId = first.type === 'log' ? `process-${first.data.id}` : `process-plan-${first.data.id}`
+    const logs = entries
+      .filter((entry): entry is Extract<ProcessGroupEntry, { type: 'log' }> => entry.type === 'log')
+      .map((entry) => entry.data)
+    const { answer } = splitProcessAnswer(logs)
+    const requestId =
+      requestIdFromLog(answer) ||
+      [...logs].reverse().map(requestIdFromLog).find((value): value is string => Boolean(value))
+    const userPrompt = (requestId ? userPromptsByRequestId.get(requestId) : null) || latestUserPrompt || undefined
 
     result.push({
       type: 'process_group',
       timestamp: first.timestamp,
-      data: { groupId, entries } satisfies ProcessGroup,
+      data: { groupId, entries, userPrompt } satisfies ProcessGroup,
     })
   }
 

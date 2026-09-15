@@ -74,6 +74,24 @@ describe("resizeComposerTextarea", () => {
     expect(textarea.style.height).toBe("135px")
   })
 
+  it("returns to the minimum height when the input becomes empty", () => {
+    const textarea = createTextarea({
+      value: "",
+      height: 300,
+      scrollHeight: 300,
+      offsetHeight: 300,
+    })
+    textarea.style.overflowY = "auto"
+    textarea.scrollTop = 120
+
+    const nextHeight = resizeComposerTextarea(textarea, { previousLength: 80 })
+
+    expect(nextHeight).toBe(135)
+    expect(textarea.style.height).toBe("135px")
+    expect(textarea.style.overflowY).toBe("hidden")
+    expect(textarea.scrollTop).toBe(0)
+  })
+
   it("grows up to the max height and enables scroll after that", () => {
     const textarea = createTextarea({
       value: "long text",

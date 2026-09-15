@@ -151,7 +151,7 @@ export function Sidebar({
         />
       )}
       <div
-        data-collapsed={isCollapsed}
+        data-collapsed={renderCollapsed}
         className={cn(
           "flex flex-col h-[100dvh] overflow-hidden",
           isCollapsed ? "md:w-16" : "md:w-64",

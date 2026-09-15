@@ -163,8 +163,8 @@ html.safari .chrome-only-svg {
     }
     
     /* Fix específico para anclajes en settings */
-    a[href="/settings"] svg,
-    a[href*="settings"] svg {
+    a[href="/settings"]:not(.sidebar-menu-item-link) svg,
+    a[href*="settings"]:not(.sidebar-menu-item-link) svg {
       width: 16px !important;
       height: 16px !important;
       min-width: 16px !important;
@@ -174,8 +174,8 @@ html.safari .chrome-only-svg {
       margin: 0 !important;
     }
     
-    a[href="/settings"],
-    a[href*="settings"] {
+    a[href="/settings"]:not(.sidebar-menu-item-link),
+    a[href*="settings"]:not(.sidebar-menu-item-link) {
       display: inline-flex !important;
       align-items: center !important;
       justify-content: flex-start !important;
@@ -190,7 +190,6 @@ html.safari .chrome-only-svg {
     }
   }
 }
-
 /* Fix específico para Safari */
 html.safari svg {
   /* Forzamos visibilidad */
@@ -518,9 +517,9 @@ html.safari .absolute {
 }
 
 /* Fix específico para anclajes en settings */
-html.safari a[href="/settings"] svg,
-html.safari a[href*="settings"] svg,
-html.safari a[href$="settings"] svg {
+html.safari a[href="/settings"]:not(.sidebar-menu-item-link) svg,
+html.safari a[href*="settings"]:not(.sidebar-menu-item-link) svg,
+html.safari a[href$="settings"]:not(.sidebar-menu-item-link) svg {
   width: 16px !important;
   height: 16px !important;
   min-width: 16px !important;
@@ -530,9 +529,9 @@ html.safari a[href$="settings"] svg {
   margin: 0 !important;
 }
 
-html.safari a[href="/settings"],
-html.safari a[href*="settings"],
-html.safari a[href$="settings"] {
+html.safari a[href="/settings"]:not(.sidebar-menu-item-link),
+html.safari a[href*="settings"]:not(.sidebar-menu-item-link),
+html.safari a[href$="settings"]:not(.sidebar-menu-item-link) {
   display: inline-flex !important;
   align-items: center !important;
   justify-content: flex-start !important;
@@ -579,11 +578,11 @@ html.safari [role="dialog"] button[aria-label="Close"] svg {
 }
 
 /* Solución extrema para anclas de settings en menú */
-html.safari [class*="menu-item"] a[href*="settings"],
-html.safari [role="menuitem"] a[href*="settings"],
-html.safari [class*="navigation"] a[href*="settings"],
-html.safari [class*="sidebar"] a[href*="settings"],
-html.safari nav a[href*="settings"] {
+html.safari [class*="menu-item"] a[href*="settings"]:not(.sidebar-menu-item-link),
+html.safari [role="menuitem"] a[href*="settings"]:not(.sidebar-menu-item-link),
+html.safari [class*="navigation"] a[href*="settings"]:not(.sidebar-menu-item-link),
+html.safari [class*="sidebar"] a[href*="settings"]:not(.sidebar-menu-item-link),
+html.safari nav a[href*="settings"]:not(.sidebar-menu-item-link) {
   display: flex !important;
   flex-direction: row !important;
   align-items: center !important;
@@ -607,11 +606,11 @@ html.safari .task-sidebar .task-categories-list button > div {
   display: flex !important;
 }
 
-html.safari [class*="menu-item"] a[href*="settings"] svg,
-html.safari [role="menuitem"] a[href*="settings"] svg,
-html.safari [class*="navigation"] a[href*="settings"] svg,
-html.safari [class*="sidebar"] a[href*="settings"] svg,
-html.safari nav a[href*="settings"] svg {
+html.safari [class*="menu-item"] a[href*="settings"]:not(.sidebar-menu-item-link) svg,
+html.safari [role="menuitem"] a[href*="settings"]:not(.sidebar-menu-item-link) svg,
+html.safari [class*="navigation"] a[href*="settings"]:not(.sidebar-menu-item-link) svg,
+html.safari [class*="sidebar"] a[href*="settings"]:not(.sidebar-menu-item-link) svg,
+html.safari nav a[href*="settings"]:not(.sidebar-menu-item-link) svg {
   display: block !important;
   visibility: visible !important;
   position: static !important;
@@ -694,7 +693,7 @@ html.safari .safari-close-button-abs svg {
 
 /* Arreglo específico para enlaces de Settings en Safari */
 html.safari .safari-settings-link,
-html.safari a[href*="settings"] {
+html.safari a[href*="settings"]:not(.sidebar-menu-item-link) {
   display: flex !important;
   align-items: center !important;
   gap: 12px !important;
@@ -715,7 +714,7 @@ html.safari .safari-settings-link.collapsed {
 }
 
 html.safari .safari-settings-link > div,
-html.safari a[href*="settings"] > div:first-child {
+html.safari a[href*="settings"]:not(.sidebar-menu-item-link) > div:first-child {
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
@@ -733,7 +732,7 @@ html.safari .safari-settings-link.collapsed > div:first-child {
 }
 
 html.safari .safari-settings-link svg,
-html.safari a[href*="settings"] svg {
+html.safari a[href*="settings"]:not(.sidebar-menu-item-link) svg {
   display: block !important;
   visibility: visible !important;
   width: 16.2px !important;
@@ -754,7 +753,7 @@ html.safari .safari-settings-link.collapsed svg {
 }
 
 html.safari .safari-settings-link span,
-html.safari a[href*="settings"] > span {
+html.safari a[href*="settings"]:not(.sidebar-menu-item-link) > span {
   display: block !important;
   flex-grow: 1 !important;
   text-align: left !important;
@@ -766,8 +765,8 @@ html.safari a[href*="settings"] > span {
 }
 
 /* Fix específico para el MenuItem con settings */
-html.safari [role="menuitem"] a[href*="settings"],
-html.safari [class*="menu-item"] a[href*="settings"] {
+html.safari [role="menuitem"] a[href*="settings"]:not(.sidebar-menu-item-link),
+html.safari [class*="menu-item"] a[href*="settings"]:not(.sidebar-menu-item-link) {
   height: 39px !important;
   display: flex !important;
   align-items: center !important;
@@ -775,42 +774,6 @@ html.safari [class*="menu-item"] a[href*="settings"] {
   flex-wrap: nowrap !important;
   padding: 8px 12px !important;
   width: 100% !important;
-}
-
-/*
- * Main sidebar NavigationLink rows use MenuItem (32px row, 6.5px vertical padding).
- * Broad html.safari a[href*="settings"] rules above force 39px / extra padding and
- * break alignment with Campaigns, Leads, etc. Reset for the app shell sidebar only.
- */
-html.safari .sidebar-light-bg a[href*="settings"] {
-  height: 32px !important;
-  min-height: 32px !important;
-  max-height: 32px !important;
-  padding: 6.5px 9.7px !important;
-  gap: 9.7px !important;
-  box-sizing: border-box !important;
-}
-
-html.safari .sidebar-light-bg a[href*="settings"] > div:first-child {
-  width: 24px !important;
-  height: 24px !important;
-  min-width: 24px !important;
-  min-height: 24px !important;
-}
-
-html.safari .sidebar-light-bg[data-collapsed="true"] a[href*="settings"] {
-  width: 32px !important;
-  height: 32px !important;
-  padding: 0 !important;
-  gap: 0 !important;
-  justify-content: center !important;
-}
-
-html.safari .sidebar-light-bg[data-collapsed="true"] a[href*="settings"] > div:first-child {
-  width: 32px !important;
-  height: 32px !important;
-  min-width: 32px !important;
-  min-height: 32px !important;
 }
 
 /* Fix específico para iconos en inputs de la sección security */
@@ -1331,8 +1294,8 @@ html.safari .safari-settings-svg {
 }
 
 /* Fix specifico para el icono de Settings y su flecha */
-html.safari [href="/settings"] svg,
-html.safari a[href*="settings"] svg,
+html.safari [href="/settings"]:not(.sidebar-menu-item-link) svg,
+html.safari a[href*="settings"]:not(.sidebar-menu-item-link) svg,
 html.safari .setting-parent-item svg {
   width: 16px !important;
   height: 16px !important;

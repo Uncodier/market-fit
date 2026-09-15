@@ -9,6 +9,7 @@ import {
   Zap,
 } from '@/app/components/ui/icons'
 import ReactMarkdown from 'react-markdown'
+import remarkBreaks from 'remark-breaks'
 import remarkGfm from 'remark-gfm'
 import { markdownComponents } from '../utils/markdownComponents'
 import { InstancePlan } from '../types'
@@ -24,6 +25,8 @@ import {
 import { ToolCallItem } from './ToolCallItem'
 import { StepCompletedItem } from './StepCompletedItem'
 import { CompletedPlanCard } from './CompletedPlanCard'
+import { InstanceLogCopyFeedbackBar } from './InstanceLogCopyFeedbackBar'
+import { InstanceNodeChildren } from './InstanceNodeChildren'
 
 interface ProcessGroupItemProps {
   group: ProcessGroup
@@ -85,7 +88,7 @@ function ProcessEntryBody({
 
   return (
     <div className="text-xs leading-relaxed text-muted-foreground prose prose-sm max-w-none dark:prose-invert prose-p:my-1">
-      <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+      <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]} components={markdownComponents}>
         {text}
       </ReactMarkdown>
     </div>
@@ -117,7 +120,7 @@ export function ProcessGroupItem({
   const showAccordion = processEntries.length > 0 || isLive
 
   return (
-    <div className="w-full min-w-0 overflow-hidden">
+    <div className="group w-full min-w-0 overflow-hidden">
       {showAccordion && (
         <div className="w-full min-w-[min(100%,450px)] overflow-hidden max-w-[calc(100%-80px)] lg:max-w-3xl">
           <button
@@ -159,7 +162,7 @@ export function ProcessGroupItem({
       {answer && (
         <div className="w-full min-w-0 overflow-hidden">
           <div
-            className="text-sm leading-relaxed prose prose-sm max-w-none dark:prose-invert prose-headings:font-medium prose-p:leading-relaxed prose-pre:bg-muted w-full overflow-hidden break-words"
+            className="text-sm text-foreground leading-relaxed prose prose-sm max-w-none dark:prose-invert prose-headings:font-medium prose-p:leading-relaxed prose-pre:bg-muted w-full overflow-hidden break-words"
             style={{
               wordWrap: 'break-word',
               overflowWrap: 'break-word',
@@ -167,9 +170,40 @@ export function ProcessGroupItem({
               paddingLeft: isBrowserVisible ? '0.75rem' : '2rem',
             }}
           >
-            <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+            <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]} components={markdownComponents}>
               {answer.message}
             </ReactMarkdown>
+          </div>
+          <div
+            className={`mt-2 w-full min-w-0 ${isBrowserVisible ? 'pl-3' : 'pl-8'}`}
+          >
+            {answer.instance_id ? (
+              <InstanceNodeChildren
+                parentLogId={answer.id}
+                instanceId={answer.instance_id}
+                toolbarRowClassName="opacity-0 pointer-events-none transition-opacity duration-200 group-hover:opacity-100 group-hover:pointer-events-auto"
+                leading={
+                  <InstanceLogCopyFeedbackBar
+                    logId={answer.id}
+                    details={answer.details as Record<string, unknown> | undefined}
+                    textToCopy={answer.message || ''}
+                    enableRecordActions
+                    userPrompt={group.userPrompt}
+                    instanceId={answer.instance_id}
+                  />
+                }
+              />
+            ) : (
+              <div className="opacity-0 pointer-events-none transition-opacity duration-200 group-hover:opacity-100 group-hover:pointer-events-auto">
+                <InstanceLogCopyFeedbackBar
+                  logId={answer.id}
+                  details={answer.details as Record<string, unknown> | undefined}
+                  textToCopy={answer.message || ''}
+                  enableRecordActions
+                  userPrompt={group.userPrompt}
+                />
+              </div>
+            )}
           </div>
         </div>
       )}

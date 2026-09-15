@@ -6,7 +6,7 @@ import { getZoneByDomain, addDnsRecords, CloudflareDnsRecord } from '@/app/lib/i
 export async function POST(req: NextRequest) {
   try {
     const supabase = await createClient();
-  const { data: { user: auth } } = await supabase.auth.getUser();
+    const { data: { user: auth } } = await supabase.auth.getUser();
     if (!auth) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
@@ -47,6 +47,15 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: true, results })
   } catch (error: any) {
     console.error('Cloudflare sync zavu error:', error)
+    if (error instanceof Error && error.message.toLowerCase().includes('invalid access token')) {
+      return NextResponse.json(
+        {
+          error: 'Cloudflare authorization expired. Reconnect Cloudflare to continue.',
+          code: 'cloudflare_reauth_required'
+        },
+        { status: 401 }
+      )
+    }
     return NextResponse.json({ error: error.message || 'Internal error' }, { status: 500 })
   }
 }

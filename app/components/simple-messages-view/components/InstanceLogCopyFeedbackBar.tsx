@@ -2,9 +2,13 @@
 
 import React, { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Copy, Check, ThumbsUp, ThumbsDown, AlertTriangle } from '@/app/components/ui/icons'
+import { Copy, Check, ThumbsUp, ThumbsDown, AlertTriangle, Save } from '@/app/components/ui/icons'
 import { useToast } from '@/app/components/ui/use-toast'
 import { cn } from '@/lib/utils'
+import { copyToClipboard } from '@/app/utils/clipboard'
+import { useSite } from '@/app/context/SiteContext'
+import { syncAiFeedbackRecord } from '@/app/records/response-record-actions'
+import { SaveResponseAsRecordDialog } from './SaveResponseAsRecordDialog'
 
 export type LogFeedbackRating = 'good' | 'bad' | 'problematic'
 
@@ -32,6 +36,9 @@ export interface InstanceLogCopyFeedbackBarProps {
   textToCopy: string
   className?: string
   compact?: boolean
+  enableRecordActions?: boolean
+  userPrompt?: string
+  instanceId?: string
 }
 
 export function InstanceLogCopyFeedbackBar({
@@ -39,11 +46,16 @@ export function InstanceLogCopyFeedbackBar({
   details,
   textToCopy,
   className,
-  compact = false
+  compact = false,
+  enableRecordActions = false,
+  userPrompt,
+  instanceId,
 }: InstanceLogCopyFeedbackBarProps) {
   const { toast } = useToast()
+  const { currentSite } = useSite()
   const [copied, setCopied] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [recordDialogOpen, setRecordDialogOpen] = useState(false)
   const serverRating = readFeedback(details)?.rating ?? null
   const [localRating, setLocalRating] = useState<LogFeedbackRating | null>(serverRating)
 
@@ -71,6 +83,26 @@ export function InstanceLogCopyFeedbackBar({
         const { error } = await supabase.from('instance_logs').update({ details: merged }).eq('id', logId)
         if (error) throw error
         setLocalRating(rating)
+        if (enableRecordActions && currentSite?.id) {
+          const recordResult = await syncAiFeedbackRecord({
+            siteId: currentSite.id,
+            source: 'robots',
+            sourceId: logId,
+            rating: rating === 'good' ? 'Like' : rating === 'bad' ? 'Dislike' : 'Error',
+            title: userPrompt?.trim() || 'AI response',
+            response: textToCopy,
+            instanceId,
+            messageId: logId,
+          })
+          if (!recordResult.success) {
+            toast({
+              title: 'Feedback saved, but the reference record failed',
+              description: recordResult.error,
+              variant: 'destructive',
+            })
+            return
+          }
+        }
         toast({ title: 'Feedback saved' })
       } catch (e) {
         console.error('[InstanceLogCopyFeedbackBar]', e)
@@ -83,16 +115,16 @@ export function InstanceLogCopyFeedbackBar({
         setSaving(false)
       }
     },
-    [logId, details, toast]
+    [currentSite?.id, details, enableRecordActions, instanceId, logId, textToCopy, toast, userPrompt]
   )
 
   const handleCopy = async (e: React.MouseEvent) => {
     e.stopPropagation()
-    try {
-      await navigator.clipboard.writeText(textToCopy)
+    const didCopy = await copyToClipboard(textToCopy)
+    if (didCopy) {
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
-    } catch {
+    } else {
       toast({ title: 'Copy failed', variant: 'destructive' })
     }
   }
@@ -176,6 +208,33 @@ export function InstanceLogCopyFeedbackBar({
       >
         <AlertTriangle className={iconSize} />
       </button>
+      {enableRecordActions && (
+        <>
+          <div className="h-3 w-px shrink-0 bg-border/80 dark:bg-border" aria-hidden />
+          <button
+            type="button"
+            onClick={(event) => {
+              event.stopPropagation()
+              setRecordDialogOpen(true)
+            }}
+            className={cn(
+              'inline-flex w-fit min-w-0 shrink-0 items-center justify-center gap-1.5 rounded-full border border-border/90 bg-background px-3.5 py-1.5 text-xs font-medium text-foreground shadow-sm',
+              'transition-colors hover:bg-muted/40 dark:border-border dark:bg-card/80'
+            )}
+            title="Save as record"
+            aria-label="Save as record"
+          >
+            <Save className="h-3.5 w-3.5 shrink-0 text-foreground/85" />
+            Save as record
+          </button>
+          <SaveResponseAsRecordDialog
+            open={recordDialogOpen}
+            onOpenChange={setRecordDialogOpen}
+            userPrompt={userPrompt}
+            response={textToCopy}
+          />
+        </>
+      )}
     </div>
   )
 }

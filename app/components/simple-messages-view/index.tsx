@@ -17,6 +17,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/app/components/ui/avatar"
 import { User, ChevronDown, ChevronRight, Brain, Loader } from "@/app/components/ui/icons"
 import { Button } from "@/app/components/ui/button"
 import ReactMarkdown from 'react-markdown'
+import remarkBreaks from 'remark-breaks'
 import remarkGfm from 'remark-gfm'
 import { markdownComponents } from './utils/markdownComponents'
 
@@ -854,7 +855,7 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
                 <div className="w-full min-w-0 overflow-hidden flex justify-end pr-8">
                   <div className="min-w-0 overflow-hidden">
                     <div 
-                      className="text-sm leading-relaxed prose prose-sm max-w-none dark:prose-invert prose-headings:font-medium prose-p:leading-relaxed prose-pre:bg-muted w-full overflow-hidden break-words rounded-lg p-4 mr-12" 
+                      className="text-sm text-foreground leading-relaxed prose prose-sm max-w-none dark:prose-invert prose-headings:font-medium prose-p:leading-relaxed prose-pre:bg-muted w-full overflow-hidden break-words rounded-lg p-4 mr-12"
                       style={{ 
                         backgroundColor: isDarkMode ? '#2d2d3d' : '#f0f0f5',
                         border: 'none', 
@@ -866,7 +867,7 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
                         wordBreak: 'break-word'
                       }}
                     >
-                      <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+                      <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]} components={markdownComponents}>
                         {lastUserMessage}
                       </ReactMarkdown>
                     </div>

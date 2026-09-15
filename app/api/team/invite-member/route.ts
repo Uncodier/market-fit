@@ -36,6 +36,20 @@ export async function POST(request: Request) {
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     )
+    const [{ data: inviterProfile }, { data: inviterAuth }] = await Promise.all([
+      adminSupabase
+        .from('profiles')
+        .select('name, email')
+        .eq('id', access.userId)
+        .maybeSingle(),
+      adminSupabase.auth.admin.getUserById(access.userId),
+    ])
+    const inviterName =
+      inviterProfile?.name ||
+      inviterAuth?.user?.user_metadata?.name ||
+      inviterProfile?.email ||
+      inviterAuth?.user?.email ||
+      'A team administrator'
 
     // Check if user already exists in profiles
     const { data: profile, error: profileError } = await adminSupabase
@@ -93,18 +107,13 @@ export async function POST(request: Request) {
     console.log(`📝 NEXT_PUBLIC_APP_URL: ${process.env.NEXT_PUBLIC_APP_URL || 'NOT SET'}`)
     console.log(`🎯 Using base URL: ${baseUrl}`)
     
-    // Generate a temporary invitation token to avoid URL parameter issues
-    const invitationToken = `inv_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`
-    
-    // Store invitation data temporarily (you could use Redis or a temp table)
-    // For now, we'll still use URL params as primary and user metadata as backup
     const invitationParams = new URLSearchParams({
       invitationType: 'team_invitation',
       siteId,
       siteName,
       role,
       email, // Include email so we can verify it on the callback
-      token: invitationToken, // Add token for extra security
+      inviterName,
       ...(name && { name }),
       ...(position && { position })
     })
@@ -134,10 +143,15 @@ export async function POST(request: Request) {
           emailRedirectTo: redirectTo,
           data: {
             invitationType: 'team_invitation',
+            invitation_type: 'team_invitation',
             siteId,
+            site_id: siteId,
             siteName,
+            site_name: siteName,
             role,
             email,
+            inviterName,
+            inviter_name: inviterName,
             // For existing users, check if they have password set, if not mark as false
             password_set: existingUser?.user_metadata?.password_set ?? false,
             ...(name && { name }),
@@ -155,10 +169,15 @@ export async function POST(request: Request) {
         redirectTo: redirectTo,
         data: {
           invitationType: 'team_invitation',
+          invitation_type: 'team_invitation',
           siteId,
+          site_id: siteId,
           siteName,
+          site_name: siteName,
           role,
           email,
+          inviterName,
+          inviter_name: inviterName,
           password_set: false, // Explicitly mark that password is not set
           ...(name && { name }),
           ...(position && { position }),

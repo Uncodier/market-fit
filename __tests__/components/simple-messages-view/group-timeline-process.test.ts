@@ -51,7 +51,7 @@ describe('getProcessActivity', () => {
     ).toBe('Tool call: Instance Plan')
     expect(
       getProcessActivity(log({ id: '2', log_type: 'agent_action', message: 'Here is the answer' })).label
-    ).toBe('Responding')
+    ).toBe('Here is the answer')
     expect(
       getProcessActivity(log({
         id: '3',
@@ -182,6 +182,40 @@ describe('groupTimelineProcess', () => {
     expect(grouped[0].type).toBe('log')
     expect(grouped[1].type).toBe('process_group')
     expect(grouped[1].data.entries.map((item: { data: InstanceLog }) => item.data.id)).toEqual(['t', 'c', 'a'])
+    expect(grouped[1].data.userPrompt).toBe('hi')
+  })
+
+  it('associates a workflow answer with its request-matched user ask', () => {
+    const timeline = [
+      {
+        type: 'log',
+        timestamp: '1',
+        data: log({ id: 'u1', log_type: 'user_action', message: 'First ask', details: { request_id: 'one' } }),
+      },
+      {
+        type: 'log',
+        timestamp: '2',
+        data: log({ id: 'u2', log_type: 'user_action', message: 'Matched ask', details: { request_id: 'two' } }),
+      },
+      {
+        type: 'log',
+        timestamp: '3',
+        data: log({ id: 't', log_type: 'thinking', details: { request_id: 'two' } }),
+      },
+      {
+        type: 'log',
+        timestamp: '4',
+        data: log({
+          id: 'a',
+          log_type: 'agent_action',
+          message: 'Final answer',
+          details: { request_id: 'two' },
+        }),
+      },
+    ]
+
+    const grouped = groupTimelineProcess(timeline)
+    expect(grouped[2].data.userPrompt).toBe('Matched ask')
   })
 
   it('groups steps, infrastructure, and plans with the process stream', () => {

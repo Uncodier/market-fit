@@ -43,6 +43,14 @@ export function resizeComposerTextarea(
   const minHeight = options.minHeight ?? DEFAULT_MIN_TEXTAREA_HEIGHT
   const maxHeight = options.maxHeight ?? DEFAULT_MAX_TEXTAREA_HEIGHT
   const valueLength = textarea.value.length
+
+  if (valueLength === 0) {
+    textarea.style.height = `${minHeight}px`
+    textarea.style.overflowY = "hidden"
+    textarea.scrollTop = 0
+    return minHeight
+  }
+
   const currentHeight = parseFloat(textarea.style.height) || textarea.offsetHeight || minHeight
   const isDeleting =
     options.previousLength !== undefined && valueLength < options.previousLength

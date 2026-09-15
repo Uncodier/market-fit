@@ -11,6 +11,16 @@ describe("relation target helpers", () => {
       table: "leads",
       selectFields: "id, name, company",
       nameField: "name",
+      idField: "id",
+    })
+  })
+
+  it("maps team members through site membership user IDs", () => {
+    expect(getRelationTargetConfig("team_member")).toEqual({
+      table: "site_members",
+      selectFields: "user_id, name, email",
+      nameField: "name",
+      idField: "user_id",
     })
   })
 

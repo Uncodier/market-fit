@@ -8,37 +8,37 @@ export const markdownComponents = {
   // Headings with proper sizing and spacing
   h1: ({ node, ...props }: any) => (
     <h1 
-      className="text-2xl font-bold mt-6 mb-3 first:mt-0" 
+      className="text-2xl text-inherit font-bold mt-6 mb-3 first:mt-0"
       {...props} 
     />
   ),
   h2: ({ node, ...props }: any) => (
     <h2 
-      className="text-xl font-bold mt-5 mb-2.5 border-b dark:border-white/5 border-black/5 pb-1" 
+      className="text-xl text-inherit font-bold mt-5 mb-2.5 border-b dark:border-white/5 border-black/5 pb-1"
       {...props} 
     />
   ),
   h3: ({ node, ...props }: any) => (
     <h3 
-      className="text-lg font-bold mt-4 mb-2" 
+      className="text-lg text-inherit font-bold mt-4 mb-2"
       {...props} 
     />
   ),
   h4: ({ node, ...props }: any) => (
     <h4 
-      className="text-base font-bold mt-3 mb-1.5" 
+      className="text-base text-inherit font-bold mt-3 mb-1.5"
       {...props} 
     />
   ),
   h5: ({ node, ...props }: any) => (
     <h5 
-      className="text-sm font-bold mt-3 mb-1.5" 
+      className="text-sm text-inherit font-bold mt-3 mb-1.5"
       {...props} 
     />
   ),
   h6: ({ node, ...props }: any) => (
     <h6 
-      className="text-sm font-semibold mt-3 mb-1.5" 
+      className="text-sm text-inherit font-semibold mt-3 mb-1.5"
       {...props} 
     />
   ),
@@ -46,7 +46,7 @@ export const markdownComponents = {
   // Paragraphs with proper spacing
   p: ({ node, ...props }: any) => (
     <p 
-      className="my-2 leading-relaxed" 
+      className="my-2 text-inherit leading-relaxed"
       {...props} 
     />
   ),
@@ -66,7 +66,7 @@ export const markdownComponents = {
   ),
   li: ({ node, ...props }: any) => (
     <li 
-      className="my-1 leading-relaxed" 
+      className="my-1 text-inherit leading-relaxed"
       {...props} 
     />
   ),
@@ -83,7 +83,7 @@ export const markdownComponents = {
   // Code blocks with proper styling
   pre: ({ node, ...props }: any) => (
     <pre 
-      className="my-2 p-3 rounded-md bg-muted overflow-x-auto" 
+      className="my-2 p-3 rounded-md bg-muted text-foreground overflow-x-auto [&_code]:block [&_code]:bg-transparent [&_code]:p-0 [&_code]:text-inherit"
       style={{ 
         whiteSpace: 'pre-wrap', 
         wordBreak: 'break-word',
@@ -93,22 +93,12 @@ export const markdownComponents = {
       {...props} 
     />
   ),
-  code: ({ node, inline, ...props }: any) => {
-    if (inline) {
-      return (
-        <code 
-          className="px-1.5 py-0.5 rounded bg-muted text-sm font-mono" 
-          {...props} 
-        />
-      )
-    }
-    return (
-      <code 
-        className="block p-0 bg-transparent" 
-        {...props} 
-      />
-    )
-  },
+  code: ({ node, ...props }: any) => (
+    <code
+      className="px-1.5 py-0.5 rounded bg-muted text-sm font-mono"
+      {...props}
+    />
+  ),
   
   // Links with proper color and hover, and media rendering for raw URLs
   a: ({ node, ...props }: any) => {
@@ -252,13 +242,13 @@ export const markdownComponents = {
   // Strong and emphasis
   strong: ({ node, ...props }: any) => (
     <strong 
-      className="font-bold" 
+      className="text-inherit font-bold"
       {...props} 
     />
   ),
   em: ({ node, ...props }: any) => (
     <em 
-      className="italic" 
+      className="text-inherit italic"
       {...props} 
     />
   ),

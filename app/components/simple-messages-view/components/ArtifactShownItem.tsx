@@ -3,6 +3,7 @@ import { Sparkles, LayoutGrid } from "@/app/components/ui/icons"
 import { InstanceLog } from '../types'
 import { formatTime } from '../utils'
 import ReactMarkdown from 'react-markdown'
+import remarkBreaks from 'remark-breaks'
 import remarkGfm from 'remark-gfm'
 import { markdownComponents } from '../utils/markdownComponents'
 import { parseToolMessageKvs } from '../parse-tool-call'
@@ -56,8 +57,8 @@ export const ArtifactShownItem: React.FC<ArtifactShownItemProps> = ({
       {/* Thought Process Content */}
       {thought_process && (
         <div className="w-full min-w-0 overflow-hidden mb-3">
-          <div className="text-sm leading-relaxed prose prose-sm max-w-none dark:prose-invert prose-headings:font-medium prose-p:leading-relaxed prose-pre:bg-muted w-full overflow-hidden break-words" style={{ wordWrap: 'break-word', overflowWrap: 'break-word', wordBreak: 'break-word', paddingLeft: isBrowserVisible ? '0.75rem' : '2.25rem' }}>
-            <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+          <div className="text-sm text-foreground leading-relaxed prose prose-sm max-w-none dark:prose-invert prose-headings:font-medium prose-p:leading-relaxed prose-pre:bg-muted w-full overflow-hidden break-words" style={{ wordWrap: 'break-word', overflowWrap: 'break-word', wordBreak: 'break-word', paddingLeft: isBrowserVisible ? '0.75rem' : '2.25rem' }}>
+            <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]} components={markdownComponents}>
               {thought_process}
             </ReactMarkdown>
           </div>

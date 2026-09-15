@@ -20,8 +20,10 @@ interface SortableShortcutItemProps {
   linkHref: string
   isActive: boolean
   isCollapsed: boolean
+  isPinned: boolean
   title: string
   visual?: ModuleVariant
+  onPinnedChange: (key: string, pinned: boolean) => void
   onRemove: (key: string) => void
   t: (k: string) => string
 }
@@ -33,8 +35,10 @@ export function SortableShortcutItem({
   linkHref,
   isActive,
   isCollapsed,
+  isPinned,
   title,
   visual,
+  onPinnedChange,
   onRemove,
   t,
 }: SortableShortcutItemProps) {
@@ -55,73 +59,81 @@ export function SortableShortcutItem({
   }
 
   return (
-    <div ref={setNodeRef} style={style} {...attributes} {...listeners} className="touch-none select-none w-full">
-      <ContextMenu>
-        <ContextMenuTrigger asChild>
-          <div
-            id={`nav-item-${id}`}
-            className="relative select-none group w-full"
-            style={{ WebkitTouchCallout: "none" }}
-            onTouchStart={(e) => {
-              const timer = setTimeout(() => {
-                const event = new MouseEvent("contextmenu", {
-                  bubbles: true,
-                  cancelable: true,
-                  view: window,
-                  button: 2,
-                  buttons: 2,
-                  clientX: e.touches[0].clientX,
-                  clientY: e.touches[0].clientY,
-                })
-                document.getElementById(`nav-item-${id}`)?.dispatchEvent(event)
-              }, 500)
-              const el = document.getElementById(`nav-item-${id}`)
-              if (el) {
-                el.dataset.timer = timer.toString()
-              }
-            }}
-            onTouchEnd={() => {
-              const el = document.getElementById(`nav-item-${id}`)
-              if (el && el.dataset.timer) {
-                clearTimeout(parseInt(el.dataset.timer))
-                el.dataset.timer = ""
-              }
-            }}
-            onTouchMove={() => {
-              const el = document.getElementById(`nav-item-${id}`)
-              if (el && el.dataset.timer) {
-                clearTimeout(parseInt(el.dataset.timer))
-                el.dataset.timer = ""
-              }
-            }}
-          >
-            <div className={cn("relative z-10 w-full", isDragging && "opacity-50 pointer-events-none")}>
-              <MenuItem
-                href={linkHref}
-                icon={icon as any}
-                title={title}
-                isActive={isActive}
-                isCollapsed={isCollapsed}
-                visual={visual}
-              />
-            </div>
-          </div>
-        </ContextMenuTrigger>
-        <ContextMenuContent className="w-48 z-[10000]">
-          <ContextMenuItem asChild>
-            <a href={linkHref} className="w-full flex cursor-pointer" onPointerDown={(e) => e.stopPropagation()}>
-              {t("common.open") === "common.open" ? `Open ${title}` : `${t("common.open")} ${title}`}
-            </a>
-          </ContextMenuItem>
-          <ContextMenuItem
-            onClick={() => onRemove(id)}
-            className="text-destructive focus:text-destructive focus:bg-destructive/10 cursor-pointer"
-            onPointerDown={(e) => e.stopPropagation()}
-          >
-            {t("common.remove") === "common.remove" ? "Remove shortcut" : t("common.remove")}
-          </ContextMenuItem>
-        </ContextMenuContent>
-      </ContextMenu>
-    </div>
+    <ContextMenu>
+      <ContextMenuTrigger asChild>
+        <div
+          ref={setNodeRef}
+          id={`nav-item-${id}`}
+          style={{ ...style, WebkitTouchCallout: "none" }}
+          {...attributes}
+          {...listeners}
+          className={cn(
+            "relative z-10 block w-full min-w-0 touch-none select-none",
+            isDragging && "opacity-50 pointer-events-none"
+          )}
+          onTouchStart={(e) => {
+            listeners?.onTouchStart?.(e)
+            const timer = setTimeout(() => {
+              const touch = e.touches[0]
+              if (!touch) return
+              const event = new MouseEvent("contextmenu", {
+                bubbles: true,
+                cancelable: true,
+                view: window,
+                button: 2,
+                buttons: 2,
+                clientX: touch.clientX,
+                clientY: touch.clientY,
+              })
+              document.getElementById(`nav-item-${id}`)?.dispatchEvent(event)
+            }, 500)
+            e.currentTarget.dataset.timer = timer.toString()
+          }}
+          onTouchEnd={(e) => {
+            listeners?.onTouchEnd?.(e)
+            const timer = e.currentTarget.dataset.timer
+            if (timer) clearTimeout(Number(timer))
+            e.currentTarget.dataset.timer = ""
+          }}
+          onTouchMove={(e) => {
+            listeners?.onTouchMove?.(e)
+            const timer = e.currentTarget.dataset.timer
+            if (timer) clearTimeout(Number(timer))
+            e.currentTarget.dataset.timer = ""
+          }}
+        >
+          <MenuItem
+            id={`sidebar-shortcut-${id}`}
+            href={linkHref}
+            icon={icon as any}
+            title={title}
+            isActive={isActive}
+            isCollapsed={isCollapsed}
+            visual={visual}
+          />
+        </div>
+      </ContextMenuTrigger>
+      <ContextMenuContent className="w-48 z-[10000]">
+        <ContextMenuItem asChild>
+          <a href={linkHref} className="w-full flex cursor-pointer" onPointerDown={(e) => e.stopPropagation()}>
+            {t("common.open") === "common.open" ? `Open ${title}` : `${t("common.open")} ${title}`}
+          </a>
+        </ContextMenuItem>
+        <ContextMenuItem
+          onClick={() => onPinnedChange(id, !isPinned)}
+          className="cursor-pointer"
+          onPointerDown={(e) => e.stopPropagation()}
+        >
+          {isPinned ? "Unpin shortcut" : "Pin shortcut"}
+        </ContextMenuItem>
+        <ContextMenuItem
+          onClick={() => onRemove(id)}
+          className="text-destructive focus:text-destructive focus:bg-destructive/10 cursor-pointer"
+          onPointerDown={(e) => e.stopPropagation()}
+        >
+          {t("common.remove") === "common.remove" ? "Remove shortcut" : t("common.remove")}
+        </ContextMenuItem>
+      </ContextMenuContent>
+    </ContextMenu>
   )
 }

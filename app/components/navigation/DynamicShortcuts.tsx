@@ -33,28 +33,25 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable"
 import { Star } from "@/app/components/ui/icons"
-import { isPinnedShortcutKey, SIDEBAR_PINNED_NAV_KEYS } from "./shortcut-types"
+import {
+  isPinnedShortcutKey,
+  normalizeShortcut,
+  SIDEBAR_PINNED_NAV_KEYS,
+  type ShortcutRecord,
+} from "./shortcut-types"
 import { useShortcutSlotCount } from "./use-shortcut-slot-count"
 import { NAV_ITEM_ICON, getModuleVisual, ModuleVariant } from "@/app/config/module-visuals"
 import { setVisibleSidebarShortcutKeys } from "./use-sidebar-nav-keys"
 import { useOptionalScreenAccess } from "@/app/context/ScreenAccessContext"
 import { getNavKeyForPath } from "@/lib/auth/screen-access"
 import { SortableShortcutItem } from "./SortableShortcutItem"
+import { MenuItem } from "./MenuItem"
 
 interface DynamicShortcutsProps {
   isCollapsed: boolean
 }
 
 const PINNED_NAV_KEYS = new Set<string>(SIDEBAR_PINNED_NAV_KEYS)
-
-export interface CustomShortcutItem {
-  id: string;
-  title: string;
-  href: string;
-  isCustom: true;
-}
-
-export type ShortcutEntry = string | CustomShortcutItem;
 
 // Sidebar shortcuts exclude Settings — those stay in Configuration and the launcher
 type AreaNavItemWithArea = AreaNavItem & { area: WorkspaceArea }
@@ -70,9 +67,9 @@ for (const areaKey of NAVIGATION_MENU_AREA_ORDER) {
   }
 }
 
-function withoutConfigurationShortcuts(entries: ShortcutEntry[]): ShortcutEntry[] {
+function withoutConfigurationShortcuts(entries: ShortcutRecord[]): ShortcutRecord[] {
   return entries.filter((entry) => {
-    if (typeof entry === "string") return !isSettingsNavKey(entry)
+    if (!entry.isCustom || !entry.href) return !isSettingsNavKey(entry.id)
     try {
       const url = new URL(entry.href, "http://local")
       return !isConfigurationNavPath(url.pathname, url.searchParams) && url.pathname !== "/onboarding" && url.pathname !== "/navigation"
@@ -82,8 +79,8 @@ function withoutConfigurationShortcuts(entries: ShortcutEntry[]): ShortcutEntry[
   })
 }
 
-function withoutPinnedShortcuts(entries: ShortcutEntry[]): ShortcutEntry[] {
-  return entries.filter((entry) => typeof entry !== "string" || !isPinnedShortcutKey(entry))
+function withoutFixedShortcuts(entries: ShortcutRecord[]): ShortcutRecord[] {
+  return entries.filter((entry) => !isPinnedShortcutKey(entry.id))
 }
 
 export function DynamicShortcuts({ isCollapsed }: DynamicShortcutsProps) {
@@ -91,13 +88,21 @@ export function DynamicShortcuts({ isCollapsed }: DynamicShortcutsProps) {
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const navSearchParams = useMemo(() => new URLSearchParams(searchParams.toString()), [searchParams])
+  const overviewHref = useMemo(() => {
+    const params = new URLSearchParams()
+    if (navSearchParams.get("artifact") === "true") {
+      params.set("artifact", "true")
+    }
+    params.set("tab", "overview")
+    return `/dashboard?${params.toString()}`
+  }, [navSearchParams])
 
   const containerRef = useRef<HTMLDivElement>(null)
   const slots = useShortcutSlotCount(containerRef)
 
   const { user, isLoading: isAuthLoading } = useAuth()
   const screenAccess = useOptionalScreenAccess()
-  const [shortcuts, setShortcuts] = useState<ShortcutEntry[]>([])
+  const [shortcuts, setShortcuts] = useState<ShortcutRecord[]>([])
   const [isLoaded, setIsLoaded] = useState(false)
 
   // Load from DB or local storage
@@ -109,7 +114,7 @@ export function DynamicShortcuts({ isCollapsed }: DynamicShortcutsProps) {
 
     const loadShortcuts = async () => {
       try {
-        let loadedShortcuts: ShortcutEntry[] = []
+        let loadedShortcuts: any[] = []
         let hasLoadedFromDB = false
 
         if (user?.id) {
@@ -135,7 +140,9 @@ export function DynamicShortcuts({ isCollapsed }: DynamicShortcutsProps) {
 
         if (isMounted) {
           setShortcuts(
-            withoutConfigurationShortcuts(withoutPinnedShortcuts(loadedShortcuts))
+            withoutConfigurationShortcuts(
+              withoutFixedShortcuts(loadedShortcuts.map(normalizeShortcut))
+            )
           )
           setIsLoaded(true)
         }
@@ -151,7 +158,9 @@ export function DynamicShortcuts({ isCollapsed }: DynamicShortcutsProps) {
       const saved = localStorage.getItem("navigationShortcuts_v3")
       if (saved) {
         setShortcuts(
-          withoutConfigurationShortcuts(withoutPinnedShortcuts(JSON.parse(saved)))
+          withoutConfigurationShortcuts(
+            withoutFixedShortcuts(JSON.parse(saved).map(normalizeShortcut))
+          )
         )
       }
     }
@@ -196,18 +205,11 @@ export function DynamicShortcuts({ isCollapsed }: DynamicShortcutsProps) {
     if (activeItem) {
       if (screenAccess && !screenAccess.canAccessNavKey(activeItem.key)) return
       setShortcuts(prev => {
-        // Find if this key already exists
-        const exists = prev.some(s => {
-          if (typeof s === 'string') return s === activeItem.key;
-          return s.id === activeItem.key;
-        });
+        const exists = prev.some((shortcut) => shortcut.id === activeItem.key)
         if (!exists) {
-          return [activeItem.key, ...prev]
+          return [{ id: activeItem.key, pinned: false }, ...prev]
         } else {
-          const index = prev.findIndex(s => {
-            if (typeof s === 'string') return s === activeItem.key;
-            return s.id === activeItem.key;
-          });
+          const index = prev.findIndex((shortcut) => shortcut.id === activeItem.key)
           if (index >= slots) {
             const next = [...prev];
             const item = next.splice(index, 1)[0];
@@ -234,10 +236,12 @@ export function DynamicShortcuts({ isCollapsed }: DynamicShortcutsProps) {
         const customId = `custom-${pathname.replace(/\//g, '-')}`;
         
         setShortcuts(prev => {
-          const exists = prev.some(s => {
-            if (typeof s === 'string') return false;
-            return s.id === customId || s.href === pathname || s.href === fullHref;
-          });
+          const exists = prev.some(
+            (shortcut) =>
+              shortcut.id === customId ||
+              shortcut.href === pathname ||
+              shortcut.href === fullHref
+          )
           
           if (!exists) {
             const segments = pathname.split('/').filter(Boolean);
@@ -253,13 +257,16 @@ export function DynamicShortcuts({ isCollapsed }: DynamicShortcutsProps) {
               id: customId,
               title,
               href: fullHref,
-              isCustom: true
+              isCustom: true,
+              pinned: false,
             }, ...prev];
           } else {
-            const index = prev.findIndex(s => {
-              if (typeof s === 'string') return false;
-              return s.id === customId || s.href === pathname || s.href === fullHref;
-            });
+            const index = prev.findIndex(
+              (shortcut) =>
+                shortcut.id === customId ||
+                shortcut.href === pathname ||
+                shortcut.href === fullHref
+            )
             if (index >= slots) {
               const next = [...prev];
               const item = next.splice(index, 1)[0];
@@ -273,10 +280,15 @@ export function DynamicShortcuts({ isCollapsed }: DynamicShortcutsProps) {
   }, [pathname, navSearchParams, searchParams, isLoaded, slots, screenAccess])
 
   const handleRemove = (idToRemove: string) => {
-    setShortcuts(prev => prev.filter(k => {
-      if (typeof k === 'string') return k !== idToRemove;
-      return k.id !== idToRemove;
-    }))
+    setShortcuts((prev) => prev.filter((shortcut) => shortcut.id !== idToRemove))
+  }
+
+  const handlePinnedChange = (id: string, pinned: boolean) => {
+    setShortcuts((prev) =>
+      prev.map((shortcut) =>
+        shortcut.id === id ? { ...shortcut, pinned } : shortcut
+      )
+    )
   }
 
   const sensors = useSensors(
@@ -305,8 +317,8 @@ export function DynamicShortcuts({ isCollapsed }: DynamicShortcutsProps) {
         navigator.vibrate(50)
       }
       setShortcuts((items) => {
-        const oldIndex = items.findIndex(s => (typeof s === 'string' ? s : s.id) === active.id)
-        const newIndex = items.findIndex(s => (typeof s === 'string' ? s : s.id) === over.id)
+        const oldIndex = items.findIndex((shortcut) => shortcut.id === active.id)
+        const newIndex = items.findIndex((shortcut) => shortcut.id === over.id)
         
         return arrayMove(items, oldIndex, newIndex)
       })
@@ -317,7 +329,8 @@ export function DynamicShortcuts({ isCollapsed }: DynamicShortcutsProps) {
     const eligible = withoutConfigurationShortcuts(shortcuts)
     if (!screenAccess) return eligible
     return eligible.filter((entry) => {
-      if (typeof entry === "string") return screenAccess.canAccessNavKey(entry)
+      if (!entry.isCustom) return screenAccess.canAccessNavKey(entry.id)
+      if (!entry.href) return false
       try {
         const url = new URL(entry.href, "http://local")
         const key = getNavKeyForPath(url.pathname, url.searchParams)
@@ -328,33 +341,41 @@ export function DynamicShortcuts({ isCollapsed }: DynamicShortcutsProps) {
     })
   }, [screenAccess, shortcuts])
 
+  const pinnedShortcuts = useMemo(
+    () => allowedShortcuts.filter((entry) => entry.pinned),
+    [allowedShortcuts]
+  )
+  const visibleRecentShortcuts = useMemo(
+    () =>
+      allowedShortcuts
+        .filter((entry) => !entry.pinned)
+        .slice(0, Math.max(0, slots - pinnedShortcuts.length)),
+    [allowedShortcuts, pinnedShortcuts.length, slots]
+  )
+  const visibleShortcuts = useMemo(
+    () => [...pinnedShortcuts, ...visibleRecentShortcuts],
+    [pinnedShortcuts, visibleRecentShortcuts]
+  )
+
   useEffect(() => {
-    const ids = allowedShortcuts.slice(0, slots).flatMap((entry) => {
-      const id = typeof entry === "string" ? entry : entry.id
-      const isCustom = typeof entry !== "string" && Boolean(entry.isCustom)
-      if (!id || isCustom || isPinnedShortcutKey(id)) return []
-      return [id]
+    const ids = visibleShortcuts.flatMap((entry) => {
+      if (!entry.id || entry.isCustom || isPinnedShortcutKey(entry.id)) return []
+      return [entry.id]
     })
     setVisibleSidebarShortcutKeys(ids)
-  }, [allowedShortcuts, slots])
-
-  if (allowedShortcuts.length === 0) return null
-
-  const visibleShortcuts = allowedShortcuts.slice(0, slots)
-  const shortcutIds = allowedShortcuts.map(s => typeof s === 'string' ? s : s.id)
-  const visibleShortcutIds = shortcutIds.slice(0, slots)
+  }, [visibleShortcuts])
 
   let bestMatchId: string | null = null;
   let maxMatchLength = -1;
 
   visibleShortcuts.forEach((entry) => {
-    const isCustom = typeof entry !== 'string'
-    const id = isCustom ? entry.id : entry
+    const isCustom = Boolean(entry.isCustom)
+    const id = entry.id
 
     let isMatch = false
     let matchLen = 0
 
-    if (isCustom) {
+    if (isCustom && entry.href) {
       isMatch = pathname === entry.href || pathname.startsWith(entry.href + '?') || pathname.startsWith(entry.href + '/')
       matchLen = entry.href.length
     } else {
@@ -374,68 +395,102 @@ export function DynamicShortcuts({ isCollapsed }: DynamicShortcutsProps) {
     }
   })
 
+  const renderShortcut = (entry: ShortcutRecord) => {
+    const isCustom = Boolean(entry.isCustom)
+    const id = entry.id
+
+    let item: AreaNavItem | undefined
+    let icon: React.ComponentType<any> | null = Star
+    let linkHref = ""
+    let title = ""
+    let visual: ModuleVariant | undefined
+
+    if (isCustom && entry.href) {
+      item = { key: id, href: entry.href }
+      linkHref = entry.href
+      title = entry.title || id
+    } else {
+      item = ALL_ITEMS.find((candidate) => candidate.key === id)
+      if (!item) return null
+      icon = NAV_ITEM_ICON[item.key] || Star
+      linkHref = buildNavItemHref(item, navSearchParams)
+      title = getNavItemTitle(item, t) || item.key
+      if ((item as AreaNavItemWithArea).area) {
+        visual = getModuleVisual((item as AreaNavItemWithArea).area, item.key)
+      }
+    }
+
+    return (
+      <SortableShortcutItem
+        key={id}
+        id={id}
+        item={item}
+        icon={icon}
+        linkHref={linkHref}
+        isActive={id === bestMatchId}
+        isCollapsed={isCollapsed}
+        isPinned={entry.pinned}
+        title={title}
+        visual={visual}
+        onPinnedChange={handlePinnedChange}
+        onRemove={handleRemove}
+        t={t}
+      />
+    )
+  }
+
+  const showOverview =
+    !screenAccess || screenAccess.canAccessNavKey("reportOverview")
+  const overviewActive =
+    pathname.startsWith("/dashboard") &&
+    searchParams.get("tab") === "overview"
+
+  if (!showOverview && visibleShortcuts.length === 0) return null
+
   return (
-    <>
-      <div className="w-full h-[1px] bg-black/5 dark:bg-white/5 my-2" />
-      <div ref={containerRef} className="flex-1 w-full min-h-0 flex flex-col space-y-1">
-        <DndContext 
+    <div ref={containerRef} className="flex min-h-0 w-full flex-1 flex-col space-y-1">
+      <DndContext
           sensors={sensors}
           collisionDetection={closestCenter}
           onDragEnd={handleDragEnd}
         >
-          <SortableContext 
-            items={visibleShortcutIds}
+          <SortableContext
+            items={pinnedShortcuts.map((entry) => entry.id)}
             strategy={verticalListSortingStrategy}
           >
-            {visibleShortcuts.map((entry) => {
-              const isCustom = typeof entry !== 'string' && Boolean((entry as any).isCustom)
-              const id = typeof entry === 'string' ? entry : entry.id
-              
-              let item: AreaNavItem | undefined;
-              let icon: React.ComponentType<any> | null = Star
-              let linkHref = ""
-              let isActive = false
-              let title = ""
-              let visual: ModuleVariant | undefined;
-
-              if (isCustom) {
-                item = { key: entry.id, href: entry.href }
-                icon = Star
-                linkHref = entry.href
-                isActive = id === bestMatchId
-                title = entry.title
-              } else {
-                item = ALL_ITEMS.find(i => i.key === id)
-                if (!item) return null
-                icon = NAV_ITEM_ICON[item.key] || Star
-                linkHref = buildNavItemHref(item, navSearchParams)
-                isActive = id === bestMatchId
-                title = getNavItemTitle(item, t)
-                if (!title || title.trim() === "") title = "Agent Channels"
-                if ((item as AreaNavItemWithArea).area) {
-                  visual = getModuleVisual((item as AreaNavItemWithArea).area, item.key)
-                }
-              }
-
-              return (
-                <SortableShortcutItem
-                  key={id}
-                  id={id}
-                  item={item}
-                  icon={icon}
-                  linkHref={linkHref}
-                  isActive={isActive}
-                  isCollapsed={isCollapsed}
-                  title={title}
-                  visual={visual}
-                  onRemove={handleRemove}
-                  t={t}
-                />
-              )
-            })}
+            {pinnedShortcuts.map(renderShortcut)}
           </SortableContext>
-        </DndContext>
-      </div>
-    </>
+
+          {showOverview && (
+            <>
+              <div className="my-2 h-px w-full bg-black/5 dark:bg-white/5" />
+              <MenuItem
+                href={overviewHref}
+                icon={NAV_ITEM_ICON.reportOverview}
+                title={t("layout.sidebar.summary") || "Overview"}
+                isActive={overviewActive}
+                isCollapsed={isCollapsed}
+                onClick={() => {
+                  window.dispatchEvent(
+                    new CustomEvent("navigation-history:reset")
+                  )
+                }}
+              />
+            </>
+          )}
+
+          {visibleRecentShortcuts.length > 0 && (
+            <>
+              <div className="my-2 h-px w-full bg-black/5 dark:bg-white/5" />
+              <SortableContext
+                items={visibleRecentShortcuts.map((entry) => entry.id)}
+                strategy={verticalListSortingStrategy}
+              >
+                {visibleRecentShortcuts.map(renderShortcut)}
+              </SortableContext>
+            </>
+          )}
+      </DndContext>
+    </div>
   )
 }

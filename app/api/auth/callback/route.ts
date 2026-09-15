@@ -24,12 +24,30 @@ export async function GET(request: Request) {
     const role = requestUrl.searchParams.get('role')
     const name = requestUrl.searchParams.get('name')
     const position = requestUrl.searchParams.get('position')
+    const invitedEmail = requestUrl.searchParams.get('email')
 
     console.log(`Auth callback: Processing code=${!!code}, redirecting to ${returnTo}`);
     
     // If this is a team invitation, log it
     if (invitationType === 'team_invitation') {
       console.log(`🎯 Team invitation callback detected:`, { siteId, siteName, role });
+    }
+
+    // The custom Supabase email hook verifies magic links before redirecting here,
+    // so existing users arrive without a PKCE code. Preserve the invitation context.
+    if (!code && invitationType === 'team_invitation' && siteId && siteName && role) {
+      const invitationParams = new URLSearchParams({
+        siteId,
+        siteName,
+        role,
+        ...(name && { name }),
+        ...(position && { position }),
+        ...(invitedEmail && { email: invitedEmail }),
+        type: 'team_invitation',
+      })
+      return NextResponse.redirect(
+        new URL(`/auth/team-invitation?${invitationParams.toString()}`, request.url)
+      )
     }
 
     if (code) {
@@ -85,7 +103,7 @@ export async function GET(request: Request) {
       
       if (invitationType === 'team_invitation' && siteId && siteName && role) {
         // Team invitation data from URL parameters
-        teamInvitationData = { siteId, siteName, role, name, position }
+        teamInvitationData = { siteId, siteName, role, name, position, email: invitedEmail }
       } else if (data.session?.user?.user_metadata?.invitationType === 'team_invitation') {
         // Team invitation data from user metadata (fallback when emailRedirectTo is ignored)
         const metadata = data.session.user.user_metadata
@@ -94,7 +112,8 @@ export async function GET(request: Request) {
           siteName: metadata.siteName,
           role: metadata.role,
           name: metadata.name,
-          position: metadata.position
+          position: metadata.position,
+          email: metadata.email,
         }
         console.log(`🔄 Team invitation found in user metadata:`, teamInvitationData);
       }
@@ -109,6 +128,7 @@ export async function GET(request: Request) {
           role: teamInvitationData.role,
           ...(teamInvitationData.name && { name: teamInvitationData.name }),
           ...(teamInvitationData.position && { position: teamInvitationData.position }),
+          ...(teamInvitationData.email && { email: teamInvitationData.email }),
           type: 'team_invitation'
         })
         

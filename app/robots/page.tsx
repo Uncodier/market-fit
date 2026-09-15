@@ -6,7 +6,7 @@ import { useRouter, useSearchParams, usePathname } from "next/navigation"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/app/components/ui/dialog"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
-import { Globe, Pause, Play, MicroPause, MicroPlay, X, Plus, MoreHorizontal, ExternalLink, RotateCw, Loader, Monitor, Laptop, Tablet, Smartphone, Folder, Download, Archive, PanelRightClose, PanelRightOpen, LayoutGrid, Shield, Key } from "@/app/components/ui/icons"
+import { Globe, Pause, Play, MicroPause, MicroPlay, X, Plus, MoreHorizontal, ExternalLink, RotateCw, Loader, Monitor, Laptop, Tablet, Smartphone, Folder, Download, Archive, PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, LayoutGrid, Shield, Key } from "@/app/components/ui/icons"
 import { Button } from "@/app/components/ui/button"
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/app/components/ui/dropdown-menu"
 import { useLayout } from "@/app/context/LayoutContext"
@@ -49,6 +49,14 @@ import {
   sortRobotInstances,
   splitVisibleInstances,
 } from "@/lib/navigation/robots-instance"
+import {
+  DEFAULT_INSTANCE_WORKSPACE_STATE,
+  loadInstanceWorkspaceState,
+  resolveAvailableBrowserTab,
+  saveInstanceWorkspaceState,
+  type BrowserTab,
+  type WorkspaceLayout,
+} from "./instance-workspace-state"
 
 import { cn } from "@/lib/utils"
 
@@ -261,7 +269,6 @@ function RobotsPageContent() {
   
   
   const [isBrowserModalOpen, setIsBrowserModalOpen] = useState(false)
-  const [isChatHidden, setIsChatHidden] = useState(false)
   const iframeRef = useRef<HTMLIFrameElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const [viewportSize, setViewportSize] = useState<'imac' | 'macbook' | 'ipad' | 'iphone'>('imac')
@@ -972,8 +979,13 @@ function RobotsPageContent() {
 
   const { requirementStatuses, isLoading: isRequirementStatusesLoading, isValidating: isRequirementStatusesValidating } = useRequirementStatus(activeRobotInstance)
   
-  type BrowserTab = { kind: 'preview' } | { kind: 'source' } | { kind: 'artifact'; screen: string }
-  const [activeBrowserTab, setActiveBrowserTab] = useState<BrowserTab>({ kind: 'preview' })
+  const [activeBrowserTab, setActiveBrowserTab] = useState<BrowserTab>(
+    DEFAULT_INSTANCE_WORKSPACE_STATE.activeBrowserTab
+  )
+  const [workspaceLayout, setWorkspaceLayout] = useState<WorkspaceLayout>(
+    DEFAULT_INSTANCE_WORKSPACE_STATE.layout
+  )
+  const [hydratedWorkspaceInstanceId, setHydratedWorkspaceInstanceId] = useState<string | null>(null)
   const [artifactReloadCounter, setArtifactReloadCounter] = useState(0)
   
   // Track previous instance to reset browser tab
@@ -987,28 +999,58 @@ function RobotsPageContent() {
     if (currentInstanceId !== prevInstanceIdRef.current) {
       prevInstanceIdRef.current = currentInstanceId
       initialPreselectDoneRef.current = false
-      
+
       const requestedScreen = searchParams?.get('screen')
       const isArtifact = searchParams?.get('artifact') === 'true'
       const requestedTab = searchParams?.get('tab') // e.g. 'source' or 'preview'
-      
+      const savedState = currentInstanceId
+        ? loadInstanceWorkspaceState(currentInstanceId)
+        : null
+      let nextBrowserTab = savedState?.activeBrowserTab
+        ?? DEFAULT_INSTANCE_WORKSPACE_STATE.activeBrowserTab
+      let nextLayout = savedState?.layout
+        ?? DEFAULT_INSTANCE_WORKSPACE_STATE.layout
+
       if (isArtifact && requestedScreen) {
         if (requestedScreen === 'code' || requestedScreen === 'source_code' || requestedScreen === 'source') {
-          setActiveBrowserTab({ kind: 'source' })
+          nextBrowserTab = { kind: 'source' }
         } else {
-          setActiveBrowserTab({ kind: 'artifact', screen: requestedScreen })
+          nextBrowserTab = { kind: 'artifact', screen: requestedScreen }
         }
+        nextLayout = 'split'
       } else if (requestedTab === 'source' || requestedTab === 'preview') {
-        setActiveBrowserTab({ kind: requestedTab as any })
-      } else {
-        // Preselect preview when changing instances (the artifacts effect will auto-select if needed)
-        // Actually we just set it to preview, if it's an instance without requirement preview, it will be overridden by artifact if it exists.
-        setActiveBrowserTab({ kind: 'preview' })
+        nextBrowserTab = { kind: requestedTab }
+        nextLayout = 'split'
       }
+
+      setHydratedWorkspaceInstanceId(null)
+      setActiveBrowserTab(nextBrowserTab)
+      setWorkspaceLayout(nextLayout)
+      setHydratedWorkspaceInstanceId(currentInstanceId)
     }
   }, [activeRobotInstance?.id, searchParams])
 
-  const { artifacts, removeArtifactLocally, refetchArtifacts } = useInstanceArtifacts({ instanceId: activeRobotInstance?.id })
+  useEffect(() => {
+    const currentInstanceId = activeRobotInstance?.id
+    if (!currentInstanceId || hydratedWorkspaceInstanceId !== currentInstanceId) return
+
+    saveInstanceWorkspaceState(currentInstanceId, {
+      activeBrowserTab,
+      layout: workspaceLayout,
+    })
+  }, [
+    activeBrowserTab,
+    activeRobotInstance?.id,
+    hydratedWorkspaceInstanceId,
+    workspaceLayout,
+  ])
+
+  const {
+    artifacts,
+    isLoading: isArtifactsLoading,
+    removeArtifactLocally,
+    refetchArtifacts,
+  } = useInstanceArtifacts({ instanceId: activeRobotInstance?.id })
   
   const artifactScreens = useMemo(() => {
     const screensMap = new Map<string, typeof artifacts[0]>()
@@ -1083,6 +1125,39 @@ function RobotsPageContent() {
     );
 
   useEffect(() => {
+    const currentInstanceId = activeRobotInstance?.id
+    if (
+      !currentInstanceId ||
+      hydratedWorkspaceInstanceId !== currentInstanceId ||
+      isArtifactsLoading ||
+      !isRequirementPreviewStatusKnown
+    ) {
+      return
+    }
+
+    setActiveBrowserTab((currentTab) => {
+      const resolvedTab = resolveAvailableBrowserTab({
+        requestedTab: currentTab,
+        hasRequirementPreview,
+        artifactScreens: artifactScreens.map((artifact) => artifact.screen),
+      })
+      const isSameTab =
+        currentTab.kind === resolvedTab.kind &&
+        (currentTab.kind !== 'artifact' ||
+          (resolvedTab.kind === 'artifact' && currentTab.screen === resolvedTab.screen))
+
+      return isSameTab ? currentTab : resolvedTab
+    })
+  }, [
+    activeRobotInstance?.id,
+    artifactScreens,
+    hasRequirementPreview,
+    hydratedWorkspaceInstanceId,
+    isArtifactsLoading,
+    isRequirementPreviewStatusKnown,
+  ])
+
+  useEffect(() => {
     // If we have no artifacts yet, but we know the preview status, we can mark the initial preselect as done.
     // This way, if an artifact is created later, it will be treated as newly created.
     if (artifacts.length === 0 && isRequirementPreviewStatusKnown && !initialPreselectDoneRef.current) {
@@ -1099,12 +1174,27 @@ function RobotsPageContent() {
         initialPreselectDoneRef.current = true;
         // Auto-select artifact on initial load ONLY if there's no requirement preview
         if (!hasRequirementPreview) {
-          setActiveBrowserTab({ kind: 'artifact', screen: newestArtifact.screen })
+          setActiveBrowserTab((currentTab) => resolveAvailableBrowserTab({
+            requestedTab: currentTab,
+            hasRequirementPreview,
+            artifactScreens: artifactScreens.map((artifact) => artifact.screen),
+          }))
           if (newestArtifact.should_reload && !isInitialLoad) {
             setArtifactReloadCounter(c => c + 1)
           }
         }
-      } else if (isNewlyCreated || (isInitialLoad && initialPreselectDoneRef.current)) {
+      } else if (
+        isNewlyCreated ||
+        (
+          isInitialLoad &&
+          initialPreselectDoneRef.current &&
+          !hasRequirementPreview &&
+          (
+            activeBrowserTab.kind !== 'artifact' ||
+            !artifactScreens.some((artifact) => artifact.screen === activeBrowserTab.screen)
+          )
+        )
+      ) {
         // Auto-select artifact if it's a newly created artifact.
         // If initialPreselectDoneRef was already true, and we are going from 0 to 1 artifacts (isInitialLoad), 
         // it means the artifact was created while the user was watching, so we should switch to it!
@@ -1122,7 +1212,7 @@ function RobotsPageContent() {
       }
     }
     prevArtifactsRef.current = artifacts
-  }, [artifacts, activeBrowserTab, hasRequirementPreview, isRequirementPreviewStatusKnown])
+  }, [artifacts, activeBrowserTab, artifactScreens, hasRequirementPreview, isRequirementPreviewStatusKnown])
 
 
   const [selectedFilePath, setSelectedFilePath] = useState<string | null>(null)
@@ -1228,11 +1318,18 @@ function RobotsPageContent() {
         }
         
         const exists = shortcuts.some(s => (typeof s === 'string' ? s : s.id) === matchingKey)
-        if (!exists) {
-          shortcuts.push(matchingKey)
-          localStorage.setItem("navigationShortcuts_v3", JSON.stringify(shortcuts))
-          window.dispatchEvent(new Event("shortcuts-updated"))
+        if (exists) {
+          shortcuts = shortcuts.map((shortcut) => {
+            const shortcutId = typeof shortcut === 'string' ? shortcut : shortcut.id
+            return shortcutId === matchingKey
+              ? { ...(typeof shortcut === 'string' ? {} : shortcut), id: matchingKey, pinned: true }
+              : shortcut
+          })
+        } else {
+          shortcuts.push({ id: matchingKey, pinned: true })
         }
+        localStorage.setItem("navigationShortcuts_v3", JSON.stringify(shortcuts))
+        window.dispatchEvent(new Event("shortcuts-updated"))
         
         artifactSearchParams.delete('artifact')
         artifactSearchParams.delete('theme')
@@ -1256,18 +1353,28 @@ function RobotsPageContent() {
         const searchString = artifactSearchParams.toString()
         const cleanUrl = pathname + (searchString ? `?${searchString}` : '')
         
-        if (!exists) {
-          shortcuts.push({
-            id: customId,
-            title: targetScreen 
-              ? getScreenMetadata(targetScreen, t).label
-              : 'App Screen',
-            href: cleanUrl,
-            isCustom: true
-          })
-          localStorage.setItem("navigationShortcuts_v3", JSON.stringify(shortcuts))
-          window.dispatchEvent(new Event("shortcuts-updated"))
+        const pinnedShortcut = {
+          id: customId,
+          title: targetScreen
+            ? getScreenMetadata(targetScreen, t).label
+            : 'App Screen',
+          href: cleanUrl,
+          isCustom: true,
+          pinned: true,
         }
+        shortcuts = exists
+          ? shortcuts.map((shortcut) => {
+              const shortcutId = typeof shortcut === 'string' ? shortcut : shortcut.id
+              return shortcutId === customId
+                ? {
+                    ...(typeof shortcut === 'string' ? {} : shortcut),
+                    ...pinnedShortcut,
+                  }
+                : shortcut
+            })
+          : [...shortcuts, pinnedShortcut]
+        localStorage.setItem("navigationShortcuts_v3", JSON.stringify(shortcuts))
+        window.dispatchEvent(new Event("shortcuts-updated"))
         
         // router.push(cleanUrl)
       }
@@ -1321,12 +1428,14 @@ function RobotsPageContent() {
   // previous behavior without removing logic.
   const SHOW_PREVIEW_FOR_RUNNING_INSTANCE = false
 
-  // Compute if browser should be visible
-  const isBrowserVisible = Boolean(
+  const hasBrowserContent = Boolean(
     (hasRequirementPreview || artifacts.length > 0) &&
     !pendingInstanceId &&
     !isCanvasMode
   )
+  const isPreviewHidden = workspaceLayout === 'chat'
+  const isChatHidden = workspaceLayout === 'preview'
+  const isBrowserVisible = hasBrowserContent && !isPreviewHidden
 
   const rawActiveUrlToDisplay = (() => {
     if (activeBrowserTab.kind === 'artifact') {
@@ -2275,9 +2384,10 @@ function RobotsPageContent() {
                     </div>
 
                     <button
-                      onClick={() => setIsChatHidden(!isChatHidden)}
+                      onClick={() => setWorkspaceLayout(isChatHidden ? 'split' : 'preview')}
                       className="shrink-0 h-7 w-7 flex items-center justify-center rounded-full hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
                       title={isChatHidden ? "Show Chat" : "Hide Chat"}
+                      aria-label={isChatHidden ? "Show Chat" : "Hide Chat"}
                     >
                       {isChatHidden ? <PanelRightOpen className="h-4 w-4" /> : <PanelRightClose className="h-4 w-4" />}
                     </button>
@@ -2367,9 +2477,26 @@ function RobotsPageContent() {
             )}
 
             {/* Canvas modes stay full-bleed. Agent mode may split with explorer + instance logs. */}
-            {(isCanvasMode || !isChatHidden) && (
+            {(isCanvasMode || !isChatHidden || !isBrowserVisible) && (
               <div className={`${isBrowserVisible ? 'w-full lg:w-1/3' : 'w-full mx-auto'} min-w-0 messages-area flex flex-col flex-1 min-h-0 ${isCanvasMode ? 'overflow-visible' : 'overflow-hidden'}`}>
                 <div className={`flex flex-col m-0 ${isCanvasMode ? 'bg-transparent overflow-visible' : 'bg-card overflow-hidden'} min-w-0 flex-1 min-h-0 relative`}>
+                  {hasBrowserContent && !isChatHidden && !isCanvasMode && (
+                    <div
+                      className="absolute left-0 z-20 h-10 px-3 flex items-center pointer-events-none"
+                      style={{ top: 'calc(var(--topbar-height, 64px) + 71px)' }}
+                    >
+                      <button
+                        onClick={() => setWorkspaceLayout(isPreviewHidden ? 'split' : 'chat')}
+                        className="pointer-events-auto mt-[7px] h-7 w-7 flex items-center justify-center rounded-full border border-black/5 dark:border-white/5 bg-background/80 shadow-sm backdrop-blur-md supports-[backdrop-filter]:bg-background/60 hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+                        title={isPreviewHidden ? "Show Preview" : "Hide Preview"}
+                        aria-label={isPreviewHidden ? "Show Preview" : "Hide Preview"}
+                      >
+                        {isPreviewHidden
+                          ? <PanelLeftOpen className="h-4 w-4" />
+                          : <PanelLeftClose className="h-4 w-4" />}
+                      </button>
+                    </div>
+                  )}
                   {viewMode === 'imprenta' ? (
                     <div className="h-full min-h-0 absolute inset-0 flex flex-col">
                       <ImprentaPanel activeInstanceId={activeRobotInstance?.id} />

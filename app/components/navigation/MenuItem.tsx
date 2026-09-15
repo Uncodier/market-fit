@@ -221,7 +221,7 @@ export function MenuItem({
       href={href}
       className={cn(
         className,
-        "flex items-center text-sm transition-colors duration-200 relative group font-inter",
+        "sidebar-menu-item-link flex items-center text-sm transition-colors duration-200 relative group font-inter",
         isCollapsed
           ? isActive
             ? cn("font-inter justify-center mx-auto h-[32px] w-[32px]", avatarUrl ? "rounded-full" : "rounded-md")

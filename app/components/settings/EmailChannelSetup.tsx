@@ -156,6 +156,12 @@ export function EmailChannelSetup({
       })
 
       const data = await response.json()
+      if (response.status === 401 && data.code === "cloudflare_reauth_required") {
+        toast.error(data.error)
+        window.location.href = `/api/integrations/cloudflare/oauth/authorize?site_id=${siteId}`
+        return
+      }
+
       if (response.ok && data.success) {
         toast.success("DNS records synced with Cloudflare successfully")
       } else {
@@ -195,6 +201,12 @@ export function EmailChannelSetup({
       })
 
       const data = await response.json()
+      if (response.status === 401 && data.code === "cloudflare_reauth_required") {
+        toast.error(data.error)
+        window.location.href = `/api/integrations/cloudflare/oauth/authorize?site_id=${siteId}`
+        return
+      }
+
       if (response.ok && data.success) {
         toast.success("MX record synced with Cloudflare successfully")
       } else {
@@ -281,7 +293,7 @@ export function EmailChannelSetup({
 
     setIsProcessing(true)
     try {
-      const response = await apiClient.patch("/api/integrations/zavu/channels/email", {
+      const response = await apiClient.put("/api/integrations/zavu/channels/email", {
         siteId,
         channelId: channel.id,
         senderId: channel.zavu_sender_id,

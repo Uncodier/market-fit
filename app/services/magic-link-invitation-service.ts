@@ -1,5 +1,3 @@
-import { createClient } from "@/lib/supabase/client"
-
 export interface MagicLinkInvitationParams {
   email: string
   siteId: string
@@ -89,96 +87,21 @@ export async function processTeamInvitation(invitationData: {
   userEmail: string
 }): Promise<{ success: boolean; error?: string; redirectTo?: string }> {
   try {
-    const supabase = createClient()
-    
-    // Get current authenticated user
-    const { data: { user }, error: userError } = await supabase.auth.getUser()
-    
-    if (userError || !user) {
+    const response = await fetch('/api/team/accept-invitation', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ siteId: invitationData.siteId }),
+    })
+    const result = await response.json().catch(() => ({}))
+
+    if (!response.ok || !result.success) {
       return {
         success: false,
-        error: 'Please authenticate first to accept the invitation'
+        error: result.error || 'Failed to accept the invitation',
       }
     }
 
-    // For security, we could verify the invitation is for the correct email,
-    // but since the user is already authenticated, we'll allow it
-    // This avoids issues with email parameter not being passed correctly
-    console.log(`🔐 Processing invitation for authenticated user: ${user.email}`)
-    console.log(`📨 Invitation was originally for: ${invitationData.userEmail || 'not specified'}`)
-
-    // Verify the site exists and get site information
-    const { data: siteData, error: siteError } = await supabase
-      .from('sites')
-      .select('name, user_id')
-      .eq('id', invitationData.siteId)
-      .single()
-    
-    if (siteError || !siteData) {
-      return {
-        success: false,
-        error: 'The site you were invited to no longer exists or is inaccessible'
-      }
-    }
-
-    // Check if user is already a member of this site
-    const { data: existingMember } = await supabase
-      .from('site_members')
-      .select('*')
-      .eq('site_id', invitationData.siteId)
-      .eq('user_id', user.id)
-      .single()
-
-    if (existingMember) {
-      return {
-        success: true,
-        redirectTo: `/dashboard/sites/${invitationData.siteId}`,
-        error: 'You are already a member of this site'
-      }
-    }
-
-    // Map invitation role to site member role
-    let siteMemberRole: 'admin' | 'marketing' | 'collaborator' = 'marketing'
-    switch (invitationData.role) {
-      case 'admin':
-        siteMemberRole = 'admin'
-        break
-      case 'create':
-      case 'delete':
-        siteMemberRole = 'collaborator'  // Editor role -> SELECT, INSERT, UPDATE
-        break
-      case 'view':
-      default:
-        siteMemberRole = 'marketing'     // Viewer role -> SELECT only
-        break
-    }
-
-    // Add user to site members
-    const { error: insertError } = await supabase
-      .from('site_members')
-      .insert({
-        site_id: invitationData.siteId,
-        user_id: user.id,
-        email: user.email,
-        role: siteMemberRole,
-        name: invitationData.name || user.user_metadata?.name,
-        position: invitationData.position,
-        status: 'active' // User is active since they authenticated
-      })
-
-    if (insertError) {
-      console.error('Error adding user to site:', insertError)
-      return {
-        success: false,
-        error: 'Failed to add you to the site. Please try again.'
-      }
-    }
-
-    return {
-      success: true,
-      redirectTo: `/dashboard/sites/${invitationData.siteId}`
-    }
-
+    return result
   } catch (error) {
     console.error('Error processing team invitation:', error)
     return {

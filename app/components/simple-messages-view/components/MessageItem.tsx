@@ -5,6 +5,7 @@ import { InstanceLog } from '../types'
 import { formatTime } from '../utils'
 import { useUserProfile } from '../hooks/useUserProfile'
 import ReactMarkdown from 'react-markdown'
+import remarkBreaks from 'remark-breaks'
 import remarkGfm from 'remark-gfm'
 import { markdownComponents } from '../utils/markdownComponents'
 import { InstanceNodeChildren } from './InstanceNodeChildren'
@@ -19,6 +20,7 @@ interface MessageItemProps {
   onToggleSystemMessageCollapse?: (messageId: string) => void
   onCancelWorkflow?: (logId: string) => void
   isCancellingWorkflow?: boolean
+  userPrompt?: string
 }
 
 export const MessageItem: React.FC<MessageItemProps> = ({
@@ -27,6 +29,7 @@ export const MessageItem: React.FC<MessageItemProps> = ({
   isBrowserVisible = false,
   onCancelWorkflow,
   isCancellingWorkflow = false,
+  userPrompt,
 }: MessageItemProps) => {
   const { userProfile } = useUserProfile(log.user_id || null)
   
@@ -66,7 +69,7 @@ export const MessageItem: React.FC<MessageItemProps> = ({
         <div className={`w-full min-w-0 overflow-hidden flex justify-end ${isBrowserVisible ? 'pr-2' : 'pr-8'}`}>
           <div className="min-w-0 overflow-hidden">
             <div 
-              className={`text-sm leading-relaxed prose prose-sm max-w-none dark:prose-invert prose-headings:font-medium prose-p:leading-relaxed prose-pre:bg-muted w-full overflow-hidden break-words rounded-lg ${isBrowserVisible ? 'mr-2 p-3' : 'mr-12 p-4'}`}
+              className={`text-sm text-foreground leading-relaxed prose prose-sm max-w-none dark:prose-invert prose-headings:font-medium prose-p:leading-relaxed prose-pre:bg-muted w-full overflow-hidden break-words rounded-lg ${isBrowserVisible ? 'mr-2 p-3' : 'mr-12 p-4'}`}
               style={{ 
                 backgroundColor: isDarkMode ? '#2d2d3d' : '#f0f0f5',
                 border: 'none', 
@@ -78,7 +81,7 @@ export const MessageItem: React.FC<MessageItemProps> = ({
                 wordBreak: 'break-word'
               }}
             >
-              <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+              <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]} components={markdownComponents}>
                 {log.message}
               </ReactMarkdown>
               <UserWorkflowMeta
@@ -184,8 +187,8 @@ export const MessageItem: React.FC<MessageItemProps> = ({
       
       {/* Message content */}
       <div className="w-full min-w-0 overflow-hidden">
-        <div className="text-sm leading-relaxed prose prose-sm max-w-none dark:prose-invert prose-headings:font-medium prose-p:leading-relaxed prose-pre:bg-muted w-full overflow-hidden break-words" style={{ wordWrap: 'break-word', overflowWrap: 'break-word', wordBreak: 'break-word', paddingLeft: isBrowserVisible ? '0.75rem' : '2rem' }}>
-          <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+        <div className="text-sm text-foreground leading-relaxed prose prose-sm max-w-none dark:prose-invert prose-headings:font-medium prose-p:leading-relaxed prose-pre:bg-muted w-full overflow-hidden break-words" style={{ wordWrap: 'break-word', overflowWrap: 'break-word', wordBreak: 'break-word', paddingLeft: isBrowserVisible ? '0.75rem' : '2rem' }}>
+          <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]} components={markdownComponents}>
             {log.message}
           </ReactMarkdown>
         </div>
@@ -203,6 +206,9 @@ export const MessageItem: React.FC<MessageItemProps> = ({
                 logId={log.id}
                 details={log.details as Record<string, unknown> | undefined}
                 textToCopy={log.message || ''}
+                enableRecordActions
+                userPrompt={userPrompt}
+                instanceId={log.instance_id}
               />
             }
           />
@@ -212,6 +218,9 @@ export const MessageItem: React.FC<MessageItemProps> = ({
               logId={log.id}
               details={log.details as Record<string, unknown> | undefined}
               textToCopy={log.message || ''}
+              enableRecordActions
+              userPrompt={userPrompt}
+              instanceId={log.instance_id}
             />
           </div>
         )}
