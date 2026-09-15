@@ -126,7 +126,14 @@ export function SaveResponseAsRecordDialog({
                 Create a record category before saving this response.
               </p>
             ) : (
-              <Select value={categoryId} onValueChange={setCategoryId}>
+              <Select
+                value={categoryId}
+                onValueChange={(nextCategoryId) => {
+                  setCategoryId(nextCategoryId)
+                  setRelations({})
+                  setStep("relations")
+                }}
+              >
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="Select a category" />
                 </SelectTrigger>
@@ -191,11 +198,7 @@ export function SaveResponseAsRecordDialog({
             <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={isSaving}>
               Cancel
             </Button>
-            {step === "category" ? (
-              <Button onClick={() => setStep("relations")} disabled={!categoryId}>
-                Continue
-              </Button>
-            ) : (
+            {step === "relations" && (
               <Button onClick={() => void handleSave()} disabled={isSaving}>
                 {isSaving && <Loader className="mr-2 h-4 w-4 animate-spin" />}
                 Save record

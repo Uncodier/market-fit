@@ -43,6 +43,16 @@ export async function POST(req: NextRequest) {
     })
 
     const results = await addDnsRecords(zone.id, cfRecords, token)
+    const failedRecord = results.find((result: { error?: boolean }) => result.error)
+    if (failedRecord) {
+      return NextResponse.json(
+        {
+          error: failedRecord.details?.[0]?.message || `Failed to sync ${failedRecord.type} record`,
+          results
+        },
+        { status: 502 }
+      )
+    }
 
     return NextResponse.json({ success: true, results })
   } catch (error: any) {

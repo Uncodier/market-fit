@@ -96,7 +96,6 @@ export async function getZoneByDomain(domain: string, token: string): Promise<Cl
 export async function addDnsRecords(zoneId: string, records: CloudflareDnsRecord[], token: string): Promise<any> {
   const results = []
   for (const record of records) {
-    // Buscar si el registro ya existe para no duplicar (basado en nombre y tipo)
     const existingRes = await fetch(`${CF_API_BASE}/zones/${zoneId}/dns_records?type=${record.type}&name=${record.name}`, {
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -105,10 +104,42 @@ export async function addDnsRecords(zoneId: string, records: CloudflareDnsRecord
     })
     
     const existingData = await existingRes.json()
-    const exists = existingData.result && existingData.result.length > 0
+    if (!existingRes.ok || !existingData.success) {
+      throw new Error(existingData.errors?.[0]?.message || `Failed to read ${record.type} records from Cloudflare`)
+    }
 
-    if (!exists) {
-      // Crear el registro
+    const normalizeContent = (value: string) =>
+      record.type === 'MX' || record.type === 'CNAME' || record.type === 'NS'
+        ? value.toLowerCase().replace(/\.$/, '')
+        : value
+    const sameTarget = existingData.result?.find(
+      (existing: { id: string; content: string; priority?: number }) =>
+        normalizeContent(existing.content) === normalizeContent(record.content)
+    )
+
+    if (sameTarget) {
+      const priorityMatches = record.type !== 'MX' || sameTarget.priority === record.priority
+      if (priorityMatches) {
+        results.push({ skipped: true, name: record.name, type: record.type })
+        continue
+      }
+
+      const updateRes = await fetch(`${CF_API_BASE}/zones/${zoneId}/dns_records/${sameTarget.id}`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ priority: record.priority })
+      })
+      const updateData = await updateRes.json()
+      if (!updateRes.ok || !updateData.success) {
+        results.push({ error: true, name: record.name, type: record.type, details: updateData.errors })
+      } else {
+        results.push(updateData)
+      }
+    } else {
+      // Multiple MX records with the same name are valid and must coexist.
       const createRes = await fetch(`${CF_API_BASE}/zones/${zoneId}/dns_records`, {
         method: 'POST',
         headers: {
@@ -131,9 +162,6 @@ export async function addDnsRecords(zoneId: string, records: CloudflareDnsRecord
       } else {
         results.push(createData)
       }
-    } else {
-      // Ya existe, se podría hacer update o simplemente ignorar. Para sync ignoramos si ya existe.
-      results.push({ skipped: true, name: record.name, type: record.type })
     }
   }
 
