@@ -55,6 +55,7 @@ import { useRunningWorkflow } from './hooks/useRunningWorkflow'
 
 // Import utilities
 import { groupTimelineProcess, isProcessGroupLive } from './group-timeline-process'
+import { buildRequirementStatusTimelineItem } from './requirement-status-timeline'
 
 const SCROLL_BOTTOM_THRESHOLD_PX = 80
 
@@ -685,36 +686,11 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
     data: any
   }> = []
 
-  // Add only the most recent requirement status (same behavior as last plan)
-  if (requirementStatuses && requirementStatuses.length > 0) {
-    const latestStatus = requirementStatuses.reduce((latest, current) => {
-      const latestTime = new Date(latest.created_at).getTime()
-      const currentTime = new Date(current.created_at).getTime()
-      return currentTime > latestTime ? current : latest
-    }, requirementStatuses[0])
-
-    // Find the most recent source_code, preview_url, and repo_url
-    let latestSourceCode = null;
-    let latestPreviewUrl = null;
-    let latestRepoUrl = null;
-
-    for (let i = requirementStatuses.length - 1; i >= 0; i--) {
-      const status = requirementStatuses[i];
-      if (!latestSourceCode && status.source_code) latestSourceCode = status.source_code;
-      if (!latestPreviewUrl && status.preview_url) latestPreviewUrl = status.preview_url;
-      if (!latestRepoUrl && status.repo_url) latestRepoUrl = status.repo_url;
-    }
-
-    timelineItems.push({
-      type: 'requirement_status',
-      timestamp: latestStatus.created_at,
-      data: {
-        ...latestStatus,
-        source_code: latestSourceCode,
-        preview_url: latestPreviewUrl,
-        repo_url: latestRepoUrl
-      }
-    })
+  // Keep repeated status updates anchored to the first time that exact state appeared.
+  const requirementStatusTimelineItem =
+    buildRequirementStatusTimelineItem(requirementStatuses)
+  if (requirementStatusTimelineItem) {
+    timelineItems.push(requirementStatusTimelineItem)
   }
   
   logs.forEach(log => {
