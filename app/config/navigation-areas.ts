@@ -299,6 +299,10 @@ export function getNavItemTitle(item: AreaNavItem, t: (k: string) => string): st
     const tabTitle = t(tabKey)
     if (tabTitle !== tabKey) return tabTitle
   }
+  if (item.key === "channels") {
+    const translation = t("settings.tabs.channels")
+    return translation === "settings.tabs.channels" ? "Agent Channels" : translation
+  }
   if (item.key === "skills") {
     const translation = t("settings.tabs.skills")
     return translation === "settings.tabs.skills" ? "Code agent skills" : translation

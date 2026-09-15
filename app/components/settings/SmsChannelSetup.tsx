@@ -128,10 +128,40 @@ export function SmsChannelSetup({
     setIsConnecting(true)
     try {
       if (tab === "new") {
+        // Check if regulatory requirements are needed
+        let regulatoryRequirements = undefined;
+        let type = undefined;
+        
+        if (countryCode !== "US" || selectedNumber) {
+          try {
+            // First fetch the requirements for this number
+            const reqUrl = `/api/integrations/zavu/phone-numbers/requirements?phoneNumber=${encodeURIComponent(selectedNumber)}`;
+            const reqsResponse = await apiClient.get(reqUrl);
+            
+            // If the API gives us the resource, pass it along
+            if (reqsResponse.success && reqsResponse.data) {
+              regulatoryRequirements = reqsResponse.data.items || reqsResponse.data;
+              // Extract type from requirements if present
+              if (Array.isArray(regulatoryRequirements) && regulatoryRequirements.length > 0) {
+                type = regulatoryRequirements[0].phoneNumberType || "local";
+              }
+            }
+          } catch (reqErr) {
+            console.warn("Could not fetch regulatory requirements:", reqErr);
+          }
+        }
+
         // Purchase number first
-        const purchaseResponse = await apiClient.post("/api/integrations/zavu/phone-numbers", {
+        const purchasePayload: any = {
           phoneNumber: selectedNumber
-        })
+        };
+        
+        if (regulatoryRequirements) {
+          purchasePayload.regulatoryRequirements = regulatoryRequirements;
+          if (type) purchasePayload.type = type;
+        }
+
+        const purchaseResponse = await apiClient.post("/api/integrations/zavu/phone-numbers", purchasePayload)
         
         if (!purchaseResponse.success) {
           throw new Error(purchaseResponse.error?.message || "Failed to purchase phone number")
@@ -225,7 +255,7 @@ export function SmsChannelSetup({
           </TabsContent>
 
           <TabsContent value="new" className="mt-4 space-y-4">
-            {countryCode === "US" && (
+            {countryCode === "US" ? (
               <Alert className="bg-amber-50 dark:bg-amber-950/30 text-amber-900 dark:text-amber-200 border-amber-200 dark:border-amber-800 [&>svg]:text-amber-600 dark:[&>svg]:text-amber-400">
                 <AlertTriangle className="h-4 w-4" />
                 <AlertTitle>10DLC / KYC Verification Required</AlertTitle>
@@ -241,6 +271,16 @@ export function SmsChannelSetup({
                   >
                     Buy Verification Credits
                   </Button>
+                </AlertDescription>
+              </Alert>
+            ) : (
+              <Alert className="bg-amber-50 dark:bg-amber-950/30 text-amber-900 dark:text-amber-200 border-amber-200 dark:border-amber-800 [&>svg]:text-amber-600 dark:[&>svg]:text-amber-400">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertTitle>Regulatory Requirements</AlertTitle>
+                <AlertDescription className="space-y-3 mt-2 text-amber-800 dark:text-amber-300">
+                  <p>
+                    Purchasing non-US numbers for SMS might require basic Business Identity / Regulatory verification (address and business info) depending on local carrier regulations.
+                  </p>
                 </AlertDescription>
               </Alert>
             )}
