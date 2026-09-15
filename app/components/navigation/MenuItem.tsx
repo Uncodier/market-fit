@@ -227,7 +227,7 @@ export function MenuItem({
             ? cn("font-inter justify-center mx-auto h-[32px] w-[32px]", avatarUrl ? "rounded-full" : "rounded-md")
             : cn("justify-center mx-auto h-[32px] w-[32px]", avatarUrl ? "rounded-full" : "rounded-md")
           : cn(
-              "min-w-full rounded-md justify-start h-[32px] w-full",
+              "min-w-0 rounded-md justify-start h-[32px] w-full",
               children ? "overflow-visible" : "overflow-hidden"
             ),
         isActive

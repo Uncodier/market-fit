@@ -55,12 +55,12 @@ export function SortableShortcutItem({
   }
 
   return (
-    <div ref={setNodeRef} style={style} {...attributes} {...listeners} className="touch-none select-none w-full min-w-full">
+    <div ref={setNodeRef} style={style} {...attributes} {...listeners} className="touch-none select-none w-full">
       <ContextMenu>
         <ContextMenuTrigger asChild>
           <div
             id={`nav-item-${id}`}
-            className="relative select-none group w-full min-w-full flex items-center"
+            className="relative select-none group w-full"
             style={{ WebkitTouchCallout: "none" }}
             onTouchStart={(e) => {
               const timer = setTimeout(() => {
@@ -95,7 +95,7 @@ export function SortableShortcutItem({
               }
             }}
           >
-            <div className={cn("relative z-10 w-full min-w-full", isDragging && "opacity-50 pointer-events-none")}>
+            <div className={cn("relative z-10 w-full", isDragging && "opacity-50 pointer-events-none")}>
               <MenuItem
                 href={linkHref}
                 icon={icon as any}
