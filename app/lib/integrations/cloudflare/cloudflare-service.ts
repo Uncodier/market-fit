@@ -22,26 +22,54 @@ const CF_API_BASE = 'https://api.cloudflare.com/client/v4'
  * This function tries to find the matching zone.
  */
 export async function getZoneByDomain(domain: string, token: string): Promise<CloudflareZone | null> {
-  // Extraer el root domain asumiendo formato común (ej. de app.domain.com -> domain.com)
-  // Cloudflare API es flexible y podemos buscar con ?name=domain.com
-  const domainParts = domain.split('.')
-  let searchName = domain
-  if (domainParts.length > 2) {
-    searchName = domainParts.slice(-2).join('.') // Intento básico de root domain
-  }
-
-  // Buscar zona principal
-  let res = await fetch(`${CF_API_BASE}/zones?name=${searchName}`, {
+  // To handle complex TLDs (like .co.uk, .com.mx), fetch zones and find the best match
+  // For most tokens, the number of zones is small enough that a single API call is fast
+  let res = await fetch(`${CF_API_BASE}/zones?per_page=50`, {
     headers: {
       'Authorization': `Bearer ${token}`,
       'Content-Type': 'application/json'
     }
   })
-
+  
   let data = await res.json()
 
-  // Si no la encuentra y el original tenía más partes, intentamos buscar el original exacto por si es un subdominio registrado como zona aparte.
-  if ((!data.result || data.result.length === 0) && searchName !== domain) {
+  if (!data.success && data.errors && data.errors.length > 0) {
+    throw new Error(`Cloudflare API error: ${data.errors[0].message}`)
+  }
+  
+  if (data.success && data.result && data.result.length > 0) {
+    // Find all zones where the domain ends with the zone name (either exact match or subdomain match)
+    const matchingZones = data.result.filter((z: CloudflareZone) => 
+      domain === z.name || domain.endsWith('.' + z.name)
+    )
+    
+    if (matchingZones.length > 0) {
+      // Sort by length descending to get the most specific zone (e.g. if they have 'example.com' and 'sub.example.com')
+      matchingZones.sort((a: CloudflareZone, b: CloudflareZone) => b.name.length - a.name.length)
+      return matchingZones[0] as CloudflareZone
+    }
+  }
+
+  // Fallback to exact match search if per_page=50 didn't catch it
+  const domainParts = domain.split('.')
+  let searchName = domain
+  if (domainParts.length > 2) {
+    searchName = domainParts.slice(-2).join('.')
+  }
+
+  res = await fetch(`${CF_API_BASE}/zones?name=${searchName}`, {
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    }
+  })
+  data = await res.json()
+
+  if (!data.success && data.errors && data.errors.length > 0) {
+    throw new Error(`Cloudflare API error: ${data.errors[0].message}`)
+  }
+
+  if (!data.result || data.result.length === 0) {
     res = await fetch(`${CF_API_BASE}/zones?name=${domain}`, {
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -49,6 +77,10 @@ export async function getZoneByDomain(domain: string, token: string): Promise<Cl
       }
     })
     data = await res.json()
+
+    if (!data.success && data.errors && data.errors.length > 0) {
+      throw new Error(`Cloudflare API error: ${data.errors[0].message}`)
+    }
   }
 
   if (data.result && data.result.length > 0) {
