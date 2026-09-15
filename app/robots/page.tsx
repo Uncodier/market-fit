@@ -361,6 +361,7 @@ function RobotsPageContent() {
   const [isResuming, setIsResuming] = useState(false)
   
   const activeTabRef = useRef(selectedInstanceId)
+  const lastTabSelectionTimeRef = useRef<Record<string, number>>({})
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
   const [instanceToDelete, setInstanceToDelete] = useState<{ id: string; name: string } | null>(null)
   const [deletingInstanceIds, setDeletingInstanceIds] = useState<Set<string>>(new Set())
@@ -721,6 +722,7 @@ function RobotsPageContent() {
 
   // Function to handle instance tab change
   const handleTabChange = (newInstance: string) => {
+    lastTabSelectionTimeRef.current[newInstance] = Date.now()
     if (
       shouldIgnoreInstanceTabChange({
         nextId: newInstance,
@@ -1695,6 +1697,11 @@ function RobotsPageContent() {
                                           : ""
                                       )}
                                       onClick={(e) => {
+                                        const lastSelectedAt = lastTabSelectionTimeRef.current[inst.id] || 0
+                                        if (Date.now() - lastSelectedAt < 400) {
+                                          return // Ignore click if the tab was just selected
+                                        }
+
                                         if (selectedInstanceId === inst.id && !(inst as any).requirement_title) {
                                           e.preventDefault()
                                           e.stopPropagation()

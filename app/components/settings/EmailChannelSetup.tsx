@@ -169,6 +169,45 @@ export function EmailChannelSetup({
     }
   }
 
+  const handleSyncMxCloudflare = async () => {
+    if (!isCloudflareConnected) {
+      window.location.href = `/api/integrations/cloudflare/oauth/authorize?site_id=${siteId}`
+      return
+    }
+
+    if (!siteId || !metadata.domain) return
+
+    setIsSyncingCloudflare(true)
+    try {
+      const response = await fetch('/api/integrations/cloudflare/sync/zavu', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          siteId,
+          domain: metadata.domain,
+          records: [{
+            type: 'MX',
+            name: metadata.domain,
+            value: 'inbound.zavu.dev',
+            priority: 10
+          }]
+        })
+      })
+
+      const data = await response.json()
+      if (response.ok && data.success) {
+        toast.success("MX record synced with Cloudflare successfully")
+      } else {
+        toast.error(data.error || "Failed to sync MX record")
+      }
+    } catch (error: any) {
+      console.error("Error syncing MX with Cloudflare:", error)
+      toast.error("An error occurred while syncing with Cloudflare")
+    } finally {
+      setIsSyncingCloudflare(false)
+    }
+  }
+
   const handleVerifyDomain = async () => {
     if (!metadata.email_domain_id) return
 
@@ -450,8 +489,12 @@ export function EmailChannelSetup({
             </p>
             <div className="p-3 bg-background rounded border text-xs font-mono flex items-center gap-2">
               <span className="flex-1 truncate">{metadata.domain} MX 10 inbound.zavu.dev</span>
-              <Button variant="outline" size="sm" className="h-6 text-xs" onClick={handleVerifyMx} disabled={isVerifyingMx}>
+              <Button variant="outline" size="sm" className="h-6 text-xs px-2" onClick={handleVerifyMx} disabled={isVerifyingMx}>
                 {isVerifyingMx ? "Checking..." : "Verify"}
+              </Button>
+              <Button variant="outline" size="sm" className="h-6 text-xs px-2" onClick={handleSyncMxCloudflare} disabled={isSyncingCloudflare}>
+                <Cloud className="h-3 w-3 mr-1" />
+                {isSyncingCloudflare ? "Syncing..." : "Sync CF"}
               </Button>
               <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" onClick={() => copyToClipboard(`${metadata.domain} MX 10 inbound.zavu.dev`, 'mx')}>
                 {copied === 'mx' ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
