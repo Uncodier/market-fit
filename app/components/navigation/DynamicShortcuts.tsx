@@ -1,5 +1,4 @@
 "use client"
-
 import { useEffect, useState, useMemo, useRef } from "react"
 import { usePathname, useSearchParams } from "next/navigation"
 import {
@@ -25,6 +24,7 @@ import {
   useSensors,
   DragEndEvent,
   TouchSensor,
+  useDroppable,
 } from "@dnd-kit/core"
 import {
   arrayMove,
@@ -45,14 +45,10 @@ import { setVisibleSidebarShortcutKeys } from "./use-sidebar-nav-keys"
 import { useOptionalScreenAccess } from "@/app/context/ScreenAccessContext"
 import { getNavKeyForPath } from "@/lib/auth/screen-access"
 import { SortableShortcutItem } from "./SortableShortcutItem"
-import { MenuItem } from "./MenuItem"
+import { ShortcutDropSections } from "./ShortcutDropSections"
 
-interface DynamicShortcutsProps {
-  isCollapsed: boolean
-}
-
+interface DynamicShortcutsProps { isCollapsed: boolean }
 const PINNED_NAV_KEYS = new Set<string>(SIDEBAR_PINNED_NAV_KEYS)
-
 // Sidebar shortcuts exclude Settings — those stay in Configuration and the launcher
 type AreaNavItemWithArea = AreaNavItem & { area: WorkspaceArea }
 const ALL_ITEMS: AreaNavItemWithArea[] = []
@@ -66,7 +62,6 @@ for (const areaKey of NAVIGATION_MENU_AREA_ORDER) {
     }
   }
 }
-
 function withoutConfigurationShortcuts(entries: ShortcutRecord[]): ShortcutRecord[] {
   return entries.filter((entry) => {
     if (!entry.isCustom || !entry.href) return !isSettingsNavKey(entry.id)
@@ -83,19 +78,16 @@ function withoutFixedShortcuts(entries: ShortcutRecord[]): ShortcutRecord[] {
   return entries.filter((entry) => !isPinnedShortcutKey(entry.id))
 }
 
+function ensureOverviewShortcut(entries: ShortcutRecord[]): ShortcutRecord[] {
+  if (entries.some((entry) => entry.id === "reportOverview")) return entries
+  return [...entries, { id: "reportOverview", pinned: true }]
+}
+
 export function DynamicShortcuts({ isCollapsed }: DynamicShortcutsProps) {
   const { t } = useLocalization()
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const navSearchParams = useMemo(() => new URLSearchParams(searchParams.toString()), [searchParams])
-  const overviewHref = useMemo(() => {
-    const params = new URLSearchParams()
-    if (navSearchParams.get("artifact") === "true") {
-      params.set("artifact", "true")
-    }
-    params.set("tab", "overview")
-    return `/dashboard?${params.toString()}`
-  }, [navSearchParams])
 
   const containerRef = useRef<HTMLDivElement>(null)
   const slots = useShortcutSlotCount(containerRef)
@@ -140,8 +132,10 @@ export function DynamicShortcuts({ isCollapsed }: DynamicShortcutsProps) {
 
         if (isMounted) {
           setShortcuts(
-            withoutConfigurationShortcuts(
-              withoutFixedShortcuts(loadedShortcuts.map(normalizeShortcut))
+            ensureOverviewShortcut(
+              withoutConfigurationShortcuts(
+                withoutFixedShortcuts(loadedShortcuts.map(normalizeShortcut))
+              )
             )
           )
           setIsLoaded(true)
@@ -158,8 +152,10 @@ export function DynamicShortcuts({ isCollapsed }: DynamicShortcutsProps) {
       const saved = localStorage.getItem("navigationShortcuts_v3")
       if (saved) {
         setShortcuts(
-          withoutConfigurationShortcuts(
-            withoutFixedShortcuts(JSON.parse(saved).map(normalizeShortcut))
+          ensureOverviewShortcut(
+            withoutConfigurationShortcuts(
+              withoutFixedShortcuts(JSON.parse(saved).map(normalizeShortcut))
+            )
           )
         )
       }
@@ -309,20 +305,46 @@ export function DynamicShortcuts({ isCollapsed }: DynamicShortcutsProps) {
     })
   )
 
+  const { setNodeRef: setPinnedDropRef, isOver: isOverPinned } = useDroppable({
+    id: "sidebar-pinned-zone",
+  })
+  const { setNodeRef: setRecentDropRef, isOver: isOverRecent } = useDroppable({
+    id: "sidebar-recent-zone",
+  })
+
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event
     
-    if (over && active.id !== over.id) {
-      if (typeof navigator !== 'undefined' && navigator.vibrate) {
-        navigator.vibrate(50)
-      }
-      setShortcuts((items) => {
-        const oldIndex = items.findIndex((shortcut) => shortcut.id === active.id)
-        const newIndex = items.findIndex((shortcut) => shortcut.id === over.id)
-        
-        return arrayMove(items, oldIndex, newIndex)
-      })
+    if (!over) return
+
+    if (typeof navigator !== "undefined" && navigator.vibrate) {
+      navigator.vibrate(50)
     }
+
+    setShortcuts((items) => {
+      const activeId = String(active.id)
+      const overId = String(over.id)
+      const oldIndex = items.findIndex((shortcut) => shortcut.id === activeId)
+      if (oldIndex < 0) return items
+
+      const overShortcut = items.find((shortcut) => shortcut.id === overId)
+      const targetPinned =
+        overId === "sidebar-pinned-zone"
+          ? true
+          : overId === "sidebar-recent-zone"
+            ? false
+            : overShortcut?.pinned
+
+      const next = items.map((shortcut) =>
+        shortcut.id === activeId && targetPinned !== undefined
+          ? { ...shortcut, pinned: targetPinned }
+          : shortcut
+      )
+      const newIndex = next.findIndex((shortcut) => shortcut.id === overId)
+      return newIndex >= 0 && oldIndex !== newIndex
+        ? arrayMove(next, oldIndex, newIndex)
+        : next
+    })
   }
 
   const allowedShortcuts = useMemo(() => {
@@ -344,6 +366,12 @@ export function DynamicShortcuts({ isCollapsed }: DynamicShortcutsProps) {
   const pinnedShortcuts = useMemo(
     () => allowedShortcuts.filter((entry) => entry.pinned),
     [allowedShortcuts]
+  )
+  const pinnedOverview = pinnedShortcuts.find(
+    (entry) => entry.id === "reportOverview"
+  )
+  const userPinnedShortcuts = pinnedShortcuts.filter(
+    (entry) => entry.id !== "reportOverview"
   )
   const visibleRecentShortcuts = useMemo(
     () =>
@@ -430,6 +458,7 @@ export function DynamicShortcuts({ isCollapsed }: DynamicShortcutsProps) {
         isActive={id === bestMatchId}
         isCollapsed={isCollapsed}
         isPinned={entry.pinned}
+        canRemove={id !== "reportOverview"}
         title={title}
         visual={visual}
         onPinnedChange={handlePinnedChange}
@@ -439,57 +468,30 @@ export function DynamicShortcuts({ isCollapsed }: DynamicShortcutsProps) {
     )
   }
 
-  const showOverview =
-    !screenAccess || screenAccess.canAccessNavKey("reportOverview")
-  const overviewActive =
-    pathname.startsWith("/dashboard") &&
-    searchParams.get("tab") === "overview"
-
-  if (!showOverview && visibleShortcuts.length === 0) return null
+  if (visibleShortcuts.length === 0) return null
 
   return (
     <div ref={containerRef} className="flex min-h-0 w-full flex-1 flex-col space-y-1">
       <DndContext
-          sensors={sensors}
-          collisionDetection={closestCenter}
-          onDragEnd={handleDragEnd}
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragEnd={handleDragEnd}
+      >
+        <SortableContext
+          items={visibleShortcuts.map((entry) => entry.id)}
+          strategy={verticalListSortingStrategy}
         >
-          <SortableContext
-            items={pinnedShortcuts.map((entry) => entry.id)}
-            strategy={verticalListSortingStrategy}
-          >
-            {pinnedShortcuts.map(renderShortcut)}
-          </SortableContext>
-
-          {showOverview && (
-            <>
-              <div className="my-2 h-px w-full bg-black/5 dark:bg-white/5" />
-              <MenuItem
-                href={overviewHref}
-                icon={NAV_ITEM_ICON.reportOverview}
-                title={t("layout.sidebar.summary") || "Overview"}
-                isActive={overviewActive}
-                isCollapsed={isCollapsed}
-                onClick={() => {
-                  window.dispatchEvent(
-                    new CustomEvent("navigation-history:reset")
-                  )
-                }}
-              />
-            </>
-          )}
-
-          {visibleRecentShortcuts.length > 0 && (
-            <>
-              <div className="my-2 h-px w-full bg-black/5 dark:bg-white/5" />
-              <SortableContext
-                items={visibleRecentShortcuts.map((entry) => entry.id)}
-                strategy={verticalListSortingStrategy}
-              >
-                {visibleRecentShortcuts.map(renderShortcut)}
-              </SortableContext>
-            </>
-          )}
+          <ShortcutDropSections
+            pinnedShortcuts={userPinnedShortcuts}
+            pinnedOverview={pinnedOverview}
+            recentShortcuts={visibleRecentShortcuts}
+            isOverPinned={isOverPinned}
+            isOverRecent={isOverRecent}
+            setPinnedDropRef={setPinnedDropRef}
+            setRecentDropRef={setRecentDropRef}
+            renderShortcut={renderShortcut}
+          />
+        </SortableContext>
       </DndContext>
     </div>
   )

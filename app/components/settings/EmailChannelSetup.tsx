@@ -65,13 +65,19 @@ export function EmailChannelSetup({
     try {
       const res = await fetch(`/api/dns/verify-mx?domain=${metadata.domain}`)
       const data = await res.json()
-      if (data.success && data.verified) {
-        setIsMxVerified(true)
-      } else {
-        setIsMxVerified(false)
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || "Failed to verify MX record")
       }
-    } catch (e) {
+
+      setIsMxVerified(data.verified)
+      if (data.verified) {
+        toast.success("MX record verified. You can now enable receiving.")
+      } else {
+        toast.error("MX record is not available yet. DNS propagation may take a few minutes.")
+      }
+    } catch (error: any) {
       setIsMxVerified(false)
+      toast.error(error.message || "Failed to verify MX record")
     } finally {
       setIsVerifyingMx(false)
     }
@@ -302,13 +308,30 @@ export function EmailChannelSetup({
 
       if (!response.success) throw new Error(response.error?.message || "Failed to update receiving status")
 
+      const responseData = response.data as
+        | { emailReceivingEnabled?: boolean; sender?: { emailReceivingEnabled?: boolean } }
+        | undefined
+      const appliedReceivingEnabled =
+        responseData?.sender?.emailReceivingEnabled ??
+        responseData?.emailReceivingEnabled
+
+      if (typeof appliedReceivingEnabled !== "boolean") {
+        throw new Error("Zavu updated the sender but returned an incomplete response")
+      }
+
+      if (localReceivingEnabled && !appliedReceivingEnabled) {
+        setLocalReceivingEnabled(false)
+        setIsMxVerified(false)
+        throw new Error("Zavu could not enable receiving. Verify that the MX record has propagated.")
+      }
+
       onUpdated({
         metadata: {
           ...metadata,
-          emailReceivingEnabled: localReceivingEnabled
+          emailReceivingEnabled: appliedReceivingEnabled
         }
       })
-      toast.success(`Email receiving ${localReceivingEnabled ? 'enabled' : 'disabled'}`)
+      toast.success(`Email receiving ${appliedReceivingEnabled ? 'enabled' : 'disabled'}`)
     } catch (error: any) {
       toast.error(error.message || "An error occurred")
     } finally {
@@ -517,7 +540,7 @@ export function EmailChannelSetup({
             <Switch 
               checked={localReceivingEnabled}
               onCheckedChange={setLocalReceivingEnabled}
-              disabled={isProcessing}
+              disabled={isProcessing || (!emailReceivingEnabled && isMxVerified !== true)}
             />
           </div>
         </div>

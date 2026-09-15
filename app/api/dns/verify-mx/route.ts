@@ -9,8 +9,8 @@ export async function GET(req: NextRequest) {
 
   try {
     const records = await dns.resolveMx(domain);
-    // Zavu inbound MX record is inbound.zavu.dev
-    const hasZavuMx = records.some((r) => r.exchange === "inbound.zavu.dev");
+    const normalizeHost = (host: string) => host.toLowerCase().replace(/\.$/, "");
+    const hasZavuMx = records.some((record) => normalizeHost(record.exchange) === "inbound.zavu.dev");
     return NextResponse.json({ success: true, verified: hasZavuMx, records });
   } catch (error) {
     return NextResponse.json({ success: false, verified: false, error: (error as Error).message });

@@ -21,6 +21,7 @@ interface SortableShortcutItemProps {
   isActive: boolean
   isCollapsed: boolean
   isPinned: boolean
+  canRemove?: boolean
   title: string
   visual?: ModuleVariant
   onPinnedChange: (key: string, pinned: boolean) => void
@@ -36,6 +37,7 @@ export function SortableShortcutItem({
   isActive,
   isCollapsed,
   isPinned,
+  canRemove = true,
   title,
   visual,
   onPinnedChange,
@@ -126,13 +128,15 @@ export function SortableShortcutItem({
         >
           {isPinned ? "Unpin shortcut" : "Pin shortcut"}
         </ContextMenuItem>
-        <ContextMenuItem
-          onClick={() => onRemove(id)}
-          className="text-destructive focus:text-destructive focus:bg-destructive/10 cursor-pointer"
-          onPointerDown={(e) => e.stopPropagation()}
-        >
-          {t("common.remove") === "common.remove" ? "Remove shortcut" : t("common.remove")}
-        </ContextMenuItem>
+        {canRemove && (
+          <ContextMenuItem
+            onClick={() => onRemove(id)}
+            className="text-destructive focus:text-destructive focus:bg-destructive/10 cursor-pointer"
+            onPointerDown={(e) => e.stopPropagation()}
+          >
+            {t("common.remove") === "common.remove" ? "Remove shortcut" : t("common.remove")}
+          </ContextMenuItem>
+        )}
       </ContextMenuContent>
     </ContextMenu>
   )
