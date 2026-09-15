@@ -1,6 +1,6 @@
 "use client"
 
-import { MobileFiltersDrawer } from "@/app/components/ui/mobile-filters-drawer"
+import { MobileFiltersDrawer, FilterContainer, FilterSection, FilterSeparator } from "@/app/components/ui/mobile-filters-drawer"
 import { SortDropdown } from "@/app/components/ui/sort-dropdown"
 
 import { useState, useEffect } from "react"
@@ -68,37 +68,38 @@ export default function PromotionsPage() {
         <div className="w-full pt-0">
           <div className="flex items-center justify-between gap-2 w-full">
             <MobileFiltersDrawer triggerText={t('common.search') || "Search"}>
-              <div className="flex flex-col md:flex-row items-stretch md:items-center gap-6 md:gap-4 w-full flex-1 min-w-0">
-                <div className="md:hidden w-full">
+              <FilterContainer>
+                <FilterSection mobileOnly>
                   <form onSubmit={handleSearch} className="w-full">
-                    <SearchInput  placeholder={t("promotions.search") || "Search name or code..."} value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} alwaysExpanded={true}    className="w-full h-10 md:h-9"  containerClassName="w-full" />
+                    <SearchInput placeholder={t("promotions.search") || "Search name or code..."} value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} alwaysExpanded={true} className="w-full h-10 md:h-9" containerClassName="w-full" />
                   </form>
-                </div>
+                </FilterSection>
 
-                <div className="flex flex-col gap-2 w-full md:w-auto">
-                  <span className="text-xs font-semibold text-muted-foreground md:hidden mb-1 uppercase">{t('common.status') || 'Estado'}</span>
+                
+
+                <FilterSection title={t('common.status') || 'Estado'}>
                   <Tabs
                     value={statusFilter}
                     onValueChange={(val) => { setStatusFilter(val); setPage(1); }}
                     className="w-full md:w-auto"
                   >
-                    <TabsList className="h-auto md:h-8 p-0 md:p-0.5 bg-transparent md:bg-muted/30 rounded-lg md:rounded-full flex flex-col md:flex-row w-full md:max-w-full overflow-y-auto md:overflow-x-auto justify-start items-stretch md:items-center gap-1 md:gap-0">
-                      <TabsTrigger value="all" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent gap-2 whitespace-normal md:whitespace-nowrap">{t("promotions.tabs.all") || "All"}</TabsTrigger>
-                      <TabsTrigger value="active" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent gap-2 whitespace-normal md:whitespace-nowrap">{t("promotions.tabs.active") || "Active"}</TabsTrigger>
-                      <TabsTrigger value="draft" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent gap-2 whitespace-normal md:whitespace-nowrap">{t("promotions.tabs.draft") || "Draft"}</TabsTrigger>
-                      <TabsTrigger value="paused" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent gap-2 whitespace-normal md:whitespace-nowrap">{t("promotions.tabs.paused") || "Paused"}</TabsTrigger>
-                      <TabsTrigger value="expired" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent gap-2 whitespace-normal md:whitespace-nowrap">{t("promotions.tabs.expired") || "Expired"}</TabsTrigger>
+                    <TabsList className="h-auto md:h-8 p-0 md:p-0.5 bg-transparent md:bg-muted/30 rounded-none md:rounded-full flex flex-wrap md:flex-nowrap md:flex-row w-full md:max-w-full overflow-y-visible md:overflow-x-auto justify-start items-center gap-2 md:gap-0">
+                      <TabsTrigger value="all" className="w-auto justify-center rounded-full text-sm md:text-xs py-1.5 px-3 md:py-1 md:px-3 text-foreground/80 md:text-foreground border border-border/50 md:border-transparent data-[state=active]:bg-foreground data-[state=active]:text-background md:data-[state=active]:bg-background md:data-[state=active]:text-foreground data-[state=active]:shadow-sm md:data-[state=active]:border-transparent whitespace-nowrap flex items-center gap-1.5">{t("promotions.tabs.all") || "All"}</TabsTrigger>
+                      <TabsTrigger value="active" className="w-auto justify-center rounded-full text-sm md:text-xs py-1.5 px-3 md:py-1 md:px-3 text-foreground/80 md:text-foreground border border-border/50 md:border-transparent data-[state=active]:bg-foreground data-[state=active]:text-background md:data-[state=active]:bg-background md:data-[state=active]:text-foreground data-[state=active]:shadow-sm md:data-[state=active]:border-transparent whitespace-nowrap flex items-center gap-1.5">{t("promotions.tabs.active") || "Active"}</TabsTrigger>
+                      <TabsTrigger value="draft" className="w-auto justify-center rounded-full text-sm md:text-xs py-1.5 px-3 md:py-1 md:px-3 text-foreground/80 md:text-foreground border border-border/50 md:border-transparent data-[state=active]:bg-foreground data-[state=active]:text-background md:data-[state=active]:bg-background md:data-[state=active]:text-foreground data-[state=active]:shadow-sm md:data-[state=active]:border-transparent whitespace-nowrap flex items-center gap-1.5">{t("promotions.tabs.draft") || "Draft"}</TabsTrigger>
+                      <TabsTrigger value="paused" className="w-auto justify-center rounded-full text-sm md:text-xs py-1.5 px-3 md:py-1 md:px-3 text-foreground/80 md:text-foreground border border-border/50 md:border-transparent data-[state=active]:bg-foreground data-[state=active]:text-background md:data-[state=active]:bg-background md:data-[state=active]:text-foreground data-[state=active]:shadow-sm md:data-[state=active]:border-transparent whitespace-nowrap flex items-center gap-1.5">{t("promotions.tabs.paused") || "Paused"}</TabsTrigger>
+                      <TabsTrigger value="expired" className="w-auto justify-center rounded-full text-sm md:text-xs py-1.5 px-3 md:py-1 md:px-3 text-foreground/80 md:text-foreground border border-border/50 md:border-transparent data-[state=active]:bg-foreground data-[state=active]:text-background md:data-[state=active]:bg-background md:data-[state=active]:text-foreground data-[state=active]:shadow-sm md:data-[state=active]:border-transparent whitespace-nowrap flex items-center gap-1.5">{t("promotions.tabs.expired") || "Expired"}</TabsTrigger>
                     </TabsList>
                   </Tabs>
-                </div>
+                </FilterSection>
                 
-                <div className="hidden md:flex items-center gap-2 w-full md:w-auto">
+                <FilterSection desktopOnly className="flex-row items-center gap-2">
                   <SortDropdown sortBy={sortBy} setSortBy={setSortBy} />
                   <form onSubmit={handleSearch} className="w-auto">
-                    <SearchInput  placeholder={t("promotions.search") || "Search name or code..."} value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}    className="w-full"  containerClassName="w-64" />
+                    <SearchInput placeholder={t("promotions.search") || "Search name or code..."} value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full" containerClassName="w-64" />
                   </form>
-                </div>
-              </div>
+                </FilterSection>
+              </FilterContainer>
             </MobileFiltersDrawer>
           </div>
         </div>

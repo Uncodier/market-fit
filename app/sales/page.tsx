@@ -376,10 +376,10 @@ export default function SalesPage() {
                           onValueChange={(val) => { setLocationFilter(val); setCurrentPage(1); }}
                         >
                           <SelectTrigger className="w-[160px] h-8 text-xs bg-muted/30 border-0 rounded-full">
-                            <SelectValue placeholder={t('allLocations') || 'All Locations'} />
+                            <SelectValue placeholder={t('common.allLocations') || 'All Locations'} />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="all">{t('allLocations') || 'All Locations'}</SelectItem>
+                            <SelectItem value="all">{t('common.allLocations') || 'All Locations'}</SelectItem>
                             {locations.map((loc) => (
                               <SelectItem key={loc.id} value={loc.id}>{loc.name}</SelectItem>
                             ))}

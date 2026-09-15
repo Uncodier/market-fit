@@ -50,7 +50,12 @@ export function useWorkflowGraph(instanceId?: string, siteId?: string) {
   const [nodes, setNodes] = useState<InstanceNode[]>([])
   const [loadedInstanceId, setLoadedInstanceId] = useState<string | null>(null)
   const instanceIdRef = useRef(instanceId)
-  instanceIdRef.current = instanceId
+  const deletedNodeIdsRef = useRef<Set<string>>(new Set())
+  
+  if (instanceIdRef.current !== instanceId) {
+    deletedNodeIdsRef.current.clear()
+    instanceIdRef.current = instanceId
+  }
 
   const reload = useCallback(async () => {
     if (!instanceId || !siteId) {
@@ -72,6 +77,7 @@ export function useWorkflowGraph(instanceId?: string, siteId?: string) {
         const seeded = await seedTrigger(instanceId, siteId)
         if (seeded) next = [seeded]
       }
+      next = next.filter(n => !deletedNodeIdsRef.current.has(n.id) && !(n.parent_node_id && deletedNodeIdsRef.current.has(n.parent_node_id)))
       if (instanceId !== instanceIdRef.current) return
       setNodes(next)
     } finally {
@@ -90,8 +96,11 @@ export function useWorkflowGraph(instanceId?: string, siteId?: string) {
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "instance_nodes", filter: `instance_id=eq.${instanceId}` },
-        (payload) => {
+        (payload: any) => {
           const row = (payload.new || payload.old) as InstanceNode | undefined
+          if (payload.eventType === "DELETE" && row?.id) {
+            deletedNodeIdsRef.current.delete(row.id)
+          }
           if (row && !isWorkflowNode(row) && payload.eventType !== "DELETE") return
           void reload()
         },
@@ -185,14 +194,23 @@ export function useWorkflowGraph(instanceId?: string, siteId?: string) {
     // Find the node before deleting it to know if it's a trigger
     const target = nodesRef.current.find((n) => n.id === id)
     
-    const { error } = await supabase.from("instance_nodes").delete().eq("id", id)
-    if (error) throw error
+    // Optimistic update
+    deletedNodeIdsRef.current.add(id)
     setNodes((prev) => prev.filter((n) => n.id !== id && n.parent_node_id !== id))
+    
+    try {
+      const { error } = await supabase.from("instance_nodes").delete().eq("id", id)
+      if (error) throw error
+    } catch (e) {
+      deletedNodeIdsRef.current.delete(id)
+      void reload()
+      throw e
+    }
     
     if (target?.type === "wf-trigger" && target.instance_id) {
       syncTriggers(target.instance_id)
     }
-  }, [syncTriggers])
+  }, [syncTriggers, reload])
 
   const hasSandboxStep = useMemo(
     () =>

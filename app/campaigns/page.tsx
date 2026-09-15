@@ -7,7 +7,7 @@ import { EmptyState } from "@/app/components/ui/empty-state"
 import { Target, Filter, LayoutGrid, PlayCircle, Clock, CheckCircle2, ListOrdered, Check, ChevronDown } from "@/app/components/ui/icons"
 import { CalendarDateRangePicker } from "@/app/components/ui/date-range-picker"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
-import { MobileFiltersDrawer } from "@/app/components/ui/mobile-filters-drawer"
+import { MobileFiltersDrawer, FilterContainer, FilterSection, FilterSeparator } from "@/app/components/ui/mobile-filters-drawer"
 import { Button } from "@/app/components/ui/button"
 import {
   DropdownMenu,
@@ -156,40 +156,41 @@ export default function CampaignsPage() {
         <div className="flex items-center justify-between w-full">
           <div className="flex items-center gap-4">
             <MobileFiltersDrawer triggerText={t('common.search') || "Search"}>
-              <div className="flex flex-col md:flex-row items-stretch md:items-center gap-6 md:gap-4 w-full flex-1 min-w-0">
-                <div className="md:hidden w-full">
-                  <SearchInput  data-command-k-input placeholder={t("campaigns.search.placeholder") || "Search campaigns..."} value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} alwaysExpanded={true}    className="w-full h-10 md:h-9"  containerClassName="w-full" />
-                </div>
+              <FilterContainer>
+                <FilterSection mobileOnly>
+                  <SearchInput data-command-k-input placeholder={t("campaigns.search.placeholder") || "Search campaigns..."} value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} alwaysExpanded={true} className="w-full h-10 md:h-9" containerClassName="w-full" />
+                </FilterSection>
 
-                <div className="flex flex-col gap-2 w-full md:w-auto">
-                  <span className="text-xs font-semibold text-muted-foreground md:hidden mb-1 uppercase">{t('common.status') || 'Estado'}</span>
+                
+
+                <FilterSection title={t('common.status') || 'Estado'}>
                   <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as "all" | "active" | "pending" | "completed")}>
-                    <TabsList className="h-auto md:h-8 p-0 md:p-0.5 bg-transparent md:bg-muted/30 rounded-lg md:rounded-full flex flex-col md:flex-row w-full md:max-w-full overflow-y-auto md:overflow-x-auto justify-start items-stretch md:items-center gap-1 md:gap-0">
-                      <TabsTrigger value="all" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent whitespace-normal md:whitespace-nowrap" title={t("campaigns.tabs.all") || "All Campaigns"}>
+                    <TabsList className="h-auto md:h-8 p-0 md:p-0.5 bg-transparent md:bg-muted/30 rounded-none md:rounded-full flex flex-wrap md:flex-nowrap md:flex-row w-full md:max-w-full overflow-y-visible md:overflow-x-auto justify-start items-center gap-2 md:gap-0">
+                      <TabsTrigger value="all" className="w-auto justify-center rounded-full text-sm md:text-xs py-1.5 px-3 md:py-1 md:px-3 text-foreground/80 md:text-foreground border border-border/50 md:border-transparent data-[state=active]:bg-foreground data-[state=active]:text-background md:data-[state=active]:bg-background md:data-[state=active]:text-foreground data-[state=active]:shadow-sm md:data-[state=active]:border-transparent whitespace-nowrap flex items-center gap-1.5" title={t("campaigns.tabs.all") || "All Campaigns"}>
                         <LayoutGrid size={13} className="shrink-0 md:!hidden" />
                         <span className="tab-label">{t("campaigns.tabs.all") || "All"}</span>
                       </TabsTrigger>
-                      <TabsTrigger value="active" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent whitespace-normal md:whitespace-nowrap" title={t("campaigns.tabs.active") || "Active"}>
+                      <TabsTrigger value="active" className="w-auto justify-center rounded-full text-sm md:text-xs py-1.5 px-3 md:py-1 md:px-3 text-foreground/80 md:text-foreground border border-border/50 md:border-transparent data-[state=active]:bg-foreground data-[state=active]:text-background md:data-[state=active]:bg-background md:data-[state=active]:text-foreground data-[state=active]:shadow-sm md:data-[state=active]:border-transparent whitespace-nowrap flex items-center gap-1.5" title={t("campaigns.tabs.active") || "Active"}>
                         <PlayCircle size={13} className="shrink-0 md:!hidden" />
                         <span className="tab-label">{t("campaigns.tabs.active") || "Active"}</span>
                       </TabsTrigger>
-                      <TabsTrigger value="pending" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent whitespace-normal md:whitespace-nowrap" title={t("campaigns.tabs.pending") || "Pending"}>
+                      <TabsTrigger value="pending" className="w-auto justify-center rounded-full text-sm md:text-xs py-1.5 px-3 md:py-1 md:px-3 text-foreground/80 md:text-foreground border border-border/50 md:border-transparent data-[state=active]:bg-foreground data-[state=active]:text-background md:data-[state=active]:bg-background md:data-[state=active]:text-foreground data-[state=active]:shadow-sm md:data-[state=active]:border-transparent whitespace-nowrap flex items-center gap-1.5" title={t("campaigns.tabs.pending") || "Pending"}>
                         <Clock size={13} className="shrink-0 md:!hidden" />
                         <span className="tab-label">{t("campaigns.tabs.pending") || "Pending"}</span>
                       </TabsTrigger>
-                      <TabsTrigger value="draft" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent whitespace-normal md:whitespace-nowrap" title={t("campaigns.tabs.draft") || "Drafts"}>
+                      <TabsTrigger value="draft" className="w-auto justify-center rounded-full text-sm md:text-xs py-1.5 px-3 md:py-1 md:px-3 text-foreground/80 md:text-foreground border border-border/50 md:border-transparent data-[state=active]:bg-foreground data-[state=active]:text-background md:data-[state=active]:bg-background md:data-[state=active]:text-foreground data-[state=active]:shadow-sm md:data-[state=active]:border-transparent whitespace-nowrap flex items-center gap-1.5" title={t("campaigns.tabs.draft") || "Drafts"}>
                         <LayoutGrid size={13} className="shrink-0 md:!hidden" />
                         <span className="tab-label">{t("campaigns.tabs.draft") || "Drafts"}</span>
                       </TabsTrigger>
-                      <TabsTrigger value="completed" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent whitespace-normal md:whitespace-nowrap" title={t("campaigns.tabs.completed") || "Completed"}>
+                      <TabsTrigger value="completed" className="w-auto justify-center rounded-full text-sm md:text-xs py-1.5 px-3 md:py-1 md:px-3 text-foreground/80 md:text-foreground border border-border/50 md:border-transparent data-[state=active]:bg-foreground data-[state=active]:text-background md:data-[state=active]:bg-background md:data-[state=active]:text-foreground data-[state=active]:shadow-sm md:data-[state=active]:border-transparent whitespace-nowrap flex items-center gap-1.5" title={t("campaigns.tabs.completed") || "Completed"}>
                         <CheckCircle2 size={13} className="shrink-0 md:!hidden" />
                         <span className="tab-label">{t("campaigns.tabs.completed") || "Completed"}</span>
                       </TabsTrigger>
                     </TabsList>
                   </Tabs>
-                </div>
-
-                <div className="flex flex-col md:flex-row items-stretch md:items-center gap-2 w-full md:w-auto">
+                </FilterSection>
+                    
+                    <FilterSection className="flex-col md:flex-row items-stretch md:items-center gap-2">
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button variant="secondary" size="sm" className="w-full md:w-auto md:w-9 h-10 md:h-9 gap-2 rounded-md md:rounded-full px-4 md:px-0 justify-between md:justify-center">
@@ -227,12 +228,12 @@ export default function CampaignsPage() {
                   </DropdownMenu>
 
                   <CalendarDateRangePicker />
-                </div>
+                </FilterSection>
 
-                <div className="hidden md:flex items-center gap-2 w-full md:w-auto">
-                  <SearchInput  data-command-k-input placeholder={t("campaigns.search.placeholder") || "Search campaigns..."} value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}    className="w-full"  containerClassName="w-full w-64" />
-                </div>
-              </div>
+                <FilterSection desktopOnly>
+                  <SearchInput data-command-k-input placeholder={t("campaigns.search.placeholder") || "Search campaigns..."} value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full" containerClassName="w-full w-64" />
+                </FilterSection>
+              </FilterContainer>
             </MobileFiltersDrawer>
           </div>
 

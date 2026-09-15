@@ -7,7 +7,7 @@ import { useLocalization } from "@/app/context/LocalizationContext"
 import { listShipments, updateShipmentStatus } from "./actions"
 import { ShipmentParams } from "./types"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
-import { MobileFiltersDrawer } from "@/app/components/ui/mobile-filters-drawer"
+import { MobileFiltersDrawer, FilterContainer, FilterSection, FilterSeparator } from "@/app/components/ui/mobile-filters-drawer"
 import { SearchInput } from "@/app/components/ui/search-input"
 import { Tabs, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
@@ -114,68 +114,71 @@ export default function ShipmentsPage() {
           <div className="w-full pt-0">
               <div className="flex items-center justify-between gap-2 w-full">
               <MobileFiltersDrawer triggerText={t('common.search') || "Search"}>
-                <div className="flex flex-col md:flex-row items-stretch md:items-center gap-6 md:gap-4 w-full flex-1 min-w-0">
-                  <div className="md:hidden w-full">
+                <FilterContainer>
+                  <FilterSection mobileOnly>
                     <form onSubmit={handleSearch} className="w-full">
                       <SearchInput  placeholder={t("shipments.search") || "Search tracking or customer..."} value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} alwaysExpanded={true}    className="w-full h-10 md:h-9"  containerClassName="w-full" />
                     </form>
-                  </div>
-                  <div className="flex flex-col gap-2 w-full md:w-auto">
-                    <span className="text-xs font-semibold text-muted-foreground md:hidden mb-1 uppercase">{t('common.filters') || 'Filters'}</span>
-                    <TabsList className="h-auto md:h-8 p-0 md:p-0.5 bg-transparent md:bg-muted/30 rounded-lg md:rounded-full flex flex-col md:flex-row w-full md:max-w-full overflow-y-auto md:overflow-x-auto justify-start items-stretch md:items-center gap-1 md:gap-0">
-                      <TabsTrigger value="all" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent whitespace-nowrap">
+                  </FilterSection>
+                  
+                  
+                  
+                  <FilterSection title={t('common.status') || 'Status'} className={cn(searchQuery && "max-md:hidden")}>
+                    <TabsList className="h-auto md:h-8 p-0 md:p-0.5 bg-transparent md:bg-muted/30 rounded-none md:rounded-full flex flex-wrap md:flex-nowrap md:flex-row w-full md:max-w-full overflow-y-visible md:overflow-x-auto justify-start items-center gap-2 md:gap-0">
+                      <TabsTrigger value="all" className="w-auto justify-center rounded-full text-sm md:text-xs py-1.5 px-3 md:py-1 md:px-3 text-foreground/80 md:text-foreground border border-border/50 md:border-transparent data-[state=active]:bg-foreground data-[state=active]:text-background md:data-[state=active]:bg-background md:data-[state=active]:text-foreground data-[state=active]:shadow-sm md:data-[state=active]:border-transparent whitespace-nowrap flex items-center gap-1.5">
                         <LayoutGrid size={13} className="shrink-0 md:!hidden" />
                         <span className="tab-label">All</span>
                       </TabsTrigger>
-                      <TabsTrigger value="pending" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent whitespace-nowrap">
+                      <TabsTrigger value="pending" className="w-auto justify-center rounded-full text-sm md:text-xs py-1.5 px-3 md:py-1 md:px-3 text-foreground/80 md:text-foreground border border-border/50 md:border-transparent data-[state=active]:bg-foreground data-[state=active]:text-background md:data-[state=active]:bg-background md:data-[state=active]:text-foreground data-[state=active]:shadow-sm md:data-[state=active]:border-transparent whitespace-nowrap flex items-center gap-1.5">
                         <Clock size={13} className="shrink-0 md:!hidden" />
                         <span className="tab-label">Pending</span>
                       </TabsTrigger>
-                      <TabsTrigger value="preparing" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent whitespace-nowrap">
+                      <TabsTrigger value="preparing" className="w-auto justify-center rounded-full text-sm md:text-xs py-1.5 px-3 md:py-1 md:px-3 text-foreground/80 md:text-foreground border border-border/50 md:border-transparent data-[state=active]:bg-foreground data-[state=active]:text-background md:data-[state=active]:bg-background md:data-[state=active]:text-foreground data-[state=active]:shadow-sm md:data-[state=active]:border-transparent whitespace-nowrap flex items-center gap-1.5">
                         <Package size={13} className="shrink-0 md:!hidden" />
                         <span className="tab-label">Preparing</span>
                       </TabsTrigger>
-                      <TabsTrigger value="shipped" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent whitespace-nowrap">
+                      <TabsTrigger value="shipped" className="w-auto justify-center rounded-full text-sm md:text-xs py-1.5 px-3 md:py-1 md:px-3 text-foreground/80 md:text-foreground border border-border/50 md:border-transparent data-[state=active]:bg-foreground data-[state=active]:text-background md:data-[state=active]:bg-background md:data-[state=active]:text-foreground data-[state=active]:shadow-sm md:data-[state=active]:border-transparent whitespace-nowrap flex items-center gap-1.5">
                         <Send size={13} className="shrink-0 md:!hidden" />
                         <span className="tab-label">Shipped</span>
                       </TabsTrigger>
-                      <TabsTrigger value="in_transit" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent whitespace-nowrap">
+                      <TabsTrigger value="in_transit" className="w-auto justify-center rounded-full text-sm md:text-xs py-1.5 px-3 md:py-1 md:px-3 text-foreground/80 md:text-foreground border border-border/50 md:border-transparent data-[state=active]:bg-foreground data-[state=active]:text-background md:data-[state=active]:bg-background md:data-[state=active]:text-foreground data-[state=active]:shadow-sm md:data-[state=active]:border-transparent whitespace-nowrap flex items-center gap-1.5">
                         <Truck size={13} className="shrink-0 md:!hidden" />
                         <span className="tab-label">In Transit</span>
                       </TabsTrigger>
-                      <TabsTrigger value="delivered" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent whitespace-nowrap">
+                      <TabsTrigger value="delivered" className="w-auto justify-center rounded-full text-sm md:text-xs py-1.5 px-3 md:py-1 md:px-3 text-foreground/80 md:text-foreground border border-border/50 md:border-transparent data-[state=active]:bg-foreground data-[state=active]:text-background md:data-[state=active]:bg-background md:data-[state=active]:text-foreground data-[state=active]:shadow-sm md:data-[state=active]:border-transparent whitespace-nowrap flex items-center gap-1.5">
                         <CheckCircle2 size={13} className="shrink-0 md:!hidden" />
                         <span className="tab-label">Delivered</span>
                       </TabsTrigger>
                     </TabsList>
-                  </div>
+                  </FilterSection>
 
                   {locations.length > 0 && (
-                    <Select
-                      value={locationFilter}
-                      onValueChange={(val) => { setLocationFilter(val); setPage(1); }}
-                    >
-                      <SelectTrigger className="w-[160px] h-8 text-xs bg-muted/30 border-0 rounded-full">
-                        <SelectValue placeholder={t("allLocations") || "All Locations"} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">{t("allLocations") || "All Locations"}</SelectItem>
-                        {locations.map((loc) => (
-                          <SelectItem key={loc.id} value={loc.id}>{loc.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <FilterSection className={cn(searchQuery && "max-md:hidden")} title={t('common.location') || 'Location'}> 
+                      <Select value={locationFilter}
+                        onValueChange={(val) => { setLocationFilter(val); setPage(1); }}
+                      >
+                        <SelectTrigger className="w-[160px] h-8 text-xs bg-muted/30 border-0 rounded-full">
+                          <SelectValue placeholder={t('common.allLocations') || "All Locations"} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">{t('common.allLocations') || "All Locations"}</SelectItem>
+                          {locations.map((loc) => (
+                            <SelectItem key={loc.id} value={loc.id}>{loc.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </FilterSection>
                   )}
 
-                  <div className="hidden md:flex items-center gap-2 w-full md:w-auto">
+                  <FilterSection desktopOnly>
                     <form onSubmit={handleSearch} className="w-full md:w-auto">
                       <SearchInput  
                         placeholder={t("shipments.search") || "Search tracking or customer..."}
                         value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}  className="w-full h-10 md:h-9"  containerClassName="w-full" />
+                        onChange={(e) => setSearchQuery(e.target.value)}  className="w-full h-10 md:h-9"  containerClassName="w-full md:w-[240px]" />
                     </form>
-                  </div>
-                </div>
+                  </FilterSection>
+                </FilterContainer>
               </MobileFiltersDrawer>
               <div className="flex items-center gap-2 w-auto justify-end shrink-0">
                 <SortDropdown sortBy={sortBy} setSortBy={setSortBy} />

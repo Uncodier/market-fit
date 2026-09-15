@@ -354,7 +354,18 @@ export async function postWithRetry<T = any>(
     const skipped = await skipIfAlreadyAnswered<T>(instanceId, message)
     if (skipped) return skipped
 
-    lastResponse = await apiClient.post<T>(endpoint, payload)
+    // Use direct fetch instead of apiClient to ensure it hits local Next.js API route
+    try {
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      })
+      const data = await res.json()
+      lastResponse = data as ApiPostResult<T>
+    } catch (err) {
+      lastResponse = { success: false, error: { message: err instanceof Error ? err.message : 'Fetch failed' } } as ApiPostResult<T>
+    }
     if (lastResponse.success) return lastResponse
 
     if (attempt < maxAttempts && isRetryableApiFailure(lastResponse)) {

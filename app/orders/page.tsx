@@ -179,10 +179,10 @@ export default function OrdersPage() {
                     
                     <FilterSection title={t('common.status') || 'Status'} className={cn(searchQuery && "max-md:hidden")}>
                     <TabsList className="h-auto md:h-8 p-0 md:p-0.5 bg-transparent md:bg-muted/30 rounded-none md:rounded-full flex flex-wrap md:flex-nowrap md:flex-row w-full md:max-w-full overflow-y-visible md:overflow-x-auto justify-start items-center gap-2 md:gap-0">
-                      <TabsTrigger value="all" className="w-auto justify-center rounded-full text-sm md:text-xs py-1.5 px-3 md:py-1 md:px-3 text-foreground/80 md:text-foreground border border-border/50 md:border-transparent data-[state=active]:bg-foreground data-[state=active]:text-background md:data-[state=active]:bg-background md:data-[state=active]:text-foreground data-[state=active]:shadow-sm md:data-[state=active]:border-transparent whitespace-nowrap flex items-center gap-1.5" title={t('orders.tabs.all') || "All Orders"}>
-                        <LayoutGrid size={13} className="shrink-0 md:!hidden" />
-                        <span className="tab-label">{t('orders.tabs.all') || 'All Orders'}</span>
-                      </TabsTrigger>
+                        <TabsTrigger value="all" className="w-auto justify-center rounded-full text-sm md:text-xs py-1.5 px-3 md:py-1 md:px-3 text-foreground/80 md:text-foreground border border-border/50 md:border-transparent data-[state=active]:bg-foreground data-[state=active]:text-background md:data-[state=active]:bg-background md:data-[state=active]:text-foreground data-[state=active]:shadow-sm md:data-[state=active]:border-transparent whitespace-nowrap flex items-center gap-1.5" title={t('orders.tabs.all') || "All Orders"}>
+                          <LayoutGrid size={13} className="shrink-0 md:!hidden" />
+                          <span className="tab-label">{t('orders.tabs.all') || 'All Orders'}</span>
+                        </TabsTrigger>
                       <TabsTrigger value="pending" className="w-auto justify-center rounded-full text-sm md:text-xs py-1.5 px-3 md:py-1 md:px-3 text-foreground/80 md:text-foreground border border-border/50 md:border-transparent data-[state=active]:bg-foreground data-[state=active]:text-background md:data-[state=active]:bg-background md:data-[state=active]:text-foreground data-[state=active]:shadow-sm md:data-[state=active]:border-transparent whitespace-nowrap flex items-center gap-1.5" title={t('orders.tabs.pending') || "Pending Orders"}>
                         <Clock size={13} className="shrink-0 md:!hidden" />
                         <span className="tab-label">{t('orders.tabs.pendingTitle') || 'Pending'}</span>
@@ -208,10 +208,10 @@ export default function OrdersPage() {
                         onValueChange={(val) => { setLocationFilter(val); setPage(1); }}
                       >
                         <SelectTrigger className="w-full md:w-[160px] h-10 md:h-8 text-sm md:text-xs bg-background md:bg-muted/30 border md:border-0 rounded-md md:rounded-full">
-                          <SelectValue placeholder={t('allLocations') || 'All Locations'} />
+                          <SelectValue placeholder={t('common.allLocations') || 'All Locations'} />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="all">{t('allLocations') || 'All Locations'}</SelectItem>
+                          <SelectItem value="all">{t('common.allLocations') || 'All Locations'}</SelectItem>
                           {locations.map((loc) => (
                             <SelectItem key={loc.id} value={loc.id}>{loc.name}</SelectItem>
                           ))}

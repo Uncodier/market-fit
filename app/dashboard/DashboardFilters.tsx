@@ -1,6 +1,6 @@
 "use client"
 
-import { MobileFiltersDrawer } from "@/app/components/ui/mobile-filters-drawer"
+import { MobileFiltersDrawer, FilterContainer, FilterSection, FilterSeparator } from "@/app/components/ui/mobile-filters-drawer"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
 import { CalendarDateRangePicker } from "@/app/components/ui/date-range-picker"
@@ -29,8 +29,8 @@ export function DashboardFilters({
       <div className="w-full pt-0">
         <div className="flex w-full items-center justify-end gap-8">
           <MobileFiltersDrawer triggerText={t("common.filters") || "Filters"}>
-            <div className="flex flex-col md:flex-row items-stretch md:items-center gap-6 md:gap-4 w-full flex-1 md:justify-end min-w-0">
-              <div className="flex flex-col md:flex-row items-stretch md:items-center gap-4">
+            <FilterContainer className="md:justify-end">
+              <FilterSection>
                 <div className="flex flex-col md:flex-row items-stretch md:items-center gap-2">
                   <span className="text-sm text-muted-foreground">{t("dashboard.filters.segment") || "Segment:"}</span>
                   <Select
@@ -57,6 +57,9 @@ export function DashboardFilters({
                     </SelectContent>
                   </Select>
                 </div>
+              </FilterSection>
+                    
+                    <FilterSection>
                 <div className="flex flex-col md:flex-row items-stretch md:items-center gap-2">
                   <CalendarDateRangePicker
                     onRangeChange={onDateRangeChange}
@@ -66,8 +69,8 @@ export function DashboardFilters({
                     className="flex items-center w-full md:w-auto"
                   />
                 </div>
-              </div>
-            </div>
+              </FilterSection>
+            </FilterContainer>
           </MobileFiltersDrawer>
         </div>
       </div>

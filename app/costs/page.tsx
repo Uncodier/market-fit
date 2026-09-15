@@ -1,6 +1,6 @@
 "use client"
 
-import { MobileFiltersDrawer } from "@/app/components/ui/mobile-filters-drawer"
+import { MobileFiltersDrawer, FilterContainer, FilterSection, FilterSeparator } from "@/app/components/ui/mobile-filters-drawer"
 
 import React, { Suspense, useCallback, useEffect, useState } from "react"
 import useSWR from "swr"
@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { useSite } from "@/app/context/SiteContext"
 import { getSegments } from "@/app/segments/actions"
+import { cn } from "@/lib/utils"
 import { createClient } from "@/lib/supabase/client"
 import { format, subMonths, startOfDay, endOfDay } from "date-fns"
 
@@ -78,66 +79,60 @@ function CostsPageContent() {
         <div className="w-full pt-0">
           <div className="flex w-full items-center justify-end gap-8">
             <MobileFiltersDrawer triggerText={t('common.filters') || "Filters"}>
-              <div className="flex flex-col md:flex-row items-stretch md:items-center gap-6 md:gap-4 w-full flex-1 md:justify-end min-w-0">
-                <div className="flex flex-col md:flex-row items-stretch md:items-center gap-4">
-                  <div className="flex flex-col md:flex-row items-stretch md:items-center gap-2">
-                    <span className="text-sm text-muted-foreground">
-                      {t("dashboard.filters.campaign") || "Campaign:"}
-                    </span>
-                    <Select
-                      value={selectedCampaign}
-                      onValueChange={setSelectedCampaign}
-                      disabled={isLoadingCampaigns}
-                    >
-                      <SelectTrigger className="w-full md:w-[180px]">
-                        <SelectValue placeholder={t("dashboard.filters.allCampaigns") || "All campaigns"} />
-                      </SelectTrigger>
-                      <SelectContent className="min-w-[180px] w-auto">
-                        <SelectItem value="all">
-                          {t("dashboard.filters.allCampaigns") || "All campaigns"}
+              <FilterContainer className="md:justify-end">
+                <FilterSection title={t("dashboard.filters.campaign") || "Campaign"}>
+                  <Select
+                    value={selectedCampaign}
+                    onValueChange={setSelectedCampaign}
+                    disabled={isLoadingCampaigns}
+                  >
+                    <SelectTrigger className="w-full md:w-[180px]">
+                      <SelectValue placeholder={t("dashboard.filters.allCampaigns") || "All campaigns"} />
+                    </SelectTrigger>
+                    <SelectContent className="min-w-[180px] w-auto">
+                      <SelectItem value="all">
+                        {t("dashboard.filters.allCampaigns") || "All campaigns"}
+                      </SelectItem>
+                      {campaigns.map((campaign) => (
+                        <SelectItem key={campaign.id} value={campaign.id}>
+                          {campaign.title}
                         </SelectItem>
-                        {campaigns.map((campaign) => (
-                          <SelectItem key={campaign.id} value={campaign.id}>
-                            {campaign.title}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="flex flex-col md:flex-row items-stretch md:items-center gap-2">
-                    <span className="text-sm text-muted-foreground">
-                      {t("dashboard.filters.segment") || "Segment:"}
-                    </span>
-                    <Select
-                      value={selectedSegment}
-                      onValueChange={setSelectedSegment}
-                      disabled={isLoadingSegments}
-                    >
-                      <SelectTrigger className="w-full md:w-[180px]">
-                        <SelectValue placeholder={t("dashboard.filters.allSegments") || "All segments"} />
-                      </SelectTrigger>
-                      <SelectContent className="min-w-[180px] w-auto">
-                        <SelectItem value="all">
-                          {t("dashboard.filters.allSegments") || "All segments"}
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </FilterSection>
+                    
+                    <FilterSection title={t("dashboard.filters.segment") || "Segment"}>
+                  <Select
+                    value={selectedSegment}
+                    onValueChange={setSelectedSegment}
+                    disabled={isLoadingSegments}
+                  >
+                    <SelectTrigger className="w-full md:w-[180px]">
+                      <SelectValue placeholder={t("dashboard.filters.allSegments") || "All segments"} />
+                    </SelectTrigger>
+                    <SelectContent className="min-w-[180px] w-auto">
+                      <SelectItem value="all">
+                        {t("dashboard.filters.allSegments") || "All segments"}
+                      </SelectItem>
+                      {segments.map((segment) => (
+                        <SelectItem key={segment.id} value={segment.id}>
+                          {segment.name}
                         </SelectItem>
-                        {segments.map((segment) => (
-                          <SelectItem key={segment.id} value={segment.id}>
-                            {segment.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="flex flex-col md:flex-row items-stretch md:items-center gap-2">
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </FilterSection>
+                    
+                    <FilterSection title={t('common.dateRange') || 'Date Range'}> 
                     <CalendarDateRangePicker
-                      onRangeChange={handleDateRangeChange}
-                      initialStartDate={dateRange.startDate}
-                      initialEndDate={dateRange.endDate}
-                      key={`date-range-${format(dateRange.startDate, "yyyy-MM-dd")}-${format(dateRange.endDate, "yyyy-MM-dd")}`}
-                      className="flex items-center w-full md:w-auto" />
-                  </div>
-                </div>
-              </div>
+                    onRangeChange={handleDateRangeChange}
+                    initialStartDate={dateRange.startDate}
+                    initialEndDate={dateRange.endDate}
+                    key={`date-range-${format(dateRange.startDate, "yyyy-MM-dd")}-${format(dateRange.endDate, "yyyy-MM-dd")}`}
+                    className="flex items-center w-full md:w-auto" />
+                </FilterSection>
+              </FilterContainer>
             </MobileFiltersDrawer>
           </div>
         </div>

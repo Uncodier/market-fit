@@ -10,7 +10,7 @@ import { CatalogListParams } from "./types"
 import { CatalogTable } from "./components/CatalogTable"
 import { CreateCatalogItemDialog } from "./components/CreateCatalogItemDialog"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
-import { MobileFiltersDrawer } from "@/app/components/ui/mobile-filters-drawer"
+import { MobileFiltersDrawer, FilterContainer, FilterSection, FilterSeparator } from "@/app/components/ui/mobile-filters-drawer"
 import { Button } from "@/app/components/ui/button"
 import { SearchInput } from "@/app/components/ui/search-input"
 import { Tabs, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
@@ -24,10 +24,11 @@ import { useMobileView } from "@/app/hooks/use-mobile-view"
 import { KanbanView } from "./components/KanbanView"
 import { upsertCatalogItem } from "./actions"
 import { cn } from "@/lib/utils"
-import { useSearchParams } from "next/navigation"
+import { useSearchParams, useRouter } from "next/navigation"
 import { SortDropdown } from "@/app/components/ui/sort-dropdown"
 
 export default function CatalogPage() {
+  const router = useRouter()
   const searchParams = useSearchParams()
   const urlSort = searchParams ? searchParams.get('sort') : null
   const defaultSort = urlSort === 'updated_at' ? 'updated_at' : (urlSort === 'created_at' || urlSort === 'newest' ? 'newest' : (urlSort === 'oldest' ? 'oldest' : 'newest'))
@@ -194,49 +195,49 @@ export default function CatalogPage() {
         <div className="w-full pt-0">
           <div className="flex items-center justify-between gap-4 md:gap-6 w-full">
             <MobileFiltersDrawer triggerText={t('common.search') || "Search"}>
-                <div className="flex flex-col md:flex-row items-stretch md:items-center gap-6 md:gap-4 w-full flex-1 min-w-0">
-                  <div className="md:hidden w-full">
+                <FilterContainer>
+                  <FilterSection mobileOnly>
                     <form onSubmit={handleSearch} className="w-full">
                       <SearchInput  placeholder={t('catalog.search') || "Search in catalog..."} value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} alwaysExpanded={true}    className="w-full h-10 md:h-9"  containerClassName="w-full" />
                     </form>
-                  </div>
+                  </FilterSection>
                   
-                  <div className="flex flex-col gap-2 w-full md:w-auto min-w-0">
-                    <span className="text-xs font-semibold text-muted-foreground md:hidden mb-1 uppercase">{t('catalog.kind.label') === 'catalog.kind.label' ? 'Item Type' : t('catalog.kind.label')}</span>
+                  
+
+                  <FilterSection title={t('catalog.kind.label') === 'catalog.kind.label' ? 'Item Type' : t('catalog.kind.label')}>
                     <Tabs 
                       value={kindFilter} 
                       onValueChange={(val) => { setKindFilter(val as any); setPage(1); }}
                       className="w-full md:w-auto min-w-0"
                     >
-                      <TabsList className="h-auto md:h-8 p-0 md:p-0.5 bg-transparent md:bg-muted/30 rounded-lg md:rounded-full flex flex-col md:flex-row w-full md:max-w-full overflow-y-auto md:overflow-x-auto justify-start items-stretch md:items-center gap-1 md:gap-0">
-                        <TabsTrigger value="all" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent whitespace-normal md:whitespace-nowrap">{t('catalog.kind.all') || 'All items'}</TabsTrigger>
-                        <TabsTrigger value="product" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent gap-2 whitespace-normal md:whitespace-nowrap"><Archive className="shrink-0 h-4 w-4 md:hidden"/> {t('catalog.kind.product') || 'Products'}</TabsTrigger>
-                        <TabsTrigger value="service" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent gap-2 whitespace-normal md:whitespace-nowrap"><DatabaseIcon className="shrink-0 h-4 w-4 md:hidden"/> {t('catalog.kind.service') || 'Services'}</TabsTrigger>
-                        <TabsTrigger value="variant" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent gap-2 whitespace-normal md:whitespace-nowrap"><Boxes className="shrink-0 h-4 w-4 md:hidden"/> {t('catalog.kind.variant') || 'Variants'}</TabsTrigger>
+                      <TabsList className="h-auto md:h-8 p-0 md:p-0.5 bg-transparent md:bg-muted/30 rounded-none md:rounded-full flex flex-wrap md:flex-nowrap md:flex-row w-full md:max-w-full overflow-y-visible md:overflow-x-auto justify-start items-center gap-2 md:gap-0">
+                        <TabsTrigger value="all" className="w-auto justify-center rounded-full text-sm md:text-xs py-1.5 px-3 md:py-1 md:px-3 text-foreground/80 md:text-foreground border border-border/50 md:border-transparent data-[state=active]:bg-foreground data-[state=active]:text-background md:data-[state=active]:bg-background md:data-[state=active]:text-foreground data-[state=active]:shadow-sm md:data-[state=active]:border-transparent whitespace-nowrap flex items-center gap-1.5">{t('catalog.kind.all') || 'All items'}</TabsTrigger>
+                        <TabsTrigger value="product" className="w-auto justify-center rounded-full text-sm md:text-xs py-1.5 px-3 md:py-1 md:px-3 text-foreground/80 md:text-foreground border border-border/50 md:border-transparent data-[state=active]:bg-foreground data-[state=active]:text-background md:data-[state=active]:bg-background md:data-[state=active]:text-foreground data-[state=active]:shadow-sm md:data-[state=active]:border-transparent whitespace-nowrap flex items-center gap-1.5"><Archive className="shrink-0 h-4 w-4 md:hidden"/> {t('catalog.kind.product') || 'Products'}</TabsTrigger>
+                        <TabsTrigger value="service" className="w-auto justify-center rounded-full text-sm md:text-xs py-1.5 px-3 md:py-1 md:px-3 text-foreground/80 md:text-foreground border border-border/50 md:border-transparent data-[state=active]:bg-foreground data-[state=active]:text-background md:data-[state=active]:bg-background md:data-[state=active]:text-foreground data-[state=active]:shadow-sm md:data-[state=active]:border-transparent whitespace-nowrap flex items-center gap-1.5"><DatabaseIcon className="shrink-0 h-4 w-4 md:hidden"/> {t('catalog.kind.service') || 'Services'}</TabsTrigger>
+                        <TabsTrigger value="variant" className="w-auto justify-center rounded-full text-sm md:text-xs py-1.5 px-3 md:py-1 md:px-3 text-foreground/80 md:text-foreground border border-border/50 md:border-transparent data-[state=active]:bg-foreground data-[state=active]:text-background md:data-[state=active]:bg-background md:data-[state=active]:text-foreground data-[state=active]:shadow-sm md:data-[state=active]:border-transparent whitespace-nowrap flex items-center gap-1.5"><Boxes className="shrink-0 h-4 w-4 md:hidden"/> {t('catalog.kind.variant') || 'Variants'}</TabsTrigger>
                       </TabsList>
                     </Tabs>
-                  </div>
-                  
-                  <div className="flex flex-col gap-2 w-full md:w-auto min-w-0">
-                    <span className="text-xs font-semibold text-muted-foreground md:hidden mb-1 uppercase">{t('common.status') === 'common.status' ? 'Status' : t('common.status')}</span>
+                  </FilterSection>
+                    
+                    <FilterSection title={t('common.status') === 'common.status' ? 'Status' : t('common.status')}>
                     <Tabs 
                       value={statusFilter} 
                       onValueChange={(val) => { setStatusFilter(val as any); setPage(1); }}
                       className="w-full md:w-auto min-w-0"
                     >
-                      <TabsList className="h-auto md:h-8 p-0 md:p-0.5 bg-transparent md:bg-muted/30 rounded-lg md:rounded-full flex flex-col md:flex-row w-full md:max-w-full overflow-y-auto md:overflow-x-auto justify-start items-stretch md:items-center gap-1 md:gap-0">
-                        <TabsTrigger value="active" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent whitespace-normal md:whitespace-nowrap">{t('status.active') || 'Active'}</TabsTrigger>
-                        <TabsTrigger value="archived" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent whitespace-normal md:whitespace-nowrap">{t('status.archived') || 'Archived'}</TabsTrigger>
+                      <TabsList className="h-auto md:h-8 p-0 md:p-0.5 bg-transparent md:bg-muted/30 rounded-none md:rounded-full flex flex-wrap md:flex-nowrap md:flex-row w-full md:max-w-full overflow-y-visible md:overflow-x-auto justify-start items-center gap-2 md:gap-0">
+                        <TabsTrigger value="active" className="w-auto justify-center rounded-full text-sm md:text-xs py-1.5 px-3 md:py-1 md:px-3 text-foreground/80 md:text-foreground border border-border/50 md:border-transparent data-[state=active]:bg-foreground data-[state=active]:text-background md:data-[state=active]:bg-background md:data-[state=active]:text-foreground data-[state=active]:shadow-sm md:data-[state=active]:border-transparent whitespace-nowrap flex items-center gap-1.5">{t('status.active') || 'Active'}</TabsTrigger>
+                        <TabsTrigger value="archived" className="w-auto justify-center rounded-full text-sm md:text-xs py-1.5 px-3 md:py-1 md:px-3 text-foreground/80 md:text-foreground border border-border/50 md:border-transparent data-[state=active]:bg-foreground data-[state=active]:text-background md:data-[state=active]:bg-background md:data-[state=active]:text-foreground data-[state=active]:shadow-sm md:data-[state=active]:border-transparent whitespace-nowrap flex items-center gap-1.5">{t('status.archived') || 'Archived'}</TabsTrigger>
                       </TabsList>
                     </Tabs>
-                  </div>
+                  </FilterSection>
 
-                  <div className="hidden md:flex items-center gap-2 w-full md:w-auto">
+                  <FilterSection desktopOnly>
                     <form onSubmit={handleSearch} className="w-full md:w-auto">
                       <SearchInput  placeholder={t('catalog.search') || "Search in catalog..."} value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}    className="w-full"  containerClassName="w-64" />
                     </form>
-                  </div>
-                </div>
+                  </FilterSection>
+                </FilterContainer>
               </MobileFiltersDrawer>
               
               <div className="ml-auto flex items-center gap-3 shrink-0">

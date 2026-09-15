@@ -10,7 +10,7 @@ import { Badge } from "@/app/components/ui/badge"
 import { ChevronLeft, ChevronRight, Search, User, Users, MessageSquare, Globe, FileText, Loader, Tag, X, CheckCircle2, ExternalLink, Phone, Pencil, Mail, Filter, LayoutGrid, PlusCircle, Plus, Star, TrendingDown, Ban, TrendingUp, XCircle, ListOrdered, Check, ChevronDown, Download, UploadCloud } from "@/app/components/ui/icons"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/app/components/ui/tabs"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
-import { MobileFiltersDrawer } from "@/app/components/ui/mobile-filters-drawer"
+import { MobileFiltersDrawer, FilterContainer, FilterSection, FilterSeparator } from "@/app/components/ui/mobile-filters-drawer"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
 import { useSite } from "@/app/context/SiteContext"
 import { getLeads, createLead, updateLead, deleteLead, searchLeads, searchLeadsWithCount, importLeads } from "./actions"
@@ -1396,93 +1396,96 @@ export default function LeadsPage() {
             ) : (
               <div className="flex items-center justify-between w-full">
                 <MobileFiltersDrawer triggerText={t('common.search') || "Search"}>
-                <div className="flex flex-col md:flex-row items-stretch md:items-center gap-6 md:gap-4 w-full flex-1 min-w-0">
-                  <div className="flex md:hidden items-center gap-2 w-full">
-                    <SearchInput  
-                      placeholder="Search leads..."
-                      value={searchQuery}
-                      onChange={handleSearchChange}
-                      className="w-full h-10 bg-background border-border focus:border-muted-foreground/20 focus:ring-muted-foreground/20"  
-                      containerClassName="w-full" 
-                    />
-                  </div>
-                  <div className="flex flex-col gap-2 w-full md:w-auto">
-                    <span className="text-xs font-semibold text-muted-foreground md:hidden mb-1 uppercase">{t('common.status') || 'Estado'}</span>
-                  <TabsList className="h-auto md:h-8 p-0 md:p-0.5 bg-transparent md:bg-muted/30 rounded-lg md:rounded-full flex flex-col md:flex-row w-full md:max-w-full overflow-y-auto md:overflow-x-auto justify-start items-stretch md:items-center gap-1 md:gap-0">
-                  <TabsTrigger value="all" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent whitespace-nowrap" title={t('leads.tabs.all') || 'All Companies'}>
-                    <LayoutGrid size={13} className="mr-2 md:mr-0" />
-                    <span className="tab-label">{t('leads.tabs.all') || 'All Companies'}</span>
-                  </TabsTrigger>
-                  <TabsTrigger value="new" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent whitespace-nowrap" title={t('leads.tabs.new') || 'New'}>
-                    <PlusCircle size={13} className="mr-2 md:mr-0" />
-                    <span className="tab-label">{t('leads.tabs.new') || 'New'}</span>
-                  </TabsTrigger>
-                  <TabsTrigger value="contacted" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent whitespace-nowrap" title={t('leads.tabs.contacted') || 'Contacted'}>
-                    <MessageSquare size={13} className="mr-2 md:mr-0" />
-                    <span className="tab-label">{t('leads.tabs.contacted') || 'Contacted'}</span>
-                  </TabsTrigger>
-                  <TabsTrigger value="qualified" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent whitespace-nowrap" title={t('leads.tabs.qualified') || 'Qualified'}>
-                    <Star size={13} className="mr-2 md:mr-0" />
-                    <span className="tab-label">{t('leads.tabs.qualified') || 'Qualified'}</span>
-                  </TabsTrigger>
-                  <TabsTrigger value="cold" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent whitespace-nowrap" title={t('leads.tabs.cold') || 'Cold'}>
-                    <TrendingDown size={13} className="mr-2 md:mr-0" />
-                    <span className="tab-label">{t('leads.tabs.cold') || 'Cold'}</span>
-                  </TabsTrigger>
-                  <TabsTrigger value="converted" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent whitespace-nowrap" title={t('leads.tabs.converted') || 'Converted'}>
-                    <TrendingUp size={13} className="mr-2 md:mr-0" />
-                    <span className="tab-label">{t('leads.tabs.converted') || 'Converted'}</span>
-                  </TabsTrigger>
-                  <TabsTrigger value="lost" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent whitespace-nowrap" title={t('leads.tabs.lost') || 'Lost'}>
-                    <XCircle size={13} className="mr-2 md:mr-0" />
-                    <span className="tab-label">{t('leads.tabs.lost') || 'Lost'}</span>
-                  </TabsTrigger>
-                  <TabsTrigger value="not_qualified" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent whitespace-nowrap" title={t('leads.tabs.notQualified') || 'Not Qualified'}>
-                    <Ban size={13} className="mr-2 md:mr-0" />
-                    <span className="tab-label">{t('leads.tabs.notQualified') || 'Not Qualified'}</span>
-                  </TabsTrigger>
-                </TabsList>
-                </div>
+                  <FilterContainer>
+                    <FilterSection mobileOnly>
+                      <SearchInput  
+                        placeholder="Search leads..."
+                        value={searchQuery}
+                        onChange={handleSearchChange}
+                        alwaysExpanded={true}
+                        className="w-full h-10 md:h-9 bg-background border-border focus:border-muted-foreground/20 focus:ring-muted-foreground/20"  
+                        containerClassName="w-full" 
+                      />
+                    </FilterSection>
 
-                <div className="flex flex-col md:flex-row items-stretch md:items-center gap-2 w-full md:w-auto mt-2 md:mt-0">
-                  <Button 
-                    variant="secondary" 
-                    size={(filters.status.length > 0 || filters.segments.length > 0 || filters.origin.length > 0) ? "default" : "sm"}
-                    className={cn(
-                      "w-full md:w-auto h-10 md:h-9 rounded-md md:rounded-full justify-center",
-                      (filters.status.length > 0 || filters.segments.length > 0 || filters.origin.length > 0) ? "px-4" : "md:w-9 md:px-0 px-4"
-                    )}
-                    onClick={handleOpenFilterModal}
-                  >
-                    <div className="flex items-center gap-2">
-                      <Filter className="h-4 w-4" />
-                      <span className="font-normal md:hidden">Filters</span>
-                    </div>
-                    {(filters.status.length > 0 || filters.segments.length > 0 || filters.origin.length > 0) && (
-                      <Badge variant="secondary" className="ml-2">
-                        {filters.status.length + filters.segments.length + filters.origin.length}
-                      </Badge>
-                    )}
-                  </Button>
+                    
 
-                  {(filters.status.length > 0 || filters.segments.length > 0 || filters.origin.length > 0) && (
-                    <Button variant="ghost" size="sm" onClick={handleClearFilters} className="w-full md:w-auto h-10 md:h-9 rounded-md md:rounded-full">
-                      <span className="ml-2">{t('leads.filters.clear') || 'Clear filters'}</span>
-                    </Button>
-                  )}
-                </div>
+                    <FilterSection title={t('common.status') || 'Estado'} className={cn(searchQuery && "max-md:hidden")}>
+                      <TabsList className="h-auto md:h-8 p-0 md:p-0.5 bg-transparent md:bg-muted/30 rounded-none md:rounded-full flex flex-wrap md:flex-nowrap md:flex-row w-full md:max-w-full overflow-y-visible md:overflow-x-auto justify-start items-center gap-2 md:gap-0">
+                        <TabsTrigger value="all" className="w-auto justify-center rounded-full text-sm md:text-xs py-1.5 px-3 md:py-1 md:px-3 text-foreground/80 md:text-foreground border border-border/50 md:border-transparent data-[state=active]:bg-foreground data-[state=active]:text-background md:data-[state=active]:bg-background md:data-[state=active]:text-foreground data-[state=active]:shadow-sm md:data-[state=active]:border-transparent whitespace-nowrap flex items-center gap-1.5" title={t('leads.tabs.all') || 'All Companies'}>
+                          <LayoutGrid size={13} className="mr-2 md:mr-0" />
+                          <span className="tab-label">{t('leads.tabs.all') || 'All Companies'}</span>
+                        </TabsTrigger>
+                        <TabsTrigger value="new" className="w-auto justify-center rounded-full text-sm md:text-xs py-1.5 px-3 md:py-1 md:px-3 text-foreground/80 md:text-foreground border border-border/50 md:border-transparent data-[state=active]:bg-foreground data-[state=active]:text-background md:data-[state=active]:bg-background md:data-[state=active]:text-foreground data-[state=active]:shadow-sm md:data-[state=active]:border-transparent whitespace-nowrap flex items-center gap-1.5" title={t('leads.tabs.new') || 'New'}>
+                          <PlusCircle size={13} className="mr-2 md:mr-0" />
+                          <span className="tab-label">{t('leads.tabs.new') || 'New'}</span>
+                        </TabsTrigger>
+                        <TabsTrigger value="contacted" className="w-auto justify-center rounded-full text-sm md:text-xs py-1.5 px-3 md:py-1 md:px-3 text-foreground/80 md:text-foreground border border-border/50 md:border-transparent data-[state=active]:bg-foreground data-[state=active]:text-background md:data-[state=active]:bg-background md:data-[state=active]:text-foreground data-[state=active]:shadow-sm md:data-[state=active]:border-transparent whitespace-nowrap flex items-center gap-1.5" title={t('leads.tabs.contacted') || 'Contacted'}>
+                          <MessageSquare size={13} className="mr-2 md:mr-0" />
+                          <span className="tab-label">{t('leads.tabs.contacted') || 'Contacted'}</span>
+                        </TabsTrigger>
+                        <TabsTrigger value="qualified" className="w-auto justify-center rounded-full text-sm md:text-xs py-1.5 px-3 md:py-1 md:px-3 text-foreground/80 md:text-foreground border border-border/50 md:border-transparent data-[state=active]:bg-foreground data-[state=active]:text-background md:data-[state=active]:bg-background md:data-[state=active]:text-foreground data-[state=active]:shadow-sm md:data-[state=active]:border-transparent whitespace-nowrap flex items-center gap-1.5" title={t('leads.tabs.qualified') || 'Qualified'}>
+                          <Star size={13} className="mr-2 md:mr-0" />
+                          <span className="tab-label">{t('leads.tabs.qualified') || 'Qualified'}</span>
+                        </TabsTrigger>
+                        <TabsTrigger value="cold" className="w-auto justify-center rounded-full text-sm md:text-xs py-1.5 px-3 md:py-1 md:px-3 text-foreground/80 md:text-foreground border border-border/50 md:border-transparent data-[state=active]:bg-foreground data-[state=active]:text-background md:data-[state=active]:bg-background md:data-[state=active]:text-foreground data-[state=active]:shadow-sm md:data-[state=active]:border-transparent whitespace-nowrap flex items-center gap-1.5" title={t('leads.tabs.cold') || 'Cold'}>
+                          <TrendingDown size={13} className="mr-2 md:mr-0" />
+                          <span className="tab-label">{t('leads.tabs.cold') || 'Cold'}</span>
+                        </TabsTrigger>
+                        <TabsTrigger value="converted" className="w-auto justify-center rounded-full text-sm md:text-xs py-1.5 px-3 md:py-1 md:px-3 text-foreground/80 md:text-foreground border border-border/50 md:border-transparent data-[state=active]:bg-foreground data-[state=active]:text-background md:data-[state=active]:bg-background md:data-[state=active]:text-foreground data-[state=active]:shadow-sm md:data-[state=active]:border-transparent whitespace-nowrap flex items-center gap-1.5" title={t('leads.tabs.converted') || 'Converted'}>
+                          <TrendingUp size={13} className="mr-2 md:mr-0" />
+                          <span className="tab-label">{t('leads.tabs.converted') || 'Converted'}</span>
+                        </TabsTrigger>
+                        <TabsTrigger value="lost" className="w-auto justify-center rounded-full text-sm md:text-xs py-1.5 px-3 md:py-1 md:px-3 text-foreground/80 md:text-foreground border border-border/50 md:border-transparent data-[state=active]:bg-foreground data-[state=active]:text-background md:data-[state=active]:bg-background md:data-[state=active]:text-foreground data-[state=active]:shadow-sm md:data-[state=active]:border-transparent whitespace-nowrap flex items-center gap-1.5" title={t('leads.tabs.lost') || 'Lost'}>
+                          <XCircle size={13} className="mr-2 md:mr-0" />
+                          <span className="tab-label">{t('leads.tabs.lost') || 'Lost'}</span>
+                        </TabsTrigger>
+                        <TabsTrigger value="not_qualified" className="w-auto justify-center rounded-full text-sm md:text-xs py-1.5 px-3 md:py-1 md:px-3 text-foreground/80 md:text-foreground border border-border/50 md:border-transparent data-[state=active]:bg-foreground data-[state=active]:text-background md:data-[state=active]:bg-background md:data-[state=active]:text-foreground data-[state=active]:shadow-sm md:data-[state=active]:border-transparent whitespace-nowrap flex items-center gap-1.5" title={t('leads.tabs.notQualified') || 'Not Qualified'}>
+                          <Ban size={13} className="mr-2 md:mr-0" />
+                          <span className="tab-label">{t('leads.tabs.notQualified') || 'Not Qualified'}</span>
+                        </TabsTrigger>
+                      </TabsList>
+                    </FilterSection>
+                    
+                    <FilterSection className={cn("flex flex-col md:flex-row items-stretch md:items-center gap-2 mt-2 md:mt-0", searchQuery && "max-md:hidden")}>
+                      <Button 
+                        variant="secondary" 
+                        size={(filters.status.length > 0 || filters.segments.length > 0 || filters.origin.length > 0) ? "default" : "sm"}
+                        className={cn(
+                          "w-full md:w-auto h-10 md:h-9 rounded-md md:rounded-full justify-center",
+                          (filters.status.length > 0 || filters.segments.length > 0 || filters.origin.length > 0) ? "px-4" : "md:w-9 md:px-0 px-4"
+                        )}
+                        onClick={handleOpenFilterModal}
+                      >
+                        <div className="flex items-center gap-2">
+                          <Filter className="h-4 w-4" />
+                          <span className="font-normal md:hidden">Filters</span>
+                        </div>
+                        {(filters.status.length > 0 || filters.segments.length > 0 || filters.origin.length > 0) && (
+                          <Badge variant="secondary" className="ml-2">
+                            {filters.status.length + filters.segments.length + filters.origin.length}
+                          </Badge>
+                        )}
+                      </Button>
 
-                <div className="hidden md:flex items-center gap-2 w-full md:w-auto">
-                  <SearchInput  
-                    placeholder="Search leads..."
-                    value={searchQuery}
-                    onChange={handleSearchChange}
-                    className="w-full h-10 md:h-9 bg-background border-border focus:border-muted-foreground/20 focus:ring-muted-foreground/20"  
-                    containerClassName="w-full md:w-64" 
-                  />
-                </div>
-              </div>
-            </MobileFiltersDrawer>
+                      {(filters.status.length > 0 || filters.segments.length > 0 || filters.origin.length > 0) && (
+                        <Button variant="ghost" size="sm" onClick={handleClearFilters} className="w-full md:w-auto h-10 md:h-9 rounded-md md:rounded-full">
+                          <span className="ml-2">{t('leads.filters.clear') || 'Clear filters'}</span>
+                        </Button>
+                      )}
+                    </FilterSection>
+
+                    <FilterSection desktopOnly>
+                      <SearchInput  
+                        placeholder="Search leads..."
+                        value={searchQuery}
+                        onChange={handleSearchChange}
+                        className="w-full h-10 md:h-9 bg-background border-border focus:border-muted-foreground/20 focus:ring-muted-foreground/20"  
+                        containerClassName="w-full md:w-64" 
+                      />
+                    </FilterSection>
+                  </FilterContainer>
+                </MobileFiltersDrawer>
             
             <div className="ml-auto flex flex-wrap items-center justify-end gap-2 shrink-0">
               <ImportLeadsDialog

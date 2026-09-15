@@ -1,6 +1,6 @@
 "use client"
 
-import { MobileFiltersDrawer } from "@/app/components/ui/mobile-filters-drawer"
+import { MobileFiltersDrawer, FilterContainer, FilterSection, FilterSeparator } from "@/app/components/ui/mobile-filters-drawer"
 import { SortDropdown } from "@/app/components/ui/sort-dropdown"
 
 import React, { useState, useEffect } from "react"
@@ -167,12 +167,11 @@ export default function TransactionsPage() {
         <div className="w-full pt-0">
           <div className="flex items-center justify-between gap-2 w-full">
             <MobileFiltersDrawer triggerText={t('common.search') || "Search"}>
-              <div className="flex flex-col md:flex-row items-stretch md:items-center gap-6 md:gap-4 w-full flex-1 min-w-0">
-                <div className="flex flex-col gap-2 w-full md:w-auto">
-                  <span className="text-xs font-semibold text-muted-foreground md:hidden mb-1 uppercase">{t('common.category') || 'Categoría'}</span>
+              <FilterContainer>
+                <FilterSection title={t('common.category') || 'Categoría'}>
                   <Tabs value={categoryFilter} onValueChange={(val) => { setCategoryFilter(val); setPage(1); }}>
-                    <TabsList className="h-auto md:h-8 p-0 md:p-0.5 bg-transparent md:bg-muted/30 rounded-lg md:rounded-full flex flex-col md:flex-row w-full md:max-w-full overflow-y-auto md:overflow-x-auto justify-start items-stretch md:items-center gap-1 md:gap-0">
-                      <TabsTrigger value="all" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent gap-2 whitespace-normal md:whitespace-nowrap">
+                    <TabsList className="h-auto md:h-8 p-0 md:p-0.5 bg-transparent md:bg-muted/30 rounded-none md:rounded-full flex flex-wrap md:flex-nowrap md:flex-row w-full md:max-w-full overflow-y-visible md:overflow-x-auto justify-start items-center gap-2 md:gap-0">
+                      <TabsTrigger value="all" className="w-auto justify-center rounded-full text-sm md:text-xs py-1.5 px-3 md:py-1 md:px-3 text-foreground/80 md:text-foreground border border-border/50 md:border-transparent data-[state=active]:bg-foreground data-[state=active]:text-background md:data-[state=active]:bg-background md:data-[state=active]:text-foreground data-[state=active]:shadow-sm md:data-[state=active]:border-transparent whitespace-nowrap flex items-center gap-1.5">
                         <LayoutGrid size={13} className="shrink-0 md:!hidden" />
                         <span className="tab-label">{t("expenses.filters.all") || "All"}</span>
                       </TabsTrigger>
@@ -180,44 +179,46 @@ export default function TransactionsPage() {
                         <TabsTrigger
                           key={acc.key || acc.code}
                           value={acc.key || acc.code}
-                          className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent gap-2 whitespace-normal md:whitespace-nowrap"
+                          className="w-auto justify-center rounded-full text-sm md:text-xs py-1.5 px-3 md:py-1 md:px-3 text-foreground/80 md:text-foreground border border-border/50 md:border-transparent data-[state=active]:bg-foreground data-[state=active]:text-background md:data-[state=active]:bg-background md:data-[state=active]:text-foreground data-[state=active]:shadow-sm md:data-[state=active]:border-transparent whitespace-nowrap flex items-center gap-1.5"
                         >
                           <span className="tab-label">{acc.label}</span>
                         </TabsTrigger>
                       ))}
                     </TabsList>
                   </Tabs>
-                </div>
+                </FilterSection>
 
                 {locations.length > 1 && (
-                  <Select value={locationFilter} onValueChange={(val) => { setLocationFilter(val); setPage(1); }}>
-                    <SelectTrigger className="w-full md:w-[180px] h-10 md:h-8 text-sm md:text-xs bg-background md:bg-muted/30 border md:border-0 rounded-md md:rounded-full">
-                      <SelectValue placeholder={t("expenses.filters.allLocations") || "All Locations"} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">{t("expenses.filters.allLocations") || "All Locations"}</SelectItem>
-                      {locations.map((loc) => (
-                        <SelectItem key={loc.id} value={loc.id}>{loc.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-
-                  <div className="flex flex-col md:flex-row items-stretch md:items-center gap-2 w-full md:w-auto">
-                    <Select value={campaignFilter} onValueChange={(val) => { setCampaignFilter(val); setPage(1); }}>
-                      <SelectTrigger className="w-full md:w-[200px] h-10 md:h-9">
-                        <SelectValue placeholder={t("expenses.filters.allCampaigns") || "All Campaigns"} />
+                  <FilterSection title={t('common.location') || 'Location'}> 
+                      <Select value={locationFilter} onValueChange={(val) => { setLocationFilter(val); setPage(1); }}>
+                      <SelectTrigger className="w-full md:w-[180px] h-10 md:h-8 text-sm md:text-xs bg-background md:bg-muted/30 border md:border-0 rounded-md md:rounded-full">
+                        <SelectValue placeholder={t("expenses.filters.allLocations") || "All Locations"} />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="all">{t("expenses.filters.allCampaigns") || "All Campaigns"}</SelectItem>
-                        {campaigns.map((c) => (
-                          <SelectItem key={c.id} value={c.id}>{c.title}</SelectItem>
+                        <SelectItem value="all">{t("expenses.filters.allLocations") || "All Locations"}</SelectItem>
+                        {locations.map((loc) => (
+                          <SelectItem key={loc.id} value={loc.id}>{loc.name}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
-                  </div>
-                </div>
-              </MobileFiltersDrawer>
+                  </FilterSection>
+                )}
+
+                <FilterSection className="flex-row items-center gap-2">
+                  <Select value={campaignFilter} onValueChange={(val) => { setCampaignFilter(val); setPage(1); }}>
+                    <SelectTrigger className="w-full md:w-[200px] h-10 md:h-9">
+                      <SelectValue placeholder={t("expenses.filters.allCampaigns") || "All Campaigns"} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">{t("expenses.filters.allCampaigns") || "All Campaigns"}</SelectItem>
+                      {campaigns.map((c) => (
+                        <SelectItem key={c.id} value={c.id}>{c.title}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </FilterSection>
+              </FilterContainer>
+            </MobileFiltersDrawer>
               
               <div className="flex items-center gap-2 w-auto justify-end shrink-0 ml-4">
                 <SortDropdown sortBy={sortBy} setSortBy={setSortBy} />

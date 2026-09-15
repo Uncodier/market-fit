@@ -16,7 +16,7 @@ import {
   Ban,
 } from "@/app/components/ui/icons"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
-import { MobileFiltersDrawer } from "@/app/components/ui/mobile-filters-drawer"
+import { MobileFiltersDrawer, FilterContainer, FilterSection, FilterSeparator } from "@/app/components/ui/mobile-filters-drawer"
 import { SearchInput } from "@/app/components/ui/search-input"
 import { FilterModal } from "@/app/components/ui/filter-modal"
 import { ViewSelector } from "@/app/components/view-selector"
@@ -148,38 +148,41 @@ export default function RequirementsPage() {
           <div className="w-full pt-0">
               <div className="flex w-full items-center justify-between gap-4">
               <MobileFiltersDrawer triggerText={t('common.search') || "Search"}>
-                <div className="flex flex-col md:flex-row items-stretch md:items-center gap-6 md:gap-4 w-full flex-1 min-w-0">
-                  <div className="md:hidden w-full">
+                <FilterContainer>
+                  <FilterSection mobileOnly>
                     <SearchInput  placeholder={t("requirements.search") || "Search requirements..."} value={list.searchQuery} onSearch={list.setSearchQuery} ref={searchInputRef} alwaysExpanded={true}    className="w-full h-10 md:h-9"  containerClassName="w-full" />
-                  </div>
-                  <div className="flex flex-col gap-2 w-full md:w-auto">
-                    <span className="text-xs font-semibold text-muted-foreground md:hidden mb-1 uppercase">{t('common.filters') || 'Filters'}</span>
-                    <TabsList className="h-auto md:h-8 p-0 md:p-0.5 bg-transparent md:bg-muted/30 rounded-lg md:rounded-full flex flex-col md:flex-row w-full md:max-w-full overflow-y-auto md:overflow-x-auto justify-start items-stretch md:items-center gap-1 md:gap-0">
-                      <TabsTrigger value="all" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent whitespace-nowrap" title={t("requirements.tabs.all") || "All Requirements"}>
+                  </FilterSection>
+
+                  
+
+                  <FilterSection title={t('common.status') || 'Status'}>
+                    <TabsList className="h-auto md:h-8 p-0 md:p-0.5 bg-transparent md:bg-muted/30 rounded-none md:rounded-full flex flex-wrap md:flex-nowrap md:flex-row w-full md:max-w-full overflow-y-visible md:overflow-x-auto justify-start items-center gap-2 md:gap-0">
+                      <TabsTrigger value="all" className="w-auto justify-center rounded-full text-sm md:text-xs py-1.5 px-3 md:py-1 md:px-3 text-foreground/80 md:text-foreground border border-border/50 md:border-transparent data-[state=active]:bg-foreground data-[state=active]:text-background md:data-[state=active]:bg-background md:data-[state=active]:text-foreground data-[state=active]:shadow-sm md:data-[state=active]:border-transparent whitespace-nowrap flex items-center gap-1.5" title={t("requirements.tabs.all") || "All Requirements"}>
                         <LayoutGrid size={13} className="shrink-0 md:!hidden" />
                         <span className="tab-label">{t("requirements.tabs.all") || "All Requirements"}</span>
                       </TabsTrigger>
-                      <TabsTrigger value="pending" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent whitespace-nowrap" title={t("requirements.tabs.pending") || "Pending"}>
+                      <TabsTrigger value="pending" className="w-auto justify-center rounded-full text-sm md:text-xs py-1.5 px-3 md:py-1 md:px-3 text-foreground/80 md:text-foreground border border-border/50 md:border-transparent data-[state=active]:bg-foreground data-[state=active]:text-background md:data-[state=active]:bg-background md:data-[state=active]:text-foreground data-[state=active]:shadow-sm md:data-[state=active]:border-transparent whitespace-nowrap flex items-center gap-1.5" title={t("requirements.tabs.pending") || "Pending"}>
                         <Clock size={13} className="shrink-0 md:!hidden" />
                         <span className="tab-label">{t("requirements.tabs.pending") || "Pending"}</span>
                       </TabsTrigger>
-                      <TabsTrigger value="completed" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent whitespace-nowrap" title={t("requirements.tabs.completed") || "Completed"}>
+                      <TabsTrigger value="completed" className="w-auto justify-center rounded-full text-sm md:text-xs py-1.5 px-3 md:py-1 md:px-3 text-foreground/80 md:text-foreground border border-border/50 md:border-transparent data-[state=active]:bg-foreground data-[state=active]:text-background md:data-[state=active]:bg-background md:data-[state=active]:text-foreground data-[state=active]:shadow-sm md:data-[state=active]:border-transparent whitespace-nowrap flex items-center gap-1.5" title={t("requirements.tabs.completed") || "Completed"}>
                         <CheckCircle2 size={13} className="shrink-0 md:!hidden" />
                         <span className="tab-label">{t("requirements.tabs.completed") || "Completed"}</span>
                       </TabsTrigger>
-                      <TabsTrigger value="rejected" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent whitespace-nowrap" title={t("requirements.tabs.rejected") || "Rejected"}>
+                      <TabsTrigger value="rejected" className="w-auto justify-center rounded-full text-sm md:text-xs py-1.5 px-3 md:py-1 md:px-3 text-foreground/80 md:text-foreground border border-border/50 md:border-transparent data-[state=active]:bg-foreground data-[state=active]:text-background md:data-[state=active]:bg-background md:data-[state=active]:text-foreground data-[state=active]:shadow-sm md:data-[state=active]:border-transparent whitespace-nowrap flex items-center gap-1.5" title={t("requirements.tabs.rejected") || "Rejected"}>
                         <Ban size={13} className="shrink-0 md:!hidden" />
                         <span className="tab-label">{t("requirements.tabs.rejected") || "Rejected"}</span>
                       </TabsTrigger>
                     </TabsList>
-                  </div>
-                  <div className="hidden md:flex items-center gap-2">
+                  </FilterSection>
+
+                  <FilterSection desktopOnly className="flex-row items-center gap-2">
                     <SearchInput  placeholder={t("requirements.search") || "Search requirements..."} value={list.searchQuery} onSearch={list.setSearchQuery} ref={searchInputRef}    className="w-full border-border bg-background focus:border-muted-foreground/20 focus:ring-muted-foreground/20"  containerClassName="w-64" />
                     <Button variant="secondary" size="icon" className="h-9 w-9 rounded-full flex-shrink-0" onClick={() => setIsFilterModalOpen(true)}>
                       <Filter className="h-4 w-4" />
                     </Button>
-                  </div>
-                </div>
+                  </FilterSection>
+                </FilterContainer>
               </MobileFiltersDrawer>
               
               <div className="flex items-center gap-2 md:gap-4 flex-shrink-0">

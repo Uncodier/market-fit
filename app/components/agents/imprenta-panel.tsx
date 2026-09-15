@@ -2010,6 +2010,7 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
   const [initialPrompt, setInitialPrompt] = useState("")
   const [zoomedMedia, setZoomedMedia] = useState<{url: string, type: 'image' | 'video'} | null>(null)
   const imprentaSyncedInstanceRef = useRef<string | null>(null)
+  const deletedNodeIdsRef = useRef<Set<string>>(new Set())
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const [dummyNodes, setDummyNodes] = useState<InstanceNode[]>([])
@@ -2445,6 +2446,7 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
       imprentaRequestedInstanceRef.current,
       {
         resetEphemeralState: () => {
+          deletedNodeIdsRef.current.clear()
           setInitialPrompt("")
           setDummyNodes([])
           setPositions({})
@@ -2454,7 +2456,9 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
           setZoomedMedia(null)
           setTempConnection(null)
         },
-        setNodes,
+        setNodes: (incoming) => {
+          setNodes(incoming.filter(n => !deletedNodeIdsRef.current.has(n.id)))
+        },
         setContexts,
       }
     )
@@ -2473,6 +2477,7 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
     const handleNodePayload = (payload: any) => {
       if (payload.eventType === 'INSERT') {
         const incoming = payload.new as InstanceNode
+        if (deletedNodeIdsRef.current.has(incoming.id)) return
         const normalized = normalizeImprentaNodeForResultMediaType(incoming, nodesRef.current)
         const typeChanged = normalized.type !== incoming.type
         const mediaChanged =
@@ -2532,6 +2537,7 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
         })
       } else if (payload.eventType === 'UPDATE') {
         const incoming = payload.new as InstanceNode
+        if (deletedNodeIdsRef.current.has(incoming.id)) return
         const normalized = normalizeImprentaNodeForResultMediaType(incoming, nodesRef.current)
         const typeChanged = normalized.type !== incoming.type
         const mediaChanged =
@@ -2573,6 +2579,7 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
           });
         }
       } else if (payload.eventType === 'DELETE') {
+        deletedNodeIdsRef.current.delete(payload.old.id)
         setNodes(prev => prev.filter(n => n.id !== payload.old.id))
       }
     }
@@ -2628,7 +2635,7 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
     const reconcileFromServer = async () => {
       const data = await refreshImprentaData()
       if (!data) return
-      setNodes(data.nodes)
+      setNodes(data.nodes.filter(n => !deletedNodeIdsRef.current.has(n.id)))
       setContexts(data.contexts)
     }
 
@@ -2708,7 +2715,6 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
         .update({ status: 'running' })
         .eq('id', node.id)
 
-      const { apiClient } = await import('@/app/services/api-client-service')
       const { getSystemPromptForActivity } = await import('@/app/components/simple-messages-view/utils')
       
       // Prepare context string with media parameters
@@ -2816,7 +2822,14 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
         ...(toolOverrides ? { tool_overrides: toolOverrides } : {})
       }
       
-      const response = await apiClient.post('/api/robots/instance/assistant', requestPayload)
+      // Use direct fetch for internal Next.js API to bypass apiClient routing to external backend
+      const res = await fetch('/api/robots/instance/assistant', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(requestPayload)
+      })
+      
+      const response = await res.json().catch(() => ({ success: false, error: { message: 'Failed to parse response' } }))
       
       if (!response.success) {
         console.error('API Error Response:', response.error);
@@ -2864,6 +2877,7 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
     if (nodesToDelete.length === 0) return;
 
     // Optimistic update to remove them from UI immediately
+    nodeIdsToDelete.forEach(id => deletedNodeIdsRef.current.add(id));
     setNodes(prev => prev.filter(n => !nodeIdsToDelete.includes(n.id)));
 
     try {
@@ -2904,6 +2918,7 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
       console.error(e);
       toast.error("Failed to delete node(s)");
       // Restore on failure
+      nodeIdsToDelete.forEach(id => deletedNodeIdsRef.current.delete(id));
       setNodes(previousNodes);
     }
   }
