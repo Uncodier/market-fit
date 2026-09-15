@@ -410,7 +410,8 @@ export function DynamicShortcuts({ isCollapsed }: DynamicShortcutsProps) {
                 icon = NAV_ITEM_ICON[item.key] || Star
                 linkHref = buildNavItemHref(item, navSearchParams)
                 isActive = id === bestMatchId
-                title = getNavItemTitle(item, t) || item.key
+                title = getNavItemTitle(item, t)
+                if (!title || title.trim() === "") title = "Agent Channels"
                 if ((item as AreaNavItemWithArea).area) {
                   visual = getModuleVisual((item as AreaNavItemWithArea).area, item.key)
                 }
