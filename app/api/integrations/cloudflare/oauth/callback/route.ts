@@ -104,14 +104,14 @@ export async function GET(request: Request) {
     } else {
       await supabaseAdmin
         .from('site_secrets')
-        .insert({
+        .insert([{
           site_id: site_id,
           name: 'Cloudflare OAuth Token',
           provider: 'cloudflare',
           use_case: 'dns_sync',
           encrypted_value: encryptedValue,
           instance_id: null
-        })
+        }])
     }
   } catch (err: any) {
     console.error('Error saving cloudflare token to site_secrets:', err)

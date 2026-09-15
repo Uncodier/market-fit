@@ -127,13 +127,15 @@ export async function POST(req: NextRequest) {
           // Insertar nuevo
           const { data, error } = await supabase
             .from('secure_tokens')
-            .insert({
-              site_id: siteId,
-              token_type: tokenType,
-              identifier: identifier,
-              encrypted_value: encryptedValue,
-              last_used: new Date().toISOString()
-            })
+            .insert([
+              {
+                site_id: siteId,
+                token_type: tokenType,
+                identifier: identifier,
+                encrypted_value: encryptedValue,
+                last_used: new Date().toISOString()
+              }
+            ])
             .select('id')
             .single();
           

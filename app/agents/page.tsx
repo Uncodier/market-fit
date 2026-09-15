@@ -348,22 +348,24 @@ function AgentsPageContent() {
       console.log("- agentId:", agentId);
       console.log("- title:", `Chat with ${agentName}`);
       
-      // Create a real conversation in the database
-      const { data: conversation, error } = await supabase
-        .from("conversations")
-        .insert({
-          site_id: currentSite.id,
-          user_id: user.id,
-          agent_id: agentId,
-          title: `Chat with ${agentName}`,
-          status: 'active',
-          is_archived: false,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-          last_message_at: new Date().toISOString()
-        })
-        .select()
-        .single();
+        // Create a real conversation in the database
+        const { data: conversation, error } = await supabase
+          .from("conversations")
+          .insert([
+            {
+              site_id: currentSite.id,
+              user_id: user.id,
+              agent_id: agentId,
+              title: `Chat with ${agentName}`,
+              status: 'active',
+              is_archived: false,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+              last_message_at: new Date().toISOString()
+            }
+          ])
+          .select()
+          .single();
       
       if (error) {
         console.error("Error creating conversation:", error);

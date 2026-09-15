@@ -417,10 +417,12 @@ export function UploadFileDialog({
         // Create relation in agent_assets table
         const { error: relationError } = await supabase
           .from('agent_assets')
-          .insert({
-            agent_id: agentId,
-            asset_id: asset.id
-          })
+          .insert([
+            {
+              agent_id: agentId,
+              asset_id: asset.id
+            }
+          ])
         
         if (relationError) {
           throw new Error(`Error linking file to agent: ${relationError.message}`)

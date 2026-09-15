@@ -66,12 +66,12 @@ export async function POST(request: NextRequest) {
     // Create payout request
     const { data: payoutRequest, error: payoutError } = await serviceClient
       .from('payout_requests')
-      .insert({
+      .insert([{
         site_id: siteId,
         requested_credits: requestedCredits,
         status: 'pending',
         bank_details: bankDetails
-      })
+      }])
       .select()
       .single()
 

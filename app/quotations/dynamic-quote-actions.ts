@@ -94,9 +94,9 @@ export async function requestDynamicQuote(params: {
       .eq("id", params.leadId)
       .single();
 
-    const { data: quotation, error: qError } = await supabase
+      const { data: quotation, error: qError } = await supabase
       .from("quotations")
-      .insert({
+      .insert([{
         site_id: params.siteId,
         deal_id: dealId,
         lead_id: params.leadId,
@@ -104,7 +104,7 @@ export async function requestDynamicQuote(params: {
         status: "sent",
         currency: item.currency || "USD",
         valid_until: validUntil,
-      })
+      }])
       .select()
       .single();
 
@@ -126,7 +126,7 @@ export async function requestDynamicQuote(params: {
 
   const { data: line, error: lineError } = await supabase
     .from("quotation_items")
-    .insert({
+    .insert([{
       quotation_id: quotationId,
       catalog_item_id: item.id,
       name: item.name,
@@ -134,7 +134,7 @@ export async function requestDynamicQuote(params: {
       unit_price: 0,
       subtotal: 0,
       metadata: { dynamic_quote: baseMeta },
-    })
+    }])
     .select()
     .single();
 

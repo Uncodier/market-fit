@@ -29,16 +29,18 @@ async function withSiteOwner(
 
     const { data: inserted, error } = await admin
     .from("site_members")
-    .insert({
-      site_id: siteId,
-      user_id: ownerUserId,
-      email,
-      name: profile?.name || authUser?.user_metadata?.name || null,
-      role: "owner",
-      status: "active",
-      blocked_screens: [],
-      restrict_to_assigned_only: false,
-    })
+    .insert([
+      {
+        site_id: siteId,
+        user_id: ownerUserId,
+        email,
+        name: profile?.name || authUser?.user_metadata?.name || null,
+        role: "owner",
+        status: "active",
+        blocked_screens: [],
+        restrict_to_assigned_only: false,
+      }
+    ])
     .select()
     .single()
 
@@ -207,18 +209,20 @@ export async function POST(
     const blockedScreens = role === "admin" ? [] : sanitizeBlockedScreens(body.blocked_screens)
     const { data: inserted, error: insertError } = await adminSupabase
       .from("site_members")
-      .insert({
-        site_id: siteId,
-        user_id: profile?.id || null,
-        email,
-        role,
-        name: typeof body.name === "string" ? body.name : null,
-        position: typeof body.position === "string" ? body.position : null,
-        blocked_screens: blockedScreens,
-        restrict_to_assigned_only: typeof body.restrict_to_assigned_only === "boolean" ? body.restrict_to_assigned_only : false,
-        added_by: access.userId,
-        status: profile?.id ? "active" : "pending",
-      })
+      .insert([
+        {
+          site_id: siteId,
+          user_id: profile?.id || null,
+          email,
+          role,
+          name: typeof body.name === "string" ? body.name : null,
+          position: typeof body.position === "string" ? body.position : null,
+          blocked_screens: blockedScreens,
+          restrict_to_assigned_only: typeof body.restrict_to_assigned_only === "boolean" ? body.restrict_to_assigned_only : false,
+          added_by: access.userId,
+          status: profile?.id ? "active" : "pending",
+        }
+      ])
       .select()
       .single()
 

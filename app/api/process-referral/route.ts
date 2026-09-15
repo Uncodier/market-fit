@@ -92,11 +92,11 @@ export async function POST(request: Request) {
       // First insert the use record
       const { data: insertData, error: insertError } = await supabase
         .from('referral_code_uses')
-        .insert({
+        .insert([{
           referral_code_id: referralCodeData.id,
           user_id: user.id,
           used_at: new Date().toISOString()
-        })
+        }])
         .select()
 
       if (insertError) {

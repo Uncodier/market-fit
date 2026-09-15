@@ -50,7 +50,7 @@ export async function createInstanceNode(params: CreateInstanceNodeParams): Prom
 
   const { data, error } = await supabase
     .from('instance_nodes')
-    .insert(nodeData)
+    .insert([nodeData])
     .select()
     .single()
 

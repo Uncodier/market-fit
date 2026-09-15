@@ -102,14 +102,14 @@ export async function POST(req: NextRequest) {
       } else {
         const { data, error: insertError } = await supabase
           .from('site_secrets')
-          .insert({
+          .insert([{
             site_id: siteId,
             instance_id: instanceId || null,
             name: name,
             provider: provider,
             use_case: useCase,
             encrypted_value: encryptedValue
-          })
+          }])
           .select('id')
           .single();
           

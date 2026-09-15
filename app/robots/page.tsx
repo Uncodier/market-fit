@@ -670,14 +670,14 @@ function RobotsPageContent() {
       
       const { data, error } = await supabase
         .from('remote_instances')
-        .insert({
+        .insert([{
           site_id: currentSite.id,
           user_id: user.id,
           created_by: user.id,
           name: 'Assistant Session',
           status: 'pending',
           instance_type: 'ubuntu'
-        })
+        }])
         .select()
         .single()
       

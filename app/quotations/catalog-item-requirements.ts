@@ -49,7 +49,7 @@ export async function ensureCatalogItemRequirement(
 
   const { data: requirement, error: reqError } = await supabase
     .from("requirements")
-    .insert({
+    .insert([{
       title,
       description,
       type: "task",
@@ -61,7 +61,7 @@ export async function ensureCatalogItemRequirement(
       user_id: ownerUserId,
       created_at: now,
       updated_at: now,
-    })
+    }])
     .select()
     .single();
 
@@ -71,7 +71,7 @@ export async function ensureCatalogItemRequirement(
 
   const { data: instance, error: instanceError } = await supabase
     .from("remote_instances")
-    .insert({
+    .insert([{
       name: `Quote: ${item.name}`.slice(0, 120),
       instance_type: "ubuntu",
       status: "pending",
@@ -80,7 +80,7 @@ export async function ensureCatalogItemRequirement(
       created_by: ownerUserId,
       created_at: now,
       updated_at: now,
-    })
+    }])
     .select()
     .single();
 
@@ -91,14 +91,14 @@ export async function ensureCatalogItemRequirement(
 
   const { data: link, error: linkError } = await supabase
     .from("catalog_item_requirements")
-    .insert({
+    .insert([{
       site_id: item.site_id,
       catalog_item_id: item.id,
       requirement_id: requirement.id,
       instance_id: instance.id,
       created_at: now,
       updated_at: now,
-    })
+    }])
     .select()
     .single();
 
@@ -109,13 +109,13 @@ export async function ensureCatalogItemRequirement(
   }
 
   // Seed requirement_status so robots UI can associate the instance
-  await supabase.from("requirement_status").insert({
+  await supabase.from("requirement_status").insert([{
     site_id: item.site_id,
     instance_id: instance.id,
     requirement_id: requirement.id,
     stage: "dynamic_quote_ready",
     message: "Catalog item linked for dynamic quoting.",
-  });
+  }]);
 
   return { data: link as CatalogItemRequirement };
 }

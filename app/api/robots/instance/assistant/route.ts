@@ -99,15 +99,17 @@ export async function POST(request: NextRequest) {
       
       const { data: newInstance, error: createError } = await supabase
         .from('remote_instances')
-        .insert({
-          site_id: site_id,
-          user_id: session.user.id,
-          name: 'New Makina',
-          status: 'pending',
-          instance_type: 'ubuntu',
-          created_at: new Date().toISOString()
-        })
-        .select()
+        .insert([
+          {
+            site_id: site_id,
+            user_id: session.user.id,
+            name: 'New Makina',
+            status: 'pending',
+            instance_type: 'ubuntu',
+            created_at: new Date().toISOString()
+          }
+        ])
+        .select('id')
         .single()
 
       if (createError || !newInstance) {
@@ -181,7 +183,7 @@ export async function POST(request: NextRequest) {
             }
           }
         ])
-        .select()
+        .select('id')
         .single()
 
       if (userLogError || !insertedLog) {
@@ -220,7 +222,7 @@ export async function POST(request: NextRequest) {
           }
         }
       ])
-      .select()
+      .select('id')
       .single()
 
     if (systemLogError) {

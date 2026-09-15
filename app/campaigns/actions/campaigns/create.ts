@@ -29,7 +29,7 @@ export async function findOrCreateCampaign(site_id: string, title: string) {
 
     const { data: campaign, error } = await supabase
       .from("campaigns")
-      .insert({
+      .insert([{
         site_id,
         user_id: userAuth?.user?.id || null,
         title: trimmed,
@@ -38,7 +38,7 @@ export async function findOrCreateCampaign(site_id: string, title: string) {
         priority: "medium",
         revenue: { actual: 0, projected: 0, estimated: 0, currency: "USD" },
         budget: { allocated: 0, remaining: 0, currency: "USD" }
-      })
+      }])
       .select()
       .single()
 

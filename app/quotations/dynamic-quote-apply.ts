@@ -27,23 +27,23 @@ export async function createQuoteDeal(params: {
 }) {
   const { data: deal, error } = await params.supabase
     .from("deals")
-    .insert({
+    .insert([{
       name: `Quote: ${params.itemName}`,
       site_id: params.siteId,
       stage: "prospecting",
       status: "open",
       amount: 0,
       currency: params.currency,
-    })
+    }])
     .select()
     .single();
 
   if (error || !deal) return { error: error?.message || "Failed to create deal" };
 
-  await params.supabase.from("deal_owners").insert({
+  await params.supabase.from("deal_owners").insert([{
     deal_id: deal.id,
     user_id: params.ownerUserId,
-  });
+  }]);
 
   return { deal };
 }
@@ -57,7 +57,7 @@ export async function createAssistantRemoteInstance(params: {
 }) {
   const { data, error } = await params.supabase
     .from("remote_instances")
-    .insert({
+    .insert([{
       name: params.name || "Assistant Session",
       instance_type: "ubuntu",
       status: "uninstantiated",
@@ -65,7 +65,7 @@ export async function createAssistantRemoteInstance(params: {
       user_id: params.ownerUserId,
       created_by: params.ownerUserId,
       timeout_hours: 1,
-    })
+    }])
     .select("id")
     .single();
 

@@ -21,22 +21,22 @@ async function seedTrigger(instanceId: string, siteId: string): Promise<Instance
     if (!sessionData?.session) return null
     const { data, error } = await supabase
       .from("instance_nodes")
-      .insert({
-        instance_id: instanceId,
-        site_id: siteId,
-        user_id: sessionData.session.user.id,
-        parent_node_id: null,
-        type: "wf-trigger",
-        status: "pending",
-        prompt: { text: "When this workflow starts" },
-        settings: {
-          title: "Manual trigger",
-          enabled: false,
-          ui_position: { x: 80, y: 80 },
-          trigger: { kind: "manual", active_kinds: ["manual"], plan_type: DEFAULT_PLAN_TYPE },
-        },
-        result: {},
-      })
+        .insert([{
+          instance_id: instanceId,
+          site_id: siteId,
+          user_id: sessionData.session.user.id,
+          parent_node_id: null,
+          type: "wf-trigger",
+          status: "pending",
+          prompt: { text: "When this workflow starts" },
+          settings: {
+            title: "Manual trigger",
+            enabled: false,
+            ui_position: { x: 80, y: 80 },
+            trigger: { kind: "manual", active_kinds: ["manual"], plan_type: DEFAULT_PLAN_TYPE },
+          },
+          result: {},
+        }])
       .select("*")
       .single()
     if (error) throw error
@@ -146,7 +146,7 @@ export function useWorkflowGraph(instanceId?: string, siteId?: string) {
       if (!sessionData?.session) return null
       const { data, error } = await supabase
         .from("instance_nodes")
-        .insert({
+        .insert([{
           instance_id: instanceId,
           site_id: siteId,
           user_id: sessionData.session.user.id,
@@ -160,7 +160,7 @@ export function useWorkflowGraph(instanceId?: string, siteId?: string) {
             ...(params.settings || {}),
           },
           result: {},
-        })
+        }])
         .select("*")
         .single()
       if (error) throw error

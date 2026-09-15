@@ -436,7 +436,7 @@ export function TopBarActions({
       const supabase = createClient();
       const { data: campaign, error: campaignError } = await supabase
         .from("campaigns")
-        .insert({
+        .insert([{
           title: values.title,
           description: values.description,
           priority: values.priority,
@@ -449,7 +449,7 @@ export function TopBarActions({
           issues: 0,
           revenue: values.revenue || { actual: 0, projected: 0, estimated: 0, currency: "USD" },
           budget: values.budget || { allocated: 0, remaining: 0, currency: "USD" },
-        })
+        }])
         .select()
         .single();
 

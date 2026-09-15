@@ -151,7 +151,7 @@ export async function createQuotationFromDeal(siteId: string, dealId: string, le
   
   const { data, error } = await supabase
     .from('quotations')
-    .insert({
+    .insert([{
       site_id: siteId,
       deal_id: dealId,
       lead_id: leadId,
@@ -159,7 +159,7 @@ export async function createQuotationFromDeal(siteId: string, dealId: string, le
       notes: notes || null,
       status: 'draft',
       valid_until: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() // 30 days
-    })
+    }])
     .select()
     .single()
     
@@ -384,7 +384,7 @@ export async function addQuotationItem({
   const supabase = await createClient();
   const subtotal = quantity * unitPrice;
   
-  const { data, error } = await supabase.from('quotation_items').insert({
+  const { data, error } = await supabase.from('quotation_items').insert([{
     quotation_id: quotationId,
     catalog_item_id: catalogItemId,
     name,
@@ -392,7 +392,7 @@ export async function addQuotationItem({
     unit_price: unitPrice,
     subtotal,
     metadata
-  }).select().single();
+  }]).select().single();
   
   if (error) return { error: error.message };
   

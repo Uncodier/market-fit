@@ -7,7 +7,7 @@ import { Bot, Printer, Workflow } from "@/app/components/ui/icons"
 import { RobotsBadge } from "./RobotsBadge"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { useLayout } from "@/app/context/LayoutContext"
-import { NAV_ITEM_ICON } from "@/app/config/module-visuals"
+import { NAV_ITEM_ICON, getModuleVisual } from "@/app/config/module-visuals"
 import { useOptionalScreenAccess } from "@/app/context/ScreenAccessContext"
 
 function resetBreadcrumbTrail() {
@@ -64,6 +64,18 @@ export function RobotsNavItems({ isCollapsed }: RobotsNavItemsProps) {
   const showOverview = !screenAccess || screenAccess.canAccessNavKey("reportOverview")
   const showContentCreator = !screenAccess || screenAccess.canAccessNavKey("contentCreator")
   const showWorkflows = !screenAccess || screenAccess.canAccessNavKey("workflows")
+  const showChannels = !screenAccess || screenAccess.canAccessNavKey("channels")
+
+  const channelsHref = useMemo(() => {
+    const p = new URLSearchParams()
+    if (new URLSearchParams(searchQueryString).get("artifact") === "true") {
+      p.set("artifact", "true")
+    }
+    p.set("tab", "channels")
+    return `/settings?${p.toString()}`
+  }, [searchQueryString])
+
+  const channelsActive = pathname.startsWith("/settings") && searchParams.get("tab") === "channels"
 
   return (
     <>
@@ -119,6 +131,20 @@ export function RobotsNavItems({ isCollapsed }: RobotsNavItemsProps) {
           setRobotsViewMode("workflow")
           resetBreadcrumbTrail()
         }}
+      />
+      )}
+      {showChannels && (
+      <MenuItem
+        id="tour-channels-nav"
+        href={channelsHref}
+        icon={NAV_ITEM_ICON.channels}
+        title={t("settings.tabs.channels") === "settings.tabs.channels" ? "Agent Channels" : t("settings.tabs.channels")}
+        isActive={channelsActive}
+        isCollapsed={isCollapsed}
+        onClick={() => {
+          resetBreadcrumbTrail()
+        }}
+        visual={NAV_ITEM_ICON.channels ? undefined : undefined /* Use standard icon color */}
       />
       )}
     </>

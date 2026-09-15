@@ -3000,7 +3000,7 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
             currentSite.id,
             session.user.id
           )
-          const { error: ctxErr } = await supabase.from("instance_node_contexts").insert(payload)
+          const { error: ctxErr } = await supabase.from("instance_node_contexts").insert([payload])
           if (ctxErr) {
             console.error(ctxErr)
             anyCtxFailed = true
@@ -3527,13 +3527,13 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
         }
       }
 
-      const { error } = await supabase.from("instance_node_contexts").insert({
+      const { error } = await supabase.from("instance_node_contexts").insert([{
             target_node_id: targetNodeId,
             context_node_id: sourceNodeId,
             site_id: currentSite.id,
         user_id: session.user.id,
         ...(insertType ? { type: insertType } : {}),
-          });
+          }]);
           
           if (error) {
         if (error.code === "23505") toast.error("Context already linked");
