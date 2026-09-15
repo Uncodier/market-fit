@@ -203,15 +203,17 @@ export async function persistUserActionLog(params: {
 
   const { data, error } = await supabase
     .from('instance_logs')
-    .insert({
-      log_type: 'user_action',
-      level: 'info',
-      message: params.message,
-      details: buildWorkflowDetails(params),
-      instance_id: params.instanceId,
-      site_id: params.siteId,
-      user_id: params.userId || null,
-    })
+    .insert([
+      {
+        log_type: 'user_action',
+        level: 'info',
+        message: params.message,
+        details: buildWorkflowDetails(params),
+        instance_id: params.instanceId,
+        site_id: params.siteId,
+        user_id: params.userId || null,
+      }
+    ])
     .select('id')
     .single()
 
@@ -277,18 +279,20 @@ export async function markRobotInstanceError(params: {
     return false
   }
 
-  const { error: logError } = await supabase.from('instance_logs').insert({
-    log_type: 'error',
-    level: 'error',
-    message: `Failed after retries: ${params.errorMessage}`.slice(0, 2000),
-    details: {
-      error: params.errorMessage,
-      source: 'frontend_retry_exhausted',
-    },
-    instance_id: params.instanceId,
-    site_id: params.siteId,
-    user_id: params.userId || null,
-  })
+  const { error: logError } = await supabase.from('instance_logs').insert([
+    {
+      log_type: 'error',
+      level: 'error',
+      message: `Failed after retries: ${params.errorMessage}`.slice(0, 2000),
+      details: {
+        error: params.errorMessage,
+        source: 'frontend_retry_exhausted',
+      },
+      instance_id: params.instanceId,
+      site_id: params.siteId,
+      user_id: params.userId || null,
+    }
+  ])
 
   if (logError) {
     console.error('Failed to log robot error:', logError)

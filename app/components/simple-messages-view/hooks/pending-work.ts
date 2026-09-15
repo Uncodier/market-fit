@@ -91,16 +91,18 @@ export async function enqueuePendingWork(params: {
   const supabase = createClient()
   const { data, error } = await supabase
     .from('instance_pending_work')
-    .insert({
-      instance_id: params.instanceId,
-      site_id: params.siteId,
-      user_id: params.userId || null,
-      message: params.message,
-      activity: params.activity || 'ask',
-      context: params.context || {},
-      system_prompt: params.systemPrompt || null,
-      status: 'pending',
-    })
+    .insert([
+      {
+        instance_id: params.instanceId,
+        site_id: params.siteId,
+        user_id: params.userId || null,
+        message: params.message,
+        activity: params.activity || 'ask',
+        context: params.context || {},
+        system_prompt: params.systemPrompt || null,
+        status: 'pending',
+      }
+    ])
     .select('id')
     .single()
 

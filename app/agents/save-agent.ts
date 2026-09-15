@@ -119,7 +119,7 @@ export async function upsertAgentRecord(
 
   const { data, error } = await supabase
     .from("agents")
-    .insert(row)
+    .insert([row])
     .select("id")
     .single()
 

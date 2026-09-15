@@ -2971,7 +2971,7 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
     try {
       const { data: created, error } = await supabase
         .from("instance_nodes")
-        .insert(newRow)
+        .insert([newRow])
         .select("*")
         .single()
 
@@ -3083,7 +3083,7 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
         }
       }
 
-      const { data: newDbNode, error } = await supabase.from('instance_nodes').insert(newNode).select('*').single()
+      const { data: newDbNode, error } = await supabase.from('instance_nodes').insert([newNode]).select('*').single()
       
       if (error) {
         throw error
@@ -3149,7 +3149,7 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
       result: {}
     }
     
-    const { data, error } = await supabase.from('instance_nodes').insert(newNode).select('*').single()
+    const { data, error } = await supabase.from('instance_nodes').insert([newNode]).select('*').single()
     if (error) {
       toast.error("Failed to create node")
       console.error(error)
@@ -3219,7 +3219,7 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
       result: {}
     }
     
-    const { data: actionNode, error } = await supabase.from('instance_nodes').insert(newNode).select('*').single()
+    const { data: actionNode, error } = await supabase.from('instance_nodes').insert([newNode]).select('*').single()
     if (error || !actionNode) {
       toast.error("Failed to create action node")
       return

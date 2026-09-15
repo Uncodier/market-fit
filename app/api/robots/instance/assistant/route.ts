@@ -161,24 +161,26 @@ export async function POST(request: NextRequest) {
     if (!userLog) {
       const { data: insertedLog, error: userLogError } = await supabase
         .from('instance_logs')
-        .insert({
-          instance_id: actualInstanceId,
-          site_id: site_id,
-          user_id: user_id,
-          log_type: 'user_action',
-          level: 'info',
-          message: message,
-          details: {
-            context: context || null,
-            system_prompt: system_prompt || null,
-            attachments: attachments || null,
-            instance_node_id: instance_node_id || null,
-            expected_results_amount: expected_results_amount || 1,
-            ...(request_id ? { request_id } : {}),
-            status: 'running',
-            request_type: activity || 'ask',
+        .insert([
+          {
+            instance_id: actualInstanceId,
+            site_id: site_id,
+            user_id: user_id,
+            log_type: 'user_action',
+            level: 'info',
+            message: message,
+            details: {
+              context: context || null,
+              system_prompt: system_prompt || null,
+              attachments: attachments || null,
+              instance_node_id: instance_node_id || null,
+              expected_results_amount: expected_results_amount || 1,
+              ...(request_id ? { request_id } : {}),
+              status: 'running',
+              request_type: activity || 'ask',
+            }
           }
-        })
+        ])
         .select()
         .single()
 
@@ -203,19 +205,21 @@ export async function POST(request: NextRequest) {
     // Create a system log entry indicating the message was received
     const { data: systemLog, error: systemLogError } = await supabase
       .from('instance_logs')
-      .insert({
-        instance_id: actualInstanceId,
-        site_id: site_id,
-        user_id: user_id,
-        log_type: 'system',
-        level: 'info',
-        message: `Message received: "${message.substring(0, 100)}${message.length > 100 ? '...' : ''}"`,
-        details: {
-          user_log_id: userLog.id,
-          processing: true,
-          instance_node_id: instance_node_id || null
+      .insert([
+        {
+          instance_id: actualInstanceId,
+          site_id: site_id,
+          user_id: user_id,
+          log_type: 'system',
+          level: 'info',
+          message: `Message received: "${message.substring(0, 100)}${message.length > 100 ? '...' : ''}"`,
+          details: {
+            user_log_id: userLog.id,
+            processing: true,
+            instance_node_id: instance_node_id || null
+          }
         }
-      })
+      ])
       .select()
       .single()
 
@@ -227,20 +231,22 @@ export async function POST(request: NextRequest) {
     // In a real implementation, this would call an AI service
     const { data: responseLog, error: responseLogError } = await supabase
       .from('instance_logs')
-      .insert({
-        instance_id: actualInstanceId,
-        site_id: site_id,
-        user_id: user_id,
-        log_type: 'agent_action',
-        level: 'info',
-        message: `I received your message: "${message}". This is a placeholder response. In a real implementation, this would be processed by an AI assistant.`,
-        details: {
-          user_log_id: userLog.id,
-          response_type: 'assistant',
-          processing_complete: true,
-          instance_node_id: instance_node_id || null
+      .insert([
+        {
+          instance_id: actualInstanceId,
+          site_id: site_id,
+          user_id: user_id,
+          log_type: 'agent_action',
+          level: 'info',
+          message: `I received your message: "${message}". This is a placeholder response. In a real implementation, this would be processed by an AI assistant.`,
+          details: {
+            user_log_id: userLog.id,
+            response_type: 'assistant',
+            processing_complete: true,
+            instance_node_id: instance_node_id || null
+          }
         }
-      })
+      ])
       .select()
       .single()
 

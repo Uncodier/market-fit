@@ -103,7 +103,7 @@ export function InstanceNodeChildren({
       return
     }
 
-    const { error } = await supabase.from('instance_nodes').insert({
+    const { error } = await supabase.from('instance_nodes').insert([{
       instance_id: instanceId,
       site_id: instance.site_id,
       user_id: session.user.id,
@@ -111,7 +111,7 @@ export function InstanceNodeChildren({
       type: 'prompt',
       status: 'pending',
       prompt: { text: "Branched from chat" }
-    })
+    }])
 
     if (error) toast.error("Failed to branch node")
     else toast.success("Branched to node successfully")
