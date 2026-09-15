@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react"
+import { useIsMobile } from "@/app/hooks/use-mobile-view"
 
 const ITEM_HEIGHT = 42 // ~40px item + space
 const MIN_SLOTS = 3
@@ -7,10 +8,16 @@ const DEFAULT_SLOTS = 5
 
 export function useShortcutSlotCount(containerRef: React.RefObject<HTMLElement | null>) {
   const [slots, setSlots] = useState(DEFAULT_SLOTS)
+  const isMobile = useIsMobile()
 
   useEffect(() => {
     if (typeof window === 'undefined') return
     
+    if (isMobile) {
+      setSlots(MAX_SLOTS)
+      return
+    }
+
     const container = containerRef.current
     // If we couldn't get a ref, try to find the closest overflow container manually
     const scrollContainer = container 
@@ -42,7 +49,7 @@ export function useShortcutSlotCount(containerRef: React.RefObject<HTMLElement |
     return () => {
       resizeObserver.disconnect()
     }
-  }, [containerRef])
+  }, [containerRef, isMobile])
 
   return slots
 }

@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState } from "react"
+import React, { useState, Children, Fragment } from "react"
 import { MoreVertical } from "@/app/components/ui/icons"
 import { Button } from "@/app/components/ui/button"
 import {
@@ -12,6 +12,64 @@ import {
 } from "@/app/components/ui/sheet"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { useIsMobile } from "@/app/hooks/use-mobile-view"
+import { cn } from "@/lib/utils"
+
+export function FilterContainer({ children, className }: { children: React.ReactNode, className?: string }) {
+  // To provide standard spacing and separators on mobile, we automatically inject FilterSeparator 
+  // between the children elements.
+  const arrayChildren = Children.toArray(children).filter(Boolean);
+  
+  return (
+    <div className={cn("flex flex-col md:flex-row items-stretch md:items-center gap-6 md:gap-4 w-full flex-1 min-w-0", className)}>
+      {arrayChildren.map((child, index) => {
+        // We do not want to add a separator after the last item
+        const isLast = index === arrayChildren.length - 1;
+        // On desktop, the gap-4 handles spacing. On mobile, we use gap-6.
+        // We will just render the child. If we wanted lines, we could insert them here.
+        // But since the user explicitly wants structural visual improvements:
+        return (
+          <Fragment key={index}>
+            {child}
+            {!isLast && <div className="h-px bg-border md:hidden w-full opacity-50" />}
+          </Fragment>
+        )
+      })}
+    </div>
+  )
+}
+
+export function FilterSection({
+  children,
+  title,
+  helper,
+  mobileOnly,
+  desktopOnly,
+  className
+}: {
+  children: React.ReactNode
+  title?: string
+  helper?: string
+  mobileOnly?: boolean
+  desktopOnly?: boolean
+  className?: string
+}) {
+  return (
+    <div className={cn(
+      "flex flex-col gap-2.5 md:gap-0 w-full md:w-auto",
+      mobileOnly && "md:hidden",
+      desktopOnly && "max-md:hidden",
+      className
+    )}>
+      {title && <span className="text-[11px] font-bold text-muted-foreground/80 md:hidden uppercase tracking-wider">{title}</span>}
+      {children}
+      {helper && <p className="text-xs text-muted-foreground mt-1 md:hidden">{helper}</p>}
+    </div>
+  )
+}
+
+export function FilterSeparator({ className }: { className?: string }) {
+  return <div className={cn("h-px bg-border md:hidden w-full", className)} />
+}
 
 interface MobileFiltersDrawerProps {
   children: React.ReactNode

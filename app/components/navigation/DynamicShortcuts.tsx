@@ -388,8 +388,8 @@ export function DynamicShortcuts({ isCollapsed }: DynamicShortcutsProps) {
             strategy={verticalListSortingStrategy}
           >
             {visibleShortcuts.map((entry) => {
-              const isCustom = typeof entry !== 'string'
-              const id = isCustom ? entry.id : entry
+              const isCustom = typeof entry !== 'string' && Boolean((entry as any).isCustom)
+              const id = typeof entry === 'string' ? entry : entry.id
               
               let item: AreaNavItem | undefined;
               let icon: React.ComponentType<any> | null = Star
@@ -410,7 +410,7 @@ export function DynamicShortcuts({ isCollapsed }: DynamicShortcutsProps) {
                 icon = NAV_ITEM_ICON[item.key] || Star
                 linkHref = buildNavItemHref(item, navSearchParams)
                 isActive = id === bestMatchId
-                title = getNavItemTitle(item, t)
+                title = getNavItemTitle(item, t) || item.key
                 if ((item as AreaNavItemWithArea).area) {
                   visual = getModuleVisual((item as AreaNavItemWithArea).area, item.key)
                 }

@@ -7,7 +7,7 @@ import { SearchInput } from "@/app/components/ui/search-input"
 import { Filter, ListOrdered, Check, ChevronDown, Download } from "@/app/components/ui/icons"
 import { Tabs, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
-import { MobileFiltersDrawer } from "@/app/components/ui/mobile-filters-drawer"
+import { MobileFiltersDrawer, FilterContainer, FilterSection, FilterSeparator } from "@/app/components/ui/mobile-filters-drawer"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
 import { useSite } from "@/app/context/SiteContext"
 import { getSales, updateSale } from "./actions"
@@ -343,60 +343,63 @@ export default function SalesPage() {
             <div className="w-full pt-0">
               <div className="flex items-center justify-between w-full">
                 <MobileFiltersDrawer triggerText={t('common.search') || "Search"}>
-                <div className="flex flex-col md:flex-row items-stretch md:items-center gap-6 md:gap-4 w-full flex-1 min-w-0">
-                <div className="md:hidden w-full mb-2">
-                  <SearchInput placeholder={t('sales.search.placeholder') || "Search sales..."} value={searchQuery} onChange={handleSearchChange} alwaysExpanded={true} className="w-full h-10 md:h-9" containerClassName="w-full" />
-                </div>
-                  <div className="flex items-center gap-4">
-                  <span className="text-xs font-semibold text-muted-foreground md:hidden mb-1 uppercase">{t('common.filters') || 'Filters'}</span>
-                  <TabsList className="h-auto md:h-8 p-0 md:p-0.5 bg-transparent md:bg-muted/30 rounded-lg md:rounded-full flex flex-col md:flex-row w-full md:max-w-full overflow-y-auto md:overflow-x-auto justify-start items-stretch md:items-center gap-1 md:gap-0">
-                    <TabsTrigger value="all" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent whitespace-nowrap" title={t('sales.tabs.all') || "All Sales"}>
-                      <span className="tab-label">{t('sales.tabs.all') || 'All Sales'}</span>
-                    </TabsTrigger>
-                    <TabsTrigger value="pending" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent whitespace-nowrap" title={t('sales.tabs.pending') || "Pending"}>
-                      <span className="tab-label">{t('sales.tabs.pending') || 'Pending'}</span>
-                    </TabsTrigger>
-                    <TabsTrigger value="completed" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent whitespace-nowrap" title={t('sales.tabs.completed') || "Completed"}>
-                      <span className="tab-label">{t('sales.tabs.completed') || 'Completed'}</span>
-                    </TabsTrigger>
-                    <TabsTrigger value="cancelled" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent whitespace-nowrap" title={t('sales.tabs.cancelled') || "Cancelled"}>
-                      <span className="tab-label">{t('sales.tabs.cancelled') || 'Cancelled'}</span>
-                    </TabsTrigger>
-                    <TabsTrigger value="refunded" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent whitespace-nowrap" title={t('sales.tabs.refunded') || "Refunded"}>
-                      <span className="tab-label">{t('sales.tabs.refunded') || 'Refunded'}</span>
-                    </TabsTrigger>
-                  </TabsList>
-                  </div>
+                  <FilterContainer>
+                    <FilterSection mobileOnly>
+                      <SearchInput placeholder={t('sales.search.placeholder') || "Search sales..."} value={searchQuery} onChange={handleSearchChange} alwaysExpanded={true} className="w-full h-10 md:h-9" containerClassName="w-full" />
+                    </FilterSection>
 
-                  {locations.length > 0 && (
-                    <Select
-                      value={locationFilter}
-                      onValueChange={(val) => { setLocationFilter(val); setCurrentPage(1); }}
-                    >
-                      <SelectTrigger className="w-[160px] h-8 text-xs bg-muted/30 border-0 rounded-full">
-                        <SelectValue placeholder={t('allLocations') || 'All Locations'} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">{t('allLocations') || 'All Locations'}</SelectItem>
-                        {locations.map((loc) => (
-                          <SelectItem key={loc.id} value={loc.id}>{loc.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  )}
+                    
 
-                  <div className="flex flex-col md:flex-row items-stretch md:items-center gap-2 w-full md:w-auto">
+                    <FilterSection title={t('common.status') || 'Status'} className={cn(searchQuery && "max-md:hidden")}>
+                      <TabsList className="h-auto md:h-8 p-0 md:p-0.5 bg-transparent md:bg-muted/30 rounded-none md:rounded-full flex flex-wrap md:flex-nowrap md:flex-row w-full md:max-w-full overflow-y-visible md:overflow-x-auto justify-start items-center gap-2 md:gap-0">
+                        <TabsTrigger value="all" className="w-auto justify-center rounded-full text-sm md:text-xs py-1.5 px-3 md:py-1 md:px-3 text-foreground/80 md:text-foreground border border-border/50 md:border-transparent data-[state=active]:bg-foreground data-[state=active]:text-background md:data-[state=active]:bg-background md:data-[state=active]:text-foreground data-[state=active]:shadow-sm md:data-[state=active]:border-transparent whitespace-nowrap flex items-center gap-1.5" title={t('sales.tabs.all') || "All Sales"}>
+                          <span className="tab-label">{t('sales.tabs.all') || 'All Sales'}</span>
+                        </TabsTrigger>
+                        <TabsTrigger value="pending" className="w-auto justify-center rounded-full text-sm md:text-xs py-1.5 px-3 md:py-1 md:px-3 text-foreground/80 md:text-foreground border border-border/50 md:border-transparent data-[state=active]:bg-foreground data-[state=active]:text-background md:data-[state=active]:bg-background md:data-[state=active]:text-foreground data-[state=active]:shadow-sm md:data-[state=active]:border-transparent whitespace-nowrap flex items-center gap-1.5" title={t('sales.tabs.pending') || "Pending"}>
+                          <span className="tab-label">{t('sales.tabs.pending') || 'Pending'}</span>
+                        </TabsTrigger>
+                        <TabsTrigger value="completed" className="w-auto justify-center rounded-full text-sm md:text-xs py-1.5 px-3 md:py-1 md:px-3 text-foreground/80 md:text-foreground border border-border/50 md:border-transparent data-[state=active]:bg-foreground data-[state=active]:text-background md:data-[state=active]:bg-background md:data-[state=active]:text-foreground data-[state=active]:shadow-sm md:data-[state=active]:border-transparent whitespace-nowrap flex items-center gap-1.5" title={t('sales.tabs.completed') || "Completed"}>
+                          <span className="tab-label">{t('sales.tabs.completed') || 'Completed'}</span>
+                        </TabsTrigger>
+                        <TabsTrigger value="cancelled" className="w-auto justify-center rounded-full text-sm md:text-xs py-1.5 px-3 md:py-1 md:px-3 text-foreground/80 md:text-foreground border border-border/50 md:border-transparent data-[state=active]:bg-foreground data-[state=active]:text-background md:data-[state=active]:bg-background md:data-[state=active]:text-foreground data-[state=active]:shadow-sm md:data-[state=active]:border-transparent whitespace-nowrap flex items-center gap-1.5" title={t('sales.tabs.cancelled') || "Cancelled"}>
+                          <span className="tab-label">{t('sales.tabs.cancelled') || 'Cancelled'}</span>
+                        </TabsTrigger>
+                        <TabsTrigger value="refunded" className="w-auto justify-center rounded-full text-sm md:text-xs py-1.5 px-3 md:py-1 md:px-3 text-foreground/80 md:text-foreground border border-border/50 md:border-transparent data-[state=active]:bg-foreground data-[state=active]:text-background md:data-[state=active]:bg-background md:data-[state=active]:text-foreground data-[state=active]:shadow-sm md:data-[state=active]:border-transparent whitespace-nowrap flex items-center gap-1.5" title={t('sales.tabs.refunded') || "Refunded"}>
+                          <span className="tab-label">{t('sales.tabs.refunded') || 'Refunded'}</span>
+                        </TabsTrigger>
+                      </TabsList>
+                    </FilterSection>
+
+                    {locations.length > 0 && (
+                      <FilterSection className={cn(searchQuery && "max-md:hidden")} title={t('common.location') || 'Location'}> 
+                      <Select value={locationFilter}
+                          onValueChange={(val) => { setLocationFilter(val); setCurrentPage(1); }}
+                        >
+                          <SelectTrigger className="w-[160px] h-8 text-xs bg-muted/30 border-0 rounded-full">
+                            <SelectValue placeholder={t('allLocations') || 'All Locations'} />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">{t('allLocations') || 'All Locations'}</SelectItem>
+                            {locations.map((loc) => (
+                              <SelectItem key={loc.id} value={loc.id}>{loc.name}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </FilterSection>
+                    )}
+
+                    <FilterSection mobileOnly className={cn(searchQuery && "hidden")} title={t('common.dateRange') || 'Date Range'}> 
                     <CalendarDateRangePicker 
-                      onRangeChange={handleDateRangeChange} 
-                      initialStartDate={dateRange.startDate}
-                      initialEndDate={dateRange.endDate} />
-                  </div>
+                        onRangeChange={handleDateRangeChange} 
+                        initialStartDate={dateRange.startDate}
+                        initialEndDate={dateRange.endDate} />
+                    </FilterSection>
 
-                  <div className="hidden md:flex items-center gap-2 w-full md:w-auto">
-                    <SearchInput  data-command-k-input placeholder={t('sales.search.placeholder') || "Search sales..."} value={searchQuery} onChange={handleSearchChange}    className="w-full"  containerClassName="w-64" />
-                  </div>
-                </div>
-              </MobileFiltersDrawer>
+                    <FilterSection desktopOnly>
+                      <SearchInput  data-command-k-input placeholder={t('sales.search.placeholder') || "Search sales..."} value={searchQuery} onChange={handleSearchChange}    className="w-full"  containerClassName="w-64" />
+                    </FilterSection>
+                  </FilterContainer>
+                </MobileFiltersDrawer>
                 
               <div className="ml-auto flex flex-wrap justify-end items-center gap-2 shrink-0">
                 <Button
