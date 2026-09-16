@@ -54,6 +54,7 @@ export function PosCatalogGrid({ items, loading, onAdd, t }: PosCatalogGridProps
             return (
               <Card
                 key={item.id}
+                data-catalog-item-id={item.id}
                 className={`relative cursor-pointer transition-shadow hover:shadow-md overflow-hidden flex flex-col h-40 ${!isAvailable ? "opacity-50 grayscale" : ""}`}
                 onClick={() => isAvailable && onAdd(item)}
               >

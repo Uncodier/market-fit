@@ -1,4 +1,4 @@
-goal: Test CRUD cycle for Settings - Company
+goal: Update and restore Company settings
 
 statements:
   - URL: /projects
@@ -19,10 +19,31 @@ statements:
     action: click
     locator: "getByRole('tab', { name: /Company/i })"
 
-  - intent: Click Save
-    action: click
-    locator: "getByRole('button', { name: /Save|Guardar/i }).first()"
+  - description: Preserve and update the company profile
+    js: |
+      const field = page.locator('textarea').first();
+      const original = await field.inputValue();
+      await page.evaluate((value) => sessionStorage.setItem('shiplight:settings:company', value), original);
+      await field.fill(`${original} [Shiplight E2E]`);
 
-  - WAIT_UNTIL: Save completes
-    js: "await page.waitForTimeout(2000)"
+  - intent: Save the updated Company settings
+    action: click
+    locator: "getByRole('button', { name: /^Save$/i }).first()"
+
+  - WAIT_UNTIL: The Company settings save completes
+    js: "await page.waitForTimeout(1000)"
     timeout_seconds: 5
+
+  - intent: Return to the Company tab after settings refresh
+    action: click
+    locator: "getByRole('tab', { name: /Company/i })"
+
+  - description: Restore the original company profile
+    js: |
+      const field = page.locator('textarea').first();
+      const original = await page.evaluate(() => sessionStorage.getItem('shiplight:settings:company') || '');
+      await field.fill(original);
+
+  - intent: Save the restored Company settings
+    action: click
+    locator: "getByRole('button', { name: /^Save$/i }).first()"

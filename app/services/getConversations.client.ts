@@ -1,5 +1,11 @@
 import { createClient } from "@/lib/supabase/client"
 import { ConversationListItem } from "@/app/types/chat"
+import {
+  buildConversationListSelect,
+  ConversationListRow,
+  limitEmbeddedConversationMessages,
+} from "@/app/services/conversations/conversation-list-query"
+import { buildConversationListItems } from "@/app/services/conversations/conversation-list-items"
 
 /**
  * Client-safe version of getConversations used by ChatList
@@ -19,48 +25,51 @@ export async function getConversations(
   try {
     const supabase = createClient();
 
-    // When initiatedBy filter is active, we need to fetch more conversations
-    // to compensate for filtering, then paginate in memory (searches larger history)
-    const needsPostFiltering = initiatedByFilter && initiatedByFilter !== 'all'
+    // Initiation filters inspect compact first-message/reply embeds and then
+    // paginate in memory across a larger candidate set.
+    const needsPostFiltering = Boolean(
+      initiatedByFilter && initiatedByFilter !== 'all'
+    )
     const fetchMultiplier = needsPostFiltering ? 50 : 1 // Fetch 50x more for inbound/outbound
-    // "Replied" (agent started + visitor replied) is rarer - often in non-pending, so we fetch deeper
-    const isRepliedFilter = initiatedByFilter === 'replied'
-    const REPLIED_BATCH_SIZE = 1000 // Supabase default limit per query
-    const REPLIED_NON_PENDING_BATCHES = 5 // Fetch up to 5000 non-pending for replied
 
     // TASKS-ONLY: Two-step approach to search full history without row duplication
     if (tasksOnly) {
-      const { data: taskRows } = await supabase
+      const { data: taskRows, error: taskRowsError } = await supabase
         .from('tasks')
         .select('conversation_id')
         .eq('status', 'pending')
         .eq('site_id', siteId)
         .not('conversation_id', 'is', null)
         .limit(3000)
+      if (taskRowsError) {
+        console.error('Error fetching conversations with tasks:', taskRowsError)
+        throw taskRowsError
+      }
+
       const convIds = Array.from(new Set((taskRows || []).map((t: any) => t.conversation_id).filter(Boolean)))
       if (convIds.length === 0) return []
 
       const needsAssign = assigneeFilter === 'assigned' && currentUserId
       const needsQual = qualifiedLeadsOnly === true
-      const tasksBaseSelect = needsAssign || needsQual
-        ? `id, title, agent_id, lead_id, last_message_at, created_at, custom_data, status,
-          messages (content, created_at, role, user_id, custom_data),
-          leads!inner (assignee_id, status)`
-        : `id, title, agent_id, lead_id, last_message_at, created_at, custom_data, status,
-          messages (content, created_at, role, user_id, custom_data),
-          leads (assignee_id, status)`
+      const tasksBaseSelect = buildConversationListSelect({
+        includeInitiationData: false,
+        useInnerLead: Boolean(needsAssign || needsQual),
+      })
 
-      let tasksQuery = supabase
-        .from('conversations')
-        .select(tasksBaseSelect)
-        .eq('site_id', siteId)
-        .eq('is_archived', false)
-        .in('id', convIds)
+      let tasksQuery = limitEmbeddedConversationMessages(
+        supabase
+          .from('conversations')
+          .select(tasksBaseSelect)
+          .eq('site_id', siteId)
+          .eq('is_archived', false)
+          .in('id', convIds),
+        false
+      )
       if (needsAssign) {
         tasksQuery = tasksQuery.eq('leads.assignee_id', currentUserId)
       }
       if (needsQual) {
-        tasksQuery = tasksQuery.in_('leads.status', ['qualified', 'converted'])
+        tasksQuery = tasksQuery.in('leads.status', ['qualified', 'converted'])
       }
       if (searchQuery?.trim()) {
         tasksQuery = tasksQuery.ilike('title', `%${searchQuery.trim().toLowerCase()}%`)
@@ -71,7 +80,7 @@ export async function getConversations(
         .order('created_at', { ascending: false })
       if (error) {
         console.error('Error fetching conversations with tasks:', error)
-        return []
+        throw error
       }
       const sorted = (allConvs || []).sort((a: any, b: any) => {
         const dA = new Date(a.last_message_at || a.created_at || 0).getTime()
@@ -79,7 +88,7 @@ export async function getConversations(
         return dB - dA
       })
       const pageConvs = sorted.slice((page - 1) * pageSize, page * pageSize)
-      return buildConversationListItems(supabase, pageConvs)
+      return buildConversationListItems(supabase, pageConvs as ConversationListRow[])
     }
 
     // Build base query parts - add leads!inner for assigned/qualified filters (DB-level, full history)
@@ -87,52 +96,32 @@ export async function getConversations(
     const needsQualifiedFilter = qualifiedLeadsOnly === true
     const QUALIFIED_STATUSES = ['qualified', 'converted']
 
-    let baseSelect = `
-      id,
-      title,
-      agent_id,
-      lead_id,
-      last_message_at,
-      created_at,
-      custom_data,
-      channel,
-      status,
-      messages (
-        content,
-        created_at,
-        role,
-        user_id,
-        custom_data
-      ),
-      leads (
-        assignee_id,
-        status
-      )
-    `
-
-    // When assigneeFilter=assigned or qualifiedLeadsOnly: use leads!inner so we filter at DB level (searches full history)
-    if (needsAssigneeFilter || needsQualifiedFilter) {
-      baseSelect = baseSelect.replace(
-        'leads (\n        assignee_id,\n        status\n      )',
-        'leads!inner (\n        assignee_id,\n        status\n      )'
-      )
-    }
+    const baseSelect = buildConversationListSelect({
+      includeInitiationData: Boolean(needsPostFiltering),
+      useInnerLead: Boolean(needsAssigneeFilter || needsQualifiedFilter),
+    })
 
     // Query 1: Get pending conversations (by status)
-    let pendingQuery = supabase
-      .from("conversations")
-      .select(baseSelect, { count: needsAssigneeFilter || needsQualifiedFilter ? undefined : 'exact' })
-      .eq("site_id", siteId)
-      .eq("is_archived", false)
-      .eq("status", "pending")
+    let pendingQuery = limitEmbeddedConversationMessages(
+      supabase
+        .from("conversations")
+        .select(baseSelect)
+        .eq("site_id", siteId)
+        .eq("is_archived", false)
+        .eq("status", "pending"),
+      needsPostFiltering
+    )
 
     // Query 2: Get non-pending conversations
-    let nonPendingQuery = supabase
-      .from("conversations")
-      .select(baseSelect)
-      .eq("site_id", siteId)
-      .eq("is_archived", false)
-      .neq("status", "pending")
+    let nonPendingQuery = limitEmbeddedConversationMessages(
+      supabase
+        .from("conversations")
+        .select(baseSelect)
+        .eq("site_id", siteId)
+        .eq("is_archived", false)
+        .neq("status", "pending"),
+      needsPostFiltering
+    )
 
     // DB-level filter: assigned (search full history, paginate 20)
     if (needsAssigneeFilter) {
@@ -168,10 +157,28 @@ export async function getConversations(
     // Get the count of pending conversations
     let pendingCountQuery = supabase
       .from("conversations")
-      .select("id", { count: 'exact', head: true })
+      .select(
+        needsAssigneeFilter || needsQualifiedFilter
+          ? "id, leads!inner(id)"
+          : "id",
+        { count: 'exact', head: true }
+      )
       .eq("site_id", siteId)
       .eq("is_archived", false)
       .eq("status", "pending")
+
+    if (needsAssigneeFilter) {
+      pendingCountQuery = pendingCountQuery.eq(
+        "leads.assignee_id",
+        currentUserId!
+      )
+    }
+    if (needsQualifiedFilter) {
+      pendingCountQuery = pendingCountQuery.in(
+        "leads.status",
+        QUALIFIED_STATUSES
+      )
+    }
 
     // Apply the same channel filter to count query
     if (channelFilter && channelFilter !== 'all') {
@@ -190,13 +197,16 @@ export async function getConversations(
       pendingCountQuery = pendingCountQuery.ilike('title', `%${searchTerm}%`)
     }
 
-    const { count: pendingCount } = await pendingCountQuery
+    const { count: pendingCount, error: pendingCountError } = await pendingCountQuery
+    if (pendingCountError) {
+      console.error("Error counting pending conversations:", pendingCountError)
+      throw pendingCountError
+    }
 
     const totalPending = pendingCount || 0
     
     // Calculate what we need from pending vs non-pending based on page
     const requestedFrom = (page - 1) * pageSize
-    const requestedTo = requestedFrom + pageSize
     
     let pendingConversations: any[] = []
     let nonPendingConversations: any[] = []
@@ -216,7 +226,7 @@ export async function getConversations(
 
       if (pendingError) {
         console.error("Error fetching pending conversations:", pendingError)
-        return []
+        throw pendingError
       }
       pendingConversations = pendingData || []
 
@@ -230,7 +240,7 @@ export async function getConversations(
           .range(from, to)
         if (batchError) {
           console.error("Error fetching non-pending batch:", batchError)
-          break
+          throw batchError
         }
         const batchConvs = batchData || []
         nonPendingConversations.push(...batchConvs)
@@ -252,7 +262,7 @@ export async function getConversations(
         
         if (pendingError) {
           console.error("Error fetching pending conversations:", pendingError)
-          return []
+          throw pendingError
         }
         
         pendingConversations = pendingData || []
@@ -267,6 +277,7 @@ export async function getConversations(
           
           if (nonPendingError) {
             console.error("Error fetching non-pending conversations:", nonPendingError)
+            throw nonPendingError
           } else {
             nonPendingConversations = nonPendingData || []
           }
@@ -282,7 +293,7 @@ export async function getConversations(
         
         if (nonPendingError) {
           console.error("Error fetching non-pending conversations:", nonPendingError)
-          return []
+          throw nonPendingError
         }
         
         nonPendingConversations = nonPendingData || []
@@ -302,9 +313,9 @@ export async function getConversations(
 
     let filteredConversations = conversations
 
-    // Apply initiatedBy filter using messages that come with conversations
+    // Apply initiatedBy filter using compact embedded message markers.
     if (initiatedByFilter && initiatedByFilter !== 'all') {
-      console.log(`🔍 Filtering conversations by initiatedBy (${initiatedByFilter}) using messages from query`)
+      console.log(`🔍 Filtering conversations by initiatedBy (${initiatedByFilter})`)
       
       const userRoles = ['visitor', 'user']
       const systemRoles = ['agent', 'assistant', 'system', 'team_member']
@@ -313,22 +324,12 @@ export async function getConversations(
       const allFetched = [...pendingConversations, ...nonPendingConversations]
       
       const allFiltered = allFetched.filter((conv: any) => {
-        // Get messages for this conversation
-        const messages = conv.messages || []
-        
-        if (!messages || messages.length === 0) {
+        const firstMessage = conv.first_message?.[0]
+
+        if (!firstMessage) {
           // No messages = can't determine who initiated, exclude from filter
           return false
         }
-        
-        // Find the first message (oldest by created_at)
-        const sortedMessages = [...messages].sort((a: any, b: any) => {
-          const dateA = new Date(a.created_at).getTime()
-          const dateB = new Date(b.created_at).getTime()
-          return dateA - dateB
-        })
-        
-        const firstMessage = sortedMessages[0]
         const firstRole = firstMessage.role
         
         if (initiatedByFilter === 'visitor') {
@@ -340,7 +341,7 @@ export async function getConversations(
         } else if (initiatedByFilter === 'replied') {
           // REPLIED: First message from system/agent, and AT LEAST one subsequent message from user/visitor
           const isOutbound = systemRoles.includes(firstRole)
-          const hasVisitorReply = sortedMessages.slice(1).some((msg: any) => userRoles.includes(msg.role))
+          const hasVisitorReply = Boolean(conv.visitor_messages?.length)
           return isOutbound && hasVisitorReply
         }
         
@@ -382,213 +383,13 @@ export async function getConversations(
       })
     }
 
-    // Tasks-only filter: keep conversations that have at least one task linked by conversation_id
-    if (tasksOnly) {
-      const conversationIds = filteredConversations.map((c: any) => c.id)
-      if (conversationIds.length === 0) {
-        return []
-      }
-      const { data: tasks } = await supabase
-        .from('tasks')
-        .select('id, conversation_id')
-        .in('conversation_id', conversationIds)
-        .eq('status', 'pending')
-
-      const withTasks = new Set((tasks || []).map((t: any) => t.conversation_id))
-      filteredConversations = filteredConversations.filter((c: any) => withTasks.has(c.id))
-    }
-
-    // Build maps for names
-    const agentIds = filteredConversations.map((c: any) => c.agent_id).filter(Boolean)
-    const leadIds = filteredConversations.map((c: any) => c.lead_id).filter(Boolean)
-
-    let agentsMap: Record<string, string> = {}
-    let leadsMap: Record<string, string> = {}
-    let leadStatusMap: Record<string, string> = {}
-    let assigneesMap: Record<string, string> = {}
-    let leadAssigneeMap: Record<string, string> = {}
-
-    if (agentIds.length > 0) {
-      const { data: agents } = await supabase
-        .from("agents")
-        .select("id, name")
-        .in("id", agentIds)
-      agentsMap = (agents || []).reduce((map: Record<string, string>, a: any) => {
-        map[a.id] = a.name
-        return map
-      }, {})
-    }
-
-    if (leadIds.length > 0) {
-      const { data: leads } = await supabase
-        .from("leads")
-        .select("id, name, company, assignee_id, status")
-        .in("id", leadIds)
-
-      if (leads && leads.length > 0) {
-        const assigneeIds = leads
-          .map((l: any) => l.assignee_id)
-          .filter(Boolean)
-          .filter((id: string, idx: number, arr: string[]) => arr.indexOf(id) === idx)
-
-        if (assigneeIds.length > 0) {
-          try {
-            const { getUserData } = await import('@/app/services/user-service')
-            const results = await Promise.all(assigneeIds.map(async (id: string) => {
-              try {
-                const u = await getUserData(id)
-                return { id, name: u?.name || `User ${id.substring(0, 8)}` }
-              } catch {
-                return { id, name: `User ${id.substring(0, 8)}` }
-              }
-            }))
-            assigneesMap = results.reduce((map: Record<string, string>, r: any) => {
-              map[r.id] = r.name
-              return map
-            }, {})
-          } catch {
-            // ignore
-          }
-        }
-
-        leadsMap = leads.reduce((map: Record<string, string>, lead: any) => {
-          const companyName = lead.company && typeof lead.company === 'object' && lead.company.name
-            ? lead.company.name
-            : (typeof lead.company === 'string' ? lead.company : '')
-          map[lead.id] = lead.name + (companyName ? ` (${companyName})` : '')
-          if (lead.assignee_id) leadAssigneeMap[lead.id] = lead.assignee_id
-          return map
-        }, {})
-        
-        leadStatusMap = leads.reduce((map: Record<string, string>, lead: any) => {
-          if (lead.status) map[lead.id] = lead.status
-          return map
-        }, {})
-      }
-    }
-
-    return filteredConversations.map((conv: any) => {
-      const lastMessage = conv.messages && conv.messages.length > 0
-        ? conv.messages[conv.messages.length - 1].content
-        : undefined
-      const messageDate = conv.last_message_at || conv.created_at || new Date().toISOString()
-      const leadId = conv.lead_id || ""
-      const leadName = leadId ? leadsMap[leadId] : ""
-      let title = conv.title || "Untitled Conversation"
-      if (leadName && (!conv.title || conv.title === "Untitled Conversation")) {
-        title = `Chat with ${leadName}`
-      }
-      const agentId = conv.agent_id || ""
-      const assigneeId = leadId ? leadAssigneeMap[leadId] : null
-      let agentName = agentsMap[agentId] || (agentId && agentId !== "" ? "Unknown Agent" : "Agent")
-      if (assigneeId && assigneesMap[assigneeId]) agentName = assigneesMap[assigneeId]
-      const customData = conv.custom_data || {}
-      let channel = conv.channel || customData.channel || 'web'
-      if (channel === 'website_chat') channel = 'web'
-
-      // Check if any message has accepted or pending status
-      const hasAcceptedMessage = conv.messages && conv.messages.some((msg: any) => 
-        msg.custom_data && msg.custom_data.status === 'accepted'
-      )
-      const hasPendingMessages = conv.messages && conv.messages.some((msg: any) =>
-        msg.custom_data && (msg.custom_data.status === 'pending' || msg.custom_data.status === 'accepted')
-      )
-
-      const leadStatus = leadId ? leadStatusMap[leadId] : undefined
-
-      return {
-        id: conv.id || "",
-        title,
-        agentId,
-        agentName,
-        leadName: leadName || undefined,
-        leadStatus: leadStatus || undefined,
-        lastMessage,
-        timestamp: new Date(messageDate),
-        messageCount: conv.messages?.length || 0,
-        channel: channel || 'web',
-        status: (hasPendingMessages ? 'pending' : conv.status) || 'active',
-        hasAcceptedMessage: hasAcceptedMessage || false
-      }
-    })
+    return buildConversationListItems(
+      supabase,
+      filteredConversations as ConversationListRow[]
+    )
   } catch (error) {
     console.error("Unexpected error in getConversations (client):", error)
-    return []
+    throw error
   }
-}
-
-/** Build ConversationListItem[] from raw conversation rows (for tasks path) */
-async function buildConversationListItems(
-  supabase: ReturnType<typeof createClient>,
-  conversations: any[]
-): Promise<ConversationListItem[]> {
-  if (!conversations.length) return []
-  const agentIds = conversations.map((c: any) => c.agent_id).filter(Boolean)
-  const leadIds = conversations.map((c: any) => c.lead_id).filter(Boolean)
-  let agentsMap: Record<string, string> = {}
-  let leadsMap: Record<string, string> = {}
-  let leadStatusMap: Record<string, string> = {}
-  let assigneesMap: Record<string, string> = {}
-  let leadAssigneeMap: Record<string, string> = {}
-
-  if (agentIds.length > 0) {
-    const { data: agents } = await supabase.from("agents").select("id, name").in("id", agentIds)
-    agentsMap = (agents || []).reduce((map: Record<string, string>, a: any) => { map[a.id] = a.name; return map }, {})
-  }
-  if (leadIds.length > 0) {
-    const { data: leads } = await supabase.from("leads").select("id, name, company, assignee_id, status").in("id", leadIds)
-    if (leads?.length) {
-      const assigneeIds = Array.from(new Set(leads.map((l: any) => l.assignee_id).filter(Boolean)))
-      if (assigneeIds.length > 0) {
-        try {
-          const { getUserData } = await import('@/app/services/user-service')
-          const results = await Promise.all(assigneeIds.map(async (id: string) => ({
-            id,
-            name: (await getUserData(id))?.name || `User ${id.substring(0, 8)}`
-          })))
-          assigneesMap = results.reduce((m: Record<string, string>, r: any) => { m[r.id] = r.name; return m }, {})
-        } catch { /* ignore */ }
-      }
-      leads.forEach((lead: any) => {
-        const companyName = lead.company?.name ?? (typeof lead.company === 'string' ? lead.company : '')
-        leadsMap[lead.id] = lead.name + (companyName ? ` (${companyName})` : '')
-        if (lead.assignee_id) leadAssigneeMap[lead.id] = lead.assignee_id
-        if (lead.status) leadStatusMap[lead.id] = lead.status
-      })
-    }
-  }
-
-  return conversations.map((conv: any) => {
-    const lastMessage = conv.messages?.length ? conv.messages[conv.messages.length - 1].content : undefined
-    const messageDate = conv.last_message_at || conv.created_at || new Date().toISOString()
-    const leadId = conv.lead_id || ""
-    const leadName = leadId ? leadsMap[leadId] : ""
-    let title = conv.title || "Untitled Conversation"
-    if (leadName && (!conv.title || conv.title === "Untitled Conversation")) title = `Chat with ${leadName}`
-    const agentId = conv.agent_id || ""
-    const assigneeId = leadId ? leadAssigneeMap[leadId] : null
-    let agentName = agentsMap[agentId] || (agentId ? "Unknown Agent" : "Agent")
-    if (assigneeId && assigneesMap[assigneeId]) agentName = assigneesMap[assigneeId]
-    const customData = conv.custom_data || {}
-    let channel = conv.channel || customData.channel || 'web'
-    if (channel === 'website_chat') channel = 'web'
-    const hasAcceptedMessage = conv.messages?.some((msg: any) => msg.custom_data?.status === 'accepted')
-    const hasPendingMessages = conv.messages?.some((msg: any) =>
-      msg.custom_data?.status === 'pending' || msg.custom_data?.status === 'accepted')
-    return {
-      id: conv.id || "",
-      title,
-      agentId,
-      agentName,
-      leadName: leadName || undefined,
-      leadStatus: leadIds.includes(leadId) ? leadStatusMap[leadId] : undefined,
-      lastMessage,
-      timestamp: new Date(messageDate),
-      messageCount: conv.messages?.length || 0,
-      channel: channel || 'web',
-      status: (hasPendingMessages ? 'pending' : conv.status) || 'active',
-      hasAcceptedMessage: hasAcceptedMessage || false
-    }
-  })
 }
 

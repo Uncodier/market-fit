@@ -21,36 +21,36 @@ statements:
 
   - intent: Click Add Team Member button
     action: click
-    locator: "getByRole('button', { name: /Add|Nuevo/i }).first()"
+    locator: "getByRole('button', { name: 'Invite New Member to Team' })"
 
-  - WAIT_UNTIL: The modal is open
-    js: "await page.locator('div[role=\"dialog\"]').count() > 0"
-    timeout_seconds: 5
+  - description: Fill a unique invitation email
+    js: |
+      const email = `shiplight-e2e-${Date.now()}@example.com`;
+      await page.evaluate((value) => sessionStorage.setItem('shiplight:settings:team-email', value), email);
+      await page.getByPlaceholder('Email address').last().fill(email);
 
-  - intent: Fill Email
-    action: fill
-    locator: "getByLabel(/Email/i)"
-    value: "test.member@example.com"
+  - WAIT_UNTIL: The invitation is ready to save
+    js: "await page.locator('input[value^=\"shiplight-e2e-\"][value$=\"@example.com\"]').locator('xpath=ancestor::*[starts-with(@id,\"team-member-\")][1]').getByRole('button', { name: 'Save & Invite' }).isEnabled()"
+    timeout_seconds: 10
 
   - intent: Click Invite
     action: click
-    locator: "getByRole('button', { name: /Invite|Invitar|Save/i })"
-
-  - WAIT_UNTIL: The modal is closed
-    js: "await page.locator('div[role=\"dialog\"]').count() === 0"
-    timeout_seconds: 10
+    locator: "locator('input[value^=\"shiplight-e2e-\"][value$=\"@example.com\"]').locator('xpath=ancestor::*[starts-with(@id,\"team-member-\")][1]').getByRole('button', { name: 'Save & Invite' })"
 
   - VERIFY: The team member is visible in the list
-    js: "await expect(page.getByText('test.member@example.com').first()).toBeVisible()"
+    js: "await expect(page.locator('input[value^=\"shiplight-e2e-\"][value$=\"@example.com\"]')).toBeVisible()"
 
   - intent: Click Remove on the member row
     action: click
-    locator: "page.locator('div').filter({ hasText: 'test.member@example.com' }).first().getByRole('button', { name: /Remove|Eliminar/i }).first()"
+    locator: "locator('input[value^=\"shiplight-e2e-\"][value$=\"@example.com\"]').locator('xpath=ancestor::*[starts-with(@id,\"team-member-\")][1]').locator('button[title=\"Remove team member\"]')"
 
   - WAIT_UNTIL: The delete confirmation modal is open
-    js: "await page.locator('div[role=\"alertdialog\"]').count() > 0 || await page.locator('div[role=\"dialog\"]').count() > 0"
+    js: "await page.getByRole('alertdialog').count() > 0"
     timeout_seconds: 5
 
   - intent: Confirm deletion
     action: click
-    locator: "getByRole('button', { name: /Delete|Remove|Eliminar/i }).last()"
+    locator: "getByRole('button', { name: 'Remove', exact: true })"
+
+  - VERIFY: The E2E team member is removed
+    js: "await expect(page.locator('input[value^=\"shiplight-e2e-\"][value$=\"@example.com\"]')).toHaveCount(0)"

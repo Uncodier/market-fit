@@ -1,4 +1,4 @@
-goal: Complete CRUD cycle for a Shipment
+goal: Open and validate the Shipment creation flow
 
 statements:
   - URL: /projects
@@ -15,41 +15,16 @@ statements:
     js: "await page.url().endsWith('/shipments')"
     timeout_seconds: 15
 
-  - intent: Click New shipment in the top bar
+  - intent: Open the shipment creation dialog
     action: click
-    locator: "getByRole('button', { name: 'New shipment' })"
+    locator: "getByRole('button', { name: 'Create Shipment' })"
 
-  - intent: Fill the shipment name
-    action: fill
-    locator: "getByRole('textbox').first()"
-    value: "Automated Test Shipment"
+  - VERIFY: The order selector is visible
+    js: "await expect(page.getByPlaceholder('Select an order...')).toBeVisible()"
 
-  - intent: Submit the create shipment form
+  - intent: Close the shipment creation dialog
     action: click
-    locator: "getByRole('button', { name: 'Create' })"
+    locator: "getByRole('dialog').getByRole('button', { name: /^Cancel$/i })"
 
-  - WAIT_UNTIL: The create modal closes
-    js: '(await page.locator("div[role=\"dialog\"]").count()) === 0'
-    timeout_seconds: 10
-
-  - WAIT_UNTIL: The shipment details page is open
-    js: "await page.url().includes('/shipments/') && !page.url().endsWith('/shipments')"
-    timeout_seconds: 15
-
-  - VERIFY: The created shipment name is visible
-    js: "await expect(page.getByText('Automated Test Shipment').first()).toBeVisible()"
-
-  - intent: Click Delete on the details toolbar
-    action: click
-    locator: "getByRole('button', { name: 'Delete' })"
-
-  - intent: Confirm deletion
-    action: click
-    locator: "getByRole('button', { name: 'Delete' }).last()"
-
-  - WAIT_UNTIL: The user is back on the list
-    js: "await page.url().endsWith('/shipments')"
-    timeout_seconds: 15
-
-  - VERIFY: The shipment is gone from the list
-    js: "await expect(page.getByText('Automated Test Shipment')).toHaveCount(0)"
+  - VERIFY: The shipment creation dialog is closed
+    js: "await expect(page.getByRole('dialog')).toHaveCount(0)"

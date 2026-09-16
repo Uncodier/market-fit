@@ -10,7 +10,7 @@ statements:
 
   - intent: Select the reservable item
     action: click
-    locator: "getByRole('heading', { name: 'Reservable Item Agent' })"
+    locator: "locator('[data-catalog-item-id=\"ee5d191a-9510-4723-8ec1-ca5ade5e8d28\"]')"
 
   - WAIT_UNTIL: Reservation dialog opens
     js: "await page.getByRole('dialog').count() > 0"

@@ -1,4 +1,4 @@
-goal: Test CRUD cycle for Settings - Visits
+goal: Update and restore Visits settings
 
 statements:
   - URL: /projects
@@ -19,10 +19,31 @@ statements:
     action: click
     locator: "getByRole('tab', { name: /Visits/i })"
 
-  - intent: Click Save
-    action: click
-    locator: "getByRole('button', { name: /Save|Guardar/i }).first()"
+  - description: Preserve and update the default visit duration
+    js: |
+      const field = page.locator('#visit-duration');
+      const original = await field.inputValue();
+      await page.evaluate((value) => sessionStorage.setItem('shiplight:settings:visits', value), original);
+      await field.fill(String(Number(original || '60') + 1));
 
-  - WAIT_UNTIL: Save completes
-    js: "await page.waitForTimeout(2000)"
+  - intent: Save the updated Visits settings
+    action: click
+    locator: "getByRole('button', { name: /^Save$/i }).first()"
+
+  - WAIT_UNTIL: The Visits settings save completes
+    js: "await page.waitForTimeout(1000)"
     timeout_seconds: 5
+
+  - intent: Return to the Visits tab after settings refresh
+    action: click
+    locator: "getByRole('tab', { name: /Visits/i })"
+
+  - description: Restore the original default visit duration
+    js: |
+      const field = page.locator('#visit-duration');
+      const original = await page.evaluate(() => sessionStorage.getItem('shiplight:settings:visits') || '60');
+      await field.fill(original);
+
+  - intent: Save the restored Visits settings
+    action: click
+    locator: "getByRole('button', { name: /^Save$/i }).first()"

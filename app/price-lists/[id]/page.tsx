@@ -262,7 +262,7 @@ export default function PriceListDetail(props: { params: Promise<{ id: string }>
                  <Label htmlFor="active-status" className="text-sm font-medium">Active</Label>
                  <Switch 
                     id="active-status" 
-                    checked={priceList?.is_active || false} 
+                    checked={list?.is_active || false} 
                     onCheckedChange={() => window.dispatchEvent(new CustomEvent("price-list:toggle-active"))} 
                  />
               </div>

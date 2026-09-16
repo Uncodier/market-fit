@@ -39,6 +39,25 @@ export async function createDemoMockClientImpl(demoSiteId: string) {
   // Simple query builder simulator
   const buildQuery = (tableData: any[], tableName: string) => {
     let result = [...(tableData || [])];
+    const rootOrder: Array<{ column: string; ascending: boolean }> = []
+    const embeddedOrder = new Map<
+      string,
+      Array<{ column: string; ascending: boolean }>
+    >()
+
+    const compareRows = (
+      leftRow: Record<string, any>,
+      rightRow: Record<string, any>,
+      order: Array<{ column: string; ascending: boolean }>
+    ) => {
+      for (const { column, ascending } of order) {
+        const left = getRowValue(leftRow, column)
+        const right = getRowValue(rightRow, column)
+        if (left < right) return ascending ? -1 : 1
+        if (left > right) return ascending ? 1 : -1
+      }
+      return 0
+    }
     
     const queryBuilder: any = {
       select: () => queryBuilder,
@@ -56,8 +75,29 @@ export async function createDemoMockClientImpl(demoSiteId: string) {
         });
         return queryBuilder;
       },
-      or: (condition: string) => {
-        // Very basic mock for 'or'
+      or: (
+        condition: string,
+        options?: { referencedTable?: string }
+      ) => {
+        if (options?.referencedTable) {
+          const relation = options.referencedTable
+          const alternatives = condition.split(",").map((part) => {
+            const [column, operator, ...rawValue] = part.split(".")
+            return { column, operator, value: rawValue.join(".") }
+          })
+
+          result = result.map((item) => {
+            const embeddedRows = Array.isArray(item[relation])
+              ? item[relation]
+              : []
+            const filteredRows = embeddedRows.filter((embeddedItem: any) =>
+              alternatives.some(({ column, operator, value }) =>
+                operator === "eq" && getRowValue(embeddedItem, column) === value
+              )
+            )
+            return { ...item, [relation]: filteredRows }
+          })
+        }
         return queryBuilder;
       },
       in: (column: string, values: any[]) => {
@@ -107,7 +147,21 @@ export async function createDemoMockClientImpl(demoSiteId: string) {
       maybeSingle: () => {
         return Promise.resolve({ data: result.length > 0 ? result[0] : null, error: null });
       },
-      limit: (count: number) => {
+      limit: (
+        count: number,
+        options?: { referencedTable?: string }
+      ) => {
+        if (options?.referencedTable) {
+          const relation = options.referencedTable
+          result = result.map((item) => ({
+            ...item,
+            [relation]: Array.isArray(item[relation])
+              ? item[relation].slice(0, count)
+              : item[relation],
+          }))
+          return queryBuilder
+        }
+
         result = result.slice(0, count);
         return queryBuilder;
       },
@@ -115,14 +169,29 @@ export async function createDemoMockClientImpl(demoSiteId: string) {
         result = result.slice(from, to + 1);
         return queryBuilder;
       },
-      order: (column: string, { ascending } = { ascending: true }) => {
-        result = result.sort((a, b) => {
-          const left = getRowValue(a, column)
-          const right = getRowValue(b, column)
-          if (left < right) return ascending ? -1 : 1;
-          if (left > right) return ascending ? 1 : -1;
-          return 0;
-        });
+      order: (
+        column: string,
+        {
+          ascending = true,
+          referencedTable,
+        }: { ascending?: boolean; referencedTable?: string } = {}
+      ) => {
+        if (referencedTable) {
+          const relationOrder = embeddedOrder.get(referencedTable) || []
+          relationOrder.push({ column, ascending })
+          embeddedOrder.set(referencedTable, relationOrder)
+          result = result.map((item) => {
+            if (!Array.isArray(item[referencedTable])) return item
+            const embeddedRows = [...item[referencedTable]].sort((a, b) =>
+              compareRows(a, b, relationOrder)
+            )
+            return { ...item, [referencedTable]: embeddedRows }
+          })
+          return queryBuilder
+        }
+
+        rootOrder.push({ column, ascending })
+        result = result.sort((a, b) => compareRows(a, b, rootOrder));
         return queryBuilder;
       },
       csv: () => queryBuilder,

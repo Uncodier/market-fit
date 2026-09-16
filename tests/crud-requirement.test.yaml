@@ -90,9 +90,13 @@ statements:
     js: "await page.getByText('Automated Test Requirement').count() > 0"
     timeout_seconds: 15
 
+  - intent: Open the requirement row menu
+    action: click
+    locator: "locator('tbody tr').filter({ hasText: 'Automated Test Requirement' }).first().getByRole('button', { name: 'Open' })"
+
   - intent: Open the requirement details page
     action: click
-    locator: "getByText('Automated Test Requirement').first()"
+    locator: "getByRole('menuitem', { name: 'Open', exact: true })"
 
   - WAIT_UNTIL: The requirement details route is open
     js: "await page.url().includes('/requirements/') && !page.url().endsWith('/requirements')"

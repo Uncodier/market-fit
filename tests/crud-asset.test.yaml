@@ -26,7 +26,7 @@ statements:
 
   - intent: Upload the asset fixture
     action: upload_file
-    locator: "locator('input[type=\"file\"]')"
+    locator: "getByText('Drag and drop a file or click to select')"
     paths: "fixtures/e2e-asset.svg"
 
   - intent: Submit the asset upload form

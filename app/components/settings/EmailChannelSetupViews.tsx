@@ -161,7 +161,8 @@ export function EmailInboundSettings({
   onSave,
   onActivate,
 }: EmailInboundSettingsProps) {
-  const showActivation = isMxConfigured && !isChannelActive && !hasReceivingChanges
+  const showActivation =
+    isMxConfigured && receivingEnabled && !isChannelActive && !hasReceivingChanges
 
   return (
     <>

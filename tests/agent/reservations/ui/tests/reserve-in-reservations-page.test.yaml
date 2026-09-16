@@ -31,7 +31,7 @@ statements:
 
   - intent: Click item
     action: click
-    locator: "locator('.cursor-pointer.font-inter').filter({ hasText: 'Reservable Item Agent' }).first()"
+    locator: "locator('[data-relation-id=\"ee5d191a-9510-4723-8ec1-ca5ade5e8d28\"]')"
 
   - intent: Open customer dropdown
     action: click

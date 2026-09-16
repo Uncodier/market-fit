@@ -1834,7 +1834,7 @@ function RobotsPageContent() {
                                       ? "cursor-default"
                                       : "hover:bg-destructive/10 cursor-pointer"
                                   }`}
-                                  title={isDeletingInstance ? "Eliminando..." : "Eliminar conversación"}
+                                  title={isDeletingInstance ? "Deleting..." : "Delete session"}
                                   role="button"
                                   tabIndex={isDeletingInstance ? -1 : 0}
                                   aria-disabled={isDeletingInstance}

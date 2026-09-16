@@ -59,4 +59,17 @@ describe("EmailInboundSettings", () => {
     expect(screen.getByRole("button", { name: "Activate Email Channel" })).toBeInTheDocument()
     expect(screen.queryByRole("button", { name: "Verify MX" })).not.toBeInTheDocument()
   })
+
+  it("waits for inbound receiving to be enabled before activation", () => {
+    render(
+      <EmailInboundSettings
+        {...baseProps}
+        isMxConfigured
+        isChannelActive={false}
+        receivingEnabled={false}
+      />
+    )
+
+    expect(screen.queryByRole("button", { name: "Activate Email Channel" })).not.toBeInTheDocument()
+  })
 })

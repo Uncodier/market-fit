@@ -1,4 +1,4 @@
-goal: Test CRUD cycle for Settings - Social
+goal: Create, read, and delete a Social Network setting
 
 statements:
   - URL: /projects
@@ -19,10 +19,33 @@ statements:
     action: click
     locator: "getByRole('tab', { name: /Social/i })"
 
-  - intent: Click Save
+  - intent: Add a social network
     action: click
-    locator: "getByRole('button', { name: /Save|Guardar/i }).first()"
+    locator: "getByRole('button', { name: 'Add Social Network' })"
 
-  - WAIT_UNTIL: Save completes
-    js: "await page.waitForTimeout(2000)"
-    timeout_seconds: 5
+  - intent: Open the platform selector
+    action: click
+    locator: "getByRole('button', { name: 'Select Platform' }).last()"
+
+  - intent: Select Pinterest as the E2E platform
+    action: click
+    locator: "getByText('Pinterest', { exact: true }).last()"
+
+  - intent: Save the social network
+    action: click
+    locator: "getByRole('button', { name: /^Save$/i }).last()"
+
+  - intent: Return to the Social tab after settings refresh
+    action: click
+    locator: "getByRole('tab', { name: /Social/i })"
+
+  - VERIFY: The Pinterest network is visible
+    js: "await expect(page.getByText('Pinterest', { exact: true }).last()).toBeVisible()"
+
+  - intent: Remove the E2E social network
+    action: click
+    locator: "locator('button[title=\"Remove Network\"]').last()"
+
+  - intent: Confirm deletion of the social network
+    action: click
+    locator: "getByRole('button', { name: 'Delete' })"

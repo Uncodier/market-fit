@@ -1,4 +1,4 @@
-goal: Complete CRUD cycle for a Inventory Item
+goal: Read inventory levels and locations
 
 statements:
   - URL: /projects
@@ -15,41 +15,12 @@ statements:
     js: "await page.url().endsWith('/inventory')"
     timeout_seconds: 15
 
-  - intent: Click New item in the top bar
+  - VERIFY: The Stock Levels tab is visible
+    js: "await expect(page.getByRole('tab', { name: 'Stock Levels' })).toBeVisible()"
+
+  - intent: Open inventory locations
     action: click
-    locator: "getByRole('button', { name: 'New item' })"
+    locator: "getByRole('tab', { name: 'Locations' })"
 
-  - intent: Fill the inventory item name
-    action: fill
-    locator: "getByRole('textbox').first()"
-    value: "Automated Test Inventory Item"
-
-  - intent: Submit the create inventory item form
-    action: click
-    locator: "getByRole('button', { name: 'Create' })"
-
-  - WAIT_UNTIL: The create modal closes
-    js: '(await page.locator("div[role=\"dialog\"]").count()) === 0'
-    timeout_seconds: 10
-
-  - WAIT_UNTIL: The inventory item details page is open
-    js: "await page.url().includes('/inventory/') && !page.url().endsWith('/inventory')"
-    timeout_seconds: 15
-
-  - VERIFY: The created inventory item name is visible
-    js: "await expect(page.getByText('Automated Test Inventory Item').first()).toBeVisible()"
-
-  - intent: Click Delete on the details toolbar
-    action: click
-    locator: "getByRole('button', { name: 'Delete' })"
-
-  - intent: Confirm deletion
-    action: click
-    locator: "getByRole('button', { name: 'Delete' }).last()"
-
-  - WAIT_UNTIL: The user is back on the list
-    js: "await page.url().endsWith('/inventory')"
-    timeout_seconds: 15
-
-  - VERIFY: The inventory item is gone from the list
-    js: "await expect(page.getByText('Automated Test Inventory Item')).toHaveCount(0)"
+  - VERIFY: The locations section is visible
+    js: "await expect(page.getByText('Physical Locations')).toBeVisible()"

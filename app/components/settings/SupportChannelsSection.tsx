@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { useFormContext, useFieldArray } from "react-hook-form"
 import { type SiteFormValues } from "./form-schema"
 import { FormField, FormItem, FormLabel, FormControl, FormMessage } from "../ui/form"
@@ -38,6 +38,7 @@ import { useBillingLimit } from "@/app/context/BillingLimitContext"
 import { disconnectZavuChannel, shouldDeleteZavuSender } from "./disconnect-remote-accounts"
 import { useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
+import { buildSupportChannelNavigation } from "./support-channel-navigation"
 
 const CHANNEL_TYPES = [
   { value: "whatsapp", label: "WhatsApp", icon: WhatsAppIcon },
@@ -109,6 +110,18 @@ export function SupportChannelsSection({ active, siteId, onSave }: SupportChanne
   const [connectingIndex, setConnectingIndex] = useState<number | null>(null)
   const [checkingIndex, setCheckingIndex] = useState<number | null>(null)
   const [channelToDelete, setChannelToDelete] = useState<number | null>(null)
+
+  useEffect(() => {
+    if (!active) return
+    const timer = window.setTimeout(() => {
+      window.dispatchEvent(new CustomEvent("supportChannelsUpdated", {
+        detail: buildSupportChannelNavigation(connections),
+      }))
+    }, 0)
+
+    return () => window.clearTimeout(timer)
+  }, [active, connections])
+
   const persistConnections = useCallback(async (nextConnections: any[]) => {
     form.setValue("channels.connections", nextConnections, { shouldDirty: true })
     if (onSave) {
@@ -283,10 +296,16 @@ export function SupportChannelsSection({ active, siteId, onSave }: SupportChanne
             Connect WhatsApp, Messenger and other channels to your AI Agent
           </p>
         </div>
-        <Button variant="outline" size="sm" type="button" onClick={addChannel}>
-          <PlusCircle className="mr-2 h-4 w-4" />
-          Add Channel
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" type="button" onClick={handleConfigureAgent}>
+            <Bot className="mr-2 h-4 w-4" />
+            Edit Agent
+          </Button>
+          <Button variant="outline" size="sm" type="button" onClick={addChannel}>
+            <PlusCircle className="mr-2 h-4 w-4" />
+            Add Channel
+          </Button>
+        </div>
       </div>
 
       <div className="space-y-6">
@@ -294,7 +313,9 @@ export function SupportChannelsSection({ active, siteId, onSave }: SupportChanne
           const channel = connections[index] || field
           const type = channel.type
           const hasType = !!type
-          const isConnected = channel.status === "connected"
+          const isConnected =
+            channel.status === "connected" &&
+            (type !== "email" || channel.metadata?.emailChannelActive === true)
           const invitationUrl = channel.metadata?.invitation_url
           const failureReason = channel.metadata?.failure_reason
           const label = channel.name || channelLabel(type)
@@ -408,10 +429,6 @@ export function SupportChannelsSection({ active, siteId, onSave }: SupportChanne
                           </div>
                         </div>
                       </div>
-                      <Button variant="outline" size="sm" type="button" onClick={handleConfigureAgent} className="w-full sm:w-auto shrink-0">
-                        <Bot className="w-4 h-4 mr-2" />
-                        Edit Agent
-                      </Button>
                     </div>
                   </SectionCardContent>
                 )}

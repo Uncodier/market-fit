@@ -1,4 +1,4 @@
-goal: Complete CRUD cycle for a Robot
+goal: Create, read, and delete a Robot session
 
 statements:
   - URL: /projects
@@ -15,41 +15,25 @@ statements:
     js: "await page.url().endsWith('/robots')"
     timeout_seconds: 15
 
-  - intent: Click New robot in the top bar
+  - intent: Create a new Robot session
     action: click
-    locator: "getByRole('button', { name: 'New robot' })"
+    locator: "locator('button[title=\"Create new agent\"]')"
 
-  - intent: Fill the robot name
-    action: fill
-    locator: "getByRole('textbox').first()"
-    value: "Automated Test Robot"
-
-  - intent: Submit the create robot form
-    action: click
-    locator: "getByRole('button', { name: 'Create' })"
-
-  - WAIT_UNTIL: The create modal closes
-    js: '(await page.locator("div[role=\"dialog\"]").count()) === 0'
-    timeout_seconds: 10
-
-  - WAIT_UNTIL: The robot details page is open
-    js: "await page.url().includes('/robots/') && !page.url().endsWith('/robots')"
+  - WAIT_UNTIL: The new Robot session is selected
+    js: "page.url().includes('instance=') && !page.url().includes('instance=new')"
     timeout_seconds: 15
 
-  - VERIFY: The created robot name is visible
-    js: "await expect(page.getByText('Automated Test Robot').first()).toBeVisible()"
+  - VERIFY: The new Robot session tab is active
+    js: "await expect(page.getByRole('tab', { selected: true })).toBeVisible()"
 
-  - intent: Click Delete on the details toolbar
+  - intent: Delete the active Robot session
     action: click
-    locator: "getByRole('button', { name: 'Delete' })"
+    locator: "getByRole('tab', { selected: true }).getByRole('button', { name: 'Delete session' })"
 
-  - intent: Confirm deletion
+  - intent: Confirm Robot session deletion
     action: click
-    locator: "getByRole('button', { name: 'Delete' }).last()"
+    locator: "getByRole('button', { name: /Delete|Eliminar/i }).last()"
 
-  - WAIT_UNTIL: The user is back on the list
-    js: "await page.url().endsWith('/robots')"
+  - WAIT_UNTIL: The deleted Robot session is no longer selected
+    js: "!page.url().includes('instance=') || page.url().includes('instance=new')"
     timeout_seconds: 15
-
-  - VERIFY: The robot is gone from the list
-    js: "await expect(page.getByText('Automated Test Robot')).toHaveCount(0)"

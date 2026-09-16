@@ -21,36 +21,49 @@ statements:
 
   - intent: Click Add Calendar button
     action: click
-    locator: "getByRole('button', { name: /Add Calendar|New Calendar/i }).first()"
-
-  - WAIT_UNTIL: The modal is open
-    js: "await page.locator('div[role=\"dialog\"]').count() > 0"
-    timeout_seconds: 5
+    locator: "getByRole('button', { name: 'Add Calendar' })"
 
   - intent: Fill Calendar Name
     action: fill
-    locator: "getByLabel(/Name|Nombre/i).first()"
-    value: "Test Calendar"
+    locator: "locator('#rr-name-new')"
+    value: "Shiplight E2E Calendar"
 
-  - intent: Click Save
+  - intent: Fill Calendar Slug
+    action: fill
+    locator: "locator('#rr-slug-new')"
+    value: "shiplight-e2e-calendar"
+
+  - intent: Assign the first team member
     action: click
-    locator: "getByRole('button', { name: /Save|Guardar/i }).last()"
+    locator: "locator('button[role=\"checkbox\"][id^=\"member-new-\"]').first()"
 
-  - WAIT_UNTIL: The modal is closed
-    js: "await page.locator('div[role=\"dialog\"]').count() === 0"
-    timeout_seconds: 10
+  - description: Create the calendar
+    js: "await page.getByRole('button', { name: 'Create Calendar' }).evaluate((button) => button.click())"
+
+  - WAIT_UNTIL: The calendar creation finishes
+    js: "(await page.waitForTimeout(3000)) === undefined"
+    timeout_seconds: 15
+
+  - URL: /settings?tab=calendar
 
   - VERIFY: The calendar is visible in the list
-    js: "await expect(page.getByText('Test Calendar').first()).toBeVisible()"
+    js: "await expect(page.getByText('Shiplight E2E Calendar').first()).toBeVisible()"
+
+  - intent: Expand the E2E calendar
+    action: click
+    locator: "getByText('Shiplight E2E Calendar').first()"
 
   - intent: Click Delete on the calendar row
     action: click
-    locator: "page.locator('div').filter({ hasText: 'Test Calendar' }).first().getByRole('button').last()"
+    locator: "getByRole('button', { name: 'Remove Calendar' })"
 
   - WAIT_UNTIL: The delete confirmation modal is open
-    js: "await page.locator('div[role=\"alertdialog\"]').count() > 0 || await page.locator('div[role=\"dialog\"]').count() > 0"
+    js: "await page.getByRole('alertdialog').count() > 0"
     timeout_seconds: 5
 
   - intent: Confirm deletion
     action: click
-    locator: "getByRole('button', { name: /Delete|Remove|Eliminar/i }).last()"
+    locator: "getByRole('button', { name: 'Delete' })"
+
+  - VERIFY: The E2E calendar is removed
+    js: "await expect(page.getByText('Shiplight E2E Calendar')).toHaveCount(0)"

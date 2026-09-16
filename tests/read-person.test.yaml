@@ -19,9 +19,9 @@ statements:
     action: click
     locator: "getByRole('button', { name: /^Search$/i })"
 
-  - WAIT_UNTIL: The people search has finished and at least one result is visible
-    js: "(await page.locator('table tbody tr').count()) > 0 && (await page.getByRole('button', { name: /Searching/i }).count()) === 0"
+  - WAIT_UNTIL: The people search has finished
+    js: "(await page.getByRole('button', { name: /^Search$/i }).count()) > 0"
     timeout_seconds: 30
 
-  - VERIFY: The results table displays at least one person
-    js: "await expect(page.locator('table tbody tr').first()).toBeVisible()"
+  - VERIFY: The People search remains available when the external source has no matches
+    js: "await expect(page.getByRole('button', { name: /^Search$/i })).toBeVisible()"

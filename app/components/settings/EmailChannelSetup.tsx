@@ -9,6 +9,8 @@ import { secretsService } from "@/app/services/secrets-service"
 import { EmailDnsSetup, EmailInboundSettings } from "./EmailChannelSetupViews"
 import { isEmailChannelActive, resolveEmailReceivingEnabled } from "./email-channel-utils"
 import { useEmailChannelActivation } from "./use-email-channel-activation"
+import { ChannelSetupStepper } from "./ChannelSetupStepper"
+import { buildEmailSetupSteps } from "./channel-setup-steps"
 
 export function EmailChannelSetup({ 
   siteId, 
@@ -45,6 +47,11 @@ export function EmailChannelSetup({
     isActivating,
     isEmailChannelActive: emailChannelActive,
   } = useEmailChannelActivation({ siteId, channel, metadata, onUpdated })
+  const setupSteps = buildEmailSetupSteps({
+    domainVerified: domainStatus === "verified",
+    inboundEnabled: emailReceivingEnabled,
+    channelActive: emailChannelActive,
+  })
 
   useEffect(() => {
     setLocalReceivingEnabled(emailReceivingEnabled)
@@ -353,6 +360,7 @@ export function EmailChannelSetup({
   if (!metadata.email_domain_id) {
     return (
       <>
+        <ChannelSetupStepper steps={setupSteps} className="px-5 pb-5" />
         <SectionCardContent className="space-y-4 pt-0">
           <div className="space-y-2">
             <h4 className="text-sm font-medium">1. Add Your Domain</h4>
@@ -384,18 +392,21 @@ export function EmailChannelSetup({
   // Step 2: Verify DNS
   if (domainStatus !== "verified") {
     return (
-      <EmailDnsSetup
-        domain={metadata.domain}
-        domainStatus={domainStatus}
-        records={dnsRecords}
-        copied={copied}
-        isProcessing={isProcessing}
-        isSyncingCloudflare={isSyncingCloudflare}
-        isCloudflareConnected={isCloudflareConnected}
-        onCopy={copyToClipboard}
-        onSync={handleSyncCloudflare}
-        onVerify={handleVerifyDomain}
-      />
+      <>
+        <ChannelSetupStepper steps={setupSteps} className="px-5 pb-5" />
+        <EmailDnsSetup
+          domain={metadata.domain}
+          domainStatus={domainStatus}
+          records={dnsRecords}
+          copied={copied}
+          isProcessing={isProcessing}
+          isSyncingCloudflare={isSyncingCloudflare}
+          isCloudflareConnected={isCloudflareConnected}
+          onCopy={copyToClipboard}
+          onSync={handleSyncCloudflare}
+          onVerify={handleVerifyDomain}
+        />
+      </>
     )
   }
 
@@ -403,6 +414,7 @@ export function EmailChannelSetup({
   if (!hasSender) {
     return (
       <>
+        <ChannelSetupStepper steps={setupSteps} className="px-5 pb-5" />
         <SectionCardContent className="space-y-4 pt-0">
           <div className="flex items-center justify-between">
             <h4 className="text-sm font-medium">3. Configure Email Address</h4>
@@ -455,25 +467,28 @@ export function EmailChannelSetup({
   const hasReceivingChanges = localReceivingEnabled !== emailReceivingEnabled
 
   return (
-    <EmailInboundSettings
-      domain={metadata.domain}
-      copied={copied}
-      isMxConfigured={isMxConfigured}
-      isMxVerified={isMxVerified}
-      isVerifyingMx={isVerifyingMx}
-      isProcessing={isProcessing}
-      isSyncingCloudflare={isSyncingCloudflare}
-      isCloudflareConnected={isCloudflareConnected}
-      isChannelActive={emailChannelActive}
-      isActivating={isActivating}
-      receivingEnabled={localReceivingEnabled}
-      hasReceivingChanges={hasReceivingChanges}
-      onCopy={copyToClipboard}
-      onReceivingChange={setLocalReceivingEnabled}
-      onSync={handleSyncMxCloudflare}
-      onVerify={handleVerifyMx}
-      onSave={handleSaveReceiving}
-      onActivate={activateEmailChannel}
-    />
+    <>
+      <ChannelSetupStepper steps={setupSteps} className="px-5 pb-5" />
+      <EmailInboundSettings
+        domain={metadata.domain}
+        copied={copied}
+        isMxConfigured={isMxConfigured}
+        isMxVerified={isMxVerified}
+        isVerifyingMx={isVerifyingMx}
+        isProcessing={isProcessing}
+        isSyncingCloudflare={isSyncingCloudflare}
+        isCloudflareConnected={isCloudflareConnected}
+        isChannelActive={emailChannelActive}
+        isActivating={isActivating}
+        receivingEnabled={localReceivingEnabled}
+        hasReceivingChanges={hasReceivingChanges}
+        onCopy={copyToClipboard}
+        onReceivingChange={setLocalReceivingEnabled}
+        onSync={handleSyncMxCloudflare}
+        onVerify={handleVerifyMx}
+        onSave={handleSaveReceiving}
+        onActivate={activateEmailChannel}
+      />
+    </>
   )
 }

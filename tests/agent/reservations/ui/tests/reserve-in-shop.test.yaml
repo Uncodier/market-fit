@@ -2,23 +2,15 @@
 goal: Purchase and reserve the item through the Shop storefront
 
 statements:
-  - URL: "/shop/demo-site"
+  - URL: "/shop/dea92504-319d-4950-943f-503280f1727c/ee5d191a-9510-4723-8ec1-ca5ade5e8d28"
   
-  - WAIT_UNTIL: Shop loads
-    js: "await page.locator('text=Reservable Item Agent').count() > 0"
+  - WAIT_UNTIL: The reservable item page loads
+    js: "await page.getByRole('heading', { name: 'Reservable Item Agent' }).count() > 0"
     timeout_seconds: 15
-
-  - intent: Select the reservable item
-    action: click
-    locator: "locator('text=Reservable Item Agent').first()"
-    
-  - WAIT_UNTIL: PDP loads
-    js: "await page.url().includes('/shop/demo-site/')"
-    timeout_seconds: 10
 
   - intent: Click Select a Time / Book
     action: click
-    locator: "getByRole('button', { name: /Select a Time|Book/i }).first()"
+    locator: "getByRole('button', { name: /Select Time|Select a Time|Book/i }).first()"
     
   - WAIT_UNTIL: Booking calendar page loads
     js: "await page.url().includes('/book')"
@@ -37,20 +29,41 @@ statements:
     action: click
     locator: "locator('button:has-text(\":\")').first()"
     
-  - intent: Fill customer name
-    action: fill
-    locator: "locator('#name')"
-    value: "Shop Shopper"
+  - VERIFY: The selected reservation is visible in the cart
+    js: "await expect(page.getByRole('dialog', { name: 'Shopping Cart' }).getByText('Reservable Item Agent')).toBeVisible()"
 
-  - intent: Fill customer email
+  - intent: Fill the service street address
     action: fill
-    locator: "locator('#email')"
-    value: "shopper@marketfit.test"
+    locator: "getByRole('textbox', { name: 'Street Address' })"
+    value: "123 Test Street"
 
-  - intent: Confirm reservation details
+  - intent: Fill the service city
+    action: fill
+    locator: "getByRole('textbox', { name: 'City' })"
+    value: "San Francisco"
+
+  - intent: Fill the service state
+    action: fill
+    locator: "getByRole('textbox', { name: 'State' })"
+    value: "CA"
+
+  - intent: Fill the service ZIP code
+    action: fill
+    locator: "getByRole('textbox', { name: 'ZIP Code' })"
+    value: "94105"
+
+  - intent: Fill the service country
+    action: fill
+    locator: "getByRole('textbox', { name: 'Country' })"
+    value: "US"
+
+  - intent: Complete the zero-total reservation order
     action: click
-    locator: "getByRole('button', { name: /Confirm|Confirmar/i })"
-    
-  - WAIT_UNTIL: Wait for checkout redirect
-    js: "await page.url().includes('/checkout')"
-    timeout_seconds: 10
+    locator: "getByRole('button', { name: /Pay securely|Place order/i })"
+
+  - WAIT_UNTIL: The reservation order finishes processing
+    js: "await page.getByRole('heading', { name: 'Order Confirmed' }).count() > 0"
+    timeout_seconds: 60
+
+  - VERIFY: The reservation order is confirmed
+    js: "await expect(page.getByRole('heading', { name: 'Order Confirmed' })).toBeVisible()"

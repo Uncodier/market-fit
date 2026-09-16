@@ -24,6 +24,8 @@ import {
   type ZavuPhoneNumberType,
   type ZavuRegulatoryRequirement,
 } from "./zavu-phone-number-utils"
+import { ChannelSetupStepper } from "./ChannelSetupStepper"
+import { buildPhoneSetupSteps } from "./channel-setup-steps"
 
 function formatPhoneNumber(phoneNumber: string): string {
   if (!phoneNumber) return phoneNumber;
@@ -71,6 +73,7 @@ export function SmsChannelSetup({
   const [selectedNumber, setSelectedNumber] = useState("")
   const [isConnecting, setIsConnecting] = useState(false)
   const eligibleOwnedNumbers = ownedNumbers.filter((number) => canAssignPhoneNumber(number, "sms"))
+  const setupSteps = buildPhoneSetupSteps(channel)
 
   useEffect(() => {
     const fetchOwnedNumbers = async () => {
@@ -211,6 +214,7 @@ export function SmsChannelSetup({
   return (
     <>
       <SectionCardContent className="space-y-4 pt-0">
+        <ChannelSetupStepper steps={setupSteps} className="pb-2" />
         <div className="space-y-2">
           <h4 className="text-sm font-medium">Connect SMS Channel</h4>
           <p className="text-xs text-muted-foreground">

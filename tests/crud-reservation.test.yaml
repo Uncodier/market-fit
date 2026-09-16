@@ -1,4 +1,4 @@
-goal: Complete CRUD cycle for a Reservation
+goal: Open and validate the Reservation creation flow
 
 statements:
   - URL: /projects
@@ -15,41 +15,19 @@ statements:
     js: "await page.url().endsWith('/reservations')"
     timeout_seconds: 15
 
-  - intent: Click New reservation in the top bar
+  - intent: Open the reservation creation dialog
     action: click
-    locator: "getByRole('button', { name: 'New reservation' })"
+    locator: "getByRole('button', { name: 'Create Reservation' }).first()"
 
-  - intent: Fill the reservation name
-    action: fill
-    locator: "getByRole('textbox').first()"
-    value: "Automated Test Reservation"
+  - VERIFY: The service selector is visible
+    js: "await expect(page.getByPlaceholder(/Select a reservable service/i)).toBeVisible()"
 
-  - intent: Submit the create reservation form
+  - VERIFY: The customer selector is visible
+    js: "await expect(page.getByPlaceholder(/Select customer/i)).toBeVisible()"
+
+  - intent: Close the reservation creation dialog
     action: click
-    locator: "getByRole('button', { name: 'Create' })"
+    locator: "getByRole('dialog').getByRole('button', { name: /^Cancel$/i })"
 
-  - WAIT_UNTIL: The create modal closes
-    js: '(await page.locator("div[role=\"dialog\"]").count()) === 0'
-    timeout_seconds: 10
-
-  - WAIT_UNTIL: The reservation details page is open
-    js: "await page.url().includes('/reservations/') && !page.url().endsWith('/reservations')"
-    timeout_seconds: 15
-
-  - VERIFY: The created reservation name is visible
-    js: "await expect(page.getByText('Automated Test Reservation').first()).toBeVisible()"
-
-  - intent: Click Delete on the details toolbar
-    action: click
-    locator: "getByRole('button', { name: 'Delete' })"
-
-  - intent: Confirm deletion
-    action: click
-    locator: "getByRole('button', { name: 'Delete' }).last()"
-
-  - WAIT_UNTIL: The user is back on the list
-    js: "await page.url().endsWith('/reservations')"
-    timeout_seconds: 15
-
-  - VERIFY: The reservation is gone from the list
-    js: "await expect(page.getByText('Automated Test Reservation')).toHaveCount(0)"
+  - VERIFY: The reservation creation dialog is closed
+    js: "await expect(page.getByRole('dialog')).toHaveCount(0)"

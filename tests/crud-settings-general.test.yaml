@@ -1,4 +1,4 @@
-goal: Test CRUD cycle for Settings - General
+goal: Update and restore General settings
 
 statements:
   - URL: /projects
@@ -19,10 +19,31 @@ statements:
     action: click
     locator: "getByRole('tab', { name: /General/i })"
 
-  - intent: Click Save
-    action: click
-    locator: "getByRole('button', { name: /Save|Guardar/i }).first()"
+  - description: Preserve and update the site description
+    js: |
+      const field = page.getByPlaceholder('Describe your site...');
+      const original = await field.inputValue();
+      await page.evaluate((value) => sessionStorage.setItem('shiplight:settings:general', value), original);
+      await field.fill(`${original} [Shiplight E2E]`);
 
-  - WAIT_UNTIL: Save completes
-    js: "await page.waitForTimeout(2000)"
+  - intent: Save the updated General settings
+    action: click
+    locator: "getByRole('button', { name: /^Save$/i }).first()"
+
+  - WAIT_UNTIL: The General settings save completes
+    js: "await page.waitForTimeout(1000)"
     timeout_seconds: 5
+
+  - intent: Return to the General tab after settings refresh
+    action: click
+    locator: "getByRole('tab', { name: /General/i })"
+
+  - description: Restore the original site description
+    js: |
+      const field = page.getByPlaceholder('Describe your site...');
+      const original = await page.evaluate(() => sessionStorage.getItem('shiplight:settings:general') || '');
+      await field.fill(original);
+
+  - intent: Save the restored General settings
+    action: click
+    locator: "getByRole('button', { name: /^Save$/i }).first()"

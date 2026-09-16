@@ -1,4 +1,4 @@
-goal: Create, read, and update a Price List (lists have no delete control)
+goal: Create when needed, read, update, and restore a Price List
 
 statements:
   - URL: /projects
@@ -11,22 +11,14 @@ statements:
     timeout_seconds: 5
 
   - URL: /price-lists
-  - intent: Click Create List in the top bar
-    action: click
-    locator: "getByRole('button', { name: 'Create List' })"
-
-  - intent: Fill the price list name
-    action: fill
-    locator: "locator('#price-list-name')"
-    value: "Automated Test Price List"
-
-  - intent: Submit the create list form
-    action: click
-    locator: "getByRole('button', { name: 'Create List' }).last()"
-
-  - WAIT_UNTIL: The create price list modal closes
-    js: "await page.getByRole('dialog').count() === 0"
-    timeout_seconds: 10
+  - description: Create the reusable E2E price list when it does not exist
+    js: |
+      const existing = page.getByText('Automated Test Price List', { exact: true });
+      if ((await existing.count()) === 0) {
+        await page.getByRole('button', { name: 'Create List' }).first().evaluate((button) => button.click());
+        await page.locator('#price-list-name').fill('Automated Test Price List');
+        await page.getByRole('button', { name: 'Create List' }).last().click();
+      }
 
   - WAIT_UNTIL: The new price list appears in the list
     js: "await page.getByText('Automated Test Price List').count() > 0"
@@ -34,7 +26,7 @@ statements:
 
   - intent: Open the price list details page
     action: click
-    locator: "getByText('Automated Test Price List').first()"
+    locator: "getByText('Automated Test Price List', { exact: true }).first()"
 
   - WAIT_UNTIL: The price list details route is open
     js: "await page.url().includes('/price-lists/') && !page.url().endsWith('/price-lists')"
@@ -59,3 +51,19 @@ statements:
 
   - VERIFY: The edited price list name is visible
     js: "await expect(page.getByText('Automated Test Price List - Edited').first()).toBeVisible()"
+
+  - intent: Reopen the Edit list dialog
+    action: click
+    locator: "getByRole('button', { name: 'Edit list' })"
+
+  - intent: Restore the reusable price list name
+    action: fill
+    locator: "locator('#price-list-name')"
+    value: "Automated Test Price List"
+
+  - intent: Save the restored price list
+    action: click
+    locator: "getByRole('button', { name: 'Save' })"
+
+  - VERIFY: The original price list name is restored
+    js: "await expect(page.getByText('Automated Test Price List', { exact: true }).first()).toBeVisible()"

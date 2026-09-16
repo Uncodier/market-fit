@@ -285,8 +285,11 @@ const getVisitsSections = (t: (key: string) => string): QuickNavSection[] => [
   { id: "visits-terms", title: t("settings.nav.visitsTerms") || "Visit Terms" },
 ];
 
-const getChannelsSections = (t: (key: string) => string): QuickNavSection[] => [
-  { id: "support-channels", title: "Support Channels" },
+const getChannelsSections = (
+  t: (key: string) => string,
+  channels: QuickNavSection[] = [],
+): QuickNavSection[] => [
+  { id: "support-channels", title: "Support Channels", children: channels },
   {
     id: "website-channel",
     title: t("settings.nav.websiteChannel") || "Website Channel",
@@ -424,6 +427,9 @@ export default function SettingsPage() {
   const [printersSections, setPrintersSections] = useState<QuickNavSection[]>(
     getPrintersSections(t),
   );
+  const [channelsSections, setChannelsSections] = useState<QuickNavSection[]>(
+    getChannelsSections(t),
+  );
 
   // Keep company quick-nav labels in sync with locale
   useEffect(() => {
@@ -436,6 +442,12 @@ export default function SettingsPage() {
           : section;
       });
     });
+  }, [t]);
+
+  useEffect(() => {
+    setChannelsSections((prev) =>
+      getChannelsSections(t, prev[0]?.children || []),
+    );
   }, [t]);
 
   // Simple refresh prevention specifically for settings page
@@ -465,6 +477,24 @@ export default function SettingsPage() {
       );
     };
   }, []);
+
+  useEffect(() => {
+    const handleSupportChannelsUpdate = (event: CustomEvent) => {
+      const channels = event.detail as QuickNavSection[];
+      setChannelsSections(getChannelsSections(t, channels));
+    };
+
+    window.addEventListener(
+      "supportChannelsUpdated",
+      handleSupportChannelsUpdate as EventListener,
+    );
+    return () => {
+      window.removeEventListener(
+        "supportChannelsUpdated",
+        handleSupportChannelsUpdate as EventListener,
+      );
+    };
+  }, [t]);
 
   // Listen for business hours updates
   useEffect(() => {
@@ -819,7 +849,7 @@ export default function SettingsPage() {
       case "company":
         return companySectionsState;
       case "channels":
-        return getChannelsSections(t);
+        return channelsSections;
       case "team":
         return teamSections;
       case "activities":
