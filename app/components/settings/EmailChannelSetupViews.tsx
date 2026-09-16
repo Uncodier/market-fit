@@ -3,6 +3,7 @@ import { Label } from "@/app/components/ui/label"
 import { Switch } from "@/app/components/ui/switch"
 import { Check, Cloud, Copy } from "@/app/components/ui/icons"
 import { SectionCardContent, SectionCardFooter } from "@/app/components/ui/section-card"
+import { ZAVU_INBOUND_MX_HOST, ZAVU_INBOUND_MX_PRIORITY } from "@/lib/zavu-email-dns"
 
 interface EmailDnsRecord {
   type?: string
@@ -185,12 +186,17 @@ export function EmailInboundSettings({
                   To receive emails, add this MX record to your DNS:
                 </p>
                 <div className="p-3 bg-background rounded border text-xs font-mono flex items-center gap-2">
-                  <span className="flex-1 truncate">{domain} MX 10 inbound.zavu.dev</span>
+                  <span className="flex-1 truncate">
+                    {domain} MX {ZAVU_INBOUND_MX_PRIORITY} {ZAVU_INBOUND_MX_HOST}
+                  </span>
                   <Button
                     variant="ghost"
                     size="icon"
                     className="h-6 w-6 shrink-0"
-                    onClick={() => onCopy(`${domain} MX 10 inbound.zavu.dev`, "mx")}
+                    onClick={() => onCopy(
+                      `${domain} MX ${ZAVU_INBOUND_MX_PRIORITY} ${ZAVU_INBOUND_MX_HOST}`,
+                      "mx"
+                    )}
                   >
                     {copied === "mx" ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
                   </Button>

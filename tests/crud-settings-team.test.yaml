@@ -27,25 +27,35 @@ statements:
     js: |
       const email = `shiplight-e2e-${Date.now()}@example.com`;
       await page.evaluate((value) => sessionStorage.setItem('shiplight:settings:team-email', value), email);
-      const field = page.getByPlaceholder('Email address').last();
+      const field = page.getByPlaceholder('Email address').first();
       await field.click();
       await field.pressSequentially(email, { delay: 10 });
       await field.blur();
 
   - WAIT_UNTIL: The invitation is ready to save
-    js: "await page.getByRole('button', { name: 'Save & Invite' }).last().isEnabled()"
+    js: "await page.getByRole('button', { name: 'Save & Invite' }).first().isEnabled()"
     timeout_seconds: 10
 
   - intent: Click Invite
     action: click
-    locator: "getByRole('button', { name: 'Save & Invite' }).last()"
+    locator: "getByRole('button', { name: 'Save & Invite' }).first()"
+
+  - WAIT_UNTIL: The invitation save has finished
+    js: "await page.getByRole('button', { name: 'Save & Invite' }).count() === 0"
+    timeout_seconds: 30
 
   - VERIFY: The team member is visible in the list
-    js: "await expect(page.locator('input[value^=\"shiplight-e2e-\"][value$=\"@example.com\"]')).toBeVisible()"
+    js: |
+      const email = await page.evaluate(() => sessionStorage.getItem('shiplight:settings:team-email'));
+      await expect(page.locator(`input[value="${email}"]`)).toBeVisible();
 
-  - intent: Click Remove on the member row
-    action: click
-    locator: "locator('button[title=\"Remove team member\"]').last()"
+  - description: Click Remove on the E2E member row
+    js: |
+      const email = await page.evaluate(() => sessionStorage.getItem('shiplight:settings:team-email'));
+      const member = page.locator(`input[value="${email}"]`);
+      const card = page.locator('[id^="team-member-"]').filter({ has: member });
+      await expect(card).toHaveCount(1);
+      await card.getByRole('button', { name: 'Remove', exact: true }).click();
 
   - WAIT_UNTIL: The delete confirmation modal is open
     js: "await page.getByRole('alertdialog').count() > 0"
@@ -53,7 +63,9 @@ statements:
 
   - intent: Confirm deletion
     action: click
-    locator: "getByRole('button', { name: 'Remove', exact: true })"
+    locator: "getByRole('alertdialog').getByRole('button', { name: 'Remove', exact: true })"
 
   - VERIFY: The E2E team member is removed
-    js: "await expect(page.locator('input[value^=\"shiplight-e2e-\"][value$=\"@example.com\"]')).toHaveCount(0)"
+    js: |
+      const email = await page.evaluate(() => sessionStorage.getItem('shiplight:settings:team-email'));
+      await expect(page.locator(`input[value="${email}"]`)).toHaveCount(0);

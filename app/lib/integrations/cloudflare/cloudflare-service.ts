@@ -1,3 +1,5 @@
+import { isReplaceableInboundMxConflict } from '@/lib/zavu-email-dns'
+
 export interface CloudflareZone {
   id: string
   name: string
@@ -11,6 +13,10 @@ export interface CloudflareDnsRecord {
   ttl?: number
   proxied?: boolean
   priority?: number
+}
+
+export interface AddDnsRecordsOptions {
+  replaceConflictingInboundMx?: boolean
 }
 
 const CF_API_BASE = 'https://api.cloudflare.com/client/v4'
@@ -93,9 +99,15 @@ export async function getZoneByDomain(domain: string, token: string): Promise<Cl
 /**
  * Agrega registros DNS a una zona dada.
  */
-export async function addDnsRecords(zoneId: string, records: CloudflareDnsRecord[], token: string): Promise<any> {
+export async function addDnsRecords(
+  zoneId: string,
+  records: CloudflareDnsRecord[],
+  token: string,
+  options: AddDnsRecordsOptions = {}
+): Promise<any> {
   const results = []
   for (const record of records) {
+    let recordSucceeded = true
     const existingRes = await fetch(`${CF_API_BASE}/zones/${zoneId}/dns_records?type=${record.type}&name=${record.name}`, {
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -116,30 +128,47 @@ export async function addDnsRecords(zoneId: string, records: CloudflareDnsRecord
       (existing: { id: string; content: string; priority?: number }) =>
         normalizeContent(existing.content) === normalizeContent(record.content)
     )
+    const otherMxRecords = record.type === 'MX'
+      ? (existingData.result || []).filter(
+          (existing: { content: string }) =>
+            normalizeContent(existing.content) !== normalizeContent(record.content)
+        )
+      : []
+
+    if (options.replaceConflictingInboundMx) {
+      const blockingRecord = otherMxRecords.find(
+        (existing: { content: string }) =>
+          !isReplaceableInboundMxConflict(existing.content)
+      )
+      if (blockingRecord) {
+        throw new Error(
+          `Cannot replace existing MX record ${blockingRecord.content}. Use a separate inbound subdomain.`
+        )
+      }
+    }
 
     if (sameTarget) {
       const priorityMatches = record.type !== 'MX' || sameTarget.priority === record.priority
       if (priorityMatches) {
         results.push({ skipped: true, name: record.name, type: record.type })
-        continue
-      }
-
-      const updateRes = await fetch(`${CF_API_BASE}/zones/${zoneId}/dns_records/${sameTarget.id}`, {
-        method: 'PATCH',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ priority: record.priority })
-      })
-      const updateData = await updateRes.json()
-      if (!updateRes.ok || !updateData.success) {
-        results.push({ error: true, name: record.name, type: record.type, details: updateData.errors })
       } else {
-        results.push(updateData)
+        const updateRes = await fetch(`${CF_API_BASE}/zones/${zoneId}/dns_records/${sameTarget.id}`, {
+          method: 'PATCH',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ priority: record.priority })
+        })
+        const updateData = await updateRes.json()
+        if (!updateRes.ok || !updateData.success) {
+          recordSucceeded = false
+          results.push({ error: true, name: record.name, type: record.type, details: updateData.errors })
+        } else {
+          results.push(updateData)
+        }
       }
     } else {
-      // Multiple MX records with the same name are valid and must coexist.
       const createRes = await fetch(`${CF_API_BASE}/zones/${zoneId}/dns_records`, {
         method: 'POST',
         headers: {
@@ -157,10 +186,46 @@ export async function addDnsRecords(zoneId: string, records: CloudflareDnsRecord
       })
       const createData = await createRes.json()
       if (!createRes.ok || !createData.success) {
+        recordSucceeded = false
         console.error('Cloudflare Error adding record:', record.name, createData.errors)
         results.push({ error: true, name: record.name, type: record.type, details: createData.errors })
       } else {
         results.push(createData)
+      }
+    }
+
+    if (
+      options.replaceConflictingInboundMx &&
+      recordSucceeded
+    ) {
+      for (const existing of otherMxRecords) {
+        const deleteRes = await fetch(
+          `${CF_API_BASE}/zones/${zoneId}/dns_records/${existing.id}`,
+          {
+            method: 'DELETE',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            }
+          }
+        )
+        const deleteData = await deleteRes.json()
+        if (!deleteRes.ok || !deleteData.success) {
+          recordSucceeded = false
+          results.push({
+            error: true,
+            name: record.name,
+            type: record.type,
+            details: deleteData.errors
+          })
+        } else {
+          results.push({
+            deleted: true,
+            name: record.name,
+            type: record.type,
+            previousContent: existing.content
+          })
+        }
       }
     }
   }

@@ -11,6 +11,7 @@ import { isEmailChannelActive, resolveEmailReceivingEnabled } from "./email-chan
 import { useEmailChannelActivation } from "./use-email-channel-activation"
 import { ChannelSetupStepper } from "./ChannelSetupStepper"
 import { buildEmailSetupSteps } from "./channel-setup-steps"
+import { ZAVU_INBOUND_MX_HOST, ZAVU_INBOUND_MX_PRIORITY } from "@/lib/zavu-email-dns"
 
 export function EmailChannelSetup({ 
   siteId, 
@@ -218,9 +219,10 @@ export function EmailChannelSetup({
           records: [{
             type: 'MX',
             name: metadata.domain,
-            value: 'inbound.zavu.dev',
-            priority: 10
-          }]
+            value: ZAVU_INBOUND_MX_HOST,
+            priority: ZAVU_INBOUND_MX_PRIORITY
+          }],
+          replaceConflictingInboundMx: true
         })
       })
 

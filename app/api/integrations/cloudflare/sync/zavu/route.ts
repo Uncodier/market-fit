@@ -12,7 +12,7 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json()
-    const { siteId, domain, records } = body
+    const { siteId, domain, records, replaceConflictingInboundMx = false } = body
 
     if (!siteId || !domain || !records || !Array.isArray(records)) {
       return NextResponse.json({ error: 'Missing required parameters' }, { status: 400 })
@@ -42,7 +42,9 @@ export async function POST(req: NextRequest) {
       }
     })
 
-    const results = await addDnsRecords(zone.id, cfRecords, token)
+    const results = await addDnsRecords(zone.id, cfRecords, token, {
+      replaceConflictingInboundMx: replaceConflictingInboundMx === true
+    })
     const failedRecord = results.find((result: { error?: boolean }) => result.error)
     if (failedRecord) {
       return NextResponse.json(
