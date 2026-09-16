@@ -44,7 +44,7 @@ statements:
     locator: "getByRole('button', { name: 'Create' })"
 
   - WAIT_UNTIL: The create modal closes
-    js: "await page.locator('div[role=\"dialog\"]').count() === 0"
+    js: '(await page.locator("div[role=\\"dialog\\"]").count()) === 0'
     timeout_seconds: 10
 
   - WAIT_UNTIL: The ${entity.name.toLowerCase()} details page is open
@@ -73,7 +73,6 @@ statements:
 entities.forEach(entity => {
   const filename = 'crud-' + entity.name.toLowerCase().replace(/ /g, '-') + '.test.yaml';
   const filepath = path.join(__dirname, '..', 'tests', filename);
-  const fixedTemplate = template(entity).replace(/div\[role=\\"dialog\\"\]/g, "div[role='dialog']");
-  fs.writeFileSync(filepath, fixedTemplate);
+  fs.writeFileSync(filepath, template(entity));
   console.log('Created ' + filename);
 });

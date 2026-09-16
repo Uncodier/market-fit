@@ -412,6 +412,7 @@ export function AssetCard({
                         e.stopPropagation()
                         setShowDeleteDialog(true)
                       }}
+                      aria-label={`Delete ${asset.name}`}
                       disabled={isDeleting}
                     >
                       <Trash2 className={`h-4 w-4 ${isDeleting ? 'animate-pulse' : ''}`} />

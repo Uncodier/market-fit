@@ -32,6 +32,7 @@ export function InventoryLevelsTab({
   pageSize,
   q,
   selectedLocation,
+  sort,
 }: {
   siteId?: string
   locations: Location[]

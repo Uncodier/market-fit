@@ -29,7 +29,7 @@ statements:
     locator: "getByRole('button', { name: 'Create' })"
 
   - WAIT_UNTIL: The create modal closes
-    js: "await page.locator('div[role="dialog"]').count() === 0"
+    js: '(await page.locator("div[role=\"dialog\"]").count()) === 0'
     timeout_seconds: 10
 
   - WAIT_UNTIL: The shipment details page is open

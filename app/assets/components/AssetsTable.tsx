@@ -206,7 +206,13 @@ export function AssetsTable({
                       )}
                       <Tooltip>
                         <TooltipTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => setDeletingId(asset.id)}>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-destructive"
+                            onClick={() => setDeletingId(asset.id)}
+                            aria-label={`Delete ${asset.name}`}
+                          >
                             <Trash2 className="h-4 w-4" />
                           </Button>
                         </TooltipTrigger>

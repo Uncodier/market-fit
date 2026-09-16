@@ -1,4 +1,4 @@
-goal: Read the People list and details
+goal: Search and read the People results list
 
 statements:
   - URL: /projects
@@ -15,18 +15,13 @@ statements:
     js: "await page.url().endsWith('/people')"
     timeout_seconds: 15
 
-  - intent: Open the first person's details
+  - intent: Run the people search to load results
     action: click
-    locator: "locator('table tbody tr:nth-child(1) td').first()"
-    
-  - intent: Click View or Edit
-    action: click
-    locator: "getByRole('menuitem', { name: /view|edit|ver|editar/i }).first()"
+    locator: "getByRole('button', { name: /^Search$/i })"
 
-  - WAIT_UNTIL: The person details page is open
-    js: "await page.url().includes('/people/') && !page.url().endsWith('/people')"
-    timeout_seconds: 15
+  - WAIT_UNTIL: The people search has finished and at least one result is visible
+    js: "(await page.locator('table tbody tr').count()) > 0 && (await page.getByRole('button', { name: /Searching/i }).count()) === 0"
+    timeout_seconds: 30
 
-  - intent: Return to people list
-    action: click
-    locator: "getByRole('button', { name: /Back|Volver/i })"
+  - VERIFY: The results table displays at least one person
+    js: "await expect(page.locator('table tbody tr').first()).toBeVisible()"

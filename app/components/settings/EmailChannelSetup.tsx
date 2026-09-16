@@ -2,12 +2,13 @@ import { useState, useEffect } from "react"
 import { Button } from "@/app/components/ui/button"
 import { Input } from "@/app/components/ui/input"
 import { Label } from "@/app/components/ui/label"
-import { Switch } from "@/app/components/ui/switch"
 import { toast } from "sonner"
 import { apiClient } from "@/app/services/api-client-service"
-import { Copy, Check, Cloud } from "@/app/components/ui/icons"
 import { SectionCardFooter, SectionCardContent } from "@/app/components/ui/section-card"
 import { secretsService } from "@/app/services/secrets-service"
+import { EmailDnsSetup, EmailInboundSettings } from "./EmailChannelSetupViews"
+import { isEmailChannelActive, resolveEmailReceivingEnabled } from "./email-channel-utils"
+import { useEmailChannelActivation } from "./use-email-channel-activation"
 
 export function EmailChannelSetup({ 
   siteId, 
@@ -18,6 +19,12 @@ export function EmailChannelSetup({
   channel: any, 
   onUpdated: (payload: any) => void 
 }) {
+  const metadata = channel.metadata || {}
+  const domainStatus = metadata.domain_status || "not_started"
+  const dnsRecords = metadata.dns_records || []
+  const hasSender = !!channel.zavu_sender_id
+  const emailReceivingEnabled = !!metadata.emailReceivingEnabled
+
   const [domain, setDomain] = useState("")
   const [isProcessing, setIsProcessing] = useState(false)
   const [copied, setCopied] = useState<string | null>(null)
@@ -28,13 +35,23 @@ export function EmailChannelSetup({
   const [isCloudflareConnected, setIsCloudflareConnected] = useState(false)
   const [isSyncingCloudflare, setIsSyncingCloudflare] = useState(false)
 
-  const [isMxVerified, setIsMxVerified] = useState<boolean | null>(null)
+  const [isMxVerified, setIsMxVerified] = useState<boolean | null>(
+    emailReceivingEnabled ? true : null
+  )
   const [isVerifyingMx, setIsVerifyingMx] = useState(false)
-  const [localReceivingEnabled, setLocalReceivingEnabled] = useState(!!channel.metadata?.emailReceivingEnabled)
+  const [localReceivingEnabled, setLocalReceivingEnabled] = useState(emailReceivingEnabled)
+  const {
+    activateEmailChannel,
+    isActivating,
+    isEmailChannelActive: emailChannelActive,
+  } = useEmailChannelActivation({ siteId, channel, metadata, onUpdated })
 
   useEffect(() => {
-    setLocalReceivingEnabled(!!channel.metadata?.emailReceivingEnabled)
-  }, [channel.metadata?.emailReceivingEnabled])
+    setLocalReceivingEnabled(emailReceivingEnabled)
+    if (emailReceivingEnabled) {
+      setIsMxVerified(true)
+    }
+  }, [emailReceivingEnabled])
 
   useEffect(() => {
     const checkSecrets = async () => {
@@ -46,18 +63,12 @@ export function EmailChannelSetup({
     checkSecrets()
   }, [siteId])
 
-  const metadata = channel.metadata || {}
-  const domainStatus = metadata.domain_status || "not_started" // not_started, pending, verified, failed
-  const dnsRecords = metadata.dns_records || []
-  const hasSender = !!channel.zavu_sender_id
-  const emailReceivingEnabled = !!metadata.emailReceivingEnabled
-
   // Check MX record for inbound emails
   useEffect(() => {
-    if (hasSender && metadata.domain) {
+    if (hasSender && metadata.domain && !emailReceivingEnabled) {
       handleVerifyMx()
     }
-  }, [hasSender, metadata.domain])
+  }, [hasSender, metadata.domain, emailReceivingEnabled])
 
   const handleVerifyMx = async () => {
     if (!metadata.domain) return
@@ -271,22 +282,23 @@ export function EmailChannelSetup({
         emailAddress: fullEmail,
         emailFromName: fromName,
         emailDomainId: metadata.email_domain_id,
-        active: true,
       })
 
       if (!response.success) throw new Error(response.error?.message || "Failed to create sender")
 
+      const channelActive = isEmailChannelActive(response.data)
       onUpdated({
         zavu_sender_id: response.data.senderId,
-        status: "connected",
+        status: channelActive ? "connected" : "in_progress",
         metadata: {
           ...metadata,
           from_address: fullEmail,
           from_name: fromName,
           emailReceivingEnabled: false,
+          emailChannelActive: channelActive,
         }
       })
-      toast.success("Email sender created")
+      toast.success(channelActive ? "Email channel created and activated" : "Email sender created")
     } catch (error: any) {
       toast.error(error.message || "An error occurred")
     } finally {
@@ -308,16 +320,10 @@ export function EmailChannelSetup({
 
       if (!response.success) throw new Error(response.error?.message || "Failed to update receiving status")
 
-      const responseData = response.data as
-        | { emailReceivingEnabled?: boolean; sender?: { emailReceivingEnabled?: boolean } }
-        | undefined
-      const appliedReceivingEnabled =
-        responseData?.sender?.emailReceivingEnabled ??
-        responseData?.emailReceivingEnabled
-
-      if (typeof appliedReceivingEnabled !== "boolean") {
-        throw new Error("Zavu updated the sender but returned an incomplete response")
-      }
+      const appliedReceivingEnabled = resolveEmailReceivingEnabled(
+        response.data,
+        localReceivingEnabled
+      )
 
       if (localReceivingEnabled && !appliedReceivingEnabled) {
         setLocalReceivingEnabled(false)
@@ -325,6 +331,10 @@ export function EmailChannelSetup({
         throw new Error("Zavu could not enable receiving. Verify that the MX record has propagated.")
       }
 
+      setLocalReceivingEnabled(appliedReceivingEnabled)
+      if (appliedReceivingEnabled) {
+        setIsMxVerified(true)
+      }
       onUpdated({
         metadata: {
           ...metadata,
@@ -374,81 +384,18 @@ export function EmailChannelSetup({
   // Step 2: Verify DNS
   if (domainStatus !== "verified") {
     return (
-      <>
-        <SectionCardContent className="space-y-4 pt-0">
-          <div className="flex items-center justify-between">
-            <h4 className="text-sm font-medium">2. Configure DNS Records</h4>
-            <span className="text-xs px-2 py-1 bg-orange-100 text-orange-800 rounded capitalize">
-              {domainStatus}
-            </span>
-          </div>
-          <p className="text-xs text-muted-foreground">
-            Add these DNS records to your DNS provider for {metadata.domain}
-          </p>
-
-          <div className="space-y-3">
-            {dnsRecords.map((record: any, idx: number) => (
-              <div key={idx} className="p-3 bg-background rounded border text-xs font-mono space-y-2">
-                {record.type && (
-                  <div className="flex justify-between items-center">
-                    <span className="text-muted-foreground">Type:</span>
-                    <span className="font-bold">{record.type}</span>
-                  </div>
-                )}
-                <div className="flex justify-between items-center">
-                  <span className="text-muted-foreground">Name/Host:</span>
-                  <div className="flex items-center gap-2">
-                    <span className="truncate max-w-[200px]">{record.name}</span>
-                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => copyToClipboard(record.name, `name-${idx}`)}>
-                      {copied === `name-${idx}` ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
-                    </Button>
-                  </div>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-muted-foreground">Value/Target:</span>
-                  <div className="flex items-center gap-2">
-                    <span className="truncate max-w-[200px]">{record.value}</span>
-                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => copyToClipboard(record.value, `val-${idx}`)}>
-                      {copied === `val-${idx}` ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
-                    </Button>
-                  </div>
-                </div>
-                {record.type === 'MX' && (
-                  <div className="flex justify-between items-center">
-                    <span className="text-muted-foreground">Priority:</span>
-                    <div className="flex items-center gap-2">
-                      <span className="truncate max-w-[200px]">{record.priority || '10'}</span>
-                      <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => copyToClipboard((record.priority || '10').toString(), `prio-${idx}`)}>
-                        {copied === `prio-${idx}` ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
-                      </Button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        </SectionCardContent>
-
-        <SectionCardFooter className="justify-end gap-2 flex-wrap">
-          <Button 
-            type="button" 
-            variant="outline"
-            onClick={handleSyncCloudflare} 
-            disabled={isProcessing || isSyncingCloudflare || !dnsRecords.length}
-          >
-            <Cloud className="h-4 w-4 mr-2" />
-            {isSyncingCloudflare ? "Syncing..." : isCloudflareConnected ? "Sync with Cloudflare" : "Connect Cloudflare"}
-          </Button>
-          <Button 
-            type="button" 
-            variant="secondary"
-            onClick={handleVerifyDomain} 
-            disabled={isProcessing}
-          >
-            {isProcessing ? "Verifying..." : "Verify DNS"}
-          </Button>
-        </SectionCardFooter>
-      </>
+      <EmailDnsSetup
+        domain={metadata.domain}
+        domainStatus={domainStatus}
+        records={dnsRecords}
+        copied={copied}
+        isProcessing={isProcessing}
+        isSyncingCloudflare={isSyncingCloudflare}
+        isCloudflareConnected={isCloudflareConnected}
+        onCopy={copyToClipboard}
+        onSync={handleSyncCloudflare}
+        onVerify={handleVerifyDomain}
+      />
     )
   }
 
@@ -504,74 +451,29 @@ export function EmailChannelSetup({
   }
 
   // Step 4: Manage Existing Sender (Inbound config)
-  return (
-    <>
-      <SectionCardContent className="space-y-4 pt-0">
-        <div className="space-y-4 p-4 bg-muted/20 rounded-lg border dark:border-white/5 border-black/5">
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <h4 className="text-sm font-medium">Inbound Emails</h4>
-              {isMxVerified !== null && (
-                <span className={`text-xs px-2 py-1 rounded capitalize ${
-                  isMxVerified ? "bg-green-100 text-green-800" : "bg-orange-100 text-orange-800"
-                }`}>
-                  {isVerifyingMx ? "Checking..." : isMxVerified ? "Verified" : "Pending"}
-                </span>
-              )}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              To receive emails, add this MX record to your DNS:
-            </p>
-            <div className="p-3 bg-background rounded border text-xs font-mono flex items-center gap-2">
-              <span className="flex-1 truncate">{metadata.domain} MX 10 inbound.zavu.dev</span>
-              <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" onClick={() => copyToClipboard(`${metadata.domain} MX 10 inbound.zavu.dev`, 'mx')}>
-                {copied === 'mx' ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
-              </Button>
-            </div>
-          </div>
+  const isMxConfigured = emailReceivingEnabled || isMxVerified === true
+  const hasReceivingChanges = localReceivingEnabled !== emailReceivingEnabled
 
-          <div className="flex items-center justify-between p-3 bg-background rounded border">
-            <div className="space-y-0.5">
-              <Label className="text-sm">Enable Receiving</Label>
-              <p className="text-xs text-muted-foreground">
-                Allow the agent to receive inbound emails
-              </p>
-            </div>
-            <Switch 
-              checked={localReceivingEnabled}
-              onCheckedChange={setLocalReceivingEnabled}
-              disabled={isProcessing || (!emailReceivingEnabled && isMxVerified !== true)}
-            />
-          </div>
-        </div>
-      </SectionCardContent>
-      <SectionCardFooter className="justify-end gap-2 flex-wrap">
-        <Button
-          type="button"
-          variant="outline"
-          onClick={handleSyncMxCloudflare}
-          disabled={isProcessing || isSyncingCloudflare}
-        >
-          <Cloud className="h-4 w-4 mr-2" />
-          {isSyncingCloudflare ? "Syncing..." : isCloudflareConnected ? "Sync with Cloudflare" : "Connect Cloudflare"}
-        </Button>
-        <Button
-          type="button"
-          variant="outline"
-          onClick={handleVerifyMx}
-          disabled={isProcessing || isVerifyingMx}
-        >
-          {isVerifyingMx ? "Checking..." : "Verify MX"}
-        </Button>
-        <Button
-          type="button"
-          variant="outline"
-          onClick={handleSaveReceiving}
-          disabled={isProcessing || localReceivingEnabled === emailReceivingEnabled}
-        >
-          {isProcessing ? "Saving..." : "Save Changes"}
-        </Button>
-      </SectionCardFooter>
-    </>
+  return (
+    <EmailInboundSettings
+      domain={metadata.domain}
+      copied={copied}
+      isMxConfigured={isMxConfigured}
+      isMxVerified={isMxVerified}
+      isVerifyingMx={isVerifyingMx}
+      isProcessing={isProcessing}
+      isSyncingCloudflare={isSyncingCloudflare}
+      isCloudflareConnected={isCloudflareConnected}
+      isChannelActive={emailChannelActive}
+      isActivating={isActivating}
+      receivingEnabled={localReceivingEnabled}
+      hasReceivingChanges={hasReceivingChanges}
+      onCopy={copyToClipboard}
+      onReceivingChange={setLocalReceivingEnabled}
+      onSync={handleSyncMxCloudflare}
+      onVerify={handleVerifyMx}
+      onSave={handleSaveReceiving}
+      onActivate={activateEmailChannel}
+    />
   )
 }

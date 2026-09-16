@@ -1,4 +1,4 @@
-goal: Complete CRUD cycle for a Asset
+goal: Complete create, read, and delete cycle for an Asset
 
 statements:
   - URL: /projects
@@ -21,35 +21,28 @@ statements:
 
   - intent: Fill the asset name
     action: fill
-    locator: "getByRole('textbox').first()"
+    locator: "getByLabel('Name')"
     value: "Automated Test Asset"
 
-  - intent: Submit the create asset form
+  - intent: Upload the asset fixture
+    action: upload_file
+    locator: "locator('input[type=\"file\"]')"
+    paths: "fixtures/e2e-asset.svg"
+
+  - intent: Submit the asset upload form
     action: click
-    locator: "getByRole('button', { name: 'Create' })"
-
-  - WAIT_UNTIL: The create modal closes
-    js: "await page.locator('div[role="dialog"]').count() === 0"
-    timeout_seconds: 10
-
-  - WAIT_UNTIL: The asset details page is open
-    js: "await page.url().includes('/assets/') && !page.url().endsWith('/assets')"
-    timeout_seconds: 15
+    locator: "getByRole('button', { name: 'Upload Asset' })"
 
   - VERIFY: The created asset name is visible
     js: "await expect(page.getByText('Automated Test Asset').first()).toBeVisible()"
 
-  - intent: Click Delete on the details toolbar
+  - intent: Delete the uploaded test asset
     action: click
-    locator: "getByRole('button', { name: 'Delete' })"
+    locator: "getByRole('button', { name: 'Delete Automated Test Asset' }).first()"
 
-  - intent: Confirm deletion
+  - intent: Confirm deletion of the uploaded test asset
     action: click
-    locator: "getByRole('button', { name: 'Delete' }).last()"
-
-  - WAIT_UNTIL: The user is back on the list
-    js: "await page.url().endsWith('/assets')"
-    timeout_seconds: 15
+    locator: "getByRole('button', { name: 'Delete Asset' })"
 
   - VERIFY: The asset is gone from the list
     js: "await expect(page.getByText('Automated Test Asset')).toHaveCount(0)"

@@ -37,6 +37,10 @@ statements:
     action: click
     locator: "getByRole('button', { name: /New Record|Nuevo|Nuevo/i }).first()"
 
+  - intent: Confirm the first available category for the new record
+    action: click
+    locator: "getByRole('dialog').getByRole('button', { name: /^Create$/i })"
+
   - WAIT_UNTIL: The record details route is open and loaded
     js: "await page.url().match(/\\/records\\/[^?]+$/) !== null && await page.locator('input[placeholder=\"Record Title\"]').count() > 0"
     timeout_seconds: 15

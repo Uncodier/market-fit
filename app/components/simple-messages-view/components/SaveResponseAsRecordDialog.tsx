@@ -14,7 +14,7 @@ import {
 } from "@/app/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
 import { RelationSelect } from "@/app/components/ui/relation-select"
-import { ChevronLeft, Loader } from "@/app/components/ui/icons"
+import { Loader } from "@/app/components/ui/icons"
 import { Skeleton } from "@/app/components/ui/skeleton"
 import { useRelationOptions } from "@/app/records/hooks/useRelationOptions"
 import {
@@ -30,6 +30,13 @@ interface SaveResponseAsRecordDialogProps {
   response: string
 }
 
+function relationFieldLabel(name: string | undefined, target: string) {
+  const configuredName = name?.trim()
+  if (configuredName) return configuredName
+  const targetName = target.replaceAll("_", " ")
+  return targetName.charAt(0).toUpperCase() + targetName.slice(1)
+}
+
 export function SaveResponseAsRecordDialog({
   open,
   onOpenChange,
@@ -37,7 +44,6 @@ export function SaveResponseAsRecordDialog({
   response,
 }: SaveResponseAsRecordDialogProps) {
   const { currentSite } = useSite()
-  const [step, setStep] = useState<"category" | "relations">("category")
   const [categories, setCategories] = useState<ResponseRecordCategory[]>([])
   const [categoryId, setCategoryId] = useState("")
   const [relations, setRelations] = useState<Record<string, string>>({})
@@ -58,7 +64,6 @@ export function SaveResponseAsRecordDialog({
 
   useEffect(() => {
     if (!open) {
-      setStep("category")
       setCategoryId("")
       setRelations({})
       return
@@ -102,36 +107,33 @@ export function SaveResponseAsRecordDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent size="sm">
         <DialogHeader>
-          <DialogTitle>{step === "category" ? "Select a category" : "Add optional relations"}</DialogTitle>
+          <DialogTitle>Save response as record</DialogTitle>
           <DialogDescription>
-            {step === "category"
-              ? "The user's request will be used as the title and the AI response as the description."
-              : "Connect this response to related records, or save it without relations."}
+            Select a category, then optionally connect this response to related records.
           </DialogDescription>
         </DialogHeader>
 
-        {step === "category" ? (
-          <div className="py-4">
-            {isLoading ? (
-              <div className="space-y-3" aria-label="Loading categories">
-                <Skeleton className="h-4 w-28 rounded-md" />
-                <Skeleton className="h-10 w-full rounded-md" />
-                <div className="flex justify-end gap-2 pt-5">
-                  <Skeleton className="h-9 w-20 rounded-md" />
-                  <Skeleton className="h-9 w-24 rounded-md" />
-                </div>
+        <div className="space-y-5 py-4">
+          {isLoading ? (
+            <div className="space-y-3" aria-label="Loading categories">
+              <Skeleton className="h-4 w-28 rounded-md" />
+              <Skeleton className="h-10 w-full rounded-md" />
+              <div className="flex justify-end gap-2 pt-5">
+                <Skeleton className="h-9 w-20 rounded-md" />
+                <Skeleton className="h-9 w-24 rounded-md" />
               </div>
-            ) : categories.length === 0 ? (
-              <p className="py-6 text-sm text-muted-foreground">
-                Create a record category before saving this response.
-              </p>
-            ) : (
+            </div>
+          ) : categories.length === 0 ? (
+            <p className="py-6 text-sm text-muted-foreground">
+              Create a record category before saving this response.
+            </p>
+          ) : (
+            <>
               <Select
                 value={categoryId}
                 onValueChange={(nextCategoryId) => {
                   setCategoryId(nextCategoryId)
                   setRelations({})
-                  setStep("relations")
                 }}
               >
                 <SelectTrigger className="w-full">
@@ -145,65 +147,56 @@ export function SaveResponseAsRecordDialog({
                   ))}
                 </SelectContent>
               </Select>
-            )}
-          </div>
-        ) : (
-          <div className="space-y-4 py-4">
-            {relationFields.length === 0 ? (
-              <p className="text-sm text-muted-foreground">This category has no relation fields.</p>
-            ) : (
-              relationFields.map((field) => {
-                const target = field.relationTarget || "lead"
-                const options = relationOptions[target] || []
-                const selectedId = relations[field.name]
-                const selectedOption = options.find((option) => option.id === selectedId)
-                return (
-                  <RelationSelect
-                    key={field.id || field.name}
-                    label={field.name}
-                    options={options}
-                    value={
-                      selectedId
-                        ? { mode: "existing", id: selectedId, label: selectedOption?.label || selectedId }
-                        : null
-                    }
-                    onSearchChange={(query) => handleSearchChange(target, query)}
-                    onValueChange={(value) => {
-                      setRelations((current) => {
-                        if (!value || value.mode !== "existing") {
-                          const next = { ...current }
-                          delete next[field.name]
-                          return next
+              {categoryId && relationFields.length > 0 && (
+                <div className="space-y-4 border-t pt-5">
+                  <p className="text-sm font-medium">Optional relations</p>
+                  {relationFields.map((field) => {
+                    const target = field.relationTarget || "lead"
+                    const fieldLabel = relationFieldLabel(field.name, target)
+                    const options = relationOptions[target] || []
+                    const selectedId = relations[field.name]
+                    const selectedOption = options.find((option) => option.id === selectedId)
+                    return (
+                      <RelationSelect
+                        key={field.id || field.name}
+                        label={fieldLabel}
+                        options={options}
+                        value={
+                          selectedId
+                            ? { mode: "existing", id: selectedId, label: selectedOption?.label || selectedId }
+                            : null
                         }
-                        return { ...current, [field.name]: value.id }
-                      })
-                    }}
-                    allowCreate={false}
-                    placeholder="Optional"
-                  />
-                )
-              })
-            )}
-          </div>
-        )}
+                        onSearchChange={(query) => handleSearchChange(target, query)}
+                        onValueChange={(value) => {
+                          setRelations((current) => {
+                            if (!value || value.mode !== "existing") {
+                              const next = { ...current }
+                              delete next[field.name]
+                              return next
+                            }
+                            return { ...current, [field.name]: value.id }
+                          })
+                        }}
+                        allowCreate={false}
+                        placeholder={`Search ${fieldLabel.toLowerCase()}...`}
+                      />
+                    )
+                  })}
+                </div>
+              )}
+            </>
+          )}
+        </div>
 
         {!isLoading && (
           <DialogFooter>
-            {step === "relations" && (
-              <Button variant="ghost" onClick={() => setStep("category")} disabled={isSaving}>
-                <ChevronLeft className="mr-2 h-4 w-4" />
-                Back
-              </Button>
-            )}
             <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={isSaving}>
               Cancel
             </Button>
-            {step === "relations" && (
-              <Button onClick={() => void handleSave()} disabled={isSaving}>
-                {isSaving && <Loader className="mr-2 h-4 w-4 animate-spin" />}
-                Save record
-              </Button>
-            )}
+            <Button onClick={() => void handleSave()} disabled={!categoryId || isSaving}>
+              {isSaving && <Loader className="mr-2 h-4 w-4 animate-spin" />}
+              Save record
+            </Button>
           </DialogFooter>
         )}
       </DialogContent>
