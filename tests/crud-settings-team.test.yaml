@@ -27,22 +27,25 @@ statements:
     js: |
       const email = `shiplight-e2e-${Date.now()}@example.com`;
       await page.evaluate((value) => sessionStorage.setItem('shiplight:settings:team-email', value), email);
-      await page.getByPlaceholder('Email address').last().fill(email);
+      const field = page.getByPlaceholder('Email address').last();
+      await field.click();
+      await field.pressSequentially(email, { delay: 10 });
+      await field.blur();
 
   - WAIT_UNTIL: The invitation is ready to save
-    js: "await page.locator('input[value^=\"shiplight-e2e-\"][value$=\"@example.com\"]').locator('xpath=ancestor::*[starts-with(@id,\"team-member-\")][1]').getByRole('button', { name: 'Save & Invite' }).isEnabled()"
+    js: "await page.getByRole('button', { name: 'Save & Invite' }).last().isEnabled()"
     timeout_seconds: 10
 
   - intent: Click Invite
     action: click
-    locator: "locator('input[value^=\"shiplight-e2e-\"][value$=\"@example.com\"]').locator('xpath=ancestor::*[starts-with(@id,\"team-member-\")][1]').getByRole('button', { name: 'Save & Invite' })"
+    locator: "getByRole('button', { name: 'Save & Invite' }).last()"
 
   - VERIFY: The team member is visible in the list
     js: "await expect(page.locator('input[value^=\"shiplight-e2e-\"][value$=\"@example.com\"]')).toBeVisible()"
 
   - intent: Click Remove on the member row
     action: click
-    locator: "locator('input[value^=\"shiplight-e2e-\"][value$=\"@example.com\"]').locator('xpath=ancestor::*[starts-with(@id,\"team-member-\")][1]').locator('button[title=\"Remove team member\"]')"
+    locator: "locator('button[title=\"Remove team member\"]').last()"
 
   - WAIT_UNTIL: The delete confirmation modal is open
     js: "await page.getByRole('alertdialog').count() > 0"

@@ -15,6 +15,10 @@ export function ChannelSetupStepper({
   steps: ChannelSetupStep[]
   className?: string
 }) {
+  if (steps.length === 0 || steps.every((step) => step.status === "complete")) {
+    return null
+  }
+
   return (
     <ol
       aria-label="Setup progress"

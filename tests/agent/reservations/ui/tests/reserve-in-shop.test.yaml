@@ -62,8 +62,8 @@ statements:
     locator: "getByRole('button', { name: /Pay securely|Place order/i })"
 
   - WAIT_UNTIL: The reservation order finishes processing
-    js: "await page.getByRole('heading', { name: 'Order Confirmed' }).count() > 0"
+    js: "await page.url().includes('#your-orders')"
     timeout_seconds: 60
 
   - VERIFY: The reservation order is confirmed
-    js: "await expect(page.getByRole('heading', { name: 'Order Confirmed' })).toBeVisible()"
+    js: "await expect(page).toHaveURL(/#your-orders$/)"

@@ -18,4 +18,18 @@ describe("ChannelSetupStepper", () => {
     expect(screen.getByText("Inbound").closest("li")).toHaveAttribute("aria-current", "step")
     expect(screen.getByText("Activation")).toBeInTheDocument()
   })
+
+  it("hides after every setup stage is complete", () => {
+    render(
+      <ChannelSetupStepper
+        steps={[
+          { label: "DNS Verification", status: "complete" },
+          { label: "Inbound", status: "complete" },
+          { label: "Activation", status: "complete" },
+        ]}
+      />
+    )
+
+    expect(screen.queryByRole("list", { name: "Setup progress" })).not.toBeInTheDocument()
+  })
 })
