@@ -23,17 +23,24 @@ statements:
     js: "page.url().includes('instance=') && !page.url().includes('instance=new')"
     timeout_seconds: 15
 
+  - description: Remember the created Robot session
+    js: "testContext.set('robotInstanceId', new URL(page.url()).searchParams.get('instance'))"
+
   - VERIFY: The new Robot session tab is active
     js: "await expect(page.getByRole('tab', { selected: true })).toBeVisible()"
 
+  - intent: Open actions for the active Robot session
+    action: click
+    locator: "getByRole('tab', { selected: true }).getByRole('button', { name: /^Actions for / })"
+
   - intent: Delete the active Robot session
     action: click
-    locator: "getByRole('tab', { selected: true }).getByRole('button', { name: 'Delete session' })"
+    locator: "getByRole('menuitem', { name: 'Delete' })"
 
   - intent: Confirm Robot session deletion
     action: click
-    locator: "getByRole('button', { name: /Delete|Eliminar/i }).last()"
+    locator: "getByRole('alertdialog').getByRole('button', { name: 'Delete' })"
 
   - WAIT_UNTIL: The deleted Robot session is no longer selected
-    js: "!page.url().includes('instance=') || page.url().includes('instance=new')"
+    js: "new URL(page.url()).searchParams.get('instance') !== testContext.get('robotInstanceId')"
     timeout_seconds: 15

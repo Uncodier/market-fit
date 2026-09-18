@@ -57,6 +57,10 @@ statements:
     locator: "getByRole('textbox', { name: 'Country' })"
     value: "US"
 
+  - intent: Select cash payment for the zero-total reservation
+    action: click
+    locator: "getByRole('button', { name: 'Cash (pay at visit)' })"
+
   - intent: Complete the zero-total reservation order
     action: click
     locator: "getByRole('button', { name: /Pay securely|Place order/i })"

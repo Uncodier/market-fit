@@ -37,12 +37,15 @@ statements:
     action: click
     locator: "locator('button[role=\"checkbox\"][id^=\"member-new-\"]').first()"
 
-  - description: Create the calendar
-    js: "await page.getByRole('button', { name: 'Create Calendar' }).evaluate((button) => button.click())"
+  - intent: Create the calendar
+    action: click
+    locator: "getByRole('button', { name: 'Create Calendar' })"
 
-  - WAIT_UNTIL: The calendar creation finishes
-    js: "(await page.waitForTimeout(3000)) === undefined"
-    timeout_seconds: 15
+  - VERIFY: The calendar save completes
+    js: "await expect(page.getByText('Calendar saved successfully')).toBeVisible({ timeout: 15000 })"
+
+  - VERIFY: The calendar is visible before reload
+    js: "await expect(page.getByText('Shiplight E2E Calendar').first()).toBeVisible()"
 
   - URL: /settings?tab=calendar
 

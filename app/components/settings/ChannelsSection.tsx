@@ -25,11 +25,26 @@ export interface ChannelsSectionProps {
   active: boolean
   siteId?: string
   siteName?: string
-  onSave?: (data: SiteFormValues) => void
+  onSave?: (data: SiteFormValues) => boolean | void | Promise<boolean | void>
   copyTrackingCode?: () => void
   codeCopied?: boolean
   excludeWebsite?: boolean
 }
+
+const WEBSITE_TRACKING_FIELDS = [
+  "tracking.track_visitors",
+  "tracking.track_actions",
+  "tracking.record_screen",
+  "tracking.enable_chat",
+  "tracking.chat_accent_color",
+  "tracking.allow_anonymous_messages",
+  "tracking.chat_position",
+  "tracking.chat_title",
+  "tracking.welcome_message",
+  "tracking.analytics_provider",
+  "tracking.analytics_id",
+  "tracking.tracking_code",
+] as const
 
 export function ChannelsSection({ 
   active, 
@@ -49,7 +64,13 @@ export function ChannelsSection({
     if (!onSave) return
     setSavingCard(cardId)
     try {
-      await onSave(form.getValues())
+      const values = form.getValues()
+      const saved = await onSave(values)
+      if (saved === false) return
+
+      WEBSITE_TRACKING_FIELDS.forEach((field) => {
+        form.resetField(field, { defaultValue: form.getValues(field) })
+      })
     } finally {
       setSavingCard(null)
     }

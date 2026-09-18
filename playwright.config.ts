@@ -14,6 +14,9 @@ export default defineConfig({
   testMatch: ['**/*.yaml.spec.ts'],
   timeout: 300_000,
   expect: { timeout: 10_000 },
+  // Most CRUD scenarios mutate the same configured site. Keep them serialized
+  // unless the caller explicitly provisions isolated test data per worker.
+  workers: Number(process.env.TEST_WORKERS || 1),
   retries: process.env.CI ? 1 : 0,
   use: {
     baseURL: process.env.TEST_BASE_URL || 'http://localhost:3000',

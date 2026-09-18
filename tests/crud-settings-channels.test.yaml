@@ -31,11 +31,10 @@ statements:
 
   - intent: Save the updated Channels settings
     action: click
-    locator: "getByRole('button', { name: /^Save$/i }).first()"
+    locator: "locator('#website-channel').getByRole('button', { name: 'Save', exact: true })"
 
-  - WAIT_UNTIL: The Channels settings save completes
-    js: "await page.waitForTimeout(1000)"
-    timeout_seconds: 5
+  - VERIFY: The Channels settings save completes
+    js: "await expect(page.getByText('Channels saved successfully')).toBeVisible({ timeout: 15000 })"
 
   - URL: /settings?tab=channels
 
@@ -45,6 +44,19 @@ statements:
       const original = await page.evaluate(() => sessionStorage.getItem('shiplight:settings:channels') || 'unchecked');
       if ((await toggle.getAttribute('data-state')) !== original) await toggle.click();
 
+  - VERIFY: Save is enabled for the restored Channels settings
+    js: "await expect(page.locator('#website-channel').getByRole('button', { name: 'Save', exact: true })).toBeEnabled()"
+
   - intent: Save the restored Channels settings
     action: click
-    locator: "getByRole('button', { name: /^Save$/i }).first()"
+    locator: "locator('#website-channel').getByRole('button', { name: 'Save', exact: true })"
+
+  - VERIFY: The restored Channels settings save completes
+    js: "await expect(page.getByText('Channels saved successfully')).toBeVisible({ timeout: 15000 })"
+
+  - URL: /settings?tab=channels
+
+  - VERIFY: The original visitor tracking state persists
+    js: |
+      const original = await page.evaluate(() => sessionStorage.getItem('shiplight:settings:channels') || 'unchecked');
+      await expect(page.locator('#website-channel').getByRole('switch').first()).toHaveAttribute('data-state', original);

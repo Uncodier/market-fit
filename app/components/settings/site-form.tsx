@@ -73,7 +73,7 @@ interface SiteFormProps {
   onSaveMarketing?: (data: SiteFormValues) => void;
   onSaveCustomerJourney?: (data: SiteFormValues) => void;
   onSaveSocial?: (data: SiteFormValues) => void;
-  onSaveChannels?: (data: SiteFormValues) => void;
+  onSaveChannels?: (data: SiteFormValues) => boolean | void | Promise<boolean | void>;
   onSaveActivities?: (data: SiteFormValues) => void;
   onSaveShop?: (data: SiteFormValues) => void;
   onSavePrinters?: (data: SiteFormValues) => void;

@@ -6,12 +6,17 @@ statements:
     js: "await page.getByRole('main').count() > 0 && await page.getByRole('contentinfo').count() > 0"
     timeout_seconds: 20
 
-  - VERIFY: Marketplace uses semantic page landmarks
-    js: |
-      await expect(page.getByRole('banner').first()).toBeVisible();
-      await expect(page.getByRole('main')).toHaveCount(1);
-      await expect(page.getByRole('main')).toBeVisible();
-      await expect(page.getByRole('contentinfo').first()).toBeVisible();
+  - VERIFY: Marketplace header is visible
+    js: await expect(page.getByRole('banner').first()).toBeVisible()
+
+  - VERIFY: Marketplace has exactly one main landmark
+    js: await expect(page.getByRole('main')).toHaveCount(1)
+
+  - VERIFY: Marketplace main content is visible
+    js: await expect(page.getByRole('main')).toBeVisible()
+
+  - VERIFY: Marketplace footer is visible
+    js: await expect(page.getByRole('contentinfo').first()).toBeVisible()
 
   - VERIFY: Marketplace does not overflow the mobile viewport
     js: |
@@ -38,21 +43,21 @@ statements:
       await expect(search).toBeFocused();
       await page.keyboard.press('Enter');
 
+  - VERIFY: Keyboard activation opens mobile search
+    js: await expect(page.locator('#mobile-search-input')).toBeVisible()
+
   - VERIFY: Keyboard activation moves focus into mobile search
-    js: |
-      const searchInput = page.locator('#mobile-search-input');
-      await expect(searchInput).toBeVisible();
-      await expect(searchInput).toBeFocused();
+    js: await expect(page.locator('#mobile-search-input')).toBeFocused()
 
   - description: Close mobile search with the keyboard
     js: |
       await page.keyboard.press('Escape');
 
-  - VERIFY: Mobile search closes and restores opener focus
-    js: |
-      const search = page.getByRole('button', { name: 'Search', exact: true });
-      await expect(search).toBeVisible();
-      await expect(search).toBeFocused();
+  - VERIFY: Mobile search closes
+    js: await expect(page.locator('#mobile-search-input')).toBeHidden()
+
+  - VERIFY: Mobile search restores opener focus
+    js: "await expect(page.getByRole('button', { name: 'Search', exact: true })).toBeFocused()"
 
   - URL: /projects
   - WAIT_UNTIL: The no-layout project chooser is ready
@@ -60,16 +65,14 @@ statements:
     timeout_seconds: 20
 
   - VERIFY: The project chooser receives exactly one main landmark
-    js: |
-      await expect(page.getByRole('main')).toHaveCount(1);
-      await expect(page.getByRole('main')).toBeVisible();
+    js: await expect(page.getByRole('main')).toHaveCount(1)
 
-  - description: Select the configured test project
-    js: |
-      const siteName = process.env.TEST_SITE_NAME;
-      if (!siteName) throw new Error('TEST_SITE_NAME is required');
-      const selector = page.getByRole('button', { name: `Select ${siteName}`, exact: true });
-      await selector.click();
+  - VERIFY: The project chooser main landmark is visible
+    js: await expect(page.getByRole('main')).toBeVisible()
+
+  - intent: Select the first available project
+    action: click
+    locator: "getByRole('button', { name: /^Select / }).first()"
 
   - WAIT_UNTIL: The workspace is selected
     js: "await page.url().includes('/robots')"
@@ -85,11 +88,11 @@ statements:
       const trigger = page.getByRole('button', { name: 'Search', exact: true }).first();
       await trigger.click();
 
-  - VERIFY: The mobile dialog opens and receives focus
-    js: |
-      const dialog = page.getByRole('dialog', { name: 'Search' });
-      await expect(dialog).toBeVisible();
-      await expect(dialog.locator(':focus')).toHaveCount(1);
+  - VERIFY: The mobile search dialog opens
+    js: "await expect(page.getByRole('dialog', { name: 'Search' })).toBeVisible()"
+
+  - VERIFY: The mobile search dialog receives focus
+    js: "await expect(page.getByRole('dialog', { name: 'Search' }).locator(':focus')).toHaveCount(1)"
 
   - description: Check mobile search dialog accessibility
     js: |
@@ -104,8 +107,8 @@ statements:
     js: |
       await page.keyboard.press('Escape');
 
-  - VERIFY: The mobile dialog closes and restores trigger focus
-    js: |
-      const dialog = page.getByRole('dialog', { name: 'Search' });
-      await expect(dialog).toBeHidden();
-      await expect(page.getByRole('button', { name: 'Search', exact: true }).first()).toBeFocused();
+  - VERIFY: The mobile search dialog closes
+    js: "await expect(page.getByRole('dialog', { name: 'Search' })).toBeHidden()"
+
+  - VERIFY: The mobile search dialog restores trigger focus
+    js: "await expect(page.getByRole('button', { name: 'Search', exact: true }).first()).toBeFocused()"

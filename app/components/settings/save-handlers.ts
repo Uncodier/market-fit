@@ -1284,7 +1284,7 @@ export const handleSaveSocial = async (data: SiteFormValues, options: SaveOption
 export const handleSaveChannels = async (data: SiteFormValues, options: SaveOptions) => {
   const { currentSite, updateSite, updateSettings, refreshSites, setIsSaving } = options
 
-  if (!currentSite) return
+  if (!currentSite) return false
 
   try {
     setIsSaving(true)
@@ -1402,6 +1402,7 @@ export const handleSaveChannels = async (data: SiteFormValues, options: SaveOpti
     }
 
     toast.success("Channels saved successfully")
+    return true
   } catch (error) {
     console.error("Error saving channels:", error)
     if (error instanceof Error) {
@@ -1409,6 +1410,7 @@ export const handleSaveChannels = async (data: SiteFormValues, options: SaveOpti
     } else {
       toast.error("Error saving channels")
     }
+    return false
   } finally {
     setIsSaving(false)
   }

@@ -17,25 +17,22 @@ statements:
 
   - intent: Fill the bill title
     action: fill
-    locator: "getByRole('textbox').first()"
+    locator: "getByRole('dialog', { name: 'New vendor bill' }).getByRole('textbox').first()"
     value: "Automated Test Bill"
 
   - intent: Fill the line item name
     action: fill
-    locator: "getByRole('textbox').nth(1)"
+    locator: "getByRole('dialog', { name: 'New vendor bill' }).getByRole('textbox').nth(1)"
     value: "Test Line Item"
 
   - intent: Submit the create bill form
     action: click
     locator: "getByRole('button', { name: 'Create bill' })"
 
-  - WAIT_UNTIL: The create bill modal closes
-    js: "await page.getByRole('dialog').count() === 0"
-    timeout_seconds: 10
-
-  - WAIT_UNTIL: The bill details page is open
-    js: "await page.url().includes('/bills/') && !page.url().endsWith('/bills')"
-    timeout_seconds: 15
+  - description: Wait for the bill creation to complete
+    js: |
+      await expect(page.getByRole('dialog', { name: 'New vendor bill' })).toBeHidden({ timeout: 15000 });
+      await expect(page).toHaveURL(/\/bills\/[^/]+$/, { timeout: 15000 });
 
   - VERIFY: The created bill title is visible
     js: "await expect(page.getByText('Automated Test Bill').first()).toBeVisible()"

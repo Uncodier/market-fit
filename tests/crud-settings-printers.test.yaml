@@ -34,9 +34,8 @@ statements:
     action: click
     locator: "locator('#printers').getByRole('button', { name: 'Save', exact: true }).last()"
 
-  - WAIT_UNTIL: The printer save finishes
-    js: "await page.getByRole('button', { name: 'Saving...' }).count() === 0"
-    timeout_seconds: 15
+  - VERIFY: The printer save completes
+    js: "await expect(page.getByText('Printer settings saved')).toBeVisible({ timeout: 15000 })"
 
   - URL: /settings?tab=printers
   - VERIFY: The printer persists after reload
@@ -54,9 +53,8 @@ statements:
     action: click
     locator: "getByRole('button', { name: 'Save', exact: true }).last()"
 
-  - WAIT_UNTIL: The printer deletion save finishes
-    js: "await page.getByRole('button', { name: 'Saving...' }).count() === 0"
-    timeout_seconds: 15
+  - VERIFY: The printer deletion save completes
+    js: "await expect(page.getByText('Printer settings saved')).toBeVisible({ timeout: 15000 })"
 
   - URL: /settings?tab=printers
   - VERIFY: The E2E printer is removed

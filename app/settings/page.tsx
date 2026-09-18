@@ -816,8 +816,8 @@ export default function SettingsPage() {
   };
 
   const onSaveChannels = async (data: SiteFormValues) => {
-    if (!currentSite) return;
-    await handleSaveChannels(data, saveOptions);
+    if (!currentSite) return false;
+    return handleSaveChannels(data, saveOptions);
   };
 
   const onSaveActivities = async (data: SiteFormValues) => {
