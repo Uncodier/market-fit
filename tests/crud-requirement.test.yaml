@@ -162,14 +162,17 @@ statements:
     js: "(await page.getByText(testContext.get('requirementSegmentName'), { exact: true }).count()) > 0"
     timeout_seconds: 15
 
-  - description: Open the run-scoped requirement segment
+  - description: Open the run-scoped requirement segment from its name cell
     js: |
       const segmentName = testContext.get("requirementSegmentName");
-      await page.getByText(segmentName, { exact: true }).click();
+      await page.locator('tbody tr').filter({ hasText: segmentName }).first().locator('td').first().click();
 
   - WAIT_UNTIL: The requirement segment details route is open
     js: "page.url().includes('/segments/') && !page.url().endsWith('/segments')"
     timeout_seconds: 15
+
+  - VERIFY: The requirement segment details route is open
+    js: "await expect(page).toHaveURL(/\\/segments\\/[^/]+$/)"
 
   - intent: Open the segment Details tab
     action: click
@@ -237,13 +240,15 @@ teardown:
 
   - IF: "js: Boolean(testContext.get('requirementSegmentName')) && (await page.getByText(testContext.get('requirementSegmentName'), { exact: true }).count()) > 0"
     THEN:
-      - description: Open the surviving run-scoped requirement segment
+      - description: Open the surviving run-scoped requirement segment from its name cell
         js: |
           const segmentName = testContext.get("requirementSegmentName");
-          await page.getByText(segmentName, { exact: true }).click();
+          await page.locator('tbody tr').filter({ hasText: segmentName }).first().locator('td').first().click();
       - WAIT_UNTIL: The segment details route is ready for cleanup
         js: "page.url().includes('/segments/') && !page.url().endsWith('/segments')"
         timeout_seconds: 15
+      - VERIFY: The segment details route is ready for cleanup
+        js: "await expect(page).toHaveURL(/\\/segments\\/[^/]+$/)"
       - intent: Open the segment Details tab for cleanup
         action: click
         locator: "getByRole('tab', { name: 'Details', exact: true })"
