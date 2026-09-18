@@ -104,7 +104,7 @@ export function checkoutFulfillmentFromOrder(
   if (method === "pickup" || method === "ship" || method === "dine_in" || method === "none") {
     return method
   }
-  return "none"
+  return "pickup"
 }
 
 export function checkoutLinesFromModifiers(params: {

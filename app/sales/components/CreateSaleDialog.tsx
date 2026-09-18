@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { format } from "date-fns"
 import {
   Dialog,
   DialogBody,
@@ -172,7 +173,7 @@ export function CreateSaleDialog({ open, onOpenChange, onSuccess }: CreateSaleDi
 
       const result = await createSale({
         ...formData,
-        saleDate: formData.saleDate.toISOString(),
+        saleDate: format(formData.saleDate, "yyyy-MM-dd"),
         leadId: finalLeadId || undefined,
         buyerUserId: finalBuyerUserId || undefined,
         segmentId: resolvedSegmentId || undefined,

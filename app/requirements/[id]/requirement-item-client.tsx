@@ -195,6 +195,7 @@ type CompletionStatusType = typeof COMPLETION_STATUS[keyof typeof COMPLETION_STA
 // Define interface for requirement
 interface Requirement {
   id: string
+  siteId: string
   title: string
   description: string
   instructions: string
@@ -747,6 +748,7 @@ function RequirementDetailContent() {
       // Format the requirement
       const formattedRequirement = {
         id: requirement.id,
+        siteId: requirement.site_id,
         title: requirement.title,
         description: requirement.description || "",
         instructions: requirement.instructions || "",
@@ -1028,11 +1030,9 @@ function RequirementDetailContent() {
         workflow_connections: connections
       };
 
-      if (!currentSite) throw new Error("Site not found");
-
       let resolvedCampaignId = editForm.campaign_id;
       if (editForm.campaignValue !== undefined) {
-        const { id, error } = await resolveRelationId("campaign", editForm.campaignValue, currentSite.id);
+        const { id, error } = await resolveRelationId("campaign", editForm.campaignValue, requirement.siteId);
         if (error) throw new Error(error);
         resolvedCampaignId = id || "";
       }

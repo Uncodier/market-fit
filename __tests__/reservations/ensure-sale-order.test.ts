@@ -2,6 +2,7 @@ import {
   applyReservationPayments,
   checkoutLinesFromModifiers,
   checkoutLinesFromSaleOrderItems,
+  checkoutFulfillmentFromOrder,
   checkoutSourceFromSale,
   mergeReservationLinesIntoOrder,
   resolveExistingSaleOrderId,
@@ -111,6 +112,17 @@ describe("resolveReservationChargeCurrency", () => {
         siteCurrency: "EUR",
       })
     ).toBe("USD")
+  })
+})
+
+describe("checkoutFulfillmentFromOrder", () => {
+  it("defaults new back-office reservation orders to pickup", () => {
+    expect(checkoutFulfillmentFromOrder(null)).toBe("pickup")
+  })
+
+  it("preserves an existing order fulfillment method", () => {
+    expect(checkoutFulfillmentFromOrder("ship")).toBe("ship")
+    expect(checkoutFulfillmentFromOrder("none")).toBe("none")
   })
 })
 

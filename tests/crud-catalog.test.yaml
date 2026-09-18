@@ -32,13 +32,13 @@ statements:
     value: "{{catalogCategoryName}}"
 
   - WAIT_UNTIL: The configured category option is visible
-    js: "(await page.getByRole('option', { name: testContext.get('catalogCategoryName'), exact: true }).count()) > 0"
+    js: "(await page.locator('[data-relation-id]').filter({ hasText: testContext.get('catalogCategoryName') }).count()) > 0"
     timeout_seconds: 5
 
   - description: Select the configured catalog category
     js: |
       const categoryName = testContext.get("catalogCategoryName");
-      await page.getByRole('option', { name: categoryName, exact: true }).click();
+      await page.locator('[data-relation-id]').filter({ hasText: categoryName }).first().click();
 
   - intent: Fill in the product name
     action: fill

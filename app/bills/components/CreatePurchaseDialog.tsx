@@ -62,49 +62,63 @@ export function CreatePurchaseDialog({
 
   useEffect(() => {
     if (!open || !currentSite?.id) return
+
+    if (purchaseToEdit) {
+      setTitle(purchaseToEdit.title || "")
+      setVendorCompanyId(purchaseToEdit.vendorCompanyId || "")
+      setLocationId(purchaseToEdit.locationId || "")
+      setPurchaseDate(
+        purchaseToEdit.purchaseDate ? new Date(purchaseToEdit.purchaseDate) : new Date()
+      )
+      setAmountDue(String(purchaseToEdit.amountDue ?? ""))
+      setNotes(purchaseToEdit.notes || "")
+      const editLines = (purchaseToEdit.items || []).map((item, idx) => ({
+        key: `line-${item.id || idx}`,
+        catalogItemId: item.catalogItemId || null,
+        name: item.name,
+        quantity: item.quantity,
+        unitCost: item.unitCost,
+      }))
+      setLines(
+        editLines.length
+          ? editLines
+          : [{ key: `line-${Date.now()}`, name: "", quantity: 1, unitCost: 0, catalogItemId: null }]
+      )
+    } else {
+      setLocationId("")
+      setTitle(`Vendor bill - ${new Date().toLocaleDateString()}`)
+      setAmountDue("")
+      setNotes("")
+      setVendorCompanyId("")
+      setPurchaseDate(new Date())
+      setLines([{ key: `line-${Date.now()}`, name: "", quantity: 1, unitCost: 0, catalogItemId: null }])
+    }
+
+    let cancelled = false
     ;(async () => {
       const [companiesRes, catalogRes, locationsRes] = await Promise.all([
         getCompanies(),
         listCatalogItems({ siteId: currentSite.id, pageSize: 200 }),
         listLocations(currentSite.id),
       ])
+      if (cancelled) return
+
       if (companiesRes.companies) setCompanies(companiesRes.companies)
       if (catalogRes.data) setCatalogItems(catalogRes.data as CatalogItem[])
       const locs = locationsRes.data || []
       if (locs.length) setLocations(locs)
 
       if (purchaseToEdit) {
-        setTitle(purchaseToEdit.title || "")
-        setVendorCompanyId(purchaseToEdit.vendorCompanyId || "")
-        setLocationId(purchaseToEdit.locationId || locs.find((l) => l.is_default)?.id || locs[0]?.id || "")
-        setPurchaseDate(
-          purchaseToEdit.purchaseDate ? new Date(purchaseToEdit.purchaseDate) : new Date()
-        )
-        setAmountDue(String(purchaseToEdit.amountDue ?? ""))
-        setNotes(purchaseToEdit.notes || "")
-        const editLines = (purchaseToEdit.items || []).map((item, idx) => ({
-          key: `line-${item.id || idx}`,
-          catalogItemId: item.catalogItemId || null,
-          name: item.name,
-          quantity: item.quantity,
-          unitCost: item.unitCost,
-        }))
-        setLines(
-          editLines.length
-            ? editLines
-            : [{ key: `line-${Date.now()}`, name: "", quantity: 1, unitCost: 0, catalogItemId: null }]
-        )
+        setLocationId((current) => current || locs.find((l) => l.is_default)?.id || locs[0]?.id || "")
       } else {
         const def = locs.find((l) => l.is_default) || locs[0]
-        setLocationId(def?.id || "")
-        setTitle(`Vendor bill - ${new Date().toLocaleDateString()}`)
-        setAmountDue("")
-        setNotes("")
-        setVendorCompanyId("")
-        setPurchaseDate(new Date())
-        setLines([{ key: `line-${Date.now()}`, name: "", quantity: 1, unitCost: 0, catalogItemId: null }])
+        setLocationId((current) => current || def?.id || "")
       }
     })()
+
+    return () => {
+      cancelled = true
+    }
   }, [open, currentSite?.id, purchaseToEdit?.id])
 
   const total = lines.reduce((sum, l) => sum + (Number(l.quantity) || 0) * (Number(l.unitCost) || 0), 0)
@@ -214,8 +228,8 @@ export function CreatePurchaseDialog({
           </DialogHeader>
           <DialogBody className="grid gap-4">
             <div className="grid gap-2">
-              <Label>{t("bills.field.title") || "Title"}</Label>
-              <Input className="h-12" value={title} onChange={(e) => setTitle(e.target.value)} />
+              <Label htmlFor="bill-title">{t("bills.field.title") || "Title"}</Label>
+              <Input id="bill-title" className="h-12" value={title} onChange={(e) => setTitle(e.target.value)} />
             </div>
 
             <div className="grid grid-cols-2 gap-4">
@@ -293,8 +307,9 @@ export function CreatePurchaseDialog({
                   </Select>
                 </div>
                 <div className="col-span-3">
-                  <Label className="text-xs">{t("bills.field.name") || "Name"}</Label>
+                  <Label htmlFor={`bill-line-name-${line.key}`} className="text-xs">{t("bills.field.name") || "Name"}</Label>
                   <Input
+                    id={`bill-line-name-${line.key}`}
                     value={line.name}
                     onChange={(e) => updateLine(line.key, { name: e.target.value })}
                   />

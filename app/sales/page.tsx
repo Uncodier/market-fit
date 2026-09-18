@@ -127,7 +127,10 @@ export default function SalesPage() {
   const segments = segmentsData || []
   const loading = isLoadingSales || isLoadingSegments
 
-  const loadSales = async () => { mutateSales() }
+  const loadSales = async () => {
+    setCurrentPage(1)
+    await mutateSales()
+  }
 
   // Search query change handler
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -236,8 +239,12 @@ export default function SalesPage() {
       const valueA = a.amount || 0
       const valueB = b.amount || 0
 
-      if (sortBy === "newest") return dateB - dateA
-      if (sortBy === "oldest") return dateA - dateB
+      if (sortBy === "newest") {
+        return dateB - dateA || new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
+      }
+      if (sortBy === "oldest") {
+        return dateA - dateB || new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime()
+      }
       if (sortBy === "value_desc") return valueB - valueA
       if (sortBy === "value_asc") return valueA - valueB
       return 0

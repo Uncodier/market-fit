@@ -58,7 +58,7 @@ export function PosCartLines({
               )}
               onClick={() => setSelectedCartItemId?.(lineKey)}
             >
-              <div className="w-16 h-[4.5rem] bg-muted/30 overflow-hidden flex-shrink-0 self-start mt-0.5 ml-0.5 rounded-md">
+              <div className="w-16 aspect-square bg-muted/30 overflow-hidden flex-shrink-0 self-start mt-0.5 ml-0.5 rounded-md">
                 <img
                   src={resolveItemImage(item, "thumb")}
                   alt={item.name}

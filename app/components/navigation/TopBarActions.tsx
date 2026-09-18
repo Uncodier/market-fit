@@ -47,7 +47,6 @@ import {
   Eye,
   Edit,
   Ban,
-  ShoppingCart,
   Settings,
   Repeat,
   ModifierGroups,
@@ -62,10 +61,8 @@ import { LoadingSkeleton } from "@/app/components/ui/loading-skeleton";
 import { Switch } from "@/app/components/ui/switch";
 import { Label } from "@/app/components/ui/label";
 import { RobotPrimaryActions } from "./RobotPrimaryActions";
-import { OrderUpdatesBadge } from "./OrderUpdatesBadge";
 
 interface TopBarActionsProps {
-  isPosPage?: boolean;
   isDashboardPage: boolean;
   isSegmentsPage: boolean;
   isExperimentsPage: boolean;
@@ -118,7 +115,6 @@ interface TopBarActionsProps {
 }
 
 export function TopBarActions({
-  isPosPage,
   isDashboardPage,
   isSegmentsPage,
   isExperimentsPage,
@@ -164,16 +160,6 @@ export function TopBarActions({
     endDate: endOfDay(new Date()),
   });
   const [selectedSegment, setSelectedSegment] = useState<string>("all");
-  const [posCartQty, setPosCartQty] = useState(0);
-
-  useEffect(() => {
-    if (!isPosPage) return;
-    const handleCartUpdate = (e: any) => {
-      setPosCartQty(e.detail.qty);
-    };
-    window.addEventListener("pos:cart-updated", handleCartUpdate);
-    return () => window.removeEventListener("pos:cart-updated", handleCartUpdate);
-  }, [isPosPage]);
 
   // Check if we're on dashboard onboarding tab
   const [currentDashboardTab, setCurrentDashboardTab] = useState<string | null>(
@@ -807,40 +793,6 @@ export function TopBarActions({
             </Button>
           </>
         ) : null)}
-
-      {isPosPage && currentSite && (
-        <div className="flex items-center gap-2">
-          <div className="relative hidden overflow-visible sm:block">
-            <Button
-              variant="default"
-              size="default"
-              className="!flex items-center justify-center gap-2 transition-colors duration-200 !min-w-0 sm:!min-w-[155px] md:!min-w-[200px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm bg-primary text-primary-foreground hover:bg-primary/90"
-              onClick={() =>
-                window.dispatchEvent(new CustomEvent("pos:send-order"))
-              }
-              title={t("layout.topbar.sendOrder") || "Send Order"}
-            >
-              <span className="flex h-6 w-6 shrink-0 items-center justify-center">
-                <ShoppingCart className="h-4 w-4 shrink-0" />
-              </span>
-              <span className="font-inter text-sm font-medium">
-                {t("layout.topbar.sendOrder") || "Send Order"}
-              </span>
-            </Button>
-            <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center gap-2 overflow-visible">
-              <span className="relative h-6 w-6 shrink-0">
-                <OrderUpdatesBadge
-                  count={posCartQty}
-                  className="absolute right-0 top-0 translate-x-1/2 -translate-y-1/4"
-                />
-              </span>
-              <span className="invisible font-inter text-sm font-medium">
-                {t("layout.topbar.sendOrder") || "Send Order"}
-              </span>
-            </div>
-          </div>
-        </div>
-      )}
 
       {pathname === "/catalog" && currentSite && (
         <div className="flex items-center gap-2">

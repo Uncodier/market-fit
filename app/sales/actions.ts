@@ -22,7 +22,8 @@ export async function getSales(siteId: string) {
       .from("sales")
       .select("*, leads(name)")
       .eq("site_id", siteId)
-      .order("sale_date", { ascending: false });
+      .order("sale_date", { ascending: false })
+      .order("created_at", { ascending: false });
 
     if (error) {
       console.error("Error fetching sales:", error);

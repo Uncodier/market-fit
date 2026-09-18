@@ -35,9 +35,8 @@ statements:
     action: click
     locator: "getByRole('combobox').nth(0)"
 
-  - WAIT_UNTIL: Dropdown animation finishes
+  - description: Wait for the audience dropdown animation
     js: "await page.waitForTimeout(500)"
-    timeout_seconds: 5
 
   - intent: Select audience type
     action: click
@@ -47,9 +46,8 @@ statements:
     action: click
     locator: "getByRole('combobox').nth(1)"
 
-  - WAIT_UNTIL: Dropdown animation finishes
+  - description: Wait for the language dropdown animation
     js: "await page.waitForTimeout(500)"
-    timeout_seconds: 5
 
   - intent: Select language
     action: click
@@ -164,11 +162,15 @@ statements:
   - description: Open the run-scoped requirement segment
     js: |
       const segmentName = testContext.get("requirementSegmentName");
-      await page.getByRole('row').filter({ hasText: segmentName }).click();
+      await page.getByText(segmentName, { exact: true }).click();
 
   - WAIT_UNTIL: The requirement segment details route is open
     js: "page.url().includes('/segments/') && !page.url().endsWith('/segments')"
     timeout_seconds: 15
+
+  - intent: Open the segment Details tab
+    action: click
+    locator: "getByRole('tab', { name: 'Details', exact: true })"
 
   - intent: Click Delete in the segment danger zone
     action: click
@@ -220,6 +222,9 @@ teardown:
       - intent: Confirm cleanup of the run-scoped requirement
         action: click
         locator: "getByRole('button', { name: 'Delete', exact: true })"
+      - WAIT_UNTIL: The requirement cleanup returns to the list
+        js: "page.url().endsWith('/requirements')"
+        timeout_seconds: 15
 
   - URL: /segments
 
@@ -232,7 +237,13 @@ teardown:
       - description: Open the surviving run-scoped requirement segment
         js: |
           const segmentName = testContext.get("requirementSegmentName");
-          await page.getByRole('row').filter({ hasText: segmentName }).click();
+          await page.getByText(segmentName, { exact: true }).click();
+      - WAIT_UNTIL: The segment details route is ready for cleanup
+        js: "page.url().includes('/segments/') && !page.url().endsWith('/segments')"
+        timeout_seconds: 15
+      - intent: Open the segment Details tab for cleanup
+        action: click
+        locator: "getByRole('tab', { name: 'Details', exact: true })"
       - intent: Delete the surviving run-scoped requirement segment
         action: click
         locator: "getByRole('button', { name: 'Delete', exact: true })"

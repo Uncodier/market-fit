@@ -301,7 +301,6 @@ export function TopBar({
         <div className="flex items-center justify-end shrink-0 ml-auto">
           {pathname === "/pos" ? <PosTopBarActions /> : null}
           <TopBarActions
-            isPosPage={false}
             isDashboardPage={pathname === "/dashboard"}
             isSegmentsPage={pathname === "/segments"}
             isExperimentsPage={pathname === "/experiments"}

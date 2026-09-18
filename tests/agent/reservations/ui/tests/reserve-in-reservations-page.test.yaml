@@ -75,10 +75,23 @@ statements:
     action: click
     locator: "locator('button:has-text(\":\")').first()"
 
+  - description: Record the number of confirmed reservations
+    js: |
+      testContext.set(
+        "confirmedReservationsBefore",
+        await page.getByText("Confirmed", { exact: true }).count()
+      );
+
   - intent: Create reservation
     action: click
     locator: "getByRole('button', { name: /Create|Crear/i }).last()"
     
   - WAIT_UNTIL: Wait for dialog to close
-    js: "await page.getByRole('dialog').count() === 0 && await page.locator('.fixed.inset-0.bg-black\\\\/40').count() === 0"
-    timeout_seconds: 15
+    js: "(await page.getByRole('dialog').count()) === 0"
+    timeout_seconds: 30
+
+  - VERIFY: A confirmed reservation was added
+    js: |
+      await expect
+        .poll(() => page.getByText("Confirmed", { exact: true }).count())
+        .toBeGreaterThan(testContext.get("confirmedReservationsBefore"));

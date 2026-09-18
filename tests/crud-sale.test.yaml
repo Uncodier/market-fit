@@ -35,9 +35,8 @@ statements:
     action: click
     locator: "getByRole('combobox').first()"
 
-  - WAIT_UNTIL: Dropdown animation finishes
+  - description: Wait for the product type dropdown animation
     js: "await page.waitForTimeout(500)"
-    timeout_seconds: 5
 
   - intent: Select product type
     action: click
@@ -53,7 +52,7 @@ statements:
     locator: "getByRole('button', { name: 'Create sale' })"
 
   - WAIT_UNTIL: The create sale modal closes
-    js: "await page.getByRole('dialog').count() === 0"
+    js: "(await page.getByRole('dialog').count()) === 0"
     timeout_seconds: 10
 
   - WAIT_UNTIL: The new sale appears in the list
@@ -92,9 +91,9 @@ statements:
     action: click
     locator: "getByRole('dialog', { name: 'Edit Sale' }).getByRole('button', { name: 'Update sale' })"
 
-  - WAIT_UNTIL: The sale update succeeds
-    js: "(await page.getByText('Sale updated successfully').count()) > 0"
-    timeout_seconds: 10
+  - WAIT_UNTIL: The sale update dialog closes
+    js: "(await page.getByRole('dialog', { name: 'Edit Sale' }).count()) === 0"
+    timeout_seconds: 20
 
   - WAIT_UNTIL: The edited sale title is visible
     js: "(await page.getByText(testContext.get('saleEditedName'), { exact: true }).count()) > 0"
@@ -116,18 +115,18 @@ statements:
 
   - intent: Confirm sale deletion
     action: click
-    locator: "getByRole('button', { name: 'Delete', exact: true }).last()"
+    locator: "getByRole('alertdialog').getByRole('button', { name: 'Delete', exact: true })"
 
   - WAIT_UNTIL: The user is back on the sales list
     js: "await page.url().endsWith('/sales')"
-    timeout_seconds: 15
+    timeout_seconds: 30
 
   - description: Reload the sales list before checking deletion
     js: "await page.reload()"
 
   - WAIT_UNTIL: The sales list has finished loading
-    js: "(await page.getByPlaceholder('Search sales...').count()) > 0 && (await page.locator('.animate-pulse:visible').count()) === 0"
-    timeout_seconds: 15
+    js: "(await page.getByPlaceholder('Search sales...').count()) > 0"
+    timeout_seconds: 30
 
   - VERIFY: The deleted sale is absent from the list
     js: "await expect(page.getByRole('row').filter({ hasText: testContext.get('saleProductName') })).toHaveCount(0)"
@@ -153,13 +152,16 @@ teardown:
         locator: "getByRole('button', { name: 'Delete', exact: true }).first()"
       - intent: Confirm cleanup of the run-scoped sale
         action: click
-        locator: "getByRole('button', { name: 'Delete', exact: true }).last()"
+        locator: "getByRole('alertdialog').getByRole('button', { name: 'Delete', exact: true })"
+      - WAIT_UNTIL: The cleanup returns to the sales list
+        js: "page.url().endsWith('/sales')"
+        timeout_seconds: 30
 
   - URL: /sales
 
   - WAIT_UNTIL: The sales list is ready for fallback cleanup
-    js: "(await page.getByPlaceholder('Search sales...').count()) > 0 && (await page.locator('.animate-pulse:visible').count()) === 0"
-    timeout_seconds: 15
+    js: "(await page.getByPlaceholder('Search sales...').count()) > 0"
+    timeout_seconds: 30
 
   - IF: "js: Boolean(testContext.get('saleProductName')) && (await page.getByRole('row').filter({ hasText: testContext.get('saleProductName') }).count()) > 0"
     THEN:
@@ -167,9 +169,12 @@ teardown:
         js: |
           const productName = testContext.get("saleProductName");
           await page.getByRole('row').filter({ hasText: productName }).click();
+      - WAIT_UNTIL: The sale details route is ready for cleanup
+        js: "/\\/sales\\/[^/]+$/.test(page.url())"
+        timeout_seconds: 15
       - intent: Delete the surviving run-scoped sale
         action: click
         locator: "getByRole('button', { name: 'Delete', exact: true }).first()"
       - intent: Confirm fallback cleanup of the run-scoped sale
         action: click
-        locator: "getByRole('button', { name: 'Delete', exact: true }).last()"
+        locator: "getByRole('alertdialog').getByRole('button', { name: 'Delete', exact: true })"

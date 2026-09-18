@@ -29,13 +29,13 @@ statements:
     value: "{{promotionCampaignName}}"
 
   - WAIT_UNTIL: The configured campaign option is visible
-    js: "(await page.getByRole('option', { name: testContext.get('promotionCampaignName'), exact: true }).count()) > 0"
+    js: "(await page.locator('[data-relation-id]').filter({ hasText: testContext.get('promotionCampaignName') }).count()) > 0"
     timeout_seconds: 5
 
   - description: Select the configured campaign
     js: |
       const campaignName = testContext.get("promotionCampaignName");
-      await page.getByRole('option', { name: campaignName, exact: true }).click();
+      await page.locator('[data-relation-id]').filter({ hasText: campaignName }).first().click();
 
   - intent: Fill the promotion name
     action: fill
