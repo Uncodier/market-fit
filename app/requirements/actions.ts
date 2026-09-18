@@ -277,69 +277,70 @@ export async function updateRequirement(data: UpdateRequirementData) {
       }
     }
 
-    // Actualizamos las relaciones con los segmentos
-    // Primero eliminamos todas las relaciones existentes
-    const { error: deleteSegmentsError } = await supabase
+    const desiredSegmentIds = [...new Set(data.segments || [])].sort()
+    const { data: currentSegments, error: currentSegmentsError } = await supabase
       .from("requirement_segments")
-      .delete()
+      .select("segment_id")
       .eq("requirement_id", data.id)
-
-    if (deleteSegmentsError) {
-      return {
-        error: deleteSegmentsError.message
-      }
+    if (currentSegmentsError) {
+      return { error: `Failed to read requirement segments: ${currentSegmentsError.message}` }
     }
+    const currentSegmentIds = (currentSegments || [])
+      .map((relation) => relation.segment_id)
+      .sort()
 
-    // Luego insertamos las nuevas relaciones
-    if (data.segments.length > 0) {
-      const requirementSegments = data.segments.map(segmentId => ({
-        requirement_id: data.id,
-        segment_id: segmentId
-      }))
-
-      const { error: segmentsError } = await supabase
+    if (JSON.stringify(currentSegmentIds) !== JSON.stringify(desiredSegmentIds)) {
+      const { error: deleteSegmentsError } = await supabase
         .from("requirement_segments")
-        .insert(requirementSegments)
-
-      if (segmentsError) {
-        return {
-          error: segmentsError.message
+        .delete()
+        .eq("requirement_id", data.id)
+      if (deleteSegmentsError) {
+        return { error: `Failed to update requirement segments: ${deleteSegmentsError.message}` }
+      }
+      if (desiredSegmentIds.length > 0) {
+        const { error: segmentsError } = await supabase
+          .from("requirement_segments")
+          .insert(desiredSegmentIds.map((segmentId) => ({
+            requirement_id: data.id,
+            segment_id: segmentId,
+          })))
+        if (segmentsError) {
+          return { error: `Failed to update requirement segments: ${segmentsError.message}` }
         }
       }
     }
 
-    // Actualizamos las relaciones con las campañas
-    // Primero eliminamos todas las relaciones existentes
-    const { error: deleteCampaignsError } = await supabase
+    const desiredCampaignIds = [
+      ...new Set(data.campaign_id ? [data.campaign_id] : (data.campaigns || [])),
+    ].sort()
+    const { data: currentCampaigns, error: currentCampaignsError } = await supabase
       .from("campaign_requirements")
-      .delete()
+      .select("campaign_id")
       .eq("requirement_id", data.id)
-
-    if (deleteCampaignsError) {
-      return {
-        error: deleteCampaignsError.message
-      }
+    if (currentCampaignsError) {
+      return { error: `Failed to read requirement campaigns: ${currentCampaignsError.message}` }
     }
+    const currentCampaignIds = (currentCampaigns || [])
+      .map((relation) => relation.campaign_id)
+      .sort()
 
-    // Si hay un campaign_id seleccionado, lo agregamos a campaigns para la relación
-    const campaignsToInsert = data.campaign_id ? 
-      [data.campaign_id] : 
-      (data.campaigns && data.campaigns.length > 0 ? data.campaigns : []);
-
-    // Luego insertamos las nuevas relaciones
-    if (campaignsToInsert.length > 0) {
-      const requirementCampaigns = campaignsToInsert.map(campaignId => ({
-        requirement_id: data.id,
-        campaign_id: campaignId
-      }))
-
-      const { error: campaignsError } = await supabase
+    if (JSON.stringify(currentCampaignIds) !== JSON.stringify(desiredCampaignIds)) {
+      const { error: deleteCampaignsError } = await supabase
         .from("campaign_requirements")
-        .insert(requirementCampaigns)
-
-      if (campaignsError) {
-        return {
-          error: campaignsError.message
+        .delete()
+        .eq("requirement_id", data.id)
+      if (deleteCampaignsError) {
+        return { error: `Failed to update requirement campaigns: ${deleteCampaignsError.message}` }
+      }
+      if (desiredCampaignIds.length > 0) {
+        const { error: campaignsError } = await supabase
+          .from("campaign_requirements")
+          .insert(desiredCampaignIds.map((campaignId) => ({
+            requirement_id: data.id,
+            campaign_id: campaignId,
+          })))
+        if (campaignsError) {
+          return { error: `Failed to update requirement campaigns: ${campaignsError.message}` }
         }
       }
     }

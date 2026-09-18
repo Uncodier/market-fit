@@ -24,10 +24,16 @@ statements:
     locator: "getByRole('dialog', { name: 'New vendor bill' }).getByLabel('Title', { exact: true })"
     value: "{{billTitle}}"
 
+  - VERIFY: The bill title input contains the run-scoped title
+    js: "await expect(page.getByRole('dialog', { name: 'New vendor bill' }).getByLabel('Title', { exact: true })).toHaveValue(testContext.get('billTitle'))"
+
   - intent: Fill the line item name
     action: fill
     locator: "getByRole('dialog', { name: 'New vendor bill' }).getByLabel('Name', { exact: true })"
     value: "Test Line Item"
+
+  - VERIFY: The bill line item name is filled
+    js: "await expect(page.getByRole('dialog', { name: 'New vendor bill' }).getByLabel('Name', { exact: true })).toHaveValue('Test Line Item')"
 
   - intent: Submit the create bill form
     action: click

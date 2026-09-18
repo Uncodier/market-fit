@@ -113,6 +113,9 @@ statements:
     locator: "getByPlaceholder('Requirement title')"
     value: "{{requirementEditedName}}"
 
+  - VERIFY: The requirement title input contains the edited title
+    js: "await expect(page.getByPlaceholder('Requirement title')).toHaveValue(testContext.get('requirementEditedName'))"
+
   - intent: Save the requirement
     action: click
     locator: "getByRole('button', { name: 'Save' })"

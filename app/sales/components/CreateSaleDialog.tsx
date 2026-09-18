@@ -31,7 +31,7 @@ import {
 interface CreateSaleDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  onSuccess?: () => void
+  onSuccess?: () => void | Promise<void>
 }
 
 interface Lead {
@@ -187,6 +187,7 @@ export function CreateSaleDialog({ open, onOpenChange, onSuccess }: CreateSaleDi
       }
 
       toast.success("Sale created successfully")
+      await onSuccess?.()
       onOpenChange(false)
 
       setBuyerUser(null)
@@ -205,7 +206,6 @@ export function CreateSaleDialog({ open, onOpenChange, onSuccess }: CreateSaleDi
         locationId: locations.length === 1 ? locations[0].id : null
       })
 
-      onSuccess?.()
     } catch (error: any) {
       console.error("Error creating sale:", error)
       toast.error(error.message || "Error creating sale")

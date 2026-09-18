@@ -230,8 +230,11 @@ export async function finalizeCheckout(params: FinalizeCheckoutParams) {
     if ("error" in completion) throw new Error(completion.error)
   }
 
+  // The checkout has already authorized and persisted this exact order. Public
+  // buyers may not have RLS permission to update sale_orders, so token creation
+  // must use the server-only client or a successful order is reported as failed.
   const tokenResult = await ensurePublicAccessTokenForRecord(
-    queryClient,
+    params.supabaseAdmin,
     "sale_orders",
     params.order.id
   )
@@ -241,7 +244,7 @@ export async function finalizeCheckout(params: FinalizeCheckoutParams) {
     )
   }
 
-  const { data: latest } = await queryClient
+  const { data: latest } = await params.supabaseAdmin
     .from("sale_orders")
     .select(
       "order_number, status, total, currency, created_at, notes, fulfillment_method"
