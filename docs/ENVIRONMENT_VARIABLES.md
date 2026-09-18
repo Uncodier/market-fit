@@ -64,16 +64,14 @@ and webhook secrets in matching environments.
 See [Stripe setup](STRIPE_SETUP.md) and
 [Stripe webhook security](STRIPE_WEBHOOK_SECURITY.md).
 
-## Scheduled and public-token operations
+## Public-token and asset-proxy operations
 
 ```dotenv
-CRON_SECRET=
 PUBLIC_DOCUMENT_TOKEN_TTL_DAYS=30
 ASSET_PROXY_MAX_BYTES=
 ASSET_PROXY_TIMEOUT_MS=
 ```
 
-- `CRON_SECRET` authenticates scheduled record-embedding queue processing.
 - Public document token lifetime is clamped to 1–365 days.
 - Asset proxy limits have code defaults; set them only when the deployment
   requires different positive integer values.

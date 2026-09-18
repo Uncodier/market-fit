@@ -3,10 +3,51 @@
 import { useEffect, useState } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { WF_LOAD_NODE_TYPES } from "@/app/components/workflows/types"
-import type { InstanceMessages, InstanceStats } from "./instance-browser-model"
+import {
+  countInstanceNodeRows,
+  type InstanceMessages,
+  type InstanceNodeRow,
+  type InstanceStats,
+} from "./instance-browser-model"
 
 const CHUNK_SIZE = 15
-const WF_TYPES = `(${WF_LOAD_NODE_TYPES.join(",")})`
+const NODE_QUERY_CHUNK_SIZE = 100
+const NODE_PAGE_SIZE = 1000
+
+function chunkValues<T>(values: T[], size: number) {
+  const chunks: T[][] = []
+  for (let index = 0; index < values.length; index += size) {
+    chunks.push(values.slice(index, index + size))
+  }
+  return chunks
+}
+
+async function fetchInstanceNodeRows(instanceIds: string[]): Promise<InstanceNodeRow[]> {
+  const supabase = createClient()
+  const chunks = chunkValues(instanceIds, NODE_QUERY_CHUNK_SIZE)
+  const results = await Promise.all(chunks.map(async (chunk) => {
+    const rows: InstanceNodeRow[] = []
+
+    for (let offset = 0; ; offset += NODE_PAGE_SIZE) {
+      const { data, error } = await supabase
+        .from("instance_nodes")
+        .select("instance_id, type")
+        .in("instance_id", chunk)
+        .order("id", { ascending: true })
+        .range(offset, offset + NODE_PAGE_SIZE - 1)
+
+      if (error) throw error
+
+      const page = (data || []) as InstanceNodeRow[]
+      rows.push(...page)
+      if (page.length < NODE_PAGE_SIZE) break
+    }
+
+    return rows
+  }))
+
+  return results.flat()
+}
 
 function resolveAssetUrl(filePath?: string | null) {
   if (!filePath) return null
@@ -32,48 +73,62 @@ export function useInstanceBrowserData(isOpen: boolean, instances: Array<{ id: s
     const fetchStats = async () => {
       setIsLoadingStats(true)
 
-      for (let i = 0; i < instanceIds.length; i += CHUNK_SIZE) {
-        if (!isMounted) return
-        const chunk = instanceIds.slice(i, i + CHUNK_SIZE)
-        const results = await Promise.all(chunk.map(async (id) => {
-          const [nodesRes, workflowsRes, assetsRes, recentAssetsRes, reqRes, latestImageRes] = await Promise.all([
-            supabase.from("instance_nodes").select("id", { count: "exact", head: true }).eq("instance_id", id).not("type", "in", WF_TYPES),
-            supabase.from("instance_nodes").select("id", { count: "exact", head: true }).eq("instance_id", id).in("type", [...WF_LOAD_NODE_TYPES]),
-            supabase.from("assets").select("id", { count: "exact", head: true }).eq("instance_id", id),
-            supabase.from("assets").select("id, file_path, name, file_type, created_at").eq("instance_id", id).order("created_at", { ascending: false }).limit(3),
-            supabase.from("requirement_status").select("id", { count: "exact", head: true }).eq("instance_id", id),
-            supabase.from("assets").select("file_path").eq("instance_id", id).like("file_type", "image/%").order("created_at", { ascending: false }).limit(1),
-          ])
-
-          return {
-            id,
-            nodes: nodesRes.count || 0,
-            workflows: workflowsRes.count || 0,
-            assets: assetsRes.count || 0,
-            recentAssets: recentAssetsRes.data || [],
-            requirements: reqRes.count || 0,
-            avatarUrl: resolveAssetUrl(latestImageRes.data?.[0]?.file_path),
-          }
-        }))
+      try {
+        const nodeRows = await fetchInstanceNodeRows(instanceIds)
+        const nodeCounts = countInstanceNodeRows(instanceIds, nodeRows, WF_LOAD_NODE_TYPES)
 
         if (!isMounted) return
-        setInstanceStats((prev) => {
-          const next = { ...prev }
-          results.forEach((result) => {
-            next[result.id] = {
-              nodes: result.nodes,
-              workflows: result.workflows,
-              assets: result.assets,
-              recentAssets: result.recentAssets,
-              requirements: result.requirements,
-              avatarUrl: result.avatarUrl,
+        setInstanceStats(Object.fromEntries(instanceIds.map((id) => [
+          id,
+          {
+            ...nodeCounts[id],
+            assets: 0,
+            recentAssets: [],
+            requirements: 0,
+            avatarUrl: null,
+          },
+        ])))
+
+        for (let i = 0; i < instanceIds.length; i += CHUNK_SIZE) {
+          if (!isMounted) return
+          const chunk = instanceIds.slice(i, i + CHUNK_SIZE)
+          const results = await Promise.all(chunk.map(async (id) => {
+            const [assetsRes, recentAssetsRes, reqRes, latestImageRes] = await Promise.all([
+              supabase.from("assets").select("id", { count: "exact", head: true }).eq("instance_id", id),
+              supabase.from("assets").select("id, file_path, name, file_type, created_at").eq("instance_id", id).order("created_at", { ascending: false }).limit(3),
+              supabase.from("requirement_status").select("id", { count: "exact", head: true }).eq("instance_id", id),
+              supabase.from("assets").select("file_path").eq("instance_id", id).like("file_type", "image/%").order("created_at", { ascending: false }).limit(1),
+            ])
+
+            return {
+              id,
+              assets: assetsRes.count || 0,
+              recentAssets: recentAssetsRes.data || [],
+              requirements: reqRes.count || 0,
+              avatarUrl: resolveAssetUrl(latestImageRes.data?.[0]?.file_path),
             }
-          })
-          return next
-        })
-      }
+          }))
 
-      if (isMounted) setIsLoadingStats(false)
+          if (!isMounted) return
+          setInstanceStats((prev) => {
+            const next = { ...prev }
+            results.forEach((result) => {
+              next[result.id] = {
+                ...next[result.id],
+                assets: result.assets,
+                recentAssets: result.recentAssets,
+                requirements: result.requirements,
+                avatarUrl: result.avatarUrl,
+              }
+            })
+            return next
+          })
+        }
+      } catch (error) {
+        console.error("[InstanceBrowser] Failed to load instance stats:", error)
+      } finally {
+        if (isMounted) setIsLoadingStats(false)
+      }
     }
 
     const fetchMessages = async () => {

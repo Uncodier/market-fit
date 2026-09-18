@@ -1,4 +1,5 @@
 import {
+  countInstanceNodeRows,
   countInstancesByTab,
   filterAndSortInstances,
   getInstanceDisplayName,
@@ -50,6 +51,25 @@ describe("instance browser model", () => {
     expect(filterAndSortInstances(instances, "", "nodes", "newest", stats).map((item) => item.id)).toEqual(["nodes-only"])
     expect(filterAndSortInstances(instances, "", "files", "newest", stats).map((item) => item.id)).toEqual(["files-only"])
     expect(filterAndSortInstances(instances, "", "all", "newest", stats)).toHaveLength(3)
+  })
+
+  it("counts paginated node rows without applying a recency cutoff", () => {
+    const counts = countInstanceNodeRows(
+      ["old-instance", "new-instance"],
+      [
+        { instance_id: "old-instance", type: "agent" },
+        { instance_id: "old-instance", type: "wf-trigger" },
+        { instance_id: "old-instance", type: "wf-step" },
+        { instance_id: "new-instance", type: "agent" },
+        { instance_id: "other-instance", type: "wf-step" },
+      ],
+      ["wf-trigger", "wf-step", "wf-condition"]
+    )
+
+    expect(counts).toEqual({
+      "old-instance": { nodes: 1, workflows: 2 },
+      "new-instance": { nodes: 1, workflows: 0 },
+    })
   })
 
   it("hides archived instances unless the archived filter is active", () => {

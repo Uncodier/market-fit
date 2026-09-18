@@ -29,6 +29,16 @@ export interface InstanceStats {
   avatarUrl: string | null
 }
 
+export interface InstanceNodeRow {
+  instance_id: string
+  type?: string | null
+}
+
+export interface InstanceNodeCounts {
+  nodes: number
+  workflows: number
+}
+
 export interface InstanceLogPreview {
   message?: string
   details?: { attachments?: Array<{ name?: string; file_name?: string; title?: string }> }
@@ -91,6 +101,29 @@ export function getInstancePreview(messages?: InstanceMessages) {
   const userMessage = formatLogMessage(messages?.user || null)
   const agentMessage = formatLogMessage(messages?.agent || null)
   return userMessage || agentMessage || ""
+}
+
+export function countInstanceNodeRows(
+  instanceIds: string[],
+  rows: InstanceNodeRow[],
+  workflowTypes: readonly string[]
+): Record<string, InstanceNodeCounts> {
+  const counts = Object.fromEntries(
+    instanceIds.map((id) => [id, { nodes: 0, workflows: 0 }])
+  )
+  const workflowTypeSet = new Set(workflowTypes)
+
+  rows.forEach((row) => {
+    const instanceCounts = counts[row.instance_id]
+    if (!instanceCounts) return
+    if (row.type && workflowTypeSet.has(row.type)) {
+      instanceCounts.workflows += 1
+    } else {
+      instanceCounts.nodes += 1
+    }
+  })
+
+  return counts
 }
 
 export function instanceMatchesTab(stats: InstanceStats | undefined, tab: InstanceFilterTab) {

@@ -174,7 +174,7 @@ Out of scope:
 ### E2E-GAPS-T15 Record Diagram And Embedding Runtime
 
 - Testing what: diagram CRUD/persistence/conflicts, attachment ownership, live migrations/RLS, embedding queue claims/retries, and retrieval.
-- Source refs: `app/records/**`, `app/api/records/embed/route.ts`, `app/api/cron/record-embeddings/route.ts`, `supabase/migrations/20260916020500_record_diagrams.sql` through `20260916020900_expand_record_diagram_node_kinds.sql`.
+- Source refs: `app/records/**`, `app/api/records/embed/route.ts`, API repository `src/app/api/cron/record-embeddings/route.ts`, and `supabase/migrations/20260916020500_record_diagrams.sql` through `20260916020900_expand_record_diagram_node_kinds.sql`.
 - Planned evidence: existing Jest tests, new route/worker branches, fresh-database integration, and focused Shiplight E2E.
 - Pass criteria: persistence and authorization survive reload/concurrency; queue work is bounded, exclusive, retryable, and observable.
 

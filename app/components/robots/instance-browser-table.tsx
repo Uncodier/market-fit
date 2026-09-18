@@ -7,6 +7,8 @@ import { Button } from "@/app/components/ui/button"
 import { Skeleton } from "@/app/components/ui/skeleton"
 import { EmptyCard } from "@/app/components/ui/empty-card"
 import { Bot, Loader, Trash2 } from "@/app/components/ui/icons"
+import { Pagination } from "@/app/components/ui/pagination"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/app/components/ui/tooltip"
 import {
   DocumentListHead,
@@ -93,33 +95,19 @@ export function InstanceBrowserTable({
   emptyDescription,
   labels,
 }: InstanceBrowserTableProps) {
-  const [renderLimit, setRenderLimit] = React.useState(20)
+  const [currentPage, setCurrentPage] = React.useState(1)
+  const [itemsPerPage, setItemsPerPage] = React.useState(25)
+  const totalPages = Math.max(1, Math.ceil(instances.length / itemsPerPage))
+  const indexOfFirstItem = (currentPage - 1) * itemsPerPage
+  const paginatedInstances = instances.slice(indexOfFirstItem, indexOfFirstItem + itemsPerPage)
 
-  // Reset limit when filter or instances change
   React.useEffect(() => {
-    setRenderLimit(20)
+    setCurrentPage(1)
   }, [instances])
 
-  // Simple infinite scroll observer
   React.useEffect(() => {
-    if (instances.length <= renderLimit) return
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting) {
-          setRenderLimit((prev) => Math.min(prev + 20, instances.length))
-        }
-      },
-      { root: null, rootMargin: "400px" }
-    )
-
-    const target = document.getElementById("instance-table-bottom")
-    if (target) {
-      observer.observe(target)
-    }
-
-    return () => observer.disconnect()
-  }, [instances.length, renderLimit])
+    setCurrentPage((page) => Math.min(page, totalPages))
+  }, [totalPages])
 
   if (instances.length === 0) {
     return (
@@ -149,7 +137,7 @@ export function InstanceBrowserTable({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {instances.slice(0, renderLimit).map((instance) => {
+            {paginatedInstances.map((instance) => {
               const displayName = getInstanceDisplayName(instance)
               const stats = instanceStats[instance.id]
               const previewLoading = isLoadingMessages && !instanceMessages[instance.id]
@@ -234,17 +222,40 @@ export function InstanceBrowserTable({
                 </DocumentListRow>
               )
             })}
-            {instances.length > renderLimit && (
-              <TableRow id="instance-table-bottom">
-                <TableCell colSpan={8} className="h-14">
-                  <div className="flex w-full items-center justify-center">
-                    <Loader className="h-4 w-4 animate-spin text-muted-foreground" />
-                  </div>
-                </TableCell>
-              </TableRow>
-            )}
           </TableBody>
         </Table>
+        <div className="flex flex-col items-center justify-between gap-4 border-t border-border/60 px-4 py-3 sm:flex-row">
+          <div className="flex items-center gap-3">
+            <p className="text-xs text-muted-foreground">
+              Showing <span className="font-medium text-foreground">{indexOfFirstItem + 1}</span>
+              {" – "}
+              <span className="font-medium text-foreground">
+                {Math.min(indexOfFirstItem + itemsPerPage, instances.length)}
+              </span>
+              {" of "}
+              <span className="font-medium text-foreground">{instances.length}</span> instances
+            </p>
+            <Select
+              value={itemsPerPage.toString()}
+              onValueChange={(value) => {
+                setItemsPerPage(Number(value))
+                setCurrentPage(1)
+              }}
+            >
+              <SelectTrigger className="h-8 w-[70px]">
+                <SelectValue placeholder={itemsPerPage.toString()} />
+              </SelectTrigger>
+              <SelectContent side="top">
+                {[25, 50, 100].map((value) => (
+                  <SelectItem key={value} value={value.toString()}>
+                    {value}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} />
+        </div>
       </div>
     </TooltipProvider>
   )
