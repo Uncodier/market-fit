@@ -148,6 +148,7 @@ export function receiptHtml(payload: ReceiptPayload, paper: PaperWidthMm): strin
     ${whenLine(payload.createdAt, locale)}
     ${fulfill ? `<div class="badge">${escapeHtml(fulfill)}</div>` : ""}
     ${payload.customerName ? `<div class="kv"><span class="muted">${escapeHtml(copy.customer)}</span><span>${escapeHtml(payload.customerName)}</span></div>` : ""}
+    ${payload.requestedByName ? `<div class="kv"><span class="muted">${escapeHtml(copy.requestedBy)}</span><span>${escapeHtml(payload.requestedByName)}</span></div>` : ""}
     ${payload.locationName ? `<div class="kv"><span class="muted">${escapeHtml(copy.location)}</span><span>${escapeHtml(payload.locationName)}</span></div>` : ""}
     ${payload.cashierName ? `<div class="kv"><span class="muted">${escapeHtml(copy.cashier)}</span><span>${escapeHtml(payload.cashierName)}</span></div>` : ""}
     <hr class="hr" />
@@ -192,6 +193,7 @@ export function kitchenHtml(payload: KitchenPayload, paper: PaperWidthMm): strin
     ${fulfill ? `<div class="badge">${escapeHtml(fulfill)}</div>` : ""}
     ${payload.tableName ? `<div class="kv"><span class="muted">${escapeHtml(copy.table)}</span><span>${escapeHtml(payload.tableName)}</span></div>` : ""}
     ${payload.customerName ? `<div class="kv"><span class="muted">${escapeHtml(copy.customer)}</span><span>${escapeHtml(payload.customerName)}</span></div>` : ""}
+    ${payload.requestedByName ? `<div class="kv"><span class="muted">${escapeHtml(copy.requestedBy)}</span><span>${escapeHtml(payload.requestedByName)}</span></div>` : ""}
     <hr class="hr-solid" />
     ${items}
     ${payload.notes ? `<div class="notes"><strong>${escapeHtml(copy.notes)}</strong>${escapeHtml(payload.notes)}</div>` : ""}

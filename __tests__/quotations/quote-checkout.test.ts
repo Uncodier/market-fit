@@ -2,6 +2,8 @@ import {
   assertQuotationCheckoutable,
   assertQuotationRejectable,
   buildQuoteCheckoutPath,
+  claimQuotationCheckout,
+  completeQuotationCheckout,
   isQuotationExpired,
   mapQuotationToCartItems,
   quotationItemsToCheckoutLines,
@@ -71,6 +73,23 @@ describe("quote checkout helpers", () => {
       if (!gate.ok) expect(gate.error).toMatch(/authorized/i)
     })
 
+    it("rejects an authenticated user when the quote has no assigned buyer", () => {
+      const gate = assertQuotationCheckoutable(
+        { ...baseQuote, buyer_user_id: null },
+        { buyerUserId: "arbitrary-user" }
+      )
+      expect(gate.ok).toBe(false)
+      if (!gate.ok) expect(gate.error).toMatch(/authorized/i)
+    })
+
+    it("allows an unassigned quote when an active public token was validated", () => {
+      const gate = assertQuotationCheckoutable(
+        { ...baseQuote, buyer_user_id: null },
+        { buyerUserId: "arbitrary-user", publicAccess: true }
+      )
+      expect(gate).toEqual({ ok: true })
+    })
+
     it("requires login", () => {
       const gate = assertQuotationCheckoutable(baseQuote, { buyerUserId: null })
       expect(gate.ok).toBe(false)
@@ -89,6 +108,15 @@ describe("quote checkout helpers", () => {
         { buyerUserId: "buyer-1" }
       )
       expect(gate.ok).toBe(false)
+    })
+
+    it("rejects an authenticated user when the quote has no assigned buyer", () => {
+      const gate = assertQuotationRejectable(
+        { ...baseQuote, buyer_user_id: null },
+        { buyerUserId: "arbitrary-user" }
+      )
+      expect(gate.ok).toBe(false)
+      if (!gate.ok) expect(gate.error).toMatch(/authorized/i)
     })
   })
 
@@ -129,6 +157,72 @@ describe("quote checkout helpers", () => {
       expect(path).toContain("quotationId=q-1")
       expect(path).toContain("ownerSiteId=owner-1")
       expect(path).toContain("returnTo=%2Fbuyer")
+    })
+  })
+
+  describe("checkout claims", () => {
+    it("passes authenticated identity and public token to the atomic claim", async () => {
+      const rpc = jest.fn().mockResolvedValue({
+        data: [{ result: "claimed", sale_id: null, order_id: null }],
+        error: null,
+      })
+
+      await expect(claimQuotationCheckout({ rpc }, {
+        quotationId: "q-1",
+        siteId: "site-1",
+        claimId: "claim-1",
+        buyerUserId: "buyer-1",
+        publicAccessToken: "0123456789abcdefghijklmn",
+      })).resolves.toEqual({
+        state: "claimed",
+        saleId: null,
+        orderId: null,
+      })
+      expect(rpc).toHaveBeenCalledWith("claim_quotation_checkout", {
+        p_quotation_id: "q-1",
+        p_site_id: "site-1",
+        p_claim_id: "claim-1",
+        p_buyer_user_id: "buyer-1",
+        p_public_access_token: "0123456789abcdefghijklmn",
+      })
+    })
+
+    it("returns existing artifacts for an already completed checkout", async () => {
+      const rpc = jest.fn().mockResolvedValue({
+        data: [{
+          result: "completed",
+          sale_id: "sale-1",
+          order_id: "order-1",
+        }],
+        error: null,
+      })
+
+      await expect(claimQuotationCheckout({ rpc }, {
+        quotationId: "q-1",
+        siteId: "site-1",
+        claimId: "claim-2",
+      })).resolves.toEqual({
+        state: "completed",
+        saleId: "sale-1",
+        orderId: "order-1",
+      })
+    })
+
+    it("only completes through the claim-bound RPC", async () => {
+      const rpc = jest.fn().mockResolvedValue({ data: true, error: null })
+
+      await expect(completeQuotationCheckout({ rpc }, {
+        quotationId: "q-1",
+        claimId: "claim-1",
+        saleId: "sale-1",
+        orderId: "order-1",
+      })).resolves.toEqual({ success: true })
+      expect(rpc).toHaveBeenCalledWith("complete_quotation_checkout", {
+        p_quotation_id: "q-1",
+        p_claim_id: "claim-1",
+        p_sale_id: "sale-1",
+        p_order_id: "order-1",
+      })
     })
   })
 })

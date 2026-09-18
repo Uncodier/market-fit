@@ -1,153 +1,61 @@
-# Secure Token System
+# Secure Tokens API
 
-This system provides a way to store sensitive tokens (like API keys, passwords, etc.) securely in the database using SHA-256 hashing.
+`POST /api/secure-tokens` stores retrievable integration credentials for a site.
+Despite the historical name, values are encrypted with CryptoJS AES; they are
+not one-way hashes.
 
-## Key Features
+## Authorization
 
-- Tokens are stored using SHA-256 one-way hashing
-- Uses salt for additional security
-- Protects sensitive data like API keys, email passwords, etc.
-- Token values cannot be retrieved, only verified against provided values
+Every operation requires an authenticated site member through
+`requireSiteAccess()`:
 
-## How It Works
+- `store`, `retrieve`, and `delete` require site owner/admin access.
+- `verify` and `check` require site membership.
 
-1. When storing a token, the system:
-   - Generates a random salt
-   - Hashes the token value with SHA-256 using the token + "Encryption-key" + salt
-   - Stores both the salt and the hash in the database
-   
-2. When verifying a token, the system:
-   - Retrieves the stored salt and hash
-   - Hashes the provided token value with the same salt
-   - Compares the computed hash with the stored hash
-   - Returns true if they match, false otherwise
+The route uses a service-role Supabase client only after this check. Preserve
+the authorization order when modifying it.
 
-## API Endpoints
+## Operations
 
-### `POST /api/secure-tokens`
+Requests contain `operation`, `siteId`, `tokenType`, and, where applicable,
+`identifier` and `tokenValue`.
 
-Main endpoint for token operations with these operations:
+- `store` — encrypt and insert or replace a credential.
+- `retrieve` — decrypt and return a credential to an authorized manager.
+- `verify` — compare supplied plaintext with the decrypted value.
+- `check` — report whether a matching row exists.
+- `delete` — remove a matching credential.
 
-#### Store a Token
+Because `retrieve` returns plaintext, callers and responses must be treated as
+secret-bearing. Never log response bodies or expose this route through public
+UI state.
 
-```json
-{
-  "operation": "store",
-  "siteId": "site-uuid",
-  "tokenType": "email", // or "whatsapp", "api"
-  "tokenValue": "secret-value-to-encrypt",
-  "identifier": "user@example.com" // human-readable identifier
-}
+## Encryption configuration
+
+```dotenv
+ENCRYPTION_KEY=
+LEGACY_ENCRYPTION_KEY=
 ```
 
-Response:
-```json
-{
-  "success": true,
-  "tokenId": "token-uuid" 
-}
-```
+The current implementation retains a literal fallback for compatibility. This
+is security debt, not an approved deployment default:
 
-#### Verify a Token
+- production must set a strong `ENCRYPTION_KEY`;
+- `LEGACY_ENCRYPTION_KEY` should exist only while old ciphertext requires it;
+- key rotation requires decrypting and re-encrypting stored values;
+- removing or changing a key without migration can make credentials
+  unrecoverable.
 
-```json
-{
-  "operation": "verify",
-  "siteId": "site-uuid",
-  "tokenType": "email",
-  "tokenValue": "value-to-verify",
-  "identifier": "user@example.com"
-}
-```
+Prefer a managed secret store or authenticated encryption for future redesigns.
+Do not describe the current ciphertext as hashing, irreversible storage, or
+tamper-authenticated encryption.
 
-Response:
-```json
-{
-  "isValid": true // or false
-}
-```
+## Maintenance checklist
 
-#### Check if a Token Exists
-
-```json
-{
-  "operation": "check",
-  "siteId": "site-uuid",
-  "tokenType": "email",
-  "identifier": "user@example.com"
-}
-```
-
-Response:
-```json
-{
-  "exists": true // or false
-}
-```
-
-#### Delete a Token
-
-```json
-{
-  "operation": "delete",
-  "siteId": "site-uuid",
-  "tokenType": "email",
-  "identifier": "user@example.com"
-}
-```
-
-Response:
-```json
-{
-  "success": true
-}
-```
-
-## Testing Endpoint
-
-For development testing, use the `/api/test-token-encryption` endpoint with the same request format.
-
-## Client API
-
-Use the `secureTokensService` to work with secure tokens:
-
-```typescript
-import { secureTokensService } from '@/app/services/secure-tokens-service';
-
-// Store token
-const tokenId = await secureTokensService.storeToken(
-  'site-id',
-  'api',
-  'secret-token',
-  'token-name'
-);
-
-// Verify token
-const isValid = await secureTokensService.verifyToken(
-  'site-id',
-  'api',
-  'token-to-verify',
-  'token-name'
-);
-
-// Check if token exists
-const exists = await secureTokensService.hasToken(
-  'site-id',
-  'api',
-  'token-name'
-);
-
-// Delete token
-const deleted = await secureTokensService.deleteToken(
-  'site-id',
-  'api',
-  'token-name'
-);
-```
-
-## Security Considerations
-
-- This system uses one-way hashing - original values cannot be retrieved
-- Authentication is required for all operations that modify data
-- Tokens are protected with row-level security in Supabase
-- Each token is tied to a specific site ID for authorization 
+- Keep all cryptography and service-role operations server-only.
+- Validate bounded `tokenType`, `identifier`, and request sizes.
+- Do not return raw database or cryptographic errors.
+- Test unauthenticated, non-member, ordinary-member, manager, and cross-site
+  access for every operation.
+- Test key rotation and legacy decryption before changing key handling.
+- Redact token values, ciphertext, keys, and authorization headers from logs.

@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { forwardRef, useEffect, useRef, useState } from "react"
 import { Search, X } from "@/app/components/ui/icons"
 import { shellClasses } from "@/app/components/commerce/CommerceShellHeader"
 
@@ -84,17 +84,19 @@ export function useMobileShellSearchCollapsed(initialCollapsed = false) {
 }
 
 /** Compact control in the header center on mobile. Fills available width. */
-export function MobileShellSearchTrigger({
-  value,
-  label,
-  onOpen,
-}: {
+type MobileSearchTriggerProps = {
   value: string
   label: string
   onOpen: () => void
-}) {
+}
+
+export const MobileShellSearchTrigger = forwardRef<
+  HTMLButtonElement,
+  MobileSearchTriggerProps
+>(function MobileShellSearchTrigger({ value, label, onOpen }, ref) {
   return (
     <button
+      ref={ref}
       type="button"
       onClick={onOpen}
       // !important: globals.css forces Safari buttons to justify-center + inline-flex
@@ -110,22 +112,18 @@ export function MobileShellSearchTrigger({
       ) : null}
     </button>
   )
-}
+})
 
 /** Icon-only search for the right actions cluster when the center bar does not fit. */
-export function MobileShellSearchIconButton({
-  value,
-  label,
-  onOpen,
-}: {
-  value: string
-  label: string
-  onOpen: () => void
-}) {
+export const MobileShellSearchIconButton = forwardRef<
+  HTMLButtonElement,
+  MobileSearchTriggerProps
+>(function MobileShellSearchIconButton({ value, label, onOpen }, ref) {
   return (
     // Wrap so Safari's `button { display: inline-flex }` cannot override md:hidden.
     <div className="md:hidden">
       <button
+        ref={ref}
         type="button"
         onClick={onOpen}
         className={`relative ${shellClasses.iconButton} !bg-muted/50 hover:!bg-muted/80`}
@@ -138,7 +136,7 @@ export function MobileShellSearchIconButton({
       </button>
     </div>
   )
-}
+})
 
 /** Full-width search that replaces the mobile header contents. */
 export function MobileShellSearchExpanded({

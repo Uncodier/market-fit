@@ -60,7 +60,7 @@ export function FilterSection({
       desktopOnly && "max-md:hidden",
       className
     )}>
-      {title && <span className="text-[11px] font-bold text-muted-foreground/80 md:hidden uppercase tracking-wider">{title}</span>}
+      {title && <span className="text-[11px] font-bold text-muted-foreground md:hidden uppercase tracking-wider">{title}</span>}
       {children}
       {helper && <p className="text-xs text-muted-foreground mt-1 md:hidden">{helper}</p>}
     </div>

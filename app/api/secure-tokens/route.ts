@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import CryptoJS from 'crypto-js';
+import { requireSiteAccess } from '@/lib/auth/api-site-access';
 
 // La clave de encriptación fija para tokens legacy (o usar la de entorno si existe)
 const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY || 'Encryption-key';
@@ -9,6 +10,8 @@ const LEGACY_ENCRYPTION_KEY = process.env.LEGACY_ENCRYPTION_KEY || 'Encryption-k
 // Cliente de Supabase con rol de servicio
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+const SUPPORTED_OPERATIONS = new Set(['store', 'verify', 'retrieve', 'check', 'delete']);
+const MANAGER_OPERATIONS = new Set(['store', 'retrieve', 'delete']);
 
 export async function POST(req: NextRequest) {
   try {
@@ -33,7 +36,21 @@ export async function POST(req: NextRequest) {
         { status: 400 }
       );
     }
-    
+
+    if (!SUPPORTED_OPERATIONS.has(operation)) {
+      return NextResponse.json(
+        { error: 'Invalid operation' },
+        { status: 400 }
+      );
+    }
+
+    const access = await requireSiteAccess(req, siteId, {
+      requireManager: MANAGER_OPERATIONS.has(operation),
+    });
+    if (access.error) {
+      return access.error;
+    }
+
     console.log(`Processing ${operation} operation for site ${siteId}, type ${tokenType}`);
     
     // Crear cliente de Supabase con rol de servicio
@@ -324,12 +341,6 @@ export async function POST(req: NextRequest) {
       }
     }
     
-    else {
-      return NextResponse.json(
-        { error: 'Invalid operation' },
-        { status: 400 }
-      );
-    }
   } catch (error: any) {
     console.error('General error:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });

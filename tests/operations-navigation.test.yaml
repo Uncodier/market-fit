@@ -13,25 +13,25 @@ statements:
   # Operations
   - URL: /chat
   - VERIFY: The page has loaded successfully
-    js: expect(page).not.toHaveTitle(/500|Error/i)
+    js: await expect(page).not.toHaveTitle(/500|Error/i)
   - URL: /records
   - VERIFY: The page has loaded successfully
-    js: expect(page).not.toHaveTitle(/500|Error/i)
+    js: await expect(page).not.toHaveTitle(/500|Error/i)
   - URL: /orders
   - VERIFY: The page has loaded successfully
-    js: expect(page).not.toHaveTitle(/500|Error/i)
+    js: await expect(page).not.toHaveTitle(/500|Error/i)
   - URL: /shipments
   - VERIFY: The page has loaded successfully
-    js: expect(page).not.toHaveTitle(/500|Error/i)
+    js: await expect(page).not.toHaveTitle(/500|Error/i)
   - URL: /control-center
   - VERIFY: The page has loaded successfully
-    js: expect(page).not.toHaveTitle(/500|Error/i)
+    js: await expect(page).not.toHaveTitle(/500|Error/i)
   - URL: /reservations
   - VERIFY: The page has loaded successfully
-    js: expect(page).not.toHaveTitle(/500|Error/i)
+    js: await expect(page).not.toHaveTitle(/500|Error/i)
   - URL: /visits
   - VERIFY: The page has loaded successfully
-    js: expect(page).not.toHaveTitle(/500|Error/i)
+    js: await expect(page).not.toHaveTitle(/500|Error/i)
   - URL: /inventory
   - VERIFY: The page has loaded successfully
-    js: expect(page).not.toHaveTitle(/500|Error/i)
+    js: await expect(page).not.toHaveTitle(/500|Error/i)

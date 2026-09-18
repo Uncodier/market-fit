@@ -1,133 +1,47 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { createServiceClient } from "@/lib/supabase/server"
+import { NextRequest, NextResponse } from "next/server"
+import { z } from "zod"
+import { createClient } from "@/lib/supabase/server"
+import { processRecordEmbeddingsById } from "@/app/records/lib/record-embedding-worker"
+
+const bodySchema = z.object({
+  record_id: z.string().uuid(),
+  changed_node_ids: z.array(z.string().uuid()).max(200).optional(),
+}).strict()
+
+export const maxDuration = 60
 
 export async function POST(request: NextRequest) {
   try {
-    const { record_id } = await request.json()
-
-    if (!record_id) {
-      return NextResponse.json({ error: 'record_id is required' }, { status: 400 })
+    const input = bodySchema.parse(await request.json())
+    const supabase = await createClient()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user) {
+      return NextResponse.json({ error: "Not authenticated" }, { status: 401 })
     }
 
-    const supabase = await createServiceClient()
-
-    // 1. Fetch the record just to get the site_id and confirm it exists
     const { data: record, error: recordError } = await supabase
-      .from('records')
-      .select('site_id')
-      .eq('id', record_id)
-      .single()
-
-    if (recordError || !record) {
-      return NextResponse.json({ error: 'Record not found' }, { status: 404 })
+      .from("records")
+      .select("id")
+      .eq("id", input.record_id)
+      .maybeSingle()
+    if (recordError) throw recordError
+    if (!record) {
+      return NextResponse.json({ error: "Record not found" }, { status: 404 })
     }
 
-    const apiServerUrl = (process.env.NEXT_PUBLIC_API_SERVER_URL || process.env.API_SERVER_URL || '').trim();
-    const serviceApiKey = process.env.SERVICE_API_KEY?.trim();
-
-    if (!apiServerUrl) {
-      return NextResponse.json({ error: 'API_SERVER_URL is not configured' }, { status: 500 });
+    const result = await processRecordEmbeddingsById({
+      recordId: input.record_id,
+      requestedNodeIds: input.changed_node_ids,
+    })
+    return NextResponse.json({ success: true, ...result })
+  } catch (error) {
+    console.error("[record embedding]", error)
+    if (error instanceof z.ZodError) {
+      return NextResponse.json({ error: "Invalid embedding request" }, { status: 400 })
     }
-    if (!serviceApiKey) {
-      return NextResponse.json({ error: 'SERVICE_API_KEY is not configured' }, { status: 500 });
-    }
-
-    // We'll perform the heavy tasks in the background so we don't block the client
-    generateEmbeddingsInBackground(record_id, record.site_id, apiServerUrl, serviceApiKey).catch(
-      (err) => console.error("Background task failed:", err)
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Failed to index record" },
+      { status: 500 }
     )
-
-    // Return success immediately
-    return NextResponse.json({ success: true, message: 'Processing started in the background' })
-
-  } catch (error: any) {
-    console.error('Error in record embed API:', error)
-    return NextResponse.json({ error: error.message || 'Internal error' }, { status: 500 })
-  }
-}
-
-async function generateEmbeddingsInBackground(
-  record_id: string,
-  site_id: string,
-  apiServerUrl: string,
-  serviceApiKey: string
-) {
-  try {
-    const supabase = await createServiceClient()
-
-    // 2. Generate summary via the central API helper
-    const summaryEndpoint = `${apiServerUrl.replace(/\/$/, '')}/api/ai/summary`;
-    
-    const summaryResponse = await fetch(summaryEndpoint, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Accept: 'application/json',
-        'x-api-key': serviceApiKey,
-      },
-      body: JSON.stringify({
-        source: {
-          collection: 'records',
-          id: record_id
-        },
-        site_id: site_id
-      }),
-    });
-
-    if (!summaryResponse.ok) {
-      const errText = await summaryResponse.text();
-      console.error('Central API summary error:', errText);
-      return;
-    }
-
-    const summaryData = await summaryResponse.json();
-    const generatedSummary = summaryData.summary;
-
-    if (!generatedSummary) {
-      console.error('Central API summary returned no text:', summaryData);
-      return;
-    }
-
-    // 3. Generate the embedding via the central API using the generated summary
-    const embeddingsEndpoint = `${apiServerUrl.replace(/\/$/, '')}/api/ai/embeddings`;
-
-    const embeddingsResponse = await fetch(embeddingsEndpoint, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Accept: 'application/json',
-        'x-api-key': serviceApiKey,
-      },
-      body: JSON.stringify({
-        input: generatedSummary,
-        modelId: 'text-embedding-3-small',
-      }),
-    });
-
-    if (!embeddingsResponse.ok) {
-      const errText = await embeddingsResponse.text();
-      console.error('Central API embedding error:', errText);
-      return;
-    }
-
-    const embedData = await embeddingsResponse.json();
-    const embedding = embedData.embedding;
-
-    if (!embedding || !Array.isArray(embedding)) {
-      console.error('Central API embedding returned no values:', embedData);
-      return;
-    }
-
-    // 4. Update the record with both the summary and embedding
-    const { error: updateError } = await supabase
-      .from('records')
-      .update({ summary: generatedSummary, embedding })
-      .eq('id', record_id)
-
-    if (updateError) {
-      console.error('Failed to save summary and embedding:', updateError);
-    }
-  } catch (err) {
-    console.error('Unhandled background task error:', err);
   }
 }

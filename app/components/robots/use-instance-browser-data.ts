@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { WF_LOAD_NODE_TYPES } from "@/app/components/workflows/types"
-import type { InstanceMessages, InstanceStats, RobotInstance } from "./instance-browser-model"
+import type { InstanceMessages, InstanceStats } from "./instance-browser-model"
 
 const CHUNK_SIZE = 15
 const WF_TYPES = `(${WF_LOAD_NODE_TYPES.join(",")})`
@@ -16,7 +16,7 @@ function resolveAssetUrl(filePath?: string | null) {
   return data.publicUrl || null
 }
 
-export function useInstanceBrowserData(isOpen: boolean, instances: RobotInstance[]) {
+export function useInstanceBrowserData(isOpen: boolean, instances: Array<{ id: string }>) {
   const [instanceMessages, setInstanceMessages] = useState<Record<string, InstanceMessages>>({})
   const [instanceStats, setInstanceStats] = useState<Record<string, InstanceStats>>({})
   const [isLoadingStats, setIsLoadingStats] = useState(false)

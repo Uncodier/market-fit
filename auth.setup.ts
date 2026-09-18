@@ -1,24 +1,35 @@
+import { mkdir, rm } from 'node:fs/promises';
 import { test as setup } from '@playwright/test';
 
+const ADMIN_STORAGE_STATE_PATH = '.auth/admin.json';
+
 setup('authenticate admin', async ({ page }) => {
-  if (!process.env.TEST_ADMIN_EMAIL || !process.env.TEST_ADMIN_PASSWORD) {
-    console.warn('Skipping admin auth: TEST_ADMIN_EMAIL or TEST_ADMIN_PASSWORD not set in environment.');
-    return;
+  await rm(ADMIN_STORAGE_STATE_PATH, { force: true });
+
+  const email = process.env.TEST_ADMIN_EMAIL;
+  const password = process.env.TEST_ADMIN_PASSWORD;
+
+  if (!email || !password) {
+    const missingVariables = [
+      !email ? 'TEST_ADMIN_EMAIL' : null,
+      !password ? 'TEST_ADMIN_PASSWORD' : null,
+    ].filter(Boolean);
+    throw new Error(
+      `Admin E2E authentication requires ${missingVariables.join(' and ')}. ` +
+      `The stale ${ADMIN_STORAGE_STATE_PATH} state was removed.`,
+    );
   }
 
-  // Ir a la página de login
+  // Always create a fresh authenticated state for this run.
   await page.goto('/auth');
 
-  // Llenar el formulario (las cajas tienen name="email" y name="password" por react-hook-form)
-  await page.locator('input[name="email"]').fill(process.env.TEST_ADMIN_EMAIL);
-  await page.locator('input[name="password"]').fill(process.env.TEST_ADMIN_PASSWORD);
+  await page.locator('input[name="email"]').fill(email);
+  await page.locator('input[name="password"]').fill(password);
 
-  // El botón de enviar
   await page.getByRole('button', { name: /sign in|log in/i }).click();
 
-  // El redirect default tras el login en el app deployment es a /projects
   await page.waitForURL('**/projects*');
 
-  // Guardar la sesión
-  await page.context().storageState({ path: '.auth/admin.json' });
+  await mkdir('.auth', { recursive: true });
+  await page.context().storageState({ path: ADMIN_STORAGE_STATE_PATH });
 });

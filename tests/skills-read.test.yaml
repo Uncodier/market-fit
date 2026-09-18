@@ -1,0 +1,28 @@
+goal: Read and expand Code Agent skills
+
+statements:
+  - URL: /projects
+  - intent: Select the first available project
+    action: click
+    locator: "getByRole('button', { name: 'Select' }).first()"
+
+  - WAIT_UNTIL: The workspace is selected
+    js: "await page.url().includes('/robots')"
+    timeout_seconds: 10
+
+  - URL: /skills
+  - WAIT_UNTIL: Skills are ready
+    js: "await page.getByRole('heading', { name: 'Code agent skills' }).count() > 0"
+    timeout_seconds: 15
+
+  - VERIFY: Frontend Blog and SEO skill is listed
+    js: "await expect(page.getByText('Frontend Blog & SEO', { exact: true }).first()).toBeVisible()"
+
+  - description: Expand the Frontend Blog and SEO skill
+    js: "await page.locator('#skill-frontend-blog-seo button').first().click()"
+
+  - VERIFY: The expanded skill exposes its instructions
+    js: "await expect(page.locator('#skill-frontend-blog-seo pre')).toBeVisible()"
+
+  - VERIFY: Copy Skill remains available
+    js: "await expect(page.locator('#skill-frontend-blog-seo').getByRole('button', { name: 'Copy Skill' })).toBeVisible()"

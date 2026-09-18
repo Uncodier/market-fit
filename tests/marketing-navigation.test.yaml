@@ -13,16 +13,16 @@ statements:
   # Marketing
   - URL: /campaigns
   - VERIFY: The page has loaded successfully
-    js: expect(page).not.toHaveTitle(/500|Error/i)
+    js: await expect(page).not.toHaveTitle(/500|Error/i)
   - URL: /segments
   - VERIFY: The page has loaded successfully
-    js: expect(page).not.toHaveTitle(/500|Error/i)
+    js: await expect(page).not.toHaveTitle(/500|Error/i)
   - URL: /promotions
   - VERIFY: The page has loaded successfully
-    js: expect(page).not.toHaveTitle(/500|Error/i)
+    js: await expect(page).not.toHaveTitle(/500|Error/i)
   - URL: /content
   - VERIFY: The page has loaded successfully
-    js: expect(page).not.toHaveTitle(/500|Error/i)
+    js: await expect(page).not.toHaveTitle(/500|Error/i)
   - URL: /assets
   - VERIFY: The page has loaded successfully
-    js: expect(page).not.toHaveTitle(/500|Error/i)
+    js: await expect(page).not.toHaveTitle(/500|Error/i)

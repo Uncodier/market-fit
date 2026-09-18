@@ -1,143 +1,62 @@
 # Google Authentication Setup
 
-Este documento explica cómo configurar correctamente Google Authentication en Supabase para evitar errores PKCE como "code challenge does not match previously saved code verifier".
+Google sign-in is configured through Supabase Auth. The application initiates
+OAuth with an application callback at `/auth/callback`.
 
-## ⚠️ Problema Común: Error PKCE
+## Application environment
 
-Si ves el error `code challenge does not match previously saved code verifier`, significa que hay un problema con la configuración de las URLs de callback en Supabase.
-
-## 🛠️ Solución Paso a Paso
-
-### 1. Configurar URLs en Supabase Dashboard
-
-1. Ve a tu proyecto en [Supabase Dashboard](https://supabase.com/dashboard)
-2. Navega a **Authentication > URL Configuration**
-3. Configura estas URLs **exactamente**:
-
-#### Site URLs:
-```
-http://localhost:3000
-https://tu-dominio-produccion.com
-```
-
-#### Redirect URLs:
-```
-http://localhost:3000/auth/callback
-https://tu-dominio-produccion.com/auth/callback
-```
-
-⚠️ **CRÍTICO**: Las URLs deben coincidir **exactamente** con las que usa tu aplicación.
-
-### 2. Configurar Google OAuth Provider
-
-1. En Supabase Dashboard, ve a **Authentication > Providers**
-2. Encuentra "Google" y haz click en configurar
-3. Activa "Enable sign in with Google"
-4. Agrega tu **Client ID** y **Client Secret** de Google Cloud Console
-
-### 3. Configurar Variables de Entorno
-
-Asegúrate de tener estas variables en tu `.env.local`:
-
-```bash
-# URL de tu aplicación (REQUERIDA)
+```dotenv
 NEXT_PUBLIC_APP_URL=http://localhost:3000
-
-# Supabase
-NEXT_PUBLIC_SUPABASE_URL=tu_supabase_url
-NEXT_PUBLIC_SUPABASE_ANON_KEY=tu_supabase_anon_key
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
 ```
 
-### 4. Verificar Configuración de Google Cloud Console
+## Supabase configuration
 
-1. Ve a [Google Cloud Console](https://console.cloud.google.com/)
-2. Navega a **APIs & Services > Credentials**
-3. Edita tu OAuth 2.0 Client ID
-4. Agrega estas **Authorized redirect URIs**:
+In Supabase Dashboard:
 
-```
+1. Open **Authentication > Providers > Google**.
+2. Enable Google and enter the Google OAuth client ID and secret.
+3. Open **Authentication > URL Configuration**.
+4. Set the production Site URL.
+5. Add exact redirect URLs for each approved application origin:
+
+```text
 http://localhost:3000/auth/callback
-https://tu-dominio-produccion.com/auth/callback
-https://tu-proyecto.supabase.co/auth/v1/callback
+https://<production-origin>/auth/callback
 ```
 
-## 🔧 Cambios Implementados
+Avoid broad wildcard redirect patterns. Add preview origins only when the
+deployment workflow requires them and their trust implications are understood.
 
-Los siguientes cambios se han hecho en el código para prevenir errores PKCE:
+## Google Cloud configuration
 
-### 1. Limpieza de Estado de Autenticación
-```typescript
-// Limpiar estado antes de OAuth para evitar conflictos PKCE
-await supabase.auth.signOut({ scope: 'local' })
-await new Promise(resolve => setTimeout(resolve, 100))
+In the Google OAuth client, use Supabase's provider callback as an authorized
+redirect URI:
+
+```text
+https://<supabase-project-host>/auth/v1/callback
 ```
 
-### 2. URLs Consistentes
-Todas las configuraciones OAuth ahora usan `window.location.origin` para consistencia:
-```typescript
-redirectTo: `${window.location.origin}/auth/callback?returnTo=${encodeURIComponent(finalReturnTo)}`
-```
+The browser returns from Supabase to the application callback configured above.
+Do not substitute the application callback for the Google-to-Supabase callback.
 
-### 3. Manejo Mejorado de Errores PKCE
-```typescript
-if (error.message.includes('code verifier') || error.message.includes('code challenge')) {
-  setErrorMessage('Authentication session expired. Please try signing in again.')
-}
-```
+## Verification
 
-### 4. Limpieza de Cookies Problemáticas
-```typescript
-const cookiesToClear = [
-  'sb-auth-token',
-  'supabase-auth-token', 
-  'pkce_verifier',
-  'sb-provider-token'
-]
-```
+1. Start from a clean browser session.
+2. Sign in through the application.
+3. Confirm the callback exchanges the code and redirects only to an allowed
+   local path.
+4. Verify the session cookie is established.
+5. Repeat against every deployed origin configured in Supabase.
 
-## 🐛 Debugging
+If PKCE verification fails, first compare the actual browser origin and callback
+URL with Supabase configuration. Do not add cookie-clearing workarounds or
+disable PKCE without identifying the mismatch.
 
-### Logs a Revisar
+Relevant implementation:
 
-Busca estos logs en tu consola del navegador:
-
-```
-🧹 Clearing auth state before Google OAuth to prevent PKCE conflicts
-🔄 Starting Google OAuth flow with clean state
-✅ Google OAuth initiated successfully
-🔄 Attempting to exchange code for session
-✅ Auth callback success, session established for: usuario@email.com
-🎯 Redirecting to: /dashboard with session for user: usuario@email.com
-```
-
-### Errores Comunes y Soluciones
-
-| Error | Causa | Solución |
-|-------|--------|----------|
-| `code challenge does not match` | URLs de callback no coinciden | Verificar configuración en Supabase Dashboard |
-| `Invalid redirect URL` | URL no autorizada | Agregar URL a Redirect URLs en Supabase |
-| `OAuth provider error` | Configuración incorrecta de Google | Verificar Client ID/Secret en Supabase |
-| `Authentication failed - no session` | Problema en el callback | Revisar logs del servidor |
-
-## 🔍 Verificación Final
-
-Para verificar que todo funciona:
-
-1. **Abre la consola del navegador** (F12)
-2. **Intenta iniciar sesión con Google**
-3. **Verifica que veas los logs** con emojis como se muestra arriba
-4. **El usuario debe ser redirigido** al dashboard exitosamente
-
-Si sigues viendo errores PKCE después de seguir estos pasos, revisa que:
-- ✅ Las URLs en Supabase Dashboard sean exactas
-- ✅ Google Cloud Console tenga las URLs correctas
-- ✅ Las variables de entorno estén configuradas
-- ✅ No haya conflictos de cookies (prueba en incógnito)
-
-## 📞 Soporte Adicional
-
-Si el problema persiste:
-1. Verifica que las URLs no tengan caracteres extra o espacios
-2. Prueba en modo incógnito para descartar problemas de cookies
-3. Revisa los logs del servidor para más detalles
-4. Contacta soporte si el problema persiste después de verificar toda la configuración 
+- `app/components/auth/auth-form.tsx`
+- `app/hooks/use-auth.ts`
+- `app/auth/callback/route.ts`
+- `lib/auth/post-auth-redirect.ts`

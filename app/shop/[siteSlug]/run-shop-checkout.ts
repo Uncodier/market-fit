@@ -259,7 +259,7 @@ export async function runShopCheckout(params: {
       const shopReturn = window.location.origin + "/shop/" + siteSlug
       const stripeData = await createStripeOrderCheckout({
         orderId: res.orderId,
-        siteId,
+        publicAccessToken: res.publicAccessToken,
         returnUrl: shopReturn,
         successUrl: shopOrdersUrl,
       })

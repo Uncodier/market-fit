@@ -16,7 +16,7 @@ export default function PublicBillPage(props: {
   useEffect(() => {
     async function load() {
       const res = await getBillByPublicToken(params.token)
-      if (res.error || !res.data || !res.raw) {
+      if (res.error || !res.data) {
         setError(res.error || "Bill not found")
         return
       }
@@ -46,10 +46,10 @@ export default function PublicBillPage(props: {
           name: purchase.vendorName,
           email: purchase.vendorEmail,
         },
-        siteId: res.raw.site?.id || branding?.site?.id || purchase.siteId || null,
-        siteName: res.raw.site?.name || branding?.site?.name || "Bill",
-        siteUrl: res.raw.site?.url || branding?.site?.url,
-        logoUrl: res.raw.site?.logo_url || branding?.site?.logo_url,
+        siteId: purchase.site?.id || branding?.site?.id || null,
+        siteName: purchase.site?.name || branding?.site?.name || "Bill",
+        siteUrl: purchase.site?.url || branding?.site?.url,
+        logoUrl: purchase.site?.logo_url || branding?.site?.logo_url,
         location: branding?.location,
         locale,
         statusKind: "bills" as const,

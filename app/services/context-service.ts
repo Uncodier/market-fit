@@ -1,6 +1,10 @@
 "use client"
 
 import { createClient } from "@/lib/supabase/client"
+import {
+  boundRecordDiagramContext,
+  type RecordDiagramContext,
+} from "@/app/records/lib/record-diagram"
 
 export interface ContextData {
   leads: Array<{
@@ -99,7 +103,9 @@ export interface ContextData {
     status: string
     category?: { name: string } | null
     created_at: string
+    diagram?: RecordDiagramContext | null
   }>
+  recordContextOmittedIds: string[]
 }
 
 export interface SelectedContextIds {
@@ -125,7 +131,8 @@ export class ContextService {
       campaigns: [],
       quotations: [],
       deals: [],
-      records: []
+      records: [],
+      recordContextOmittedIds: [],
     }
 
     try {
@@ -306,6 +313,9 @@ export class ContextService {
 
       // Fetch Records
       if (selectedIds.records?.length > 0) {
+        const selectedRecordIds = [...new Set(selectedIds.records)]
+        const requestedRecordIds = selectedRecordIds.slice(0, 6)
+        results.recordContextOmittedIds = selectedRecordIds.slice(6)
         const { data: recordsData, error: recordsError } = await this.supabase
           .from('records')
           .select(`
@@ -314,18 +324,50 @@ export class ContextService {
             description,
             status,
             created_at,
-            category:record_categories(name)
+            category:record_categories!records_category_site_fkey(name)
           `)
           .eq('site_id', siteId)
-          .in('id', selectedIds.records)
+          .in('id', requestedRecordIds)
 
         if (recordsError) {
           console.error('Error fetching records:', recordsError)
         } else {
-          results.records = (recordsData || []).map((r: any) => ({
-            ...r,
-            category: r.category && !Array.isArray(r.category) ? { name: r.category.name } : null
+          const recordById = new Map((recordsData || []).map((record: any) => [record.id, record]))
+          const boundedRecords = requestedRecordIds.flatMap((id) => {
+            const record = recordById.get(id)
+            return record ? [record] : []
+          })
+          const diagrams = await Promise.all(boundedRecords.map(async (record: any) => {
+            const { data, error } = await this.supabase
+              .rpc('get_record_diagram_context', {
+                p_record_id: record.id,
+                p_node_limit: 12,
+                p_content_limit: 800,
+                p_edge_limit: 24,
+              })
+            if (error) {
+              console.error(`Error fetching diagram context for record ${record.id}:`, error)
+              return null
+            }
+            return data
+              ? boundRecordDiagramContext(data as RecordDiagramContext, {
+                  maxNodes: 12,
+                  maxEdges: 24,
+                  maxContentLength: 800,
+                })
+              : null
           }))
+          results.records = boundedRecords.map((record: any, index) => ({
+            ...record,
+            category: record.category && !Array.isArray(record.category)
+              ? { name: record.category.name }
+              : null,
+            diagram: diagrams[index],
+          }))
+          const returnedIds = new Set(boundedRecords.map((record: any) => record.id))
+          results.recordContextOmittedIds.push(
+            ...requestedRecordIds.filter((id) => !returnedIds.has(id))
+          )
         }
       }
 

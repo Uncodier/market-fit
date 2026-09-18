@@ -28,6 +28,7 @@ describe("processPostPaymentFulfillment", () => {
   let catalogChain: any;
   let inventoryChain: any;
   let salesChain: any;
+  let shipmentsChain: any;
 
   const createChainable = () => {
     const chainable: any = {};
@@ -35,10 +36,12 @@ describe("processPostPaymentFulfillment", () => {
     chainable.update = jest.fn().mockReturnValue(chainable);
     chainable.insert = jest.fn().mockReturnValue(chainable);
     chainable.eq = jest.fn().mockReturnValue(chainable);
+    chainable.neq = jest.fn().mockReturnValue(chainable);
     chainable.in = jest.fn().mockReturnValue(chainable);
     chainable.order = jest.fn().mockReturnValue(chainable);
     chainable.limit = jest.fn().mockReturnValue(chainable);
     chainable.single = jest.fn();
+    chainable.maybeSingle = jest.fn();
     return chainable;
   };
 
@@ -52,6 +55,11 @@ describe("processPostPaymentFulfillment", () => {
     catalogChain = createChainable();
     inventoryChain = createChainable();
     salesChain = createChainable();
+    shipmentsChain = createChainable();
+    shipmentsChain.maybeSingle.mockResolvedValue({
+      data: null,
+      error: null,
+    });
     salesChain.single.mockResolvedValue({
       data: { lead_id: "lead-1", source: "shop", amount: 20 },
     });
@@ -65,8 +73,10 @@ describe("processPostPaymentFulfillment", () => {
         if (table === "catalog_items") return catalogChain;
         if (table === "inventory_levels") return inventoryChain;
         if (table === "sales") return salesChain;
+        if (table === "shipments") return shipmentsChain;
         return createChainable();
-      })
+      }),
+      rpc: jest.fn(),
     };
 
     const { createServiceClient } = require("../../lib/supabase/server");
@@ -156,5 +166,41 @@ describe("processPostPaymentFulfillment", () => {
       location_id: "loc-123",
       quantity: 0
     }));
+  });
+
+  it("reuses shipment and delegates Stripe inventory to the idempotent RPC", async () => {
+    setupOrder("ship", [{ id: "cat-4", quantity: 2 }], true);
+    shipmentsChain.maybeSingle.mockResolvedValue({
+      data: { id: "ship-existing" },
+      error: null,
+    });
+    mockSupabase.rpc.mockResolvedValue({
+      data: { status: "already_completed" },
+      error: null,
+    });
+
+    await processPostPaymentFulfillment(
+      "order-4",
+      "site-1",
+      "sale-1",
+      "lead-1",
+      "user-1",
+      {
+        stripeSessionId: "cs_retry",
+        fulfillmentClaimToken: "claim-1",
+      },
+    );
+
+    expect(createShipment).not.toHaveBeenCalled();
+    expect(mockSupabase.rpc).toHaveBeenCalledWith(
+      "apply_stripe_sale_inventory_effect",
+      {
+        p_sale_id: "sale-1",
+        p_order_id: "order-4",
+        p_session_id: "cs_retry",
+        p_claim_token: "claim-1",
+      },
+    );
+    expect(inventoryChain.update).not.toHaveBeenCalled();
   });
 });

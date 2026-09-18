@@ -6,7 +6,7 @@ export function ShopSlugNotFound({ slug }: { slug?: string }) {
   const slugLabel = slug?.trim()
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-[#fafafa] font-sans text-gray-900">
+    <main className="flex items-center justify-center min-h-screen bg-[#fafafa] font-sans text-gray-900">
       <div className="text-center px-6 py-16 max-w-md">
         <div className="flex justify-center mb-6">
           <div className="relative">
@@ -43,6 +43,6 @@ export function ShopSlugNotFound({ slug }: { slug?: string }) {
           </Button>
         </div>
       </div>
-    </div>
+    </main>
   )
 }

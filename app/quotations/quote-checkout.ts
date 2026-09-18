@@ -28,6 +28,11 @@ export type QuotationCheckoutGate =
   | { ok: true }
   | { ok: false; error: string }
 
+export type QuotationCheckoutClaim =
+  | { state: "claimed"; saleId?: string | null; orderId?: string | null }
+  | { state: "completed"; saleId: string; orderId: string }
+  | { state: "error"; error: string }
+
 export function isQuotationExpired(
   validUntil: string | null | undefined,
   now: Date = new Date()
@@ -63,15 +68,9 @@ export function assertQuotationCheckoutable(
     if (!opts.buyerUserId) {
       return { ok: false, error: "You must be logged in to checkout this quote" }
     }
-    if (quote.buyer_user_id && quote.buyer_user_id !== opts.buyerUserId) {
+    if (!quote.buyer_user_id || quote.buyer_user_id !== opts.buyerUserId) {
       return { ok: false, error: "You are not authorized to checkout this quote" }
     }
-  } else if (
-    opts.buyerUserId &&
-    quote.buyer_user_id &&
-    quote.buyer_user_id !== opts.buyerUserId
-  ) {
-    return { ok: false, error: "You are not authorized to checkout this quote" }
   }
   if (opts.requireItems !== false && (!quote.items || quote.items.length === 0)) {
     return { ok: false, error: "Quotation has no items" }
@@ -94,15 +93,9 @@ export function assertQuotationRejectable(
     if (!opts.buyerUserId) {
       return { ok: false, error: "You must be logged in to reject this quote" }
     }
-    if (quote.buyer_user_id && quote.buyer_user_id !== opts.buyerUserId) {
+    if (!quote.buyer_user_id || quote.buyer_user_id !== opts.buyerUserId) {
       return { ok: false, error: "You are not authorized to reject this quote" }
     }
-  } else if (
-    opts.buyerUserId &&
-    quote.buyer_user_id &&
-    quote.buyer_user_id !== opts.buyerUserId
-  ) {
-    return { ok: false, error: "You are not authorized to reject this quote" }
   }
   return { ok: true }
 }
@@ -175,25 +168,102 @@ export function buildQuoteCheckoutPath(params: {
   return `/cart/checkout?${search.toString()}`
 }
 
-export async function markQuotationAccepted(
-  supabase: {
-    from: (table: string) => any
-  },
-  quote: Pick<QuotationForCheckout, "id" | "deal_id" | "total">,
-  saleId: string
-): Promise<void> {
-  await supabase.from("quotations").update({ status: "accepted" }).eq("id", quote.id)
+function firstRpcRow<T>(data: T | T[] | null): T | null {
+  return Array.isArray(data) ? data[0] || null : data
+}
 
-  if (quote.deal_id) {
-    await supabase
-      .from("deals")
-      .update({
-        stage: "closed_won",
-        status: "won",
-        accepted_quotation_id: quote.id,
-        amount: quote.total,
-        sales_order_id: saleId,
-      })
-      .eq("id", quote.deal_id)
+export async function claimQuotationCheckout(
+  supabase: {
+    rpc: (name: string, params: Record<string, unknown>) => Promise<{
+      data: unknown
+      error: { message?: string } | null
+    }>
+  },
+  params: {
+    quotationId: string
+    siteId: string
+    claimId: string
+    buyerUserId?: string | null
+    publicAccessToken?: string | null
+  }
+): Promise<QuotationCheckoutClaim> {
+  const { data, error } = await supabase.rpc("claim_quotation_checkout", {
+    p_quotation_id: params.quotationId,
+    p_site_id: params.siteId,
+    p_claim_id: params.claimId,
+    p_buyer_user_id: params.buyerUserId || null,
+    p_public_access_token: params.publicAccessToken || null,
+  })
+
+  if (error) {
+    return { state: "error", error: error.message || "Failed to claim quotation" }
+  }
+
+  const row = firstRpcRow(data as {
+    result?: string
+    sale_id?: string | null
+    order_id?: string | null
+  } | null)
+
+  if (row?.result === "claimed") {
+    return { state: "claimed", saleId: row.sale_id, orderId: row.order_id }
+  }
+  if (row?.result === "completed" && row.sale_id && row.order_id) {
+    return { state: "completed", saleId: row.sale_id, orderId: row.order_id }
+  }
+
+  const messages: Record<string, string> = {
+    busy: "Quotation checkout is already in progress",
+    expired: "Quotation has expired",
+    not_found: "Quotation not found",
+    unavailable: "Quotation is no longer available",
+    unauthorized: "You are not authorized to checkout this quote",
+  }
+  return {
+    state: "error",
+    error: messages[row?.result || ""] || "Failed to claim quotation",
+  }
+}
+
+export async function completeQuotationCheckout(
+  supabase: {
+    rpc: (name: string, params: Record<string, unknown>) => Promise<{
+      data: unknown
+      error: { message?: string } | null
+    }>
+  },
+  params: {
+    quotationId: string
+    claimId: string
+    saleId: string
+    orderId: string
+  }
+): Promise<{ success: true } | { error: string }> {
+  const { data, error } = await supabase.rpc("complete_quotation_checkout", {
+    p_quotation_id: params.quotationId,
+    p_claim_id: params.claimId,
+    p_sale_id: params.saleId,
+    p_order_id: params.orderId,
+  })
+
+  if (error) return { error: error.message || "Failed to accept quotation" }
+  if (data !== true) return { error: "Quotation is no longer available" }
+  return { success: true }
+}
+
+export async function releaseQuotationCheckoutClaim(
+  supabase: {
+    rpc: (name: string, params: Record<string, unknown>) => Promise<unknown>
+  },
+  quotationId: string,
+  claimId: string
+): Promise<void> {
+  try {
+    await supabase.rpc("release_quotation_checkout_claim", {
+      p_quotation_id: quotationId,
+      p_claim_id: claimId,
+    })
+  } catch (error) {
+    console.error("Failed to release quotation checkout claim:", error)
   }
 }

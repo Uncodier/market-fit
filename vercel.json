@@ -7,5 +7,11 @@
   },
   "framework": "nextjs",
   "regions": ["cdg1"],
+  "crons": [
+    {
+      "path": "/api/cron/record-embeddings",
+      "schedule": "*/5 * * * *"
+    }
+  ],
   "buildCommand": "npm run build"
 } 

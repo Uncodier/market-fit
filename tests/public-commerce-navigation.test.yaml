@@ -1,0 +1,35 @@
+goal: Smoke test public commerce and storefront routes
+
+statements:
+  - URL: /marketplace
+  - VERIFY: Marketplace renders its product catalog
+    js: |
+      await expect(page).toHaveURL(/\/marketplace$/);
+      await expect(page).toHaveTitle(/Marketplace/);
+
+  - description: Navigate to the seeded marketplace item
+    js: "await page.goto('/marketplace/ee5d191a-9510-4723-8ec1-ca5ade5e8d28', { waitUntil: 'domcontentloaded', timeout: 60000 })"
+  - VERIFY: The seeded marketplace item is rendered
+    js: |
+      await expect(page).toHaveURL(/\/marketplace\/ee5d191a-9510-4723-8ec1-ca5ade5e8d28$/);
+      await expect(page.getByRole('heading', { name: 'Reservable Item Agent' })).toBeVisible();
+
+  - description: Navigate to the seeded storefront
+    js: "await page.goto('/shop/dea92504-319d-4950-943f-503280f1727c', { waitUntil: 'domcontentloaded', timeout: 60000 })"
+  - VERIFY: The seeded storefront is rendered
+    js: |
+      await expect(page).toHaveURL(/\/shop\/dea92504-319d-4950-943f-503280f1727c(?:\?|$)/);
+      await expect(page.getByText('Reservable Item Agent', { exact: true }).first()).toBeVisible();
+
+  - description: Navigate to the storefront privacy policy
+    js: "await page.goto('/shop/dea92504-319d-4950-943f-503280f1727c/privacy', { waitUntil: 'domcontentloaded', timeout: 60000 })"
+  - VERIFY: Storefront privacy policy is rendered
+    js: |
+      await expect(page).toHaveURL(/\/shop\/dea92504-319d-4950-943f-503280f1727c\/privacy$/);
+      await expect(page.getByRole('heading', { name: 'Privacy Policy', exact: true })).toBeVisible();
+
+  - description: Navigate to checkout with an empty cart
+    js: "await page.goto('/cart/checkout', { waitUntil: 'domcontentloaded', timeout: 60000 })"
+  - VERIFY: Empty-cart checkout stays on the checkout route
+    js: |
+      await expect(page).toHaveURL(/\/cart\/checkout$/);

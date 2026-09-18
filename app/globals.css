@@ -931,12 +931,10 @@ button.rounded-full:not(.bg-primary):not(.btn-primary):not([role="switch"]), but
 }
 
 button.rounded-full:not(.bg-primary):not(.btn-primary):not([role="switch"]):hover, button.rounded-xl:not(.bg-primary):not(.btn-primary):hover {
-  transform: none;
   background-color: rgba(0, 0, 0, 0.05);
 }
 
 button.rounded-full:not(.bg-primary):not(.btn-primary):not([role="switch"]):active, button.rounded-xl:not(.bg-primary):not(.btn-primary):active {
-  transform: none;
   background-color: rgba(0, 0, 0, 0.1);
 }
 

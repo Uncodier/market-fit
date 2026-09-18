@@ -1,172 +1,120 @@
-# Stripe Integration Setup
+# Stripe Setup
 
-Esta documentación explica cómo configurar la integración con Stripe para el checkout de créditos y suscripciones.
+This application uses Stripe for subscriptions, credit purchases, commerce
+orders, sale settlement, refunds, and disputes.
 
-## Variables de Entorno
+## Environment
 
-Añadir las siguientes variables al archivo `.env.local`:
+Configure matching test or live values:
 
-```bash
-# Stripe Keys
-STRIPE_SECRET_KEY=sk_test_...
-NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_...
-STRIPE_WEBHOOK_SECRET=whsec_...
-
-# Stripe Price IDs para suscripciones
-STRIPE_STARTER_PRICE_ID=price_1UBn8dIFbIhqNGTbYqsD5GGQ
-STRIPE_STARTUP_PRICE_ID=price_...
-STRIPE_ENTERPRISE_PRICE_ID=price_...
-STRIPE_ACCOUNT_ADDON_PRICE_ID=price_1UBn8eIFbIhqNGTbNI7d4FAj
+```dotenv
+STRIPE_SECRET_KEY=
+NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=
+STRIPE_WEBHOOK_SECRET=
+STRIPE_STARTER_PRICE_ID=
+STRIPE_STARTUP_PRICE_ID=
+STRIPE_ENTERPRISE_PRICE_ID=
+STRIPE_ACCOUNT_ADDON_PRICE_ID=
+CHECKOUT_RETURN_ORIGINS=
 ```
 
-## Configuración en Stripe Dashboard
+Do not mix test and live keys, prices, customers, or webhook secrets.
 
-### 1. Crear Productos y Precios
+## Checkout routes
 
-#### Productos de Suscripción:
-- **Starter Plan**: $23/mes (1 account, 20 credits/mo)
-- **Startup Plan**: $99/mes (3 accounts, 100 credits/mo)
-- **Enterprise Plan**: $500/mes (10 accounts, 500 credits/mo)
-- **Account Addon**: $10/mes (1 extra account, 5 extra credits/mo)
+The implemented Stripe routes are:
 
-#### Productos de Créditos (one-time payments):
-- **20 Credits**: $20
-- **52 Credits**: $49.25
-- **515 Credits**: $500
+- `POST /api/stripe/checkout/credits`
+- `POST /api/stripe/checkout/subscription`
+- `POST /api/stripe/checkout/order`
+- `POST /api/stripe/checkout/sale`
+- `POST /api/stripe/webhook`
+- payment-method, customer-portal, and invoice URL routes under
+  `app/api/stripe/`
 
-### 2. Configurar Webhooks
+Checkout routes must authenticate or validate their public checkout context,
+load trusted prices and ownership from server-side records, and restrict return
+URLs. Do not accept a browser-supplied amount as authoritative.
 
-URL del webhook: `https://tu-dominio.com/api/stripe/webhook`
+### Legacy route warning
 
-Eventos a escuchar:
+The subscription, credits, portal, and payment-method routes predate the
+hardened order/sale checkout flow. They currently accept some client-provided
+site, identity, amount, or return URL fields and do not consistently use
+`requireSiteAccess()` or the checkout URL allowlist:
+
+- `app/api/stripe/checkout/subscription/route.ts`
+- `app/api/stripe/checkout/credits/route.ts`
+- `app/api/stripe/portal/route.ts`
+- `app/api/stripe/payment-method/route.ts`
+
+Treat these as security debt, not examples for new routes. Any change should
+first add focused authorization and input-validation tests, then migrate the
+route to trusted server-owned values and exact-origin return URLs.
+
+## Webhook endpoint
+
+Create a Stripe webhook endpoint for:
+
+```text
+https://<application-origin>/api/stripe/webhook
+```
+
+Subscribe it to the event types handled by
+`app/api/stripe/webhook/billing-event-handlers.ts` and
+`app/api/stripe/webhook/checkout-session-handler.ts`:
+
 - `checkout.session.completed`
 - `customer.subscription.created`
-- `customer.subscription.updated` 
+- `customer.subscription.updated`
 - `customer.subscription.deleted`
 - `invoice.payment_succeeded`
+- `invoice.payment_failed`
+- `charge.refunded`
+- `charge.dispute.created`
+- `payment_intent.payment_failed`
 
-### 3. Configurar URLs de Retorno
+If handlers change, update the Stripe endpoint configuration and this list in
+the same release.
 
-- **Success URL**: `https://tu-dominio.com/billing/success`
-- **Cancel URL**: `https://tu-dominio.com/billing`
+Copy the endpoint's signing secret into `STRIPE_WEBHOOK_SECRET`. Test and
+production endpoints have different signing secrets.
 
-## Funcionalidades Implementadas
+## Local webhook testing
 
-### 1. Checkout de Créditos (`/checkout`)
-- Selección de paquetes de créditos
-- Checkout seguro vía Stripe
-- Actualización automática de créditos después del pago
-- Página de confirmación
+Install and authenticate the Stripe CLI, then forward events:
 
-### 2. Checkout de Suscripciones
-- Planes Startup y Enterprise
-- Gestión automática de suscripciones
-- Renovación automática
-- Actualización de estado vía webhooks
-
-### 3. Webhook de Stripe (`/api/stripe/webhook`)
-- Procesamiento automático de pagos exitosos
-- Actualización de créditos en la base de datos
-- Registro de transacciones
-- Gestión de estados de suscripción
-
-### 4. Base de Datos
-
-#### Tabla `billing`:
-- Información del cliente en Stripe
-- Estado de suscripción
-- Créditos disponibles
-- Plan actual
-
-#### Tabla `payments`:
-- Historial de pagos
-- Tipos: `credits_purchase`, `subscription`
-- Metadatos de Stripe
-
-## APIs Creadas
-
-### `POST /api/stripe/checkout/credits`
-Crea sesión de Stripe Checkout para compra de créditos.
-
-**Parámetros:**
-```json
-{
-  "credits": 20,
-  "amount": 20,
-  "siteId": "uuid",
-  "userEmail": "user@example.com",
-  "successUrl": "https://...",
-  "cancelUrl": "https://..."
-}
-```
-
-### `POST /api/stripe/checkout/subscription`
-Crea sesión de Stripe Checkout para suscripciones.
-
-**Parámetros:**
-```json
-{
-  "plan": "startup",
-  "siteId": "uuid", 
-  "userEmail": "user@example.com",
-  "successUrl": "https://...",
-  "cancelUrl": "https://..."
-}
-```
-
-### `POST /api/stripe/webhook`
-Procesa eventos de Stripe automáticamente.
-
-## Funciones de Supabase
-
-### `add_credits(p_site_id, p_credits)`
-Añade créditos a la cuenta de un sitio.
-
-### `upsert_billing(...)`
-Actualiza o crea información de facturación.
-
-## Flujo de Usuario
-
-### Compra de Créditos:
-1. Usuario selecciona paquete en `/billing`
-2. Redirige a `/checkout?credits=20`
-3. Clic en "Purchase Credits" → Stripe Checkout
-4. Pago exitoso → Webhook actualiza créditos
-5. Redirige a `/billing/success`
-
-### Suscripción:
-1. Usuario selecciona plan en `/billing`
-2. Clic en "Save Billing Info" → Stripe Checkout
-3. Pago exitoso → Webhook actualiza suscripción
-4. Redirige a `/billing/success`
-
-## Seguridad
-
-- ✅ No se almacenan datos de tarjetas en la base de datos
-- ✅ Toda la información sensible se maneja en Stripe
-- ✅ Webhooks verificados con firma de Stripe
-- ✅ RLS policies en Supabase para proteger datos
-- ✅ Validación de paquetes de créditos en servidor
-
-## Testing
-
-Para probar en modo desarrollo:
-1. Usar claves de test de Stripe (`sk_test_...`, `pk_test_...`)
-2. Usar números de tarjeta de prueba de Stripe
-3. Configurar webhook con ngrok o similar para desarrollo local
-
-## Monitoreo
-
-- Logs en Stripe Dashboard para pagos
-- Logs en aplicación para webhooks
-- Tabla `payments` para auditoría
-- Métricas de conversión en Stripe
-
-## Migración
-
-Ejecutar la migración SQL:
 ```bash
-psql -f migrations/stripe_billing_functions.sql
+stripe listen --forward-to localhost:3000/api/stripe/webhook
 ```
 
-O aplicar directamente en Supabase Dashboard. 
+Use the temporary `whsec_...` printed by the CLI in local `.env.local`. Restart
+the development server after changing environment variables.
+
+## Database prerequisites
+
+Stripe handling depends on database functions, uniqueness constraints, delivery
+claims, and settlement-effect state created by timestamped migrations in
+`supabase/migrations/`. Confirm the target environment has the required
+migrations before deploying dependent application code.
+
+Do not apply migrations from this guide. Follow
+[Database migrations](DATABASE_MIGRATIONS.md).
+
+## Verification
+
+Use Stripe test mode and verify:
+
+1. Checkout rejects an unauthenticated or unauthorized site operation.
+2. Client-provided prices, identity, and untrusted return URLs are rejected.
+3. A paid checkout settles exactly once.
+4. Duplicate and concurrent webhook deliveries do not duplicate effects.
+5. Failed processing can be retried safely.
+6. Full refunds and disputes reverse the intended sale effects once.
+7. Logs contain event IDs but no secrets or unnecessary customer payloads.
+
+Relevant regression tests are located under `__tests__/api/` and
+`__tests__/commerce/`.
+
+See [Stripe webhook security](STRIPE_WEBHOOK_SECURITY.md) and
+[Security](SECURITY.md) for invariants that must be preserved.

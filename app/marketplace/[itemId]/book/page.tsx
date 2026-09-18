@@ -34,11 +34,11 @@ export default function MarketplaceBookingPage(props: { params: Promise<{ itemId
   }, [item])
 
   if (isLoading) {
-    return <div className="min-h-screen flex items-center justify-center bg-muted/20">Loading...</div>
+    return <main className="min-h-screen flex items-center justify-center bg-muted/20">Loading...</main>
   }
 
   if (!item) {
-    return <div className="min-h-screen flex items-center justify-center bg-muted/20">Item not found</div>
+    return <main className="min-h-screen flex items-center justify-center bg-muted/20">Item not found</main>
   }
 
   const handleCartAdd = (startIso: string, endIso: string, available?: number) => {

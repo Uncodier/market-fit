@@ -1,0 +1,44 @@
+goal: Smoke test the authenticated Buyer workspace
+
+statements:
+  - URL: /buyer
+  - VERIFY: Buyer home renders the Buyer workspace
+    js: |
+      await expect(page).toHaveURL(/\/buyer$/);
+      await expect(page.locator('main').first()).toBeVisible();
+      await expect(page.locator('input[name="email"]')).toHaveCount(0);
+
+  - URL: /buyer/orders
+  - VERIFY: Buyer orders remain in the Buyer workspace
+    js: |
+      await expect(page).toHaveURL(/\/buyer\/orders$/);
+      await expect(page.locator('main').first()).toBeVisible();
+      await expect(page.locator('input[name="email"]')).toHaveCount(0);
+
+  - URL: /buyer/subscriptions
+  - VERIFY: Buyer subscriptions remain in the Buyer workspace
+    js: |
+      await expect(page).toHaveURL(/\/buyer\/subscriptions$/);
+      await expect(page.locator('main').first()).toBeVisible();
+      await expect(page.locator('input[name="email"]')).toHaveCount(0);
+
+  - URL: /buyer/quotes
+  - VERIFY: Buyer quotes remain in the Buyer workspace
+    js: |
+      await expect(page).toHaveURL(/\/buyer\/quotes$/);
+      await expect(page.locator('main').first()).toBeVisible();
+      await expect(page.locator('input[name="email"]')).toHaveCount(0);
+
+  - URL: /buyer/library
+  - VERIFY: Buyer library remains in the Buyer workspace
+    js: |
+      await expect(page).toHaveURL(/\/buyer\/library$/);
+      await expect(page.locator('main').first()).toBeVisible();
+      await expect(page.locator('input[name="email"]')).toHaveCount(0);
+
+  - URL: /buyer/profile
+  - VERIFY: Buyer profile remains in the Buyer workspace
+    js: |
+      await expect(page).toHaveURL(/\/buyer\/profile$/);
+      await expect(page.locator('main').first()).toBeVisible();
+      await expect(page.locator('input[name="email"]')).toHaveCount(0);

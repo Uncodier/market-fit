@@ -51,6 +51,7 @@ import { uploadAssetFile } from "@/app/assets/actions"
 import { AnimatedConnectionLine } from "./animated-connection-line"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
 import { ImprentaContextTypeSelect } from "@/app/components/agents/imprenta-context-type-select"
+import { ScreenAnchoredPanel } from "@/app/components/ui/screen-anchored-panel"
 import { Switch } from "@/app/components/ui/switch"
 import { Textarea } from "@/app/components/ui/textarea"
 import { MediaParametersToolbar } from "../simple-messages-view/components/MediaParametersToolbar"
@@ -2044,6 +2045,7 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
   const [draggingNodeId, setDraggingNodeId] = useState<string | null>(null)
   const [contexts, setContexts] = useState<any[]>([])
   const [selectedContextId, setSelectedContextId] = useState<string | null>(null)
+  const [selectedContextAnchor, setSelectedContextAnchor] = useState<{ x: number; y: number } | null>(null)
   /** Drives stronger strokes on context + parent-chain edges while a card is hovered. */
 
   const [tempConnection, setTempConnection] = useState<{ fromNode: string } | null>(null)
@@ -3547,6 +3549,7 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
       setContexts(prev => prev.filter(c => c.id !== contextId));
       if (selectedContextId === contextId) {
         setSelectedContextId(null);
+        setSelectedContextAnchor(null);
       }
     } catch (e) {
       console.error(e);
@@ -4282,7 +4285,10 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
               id="imprenta-canvas-content" 
               className="relative"
               data-imprenta-connecting={tempConnection ? "true" : undefined}
-              onClick={() => setSelectedContextId(null)}
+              onClick={() => {
+                setSelectedContextId(null)
+                setSelectedContextAnchor(null)
+              }}
             >
                   {/* Parent edges are drawn by the viewport-sized canvas mounted in screenSpaceBehind. */}
 
@@ -4293,7 +4299,10 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
                     positions={positions}
                     nodeHeightsRef={nodeHeightsRef}
                     selectedContextId={selectedContextId}
-                    setSelectedContextId={setSelectedContextId}
+                    onSelectContext={(id, anchor) => {
+                      setSelectedContextId(id)
+                      setSelectedContextAnchor(anchor || null)
+                    }}
                     hoverStore={hoverStore}
                   />
 
@@ -4334,42 +4343,39 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
                             onClick={(e) => {
                               e.stopPropagation()
                               setSelectedContextId(ctx.id)
+                              setSelectedContextAnchor({ x: e.clientX, y: e.clientY })
                             }}
                           >
                             {getPublishContextEdgeCaption(targetNodeForCtx?.type, ctx.type)}
                           </div>
                         )}
 
-                        {isSelected && (
-                          <Card
-                            className="absolute pointer-events-auto shadow-xl border-primary/30 z-50 flex items-center gap-1 p-1"
-                            style={{
-                              left: midX,
-                              top: midY,
-                              transform: "translate(-50%, -50%)",
-                            }}
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <ImprentaContextTypeSelect
-                              value={ctx.type || "reference"}
-                              onValueChange={(val) => handleUpdateContextType(ctx.id, val)}
-                            />
+                        {isSelected && selectedContextAnchor && (
+                          <ScreenAnchoredPanel anchor={selectedContextAnchor}>
+                            <Card
+                              className="pointer-events-auto z-50 flex items-center gap-1 border-primary/30 p-1 shadow-xl"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <ImprentaContextTypeSelect
+                                value={ctx.type || "reference"}
+                                onValueChange={(val) => handleUpdateContextType(ctx.id, val)}
+                              />
 
-                            {!targetHasResult && (
-                              <>
-                                <div className="w-px h-4 bg-border mx-1" />
-
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10"
-                                  onClick={() => handleDeleteContext(ctx.id)}
-                                >
-                                  <Trash2 className="h-3.5 w-3.5" />
-                                </Button>
-                              </>
-                            )}
-                          </Card>
+                              {!targetHasResult && (
+                                <>
+                                  <div className="mx-1 h-4 w-px bg-border" />
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-7 w-7 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                                    onClick={() => handleDeleteContext(ctx.id)}
+                                  >
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                  </Button>
+                                </>
+                              )}
+                            </Card>
+                          </ScreenAnchoredPanel>
                         )}
                       </div>
                     )

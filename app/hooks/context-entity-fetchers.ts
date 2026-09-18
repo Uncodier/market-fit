@@ -184,7 +184,7 @@ export async function fetchContextRecords(siteId: string, limit: number = 20): P
   const supabase = createClient()
   const { data, error } = await supabase
     .from('records')
-    .select('id, title, description, status, created_at, category:record_categories(name)')
+    .select('id, title, description, status, created_at, category:record_categories!records_category_site_fkey(name)')
     .eq('site_id', siteId)
     .order('created_at', { ascending: false })
     .limit(limit)

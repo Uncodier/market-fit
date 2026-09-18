@@ -143,8 +143,9 @@ export default function QuotationDetail({ params }: { params: Promise<{ id: stri
   const handleRetry = async (itemId: string) => {
     setUpdating(true)
     const res = await retryDynamicQuoteItem(itemId)
-    if (res.error && !res.data?.quotationId) toast.error(res.error)
-    else {
+    if ("error" in res && res.error) {
+      toast.error(res.error)
+    } else {
       toast.success(t("quotations.dynamicQuote.retrying") || "Retrying quote calculation")
       loadQuotation()
     }
@@ -235,17 +236,6 @@ export default function QuotationDetail({ params }: { params: Promise<{ id: stri
   }
 
   const handleCopyClientLink = async () => {
-    if (quotation.public_access_token) {
-      const clientLink = `${window.location.origin}${buildPublicQuotePath(quotation.public_access_token)}`
-      try {
-        await navigator.clipboard.writeText(clientLink)
-        toast.success(t("quotations.detail.linkCopied") || "Link copied to clipboard")
-      } catch (err) {
-        toast.error("Failed to copy link")
-      }
-      return
-    }
-
     setUpdating(true)
     try {
       const tokenPromise = ensureQuotationPublicAccessToken(quotation.id)
@@ -279,7 +269,11 @@ export default function QuotationDetail({ params }: { params: Promise<{ id: stri
 
       const tokenRes = await tokenPromise
       if (tokenRes.token) {
-        setQuotation(prev => prev ? { ...prev, public_access_token: tokenRes.token } : prev)
+        setQuotation((previous: any) =>
+          previous
+            ? { ...previous, public_access_token: tokenRes.token }
+            : previous
+        )
       }
     } catch (error: any) {
       toast.error(error.message || "Failed to create or copy public link")

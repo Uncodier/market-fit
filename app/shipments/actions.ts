@@ -27,7 +27,12 @@ async function attachAssigneeProfiles(
     .select("id, name")
     .in("id", ids);
 
-  const byId = new Map((profiles || []).map((p) => [p.id, { name: p.name || "Unknown" }]));
+  const byId = new Map(
+    (profiles || []).map((profile: { id: string; name: string | null }) => [
+      profile.id,
+      { name: profile.name || "Unknown" },
+    ]),
+  );
 
   return rows.map((r) => ({
     ...r,
@@ -152,6 +157,7 @@ export async function createShipment(params: {
   itemIds?: string[];
   userId: string;
   forceServiceRole?: boolean;
+  stripeCheckoutSessionId?: string;
 }) {
   try {
     const supabase = params.forceServiceRole ? await createServiceClient(true) : await createClient();
@@ -167,6 +173,7 @@ export async function createShipment(params: {
         carrier: params.carrier,
         tracking_number: params.trackingNumber,
         assigned_to: params.assignedTo || null,
+        stripe_checkout_session_id: params.stripeCheckoutSessionId || null,
         user_id: params.userId,
         status: "pending",
       })

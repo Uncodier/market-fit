@@ -6,6 +6,8 @@ import path from 'path';
 dotenv.config({ path: path.resolve(__dirname, '.env') });
 dotenv.config({ path: path.resolve(__dirname, '.env.local') });
 
+const ADMIN_STORAGE_STATE_PATH = '.auth/admin.json';
+
 export default defineConfig({
   ...shiplightConfig(),
   testDir: '.',
@@ -27,11 +29,27 @@ export default defineConfig({
     {
       name: 'setup',
       testMatch: 'auth.setup.ts',
+      use: {
+        storageState: { cookies: [], origins: [] },
+      },
     },
     {
       name: 'admin',
+      testIgnore: /browser-quality-mobile.*\.yaml\.spec\.ts/,
       use: {
-        storageState: '.auth/admin.json',
+        storageState: ADMIN_STORAGE_STATE_PATH,
+      },
+      dependencies: ['setup'],
+    },
+    {
+      name: 'mobile-chromium',
+      testMatch: /browser-quality-mobile.*\.yaml\.spec\.ts/,
+      use: {
+        browserName: 'chromium',
+        storageState: ADMIN_STORAGE_STATE_PATH,
+        viewport: { width: 390, height: 844 },
+        isMobile: true,
+        hasTouch: true,
       },
       dependencies: ['setup'],
     },

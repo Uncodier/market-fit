@@ -1,5 +1,10 @@
 # Navigation Helpers
 
+> Implementation note: route coverage evolves with the application. Verify the
+> current helper exports and breadcrumb component; older examples in this file
+> may omit newer commerce routes or describe truncation behavior not enforced by
+> the helpers.
+
 ## Overview
 
 This document describes the centralized navigation helper functions that ensure consistent breadcrumb behavior across the application.
@@ -337,7 +342,6 @@ The following files have been migrated to use navigation helpers:
 
 **Solution**: Use the appropriate navigation helper function
 
-## Related Documentation
+## Related source
 
-- [Breadcrumb Navigation System](./BREADCRUMB_NAVIGATION_TEST_GUIDE.md)
 - [Navigation History Hook](../app/hooks/use-navigation-history.ts)

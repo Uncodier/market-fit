@@ -13,19 +13,19 @@ statements:
   # Buying & Finance
   - URL: /bills
   - VERIFY: The page has loaded successfully
-    js: expect(page).not.toHaveTitle(/500|Error/i)
+    js: await expect(page).not.toHaveTitle(/500|Error/i)
   - URL: /transactions
   - VERIFY: The page has loaded successfully
-    js: expect(page).not.toHaveTitle(/500|Error/i)
+    js: await expect(page).not.toHaveTitle(/500|Error/i)
   - URL: /purchases/orders
   - VERIFY: The page has loaded successfully
-    js: expect(page).not.toHaveTitle(/500|Error/i)
+    js: await expect(page).not.toHaveTitle(/500|Error/i)
   - URL: /finance
   - VERIFY: The page has loaded successfully
-    js: expect(page).not.toHaveTitle(/500|Error/i)
+    js: await expect(page).not.toHaveTitle(/500|Error/i)
   - URL: /accounting/entries
   - VERIFY: The page has loaded successfully
-    js: expect(page).not.toHaveTitle(/500|Error/i)
+    js: await expect(page).not.toHaveTitle(/500|Error/i)
   - URL: /costs
   - VERIFY: The page has loaded successfully
-    js: expect(page).not.toHaveTitle(/500|Error/i)
+    js: await expect(page).not.toHaveTitle(/500|Error/i)

@@ -9,22 +9,18 @@ import { getSaleById, getSaleOrderBySaleId, updateSale, deleteSale } from "@/app
 import { getSegments } from "@/app/segments/actions"
 import { getCampaigns } from "@/app/campaigns/actions/campaigns/read"
 import { Sale, SaleOrder } from "@/app/types"
-import { Button } from "@/app/components/ui/button"
-import { StickyHeader } from "@/app/components/ui/sticky-header"
-import { Pencil, Trash2, Printer, CreditCard, Send, Link } from "@/app/components/ui/icons"
 import {
   ensureSalePublicAccessToken,
   sendSaleInvoice,
 } from "@/app/sales/send-actions"
 import { buildPublicDocPath } from "@/app/documents/public-token"
-import { AlertDialog, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogCancel, AlertDialogAction, AlertDialogTrigger } from "@/app/components/ui/alert-dialog"
 import { EditSaleDialog } from "../components/EditSaleDialog"
 import { CreateSaleOrderDialog } from "../components/CreateSaleOrderDialog"
 import { RegisterPaymentDialog } from "../components/RegisterPaymentDialog"
-import { StatusBar } from "../components/StatusBar"
 import { SaleInvoice } from "../components/SaleInvoice"
 import { SaleInvoiceSkeleton } from "../components/SaleInvoiceSkeleton"
 import { upsertPolizaForSale, removePolizaForSource } from "@/app/accounting/ensure"
+import { SaleDetailHeader } from "./components/SaleDetailHeader"
 
 export default function SaleDetailPage(props: { params: Promise<{ id: string }> }) {
   const unwrappedParams = React.use(props.params);
@@ -206,6 +202,7 @@ export default function SaleDetailPage(props: { params: Promise<{ id: string }> 
       if (res.error) toast.error(res.error)
       else {
         toast.success(t("sales.detail.sentEmail") || "Invoice emailed with PDF attached")
+        if (res.warning) toast.warning(res.warning)
         
         if (res.data) {
           setSale({
@@ -223,17 +220,6 @@ export default function SaleDetailPage(props: { params: Promise<{ id: string }> 
 
   const handleCopyClientLink = async () => {
     if (!sale) return
-    
-    if (sale.publicAccessToken) {
-      const link = `${window.location.origin}${buildPublicDocPath("i", sale.publicAccessToken)}`
-      try {
-        await navigator.clipboard.writeText(link)
-        toast.success(t("sales.detail.linkCopied") || "Link copied to clipboard")
-      } catch (err) {
-        toast.error("Failed to copy link")
-      }
-      return
-    }
 
     setSending(true)
     try {
@@ -396,146 +382,20 @@ export default function SaleDetailPage(props: { params: Promise<{ id: string }> 
 
   return (
     <div className="flex-1 p-0">
-      <StickyHeader>
-        <div className="flex flex-col w-full">
-          <div className="px-4 md:px-16 flex items-center justify-between h-[50px]">
-            <div className="flex items-center gap-1">
-              {sale && sale.amount_due > 0 && (
-                <>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleRegisterPayment}
-                    className="flex items-center gap-1 text-green-600 hover:bg-green-50 hover:text-green-700"
-                  >
-                    <CreditCard className="h-4 w-4" />
-                    {t('sales.detail.registerPayment') || "Register Payment"}
-                  </Button>
-
-                  <div className="w-px h-6 bg-border mx-1" />
-                </>
-              )}
-
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleEdit}
-                className="flex items-center gap-1"
-              >
-                <Pencil className="h-4 w-4" />
-                {t('common.edit') || "Edit"}
-              </Button>
-
-              <div className="w-px h-6 bg-border mx-1" />
-
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handlePrint}
-                className="flex items-center gap-1"
-              >
-                <Printer className="h-4 w-4" />
-                {t('common.print') || "Print"}
-              </Button>
-
-              <div className="w-px h-6 bg-border mx-1" />
-
-              {sale && sale.status !== "cancelled" && (
-                <>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleSend}
-                    disabled={sending}
-                    className="flex items-center gap-1"
-                  >
-                    <Send className="h-4 w-4" />
-                    {sale.lastEmailedAt
-                      ? t("sales.detail.resendEmail") || "Resend"
-                      : t("sales.detail.sendEmail") || "Send"}
-                  </Button>
-                  <div className="w-px h-6 bg-border mx-1" />
-                </>
-              )}
-              {sale && (
-                <>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleCopyClientLink}
-                    disabled={sending}
-                    className="flex items-center gap-1"
-                  >
-                    <Link className="h-4 w-4" />
-                    {t("sales.detail.clientLink") || "Client Link"}
-                  </Button>
-                  <div className="w-px h-6 bg-border mx-1" />
-                </>
-              )}
-
-              {sale && (
-                sale.accountingState !== 'posted' ? (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handlePublish}
-                    className="flex items-center gap-1 text-primary hover:bg-primary/10"
-                  >
-                    {t('common.publish') || "Publish"}
-                  </Button>
-                ) : (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleUnpublish}
-                    className="flex items-center gap-1 text-orange-600 hover:bg-orange-50"
-                  >
-                    {t('common.cancel') || "Cancel"}
-                  </Button>
-                )
-              )}
-
-              <div className="w-px h-6 bg-border mx-1" />
-
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="flex items-center gap-1 text-destructive hover:bg-destructive/10 hover:text-destructive"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                    {t('common.delete') || "Delete"}
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>{t('sales.detail.deleteTitle') || "Delete Sale"}</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      {t('sales.detail.deleteConfirm') || "Are you sure you want to delete this sale? This action cannot be undone."}
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>{t('common.cancel') || "Cancel"}</AlertDialogCancel>
-                    <AlertDialogAction className="!bg-destructive hover:!bg-destructive/90 !text-destructive-foreground" onClick={handleDelete}>
-                      {t('common.delete') || "Delete"}
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-            </div>
-
-            <div className="flex items-center justify-end">
-              {sale && (
-                <StatusBar
-                  currentStatus={sale.status}
-                  onStatusChange={handleStatusChange}
-                />
-              )}
-            </div>
-          </div>
-        </div>
-      </StickyHeader>
+      <SaleDetailHeader
+        sale={sale}
+        sending={sending}
+        t={t}
+        onRegisterPayment={handleRegisterPayment}
+        onEdit={handleEdit}
+        onPrint={handlePrint}
+        onSend={handleSend}
+        onCopyClientLink={handleCopyClientLink}
+        onPublish={handlePublish}
+        onUnpublish={handleUnpublish}
+        onDelete={handleDelete}
+        onStatusChange={handleStatusChange}
+      />
 
       <div className="px-4 md:px-16 py-8 bg-muted/50 dark:bg-background min-h-screen">
         {loading ? (

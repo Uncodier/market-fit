@@ -65,6 +65,7 @@ export async function sendAssistantMessage(params: {
     contextObj.mediaType = mediaType
     contextObj.output_type = mediaType
     contextObj.parameters = { ...currentParams }
+    contextObj.selected_context = selectedContext
 
     if (contextObj.parameters.expectedResults !== undefined) {
       delete contextObj.parameters.expectedResults
@@ -168,6 +169,17 @@ export async function sendRobotMessage(params: {
   try {
     const supabase = createClient()
     const { data: { user } } = await supabase.auth.getUser()
+    const contextData = await contextService.getContextData(selectedContext, siteId)
+    const robotContext = {
+      ...selectedContext,
+      record_diagrams: contextData.records
+        .filter((record) => record.diagram)
+        .map((record) => ({
+          record_id: record.id,
+          diagram: record.diagram,
+        })),
+      record_context_omitted_ids: contextData.recordContextOmittedIds,
+    }
     let response
 
     if (activeRobotInstance?.id) {
@@ -183,7 +195,7 @@ export async function sendRobotMessage(params: {
         message: messageToSend,
         step_status: 'in_progress',
         site_id: siteId,
-        context: JSON.stringify(selectedContext),
+        context: JSON.stringify(robotContext),
         activity: 'robot',
         request_id: requestId,
         client_persisted: true,
@@ -209,7 +221,7 @@ export async function sendRobotMessage(params: {
         user_id: user?.id,
         activity: 'robot',
         message: messageToSend,
-        context: JSON.stringify(selectedContext),
+        context: JSON.stringify(robotContext),
         request_id: createRequestId(),
       })
     }

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { checkoutCart, type CheckoutCartParams } from '@/app/commerce/checkout'
+import { createClient } from '@/lib/supabase/server'
 
 /**
  * HTTP entrypoint for cart checkout.
@@ -25,10 +26,19 @@ export async function POST(req: Request) {
     // Strip internal/staff-only parameters that shouldn't be accessible via the public endpoint
     delete body.isStaffMutation;
     delete (body as any).userId;
+    delete body.buyerUserId;
+
+    const supabase = await createClient()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    if (user?.id) {
+      body.buyerUserId = user.id
+    }
 
     const result = await checkoutCart(body)
 
-    if (result.error) {
+    if ("error" in result && result.error) {
       return NextResponse.json({ error: result.error }, { status: 400 })
     }
 

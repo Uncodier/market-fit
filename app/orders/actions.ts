@@ -118,6 +118,55 @@ export async function getOrder(id: string) {
     }
   }
 
+  const attributionUserIds = [
+    ...new Set(
+      [data?.created_by_user_id, data?.seller_user_id].filter(
+        (value): value is string => Boolean(value),
+      ),
+    ),
+  ];
+  if (data?.site_id && attributionUserIds.length > 0) {
+    const { data: members } = await supabase
+      .from("site_members")
+      .select("user_id, name, email")
+      .eq("site_id", data.site_id)
+      .in("user_id", attributionUserIds);
+    const byUserId = new Map(
+      (members || []).map((member: any) => [
+        member.user_id,
+        {
+          id: member.user_id,
+          name: member.name,
+          email: member.email,
+        },
+      ]),
+    );
+    const unresolvedUserIds = attributionUserIds.filter(
+      (userId) => !byUserId.has(userId),
+    );
+    if (unresolvedUserIds.length > 0) {
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("id, name, email")
+        .in("id", unresolvedUserIds);
+      for (const profile of profiles || []) {
+        byUserId.set(profile.id, profile);
+      }
+    }
+    (data as any).created_by =
+      byUserId.get(data.created_by_user_id) || null;
+    (data as any).seller = byUserId.get(data.seller_user_id) || null;
+  }
+  if (data?.requested_by_lead_id) {
+    const { data: requestor } = await supabase
+      .from("leads")
+      .select("id, name, email")
+      .eq("site_id", data.site_id)
+      .eq("id", data.requested_by_lead_id)
+      .maybeSingle();
+    (data as any).requested_by = requestor || null;
+  }
+
   return { data: data as any as OrderWithRelations };
 }
 

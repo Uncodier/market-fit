@@ -1,4 +1,7 @@
-import { isReplaceableInboundMxConflict } from '@/lib/zavu-email-dns'
+import {
+  isCurrentZavuInboundMx,
+  isReplaceableInboundMxConflict
+} from '@/lib/zavu-email-dns'
 
 export interface CloudflareZone {
   id: string
@@ -108,6 +111,13 @@ export async function addDnsRecords(
   const results = []
   for (const record of records) {
     let recordSucceeded = true
+    if (
+      options.replaceConflictingInboundMx &&
+      (record.type !== 'MX' || !isCurrentZavuInboundMx(record.content))
+    ) {
+      throw new Error('Inbound MX replacement requires the current Zavu MX target')
+    }
+
     const existingRes = await fetch(`${CF_API_BASE}/zones/${zoneId}/dns_records?type=${record.type}&name=${record.name}`, {
       headers: {
         'Authorization': `Bearer ${token}`,

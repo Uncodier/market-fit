@@ -14,6 +14,7 @@ export type TicketCopy = {
   readyToPrint: string
   taxId: string
   customer: string
+  requestedBy: string
   location: string
   cashier: string
   table: string
@@ -56,6 +57,7 @@ const EN: TicketCopy = {
   readyToPrint: "Ready to print",
   taxId: "Tax ID",
   customer: "Customer",
+  requestedBy: "Requested by",
   location: "Location",
   cashier: "Cashier",
   table: "Table",
@@ -98,6 +100,7 @@ const ES: TicketCopy = {
   readyToPrint: "Lista para imprimir",
   taxId: "ID fiscal",
   customer: "Cliente",
+  requestedBy: "Solicitó",
   location: "Sucursal",
   cashier: "Cajero",
   table: "Mesa",
@@ -140,6 +143,7 @@ const FR: TicketCopy = {
   readyToPrint: "Prête à imprimer",
   taxId: "N. TVA",
   customer: "Client",
+  requestedBy: "Demandé par",
   location: "Lieu",
   cashier: "Caissier",
   table: "Table",
@@ -182,6 +186,7 @@ const DE: TicketCopy = {
   readyToPrint: "Bereit zum Drucken",
   taxId: "St.-Nr.",
   customer: "Kunde",
+  requestedBy: "Angefordert von",
   location: "Standort",
   cashier: "Kassierer",
   table: "Tisch",
@@ -224,6 +229,7 @@ const JA: TicketCopy = {
   readyToPrint: "印刷できます",
   taxId: "登録番号",
   customer: "お客様",
+  requestedBy: "受付担当",
   location: "拠点",
   cashier: "担当",
   table: "テーブル",

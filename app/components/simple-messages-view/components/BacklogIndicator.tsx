@@ -1,6 +1,7 @@
 import React from 'react'
-import { CheckCircle, ChevronUp, ChevronDown, ListTodo } from "@/app/components/ui/icons"
+import { Ban, CheckCircle, ChevronUp, ChevronDown, ListTodo } from "@/app/components/ui/icons"
 import { Button } from "@/app/components/ui/button"
+import { cn } from "@/lib/utils"
 
 interface BacklogItem {
   id: string
@@ -16,10 +17,11 @@ interface BacklogData {
 }
 
 interface BacklogIndicatorProps {
-  backlog: BacklogData | string
+  backlog: BacklogData | string | null
   expanded: boolean
   onToggleExpanded: () => void
   onEditItem?: (item: BacklogItem) => void
+  requirementStatus?: string | null
 }
 
 export const BacklogIndicator: React.FC<BacklogIndicatorProps> = ({
@@ -27,6 +29,7 @@ export const BacklogIndicator: React.FC<BacklogIndicatorProps> = ({
   expanded,
   onToggleExpanded,
   onEditItem,
+  requirementStatus,
 }) => {
   // Parse backlog if it's a string
   let parsedBacklog: BacklogData | null = null
@@ -56,6 +59,30 @@ export const BacklogIndicator: React.FC<BacklogIndicatorProps> = ({
     return items.indexOf(a) - items.indexOf(b);
   });
   const allCompleted = items.length > 0 && items.every(item => item.status === 'done' || item.status === 'completed')
+  const normalizedRequirementStatus = requirementStatus?.trim().toLowerCase()
+  const requirementStatusLabel = normalizedRequirementStatus
+    ?.split(/[-_\s]+/)
+    .filter(Boolean)
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ')
+  const requirementStatusClasses =
+    normalizedRequirementStatus === 'completed' || normalizedRequirementStatus === 'success'
+      ? 'border-green-500/25 bg-green-500/10 text-green-600 dark:text-green-400'
+      : normalizedRequirementStatus === 'failed' || normalizedRequirementStatus === 'error'
+        ? 'border-destructive/25 bg-destructive/10 text-destructive'
+        : 'border-blue-500/25 bg-blue-500/10 text-blue-600 dark:text-blue-400'
+
+  const statusChip = requirementStatusLabel ? (
+    <span
+      className={cn(
+        "max-w-40 truncate rounded-sm border px-2.5 py-1.5 text-[10px] font-medium leading-none",
+        requirementStatusClasses
+      )}
+      title={`Requirement status: ${requirementStatusLabel}`}
+    >
+      {requirementStatusLabel}
+    </span>
+  ) : null
 
   return (
     <div className="step-indicator-root flex-none w-full shrink-0">
@@ -65,46 +92,47 @@ export const BacklogIndicator: React.FC<BacklogIndicatorProps> = ({
           {expanded ? (
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <ListTodo className="h-4 w-4" />
-                  <span className="font-medium">Requirement Backlog</span>
+                <div className="flex min-w-0 items-center gap-2 text-sm text-muted-foreground">
+                  <ListTodo className="h-4 w-4 shrink-0" />
+                  <span className="truncate font-medium">Requirement Backlog</span>
                 </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={onToggleExpanded}
-                  className="h-6 w-6 p-0 hover:bg-muted"
-                >
-                  <ChevronUp className="h-3 w-3" />
-                </Button>
-              </div>
-
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                {allCompleted ? (
-                  <>
-                    <CheckCircle className="h-4 w-4 text-green-500" />
-                    <span className="font-medium whitespace-nowrap text-green-600">All backlog items completed!</span>
-                  </>
-                ) : (
-                  <>
-                    <span className="font-medium whitespace-nowrap">
+                <div className="ml-2 flex shrink-0 items-center gap-2 text-sm text-muted-foreground">
+                  {allCompleted ? (
+                    <>
+                      <CheckCircle className="h-4 w-4 shrink-0 text-green-500" />
+                      <span className="whitespace-nowrap font-medium text-green-600">All completed!</span>
+                    </>
+                  ) : (
+                    <span className="whitespace-nowrap font-medium">
                       {items.filter(i => i.status === 'done' || i.status === 'completed').length} / {items.length} done
                     </span>
-                  </>
-                )}
+                  )}
+                  {statusChip}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={onToggleExpanded}
+                    className="h-6 w-6 shrink-0 p-0 hover:bg-muted"
+                  >
+                    <ChevronUp className="h-3 w-3" />
+                  </Button>
+                </div>
               </div>
 
               <div className="space-y-1 max-h-48 overflow-y-auto">
                   {sortedItems.map((item) => {
                     const isCompleted = item.status === 'done' || item.status === 'completed'
                     const isInProgress = item.status === 'in_progress' || item.status === 'in-progress'
+                    const isBlocked = normalizedRequirementStatus === 'blocked' && isInProgress
                     
                     return (
                       <div 
                         key={item.id} 
                         onClick={() => onEditItem && onEditItem(item)}
                         className={`text-sm py-1.5 px-2 rounded-md flex items-center justify-between ${onEditItem ? 'cursor-pointer ' : ''}${
-                          isInProgress 
+                          isBlocked
+                            ? 'bg-destructive/5 border border-destructive/20'
+                            : isInProgress
                             ? 'bg-muted border border-border dark:border-white/5' 
                             : 'hover:bg-muted/50 border border-transparent'
                         }`}
@@ -113,6 +141,8 @@ export const BacklogIndicator: React.FC<BacklogIndicatorProps> = ({
                         <div className="flex items-center gap-2 overflow-hidden mr-2">
                           {isCompleted ? (
                             <CheckCircle className="h-3.5 w-3.5 text-green-500 flex-shrink-0" />
+                          ) : isBlocked ? (
+                            <Ban className="h-3.5 w-3.5 text-destructive flex-shrink-0" />
                           ) : isInProgress ? (
                             <div className="h-3.5 w-3.5 rounded-full border-2 border-primary border-t-transparent animate-spin flex-shrink-0" />
                           ) : (
@@ -129,8 +159,8 @@ export const BacklogIndicator: React.FC<BacklogIndicatorProps> = ({
                             </span>
                           )}
                           {!isCompleted && (
-                            <span className={`text-xs ${isInProgress ? 'text-primary' : 'text-muted-foreground'}`}>
-                              {isInProgress ? 'In Progress' : 'Pending'}
+                            <span className={`text-xs ${isBlocked ? 'text-destructive' : isInProgress ? 'text-primary' : 'text-muted-foreground'}`}>
+                              {isBlocked ? 'Blocked' : isInProgress ? 'In Progress' : 'Pending'}
                             </span>
                           )}
                         </div>
@@ -163,6 +193,7 @@ export const BacklogIndicator: React.FC<BacklogIndicatorProps> = ({
                 )}
               </div>
               <div className="flex items-center gap-2 flex-shrink-0 ml-2">
+                {statusChip}
                 <div className="text-xs text-muted-foreground flex items-center gap-1">
                   <span>{items.filter(i => i.status === 'done' || i.status === 'completed').length}</span>
                   <span>/</span>

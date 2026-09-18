@@ -1,8 +1,13 @@
 import type { PosCartItem } from "@/app/pos/components/CartPanel"
 import { markKitchenItemsPrinted } from "@/app/printer/actions"
 import {
+  htmlForJob,
+  isPrinterReadyOnStation,
   kitchenDeltaHasWork,
+  printersForJob,
+  printHtml,
   printJobForSettings,
+  printOnDevice,
   rememberPrinted,
   shouldAutoPrint,
   type KitchenDelta,
@@ -19,6 +24,7 @@ export function receiptFromPosCart(params: {
   brand?: TicketBrand
   customerName?: string | null
   cashierName?: string | null
+  requestedByName?: string | null
   fulfillment?: string | null
   locationName?: string | null
   currency?: string | null
@@ -58,10 +64,54 @@ export function receiptFromPosCart(params: {
     notes: params.notes || null,
     customerName: params.customerName || null,
     cashierName: params.cashierName || null,
+    requestedByName: params.requestedByName || null,
     fulfillment: params.fulfillment || null,
     locationName: params.locationName || null,
     currency: params.currency || "USD",
   }
+}
+
+export async function printPosReceiptManually(params: {
+  settings: PrintersSettings
+  receipt: ReceiptPayload
+}): Promise<"printer" | "system"> {
+  const sentAt = new Date().toISOString()
+  const job = {
+    id: `manual-receipt-${sentAt}`,
+    module: "pos" as const,
+    template: "receipt" as const,
+    sentAt,
+    payload: {
+      ...params.receipt,
+      createdAt: params.receipt.createdAt || sentAt,
+    },
+  }
+  const configured = printersForJob(params.settings, "pos", "receipt")
+  const hardwarePrinter = configured.find(
+    (device) =>
+      device.transport !== "system" && isPrinterReadyOnStation(device),
+  )
+
+  if (hardwarePrinter) {
+    try {
+      await printOnDevice(hardwarePrinter, job, { allowPrompt: false })
+      return "printer"
+    } catch {
+      // A saved USB/Bluetooth binding may no longer be available. Use the
+      // browser print dialog so the cashier can still print the receipt.
+    }
+  }
+
+  const systemPrinter = configured.find(
+    (device) =>
+      device.transport === "system" && isPrinterReadyOnStation(device),
+  )
+  if (systemPrinter) {
+    await printOnDevice(systemPrinter, job, { allowPrompt: false })
+  } else {
+    await printHtml(htmlForJob(job, 80))
+  }
+  return "system"
 }
 
 export async function printAfterPosCheckout(params: {
@@ -121,6 +171,7 @@ export async function printAfterPosCheckout(params: {
       createdAt: params.createdAt || sentAt,
       fulfillment: params.fulfillment || receipt.fulfillment,
       customerName: receipt.customerName,
+      requestedByName: receipt.requestedByName,
       notes: receipt.notes,
       lines: kitchenDelta.adds,
       delta: kitchenDelta,

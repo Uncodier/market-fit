@@ -36,7 +36,7 @@ type ImprentaContextEdgesProps = {
   positions: Record<string, { x: number; y: number }>
   nodeHeightsRef: MutableRefObject<Record<string, number>>
   selectedContextId: string | null
-  setSelectedContextId: (id: string | null) => void
+  onSelectContext: (id: string | null, anchor?: { x: number; y: number }) => void
   hoverStore: ImprentaHoverStore
 }
 
@@ -46,7 +46,7 @@ export const ImprentaContextEdges = memo(function ImprentaContextEdges({
   positions,
   nodeHeightsRef,
   selectedContextId,
-  setSelectedContextId,
+  onSelectContext,
   hoverStore,
 }: ImprentaContextEdgesProps) {
   const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(hoverStore.get())
@@ -126,7 +126,10 @@ export const ImprentaContextEdges = memo(function ImprentaContextEdges({
             style={{ pointerEvents: "stroke" }}
             onClick={(e) => {
               e.stopPropagation()
-              setSelectedContextId(edge.isSelected ? null : edge.id)
+              onSelectContext(
+                edge.isSelected ? null : edge.id,
+                edge.isSelected ? undefined : { x: e.clientX, y: e.clientY },
+              )
             }}
           />
           <path
@@ -138,7 +141,10 @@ export const ImprentaContextEdges = memo(function ImprentaContextEdges({
             style={{ pointerEvents: "stroke" }}
             onClick={(e) => {
               e.stopPropagation()
-              setSelectedContextId(edge.isSelected ? null : edge.id)
+              onSelectContext(
+                edge.isSelected ? null : edge.id,
+                edge.isSelected ? undefined : { x: e.clientX, y: e.clientY },
+              )
             }}
           />
         </g>

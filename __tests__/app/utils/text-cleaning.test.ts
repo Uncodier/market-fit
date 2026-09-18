@@ -3,7 +3,7 @@ import {
   cleanNewsTitle, 
   isValidCleanedContent, 
   extractCleanText 
-} from '../text-cleaning'
+} from '@/app/utils/text-cleaning'
 
 describe('Text Cleaning Utilities', () => {
   

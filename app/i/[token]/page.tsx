@@ -93,7 +93,7 @@ export default function PublicInvoicePage(props: {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           saleId: saleData.id,
-          siteId: saleData.site_id || view.siteId,
+          publicAccessToken: params.token,
           returnUrl: window.location.href.split('?')[0],
         }),
       })

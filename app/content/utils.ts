@@ -237,6 +237,10 @@ export function markdownToHTML(markdown: string): string {
     // Convert lists
     // First, find all list blocks and process them
     normalized = normalized.replace(/^([ \t]*)-\s+(.*?)$/gm, '<li>$2</li>');
+
+    // Preserve editor links and images when records round-trip through Markdown.
+    normalized = normalized.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" />');
+    normalized = normalized.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>');
     
     // Convert paragraphs (any text not already in an HTML tag)
     normalized = normalized.replace(/^([^<\n].*?)$/gm, '<p>$1</p>');

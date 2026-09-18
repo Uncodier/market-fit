@@ -1,0 +1,111 @@
+goal: Verify mobile browser quality on stable read-only routes
+
+statements:
+  - URL: /marketplace
+  - WAIT_UNTIL: Marketplace landmarks are ready
+    js: "await page.getByRole('main').count() > 0 && await page.getByRole('contentinfo').count() > 0"
+    timeout_seconds: 20
+
+  - VERIFY: Marketplace uses semantic page landmarks
+    js: |
+      await expect(page.getByRole('banner').first()).toBeVisible();
+      await expect(page.getByRole('main')).toHaveCount(1);
+      await expect(page.getByRole('main')).toBeVisible();
+      await expect(page.getByRole('contentinfo').first()).toBeVisible();
+
+  - VERIFY: Marketplace does not overflow the mobile viewport
+    js: |
+      await expect.poll(async () => page.evaluate(
+        () => document.documentElement.scrollWidth <= document.documentElement.clientWidth
+      )).toBe(true);
+
+  - description: Check marketplace accessibility
+    js: |
+      const { default: AxeBuilder } = await import('@axe-core/playwright');
+      await page.evaluate(() => document.querySelector('nextjs-portal')?.remove());
+      const results = await new AxeBuilder({ page })
+        .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
+        .analyze();
+      expect(results.violations, JSON.stringify(results.violations, null, 2)).toEqual([]);
+
+  - description: Reach marketplace search using only the keyboard
+    js: |
+      const search = page.getByRole('button', { name: 'Search', exact: true });
+      await expect(search).toBeVisible();
+      for (let index = 0; index < 10 && !(await search.evaluate((element) => element === document.activeElement)); index += 1) {
+        await page.keyboard.press('Tab');
+      }
+      await expect(search).toBeFocused();
+      await page.keyboard.press('Enter');
+
+  - VERIFY: Keyboard activation moves focus into mobile search
+    js: |
+      const searchInput = page.locator('#mobile-search-input');
+      await expect(searchInput).toBeVisible();
+      await expect(searchInput).toBeFocused();
+
+  - description: Close mobile search with the keyboard
+    js: |
+      await page.keyboard.press('Escape');
+
+  - VERIFY: Mobile search closes and restores opener focus
+    js: |
+      const search = page.getByRole('button', { name: 'Search', exact: true });
+      await expect(search).toBeVisible();
+      await expect(search).toBeFocused();
+
+  - URL: /projects
+  - WAIT_UNTIL: The no-layout project chooser is ready
+    js: "await page.getByRole('button', { name: /^Select / }).count() > 0"
+    timeout_seconds: 20
+
+  - VERIFY: The project chooser receives exactly one main landmark
+    js: |
+      await expect(page.getByRole('main')).toHaveCount(1);
+      await expect(page.getByRole('main')).toBeVisible();
+
+  - description: Select the configured test project
+    js: |
+      const siteName = process.env.TEST_SITE_NAME;
+      if (!siteName) throw new Error('TEST_SITE_NAME is required');
+      const selector = page.getByRole('button', { name: `Select ${siteName}`, exact: true });
+      await selector.click();
+
+  - WAIT_UNTIL: The workspace is selected
+    js: "await page.url().includes('/robots')"
+    timeout_seconds: 10
+
+  - URL: /content
+  - WAIT_UNTIL: Mobile content controls are ready
+    js: "await page.getByRole('button', { name: 'Search', exact: true }).count() > 0"
+    timeout_seconds: 20
+
+  - description: Open the mobile search and filters dialog
+    js: |
+      const trigger = page.getByRole('button', { name: 'Search', exact: true }).first();
+      await trigger.click();
+
+  - VERIFY: The mobile dialog opens and receives focus
+    js: |
+      const dialog = page.getByRole('dialog', { name: 'Search' });
+      await expect(dialog).toBeVisible();
+      await expect(dialog.locator(':focus')).toHaveCount(1);
+
+  - description: Check mobile search dialog accessibility
+    js: |
+      const { default: AxeBuilder } = await import('@axe-core/playwright');
+      const results = await new AxeBuilder({ page })
+        .include('[role="dialog"]')
+        .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
+        .analyze();
+      expect(results.violations, JSON.stringify(results.violations, null, 2)).toEqual([]);
+
+  - description: Close the mobile dialog with the keyboard
+    js: |
+      await page.keyboard.press('Escape');
+
+  - VERIFY: The mobile dialog closes and restores trigger focus
+    js: |
+      const dialog = page.getByRole('dialog', { name: 'Search' });
+      await expect(dialog).toBeHidden();
+      await expect(page.getByRole('button', { name: 'Search', exact: true }).first()).toBeFocused();

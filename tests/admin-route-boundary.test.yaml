@@ -1,0 +1,10 @@
+goal: Reject direct access to blocked platform administration paths
+
+statements:
+  - description: Request the blocked payouts administration route
+    js: |
+      const response = await page.goto('/admin/payouts');
+      expect(response?.status()).toBe(404);
+
+  - VERIFY: Platform payout management is not rendered
+    js: "await expect(page.getByText('Payout Management')).toHaveCount(0)"

@@ -1,11 +1,20 @@
-goal: Complete CRUD (Create, Read, Update, Delete) cycle for a Catalog item
+goal: Complete create, read, update, and archive cycle for a Catalog item
 
 statements:
   # 0. Set site context (just like navigation test)
   - URL: /projects
-  - intent: Select the first available project
-    action: click
-    locator: "getByRole('button', { name: 'Select' }).first()"
+  - description: Select the configured test project
+    js: |
+      const runId = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+      testContext.set("catalogProductName", `Shiplight Catalog Product ${runId}`);
+      testContext.set("catalogProductEditedName", `Shiplight Catalog Product ${runId} Edited`);
+      testContext.set("catalogSku", `SL-${runId}`);
+      const siteName = process.env.TEST_SITE_NAME;
+      if (!siteName) throw new Error("TEST_SITE_NAME is required");
+      const categoryName = process.env.TEST_CATALOG_CATEGORY_NAME;
+      if (!categoryName) throw new Error("TEST_CATALOG_CATEGORY_NAME is required");
+      testContext.set("catalogCategoryName", categoryName);
+      await page.getByRole('button', { name: `Select ${siteName}`, exact: true }).click();
 
   - WAIT_UNTIL: The user is navigated to the default project page
     js: "await page.url().includes('/robots')"
@@ -17,26 +26,27 @@ statements:
     action: click
     locator: "getByRole('button', { name: /Add item|Agregar ítem|Agregar item/i })"
 
-  - intent: Type a new category name in the dependency selector
+  - intent: Filter the dependency selector by the configured category
     action: fill
     locator: "getByPlaceholder('Select category...')"
-    value: "Automated Catalog Category"
+    value: "{{catalogCategoryName}}"
 
-  - WAIT_UNTIL: The category dropdown options are visible
-    js: "await page.getByText(/Use \"Automated Catalog Category\"|Automated Catalog Category/).count() > 0"
+  - WAIT_UNTIL: The configured category option is visible
+    js: "(await page.getByRole('option', { name: testContext.get('catalogCategoryName'), exact: true }).count()) > 0"
     timeout_seconds: 5
 
-  - intent: Select or create the category
-    action: click
-    locator: "getByRole('option', { name: /Use \"Automated Catalog Category\"|Automated Catalog Category/ }).first()"
+  - description: Select the configured catalog category
+    js: |
+      const categoryName = testContext.get("catalogCategoryName");
+      await page.getByRole('option', { name: categoryName, exact: true }).click();
 
   - intent: Fill in the product name
     action: fill
     locator: "locator('input[name=\"name\"]')"
-    value: "Automated Test Product"
+    value: "{{catalogProductName}}"
 
   - description: Fill in the SKU with a unique value
-    js: "await page.locator('input[name=\"sku\"]').fill(`TEST-${Date.now()}`)"
+    js: "await page.locator('input[name=\"sku\"]').fill(testContext.get('catalogSku'))"
 
   - intent: Fill in the target sale price
     action: fill
@@ -52,12 +62,13 @@ statements:
     timeout_seconds: 10
 
   - WAIT_UNTIL: The new product appears in the list
-    js: "await page.getByText('Automated Test Product').count() > 0"
+    js: "(await page.getByText(testContext.get('catalogProductName'), { exact: true }).count()) > 0"
     timeout_seconds: 15
 
-  - intent: Open the catalog item details
-    action: click
-    locator: "getByRole('row', { name: /Automated Test Product/i }).getByRole('link').first()"
+  - description: Open the run-scoped catalog item details
+    js: |
+      const productName = testContext.get("catalogProductName");
+      await page.getByRole('row').filter({ hasText: productName }).getByRole('link').first().click();
 
   - WAIT_UNTIL: The details page is open and loaded
     js: "await page.url().includes('/catalog/') && !page.url().endsWith('/catalog')"
@@ -65,14 +76,90 @@ statements:
 
   # 2. READ / VERIFY
   - VERIFY: The details page shows the correct product name
-    js: "await expect(page.locator('input[name=\"name\"]')).toHaveValue('Automated Test Product')"
+    js: "await expect(page.locator('input[name=\"name\"]')).toHaveValue(testContext.get('catalogProductName'))"
 
   # 3. UPDATE
   - intent: Update the product name in the details form
     action: fill
     locator: "locator('input[name=\"name\"]')"
-    value: "Automated Test Product - Edited"
+    value: "{{catalogProductEditedName}}"
 
   - intent: Click the Save button
     action: click
     locator: "getByRole('button', { name: /Save|Guardar/i }).first()"
+
+  - WAIT_UNTIL: The catalog item update succeeds
+    js: "await page.getByText('Saved successfully').count() > 0"
+    timeout_seconds: 10
+
+  - description: Reload the details page to verify the update persisted
+    js: "await page.reload()"
+
+  - VERIFY: The edited product name persists after reload
+    js: "await expect(page.locator('input[name=\"name\"]')).toHaveValue(testContext.get('catalogProductEditedName'))"
+
+  # 4. ARCHIVE
+  - intent: Archive the product using the available catalog removal action
+    action: click
+    locator: "getByRole('button', { name: 'Archive Product', exact: true }).first()"
+
+  - intent: Confirm the product archive
+    action: click
+    locator: "getByRole('button', { name: 'Archive Product', exact: true }).last()"
+
+  - WAIT_UNTIL: The user is back on the active catalog list
+    js: "await page.url().endsWith('/catalog')"
+    timeout_seconds: 15
+
+  - description: Reload the catalog before checking active-list visibility
+    js: "await page.reload()"
+
+  - WAIT_UNTIL: The active catalog has finished loading
+    js: "((await page.getByRole('table').count()) > 0 || (await page.getByText('No items found').count()) > 0) && (await page.locator('.animate-pulse:visible').count()) === 0"
+    timeout_seconds: 15
+
+  - VERIFY: The archived product is absent from the active catalog
+    js: "await expect(page.getByText(testContext.get('catalogProductEditedName'), { exact: true })).toHaveCount(0)"
+
+  - intent: Show archived catalog items
+    action: click
+    locator: "getByRole('tab', { name: 'Archived', exact: true })"
+
+  - WAIT_UNTIL: The archived product appears in the archived catalog
+    js: "(await page.getByRole('row').filter({ hasText: testContext.get('catalogProductEditedName') }).count()) > 0"
+    timeout_seconds: 15
+
+  - VERIFY: The product remains archived rather than being physically deleted
+    js: |
+      const archivedRow = page.getByRole('row').filter({ hasText: testContext.get('catalogProductEditedName') });
+      await expect(archivedRow).toBeVisible();
+      await expect(archivedRow).toContainText('Archived');
+
+teardown:
+  - URL: /catalog
+
+  - WAIT_UNTIL: The active catalog list is ready for cleanup
+    js: "((await page.getByRole('table').count()) > 0 || (await page.getByText('No items found').count()) > 0) && (await page.locator('.animate-pulse:visible').count()) === 0"
+    timeout_seconds: 15
+
+  - description: Select the surviving catalog product name for cleanup
+    js: |
+      const editedName = testContext.get("catalogProductEditedName");
+      const originalName = testContext.get("catalogProductName");
+      const editedExists = editedName
+        ? (await page.getByText(editedName, { exact: true }).count()) > 0
+        : false;
+      testContext.set("catalogProductCleanupName", editedExists ? editedName : (originalName || ""));
+
+  - IF: "js: Boolean(testContext.get('catalogProductCleanupName')) && (await page.getByText(testContext.get('catalogProductCleanupName'), { exact: true }).count()) > 0"
+    THEN:
+      - description: Open the surviving run-scoped catalog product
+        js: |
+          const productName = testContext.get("catalogProductCleanupName");
+          await page.getByRole('row').filter({ hasText: productName }).getByRole('link').first().click();
+      - intent: Archive the surviving run-scoped catalog product
+        action: click
+        locator: "getByRole('button', { name: 'Archive Product', exact: true }).first()"
+      - intent: Confirm cleanup of the run-scoped catalog product
+        action: click
+        locator: "getByRole('button', { name: 'Archive Product', exact: true }).last()"

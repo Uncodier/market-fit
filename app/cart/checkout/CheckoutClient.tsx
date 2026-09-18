@@ -465,7 +465,7 @@ export default function CheckoutClient({
       if (payableTotal > 0 && paymentMethod === "card") {
         const stripeData = await createStripeOrderCheckout({
           orderId: res.orderId,
-          siteId: checkoutSiteId,
+          publicAccessToken: res.publicAccessToken,
           returnUrl: window.location.origin + (returnTo.startsWith("/") ? returnTo : "/marketplace"),
           successUrl: checkoutReturn,
         })

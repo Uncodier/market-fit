@@ -1,13 +1,15 @@
 "use server"
 
 import { createClient, createServiceClient } from "@/lib/supabase/server"
-import Stripe from 'stripe'
 import {
   buildPublicDocUrl,
-  generatePublicAccessToken,
+  isPublicAccessTokenActive,
   isValidPublicAccessToken,
-  buildPublicDocPath,
 } from "@/app/documents/public-token"
+import {
+  ensurePublicAccessTokenForRecord,
+  revokePublicAccessTokenForRecord,
+} from "@/app/documents/public-token-store"
 import {
   buildDocumentEmailSubject,
   getSendGridConfig,
@@ -19,45 +21,81 @@ import { mapDocumentLineItems } from "@/app/documents/map-document-items"
 import { documentT, formatDocumentMoney } from "@/app/lib/i18n/document-t"
 import { loadSiteBranding, publicTokenSchemaError } from "@/app/documents/site-branding"
 
+const PUBLIC_ORDER_SELECT = `
+  id,
+  site_id,
+  owner_site_id,
+  sale_id,
+  order_number,
+  status,
+  currency,
+  created_at,
+  subtotal,
+  tax_total,
+  discount_total,
+  total,
+  fulfillment_method,
+  shipping_address,
+  items,
+  public_access_token_expires_at,
+  public_access_token_revoked_at,
+  sale_order_items(name, quantity, unit_price, subtotal, status),
+  site:sites!site_id(id, name, logo_url, url),
+  sales:sale_id(status, amount_due, payment_method, leads(name, email))
+`
+
+const PUBLIC_ORDER_SALE_SELECT =
+  "status, amount_due, payment_method, leads(name, email)"
+
 export async function ensureOrderPublicAccessToken(orderId: string) {
   const supabase = await createClient()
-  const { data: order, error } = await supabase
-    .from("sale_orders")
-    .select("id, public_access_token")
-    .eq("id", orderId)
-    .single()
-
-  if (error || !order) {
+  const result = await ensurePublicAccessTokenForRecord(
+    supabase,
+    "sale_orders",
+    orderId
+  )
+  if ("error" in result) {
     return {
       error:
-        publicTokenSchemaError(error?.message) ||
-        error?.message ||
+        publicTokenSchemaError(result.error) ||
+        result.error ||
         "Order not found",
     }
   }
+  return result
+}
 
-  if (order.public_access_token && isValidPublicAccessToken(order.public_access_token)) {
-    return { token: order.public_access_token as string }
-  }
-
-  const token = generatePublicAccessToken()
-  const { data: updated, error: updateError } = await supabase
-    .from("sale_orders")
-    .update({ public_access_token: token })
-    .eq("id", orderId)
-    .select("public_access_token")
-    .single()
-
-  if (updateError || !updated?.public_access_token) {
+export async function rotateOrderPublicAccessToken(orderId: string) {
+  const supabase = await createClient()
+  const result = await ensurePublicAccessTokenForRecord(
+    supabase,
+    "sale_orders",
+    orderId,
+    { rotate: true }
+  )
+  if ("error" in result) {
     return {
       error:
-        publicTokenSchemaError(updateError?.message) ||
-        updateError?.message ||
-        "Failed to create public link",
+        publicTokenSchemaError(result.error) || result.error,
     }
   }
+  return result
+}
 
-  return { token: updated.public_access_token as string }
+export async function revokeOrderPublicAccessToken(orderId: string) {
+  const supabase = await createClient()
+  const result = await revokePublicAccessTokenForRecord(
+    supabase,
+    "sale_orders",
+    orderId
+  )
+  if ("error" in result) {
+    return {
+      error:
+        publicTokenSchemaError(result.error) || result.error,
+    }
+  }
+  return result
 }
 
 export async function getOrderByPublicToken(token: string) {
@@ -67,9 +105,7 @@ export async function getOrderByPublicToken(token: string) {
   const supabase = await createServiceClient(true)
   const { data: order, error } = await supabase
     .from("sale_orders")
-    .select(
-      "*, sale_order_items(*, catalog_item:catalog_item_id(id, name, image_url)), site:sites!site_id(id, name, logo_url, url), sales:sale_id(id, status, amount_due, payment_method, payment_details, payments, stripe_checkout_session_id, stripe_payment_intent_id, leads(id, name, email))"
-    )
+    .select(PUBLIC_ORDER_SELECT)
     .eq("public_access_token", token)
     .single()
 
@@ -85,6 +121,9 @@ export async function getOrderByPublicToken(token: string) {
   if (order.status === "cancelled") {
     return { error: "This order is no longer available" }
   }
+  if (!isPublicAccessTokenActive(order)) {
+    return { error: "This order link is no longer available" }
+  }
 
   let sale: any = Array.isArray(order.sales) ? order.sales[0] : order.sales
   let lead: any = sale?.leads
@@ -97,7 +136,7 @@ export async function getOrderByPublicToken(token: string) {
   if (!sale && order.sale_id) {
     const { data: saleData } = await supabase
       .from("sales")
-      .select("id, status, amount_due, payment_method, payment_details, payments, stripe_checkout_session_id, stripe_payment_intent_id, leads(id, name, email)")
+      .select(PUBLIC_ORDER_SALE_SELECT)
       .eq("id", order.sale_id)
       .single()
     sale = saleData || null
@@ -110,19 +149,79 @@ export async function getOrderByPublicToken(token: string) {
   }
 
   const branding = await loadSiteBranding(supabase, order.site_id || order.owner_site_id)
-  const lineItems =
+  const lineItems = mapDocumentLineItems(
     order.sale_order_items?.length > 0
       ? order.sale_order_items
       : order.items || []
+  )
+  const site = Array.isArray(order.site) ? order.site[0] : order.site
+  const location =
+    branding.location &&
+    typeof branding.location === "object" &&
+    !Array.isArray(branding.location)
+      ? {
+          name: branding.location.name ?? null,
+          address: branding.location.address ?? null,
+          city: branding.location.city ?? null,
+          state: branding.location.state ?? null,
+          zip: branding.location.zip ?? null,
+          country: branding.location.country ?? null,
+        }
+      : null
+
   return {
     data: {
-      ...order,
+      id: order.id,
+      order_number: order.order_number,
+      status: order.status,
+      currency: order.currency,
+      created_at: order.created_at,
+      subtotal: order.subtotal,
+      tax_total: order.tax_total,
+      discount_total: order.discount_total,
+      total: order.total,
+      fulfillment_method: order.fulfillment_method,
+      shipping_address:
+        order.shipping_address &&
+        typeof order.shipping_address === "object" &&
+        !Array.isArray(order.shipping_address)
+          ? {
+              line1: order.shipping_address.line1 ?? null,
+              line2: order.shipping_address.line2 ?? null,
+              city: order.shipping_address.city ?? null,
+              state: order.shipping_address.state ?? null,
+              zip: order.shipping_address.zip ?? null,
+              country: order.shipping_address.country ?? null,
+            }
+          : null,
       items: lineItems,
-      leads: lead,
-      sales: sale,
-      site: Array.isArray(order.site) ? order.site[0] : order.site,
+      leads: lead ? { name: lead.name ?? null, email: lead.email ?? null } : null,
+      sales: sale
+        ? {
+            status: sale.status,
+            amount_due: sale.amount_due,
+            payment_method: sale.payment_method ?? null,
+          }
+        : null,
+      site: site
+        ? {
+            id: site.id,
+            name: site.name ?? null,
+            logo_url: site.logo_url ?? null,
+            url: site.url ?? null,
+          }
+        : null,
     },
-    branding,
+    branding: {
+      site: {
+        id: branding.site.id,
+        name: branding.site.name,
+        logo_url: branding.site.logo_url,
+        url: branding.site.url,
+      },
+      locale: branding.locale,
+      location,
+    },
   }
 }
 
@@ -178,83 +277,10 @@ export async function sendSaleOrder(id: string) {
   }
 
   const viewLink = buildPublicDocUrl("so", tokenRes.token)
-  const appUrl = (process.env.NEXT_PUBLIC_APP_URL || "https://makinari.com").replace(/\/$/, "")
-  const returnUrl = `${appUrl}${buildPublicDocPath("so", tokenRes.token)}`
-
-  let checkoutLink: string | null = null
-  if (sale && Number(sale.amount_due) > 0) {
-    try {
-      const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-        apiVersion: '2025-05-28.basil',
-      })
-      const orderCurrency = (order.currency || 'USD').toLowerCase()
-      const zeroDecimalCurrencies = ['jpy', 'bif', 'clp', 'djf', 'gnf', 'krw', 'mga', 'pyg', 'rwf', 'ugx', 'vnd', 'vuv', 'xaf', 'xof', 'xpf'];
-      const isZeroDecimal = zeroDecimalCurrencies.includes(orderCurrency);
-      
-      const lineItems = (order.items || []).map((item: any) => {
-        const imageUrl = item.catalog_item?.image_url
-        const images = typeof imageUrl === 'string' && /^https?:\/\//i.test(imageUrl) ? [imageUrl] : undefined
-        const rawDescription = typeof item.description === 'string' ? item.description.trim() : ''
-        const description = rawDescription ? rawDescription.slice(0, 500) : undefined
-
-        return {
-          price_data: {
-            currency: orderCurrency,
-            product_data: {
-              name: item.name,
-              ...(description ? { description } : {}),
-              ...(images ? { images } : {}),
-            },
-            unit_amount: isZeroDecimal
-              ? Math.round(item.unit_price ?? item.unitPrice ?? 0)
-              : Math.round((item.unit_price ?? item.unitPrice ?? 0) * 100),
-          },
-          quantity: item.quantity,
-        }
-      })
-
-      if (order.shipping_cost && order.shipping_cost > 0) {
-        lineItems.push({
-          price_data: {
-            currency: orderCurrency,
-            product_data: { name: 'Shipping' },
-            unit_amount: isZeroDecimal ? Math.round(order.shipping_cost) : Math.round(order.shipping_cost * 100),
-          },
-          quantity: 1,
-        })
-      }
-
-      if (order.tax_total && order.tax_total > 0) {
-        lineItems.push({
-          price_data: {
-            currency: orderCurrency,
-            product_data: { name: 'Tax' },
-            unit_amount: isZeroDecimal ? Math.round(order.tax_total) : Math.round(order.tax_total * 100),
-          },
-          quantity: 1,
-        })
-      }
-      const session = await stripe.checkout.sessions.create({
-        payment_method_types: ['card'],
-        line_items: lineItems,
-        mode: 'payment',
-        success_url: `${returnUrl}?success=true&order_id=${order.id}`,
-        cancel_url: `${returnUrl}?canceled=true`,
-        customer_email: toEmail,
-        metadata: {
-          type: 'sale_order',
-          site_id: siteId,
-          order_id: order.id,
-          sale_id: order.sale_id,
-          ...(order.buyer_user_id ? { buyer_user_id: order.buyer_user_id } : {}),
-          ...(sale?.lead_id ? { lead_id: sale.lead_id } : {})
-        }
-      })
-      if (session.url) checkoutLink = session.url
-    } catch (err) {
-      console.error('Stripe checkout error during sendSaleOrder:', err)
-    }
-  }
+  const checkoutLink =
+    sale?.status === "pending" && Number(sale.amount_due) > 0
+      ? viewLink
+      : null
 
   const docRef = String(order.order_number || order.id).substring(0, 12)
   const currency = order.currency || "USD"
@@ -319,11 +345,21 @@ export async function sendSaleOrder(id: string) {
     .single()
 
   if (stampError) {
+    console.error("Order email delivered but audit timestamp failed:", stampError)
     return {
-      error: publicTokenSchemaError(stampError.message) || stampError.message,
+      success: true,
+      data: { ...order, leads: lead },
+      emailed: true,
+      auditRecorded: false,
+      warning: "Email was delivered, but the delivery timestamp could not be saved.",
     }
   }
 
-  return { success: true, data: { ...updated, leads: lead }, emailed: true }
+  return {
+    success: true,
+    data: { ...updated, leads: lead },
+    emailed: true,
+    auditRecorded: true,
+  }
 }
 

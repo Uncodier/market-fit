@@ -91,7 +91,9 @@ export default function RecordsPage() {
     setIsBulkActionLoading(true)
     try {
       const promises = Array.from(selectedRecords).map(id => updateRecord(id, { status: newStatus }))
-      await Promise.all(promises)
+      const results = await Promise.all(promises)
+      const failed = results.find((result) => result.error)
+      if (failed?.error) throw new Error(failed.error)
       
       setSelectedRecords(new Set())
       toast.success(t("records.bulk.statusUpdated", { count: selectedRecords.size }) || `Status updated for ${selectedRecords.size} records`)
@@ -108,7 +110,9 @@ export default function RecordsPage() {
     setIsBulkActionLoading(true)
     try {
       const promises = Array.from(selectedRecords).map(id => updateRecord(id, { category_id: newCategoryId }))
-      await Promise.all(promises)
+      const results = await Promise.all(promises)
+      const failed = results.find((result) => result.error)
+      if (failed?.error) throw new Error(failed.error)
       
       setSelectedRecords(new Set())
       toast.success(t("records.bulk.categoryUpdated", { count: selectedRecords.size }) || `Category updated for ${selectedRecords.size} records`)
@@ -186,14 +190,21 @@ export default function RecordsPage() {
 
   const handleSaveCategory = async (data: any) => {
     if (!currentSite?.id) return
-    if (editingCategory) {
-      await updateRecordCategory(editingCategory.id, data)
-      toast.success(t("records.toast.templateUpdated") || "Template updated")
-    } else {
-      await createRecordCategory({ ...data, site_id: currentSite.id })
-      toast.success(t("records.toast.templateCreated") || "Template created")
+    try {
+      if (editingCategory) {
+        const result = await updateRecordCategory(editingCategory.id, data)
+        if (result.error) throw new Error(result.error)
+        toast.success(t("records.toast.templateUpdated") || "Template updated")
+      } else {
+        const result = await createRecordCategory({ ...data, site_id: currentSite.id })
+        if (result.error) throw new Error(result.error)
+        toast.success(t("records.toast.templateCreated") || "Template created")
+      }
+      refreshData()
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to save category")
+      throw error
     }
-    refreshData()
   }
 
   const handleCreateRecord = async (specificCategoryId?: string) => {
@@ -474,11 +485,13 @@ export default function RecordsPage() {
                       // Only update status if grouping by status
                       if (groupBy === "status") {
                         const { updateRecord } = await import("./actions");
-                        await updateRecord(recordId, { status: newStatus });
+                        const result = await updateRecord(recordId, { status: newStatus });
+                        if (result.error) throw new Error(result.error);
                         refreshData();
                       } else if (groupBy === "category") {
                         const { updateRecord } = await import("./actions");
-                        await updateRecord(recordId, { category_id: newStatus });
+                        const result = await updateRecord(recordId, { category_id: newStatus });
+                        if (result.error) throw new Error(result.error);
                         refreshData();
                       }
                       // Note: team_member logic is handled inside RecordsKanban directly

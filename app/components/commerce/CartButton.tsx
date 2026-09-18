@@ -24,7 +24,9 @@ const shellIconOnly =
 const shellWithPrice =
   "h-9 w-auto max-w-none shrink-0 rounded-full font-inter inline-flex items-center justify-center gap-2.5 pl-3.5 pr-3 text-slate-600 dark:text-white/70 bg-transparent shadow-none border-0 transition-colors duration-200 hover:text-slate-900 dark:hover:text-white hover:bg-black/10 dark:hover:bg-white/15"
 
-export const CartButton = React.forwardRef<HTMLButtonElement, CartButtonProps>(
+type CartButtonElement = HTMLButtonElement | HTMLAnchorElement
+
+export const CartButton = React.forwardRef<CartButtonElement, CartButtonProps>(
   (
     {
       cartCount,
@@ -46,6 +48,9 @@ export const CartButton = React.forwardRef<HTMLButtonElement, CartButtonProps>(
 
     const isShell = variant === "shell"
     const showPrice = subtotal !== undefined && subtotal > 0
+    const cartLabel =
+      props["aria-label"] ||
+      (cartCount === 1 ? "Open cart, 1 item" : `Open cart, ${cartCount} items`)
 
     const badge = cartCount > 0 ? (
       <span
@@ -66,23 +71,8 @@ export const CartButton = React.forwardRef<HTMLButtonElement, CartButtonProps>(
       </span>
     ) : null
 
-    const content = isShell ? (
-      <button
-        ref={ref}
-        type="button"
-        // When showing price, do not merge caller iconButton classes (w-9 / aspect-square / !min-w-0)
-        // — they collapse the control and the price overflows onto the avatar.
-        className={cn(
-          "relative",
-          showPrice ? shellWithPrice : cn(shellIconOnly, className)
-        )}
-        style={
-          showPrice
-            ? { width: "auto", minWidth: "fit-content", aspectRatio: "auto" }
-            : undefined
-        }
-        {...props}
-      >
+    const shellContent = (
+      <>
         <span className="relative inline-flex h-4 w-4 shrink-0 items-center justify-center overflow-visible">
           <ShoppingCart className={cn("h-4 w-4 shrink-0", iconClassName)} />
           {badge}
@@ -92,35 +82,126 @@ export const CartButton = React.forwardRef<HTMLButtonElement, CartButtonProps>(
             {formatPrice(subtotal!, currency)}
           </span>
         ) : null}
-      </button>
-    ) : (
+      </>
+    )
+
+    const standardContent = (
+      <>
+        <ShoppingCart className={cn("h-5 w-5", iconClassName)} />
+        {showPrice ? (
+          <span className="font-bold ml-2 whitespace-nowrap">
+            {formatPrice(subtotal!, currency)}
+          </span>
+        ) : null}
+      </>
+    )
+
+    if (href) {
+      const {
+        disabled,
+        form: _form,
+        formAction: _formAction,
+        formEncType: _formEncType,
+        formMethod: _formMethod,
+        formNoValidate: _formNoValidate,
+        formTarget: _formTarget,
+        name: _name,
+        type: _type,
+        value: _value,
+        onClick,
+        ...linkProps
+      } = props
+      const anchorProps =
+        linkProps as unknown as React.AnchorHTMLAttributes<HTMLAnchorElement>
+      const handleLinkClick = (event: React.MouseEvent<HTMLAnchorElement>) => {
+        if (disabled) {
+          event.preventDefault()
+          return
+        }
+        onClick?.(event as unknown as React.MouseEvent<HTMLButtonElement>)
+      }
+
+      if (isShell) {
+        return (
+          <Link
+            ref={ref as React.ForwardedRef<HTMLAnchorElement>}
+            href={href}
+            className={cn(
+              "relative",
+              showPrice ? shellWithPrice : cn(shellIconOnly, className)
+            )}
+            style={
+              showPrice
+                ? { width: "auto", minWidth: "fit-content", aspectRatio: "auto" }
+                : undefined
+            }
+            {...anchorProps}
+            aria-disabled={disabled || undefined}
+            aria-label={cartLabel}
+            onClick={handleLinkClick}
+          >
+            {shellContent}
+          </Link>
+        )
+      }
+
+      return (
+        <div className="relative inline-flex shrink-0">
+          <Button
+            asChild
+            ref={ref as React.ForwardedRef<HTMLButtonElement>}
+            variant={variant}
+            className={cn("relative rounded-full shadow-sm hover:shadow transition-all", className)}
+            aria-disabled={disabled || undefined}
+            aria-label={cartLabel}
+          >
+            <Link href={href} {...anchorProps} onClick={handleLinkClick}>
+              {standardContent}
+            </Link>
+          </Button>
+          {badge}
+        </div>
+      )
+    }
+
+    if (isShell) {
+      return (
+        <button
+          ref={ref as React.ForwardedRef<HTMLButtonElement>}
+          type="button"
+          // When showing price, do not merge caller iconButton classes (w-9 / aspect-square / !min-w-0)
+          // — they collapse the control and the price overflows onto the avatar.
+          className={cn(
+            "relative",
+            showPrice ? shellWithPrice : cn(shellIconOnly, className)
+          )}
+          style={
+            showPrice
+              ? { width: "auto", minWidth: "fit-content", aspectRatio: "auto" }
+              : undefined
+          }
+          {...props}
+          aria-label={cartLabel}
+        >
+          {shellContent}
+        </button>
+      )
+    }
+
+    return (
       <div className="relative inline-flex shrink-0">
         <Button
-          ref={ref}
-          variant={variant === "shell" ? "ghost" : variant}
+          ref={ref as React.ForwardedRef<HTMLButtonElement>}
+          variant={variant}
           className={cn("relative rounded-full shadow-sm hover:shadow transition-all", className)}
           {...props}
+          aria-label={cartLabel}
         >
-          <ShoppingCart className={cn("h-5 w-5", iconClassName)} />
-          {showPrice ? (
-            <span className="font-bold ml-2 whitespace-nowrap">
-              {formatPrice(subtotal!, currency)}
-            </span>
-          ) : null}
+          {standardContent}
         </Button>
         {badge}
       </div>
     )
-
-    if (href) {
-      return (
-        <Link href={href} className="inline-flex shrink-0">
-          {content}
-        </Link>
-      )
-    }
-
-    return content
   }
 )
 

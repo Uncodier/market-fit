@@ -77,9 +77,56 @@ function pathStartsWithRoute(pathname: string, routePath: string): boolean {
   return pathname === routePath || pathname.startsWith(`${routePath}/`)
 }
 
+function normalizePathname(rawPathname: string): string {
+  return rawPathname.split(/[?#]/)[0] || "/"
+}
+
+/**
+ * These no-workspace-layout routes already render their own main landmark.
+ * Keep this path-based so the root wrapper can decide before rendering children.
+ */
+export function routeProvidesOwnMainLandmark(rawPathname: string): boolean {
+  const pathname = normalizePathname(rawPathname)
+  const segments = pathname.split("/").filter(Boolean)
+
+  if (segments[0] === "buyer") {
+    return true
+  }
+
+  if (segments[0] === "book") {
+    return segments.length === 4
+  }
+
+  if (segments[0] === "cart") {
+    return segments.length === 2 && segments[1] === "checkout"
+  }
+
+  if (segments[0] === "marketplace") {
+    return (
+      segments.length === 1 ||
+      segments.length === 2 ||
+      (segments.length === 3 && (segments[1] === "promo" || segments[2] === "book"))
+    )
+  }
+
+  if (segments[0] === "shop" && segments[1]) {
+    return (
+      segments.length === 2 ||
+      segments.length === 3 ||
+      (segments.length === 4 && (segments[2] === "promo" || segments[3] === "book"))
+    )
+  }
+
+  return false
+}
+
+export function shouldWrapNoLayoutContentInMain(rawPathname: string): boolean {
+  return !shouldUseLayout(rawPathname) && !routeProvidesOwnMainLandmark(rawPathname)
+}
+
 /** Workspace data providers (site, permissions, robots). Shop/cart keep a lean tree. */
 export function shouldUseWorkspaceProviders(rawPathname: string): boolean {
-  const pathname = rawPathname.split('?')[0]
+  const pathname = normalizePathname(rawPathname)
   if (shouldUseLayout(pathname)) return true
   return (
     pathname.startsWith("/navigation") ||
@@ -95,7 +142,7 @@ export function shouldUseWorkspaceProviders(rawPathname: string): boolean {
 
 export function shouldUseLayout(rawPathname: string): boolean {
   // Strip query parameters for matching
-  const pathname = rawPathname.split('?')[0]
+  const pathname = normalizePathname(rawPathname)
   
   // Check if the pathname matches any of our defined routes
   const route = routes.find(route => pathStartsWithRoute(pathname, route.path))

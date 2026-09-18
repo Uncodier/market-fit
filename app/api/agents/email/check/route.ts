@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { secureTokensService } from '@/app/services/secure-tokens-service';
+import { requireSiteAccess } from '@/lib/auth/api-site-access';
 
 export async function POST(req: NextRequest) {
   try {
@@ -25,6 +25,11 @@ export async function POST(req: NextRequest) {
           message: 'Site ID is required'
         }
       }, { status: 400 });
+    }
+
+    const access = await requireSiteAccess(req, site_id, { requireManager: true });
+    if (access.error) {
+      return access.error;
     }
 
     let emailCredentials = {
@@ -79,7 +84,13 @@ export async function POST(req: NextRequest) {
         const response = await fetch(`${req.nextUrl.origin}/api/secure-tokens`, {
           method: 'POST',
           headers: {
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            ...(req.headers.get('authorization')
+              ? { Authorization: req.headers.get('authorization')! }
+              : {}),
+            ...(req.headers.get('cookie')
+              ? { Cookie: req.headers.get('cookie')! }
+              : {}),
           },
           body: JSON.stringify({
             operation: 'retrieve',

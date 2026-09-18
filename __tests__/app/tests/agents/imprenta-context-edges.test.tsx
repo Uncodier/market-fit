@@ -1,5 +1,5 @@
 import { createRef } from "react"
-import { render } from "@testing-library/react"
+import { fireEvent, render } from "@testing-library/react"
 import { ImprentaContextEdges } from "@/app/components/agents/imprenta-context-edges"
 import { ImprentaTempConnectionLine } from "@/app/components/agents/imprenta-world-svg"
 import { createImprentaHoverStore } from "@/app/lib/imprenta-hover-store"
@@ -47,7 +47,7 @@ describe("ImprentaContextEdges", () => {
         positions={{ a: { x: 0, y: 0 }, b: { x: 600, y: 40 } }}
         nodeHeightsRef={heightsRef}
         selectedContextId={null}
-        setSelectedContextId={() => {}}
+        onSelectContext={() => {}}
         hoverStore={createImprentaHoverStore()}
       />
     )
@@ -59,6 +59,36 @@ describe("ImprentaContextEdges", () => {
     expect(svg!.getAttribute("class")).toContain("h-full")
     expect(svg!.style.overflow).toBe("visible")
     expect(container.querySelector("path")).not.toBeNull()
+  })
+
+  it("reports the click position when selecting a relation", () => {
+    const nodesRef = createRef<InstanceNode[]>()
+    nodesRef.current = [node("a"), node("b")]
+    const heightsRef = createRef<Record<string, number>>()
+    heightsRef.current = { a: 300, b: 300 }
+    const onSelectContext = jest.fn()
+    const { container } = render(
+      <ImprentaContextEdges
+        contexts={[{
+          id: "ctx-1",
+          context_node_id: "a",
+          target_node_id: "b",
+          type: "reference",
+        }]}
+        nodesRef={nodesRef}
+        positions={{ a: { x: 0, y: 0 }, b: { x: 600, y: 40 } }}
+        nodeHeightsRef={heightsRef}
+        selectedContextId={null}
+        onSelectContext={onSelectContext}
+        hoverStore={createImprentaHoverStore()}
+      />
+    )
+
+    fireEvent.click(container.querySelector('path[stroke="transparent"]')!, {
+      clientX: 420,
+      clientY: 260,
+    })
+    expect(onSelectContext).toHaveBeenCalledWith("ctx-1", { x: 420, y: 260 })
   })
 })
 

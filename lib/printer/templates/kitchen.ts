@@ -19,6 +19,9 @@ export function writeKitchenTicket(b: TicketBuilder, payload: KitchenPayload): v
   if (fulfill) b.bold(true).text(ticketHeading(fulfill, locale), "center").bold(false)
   if (payload.tableName) b.rawLine(padKv(copy.table, payload.tableName, b.width))
   if (payload.customerName) b.rawLine(padKv(copy.customer, payload.customerName, b.width))
+  if (payload.requestedByName) {
+    b.rawLine(padKv(copy.requestedBy, payload.requestedByName, b.width))
+  }
   writeSolidRule(b)
   for (const line of payload.lines || []) {
     b.size(true).bold(true)

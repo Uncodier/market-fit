@@ -49,7 +49,6 @@ import {
   Ban,
   ShoppingCart,
   Settings,
-  Ticket,
   Repeat,
   ModifierGroups,
   Save,
@@ -63,6 +62,7 @@ import { LoadingSkeleton } from "@/app/components/ui/loading-skeleton";
 import { Switch } from "@/app/components/ui/switch";
 import { Label } from "@/app/components/ui/label";
 import { RobotPrimaryActions } from "./RobotPrimaryActions";
+import { OrderUpdatesBadge } from "./OrderUpdatesBadge";
 
 interface TopBarActionsProps {
   isPosPage?: boolean;
@@ -810,39 +810,35 @@ export function TopBarActions({
 
       {isPosPage && currentSite && (
         <div className="flex items-center gap-2">
-          <Button
-            variant="secondary"
-            size="default"
-            className="hidden sm:flex items-center justify-center gap-2 transition-colors duration-200 !min-w-0 sm:!min-w-[155px] md:!min-w-[200px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
-            onClick={() => { window.location.href = '/pos/check-in' }}
-            title={t("pos.checkIn.title") || "Ticket Check-in"}
-          >
-            <Ticket className="h-4 w-4 shrink-0" />
-            <span className="hidden sm:inline font-inter font-medium text-sm">
-              {t("pos.checkIn.title") || "Ticket Check-in"}
-            </span>
-          </Button>
-          <Button
-            variant="default"
-            size="default"
-            className="hidden sm:flex items-center justify-center gap-2 transition-colors duration-200 !min-w-0 sm:!min-w-[155px] md:!min-w-[200px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm bg-primary text-primary-foreground hover:bg-primary/90"
-            onClick={() =>
-              window.dispatchEvent(new CustomEvent("pos:send-order"))
-            }
-            title={t("layout.topbar.sendOrder") || "Send Order"}
-          >
-            <div className="relative">
-              <ShoppingCart className="h-4 w-4 shrink-0" />
-              {posCartQty > 0 && (
-                <span className="absolute -top-2 -right-2 flex h-4 min-w-4 px-1 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white shadow-sm ring-1 ring-background z-10">
-                  {posCartQty > 99 ? '99+' : posCartQty}
-                </span>
-              )}
+          <div className="relative hidden overflow-visible sm:block">
+            <Button
+              variant="default"
+              size="default"
+              className="!flex items-center justify-center gap-2 transition-colors duration-200 !min-w-0 sm:!min-w-[155px] md:!min-w-[200px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm bg-primary text-primary-foreground hover:bg-primary/90"
+              onClick={() =>
+                window.dispatchEvent(new CustomEvent("pos:send-order"))
+              }
+              title={t("layout.topbar.sendOrder") || "Send Order"}
+            >
+              <span className="flex h-6 w-6 shrink-0 items-center justify-center">
+                <ShoppingCart className="h-4 w-4 shrink-0" />
+              </span>
+              <span className="font-inter text-sm font-medium">
+                {t("layout.topbar.sendOrder") || "Send Order"}
+              </span>
+            </Button>
+            <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center gap-2 overflow-visible">
+              <span className="relative h-6 w-6 shrink-0">
+                <OrderUpdatesBadge
+                  count={posCartQty}
+                  className="absolute right-0 top-0 translate-x-1/2 -translate-y-1/4"
+                />
+              </span>
+              <span className="invisible font-inter text-sm font-medium">
+                {t("layout.topbar.sendOrder") || "Send Order"}
+              </span>
             </div>
-            <span className="hidden sm:inline font-inter font-medium text-sm">
-              {t("layout.topbar.sendOrder") || "Send Order"}
-            </span>
-          </Button>
+          </div>
         </div>
       )}
 

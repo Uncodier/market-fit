@@ -7,6 +7,7 @@ import dynamic from "next/dynamic"
 import { useSite } from "@/app/context/SiteContext"
 import { createClient } from "@/lib/supabase/client"
 import { TopBarTitle } from "./TopBarTitle"
+import { PosTopBarActions } from "./PosTopBarActions"
 import { Button } from "../ui/button"
 import { Menu } from "@/app/components/ui/icons"
 
@@ -298,8 +299,9 @@ export function TopBar({
         </div>
         
         <div className="flex items-center justify-end shrink-0 ml-auto">
+          {pathname === "/pos" ? <PosTopBarActions /> : null}
           <TopBarActions
-            isPosPage={pathname === "/pos"}
+            isPosPage={false}
             isDashboardPage={pathname === "/dashboard"}
             isSegmentsPage={pathname === "/segments"}
             isExperimentsPage={pathname === "/experiments"}

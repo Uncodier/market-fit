@@ -7,9 +7,10 @@ export async function rejectQuotation(quotationId: string) {
   const supabase = await createClient()
 
   const {
-    data: { session },
-  } = await supabase.auth.getSession()
-  if (!session?.user) return { error: "Not authenticated" }
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser()
+  if (authError || !user) return { error: "Not authenticated" }
 
   const { data: quote, error: quoteError } = await supabase
     .from("quotations")
@@ -19,14 +20,20 @@ export async function rejectQuotation(quotationId: string) {
 
   if (quoteError || !quote) return { error: "Quotation not found" }
 
-  const gate = assertQuotationRejectable(quote, { buyerUserId: session.user.id })
+  const gate = assertQuotationRejectable(quote, { buyerUserId: user.id })
   if (!gate.ok) return { error: gate.error }
 
-  const { error } = await supabase
+  const { data: updated, error } = await supabase
     .from("quotations")
     .update({ status: "rejected" })
     .eq("id", quotationId)
+    .eq("buyer_user_id", user.id)
+    .eq("status", quote.status)
+    .is("checkout_claim_id", null)
+    .select("id")
+    .maybeSingle()
 
   if (error) return { error: error.message }
+  if (!updated) return { error: "Quotation is no longer available" }
   return { success: true }
 }

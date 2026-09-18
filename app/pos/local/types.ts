@@ -63,6 +63,8 @@ export type PosCartSession = {
   promoCode: string;
   activeOrderId: string;
   buyerUserId: string | null;
+  sellerUserId?: string | null;
+  sellerName?: string | null;
   orderNotes?: string;
   shippingAddress?: PosShippingAddress;
   updatedAt: string;

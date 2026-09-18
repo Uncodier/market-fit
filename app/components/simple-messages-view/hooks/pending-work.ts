@@ -60,6 +60,12 @@ export async function buildPendingWorkPayload(params: {
   context.parameters = { ...currentParams }
   context.expected_results_amount = expectedResults
   context.selected_context = params.selectedContext
+  context.record_diagrams = contextData.records
+    .filter((record) => record.diagram)
+    .map((record) => ({
+      record_id: record.id,
+      diagram: record.diagram,
+    }))
 
   if ((context.parameters as Record<string, unknown>)?.expectedResults !== undefined) {
     delete (context.parameters as Record<string, unknown>).expectedResults
@@ -91,18 +97,16 @@ export async function enqueuePendingWork(params: {
   const supabase = createClient()
   const { data, error } = await supabase
     .from('instance_pending_work')
-    .insert([
-      {
-        instance_id: params.instanceId,
-        site_id: params.siteId,
-        user_id: params.userId || null,
-        message: params.message,
-        activity: params.activity || 'ask',
-        context: params.context || {},
-        system_prompt: params.systemPrompt || null,
-        status: 'pending',
-      }
-    ])
+    .insert({
+      instance_id: params.instanceId,
+      site_id: params.siteId,
+      user_id: params.userId || null,
+      message: params.message,
+      activity: params.activity || 'ask',
+      context: params.context || {},
+      system_prompt: params.systemPrompt || null,
+      status: 'pending',
+    })
     .select('id')
     .single()
 

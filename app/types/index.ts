@@ -198,6 +198,9 @@ export interface SaleOrderData {
   site_id: string;
   buyer_user_id?: string | null;
   owner_site_id?: string | null;
+  created_by_user_id?: string | null;
+  seller_user_id?: string | null;
+  requested_by_lead_id?: string | null;
   promotion_id?: string;
   price_list_id?: string;
   fulfillment_method?: 'pickup' | 'ship' | 'dine_in' | 'none' | null;

@@ -17,7 +17,7 @@ export default async function MarketplacePage() {
   const { items, count, initialTotalPages, merchandising } = await loadMarketplaceHome()
 
   return (
-    <Suspense fallback={<div className="flex-1 min-h-screen bg-muted/30" />}>
+    <Suspense fallback={<main className="flex-1 min-h-screen bg-muted/30" />}>
       <MarketplaceClient
         initialItems={items}
         initialCount={count}

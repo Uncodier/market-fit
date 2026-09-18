@@ -21,12 +21,17 @@ export async function grantFromOrder(orderId: string, forceServiceRole: boolean 
   }
 
   // Check if entitlements already exist for this order
-  const { data: existing } = await supabase
+  const { data: existing, error: existingError } = await supabase
     .from('entitlements')
     .select('id')
     .eq('source_type', 'purchase')
     .eq('source_id', order.id)
     .limit(1)
+  if (existingError) {
+    throw new Error(
+      `Failed to check existing order entitlements: ${existingError.message}`,
+    )
+  }
 
   if (existing && existing.length > 0) {
     console.log(`Entitlements already granted for order ${orderId}`);
@@ -36,10 +41,15 @@ export async function grantFromOrder(orderId: string, forceServiceRole: boolean 
   // 2. Fetch catalog items to identify digital assets
   let orderLines = Array.isArray(order.items) ? order.items : []
   if (orderLines.length === 0) {
-    const { data: saleOrderItems } = await supabase
+    const { data: saleOrderItems, error: orderItemsError } = await supabase
       .from("sale_order_items")
       .select("catalog_item_id, name, quantity")
       .eq("sale_order_id", order.id)
+    if (orderItemsError) {
+      throw new Error(
+        `Failed to load order entitlement items: ${orderItemsError.message}`,
+      )
+    }
     orderLines = saleOrderItems || []
   }
 
@@ -47,10 +57,15 @@ export async function grantFromOrder(orderId: string, forceServiceRole: boolean 
   
   if (catalogItemIds.length === 0) return
 
-  const { data: catalogItems } = await supabase
+  const { data: catalogItems, error: catalogItemsError } = await supabase
     .from('catalog_items')
     .select('id, kind, digital_subtype, is_recurring, pass_uses, pass_validity_days')
     .in('id', catalogItemIds)
+  if (catalogItemsError) {
+    throw new Error(
+      `Failed to load entitlement catalog items: ${catalogItemsError.message}`,
+    )
+  }
 
   const digitalItems = catalogItems?.filter((c: any) => c.kind === 'digital_asset') || []
   
@@ -126,7 +141,10 @@ export async function syncSubscriptionEntitlements(subscriptionId: string, force
     .eq('id', subscriptionId)
     .single()
     
-  if (subError || !subscription) return
+  if (subError) {
+    throw new Error(`Failed to load subscription: ${subError.message}`)
+  }
+  if (!subscription) return
 
   if (subscription.status !== 'active') {
     await revokeForSubscription(subscriptionId, forceServiceRole)
@@ -136,20 +154,30 @@ export async function syncSubscriptionEntitlements(subscriptionId: string, force
   if (!subscription.buyer_user_id) return
 
   // Find plan items
-  const { data: planItems } = await supabase
+  const { data: planItems, error: planItemsError } = await supabase
     .from('subscription_plan_items')
     .select('digital_catalog_item_id')
     .eq('plan_catalog_item_id', subscription.catalog_item_id)
+  if (planItemsError) {
+    throw new Error(
+      `Failed to load subscription plan items: ${planItemsError.message}`,
+    )
+  }
     
   if (!planItems || planItems.length === 0) return
 
   // Check existing entitlements
-  const { data: existingEntitlements } = await supabase
+  const { data: existingEntitlements, error: existingError } = await supabase
     .from('entitlements')
     .select('catalog_item_id')
     .eq('source_type', 'subscription')
     .eq('source_id', subscriptionId)
     .eq('status', 'active')
+  if (existingError) {
+    throw new Error(
+      `Failed to load subscription entitlements: ${existingError.message}`,
+    )
+  }
     
   const existingIds = existingEntitlements?.map((e: any) => e.catalog_item_id) || []
   
@@ -157,10 +185,15 @@ export async function syncSubscriptionEntitlements(subscriptionId: string, force
   
   if (digitalIdsToFetch.length === 0) return;
   
-  const { data: digitalCatalogItems } = await supabase
+  const { data: digitalCatalogItems, error: catalogItemsError } = await supabase
     .from('catalog_items')
     .select('id, digital_subtype, pass_uses, pass_validity_days')
     .in('id', digitalIdsToFetch);
+  if (catalogItemsError) {
+    throw new Error(
+      `Failed to load subscription catalog items: ${catalogItemsError.message}`,
+    )
+  }
   
   const newEntitlements = []
   for (const digitalId of digitalIdsToFetch) {
@@ -201,7 +234,14 @@ export async function syncSubscriptionEntitlements(subscriptionId: string, force
   }
   
   if (newEntitlements.length > 0) {
-    await supabase.from('entitlements').insert(newEntitlements)
+    const { error: insertError } = await supabase
+      .from('entitlements')
+      .insert(newEntitlements)
+    if (insertError) {
+      throw new Error(
+        `Failed to insert subscription entitlements: ${insertError.message}`,
+      )
+    }
   }
 }
 

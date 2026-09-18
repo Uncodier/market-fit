@@ -1,0 +1,52 @@
+goal: Read accounting and payment views without changing financial data
+
+statements:
+  - URL: /projects
+  - intent: Select the first available project
+    action: click
+    locator: "getByRole('button', { name: 'Select' }).first()"
+
+  - WAIT_UNTIL: The workspace is selected
+    js: "await page.url().includes('/robots')"
+    timeout_seconds: 10
+
+  - description: Navigate to accounting without waiting for long-lived resources
+    js: "await page.goto('/accounting', { waitUntil: 'domcontentloaded', timeout: 60000 })"
+  - WAIT_UNTIL: Chart of Accounts is ready
+    js: "await page.getByRole('tab', { name: 'All' }).count() > 0"
+    timeout_seconds: 15
+
+  - intent: Filter asset accounts
+    action: click
+    locator: "getByRole('tab', { name: 'Asset', exact: true })"
+  - VERIFY: Asset accounts filter is active
+    js: "await expect(page.getByRole('tab', { name: 'Asset', exact: true })).toHaveAttribute('data-state', 'active')"
+
+  - intent: Open Opening Balances
+    action: click
+    locator: "getByRole('button', { name: 'Opening Balances' })"
+  - VERIFY: Opening Balances dialog is visible
+    js: "await expect(page.getByRole('dialog').getByText('Opening Balances', { exact: true })).toBeVisible()"
+  - intent: Close Opening Balances without changes
+    action: click
+    locator: "getByRole('dialog').getByRole('button', { name: 'Cancel' })"
+
+  - URL: /payments
+  - WAIT_UNTIL: Payment tabs are ready
+    js: "await page.getByRole('tab', { name: 'Overview' }).count() > 0"
+    timeout_seconds: 15
+
+  - VERIFY: Payment summary is visible
+    js: "await expect(page.getByText('Total Usable Credits')).toBeVisible()"
+
+  - intent: Open payment operations
+    action: click
+    locator: "getByRole('tab', { name: 'Operations' })"
+  - VERIFY: Operations view is selected
+    js: "await expect(page.getByRole('tab', { name: 'Operations' })).toHaveAttribute('data-state', 'active')"
+
+  - intent: Open withdrawals
+    action: click
+    locator: "getByRole('tab', { name: 'Withdrawals' })"
+  - VERIFY: Withdrawals view is selected
+    js: "await expect(page.getByRole('tab', { name: 'Withdrawals' })).toHaveAttribute('data-state', 'active')"

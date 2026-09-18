@@ -356,7 +356,8 @@ export function RecordsKanban({
              } else {
                newRelations[teamMemberField.name] = newStatus
              }
-             await updateRecord(draggableId, { relations: newRelations })
+            const updateResult = await updateRecord(draggableId, { relations: newRelations })
+            if (updateResult.error) throw new Error(updateResult.error)
            }
          }
       } else {

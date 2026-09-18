@@ -1,7 +1,59 @@
 "use server"
 
-import { createServiceClient } from "@/lib/supabase/server"
+import { z } from "zod"
+import { createClient } from "@/lib/supabase/server"
 import { revalidatePath } from "next/cache"
+import { after } from "next/server"
+import { processRecordEmbeddingsById } from "./lib/record-embedding-worker"
+import {
+  resolveEntityPreviews as resolveEntityPreviewsAction,
+  resolveRelationsForSidebar as resolveRelationsForSidebarAction,
+} from "./entity-preview-actions"
+
+const recordIdSchema = z.string().uuid()
+const siteIdSchema = z.string().uuid()
+const categoryIdSchema = z.string().uuid()
+const updateRecordSchema = z.object({
+  category_id: categoryIdSchema.optional(),
+  title: z.string().trim().min(1).max(2000).optional(),
+  description: z.string().nullable().optional(),
+  data: z.record(z.unknown()).optional(),
+  relations: z.record(z.unknown()).optional(),
+  status: z.string().trim().min(1).max(100).optional(),
+}).strict()
+const categoryMutationSchema = z.object({
+  name: z.string().trim().min(1).max(240),
+  description: z.string().max(12_000).nullish(),
+  icon: z.string().max(100).nullish(),
+  parent_category_id: categoryIdSchema.nullish(),
+  template_fields: z.array(z.unknown()).max(200).default([]),
+}).strict()
+const createRecordSchema = z.object({
+  site_id: siteIdSchema,
+  category_id: categoryIdSchema,
+  title: z.string().trim().min(1).max(2000),
+  description: z.string().max(100_000).optional(),
+  data: z.record(z.unknown()).default({}),
+  relations: z.record(z.unknown()).default({}),
+  status: z.string().trim().min(1).max(100).default("draft"),
+}).strict()
+
+async function getAuthenticatedClient() {
+  const supabase = await createClient()
+  const { data: { user }, error } = await supabase.auth.getUser()
+  if (error || !user) throw new Error("Not authenticated")
+  return supabase
+}
+
+function scheduleRecordEmbedding(recordId: string) {
+  after(async () => {
+    try {
+      await processRecordEmbeddingsById({ recordId })
+    } catch (error) {
+      console.error("[records] deferred embedding failed", error)
+    }
+  })
+}
 
 export type RecordCategory = {
   id: string
@@ -35,11 +87,12 @@ export type RecordItem = {
 
 export async function getRecordCategories(siteId: string): Promise<{ categories: RecordCategory[] | null; error: string | null }> {
   try {
-    const supabase = await createServiceClient()
+    const parsedSiteId = siteIdSchema.parse(siteId)
+    const supabase = await getAuthenticatedClient()
     const { data, error } = await supabase
       .from("record_categories")
       .select("*")
-      .eq("site_id", siteId)
+      .eq("site_id", parsedSiteId)
       .order("created_at", { ascending: true })
 
     if (error) throw error
@@ -66,17 +119,18 @@ export async function createRecordCategory({
   template_fields?: any[]
 }) {
   try {
-    const supabase = await createServiceClient()
+    const input = categoryMutationSchema.extend({ site_id: siteIdSchema }).parse({
+      site_id,
+      name,
+      description,
+      icon,
+      parent_category_id,
+      template_fields,
+    })
+    const supabase = await getAuthenticatedClient()
     const { data, error } = await supabase
       .from('record_categories')
-      .insert({
-        site_id,
-        name,
-        description,
-        icon,
-        parent_category_id,
-        template_fields
-      })
+      .insert(input)
       .select()
       .single()
     
@@ -94,11 +148,13 @@ export async function updateRecordCategory(
   updates: Partial<RecordCategory>
 ) {
   try {
-    const supabase = await createServiceClient()
+    const categoryId = categoryIdSchema.parse(id)
+    const safeUpdates = categoryMutationSchema.partial().parse(updates)
+    const supabase = await getAuthenticatedClient()
     const { data, error } = await supabase
       .from('record_categories')
-      .update(updates)
-      .eq('id', id)
+      .update(safeUpdates)
+      .eq('id', categoryId)
       .select()
       .single()
     
@@ -113,13 +169,17 @@ export async function updateRecordCategory(
 
 export async function deleteRecordCategory(id: string) {
   try {
-    const supabase = await createServiceClient()
-    const { error } = await supabase
+    const categoryId = categoryIdSchema.parse(id)
+    const supabase = await getAuthenticatedClient()
+    const { data, error } = await supabase
       .from('record_categories')
       .delete()
-      .eq('id', id)
+      .eq('id', categoryId)
+      .select("id")
+      .maybeSingle()
     
     if (error) throw error
+    if (!data) throw new Error("Category not found or access denied")
     revalidatePath("/records")
     return { success: true }
   } catch (error: any) {
@@ -128,77 +188,31 @@ export async function deleteRecordCategory(id: string) {
   }
 }
 
-
 export async function resolveRelationsForSidebar(
   entitiesToResolve: { target: string; ids: string[] }[]
-): Promise<Record<string, string>> {
-  try {
-    const supabase = await createServiceClient()
-    const result: Record<string, string> = {}
-
-    for (const { target, ids } of entitiesToResolve) {
-      if (!ids.length) continue
-
-      let table = target
-      let nameField = "name"
-
-      if (target === "lead") { table = "leads"; nameField = "name" }
-      else if (target === "company") { table = "companies"; nameField = "name" }
-      else if (target === "sales_order") { table = "orders"; nameField = "order_number" }
-      else if (target === "deal") { table = "deals"; nameField = "name" }
-      else if (target === "person") { table = "users"; nameField = "name" }
-      else if (target === "campaign") { table = "campaigns"; nameField = "title" }
-      else if (target === "catalog_item") { table = "catalog_items"; nameField = "name" }
-      else if (target === "content") { table = "content"; nameField = "title" }
-      else if (target === "task") { table = "tasks"; nameField = "title" }
-      else if (target === "sale") { table = "sales"; nameField = "title" }
-      else if (target === "purchase") { table = "purchases"; nameField = "title" }
-      else if (target === "quotation") { table = "quotations"; nameField = "title" }
-      else if (target === "record") { table = "records"; nameField = "title" }
-      else if (target === "record_category") { table = "record_categories"; nameField = "name" }
-      else if (target === "team_member") { table = "site_members"; nameField = "name" }
-
-      const { data, error } = await supabase
-        .from(table)
-        .select(`id, ${nameField}`)
-        .in(target === 'team_member' ? 'user_id' : 'id', ids)
-
-      if (!error && data) {
-        for (const item of data) {
-          result[target === 'team_member' ? item.user_id : item.id] = item[nameField] || 'Unnamed'
-        }
-      }
-    }
-
-    return result
-  } catch (error) {
-    console.error("Error resolving relations for sidebar:", error)
-    return {}
-  }
+) {
+  return resolveRelationsForSidebarAction(entitiesToResolve)
 }
 
 
 export async function getRecords(siteId: string, categoryId?: string): Promise<{ records: RecordItem[] | null; error: string | null }> {
   try {
-    const supabase = await createServiceClient()
+    const parsedSiteId = siteIdSchema.parse(siteId)
+    const parsedCategoryId = categoryId ? categoryIdSchema.parse(categoryId) : undefined
+    const supabase = await getAuthenticatedClient()
     let query = supabase
       .from("records")
-      .select("*, category:record_categories(*)")
-      .eq("site_id", siteId)
+      .select("*, category:record_categories!records_category_site_fkey(*)")
+      .eq("site_id", parsedSiteId)
       .order("created_at", { ascending: false })
       
-    if (categoryId) {
-      query = query.eq("category_id", categoryId)
+    if (parsedCategoryId) {
+      query = query.eq("category_id", parsedCategoryId)
     }
 
     const { data, error } = await query
 
     if (error) throw error
-    
-    if (categoryId) {
-      // client-side sorting since we are overriding order above based on sort
-      const sortBy = 'newest' // hardcoded fallback, page sorts
-    }
     
     return { records: data as RecordItem[], error: null }
   } catch (error: any) {
@@ -209,11 +223,12 @@ export async function getRecords(siteId: string, categoryId?: string): Promise<{
 
 export async function getRecordById(id: string): Promise<{ record: RecordItem | null; error: string | null }> {
   try {
-    const supabase = await createServiceClient()
+    const recordId = recordIdSchema.parse(id)
+    const supabase = await getAuthenticatedClient()
     const { data, error } = await supabase
       .from("records")
-      .select("*, category:record_categories(*)")
-      .eq("id", id)
+      .select("*, category:record_categories!records_category_site_fkey(*)")
+      .eq("id", recordId)
       .single()
 
     if (error) throw error
@@ -242,23 +257,25 @@ export async function createRecord({
   status?: string
 }) {
   try {
-    const supabase = await createServiceClient()
+    const input = createRecordSchema.parse({
+      site_id,
+      category_id,
+      title,
+      description,
+      data,
+      relations,
+      status,
+    })
+    const supabase = await getAuthenticatedClient()
     const { data: record, error } = await supabase
       .from('records')
-      .insert({
-        site_id,
-        category_id,
-        title,
-        description,
-        data,
-        relations,
-        status
-      })
+      .insert(input)
       .select()
       .single()
     
     if (error) throw error
     revalidatePath("/records")
+    scheduleRecordEmbedding(record.id)
     return { record }
   } catch (error: any) {
     console.error("Error creating record:", error)
@@ -271,16 +288,19 @@ export async function updateRecord(
   updates: Partial<RecordItem>
 ) {
   try {
-    const supabase = await createServiceClient()
+    const recordId = recordIdSchema.parse(id)
+    const safeUpdates = updateRecordSchema.parse(updates)
+    const supabase = await getAuthenticatedClient()
     const { data: record, error } = await supabase
       .from('records')
-      .update(updates)
-      .eq('id', id)
+      .update(safeUpdates)
+      .eq('id', recordId)
       .select()
       .single()
     
     if (error) throw error
     revalidatePath("/records")
+    scheduleRecordEmbedding(record.id)
     return { record }
   } catch (error: any) {
     console.error("Error updating record:", error)
@@ -290,13 +310,17 @@ export async function updateRecord(
 
 export async function deleteRecord(id: string) {
   try {
-    const supabase = await createServiceClient()
-    const { error } = await supabase
+    const recordId = recordIdSchema.parse(id)
+    const supabase = await getAuthenticatedClient()
+    const { data, error } = await supabase
       .from('records')
       .delete()
-      .eq('id', id)
+      .eq('id', recordId)
+      .select('id')
+      .maybeSingle()
     
     if (error) throw error
+    if (!data) throw new Error("Record not found or access denied")
     revalidatePath("/records")
     return { success: true }
   } catch (error: any) {
@@ -311,9 +335,10 @@ export async function getVectorRelatedRecords(
   matchCount: number = 5
 ): Promise<{ records: any[] | null; error: string | null }> {
   try {
-    const supabase = await createServiceClient()
+    const recordIdValue = recordIdSchema.parse(recordId)
+    const supabase = await getAuthenticatedClient()
     const { data, error } = await supabase.rpc('match_records_vector', {
-      query_record_id: recordId,
+      query_record_id: recordIdValue,
       match_threshold: matchThreshold,
       match_count: matchCount
     })
@@ -333,7 +358,7 @@ export async function getHistoricalRelatedRecords(
   relationTargetId: string
 ): Promise<{ records: RecordItem[] | null; error: string | null }> {
   try {
-    const supabase = await createServiceClient()
+    const supabase = await getAuthenticatedClient()
     const { data, error } = await supabase
       .from("records")
       .select("*")
@@ -349,134 +374,12 @@ export async function getHistoricalRelatedRecords(
   }
 }
 
-export type EntityPreview = {
-  label: string
-  summary: string
-  fields: { label: string; value: string }[]
-}
-
-const ENTITY_PREVIEW_CONFIG: Record<string, {
-  table: string
-  idField: string
-  labelField: string
-  select: string
-  fields: { col: string; label: string }[]
-}> = {
-  lead: { table: "leads", idField: "id", labelField: "name", select: "id, name, email, company, status", fields: [
-    { col: "company", label: "Company" },
-    { col: "email", label: "Email" },
-    { col: "status", label: "Status" },
-  ]},
-  company: { table: "companies", idField: "id", labelField: "name", select: "id, name, industry", fields: [
-    { col: "industry", label: "Industry" },
-  ]},
-  sales_order: { table: "orders", idField: "id", labelField: "order_number", select: "id, order_number, total, status", fields: [
-    { col: "total", label: "Total" },
-    { col: "status", label: "Status" },
-  ]},
-  deal: { table: "deals", idField: "id", labelField: "name", select: "id, name, amount, stage", fields: [
-    { col: "amount", label: "Amount" },
-    { col: "stage", label: "Stage" },
-  ]},
-  person: { table: "users", idField: "id", labelField: "name", select: "id, name, email", fields: [
-    { col: "email", label: "Email" },
-  ]},
-  team_member: { table: "site_members", idField: "user_id", labelField: "name", select: "user_id, name, email, role, status", fields: [
-    { col: "email", label: "Email" },
-    { col: "role", label: "Role" },
-    { col: "status", label: "Status" }
-  ]},
-  campaign: { table: "campaigns", idField: "id", labelField: "title", select: "id, title, status", fields: [
-    { col: "status", label: "Status" },
-  ]},
-  catalog_item: { table: "catalog_items", idField: "id", labelField: "name", select: "id, name, kind, status, target_sale_price", fields: [
-    { col: "kind", label: "Type" },
-    { col: "status", label: "Status" },
-    { col: "target_sale_price", label: "Price" }
-  ]},
-  content: { table: "content", idField: "id", labelField: "title", select: "id, title, status", fields: [
-    { col: "status", label: "Status" },
-  ]},
-  task: { table: "tasks", idField: "id", labelField: "title", select: "id, title, status", fields: [
-    { col: "status", label: "Status" },
-  ]},
-  sale: { table: "sales", idField: "id", labelField: "title", select: "id, title, status", fields: [
-    { col: "status", label: "Status" },
-  ]},
-  purchase: { table: "purchases", idField: "id", labelField: "title", select: "id, title, status", fields: [
-    { col: "status", label: "Status" },
-  ]},
-  quotation: { table: "quotations", idField: "id", labelField: "title", select: "id, title, status", fields: [
-    { col: "status", label: "Status" },
-  ]},
-  record: { table: "records", idField: "id", labelField: "title", select: "id, title, description, status", fields: [
-    { col: "status", label: "Status" },
-    { col: "description", label: "Summary" },
-  ]},
-  record_category: { table: "record_categories", idField: "id", labelField: "name", select: "id, name, description", fields: [
-    { col: "description", label: "Description" },
-  ]},
-}
-
-function formatPreviewValue(value: unknown): string {
-  if (value == null || value === "") return ""
-  if (typeof value === "number") return Number.isInteger(value) ? String(value) : value.toLocaleString()
-  if (typeof value === "object") {
-    const obj = value as Record<string, unknown>
-    const nested = obj.name ?? obj.title ?? obj.email ?? obj.company ?? obj.label
-    if (nested && nested !== value) return formatPreviewValue(nested)
-    return ""
-  }
-  const text = String(value).replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim()
-  if (!text || text === "[object Object]") return ""
-  return text.length > 80 ? `${text.slice(0, 80).trim()}…` : text
-}
+export type { EntityPreview } from "./entity-preview-actions"
 
 export async function resolveEntityPreviews(
   entitiesToResolve: { target: string; ids: string[] }[]
-): Promise<Record<string, EntityPreview>> {
-  try {
-    const supabase = await createServiceClient()
-    const result: Record<string, EntityPreview> = {}
-
-    for (const { target, ids } of entitiesToResolve) {
-      if (!ids.length) continue
-      const config = ENTITY_PREVIEW_CONFIG[target]
-      if (!config) continue
-
-      const { data, error } = await supabase
-        .from(config.table)
-        .select(config.select)
-        .in(config.idField, ids)
-
-      if (error || !data) {
-        console.error(`Error resolving ${target} previews:`, error)
-        continue
-      }
-
-      for (const item of data as any[]) {
-        const id = item[config.idField]
-        const label = formatPreviewValue(item[config.labelField]) || "Unnamed"
-        const fields = config.fields
-          .map((field) => ({
-            label: field.label,
-            value: formatPreviewValue(item[field.col]),
-          }))
-          .filter((field) => field.value)
-
-        result[id] = {
-          label,
-          summary: fields.map((field) => `${field.label}: ${field.value}`).join(" · ") || label,
-          fields,
-        }
-      }
-    }
-
-    return result
-  } catch (error) {
-    console.error("Error in resolveEntityPreviews:", error)
-    return {}
-  }
+) {
+  return resolveEntityPreviewsAction(entitiesToResolve)
 }
 
 export async function getRecordsSimilarityEdges(
@@ -485,7 +388,7 @@ export async function getRecordsSimilarityEdges(
   matchPerRecord: number = 5
 ): Promise<{ edges: { source_id: string; target_id: string; similarity: number }[] | null; error: string | null }> {
   try {
-    const supabase = await createServiceClient()
+    const supabase = await getAuthenticatedClient()
     const { data, error } = await supabase.rpc('get_records_similarity_edges', {
       p_site_id: siteId,
       match_threshold: matchThreshold,

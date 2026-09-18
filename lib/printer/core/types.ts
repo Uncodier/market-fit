@@ -115,6 +115,7 @@ export interface ReceiptPayload extends TicketBrand {
   createdAt?: string | null
   customerName?: string | null
   cashierName?: string | null
+  requestedByName?: string | null
   fulfillment?: string | null
   locationName?: string | null
   lines: ReceiptLine[]
@@ -133,6 +134,7 @@ export interface KitchenPayload extends TicketBrand {
   createdAt?: string | null
   fulfillment?: string | null
   customerName?: string | null
+  requestedByName?: string | null
   tableName?: string | null
   notes?: string | null
   lines: KitchenLine[]

@@ -3,6 +3,8 @@
 import React, { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { getQuotation } from "@/app/quotations/actions"
+import { getBuyerQuotation } from "@/app/buyer/quote-actions"
+import type { BuyerQuoteDto } from "@/app/buyer/quote-dto"
 import { rejectQuotation } from "@/app/quotations/buyer-actions"
 import {
   getQuotationByPublicToken,
@@ -48,7 +50,7 @@ export function BuyerQuoteDetailView({
   const resolvedReturnUrl =
     returnUrl || (isPublic && publicAccessToken ? `/q/${publicAccessToken}` : "/buyer")
 
-  const [quotation, setQuotation] = useState<any>(null)
+  const [quotation, setQuotation] = useState<BuyerQuoteDto | null>(null)
   const [loading, setLoading] = useState(true)
   const [accepting, setAccepting] = useState(false)
   const [rejecting, setRejecting] = useState(false)
@@ -58,10 +60,13 @@ export function BuyerQuoteDetailView({
   const loadQuotation = async () => {
     setLoading(true)
     setLoadError(null)
+    const isSitePurchase = lockDestination && Boolean(defaultOwnerSiteId)
     const res = publicAccessToken
       ? await getQuotationByPublicToken(publicAccessToken)
       : quoteId
-        ? await getQuotation(quoteId)
+        ? isSitePurchase
+          ? await getQuotation(quoteId)
+          : await getBuyerQuotation(quoteId)
         : { error: "Missing quote reference" }
 
     if (res.error) {

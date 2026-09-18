@@ -18,6 +18,9 @@ export function writeKitchenDelta(b: TicketBuilder, payload: KitchenPayload): vo
   b.text(formatTicketTime(payload.createdAt, locale), "center")
   const fulfill = fulfillmentLabel(payload.fulfillment, locale)
   if (fulfill) b.bold(true).text(ticketHeading(fulfill, locale), "center").bold(false)
+  if (payload.requestedByName) {
+    b.rawLine(padLine(copy.requestedBy, payload.requestedByName, b.width))
+  }
   writeSolidRule(b)
 
   const parseItemName = (name: string) => {

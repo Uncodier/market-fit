@@ -83,7 +83,7 @@ export default function PublicOrderPage(props: {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           orderId: orderData.id,
-          siteId: orderData.site_id || orderData.owner_site_id || view.siteId,
+          publicAccessToken: params.token,
           returnUrl: window.location.href.split('?')[0], // strip any existing query params
         }),
       })

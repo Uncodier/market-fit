@@ -34,6 +34,9 @@ export function writeReceipt(b: TicketBuilder, payload: ReceiptPayload): void {
     b.bold(true).text(ticketHeading(fulfill, locale), "center").bold(false)
   }
   if (payload.customerName) b.rawLine(padLine(copy.customer, payload.customerName, b.width))
+  if (payload.requestedByName) {
+    b.rawLine(padLine(copy.requestedBy, payload.requestedByName, b.width))
+  }
   if (payload.locationName) b.rawLine(padLine(copy.location, payload.locationName, b.width))
   if (payload.cashierName) b.rawLine(padLine(copy.cashier, payload.cashierName, b.width))
   b.separator()

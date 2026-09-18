@@ -172,7 +172,16 @@ export default function ProjectsPage() {
                   </div>
                   <p className="text-sm text-muted-foreground truncate">{site.description || site.url || "No description"}</p>
                 </div>
-                <Button variant="secondary" onClick={(e) => { e.stopPropagation(); handleSelectSite(site.id) }}>Select</Button>
+                <Button
+                  variant="secondary"
+                  aria-label={`Select ${site.name}`}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    handleSelectSite(site.id)
+                  }}
+                >
+                  Select
+                </Button>
               </div>
             </CardContent>
           </Card>

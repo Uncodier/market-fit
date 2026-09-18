@@ -2,9 +2,15 @@ goal: Complete CRUD cycle for a Lead
 
 statements:
   - URL: /projects
-  - intent: Select the first available project
-    action: click
-    locator: "getByRole('button', { name: 'Select' }).first()"
+  - description: Select the configured test project
+    js: |
+      const runId = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+      testContext.set("leadName", `Shiplight Lead ${runId}`);
+      testContext.set("leadEditedName", `Shiplight Lead ${runId} Edited`);
+      testContext.set("leadEmail", `shiplight.lead.${runId}@example.com`);
+      const siteName = process.env.TEST_SITE_NAME;
+      if (!siteName) throw new Error("TEST_SITE_NAME is required");
+      await page.getByRole('button', { name: `Select ${siteName}`, exact: true }).click();
 
   - WAIT_UNTIL: The user is navigated to the default project page
     js: "await page.url().includes('/robots')"
@@ -18,10 +24,10 @@ statements:
   - intent: Fill the required lead name
     action: fill
     locator: "locator('#name')"
-    value: "Automated Test Lead"
+    value: "{{leadName}}"
 
   - description: Fill the required lead email with a unique value
-    js: "await page.locator('#email').fill(`shiplight.lead.${Date.now()}@example.com`)"
+    js: "await page.locator('#email').fill(testContext.get('leadEmail'))"
 
   - intent: Submit the create lead form
     action: click
@@ -36,33 +42,127 @@ statements:
     timeout_seconds: 10
 
   - WAIT_UNTIL: The new lead appears in the list
-    js: "await page.getByText('Automated Test Lead').count() > 0"
+    js: "(await page.getByText(testContext.get('leadName'), { exact: true }).count()) > 0"
     timeout_seconds: 15
 
-  - intent: Open the lead details page
-    action: click
-    locator: "getByText('Automated Test Lead').first()"
+  - description: Open the run-scoped lead details page
+    js: |
+      const leadName = testContext.get("leadName");
+      await page.getByText(leadName, { exact: true }).first().click();
 
   - WAIT_UNTIL: The lead details route is open and loaded
-    js: "await page.getByRole('heading', { name: 'Automated Test Lead' }).count() > 0"
+    js: "(await page.getByRole('heading', { name: testContext.get('leadName'), exact: true }).count()) > 0"
     timeout_seconds: 15
 
-  - VERIFY: The details heading shows the created lead name
-    js: "await expect(page.getByRole('heading', { name: 'Automated Test Lead' })).toBeVisible()"
+  - description: Remember the created lead route for cleanup
+    js: "testContext.set('leadUrl', page.url())"
 
-  - intent: Click the lead name heading to start inline edit
-    action: click
-    locator: "getByRole('heading', { name: 'Automated Test Lead' })"
+  - VERIFY: The details heading shows the created lead name
+    js: "await expect(page.getByRole('heading', { name: testContext.get('leadName'), exact: true })).toBeVisible()"
+
+  - description: Click the run-scoped lead name to start inline editing
+    js: |
+      const leadName = testContext.get("leadName");
+      await page.getByRole('heading', { name: leadName, exact: true }).click();
 
   - intent: Replace the lead name with the edited value
     action: fill
     locator: "locator('input.h-8')"
-    value: "Automated Test Lead - Edited"
+    value: "{{leadEditedName}}"
 
   - intent: Save the inline name edit
     action: press
     keys: Enter
 
   - WAIT_UNTIL: The heading shows the edited name
-    js: "await page.getByRole('heading', { name: 'Automated Test Lead - Edited' }).count() > 0"
+    js: "(await page.getByRole('heading', { name: testContext.get('leadEditedName'), exact: true }).count()) > 0"
     timeout_seconds: 10
+
+  - description: Reload the lead details page to verify persistence
+    js: "await page.reload()"
+
+  - VERIFY: The edited lead name persists after reload
+    js: "await expect(page.getByRole('heading', { name: testContext.get('leadEditedName'), exact: true })).toBeVisible()"
+
+  - intent: Open the lead actions menu
+    action: click
+    locator: "getByRole('button', { name: 'Open menu' })"
+
+  - intent: Choose Delete Lead
+    action: click
+    locator: "getByRole('menuitem', { name: 'Delete Lead' })"
+
+  - intent: Confirm lead deletion
+    action: click
+    locator: "getByRole('button', { name: 'Delete Lead', exact: true })"
+
+  - WAIT_UNTIL: The user is back on the leads list
+    js: "await page.url().endsWith('/leads')"
+    timeout_seconds: 15
+
+  - description: Reload the leads list before checking deletion
+    js: "await page.reload()"
+
+  - WAIT_UNTIL: The leads list has finished loading
+    js: "(await page.getByPlaceholder('Search leads...').count()) > 0 && (await page.locator('.animate-pulse:visible').count()) === 0"
+    timeout_seconds: 15
+
+  - VERIFY: The deleted lead is absent from the list
+    js: "await expect(page.getByText(testContext.get('leadEditedName'), { exact: true })).toHaveCount(0)"
+
+teardown:
+  - description: Check the created lead route for cleanup
+    js: |
+      const leadUrl = testContext.get("leadUrl");
+      let leadNeedsCleanup = false;
+      if (leadUrl) {
+        await page.goto(leadUrl);
+        leadNeedsCleanup = await page.getByRole('button', { name: 'Open menu' })
+          .waitFor({ state: 'visible', timeout: 5000 })
+          .then(() => true)
+          .catch(() => false);
+      }
+      testContext.set("leadNeedsCleanup", leadNeedsCleanup);
+
+  - IF: "js: testContext.get('leadNeedsCleanup') === true"
+    THEN:
+      - intent: Open the surviving run-scoped lead actions menu
+        action: click
+        locator: "getByRole('button', { name: 'Open menu' })"
+      - intent: Choose Delete Lead for the surviving run-scoped lead
+        action: click
+        locator: "getByRole('menuitem', { name: 'Delete Lead' })"
+      - intent: Confirm cleanup of the run-scoped lead
+        action: click
+        locator: "getByRole('button', { name: 'Delete Lead', exact: true })"
+
+  - URL: /leads
+
+  - WAIT_UNTIL: The leads list is ready for fallback cleanup
+    js: "(await page.getByPlaceholder('Search leads...').count()) > 0 && (await page.locator('.animate-pulse:visible').count()) === 0"
+    timeout_seconds: 15
+
+  - description: Select the surviving lead name for fallback cleanup
+    js: |
+      const editedName = testContext.get("leadEditedName");
+      const originalName = testContext.get("leadName");
+      const editedExists = editedName
+        ? (await page.getByText(editedName, { exact: true }).count()) > 0
+        : false;
+      testContext.set("leadCleanupName", editedExists ? editedName : (originalName || ""));
+
+  - IF: "js: Boolean(testContext.get('leadCleanupName')) && (await page.getByText(testContext.get('leadCleanupName'), { exact: true }).count()) > 0"
+    THEN:
+      - description: Open the surviving run-scoped lead from the list
+        js: |
+          const leadName = testContext.get("leadCleanupName");
+          await page.getByText(leadName, { exact: true }).first().click();
+      - intent: Open the surviving run-scoped lead actions menu
+        action: click
+        locator: "getByRole('button', { name: 'Open menu' })"
+      - intent: Choose Delete Lead for fallback cleanup
+        action: click
+        locator: "getByRole('menuitem', { name: 'Delete Lead' })"
+      - intent: Confirm fallback cleanup of the run-scoped lead
+        action: click
+        locator: "getByRole('button', { name: 'Delete Lead', exact: true })"

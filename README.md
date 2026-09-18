@@ -1,253 +1,112 @@
-# Makinari - Growth Engine
+# Makinari
 
-[![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
-[![Next.js](https://img.shields.io/badge/Next.js-15.5.6-black)](https://nextjs.org/)
-[![TypeScript](https://img.shields.io/badge/TypeScript-4.9.5-blue)](https://www.typescriptlang.org/)
+Makinari is an AI-assisted growth and operations platform. The application
+combines CRM and campaign workflows with commerce, quotations, orders,
+reservations, content, records, communications, and automation.
 
-> An AI-powered marketing analytics and automation platform that transforms how businesses manage leads, campaigns, and growth.
+## Technology
 
-## 🚀 Overview
+- Next.js 16 App Router and React 19
+- TypeScript in strict mode
+- Supabase PostgreSQL, Auth, Storage, and RLS
+- Stripe billing and commerce payments
+- Tailwind CSS and Radix UI primitives
+- Jest for unit and regression tests
+- Shiplight/Playwright for browser workflows
 
-Makinari is a comprehensive growth engine platform designed to help businesses optimize their marketing efforts through AI-powered analytics, automated lead management, and intelligent campaign orchestration. Built with modern web technologies, it provides a complete solution for marketing teams to track, analyze, and optimize their growth strategies.
+`package.json` declares the supported versions. Both npm and Yarn lockfiles are
+currently checked in; confirm the package-manager policy before changing
+dependencies.
 
-## ✨ Key Features
+## Requirements
 
-### 🤖 AI-Powered Analytics
-- **Lead Management & Qualification**: Intelligent lead scoring and automated qualification processes
-- **Customer Segmentation**: Advanced ICP (Ideal Customer Profile) analysis and segmentation tools
-- **ROI Calculator**: Comprehensive return on investment analysis with fuzzy recommendations
-- **Revenue Analytics**: Real-time revenue tracking and performance metrics
+- Node.js 22 or newer
+- npm
+- Supabase configuration for authenticated and database-backed features
+- Feature-specific credentials for Stripe, the external orchestration API, or
+  other integrations
 
-### 📊 Campaign Management
-- **Multi-Channel Campaigns**: Email, social media, content, and paid advertising campaigns
-- **A/B Testing**: Built-in experimentation framework for campaign optimization
-- **Performance Tracking**: Detailed analytics for reach, engagement, conversion rates, and ROI
-- **Campaign Automation**: Automated workflows and scheduling
-
-### 💼 Sales & Pipeline Management
-- **Sales Pipeline**: Visual pipeline management with customizable stages
-- **Opportunity Tracking**: Deal progression tracking with value and close date management
-- **Revenue Forecasting**: Predictive analytics for sales performance
-- **Customer Journey Mapping**: Complete customer lifecycle tracking
-
-### 📝 Content Management
-- **Content Creation**: AI-assisted content generation and management
-- **Content Library**: Organized content repository with tagging and categorization
-- **Content Performance**: Analytics for content engagement and conversion
-- **Multi-Format Support**: Blog posts, videos, podcasts, social media, and more
-
-### 🔧 Automation & Integration
-- **Task Automation**: Control center for automated task management
-- **WhatsApp/Twilio Integration**: Multi-channel communication capabilities
-- **Stripe Billing**: Integrated payment processing and subscription management
-- **API Integrations**: Webhook support and third-party service connections
-
-### 👥 Team Collaboration
-- **Multi-Site Support**: Manage multiple business sites from one platform
-- **Role-Based Access**: Admin, Editor, and Viewer permission levels
-- **Team Management**: Invite and manage team members with granular permissions
-- **Activity Tracking**: Real-time activity monitoring and notifications
-
-## 🛠 Tech Stack
-
-### Frontend
-- **Framework**: Next.js 15.5.6 with React 18.2.0
-- **UI Components**: Radix UI primitives
-- **Styling**: Tailwind CSS with custom design system
-- **Forms**: React Hook Form with Zod validation
-- **Charts**: Recharts for data visualization
-- **Maps**: React Map GL with Mapbox integration
-
-### Backend & Database
-- **Database**: Supabase (PostgreSQL)
-- **Authentication**: Supabase Auth with magic links
-- **Real-time**: Supabase real-time subscriptions
-- **API**: Next.js API routes with TypeScript
-
-### Integrations & Services
-- **Payments**: Stripe for billing and subscriptions
-- **Communications**: Zavu for SMS, voice, email, Telegram, WhatsApp, and Messenger
-- **File Storage**: Supabase Storage
-- **Email**: Integrated email marketing capabilities
-
-### Development & Testing
-- **Language**: TypeScript 4.9.5
-- **Testing**: Jest with React Testing Library
-- **Linting**: ESLint with TypeScript support
-- **Code Quality**: Automated linting and formatting
-
-## 🚀 Quick Start
-
-### Prerequisites
-
-- Node.js 18.0 or higher
-- npm or yarn package manager
-- Supabase account
-- Stripe account (for payments)
-- Twilio account (for communications)
-
-### Installation
-
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/your-org/makinari.git
-   cd makinari
-   ```
-
-2. **Install dependencies**
-   ```bash
-   npm install
-   # or
-   yarn install
-   ```
-
-3. **Environment Setup**
-   ```bash
-   cp .env.example .env.local
-   ```
-   
-   Configure your environment variables (see [Environment Variables Documentation](docs/ENVIRONMENT_VARIABLES.md) for detailed setup).
-
-4. **Database Setup**
-   ```bash
-   # Run database migrations
-   npm run db:migrate
-   
-   # Seed initial data (optional)
-   npm run db:seed
-   ```
-
-5. **Start Development Server**
-   ```bash
-   npm run dev
-   ```
-
-   Open [http://localhost:3000](http://localhost:3000) in your browser.
-
-## 📁 Project Structure
-
-```
-makinari/
-├── app/                    # Next.js app directory
-│   ├── components/        # Reusable UI components
-│   ├── api/              # API routes
-│   ├── agents/           # AI agent implementations
-│   ├── campaigns/        # Campaign management
-│   ├── leads/            # Lead management
-│   ├── segments/         # Customer segmentation
-│   └── ...
-├── lib/                  # Shared utilities and services
-│   ├── supabase/         # Database client and utilities
-│   ├── services/         # Business logic services
-│   └── utils.ts          # Common utilities
-├── components/           # Global UI components
-├── docs/                 # Documentation
-├── scripts/              # Database and utility scripts
-├── public/               # Static assets
-└── types/                # TypeScript type definitions
-```
-
-## 🧪 Development
-
-### Available Scripts
+## Local development
 
 ```bash
-# Development
-npm run dev              # Start development server
-npm run build            # Build for production
-npm run start            # Start production server
-
-# Code Quality
-npm run lint             # Run ESLint
-npm run lint:fix         # Fix ESLint issues
-npm run test             # Run test suite
-npm run test:watch       # Run tests in watch mode
-
-# Database
-npm run db:migrate        # Run database migrations
-npm run db:seed          # Seed database with test data
+npm install
+cp .env.example .env.local
+npm run dev
 ```
 
-### Testing
+Open `http://localhost:3000`.
+
+The starter environment file does not contain secrets. Configure the subsystems
+you need using [the environment guide](docs/ENVIRONMENT_VARIABLES.md).
+
+## Common commands
 
 ```bash
-# Run all tests
-npm test
-
-# Run tests in watch mode
-npm run test:watch
-
-# Run specific test files
-npm test -- --testPathPattern=components
+npm run dev                 # Next.js development server
+npm run dev:webpack         # Development server using webpack
+npm run lint                # ESLint
+npm test                    # Jest
+npm run test:watch          # Jest watch mode
+npm run test:e2e            # Shiplight browser tests
+npm run agent:verify        # Agent verification runner
 ```
 
-## 📚 Documentation
+The repository has no `db:migrate` or `db:seed` npm scripts. Follow the
+[database migration guide](docs/DATABASE_MIGRATIONS.md) instead of using commands
+from old setup notes.
 
-- [Environment Variables](docs/ENVIRONMENT_VARIABLES.md)
-- [Stripe Setup](docs/STRIPE_SETUP.md)
-- [Google Auth Setup](docs/GOOGLE_AUTH_SETUP.md)
-- [Magic Links Setup](docs/MAGIC_LINKS_SETUP.md)
-- [Performance Optimizations](docs/PERFORMANCE_OPTIMIZATIONS.md)
-- [API Documentation](docs/API.md)
+## Repository layout
 
-## 🤝 Contributing
+```text
+app/                    Next.js routes, features, components, and route handlers
+lib/                    Shared clients, authorization, utilities, and types
+supabase/migrations/    Forward-only SQL migrations
+__tests__/              Jest tests
+tests/                  Shiplight E2E and agent verification assets
+specs/                  Behavioral specifications and coverage artifacts
+scripts/                Operational and test-support scripts
+docs/                   Repository and integration documentation
+public/                 Public static assets
+```
 
-We welcome contributions to Makinari! However, please note that this project is licensed under the **GNU Affero General Public License v3.0 (AGPL-3.0)**.
+## Documentation
 
-### AGPL-3.0 Requirements
+Start with [the documentation index](docs/README.md):
 
-This license requires that:
-- Any modifications to the code must be shared under the same license
-- If you use this software over a network (including web applications), you must provide the source code to users
-- You cannot create proprietary derivatives without open-sourcing your changes
+- [Development](docs/DEVELOPMENT.md)
+- [Architecture](docs/ARCHITECTURE.md)
+- [Security](docs/SECURITY.md)
+- [Database migrations](docs/DATABASE_MIGRATIONS.md)
+- [Environment variables](docs/ENVIRONMENT_VARIABLES.md)
+- [Maintenance](docs/MAINTENANCE.md)
+- [Stripe setup](docs/STRIPE_SETUP.md)
 
-### How to Contribute
+Older files in `docs/` may be implementation notes rather than current policy.
+The index labels their role and points to canonical guidance.
 
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+## Security-sensitive work
 
-### Code of Conduct
+Every API route is its own trust boundary: `app/middleware.ts` intentionally
+skips authentication for `/api/**`. Authenticate and authorize each operation,
+prefer user-scoped Supabase clients with RLS, and use service-role clients only
+after explicit authorization.
 
-Please read our [Code of Conduct](CODE_OF_CONDUCT.md) before contributing.
+Before changing auth, RLS, public tokens, checkout, payments, payouts, webhooks,
+or outbound proxying, read [the security guide](docs/SECURITY.md) and add focused
+denial and retry/concurrency tests.
 
-## 📄 License
+## Database changes
 
-This project is licensed under the **GNU Affero General Public License v3.0 (AGPL-3.0)**.
+Schema changes are timestamped SQL files in `supabase/migrations/`. Never edit a
+migration that may already be applied. Remote migration application is an
+explicit deployment action and is not part of routine local validation.
 
-### What this means:
+## Contributing
 
-- ✅ **Commercial use**: You can use this software commercially
-- ✅ **Modification**: You can modify the code
-- ✅ **Distribution**: You can distribute the software
-- ✅ **Patent use**: Patent rights are granted to users
-- ❌ **Proprietary derivatives**: You cannot create closed-source derivatives
-- ❌ **Network use without source**: If used over a network, source code must be available
+Keep changes focused, preserve unrelated work, add tests for changed behavior,
+and document new commands, configuration, routes, and security invariants.
+Follow `AGENTS.md` for repository-specific automation guidance.
 
-### Why AGPL-3.0?
-
-The AGPL-3.0 license is specifically designed for network-based applications like Makinari. It ensures that:
-
-1. **No direct competition**: Competitors cannot use our code to build competing services without contributing back
-2. **Open source ecosystem**: All improvements and modifications must be shared with the community
-3. **Network use protection**: Even when used as a service, the source code must remain available
-
-For the full license text, see [LICENSE](LICENSE).
-
-## 🔒 Security
-
-If you discover a security vulnerability, please report it to security@makinari.com instead of using the public issue tracker.
-
-## 📞 Support
-
-- 📧 Email: support@makinari.com
-- 📖 Documentation: [docs.makinari.com](https://docs.makinari.com)
-- 🐛 Issues: [GitHub Issues](https://github.com/your-org/makinari/issues)
-
----
-
-**Makinari** - Empowering growth through intelligent marketing automation.
-
-
+No license file or public vulnerability-reporting address is currently present
+in this repository. Do not infer or advertise either until the repository owner
+adds authoritative information.

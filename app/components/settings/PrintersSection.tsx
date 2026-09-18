@@ -61,6 +61,7 @@ export function PrintersSection({ active, onSave }: PrintersSectionProps) {
   const [testing, setTesting] = useState(false)
   const [stationName, setStationName] = useState(() => getPrinterWorkstation().name)
   const devices = (form.watch("printers.devices") || []) as PrinterDevice[]
+  const printersDirty = Boolean(form.formState.dirtyFields.printers)
 
   const setDevices = (next: PrinterDevice[]) => {
     form.setValue("printers.devices", next as SiteFormValues["printers"] extends { devices: infer D } ? D : any, {
@@ -290,10 +291,17 @@ export function PrintersSection({ active, onSave }: PrintersSectionProps) {
           description={t("settings.printers.emptyDescription") || "Add a receipt, kitchen, or label printer."}
           variant="fancy"
           actionButton={
-            <Button type="button" variant="outline" onClick={addPrinter}>
-              <PlusCircle className="mr-2 h-4 w-4" />
-              {t("settings.printers.add") || "Add printer"}
-            </Button>
+            <div className="flex items-center justify-center gap-2">
+              <Button type="button" variant="outline" onClick={addPrinter}>
+                <PlusCircle className="mr-2 h-4 w-4" />
+                {t("settings.printers.add") || "Add printer"}
+              </Button>
+              {printersDirty && (
+                <Button type="button" variant="outline" onClick={handleSave} disabled={saving}>
+                  {saving ? (t("common.saving") || "Saving...") : (t("common.save") || "Save")}
+                </Button>
+              )}
+            </div>
           }
         />
       ) : (

@@ -2,9 +2,15 @@ goal: Complete CRUD cycle for a Requirement
 
 statements:
   - URL: /projects
-  - intent: Select the first available project
-    action: click
-    locator: "getByRole('button', { name: 'Select' }).first()"
+  - description: Select the configured test project
+    js: |
+      const runId = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+      testContext.set("requirementSegmentName", `Shiplight Requirement Segment ${runId}`);
+      testContext.set("requirementName", `Shiplight Requirement ${runId}`);
+      testContext.set("requirementEditedName", `Shiplight Requirement ${runId} Edited`);
+      const siteName = process.env.TEST_SITE_NAME;
+      if (!siteName) throw new Error("TEST_SITE_NAME is required");
+      await page.getByRole('button', { name: `Select ${siteName}`, exact: true }).click();
 
   - WAIT_UNTIL: The user is navigated to the default project page
     js: "await page.url().includes('/robots')"
@@ -18,7 +24,7 @@ statements:
   - intent: Fill the segment name
     action: fill
     locator: "locator('#name')"
-    value: "Segment for Requirement"
+    value: "{{requirementSegmentName}}"
 
   - intent: Fill the segment description
     action: fill
@@ -67,16 +73,17 @@ statements:
   - intent: Fill the requirement title
     action: fill
     locator: "locator('input[name=\"title\"]')"
-    value: "Automated Test Requirement"
+    value: "{{requirementName}}"
 
   - intent: Fill the requirement description
     action: fill
     locator: "locator('textarea[name=\"description\"]')"
     value: "Automated Test Requirement Description"
 
-  - intent: Select the first available segment
-    action: click
-    locator: "getByRole('switch').first()"
+  - description: Select the run-scoped requirement segment
+    js: |
+      const segmentName = testContext.get("requirementSegmentName");
+      await page.getByRole('switch', { name: segmentName, exact: true }).click();
 
   - intent: Submit the create requirement form
     action: click
@@ -87,12 +94,13 @@ statements:
     timeout_seconds: 10
 
   - WAIT_UNTIL: The new requirement appears in the list
-    js: "await page.getByText('Automated Test Requirement').count() > 0"
+    js: "(await page.getByText(testContext.get('requirementName'), { exact: true }).count()) > 0"
     timeout_seconds: 15
 
-  - intent: Open the requirement row menu
-    action: click
-    locator: "locator('tbody tr').filter({ hasText: 'Automated Test Requirement' }).first().getByRole('button', { name: 'Open' })"
+  - description: Open the run-scoped requirement row menu
+    js: |
+      const requirementName = testContext.get("requirementName");
+      await page.locator('tbody tr').filter({ hasText: requirementName }).first().getByRole('button', { name: 'Open' }).click();
 
   - intent: Open the requirement details page
     action: click
@@ -105,12 +113,129 @@ statements:
   - intent: Update the requirement title
     action: fill
     locator: "getByPlaceholder('Requirement title')"
-    value: "Automated Test Requirement - Edited"
+    value: "{{requirementEditedName}}"
 
   - intent: Save the requirement
     action: click
     locator: "getByRole('button', { name: 'Save' })"
 
   - WAIT_UNTIL: The edited title is visible
-    js: "await page.locator('input[value=\"Automated Test Requirement - Edited\"]').count() > 0"
+    js: "(await page.locator('input[placeholder=\"Requirement title\"]').inputValue()) === testContext.get('requirementEditedName')"
     timeout_seconds: 10
+
+  - WAIT_UNTIL: The requirement update succeeds
+    js: "await page.getByText('Requirement updated successfully').count() > 0"
+    timeout_seconds: 10
+
+  - description: Reload the requirement details page to verify persistence
+    js: "await page.reload()"
+
+  - VERIFY: The edited requirement title persists after reload
+    js: "await expect(page.getByPlaceholder('Requirement title')).toHaveValue(testContext.get('requirementEditedName'))"
+
+  - intent: Click Delete Requirement in the details toolbar
+    action: click
+    locator: "getByTitle('Delete Requirement')"
+
+  - intent: Confirm requirement deletion
+    action: click
+    locator: "getByRole('button', { name: 'Delete', exact: true })"
+
+  - WAIT_UNTIL: The user is back on the requirements list
+    js: "await page.url().endsWith('/requirements')"
+    timeout_seconds: 15
+
+  - description: Reload the requirements list before checking deletion
+    js: "await page.reload()"
+
+  - WAIT_UNTIL: The requirements list has finished loading
+    js: "(await page.getByPlaceholder('Search requirements...').count()) > 0 && (await page.locator('.animate-pulse:visible').count()) === 0"
+    timeout_seconds: 15
+
+  - VERIFY: The deleted requirement is absent from the list
+    js: "await expect(page.getByText(testContext.get('requirementEditedName'), { exact: true })).toHaveCount(0)"
+
+  - URL: /segments
+
+  - WAIT_UNTIL: The run-scoped requirement segment appears for cleanup
+    js: "(await page.getByText(testContext.get('requirementSegmentName'), { exact: true }).count()) > 0"
+    timeout_seconds: 15
+
+  - description: Open the run-scoped requirement segment
+    js: |
+      const segmentName = testContext.get("requirementSegmentName");
+      await page.getByRole('row').filter({ hasText: segmentName }).click();
+
+  - WAIT_UNTIL: The requirement segment details route is open
+    js: "page.url().includes('/segments/') && !page.url().endsWith('/segments')"
+    timeout_seconds: 15
+
+  - intent: Click Delete in the segment danger zone
+    action: click
+    locator: "getByRole('button', { name: 'Delete', exact: true })"
+
+  - intent: Confirm deletion of the run-scoped requirement segment
+    action: click
+    locator: "getByRole('button', { name: 'Delete Segment', exact: true })"
+
+  - WAIT_UNTIL: The user is back on the segments list
+    js: "page.url().endsWith('/segments')"
+    timeout_seconds: 15
+
+  - WAIT_UNTIL: The segments list has finished loading
+    js: "(await page.getByPlaceholder('Search segments...').count()) > 0 && (await page.locator('.animate-pulse:visible').count()) === 0"
+    timeout_seconds: 15
+
+  - VERIFY: The run-scoped requirement segment is absent from the list
+    js: "await expect(page.getByText(testContext.get('requirementSegmentName'), { exact: true })).toHaveCount(0)"
+
+teardown:
+  - URL: /requirements
+
+  - WAIT_UNTIL: The requirements list is ready for cleanup
+    js: "(await page.getByPlaceholder('Search requirements...').count()) > 0 && (await page.locator('.animate-pulse:visible').count()) === 0"
+    timeout_seconds: 15
+
+  - description: Select the surviving requirement name for cleanup
+    js: |
+      const editedName = testContext.get("requirementEditedName");
+      const originalName = testContext.get("requirementName");
+      const editedExists = editedName
+        ? (await page.getByText(editedName, { exact: true }).count()) > 0
+        : false;
+      testContext.set("requirementCleanupName", editedExists ? editedName : (originalName || ""));
+
+  - IF: "js: Boolean(testContext.get('requirementCleanupName')) && (await page.getByText(testContext.get('requirementCleanupName'), { exact: true }).count()) > 0"
+    THEN:
+      - description: Open the surviving run-scoped requirement row menu
+        js: |
+          const requirementName = testContext.get("requirementCleanupName");
+          await page.locator('tbody tr').filter({ hasText: requirementName }).first().getByRole('button', { name: 'Open' }).click();
+      - intent: Open the surviving run-scoped requirement
+        action: click
+        locator: "getByRole('menuitem', { name: 'Open', exact: true })"
+      - intent: Delete the surviving run-scoped requirement
+        action: click
+        locator: "getByTitle('Delete Requirement')"
+      - intent: Confirm cleanup of the run-scoped requirement
+        action: click
+        locator: "getByRole('button', { name: 'Delete', exact: true })"
+
+  - URL: /segments
+
+  - WAIT_UNTIL: The segments list is ready for cleanup
+    js: "(await page.getByPlaceholder('Search segments...').count()) > 0 && (await page.locator('.animate-pulse:visible').count()) === 0"
+    timeout_seconds: 15
+
+  - IF: "js: Boolean(testContext.get('requirementSegmentName')) && (await page.getByText(testContext.get('requirementSegmentName'), { exact: true }).count()) > 0"
+    THEN:
+      - description: Open the surviving run-scoped requirement segment
+        js: |
+          const segmentName = testContext.get("requirementSegmentName");
+          await page.getByRole('row').filter({ hasText: segmentName }).click();
+      - intent: Delete the surviving run-scoped requirement segment
+        action: click
+        locator: "getByRole('button', { name: 'Delete', exact: true })"
+      - intent: Confirm cleanup of the run-scoped requirement segment
+        action: click
+        locator: "getByRole('button', { name: 'Delete Segment', exact: true })"

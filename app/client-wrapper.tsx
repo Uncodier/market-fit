@@ -3,7 +3,10 @@
 import { Suspense, useEffect } from "react"
 import dynamic from "next/dynamic"
 import { usePathname } from "next/navigation"
-import { shouldUseLayout } from "./config/routes"
+import {
+  shouldUseLayout,
+  shouldWrapNoLayoutContentInMain,
+} from "./config/routes"
 import DemoBanner from "./components/DemoBanner"
 import VersionCheck from "./components/VersionCheck"
 import { rememberInternalPath } from "./documents/internal-back"
@@ -22,6 +25,7 @@ export default function ClientWrapper({
 }) {
   const pathname = usePathname()
   const useLayout = shouldUseLayout(pathname)
+  const wrapContentInMain = shouldWrapNoLayoutContentInMain(pathname)
 
   useEffect(() => {
     rememberInternalPath(pathname)
@@ -43,7 +47,7 @@ export default function ClientWrapper({
   return (
     <>
       <GuidedTour />
-      {children}
+      {wrapContentInMain ? <main>{children}</main> : children}
       <DemoBanner />
       <VersionCheck />
     </>

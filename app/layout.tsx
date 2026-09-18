@@ -36,7 +36,6 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
-  maximumScale: 1,
 }
 
 export default function RootLayout({
@@ -71,14 +70,14 @@ export default function RootLayout({
         <Providers>
           <LoggerInit />
           <ChunkErrorGuard />
-          <main className="min-h-[100dvh] bg-background overflow-visible">
+          <div className="min-h-[100dvh] bg-background overflow-visible">
             <Suspense fallback={null}>
               <ClientWrapper>
                 {children}
               </ClientWrapper>
             </Suspense>
             <Toaster />
-          </main>
+          </div>
         </Providers>
         <TrackingInit />
         <SafariIconFix />

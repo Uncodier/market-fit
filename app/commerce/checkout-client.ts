@@ -59,7 +59,7 @@ export async function checkoutCartRequest(
 
 export async function createStripeOrderCheckout(params: {
   orderId: string
-  siteId: string
+  publicAccessToken: string
   returnUrl: string
   /** When set, Stripe redirects here on success instead of returnUrl?success=true */
   successUrl?: string

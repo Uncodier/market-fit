@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createApiClient, createServiceApiClient } from "@/lib/supabase/server-client";
+import { createServiceApiClient } from "@/lib/supabase/server-client";
 import { addDays, endOfDay, startOfDay, subDays } from 'date-fns';
+import { requireSiteAccess } from '@/lib/auth/api-site-access';
 import {
   addCalendarDays,
   inclusiveEndWithUtcSlack,
@@ -58,6 +59,11 @@ export async function GET(request: NextRequest) {
       );
     }
 
+
+    const access = await requireSiteAccess(request, siteId);
+    if (access.error) {
+      return access.error;
+    }
 
     const endDate = parseDateParam(endDateParam, new Date());
     const startDate = parseDateParam(startDateParam, subDays(endDate, 30));

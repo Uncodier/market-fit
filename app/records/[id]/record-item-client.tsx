@@ -1,637 +1,473 @@
 "use client"
 
-import React, { useEffect, useState } from "react"
+import React, { useCallback, useEffect, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
-import { getRecordById, updateRecord, deleteRecord, RecordItem } from "../actions"
+import { useEditor, type Editor } from "@tiptap/react"
+import StarterKit from "@tiptap/starter-kit"
+import TextAlign from "@tiptap/extension-text-align"
+import HardBreak from "@tiptap/extension-hard-break"
+import LinkExtension from "@tiptap/extension-link"
+import ImageExtension from "@tiptap/extension-image"
+import { useDebounce } from "use-debounce"
 import { toast } from "sonner"
 import { useLocalization } from "@/app/context/LocalizationContext"
-import { Button } from "@/app/components/ui/button"
-import { Input } from "@/app/components/ui/input"
-import { ScrollArea } from "@/app/components/ui/scroll-area"
-import { ToggleGroup, ToggleGroupItem } from "@/app/components/ui/toggle-group"
-import { 
-  Loader, 
-  Bold, 
-  Italic, 
-  List, 
-  ListOrdered, 
-  Quote, 
-  Code, 
-  Heading1, 
-  Save,
-  Link as LinkIcon,
-  Image as ImageIcon,
-  AlignLeft,
-  AlignCenter,
-  AlignRight,
-  AlignJustify,
-  Undo,
-  Redo,
-  ChevronDown,
-  Trash2,
-  Maximize,
-  Type as ParagraphIcon,
-  PanelRightClose,
-  PanelRightOpen
-} from "@/app/components/ui/icons"
-import { Skeleton } from "@/app/components/ui/skeleton"
-import { RecordDetailSkeleton } from "./components/RecordDetailSkeleton"
-import { RecordDynamicForm } from "./components/RecordDynamicForm"
-import { InsightsTab } from "./components/InsightsTab"
-import { RelationsTab } from "./components/RelationsTab"
-
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/app/components/ui/dropdown-menu"
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/app/components/ui/alert-dialog"
-
-import { useEditor, EditorContent } from '@tiptap/react'
-import StarterKit from '@tiptap/starter-kit'
-import TextAlign from '@tiptap/extension-text-align'
-import HardBreak from '@tiptap/extension-hard-break'
-import LinkExtension from '@tiptap/extension-link'
-import ImageExtension from '@tiptap/extension-image'
-import { useDebounce, useDebouncedCallback } from 'use-debounce'
-import "@/app/content/styles/editor.css"
+import { Tabs, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
 import { markdownToHTML } from "@/app/content/utils"
-
-const htmlToMarkdown = (html: string): string => {
-  if (!html) return '';
-  try {
-    const tempElement = document.createElement('div');
-    tempElement.innerHTML = html;
-    const nodeToMarkdown = (node: Node): string => {
-      if (node.nodeType === Node.TEXT_NODE) return node.textContent || '';
-      if (node.nodeType === Node.ELEMENT_NODE) {
-        const element = node as Element;
-        const children = Array.from(element.childNodes).map(nodeToMarkdown).join('');
-        switch (element.tagName.toLowerCase()) {
-          case 'h1': return `# ${children}\n\n`;
-          case 'h2': return `## ${children}\n\n`;
-          case 'h3': return `### ${children}\n\n`;
-          case 'p': return `${children}\n\n`;
-          case 'strong': case 'b': return `**${children}**`;
-          case 'em': case 'i': return `*${children}*`;
-          case 'ul': return `${children}\n`;
-          case 'ol': return `${children}\n`;
-          case 'li': {
-            const parent = element.parentElement;
-            if (parent && parent.tagName.toLowerCase() === 'ol') {
-              const index = Array.from(parent.children).indexOf(element) + 1;
-              return `${index}. ${children}\n`;
-            }
-            return `- ${children}\n`;
-          }
-          case 'blockquote': return `> ${children}\n\n`;
-          case 'code': return `\`${children}\``;
-          case 'pre': return `\`\`\`\n${children}\n\`\`\`\n\n`;
-          case 'br': return '\n';
-          default: return children;
-        }
-      }
-      return '';
-    };
-    return nodeToMarkdown(tempElement).replace(/\n{3,}/g, '\n\n').trim();
-  } catch (e) {
-    return html;
-  }
-}
-
+import { deleteRecord, getRecordById, updateRecord, type RecordItem } from "../actions"
+import {
+  areRecordDiagramDraftsEqual,
+  emptyRecordDiagram,
+  recordDiagramDraftSchema,
+  type RecordDiagramDraft,
+  type RecordDiagramViewport,
+} from "../lib/record-diagram"
+import { getRecordDiagram, saveRecordDiagram } from "./diagram-actions"
+import { RecordDetailSkeleton } from "./components/RecordDetailSkeleton"
+import { RecordDocumentView } from "./components/RecordDocumentView"
+import { RecordRightPanel } from "./components/RecordRightPanel"
+import { RecordToolbar } from "./components/RecordToolbar"
+import {
+  RecordDiagramView,
+  type RecordDiagramEditorHandle,
+  type RecordDiagramEditState,
+} from "./components/record-diagram/RecordDiagramView"
+import { RecordDiagramEditControls } from "./components/record-diagram/RecordDiagramEditControls"
+import { RecordNodeMarkdownControls } from "./components/record-diagram/RecordNodeMarkdownControls"
+import { htmlToMarkdown } from "./record-markdown"
+import "@/app/content/styles/editor.css"
 
 export default function RecordDetailPage() {
   const params = useParams()
   const router = useRouter()
   const { t } = useLocalization()
-  
   const id = Array.isArray(params?.id) ? params.id[0] : params?.id
 
   const [record, setRecord] = useState<RecordItem | null>(null)
-  const [formData, setFormData] = useState<Record<string, any>>({})
-  const [relationsData, setRelationsData] = useState<Record<string, any>>({})
   const [title, setTitle] = useState("")
   const [description, setDescription] = useState("")
   const [status, setStatus] = useState("draft")
+  const [formData, setFormData] = useState<Record<string, any>>({})
+  const [relationsData, setRelationsData] = useState<Record<string, any>>({})
+  const [diagram, setDiagram] = useState<RecordDiagramDraft>(emptyRecordDiagram)
   const [isLoading, setIsLoading] = useState(true)
-  const [hasChanges, setHasChanges] = useState(false)
-
+  const [isSaving, setIsSaving] = useState(false)
+  const [saveFailure, setSaveFailure] = useState<"error" | "conflict" | null>(null)
+  const [documentDirty, setDocumentDirty] = useState(false)
+  const [diagramDirty, setDiagramDirty] = useState(false)
+  const [activeView, setActiveView] = useState<"document" | "nodes">("document")
   const [activeRightTab, setActiveRightTab] = useState<"insights" | "relations">("insights")
-
   const [isRightPanelOpen, setIsRightPanelOpen] = useState(true)
-
   const [isEditorFocused, setIsEditorFocused] = useState(false)
-  const [isToolbarHovered, setIsToolbarHovered] = useState(false)
-  const [isHeadingDropdownOpen, setIsHeadingDropdownOpen] = useState(false)
-  const blurTimeoutRef = React.useRef<NodeJS.Timeout | undefined>(undefined)
-
   const [debouncedTitle] = useDebounce(title, 500)
   const [debouncedFormData] = useDebounce(formData, 500)
+  const blurTimeoutRef = React.useRef<NodeJS.Timeout | undefined>(undefined)
+  const loadSequenceRef = React.useRef(0)
+  const hydratedRecordIdRef = React.useRef<string | null>(null)
+  const activeRecordIdRef = React.useRef<string | null>(null)
+  const documentVersionRef = React.useRef(0)
+  const diagramVersionRef = React.useRef(0)
+  const latestViewportRef = React.useRef<RecordDiagramViewport>({ x: 0, y: 0, zoom: 1 })
+  const savedDiagramRef = React.useRef<RecordDiagramDraft>(emptyRecordDiagram())
+  const diagramEditorRef = React.useRef<RecordDiagramEditorHandle>(null)
+  const [diagramEditState, setDiagramEditState] = useState<RecordDiagramEditState>({
+    canUndo: false,
+    canRedo: false,
+    hasSelection: false,
+    canPaste: false,
+    isEditingNodeContent: false,
+  })
+  const handleDiagramEditStateChange = useCallback((next: RecordDiagramEditState) => {
+    setDiagramEditState((current) => (
+      current.canUndo === next.canUndo
+      && current.canRedo === next.canRedo
+      && current.hasSelection === next.hasSelection
+      && current.canPaste === next.canPaste
+      && current.isEditingNodeContent === next.isEditingNodeContent
+        ? current
+        : next
+    ))
+  }, [])
+  const handleDiagramChange = useCallback((next: RecordDiagramDraft) => {
+    diagramVersionRef.current += 1
+    setSaveFailure((current) => current === "conflict" ? current : null)
+    setDiagram(next)
+    setDiagramDirty(!areRecordDiagramDraftsEqual(next, savedDiagramRef.current))
+  }, [])
 
-  const handleEditorUpdate = useDebouncedCallback(({ editor }) => {
-    setDescription(htmlToMarkdown(editor.getHTML()))
-    setHasChanges(true)
-  }, 500)
+  const markDocumentDirty = useCallback(() => {
+    documentVersionRef.current += 1
+    setSaveFailure((current) => current === "conflict" ? current : null)
+    setDocumentDirty(true)
+  }, [])
+  const markDiagramDirty = useCallback(() => {
+    diagramVersionRef.current += 1
+    setSaveFailure((current) => current === "conflict" ? current : null)
+    setDiagramDirty(true)
+  }, [])
+
+  const handleEditorUpdate = useCallback(({ editor: currentEditor }: { editor: Editor }) => {
+    setDescription(htmlToMarkdown(currentEditor.getHTML()))
+    markDocumentDirty()
+  }, [markDocumentDirty])
 
   const editor = useEditor({
     extensions: [
-      StarterKit.configure({
-        hardBreak: false,
-      }),
-      TextAlign.configure({ types: ['heading', 'paragraph'] }),
+      StarterKit.configure({ hardBreak: false }),
+      TextAlign.configure({ types: ["heading", "paragraph"] }),
       HardBreak.configure({
         keepMarks: true,
-        HTMLAttributes: {
-          class: 'markdown-line-break',
-        },
+        HTMLAttributes: { class: "markdown-line-break" },
       }),
       LinkExtension.configure({
         openOnClick: false,
-        HTMLAttributes: {
-          class: 'text-primary underline cursor-pointer',
-        },
+        HTMLAttributes: { class: "text-primary underline cursor-pointer" },
       }),
-      ImageExtension.configure({
-        inline: true,
-        allowBase64: true,
-      }),
+      ImageExtension.configure({ inline: true, allowBase64: true }),
     ],
-    content: '',
+    content: "",
     onFocus: () => {
       if (blurTimeoutRef.current) clearTimeout(blurTimeoutRef.current)
       setIsEditorFocused(true)
     },
     onBlur: () => {
-      blurTimeoutRef.current = setTimeout(() => {
-        setIsEditorFocused(false)
-      }, 150)
+      blurTimeoutRef.current = setTimeout(() => setIsEditorFocused(false), 150)
     },
     onUpdate: handleEditorUpdate,
     editorProps: {
       attributes: {
-        class: 'prose-lg prose-headings:my-4 prose-p:my-3 prose-ul:my-3 outline-none !min-h-0 flex-1',
+        class: "prose-lg prose-headings:my-4 prose-p:my-3 prose-ul:my-3 outline-none !min-h-0 flex-1",
       },
     },
   })
 
-  // Dispatch breadcrumb update and listen for save
-  useEffect(() => {
-    window.dispatchEvent(
-      new CustomEvent("breadcrumb:update", {
-        detail: {
-          title: debouncedTitle || (isLoading ? (t("common.loading") || "Loading...") : "Record"),
-          parentTitle: "Records",
-          parentPath: "/records",
-        },
-      })
-    )
-  }, [debouncedTitle, isLoading])
-
-  useEffect(() => {
-    const handleSaveEvent = () => {
-      handleSave()
-    }
-    window.addEventListener("records:save", handleSaveEvent)
-    return () => window.removeEventListener("records:save", handleSaveEvent)
-  }, [title, description, formData, relationsData, record])
-
-  useEffect(() => {
-    if (id) {
-      loadRecord(id)
-    }
-  }, [id])
-
-  const loadRecord = async (recordId: string) => {
+  const loadRecord = useCallback(async (recordId: string) => {
+    const loadSequence = ++loadSequenceRef.current
     setIsLoading(true)
-    const { record, error } = await getRecordById(recordId)
-    if (error) {
-      toast.error(error)
-      router.push("/records")
-    } else if (record) {
-      setRecord(record)
-      setTitle(record.title || "")
-      setDescription(record.description || "")
-      setStatus(record.status || "draft")
-      if (editor) {
-        editor.commands.setContent(markdownToHTML(record.description || ""))
-      }
-      setFormData(record.data || {})
-      setRelationsData(record.relations || {})
-    }
-    setIsLoading(false)
-  }
+    const [recordResult, diagramResult] = await Promise.all([
+      getRecordById(recordId),
+      getRecordDiagram(recordId),
+    ])
+    if (loadSequence !== loadSequenceRef.current) return
 
-  // Effect to update editor content when it initializes if description was loaded before
+    if (recordResult.error || !recordResult.record) {
+      toast.error(recordResult.error || "Record not found")
+      router.push("/records")
+      setIsLoading(false)
+      return
+    }
+
+    const nextRecord = recordResult.record
+    activeRecordIdRef.current = nextRecord.id
+    setRecord(nextRecord)
+    setTitle(nextRecord.title || "")
+    setDescription(nextRecord.description || "")
+    setStatus(nextRecord.status || "draft")
+    setFormData(nextRecord.data || {})
+    setRelationsData(nextRecord.relations || {})
+    const nextDiagram = diagramResult.diagram || emptyRecordDiagram()
+    setDiagram(nextDiagram)
+    savedDiagramRef.current = nextDiagram
+    latestViewportRef.current = nextDiagram.viewport
+    if (diagramResult.error) toast.error(diagramResult.error)
+    documentVersionRef.current = 0
+    diagramVersionRef.current = 0
+    setSaveFailure(null)
+    setDocumentDirty(false)
+    setDiagramDirty(false)
+    setIsLoading(false)
+  }, [router])
+
   useEffect(() => {
-    if (editor && record && !editor.isFocused && editor.isEmpty) {
-      editor.commands.setContent(markdownToHTML(record.description || ""))
+    if (id) void loadRecord(id)
+  }, [id, loadRecord])
+
+  useEffect(() => {
+    if (editor && record && hydratedRecordIdRef.current !== record.id) {
+      editor.commands.setContent(markdownToHTML(record.description || ""), false)
+      hydratedRecordIdRef.current = record.id
     }
   }, [editor, record])
 
-  const handleSave = () => {
-    if (!record) return
-    
-    const updates = {
-      title,
-      description,
-      status,
-      data: formData,
-      relations: relationsData
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent("breadcrumb:update", {
+      detail: {
+        title: debouncedTitle || (isLoading ? (t("common.loading") || "Loading...") : "Record"),
+        parentTitle: "Records",
+        parentPath: "/records",
+      },
+    }))
+  }, [debouncedTitle, isLoading, t])
+
+  const handleSave = useCallback(async () => {
+    if (!record || isSaving || (!documentDirty && !diagramDirty)) return
+    const diagramAtSave = { ...diagram, viewport: latestViewportRef.current }
+    if (diagramDirty) {
+      const validation = recordDiagramDraftSchema.safeParse(diagramAtSave)
+      if (!validation.success) {
+        toast.error(validation.error.issues[0]?.message || "Fix the diagram before saving")
+        return
+      }
     }
+    const recordIdAtSave = record.id
+    const documentVersionAtSave = documentVersionRef.current
+    const diagramVersionAtSave = diagramVersionRef.current
+    let failure: "error" | "conflict" = "error"
+    setSaveFailure(null)
+    setIsSaving(true)
 
-    // Optimistically update UI
-    setHasChanges(false)
-
-    toast.promise(
-      updateRecord(record.id, updates).then(({ error }) => {
-        if (error) throw new Error(error)
-        
-        // trigger embedding generation asynchronously
-        fetch("/api/records/embed", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ record_id: record.id })
-        }).catch(err => console.error("Failed to generate embedding", err))
-        
-        return true
-      }),
-      {
-        loading: t("common.saving") || "Saving...",
-        success: t("common.saved") || "Record saved",
-        error: (err) => {
-          setHasChanges(true)
-          return err.message
+    const promise = (async () => {
+      if (documentDirty) {
+        const result = await updateRecord(record.id, {
+          title,
+          description,
+          status,
+          data: formData,
+          relations: relationsData,
+        })
+        if (result.error) throw new Error(result.error)
+        if (
+          activeRecordIdRef.current === recordIdAtSave
+          && documentVersionRef.current === documentVersionAtSave
+        ) {
+          setDocumentDirty(false)
         }
       }
-    )
-  }
+
+      if (diagramDirty) {
+        const result = await saveRecordDiagram({
+          recordId: record.id,
+          diagram: diagramAtSave,
+        })
+        if (!result.success) {
+          if (result.conflict) {
+            failure = "conflict"
+            throw new Error("The diagram changed elsewhere. Reload before saving again.")
+          }
+          throw new Error(result.error)
+        }
+        if (activeRecordIdRef.current === recordIdAtSave) {
+          savedDiagramRef.current = { ...diagramAtSave, revision: result.revision }
+          setDiagram((current) => ({ ...current, revision: result.revision }))
+          if (diagramVersionRef.current === diagramVersionAtSave) {
+            setDiagramDirty(false)
+          }
+        }
+      }
+
+    })()
+
+    toast.promise(promise, {
+      loading: t("common.saving") || "Saving...",
+      success: t("common.saved") || "Record saved",
+      error: (error) => error instanceof Error ? error.message : "Failed to save record",
+    })
+    try {
+      await promise
+    } catch {
+      setSaveFailure(failure)
+      // The toast above presents the actionable error to the user.
+    } finally {
+      setIsSaving(false)
+    }
+  }, [
+    record,
+    isSaving,
+    documentDirty,
+    diagramDirty,
+    title,
+    description,
+    status,
+    formData,
+    relationsData,
+    diagram,
+    t,
+  ])
+
+  const handleViewportChange = useCallback((viewport: RecordDiagramViewport) => {
+    latestViewportRef.current = viewport
+    markDiagramDirty()
+  }, [markDiagramDirty])
+
+  useEffect(() => {
+    const save = () => void handleSave()
+    window.addEventListener("records:save", save)
+    return () => window.removeEventListener("records:save", save)
+  }, [handleSave])
+
+  useEffect(() => {
+    if (!documentDirty && !diagramDirty) return
+    const warnBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault()
+      event.returnValue = ""
+    }
+    const warnBeforeInternalNavigation = (event: MouseEvent) => {
+      if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
+      const anchor = (event.target as HTMLElement | null)?.closest("a[href]")
+      if (!anchor) return
+      const destination = new URL(anchor.getAttribute("href") || "", window.location.href)
+      if (
+        destination.origin === window.location.origin
+        && destination.pathname === window.location.pathname
+        && destination.search === window.location.search
+      ) return
+      if (!window.confirm("Discard your unsaved changes?")) {
+        event.preventDefault()
+        event.stopPropagation()
+      }
+    }
+    window.addEventListener("beforeunload", warnBeforeUnload)
+    document.addEventListener("click", warnBeforeInternalNavigation, true)
+    return () => {
+      window.removeEventListener("beforeunload", warnBeforeUnload)
+      document.removeEventListener("click", warnBeforeInternalNavigation, true)
+    }
+  }, [diagramDirty, documentDirty])
 
   const handleDelete = async () => {
     if (!record) return
-    const { error } = await deleteRecord(record.id)
-    if (error) {
-      toast.error(error)
-    } else {
-      toast.success("Record deleted")
-      router.push("/records")
+    const result = await deleteRecord(record.id)
+    if (result.error) {
+      toast.error(result.error)
+      return
     }
+    toast.success("Record deleted")
+    router.push("/records")
   }
 
-  const handleChange = (field: string, value: any, type: "field" | "relation") => {
-    if (type === "field") {
-      setFormData(prev => ({ ...prev, [field]: value }))
-    } else {
-      setRelationsData(prev => ({ ...prev, [field]: value }))
-    }
-    setHasChanges(true)
-  }
-
-  if (isLoading) {
-    return <RecordDetailSkeleton />
-  }
-
+  if (isLoading) return <RecordDetailSkeleton />
   if (!record) return null
 
-  const templateFields = record.category?.template_fields || []
+  const hasChanges = documentDirty || diagramDirty
 
   return (
     <div className="flex h-[calc(100vh-64px)] min-h-0 bg-background">
-      {/* Left side: Main Content / Form */}
-      <div className="flex-1 flex flex-col min-w-0 bg-muted/10 relative">
-        {/* Formatting Toolbar */}
-        <div className="border-b pl-[20px] pr-4 py-2 flex items-center h-[71px] bg-background gap-1 overflow-x-auto">
-          <Button
-            variant="secondary"
-            onClick={handleSave}
-            disabled={!hasChanges}
-            className="flex items-center gap-2 mr-2"
-          >
-            <Save className="h-4 w-4" />
-            {t("common.save") || "Save"}
-          </Button>
-          <div className="w-px h-6 bg-border mx-1" />
-          {editor ? (
-            <>
-              <div 
-                className={`flex items-center transition-all duration-300 overflow-hidden ${
-                  isEditorFocused || isToolbarHovered || isHeadingDropdownOpen ? 'max-w-[1000px] opacity-100' : 'max-w-0 opacity-0'
-                }`}
-                onMouseEnter={() => setIsToolbarHovered(true)}
-                onMouseLeave={() => setIsToolbarHovered(false)}
-              >
-                <div className="flex items-center gap-1 flex-nowrap pr-2">
-                  <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => editor.chain().focus().toggleBold().run()}
-                className={editor.isActive('bold') ? 'bg-muted' : ''}
-              >
-                <Bold className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => editor.chain().focus().toggleItalic().run()}
-                className={editor.isActive('italic') ? 'bg-muted' : ''}
-              >
-                <Italic className="h-4 w-4" />
-              </Button>
-
-              <DropdownMenu onOpenChange={setIsHeadingDropdownOpen}>
-                <DropdownMenuTrigger asChild>
-                  <Button 
-                    variant="ghost" 
-                    size="sm"
-                    className={editor.isActive('heading') ? 'bg-muted' : ''}
-                  >
-                    {editor.isActive('heading', { level: 1 }) && <span className="w-4 h-4 inline-flex items-center justify-center font-bold">H1</span>}
-                    {editor.isActive('heading', { level: 2 }) && <span className="w-4 h-4 inline-flex items-center justify-center font-bold">H2</span>}
-                    {editor.isActive('heading', { level: 3 }) && <span className="w-4 h-4 inline-flex items-center justify-center font-bold">H3</span>}
-                    {editor.isActive('heading', { level: 4 }) && <span className="w-4 h-4 inline-flex items-center justify-center text-xs font-bold">H4</span>}
-                    {editor.isActive('heading', { level: 5 }) && <span className="w-4 h-4 inline-flex items-center justify-center text-xs font-bold">H5</span>}
-                    {editor.isActive('heading', { level: 6 }) && <span className="w-4 h-4 inline-flex items-center justify-center text-xs font-bold">H6</span>}
-                    {!editor.isActive('heading') && <ParagraphIcon className="h-4 w-4 text-sm" />}
-                    <ChevronDown className="h-3 w-3 ml-1" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="start">
-                  <DropdownMenuItem onClick={() => editor.chain().focus().setParagraph().run()}>
-                    <ParagraphIcon className="h-4 w-4 mr-2" />
-                    Paragraph
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}>
-                    <span className="w-4 h-4 inline-flex items-center justify-center mr-2 font-bold">H1</span>
-                    Heading 1
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}>
-                    <span className="w-4 h-4 inline-flex items-center justify-center mr-2 font-bold">H2</span>
-                    Heading 2
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}>
-                    <span className="w-4 h-4 inline-flex items-center justify-center mr-2 font-bold">H3</span>
-                    Heading 3
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => editor.chain().focus().toggleBulletList().run()}
-                className={editor.isActive('bulletList') ? 'bg-muted' : ''}
-              >
-                <List className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => editor.chain().focus().toggleOrderedList().run()}
-                className={editor.isActive('orderedList') ? 'bg-muted' : ''}
-              >
-                <ListOrdered className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => editor.chain().focus().toggleBlockquote().run()}
-                className={editor.isActive('blockquote') ? 'bg-muted' : ''}
-              >
-                <Quote className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => editor.chain().focus().toggleCodeBlock().run()}
-                className={editor.isActive('codeBlock') ? 'bg-muted' : ''}
-              >
-                <Code className="h-4 w-4" />
-              </Button>
-              
-              <div className="w-px h-6 bg-border mx-1" />
-
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  const url = window.prompt('Enter the URL')
-                  if (url) {
-                    editor.chain().focus().setLink({ href: url }).run()
-                  }
-                }}
-                className={editor.isActive('link') ? 'bg-muted' : ''}
-              >
-                <LinkIcon className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  const url = window.prompt('Enter the image URL')
-                  if (url) {
-                    editor.chain().focus().setImage({ src: url }).run()
-                  }
-                }}
-              >
-                <ImageIcon className="h-4 w-4" />
-              </Button>
-
-              <div className="w-px h-6 bg-border mx-1" />
-
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => editor.chain().focus().setTextAlign('left').run()}
-                className={editor.isActive({ textAlign: 'left' }) ? 'bg-muted' : ''}
-              >
-                <AlignLeft className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => editor.chain().focus().setTextAlign('center').run()}
-                className={editor.isActive({ textAlign: 'center' }) ? 'bg-muted' : ''}
-              >
-                <AlignCenter className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => editor.chain().focus().setTextAlign('right').run()}
-                className={editor.isActive({ textAlign: 'right' }) ? 'bg-muted' : ''}
-              >
-                <AlignRight className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => editor.chain().focus().setTextAlign('justify').run()}
-                className={editor.isActive({ textAlign: 'justify' }) ? 'bg-muted' : ''}
-              >
-                <AlignJustify className="h-4 w-4" />
-              </Button>
-
-              <div className="w-px h-6 bg-border mx-1" />
-
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => editor.chain().focus().undo().run()}
-                disabled={!editor.can().undo()}
-              >
-                <Undo className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => editor.chain().focus().redo().run()}
-                disabled={!editor.can().redo()}
-              >
-                <Redo className="h-4 w-4" />
-              </Button>
-                </div>
-              </div>
-
-              <div className={`w-px h-6 bg-border mx-1 transition-all duration-300 ${
-                isEditorFocused || isToolbarHovered || isHeadingDropdownOpen ? 'opacity-100' : 'opacity-0 w-0 mx-0'
-              }`} />
-              
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-destructive hover:bg-destructive/10 hover:text-destructive"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Delete Record</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      Are you sure you want to delete this record? This action cannot be undone.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction className="!bg-destructive hover:!bg-destructive/90 !text-destructive-foreground" onClick={handleDelete}>
-                      Delete
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-            </>
-          ) : (
-            <div className="text-muted-foreground text-sm">Editor loading...</div>
-          )}
-
-          <div className="flex-1" />
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setIsRightPanelOpen(!isRightPanelOpen)}
-            className="ml-2 text-muted-foreground hover:text-foreground"
-          >
-            {isRightPanelOpen ? <PanelRightClose className="h-4 w-4" /> : <PanelRightOpen className="h-4 w-4" />}
-          </Button>
-        </div>
-
-        <div className="flex-1 overflow-auto">
-          <div className="p-4 md:p-8 max-w-4xl mx-auto h-full">
-            {/* If no template fields, just show a simple markdown-like area */}
-            {templateFields.length === 0 ? (
-              <div className="flex flex-col h-full space-y-4">
-                <Input 
-                  value={title}
-                  onChange={(e) => { setTitle(e.target.value); setHasChanges(true); }}
-                  placeholder="Record Title"
-                  className="bg-transparent text-4xl font-bold border-none px-0 shadow-none focus-visible:ring-0 h-auto flex-none"
-                />
-                <EditorContent editor={editor} className="flex-1 flex flex-col min-h-0" />
-              </div>
+      <div className="relative flex min-w-0 flex-1 flex-col bg-muted/10">
+        <RecordToolbar
+          editor={editor}
+          activeView={activeView}
+          hasChanges={hasChanges}
+          isSaving={isSaving}
+          saveStatus={
+            isSaving
+              ? "saving"
+              : saveFailure || (hasChanges ? "unsaved" : "saved")
+          }
+          isEditorFocused={isEditorFocused}
+          isRightPanelOpen={isRightPanelOpen}
+          onSave={() => void handleSave()}
+          onReload={() => {
+            if (
+              id
+              && window.confirm("Reload this record and discard your unsaved local changes?")
+            ) void loadRecord(id)
+          }}
+          onDelete={() => void handleDelete()}
+          onToggleRightPanel={() => setIsRightPanelOpen((open) => !open)}
+          saveLabel={isSaving ? (t("common.saving") || "Saving...") : (t("common.save") || "Save")}
+          isNodeTextEditing={activeView === "nodes" && diagramEditState.isEditingNodeContent}
+          diagramControls={activeView === "nodes" ? (
+            diagramEditState.isEditingNodeContent ? (
+              <RecordNodeMarkdownControls
+                onFormat={(command) => diagramEditorRef.current?.formatNodeContent(command)}
+              />
             ) : (
-              <div className="space-y-6">
-                <div className="space-y-2">
-                   <Input 
-                    value={title}
-                    onChange={(e) => { setTitle(e.target.value); setHasChanges(true); }}
-                    placeholder="Record Title"
-                    className="bg-transparent text-4xl font-bold border-none px-0 shadow-none focus-visible:ring-0 h-auto"
-                  />
-                </div>
-                
-                <RecordDynamicForm 
-                  fields={templateFields} 
-                  formData={formData} 
-                  relationsData={relationsData} 
-                  status={status}
-                  record={record}
-                  onChange={handleChange} 
-                  onStatusChange={(val) => { setStatus(val); setHasChanges(true); }}
-                />
+              <RecordDiagramEditControls
+                canUndo={diagramEditState.canUndo}
+                canRedo={diagramEditState.canRedo}
+                hasSelection={diagramEditState.hasSelection}
+                canPaste={diagramEditState.canPaste}
+                background={diagram.viewport.background || "dots"}
+                onUndo={() => diagramEditorRef.current?.undo()}
+                onRedo={() => diagramEditorRef.current?.redo()}
+                onCopy={() => diagramEditorRef.current?.copy()}
+                onPaste={() => diagramEditorRef.current?.paste()}
+                onDuplicate={() => diagramEditorRef.current?.duplicate()}
+                onDelete={() => diagramEditorRef.current?.deleteSelection()}
+                onLayout={(layout) => diagramEditorRef.current?.applyLayout(layout)}
+                onBackground={(background) => diagramEditorRef.current?.setBackground(background)}
+              />
+            )
+          ) : undefined}
+        />
 
-                <div className="text-lg text-muted-foreground border-none px-0 shadow-none focus-visible:ring-0 h-auto pt-4">
-                  <EditorContent editor={editor} />
-                </div>
-              </div>
-            )}
+        <div className="relative min-h-0 flex-1">
+          <div className="pointer-events-none absolute left-1/2 top-3 z-40 -translate-x-1/2">
+            <Tabs value={activeView} onValueChange={(value) => setActiveView(value as "document" | "nodes")}>
+              <TabsList className="pointer-events-auto grid w-[220px] grid-cols-2 border border-border/40 bg-background/35 shadow-sm backdrop-blur-md">
+                <TabsTrigger
+                  value="document"
+                  className="data-[state=active]:bg-background/75"
+                >
+                  Document
+                </TabsTrigger>
+                <TabsTrigger
+                  value="nodes"
+                  className="data-[state=active]:bg-background/75"
+                >
+                  Canvas
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+          </div>
+
+          <div className="h-full">
+            <div className={activeView === "document" ? "h-full pt-14" : "hidden"}>
+              <RecordDocumentView
+                editor={editor}
+                record={record}
+                title={title}
+                status={status}
+                formData={formData}
+                relationsData={relationsData}
+                onTitleChange={(value) => {
+                  setTitle(value)
+                  markDocumentDirty()
+                }}
+                onFieldChange={(field, value, type) => {
+                  if (type === "field") {
+                    setFormData((current) => ({ ...current, [field]: value }))
+                  } else {
+                    setRelationsData((current) => ({ ...current, [field]: value }))
+                  }
+                  markDocumentDirty()
+                }}
+                onStatusChange={(value) => {
+                  setStatus(value)
+                  markDocumentDirty()
+                }}
+              />
+            </div>
+            <div className={activeView === "nodes" ? "h-full" : "hidden"}>
+              <RecordDiagramView
+                ref={diagramEditorRef}
+                key={record.id}
+                diagram={diagram}
+                active={activeView === "nodes"}
+                onEditStateChange={handleDiagramEditStateChange}
+                onChange={handleDiagramChange}
+                onViewportChange={handleViewportChange}
+                onViewportCommit={(viewport) => {
+                  setDiagram((current) => {
+                    const next = { ...current, viewport }
+                    setDiagramDirty(!areRecordDiagramDraftsEqual(next, savedDiagramRef.current))
+                    return next
+                  })
+                }}
+              />
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Right side: Insights & Relations */}
       {isRightPanelOpen && (
-        <div className="w-[400px] flex-none flex flex-col bg-background border-l border-border">
-          <div className="flex-1 flex flex-col min-h-0">
-            <div className="border-b px-4 h-[71px] flex items-center justify-center">
-              <ToggleGroup 
-                type="single" 
-                value={activeRightTab} 
-                onValueChange={(val: string) => val && setActiveRightTab(val as "insights" | "relations")}
-                className="w-full"
-              >
-                <ToggleGroupItem value="insights" className="flex-1" aria-label="Insights">
-                  Insights
-                </ToggleGroupItem>
-                <ToggleGroupItem value="relations" className="flex-1" aria-label="Relations">
-                  Relations
-                </ToggleGroupItem>
-              </ToggleGroup>
-            </div>
-
-            <ScrollArea className="flex-1">
-              <div className="p-4">
-                {activeRightTab === "insights" && (
-                  <InsightsTab 
-                    fields={templateFields} 
-                    formData={debouncedFormData} 
-                    description={description}
-                    record={record}
-                    relationsData={relationsData}
-                  />
-                )}
-                {activeRightTab === "relations" && (
-                  <RelationsTab 
-                    fields={templateFields.filter(f => f.type === 'relation')}
-                    relationsData={relationsData}
-                    recordId={record.id}
-                  />
-                )}
-              </div>
-            </ScrollArea>
-          </div>
-        </div>
+        <RecordRightPanel
+          activeTab={activeRightTab}
+          record={record}
+          formData={debouncedFormData}
+          description={description}
+          relationsData={relationsData}
+          onTabChange={setActiveRightTab}
+        />
       )}
     </div>
   )

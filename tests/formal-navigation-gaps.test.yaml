@@ -1,0 +1,27 @@
+goal: Cover formal application routes missing from the navigation suite
+
+statements:
+  - URL: /projects
+  - intent: Select the first available project
+    action: click
+    locator: "getByRole('button', { name: 'Select' }).first()"
+
+  - WAIT_UNTIL: The workspace is selected
+    js: "await page.url().includes('/robots')"
+    timeout_seconds: 10
+
+  - URL: /sales-home
+  - VERIFY: Sales Home quick actions are visible
+    js: |
+      await expect(page).toHaveURL(/\/sales-home$/);
+      await expect(page.getByRole('heading', { name: 'Quick Navigation' })).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Create Sale' })).toBeVisible();
+
+  - URL: /settings?tab=activities
+  - WAIT_UNTIL: AI Activities settings are ready
+    js: "await page.getByRole('heading', { name: 'AI Activities' }).count() > 0"
+    timeout_seconds: 20
+  - VERIFY: Activity controls are available
+    js: |
+      await expect(page).toHaveURL(/\/settings\?tab=activities$/);
+      await expect(page.getByRole('heading', { name: 'Daily Resume and Stand Up' })).toBeVisible();

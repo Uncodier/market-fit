@@ -18,6 +18,8 @@ const DEFAULT_SESSION = (
   promoCode: "",
   activeOrderId: "new",
   buyerUserId: null,
+  sellerUserId: null,
+  sellerName: null,
   orderNotes: "",
   shippingAddress: EMPTY_POS_SHIPPING_ADDRESS,
 });

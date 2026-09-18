@@ -173,8 +173,9 @@ const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
               type="button"
               variant="ghost"
               size="icon"
-              className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 text-muted-foreground hover:text-foreground"
+              className="absolute inset-y-0 right-1 z-20 my-auto h-7 w-7 text-muted-foreground opacity-100 hover:text-foreground"
               onClick={handleClear}
+              aria-label="Clear search"
             >
               <X className="h-3 w-3" />
             </Button>

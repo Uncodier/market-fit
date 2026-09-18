@@ -27,4 +27,7 @@ export interface OrderWithRelations extends SaleOrderData {
   price_lists?: { name: string };
   promotions?: { name: string; code: string };
   sale_order_items?: any[];
+  created_by?: { id: string; name?: string | null; email?: string | null } | null;
+  seller?: { id: string; name?: string | null; email?: string | null } | null;
+  requested_by?: { id: string; name?: string | null; email?: string | null } | null;
 }

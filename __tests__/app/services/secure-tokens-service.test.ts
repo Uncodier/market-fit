@@ -1,5 +1,13 @@
-import { secureTokensService } from '../secure-tokens-service';
+import { secureTokensService } from '@/app/services/secure-tokens-service';
 import fetch from 'jest-fetch-mock';
+
+jest.mock('@/app/services/api-client-service', () => ({
+  isDemoModeActive: jest.fn().mockResolvedValue(false),
+}))
+
+jest.mock('@/lib/supabase/client', () => ({
+  createClient: jest.fn(() => ({ from: jest.fn() })),
+}))
 
 // Mock fetch globally
 global.fetch = fetch as any;
@@ -24,6 +32,7 @@ describe('SecureTokensService', () => {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'X-API-Key': expect.any(String),
       },
       body: JSON.stringify({
         operation: 'store',
@@ -31,8 +40,7 @@ describe('SecureTokensService', () => {
         tokenType: 'api',
         tokenValue: 'test-token-value',
         identifier: 'test-identifier'
-      }),
-      credentials: 'include'
+      })
     });
   });
 
@@ -64,6 +72,7 @@ describe('SecureTokensService', () => {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'X-API-Key': expect.any(String),
       },
       body: JSON.stringify({
         operation: 'verify',
@@ -71,8 +80,7 @@ describe('SecureTokensService', () => {
         tokenType: 'api',
         tokenValue: 'test-token-value',
         identifier: 'test-identifier'
-      }),
-      credentials: 'include'
+      })
     });
   });
 
@@ -103,14 +111,14 @@ describe('SecureTokensService', () => {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'X-API-Key': expect.any(String),
       },
       body: JSON.stringify({
         operation: 'check',
         siteId: 'site-123',
         tokenType: 'api',
         identifier: 'test-identifier'
-      }),
-      credentials: 'include'
+      })
     });
   });
 
@@ -128,14 +136,14 @@ describe('SecureTokensService', () => {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'X-API-Key': expect.any(String),
       },
       body: JSON.stringify({
         operation: 'delete',
         siteId: 'site-123',
         tokenType: 'api',
         identifier: 'test-identifier'
-      }),
-      credentials: 'include'
+      })
     });
   });
 

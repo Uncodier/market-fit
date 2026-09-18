@@ -121,6 +121,24 @@ export function ProcessGroupItem({
 
   return (
     <div className="group w-full min-w-0 overflow-hidden">
+      {answer && (
+        <div className="w-full min-w-0 overflow-hidden">
+          <div
+            className="text-sm text-foreground leading-relaxed prose prose-sm max-w-none dark:prose-invert prose-headings:font-medium prose-p:leading-relaxed prose-pre:bg-muted w-full overflow-hidden break-words"
+            style={{
+              wordWrap: 'break-word',
+              overflowWrap: 'break-word',
+              wordBreak: 'break-word',
+              paddingLeft: isBrowserVisible ? '0.75rem' : '2rem',
+            }}
+          >
+            <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]} components={markdownComponents}>
+              {answer.message}
+            </ReactMarkdown>
+          </div>
+        </div>
+      )}
+
       {showAccordion && (
         <div className="w-full min-w-[min(100%,450px)] overflow-hidden max-w-[calc(100%-80px)] lg:max-w-3xl">
           <button
@@ -160,51 +178,36 @@ export function ProcessGroupItem({
       )}
 
       {answer && (
-        <div className="w-full min-w-0 overflow-hidden">
-          <div
-            className="text-sm text-foreground leading-relaxed prose prose-sm max-w-none dark:prose-invert prose-headings:font-medium prose-p:leading-relaxed prose-pre:bg-muted w-full overflow-hidden break-words"
-            style={{
-              wordWrap: 'break-word',
-              overflowWrap: 'break-word',
-              wordBreak: 'break-word',
-              paddingLeft: isBrowserVisible ? '0.75rem' : '2rem',
-            }}
-          >
-            <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]} components={markdownComponents}>
-              {answer.message}
-            </ReactMarkdown>
-          </div>
-          <div
-            className={`mt-2 w-full min-w-0 ${isBrowserVisible ? 'pl-3' : 'pl-8'}`}
-          >
-            {answer.instance_id ? (
-              <InstanceNodeChildren
-                parentLogId={answer.id}
-                instanceId={answer.instance_id}
-                toolbarRowClassName="opacity-0 pointer-events-none transition-opacity duration-200 group-hover:opacity-100 group-hover:pointer-events-auto"
-                leading={
-                  <InstanceLogCopyFeedbackBar
-                    logId={answer.id}
-                    details={answer.details as Record<string, unknown> | undefined}
-                    textToCopy={answer.message || ''}
-                    enableRecordActions
-                    userPrompt={group.userPrompt}
-                    instanceId={answer.instance_id}
-                  />
-                }
-              />
-            ) : (
-              <div className="opacity-0 pointer-events-none transition-opacity duration-200 group-hover:opacity-100 group-hover:pointer-events-auto">
+        <div
+          className={`mt-2 w-full min-w-0 ${isBrowserVisible ? 'pl-3' : 'pl-8'}`}
+        >
+          {answer.instance_id ? (
+            <InstanceNodeChildren
+              parentLogId={answer.id}
+              instanceId={answer.instance_id}
+              toolbarRowClassName="opacity-0 pointer-events-none transition-opacity duration-200 group-hover:opacity-100 group-hover:pointer-events-auto"
+              leading={
                 <InstanceLogCopyFeedbackBar
                   logId={answer.id}
                   details={answer.details as Record<string, unknown> | undefined}
                   textToCopy={answer.message || ''}
                   enableRecordActions
                   userPrompt={group.userPrompt}
+                  instanceId={answer.instance_id}
                 />
-              </div>
-            )}
-          </div>
+              }
+            />
+          ) : (
+            <div className="opacity-0 pointer-events-none transition-opacity duration-200 group-hover:opacity-100 group-hover:pointer-events-auto">
+              <InstanceLogCopyFeedbackBar
+                logId={answer.id}
+                details={answer.details as Record<string, unknown> | undefined}
+                textToCopy={answer.message || ''}
+                enableRecordActions
+                userPrompt={group.userPrompt}
+              />
+            </div>
+          )}
         </div>
       )}
     </div>

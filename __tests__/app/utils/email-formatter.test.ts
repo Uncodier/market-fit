@@ -4,7 +4,7 @@ import {
   formatEmailForChat,
   isEmailLikeMessage,
   getEmailSummary
-} from '../email-formatter'
+} from '@/app/utils/email-formatter'
 
 describe('Email Formatter Utilities', () => {
   

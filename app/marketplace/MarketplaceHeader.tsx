@@ -1,5 +1,6 @@
 "use client"
 
+import { useEffect, useRef } from "react"
 import Link from "next/link"
 import { Search, User, Globe } from "@/app/components/ui/icons"
 import { CartButton } from "@/app/components/commerce/CartButton"
@@ -62,8 +63,27 @@ export function MarketplaceHeader({
   signInLabel,
 }: Props) {
   const searchCollapsed = useMobileShellSearchCollapsed(false)
+  const mobileSearchTriggerRef = useRef<HTMLButtonElement>(null)
+  const restoreMobileSearchFocusRef = useRef(false)
   const { href: signInHref, onClick: onSignInClick } = useCommerceSignInHref()
   const { t } = useLocalization()
+  const openMobileSearch = () => {
+    restoreMobileSearchFocusRef.current = false
+    setMobileSearchOpen(true)
+  }
+  const handleMobileSearchOpenChange = (open: boolean) => {
+    restoreMobileSearchFocusRef.current = !open
+    setMobileSearchOpen(open)
+  }
+
+  useEffect(() => {
+    if (mobileSearchOpen || !restoreMobileSearchFocusRef.current) return
+    const frame = window.requestAnimationFrame(() => {
+      mobileSearchTriggerRef.current?.focus()
+      restoreMobileSearchFocusRef.current = false
+    })
+    return () => window.cancelAnimationFrame(frame)
+  }, [mobileSearchOpen])
 
   return (
     <>
@@ -76,7 +96,7 @@ export function MarketplaceHeader({
               onChange={setSearchQuery}
               placeholder={searchPlaceholder}
               open={mobileSearchOpen}
-              onOpenChange={setMobileSearchOpen}
+              onOpenChange={handleMobileSearchOpenChange}
             />
           ) : undefined
         }
@@ -101,9 +121,10 @@ export function MarketplaceHeader({
             {!searchCollapsed ? (
               <div className="md:hidden flex w-full min-w-0">
                 <MobileShellSearchTrigger
+                  ref={mobileSearchTriggerRef}
                   value={searchQuery}
                   label={searchLabel}
-                  onOpen={() => setMobileSearchOpen(true)}
+                  onOpen={openMobileSearch}
                 />
               </div>
             ) : null}
@@ -113,6 +134,7 @@ export function MarketplaceHeader({
                 <input
                   type="text"
                   placeholder={searchPlaceholder}
+                  aria-label={searchLabel}
                   className="w-full pl-9 h-9 text-sm bg-muted/50 focus:bg-white dark:focus:bg-gray-950 border border-transparent focus:border-black/10 dark:focus:border-white/10 rounded-full transition-all outline-none shadow-sm"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
@@ -125,9 +147,10 @@ export function MarketplaceHeader({
           <div className="flex items-center justify-end gap-1 md:gap-3 min-w-0">
             {searchCollapsed ? (
               <MobileShellSearchIconButton
+                ref={mobileSearchTriggerRef}
                 value={searchQuery}
                 label={searchLabel}
-                onOpen={() => setMobileSearchOpen(true)}
+                onOpen={openMobileSearch}
               />
             ) : null}
             <div
@@ -168,7 +191,11 @@ export function MarketplaceHeader({
               />
 
               {session ? (
-                <Link href="/buyer" className="hover:opacity-80 transition-opacity shrink-0">
+                <Link
+                  href="/buyer"
+                  aria-label="Buyer account"
+                  className="hover:opacity-80 transition-opacity shrink-0"
+                >
                   {session.user.user_metadata?.avatar_url || session.user.user_metadata?.picture ? (
                     <img
                       src={

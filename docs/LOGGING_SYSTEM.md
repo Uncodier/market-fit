@@ -1,5 +1,10 @@
 # Sistema de Logging Condicionado
 
+> Historical implementation note. Some behavior below no longer matches
+> `lib/logger.ts` and `lib/config.ts`: log-level parsing does not currently
+> enforce output levels, test warnings are not guaranteed, and intercepted calls
+> still perform runtime checks. Verify the source before relying on this guide.
+
 Este documento describe el sistema de logging implementado en Market Fit que permite controlar los logs según el entorno de ejecución.
 
 ## Características Principales

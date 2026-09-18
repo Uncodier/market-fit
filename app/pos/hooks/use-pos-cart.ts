@@ -12,7 +12,6 @@ import {
   mergeItemIntoCart,
 } from "@/app/pos/cart-line-utils";
 import { clearLineDiscountFields } from "@/app/pos/line-discount";
-import { buildCartFromSaleOrderItems } from "@/app/pos/populate-cart-from-order";
 import {
   getItemDeliveryOptions,
   intersectDeliveryOptions,
@@ -40,7 +39,7 @@ import {
   type PosShippingAddress,
 } from "@/app/pos/shipping-address";
 import { getOrder } from "@/app/orders/actions";
-import { isPosOpenOrder } from "@/app/pos/open-orders";
+import { posSessionFromOrder } from "@/app/pos/order-session";
 import { toast } from "sonner";
 import { useDisplayCurrency } from "@/app/context/DisplayCurrencyContext";
 import { resolveSiteCurrency } from "@/app/commerce/checkout-currency";
@@ -90,6 +89,8 @@ export function usePosCart({
   );
   const [activeOrderId, setActiveOrderId] = useState("new");
   const [buyerUserId, setBuyerUserId] = useState<string | null>(null);
+  const [sellerUserId, setSellerUserId] = useState<string | null>(null);
+  const [sellerName, setSellerName] = useState<string | null>(null);
   const [orderNotes, setOrderNotes] = useState("");
   const [shippingAddress, setShippingAddress] = useState<PosShippingAddress>(
     EMPTY_POS_SHIPPING_ADDRESS,
@@ -152,6 +153,8 @@ export function usePosCart({
       setPromoCode(session.promoCode || "");
       setActiveOrderId(session.activeOrderId || "new");
       setBuyerUserId(session.buyerUserId);
+      setSellerUserId(session.sellerUserId || null);
+      setSellerName(session.sellerName || null);
       setOrderNotes(session.orderNotes || "");
       setShippingAddress(session.shippingAddress || EMPTY_POS_SHIPPING_ADDRESS);
       setSessionReady(true);
@@ -176,6 +179,8 @@ export function usePosCart({
         promoCode,
         activeOrderId,
         buyerUserId,
+        sellerUserId,
+        sellerName,
         orderNotes,
         shippingAddress,
       });
@@ -194,6 +199,8 @@ export function usePosCart({
     promoCode,
     activeOrderId,
     buyerUserId,
+    sellerUserId,
+    sellerName,
     orderNotes,
     shippingAddress,
   ]);
@@ -366,45 +373,24 @@ export function usePosCart({
     setFulfillment("dine_in");
     setOrderNotes("");
     setBuyerUserId(null);
+    setSellerUserId(null);
+    setSellerName(null);
     setShippingAddress(EMPTY_POS_SHIPPING_ADDRESS);
     resetPromo();
     if (siteId) await clearCartSession(siteId);
   }, [siteId, resetPromo]);
 
   const populateFromOrder = (order: any) => {
-    if (!isPosOpenOrder(order)) {
-      return false;
-    }
-    if (order.leads) {
-      setLeadValue({
-        mode: "existing",
-        id: order.leads.id,
-        label: order.leads.name || order.leads.email,
-      });
-    } else {
-      setLeadValue(null);
-    }
-    setPriceListId(order.price_list_id || "none");
-    setOrderNotes(typeof order.notes === "string" ? order.notes : "");
-    setBuyerUserId(order.buyer_user_id || null);
-    const addr = order.shipping_address;
-    setShippingAddress(
-      addr && typeof addr === "object"
-        ? {
-            line1: addr.line1 || "",
-            line2: addr.line2 || "",
-            city: addr.city || "",
-            state: addr.state || "",
-            zip: addr.zip || "",
-            country: addr.country || "",
-          }
-        : EMPTY_POS_SHIPPING_ADDRESS,
-    );
-    if (order?.sale_order_items) {
-      setCart(
-        buildCartFromSaleOrderItems(order.sale_order_items, catalogItems),
-      );
-    }
+    const session = posSessionFromOrder(order, catalogItems);
+    if (!session) return false;
+    setLeadValue(session.leadValue);
+    setPriceListId(session.priceListId);
+    setOrderNotes(session.orderNotes);
+    setBuyerUserId(session.buyerUserId);
+    setSellerUserId(session.sellerUserId);
+    setSellerName(session.sellerName);
+    setShippingAddress(session.shippingAddress);
+    if (session.cart) setCart(session.cart);
     return true;
   };
 
@@ -473,6 +459,10 @@ export function usePosCart({
     setActiveOrderId,
     buyerUserId,
     setBuyerUserId,
+    sellerUserId,
+    setSellerUserId,
+    sellerName,
+    setSellerName,
     orderNotes,
     setOrderNotes,
     shippingAddress,

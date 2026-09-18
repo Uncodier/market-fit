@@ -14,72 +14,42 @@ export async function POST(request: NextRequest) {
 
     const { siteId, requestedCredits, bankDetails } = await request.json()
 
-    if (!siteId || !requestedCredits || requestedCredits <= 0 || !bankDetails) {
+    if (
+      !siteId ||
+      typeof requestedCredits !== 'number' ||
+      !Number.isFinite(requestedCredits) ||
+      requestedCredits <= 0 ||
+      !bankDetails ||
+      typeof bankDetails !== 'object' ||
+      Array.isArray(bankDetails)
+    ) {
       return NextResponse.json({ error: 'Missing or invalid fields' }, { status: 400 })
     }
 
-    // Verify user has access to this site
-    const { data: siteMember, error: memberError } = await supabase
-      .from('site_members')
-      .select('role')
-      .eq('site_id', siteId)
-      .eq('user_id', user.id)
-      .single()
+    const { data: siteRole, error: roleError } = await supabase.rpc(
+      'current_user_site_role',
+      { p_site_id: siteId }
+    )
 
-    if (memberError || !siteMember) {
-      return NextResponse.json({ error: 'Unauthorized for this site' }, { status: 403 })
-    }
-
-    // Must be admin or owner to request payout (assuming 'admin' or 'owner')
-    if (siteMember.role !== 'owner' && siteMember.role !== 'admin') {
+    if (roleError || (siteRole !== 'owner' && siteRole !== 'admin')) {
       return NextResponse.json({ error: 'Must be site admin or owner to request payout' }, { status: 403 })
     }
 
     const serviceClient = await createServiceClient(true)
 
-    // Check site balance
-    const { data: billing, error: billingError } = await serviceClient
-      .from('billing')
-      .select('account_balance')
-      .eq('site_id', siteId)
-      .single()
-
-    if (billingError || !billing) {
-      return NextResponse.json({ error: 'Billing record not found' }, { status: 404 })
-    }
-
-    if ((billing.account_balance || 0) < requestedCredits) {
-      return NextResponse.json({ error: 'Insufficient balance' }, { status: 400 })
-    }
-
-    // Deduct balance via RPC
-    const { error: deductError } = await serviceClient.rpc('deduct_balance', {
-      p_site_id: siteId,
-      p_amount: requestedCredits
-    })
-
-    if (deductError) {
-      console.error('Error deducting credits:', deductError)
-      return NextResponse.json({ error: 'Failed to process payout: ' + deductError.message }, { status: 500 })
-    }
-
-    // Create payout request
-    const { data: payoutRequest, error: payoutError } = await serviceClient
-      .from('payout_requests')
-      .insert([{
-        site_id: siteId,
-        requested_credits: requestedCredits,
-        status: 'pending',
-        bank_details: bankDetails
-      }])
-      .select()
-      .single()
+    const { data: payoutRequest, error: payoutError } = await serviceClient.rpc(
+      'create_payout_request',
+      {
+        p_site_id: siteId,
+        p_requested_credits: requestedCredits,
+        p_bank_details: bankDetails,
+        p_requested_by: user.id,
+      }
+    )
 
     if (payoutError) {
-      // Revert credits if request creation fails
-      await serviceClient.rpc('add_credits', { p_site_id: siteId, p_credits: requestedCredits })
       console.error('Error creating payout request:', payoutError)
-      return NextResponse.json({ error: 'Failed to create payout request' }, { status: 500 })
+      return NextResponse.json({ error: 'Failed to create payout request' }, { status: 409 })
     }
 
     return NextResponse.json({ success: true, payoutRequest })

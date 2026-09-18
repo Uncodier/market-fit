@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/client"
+import type { RecordDiagramContext } from "@/app/records/lib/record-diagram"
 
 // Types for context entities
 export interface ContextLead {
@@ -78,6 +79,7 @@ export interface ContextRecord {
   status: string
   category?: { name: string } | null
   created_at: string
+  diagram?: RecordDiagramContext | null
 }
 
 export interface ContextEntitiesResponse<T> {

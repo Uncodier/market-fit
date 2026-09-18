@@ -1,4 +1,4 @@
-import { extractUrlsFromText, generateTitleFromUrl } from '../url-cleaning'
+import { extractUrlsFromText, generateTitleFromUrl } from '@/app/utils/url-cleaning'
 
 describe('URL Cleaning Utilities', () => {
   

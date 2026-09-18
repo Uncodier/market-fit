@@ -10,28 +10,28 @@ statements:
     js: "await page.url().includes('/robots')"
     timeout_seconds: 5
 
-  # Dashboard, Settings, Agents
+# Dashboard, Settings, Agents
   - URL: /dashboard
   - VERIFY: The page has loaded successfully
-    js: expect(page).not.toHaveTitle(/500|Error/i)
+    js: await expect(page).not.toHaveTitle(/500|Error/i)
   - URL: /dashboard?tab=analytics
   - VERIFY: The page has loaded successfully
-    js: expect(page).not.toHaveTitle(/500|Error/i)
+    js: await expect(page).not.toHaveTitle(/500|Error/i)
   - URL: /settings
   - VERIFY: The page has loaded successfully
-    js: expect(page).not.toHaveTitle(/500|Error/i)
+    js: await expect(page).not.toHaveTitle(/500|Error/i)
   - URL: /integrations
   - VERIFY: The page has loaded successfully
-    js: expect(page).not.toHaveTitle(/500|Error/i)
+    js: await expect(page).not.toHaveTitle(/500|Error/i)
   - URL: /billing
   - VERIFY: The page has loaded successfully
-    js: expect(page).not.toHaveTitle(/500|Error/i)
+    js: await expect(page).not.toHaveTitle(/500|Error/i)
   - URL: /applications/database
   - VERIFY: The page has loaded successfully
-    js: expect(page).not.toHaveTitle(/500|Error/i)
+    js: await expect(page).not.toHaveTitle(/500|Error/i)
   - URL: /agents
   - VERIFY: The page has loaded successfully
-    js: expect(page).not.toHaveTitle(/500|Error/i)
+    js: await expect(page).not.toHaveTitle(/500|Error/i)
   - URL: /requirements
   - VERIFY: The page has loaded successfully
-    js: expect(page).not.toHaveTitle(/500|Error/i)
+    js: await expect(page).not.toHaveTitle(/500|Error/i)

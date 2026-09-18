@@ -2,6 +2,7 @@ import React from "react"
 import { createServiceClient } from "@/lib/supabase/server"
 import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
+import { isPayoutResolverRole } from "@/lib/auth/platform-access"
 import { PayoutAdminClient } from "./components/PayoutAdminClient"
 
 export const dynamic = 'force-dynamic'
@@ -10,9 +11,15 @@ export default async function AdminPayoutsPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
-  // In a real app, verify user is a super admin. For now, we just require authentication.
   if (!user) {
     redirect('/auth/login')
+  }
+
+  const { data: platformRole, error: roleError } = await supabase.rpc(
+    'current_user_platform_role'
+  )
+  if (roleError || !isPayoutResolverRole(platformRole)) {
+    redirect('/')
   }
 
   const serviceClient = await createServiceClient(true)

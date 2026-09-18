@@ -40,7 +40,7 @@ export function CommerceOrderSuccess({
   const showBank = paymentMethod === "bank_transfer" && !!bankTransfer?.account_number
 
   return (
-    <div className={`flex-1 flex items-center justify-center p-6 min-h-screen ${className}`}>
+    <main className={`flex-1 flex items-center justify-center p-6 min-h-screen ${className}`}>
       <div className="max-w-md w-full bg-card p-10 rounded-2xl shadow-xl text-center border">
         <div className="mx-auto mb-6 bg-green-100 dark:bg-green-900/30 w-20 h-20 rounded-full flex items-center justify-center">
           <CheckCircle className="h-10 w-10 text-green-600 dark:text-green-400" />
@@ -110,6 +110,6 @@ export function CommerceOrderSuccess({
           </Button>
         </div>
       </div>
-    </div>
+    </main>
   )
 }

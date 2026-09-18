@@ -12,7 +12,14 @@ import {
  * Does not clear the regular shop cart.
  */
 export function startQuoteCheckout(
-  quotation: QuotationForCheckout & { site?: { id: string; name?: string; logo_url?: string; slug?: string } },
+  quotation: QuotationForCheckout & {
+    site?: {
+      id: string
+      name?: string | null
+      logo_url?: string | null
+      slug?: string | null
+    } | null
+  },
   opts: {
     returnTo: string
     ownerSiteId?: string | null

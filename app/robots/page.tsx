@@ -3,12 +3,12 @@
 import React, { useState, useEffect, useLayoutEffect, Suspense, useCallback, useRef, useMemo } from "react"
 import useSWR from "swr"
 import { useRouter, useSearchParams, usePathname } from "next/navigation"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
+import { Tabs, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/app/components/ui/dialog"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
-import { Globe, Pause, Play, MicroPause, MicroPlay, X, Plus, MoreHorizontal, ExternalLink, RotateCw, Loader, Monitor, Laptop, Tablet, Smartphone, Folder, Download, Archive, PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, LayoutGrid, Shield, Key } from "@/app/components/ui/icons"
+import { Globe, Pause, Play, MicroPause, MicroPlay, Plus, MoreHorizontal, ExternalLink, RotateCw, Loader, Monitor, Laptop, Tablet, Smartphone, Folder, Download, Archive, PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, LayoutGrid, Shield, Key, MessageSquare } from "@/app/components/ui/icons"
 import { Button } from "@/app/components/ui/button"
-import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/app/components/ui/dropdown-menu"
+import { ResponsiveTabsList, type TabItem } from "@/app/components/ui/responsive-tabs-list"
 import { useLayout } from "@/app/context/LayoutContext"
 import { useTheme } from "@/app/context/ThemeContext"
 import { useSite } from "@/app/context/SiteContext"
@@ -19,10 +19,10 @@ import { RobotsPageSkeleton } from "@/app/components/skeletons/robots-page-skele
 import { BrowserSkeleton } from "@/app/components/skeletons/browser-skeleton"
 import { DeleteRobotModal } from "@/app/components/robots/DeleteRobotModal"
 import { InstanceBrowserModal } from "@/app/components/robots/InstanceBrowserModal"
+import { InstanceTabMenu } from "@/app/components/robots/InstanceTabMenu"
 import { useInstanceBrowserData } from "@/app/components/robots/use-instance-browser-data"
 import { createClient } from "@/lib/supabase/client"
 import { useToast } from "@/app/components/ui/use-toast"
-import { deleteInstanceArtifacts } from "./delete-instance-artifacts"
 import { LoadingSkeleton } from "@/app/components/ui/loading-skeleton"
 import dynamic from "next/dynamic"
 
@@ -40,7 +40,8 @@ import "@/app/styles/iframe-containment.css"
 import { useRequirementStatus } from "@/app/components/simple-messages-view/hooks/useRequirementStatus"
 import { useInstanceArtifacts } from "@/app/components/simple-messages-view/hooks/useInstanceArtifacts"
 import { useIframeUrl } from "@/app/hooks/use-iframe-url"
-import { NAVIGATION_AREAS, getModuleArea, getNavItemTitle, isNavItemActive, type AreaNavItem } from "@/app/config/navigation-areas"
+import { useIsMobile } from "@/app/hooks/use-mobile-view"
+import { NAVIGATION_AREAS, getModuleArea, getNavItemTitle, type AreaNavItem } from "@/app/config/navigation-areas"
 import { AREA_ICON, NAV_ITEM_ICON } from "@/app/config/module-visuals"
 import {
   resolveInstanceIdParam,
@@ -71,6 +72,7 @@ interface Robot {
   nextRun?: string;
   runs: number;
   successRate: number;
+  [key: string]: unknown;
 }
 
 const EMPTY_AVATARS = {};
@@ -142,6 +144,7 @@ function RobotsPageContent() {
   const viewMode = robotsViewMode
   const isCanvasMode = viewMode === 'imprenta' || viewMode === 'workflow'
   const { theme, isDarkMode } = useTheme()
+  const isMobile = useIsMobile()
   
   // Prevent any body scroll on this page to fix Mac/iOS Safari scroll chaining
   useEffect(() => {
@@ -271,8 +274,13 @@ function RobotsPageContent() {
   const [isBrowserModalOpen, setIsBrowserModalOpen] = useState(false)
   const iframeRef = useRef<HTMLIFrameElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
+  const desktopToolbarRef = useRef<HTMLDivElement>(null)
+  const desktopDeviceControlsRef = useRef<HTMLDivElement>(null)
+  const desktopLayoutToggleRef = useRef<HTMLButtonElement>(null)
   const [viewportSize, setViewportSize] = useState<'imac' | 'macbook' | 'ipad' | 'iphone'>('imac')
   const [scale, setScale] = useState(1)
+  const [desktopTabsPreferredWidth, setDesktopTabsPreferredWidth] = useState(0)
+  const [desktopTabsWidth, setDesktopTabsWidth] = useState<number | null>(null)
   const prevSiteIdRef = useRef<string | null>(currentSite?.id || null)
   
   // Simplified site change handling - only reset when site actually changes
@@ -299,12 +307,15 @@ function RobotsPageContent() {
   const selectedInstanceParam = resolveInstanceIdParam(searchParams)
   const allInstances = useMemo(() => getAllInstances(), [getAllInstances])
 
-  const tabInstances = allInstances
+  const tabInstances = useMemo(
+    () => allInstances.filter((instance) => instance.status !== "archived"),
+    [allInstances],
+  )
 
   const selectedInstanceId = resolveSelectedInstanceId({
     requestedId: selectedInstanceParam,
     localId: localSelectedInstanceId,
-    instanceIds: allInstances.map((inst) => inst.id),
+    instanceIds: tabInstances.map((inst) => inst.id),
     isLoading: isLoadingRobots,
   })
 
@@ -797,8 +808,8 @@ function RobotsPageContent() {
       
       const selectedInstanceIndex = sortedInstances.findIndex(inst => inst.id === selectedInstanceId)
       
-      let visibleInstances = []
-      let hiddenInstances = []
+      let visibleInstances: typeof sortedInstances = []
+      let hiddenInstances: typeof sortedInstances = []
       
       if (!needsOverflow) {
         visibleInstances = sortedInstances
@@ -867,6 +878,62 @@ function RobotsPageContent() {
 
     // Then handle the tab change normally
     handleTabChange(newInstance)
+  }
+
+  const handleArchiveInstance = async (instance: { id: string; name: string }) => {
+    try {
+      const supabase = createClient()
+      const { error } = await supabase
+        .from("remote_instances")
+        .update({ status: "archived", updated_at: new Date().toISOString() })
+        .eq("id", instance.id)
+
+      if (error) throw error
+
+      if (selectedInstanceId === instance.id) {
+        const nextInstance = sortRobotInstances(
+          tabInstances.filter((candidate) => candidate.id !== instance.id),
+        )[0]
+        handleTabChange(nextInstance?.id || "new")
+      }
+
+      await refreshRobots(currentSite?.id)
+      toast({
+        title: "Instance archived",
+        description: `${instance.name} was moved out of the open tabs.`,
+      })
+    } catch (error) {
+      console.error("Error archiving instance:", error)
+      toast({
+        title: "Could not archive instance",
+        description: error instanceof Error ? error.message : "Please try again.",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const handleOpenFromBrowser = async (instanceId: string) => {
+    const instance = allInstances.find((candidate) => candidate.id === instanceId)
+    if (instance?.status === "archived") {
+      const supabase = createClient()
+      const { error } = await supabase
+        .from("remote_instances")
+        .update({ status: "inactive", updated_at: new Date().toISOString() })
+        .eq("id", instanceId)
+
+      if (error) {
+        toast({
+          title: "Could not open instance",
+          description: error.message,
+          variant: "destructive",
+        })
+        return
+      }
+
+      await refreshRobots(currentSite?.id)
+    }
+
+    await handleTabChangeFromOverflow(instanceId)
   }
 
   // Function to enable auto-conversion when a new instance is created
@@ -985,6 +1052,7 @@ function RobotsPageContent() {
   const [workspaceLayout, setWorkspaceLayout] = useState<WorkspaceLayout>(
     DEFAULT_INSTANCE_WORKSPACE_STATE.layout
   )
+  const [mobileWorkspaceTab, setMobileWorkspaceTab] = useState('agent')
   const [hydratedWorkspaceInstanceId, setHydratedWorkspaceInstanceId] = useState<string | null>(null)
   const [artifactReloadCounter, setArtifactReloadCounter] = useState(0)
   
@@ -1014,13 +1082,18 @@ function RobotsPageContent() {
       if (isArtifact && requestedScreen) {
         if (requestedScreen === 'code' || requestedScreen === 'source_code' || requestedScreen === 'source') {
           nextBrowserTab = { kind: 'source' }
+          setMobileWorkspaceTab('source')
         } else {
           nextBrowserTab = { kind: 'artifact', screen: requestedScreen }
+          setMobileWorkspaceTab(`artifact-${requestedScreen}`)
         }
         nextLayout = 'split'
       } else if (requestedTab === 'source' || requestedTab === 'preview') {
         nextBrowserTab = { kind: requestedTab }
+        setMobileWorkspaceTab(requestedTab)
         nextLayout = 'split'
+      } else {
+        setMobileWorkspaceTab('agent')
       }
 
       setHydratedWorkspaceInstanceId(null)
@@ -1048,8 +1121,6 @@ function RobotsPageContent() {
   const {
     artifacts,
     isLoading: isArtifactsLoading,
-    removeArtifactLocally,
-    refetchArtifacts,
   } = useInstanceArtifacts({ instanceId: activeRobotInstance?.id })
   
   const artifactScreens = useMemo(() => {
@@ -1199,6 +1270,7 @@ function RobotsPageContent() {
         // If initialPreselectDoneRef was already true, and we are going from 0 to 1 artifacts (isInitialLoad), 
         // it means the artifact was created while the user was watching, so we should switch to it!
         setActiveBrowserTab({ kind: 'artifact', screen: newestArtifact.screen })
+        setMobileWorkspaceTab(`artifact-${newestArtifact.screen}`)
         if (newestArtifact.should_reload) {
           setArtifactReloadCounter(c => c + 1)
         }
@@ -1270,139 +1342,16 @@ function RobotsPageContent() {
   const databaseArtifactUrl = databaseArtifactUrlData || `/applications/database?artifact=true&robotInstanceId=${activeRobotInstance?.id || ''}`;
 
   useEffect(() => {
-    const handleToggle = () => setActiveBrowserTab(prev => prev.kind === 'source' ? { kind: 'preview' } : { kind: 'source' })
+    const handleToggle = () => {
+      setActiveBrowserTab(prev => {
+        const nextTab: BrowserTab = prev.kind === 'source' ? { kind: 'preview' } : { kind: 'source' }
+        setMobileWorkspaceTab(nextTab.kind)
+        return nextTab
+      })
+    }
     window.addEventListener('robot:toggle-source-code', handleToggle)
     return () => window.removeEventListener('robot:toggle-source-code', handleToggle)
   }, [])
-
-  const handleAddShortcut = useCallback((e?: React.MouseEvent, screenArg?: string) => {
-    try {
-      if (e) {
-        e.preventDefault()
-        e.stopPropagation()
-      }
-      
-      let rawUrl = "about:blank"
-      const targetScreen = screenArg || (activeBrowserTab.kind === 'artifact' ? activeBrowserTab.screen : null)
-      
-      if (activeBrowserTab.kind === 'artifact' && targetScreen === 'database') {
-        return; // Don't allow adding shortcuts for the database artifact
-      } else if (targetScreen) {
-        const artifact = artifacts.find(a => a.screen === targetScreen)
-        if (artifact) rawUrl = artifact.url
-      }
-      if (rawUrl === "about:blank") return
-
-      // Handle both relative and absolute URLs
-      const url = new URL(rawUrl, window.location.origin)
-      
-      // We only care about the path from the actual path
-      let pathname = url.pathname
-      const artifactSearchParams = new URLSearchParams(url.search)
-      
-      let matchingKey: string | null = null
-      Object.entries(NAVIGATION_AREAS).forEach(([areaKey, area]) => {
-        if (areaKey === "settings") return
-        area.items.forEach((item) => {
-          if (item.key !== "contentCreator" && item.key !== "reportOverview" && isNavItemActive(item, pathname, artifactSearchParams)) {
-            matchingKey = item.key
-          }
-        })
-      })
-
-      if (matchingKey) {
-        const saved = localStorage.getItem("navigationShortcuts_v3")
-        let shortcuts: any[] = []
-        if (saved) {
-          shortcuts = JSON.parse(saved)
-        }
-        
-        const exists = shortcuts.some(s => (typeof s === 'string' ? s : s.id) === matchingKey)
-        if (exists) {
-          shortcuts = shortcuts.map((shortcut) => {
-            const shortcutId = typeof shortcut === 'string' ? shortcut : shortcut.id
-            return shortcutId === matchingKey
-              ? { ...(typeof shortcut === 'string' ? {} : shortcut), id: matchingKey, pinned: true }
-              : shortcut
-          })
-        } else {
-          shortcuts.push({ id: matchingKey, pinned: true })
-        }
-        localStorage.setItem("navigationShortcuts_v3", JSON.stringify(shortcuts))
-        window.dispatchEvent(new Event("shortcuts-updated"))
-        
-        artifactSearchParams.delete('artifact')
-        artifactSearchParams.delete('theme')
-        const searchString = artifactSearchParams.toString()
-        const cleanUrl = pathname + (searchString ? `?${searchString}` : '')
-        // router.push(cleanUrl)
-      } else {
-        // Fallback: create a custom shortcut if it doesn't match an exact navigation area
-        const saved = localStorage.getItem("navigationShortcuts_v3")
-        let shortcuts: any[] = []
-        if (saved) {
-          shortcuts = JSON.parse(saved)
-        }
-        
-        // Use a stable ID based on pathname and search params
-        const customId = `custom-${pathname.replace(/\//g, '-')}`
-        const exists = shortcuts.some(s => (typeof s === 'string' ? s : s.id) === customId)
-        
-        artifactSearchParams.delete('artifact')
-        artifactSearchParams.delete('theme')
-        const searchString = artifactSearchParams.toString()
-        const cleanUrl = pathname + (searchString ? `?${searchString}` : '')
-        
-        const pinnedShortcut = {
-          id: customId,
-          title: targetScreen
-            ? getScreenMetadata(targetScreen, t).label
-            : 'App Screen',
-          href: cleanUrl,
-          isCustom: true,
-          pinned: true,
-        }
-        shortcuts = exists
-          ? shortcuts.map((shortcut) => {
-              const shortcutId = typeof shortcut === 'string' ? shortcut : shortcut.id
-              return shortcutId === customId
-                ? {
-                    ...(typeof shortcut === 'string' ? {} : shortcut),
-                    ...pinnedShortcut,
-                  }
-                : shortcut
-            })
-          : [...shortcuts, pinnedShortcut]
-        localStorage.setItem("navigationShortcuts_v3", JSON.stringify(shortcuts))
-        window.dispatchEvent(new Event("shortcuts-updated"))
-        
-        // router.push(cleanUrl)
-      }
-      
-      // Close the artifact after pinning
-      if (targetScreen) {
-        const artifactsToDelete = artifacts.filter(a => a.screen === targetScreen)
-        if (artifactsToDelete.length > 0) {
-          const ids = artifactsToDelete.map(a => a.id)
-          
-          // Optimistically remove locally
-          removeArtifactLocally(targetScreen)
-
-          if (activeBrowserTab.kind === 'artifact' && activeBrowserTab.screen === targetScreen) {
-            setActiveBrowserTab({ kind: 'preview' })
-          }
-
-          deleteInstanceArtifacts(ids).catch((error) => {
-            console.error("Error deleting artifact:", error)
-            refetchArtifacts()
-          })
-        }
-      }
-    } catch (e) {
-      console.error("Error adding shortcut:", e)
-    }
-  }, [artifacts, activeBrowserTab, router, t, removeArtifactLocally, refetchArtifacts])
-
 
   // So the iframe remounts when the preview row is updated in DB, even if the URL string is unchanged
   const requirementPreviewFrameKey = useMemo(() => {
@@ -1422,12 +1371,6 @@ function RobotsPageContent() {
     return "none"
   }, [requirementStatuses, currentSite?.id])
 
-  // Preview pane should only appear when we actually have a preview URL
-  // (preview_url / zip fallback from requirement_status). Running-instance-based
-  // visibility is intentionally disabled; flip the flag below to restore the
-  // previous behavior without removing logic.
-  const SHOW_PREVIEW_FOR_RUNNING_INSTANCE = false
-
   const hasBrowserContent = Boolean(
     (hasRequirementPreview || artifacts.length > 0) &&
     !pendingInstanceId &&
@@ -1436,6 +1379,7 @@ function RobotsPageContent() {
   const isPreviewHidden = workspaceLayout === 'chat'
   const isChatHidden = workspaceLayout === 'preview'
   const isBrowserVisible = hasBrowserContent && !isPreviewHidden
+  const isMobileBrowserVisible = hasBrowserContent && mobileWorkspaceTab !== 'agent'
 
   const rawActiveUrlToDisplay = (() => {
     if (activeBrowserTab.kind === 'artifact') {
@@ -1481,84 +1425,36 @@ function RobotsPageContent() {
 
   const { displayUrl: displayedIframeUrl, iframeSrc, handleIframeLoad } = useIframeUrl(iframeRef, activeUrlToDisplay)
 
-  const handleCloseArtifact = async (e: React.MouseEvent, screen: string) => {
-    e.stopPropagation();
-    try {
-      const artifactsToDelete = artifacts.filter(a => a.screen === screen)
-      if (artifactsToDelete.length > 0) {
-        const ids = artifactsToDelete.map(a => a.id)
-        
-        // Optimistically remove locally
-        removeArtifactLocally(screen)
-        
-        if (activeBrowserTab.kind === 'artifact' && activeBrowserTab.screen === screen) {
-          setActiveBrowserTab({ kind: 'preview' })
-        }
-
-        try {
-          await deleteInstanceArtifacts(ids)
-        } catch (error: any) {
-          console.error("Error deleting artifact:", error)
-          refetchArtifacts()
-          toast({ title: 'Error', description: error.message || 'Failed to delete artifact', variant: 'destructive' })
-        }
-      }
-    } catch (err) {
-      console.error("Error deleting artifact:", err)
-    }
-  }
-
-  // Calculate scale based on container width and selected viewport
   const calculateScale = useCallback(() => {
-    if (!containerRef.current) return;
-    
-    const containerWidth = containerRef.current.clientWidth;
-    if (containerWidth === 0) return; // Not fully rendered yet
-    
-    let targetWidth = 100;
-    const effectiveViewport = isZipUrl ? 'macbook' : viewportSize;
-    
-    switch(effectiveViewport) {
-      case 'imac': targetWidth = 1920; break;
-      case 'macbook': targetWidth = 1440; break;
-      case 'ipad': targetWidth = 810; break;
-      case 'iphone': targetWidth = 390; break;
-    }
-    
-    const availableWidth = containerWidth;
-    
-    if (targetWidth > availableWidth) {
-      setScale(availableWidth / targetWidth);
-    } else {
-      setScale(1);
-    }
-  }, [viewportSize, isZipUrl]);
+    if (!containerRef.current) return
 
-  // Initial calculation and ResizeObserver
+    const availableWidth = containerRef.current.clientWidth
+    if (availableWidth === 0) return
+
+    const effectiveViewport = isZipUrl ? 'macbook' : viewportSize
+    const targetWidth = {
+      imac: 1920,
+      macbook: 1440,
+      ipad: 810,
+      iphone: 390,
+    }[effectiveViewport]
+
+    setScale(targetWidth > availableWidth ? availableWidth / targetWidth : 1)
+  }, [viewportSize, isZipUrl])
+
   useEffect(() => {
-    // Run an initial calculation immediately
-    calculateScale();
-    
-    if (!containerRef.current) return;
-    
-    const observer = new ResizeObserver(() => {
-      calculateScale();
-    });
-    
-    observer.observe(containerRef.current);
-    
-    // Also try to recalculate after a slight delay to catch late renders
-    const timeoutId = setTimeout(calculateScale, 100);
-    const timeoutId2 = setTimeout(calculateScale, 500); // add another one just in case
-    const timeoutId3 = setTimeout(calculateScale, 1500); // and another
-    
+    calculateScale()
+    if (!containerRef.current) return
+
+    const observer = new ResizeObserver(calculateScale)
+    observer.observe(containerRef.current)
+    const timeoutId = window.setTimeout(calculateScale, 100)
+
     return () => {
-      observer.disconnect();
-      clearTimeout(timeoutId);
-      clearTimeout(timeoutId2);
-      clearTimeout(timeoutId3);
-    };
-  }, [calculateScale, isBrowserVisible]);
+      observer.disconnect()
+      window.clearTimeout(timeoutId)
+    }
+  }, [calculateScale, hasBrowserContent])
 
   const allArtifactItems = useMemo(() => {
     const items: Array<{
@@ -1613,41 +1509,87 @@ function RobotsPageContent() {
     return items;
   }, [hasRequirementPreview, activeBrowserTab, artifactScreens, t]);
 
-  const { visibleArtifacts, hiddenArtifacts } = useMemo(() => {
-    // Determine max visible based on containerWidth (or fallback to windowWidth/default)
-    let maxVisible = 4;
-    if (containerWidth > 0) {
-      if (containerWidth < 640) maxVisible = 1;
-      else if (containerWidth < 768) maxVisible = 2;
-      else if (containerWidth < 1024) maxVisible = 3;
-      else maxVisible = 4;
-    }
-    
-    if (allArtifactItems.length <= maxVisible) {
-      return { visibleArtifacts: allArtifactItems, hiddenArtifacts: [] };
-    }
-    
-    const activeIndex = allArtifactItems.findIndex(item => item.isActive);
-    const effectiveMax = maxVisible - 1; // leave room for dropdown trigger
-    
-    if (activeIndex === -1 || activeIndex < effectiveMax) {
+  const workspaceTabs = useMemo<TabItem[]>(() => [
+    {
+      value: 'agent',
+      label: 'Agent',
+      icon: <MessageSquare className="h-3.5 w-3.5" />,
+    },
+    ...allArtifactItems.map((item) => {
+      const Icon = item.icon
       return {
-        visibleArtifacts: allArtifactItems.slice(0, effectiveMax),
-        hiddenArtifacts: allArtifactItems.slice(effectiveMax)
-      };
-    } else {
-      return {
-        visibleArtifacts: [
-          ...allArtifactItems.slice(0, effectiveMax - 1),
-          allArtifactItems[activeIndex]
-        ],
-        hiddenArtifacts: [
-          ...allArtifactItems.slice(effectiveMax - 1, activeIndex),
-          ...allArtifactItems.slice(activeIndex + 1)
-        ]
-      };
+        value: item.id,
+        label: item.label,
+        icon: Icon ? <Icon className="h-3.5 w-3.5" /> : undefined,
+      }
+    }),
+  ], [allArtifactItems])
+  const desktopWorkspaceTabs = useMemo(() => workspaceTabs.slice(1), [workspaceTabs])
+
+  const activeWorkspaceTab = workspaceTabs.some((tab) => tab.value === mobileWorkspaceTab)
+    ? mobileWorkspaceTab
+    : 'agent'
+
+  const handleWorkspaceTabChange = useCallback((value: string) => {
+    if (value === 'agent') {
+      setMobileWorkspaceTab('agent')
+      return
     }
-  }, [allArtifactItems, containerWidth]);
+
+    const item = allArtifactItems.find((candidate) => candidate.id === value)
+    if (!item) return
+
+    if (item.kind === 'artifact' && item.screen) {
+      setActiveBrowserTab({ kind: 'artifact', screen: item.screen })
+    } else if (item.kind === 'preview' || item.kind === 'source') {
+      setActiveBrowserTab({ kind: item.kind })
+    }
+    setMobileWorkspaceTab(value)
+  }, [allArtifactItems])
+
+  useLayoutEffect(() => {
+    const toolbar = desktopToolbarRef.current
+    if (!toolbar) return
+
+    const calculateTabsWidth = () => {
+      const styles = window.getComputedStyle(toolbar)
+      const horizontalPadding =
+        Number.parseFloat(styles.paddingLeft) + Number.parseFloat(styles.paddingRight)
+      const contentWidth = Math.max(0, toolbar.clientWidth - horizontalPadding)
+      const fixedControlsWidth =
+        (desktopDeviceControlsRef.current?.getBoundingClientRect().width ?? 0) +
+        (desktopLayoutToggleRef.current?.getBoundingClientRect().width ?? 0)
+      const columnGap = Number.parseFloat(styles.columnGap) || 0
+      const minimumAddressWidth = contentWidth * 0.33
+      const maximumTabsWidth = Math.max(
+        65,
+        contentWidth - minimumAddressWidth - fixedControlsWidth - columnGap * 3,
+      )
+      const preferredTabsWidth = desktopTabsPreferredWidth || maximumTabsWidth
+      const nextWidth = Math.round(Math.min(preferredTabsWidth, maximumTabsWidth))
+
+      setDesktopTabsWidth((currentWidth) =>
+        currentWidth === nextWidth ? currentWidth : nextWidth
+      )
+    }
+
+    calculateTabsWidth()
+    const observer = new ResizeObserver(calculateTabsWidth)
+    observer.observe(toolbar)
+    if (desktopDeviceControlsRef.current) {
+      observer.observe(desktopDeviceControlsRef.current)
+    }
+    if (desktopLayoutToggleRef.current) {
+      observer.observe(desktopLayoutToggleRef.current)
+    }
+
+    return () => observer.disconnect()
+  }, [
+    activeBrowserTab.kind,
+    desktopTabsPreferredWidth,
+    hasRequirementPreview,
+    isZipUrl,
+  ])
 
   return (
     <div className={`flex flex-col h-full w-full ${isCanvasMode ? 'overflow-visible' : 'overflow-hidden'} relative`}>
@@ -1689,13 +1631,23 @@ function RobotsPageContent() {
                           {visibleInstances.map((inst) => {
                             const isDeletingInstance = deletingInstanceIds.has(inst.id)
                             const isSelected = selectedInstanceId === inst.id
+                            const displayName = (inst as any).requirement_title
+                              ? (inst as any).requirement_title
+                              : (inst.name || `ag-${inst.id.slice(-4)}`)
                             const hasMultipleNodes = !isSelected && (viewMode === "imprenta" 
                               ? instanceStats[inst.id]?.nodes > 1 
                               : viewMode === "workflow" 
                                 ? instanceStats[inst.id]?.workflows > 1 
                                 : false)
                             return (
-                            <TabsTrigger key={`${inst.id}-${siteChangeKey}`} value={inst.id} className={hasMultipleNodes ? "bg-primary/10 hover:bg-primary/20 data-[state=active]:bg-primary/15 transition-colors" : ""}>
+                            <TabsTrigger
+                              key={`${inst.id}-${siteChangeKey}`}
+                              value={inst.id}
+                              className={cn(
+                                "group",
+                                hasMultipleNodes && "bg-primary/10 hover:bg-primary/20 data-[state=active]:bg-primary/15 transition-colors",
+                              )}
+                            >
                               <span className="flex items-center gap-2 max-w-[120px]">
                                 {(() => {
                                   const status = (inst as any).status;
@@ -1820,40 +1772,26 @@ function RobotsPageContent() {
                                         }
                                       }}
                                     >
-                                      {(inst as any).requirement_title ? (inst as any).requirement_title : (inst.name || `ag-${inst.id.slice(-4)}`)}
+                                      {displayName}
                                     </span>
-                                <span
-                                  onClick={(e) => {
-                                    e.stopPropagation()
-                                    if (isDeletingInstance) return
-                                    setInstanceToDelete({ id: inst.id, name: (inst as any).requirement_title ? (inst as any).requirement_title : (inst.name || `ag-${inst.id.slice(-4)}`) })
+                                <InstanceTabMenu
+                                  instanceName={displayName}
+                                  isDeleting={isDeletingInstance}
+                                  canRename={!(inst as any).requirement_title}
+                                  onOpen={() => handleTabChange(inst.id)}
+                                  onRename={() => {
+                                    setEditingInstanceId(inst.id)
+                                    setEditingName(displayName)
+                                    setIsEditModalOpen(true)
+                                  }}
+                                  onArchive={() => {
+                                    void handleArchiveInstance({ id: inst.id, name: displayName })
+                                  }}
+                                  onDelete={() => {
+                                    setInstanceToDelete({ id: inst.id, name: displayName })
                                     setIsDeleteModalOpen(true)
                                   }}
-                                  className={`ml-1.5 flex items-center justify-center h-4 w-4 rounded-full transition-colors ${
-                                    isDeletingInstance
-                                      ? "cursor-default"
-                                      : "hover:bg-destructive/10 cursor-pointer"
-                                  }`}
-                                  title={isDeletingInstance ? "Deleting..." : "Delete session"}
-                                  role="button"
-                                  tabIndex={isDeletingInstance ? -1 : 0}
-                                  aria-disabled={isDeletingInstance}
-                                  onKeyDown={(e) => {
-                                    if (isDeletingInstance) return
-                                    if (e.key === 'Enter' || e.key === ' ') {
-                                      e.preventDefault()
-                                      e.stopPropagation()
-                                      setInstanceToDelete({ id: inst.id, name: (inst as any).requirement_title ? (inst as any).requirement_title : (inst.name || `ag-${inst.id.slice(-4)}`) })
-                                      setIsDeleteModalOpen(true)
-                                    }
-                                  }}
-                                >
-                                  {isDeletingInstance ? (
-                                    <Loader className="h-3 w-3 text-destructive" size={12} />
-                                  ) : (
-                                    <X className="h-3 w-3 text-muted-foreground hover:text-destructive" />
-                                  )}
-                                </span>
+                                />
                               </span>
                             </TabsTrigger>
                             )
@@ -1924,8 +1862,10 @@ function RobotsPageContent() {
       <InstanceBrowserModal
         isOpen={isBrowserModalOpen}
         onClose={() => setIsBrowserModalOpen(false)}
-        instances={tabInstances as any[]}
-        onSelect={(id) => handleTabChangeFromOverflow(id)}
+        instances={allInstances as any[]}
+        onSelect={(id) => {
+          void handleOpenFromBrowser(id)
+        }}
         onDelete={(instance) => {
           const displayName = (instance as any).requirement_title ? (instance as any).requirement_title : (instance.name || `ag-${instance.id.slice(-4)}`)
           setInstanceToDelete({ id: instance.id, name: displayName })
@@ -2160,16 +2100,47 @@ function RobotsPageContent() {
       </Dialog>
 
       <div className={`absolute inset-0 flex flex-col min-h-0 ${isCanvasMode ? 'overflow-visible' : 'overflow-hidden'}`}>
-        {/* Content area - no pt-[71px] here so it can go under header */}
+        {!isCanvasMode && workspaceTabs.length > 1 && (
+          <div
+            className="absolute inset-x-0 z-30 flex items-center px-3 py-1.5 lg:hidden"
+            style={{ top: 'calc(var(--topbar-height, 64px) + 71px)' }}
+          >
+            <Tabs
+              value={activeWorkspaceTab}
+              onValueChange={handleWorkspaceTabChange}
+              className="w-full min-w-0"
+            >
+              <ResponsiveTabsList
+                tabs={workspaceTabs}
+                activeTab={activeWorkspaceTab}
+                onTabChange={handleWorkspaceTabChange}
+                className="w-auto rounded-full border border-border/40 bg-background/35 shadow-sm backdrop-blur-md supports-[backdrop-filter]:bg-background/35"
+                containerClassName="justify-center"
+              />
+            </Tabs>
+          </div>
+        )}
+
         <div className={`flex-1 flex flex-col min-h-0 ${isCanvasMode ? 'bg-transparent' : 'bg-muted/30'} transition-colors duration-300 ease-in-out ${isCanvasMode ? 'overflow-visible' : 'overflow-hidden'}`}>
-          <div className={`flex flex-col lg:flex-row flex-1 min-h-0 ${isCanvasMode ? 'overflow-visible' : 'overflow-hidden'}`}>
-            {isBrowserVisible && (
-              <div className={`w-full ${isChatHidden ? 'lg:w-full' : 'lg:w-2/3'} border-b lg:border-b-0 lg:border-r border-border iframe-container flex flex-col shrink-0 h-[calc(40vh+135px)] lg:h-full overflow-hidden relative transition-all duration-300`}>
-                <div className={`grid grid-rows-[auto_1fr] m-0 bg-card absolute inset-x-0 bottom-0 top-[calc(var(--topbar-height,64px)+71px)] overflow-hidden`}>
-                  {/* Browser navigation bar */}
-                  <div className="flex items-center gap-2 px-3 py-1.5 border-b border-black/5 dark:border-white/5 bg-background">
+          <div className={cn(
+            "flex flex-col lg:flex-row flex-1 min-h-0",
+            isCanvasMode ? "overflow-visible" : "overflow-hidden lg:pt-0",
+            !isCanvasMode && workspaceTabs.length > 1 && "pt-[52px]",
+          )}>
+            {hasBrowserContent && (
+              <div className={cn(
+                "w-full iframe-container flex-col shrink-0 min-h-0 overflow-hidden relative",
+                isMobileBrowserVisible ? "flex" : "hidden",
+                isBrowserVisible ? "lg:flex" : "lg:hidden",
+                isChatHidden ? "lg:w-full" : "lg:w-2/3",
+              )}>
+                <div className="grid grid-rows-[1fr] lg:grid-rows-[auto_1fr] m-0 bg-card absolute inset-x-0 bottom-0 top-[calc(var(--topbar-height,64px)+71px)] overflow-hidden">
+                  <div
+                    ref={desktopToolbarRef}
+                    className="hidden lg:grid grid-cols-[minmax(33%,1fr)_auto_auto_auto] items-center gap-2 px-3 py-1.5 border-b border-black/5 dark:border-white/5 bg-background"
+                  >
                     {hasRequirementPreview && activeBrowserTab.kind !== 'artifact' ? (
-                      <div className="flex items-center gap-2 flex-1 min-w-[120px] bg-black/5 dark:bg-white/10 border border-transparent rounded-full px-2.5 py-1">
+                      <div className="flex min-w-0 items-center gap-2 bg-black/5 dark:bg-white/10 border border-transparent rounded-full px-2.5 py-1">
                         {isZipUrl ? (
                           <>
                             <div className="flex items-center gap-1.5 flex-1 min-w-0 text-xs text-muted-foreground">
@@ -2178,16 +2149,7 @@ function RobotsPageContent() {
                               {selectedFilePath && (
                                 <>
                                   <span className="text-muted-foreground/30 mx-0.5">/</span>
-                                  <div className="flex items-center gap-1 truncate">
-                                    {selectedFilePath.split('/').map((part, i, arr) => (
-                                      <React.Fragment key={i}>
-                                        <span className={i === arr.length - 1 ? 'text-foreground font-medium' : ''}>
-                                          {part}
-                                        </span>
-                                        {i < arr.length - 1 && <span className="text-muted-foreground/30 mx-0.5">/</span>}
-                                      </React.Fragment>
-                                    ))}
-                                  </div>
+                                  <span className="truncate text-foreground font-medium">{selectedFilePath}</span>
                                 </>
                               )}
                             </div>
@@ -2204,9 +2166,7 @@ function RobotsPageContent() {
                             <button
                               onClick={() => {
                                 const frame = iframeRef.current
-                                if (frame) {
-                                  frame.src = frame.src
-                                }
+                                if (frame) frame.src = frame.src
                               }}
                               className="shrink-0 h-6 w-6 flex items-center justify-center rounded-full hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
                               title="Refresh"
@@ -2231,159 +2191,54 @@ function RobotsPageContent() {
                         )}
                       </div>
                     ) : (
-                      <div className="flex-1 min-w-0" />
-                    )}
-                    
-                    {activeBrowserTab.kind !== 'artifact' && !isZipUrl && hasRequirementPreview && (
-                      <div className="hidden sm:flex items-center gap-1 bg-black/5 dark:bg-white/10 border border-transparent rounded-full p-0.5 mx-1">
-                        <button
-                          onClick={() => setViewportSize('imac')}
-                          className={`h-6 w-8 flex items-center justify-center rounded-full transition-colors ${viewportSize === 'imac' ? 'bg-white dark:bg-white/10 shadow-sm text-foreground' : 'text-muted-foreground hover:bg-black/5 dark:hover:bg-white/5 hover:text-foreground'}`}
-                          title="Desktop"
-                        >
-                          <Monitor className="h-3.5 w-3.5" />
-                        </button>
-                        <button
-                          onClick={() => setViewportSize('macbook')}
-                          className={`h-6 w-8 flex items-center justify-center rounded-full transition-colors ${viewportSize === 'macbook' ? 'bg-white dark:bg-white/10 shadow-sm text-foreground' : 'text-muted-foreground hover:bg-black/5 dark:hover:bg-white/5 hover:text-foreground'}`}
-                          title="Laptop"
-                        >
-                          <Laptop className="h-3.5 w-3.5" />
-                        </button>
-                        <button
-                          onClick={() => setViewportSize('ipad')}
-                          className={`h-6 w-8 flex items-center justify-center rounded-full transition-colors ${viewportSize === 'ipad' ? 'bg-white dark:bg-white/10 shadow-sm text-foreground' : 'text-muted-foreground hover:bg-black/5 dark:hover:bg-white/5 hover:text-foreground'}`}
-                          title="Tablet"
-                        >
-                          <Tablet className="h-3.5 w-3.5" />
-                        </button>
-                        <button
-                          onClick={() => setViewportSize('iphone')}
-                          className={`h-6 w-8 flex items-center justify-center rounded-full transition-colors ${viewportSize === 'iphone' ? 'bg-white dark:bg-white/10 shadow-sm text-foreground' : 'text-muted-foreground hover:bg-black/5 dark:hover:bg-white/5 hover:text-foreground'}`}
-                          title="Mobile"
-                        >
-                          <Smartphone className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
+                      <div className="min-w-0" />
                     )}
 
-                    {activeBrowserTab.kind === 'artifact' && activeBrowserTab.screen === 'database' && (
-                      <div className="flex-1 min-w-0" />
-                    )}
-
-
-                    <div className="flex items-center gap-1 bg-black/5 dark:bg-white/10 border border-transparent rounded-full p-0.5 mx-1 min-w-0">
-                      {visibleArtifacts.map(item => {
-                        const Icon = item.icon;
-                        const isCloseable = item.kind === 'artifact' && item.screen && item.screen !== 'database';
-                        
-                        return (
-                          <button
-                            key={item.id}
-                            onClick={() => {
-                              if (item.kind === 'artifact' && item.screen) {
-                                setActiveBrowserTab({ kind: 'artifact', screen: item.screen });
-                              } else if (item.kind === 'preview' || item.kind === 'source') {
-                                setActiveBrowserTab({ kind: item.kind });
-                              }
-                            }}
-                            className={`group relative shrink-0 h-6 px-1 flex items-center justify-center rounded-full transition-all duration-300 text-xs font-medium ${item.isActive ? 'bg-white dark:bg-white/10 shadow-sm text-foreground' : 'text-muted-foreground hover:bg-black/5 dark:hover:bg-white/5 hover:text-foreground'}`}
-                            title={item.label}
-                          >
-                            {isCloseable ? (
-                              <div className="flex items-center justify-center transition-opacity duration-300 w-6 opacity-0 group-hover:opacity-100 shrink-0">
-                                <div 
-                                  className="flex items-center justify-center h-4 w-4 rounded-full hover:bg-black/10 dark:hover:bg-white/10 shrink-0"
-                                  onClick={(e) => handleAddShortcut(e, item.screen!)}
-                                  title="Pin to navigation"
-                                >
-                                  <Plus className="h-2.5 w-2.5" />
-                                </div>
-                              </div>
-                            ) : (
-                              <div className="w-2 shrink-0"></div>
-                            )}
-
-                            <div className="flex items-center px-1">
-                              {Icon && <Icon className="h-3.5 w-3.5 mr-1.5" />}
-                              <span>{item.label}</span>
-                            </div>
-                            
-                            {isCloseable ? (
-                              <div className="flex items-center justify-center transition-opacity duration-300 w-6 opacity-0 group-hover:opacity-100 shrink-0">
-                                <div 
-                                  className="flex items-center justify-center h-4 w-4 rounded-full hover:bg-black/10 dark:hover:bg-white/10 shrink-0"
-                                  onClick={(e) => handleCloseArtifact(e, item.screen!)}
-                                  title="Close artifact"
-                                >
-                                  <X className="h-2.5 w-2.5" />
-                                </div>
-                              </div>
-                            ) : (
-                              <div className="w-2 shrink-0"></div>
-                            )}
-                          </button>
-                        );
-                      })}
-                      
-                      {hiddenArtifacts.length > 0 && (
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
+                    <div ref={desktopDeviceControlsRef} className="min-w-0">
+                      {activeBrowserTab.kind !== 'artifact' && !isZipUrl && hasRequirementPreview && (
+                        <div className="flex items-center gap-1 bg-black/5 dark:bg-white/10 border border-transparent rounded-full p-0.5 mx-1">
+                          {([
+                            ['imac', 'Desktop', Monitor],
+                            ['macbook', 'Laptop', Laptop],
+                            ['ipad', 'Tablet', Tablet],
+                            ['iphone', 'Mobile', Smartphone],
+                          ] as const).map(([size, label, Icon]) => (
                             <button
-                              className="shrink-0 h-6 w-8 flex items-center justify-center rounded-full transition-colors text-muted-foreground hover:bg-black/5 dark:hover:bg-white/5 hover:text-foreground"
-                              title="More options"
+                              key={size}
+                              onClick={() => setViewportSize(size)}
+                              className={cn(
+                                "h-6 w-8 flex items-center justify-center rounded-full transition-colors",
+                                viewportSize === size
+                                  ? "bg-white dark:bg-white/10 shadow-sm text-foreground"
+                                  : "text-muted-foreground hover:bg-black/5 dark:hover:bg-white/5 hover:text-foreground",
+                              )}
+                              title={label}
                             >
-                              <MoreHorizontal className="h-3.5 w-3.5" />
+                              <Icon className="h-3.5 w-3.5" />
                             </button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="w-[180px]">
-                            {hiddenArtifacts.map(item => {
-                              const Icon = item.icon;
-                              const isCloseable = item.kind === 'artifact' && item.screen && item.screen !== 'database';
-                              
-                              return (
-                                <DropdownMenuItem 
-                                  key={item.id} 
-                                  onClick={() => {
-                                    if (item.kind === 'artifact' && item.screen) {
-                                      setActiveBrowserTab({ kind: 'artifact', screen: item.screen });
-                                    } else if (item.kind === 'preview' || item.kind === 'source') {
-                                      setActiveBrowserTab({ kind: item.kind });
-                                    }
-                                  }}
-                                  className={`flex justify-between items-center w-full ${item.isActive ? 'bg-muted' : ''}`}
-                                >
-                                  <div className="flex items-center">
-                                    {Icon && <Icon className="h-3.5 w-3.5 mr-2" />}
-                                    {item.label}
-                                  </div>
-                                  {isCloseable && (
-                                    <div className="flex items-center gap-1">
-                                      <div 
-                                        className="flex items-center justify-center h-6 w-6 rounded-md hover:bg-black/10 dark:hover:bg-white/10"
-                                        onClick={(e) => handleAddShortcut(e, item.screen!)}
-                                        title="Pin to navigation"
-                                      >
-                                        <Plus className="h-3 w-3 text-muted-foreground" />
-                                      </div>
-                                      <div 
-                                        className="flex items-center justify-center h-6 w-6 rounded-md hover:bg-black/10 dark:hover:bg-white/10"
-                                        onClick={(e) => handleCloseArtifact(e, item.screen!)}
-                                        title="Close artifact"
-                                      >
-                                        <X className="h-3 w-3 text-muted-foreground" />
-                                      </div>
-                                    </div>
-                                  )}
-                                </DropdownMenuItem>
-                              );
-                            })}
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                          ))}
+                        </div>
                       )}
                     </div>
 
+                    <Tabs
+                      value={allArtifactItems.find((item) => item.isActive)?.id ?? 'preview'}
+                      onValueChange={handleWorkspaceTabChange}
+                      className="w-full min-w-0"
+                      style={desktopTabsWidth ? { width: `${desktopTabsWidth}px` } : undefined}
+                    >
+                      <ResponsiveTabsList
+                        tabs={desktopWorkspaceTabs}
+                        activeTab={allArtifactItems.find((item) => item.isActive)?.id ?? 'preview'}
+                        onTabChange={handleWorkspaceTabChange}
+                        className="w-auto rounded-full !h-7 !p-0.5"
+                        triggerClassName="!h-6 !px-1 !py-0 text-xs"
+                        onPreferredWidthChange={setDesktopTabsPreferredWidth}
+                      />
+                    </Tabs>
+
                     <button
+                      ref={desktopLayoutToggleRef}
                       onClick={() => setWorkspaceLayout(isChatHidden ? 'split' : 'preview')}
                       className="shrink-0 h-7 w-7 flex items-center justify-center rounded-full hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
                       title={isChatHidden ? "Show Chat" : "Hide Chat"}
@@ -2392,25 +2247,26 @@ function RobotsPageContent() {
                       {isChatHidden ? <PanelRightOpen className="h-4 w-4" /> : <PanelRightClose className="h-4 w-4" />}
                     </button>
                   </div>
-                  {/* Browser content - 1fr fills all remaining height */}
-                  <div ref={containerRef} className={`relative overflow-hidden bg-muted/10 w-full h-full flex items-start justify-center`}>
-                    <div 
+
+                  <div ref={containerRef} className="relative overflow-hidden bg-muted/10 w-full h-full flex items-start justify-center">
+                    <div
                       className="relative transition-all duration-300 shrink-0 flex flex-col"
-                      style={activeBrowserTab.kind === 'artifact' || isZipUrl ? {
+                      style={isMobile || activeBrowserTab.kind === 'artifact' || isZipUrl ? {
                         width: '100%',
                         height: '100%',
-                        backgroundColor: 'var(--background)'
+                        backgroundColor: 'var(--background)',
                       } : {
-                        width: viewportSize === 'imac' ? '1920px' : 
-                               viewportSize === 'macbook' ? '1440px' : 
-                               viewportSize === 'ipad' ? '810px' : '390px',
+                        width: viewportSize === 'imac' ? '1920px'
+                          : viewportSize === 'macbook' ? '1440px'
+                            : viewportSize === 'ipad' ? '810px'
+                              : '390px',
                         transform: `scale(${scale})`,
                         transformOrigin: 'top center',
                         height: scale < 1 ? `calc(100% / ${scale})` : '100%',
                         boxShadow: '0 0 20px rgba(0,0,0,0.05)',
                         borderLeft: '1px solid var(--border)',
                         borderRight: '1px solid var(--border)',
-                        backgroundColor: 'var(--background)'
+                        backgroundColor: 'var(--background)',
                       }}
                     >
                       {(isResuming || isInstanceStarting) && !latestPreviewUrl && !latestSourceCodeUrl && artifacts.length === 0 ? (
@@ -2476,49 +2332,53 @@ function RobotsPageContent() {
               </div>
             )}
 
-            {/* Canvas modes stay full-bleed. Agent mode may split with explorer + instance logs. */}
-            {(isCanvasMode || !isChatHidden || !isBrowserVisible) && (
-              <div className={`${isBrowserVisible ? 'w-full lg:w-1/3' : 'w-full mx-auto'} min-w-0 messages-area flex flex-col flex-1 min-h-0 ${isCanvasMode ? 'overflow-visible' : 'overflow-hidden'}`}>
-                <div className={`flex flex-col m-0 ${isCanvasMode ? 'bg-transparent overflow-visible' : 'bg-card overflow-hidden'} min-w-0 flex-1 min-h-0 relative`}>
-                  {hasBrowserContent && !isChatHidden && !isCanvasMode && (
-                    <div
-                      className="absolute left-0 z-20 h-10 px-3 flex items-center pointer-events-none"
-                      style={{ top: 'calc(var(--topbar-height, 64px) + 71px)' }}
+            {/* Mobile shows one section at a time; desktop keeps the split workspace. */}
+            <div className={cn(
+              "w-full mx-auto min-w-0 messages-area flex-col flex-1 min-h-0",
+              isCanvasMode ? "flex overflow-visible" : "overflow-hidden",
+              !isCanvasMode && (isMobileBrowserVisible ? "hidden" : "flex"),
+              !isCanvasMode && (isChatHidden ? "lg:hidden" : "lg:flex"),
+              !isCanvasMode && (hasBrowserContent && !isPreviewHidden ? "lg:w-1/3" : "lg:w-full"),
+            )}>
+              <div className={`flex flex-col m-0 ${isCanvasMode ? 'bg-transparent overflow-visible' : 'bg-card overflow-hidden'} min-w-0 flex-1 min-h-0 relative`}>
+                {hasBrowserContent && !isChatHidden && !isCanvasMode && (
+                  <div
+                    className="absolute left-0 z-20 hidden h-10 items-center px-3 pointer-events-none lg:flex"
+                    style={{ top: 'calc(var(--topbar-height, 64px) + 71px)' }}
+                  >
+                    <button
+                      onClick={() => setWorkspaceLayout(isPreviewHidden ? 'split' : 'chat')}
+                      className="pointer-events-auto mt-[7px] h-7 w-7 flex items-center justify-center rounded-full border border-black/5 dark:border-white/5 bg-background/80 shadow-sm backdrop-blur-md supports-[backdrop-filter]:bg-background/60 hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+                      title={isPreviewHidden ? "Show Preview" : "Hide Preview"}
+                      aria-label={isPreviewHidden ? "Show Preview" : "Hide Preview"}
                     >
-                      <button
-                        onClick={() => setWorkspaceLayout(isPreviewHidden ? 'split' : 'chat')}
-                        className="pointer-events-auto mt-[7px] h-7 w-7 flex items-center justify-center rounded-full border border-black/5 dark:border-white/5 bg-background/80 shadow-sm backdrop-blur-md supports-[backdrop-filter]:bg-background/60 hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
-                        title={isPreviewHidden ? "Show Preview" : "Hide Preview"}
-                        aria-label={isPreviewHidden ? "Show Preview" : "Hide Preview"}
-                      >
-                        {isPreviewHidden
-                          ? <PanelLeftOpen className="h-4 w-4" />
-                          : <PanelLeftClose className="h-4 w-4" />}
-                      </button>
-                    </div>
-                  )}
-                  {viewMode === 'imprenta' ? (
-                    <div className="h-full min-h-0 absolute inset-0 flex flex-col">
-                      <ImprentaPanel activeInstanceId={activeRobotInstance?.id} />
-                    </div>
-                  ) : viewMode === 'workflow' ? (
-                    <div className="h-full min-h-0 absolute inset-0 flex flex-col">
-                      <WorkflowPanel activeInstanceId={activeRobotInstance?.id} />
-                    </div>
-                  ) : (
-                    <SimpleMessagesView 
-                      key={`${currentSite?.id}-${siteChangeKey}`}
-                      className="h-full absolute inset-0"
-                      activeRobotInstance={activeRobotInstance}
-                      isBrowserVisible={isBrowserVisible}
-                      hasTopHeaderSpace={!isBrowserVisible}
-                      onMessageSent={setHasMessageBeenSent}
-                      onNewInstanceCreated={handleNewInstanceCreated}
-                    />
-                  )}
-                </div>
+                      {isPreviewHidden
+                        ? <PanelLeftOpen className="h-4 w-4" />
+                        : <PanelLeftClose className="h-4 w-4" />}
+                    </button>
+                  </div>
+                )}
+                {viewMode === 'imprenta' ? (
+                  <div className="h-full min-h-0 absolute inset-0 flex flex-col">
+                    <ImprentaPanel activeInstanceId={activeRobotInstance?.id} />
+                  </div>
+                ) : viewMode === 'workflow' ? (
+                  <div className="h-full min-h-0 absolute inset-0 flex flex-col">
+                    <WorkflowPanel activeInstanceId={activeRobotInstance?.id} />
+                  </div>
+                ) : (
+                  <SimpleMessagesView
+                    key={`${currentSite?.id}-${siteChangeKey}`}
+                    className="h-full absolute inset-0"
+                    activeRobotInstance={activeRobotInstance}
+                    isBrowserVisible={hasBrowserContent}
+                    hasTopHeaderSpace
+                    onMessageSent={setHasMessageBeenSent}
+                    onNewInstanceCreated={handleNewInstanceCreated}
+                  />
+                )}
               </div>
-            )}
+            </div>
           </div>
         </div>
       </div>

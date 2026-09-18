@@ -3,10 +3,13 @@
 import { createClient, createServiceClient } from "@/lib/supabase/server"
 import {
   buildPublicDocUrl,
-  generatePublicAccessToken,
+  isPublicAccessTokenActive,
   isValidPublicAccessToken,
-  buildPublicDocPath,
 } from "@/app/documents/public-token"
+import {
+  ensurePublicAccessTokenForRecord,
+  revokePublicAccessTokenForRecord,
+} from "@/app/documents/public-token-store"
 import {
   buildDocumentEmailSubject,
   getSendGridConfig,
@@ -18,47 +21,85 @@ import {
   documentT,
 } from "@/app/lib/i18n/document-t"
 import { loadSiteBranding, publicTokenSchemaError } from "@/app/documents/site-branding"
+import { mapDocumentLineItems } from "@/app/documents/map-document-items"
 import { getSaleOrderBySaleId } from "@/app/sales/actions"
+
+const PUBLIC_SALE_SELECT = `
+  id,
+  site_id,
+  title,
+  product_name,
+  invoice_number,
+  status,
+  amount,
+  amount_due,
+  currency,
+  sale_date,
+  created_at,
+  public_access_token_expires_at,
+  public_access_token_revoked_at,
+  leads(name, email),
+  site:sites!site_id(id, name, logo_url, url)
+`
+
+const PUBLIC_SALE_ORDER_SELECT = `
+  subtotal,
+  tax_total,
+  discount_total,
+  total,
+  items,
+  sale_order_items(name, quantity, unit_price, subtotal, status)
+`
 
 export async function ensureSalePublicAccessToken(saleId: string) {
   const supabase = await createClient()
-  const { data: sale, error } = await supabase
-    .from("sales")
-    .select("id, public_access_token")
-    .eq("id", saleId)
-    .single()
-
-  if (error || !sale) {
+  const result = await ensurePublicAccessTokenForRecord(
+    supabase,
+    "sales",
+    saleId
+  )
+  if ("error" in result) {
     return {
       error:
-        publicTokenSchemaError(error?.message) ||
-        error?.message ||
+        publicTokenSchemaError(result.error) ||
+        result.error ||
         "Sale not found",
     }
   }
+  return result
+}
 
-  if (sale.public_access_token && isValidPublicAccessToken(sale.public_access_token)) {
-    return { token: sale.public_access_token as string }
-  }
-
-  const token = generatePublicAccessToken()
-  const { data: updated, error: updateError } = await supabase
-    .from("sales")
-    .update({ public_access_token: token })
-    .eq("id", saleId)
-    .select("public_access_token")
-    .single()
-
-  if (updateError || !updated?.public_access_token) {
+export async function rotateSalePublicAccessToken(saleId: string) {
+  const supabase = await createClient()
+  const result = await ensurePublicAccessTokenForRecord(
+    supabase,
+    "sales",
+    saleId,
+    { rotate: true }
+  )
+  if ("error" in result) {
     return {
       error:
-        publicTokenSchemaError(updateError?.message) ||
-        updateError?.message ||
-        "Failed to create public link",
+        publicTokenSchemaError(result.error) || result.error,
     }
   }
+  return result
+}
 
-  return { token: updated.public_access_token as string }
+export async function revokeSalePublicAccessToken(saleId: string) {
+  const supabase = await createClient()
+  const result = await revokePublicAccessTokenForRecord(
+    supabase,
+    "sales",
+    saleId
+  )
+  if ("error" in result) {
+    return {
+      error:
+        publicTokenSchemaError(result.error) || result.error,
+    }
+  }
+  return result
 }
 
 export async function getSaleByPublicToken(token: string) {
@@ -67,7 +108,7 @@ export async function getSaleByPublicToken(token: string) {
   const supabase = await createServiceClient(true)
   const { data: sale, error } = await supabase
     .from("sales")
-    .select("*, leads(id, name, email), site:sites!site_id(id, name, logo_url, url)")
+    .select(PUBLIC_SALE_SELECT)
     .eq("public_access_token", token)
     .single()
 
@@ -83,27 +124,83 @@ export async function getSaleByPublicToken(token: string) {
   if (sale.status === "cancelled") {
     return { error: "This invoice is no longer available" }
   }
+  if (!isPublicAccessTokenActive(sale)) {
+    return { error: "This invoice link is no longer available" }
+  }
 
   const [orderRes, branding] = await Promise.all([
     supabase
       .from("sale_orders")
-      .select("*, sale_order_items(*)")
+      .select(PUBLIC_SALE_ORDER_SELECT)
       .eq("sale_id", sale.id)
       .maybeSingle(),
     loadSiteBranding(supabase, sale.site_id),
   ])
 
+  const lead = Array.isArray(sale.leads) ? sale.leads[0] : sale.leads
+  const site = Array.isArray(sale.site) ? sale.site[0] : sale.site
   const order = orderRes.data
     ? {
-        ...orderRes.data,
-        items: orderRes.data.sale_order_items || orderRes.data.items || [],
+        subtotal: orderRes.data.subtotal,
+        tax_total: orderRes.data.tax_total,
+        discount_total: orderRes.data.discount_total,
+        total: orderRes.data.total,
+        items: mapDocumentLineItems(
+          orderRes.data.sale_order_items?.length > 0
+            ? orderRes.data.sale_order_items
+            : orderRes.data.items || []
+        ),
       }
     : null
+  const location =
+    branding.location &&
+    typeof branding.location === "object" &&
+    !Array.isArray(branding.location)
+      ? {
+          name: branding.location.name ?? null,
+          address: branding.location.address ?? null,
+          city: branding.location.city ?? null,
+          state: branding.location.state ?? null,
+          zip: branding.location.zip ?? null,
+          country: branding.location.country ?? null,
+        }
+      : null
 
-  return { data: sale, saleOrder: order, branding }
+  return {
+    data: {
+      id: sale.id,
+      title: sale.title,
+      product_name: sale.product_name,
+      invoice_number: sale.invoice_number,
+      status: sale.status,
+      amount: sale.amount,
+      amount_due: sale.amount_due,
+      currency: sale.currency,
+      sale_date: sale.sale_date,
+      created_at: sale.created_at,
+      leads: lead ? { name: lead.name ?? null, email: lead.email ?? null } : null,
+      site: site
+        ? {
+            id: site.id,
+            name: site.name ?? null,
+            logo_url: site.logo_url ?? null,
+            url: site.url ?? null,
+          }
+        : null,
+    },
+    saleOrder: order,
+    branding: {
+      site: {
+        id: branding.site.id,
+        name: branding.site.name,
+        logo_url: branding.site.logo_url,
+        url: branding.site.url,
+      },
+      locale: branding.locale,
+      location,
+    },
+  }
 }
-
-import Stripe from 'stripe'
 
 export async function sendSaleInvoice(id: string) {
   const supabase = await createClient()
@@ -142,102 +239,10 @@ export async function sendSaleInvoice(id: string) {
   }
 
   const viewLink = buildPublicDocUrl("i", tokenRes.token)
-  const appUrl = (process.env.NEXT_PUBLIC_APP_URL || "https://makinari.com").replace(/\/$/, "")
-  const returnUrl = `${appUrl}${buildPublicDocPath("i", tokenRes.token)}`
-
-  let checkoutLink: string | null = null
-  if (Number(sale.amount_due) > 0) {
-    try {
-      const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-        apiVersion: '2025-05-28.basil',
-      })
-      const currency = (sale.currency || 'USD').toLowerCase()
-      const zeroDecimalCurrencies = ['jpy', 'bif', 'clp', 'djf', 'gnf', 'krw', 'mga', 'pyg', 'rwf', 'ugx', 'vnd', 'vuv', 'xaf', 'xof', 'xpf']
-      const isZeroDecimal = zeroDecimalCurrencies.includes(currency)
-      
-      const { data: order } = await supabase
-        .from("sale_orders")
-        .select("*, items:sale_order_items(*, catalog_item:catalog_items(image_url))")
-        .eq("sale_id", id)
-        .single()
-
-      let lineItems = []
-      if (order && order.items && order.items.length > 0) {
-        lineItems = order.items.map((item: any) => {
-          const imageUrl = item.catalog_item?.image_url
-          const images = typeof imageUrl === 'string' && /^https?:\/\//i.test(imageUrl) ? [imageUrl] : undefined
-          const rawDescription = typeof item.description === 'string' ? item.description.trim() : ''
-          const description = rawDescription ? rawDescription.slice(0, 500) : undefined
-
-          return {
-            price_data: {
-              currency,
-              product_data: {
-                name: item.name,
-                ...(description ? { description } : {}),
-                ...(images ? { images } : {}),
-              },
-              unit_amount: isZeroDecimal
-                ? Math.round(item.unit_price ?? item.unitPrice ?? 0)
-                : Math.round((item.unit_price ?? item.unitPrice ?? 0) * 100),
-            },
-            quantity: item.quantity,
-          }
-        })
-        if (order.shipping_cost && order.shipping_cost > 0) {
-          lineItems.push({
-            price_data: {
-              currency,
-              product_data: { name: 'Shipping' },
-              unit_amount: isZeroDecimal ? Math.round(order.shipping_cost) : Math.round(order.shipping_cost * 100),
-            },
-            quantity: 1,
-          })
-        }
-        if (order.tax_total && order.tax_total > 0) {
-          lineItems.push({
-            price_data: {
-              currency,
-              product_data: { name: 'Tax' },
-              unit_amount: isZeroDecimal ? Math.round(order.tax_total) : Math.round(order.tax_total * 100),
-            },
-            quantity: 1,
-          })
-        }
-      } else {
-        lineItems = [{
-          price_data: {
-            currency,
-            product_data: { name: sale.product_name || sale.title || "Invoice Payment" },
-            unit_amount: isZeroDecimal
-              ? Math.round(sale.amount)
-              : Math.round(sale.amount * 100),
-          },
-          quantity: 1,
-        }]
-      }
-      
-      const session = await stripe.checkout.sessions.create({
-        payment_method_types: ['card'],
-        line_items: lineItems,
-        mode: 'payment',
-        success_url: `${returnUrl}?success=true&sale_id=${sale.id}`,
-        cancel_url: `${returnUrl}?canceled=true`,
-        customer_email: toEmail,
-        metadata: {
-          type: order ? 'sale_order' : 'sale',
-          site_id: sale.site_id,
-          sale_id: sale.id,
-          ...(order ? { order_id: order.id } : {}),
-          ...(order?.buyer_user_id ? { buyer_user_id: order.buyer_user_id } : {}),
-          ...(sale.lead_id ? { lead_id: sale.lead_id } : {})
-        }
-      })
-      if (session.url) checkoutLink = session.url
-    } catch (err) {
-      console.error('Stripe checkout error during sendSaleInvoice:', err)
-    }
-  }
+  const checkoutLink =
+    sale.status === "pending" && Number(sale.amount_due) > 0
+      ? viewLink
+      : null
 
   const docRef = (sale.invoice_number || sale.id).toString().substring(0, 12)
   const currency = sale.currency || "USD"
@@ -318,10 +323,20 @@ export async function sendSaleInvoice(id: string) {
     .single()
 
   if (stampError) {
+    console.error("Invoice email delivered but audit timestamp failed:", stampError)
     return {
-      error: publicTokenSchemaError(stampError.message) || stampError.message,
+      success: true,
+      data: sale,
+      emailed: true,
+      auditRecorded: false,
+      warning: "Email was delivered, but the delivery timestamp could not be saved.",
     }
   }
 
-  return { success: true, data: updated, emailed: true }
+  return {
+    success: true,
+    data: updated,
+    emailed: true,
+    auditRecorded: true,
+  }
 }

@@ -1,5 +1,9 @@
 # Plan Robusto para Eliminar Tags HTML de Google News RSS
 
+> Historical implementation note. HTML cleaning is not fully centralized, and
+> some paths still use local cleaners. The current regression tests live under
+> `__tests__/app/utils/`. Verify every caller before changing shared behavior.
+
 ## 📋 Resumen del Problema
 
 Los feeds RSS de Google News contenían tags HTML, entidades HTML y contenido no deseado que se mostraba mal en la interfaz de usuario, afectando la experiencia del usuario en las secciones de trends.

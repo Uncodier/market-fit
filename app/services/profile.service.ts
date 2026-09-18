@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/client'
+import { validateContactPhone } from '@/app/auth/phone-validation'
 
-// Tipos para el perfil
+// Profile types
 export interface EventType {
   id: string
   title: string
@@ -65,7 +66,7 @@ class ProfileService {
   private supabase = createClient()
 
   /**
-   * Obtiene el perfil completo del usuario
+   * Get the user's complete profile.
    */
   async getProfile(userId: string): Promise<ProfileData | null> {
     try {
@@ -89,10 +90,8 @@ class ProfileService {
       console.log("getProfile: auth.getUser() returned", !!userData?.user);
       
       if (userData.user) {
-        // En supabase, phone en user suele venir vacio si no se verificó con otp, 
-        // pero lo guardamos en user_metadata.phone. 
-        // No existe columna phone en 'profiles'
-        // Si el perfil no tiene el teléfono guardado en la DB, lo tomamos de Auth
+        // An unverified contact phone lives in user metadata rather than the
+        // verified Auth phone field or the profiles table.
         if (!data.phone) {
           if (userData.user.phone) {
             data.phone = userData.user.phone
@@ -110,75 +109,48 @@ class ProfileService {
   }
 
   /**
-   * Crea o actualiza el perfil del usuario
+   * Create or update the user's profile.
    */
   async upsertProfile(userId: string, profileData: ProfileUpdateData): Promise<ProfileData | null> {
     try {
-      console.log("upsertProfile started for", userId, profileData);
-      // Extract phone to save it in user object instead of profile
       const { phone, ...restProfileData } = profileData
+      const {
+        data: { user },
+        error: authError,
+      } = await this.supabase.auth.getUser()
 
-      // If phone exists, update it in the user (phone column and metadata)
-      if (phone !== undefined) {
-        // 1. Update phone column in auth.users via admin API
-        let token = ''
-        console.log("Getting session...");
-        const { data: sessionData } = await this.supabase.auth.getSession()
-        if (sessionData.session?.access_token) {
-          token = sessionData.session.access_token
-        }
-        
-        const headers: Record<string, string> = { 'Content-Type': 'application/json' }
-        if (token) headers['Authorization'] = `Bearer ${token}`
-        
-        console.log("Calling /api/auth/update-phone...");
-        
-        try {
-          const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 seconds timeout
-          
-          const res = await fetch('/api/auth/update-phone', {
-            method: 'POST',
-            headers,
-            body: JSON.stringify({ userId, phone }),
-            signal: controller.signal
-          });
-          clearTimeout(timeoutId);
-          console.log("/api/auth/update-phone returned status", res.status);
-          
-          if (!res.ok) {
-            const errorData = await res.json().catch(() => ({}));
-            console.error("Error from /api/auth/update-phone:", errorData);
-          } else {
-            console.log("Phone updated via API successfully.");
-            // Actualizamos la sesión en segundo plano sin esperar al await
-            // para que no detenga el guardado de perfiles si de casualidad 
-            // esto se atora o levanta algún listener que cuelga la promesa.
-            // Omitimos esto porque estaba colgando la sesión en algunos casos. 
-            // supabase auth triggers session events that can hang if done here.
-          }
-        } catch (fetchError) {
-          console.error("Network or timeout error calling /api/auth/update-phone:", fetchError);
-          // Continue saving profile even if fetch fails
-        }
+      if (authError || !user || user.id !== userId) {
+        throw new Error('Not authenticated')
       }
 
-      console.log("Checking if profile exists...");
-      // Primero verificamos si el perfil existe
+      let resolvedPhone =
+        user.phone || user.user_metadata?.phone || null
+      if (phone !== undefined) {
+        const phoneResult = validateContactPhone(phone)
+        if (!phoneResult.valid) throw new Error(phoneResult.error)
+
+        const { data: updatedAuth, error: phoneError } =
+          await this.supabase.auth.updateUser({
+            data: { phone: phoneResult.phone },
+          })
+        if (phoneError) {
+          throw new Error(phoneError.message || 'Unable to update phone number')
+        }
+        resolvedPhone =
+          updatedAuth.user?.phone ||
+          updatedAuth.user?.user_metadata?.phone ||
+          phoneResult.phone ||
+          null
+      }
+
       const existingProfile = await this.getProfile(userId)
-      console.log("existingProfile is", existingProfile ? "found" : "not found");
-      
       const updateData = {
         id: userId,
-        // Eliminamos 'phone: phone' de aquí porque causa el error PGRST204 
-        // ya que la columna no existe en la tabla profiles
         ...restProfileData,
         updated_at: new Date().toISOString()
       }
 
       if (existingProfile) {
-        console.log("Updating existing profile in DB...");
-        // Update existing profile
         const { data, error } = await this.supabase
           .from('profiles')
           .update(updateData)
@@ -186,21 +158,20 @@ class ProfileService {
           .select()
           .single()
 
-        console.log("Update query returned", !!data, error);
-
         if (error) {
           console.error('Error updating profile:', error)
           throw error
         }
 
-        console.log("Returning updated profile...");
-        // Return profile including the phone
-        return { ...data, phone: phone || existingProfile?.phone || null }
+        return {
+          ...data,
+          phone:
+            phone !== undefined
+              ? resolvedPhone
+              : existingProfile.phone || resolvedPhone,
+        }
       } else {
-        console.log("Creating new profile...");
-        // Create new profile
-        const { data: userData } = await this.supabase.auth.getUser()
-        const userEmail = userData.user?.email
+        const userEmail = user.email
 
         if (!userEmail) {
           throw new Error('User email not found')
@@ -212,23 +183,18 @@ class ProfileService {
           created_at: new Date().toISOString()
         }
 
-        console.log("Inserting new profile...");
         const { data, error } = await this.supabase
           .from('profiles')
           .insert(newProfileData)
           .select()
           .single()
 
-        console.log("Insert query returned", !!data, error);
-
         if (error) {
           console.error('Error creating profile:', error)
           throw error
         }
 
-        console.log("Returning new profile...");
-        // Return profile including the phone
-        return { ...data, phone: phone || userData.user?.phone || userData.user?.user_metadata?.phone || null }
+        return { ...data, phone: resolvedPhone }
       }
     } catch (error) {
       console.error('Error in upsertProfile:', error)
@@ -237,7 +203,7 @@ class ProfileService {
   }
 
   /**
-   * Actualiza solo las notificaciones del usuario
+   * Update only the user's notification settings.
    */
   async updateNotifications(userId: string, notifications: { email: boolean; push: boolean }): Promise<boolean> {
     try {
@@ -262,7 +228,7 @@ class ProfileService {
   }
 
   /**
-   * Actualiza solo la configuración del perfil
+   * Update only the user's profile settings.
    */
   async updateSettings(userId: string, settings: Record<string, any>): Promise<boolean> {
     try {
@@ -287,7 +253,7 @@ class ProfileService {
   }
 
   /**
-   * Verifica si un perfil existe para el usuario
+   * Check whether a profile exists for the user.
    */
   async profileExists(userId: string): Promise<boolean> {
     try {
@@ -309,7 +275,7 @@ class ProfileService {
   }
 
   /**
-   * Obtiene un perfil por su slug de calendario público
+   * Get a profile by its public calendar slug.
    */
   async getProfileByCalendarSlug(slug: string): Promise<ProfileData | null> {
     try {
@@ -333,6 +299,6 @@ class ProfileService {
   }
 }
 
-// Exportar una instancia única del servicio
+// Export a single service instance.
 export const profileService = new ProfileService()
 export default profileService 

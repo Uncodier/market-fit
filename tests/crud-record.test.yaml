@@ -2,9 +2,16 @@ goal: Complete CRUD cycle for a Record
 
 statements:
   - URL: /projects
-  - intent: Select the first available project
-    action: click
-    locator: "getByRole('button', { name: 'Select' }).first()"
+  - description: Select the configured test project
+    js: |
+      const runId = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+      testContext.set("recordName", `Shiplight Record ${runId}`);
+      const siteName = process.env.TEST_SITE_NAME;
+      if (!siteName) throw new Error("TEST_SITE_NAME is required");
+      const categoryName = process.env.TEST_RECORD_CATEGORY_NAME;
+      if (!categoryName) throw new Error("TEST_RECORD_CATEGORY_NAME is required");
+      testContext.set("recordCategoryName", categoryName);
+      await page.getByRole('button', { name: `Select ${siteName}`, exact: true }).click();
 
   - WAIT_UNTIL: The user is navigated to the default project page
     js: "await page.url().includes('/robots')"
@@ -16,44 +23,113 @@ statements:
     js: "await page.url().endsWith('/records')"
     timeout_seconds: 15
 
-  - intent: Click New Category button to ensure at least one category exists
-    action: click
-    locator: "getByRole('button', { name: /New Category|Nueva Categoría/i }).first()"
+  - WAIT_UNTIL: The configured record category is visible
+    js: "(await page.getByRole('button', { name: testContext.get('recordCategoryName'), exact: true }).count()) > 0"
+    timeout_seconds: 15
 
-  - intent: Fill category name
-    action: fill
-    locator: "getByPlaceholder('e.g., Knowledge Base')"
-    value: "Automated Record Category"
+  - description: Select the configured record category
+    js: |
+      const categoryName = testContext.get("recordCategoryName");
+      await page.getByRole('button', { name: categoryName, exact: true }).click();
 
-  - intent: Save category
-    action: click
-    locator: "getByRole('button', { name: /Save Template|Guardar/i })"
-
-  - WAIT_UNTIL: Category modal closes
-    js: "await page.getByRole('dialog').count() === 0"
-    timeout_seconds: 10
-
-  - intent: Click New Record in the top bar to create an Untitled Record
+  - intent: Click New Record in the top bar to create the record in the selected category
     action: click
     locator: "getByRole('button', { name: /New Record|Nuevo|Nuevo/i }).first()"
-
-  - intent: Confirm the first available category for the new record
-    action: click
-    locator: "getByRole('dialog').getByRole('button', { name: /^Create$/i })"
 
   - WAIT_UNTIL: The record details route is open and loaded
     js: "await page.url().match(/\\/records\\/[^?]+$/) !== null && await page.locator('input[placeholder=\"Record Title\"]').count() > 0"
     timeout_seconds: 15
 
+  - description: Remember the created record route for cleanup
+    js: |
+      if (/\/records\/[^?]+$/.test(page.url())) {
+        testContext.set("recordUrl", page.url());
+      }
+
   - intent: Update the record title
     action: fill
     locator: "locator('input[placeholder=\"Record Title\"]')"
-    value: "Automated Test Record"
+    value: "{{recordName}}"
 
   - intent: Save the record
     action: click
     locator: "getByRole('button', { name: 'Save' })"
 
-  - WAIT_UNTIL: The save control is idle again
-    js: "await page.getByRole('button', { name: 'Save' }).count() > 0"
+  - WAIT_UNTIL: The record update succeeds
+    js: "await page.getByText('Record saved').count() > 0"
     timeout_seconds: 10
+
+  - description: Reload the record details page to verify persistence
+    js: "await page.reload()"
+
+  - VERIFY: The edited record title persists after reload
+    js: "await expect(page.locator('input[placeholder=\"Record Title\"]')).toHaveValue(testContext.get('recordName'))"
+
+  - intent: Click Delete record in the details toolbar
+    action: click
+    locator: "getByRole('button', { name: 'Delete record' })"
+
+  - intent: Confirm record deletion
+    action: click
+    locator: "getByRole('button', { name: 'Delete', exact: true })"
+
+  - WAIT_UNTIL: The user is back on the records list
+    js: "await page.url().endsWith('/records')"
+    timeout_seconds: 15
+
+  - description: Reload the records list before checking deletion
+    js: "await page.reload()"
+
+  - WAIT_UNTIL: The records list has finished loading
+    js: "(await page.getByPlaceholder('Search records...').count()) > 0 && (await page.locator('.animate-pulse:visible').count()) === 0"
+    timeout_seconds: 15
+
+  - VERIFY: The deleted record is absent from the list
+    js: "await expect(page.getByText(testContext.get('recordName'), { exact: true })).toHaveCount(0)"
+
+teardown:
+  - description: Open the created record route for cleanup when available
+    js: |
+      const recordUrl = testContext.get("recordUrl");
+      if (recordUrl) await page.goto(recordUrl);
+
+  - IF: "js: Boolean(testContext.get('recordUrl')) && (await page.getByRole('button', { name: 'Delete record' }).count()) > 0"
+    THEN:
+      - intent: Delete the surviving run-scoped record
+        action: click
+        locator: "getByRole('button', { name: 'Delete record' })"
+      - intent: Confirm cleanup of the run-scoped record
+        action: click
+        locator: "getByRole('button', { name: 'Delete', exact: true })"
+
+  - URL: /records
+
+  - WAIT_UNTIL: The records page is ready for cleanup
+    js: "(await page.getByPlaceholder('Search records...').count()) > 0 && (await page.locator('.animate-pulse:visible').count()) === 0"
+    timeout_seconds: 15
+
+  - IF: "js: Boolean(testContext.get('recordCategoryName')) && (await page.getByText(testContext.get('recordCategoryName'), { exact: true }).count()) > 0"
+    THEN:
+      - description: Select the run-scoped record category for fallback cleanup
+        js: |
+          const categoryName = testContext.get("recordCategoryName");
+          await page.getByRole('button', { name: categoryName, exact: true }).click();
+      - description: Select only the surviving run-scoped record title for fallback cleanup
+        js: |
+          const recordName = testContext.get("recordName");
+          const renamedExists = recordName
+            ? (await page.getByText(recordName, { exact: true }).count()) > 0
+            : false;
+          testContext.set("recordCleanupName", renamedExists ? recordName : "");
+      - IF: "js: Boolean(testContext.get('recordCleanupName')) && (await page.getByText(testContext.get('recordCleanupName'), { exact: true }).count()) > 0"
+        THEN:
+          - description: Open the surviving record from its run-scoped category
+            js: |
+              const recordName = testContext.get("recordCleanupName");
+              await page.getByRole('row').filter({ hasText: recordName }).click();
+          - intent: Delete the surviving record from its details page
+            action: click
+            locator: "getByRole('button', { name: 'Delete record' })"
+          - intent: Confirm deletion of the surviving record
+            action: click
+            locator: "getByRole('button', { name: 'Delete', exact: true })"

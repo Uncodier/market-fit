@@ -1,5 +1,10 @@
 # Refresh Prevention Implementation
 
+> Historical implementation note. The route inventory and example logs below
+> are incomplete, the referenced `test-refresh-prevention.html` is absent, and
+> direct reload calls still exist. Verify `app/hooks/use-prevent-refresh.ts` and
+> current callers before extending this mechanism.
+
 ## Problem Solved
 
 The settings screen (and other create/edit screens) were automatically reloading when the window regained focus, causing users to lose their work. This implementation prevents auto-reload on create/edit screens while allowing it on read-only screens.

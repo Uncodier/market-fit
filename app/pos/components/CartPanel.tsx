@@ -26,7 +26,7 @@ import {
   Store,
   MapPin,
   DollarSign,
-  SplitSquareHorizontal,
+  Ticket,
 } from "@/app/components/ui/icons";
 import { NumpadPanel } from "./NumpadPanel";
 import { PosCustomerSelect } from "./PosCustomerSelect";
@@ -34,6 +34,7 @@ import { PosOrderSelect } from "./PosOrderSelect";
 import { PosOrderNotesField } from "./PosOrderNotesField";
 import { PosAppliedPromoCard } from "./PosAppliedPromoCard";
 import { PosCartLines } from "./PosCartLines";
+import { PosReceiptActions } from "./PosReceiptActions";
 import { PosShippingAddressFields } from "./PosShippingAddressFields";
 import { cn } from "@/lib/utils";
 import type { LocalPromoMatch } from "@/app/pos/local/resolve-promo-local";
@@ -390,19 +391,18 @@ export function CartPanel({
               </div>
             </div>
 
-            {onSplitBill && (
-              <div className="pt-2">
-                <Button
-                  variant="secondary"
-                  className="w-full justify-center text-muted-foreground font-medium"
-                  disabled={cart.length === 0}
-                  onClick={onSplitBill}
-                >
-                  <SplitSquareHorizontal className="h-4 w-4 mr-2" />
-                  {getTrans("pos.cart.splitTitle", "Split Bill")}
-                </Button>
-              </div>
-            )}
+            <Button
+              type="button"
+              variant="secondary"
+              className="w-full justify-center"
+              onClick={() => {
+                window.location.href = "/pos/check-in";
+              }}
+            >
+              <Ticket className="mr-2 h-4 w-4" />
+              {getTrans("pos.checkIn.title", "Ticket Check-in")}
+            </Button>
+
           </TabsContent>
 
           <TabsContent value="numpad" className="mt-0">
@@ -411,6 +411,28 @@ export function CartPanel({
               setItemQty={setItemQty}
               setItemPrice={setItemPrice}
               setItemDiscount={setItemDiscount}
+              actions={onSplitBill ? (
+                <PosReceiptActions
+                  cart={cart}
+                  subtotal={subtotal}
+                  taxTotal={taxTotal}
+                  total={total}
+                  discountTotal={promoDiscount}
+                  notes={orderNotes}
+                  fulfillment={fulfillment}
+                  currency={siteCurrency}
+                  leadValue={leadValue}
+                  setLeadValue={setLeadValue}
+                  leads={leads}
+                  originLocationId={originLocationId}
+                  locations={locations}
+                  siteId={siteId}
+                  onLeadUpdated={onLeadUpdated}
+                  onNewOrder={() => handleOrderSelect("new")}
+                  onSplitBill={onSplitBill}
+                  label={getTrans}
+                />
+              ) : undefined}
               t={t}
             />
           </TabsContent>

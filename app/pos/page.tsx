@@ -1,6 +1,6 @@
 "use client";
 
-import { MobileFiltersDrawer, FilterContainer, FilterSection, FilterSeparator } from "@/app/components/ui/mobile-filters-drawer"
+import { MobileFiltersDrawer, FilterContainer, FilterSection } from "@/app/components/ui/mobile-filters-drawer"
 import React, { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSite } from "@/app/context/SiteContext";
@@ -12,28 +12,8 @@ import { Button } from "@/app/components/ui/button";
 import { SearchInput } from "@/app/components/ui/search-input";
 import { Sheet, SheetContent, SheetTrigger } from "@/app/components/ui/sheet";
 import { ShoppingCart } from "@/app/components/ui/icons";
-import { DynamicQuoteFieldsModal } from "@/app/components/commerce/DynamicQuoteFieldsModal";
-import dynamic from "next/dynamic";
-import { PosOptionsDialog } from "./components/PosOptionsDialog";
-
-const PaymentConfirmationDialog = dynamic(
-  () => import("./components/PaymentConfirmationDialog").then((m) => m.PaymentConfirmationDialog),
-  { ssr: false }
-);
-const PosReservationDialog = dynamic(
-  () => import("./components/PosReservationDialog").then((m) => m.PosReservationDialog),
-  { ssr: false }
-);
-const PosDigitalAssetDialog = dynamic(
-  () => import("./components/PosDigitalAssetDialog").then((m) => m.PosDigitalAssetDialog),
-  { ssr: false }
-);
-const PosSplitBillDialog = dynamic(
-  () => import("./components/PosSplitBillDialog").then((m) => m.PosSplitBillDialog),
-  { ssr: false }
-);
+import { PosPageDialogs } from "./components/PosPageDialogs";
 import { CartPanel } from "./components/CartPanel";
-import { resolveUnitPriceLocal } from "./local/resolve-unit-price-local";
 import { PosCatalogGrid } from "./components/PosCatalogGrid";
 import { PosSyncBadge } from "./components/PosSyncBadge";
 import { PrinterSyncBadge } from "@/app/components/printer/PrinterSyncBadge";
@@ -45,12 +25,6 @@ import { usePosSyncStatus } from "./hooks/use-pos-sync-status";
 import { usePosAddItem } from "./hooks/use-pos-add-item";
 import { usePosLead } from "./hooks/use-pos-lead";
 import { drainPosOutbox } from "./local/sync-engine";
-import { PosRequireLeadDialog } from "./components/PosRequireLeadDialog";
-import { cartHasReservationSlot } from "./cart-line-utils";
-import {
-  buyerUserFromLeads,
-  commitPosDigitalBuyer,
-} from "./assign-digital-buyer";
 
 export default function POSPage() {
   const { currentSite } = useSite();
@@ -96,9 +70,56 @@ export default function POSPage() {
     t,
   });
 
+  useEffect(() => {
+    if (user?.id && cartApi.sessionReady && !cartApi.sellerUserId) {
+      cartApi.setSellerUserId(user.id);
+      cartApi.setSellerName(
+        user.user_metadata?.full_name ||
+          user.user_metadata?.name ||
+          user.email ||
+          "Current user",
+      );
+    }
+  }, [
+    user,
+    user?.id,
+    cartApi.sessionReady,
+    cartApi.sellerUserId,
+    cartApi.setSellerName,
+    cartApi.setSellerUserId,
+  ]);
+
+  useEffect(() => {
+    const handleSellerChange = (event: Event) => {
+      const detail = (
+        event as CustomEvent<{ userId?: string; name?: string }>
+      ).detail;
+      if (!detail?.userId) return;
+      cartApi.setSellerUserId(detail.userId);
+      cartApi.setSellerName(detail.name || null);
+    };
+    window.addEventListener("pos:seller-change", handleSellerChange);
+    return () =>
+      window.removeEventListener("pos:seller-change", handleSellerChange);
+  }, [cartApi.setSellerName, cartApi.setSellerUserId]);
+
+  useEffect(() => {
+    if (!cartApi.sellerUserId) return;
+    window.dispatchEvent(
+      new CustomEvent("pos:seller-state", {
+        detail: {
+          userId: cartApi.sellerUserId,
+          name: cartApi.sellerName || "Current user",
+        },
+      }),
+    );
+  }, [cartApi.sellerName, cartApi.sellerUserId]);
+
   const checkout = usePosCheckout({
     siteId,
     userId: user?.id,
+    sellerUserId: cartApi.sellerUserId,
+    sellerName: cartApi.sellerName,
     cart: cartApi.cart,
     total: cartApi.total,
     leadValue: cartApi.leadValue,
@@ -410,165 +431,19 @@ export default function POSPage() {
         onOpenChange={setSyncIssuesOpen}
         t={t} />
 
-      <PaymentConfirmationDialog
-        open={checkout.isPaymentDialogOpen}
-        onOpenChange={checkout.setIsPaymentDialogOpen}
-        totalAmount={cartApi.total}
-        currency={cartApi.cartCurrency}
-        onConfirm={checkout.handleCheckout}
-        isLoading={checkout.checkoutLoading}
-        hasCustomer={!!cartApi.leadValue} />
-
-      <PosOptionsDialog
-        item={addApi.optionsParentItem}
-        open={!!addApi.optionsParentItem}
-        onOpenChange={(o) => {
-          if (!o) addApi.setOptionsParentItem(null);
-        }}
-        onConfirm={({ item, modifiers }) => {
-          addApi.confirmOptions(item, modifiers);
-        }}
+      <PosPageDialogs
         siteId={siteId}
-        modifierGroupsByHostId={catalog.modifierGroupsByHostId}
-        resolvePrice={(catalogItemId, fallbackPrice) => {
-          const catalogItem = catalog.catalogItems.find(
-            (c: any) => c.id === catalogItemId,
-          );
-          return resolveUnitPriceLocal({
-            catalogItemId,
-            targetSalePrice:
-              catalogItem?.target_sale_price ?? fallbackPrice,
-            priceListId:
-              cartApi.priceListId === "none"
-                ? undefined
-                : cartApi.priceListId,
-            priceLists: catalog.priceLists,
-            priceListItems: catalog.priceListItems,
-          }).price;
-        }} />
-
-      <PosReservationDialog
-        item={addApi.reservationItem}
-        open={!!addApi.reservationItem}
-        onOpenChange={(o) => {
-          if (!o) addApi.setReservationItem(null);
-        }}
-        leads={catalog.leads}
-        siteId={siteId}
-        initialLeadValue={leadApi.leadRelationValue}
-        onLeadUpdated={leadApi.handleLeadUpdated}
+        cartApi={cartApi}
+        catalog={catalog}
+        checkout={checkout}
+        addApi={addApi}
+        leadApi={leadApi}
+        leadGate={leadGate}
+        setLeadGate={setLeadGate}
+        isSplitBillOpen={isSplitBillOpen}
+        setIsSplitBillOpen={setIsSplitBillOpen}
         t={t}
-        onConfirm={async ({
-          item,
-          reservationStart,
-          reservationEnd,
-          reservationAvailableQty,
-          leadValue,
-        }) => {
-          await leadApi.handleLeadValueChange(leadValue);
-          addApi.confirmReservation(item, {
-            reservationStart,
-            reservationEnd,
-            reservationAvailableQty,
-          });
-        }} />
-
-      <PosDigitalAssetDialog
-        item={addApi.digitalItem}
-        open={!!addApi.digitalItem}
-        modifiers={addApi.digitalModifiers}
-        initialBuyerUser={buyerUserFromLeads(
-          cartApi.buyerUserId,
-          catalog.leads,
-        )}
-        onOpenChange={(o) => {
-          if (!o) addApi.setDigitalItem(null);
-        }}
-        t={t}
-        onConfirm={async ({ item, buyerUser, modifiers }) => {
-          if (!siteId) return;
-          await commitPosDigitalBuyer({
-            siteId,
-            buyerUser,
-            handleLeadValueChange: leadApi.handleLeadValueChange,
-            setBuyerUserId: cartApi.setBuyerUserId,
-            setLeads: catalog.setLeads,
-          });
-          addApi.confirmDigital(item, modifiers);
-        }} />
-
-      <DynamicQuoteFieldsModal
-        item={addApi.dynamicQuoteItem}
-        open={!!addApi.dynamicQuoteItem}
-        onOpenChange={(o) => !o && addApi.setDynamicQuoteItem(null)}
-        confirming={addApi.dynamicQuoteLoading}
-        onConfirm={async ({ fieldValues, quantity }) => {
-          if (!addApi.dynamicQuoteItem) return;
-          await addApi.requestQuote(
-            addApi.dynamicQuoteItem,
-            fieldValues,
-            quantity,
-          );
-        }} />
-
-      <PosRequireLeadDialog
-        open={!!leadGate}
-        onOpenChange={(open) => {
-          if (!open) setLeadGate(null);
-        }}
-        leads={catalog.leads}
-        siteId={siteId}
-        t={t}
-        purpose={
-          leadGate === "promo" || !cartHasReservationSlot(cartApi.cart)
-            ? "promo"
-            : "reservation"
-        }
-        oncePerUser={
-          Number(
-            cartApi.appliedPromo?.usageLimitPerUser ??
-              catalog.promotions.find(
-                (p: any) =>
-                  String(p.code || "").trim().toUpperCase() ===
-                  cartApi.promoCode.trim().toUpperCase(),
-              )?.usage_limit_per_user,
-          ) === 1
-        }
-        onLeadUpdated={leadApi.handleLeadUpdated}
-        onConfirm={async (value) => {
-          const action = leadGate;
-          const committed = await leadApi.handleLeadValueChange(value);
-          setLeadGate(null);
-          if (action === "promo") {
-            cartApi.validatePromotion({ leadPresent: true });
-            return;
-          }
-          if (action === "checkout") {
-            checkout.initiateCheckout({ customerConfirmed: true });
-            return;
-          }
-          if (action === "send" && committed) {
-            await checkout.handleSendOrder({
-              customerConfirmed: true,
-              leadOverride: committed,
-            });
-          }
-        }} />
-      <PosSplitBillDialog
-        open={isSplitBillOpen}
-        onOpenChange={setIsSplitBillOpen}
-        originalCart={cartApi.cart}
-        onConfirm={(columns) => {
-          if (columns.length === 0) return;
-          cartApi.setCart(columns[0].items);
-          if (columns[0].title !== "Order 1") {
-            cartApi.setOrderNotes(columns[0].title);
-          }
-          const otherColumns = columns.slice(1);
-          if (otherColumns.length > 0) {
-            checkout.createPendingSplitOrders(otherColumns);
-          }
-        }} />
+      />
     </div>
   );
 }

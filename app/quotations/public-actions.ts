@@ -6,20 +6,41 @@ import {
   isQuotationExpired,
 } from "@/app/quotations/quote-checkout"
 import {
-  generateQuotationPublicToken,
   isValidQuotationPublicToken,
 } from "@/app/quotations/public-token"
+import { isPublicAccessTokenActive } from "@/app/documents/public-token"
+import {
+  ensurePublicAccessTokenForRecord,
+  revokePublicAccessTokenForRecord,
+} from "@/app/documents/public-token-store"
 
-const QUOTE_SELECT = `
-  *,
+const PUBLIC_QUOTE_SELECT = `
+  id,
+  site_id,
+  title,
+  status,
+  valid_until,
+  currency,
+  notes,
+  subtotal,
+  discount_total,
+  tax_total,
+  total,
+  created_at,
+  public_access_token_expires_at,
+  public_access_token_revoked_at,
   items:quotation_items(
-    *,
+    catalog_item_id,
+    name,
+    quantity,
+    unit_price,
+    subtotal,
     catalog_item:catalog_items(
-      id, site_id, name, image_url, kind, digital_subtype, currency,
+      name, image_url, kind, digital_subtype, currency,
       is_recurring, is_reservation, is_dynamic_price, metadata
     )
   ),
-  lead:leads(id, name, email, buyer_user_id),
+  lead:leads(name, email),
   site:sites(id, name, logo_url, url)
 `
 
@@ -34,43 +55,53 @@ function publicTokenSchemaError(message?: string | null) {
 /** Ensure a quotation has a public_access_token; returns the token. Seller-auth required. */
 export async function ensureQuotationPublicAccessToken(quotationId: string) {
   const supabase = await createClient()
-  const { data: quote, error } = await supabase
-    .from("quotations")
-    .select("id, public_access_token")
-    .eq("id", quotationId)
-    .single()
-
-  if (error || !quote) {
+  const result = await ensurePublicAccessTokenForRecord(
+    supabase,
+    "quotations",
+    quotationId
+  )
+  if ("error" in result) {
     return {
       error:
-        publicTokenSchemaError(error?.message) ||
-        error?.message ||
+        publicTokenSchemaError(result.error) ||
+        result.error ||
         "Quotation not found",
     }
   }
+  return result
+}
 
-  if (quote.public_access_token && isValidQuotationPublicToken(quote.public_access_token)) {
-    return { token: quote.public_access_token as string }
-  }
-
-  const token = generateQuotationPublicToken()
-  const { data: updated, error: updateError } = await supabase
-    .from("quotations")
-    .update({ public_access_token: token })
-    .eq("id", quotationId)
-    .select("public_access_token")
-    .single()
-
-  if (updateError || !updated?.public_access_token) {
+export async function rotateQuotationPublicAccessToken(quotationId: string) {
+  const supabase = await createClient()
+  const result = await ensurePublicAccessTokenForRecord(
+    supabase,
+    "quotations",
+    quotationId,
+    { rotate: true }
+  )
+  if ("error" in result) {
     return {
       error:
-        publicTokenSchemaError(updateError?.message) ||
-        updateError?.message ||
-        "Failed to create public link",
+        publicTokenSchemaError(result.error) || result.error,
     }
   }
+  return result
+}
 
-  return { token: updated.public_access_token as string }
+export async function revokeQuotationPublicAccessToken(quotationId: string) {
+  const supabase = await createClient()
+  const result = await revokePublicAccessTokenForRecord(
+    supabase,
+    "quotations",
+    quotationId
+  )
+  if ("error" in result) {
+    return {
+      error:
+        publicTokenSchemaError(result.error) || result.error,
+    }
+  }
+  return result
 }
 
 export async function getQuotationByPublicToken(token: string) {
@@ -81,7 +112,7 @@ export async function getQuotationByPublicToken(token: string) {
   const supabaseAdmin = await createServiceClient(true)
   const { data, error } = await supabaseAdmin
     .from("quotations")
-    .select(QUOTE_SELECT)
+    .select(PUBLIC_QUOTE_SELECT)
     .eq("public_access_token", token)
     .single()
 
@@ -97,8 +128,119 @@ export async function getQuotationByPublicToken(token: string) {
   if (data.status === "draft") {
     return { error: "This quote is not available yet" }
   }
+  if (!isPublicAccessTokenActive(data)) {
+    return { error: "This quote link is no longer available" }
+  }
 
-  return { data }
+  const lead = Array.isArray(data.lead) ? data.lead[0] : data.lead
+  const site = Array.isArray(data.site) ? data.site[0] : data.site
+  const items = (data.items || []).map((item: any) => {
+    const catalog = Array.isArray(item.catalog_item)
+      ? item.catalog_item[0]
+      : item.catalog_item
+    const rawMetadata =
+      catalog?.metadata &&
+      typeof catalog.metadata === "object" &&
+      !Array.isArray(catalog.metadata)
+        ? catalog.metadata
+        : null
+    const checkoutMetadata = rawMetadata
+      ? Object.fromEntries(
+          [
+            [
+              "delivery_options",
+              Array.isArray(rawMetadata.delivery_options)
+                ? rawMetadata.delivery_options.filter(
+                    (value: unknown) => typeof value === "string"
+                  )
+                : undefined,
+            ],
+            [
+              "pickup_location_ids",
+              Array.isArray(rawMetadata.pickup_location_ids)
+                ? rawMetadata.pickup_location_ids.filter(
+                    (value: unknown) => typeof value === "string"
+                  )
+                : undefined,
+            ],
+            [
+              "payment_options",
+              Array.isArray(rawMetadata.payment_options)
+                ? rawMetadata.payment_options.filter(
+                    (value: unknown) => typeof value === "string"
+                  )
+                : undefined,
+            ],
+            [
+              "shipping_cost",
+              typeof rawMetadata.shipping_cost === "number" &&
+              Number.isFinite(rawMetadata.shipping_cost)
+                ? rawMetadata.shipping_cost
+                : undefined,
+            ],
+            [
+              "shipping_cost_mode",
+              rawMetadata.shipping_cost_mode === "extra" ||
+              rawMetadata.shipping_cost_mode === "covers_order"
+                ? rawMetadata.shipping_cost_mode
+                : undefined,
+            ],
+          ].filter(([, value]) => value !== undefined)
+        )
+      : null
+
+    return {
+      catalog_item_id: item.catalog_item_id,
+      name: item.name,
+      quantity: item.quantity,
+      unit_price: item.unit_price,
+      subtotal: item.subtotal,
+      catalog_item: catalog
+        ? {
+            name: catalog.name,
+            image_url: catalog.image_url ?? null,
+            kind: catalog.kind,
+            digital_subtype: catalog.digital_subtype ?? null,
+            currency: catalog.currency,
+            is_recurring: Boolean(catalog.is_recurring),
+            is_reservation: Boolean(catalog.is_reservation),
+            is_dynamic_price: Boolean(catalog.is_dynamic_price),
+            ...(checkoutMetadata && Object.keys(checkoutMetadata).length > 0
+              ? { metadata: checkoutMetadata }
+              : {}),
+          }
+        : null,
+    }
+  })
+
+  return {
+    data: {
+      id: data.id,
+      site_id: data.site_id,
+      title: data.title,
+      status: data.status,
+      valid_until: data.valid_until,
+      currency: data.currency,
+      notes: data.notes,
+      subtotal: data.subtotal,
+      discount_total: data.discount_total,
+      tax_total: data.tax_total,
+      total: data.total,
+      created_at: data.created_at,
+      items,
+      lead: lead
+        ? { name: lead.name ?? null, email: lead.email ?? null }
+        : null,
+      site: site
+        ? {
+            id: site.id,
+            name: site.name ?? null,
+            logo_url: site.logo_url ?? null,
+            url: site.url ?? null,
+          }
+        : null,
+    },
+  }
 }
 
 export async function rejectQuotationByPublicToken(token: string) {
@@ -109,7 +251,7 @@ export async function rejectQuotationByPublicToken(token: string) {
   const supabaseAdmin = await createServiceClient(true)
   const { data: quote, error } = await supabaseAdmin
     .from("quotations")
-    .select("id, status, valid_until, buyer_user_id, public_access_token")
+    .select("id, status, valid_until, buyer_user_id, public_access_token, public_access_token_expires_at, public_access_token_revoked_at")
     .eq("public_access_token", token)
     .single()
 
@@ -120,16 +262,29 @@ export async function rejectQuotationByPublicToken(token: string) {
         "Quotation not found",
     }
   }
+  if (!isPublicAccessTokenActive(quote)) {
+    return { error: "This quote link is no longer available" }
+  }
 
   const gate = assertQuotationRejectable(quote, { publicAccess: true })
   if (!gate.ok) return { error: gate.error }
 
-  const { error: updateError } = await supabaseAdmin
+  const { data: updated, error: updateError } = await supabaseAdmin
     .from("quotations")
     .update({ status: "rejected" })
     .eq("id", quote.id)
+    .eq("public_access_token", token)
+    .eq("status", quote.status)
+    .is("checkout_claim_id", null)
+    .is("public_access_token_revoked_at", null)
+    .or(
+      `public_access_token_expires_at.is.null,public_access_token_expires_at.gt.${new Date().toISOString()}`
+    )
+    .select("id")
+    .maybeSingle()
 
   if (updateError) return { error: updateError.message }
+  if (!updated) return { error: "Quote is no longer available" }
   return { success: true }
 }
 

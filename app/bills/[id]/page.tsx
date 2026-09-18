@@ -178,6 +178,7 @@ export default function BillDetailPage(props: { params: Promise<{ id: string }> 
         toast.success(
           t("bills.detail.sentEmail") || "Bill emailed with PDF attached"
         )
+        if (res.warning) toast.warning(res.warning)
         if (res.data) setPurchase(res.data)
       }
     } finally {
@@ -187,17 +188,6 @@ export default function BillDetailPage(props: { params: Promise<{ id: string }> 
 
   const handleCopyVendorLink = async () => {
     if (!purchase) return
-
-    if (purchase.publicAccessToken) {
-      const link = `${window.location.origin}${buildPublicDocPath("vb", purchase.publicAccessToken)}`
-      try {
-        await navigator.clipboard.writeText(link)
-        toast.success(t("bills.detail.linkCopied") || "Link copied to clipboard")
-      } catch (err) {
-        toast.error("Failed to copy link")
-      }
-      return
-    }
 
     setSending(true)
     try {

@@ -40,7 +40,6 @@ import { MessageInput } from './components/MessageInput'
 import { MessageItem } from './components/MessageItem'
 import { ProcessGroupItem } from './components/ProcessGroupItem'
 import { CompletedPlanCard } from './components/CompletedPlanCard'
-import { RequirementStatusCard } from './components/RequirementStatusCard'
 import { StepIndicator } from './components/StepIndicator'
 import { BacklogIndicator } from './components/BacklogIndicator'
 import { EditStepModal } from './components/EditStepModal'
@@ -56,7 +55,6 @@ import { useRunningWorkflow } from './hooks/useRunningWorkflow'
 
 // Import utilities
 import { groupTimelineProcess, isProcessGroupLive } from './group-timeline-process'
-import { buildRequirementStatusTimelineItem } from './requirement-status-timeline'
 
 const SCROLL_BOTTOM_THRESHOLD_PX = 80
 
@@ -682,17 +680,10 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
   
   // Calculate timeline for Explorer view
   const timelineItems: Array<{
-    type: 'log' | 'completed_plan' | 'requirement_status'
+    type: 'log' | 'completed_plan'
     timestamp: string
     data: any
   }> = []
-
-  // Keep repeated status updates anchored to the first time that exact state appeared.
-  const requirementStatusTimelineItem =
-    buildRequirementStatusTimelineItem(requirementStatuses)
-  if (requirementStatusTimelineItem) {
-    timelineItems.push(requirementStatusTimelineItem)
-  }
   
   logs.forEach(log => {
     timelineItems.push({
@@ -995,13 +986,6 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
                       onEditPlan={openEditPlanModal}
                     />
                   )
-                } else if (item.type === 'requirement_status') {
-                  content = (
-                    <RequirementStatusCard 
-                      key={`req-status-${item.data.id}`}
-                      status={item.data}
-                    />
-                  )
                 }
 
                 if (!content) return null;
@@ -1097,13 +1081,14 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
           </div>
         )}
         {/* Floating Backlog Indicator - Expandable */}
-        {showFloatingBacklog && (
+        {showFloatingBacklog && requirementBacklog && (
           <div className="w-full relative pointer-events-auto">
             <BacklogIndicator
               backlog={requirementBacklog}
               expanded={isBacklogIndicatorExpanded}
               onToggleExpanded={() => setIsBacklogIndicatorExpanded(!isBacklogIndicatorExpanded)}
               onEditItem={openEditBacklogModal}
+              requirementStatus={latestRequirementStatus?.stage}
             />
           </div>
         )}

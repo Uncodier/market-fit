@@ -260,7 +260,7 @@ export async function runMarketplaceCheckout(params: {
     if (payableTotal > 0 && paymentMethod === "card") {
       const stripeData = await createStripeOrderCheckout({
         orderId: res.orderId,
-        siteId,
+        publicAccessToken: res.publicAccessToken,
         returnUrl: marketHome,
         successUrl: `${marketHome}${marketHome.includes("?") ? "&" : "?"}ordered=1`,
       })

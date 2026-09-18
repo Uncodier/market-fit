@@ -11,6 +11,10 @@ statements:
     timeout_seconds: 5
 
   - URL: /deals
+  - WAIT_UNTIL: The deals page actions are ready
+    js: "await page.getByRole('button', { name: 'Create Deal' }).count() > 0"
+    timeout_seconds: 30
+
   - intent: Click Create Deal in the top bar
     action: click
     locator: "getByRole('button', { name: 'Create Deal' })"

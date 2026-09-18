@@ -28,7 +28,7 @@ export function PrivacyClient({ siteSlug, site }: { siteSlug: string, site: any 
       </header>
 
       {/* Content */}
-      <div className="max-w-3xl mx-auto px-4 py-8 md:py-12">
+      <main className="max-w-3xl mx-auto px-4 py-8 md:py-12">
         <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-200 dark:border-white/10 overflow-hidden">
           
           <div className="p-6 md:p-8 border-b border-gray-100 dark:border-white/5 bg-gray-50 dark:bg-gray-950 flex items-center gap-4">
@@ -125,7 +125,7 @@ export function PrivacyClient({ siteSlug, site }: { siteSlug: string, site: any 
         <div className="mt-8 text-center text-sm text-gray-500 dark:text-gray-400">
           <p>{t('shop.privacy.poweredBy') || 'Powered securely by'} Makinari</p>
         </div>
-      </div>
+      </main>
     </div>
   )
 }

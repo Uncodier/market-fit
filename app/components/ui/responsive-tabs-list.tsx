@@ -16,9 +16,20 @@ interface ResponsiveTabsListProps {
   activeTab: string
   onTabChange: (value: string) => void
   className?: string
+  containerClassName?: string
+  triggerClassName?: string
+  onPreferredWidthChange?: (width: number) => void
 }
 
-export function ResponsiveTabsList({ tabs, activeTab, onTabChange, className }: ResponsiveTabsListProps) {
+export function ResponsiveTabsList({
+  tabs,
+  activeTab,
+  onTabChange,
+  className,
+  containerClassName,
+  triggerClassName,
+  onPreferredWidthChange,
+}: ResponsiveTabsListProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const hiddenContainerRef = useRef<HTMLDivElement>(null)
   
@@ -35,7 +46,16 @@ export function ResponsiveTabsList({ tabs, activeTab, onTabChange, className }: 
           (child) => (child as HTMLElement).getBoundingClientRect().width
         )
         // Add a small safety buffer (8px) to each tab width
-        setTabWidths(widths.map(w => w + 8))
+        const bufferedWidths = widths.map((width) => Math.ceil(width) + 8)
+        setTabWidths(bufferedWidths)
+
+        const gap = 4
+        const listPadding = 16
+        const preferredWidth =
+          bufferedWidths.reduce((total, width) => total + width, 0) +
+          Math.max(0, bufferedWidths.length - 1) * gap +
+          listPadding
+        onPreferredWidthChange?.(preferredWidth)
       }
       
       measure()
@@ -43,7 +63,7 @@ export function ResponsiveTabsList({ tabs, activeTab, onTabChange, className }: 
       const timer = setTimeout(measure, 100)
       return () => clearTimeout(timer)
     }
-  }, [tabs])
+  }, [tabs, onPreferredWidthChange, triggerClassName])
 
   // 2. Calculate how many tabs fit based on exact pixel widths
   const calculateMaxVisibleTabs = useCallback(() => {
@@ -132,7 +152,10 @@ export function ResponsiveTabsList({ tabs, activeTab, onTabChange, className }: 
   }
 
   return (
-    <div className="flex items-center w-full min-w-0" ref={containerRef}>
+    <div
+      className={`flex items-center w-full min-w-0 ${containerClassName || ''}`}
+      ref={containerRef}
+    >
       {/* Hidden container purely for taking precise width measurements of each tab */}
       <div 
         ref={hiddenContainerRef} 
@@ -142,10 +165,14 @@ export function ResponsiveTabsList({ tabs, activeTab, onTabChange, className }: 
         {tabs.map((tab) => (
           <div 
             key={tab.value} 
-            className="inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium"
+            className={`inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ${triggerClassName || ''}`}
           >
             <span className="flex items-center gap-2 whitespace-nowrap px-2 py-0">
-              {tab.icon && <span className="flex-shrink-0">{tab.icon}</span>}
+              {tab.icon && (
+                <span className="inline-flex h-4 w-4 shrink-0 items-center justify-center leading-none [&>svg]:block [&>svg]:h-4 [&>svg]:w-4">
+                  {tab.icon}
+                </span>
+              )}
               <span>{tab.label}</span>
             </span>
           </div>
@@ -154,9 +181,17 @@ export function ResponsiveTabsList({ tabs, activeTab, onTabChange, className }: 
 
       <TabsList className={`inline-flex max-w-full flex-nowrap justify-start ${className || ''}`}>
         {visibleTabs.map((tab) => (
-          <TabsTrigger key={tab.value} value={tab.value} className="rounded-[inherit]">
+          <TabsTrigger
+            key={tab.value}
+            value={tab.value}
+            className={`rounded-[inherit] ${triggerClassName || ''}`}
+          >
             <span className="flex items-center gap-2 whitespace-nowrap truncate max-w-[200px] px-2 py-0">
-              {tab.icon && <span className="flex-shrink-0">{tab.icon}</span>}
+              {tab.icon && (
+                <span className="inline-flex h-4 w-4 shrink-0 items-center justify-center leading-none [&>svg]:block [&>svg]:h-4 [&>svg]:w-4">
+                  {tab.icon}
+                </span>
+              )}
               <span className="truncate">{tab.label}</span>
             </span>
           </TabsTrigger>
@@ -168,7 +203,7 @@ export function ResponsiveTabsList({ tabs, activeTab, onTabChange, className }: 
               <button
                 type="button"
                 className="inline-flex items-center justify-center whitespace-nowrap rounded-[inherit] px-3 py-1.5 text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 text-muted-foreground hover:text-foreground"
-                title="Más opciones"
+                title="More options"
               >
                 <span className="flex items-center gap-1">
                   <MoreHorizontal className="h-4 w-4" />
@@ -184,7 +219,11 @@ export function ResponsiveTabsList({ tabs, activeTab, onTabChange, className }: 
                   className={tab.value === activeTab ? 'bg-muted font-medium' : ''}
                 >
                   <div className="flex items-center gap-2 w-full">
-                    {tab.icon && <span className="flex-shrink-0">{tab.icon}</span>}
+                    {tab.icon && (
+                      <span className="inline-flex h-4 w-4 shrink-0 items-center justify-center leading-none [&>svg]:block [&>svg]:h-4 [&>svg]:w-4">
+                        {tab.icon}
+                      </span>
+                    )}
                     <span className="truncate">{tab.label}</span>
                   </div>
                 </DropdownMenuItem>

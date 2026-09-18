@@ -95,9 +95,14 @@ export function CategoryTemplateEditor({ isOpen, onClose, category, categories =
       parent_category_id: parentCategoryId === "none" ? null : parentCategoryId,
       template_fields: fields
     }
-    await onSave(dataToSave)
-    setIsSaving(false)
-    onClose()
+    try {
+      await onSave(dataToSave)
+      onClose()
+    } catch {
+      // The parent displays the actionable error and the dialog remains open.
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   return (

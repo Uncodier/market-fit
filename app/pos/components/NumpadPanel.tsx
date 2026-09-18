@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, type ReactNode } from "react";
 import { Button } from "@/app/components/ui/button";
 
 type NumpadMode = "qty" | "price" | "discount";
@@ -10,17 +10,19 @@ interface NumpadPanelProps {
   setItemQty: (id: string, qty: number) => void;
   setItemPrice: (id: string, price: number) => void;
   setItemDiscount: (id: string, percent: number) => void;
+  actions?: ReactNode;
   t: (key: string) => string;
 }
 
 const MODE_BTN =
-  "w-full aspect-square !p-0 h-auto !min-w-0 !rounded-full text-xs font-medium";
+  "h-14 w-14 !p-0 !min-w-0 !rounded-full text-[11px] font-medium";
 
 export function NumpadPanel({
   selectedCartItemId,
   setItemQty,
   setItemPrice,
   setItemDiscount,
+  actions,
   t,
 }: NumpadPanelProps) {
   const [mode, setMode] = useState<NumpadMode>("qty");
@@ -91,15 +93,19 @@ export function NumpadPanel({
   const noLine = !selectedCartItemId;
 
   return (
-    <div className="flex flex-col gap-3 pb-2">
-      <div className="grid grid-cols-4 gap-2">
-        <div className="col-span-3 grid grid-cols-3 gap-2">
+    <div className="flex flex-col gap-2 pb-1">
+      <div
+        className={`grid justify-items-center gap-2 ${
+          actions ? "grid-cols-5" : "grid-cols-4"
+        }`}
+      >
+        <div className="col-span-3 grid grid-cols-3 justify-items-center gap-2">
           {["7", "8", "9", "4", "5", "6", "1", "2", "3", "0", ".", "C"].map(
             (d) => (
               <Button
                 key={d}
                 variant={d === "C" ? "destructive" : "outline"}
-                className={`aspect-square !p-0 h-auto !min-w-0 text-xl font-medium !rounded-full ${
+                className={`h-14 w-14 !p-0 !min-w-0 text-lg font-medium !rounded-full ${
                   d === "C"
                     ? "bg-destructive/10 text-destructive hover:bg-destructive/20 hover:text-destructive border-transparent"
                     : "bg-card"
@@ -111,40 +117,47 @@ export function NumpadPanel({
             ),
           )}
         </div>
-        <div className="grid grid-rows-4 gap-2">
+        <div className="grid grid-rows-4 justify-items-center gap-2">
           <Button
             variant="outline"
-            className="w-full aspect-square !p-0 h-auto !min-w-0 !rounded-full bg-card"
+            className="h-14 w-14 !p-0 !min-w-0 !rounded-full bg-card"
             onClick={handleBackspace}
             disabled={noLine}
           >
             ⌫
           </Button>
           <Button
-            variant={mode === "qty" ? "default" : "secondary"}
-            className={MODE_BTN}
+            variant="secondary"
+            className={`${MODE_BTN} ${
+              mode === "qty" ? "bg-primary text-primary-foreground hover:bg-primary/90" : ""
+            }`}
             onClick={() => setMode("qty")}
             disabled={noLine}
           >
             {getTrans("pos.cart.numpadQty", "Qty")}
           </Button>
           <Button
-            variant={mode === "discount" ? "default" : "secondary"}
-            className={MODE_BTN}
+            variant="secondary"
+            className={`${MODE_BTN} ${
+              mode === "discount" ? "bg-primary text-primary-foreground hover:bg-primary/90" : ""
+            }`}
             onClick={() => setMode("discount")}
             disabled={noLine}
           >
             {getTrans("pos.cart.numpadDiscount", "%")}
           </Button>
           <Button
-            variant={mode === "price" ? "default" : "secondary"}
-            className={MODE_BTN}
+            variant="secondary"
+            className={`${MODE_BTN} ${
+              mode === "price" ? "bg-primary text-primary-foreground hover:bg-primary/90" : ""
+            }`}
             onClick={() => setMode("price")}
             disabled={noLine}
           >
             {getTrans("pos.cart.numpadPrice", "Price")}
           </Button>
         </div>
+        {actions}
       </div>
     </div>
   );
