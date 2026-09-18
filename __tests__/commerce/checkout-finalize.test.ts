@@ -1,5 +1,6 @@
 import { finalizeCheckout } from "@/app/commerce/checkout-finalize"
 import { ensurePublicAccessTokenForRecord } from "@/app/documents/public-token-store"
+import { createShipment } from "@/app/shipments/actions"
 
 jest.mock("@/app/commerce/checkout-order-items", () => ({
   upsertSaleOrderItemsWithModifiers: jest.fn().mockResolvedValue([]),
@@ -23,7 +24,7 @@ jest.mock("@/app/promotions/apply-promotion-to-order", () => ({
   applyPromotionToOrder: jest.fn(),
 }))
 jest.mock("@/app/shipments/actions", () => ({
-  createShipment: jest.fn(),
+  createShipment: jest.fn().mockResolvedValue({ data: { id: "shipment-1" } }),
 }))
 jest.mock("@/app/pos/actions/idempotency", () => ({
   recordPosClientMutation: jest.fn(),
@@ -37,7 +38,7 @@ jest.mock("@/app/commerce/ensure-commerce-lead-converted", () => ({
 }))
 
 describe("finalizeCheckout", () => {
-  it("uses the authorized service client for the persisted order token", async () => {
+  it("uses authorized server paths for public checkout finalization", async () => {
     const userClient = {
       from: jest.fn((table: string) => {
         if (table !== "catalog_items") {
@@ -95,13 +96,20 @@ describe("finalizeCheckout", () => {
       existingItems: [],
       intent: "complete",
       isFullyPaid: true,
-      orderInitialStatus: "pending",
-      fulfillment: "none",
+      orderInitialStatus: "completed",
+      fulfillment: "ship",
+      finalOriginLocationId: "location-1",
+      resolvedUserId: "buyer-1",
+      shippingAddress: { line1: "123 Test Street" },
       quoteForAccept: null,
       activeQuotationClaim: null,
       orderTotal: 0,
     })
 
+    expect(createShipment).toHaveBeenCalledWith(expect.objectContaining({
+      saleOrderId: "order-1",
+      forceServiceRole: true,
+    }))
     expect(ensurePublicAccessTokenForRecord).toHaveBeenCalledWith(
       adminClient,
       "sale_orders",

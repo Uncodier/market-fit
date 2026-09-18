@@ -111,7 +111,10 @@ export async function finalizeCheckout(params: FinalizeCheckoutParams) {
       originLocationId: params.finalOriginLocationId,
       shippingAddress: params.shippingAddress,
       userId: params.resolvedUserId,
-      forceServiceRole: params.isAdmin,
+      // Checkout has already authorized and persisted the order. Public buyers
+      // cannot insert shipments through RLS, so this follow-up must use the
+      // server-only client as well.
+      forceServiceRole: true,
     })
     if (result.error) throw new Error(`Shipment error: ${result.error}`)
   } else if (
