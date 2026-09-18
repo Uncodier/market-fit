@@ -305,10 +305,10 @@ function RobotsPageContent() {
 
   // Instance selection via URL param (`instance`, `instance_id`, or `instanceId`)
   const selectedInstanceParam = resolveInstanceIdParam(searchParams)
-  const allInstances = useMemo(() => getAllInstances(), [getAllInstances])
+  const allInstances = useMemo(() => getAllInstances(true), [getAllInstances])
 
   const tabInstances = useMemo(
-    () => allInstances.filter((instance) => instance.status !== "archived"),
+    () => allInstances.filter((instance) => !instance.is_archived),
     [allInstances],
   )
 
@@ -514,6 +514,7 @@ function RobotsPageContent() {
         .from('remote_instances')
         .select('id', { count: 'exact', head: true })
         .eq('site_id', siteId)
+        .eq('is_archived', false)
         .limit(1)
       
       if (error) {
@@ -885,7 +886,7 @@ function RobotsPageContent() {
       const supabase = createClient()
       const { error } = await supabase
         .from("remote_instances")
-        .update({ status: "archived", updated_at: new Date().toISOString() })
+        .update({ is_archived: true, updated_at: new Date().toISOString() })
         .eq("id", instance.id)
 
       if (error) throw error
@@ -914,11 +915,11 @@ function RobotsPageContent() {
 
   const handleOpenFromBrowser = async (instanceId: string) => {
     const instance = allInstances.find((candidate) => candidate.id === instanceId)
-    if (instance?.status === "archived") {
+    if (instance?.is_archived) {
       const supabase = createClient()
       const { error } = await supabase
         .from("remote_instances")
-        .update({ status: "inactive", updated_at: new Date().toISOString() })
+        .update({ is_archived: false, updated_at: new Date().toISOString() })
         .eq("id", instanceId)
 
       if (error) {
@@ -931,6 +932,19 @@ function RobotsPageContent() {
       }
 
       await refreshRobots(currentSite?.id)
+      setLocalSelectedInstanceId(instanceId)
+
+      const params = new URLSearchParams(searchParams.toString())
+      params.set("instance", instanceId)
+      params.set(
+        "name",
+        instance.requirement_title || instance.name || `ag-${instance.id.slice(-4)}`,
+      )
+      params.delete("artifact")
+      params.delete("screen")
+      params.delete("tab")
+      router.push(`/robots?${params.toString()}`)
+      return
     }
 
     await handleTabChangeFromOverflow(instanceId)

@@ -22,6 +22,7 @@ interface Robot {
   id: string;
   name: string;
   status: string;
+  is_archived: boolean;
   instance_type: string;
   provider_instance_id?: string;
   cdp_url?: string;
@@ -46,7 +47,7 @@ interface RobotsContextValue {
   getRobotsForActivity: (activityName: string) => Robot[];
   getActiveRobotForActivity: (activityName: string) => Robot | null;
   hasActiveRobotsForActivity: (activityName: string) => boolean;
-  getAllInstances: () => Robot[];
+  getAllInstances: (includeArchived?: boolean) => Robot[];
   getInstanceById: (id: string) => Robot | null;
   refreshRobots: (siteId?: string) => Promise<void>;
   setAutoRefreshEnabled: (enabled: boolean) => void;
@@ -139,7 +140,7 @@ export function RobotsProvider({ children }: RobotsProviderProps) {
       const supabase = createClient()
       const { data: robots, error: robotsError } = await supabase
         .from('remote_instances')
-        .select('id, status, instance_type, name, provider_instance_id, cdp_url, site_id, created_at, updated_at')
+        .select('id, status, is_archived, instance_type, name, provider_instance_id, cdp_url, site_id, created_at, updated_at')
         .eq('site_id', siteId)
         .order('updated_at', { ascending: false })
       
@@ -198,7 +199,7 @@ export function RobotsProvider({ children }: RobotsProviderProps) {
     const organized: RobotsByActivity = {}
     let runningCount = 0
 
-    const robots = robotsData || []
+    const robots = (robotsData || []).filter((robot: Robot) => !robot.is_archived)
 
     robots.forEach((robot: Robot) => {
       if (!organized[robot.name]) {
@@ -251,9 +252,10 @@ export function RobotsProvider({ children }: RobotsProviderProps) {
     )
   }, [getRobotsForActivity])
 
-  const getAllInstances = useCallback((): Robot[] => {
+  const getAllInstances = useCallback((includeArchived = false): Robot[] => {
+    if (includeArchived) return robotsData || []
     return Object.values(robotsByActivity).flat()
-  }, [robotsByActivity])
+  }, [robotsByActivity, robotsData])
 
   const getInstanceById = useCallback((id: string): Robot | null => {
     for (const list of Object.values(robotsByActivity)) {

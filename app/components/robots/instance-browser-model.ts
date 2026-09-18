@@ -1,10 +1,11 @@
-export type InstanceFilterTab = "all" | "nodes" | "workflows" | "files" | "requirements"
+export type InstanceFilterTab = "all" | "nodes" | "workflows" | "files" | "requirements" | "archived"
 export type InstanceSortBy = "newest" | "oldest" | "name_asc" | "name_desc" | "status"
 
 export interface RobotInstance {
   id: string
   name?: string
   status?: string
+  is_archived?: boolean
   requirement_title?: string
   created_at?: string
   updated_at?: string
@@ -93,7 +94,7 @@ export function getInstancePreview(messages?: InstanceMessages) {
 }
 
 export function instanceMatchesTab(stats: InstanceStats | undefined, tab: InstanceFilterTab) {
-  if (tab === "all") return true
+  if (tab === "all" || tab === "archived") return true
   if (!stats) return true
   if (tab === "nodes") return stats.nodes > 1
   if (tab === "workflows") return stats.workflows > 1
@@ -115,6 +116,12 @@ export function filterAndSortInstances(
   const query = normalizeSearch(searchQuery.trim())
 
   const filtered = instances.filter((instance) => {
+    if (tab === "archived") {
+      if (!instance.is_archived) return false
+    } else if (instance.is_archived) {
+      return false
+    }
+
     if (!instanceMatchesTab(statsById[instance.id], tab)) return false
     if (!query) return true
     const name = normalizeSearch(getInstanceDisplayName(instance))
@@ -140,9 +147,17 @@ export function countInstancesByTab(
   instances: RobotInstance[],
   statsById: Record<string, InstanceStats>
 ) {
-  const counts = { all: instances.length, nodes: 0, workflows: 0, files: 0, requirements: 0 }
+  const activeInstances = instances.filter((instance) => !instance.is_archived)
+  const counts = {
+    all: activeInstances.length,
+    nodes: 0,
+    workflows: 0,
+    files: 0,
+    requirements: 0,
+    archived: instances.length - activeInstances.length,
+  }
 
-  instances.forEach((instance) => {
+  activeInstances.forEach((instance) => {
     const stats = statsById[instance.id]
     if (!stats) return
     if (stats.nodes > 1) counts.nodes += 1

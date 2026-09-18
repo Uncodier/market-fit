@@ -7741,6 +7741,7 @@
   "robots.browser.table.updated": "Updated",
   "robots.browser.table.workflows": "Workflows",
   "robots.browser.tabs.all": "All",
+  "robots.browser.tabs.archived": "Archived",
   "robots.browser.tabs.files": "Files",
   "robots.browser.tabs.nodes": "Nodes",
   "robots.browser.tabs.requirements": "Requirements",

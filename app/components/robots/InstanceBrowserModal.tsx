@@ -6,7 +6,7 @@ import { SearchInput } from "@/app/components/ui/search-input"
 import { Tabs, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
 import { Button } from "@/app/components/ui/button"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/app/components/ui/dropdown-menu"
-import { Check, ChevronDown, ClipboardList, FileText, LayoutGrid, ListOrdered, NetworkTree, Workflow } from "@/app/components/ui/icons"
+import { Archive, Check, ChevronDown, ClipboardList, FileText, LayoutGrid, ListOrdered, NetworkTree, Workflow } from "@/app/components/ui/icons"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { cn } from "@/lib/utils"
 import { InstanceBrowserTable } from "./instance-browser-table"
@@ -34,6 +34,7 @@ const TABS: { value: InstanceFilterTab; icon: React.ComponentType<{ className?: 
   { value: "workflows", icon: Workflow },
   { value: "files", icon: FileText },
   { value: "requirements", icon: ClipboardList },
+  { value: "archived", icon: Archive },
 ]
 
 const SORT_OPTIONS: InstanceSortBy[] = ["newest", "oldest", "name_asc", "name_desc", "status"]
@@ -67,7 +68,8 @@ export function InstanceBrowserModal({
     if (tab === "nodes") return t("robots.browser.tabs.nodes") || "Nodes"
     if (tab === "workflows") return t("robots.browser.tabs.workflows") || "Workflows"
     if (tab === "files") return t("robots.browser.tabs.files") || "Files"
-    return t("robots.browser.tabs.requirements") || "Requirements"
+    if (tab === "requirements") return t("robots.browser.tabs.requirements") || "Requirements"
+    return t("robots.browser.tabs.archived") || "Archived"
   }
 
   const sortLabel = (value: InstanceSortBy) => {

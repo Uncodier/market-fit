@@ -52,6 +52,16 @@ describe("instance browser model", () => {
     expect(filterAndSortInstances(instances, "", "all", "newest", stats)).toHaveLength(3)
   })
 
+  it("hides archived instances unless the archived filter is active", () => {
+    const instances = [
+      instance({ id: "active", name: "Active instance" }),
+      instance({ id: "archived", name: "Archived instance", is_archived: true }),
+    ]
+
+    expect(filterAndSortInstances(instances, "", "all", "newest", {}).map((item) => item.id)).toEqual(["active"])
+    expect(filterAndSortInstances(instances, "", "archived", "newest", {}).map((item) => item.id)).toEqual(["archived"])
+  })
+
   it("sorts by name and newest without mutating the original list", () => {
     const older = instance({ id: "a", name: "Zebra", updated_at: "2026-01-01T00:00:00.000Z" })
     const newer = instance({ id: "b", name: "Alpha", updated_at: "2026-08-01T00:00:00.000Z" })
@@ -63,9 +73,13 @@ describe("instance browser model", () => {
   })
 
   it("counts instances that match each tab", () => {
-    const instances = [instance({ id: "one" }), instance({ id: "two" })]
+    const instances = [
+      instance({ id: "one" }),
+      instance({ id: "two" }),
+      instance({ id: "archived", is_archived: true }),
+    ]
     const stats = {
-      one: { ...emptyStats, nodes: 1, assets: 3 },
+      one: { ...emptyStats, nodes: 2, assets: 3 },
       two: { ...emptyStats, workflows: 2, requirements: 1 },
     }
 
@@ -75,6 +89,7 @@ describe("instance browser model", () => {
       workflows: 1,
       files: 1,
       requirements: 1,
+      archived: 1,
     })
   })
 })
