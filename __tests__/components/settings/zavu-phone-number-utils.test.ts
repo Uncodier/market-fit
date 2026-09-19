@@ -2,6 +2,7 @@ import {
   buildAvailablePhoneNumbersQuery,
   canAssignPhoneNumber,
   createPhoneConnectionMetadata,
+  filterPhoneNumbersForSite,
   formatPhoneCapabilities,
   hasPhoneCapability,
   unwrapPurchasedPhoneNumber,
@@ -74,5 +75,49 @@ describe("zavu phone number helpers", () => {
       capabilities: ["sms", "voice"],
       regulatoryStatus: "approved",
     })
+  })
+
+  it("hides numbers assigned to active channels on another site", () => {
+    const numbers = [
+      { id: "pn_other", phoneNumber: "+14155550100" },
+      { id: "pn_free", phoneNumber: "+14155550200" },
+    ]
+
+    expect(filterPhoneNumbersForSite(numbers, [
+      {
+        site_id: "site_other",
+        channels: {
+          connections: [{
+            status: "connected",
+            metadata: { phone_number_id: "pn_other", phone_number: "+14155550100" },
+          }],
+        },
+      },
+    ], "site_current")).toEqual([numbers[1]])
+  })
+
+  it("keeps numbers assigned to the current site or inactive channels", () => {
+    const numbers = [{ id: "pn_1", phoneNumber: "+14155550100" }]
+
+    expect(filterPhoneNumbersForSite(numbers, [
+      {
+        site_id: "site_current",
+        channels: JSON.stringify({
+          connections: [{
+            status: "connected",
+            metadata: { routing: { phone_number_id: "pn_1" } },
+          }],
+        }),
+      },
+      {
+        site_id: "site_other",
+        channels: {
+          connections: [{
+            status: "disconnected",
+            metadata: { phone_number: "+14155550100" },
+          }],
+        },
+      },
+    ], "site_current")).toEqual(numbers)
   })
 })

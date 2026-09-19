@@ -78,7 +78,9 @@ export function SmsChannelSetup({
   useEffect(() => {
     const fetchOwnedNumbers = async () => {
       try {
-        const response = await apiClient.get('/api/integrations/zavu/phone-numbers')
+        const response = await apiClient.get(
+          `/api/integrations/zavu/phone-numbers?siteId=${encodeURIComponent(siteId)}`
+        )
         if (response.success && response.data) {
           const numbers = unwrapZavuItems<ZavuPhoneNumber>(response.data)
           setOwnedNumbers(numbers)
@@ -94,7 +96,7 @@ export function SmsChannelSetup({
     }
     
     fetchOwnedNumbers()
-  }, [])
+  }, [siteId])
 
   const handleSearch = async () => {
     setIsSearching(true)
@@ -102,14 +104,17 @@ export function SmsChannelSetup({
     setSelectedNumber("")
     
     try {
-      const query = buildAvailablePhoneNumbersQuery({
+      const query = new URLSearchParams(buildAvailablePhoneNumbersQuery({
         countryCode,
         type: numberType,
         contains: numberContains,
         capabilities: ["sms"],
-      })
+      }))
+      query.set("siteId", siteId)
         
-      const response = await apiClient.get(`/api/integrations/zavu/phone-numbers/available?${query}`)
+      const response = await apiClient.get(
+        `/api/integrations/zavu/phone-numbers/available?${query.toString()}`
+      )
       
       if (!response.success) {
         throw new Error(response.error?.message || "Failed to search phone numbers")
@@ -145,7 +150,7 @@ export function SmsChannelSetup({
         { phoneNumber: selectedNumber }
 
       if (tab === "new") {
-        const reqUrl = `/api/integrations/zavu/phone-numbers/requirements?phoneNumber=${encodeURIComponent(selectedNumber)}`
+        const reqUrl = `/api/integrations/zavu/phone-numbers/requirements?siteId=${encodeURIComponent(siteId)}&phoneNumber=${encodeURIComponent(selectedNumber)}`
         const reqsResponse = await apiClient.get(reqUrl)
         if (!reqsResponse.success) {
           throw new Error(reqsResponse.error?.message || "Could not verify regulatory requirements")
@@ -156,6 +161,7 @@ export function SmsChannelSetup({
         // Zavu can reuse previously submitted regulatory data. If none is
         // reusable, it rejects without charging and returns the missing fields.
         const purchaseResponse = await apiClient.post("/api/integrations/zavu/phone-numbers", {
+          siteId,
           phoneNumber: selectedNumber,
           name: channel.name,
           type: numberType,
@@ -172,8 +178,6 @@ export function SmsChannelSetup({
         channelId: channel.id,
         name: channel.name,
         phoneNumber: selectedNumber,
-        phoneNumberId: purchasedNumber?.id || selected.id,
-        senderId: purchasedNumber?.senderId || selected.senderId,
         active: true,
       })
 
@@ -289,13 +293,21 @@ export function SmsChannelSetup({
                   </p>
                 </AlertDescription>
               </Alert>
+            ) : countryCode === "CA" ? (
+              <Alert className="bg-amber-50 dark:bg-amber-950/30 text-amber-900 dark:text-amber-200 border-amber-200 dark:border-amber-800 [&>svg]:text-amber-600 dark:[&>svg]:text-amber-400">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertTitle>No Phone-Number Documents Required</AlertTitle>
+                <AlertDescription className="mt-2 text-amber-800 dark:text-amber-300">
+                  Zavu sells Canadian numbers without phone-number regulatory requirements. Messaging compliance rules may still apply separately.
+                </AlertDescription>
+              </Alert>
             ) : (
               <Alert className="bg-amber-50 dark:bg-amber-950/30 text-amber-900 dark:text-amber-200 border-amber-200 dark:border-amber-800 [&>svg]:text-amber-600 dark:[&>svg]:text-amber-400">
                 <AlertTriangle className="h-4 w-4" />
                 <AlertTitle>Regulatory Requirements</AlertTitle>
                 <AlertDescription className="space-y-3 mt-2 text-amber-800 dark:text-amber-300">
                   <p>
-                    Purchasing non-US numbers for SMS might require basic Business Identity / Regulatory verification (address and business info) depending on local carrier regulations.
+                    Requirements vary by country and number type. Zavu checks the selected number before purchase and only requests documents when required.
                   </p>
                 </AlertDescription>
               </Alert>

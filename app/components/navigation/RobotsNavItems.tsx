@@ -59,7 +59,7 @@ export function RobotsNavItems({ isCollapsed }: RobotsNavItemsProps) {
         id="tour-agents-nav"
         href={agentHref}
         icon={Bot}
-        title={t("layout.sidebar.agents") || "Agents"}
+        title={t("layout.sidebar.agents") || "AI Workspace"}
         isActive={agentActive}
         isCollapsed={isCollapsed}
         onClick={() => {

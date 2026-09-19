@@ -1,3 +1,5 @@
+import { requestVoiceAgentResync } from "@/app/agents/voice-sync"
+
 export const AGENT_UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
@@ -58,6 +60,21 @@ function throwIfError(error: unknown): void {
   if (error) throw error
 }
 
+async function syncCustomerSupportVoiceAgent(
+  siteId: string,
+  role: string
+): Promise<void> {
+  if (role !== "Customer Support") return
+  await requestVoiceAgentResync(siteId)
+}
+
+function mergeConfiguration(
+  stored: Record<string, unknown> | null | undefined,
+  edited: Record<string, unknown>
+): Record<string, unknown> {
+  return { ...(stored || {}), ...edited }
+}
+
 /**
  * Inserts the agent when it does not exist, otherwise updates it.
  * Required columns (name, type, status, prompt) are always sent so a
@@ -73,7 +90,7 @@ export async function upsertAgentRecord(
   if (hasUuid) {
     const { data: existing, error: existingError } = await supabase
       .from("agents")
-      .select("id, role")
+      .select("id, role, configuration")
       .eq("id", input.agentId)
       .maybeSingle()
 
@@ -83,6 +100,7 @@ export async function upsertAgentRecord(
       ...row,
       id: input.agentId,
       role: existing?.role || row.role,
+      configuration: mergeConfiguration(existing?.configuration, row.configuration),
     }
 
     const { data, error } = await supabase
@@ -92,12 +110,14 @@ export async function upsertAgentRecord(
       .single()
 
     throwIfError(error)
-    return data?.id || input.agentId
+    const savedId = data?.id || input.agentId
+    await syncCustomerSupportVoiceAgent(input.siteId, payload.role)
+    return savedId
   }
 
   const { data: existingByRole, error: lookupError } = await supabase
     .from("agents")
-    .select("id")
+    .select("id, configuration")
     .eq("role", input.role)
     .eq("user_id", input.userId)
     .eq("site_id", input.siteId)
@@ -108,13 +128,18 @@ export async function upsertAgentRecord(
   if (existingByRole?.id) {
     const { data, error } = await supabase
       .from("agents")
-      .update(row)
+      .update({
+        ...row,
+        configuration: mergeConfiguration(existingByRole.configuration, row.configuration),
+      })
       .eq("id", existingByRole.id)
       .select("id")
       .single()
 
     throwIfError(error)
-    return data?.id || existingByRole.id
+    const savedId = data?.id || existingByRole.id
+    await syncCustomerSupportVoiceAgent(input.siteId, row.role)
+    return savedId
   }
 
   const { data, error } = await supabase
@@ -127,5 +152,6 @@ export async function upsertAgentRecord(
   if (!data?.id) {
     throw new Error("Agent was not created")
   }
+  await syncCustomerSupportVoiceAgent(input.siteId, row.role)
   return data.id
 }

@@ -2,6 +2,7 @@
 
 import type { Site, SiteSettings } from "./site-types"
 import { saveLogoToCache } from "@/lib/sites/logo-cache"
+import { requestVoiceAgentResync } from "@/app/agents/voice-sync"
 
 type CrudDeps = {
   supabase: any
@@ -75,6 +76,8 @@ export async function updateSiteRecord(site: Site, deps: CrudDeps) {
       // If settings provided, update them as well
       if (site.settings) {
         await updateSettings(site.id, site.settings)
+      } else {
+        await requestVoiceAgentResync(site.id)
       }
       
       // Update local state without full reload when preventing refresh

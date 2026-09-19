@@ -138,4 +138,30 @@ describe("RecordDiagramCanvas", () => {
     )
     expect(canvas.style.backgroundSize).toBe("")
   })
+
+  it("preserves a changed background when zooming", () => {
+    const onViewportChange = jest.fn()
+    const props = {
+      bounds: { width: 500, height: 400 },
+      initialViewport: { x: 20, y: 30, zoom: 1 },
+      onSort: jest.fn(),
+      onViewportChange,
+    }
+    const { rerender } = render(
+      <RecordDiagramCanvas {...props} background="dots">
+        <div>Diagram</div>
+      </RecordDiagramCanvas>
+    )
+
+    rerender(
+      <RecordDiagramCanvas {...props} background="columns">
+        <div>Diagram</div>
+      </RecordDiagramCanvas>
+    )
+    fireEvent.click(screen.getByRole("button", { name: "Zoom in" }))
+
+    expect(onViewportChange).toHaveBeenLastCalledWith(
+      expect.objectContaining({ background: "columns", zoom: 1.15 })
+    )
+  })
 })

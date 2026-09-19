@@ -1,6 +1,7 @@
 "use server"
 
 import { createClient } from "@/lib/supabase/server"
+import { requestServerVoiceAgentResync } from "@/app/agents/server-voice-sync"
 import { transformCampaignData } from "../utils/transformers"
 import { type CampaignFormValues } from "../../schema"
 
@@ -42,6 +43,7 @@ export async function findOrCreateCampaign(site_id: string, title: string) {
       .select()
       .single()
 
+    if (!error) await requestServerVoiceAgentResync(site_id)
     return { campaign, error: error?.message || null }
   } catch (error: any) {
     console.error("Error finding or creating campaign:", error)
@@ -112,6 +114,7 @@ export async function createCampaign(values: CampaignFormValues) {
       }
     }
 
+    await requestServerVoiceAgentResync(values.site_id)
     return { data: transformCampaignData(campaignData), error: null }
   } catch (error) {
     console.error("Error in createCampaign:", error)

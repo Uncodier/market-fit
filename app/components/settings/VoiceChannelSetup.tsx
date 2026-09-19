@@ -78,7 +78,9 @@ export function VoiceChannelSetup({
   useEffect(() => {
     const fetchOwnedNumbers = async () => {
       try {
-        const response = await apiClient.get('/api/integrations/zavu/phone-numbers')
+        const response = await apiClient.get(
+          `/api/integrations/zavu/phone-numbers?siteId=${encodeURIComponent(siteId)}`
+        )
         if (response.success && response.data) {
           const numbers = unwrapZavuItems<ZavuPhoneNumber>(response.data)
           setOwnedNumbers(numbers)
@@ -94,7 +96,7 @@ export function VoiceChannelSetup({
     }
     
     fetchOwnedNumbers()
-  }, [])
+  }, [siteId])
 
   const handleSearch = async () => {
     setIsSearching(true)
@@ -102,14 +104,17 @@ export function VoiceChannelSetup({
     setSelectedNumber("")
     
     try {
-      const query = buildAvailablePhoneNumbersQuery({
+      const query = new URLSearchParams(buildAvailablePhoneNumbersQuery({
         countryCode,
         type: numberType,
         contains: numberContains,
         capabilities: ["voice"],
-      })
+      }))
+      query.set("siteId", siteId)
         
-      const response = await apiClient.get(`/api/integrations/zavu/phone-numbers/available?${query}`)
+      const response = await apiClient.get(
+        `/api/integrations/zavu/phone-numbers/available?${query.toString()}`
+      )
       
       if (!response.success) {
         throw new Error(response.error?.message || "Failed to search phone numbers")
@@ -145,7 +150,7 @@ export function VoiceChannelSetup({
         { phoneNumber: selectedNumber }
 
       if (tab === "new") {
-        const reqUrl = `/api/integrations/zavu/phone-numbers/requirements?phoneNumber=${encodeURIComponent(selectedNumber)}`
+        const reqUrl = `/api/integrations/zavu/phone-numbers/requirements?siteId=${encodeURIComponent(siteId)}&phoneNumber=${encodeURIComponent(selectedNumber)}`
         const reqsResponse = await apiClient.get(reqUrl)
         if (!reqsResponse.success) {
           throw new Error(reqsResponse.error?.message || "Could not verify regulatory requirements")
@@ -154,6 +159,7 @@ export function VoiceChannelSetup({
         setRequirements(regulatoryRequirements)
 
         const purchaseResponse = await apiClient.post("/api/integrations/zavu/phone-numbers", {
+          siteId,
           phoneNumber: selectedNumber,
           name: channel.name,
           type: numberType,
@@ -170,8 +176,6 @@ export function VoiceChannelSetup({
         channelId: channel.id,
         name: channel.name,
         phoneNumber: selectedNumber,
-        phoneNumberId: purchasedNumber?.id || selected.id,
-        senderId: purchasedNumber?.senderId || selected.senderId,
         active: true,
       })
 
@@ -276,12 +280,12 @@ export function VoiceChannelSetup({
           </TabsContent>
 
           <TabsContent value="new" className="mt-4 space-y-4">
-            {countryCode === "US" ? (
+            {countryCode === "US" || countryCode === "CA" ? (
               <Alert className="bg-amber-50 dark:bg-amber-950/30 text-amber-900 dark:text-amber-200 border-amber-200 dark:border-amber-800 [&>svg]:text-amber-600 dark:[&>svg]:text-amber-400">
                 <AlertTriangle className="h-4 w-4" />
-                <AlertTitle>Business Identity / KYC Verification</AlertTitle>
+                <AlertTitle>No Regulatory Documents Required</AlertTitle>
                 <AlertDescription className="mt-2 text-amber-800 dark:text-amber-300">
-                  Purchasing US numbers for Voice might require basic Business Identity / KYC verification (address and business info) depending on local carrier regulations to keep the number active.
+                  Zavu sells US and Canadian numbers without phone-number regulatory requirements.
                 </AlertDescription>
               </Alert>
             ) : (
@@ -289,7 +293,7 @@ export function VoiceChannelSetup({
                 <AlertTriangle className="h-4 w-4" />
                 <AlertTitle>Regulatory Requirements</AlertTitle>
                 <AlertDescription className="mt-2 text-amber-800 dark:text-amber-300">
-                  Purchasing non-US numbers for Voice might require basic Business Identity / Regulatory verification (address and business info) depending on local carrier regulations.
+                  Requirements vary by country and number type. Zavu checks the selected number before purchase and only requests documents when required.
                 </AlertDescription>
               </Alert>
             )}

@@ -1,5 +1,14 @@
+jest.mock("../../app/services/api-client-service", () => ({
+  apiClient: {
+    patch: jest.fn(),
+  },
+}))
+
 import { upsertAgentRecord, type AgentUpsertInput } from "../../app/agents/save-agent"
 import { getDefaultAgentTemplate, resolveTemplateRole } from "../../app/agents/agent-defaults"
+import { apiClient } from "../../app/services/api-client-service"
+
+const mockPatch = apiClient.patch as jest.Mock
 
 const UUID = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
 
@@ -44,6 +53,11 @@ describe("upsertAgentRecord", () => {
     user_id: "user-1",
   }
 
+  beforeEach(() => {
+    mockPatch.mockClear()
+    mockPatch.mockResolvedValue({ success: true, data: { synced: false } })
+  })
+
   it("inserts a complete row when the template agent was never created", async () => {
     const lookup = createChain({ data: null, error: null })
     const insert = createChain({ data: { id: UUID }, error: null })
@@ -56,8 +70,11 @@ describe("upsertAgentRecord", () => {
     const savedId = await upsertAgentRecord({ from }, baseInput())
 
     expect(savedId).toBe(UUID)
-    expect(insert.insert).toHaveBeenCalledWith(expect.objectContaining(requiredFields))
-    expect(insert.insert.mock.calls[0][0]).not.toHaveProperty("id")
+    expect(insert.insert).toHaveBeenCalledWith([expect.objectContaining(requiredFields)])
+    expect(insert.insert.mock.calls[0][0][0]).not.toHaveProperty("id")
+    expect(mockPatch).toHaveBeenCalledWith("/api/integrations/zavu/voice", {
+      siteId: "site-1",
+    })
   })
 
   it("updates the existing row when one already exists for the same role and site", async () => {
@@ -113,6 +130,55 @@ describe("upsertAgentRecord", () => {
     )
   })
 
+  it("does not sync Voice when a UUID agent's stored role is not Customer Support", async () => {
+    const lookup = createChain({ data: { id: UUID, role: "Growth Marketer" }, error: null })
+    const upsert = createChain({ data: { id: UUID }, error: null })
+    const from = jest.fn(() => {
+      if (from.mock.calls.length === 1) return lookup
+      return upsert
+    })
+
+    await upsertAgentRecord({ from }, baseInput({ agentId: UUID }))
+
+    expect(mockPatch).not.toHaveBeenCalled()
+  })
+
+  it("preserves provider synchronization metadata when editing configuration", async () => {
+    const lookup = createChain({
+      data: {
+        id: UUID,
+        role: "Customer Support",
+        configuration: {
+          zavu: { agent_id: "agent_1", tool_webhook_secret: "encrypted" },
+          legacy: true,
+        },
+      },
+      error: null,
+    })
+    const upsert = createChain({ data: { id: UUID }, error: null })
+    const from = jest.fn(() => {
+      if (from.mock.calls.length === 1) return lookup
+      return upsert
+    })
+
+    await upsertAgentRecord(
+      { from },
+      baseInput({ agentId: UUID, configuration: { contextFiles: [], triggers: {} } })
+    )
+
+    expect(upsert.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        configuration: {
+          zavu: { agent_id: "agent_1", tool_webhook_secret: "encrypted" },
+          legacy: true,
+          contextFiles: [],
+          triggers: {},
+        },
+      }),
+      expect.any(Object)
+    )
+  })
+
   it("throws when supabase returns an error instead of pretending the save succeeded", async () => {
     const lookup = createChain({ data: null, error: null })
     const insert = createChain({
@@ -127,6 +193,21 @@ describe("upsertAgentRecord", () => {
     await expect(upsertAgentRecord({ from }, baseInput())).rejects.toMatchObject({
       message: expect.stringContaining("prompt"),
     })
+  })
+
+  it("keeps a successful local save when Voice synchronization fails", async () => {
+    const lookup = createChain({ data: null, error: null })
+    const insert = createChain({ data: { id: UUID }, error: null })
+    const from = jest.fn(() => {
+      if (from.mock.calls.length === 1) return lookup
+      return insert
+    })
+    mockPatch.mockResolvedValue({
+      success: false,
+      error: { message: "Zavu is unavailable" },
+    })
+
+    await expect(upsertAgentRecord({ from }, baseInput())).resolves.toBe(UUID)
   })
 })
 

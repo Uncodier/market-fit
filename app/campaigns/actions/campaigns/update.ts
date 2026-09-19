@@ -1,6 +1,7 @@
 "use server"
 
 import { createClient } from "@/lib/supabase/server"
+import { requestServerVoiceAgentResync } from "@/app/agents/server-voice-sync"
 import { transformCampaignData, isValidUUID } from "../utils/transformers"
 import { type CampaignFormValues } from "../../schema"
 import { type Campaign } from "@/app/types"
@@ -234,6 +235,7 @@ export async function updateCampaign(
     }
 
     console.log("[updateCampaign] Final transformed data:", JSON.stringify(transformedData));
+    await requestServerVoiceAgentResync(data.site_id)
     return { data: transformedData, error: null }
   } catch (error) {
     console.error("Error in updateCampaign:", error)

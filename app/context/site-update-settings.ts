@@ -1,6 +1,7 @@
 "use client"
 
 import type { Site, SiteSettings } from "./site-types"
+import { requestVoiceAgentResync } from "@/app/agents/voice-sync"
 
 type PersistArgs = {
   supabase: any
@@ -338,6 +339,7 @@ export async function persistSiteSettings({
           console.error("UPDATE SETTINGS ERROR detalles:", error.code, error.message, error.details);
           throw error;
         }
+        await requestVoiceAgentResync(siteId);
         
         
         // Verificar que se guardaron correctamente los datos

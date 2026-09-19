@@ -59,6 +59,14 @@ export function RecordDiagramCanvas({
   const [viewport, setViewport] = useState(initialViewport)
   const [isPanning, setIsPanning] = useState(false)
 
+  useEffect(() => {
+    const current = viewportRef.current
+    if ((current.background || "dots") === background) return
+    const next = { ...current, background }
+    viewportRef.current = next
+    setViewport(next)
+  }, [background])
+
   const commitViewport = useCallback((next: RecordDiagramViewport) => {
     viewportRef.current = next
     setViewport(next)
