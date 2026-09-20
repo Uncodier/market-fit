@@ -3,23 +3,16 @@
 import { useCallback, useEffect, useState } from "react"
 import { useFormContext, useFieldArray } from "react-hook-form"
 import { type SiteFormValues } from "./form-schema"
-import { FormField, FormItem, FormLabel, FormControl, FormMessage } from "../ui/form"
 import {
   SectionCard,
-  SectionCardHeader,
-  SectionCardTitle,
   SectionCardContent,
   SectionCardFooter,
 } from "@/app/components/ui/section-card"
 import { Button } from "@/app/components/ui/button"
-import { Popover, PopoverContent, PopoverTrigger, PopoverClose } from "@/app/components/ui/popover"
-import { ChevronDown } from "@/app/components/ui/icons"
-import { PlusCircle, Trash2 } from "@/app/components/ui/icons"
+import { PlusCircle } from "@/app/components/ui/icons"
 import { EmptyCard } from "@/app/components/ui/empty-card"
 import { GlobeIcon } from "@/app/components/ui/social-icons"
-import { ChannelIcon } from "@/app/components/channels/channel-icon"
 import { ConfirmDialog } from "@/app/components/ui/confirm-dialog"
-import { getChannelLabel } from "@/lib/site-channels"
 import { toast } from "sonner"
 import { v4 as uuidv4 } from "uuid"
 import { apiClient } from "@/app/services/api-client-service"
@@ -29,8 +22,14 @@ import { VoiceChannelSetup } from "./VoiceChannelSetup"
 import { SmsChannelSetup } from "./SmsChannelSetup"
 import { useZavuInvitationSync } from "./use-zavu-invitation-sync"
 import { useZavuPhoneStatusSync } from "./use-zavu-phone-status-sync"
-import { WhatsAppIcon, MessengerIcon, TelegramIcon } from "@/app/components/ui/social-icons"
-import { Mail, MessageSquare, Phone, Bot } from "@/app/components/ui/icons"
+import { reconcilePhoneConnections } from "./zavu-phone-number-utils"
+import { Bot } from "@/app/components/ui/icons"
+import {
+  getSupportChannelIcon,
+  getSupportChannelLabel,
+  SupportChannelHeader,
+  SupportChannelTypeSelector,
+} from "./support-channel-card-parts"
 
 import { countAgentChannels, getAgentChannelLimit, canConnectAgentChannel } from "@/lib/billing-limits"
 import { useSite } from "@/app/context/SiteContext"
@@ -39,27 +38,6 @@ import { disconnectZavuChannel, shouldDeleteZavuSender } from "./disconnect-remo
 import { useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import { buildSupportChannelNavigation } from "./support-channel-navigation"
-
-const CHANNEL_TYPES = [
-  { value: "whatsapp", label: "WhatsApp", icon: WhatsAppIcon },
-  { value: "messenger", label: "Messenger", icon: MessengerIcon },
-  { value: "telegram", label: "Telegram", icon: TelegramIcon },
-  { value: "email", label: "Email", icon: Mail },
-  { value: "sms", label: "SMS", icon: MessageSquare },
-  { value: "voice", label: "Voice / Audio Agent", icon: Phone },
-] as const
-
-const PARTNER_LINK_TYPES = new Set(["whatsapp", "messenger"])
-
-function getChannelIcon(type: string | undefined, size = 16) {
-  if (!type) return <GlobeIcon size={size} />
-  return <ChannelIcon channel={type} size={size} />
-}
-
-function channelLabel(type: string | undefined) {
-  if (!type) return "New Channel"
-  return CHANNEL_TYPES.find((item) => item.value === type)?.label || getChannelLabel(type)
-}
 
 interface SupportChannelsSectionProps {
   active: boolean
@@ -102,7 +80,7 @@ export function SupportChannelsSection({ active, siteId, onSave }: SupportChanne
       limit: getAgentChannelLimit(currentSite?.billing?.plan) + (currentSite?.billing?.addons_count || 0),
     })
   }
-  const { fields, prepend, remove, update } = useFieldArray({
+  const { fields, prepend, remove, replace, update } = useFieldArray({
     control: form.control,
     name: "channels.connections",
   })
@@ -158,45 +136,20 @@ export function SupportChannelsSection({ active, siteId, onSave }: SupportChanne
     })
   }, [prepend, currentSite, connections.length, showBillingLimit])
 
-  const persistPhoneConnection = useCallback(async (
+  const persistPhoneConnection = useCallback((
     index: number,
-    channel: any,
     payload: any,
   ) => {
-    const nextChannel = {
-      ...channel,
-      status: payload.status || "connected",
-      zavu_sender_id: payload.senderId,
-      connected_account: {
-        ...(channel.connected_account || {}),
-        id: payload.senderId,
-        channel: payload.channel,
-        phoneNumber: payload.phoneNumber,
-      },
-      metadata: {
-        ...(channel.metadata || {}),
-        phone_number: payload.phoneNumber,
-        phone_number_id: payload.phoneNumberId,
-        capabilities: payload.capabilities,
-        regulatory_status: payload.regulatoryStatus,
-        routing: {
-          channel: payload.channel,
-          sender_id: payload.senderId,
-          phone_number_id: payload.phoneNumberId,
-          phone_number: payload.phoneNumber,
-        },
-      },
-    }
-
-    update(index, nextChannel)
-    form.setValue(`channels.connections.${index}`, nextChannel, {
-      shouldDirty: true,
-      shouldTouch: true,
+    const nextConnections = reconcilePhoneConnections(
+      form.getValues("channels.connections") || [],
+      index,
+      payload,
+    )
+    replace(nextConnections)
+    form.setValue("channels.connections", nextConnections, {
+      shouldDirty: false,
     })
-    if (onSave) {
-      await onSave(form.getValues())
-    }
-  }, [form, onSave, update])
+  }, [form, replace])
 
   const handleConnect = async (index: number) => {
     const channel = form.getValues(`channels.connections.${index}`)
@@ -231,7 +184,7 @@ export function SupportChannelsSection({ active, siteId, onSave }: SupportChanne
         siteId,
         channelId: channel.id,
         connectionType: channel.type === "whatsapp" ? "whatsapp_waba" : "messenger",
-        name: channel.name || channelLabel(channel.type),
+        name: channel.name || getSupportChannelLabel(channel.type),
         active: true,
       })
 
@@ -244,7 +197,7 @@ export function SupportChannelsSection({ active, siteId, onSave }: SupportChanne
       update(index, {
         ...channel,
         id: payload.channelId || channel.id,
-        name: channel.name || channelLabel(channel.type),
+        name: channel.name || getSupportChannelLabel(channel.type),
         status: "pending",
         zavu_invitation_id: invitation.id,
         metadata: {
@@ -318,92 +271,20 @@ export function SupportChannelsSection({ active, siteId, onSave }: SupportChanne
             (type !== "email" || channel.metadata?.emailChannelActive === true)
           const invitationUrl = channel.metadata?.invitation_url
           const failureReason = channel.metadata?.failure_reason
-          const label = channel.name || channelLabel(type)
+          const label = channel.name || getSupportChannelLabel(type)
           const waitingForAuth = !!invitationUrl && channel.status !== "failed"
 
           return (
             <SectionCard key={field.id} id={`support-channel-${index}`}>
-              <SectionCardHeader>
-                <div className="flex items-center justify-between">
-                  <SectionCardTitle className="flex items-center gap-2">
-                    {getChannelIcon(type, 20)}
-                    {label}
-                  </SectionCardTitle>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    type="button"
-                    onClick={() => setChannelToDelete(index)}
-                    className="h-9 w-9 text-destructive hover:text-destructive hover:bg-destructive/10"
-                    title="Remove Channel"
-                  >
-                    <Trash2 className="h-5 w-5" />
-                  </Button>
-                </div>
-              </SectionCardHeader>
+              <SupportChannelHeader
+                label={label}
+                type={type}
+                onRemove={() => setChannelToDelete(index)}
+              />
 
                 {!hasType && (
                   <SectionCardContent className="pt-0">
-                    <FormField
-                      control={form.control}
-                      name={`channels.connections.${index}.type`}
-                      render={({ field: typeField }) => (
-                        <FormItem>
-                          <FormLabel>Channel</FormLabel>
-                          <Popover>
-                            <FormControl>
-                              <PopoverTrigger asChild>
-                                <Button
-                                  variant="outline"
-                                  className="flex h-10 w-full min-w-0 font-inter items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm text-left overflow-hidden font-normal"
-                                >
-                                  {typeField.value ? (() => {
-                                    const selectedItem = CHANNEL_TYPES.find(item => item.value === typeField.value)
-                                    const Icon = selectedItem?.icon
-                                    return (
-                                      <div className="flex items-center gap-2 overflow-hidden">
-                                        {Icon && <Icon size={16} className="flex-shrink-0" />}
-                                        <span className="truncate">{channelLabel(typeField.value)}</span>
-                                      </div>
-                                    )
-                                  })() : (
-                                    <span className="text-muted-foreground">Select Channel</span>
-                                  )}
-                                  <ChevronDown className="h-3.5 w-3.5 opacity-50 flex-shrink-0 ml-2" />
-                                </Button>
-                              </PopoverTrigger>
-                            </FormControl>
-                            <PopoverContent className="z-[50] w-[var(--radix-popover-trigger-width)] min-w-[200px] p-1" align="start">
-                              {CHANNEL_TYPES.map((item) => {
-                                const Icon = item.icon
-                                return (
-                                  <PopoverClose asChild key={item.value}>
-                                    <div
-                                      onClick={() => {
-                                        typeField.onChange(item.value)
-                                        form.setValue(`channels.connections.${index}.name`, channelLabel(item.value))
-                                      }}
-                                      className="cursor-pointer flex items-center justify-between w-full min-w-0 gap-2 px-2 py-1.5 rounded-sm hover:bg-accent hover:text-accent-foreground text-sm"
-                                    >
-                                      <div className="flex items-center gap-2 min-w-0 flex-1">
-                                        <Icon size={16} className="flex-shrink-0" />
-                                        <span className="truncate">{item.label}</span>
-                                      </div>
-                                      {PARTNER_LINK_TYPES.has(item.value) && (
-                                        <div className="text-[10px] font-medium shrink-0 bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300 border-0 px-1.5 rounded">
-                                          Partner Link
-                                        </div>
-                                      )}
-                                    </div>
-                                  </PopoverClose>
-                                )
-                              })}
-                            </PopoverContent>
-                          </Popover>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                    <SupportChannelTypeSelector form={form} index={index} />
                   </SectionCardContent>
                 )}
 
@@ -412,7 +293,7 @@ export function SupportChannelsSection({ active, siteId, onSave }: SupportChanne
                     <div className="flex flex-col sm:flex-row sm:items-center gap-4 w-full p-4 bg-muted/20 rounded-lg border dark:border-white/5 border-black/5 justify-between">
                       <div className="flex items-center gap-4 min-w-0">
                         <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center flex-shrink-0 border dark:border-white/5 border-black/5">
-                          {getChannelIcon(type, 24)}
+                          {getSupportChannelIcon(type, 24)}
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="text-base font-medium truncate">
@@ -461,7 +342,7 @@ export function SupportChannelsSection({ active, siteId, onSave }: SupportChanne
                     siteId={siteId}
                     channel={channel}
                     onConnected={async (payload) => {
-                      await persistPhoneConnection(index, channel, payload)
+                      await persistPhoneConnection(index, payload)
                     }}
                   />
                   ) : (
@@ -479,7 +360,7 @@ export function SupportChannelsSection({ active, siteId, onSave }: SupportChanne
                     siteId={siteId}
                     channel={channel}
                     onConnected={async (payload) => {
-                      await persistPhoneConnection(index, channel, payload)
+                      await persistPhoneConnection(index, payload)
                     }}
                   />
                   ) : (
@@ -528,7 +409,7 @@ export function SupportChannelsSection({ active, siteId, onSave }: SupportChanne
                       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 bg-orange-50 dark:bg-orange-900/10 rounded-lg border border-orange-100 dark:border-orange-900/30">
                         <div className="flex items-center gap-3 flex-1 min-w-0">
                           <div className="w-10 h-10 rounded-full bg-orange-100 dark:bg-orange-900/20 flex items-center justify-center flex-shrink-0 text-orange-600">
-                            {getChannelIcon(type, 20)}
+                            {getSupportChannelIcon(type, 20)}
                           </div>
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-medium truncate text-orange-800 dark:text-orange-200">

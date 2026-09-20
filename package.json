@@ -59,14 +59,14 @@
     "@supabase/ssr": "^0.5.2",
     "@supabase/supabase-js": "^2.49.1",
     "@tailwindcss/typography": "0.5.20",
-    "@tiptap/core": "2.11.7",
-    "@tiptap/extension-hard-break": "2.11.7",
-    "@tiptap/extension-image": "2.11.7",
-    "@tiptap/extension-link": "2.11.7",
-    "@tiptap/extension-text-align": "2.11.7",
-    "@tiptap/pm": "2.11.7",
-    "@tiptap/react": "2.11.7",
-    "@tiptap/starter-kit": "2.11.7",
+    "@tiptap/core": "3.31.3",
+    "@tiptap/extension-hard-break": "3.31.3",
+    "@tiptap/extension-image": "3.31.3",
+    "@tiptap/extension-link": "3.31.3",
+    "@tiptap/extension-text-align": "3.31.3",
+    "@tiptap/pm": "3.31.3",
+    "@tiptap/react": "3.31.3",
+    "@tiptap/starter-kit": "3.31.3",
     "@types/json2csv": "5.0.7",
     "@types/lodash": "^4.17.16",
     "@types/react-dom": "^19.0.0",
@@ -86,7 +86,7 @@
     "date-fns-tz": "3.2.0",
     "dexie": "4.4.4",
     "dotenv": "17.4.2",
-    "fflate": "0.8.2",
+    "fflate": "0.8.3",
     "force-graph": "1.51.4",
     "framer-motion": "13.2.0",
     "glob": "13.0.6",
@@ -171,6 +171,9 @@
     "d3-interpolate": "^3.0.1",
     "d3-transition": "^3.0.1",
     "d3-zoom": "^3.0.0",
-    "postcss": "^8.5.10"
+    "postcss": "^8.5.10",
+    "shiplightai": {
+      "sharp": "0.35.4"
+    }
   }
 }

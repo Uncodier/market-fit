@@ -4,13 +4,15 @@ import { useCallback, useState } from "react";
 import { v4 as uuidv4 } from "uuid";
 import { toast } from "sonner";
 import type { RelationSelectValue } from "@/app/components/ui/relation-select";
-import { resolveRelationId } from "@/app/commerce/resolve-relation";
 import { roundMoney } from "@/app/commerce/taxes";
 import type { CheckoutLine } from "@/app/commerce/checkout";
 import type { PosCartItem } from "@/app/pos/components/CartPanel";
 import { getPosCheckoutGate } from "@/app/pos/checkout-gates";
 import type { CheckoutFulfillmentMethod } from "@/app/commerce/delivery-options";
-import { enqueueCheckout } from "@/app/pos/local/outbox";
+import {
+  enqueueCheckout,
+  enqueueCreateLead,
+} from "@/app/pos/local/outbox";
 import { drainPosOutbox, refreshPosSyncCounts } from "@/app/pos/local/sync-engine";
 import { getPosDb } from "@/app/pos/local/db";
 import { useSite } from "@/app/context/SiteContext";
@@ -18,6 +20,7 @@ import { normalizePrintersSettings, ticketBrandFromSite } from "@/lib/printer";
 import { printAfterPosCheckout, receiptFromPosCart } from "@/app/pos/print-after-checkout";
 import type { PosShippingAddress } from "@/app/pos/shipping-address";
 import { createPendingSplitOrders as enqueuePendingSplitOrders } from "@/app/pos/create-pending-split-orders";
+import { planPosLeadSync } from "@/app/pos/lead-utils";
 
 type Payment = {
   method: string;
@@ -153,6 +156,30 @@ export function usePosCheckout({
           groupId: m.groupId,
         })),
       }));
+
+  const prepareLeadForSync = async (
+    value: RelationSelectValue,
+  ): Promise<{
+    resolvedLeadId: string | null;
+    localLeadId: string | null;
+  }> => {
+    if (!siteId) {
+      return { resolvedLeadId: null, localLeadId: null };
+    }
+
+    const plan = planPosLeadSync(value, uuidv4);
+    if (plan.createLead) {
+      await enqueueCreateLead(siteId, {
+        siteId,
+        ...plan.createLead,
+      });
+    }
+
+    return {
+      resolvedLeadId: plan.resolvedLeadId,
+      localLeadId: plan.localLeadId,
+    };
+  };
 
   const enqueueAndFinishCheckout = async (params: {
     payments: Payment[];
@@ -342,32 +369,8 @@ export function usePosCheckout({
 
     setCheckoutLoading(true);
     try {
-      let resolvedLeadId: string | null = null;
-      let localLeadId: string | null = null;
-
-      const online = typeof navigator === "undefined" ? true : navigator.onLine;
-      if (
-        leadRelationValue &&
-        typeof leadRelationValue === "object" &&
-        leadRelationValue.mode === "existing" &&
-        leadRelationValue.id?.startsWith("local_")
-      ) {
-        localLeadId = leadRelationValue.id;
-      } else if (online && leadRelationValue) {
-        const { id, error: leadError } = await resolveRelationId(
-          "lead",
-          leadRelationValue,
-          siteId,
-        );
-        if (leadError) throw new Error(`Lead error: ${leadError}`);
-        resolvedLeadId = id;
-      } else if (
-        leadRelationValue &&
-        typeof leadRelationValue === "object" &&
-        leadRelationValue.mode === "existing"
-      ) {
-        resolvedLeadId = leadRelationValue.id;
-      }
+      const { resolvedLeadId, localLeadId } =
+        await prepareLeadForSync(leadRelationValue);
 
       if (requiresCustomer && !resolvedLeadId && !localLeadId) {
         toast.error(
@@ -409,32 +412,8 @@ export function usePosCheckout({
 
     setCheckoutLoading(true);
     try {
-      let resolvedLeadId: string | null = null;
-      let localLeadId: string | null = null;
-      const online = typeof navigator === "undefined" ? true : navigator.onLine;
-
-      if (
-        effectiveLeadRelation &&
-        typeof effectiveLeadRelation === "object" &&
-        effectiveLeadRelation.mode === "existing" &&
-        effectiveLeadRelation.id?.startsWith("local_")
-      ) {
-        localLeadId = effectiveLeadRelation.id;
-      } else if (online && effectiveLeadRelation) {
-        const { id, error: leadError } = await resolveRelationId(
-          "lead",
-          effectiveLeadRelation,
-          siteId,
-        );
-        if (leadError) throw new Error(`Lead error: ${leadError}`);
-        resolvedLeadId = id;
-      } else if (
-        effectiveLeadRelation &&
-        typeof effectiveLeadRelation === "object" &&
-        effectiveLeadRelation.mode === "existing"
-      ) {
-        resolvedLeadId = effectiveLeadRelation.id;
-      }
+      const { resolvedLeadId, localLeadId } =
+        await prepareLeadForSync(effectiveLeadRelation);
 
       await enqueueAndFinishCheckout({
         payments: [],

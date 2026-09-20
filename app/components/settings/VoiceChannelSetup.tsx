@@ -18,6 +18,8 @@ import {
   createPhoneConnectionMetadata,
   formatPhoneCapabilities,
   getRequirementSummary,
+  getVoiceConnectionSuccessMessage,
+  getVoiceConnectionStatus,
   unwrapPurchasedPhoneNumber,
   unwrapZavuItems,
   type ZavuPhoneNumber,
@@ -192,15 +194,12 @@ export function VoiceChannelSetup({
       if (!payload.senderId) {
         throw new Error("Zavu did not return a sender ID for the Voice channel")
       }
+      const status = getVoiceConnectionStatus(payload)
       await onConnected({
         ...payload,
-        status: payload.regulatoryStatus === "pending_review" ? "in_progress" : "connected",
+        status,
       })
-      toast.success(
-        payload.regulatoryStatus === "pending_review"
-          ? "Number purchased. Voice will be available after regulatory approval."
-          : "Voice channel connected successfully and tools registered."
-      )
+      toast.success(getVoiceConnectionSuccessMessage(status))
     } catch (error: any) {
       const message = error.message || "An error occurred"
       toast.error(

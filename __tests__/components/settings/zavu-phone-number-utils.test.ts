@@ -4,7 +4,10 @@ import {
   createPhoneConnectionMetadata,
   filterPhoneNumbersForSite,
   formatPhoneCapabilities,
+  getVoiceConnectionSuccessMessage,
+  getVoiceConnectionStatus,
   hasPhoneCapability,
+  reconcilePhoneConnections,
   unwrapPurchasedPhoneNumber,
   unwrapZavuItems,
 } from "@/app/components/settings/zavu-phone-number-utils"
@@ -77,6 +80,53 @@ describe("zavu phone number helpers", () => {
     })
   })
 
+  it("keeps Voice in progress while its agent is inactive", () => {
+    expect(getVoiceConnectionStatus({
+      agentEnabled: false,
+      regulatoryStatus: "approved",
+    })).toBe("pending")
+    expect(getVoiceConnectionStatus({
+      agentEnabled: true,
+      regulatoryStatus: "approved",
+    })).toBe("connected")
+    expect(getVoiceConnectionSuccessMessage("pending")).toBe(
+      "Number reserved. Activate the Customer Support agent to enable Voice."
+    )
+    expect(getVoiceConnectionSuccessMessage("pending")).not.toContain(
+      "connected successfully"
+    )
+  })
+
+  it("reconciles all connections from the authoritative backend response", () => {
+    const staleConnections = [{
+      id: "voice-1",
+      type: "voice",
+      status: "pending",
+      zavu_sender_id: "sender_old",
+    }, {
+      id: "sms-1",
+      type: "sms",
+      status: "connected",
+      zavu_sender_id: "sender_old",
+    }]
+    const canonicalConnections = [{
+      id: "voice-1",
+      type: "voice",
+      status: "connected",
+      zavu_sender_id: "sender_new",
+      metadata: { activation_pending: false },
+    }, {
+      id: "sms-1",
+      type: "sms",
+      status: "connected",
+      zavu_sender_id: "sender_new",
+    }]
+
+    expect(reconcilePhoneConnections(staleConnections, 0, {
+      connections: canonicalConnections,
+    })).toEqual(canonicalConnections)
+  })
+
   it("hides numbers assigned to active channels on another site", () => {
     const numbers = [
       { id: "pn_other", phoneNumber: "+14155550100" },
@@ -94,6 +144,20 @@ describe("zavu phone number helpers", () => {
         },
       },
     ], "site_current")).toEqual([numbers[1]])
+  })
+
+  it("hides numbers reserved by pending channels on another site", () => {
+    const numbers = [{ id: "pn_pending", phoneNumber: "+14155550100" }]
+
+    expect(filterPhoneNumbersForSite(numbers, [{
+      site_id: "site_other",
+      channels: {
+        connections: [{
+          status: "pending",
+          metadata: { phone_number_id: "pn_pending" },
+        }],
+      },
+    }], "site_current")).toEqual([])
   })
 
   it("keeps numbers assigned to the current site or inactive channels", () => {

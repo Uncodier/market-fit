@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react"
 import { apiClient } from "@/app/services/api-client-service"
+import { useSite } from "@/app/context/SiteContext"
 import {
   unwrapZavuItems,
   type ZavuPhoneNumber,
@@ -13,6 +14,8 @@ type PhoneConnection = {
     phone_number?: string
     phone_number_id?: string
     regulatory_status?: string
+    agent_enabled?: boolean
+    activation_pending?: boolean
     failure_reason?: string
     [key: string]: unknown
   }
@@ -33,10 +36,22 @@ export function applyRegulatoryStatuses(
     if (!phoneNumber?.regulatoryStatus) return connection
 
     if (phoneNumber.regulatoryStatus === "approved") {
+      const nextStatus =
+        connection.metadata?.agent_enabled === false ||
+        connection.metadata?.activation_pending === true
+          ? "in_progress"
+          : "connected"
+      if (
+        connection.status === nextStatus &&
+        connection.metadata?.regulatory_status === "approved" &&
+        connection.metadata?.failure_reason === undefined
+      ) {
+        return connection
+      }
       changed = true
       return {
         ...connection,
-        status: "connected",
+        status: nextStatus,
         metadata: {
           ...connection.metadata,
           regulatory_status: "approved",
@@ -45,6 +60,14 @@ export function applyRegulatoryStatuses(
       }
     }
     if (phoneNumber.regulatoryStatus === "rejected") {
+      if (
+        connection.status === "failed" &&
+        connection.metadata?.regulatory_status === "rejected" &&
+        connection.metadata?.failure_reason ===
+          "Phone number regulatory review was rejected."
+      ) {
+        return connection
+      }
       changed = true
       return {
         ...connection,
@@ -68,8 +91,12 @@ export function useZavuPhoneStatusSync(params: {
   onConnectionsChange: (connections: PhoneConnection[]) => void | Promise<void>
   intervalMs?: number
 }) {
+  const { currentSite } = useSite()
+  const siteId = currentSite?.id
   const callbackRef = useRef(params.onConnectionsChange)
+  const connectionsRef = useRef(params.connections)
   callbackRef.current = params.onConnectionsChange
+  connectionsRef.current = params.connections
 
   const pendingKey = params.connections
     .filter((connection) => connection.status === "in_progress")
@@ -81,14 +108,16 @@ export function useZavuPhoneStatusSync(params: {
     .join(",")
 
   useEffect(() => {
-    if (!params.enabled || !pendingKey) return
+    if (!params.enabled || !siteId || !pendingKey) return
     let cancelled = false
 
     const sync = async () => {
-      const response = await apiClient.get("/api/integrations/zavu/phone-numbers")
+      const response = await apiClient.get(
+        `/api/integrations/zavu/phone-numbers?siteId=${encodeURIComponent(siteId)}`
+      )
       if (cancelled || !response.success) return
       const result = applyRegulatoryStatuses(
-        params.connections,
+        connectionsRef.current,
         unwrapZavuItems<ZavuPhoneNumber>(response.data)
       )
       if (result.changed) {
@@ -102,5 +131,5 @@ export function useZavuPhoneStatusSync(params: {
       cancelled = true
       window.clearInterval(interval)
     }
-  }, [params.connections, params.enabled, params.intervalMs, pendingKey])
+  }, [params.enabled, params.intervalMs, siteId, pendingKey])
 }

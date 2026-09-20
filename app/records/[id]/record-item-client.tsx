@@ -183,7 +183,9 @@ export default function RecordDetailPage() {
 
   useEffect(() => {
     if (editor && record && hydratedRecordIdRef.current !== record.id) {
-      editor.commands.setContent(markdownToHTML(record.description || ""), false)
+      editor.commands.setContent(markdownToHTML(record.description || ""), {
+        emitUpdate: false,
+      })
       hydratedRecordIdRef.current = record.id
     }
   }, [editor, record])

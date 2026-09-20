@@ -123,7 +123,7 @@ export function filterPhoneNumbersForSite(
   for (const row of settingsRows) {
     if (!row.site_id || row.site_id === currentSiteId) continue
     for (const connection of getSitePhoneConnections(row.channels)) {
-      if (connection.status !== "connected" && connection.status !== "in_progress") continue
+      if (!["connected", "in_progress", "pending"].includes(connection.status || "")) continue
       const phoneNumberId =
         connection.metadata?.phone_number_id ||
         connection.metadata?.routing?.phone_number_id
@@ -166,6 +166,72 @@ export function getRequirementSummary(requirements: ZavuRegulatoryRequirement[])
       .filter((item) => item.type !== "action")
       .map((item) => item.name || item.description || item.type || "Additional information")
   )
+}
+
+export function getVoiceConnectionStatus(params: {
+  agentEnabled?: unknown
+  regulatoryStatus?: unknown
+}): "connected" | "in_progress" | "pending" {
+  if (params.agentEnabled === false) return "pending"
+  return params.regulatoryStatus === "pending_review" ? "in_progress" : "connected"
+}
+
+export function getVoiceConnectionSuccessMessage(
+  status: "connected" | "in_progress" | "pending"
+): string {
+  if (status === "pending") {
+    return "Number reserved. Activate the Customer Support agent to enable Voice."
+  }
+  if (status === "in_progress") {
+    return "Number connected. Voice will be available after activation requirements are complete."
+  }
+  return "Voice channel connected successfully and tools registered."
+}
+
+export function reconcilePhoneConnections(
+  currentConnections: Record<string, any>[],
+  index: number,
+  payload: Record<string, any>
+): Record<string, any>[] {
+  if (Array.isArray(payload.connections)) {
+    return payload.connections
+  }
+
+  const current = currentConnections[index] || {}
+  const connection =
+    payload.connection && typeof payload.connection === "object"
+      ? payload.connection
+      : {
+          ...current,
+          status: payload.status || "connected",
+          zavu_sender_id: payload.senderId,
+          connected_account: {
+            ...(current.connected_account || {}),
+            id: payload.senderId,
+            channel: payload.channel,
+            phoneNumber: payload.phoneNumber,
+          },
+          metadata: {
+            ...(current.metadata || {}),
+            phone_number: payload.phoneNumber,
+            phone_number_id: payload.phoneNumberId,
+            capabilities: payload.capabilities,
+            regulatory_status: payload.regulatoryStatus,
+            agent_enabled: payload.agentEnabled,
+            activation_pending: payload.activationPending,
+            zavu_agent_id: payload.zavuAgentId,
+            routing: {
+              channel: payload.channel,
+              sender_id: payload.senderId,
+              phone_number_id: payload.phoneNumberId,
+              phone_number: payload.phoneNumber,
+            },
+          },
+        }
+
+  const nextConnections = [...currentConnections]
+  nextConnections[index] = connection
+  return nextConnections
 }
 
 export function createPhoneConnectionMetadata(params: {
