@@ -324,6 +324,9 @@ export const adaptSiteToForm = (site: Site): AdaptedSiteFormValues => {
           track_visitors: channels.website?.track_visitors ?? site.tracking?.track_visitors ?? false,
           track_actions: channels.website?.track_actions ?? site.tracking?.track_actions ?? false,
           record_screen: channels.website?.record_screen ?? site.tracking?.record_screen ?? false,
+          show_cookie_consent: channels.website?.show_cookie_consent
+            ?? site.tracking?.privacy?.cookie_consent
+            ?? false,
           enable_chat: channels.website?.enable_chat ?? site.tracking?.enable_chat ?? false,
           chat_accent_color: channels.website?.chat_accent_color ?? site.tracking?.chat_accent_color ?? "#e0ff17",
           allow_anonymous_messages: channels.website?.allow_anonymous_messages ?? site.tracking?.allow_anonymous_messages ?? false,
@@ -379,6 +382,7 @@ export const adaptSiteToForm = (site: Site): AdaptedSiteFormValues => {
         track_visitors: site.tracking?.track_visitors ?? false,
         track_actions: site.tracking?.track_actions ?? false,
         record_screen: site.tracking?.record_screen ?? false,
+        show_cookie_consent: site.tracking?.privacy?.cookie_consent ?? false,
         enable_chat: site.tracking?.enable_chat ?? false,
         chat_accent_color: site.tracking?.chat_accent_color ?? "#e0ff17",
         allow_anonymous_messages: site.tracking?.allow_anonymous_messages ?? false,
@@ -405,6 +409,9 @@ export const adaptSiteToForm = (site: Site): AdaptedSiteFormValues => {
         track_visitors: channels?.website?.track_visitors ?? site.tracking?.track_visitors ?? false,
         track_actions: channels?.website?.track_actions ?? site.tracking?.track_actions ?? false,
         record_screen: channels?.website?.record_screen ?? site.tracking?.record_screen ?? false,
+        show_cookie_consent: channels?.website?.show_cookie_consent
+          ?? site.tracking?.privacy?.cookie_consent
+          ?? false,
         enable_chat: channels?.website?.enable_chat ?? site.tracking?.enable_chat ?? false,
         chat_accent_color: channels?.website?.chat_accent_color ?? site.tracking?.chat_accent_color ?? "#e0ff17",
         allow_anonymous_messages: channels?.website?.allow_anonymous_messages ?? site.tracking?.allow_anonymous_messages ?? false,

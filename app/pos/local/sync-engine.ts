@@ -11,6 +11,7 @@ import {
 import { pullAndStorePosCatalogSnapshot, applyPosOpenOrders } from "./snapshot-pull";
 import { getPosCatalogRevision } from "@/app/pos/actions/sync-revision";
 import { listPosOpenOrders } from "@/app/pos/actions/list-open-orders";
+import { updateOrderNotes } from "@/app/orders/actions";
 import {
   shouldRunCatalogPull,
   shouldRunOrdersPull,
@@ -156,6 +157,19 @@ async function applyOutboxItem(row: PosOutboxRow): Promise<void> {
       siteId: data.siteId,
       clientMutationId: data.clientMutationId,
     });
+    if (res.error) throw new Error(res.error);
+    await updateOutboxRow(row.id, { status: "synced", lastError: null });
+    return;
+  }
+
+  if (row.payload.kind === "update_order_notes") {
+    const data = row.payload.data;
+    const orderId = data.orderId.startsWith("local_")
+      ? await getServerIdForLocal(data.orderId)
+      : data.orderId;
+    if (!orderId) throw new Error("Waiting for local order to sync");
+
+    const res = await updateOrderNotes(data.siteId, orderId, data.notes);
     if (res.error) throw new Error(res.error);
     await updateOutboxRow(row.id, { status: "synced", lastError: null });
     return;

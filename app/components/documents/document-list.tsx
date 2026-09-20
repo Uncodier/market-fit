@@ -250,11 +250,13 @@ export function EntityCell({
   secondary,
   meta,
   secondaryMono = true,
+  secondaryLines = 1,
 }: {
   name?: string | null
   secondary?: string | null
   meta?: string | null
   secondaryMono?: boolean
+  secondaryLines?: 1 | 2
 }) {
   const displayName = (name || "").trim() || "—"
   return (
@@ -264,7 +266,8 @@ export function EntityCell({
         <p className="truncate text-sm font-medium leading-tight text-foreground">{displayName}</p>
         {secondary ? (
           <p className={cn(
-            "truncate text-[11px] leading-tight text-muted-foreground",
+            "text-[11px] leading-tight text-muted-foreground",
+            secondaryLines === 2 ? "line-clamp-2" : "truncate",
             secondaryMono && "font-mono"
           )}>{secondary}</p>
         ) : null}

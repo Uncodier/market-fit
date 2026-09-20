@@ -23,6 +23,7 @@ export type RelationSelectValue =
 export interface RelationSelectOption {
   id: string
   label: string
+  description?: string
   searchText?: string
   /** Optional dropdown section label; consecutive options with the same group share one header. */
   group?: string
@@ -303,7 +304,14 @@ export function RelationSelect({
                       )}
                       onClick={() => handleSelectExisting(option)}
                     >
-                      {option.label}
+                      <div className="min-w-0">
+                        <div className="truncate">{option.label}</div>
+                        {option.description && (
+                          <div className="truncate text-xs text-muted-foreground">
+                            {option.description}
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </React.Fragment>
                 )

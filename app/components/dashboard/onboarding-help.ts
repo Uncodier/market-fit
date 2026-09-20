@@ -4,6 +4,15 @@ export function openOnboardingTaskHelp(title: string, description: string) {
   // Option 1: First try to use the chat copilot sidebar widget if it's available
   const api = (
     window as Window & {
+      Makinari?: {
+        openChatWithTask?: (options: {
+          welcomeMessage: string
+          task: string
+          clearExistingMessages: boolean
+          newConversation: boolean
+          activity?: string
+        }) => void
+      }
       MarketFit?: {
         openChatWithTask?: (options: {
           welcomeMessage: string
@@ -14,6 +23,8 @@ export function openOnboardingTaskHelp(title: string, description: string) {
         }) => void
       }
     }
+  ).Makinari ?? (
+    window as Window & { MarketFit?: { openChatWithTask?: (options: any) => void } }
   ).MarketFit
   
   if (api?.openChatWithTask) {

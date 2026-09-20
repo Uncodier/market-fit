@@ -7,6 +7,10 @@ import {
 import { Receipt } from "@/app/components/ui/icons";
 import { formatPosOrderLabel } from "@/app/pos/order-label";
 import {
+  formatOrderListDescription,
+  orderProductSearchText,
+} from "@/app/orders/order-list-description";
+import {
   posOpenOrderGroupKey,
   selectPosOpenOrders,
 } from "@/app/pos/open-orders";
@@ -58,7 +62,15 @@ export function PosOrderSelect({
           t,
           o.id === activeOrderId ? orderNotes : undefined,
         ),
-        searchText: [o.notes, o.leads?.name].filter(Boolean).join(" "),
+        description: formatOrderListDescription(o),
+        searchText: [
+          o.order_number,
+          o.notes,
+          o.leads?.name,
+          orderProductSearchText(o.sale_order_items),
+        ]
+          .filter(Boolean)
+          .join(" "),
         group: groupLabels[posOpenOrderGroupKey(o.status)],
       }))}
       value={value}

@@ -1,4 +1,5 @@
 import { SaleOrderData, SaleOrder } from "@/app/types"
+import type { OrderListItem } from "@/app/orders/order-list-description"
 
 export interface OrderParams {
   siteId: string;
@@ -26,7 +27,14 @@ export interface OrderWithRelations extends SaleOrderData {
   shipments?: { id: string; status: string; tracking_number?: string; carrier?: string }[];
   price_lists?: { name: string };
   promotions?: { name: string; code: string };
-  sale_order_items?: any[];
+  sale_order_items?: Array<
+    OrderListItem & {
+      id?: string;
+      catalog_item_id?: string | null;
+      unit_price?: number | null;
+      status?: string | null;
+    }
+  >;
   created_by?: { id: string; name?: string | null; email?: string | null } | null;
   seller?: { id: string; name?: string | null; email?: string | null } | null;
   requested_by?: { id: string; name?: string | null; email?: string | null } | null;

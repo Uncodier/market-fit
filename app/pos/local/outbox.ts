@@ -6,6 +6,7 @@ import type {
   CreateLeadOutboxPayload,
   OutboxStatus,
   PosOutboxRow,
+  UpdateOrderNotesOutboxPayload,
 } from "./types";
 
 function nowIso() {
@@ -74,6 +75,32 @@ export async function enqueueCreateLead(
     kind: "create_lead",
     clientMutationId: data.clientMutationId,
     payload: { kind: "create_lead", data },
+  });
+}
+
+export async function enqueueOrderNotesUpdate(
+  siteId: string,
+  data: UpdateOrderNotesOutboxPayload,
+) {
+  const db = getPosDb();
+  const previousUpdates = await db.outbox
+    .where("siteId")
+    .equals(siteId)
+    .filter(
+      (row) =>
+        row.payload.kind === "update_order_notes" &&
+        row.payload.data.orderId === data.orderId,
+    )
+    .primaryKeys();
+  if (previousUpdates.length > 0) {
+    await db.outbox.bulkDelete(previousUpdates);
+  }
+
+  return enqueueOutbox({
+    siteId,
+    kind: "update_order_notes",
+    clientMutationId: data.clientMutationId,
+    payload: { kind: "update_order_notes", data },
   });
 }
 

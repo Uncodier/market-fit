@@ -45,6 +45,7 @@ type UsePosCheckoutArgs = {
     byConditions: boolean;
   } | null;
   activeOrderId: string;
+  existingPaymentTotal?: number;
   buyerUserId: string | null;
   orderNotes?: string;
   shippingAddress?: PosShippingAddress;
@@ -72,6 +73,7 @@ export function usePosCheckout({
   promoCode,
   appliedPromo = null,
   activeOrderId,
+  existingPaymentTotal = 0,
   buyerUserId,
   orderNotes = "",
   shippingAddress,
@@ -86,6 +88,7 @@ export function usePosCheckout({
   const { currentSite } = useSite();
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
+  const amountDue = roundMoney(Math.max(0, total - existingPaymentTotal));
 
   const applyCheckoutGate = (
     leadReason: "checkout" | "send",
@@ -203,12 +206,14 @@ export function usePosCheckout({
     refreshPosSyncCounts(siteId);
 
     const totalPaid = params.payments.reduce((sum, p) => sum + p.amount, 0);
-    const amountDue = roundMoney(Math.max(0, total - totalPaid));
+    const nextAmountDue = roundMoney(
+      Math.max(0, amountDue - totalPaid),
+    );
     const db = getPosDb();
     if (activeOrderId !== "new") {
       await db.pendingOrders.delete(activeOrderId);
     }
-    if (amountDue > 0) {
+    if (nextAmountDue > 0) {
       const status = params.intent === "complete" ? "completed" : "pending";
       const id =
         activeOrderId !== "new" ? activeOrderId : `local_${clientMutationId}`;
@@ -220,14 +225,14 @@ export function usePosCheckout({
         created_at: createdAt,
         lead_id: params.resolvedLeadId || null,
         price_list_id: priceListId !== "none" ? priceListId : null,
-        amount_due: amountDue,
+        amount_due: nextAmountDue,
         payment_status: "unpaid",
         raw: {
           id,
           status,
           created_at: createdAt,
           leads: null,
-          amount_due: amountDue,
+          amount_due: nextAmountDue,
           payment_status: "unpaid",
           client_mutation_id: clientMutationId,
           seller_user_id: sellerUserId || userId,
@@ -312,7 +317,7 @@ export function usePosCheckout({
 
     const resolvedIntent = intent || "pay";
     const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0);
-    const remainingAmount = roundMoney(total - totalPaid);
+    const remainingAmount = roundMoney(amountDue - totalPaid);
     const requiresCustomer =
       resolvedIntent === "complete" && remainingAmount > 0;
 
@@ -486,6 +491,7 @@ export function usePosCheckout({
 
   return {
     checkoutLoading,
+    amountDue,
     isPaymentDialogOpen,
     setIsPaymentDialogOpen,
     initiateCheckout,

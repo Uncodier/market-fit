@@ -154,6 +154,10 @@ export async function upsertSaleOrderItemsWithModifiers(params: {
       sent_at: sentAt,
       parent_sale_order_item_id: null,
       metadata: {
+        ...(existingItem?.metadata &&
+        typeof existingItem.metadata === "object"
+          ? existingItem.metadata
+          : {}),
         is_new: newStatus === "new",
         client_line_key: pl.client_line_key,
         parent_name: pl.parent_name,
@@ -195,6 +199,10 @@ export async function upsertSaleOrderItemsWithModifiers(params: {
       sent_at: sentAt,
       parent_sale_order_item_id: parentDbId,
       metadata: {
+        ...(existingItem?.metadata &&
+        typeof existingItem.metadata === "object"
+          ? existingItem.metadata
+          : {}),
         is_new: newStatus === "new",
         client_line_key: pl.client_line_key,
         modifier_group_id: pl.modifier_group_id,

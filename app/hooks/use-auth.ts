@@ -6,10 +6,10 @@ import { User, AuthChangeEvent, Session, OAuthResponse, Provider } from '@supaba
 import { useSupabaseClient } from './use-supabase-client'
 import { resolveAuthenticatedSignInRedirect } from '@/lib/auth/post-auth-redirect'
 
-// Declarar tipos para MarketFit en el window object
+// Declare the Makinari browser API and its legacy alias.
 declare global {
   interface Window {
-    MarketFit?: {
+    Makinari?: {
       siteId?: string;
       init?: (config: any) => void;
       showWidget?: () => void;
@@ -21,6 +21,7 @@ declare global {
         identify: (userData: { name: string; email: string; phone?: string }) => Promise<void>
       }
     }
+    MarketFit?: Window['Makinari']
   }
 }
 
@@ -39,8 +40,10 @@ const identifyUserInChat = async (user: User | null, supabaseClient: any, retryC
   const maxRetries = 10 // Máximo 10 reintentos (10 segundos)
 
   try {
-    // Verificar si MarketFit está disponible
-    if (typeof window !== 'undefined' && window.MarketFit?.chat?.identify) {
+    const makinari = typeof window !== 'undefined'
+      ? window.Makinari ?? window.MarketFit
+      : undefined
+    if (makinari?.chat?.identify) {
       // Obtener información adicional del perfil desde Supabase
       const { data: profile, error } = await supabaseClient
         .from('profiles')
@@ -70,7 +73,7 @@ const identifyUserInChat = async (user: User | null, supabaseClient: any, retryC
       
       
       // Llamar a la función identify del chat
-      await window.MarketFit.chat.identify(userData)
+      await makinari.chat.identify(userData)
       
       
     } else {

@@ -1,6 +1,7 @@
 export type RelationSelectFilterOption = {
   id: string
   label: string
+  description?: string
   searchText?: string
   group?: string
 }
@@ -25,7 +26,7 @@ export function filterRelationSelectOptions<T extends RelationSelectFilterOption
   }
   const lowerCaseQuery = searchQuery.toLowerCase()
   return options.filter((option) => {
-    const haystack = [option.label, option.searchText]
+    const haystack = [option.label, option.description, option.searchText]
       .filter(Boolean)
       .join(" ")
       .toLowerCase()

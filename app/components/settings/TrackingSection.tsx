@@ -18,6 +18,7 @@ import { Button } from "../ui/button"
 import { Code, Copy, Check } from "../ui/icons"
 import { Textarea } from "../ui/textarea"
 import { toast } from "sonner"
+import { createTrackingSnippet } from "./tracking-snippet"
 
 export interface TrackingSectionProps {
   active: boolean
@@ -38,43 +39,9 @@ export function TrackingSection({ active, siteName, siteId, codeCopied, copyTrac
     
     console.log("Copying tracking code with siteId:", siteId, "siteName:", siteName);
     
-    const trackingCode = `<script>
-  (function() {
-    window.MarketFit = window.MarketFit || {};
-    
-    MarketFit.siteId = "${siteId || siteName || 'YOUR_SITE_ID'}";
-    
-    var script = document.createElement('script');
-    script.async = true;
-    script.src = 'https://files.uncodie.com/tracking.min.js';
-    
-    script.onload = function() {
-      if (window.MarketFit && typeof window.MarketFit.init === 'function') {
-        window.MarketFit.init({
-          siteId: "${siteId || siteName || 'YOUR_SITE_ID'}",
-          trackVisitors: ${form.watch("tracking.track_visitors")},
-          trackActions: ${form.watch("tracking.track_actions")},
-          recordScreen: ${form.watch("tracking.record_screen")},
-          debug: false,
-          chat: {
-            enabled: false
-          }
-        });
-      }
-    };
-    
-    var firstScript = document.getElementsByTagName('script')[0];
-    if (firstScript && firstScript.parentNode) {
-      firstScript.parentNode.insertBefore(script, firstScript);
-    } else {
-      // Fallback: append to head or body if no script tags exist
-      var target = document.head || document.body;
-      if (target) {
-        target.appendChild(script);
-      }
-    }
-  })();
-</script>`
+    const trackingCode = createTrackingSnippet(
+      siteId || siteName || "YOUR_SITE_ID",
+    )
 
     try {
       // Try to use the modern Clipboard API first
@@ -203,43 +170,11 @@ export function TrackingSection({ active, siteName, siteId, codeCopied, copyTrac
             <div className="relative">
               <div className="rounded-md bg-gray-900 p-4 overflow-x-auto">
                 <pre className="text-sm text-white">
-                  <code>{`<script>
-  (function() {
-    window.MarketFit = window.MarketFit || {};
-    
-    MarketFit.siteId = "${siteId || siteName || 'YOUR_SITE_ID'}";
-    
-    var script = document.createElement('script');
-    script.async = true;
-    script.src = 'https://files.uncodie.com/tracking.min.js';
-    
-    script.onload = function() {
-      if (window.MarketFit && typeof window.MarketFit.init === 'function') {
-        window.MarketFit.init({
-          siteId: "${siteId || siteName || 'YOUR_SITE_ID'}",
-          trackVisitors: ${form.watch("tracking.track_visitors")},
-          trackActions: ${form.watch("tracking.track_actions")},
-          recordScreen: ${form.watch("tracking.record_screen")},
-          debug: false,
-          chat: {
-            enabled: false
-          }
-        });
-      }
-    };
-    
-    var firstScript = document.getElementsByTagName('script')[0];
-    if (firstScript && firstScript.parentNode) {
-      firstScript.parentNode.insertBefore(script, firstScript);
-    } else {
-      // Fallback: append to head or body if no script tags exist
-      var target = document.head || document.body;
-      if (target) {
-        target.appendChild(script);
-      }
-    }
-  })();
-</script>`}</code>
+                  <code>
+                    {createTrackingSnippet(
+                      siteId || siteName || "YOUR_SITE_ID",
+                    )}
+                  </code>
                 </pre>
               </div>
               <Button

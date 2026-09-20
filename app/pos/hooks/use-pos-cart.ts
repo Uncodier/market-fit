@@ -43,7 +43,10 @@ import { posSessionFromOrder } from "@/app/pos/order-session";
 import { toast } from "sonner";
 import { useDisplayCurrency } from "@/app/context/DisplayCurrencyContext";
 import { resolveSiteCurrency } from "@/app/commerce/checkout-currency";
-
+import {
+  pendingSendDeltaCount,
+  type SentLineQuantities,
+} from "@/app/pos/send-delta";
 type UsePosCartArgs = {
   siteId?: string;
   shopSettings?: any;
@@ -59,7 +62,6 @@ type UsePosCartArgs = {
   onRequireLead?: () => void;
   t: (key: string) => string;
 };
-
 export function usePosCart({
   siteId,
   shopSettings,
@@ -77,6 +79,9 @@ export function usePosCart({
   const { rates } = useDisplayCurrency();
   const siteCurrency = resolveSiteCurrency(siteCurrencyInput);
   const [cart, setCart] = useState<PosCartItem[]>([]);
+  const [sentLineQuantities, setSentLineQuantities] =
+    useState<SentLineQuantities>({});
+  const [existingPaymentTotal, setExistingPaymentTotal] = useState(0);
   const [leadValue, setLeadValue] = useState<RelationSelectValue | string | null>(
     null,
   );
@@ -100,16 +105,15 @@ export function usePosCart({
   const [loadingOrder, setLoadingOrder] = useState(false);
   const restoredRef = useRef(false);
   const persistTimer = useRef<number | null>(null);
-
   useEffect(() => {
     const totalQty = cart.reduce((acc, item) => acc + item.cartQty, 0);
+    const deltaQty = pendingSendDeltaCount(cart, sentLineQuantities);
     window.dispatchEvent(
       new CustomEvent("pos:cart-updated", {
-        detail: { qty: totalQty, activeOrderId },
+        detail: { qty: totalQty, deltaQty, activeOrderId },
       })
     );
-  }, [cart, activeOrderId]);
-
+  }, [cart, sentLineQuantities, activeOrderId]);
   const hasLead = hasPosCustomer(leadValue);
   const cartCurrency = useMemo(
     () => resolvePosCartCurrency(cart, siteCurrency),
@@ -136,8 +140,6 @@ export function usePosCart({
     siteCurrency: cartCurrency,
     fxRates: rates,
   });
-
-  // Hydrate cart session from Dexie
   useEffect(() => {
     if (!siteId) return;
     let cancelled = false;
@@ -146,6 +148,8 @@ export function usePosCart({
       const session = await loadCartSession(siteId);
       if (cancelled) return;
       setCart(session.cart || []);
+      setSentLineQuantities(session.sentLineQuantities || {});
+      setExistingPaymentTotal(session.existingPaymentTotal || 0);
       setLeadValue(session.leadValue);
       setFulfillment(session.fulfillment || "dine_in");
       setOriginLocationId(session.originLocationId || "");
@@ -163,8 +167,6 @@ export function usePosCart({
       cancelled = true;
     };
   }, [siteId, setPromoCode]);
-
-  // Persist session (debounced)
   useEffect(() => {
     if (!siteId || !sessionReady) return;
     if (persistTimer.current) window.clearTimeout(persistTimer.current);
@@ -172,6 +174,8 @@ export function usePosCart({
       void saveCartSession({
         siteId,
         cart,
+        sentLineQuantities,
+        existingPaymentTotal,
         leadValue,
         fulfillment,
         originLocationId,
@@ -192,6 +196,8 @@ export function usePosCart({
     siteId,
     sessionReady,
     cart,
+    sentLineQuantities,
+    existingPaymentTotal,
     leadValue,
     fulfillment,
     originLocationId,
@@ -204,7 +210,6 @@ export function usePosCart({
     orderNotes,
     shippingAddress,
   ]);
-
   useEffect(() => {
     if (locations.length > 0 && !originLocationId) {
       const def = locations.find((l: any) => l.is_default) || locations[0];
@@ -364,10 +369,11 @@ export function usePosCart({
     Math.max(0, subtotal - promoDiscount) + taxTotal + shippingTotal,
   );
   const activeCartItems = cart.filter((c) => c.cartQty > 0);
-
   const resetToNewOrder = useCallback(async () => {
     setActiveOrderId("new");
     setCart([]);
+    setSentLineQuantities({});
+    setExistingPaymentTotal(0);
     setLeadValue(null);
     setPriceListId("none");
     setFulfillment("dine_in");
@@ -379,45 +385,45 @@ export function usePosCart({
     resetPromo();
     if (siteId) await clearCartSession(siteId);
   }, [siteId, resetPromo]);
-
   const populateFromOrder = (order: any) => {
     const session = posSessionFromOrder(order, catalogItems);
     if (!session) return false;
     setLeadValue(session.leadValue);
+    setFulfillment(session.fulfillment);
+    setOriginLocationId(session.originLocationId);
     setPriceListId(session.priceListId);
     setOrderNotes(session.orderNotes);
     setBuyerUserId(session.buyerUserId);
     setSellerUserId(session.sellerUserId);
     setSellerName(session.sellerName);
     setShippingAddress(session.shippingAddress);
+    setSentLineQuantities(session.sentLineQuantities);
+    setExistingPaymentTotal(session.existingPaymentTotal);
     if (session.cart) setCart(session.cart);
     return true;
   };
-
   const handleOrderSelect = async (val: string) => {
     if (!val || val === "new") {
       await resetToNewOrder();
-      return;
+      return true;
     }
     setActiveOrderId(val);
     try {
       setLoadingOrder(true);
-
-      // Prefer local snapshot when offline or for locally queued orders
       if (siteId && (val.startsWith("local_") || !navigator.onLine)) {
         const local = await import("@/app/pos/local/snapshot-pull").then((m) =>
           m.readLocalPendingOrders(siteId),
         );
         const match = local.find((o) => o.id === val);
         if (match?.raw && populateFromOrder(match.raw)) {
-          return;
+          return true;
         }
         if (val.startsWith("local_")) {
           toast.message(
             t("pos.sync.pendingSale") ||
               "Sale saved locally. Syncing when online…",
           );
-          return;
+          return false;
         }
       }
 
@@ -425,12 +431,15 @@ export function usePosCart({
       if (res.error) throw new Error(res.error);
       if (!populateFromOrder(res.data)) {
         await resetToNewOrder();
+        return false;
       }
+      return true;
     } catch (err: any) {
       await resetToNewOrder();
       toast.error(
         err.message || t("pos.errorLoadingOrder") || "Failed to load order",
       );
+      return false;
     } finally {
       setLoadingOrder(false);
     }
@@ -439,6 +448,7 @@ export function usePosCart({
   return {
     cart,
     setCart,
+    existingPaymentTotal,
     leadValue,
     setLeadValue,
     fulfillment,

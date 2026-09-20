@@ -8,6 +8,7 @@ import {
   ProcessedCheckoutLine,
 } from "./checkout-types"
 import { QuotationForCheckout } from "@/app/quotations/quote-checkout"
+import { resolveCheckoutPaymentState } from "./checkout-payment-state"
 
 type PersistCheckoutRecordsParams = {
   supabase: CheckoutSupabaseClient
@@ -115,12 +116,13 @@ export async function persistCheckoutRecords(
     )
   }
 
-  const totalPaid = (params.payments || []).reduce(
-    (sum, payment) => sum + payment.amount,
-    0
+  let paymentState = resolveCheckoutPaymentState(
+    orderTotal,
+    [],
+    params.payments,
   )
-  const isFullyPaid =
-    Boolean(params.payments && totalPaid >= orderTotal) || orderTotal === 0
+  let totalPaid = paymentState.totalPaid
+  let isFullyPaid = paymentState.isFullyPaid
   let saleInitialStatus = "pending"
   let orderInitialStatus = "pending"
   if (params.intent === "complete") {
@@ -185,7 +187,7 @@ export async function persistCheckoutRecords(
     if (!existingOrder) throw new Error("Existing order not found")
     const { data: existingSale } = await queryClient
       .from("sales")
-      .select("status, amount_due")
+      .select("status, amount, amount_due, payments")
       .eq("id", existingOrder.sale_id)
       .single()
     const { data: storedItems } = await queryClient
@@ -193,6 +195,28 @@ export async function persistCheckoutRecords(
       .select("*")
       .eq("sale_order_id", params.effectiveExistingOrderId)
     existingItems = storedItems || []
+    const existingPaymentRows = Array.isArray(existingSale?.payments)
+      ? existingSale.payments
+      : []
+    paymentState = resolveCheckoutPaymentState(
+      orderTotal,
+      existingPaymentRows,
+      paymentRows,
+      {
+        amount: existingSale?.amount,
+        amountDue: existingSale?.amount_due,
+      },
+    )
+    totalPaid = paymentState.totalPaid
+    isFullyPaid = paymentState.isFullyPaid
+
+    if (params.intent === "complete") {
+      saleInitialStatus = isFullyPaid ? "completed" : "pending"
+      orderInitialStatus = "completed"
+    } else if (params.intent === "pay") {
+      saleInitialStatus = isFullyPaid ? "completed" : "pending"
+      orderInitialStatus = isFullyPaid ? "completed" : "pending"
+    }
 
     const hasNewOrChangedLines = params.processedLines.some((line) => {
       const existingItem = existingItems.find((item: any) => {
@@ -239,10 +263,13 @@ export async function persistCheckoutRecords(
 
     const saleData: any = {
       ...commonSaleData,
+      amount_due: Math.max(0, orderTotal - totalPaid),
       status: saleInitialStatus,
     }
     if (paymentMethodToStore) saleData.payment_method = paymentMethodToStore
-    if (params.payments?.length) saleData.payments = paymentRows
+    if (params.payments?.length) {
+      saleData.payments = paymentState.payments
+    }
     const { data: updatedSale, error: saleError } = await queryClient
       .from("sales")
       .update(saleData)

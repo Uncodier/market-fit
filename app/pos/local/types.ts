@@ -3,10 +3,15 @@ import type { RelationSelectValue } from "@/app/components/ui/relation-select";
 import type { PosCartItem } from "@/app/pos/components/CartPanel";
 import type { CheckoutFulfillmentMethod } from "@/app/commerce/delivery-options";
 import type { PosShippingAddress } from "@/app/pos/shipping-address";
+import type { SentLineQuantities } from "@/app/pos/send-delta";
 
 export type OutboxStatus = "pending" | "syncing" | "failed" | "synced";
 
-export type OutboxKind = "checkout" | "check_in" | "create_lead";
+export type OutboxKind =
+  | "checkout"
+  | "check_in"
+  | "create_lead"
+  | "update_order_notes";
 
 export type CheckoutOutboxPayload = Omit<CheckoutCartParams, "clientMutationId"> & {
   clientMutationId: string;
@@ -29,10 +34,18 @@ export type CreateLeadOutboxPayload = {
   clientMutationId: string;
 };
 
+export type UpdateOrderNotesOutboxPayload = {
+  siteId: string;
+  orderId: string;
+  notes: string;
+  clientMutationId: string;
+};
+
 export type OutboxPayload =
   | { kind: "checkout"; data: CheckoutOutboxPayload }
   | { kind: "check_in"; data: CheckInOutboxPayload }
-  | { kind: "create_lead"; data: CreateLeadOutboxPayload };
+  | { kind: "create_lead"; data: CreateLeadOutboxPayload }
+  | { kind: "update_order_notes"; data: UpdateOrderNotesOutboxPayload };
 
 export type PosOutboxRow = {
   id: string;
@@ -56,6 +69,8 @@ export type PosOutboxRow = {
 export type PosCartSession = {
   siteId: string;
   cart: PosCartItem[];
+  sentLineQuantities: SentLineQuantities;
+  existingPaymentTotal?: number;
   leadValue: RelationSelectValue | string | null;
   fulfillment: CheckoutFulfillmentMethod;
   originLocationId: string;

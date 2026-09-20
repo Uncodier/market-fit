@@ -5,13 +5,13 @@ import useSWR from "swr"
 import { useSite } from "@/app/context/SiteContext"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { listOrders, updateOrderStatus } from "./actions"
-import { OrderParams } from "./types"
+import { OrderParams, type OrderWithRelations } from "./types"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
 import { MobileFiltersDrawer, FilterContainer, FilterSection, FilterSeparator } from "@/app/components/ui/mobile-filters-drawer"
 import { SearchInput } from "@/app/components/ui/search-input"
 import { Tabs, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
-import { LayoutGrid, Clock, CheckCircle2, Ban, PlayCircle, Search } from "@/app/components/ui/icons"
+import { LayoutGrid, Clock, CheckCircle2, Ban, PlayCircle, X } from "@/app/components/ui/icons"
 import { subDays, startOfDay, endOfDay } from "date-fns"
 import { CalendarDateRangePicker } from "@/app/components/ui/date-range-picker"
 import { useRouter , useSearchParams} from "next/navigation"
@@ -31,6 +31,21 @@ import { PrinterSyncBadge } from "@/app/components/printer/PrinterSyncBadge"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "@/app/components/ui/dropdown-menu"
 import { cn } from "@/lib/utils"
 import { SortDropdown } from "@/app/components/ui/sort-dropdown"
+import {
+  cacheOrdersDateRange,
+  readOrdersDateRange,
+  type OrdersDateRange,
+} from "@/app/orders/date-range-cache"
+import { ConfirmDialog } from "@/app/components/ui/confirm-dialog"
+import { usePermissions } from "@/app/context/PermissionContext"
+import { useOrderPrinting } from "@/app/orders/hooks/use-order-printing"
+
+function defaultOrdersDateRange(): OrdersDateRange {
+  return {
+    startDate: startOfDay(subDays(new Date(), 30)),
+    endDate: endOfDay(new Date()),
+  }
+}
 
 export default function OrdersPage() {
   const searchParams = useSearchParams()
@@ -40,7 +55,12 @@ export default function OrdersPage() {
 
   const { currentSite } = useSite()
   const { t } = useLocalization()
+  const { can } = usePermissions()
   const router = useRouter()
+  const { printingKey, printOrder } = useOrderPrinting({
+    siteId: currentSite?.id,
+    site: currentSite,
+  })
   
   const [page, setPage] = useState(1)
   const pageSize = 50
@@ -48,16 +68,42 @@ export default function OrdersPage() {
   const [statusFilter, setStatusFilter] = useState('all')
   const [locationFilter, setLocationFilter] = useState('all')
   const [viewType, setViewType] = useMobileView("kanban")
+  const [orderToCancel, setOrderToCancel] =
+    useState<OrderWithRelations | null>(null)
   
-  const [dateRange, setDateRange] = useState(() => ({
-    startDate: startOfDay(subDays(new Date(), 30)),
-    endDate: endOfDay(new Date()),
-  }))
+  const [dateRange, setDateRange] = useState<OrdersDateRange | null>(
+    defaultOrdersDateRange,
+  )
+  const [dateRangeSiteId, setDateRangeSiteId] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!currentSite?.id) {
+      setDateRangeSiteId(null)
+      return
+    }
+
+    const cachedRange = readOrdersDateRange(currentSite.id)
+    setDateRange(
+      cachedRange === undefined ? defaultOrdersDateRange() : cachedRange,
+    )
+    setDateRangeSiteId(currentSite.id)
+    setPage(1)
+  }, [currentSite?.id])
 
   const handleDateRangeChange = (startDate: Date, endDate: Date) => {
-    setDateRange({ startDate, endDate })
+    const nextRange = { startDate, endDate }
+    setDateRange(nextRange)
+    if (currentSite?.id) cacheOrdersDateRange(currentSite.id, nextRange)
     setPage(1)
   }
+
+  const handleDateRangeClear = () => {
+    setDateRange(null)
+    if (currentSite?.id) cacheOrdersDateRange(currentSite.id, null)
+    setPage(1)
+  }
+  const clearDateRangeLabel =
+    t("clear") === "clear" ? "Clear date range" : t("clear")
 
   const { data: locationsData } = useSWR(
     currentSite?.id ? ['locations', currentSite.id] : null,
@@ -72,7 +118,7 @@ export default function OrdersPage() {
   }
 
   const { data, error, isLoading, mutate } = useSWR(
-    currentSite?.id
+    currentSite?.id && dateRangeSiteId === currentSite.id
       ? { 
           siteId: currentSite.id, 
           page, 
@@ -80,8 +126,8 @@ export default function OrdersPage() {
           q: searchQuery, 
           status: statusFilter, 
           locationId: locationFilter,
-          startDate: dateRange.startDate.toISOString(),
-          endDate: dateRange.endDate.toISOString(),
+          startDate: dateRange?.startDate.toISOString(),
+          endDate: dateRange?.endDate.toISOString(),
           sort: sortBy
         }
       : null,
@@ -95,7 +141,7 @@ export default function OrdersPage() {
   usePrinterRealtime(currentSite?.id, printerSettings, ticketBrandFromSite(currentSite))
 
   const handleUpdateOrderStatus = async (orderId: string, newStatus: string) => {
-    if (!currentSite?.id) return;
+    if (!currentSite?.id) return false;
     
     // Optimistic update
     mutate(data => {
@@ -113,15 +159,26 @@ export default function OrdersPage() {
       if (result.error) {
         toast.error(result.error)
         mutate() // Revert
+        return false
       } else {
         toast.success(t('orders.success.statusUpdated') || "Order status updated")
         mutate() // Ensure full reload to keep in sync
+        return true
       }
     } catch (error) {
       console.error("Error updating order status:", error)
       toast.error(t('orders.error.updateFailed') || "Failed to update order status")
       mutate() // Revert
+      return false
     }
+  }
+
+  const openPosAction = (
+    order: OrderWithRelations,
+    action: "pay" | "split",
+  ) => {
+    const params = new URLSearchParams({ orderId: order.id, action })
+    router.push(`/pos?${params.toString()}`)
   }
 
   useEffect(() => {
@@ -159,6 +216,13 @@ export default function OrdersPage() {
         searchQuery={searchQuery}
         onPageChange={setPage}
         onOrderClick={(order) => navigateToOrder({ orderId: order.id, orderNumber: order.order_number, router })}
+        onPay={(order) => openPosAction(order, "pay")}
+        onSplit={(order) => openPosAction(order, "split")}
+        onPrintFull={(order) => printOrder(order, "full")}
+        onPrintDelta={(order) => printOrder(order, "delta")}
+        onCancel={setOrderToCancel}
+        canCancel={can("update")}
+        printingKey={printingKey}
       />
     )
   }
@@ -221,10 +285,30 @@ export default function OrdersPage() {
                   )}
 
                   <FilterSection mobileOnly className={cn(searchQuery && "hidden")} title={t('common.dateRange') || 'Date Range'}> 
-                    <CalendarDateRangePicker 
-                      onRangeChange={handleDateRangeChange} 
-                      initialStartDate={dateRange.startDate}
-                      initialEndDate={dateRange.endDate} />
+                    <div className="relative w-full">
+                      <CalendarDateRangePicker
+                        className="w-full [&_button]:pr-10"
+                        onRangeChange={handleDateRangeChange}
+                        initialStartDate={dateRange?.startDate}
+                        initialEndDate={dateRange?.endDate} />
+                      {dateRange && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="absolute right-1 top-1/2 z-10 h-7 w-7 -translate-y-1/2"
+                          onClick={(event) => {
+                            event.preventDefault()
+                            event.stopPropagation()
+                            handleDateRangeClear()
+                          }}
+                          aria-label={clearDateRangeLabel}
+                          title={clearDateRangeLabel}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
                   </FilterSection>
 
                   <FilterSection desktopOnly>
@@ -236,11 +320,29 @@ export default function OrdersPage() {
               </MobileFiltersDrawer>
 
               <div className="ml-auto flex items-center gap-3 shrink-0">
-                <div className="hidden md:flex items-center gap-2">
+                <div className="relative hidden md:flex items-center">
                   <CalendarDateRangePicker 
+                    className="[&_button]:pr-10"
                     onRangeChange={handleDateRangeChange} 
-                    initialStartDate={dateRange.startDate}
-                    initialEndDate={dateRange.endDate} />
+                    initialStartDate={dateRange?.startDate}
+                    initialEndDate={dateRange?.endDate} />
+                  {dateRange && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="absolute right-1 top-1/2 z-10 h-7 w-7 -translate-y-1/2"
+                      onClick={(event) => {
+                        event.preventDefault()
+                        event.stopPropagation()
+                        handleDateRangeClear()
+                      }}
+                      aria-label={clearDateRangeLabel}
+                      title={clearDateRangeLabel}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  )}
                 </div>
                 
                 <PrinterSyncBadge module="orders" />
@@ -268,7 +370,14 @@ export default function OrdersPage() {
                 <OrdersKanban
                   orders={data?.data || []}
                   onOrderClick={(order) => navigateToOrder({ orderId: order.id, orderNumber: order.order_number, router })}
-                  onUpdateOrderStatus={handleUpdateOrderStatus} />
+                  onUpdateOrderStatus={handleUpdateOrderStatus}
+                  onPay={(order) => openPosAction(order, "pay")}
+                  onSplit={(order) => openPosAction(order, "split")}
+                  onPrintFull={(order) => printOrder(order, "full")}
+                  onPrintDelta={(order) => printOrder(order, "delta")}
+                  onCancel={setOrderToCancel}
+                  canCancel={can("update")}
+                  printingKey={printingKey} />
               )}
             </div>
           ) : (
@@ -287,12 +396,39 @@ export default function OrdersPage() {
                   totalCount={data?.count ?? 0}
                   searchQuery={searchQuery}
                   onPageChange={setPage}
-                  onOrderClick={(order) => navigateToOrder({ orderId: order.id, orderNumber: order.order_number, router })} />
+                  onOrderClick={(order) => navigateToOrder({ orderId: order.id, orderNumber: order.order_number, router })}
+                  onPay={(order) => openPosAction(order, "pay")}
+                  onSplit={(order) => openPosAction(order, "split")}
+                  onPrintFull={(order) => printOrder(order, "full")}
+                  onPrintDelta={(order) => printOrder(order, "delta")}
+                  onCancel={setOrderToCancel}
+                  canCancel={can("update")}
+                  printingKey={printingKey} />
               )}
             </div>
           )}
         </div>
       </Tabs>
+      <ConfirmDialog
+        open={Boolean(orderToCancel)}
+        onOpenChange={(open) => {
+          if (!open) setOrderToCancel(null)
+        }}
+        title="Cancel order?"
+        description="This cancels the order and its items. Unpaid linked sales may also be cancelled; completed shipments and captured payments are not reversed."
+        confirmLabel="Cancel order"
+        variant="destructive"
+        dataPermission="update"
+        onConfirm={async () => {
+          if (!orderToCancel) return
+          const updated = await handleUpdateOrderStatus(
+            orderToCancel.id,
+            "cancelled",
+          )
+          if (!updated) throw new Error("Order cancellation failed")
+          setOrderToCancel(null)
+        }}
+      />
     </div>
   )
 }

@@ -41,6 +41,24 @@ describe("relation select filtering", () => {
     expect(filtered.map((option) => option.id)).toEqual(["3"])
   })
 
+  it("matches text shown in an option description", () => {
+    const described = [
+      {
+        id: "1",
+        label: "Order 104",
+        description: "Cheeseburger ×2 · 7:05 PM",
+      },
+      {
+        id: "2",
+        label: "Order 105",
+        description: "Iced tea · 7:10 PM",
+      },
+    ]
+    expect(filterRelationSelectOptions(described, "cheeseburger")).toEqual([
+      described[0],
+    ])
+  })
+
   it("keeps group metadata while filtering", () => {
     const grouped = [
       { id: "1", label: "Table 1", group: undefined },

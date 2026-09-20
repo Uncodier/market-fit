@@ -80,7 +80,7 @@ export function PosPageDialogs({
       <PaymentConfirmationDialog
         open={checkout.isPaymentDialogOpen}
         onOpenChange={checkout.setIsPaymentDialogOpen}
-        totalAmount={cartApi.total}
+        totalAmount={checkout.amountDue}
         currency={cartApi.cartCurrency}
         onConfirm={checkout.handleCheckout}
         isLoading={checkout.checkoutLoading}

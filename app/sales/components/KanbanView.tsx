@@ -9,6 +9,13 @@ import { Sale } from "@/app/types"
 import { formatCurrency } from "@/app/components/dashboard/campaign-revenue-donut"
 import { format } from "date-fns"
 import { Button } from "@/app/components/ui/button"
+import { CreditCard, ExternalLink, MoreVertical, Printer } from "@/app/components/ui/icons"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/app/components/ui/dropdown-menu"
 
 // Status colors for sales
 const STATUS_STYLES = {
@@ -131,16 +138,60 @@ export function KanbanView({
                                 {...provided.draggableProps}
                                 {...provided.dragHandleProps}
                                 className={cn(
-                                  "mb-3 transition-shadow duration-200 hover:shadow-md cursor-pointer overflow-hidden",
+                                  "group relative mb-3 cursor-pointer overflow-hidden transition-shadow duration-200 hover:shadow-md",
                                   snapshot.isDragging 
                                     ? 'shadow-lg dark:shadow-black/20 border-primary/20' 
                                     : ''
                                 )}
                                 onClick={(e) => handleCardClick(e, sale)}
                               >
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      aria-label="Sale actions"
+                                      title="Sale actions"
+                                      className="absolute right-2 top-2 z-10 h-7 w-7 bg-background/90 opacity-100 shadow-sm transition-opacity md:opacity-0 md:group-hover:opacity-100 md:focus-visible:opacity-100 data-[state=open]:opacity-100"
+                                      onClick={(event) => event.stopPropagation()}
+                                      onPointerDown={(event) => event.stopPropagation()}
+                                    >
+                                      <MoreVertical className="h-4 w-4" />
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent
+                                    align="end"
+                                    onClick={(event) => event.stopPropagation()}
+                                    onPointerDown={(event) => event.stopPropagation()}
+                                  >
+                                    <DropdownMenuItem
+                                      className="cursor-pointer"
+                                      onSelect={() => onSaleClick(sale)}
+                                    >
+                                      <ExternalLink className="mr-2 h-4 w-4" />
+                                      Open
+                                    </DropdownMenuItem>
+                                    {sale.amount_due > 0 && sale.status !== "cancelled" && (
+                                      <DropdownMenuItem
+                                        className="cursor-pointer"
+                                        onSelect={() => onRegisterPayment(sale)}
+                                      >
+                                        <CreditCard className="mr-2 h-4 w-4" />
+                                        Register payment
+                                      </DropdownMenuItem>
+                                    )}
+                                    <DropdownMenuItem
+                                      className="cursor-pointer"
+                                      onSelect={() => onPrintSale(sale)}
+                                    >
+                                      <Printer className="mr-2 h-4 w-4" />
+                                      Print
+                                    </DropdownMenuItem>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
                                 {/* Title Section */}
                                 <div className="p-3 pb-2">
-                                  <div className="text-sm font-medium mb-2 line-clamp-2">
+                                  <div className="mb-2 line-clamp-2 pr-8 text-sm font-medium">
                                     {sale.title}
                                   </div>
                                   <div className="flex items-center gap-2 mb-2">
@@ -167,16 +218,18 @@ export function KanbanView({
                                   </div>
 
                                   {/* Lead Info */}
-                                  <div className="flex items-center gap-2 mb-3">
-                                    <div className="h-5 w-5 rounded-full bg-primary/10 flex items-center justify-center">
-                                      <span className="text-[10px] text-primary font-medium">
-                                        {sale.leadName?.substring(0, 2).toUpperCase() || 'AN'}
+                                  {sale.leadId && sale.leadName && (
+                                    <div className="flex items-center gap-2 mb-3">
+                                      <div className="h-5 w-5 rounded-full bg-primary/10 flex items-center justify-center">
+                                        <span className="text-[10px] text-primary font-medium">
+                                          {sale.leadName.substring(0, 2).toUpperCase()}
+                                        </span>
+                                      </div>
+                                      <span className="text-xs text-muted-foreground truncate">
+                                        {sale.leadName}
                                       </span>
                                     </div>
-                                    <span className="text-xs text-muted-foreground truncate">
-                                      {sale.leadName}
-                                    </span>
-                                  </div>
+                                  )}
 
                                   {/* Footer Section */}
                                   <div className="flex items-center justify-between pt-2 border-t border-border/50">

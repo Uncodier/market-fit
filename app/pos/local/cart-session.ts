@@ -11,6 +11,8 @@ const DEFAULT_SESSION = (
 ): Omit<PosCartSession, "updatedAt"> => ({
   siteId,
   cart: [],
+  sentLineQuantities: {},
+  existingPaymentTotal: 0,
   leadValue: null,
   fulfillment: "dine_in",
   originLocationId: "",
@@ -29,7 +31,13 @@ export async function loadCartSession(
 ): Promise<PosCartSession> {
   const db = getPosDb();
   const existing = await db.cartSessions.get(siteId);
-  if (existing) return existing;
+  if (existing) {
+    return {
+      ...existing,
+      sentLineQuantities: existing.sentLineQuantities || {},
+      existingPaymentTotal: existing.existingPaymentTotal || 0,
+    };
+  }
 
   // One-time migration from legacy localStorage active order pointer
   const legacyOrderId = getActivePosOrderId(siteId);

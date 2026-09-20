@@ -11,11 +11,57 @@ import { revokeOrderFulfillment } from "@/app/commerce/order-fulfillment-sync";
 export async function listOrders({ siteId, status, paymentStatus, q, locationId, page = 1, pageSize = 50, startDate, endDate, sort }: OrderParams) {
   try {
     const supabase = await createClient();
+    const searchQuery = q?.trim();
+    let matchingOrderIds: string[] | null = null;
+
+    if (searchQuery) {
+      const searchPattern = `%${searchQuery}%`;
+      const [numberMatches, productMatches] = await Promise.all([
+        supabase
+          .from("sale_orders")
+          .select("id")
+          .eq("site_id", siteId)
+          .ilike("order_number", searchPattern)
+          .limit(5000),
+        supabase
+          .from("sale_order_items")
+          .select("sale_order_id")
+          .eq("site_id", siteId)
+          .ilike("name", searchPattern)
+          .limit(5000),
+      ]);
+
+      if (numberMatches.error) throw new Error(numberMatches.error.message);
+      if (productMatches.error) throw new Error(productMatches.error.message);
+
+      matchingOrderIds = [
+        ...new Set([
+          ...(numberMatches.data || []).map(
+            (row: { id: string }) => row.id,
+          ),
+          ...(productMatches.data || []).map(
+            (row: { sale_order_id: string | null }) => row.sale_order_id,
+          ),
+        ]),
+      ].filter((id): id is string => Boolean(id));
+
+      if (matchingOrderIds.length === 0) {
+        return { data: [], count: 0 };
+      }
+    }
     
     let selectString = `
         *,
         fulfillment_method,
-        sale_order_items (status),
+        sale_order_items (
+          id,
+          status,
+          name,
+          quantity,
+          catalog_item_id,
+          parent_sale_order_item_id,
+          metadata
+        ),
         sales${paymentStatus === 'unpaid' ? '!inner' : ''} (
           status,
           source,
@@ -53,8 +99,8 @@ export async function listOrders({ siteId, status, paymentStatus, q, locationId,
     if (locationId && locationId !== 'all') {
       query = query.eq("origin_location_id", locationId);
     }
-    if (q) {
-      query = query.ilike("order_number", `%${q}%`);
+    if (matchingOrderIds) {
+      query = query.in("id", matchingOrderIds);
     }
     if (startDate) {
       query = query.gte("created_at", startDate);

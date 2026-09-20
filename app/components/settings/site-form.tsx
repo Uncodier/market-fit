@@ -21,6 +21,7 @@ import { VisitsSection } from "./VisitsSection";
 import { CustomerJourneySection } from "./CustomerJourneySection";
 import { SocialSection } from "./SocialSection";
 import { ChannelsSection } from "./ChannelsSection";
+import { createTrackingSnippet } from "./tracking-snippet";
 import { TeamSection } from "./TeamSection";
 import { BillingSection } from "./BillingSection";
 import { ActivitiesSection } from "./ActivitiesSection";
@@ -164,6 +165,7 @@ export function SiteForm({
           track_visitors: false,
           track_actions: false,
           record_screen: false,
+          show_cookie_consent: false,
           enable_chat: false,
           chat_accent_color: "#e0ff17",
           allow_anonymous_messages: false,
@@ -189,6 +191,7 @@ export function SiteForm({
         track_visitors: false,
         track_actions: false,
         record_screen: false,
+        show_cookie_consent: false,
         enable_chat: false,
         chat_accent_color: "#e0ff17",
         allow_anonymous_messages: false,
@@ -422,48 +425,9 @@ export function SiteForm({
   });
 
   const copyTrackingCode = async () => {
-    const trackingCode = `<script>
-  (function() {
-    window.MarketFit = window.MarketFit || {};
-    
-    MarketFit.siteId = "${siteId || (initialData ? initialData.name : "YOUR_SITE_ID")}";
-    
-    var script = document.createElement('script');
-    script.async = true;
-    script.src = 'https://files.uncodie.com/tracking.min.js';
-    
-    script.onload = function() {
-      if (window.MarketFit && typeof window.MarketFit.init === 'function') {
-        window.MarketFit.init({
-          siteId: "${siteId || (initialData ? initialData.name : "YOUR_SITE_ID")}",
-          trackVisitors: ${form.watch("tracking.track_visitors")},
-          trackActions: ${form.watch("tracking.track_actions")},
-          recordScreen: ${form.watch("tracking.record_screen")},
-          debug: false,
-          chat: {
-            enabled: ${form.watch("tracking.enable_chat")},
-            accentColor: "${form.watch("tracking.chat_accent_color") || "#e0ff17"}",
-            allowAnonymousMessages: ${form.watch("tracking.allow_anonymous_messages")},
-            position: "${form.watch("tracking.chat_position") || "bottom-right"}",
-            title: "${form.watch("tracking.chat_title") || "Chat with us"}",
-            welcomeMessage: "${form.watch("tracking.welcome_message") || "Welcome to our website! How can we assist you today?"}"
-          }
-        });
-      }
-    };
-    
-    var firstScript = document.getElementsByTagName('script')[0];
-    if (firstScript && firstScript.parentNode) {
-      firstScript.parentNode.insertBefore(script, firstScript);
-    } else {
-      // Fallback: append to head or body if no script tags exist
-      var target = document.head || document.body;
-      if (target) {
-        target.appendChild(script);
-      }
-    }
-  })();
-</script>`;
+    const trackingCode = createTrackingSnippet(
+      siteId || initialData?.name || "YOUR_SITE_ID",
+    );
 
     try {
       // Try to use the modern Clipboard API first

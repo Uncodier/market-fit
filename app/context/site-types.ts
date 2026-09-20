@@ -24,6 +24,9 @@ export interface Site {
     track_visitors: boolean;
     track_actions: boolean;
     record_screen: boolean;
+    privacy?: {
+      cookie_consent?: boolean;
+    };
     enable_chat: boolean;
     chat_accent_color?: string;
     allow_anonymous_messages?: boolean;
@@ -191,6 +194,7 @@ export interface SiteSettings {
       track_visitors?: boolean
       track_actions?: boolean
       record_screen?: boolean
+      show_cookie_consent?: boolean
       enable_chat?: boolean
       chat_accent_color?: string
       allow_anonymous_messages?: boolean

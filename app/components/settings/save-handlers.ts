@@ -190,6 +190,10 @@ export const handleSave = async (data: SiteFormValues, options: SaveOptions) => 
         track_visitors: Boolean(tracking?.track_visitors),
         track_actions: Boolean(tracking?.track_actions),
         record_screen: Boolean(tracking?.record_screen),
+        privacy: {
+          ...currentSite.tracking?.privacy,
+          cookie_consent: Boolean(tracking?.show_cookie_consent)
+        },
         enable_chat: Boolean(tracking?.enable_chat),
         chat_accent_color: tracking?.chat_accent_color || "#e0ff17",
         allow_anonymous_messages: Boolean(tracking?.allow_anonymous_messages),
@@ -250,6 +254,7 @@ export const handleSave = async (data: SiteFormValues, options: SaveOptions) => 
           track_visitors: tracking?.track_visitors ?? channels?.website?.track_visitors ?? currentSite.settings?.channels?.website?.track_visitors ?? false,
           track_actions: tracking?.track_actions ?? channels?.website?.track_actions ?? currentSite.settings?.channels?.website?.track_actions ?? false,
           record_screen: tracking?.record_screen ?? channels?.website?.record_screen ?? currentSite.settings?.channels?.website?.record_screen ?? false,
+          show_cookie_consent: tracking?.show_cookie_consent ?? channels?.website?.show_cookie_consent ?? currentSite.settings?.channels?.website?.show_cookie_consent ?? false,
           enable_chat: tracking?.enable_chat ?? channels?.website?.enable_chat ?? currentSite.settings?.channels?.website?.enable_chat ?? false,
           chat_accent_color: tracking?.chat_accent_color ?? channels?.website?.chat_accent_color ?? currentSite.settings?.channels?.website?.chat_accent_color ?? "#e0ff17",
           allow_anonymous_messages: tracking?.allow_anonymous_messages ?? channels?.website?.allow_anonymous_messages ?? currentSite.settings?.channels?.website?.allow_anonymous_messages ?? false,
@@ -814,6 +819,10 @@ export const handleSaveGeneral = async (data: SiteFormValues, options: SaveOptio
         track_visitors: Boolean(tracking?.track_visitors),
         track_actions: Boolean(tracking?.track_actions),
         record_screen: Boolean(tracking?.record_screen),
+        privacy: {
+          ...currentSite.tracking?.privacy,
+          cookie_consent: Boolean(tracking?.show_cookie_consent)
+        },
         enable_chat: Boolean(tracking?.enable_chat),
         chat_accent_color: tracking?.chat_accent_color || "#e0ff17",
         allow_anonymous_messages: Boolean(tracking?.allow_anonymous_messages),
@@ -1290,6 +1299,22 @@ export const handleSaveChannels = async (data: SiteFormValues, options: SaveOpti
     setIsSaving(true)
 
     const { channels, tracking } = data
+    const siteTracking = {
+      ...currentSite.tracking,
+      track_visitors: Boolean(tracking?.track_visitors),
+      track_actions: Boolean(tracking?.track_actions),
+      record_screen: Boolean(tracking?.record_screen),
+      enable_chat: Boolean(tracking?.enable_chat),
+      chat_accent_color: tracking?.chat_accent_color || "#e0ff17",
+      allow_anonymous_messages: Boolean(tracking?.allow_anonymous_messages),
+      chat_position: tracking?.chat_position || "bottom-right",
+      welcome_message: tracking?.welcome_message || "Welcome to our website! How can we assist you today?",
+      chat_title: tracking?.chat_title || "Chat with us",
+      privacy: {
+        ...currentSite.tracking?.privacy,
+        cookie_consent: Boolean(tracking?.show_cookie_consent)
+      }
+    }
 
     // Handle secure token storage if new values are provided
     if (currentSite.id && channels?.email?.password && 
@@ -1375,6 +1400,7 @@ export const handleSaveChannels = async (data: SiteFormValues, options: SaveOpti
           track_visitors: tracking?.track_visitors ?? channels?.website?.track_visitors ?? currentSite.settings?.channels?.website?.track_visitors ?? false,
           track_actions: tracking?.track_actions ?? channels?.website?.track_actions ?? currentSite.settings?.channels?.website?.track_actions ?? false,
           record_screen: tracking?.record_screen ?? channels?.website?.record_screen ?? currentSite.settings?.channels?.website?.record_screen ?? false,
+          show_cookie_consent: tracking?.show_cookie_consent ?? channels?.website?.show_cookie_consent ?? currentSite.settings?.channels?.website?.show_cookie_consent ?? false,
           enable_chat: tracking?.enable_chat ?? channels?.website?.enable_chat ?? currentSite.settings?.channels?.website?.enable_chat ?? false,
           chat_accent_color: tracking?.chat_accent_color ?? channels?.website?.chat_accent_color ?? currentSite.settings?.channels?.website?.chat_accent_color ?? "#e0ff17",
           allow_anonymous_messages: tracking?.allow_anonymous_messages ?? channels?.website?.allow_anonymous_messages ?? currentSite.settings?.channels?.website?.allow_anonymous_messages ?? false,
@@ -1393,10 +1419,21 @@ export const handleSaveChannels = async (data: SiteFormValues, options: SaveOpti
       settingsUpdate.id = currentSite.settings.id
     }
 
+    await updateSite({
+      ...currentSite,
+      settings: undefined,
+      tracking: siteTracking
+    } as Site)
+
     await updateSettings(currentSite.id, settingsUpdate)
 
     if (shouldPreventRefresh()) {
-      updateSiteLocally(currentSite, {}, settingsUpdate, updateSite)
+      updateSiteLocally(
+        currentSite,
+        { tracking: siteTracking },
+        settingsUpdate,
+        updateSite,
+      )
     } else {
       await refreshSites()
     }

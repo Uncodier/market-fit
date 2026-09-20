@@ -2,18 +2,18 @@
 
 import React from "react"
 import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/app/components/ui/table"
-import { Button } from "@/app/components/ui/button"
 import { Skeleton } from "@/app/components/ui/skeleton"
 import { EmptyCard } from "@/app/components/ui/empty-card"
 import { Pagination } from "@/app/components/ui/pagination"
-import { ExternalLink, ListOrdered, Clock } from "@/app/components/ui/icons"
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/app/components/ui/tooltip"
+import { ListOrdered, Clock } from "@/app/components/ui/icons"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { format } from "date-fns"
 import { cn } from "@/lib/utils"
 import { formatCurrency } from "@/app/lib/formatters"
 import { OrderWithRelations } from "@/app/orders/types"
 import { formatScheduledFor, scheduledForClassName } from "@/app/orders/format-scheduled-for"
+import { formatOrderListDescription } from "@/app/orders/order-list-description"
+import { OrderActionsMenu } from "@/app/orders/components/OrderActionsMenu"
 import {
   DocumentListHead,
   DocumentListRow,
@@ -34,6 +34,13 @@ interface OrdersTableProps {
   searchQuery?: string
   onPageChange: (page: number) => void
   onOrderClick: (order: OrderWithRelations) => void
+  onPay: (order: OrderWithRelations) => void
+  onPrintFull: (order: OrderWithRelations) => void | Promise<void>
+  onPrintDelta: (order: OrderWithRelations) => void | Promise<void>
+  onCancel: (order: OrderWithRelations) => void
+  onSplit: (order: OrderWithRelations) => void
+  canCancel?: boolean
+  printingKey?: string | null
 }
 
 export function OrdersTable({
@@ -44,6 +51,13 @@ export function OrdersTable({
   searchQuery,
   onPageChange,
   onOrderClick,
+  onPay,
+  onPrintFull,
+  onPrintDelta,
+  onCancel,
+  onSplit,
+  canCancel,
+  printingKey,
 }: OrdersTableProps) {
   const { t } = useLocalization()
   const totalPages = Math.ceil(totalCount / pageSize)
@@ -66,8 +80,7 @@ export function OrdersTable({
   }
 
   return (
-    <TooltipProvider delayDuration={200}>
-      <div className={documentListShellClassName()}>
+    <div className={documentListShellClassName()}>
         <Table className="min-w-[860px]">
           <TableHeader className="sticky top-0 z-10 bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80">
             <TableRow className="hover:bg-transparent">
@@ -91,12 +104,18 @@ export function OrdersTable({
               const due = Number(order.sales?.amount_due) || 0
               const cancelled = order.sales?.status === "cancelled"
               const unpaid = !cancelled && due > 0
-              const hasNewItems = order.sale_order_items?.some((item: { status?: string }) => item.status === "new") || false
+              const hasNewItems = order.sale_order_items?.some((item) => item.status === "new") || false
               const fulfillment =
                 order.fulfillment_method && order.fulfillment_method !== "none"
                   ? t(`orders.kanban.fulfillment.${order.fulfillment_method}`) || order.fulfillment_method
                   : null
-              const meta = [fulfillment, hasNewItems ? (t("orders.kanban.newItems") || "New items") : null]
+              const description = formatOrderListDescription(order)
+              const meta = [
+                order.order_number ? `#${order.order_number}` : null,
+                order.leads?.email,
+                fulfillment,
+                hasNewItems ? (t("orders.kanban.newItems") || "New items") : null,
+              ]
                 .filter(Boolean)
                 .join(" · ") || null
               const statusLabel = t(`orders.status.${order.status}`) || String(order.status).replace("_", " ")
@@ -112,8 +131,10 @@ export function OrdersTable({
                   <TableCell className="py-3.5">
                     <EntityCell
                       name={customer}
-                      secondary={order.order_number ? `#${order.order_number}` : null}
-                      meta={meta || order.leads?.email || null}
+                      secondary={description}
+                      secondaryMono={false}
+                      secondaryLines={2}
+                      meta={meta}
                     />
                   </TableCell>
                   <TableCell className="py-3.5">
@@ -150,20 +171,18 @@ export function OrdersTable({
                     />
                   </TableCell>
                   <TableCell className="py-3.5 text-right" onClick={(event) => event.stopPropagation()}>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 opacity-100 md:opacity-0 transition-opacity group-hover:opacity-100"
-                          onClick={() => onOrderClick(order)}
-                        >
-                          <ExternalLink className="h-4 w-4" />
-                          <span className="sr-only">{t("common.open") || "Open"}</span>
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>{t("common.open") || "Open"}</TooltipContent>
-                    </Tooltip>
+                    <OrderActionsMenu
+                      order={order}
+                      onOpen={onOrderClick}
+                      onPay={onPay}
+                      onPrintFull={onPrintFull}
+                      onPrintDelta={onPrintDelta}
+                      onCancel={onCancel}
+                      onSplit={onSplit}
+                      canCancel={canCancel}
+                      printingKey={printingKey}
+                      triggerClassName="ml-auto opacity-100 transition-opacity md:opacity-0 md:group-hover:opacity-100 md:focus-visible:opacity-100 data-[state=open]:opacity-100"
+                    />
                   </TableCell>
                 </DocumentListRow>
               )
@@ -196,8 +215,7 @@ export function OrdersTable({
             <Pagination currentPage={page} totalPages={totalPages} onPageChange={onPageChange} />
           )}
         </div>
-      </div>
-    </TooltipProvider>
+    </div>
   )
 }
 

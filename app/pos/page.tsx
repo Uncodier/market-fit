@@ -1,7 +1,7 @@
 "use client";
 
 import { MobileFiltersDrawer, FilterContainer, FilterSection } from "@/app/components/ui/mobile-filters-drawer"
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSite } from "@/app/context/SiteContext";
 import { useLocalization } from "@/app/context/LocalizationContext";
@@ -24,6 +24,8 @@ import { usePosCheckout } from "./hooks/use-pos-checkout";
 import { usePosSyncStatus } from "./hooks/use-pos-sync-status";
 import { usePosAddItem } from "./hooks/use-pos-add-item";
 import { usePosLead } from "./hooks/use-pos-lead";
+import { usePosOrderNotesAutosave } from "./hooks/use-pos-order-notes-autosave";
+import { usePosOrderAction } from "./hooks/use-pos-order-action";
 import { drainPosOutbox } from "./local/sync-engine";
 
 export default function POSPage() {
@@ -58,6 +60,14 @@ export default function POSPage() {
     onRequireLead: () => setLeadGate("promo"),
     t,
   });
+  const saveOrderNotes = usePosOrderNotesAutosave(siteId);
+  const handleOrderNotesChange = useCallback(
+    (notes: string) => {
+      cartApi.setOrderNotes(notes);
+      saveOrderNotes(cartApi.activeOrderId, notes);
+    },
+    [cartApi.activeOrderId, cartApi.setOrderNotes, saveOrderNotes],
+  );
 
   const leadApi = usePosLead({
     siteId,
@@ -130,6 +140,7 @@ export default function POSPage() {
     promoCode: cartApi.promoCode,
     appliedPromo: cartApi.appliedPromo,
     activeOrderId: cartApi.activeOrderId,
+    existingPaymentTotal: cartApi.existingPaymentTotal,
     buyerUserId: cartApi.buyerUserId,
     orderNotes: cartApi.orderNotes,
     shippingAddress: cartApi.shippingAddress,
@@ -142,6 +153,18 @@ export default function POSPage() {
     appliedPromoRequiresLead: cartApi.appliedPromoRequiresLead,
     onRequireLead: (reason) => setLeadGate(reason),
     t,
+  });
+
+  usePosOrderAction({
+    siteId,
+    sessionReady: cartApi.sessionReady,
+    catalogHydrated: catalog.hydrated,
+    activeOrderId: cartApi.activeOrderId,
+    cartLength: cartApi.cart.length,
+    loadingOrder: cartApi.loadingOrder,
+    handleOrderSelect: cartApi.handleOrderSelect,
+    initiateCheckout: checkout.initiateCheckout,
+    openSplitDialog: () => setIsSplitBillOpen(true),
   });
 
   const addApi = usePosAddItem({
@@ -285,7 +308,7 @@ export default function POSPage() {
     handleOrderSelect: cartApi.handleOrderSelect,
     allowedFulfillments: cartApi.allowedFulfillments,
     orderNotes: cartApi.orderNotes,
-    setOrderNotes: cartApi.setOrderNotes,
+    setOrderNotes: handleOrderNotesChange,
     shippingAddress: cartApi.shippingAddress,
     setShippingAddress: cartApi.setShippingAddress,
     siteId,

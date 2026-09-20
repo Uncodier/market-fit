@@ -22,7 +22,9 @@ export async function listPosOpenOrders(siteId: string) {
 
   const { data: orders, error: ordersError } = await supabase
     .from("sale_orders")
-    .select("*, sale_order_items (status)")
+    .select(
+      "*, sale_order_items (status, name, quantity, parent_sale_order_item_id)",
+    )
     .eq("site_id", siteId)
     .in("status", [...OPEN_ORDER_STATUSES])
     .order("created_at", { ascending: false })

@@ -29,25 +29,26 @@ export function HelpButton({
   const handleHelpClick = () => {
     console.log('Help button clicked')
     if (typeof window !== 'undefined') {
-      console.log('Window MarketFit:', (window as any).MarketFit)
-      if ((window as any).MarketFit?.openChatWithTask) {
+      const makinari = (window as any).Makinari ?? (window as any).MarketFit
+      console.log('Window Makinari:', makinari)
+      if (makinari?.openChatWithTask) {
         console.log('Calling openChatWithTask')
         if (welcomeMessage || task) {
-          ;(window as any).MarketFit.openChatWithTask({
+          makinari.openChatWithTask({
             welcomeMessage: welcomeMessage || "Hi! How can I help you today?",
             task: task,
             clearExistingMessages: false,
             newConversation: false
           })
         } else {
-          ;(window as any).MarketFit.openChatWithTask({
+          makinari.openChatWithTask({
             welcomeMessage: "Hi! How can I help you today?",
             clearExistingMessages: false,
             newConversation: false
           })
         }
       } else {
-        console.log('MarketFit.openChatWithTask not available')
+        console.log('Makinari.openChatWithTask not available')
       }
     }
   }

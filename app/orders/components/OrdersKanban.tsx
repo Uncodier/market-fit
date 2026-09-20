@@ -3,18 +3,27 @@
 import { OrderWithRelations } from "../types"
 import { Card, CardContent } from "@/app/components/ui/card"
 import { Badge } from "@/app/components/ui/badge"
-import { Clock, Calendar, CheckCircle2, Ban, PlayCircle } from "@/app/components/ui/icons"
+import { Clock, Calendar, CheckCircle2, Ban, PlayCircle, MapPin, Store, Truck } from "@/app/components/ui/icons"
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd"
 import { cn } from "@/lib/utils"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { EmptyCard } from "@/app/components/ui/empty-card"
 import { Skeleton } from "@/app/components/ui/skeleton"
 import { formatScheduledFor, scheduledForClassName } from "@/app/orders/format-scheduled-for"
+import { formatOrderProductSummary, formatOrderTime } from "@/app/orders/order-list-description"
+import { OrderActionsMenu } from "@/app/orders/components/OrderActionsMenu"
 
 interface OrdersKanbanProps {
   orders: OrderWithRelations[]
   onOrderClick: (order: OrderWithRelations) => void
   onUpdateOrderStatus: (orderId: string, newStatus: string) => void
+  onPay: (order: OrderWithRelations) => void
+  onPrintFull: (order: OrderWithRelations) => void | Promise<void>
+  onPrintDelta: (order: OrderWithRelations) => void | Promise<void>
+  onCancel: (order: OrderWithRelations) => void
+  onSplit: (order: OrderWithRelations) => void
+  canCancel?: boolean
+  printingKey?: string | null
 }
 
 const ORDER_STATUSES = [
@@ -84,7 +93,18 @@ export function OrdersKanbanSkeleton() {
   )
 }
 
-export function OrdersKanban({ orders, onOrderClick, onUpdateOrderStatus }: OrdersKanbanProps) {
+export function OrdersKanban({
+  orders,
+  onOrderClick,
+  onUpdateOrderStatus,
+  onPay,
+  onPrintFull,
+  onPrintDelta,
+  onCancel,
+  onSplit,
+  canCancel,
+  printingKey,
+}: OrdersKanbanProps) {
   const { t } = useLocalization()
   
   const formatCurrency = (amount: number | null, currency: string = 'USD') => {
@@ -160,10 +180,22 @@ export function OrdersKanban({ orders, onOrderClick, onUpdateOrderStatus }: Orde
                       >
                       {statusOrders.length > 0 ? (
                         statusOrders.map((order, index) => {
-                          const leadName = (order.leads as any)?.name || t('orders.kanban.unknownCustomer') || 'Unknown Customer';
-                          const leadEmail = (order.leads as any)?.email;
-                          const hasNewItems = order.sale_order_items?.some((item: any) => item.status === 'new') || false;
+                          const leadName = order.leads?.name;
+                          const leadContact = order.leads?.email || order.leads?.phone;
+                          const hasNewItems = order.sale_order_items?.some((item) => item.status === 'new') || false;
                           const scheduledLabel = formatScheduledFor(order.scheduled_for);
+                          const description = formatOrderProductSummary(order.sale_order_items);
+                          const createdTime = formatOrderTime(order.created_at);
+                          const fulfillmentLabel =
+                            order.fulfillment_method && order.fulfillment_method !== "none"
+                              ? t(`orders.kanban.fulfillment.${order.fulfillment_method}`) || order.fulfillment_method
+                              : null;
+                          const FulfillmentIcon =
+                            order.fulfillment_method === "ship"
+                              ? Truck
+                              : order.fulfillment_method === "pickup"
+                                ? Store
+                                : MapPin;
 
                           return (
                             <Draggable key={order.id} draggableId={order.id} index={index}>
@@ -181,72 +213,107 @@ export function OrdersKanban({ orders, onOrderClick, onUpdateOrderStatus }: Orde
                                     )}
                                     onClick={() => onOrderClick(order)}
                                   >
+                                    <OrderActionsMenu
+                                      order={order}
+                                      onOpen={onOrderClick}
+                                      onPay={onPay}
+                                      onPrintFull={onPrintFull}
+                                      onPrintDelta={onPrintDelta}
+                                      onCancel={onCancel}
+                                      onSplit={onSplit}
+                                      canCancel={canCancel}
+                                      printingKey={printingKey}
+                                      triggerClassName="absolute right-2 top-2 z-10 h-7 w-7 bg-background/90 opacity-100 shadow-sm transition-opacity md:opacity-0 md:group-hover:opacity-100 md:focus-visible:opacity-100 data-[state=open]:opacity-100"
+                                    />
                                     <CardContent className="p-3 space-y-2.5">
-                                      <div className="flex justify-between items-start gap-2">
+                                      <div className="flex justify-between items-start gap-2 pr-7">
                                         <div className="min-w-0">
                                           <h3 className="text-sm font-semibold leading-tight group-hover:text-primary transition-colors truncate">
                                             {order.order_number}
                                           </h3>
-                                          <p className="text-sm text-foreground truncate mt-1">{leadName}</p>
-                                          {leadEmail && (
-                                            <p className="text-[11px] text-muted-foreground truncate">{leadEmail}</p>
+                                        </div>
+                                        <div className="flex flex-shrink-0 items-center gap-1.5">
+                                          <span className="font-semibold text-[13px] text-foreground">
+                                            {formatCurrency(order.total, order.currency)}
+                                          </span>
+                                          {order.sales?.status && (
+                                            <span className={cn(
+                                              "text-[11px] font-medium",
+                                              order.sales.status !== 'cancelled' && Number(order.sales.amount_due || 0) === 0
+                                                ? "text-emerald-700 dark:text-emerald-400"
+                                                : "text-amber-700 dark:text-amber-400"
+                                            )}>
+                                              {order.sales.status !== 'cancelled' && Number(order.sales.amount_due || 0) === 0
+                                                ? t('orders.kanban.paid')
+                                                : t('orders.kanban.unpaid')}
+                                            </span>
                                           )}
                                         </div>
-                                        <span className="font-semibold text-[13px] text-foreground flex-shrink-0">
-                                          {formatCurrency(order.total, order.currency)}
-                                        </span>
                                       </div>
 
-                                      <div className="flex items-center justify-between gap-2 pt-2 border-t border-border/40">
-                                        <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground min-w-0 flex-wrap">
-                                          <Calendar className="h-3 w-3 opacity-70 flex-shrink-0" />
-                                          <span className="whitespace-nowrap">{formatDate(order.created_at)}</span>
-                                          {order.sales?.source && (
-                                            <>
-                                              <span className="opacity-40">·</span>
-                                              <span className="truncate">
-                                                {order.sales.source === 'online' || order.sales.source === 'shop' || order.sales.source === 'marketplace'
-                                                  ? t('orders.kanban.sourceOnline')
-                                                  : t('orders.kanban.sourcePos')}
-                                              </span>
-                                            </>
+                                      {(leadName || leadContact) && (
+                                        <p className="flex w-full min-w-0 items-center gap-1.5">
+                                          {leadName && (
+                                            <span className="truncate text-sm text-foreground">{leadName}</span>
                                           )}
-                                          {order.fulfillment_method && order.fulfillment_method !== 'none' && (
-                                            <>
-                                              <span className="opacity-40">·</span>
-                                              <span className="truncate">
-                                                {t(`orders.kanban.fulfillment.${order.fulfillment_method}`) || order.fulfillment_method}
-                                              </span>
-                                            </>
+                                          {leadName && leadContact && (
+                                            <span className="shrink-0 text-muted-foreground/50">·</span>
                                           )}
-                                          {scheduledLabel && (
-                                            <>
-                                              <span className="opacity-40">·</span>
-                                              <span
-                                                className={cn(
-                                                  "truncate flex items-center gap-1 font-medium",
-                                                  scheduledForClassName(order.scheduled_for)
-                                                )}
-                                              >
-                                                <Clock className="h-3 w-3" />
-                                                <span className="sr-only">{t("orders.kanban.scheduled") || "Scheduled"} </span>
-                                                {scheduledLabel}
-                                              </span>
-                                            </>
+                                          {leadContact && (
+                                            <span className="truncate text-[11px] text-muted-foreground">{leadContact}</span>
+                                          )}
+                                        </p>
+                                      )}
+
+                                      {description && (
+                                        <p className="w-full text-[11px] leading-snug text-muted-foreground line-clamp-2">
+                                          {description}
+                                        </p>
+                                      )}
+
+                                      <div className="space-y-1.5 border-t border-border/40 pt-2">
+                                        <div className="flex items-center justify-between gap-2">
+                                          <div className="flex min-w-0 items-center gap-1.5 overflow-hidden text-[11px] text-muted-foreground">
+                                            <Calendar className="h-3 w-3 opacity-70 flex-shrink-0" />
+                                            <span className="whitespace-nowrap">{formatDate(order.created_at)}</span>
+                                            {createdTime && (
+                                              <>
+                                                <span className="opacity-40">·</span>
+                                                <span className="whitespace-nowrap">{createdTime}</span>
+                                              </>
+                                            )}
+                                            {order.sales?.source && (
+                                              <>
+                                                <span className="opacity-40">·</span>
+                                                <span className="truncate">
+                                                  {order.sales.source === 'online' || order.sales.source === 'shop' || order.sales.source === 'marketplace'
+                                                    ? t('orders.kanban.sourceOnline')
+                                                    : t('orders.kanban.sourcePos')}
+                                                </span>
+                                              </>
+                                            )}
+                                          </div>
+                                          {fulfillmentLabel && (
+                                            <span
+                                              aria-label={fulfillmentLabel}
+                                              title={fulfillmentLabel}
+                                              className="ml-auto shrink-0"
+                                            >
+                                              <FulfillmentIcon className="h-3.5 w-3.5" />
+                                            </span>
                                           )}
                                         </div>
-
-                                        {order.sales?.status && (
-                                          <span className={cn(
-                                            "text-[11px] font-medium flex-shrink-0",
-                                            order.sales.status !== 'cancelled' && Number(order.sales.amount_due || 0) === 0
-                                              ? "text-emerald-700 dark:text-emerald-400"
-                                              : "text-amber-700 dark:text-amber-400"
-                                          )}>
-                                            {order.sales.status !== 'cancelled' && Number(order.sales.amount_due || 0) === 0
-                                              ? t('orders.kanban.paid')
-                                              : t('orders.kanban.unpaid')}
-                                          </span>
+                                        {scheduledLabel && (
+                                          <div
+                                            className={cn(
+                                              "flex items-center gap-1 text-[11px] font-medium",
+                                              scheduledForClassName(order.scheduled_for)
+                                            )}
+                                          >
+                                            <Clock className="h-3 w-3 shrink-0" />
+                                            <span className="sr-only">{t("orders.kanban.scheduled") || "Scheduled"} </span>
+                                            <span className="whitespace-nowrap">{scheduledLabel}</span>
+                                          </div>
                                         )}
                                       </div>
                                     </CardContent>

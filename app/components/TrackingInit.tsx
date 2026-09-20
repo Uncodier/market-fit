@@ -23,29 +23,27 @@ function shouldRecordScreen(pathname: string): boolean {
 function loadTracking(recordScreen: boolean) {
   if (typeof window === "undefined") return
   const w = window as Window & {
-    MarketFit?: { init?: (opts: Record<string, unknown>) => void }
+    Makinari?: { siteId?: string; init?: (opts: Record<string, unknown>) => void }
+    MarketFit?: { siteId?: string; init?: (opts: Record<string, unknown>) => void }
   }
-  if (w.MarketFit?.init) return
+  if (w.Makinari?.init || w.MarketFit?.init) return
 
-  w.MarketFit = w.MarketFit || {}
-  w.MarketFit.siteId = "9be0a6a2-5567-41bf-ad06-cb4014f0faf2"
+  w.Makinari = w.Makinari || w.MarketFit || {}
+  w.MarketFit = w.Makinari
+  w.Makinari.siteId = "9be0a6a2-5567-41bf-ad06-cb4014f0faf2"
 
   const script = document.createElement("script")
   script.async = true
   script.src = "https://files.uncodie.com/tracking.min.js"
   script.onload = () => {
     try {
-      if (typeof w.MarketFit?.init !== "function") return
-      const isDark =
-        document.documentElement.classList.contains("dark") ||
-        document.body.classList.contains("dark")
-      w.MarketFit.init({
+      if (typeof w.Makinari?.init !== "function") return
+      w.Makinari.init({
         siteId: "9be0a6a2-5567-41bf-ad06-cb4014f0faf2",
         trackVisitors: true,
         trackActions: true,
         recordScreen,
         debug: false,
-        theme: isDark ? "dark" : "default",
         chat: {
           enabled: true,
           hidden: true,

@@ -18,7 +18,7 @@ export function PosTopBarActions() {
   const { currentSite } = useSite()
   const { user } = useAuth()
   const { t } = useLocalization()
-  const [cartQty, setCartQty] = useState(0)
+  const [pendingSendQty, setPendingSendQty] = useState(0)
   const [seller, setSeller] = useState<SellerState | null>(null)
   const sendButtonContainerRef = useRef<HTMLDivElement>(null)
   const sendIconRef = useRef<HTMLSpanElement>(null)
@@ -44,8 +44,10 @@ export function PosTopBarActions() {
 
   useEffect(() => {
     const handleCartUpdate = (event: Event) => {
-      const detail = (event as CustomEvent<{ qty?: number }>).detail
-      setCartQty(Number(detail?.qty) || 0)
+      const detail = (
+        event as CustomEvent<{ qty?: number; deltaQty?: number }>
+      ).detail
+      setPendingSendQty(Number(detail?.deltaQty ?? detail?.qty) || 0)
     }
     const handleSellerState = (event: Event) => {
       const detail = (event as CustomEvent<SellerState>).detail
@@ -93,7 +95,7 @@ export function PosTopBarActions() {
           </span>
         </Button>
         <OrderUpdatesBadge
-          count={cartQty}
+          count={pendingSendQty}
           anchorRef={sendIconRef}
           containerRef={sendButtonContainerRef}
         />

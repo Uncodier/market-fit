@@ -20,6 +20,7 @@ import { ColorInput } from "../ui/color-input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select"
 import { toast } from "sonner"
 import { SupportChannelsSection } from "./SupportChannelsSection"
+import { createTrackingSnippet } from "./tracking-snippet"
 
 export interface ChannelsSectionProps {
   active: boolean
@@ -35,6 +36,7 @@ const WEBSITE_TRACKING_FIELDS = [
   "tracking.track_visitors",
   "tracking.track_actions",
   "tracking.record_screen",
+  "tracking.show_cookie_consent",
   "tracking.enable_chat",
   "tracking.chat_accent_color",
   "tracking.allow_anonymous_messages",
@@ -81,48 +83,9 @@ export function ChannelsSection({
       return copyTrackingCode()
     }
     
-    const trackingCode = `<script>
-  (function() {
-    window.MarketFit = window.MarketFit || {};
-    
-    MarketFit.siteId = "${siteId || siteName || 'YOUR_SITE_ID'}";
-    
-    var script = document.createElement('script');
-    script.async = true;
-    script.src = 'https://files.uncodie.com/tracking.min.js';
-    
-    script.onload = function() {
-      if (window.MarketFit && typeof window.MarketFit.init === 'function') {
-        window.MarketFit.init({
-          siteId: "${siteId || siteName || 'YOUR_SITE_ID'}",
-          trackVisitors: ${form.getValues("tracking.track_visitors")},
-          trackActions: ${form.getValues("tracking.track_actions")},
-          recordScreen: ${form.getValues("tracking.record_screen")},
-          debug: false,
-          chat: {
-            enabled: ${form.getValues("tracking.enable_chat")},
-            accentColor: "${form.getValues("tracking.chat_accent_color") || "#e0ff17"}",
-            allowAnonymousMessages: ${form.getValues("tracking.allow_anonymous_messages") || false},
-            position: "${form.getValues("tracking.chat_position") || "bottom-right"}",
-            title: "${form.getValues("tracking.chat_title") || "Chat with us"}",
-            welcomeMessage: "${form.getValues("tracking.welcome_message") || "Welcome to our website! How can we assist you today?"}"
-          }
-        });
-      }
-    };
-    
-    var firstScript = document.getElementsByTagName('script')[0];
-    if (firstScript && firstScript.parentNode) {
-      firstScript.parentNode.insertBefore(script, firstScript);
-    } else {
-      // Fallback: append to head or body if no script tags exist
-      var target = document.head || document.body;
-      if (target) {
-        target.appendChild(script);
-      }
-    }
-  })();
-</script>`
+    const trackingCode = createTrackingSnippet(
+      siteId || siteName || "YOUR_SITE_ID",
+    )
 
     try {
       // Try to use the modern Clipboard API first
@@ -227,6 +190,26 @@ export function ChannelsSection({
                   <FormLabel>Session Recording</FormLabel>
                   <FormDescription>
                     Record user sessions to replay their experience
+                  </FormDescription>
+                </div>
+                <FormControl>
+                  <Switch
+                    checked={field.value}
+                    onCheckedChange={field.onChange}
+                  />
+                </FormControl>
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="tracking.show_cookie_consent"
+            render={({ field }) => (
+              <FormItem className="flex flex-row items-center justify-between">
+                <div className="space-y-0.5">
+                  <FormLabel>Show Cookie Consent</FormLabel>
+                  <FormDescription>
+                    Ask visitors to accept cookies before optional tracking starts
                   </FormDescription>
                 </div>
                 <FormControl>
@@ -416,48 +399,11 @@ export function ChannelsSection({
                 <div className="relative">
                   <div className="rounded-md bg-gray-900 p-4 overflow-x-auto">
                     <pre className="text-sm text-white">
-                      <code>{`<script>
-  (function() {
-    window.MarketFit = window.MarketFit || {};
-    
-    MarketFit.siteId = "${siteId || siteName || 'YOUR_SITE_ID'}";
-    
-    var script = document.createElement('script');
-    script.async = true;
-    script.src = 'https://files.uncodie.com/tracking.min.js';
-    
-    script.onload = function() {
-      if (window.MarketFit && typeof window.MarketFit.init === 'function') {
-        window.MarketFit.init({
-          siteId: "${siteId || siteName || 'YOUR_SITE_ID'}",
-          trackVisitors: ${form.getValues("tracking.track_visitors")},
-          trackActions: ${form.getValues("tracking.track_actions")},
-          recordScreen: ${form.getValues("tracking.record_screen")},
-          debug: false,
-          chat: {
-            enabled: ${form.getValues("tracking.enable_chat")},
-            accentColor: "${form.getValues("tracking.chat_accent_color") || "#e0ff17"}",
-            allowAnonymousMessages: ${form.getValues("tracking.allow_anonymous_messages") || false},
-            position: "${form.getValues("tracking.chat_position") || "bottom-right"}",
-            title: "${form.getValues("tracking.chat_title") || "Chat with us"}",
-            welcomeMessage: "${form.getValues("tracking.welcome_message") || "Welcome to our website! How can we assist you today?"}"
-          }
-        });
-      }
-    };
-    
-    var firstScript = document.getElementsByTagName('script')[0];
-    if (firstScript && firstScript.parentNode) {
-      firstScript.parentNode.insertBefore(script, firstScript);
-    } else {
-      // Fallback: append to head or body if no script tags exist
-      var target = document.head || document.body;
-      if (target) {
-        target.appendChild(script);
-      }
-    }
-  })();
-</script>`}</code>
+                      <code>
+                        {createTrackingSnippet(
+                          siteId || siteName || "YOUR_SITE_ID",
+                        )}
+                      </code>
                     </pre>
                     <Button
                       type="button"
@@ -486,9 +432,9 @@ export function ChannelsSection({
         </SectionCardContent>
         <SectionCardFooter className="flex justify-between items-center bg-gray-50/50 dark:bg-gray-900/50">
           <div className="flex items-center gap-2">
-            <div className={`w-2 h-2 rounded-full ${form.getValues("tracking.enabled") ? "bg-green-500" : "bg-gray-300 dark:bg-gray-700"}`} />
+            <div className={`w-2 h-2 rounded-full ${form.getValues("tracking.track_visitors") ? "bg-green-500" : "bg-gray-300 dark:bg-gray-700"}`} />
             <span className="text-sm text-muted-foreground">
-              {form.getValues("tracking.enabled") ? "Tracking Active" : "Tracking Disabled"}
+              {form.getValues("tracking.track_visitors") ? "Tracking Active" : "Tracking Disabled"}
             </span>
           </div>
           <Button variant="outline" size="sm"
