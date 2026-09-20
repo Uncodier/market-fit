@@ -114,7 +114,6 @@ export function RobotsProvider({ children }: RobotsProviderProps) {
   const loadRobots = shouldLoadRobots(pathname)
   const { currentSite } = useSite()
   const [error, setError] = useState<string | null>(null)
-  const refreshTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const [lastRefreshAt, setLastRefreshAt] = useState<number | null>(null)
   const [refreshCount, setRefreshCount] = useState(0)
   // Kept for API compatibility; Realtime always mutates (never gated).
@@ -307,13 +306,23 @@ export function RobotsProvider({ children }: RobotsProviderProps) {
           filter: `site_id=eq.${currentSite.id}`
         },
         (payload: any) => {
-          // Always apply Realtime updates — never gate on autoRefreshEnabled
-          if (refreshTimeoutRef.current) clearTimeout(refreshTimeoutRef.current)
-          
-          const delay = payload.eventType === 'INSERT' ? 300 : 500
-          refreshTimeoutRef.current = setTimeout(() => {
-            mutate()
-          }, delay)
+          mutate((current) => {
+            const robots = current || []
+            if (payload.eventType === 'DELETE') {
+              return robots.filter((robot) => robot.id !== payload.old.id)
+            }
+            const next = payload.new as Robot
+            if (payload.eventType === 'INSERT') {
+              return robots.some((robot) => robot.id === next.id)
+                ? robots
+                : [next, ...robots]
+            }
+            return robots.map((robot) =>
+              robot.id === next.id
+                ? { ...robot, ...next }
+                : robot
+            )
+          }, false)
         }
       )
       .subscribe((status: string, err?: any) => {
@@ -355,7 +364,6 @@ export function RobotsProvider({ children }: RobotsProviderProps) {
     setupRealtimeSubscription()
     return () => {
       teardownRealtimeSubscription()
-      if (refreshTimeoutRef.current) clearTimeout(refreshTimeoutRef.current)
     }
   }, [loadRobots, currentSite?.id, isSiteContextReady, setupRealtimeSubscription, teardownRealtimeSubscription])
 
@@ -378,12 +386,6 @@ export function RobotsProvider({ children }: RobotsProviderProps) {
       clearTimeout(debounceTimer)
     }
   }, [currentSite?.id, isSiteContextReady, mutate, ensureRealtimeHealthy])
-
-  useEffect(() => {
-    return () => {
-      if (refreshTimeoutRef.current) clearTimeout(refreshTimeoutRef.current)
-    }
-  }, [])
 
   const value: RobotsContextValue = {
     robotsByActivity,

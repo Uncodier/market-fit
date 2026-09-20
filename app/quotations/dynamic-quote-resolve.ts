@@ -8,6 +8,9 @@ import {
 } from "./dynamic-quote-api";
 import { syncDynamicQuoteFromInstanceLogs } from "./dynamic-quote-sync";
 
+const ASSISTANT_DEADLINE_MS = 90_000;
+const POLL_INTERVAL_MS = 2_000;
+
 async function consumeResponseBody(res: Response) {
   if (!res.body) {
     await res.text().catch(() => "");
@@ -28,8 +31,11 @@ async function consumeResponseBody(res: Response) {
   }
 }
 
-async function tryApplyPrice(quotationItemId: string): Promise<boolean> {
-  const synced = await syncDynamicQuoteFromInstanceLogs(quotationItemId);
+async function tryApplyPrice(
+  quotationItemId: string,
+  logs?: Awaited<ReturnType<typeof fetchTunneledInstanceLogs>>["logs"]
+): Promise<boolean> {
+  const synced = await syncDynamicQuoteFromInstanceLogs(quotationItemId, logs);
   const unitPrice = synced.data?.unitPrice;
   const status = synced.data?.status;
   const applied =
@@ -96,31 +102,53 @@ export async function scheduleAssistantQuoteResolution(
 
   after(async () => {
     let resolved = false;
+    let applyInFlight: Promise<boolean> | null = null;
 
     const applyOnce = async (reason: string) => {
       if (resolved) return true;
-      // Warm the log cache path via tunnel (service key) before sync/apply.
-      const tunneled = await fetchTunneledInstanceLogs(params.instanceId, 100);
-      console.error("[dynamic-quote-resolve] tunneled logs", {
-        reason,
-        instanceId: params.instanceId,
-        count: tunneled.logs.length,
-        error: tunneled.error,
-        hasUnitPrice: tunneled.logs.some((l) =>
-          String(l.message || "").includes("unit_price")
-        ),
-      });
+      if (applyInFlight) return applyInFlight;
 
-      const ok = await tryApplyPrice(params.quotationItemId);
-      if (ok) resolved = true;
-      return ok;
+      applyInFlight = (async () => {
+        const tunneled = await fetchTunneledInstanceLogs(params.instanceId, 100);
+        console.error("[dynamic-quote-resolve] tunneled logs", {
+          reason,
+          instanceId: params.instanceId,
+          count: tunneled.logs.length,
+          error: tunneled.error,
+          hasUnitPrice: tunneled.logs.some((l) =>
+            String(l.message || "").includes("unit_price")
+          ),
+        });
+
+        const ok = await tryApplyPrice(
+          params.quotationItemId,
+          tunneled.logs
+        );
+        if (ok) resolved = true;
+        return ok;
+      })();
+
+      try {
+        return await applyInFlight;
+      } finally {
+        applyInFlight = null;
+      }
     };
 
-    // a) Server-side "subscription": poll tunneled instance logs with SERVICE_API_KEY
-    // while the assistant SSE is in flight (RLS-safe; API uses supabaseAdmin).
-    const pollId = setInterval(() => {
-      void applyOnce("tunneled_poll");
-    }, 2000);
+    const controller = new AbortController();
+    const timeout = setTimeout(
+      () => controller.abort(),
+      ASSISTANT_DEADLINE_MS
+    );
+    let stopPolling = false;
+    const pollPromise = (async () => {
+      while (!stopPolling && !resolved && !controller.signal.aborted) {
+        await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
+        if (!stopPolling && !resolved && !controller.signal.aborted) {
+          await applyOnce("tunneled_poll");
+        }
+      }
+    })();
 
     try {
       console.error("[dynamic-quote-resolve] calling assistant API", {
@@ -134,7 +162,12 @@ export async function scheduleAssistantQuoteResolution(
           "x-api-key": serviceApiKey,
         },
         body: JSON.stringify(body),
+        signal: controller.signal,
       });
+
+      if (!res.ok) {
+        throw new Error(`Assistant API returned ${res.status}`);
+      }
 
       console.error("[dynamic-quote-resolve] assistant headers", {
         status: res.status,
@@ -157,14 +190,19 @@ export async function scheduleAssistantQuoteResolution(
           await applyOnce(`grace_${i + 1}`);
         }
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("[dynamic-quote-resolve] assistant fetch error", {
-        error: err?.message || String(err),
+        error: err instanceof Error ? err.message : String(err),
         instanceId: params.instanceId,
       });
-      await applyOnce("fetch_error_fallback");
+      if (!controller.signal.aborted) {
+        await applyOnce("fetch_error_fallback");
+      }
     } finally {
-      clearInterval(pollId);
+      stopPolling = true;
+      controller.abort();
+      clearTimeout(timeout);
+      await pollPromise;
       console.error("[dynamic-quote-resolve] finished", {
         instanceId: params.instanceId,
         quotationItemId: params.quotationItemId,

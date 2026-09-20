@@ -124,6 +124,9 @@ REPOSITORIES_SUPABASE_SECRET_KEY=
 # Twilio
 TWILIO_ACCOUNT_SID=
 TWILIO_AUTH_TOKEN=
+# Exact public callback URL configured in Twilio. Recommended when a reverse
+# proxy changes the request host or protocol.
+TWILIO_WHATSAPP_WEBHOOK_URL=
 
 # Transactional email
 SENDGRID_API_KEY=
@@ -143,6 +146,15 @@ APPSUMO_CLIENT_ID=
 APPSUMO_CLIENT_SECRET=
 APPSUMO_API_KEY=
 APPSUMO_REDIRECT_URI=
+
+# Upstash Redis request admission and short-lived caches. REDIS_URL includes
+# credentials, for example rediss://default:TOKEN@INSTANCE.upstash.io:6379.
+REDIS_URL=
+# Keep false during rollout. Set true in production after Redis availability
+# monitoring is in place to fail closed on protected high-cost routes.
+REDIS_REQUIRED=false
+ANALYTICS_MAX_RANGE_DAYS=93
+ASSET_PROXY_MAX_BYTES=26214400
 
 # Reddit
 REDDIT_CLIENT_ID=

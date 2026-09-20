@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createServiceClient } from "@/lib/supabase/server"
+import { requireAnalyticsAccess } from "@/lib/auth/api-analytics-access"
 
 export async function GET(request: NextRequest) {
   try {
@@ -14,7 +15,10 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Missing required parameters" }, { status: 400 })
     }
 
-    const supabase = createServiceClient()
+    const access = await requireAnalyticsAccess(request)
+    if (access.error) return access.error
+
+    const supabase = await createServiceClient()
 
     // Calculate previous period for comparison
     const currentStart = new Date(startDate)

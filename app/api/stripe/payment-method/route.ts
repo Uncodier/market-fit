@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import Stripe from 'stripe'
+import { requireStripeSiteAccess } from '@/lib/auth/api-stripe-access'
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2025-05-28.basil',
@@ -50,6 +51,9 @@ export async function GET(request: NextRequest) {
     if (!siteId) {
       return NextResponse.json({ error: 'Missing siteId' }, { status: 400 })
     }
+
+    const access = await requireStripeSiteAccess(request, siteId)
+    if (access.error) return access.error
 
     const supabase = await createClient()
     const { data: billing } = await supabase

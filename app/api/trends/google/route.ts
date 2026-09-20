@@ -1,4 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { z } from 'zod'
+import {
+  decodeRequestBody,
+  readLimitedRequestBody,
+  RequestBodyTooLargeError,
+} from '@/lib/http/read-limited-request-body'
+
+const MAX_BODY_BYTES = 32 * 1024
+const requestSchema = z.object({
+  geo: z.string().regex(/^[A-Za-z]{2}$/).default('US'),
+  hl: z.string().regex(/^[A-Za-z-]{2,10}$/).default('en'),
+  timeframe: z.string().max(20).default('now 1-d'),
+  limit: z.number().int().min(1).max(25).default(10),
+  segments: z.array(z.object({
+    name: z.string().min(1).max(80),
+    description: z.string().max(240).optional(),
+  })).max(5).default([]),
+  mode: z.literal('news').default('news'),
+})
 
 // Simple HTML cleaning function directly in this file
 function cleanHtmlContent(htmlString: string): string {
@@ -75,150 +94,6 @@ function isValidCleanedContent(content: string): boolean {
   return words.length >= 3
 }
 
-// Legacy function kept for compatibility - now uses enhanced cleaning utility
-function cleanHtmlContentLegacy(htmlString: string): string {
-  if (!htmlString || typeof htmlString !== 'string') return ''
-  
-  let cleaned = htmlString.trim()
-  
-  // Step 1: Handle CDATA sections first
-  cleaned = cleaned.replace(/<!\[CDATA\[(.*?)\]\]>/g, '$1')
-  
-  // Step 2: Extract text from common HTML elements before removing them
-  // Extract text from <a> tags (preserve the link text)
-  cleaned = cleaned.replace(/<a[^>]*>(.*?)<\/a>/gi, '$1')
-  
-  // Extract text from <b>, <strong>, <i>, <em> tags
-  cleaned = cleaned.replace(/<(b|strong|i|em)[^>]*>(.*?)<\/\1>/gi, '$2')
-  
-  // Extract text from header tags
-  cleaned = cleaned.replace(/<(h[1-6])[^>]*>(.*?)<\/\1>/gi, '$2')
-  
-  // Extract text from paragraph tags
-  cleaned = cleaned.replace(/<p[^>]*>(.*?)<\/p>/gi, '$1 ')
-  
-  // Extract text from div and span tags
-  cleaned = cleaned.replace(/<(div|span)[^>]*>(.*?)<\/\1>/gi, '$2 ')
-  
-  // Step 3: Remove problematic tags completely (including content)
-  // Remove font tags (often contain source attribution we don't want)
-  cleaned = cleaned.replace(/<font[^>]*>.*?<\/font>/gi, '')
-  
-  // Remove script and style tags with their content
-  cleaned = cleaned.replace(/<(script|style)[^>]*>.*?<\/\1>/gi, '')
-  
-  // Remove comments
-  cleaned = cleaned.replace(/<!--.*?-->/g, '')
-  
-  // Step 4: Remove all remaining HTML tags
-  cleaned = cleaned.replace(/<[^>]*>/g, '')
-  
-  // Step 5: Clean HTML entities (comprehensive list)
-  const htmlEntities: Record<string, string> = {
-    '&amp;': '&',
-    '&lt;': '<',
-    '&gt;': '>',
-    '&quot;': '"',
-    '&apos;': "'",
-    '&nbsp;': ' ',
-    '&ndash;': '–',
-    '&mdash;': '—',
-    '&ldquo;': '"',
-    '&rdquo;': '"',
-    '&lsquo;': "'",
-    '&rsquo;': "'",
-    '&hellip;': '...',
-    '&copy;': '©',
-    '&reg;': '®',
-    '&trade;': '™',
-    '&deg;': '°',
-    '&plusmn;': '±',
-    '&frac14;': '¼',
-    '&frac12;': '½',
-    '&frac34;': '¾'
-  }
-  
-  // Replace known entities
-  Object.entries(htmlEntities).forEach(([entity, replacement]) => {
-    cleaned = cleaned.replace(new RegExp(entity, 'g'), replacement)
-  })
-  
-  // Handle numeric character references (&#123; or &#x1A;)
-  cleaned = cleaned.replace(/&#(\d+);/g, (match, num) => {
-    try {
-      return String.fromCharCode(parseInt(num, 10))
-    } catch {
-      return ''
-    }
-  })
-  
-  // Handle hexadecimal character references
-  cleaned = cleaned.replace(/&#x([0-9a-fA-F]+);/g, (match, hex) => {
-    try {
-      return String.fromCharCode(parseInt(hex, 16))
-    } catch {
-      return ''
-    }
-  })
-  
-  // Remove any remaining unrecognized entities
-  cleaned = cleaned.replace(/&[a-zA-Z][a-zA-Z0-9]*;/g, '')
-  
-  // Step 6: Remove URLs and links
-  cleaned = cleaned.replace(/https?:\/\/[^\s<>"{}|\\^`[\]]+/g, '')
-  cleaned = cleaned.replace(/www\.[^\s<>"{}|\\^`[\]]+\.[a-z]{2,}/gi, '')
-  
-  // Step 7: Clean up source attribution patterns
-  // Remove common source patterns like "- Source Name", "via SourceName", etc.
-  cleaned = cleaned.replace(/\s*[-–—]\s*[A-Za-z][A-Za-z\s&.,]+\s*$/g, '')
-  cleaned = cleaned.replace(/^\s*[-–—]\s*/g, '')
-  cleaned = cleaned.replace(/\s*via\s+[A-Za-z][A-Za-z\s&.,]+$/gi, '')
-  cleaned = cleaned.replace(/\s*source:\s*[A-Za-z][A-Za-z\s&.,]+$/gi, '')
-  cleaned = cleaned.replace(/\s*\|\s*[A-Za-z][A-Za-z\s&.,]+$/g, '')
-  
-  // Step 8: Normalize whitespace and special characters
-  // Replace multiple spaces/tabs/newlines with single space
-  cleaned = cleaned.replace(/[\s\r\n\t]+/g, ' ')
-  
-  // Remove leading/trailing whitespace
-  cleaned = cleaned.trim()
-  
-  // Step 9: Remove common unwanted phrases
-  const unwantedPhrases = [
-    /read more\.?\.?\.?$/gi,
-    /continue reading\.?\.?\.?$/gi,
-    /click here\.?\.?\.?$/gi,
-    /full story\.?\.?\.?$/gi,
-    /more details\.?\.?\.?$/gi,
-    /see full article\.?\.?\.?$/gi
-  ]
-  
-  unwantedPhrases.forEach(phrase => {
-    cleaned = cleaned.replace(phrase, '')
-  })
-  
-  // Step 10: Final cleanup
-  cleaned = cleaned.trim()
-  
-  // Ensure we don't have just punctuation or very short meaningless content
-  if (cleaned.length < 3 || /^[^\w]*$/.test(cleaned)) {
-    return ''
-  }
-  
-  // Limit maximum length to prevent extremely long descriptions
-  if (cleaned.length > 500) {
-    cleaned = cleaned.substring(0, 500).trim()
-    // Try to end at a word boundary
-    const lastSpace = cleaned.lastIndexOf(' ')
-    if (lastSpace > 400) {
-      cleaned = cleaned.substring(0, lastSpace)
-    }
-    cleaned += '...'
-  }
-  
-  return cleaned
-}
-
 // Real Google News RSS implementation - no API key needed!
 async function fetchGoogleNews(query: string, limit: number = 10): Promise<any[]> {
   try {
@@ -230,7 +105,8 @@ async function fetchGoogleNews(query: string, limit: number = 10): Promise<any[]
     const response = await fetch(rssUrl, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (compatible; NewsReader/1.0)'
-      }
+      },
+      signal: AbortSignal.timeout(8_000),
     })
     
     if (!response.ok) {
@@ -502,7 +378,20 @@ export async function POST(request: NextRequest) {
   console.log('🚨 [Google News RSS] API CALLED - POST REQUEST RECEIVED!')
   
   try {
-    const { geo = 'US', hl = 'en', timeframe = 'now 1-d', limit = 10, segments, mode = 'news' } = await request.json()
+    const parsed = requestSchema.safeParse(
+      JSON.parse(
+        decodeRequestBody(
+          await readLimitedRequestBody(request, MAX_BODY_BYTES)
+        )
+      )
+    )
+    if (!parsed.success) {
+      return NextResponse.json(
+        { success: false, error: 'Invalid trend request' },
+        { status: 400 }
+      )
+    }
+    const { geo, hl, timeframe, limit, segments, mode } = parsed.data
 
     console.log(`🎯 [Google News RSS] Request params:`, { geo, timeframe, limit, segmentCount: segments?.length || 0 })
 
@@ -550,6 +439,18 @@ export async function POST(request: NextRequest) {
     })
 
   } catch (error) {
+    if (error instanceof RequestBodyTooLargeError) {
+      return NextResponse.json(
+        { success: false, error: error.message },
+        { status: 413 }
+      )
+    }
+    if (error instanceof SyntaxError) {
+      return NextResponse.json(
+        { success: false, error: 'Invalid JSON payload' },
+        { status: 400 }
+      )
+    }
     console.error('❌ [Google News RSS] API error:', error)
     return NextResponse.json(
       {

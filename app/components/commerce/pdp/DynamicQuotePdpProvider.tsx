@@ -69,6 +69,13 @@ interface DynamicQuotePdpProviderProps {
   children: ReactNode
 }
 
+type QuoteProgressData = {
+  logs?: DynamicQuoteProgressLog[]
+  unitPrice?: number | null
+  status?: string | null
+  validUntil?: string | null
+}
+
 export function DynamicQuotePdpProvider({
   item,
   backUrl,
@@ -86,6 +93,9 @@ export function DynamicQuotePdpProvider({
   const [loading, setLoading] = useState(false)
   const [quotationId, setQuotationId] = useState<string | null>(null)
   const [quotationItemId, setQuotationItemId] = useState<string | null>(null)
+  const [progressAccessToken, setProgressAccessToken] = useState<string | null>(
+    null
+  )
   const [status, setStatus] = useState<string | null>(null)
   const [unitPrice, setUnitPrice] = useState<number | null>(null)
   const [validUntil, setValidUntil] = useState<string | null>(null)
@@ -93,8 +103,10 @@ export function DynamicQuotePdpProvider({
   const [progressLogs, setProgressLogs] = useState<DynamicQuoteProgressLog[]>([])
   const statusRef = useRef<string | null>(null)
   const unitPriceRef = useRef<number | null>(null)
+  const quotationStatusRef = useRef<string | null>(null)
   statusRef.current = status
   unitPriceRef.current = unitPrice
+  quotationStatusRef.current = quotationStatus
   const prevStatusRef = useRef<string | null>(null)
 
   useEffect(() => {
@@ -104,57 +116,96 @@ export function DynamicQuotePdpProvider({
   useEffect(() => {
     if (!quotationId) return
     let cancelled = false
+    let timer: ReturnType<typeof setTimeout> | null = null
+    let inFlight = false
+    const deadline = Date.now() + 2 * 60 * 1000
+
+    const isTerminal = () =>
+      ["priced", "awaiting_authorization", "failed"].includes(
+        statusRef.current || ""
+      ) ||
+      ["accepted", "rejected", "expired", "cancelled"].includes(
+        quotationStatusRef.current || ""
+      )
+
+    const schedule = (delay: number) => {
+      if (!cancelled && !isTerminal() && Date.now() < deadline) {
+        timer = setTimeout(poll, delay)
+      }
+    }
+
     const poll = async () => {
+      if (cancelled || inFlight || isTerminal() || Date.now() >= deadline) {
+        return
+      }
+      if (document.visibilityState === "hidden" || !navigator.onLine) {
+        schedule(10_000)
+        return
+      }
+
+      inFlight = true
       const currentStatus = statusRef.current
       const hasPrice = (unitPriceRef.current ?? 0) > 0
-      // Keep syncing until we have a real unit price — not only while status===processing
-      // (status can flip incorrectly and stop the poll while the assistant already priced).
       const needsSync =
         Boolean(quotationItemId) &&
         (!hasPrice ||
           currentStatus === "processing" ||
           !currentStatus)
 
-      if (needsSync && quotationItemId) {
-        const progress = await pollDynamicQuoteProgress(quotationItemId)
-        if (cancelled) return
-        if (progress.data?.logs) setProgressLogs(progress.data.logs)
-        if (progress.data?.unitPrice != null && progress.data.unitPrice > 0) {
-          setUnitPrice(progress.data.unitPrice)
-          unitPriceRef.current = progress.data.unitPrice
+      try {
+        if (needsSync && quotationItemId && progressAccessToken) {
+          const progress = await pollDynamicQuoteProgress(
+            quotationItemId,
+            progressAccessToken
+          )
+          if (cancelled) return
+          const progressData = progress.data as QuoteProgressData | undefined
+          if (progressData?.logs) setProgressLogs(progressData.logs)
+          if (progressData?.unitPrice != null && progressData.unitPrice > 0) {
+            setUnitPrice(progressData.unitPrice)
+            unitPriceRef.current = progressData.unitPrice
+          }
+          if (progressData?.status) {
+            setStatus(progressData.status)
+            statusRef.current = progressData.status
+          }
+          if (progressData?.validUntil) {
+            setValidUntil(progressData.validUntil)
+          }
         }
-        if (progress.data?.status) setStatus(progress.data.status)
-        if (progress.data && "validUntil" in progress.data && progress.data.validUntil) {
-          setValidUntil(progress.data.validUntil as string)
-        }
-      }
 
-      const res = await getQuotation(quotationId)
-      if (cancelled || res.error || !res.data) return
-      setQuotationStatus(res.data.status)
-      const line = (res.data.items || []).find(
-        (i: { catalog_item_id?: string }) => i.catalog_item_id === item.id
-      )
-      const dq = line?.metadata?.dynamic_quote
-      if (line?.unit_price != null && Number(line.unit_price) > 0) {
-        setUnitPrice(Number(line.unit_price))
-        unitPriceRef.current = Number(line.unit_price)
-        if (dq?.status) setStatus(dq.status)
-        else setStatus("priced")
-      } else if (dq?.status === "processing" || dq?.status === "failed") {
-        setStatus(dq.status)
+        const res = await getQuotation(quotationId)
+        if (cancelled || res.error || !res.data) return
+        setQuotationStatus(res.data.status)
+        quotationStatusRef.current = res.data.status
+        const line = (res.data.items || []).find(
+          (i: { catalog_item_id?: string }) => i.catalog_item_id === item.id
+        )
+        const dq = line?.metadata?.dynamic_quote
+        if (line?.unit_price != null && Number(line.unit_price) > 0) {
+          setUnitPrice(Number(line.unit_price))
+          unitPriceRef.current = Number(line.unit_price)
+          const nextStatus = dq?.status || "priced"
+          setStatus(nextStatus)
+          statusRef.current = nextStatus
+        } else if (dq?.status === "processing" || dq?.status === "failed") {
+          setStatus(dq.status)
+          statusRef.current = dq.status
+        }
+        if (res.data.valid_until) setValidUntil(res.data.valid_until)
+        if (line?.id && !quotationItemId) setQuotationItemId(line.id)
+      } finally {
+        inFlight = false
+        schedule((unitPriceRef.current ?? 0) > 0 ? 4000 : 2000)
       }
-      if (res.data.valid_until) setValidUntil(res.data.valid_until)
-      if (line?.id && !quotationItemId) setQuotationItemId(line.id)
     }
-    poll()
-    const intervalMs = (unitPriceRef.current ?? 0) > 0 ? 4000 : 2000
-    const id = setInterval(poll, intervalMs)
+
+    void poll()
     return () => {
       cancelled = true
-      clearInterval(id)
+      if (timer) clearTimeout(timer)
     }
-  }, [quotationId, quotationItemId, item.id])
+  }, [quotationId, quotationItemId, progressAccessToken, item.id])
 
   useEffect(() => {
     if (
@@ -218,13 +269,19 @@ export function DynamicQuotePdpProvider({
       if (res.error && !res.data?.quotationId) {
         throw new Error(res.error)
       }
+      if (!res.data?.quotationId) {
+        throw new Error("Quote request did not return a quotation")
+      }
 
-      setQuotationId(res.data!.quotationId)
-      if (res.data!.quotationItemId) setQuotationItemId(res.data!.quotationItemId)
-      setStatus(res.data!.status || "processing")
-      if (res.data!.unitPrice != null) setUnitPrice(res.data!.unitPrice)
-      if (res.data!.validUntil) setValidUntil(res.data!.validUntil)
-      if (res.data!.status === "processing" || !res.data!.status) {
+      setQuotationId(res.data.quotationId)
+      if (res.data.quotationItemId) setQuotationItemId(res.data.quotationItemId)
+      if (res.data.progressAccessToken) {
+        setProgressAccessToken(res.data.progressAccessToken)
+      }
+      setStatus(res.data.status || "processing")
+      if (res.data.unitPrice != null) setUnitPrice(res.data.unitPrice)
+      if (res.data.validUntil) setValidUntil(res.data.validUntil)
+      if (res.data.status === "processing" || !res.data.status) {
         setProgressLogs([
           {
             id: "starting",
@@ -235,9 +292,9 @@ export function DynamicQuotePdpProvider({
         ])
       }
 
-      if (res.data!.status === "awaiting_authorization") {
+      if (res.data.status === "awaiting_authorization") {
         toast.message(t("pdp.dynamicQuote.pendingApproval") || "Quote pending seller approval")
-      } else if (res.data!.status === "priced") {
+      } else if (res.data.status === "priced") {
         toast.success(t("pdp.dynamicQuote.ready") || "Quote ready")
       }
     } catch (err: unknown) {

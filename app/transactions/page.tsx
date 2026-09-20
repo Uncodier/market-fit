@@ -97,9 +97,64 @@ export default function TransactionsPage() {
     currentSite?.id
       ? { siteId: currentSite.id, page, pageSize, category: categoryFilter, campaignId: campaignFilter, locationId: locationFilter, sort: sortBy }
       : null,
-    fetcher,
-    { refreshInterval: 5000 } // Auto refresh every 5 seconds to catch newly created transactions
+    fetcher
   )
+
+  useEffect(() => {
+    if (!currentSite?.id) return
+    const supabase = createClient()
+    let timer: ReturnType<typeof setTimeout> | null = null
+    let inFlight = false
+    let queued = false
+
+    const refresh = async () => {
+      if (document.visibilityState === "hidden" || !navigator.onLine) {
+        queued = true
+        return
+      }
+      if (inFlight) {
+        queued = true
+        return
+      }
+      inFlight = true
+      queued = false
+      try {
+        await mutate()
+      } finally {
+        inFlight = false
+        if (queued) schedule()
+      }
+    }
+    const schedule = () => {
+      if (timer) clearTimeout(timer)
+      timer = setTimeout(() => void refresh(), 300)
+    }
+    const channel = supabase
+      .channel(`transactions-${currentSite.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "transactions",
+          filter: `site_id=eq.${currentSite.id}`,
+        },
+        schedule
+      )
+      .subscribe()
+    const resume = () => {
+      if (document.visibilityState === "visible" && navigator.onLine) schedule()
+    }
+    document.addEventListener("visibilitychange", resume)
+    window.addEventListener("online", resume)
+
+    return () => {
+      if (timer) clearTimeout(timer)
+      document.removeEventListener("visibilitychange", resume)
+      window.removeEventListener("online", resume)
+      void supabase.removeChannel(channel)
+    }
+  }, [currentSite?.id, mutate])
 
   const handleCreate = () => {
     setExpenseToEdit(null)

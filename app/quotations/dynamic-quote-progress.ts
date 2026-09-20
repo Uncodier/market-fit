@@ -2,11 +2,13 @@
 
 import { createClient as createClientAdmin } from "@supabase/supabase-js";
 import { DynamicQuoteMetadata } from "@/app/types";
-import { fetchTunneledInstanceLogs } from "./dynamic-quote-api";
+import type { TunneledInstanceLog } from "./dynamic-quote-api";
 import {
   findAssistantInstanceForQuote,
   syncDynamicQuoteFromInstanceLogs,
 } from "./dynamic-quote-sync";
+import { isValidQuotationPublicToken } from "@/app/quotations/public-token";
+import { isPublicAccessTokenActive } from "@/app/documents/public-token";
 
 export type DynamicQuoteProgressLog = {
   id: string;
@@ -84,17 +86,10 @@ function toProgressLog(row: {
   return null;
 }
 
-async function loadProgressLogs(
-  instanceId: string,
-  _afterIso?: string | null
-): Promise<DynamicQuoteProgressLog[]> {
-  // Tunneled + SERVICE_API_KEY (API uses supabaseAdmin). Direct RLS would fail for buyers.
-  const { logs, error } = await fetchTunneledInstanceLogs(instanceId, 80);
-  if (error) {
-    console.error("[dynamic-quote-progress] tunneled logs error:", error);
-  }
-
-  const relevant = (logs || [])
+function loadProgressLogs(
+  logs: TunneledInstanceLog[]
+): DynamicQuoteProgressLog[] {
+  const relevant = logs
     .filter((row) =>
       ["thinking", "tool_call", "agent_action"].includes(String(row.log_type || ""))
     )
@@ -117,20 +112,51 @@ async function loadProgressLogs(
 /**
  * Single poll for PDP: sync price from agent_action logs + return live progress feed.
  */
-export async function pollDynamicQuoteProgress(quotationItemId: string) {
+export async function pollDynamicQuoteProgress(
+  quotationItemId: string,
+  progressAccessToken: string
+) {
+  if (!isValidQuotationPublicToken(progressAccessToken)) {
+    return { error: "Quote progress is not available" };
+  }
+
   const admin = adminClient();
   const { data: item, error } = await admin
     .from("quotation_items")
-    .select("id, created_at, metadata, quotation:quotations(site_id)")
+    .select(`
+      id,
+      metadata,
+      quotation:quotations(
+        site_id,
+        public_access_token,
+        public_access_token_expires_at,
+        public_access_token_revoked_at
+      )
+    `)
     .eq("id", quotationItemId)
     .single();
 
   if (error || !item) {
-    return { error: error?.message || "Quotation item not found" };
+    return { error: "Quote progress is not available" };
+  }
+
+  const quotation = (Array.isArray(item.quotation)
+    ? item.quotation[0]
+    : item.quotation) as {
+    site_id?: string;
+    public_access_token?: string | null;
+    public_access_token_expires_at?: string | null;
+    public_access_token_revoked_at?: string | null;
+  } | null;
+  if (
+    quotation?.public_access_token !== progressAccessToken ||
+    !isPublicAccessTokenActive(quotation)
+  ) {
+    return { error: "Quote progress is not available" };
   }
 
   const meta = (item.metadata?.dynamic_quote || {}) as DynamicQuoteMetadata;
-  const siteId = (item.quotation as { site_id?: string } | null)?.site_id;
+  const siteId = quotation.site_id;
 
   let instanceId = meta.assistant_instance_id || null;
   if (!instanceId && siteId) {
@@ -154,10 +180,11 @@ export async function pollDynamicQuoteProgress(quotationItemId: string) {
     instanceId ||
     undefined;
 
-  let logs: DynamicQuoteProgressLog[] = [];
-  if (resolvedInstanceId) {
-    logs = await loadProgressLogs(resolvedInstanceId, item.created_at || null);
-  }
+  const sourceLogs =
+    synced.data && "sourceLogs" in synced.data
+      ? (synced.data.sourceLogs as TunneledInstanceLog[])
+      : [];
+  let logs = resolvedInstanceId ? loadProgressLogs(sourceLogs) : [];
 
   if (
     logs.length === 0 &&

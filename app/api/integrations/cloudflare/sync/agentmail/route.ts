@@ -1,21 +1,34 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
 import { getSiteSecret } from '@/app/lib/secrets-service'
 import { getZoneByDomain, addDnsRecords, CloudflareDnsRecord } from '@/app/lib/integrations/cloudflare/cloudflare-service'
+import { requireSiteAccess } from '@/lib/auth/api-site-access'
+import { acquireOperationLease, type OperationLease } from '@/lib/redis/operation-lease'
+
+const MAX_RECORDS = 100
 
 export async function POST(req: NextRequest) {
+  let lease: OperationLease | null = null
   try {
-    const supabase = await createClient();
-  const { data: { user: auth } } = await supabase.auth.getUser();
-    if (!auth) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
     const body = await req.json()
     const { siteId, domain, records } = body
 
     if (!siteId || !domain || !records || !Array.isArray(records)) {
       return NextResponse.json({ error: 'Missing required parameters' }, { status: 400 })
+    }
+    if (records.length === 0 || records.length > MAX_RECORDS) {
+      return NextResponse.json({ error: 'Invalid DNS record count' }, { status: 400 })
+    }
+
+    const access = await requireSiteAccess(req, siteId, {
+      requireManager: true,
+    })
+    if (access.error) return access.error
+    lease = await acquireOperationLease('cloudflare-sync', siteId, 60_000)
+    if (!lease) {
+      return NextResponse.json(
+        { error: 'A Cloudflare synchronization is already running' },
+        { status: 429, headers: { 'Retry-After': '5' } }
+      )
     }
 
     const token = await getSiteSecret(siteId, 'cloudflare', 'dns_sync')
@@ -56,5 +69,7 @@ export async function POST(req: NextRequest) {
   } catch (error: any) {
     console.error('Cloudflare sync agentmail error:', error)
     return NextResponse.json({ error: error.message || 'Internal error' }, { status: 500 })
+  } finally {
+    await lease?.release()
   }
 }

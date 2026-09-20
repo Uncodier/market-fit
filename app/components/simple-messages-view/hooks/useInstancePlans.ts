@@ -13,29 +13,24 @@ export const useInstancePlans = ({ activeRobotInstance }: UseInstancePlansProps)
   const [completedPlans, setCompletedPlans] = useState<InstancePlan[]>([])
   const [isLoadingPlans, setIsLoadingPlans] = useState(false)
   const refreshTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const loadInFlightRef = useRef(false)
+  const loadQueuedRef = useRef(false)
 
   // Load instance plans with proper status management
   const loadInstancePlans = useCallback(async () => {
-    
-    // First, let's test if the table exists regardless of activeRobotInstance
-    try {
-      const supabase = createClient()
-      
-      const { data: tableTest, error: tableError, count: totalCount } = await supabase
-        .from('instance_plans')
-        .select('id', { count: 'exact' })
-        .limit(1)
-      
-    } catch (testError) {
-      console.error('🔧 Table test failed:', testError)
+    if (loadInFlightRef.current) {
+      loadQueuedRef.current = true
+      return
     }
-    
+
     if (!activeRobotInstance?.id) {
       setInstancePlans([])
       setSteps([])
       return
     }
 
+    loadInFlightRef.current = true
+    loadQueuedRef.current = false
     const instanceId = activeRobotInstance.id
     
 
@@ -57,17 +52,6 @@ export const useInstancePlans = ({ activeRobotInstance }: UseInstancePlansProps)
         console.error('❌ Error loading instance plans:', error)
         setInstancePlans([])
         setSteps([])
-        
-        // Debug: Check if table exists and has any data
-        try {
-          const { data: allPlans, error: debugError, count: totalCount } = await supabase
-            .from('instance_plans')
-            .select('id, instance_id, title, status', { count: 'exact' })
-            .limit(5)
-          
-        } catch (debugErr) {
-          console.error('🔧 Debug query failed:', debugErr)
-        }
       } else {
         const allPlansRaw = data || []
         
@@ -156,7 +140,12 @@ export const useInstancePlans = ({ activeRobotInstance }: UseInstancePlansProps)
       setInstancePlans([])
       setSteps([])
     } finally {
+      loadInFlightRef.current = false
       setIsLoadingPlans(false)
+      if (loadQueuedRef.current) {
+        loadQueuedRef.current = false
+        window.setTimeout(() => void loadInstancePlans(), 0)
+      }
     }
   }, [activeRobotInstance])
 
@@ -231,7 +220,7 @@ export const useInstancePlans = ({ activeRobotInstance }: UseInstancePlansProps)
           table: 'instance_plans',
           filter: `instance_id=eq.${instanceId}`
         },
-        (payload) => {
+        (payload: { eventType: string }) => {
           console.log(`[useInstancePlans] Realtime update for instance ${instanceId}`)
           if (refreshTimeoutRef.current) clearTimeout(refreshTimeoutRef.current)
           
@@ -241,7 +230,7 @@ export const useInstancePlans = ({ activeRobotInstance }: UseInstancePlansProps)
           }, delay)
         }
       )
-      .subscribe((status) => {
+      .subscribe((status: string) => {
         console.log(`[useInstancePlans] Subscription status for ${instanceId}:`, status)
       })
 

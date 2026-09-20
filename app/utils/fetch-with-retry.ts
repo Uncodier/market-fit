@@ -7,6 +7,34 @@ interface FetchWithRetryOptions {
   maxRetries?: number;
   retryDelay?: number;
   initialDelay?: number;
+  signal?: AbortSignal;
+}
+
+function retryAfterMs(response: Response, fallback: number): number {
+  const value = response.headers?.get?.("retry-after")
+  if (!value) return fallback
+  const seconds = Number(value)
+  if (Number.isFinite(seconds)) return Math.max(0, seconds * 1000)
+  const date = Date.parse(value)
+  return Number.isFinite(date) ? Math.max(0, date - Date.now()) : fallback
+}
+
+function wait(ms: number, signal?: AbortSignal): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (signal?.aborted) {
+      reject(new DOMException("Request aborted", "AbortError"))
+      return
+    }
+    const timeout = setTimeout(resolve, ms)
+    signal?.addEventListener(
+      "abort",
+      () => {
+        clearTimeout(timeout)
+        reject(new DOMException("Request aborted", "AbortError"))
+      },
+      { once: true }
+    )
+  })
 }
 
 /**
@@ -21,13 +49,16 @@ export async function fetchWithRetry(
   url: string,
   options: FetchWithRetryOptions = {}
 ): Promise<Response | null> {
-  const { maxRetries = 3, retryDelay = 1000, initialDelay = 500 } = options;
-  
-  let lastError: Error | null = null;
+  const {
+    maxRetries = 3,
+    retryDelay = options.initialDelay ?? 500,
+    signal,
+  } = options;
   
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
-      const response = await fetchFn(url);
+      if (signal?.aborted) return null;
+      const response = await fetchFn(url, { signal });
       
       // Request was cancelled (aborted) - return null immediately, no retry
       if (!response) {
@@ -48,9 +79,11 @@ export async function fetchWithRetry(
       
       // HTTP error - retry if we have attempts left
       if (attempt < maxRetries) {
-        const delay = initialDelay * Math.pow(2, attempt);
+        const fallbackDelay =
+          retryDelay * Math.pow(2, attempt) * (0.75 + Math.random() * 0.5);
+        const delay = retryAfterMs(response, fallbackDelay);
         console.log(`[fetchWithRetry] HTTP error ${response.status}, retrying in ${delay}ms (attempt ${attempt + 1}/${maxRetries + 1})`);
-        await new Promise(resolve => setTimeout(resolve, delay));
+        await wait(delay, signal);
         continue;
       }
       
@@ -59,6 +92,7 @@ export async function fetchWithRetry(
       return null;
       
     } catch (error: any) {
+      if (error?.name === "AbortError") return null;
       // Check if the error itself is a non-retryable client error (e.g., from a library that throws on 4xx)
       const status = error?.status || error?.response?.status;
       const isRetryableClientError = status === 408 || status === 429;
@@ -69,10 +103,10 @@ export async function fetchWithRetry(
 
       // Network or other errors - retry if we have attempts left
       if (attempt < maxRetries) {
-        lastError = error instanceof Error ? error : new Error(String(error));
-        const delay = initialDelay * Math.pow(2, attempt);
+        const delay =
+          retryDelay * Math.pow(2, attempt) * (0.75 + Math.random() * 0.5);
         console.log(`[fetchWithRetry] Error occurred, retrying in ${delay}ms (attempt ${attempt + 1}/${maxRetries + 1}):`, error);
-        await new Promise(resolve => setTimeout(resolve, delay));
+        await wait(delay, signal);
         continue;
       }
       

@@ -6,6 +6,7 @@ import { KpiData } from "@/app/types";
 import { createClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
 import crypto from "crypto";
+import { requireAnalyticsAccess } from "@/lib/auth/api-analytics-access";
 
 // Helper function to determine period type based on date range
 function determinePeriodType(startDate: Date, endDate: Date): string {
@@ -274,7 +275,6 @@ export async function GET(request: Request) {
   const startDateParam = searchParams.get("startDate");
   const endDateParam = searchParams.get("endDate");
   const siteId = searchParams.get("siteId");
-  const userId = searchParams.get("userId");
   const skipKpiCreation = searchParams.get("skipKpiCreation") === "true";
   
   if (!siteId) {
@@ -287,6 +287,10 @@ export async function GET(request: Request) {
       { status: 400 }
     );
   }
+
+  const access = await requireAnalyticsAccess(request);
+  if (access.error) return access.error;
+  const userId = access.userId;
 
 
   // Normalize dates to eliminate time component

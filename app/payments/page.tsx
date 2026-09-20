@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useEffect, useState, Suspense } from "react"
+import React, { useEffect, useRef, useState, Suspense } from "react"
 import { useRouter } from "next/navigation"
 import { useSite } from "@/app/context/SiteContext"
 import { useLocalization } from "@/app/context/LocalizationContext"
@@ -49,6 +49,7 @@ function PaymentsContent() {
   const [isPayoutOpen, setIsPayoutOpen] = useState(false)
   const [payoutAmount, setPayoutAmount] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const payoutIdempotencyKeyRef = useRef<string | null>(null)
 
   // Extract bank details from site settings
   const shopBankDetails = {
@@ -209,13 +210,14 @@ function PaymentsContent() {
 
     setIsSubmitting(true)
     try {
+      payoutIdempotencyKeyRef.current ??= crypto.randomUUID()
       const response = await fetch('/api/payouts/request', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           siteId: currentSite?.id,
           requestedCredits: Number(payoutAmount),
-          bankDetails: shopBankDetails
+          idempotencyKey: payoutIdempotencyKeyRef.current
         })
       })
 
@@ -225,6 +227,7 @@ function PaymentsContent() {
       }
 
       toast.success("Payout requested successfully")
+      payoutIdempotencyKeyRef.current = null
       setIsPayoutOpen(false)
       setPayoutAmount("")
       mutatePayouts()

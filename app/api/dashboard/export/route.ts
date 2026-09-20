@@ -1,6 +1,33 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { Parser } from 'json2csv'
 import { format } from 'date-fns'
+import {
+  markAnalyticsRequestAuthorized,
+  requireAnalyticsAccess,
+} from '@/lib/auth/api-analytics-access'
+import { GET as revenueHandler } from '@/app/api/revenue/route'
+import { GET as activeUsersHandler } from '@/app/api/active-users/route'
+import { GET as ltvHandler } from '@/app/api/ltv/route'
+import { GET as roiHandler } from '@/app/api/roi/route'
+import { GET as cacHandler } from '@/app/api/cac/route'
+import { GET as cplHandler } from '@/app/api/cpl/route'
+
+async function readHandler(
+  handler: (request: NextRequest) => Promise<Response>,
+  request: NextRequest,
+  path: string,
+  userId: string
+) {
+  const url = new URL(request.url)
+  url.pathname = `/api/${path}`
+  const childRequest = new NextRequest(url, { headers: request.headers })
+  markAnalyticsRequestAuthorized(childRequest, userId)
+  const response = await handler(childRequest)
+  if (!response.ok) {
+    throw new Error(`Dashboard dependency returned ${response.status}`)
+  }
+  return response.json()
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -9,7 +36,6 @@ export async function GET(request: NextRequest) {
     const segmentId = searchParams.get('segmentId') || 'all'
     const startDate = searchParams.get('startDate')
     const endDate = searchParams.get('endDate')
-    const userId = searchParams.get('userId')
 
     if (!siteId) {
       return NextResponse.json({ error: 'Site ID is required' }, { status: 400 })
@@ -19,50 +45,13 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Date range is required' }, { status: 400 })
     }
 
+    const access = await requireAnalyticsAccess(request)
+    if (access.error) return access.error
+
     // Convert dates to Date objects for consistent handling
     const startDateTime = new Date(startDate)
     const endDateTime = new Date(endDate)
 
-    // Fetch data from all report endpoints
-    const params = new URLSearchParams()
-    params.append('siteId', siteId)
-    params.append('segmentId', segmentId)
-    if (userId) params.append('userId', userId)
-    params.append('startDate', startDateTime.toISOString())
-    params.append('endDate', endDateTime.toISOString())
-
-    console.log('Fetching dashboard data with params:', Object.fromEntries(params.entries()))
-
-    const [
-      revenueResponse,
-      activeUsersResponse,
-      ltvResponse,
-      roiResponse,
-      cacResponse,
-      cplResponse
-    ] = await Promise.all([
-      fetch(`${request.nextUrl.origin}/api/revenue?${params.toString()}`),
-      fetch(`${request.nextUrl.origin}/api/active-users?${params.toString()}`),
-      fetch(`${request.nextUrl.origin}/api/ltv?${params.toString()}`),
-      fetch(`${request.nextUrl.origin}/api/roi?${params.toString()}`),
-      fetch(`${request.nextUrl.origin}/api/cac?${params.toString()}`),
-      fetch(`${request.nextUrl.origin}/api/cpl?${params.toString()}`)
-    ])
-
-    // Check if any request failed
-    if (!revenueResponse.ok || !activeUsersResponse.ok || !ltvResponse.ok || 
-        !roiResponse.ok || !cacResponse.ok || !cplResponse.ok) {
-      console.error('One or more API requests failed:', {
-        revenue: revenueResponse.status,
-        activeUsers: activeUsersResponse.status,
-        ltv: ltvResponse.status,
-        roi: roiResponse.status,
-        cac: cacResponse.status,
-        cpl: cplResponse.status
-      })
-      return NextResponse.json({ error: 'Failed to fetch dashboard data' }, { status: 500 })
-    }
-
     const [
       revenue,
       activeUsers,
@@ -71,22 +60,13 @@ export async function GET(request: NextRequest) {
       cac,
       cpl
     ] = await Promise.all([
-      revenueResponse.json(),
-      activeUsersResponse.json(),
-      ltvResponse.json(),
-      roiResponse.json(),
-      cacResponse.json(),
-      cplResponse.json()
+      readHandler(revenueHandler, request, 'revenue', access.userId),
+      readHandler(activeUsersHandler, request, 'active-users', access.userId),
+      readHandler(ltvHandler, request, 'ltv', access.userId),
+      readHandler(roiHandler, request, 'roi', access.userId),
+      readHandler(cacHandler, request, 'cac', access.userId),
+      readHandler(cplHandler, request, 'cpl', access.userId),
     ])
-
-    console.log('API Responses:', {
-      revenue,
-      activeUsers,
-      ltv,
-      roi,
-      cac,
-      cpl
-    })
 
     // Transform data for CSV
     const reportData = [{

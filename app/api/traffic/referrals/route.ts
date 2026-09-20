@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
 import { isMakinariInternalReferrerHostname } from "@/lib/traffic/makinari-internal-referrer";
+import { requireAnalyticsAccess } from "@/lib/auth/api-analytics-access";
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
@@ -14,10 +15,11 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Missing required parameters" }, { status: 400 });
   }
 
-
-  const supabase = await createServiceClient(); // Use service client to bypass RLS for analytics data
+  const access = await requireAnalyticsAccess(request);
+  if (access.error) return access.error;
 
   try {
+    const supabase = await createServiceClient();
     console.log(`[Referrals API] Querying visitor_sessions for site_id: ${siteId}, dates: ${startDate} to ${endDate}`);
     
     // Get referral data from visitor_sessions (using referrer column)

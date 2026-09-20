@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import Stripe from 'stripe'
+import { requireStripeSiteAccess } from '@/lib/auth/api-stripe-access'
+import { resolveCheckoutUrls } from '@/app/api/stripe/checkout/checkout-url-security'
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2025-05-28.basil', // Using the same version as in subscription route
@@ -15,6 +17,14 @@ export async function POST(request: NextRequest) {
         { error: 'Missing required fields' },
         { status: 400 }
       )
+    }
+
+    const access = await requireStripeSiteAccess(request, siteId)
+    if (access.error) return access.error
+
+    const checkoutUrls = resolveCheckoutUrls(request, returnUrl, undefined, {})
+    if (checkoutUrls.error) {
+      return NextResponse.json({ error: checkoutUrls.error }, { status: 400 })
     }
 
     // Get Stripe customer ID from billing record
@@ -38,7 +48,7 @@ export async function POST(request: NextRequest) {
     // Create portal session
     const session = await stripe.billingPortal.sessions.create({
       customer: customerId,
-      return_url: returnUrl,
+      return_url: checkoutUrls.successUrl,
     })
 
     return NextResponse.json({ 

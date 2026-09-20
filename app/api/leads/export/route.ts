@@ -1,8 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceApiClient } from '@/lib/supabase/server-client'
 import { Parser } from 'json2csv'
+import { requireSiteAccess } from '@/lib/auth/api-site-access'
+import {
+  acquireSemaphore,
+  hashRedisKeyPart,
+  releaseSemaphore,
+} from '@/lib/redis/control-plane'
+import { isRedisConfigured } from '@/lib/redis/upstash-rest'
+
+const MAX_EXPORT_ROWS = 10_000
 
 export async function GET(request: NextRequest) {
+  let semaphoreKey: string | null = null
+  let semaphoreOwner: string | null = null
   try {
     // Get siteId from query params
     const searchParams = request.nextUrl.searchParams
@@ -12,7 +23,26 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Site ID is required' }, { status: 400 })
     }
 
-    // Create service client with elevated permissions
+    const access = await requireSiteAccess(request, siteId)
+    if (access.error) return access.error
+
+    if (isRedisConfigured()) {
+      semaphoreKey = `sem:v1:leads-export:${await hashRedisKeyPart(siteId)}`
+      semaphoreOwner = crypto.randomUUID()
+      const admitted = await acquireSemaphore(
+        semaphoreKey,
+        semaphoreOwner,
+        1,
+        120_000
+      )
+      if (!admitted) {
+        return NextResponse.json(
+          { error: 'An export is already running for this site' },
+          { status: 429, headers: { 'Retry-After': '5' } }
+        )
+      }
+    }
+
     const supabase = createServiceApiClient(siteId)
     
     // Get all leads for the site with segment name
@@ -26,14 +56,21 @@ export async function GET(request: NextRequest) {
       `)
       .eq('site_id', siteId)
       .order('created_at', { ascending: false })
+      .limit(MAX_EXPORT_ROWS + 1)
     
     if (error) {
       console.error('Error fetching leads:', error)
       return NextResponse.json({ error: 'Failed to fetch leads' }, { status: 500 })
     }
+    if (leads.length > MAX_EXPORT_ROWS) {
+      return NextResponse.json(
+        { error: 'This export is too large. Narrow the result set and try again.' },
+        { status: 413 }
+      )
+    }
 
     // Transform leads data for CSV
-    const csvData = leads.map(lead => ({
+    const csvData = leads.map((lead: any) => ({
       Name: lead.name,
       Email: lead.email,
       Phone: lead.phone || '',
@@ -81,5 +118,9 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error('Error in export leads API:', error)
     return NextResponse.json({ error: 'Failed to export leads' }, { status: 500 })
+  } finally {
+    if (semaphoreKey && semaphoreOwner) {
+      await releaseSemaphore(semaphoreKey, semaphoreOwner)
+    }
   }
 } 

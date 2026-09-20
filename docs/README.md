@@ -29,6 +29,10 @@ Integration guides explain setup details, but the code and migrations remain the
 source of truth for implemented behavior. Revalidate event names, routes, and
 environment variables before changing production configuration.
 
+## Architecture reviews
+
+- [Redis/Upstash availability and self-amplification audit — 2026-09-20](REDIS_UPSTASH_AVAILABILITY_AUDIT_2026-09-20.md)
+
 ## Implementation notes
 
 The following documents record specific implementations. They are useful

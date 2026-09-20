@@ -1,3 +1,5 @@
+/** @jest-environment node */
+
 import { POST } from "@/app/api/commerce/checkout/route"
 import { checkoutCart } from "@/app/commerce/checkout"
 import { createClient } from "@/lib/supabase/server"
@@ -24,10 +26,15 @@ const baseBody = {
   lines: [{ catalogItemId: "item-1", quantity: 1 }],
   fulfillment: "none",
   source: "shop",
+  clientMutationId: "84b1399d-c814-4d63-ae43-86050a5f9dd1",
 }
 
 function request(body: Record<string, unknown>) {
-  return { json: async () => body } as Request
+  return new Request("https://example.test/api/commerce/checkout", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body),
+  })
 }
 
 describe("public commerce checkout identity", () => {

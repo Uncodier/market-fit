@@ -60,11 +60,33 @@ export function SWRProvider({ children }: { children: React.ReactNode }) {
         shouldRetryOnError: true,
         errorRetryCount: OPTIMISTIC_RETRY_COUNT,
         errorRetryInterval: OPTIMISTIC_RETRY_BASE_MS,
-        onErrorRetry: (_err, _key, _config, revalidate, { retryCount }) => {
+        onErrorRetry: (error, _key, _config, revalidate, { retryCount }) => {
           if (retryCount >= OPTIMISTIC_RETRY_COUNT) return
+          if (
+            typeof document !== 'undefined' &&
+            (document.visibilityState === 'hidden' || !navigator.onLine)
+          ) {
+            return
+          }
+          const status =
+            typeof error === 'object' && error !== null && 'status' in error
+              ? Number(error.status)
+              : null
+          if (
+            status !== null &&
+            status >= 400 &&
+            status < 500 &&
+            status !== 408 &&
+            status !== 429
+          ) {
+            return
+          }
+          const jitter = 0.75 + Math.random() * 0.5
           setTimeout(
             () => revalidate({ retryCount }),
-            OPTIMISTIC_RETRY_BASE_MS * (retryCount + 1)
+            Math.round(
+              OPTIMISTIC_RETRY_BASE_MS * 2 ** retryCount * jitter
+            )
           )
         },
         use: [optimisticErrorMiddleware],

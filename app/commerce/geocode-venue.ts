@@ -1,4 +1,5 @@
 const geocodeCache = new Map<string, { lat: number; lon: number } | null>()
+const MAX_CACHE_ENTRIES = 500
 
 export type GeocodeVenueParams = {
   address?: string | null
@@ -23,19 +24,18 @@ export async function geocodeVenueLocation(
     return geocodeCache.get(cacheKey)!
   }
 
-  try {
-    let result = await fetchNominatim(queryParts)
+  let result = await fetchNominatim(queryParts)
 
-    if (!result && name) {
-      result = await fetchNominatim(fallbackQuery)
-    }
-
-    geocodeCache.set(cacheKey, result)
-    return result
-  } catch (error) {
-    console.error("Geocoding error:", error)
-    return null
+  if (!result && name) {
+    result = await fetchNominatim(fallbackQuery)
   }
+
+  if (geocodeCache.size >= MAX_CACHE_ENTRIES) {
+    const oldest = geocodeCache.keys().next().value
+    if (oldest) geocodeCache.delete(oldest)
+  }
+  geocodeCache.set(cacheKey, result)
+  return result
 }
 
 async function fetchNominatim(query: string): Promise<{ lat: number; lon: number } | null> {
@@ -52,6 +52,7 @@ async function fetchNominatim(query: string): Promise<{ lat: number; lon: number
       "Accept-Language": "en-US,en;q=0.9",
     },
     next: { revalidate: 86400 },
+    signal: AbortSignal.timeout(8_000),
   })
 
   if (!response.ok) {

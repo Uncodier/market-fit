@@ -1,7 +1,7 @@
 import { lookup } from "node:dns/promises"
 import { isIP } from "node:net"
 
-const DEFAULT_MAX_BYTES = 100 * 1024 * 1024
+const DEFAULT_MAX_BYTES = 25 * 1024 * 1024
 const DEFAULT_TIMEOUT_MS = 15_000
 const MAX_REDIRECTS = 3
 
@@ -344,4 +344,58 @@ export async function readLimitedBody(
     }
     throw error
   }
+}
+
+export function createLimitedBodyStream(
+  response: Response,
+  onDone: () => void,
+  maxBytes = ASSET_PROXY_MAX_BYTES
+): BodyInit {
+  const declaredLength = Number(response.headers.get("content-length"))
+  if (Number.isFinite(declaredLength) && declaredLength > maxBytes) {
+    onDone()
+    throw new AssetProxyError("Asset exceeds the size limit", 413)
+  }
+
+  if (!response.body) {
+    onDone()
+    return new Uint8Array()
+  }
+
+  const reader = response.body.getReader()
+  let totalBytes = 0
+
+  return new ReadableStream<Uint8Array>({
+    async pull(controller) {
+      try {
+        const { done, value } = await reader.read()
+        if (done) {
+          onDone()
+          controller.close()
+          return
+        }
+
+        totalBytes += value.byteLength
+        if (totalBytes > maxBytes) {
+          await reader.cancel()
+          onDone()
+          controller.error(
+            new AssetProxyError("Asset exceeds the size limit", 413)
+          )
+          return
+        }
+        controller.enqueue(value)
+      } catch (error) {
+        onDone()
+        controller.error(error)
+      }
+    },
+    async cancel(reason) {
+      try {
+        await reader.cancel(reason)
+      } finally {
+        onDone()
+      }
+    },
+  })
 }

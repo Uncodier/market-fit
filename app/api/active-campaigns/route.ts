@@ -4,6 +4,7 @@ import { cookies } from 'next/headers';
 import { subDays, subMonths, format, startOfMonth, endOfMonth, subQuarters, subYears } from 'date-fns';
 import { createServiceApiClient } from "@/lib/supabase/server-client";
 import { selectLiveCampaigns } from "@/lib/dashboard/active-campaigns";
+import { requireAnalyticsAccess } from "@/lib/auth/api-analytics-access";
 import crypto from 'crypto';
 
 interface KpiData {
@@ -246,7 +247,6 @@ async function findOrCreateKpi(
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
   const siteId = searchParams.get('siteId');
-  const userId = searchParams.get('userId');
   const startDateStr = searchParams.get('startDate');
   const endDateStr = searchParams.get('endDate');
   const skipKpiCreation = searchParams.get('skipKpiCreation') === 'true';
@@ -255,6 +255,10 @@ export async function GET(request: NextRequest) {
   if (!siteId) {
     return NextResponse.json({ error: 'Site ID is required' }, { status: 400 });
   }
+
+  const access = await requireAnalyticsAccess(request);
+  if (access.error) return access.error;
+  const userId = access.userId;
 
   const cookieStore = cookies();
   // Use service client with elevated permissions to avoid RLS restrictions

@@ -31,6 +31,7 @@ export function subscribeInstanceLogsRealtime(params: {
   let visibilityTimeout: NodeJS.Timeout | null = null
   let retryCount = 0
   let retryTimeout: NodeJS.Timeout | null = null
+  let disposed = false
 
   const onRealtimePayload = (payload: any) => {
     if (payload?.new?.instance_id && payload.new.instance_id !== currentRobotInstanceIdRef.current) return
@@ -123,13 +124,20 @@ export function subscribeInstanceLogsRealtime(params: {
   }
 
   const handleRetry = () => {
+    if (
+      disposed ||
+      document.visibilityState === 'hidden' ||
+      !navigator.onLine
+    ) return
     if (retryTimeout) clearTimeout(retryTimeout)
-    const delay = Math.min(1000 * Math.pow(2, retryCount), 30000)
+    const baseDelay = Math.min(1000 * Math.pow(2, retryCount), 30000)
+    const delay = Math.round(baseDelay * (0.8 + Math.random() * 0.4))
     retryCount++
     retryTimeout = setTimeout(() => { subscribe() }, delay)
   }
 
   const subscribe = () => {
+    if (disposed) return
     if (currentChannel) {
       try { supabase.removeChannel(currentChannel) } catch { /* ignore */ }
     }
@@ -151,7 +159,7 @@ export function subscribeInstanceLogsRealtime(params: {
     currentChannel = newChannel
 
     newChannel.subscribe((status: string) => {
-      if (currentChannel !== newChannel) return
+      if (disposed || currentChannel !== newChannel) return
       if (status === 'SUBSCRIBED') {
         retryCount = 0
       } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
@@ -163,7 +171,7 @@ export function subscribeInstanceLogsRealtime(params: {
   subscribe()
 
   const handleVisibility = () => {
-    if (document.visibilityState === 'visible') {
+    if (!disposed && document.visibilityState === 'visible' && navigator.onLine) {
       if (visibilityTimeout) clearTimeout(visibilityTimeout)
       visibilityTimeout = setTimeout(() => {
         loadInstanceLogsRef.current()
@@ -174,11 +182,14 @@ export function subscribeInstanceLogsRealtime(params: {
   }
 
   document.addEventListener('visibilitychange', handleVisibility)
+  window.addEventListener('online', handleVisibility)
 
   return () => {
+    disposed = true
     if (retryTimeout) clearTimeout(retryTimeout)
     if (visibilityTimeout) clearTimeout(visibilityTimeout)
     document.removeEventListener('visibilitychange', handleVisibility)
+    window.removeEventListener('online', handleVisibility)
     if (currentChannel) {
       try { supabase.removeChannel(currentChannel) } catch { /* ignore */ }
     }

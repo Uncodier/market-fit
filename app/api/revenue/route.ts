@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceApiClient } from "@/lib/supabase/server-client";
 import { addDays, endOfDay, startOfDay, subDays } from 'date-fns';
-import { requireSiteAccess } from '@/lib/auth/api-site-access';
+import { requireAnalyticsAccess } from '@/lib/auth/api-analytics-access';
 import {
   addCalendarDays,
   inclusiveEndWithUtcSlack,
@@ -60,7 +60,7 @@ export async function GET(request: NextRequest) {
     }
 
 
-    const access = await requireSiteAccess(request, siteId);
+    const access = await requireAnalyticsAccess(request);
     if (access.error) {
       return access.error;
     }

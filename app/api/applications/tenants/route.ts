@@ -16,7 +16,7 @@ export async function GET(request: Request) {
     }
 
     // 1. Authenticate (Dual Auth: API Key or User Cookie)
-    const apiKey = getApiKeyFromRequest(request.headers, searchParams)
+    const apiKey = getApiKeyFromRequest(request.headers)
     const isServerRequest = isValidApiKey(apiKey)
 
     let mainSupabase;

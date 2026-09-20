@@ -2,6 +2,12 @@ import { NextRequest, NextResponse } from "next/server"
 import { z } from "zod"
 import { createClient } from "@/lib/supabase/server"
 import { processRecordEmbeddingsById } from "@/app/records/lib/record-embedding-worker"
+import {
+  acquireSemaphore,
+  hashRedisKeyPart,
+  releaseSemaphore,
+} from "@/lib/redis/control-plane"
+import { isRedisConfigured } from "@/lib/redis/upstash-rest"
 
 const bodySchema = z.object({
   record_id: z.string().uuid(),
@@ -29,11 +35,36 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Record not found" }, { status: 404 })
     }
 
-    const result = await processRecordEmbeddingsById({
-      recordId: input.record_id,
-      requestedNodeIds: input.changed_node_ids,
-    })
-    return NextResponse.json({ success: true, ...result })
+    let semaphoreKey: string | null = null
+    let ownerToken: string | null = null
+    if (isRedisConfigured()) {
+      semaphoreKey = `sem:v1:record-embedding:${await hashRedisKeyPart(input.record_id)}`
+      ownerToken = crypto.randomUUID()
+      const admitted = await acquireSemaphore(
+        semaphoreKey,
+        ownerToken,
+        1,
+        60_000
+      )
+      if (!admitted) {
+        return NextResponse.json(
+          { error: "This record is already being indexed" },
+          { status: 429, headers: { "Retry-After": "5" } }
+        )
+      }
+    }
+
+    try {
+      const result = await processRecordEmbeddingsById({
+        recordId: input.record_id,
+        requestedNodeIds: input.changed_node_ids,
+      })
+      return NextResponse.json({ success: true, ...result })
+    } finally {
+      if (semaphoreKey && ownerToken) {
+        await releaseSemaphore(semaphoreKey, ownerToken)
+      }
+    }
   } catch (error) {
     console.error("[record embedding]", error)
     if (error instanceof z.ZodError) {

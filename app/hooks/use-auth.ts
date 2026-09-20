@@ -1,10 +1,11 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useContext, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { User, AuthChangeEvent, Session, OAuthResponse, Provider } from '@supabase/supabase-js'
 import { useSupabaseClient } from './use-supabase-client'
 import { resolveAuthenticatedSignInRedirect } from '@/lib/auth/post-auth-redirect'
+import { AuthContext } from '@/app/components/auth/auth-context'
 
 // Declare the Makinari browser API and its legacy alias.
 declare global {
@@ -33,68 +34,72 @@ interface ExtendedOAuthOptions {
   skipBrowserRedirect?: boolean;
 }
 
-// Función para identificar usuario en MarketFit chat
-const identifyUserInChat = async (user: User | null, supabaseClient: any, retryCount = 0) => {
-  if (!user) return
+let identifiedChatUserId: string | null = null
+const pendingChatIdentifications = new Map<string, Promise<void>>()
 
-  const maxRetries = 10 // Máximo 10 reintentos (10 segundos)
+const identifyUserInChat = async (user: User | null, supabaseClient: any) => {
+  if (!user || identifiedChatUserId === user.id) return
+  const pending = pendingChatIdentifications.get(user.id)
+  if (pending) return pending
 
-  try {
-    const makinari = typeof window !== 'undefined'
-      ? window.Makinari ?? window.MarketFit
-      : undefined
-    if (makinari?.chat?.identify) {
-      // Obtener información adicional del perfil desde Supabase
-      const { data: profile, error } = await supabaseClient
-        .from('profiles')
-        .select('name, email')
-        .eq('id', user.id)
-        .single()
+  const operation = (async () => {
+    for (let attempt = 0; attempt <= 10; attempt += 1) {
+      if (
+        typeof document !== 'undefined' &&
+        document.visibilityState === 'hidden'
+      ) {
+        await new Promise((resolve) => setTimeout(resolve, 2000))
+        continue
+      }
 
-      if (error) {
-        console.warn('[MarketFit Chat] Could not fetch profile from database:', error)
-        console.warn('[MarketFit Chat] Error details:', {
-          message: error.message,
-          code: error.code,
-          details: error.details,
-          hint: error.hint
+      const makinari =
+        typeof window !== 'undefined'
+          ? window.Makinari ?? window.MarketFit
+          : undefined
+      if (!makinari?.chat?.identify) {
+        if (attempt < 10) {
+          await new Promise((resolve) =>
+            setTimeout(resolve, 750 + Math.random() * 500)
+          )
+        }
+        continue
+      }
+
+      try {
+        const { data: profile } = await supabaseClient
+          .from('profiles')
+          .select('name, email')
+          .eq('id', user.id)
+          .single()
+        await makinari.chat.identify({
+          name:
+            profile?.name ||
+            user.user_metadata?.name ||
+            user.user_metadata?.full_name ||
+            user.email?.split('@')[0] ||
+            'User',
+          email: profile?.email || user.email || '',
+          phone: user.user_metadata?.phone || ''
         })
-        console.warn('[MarketFit Chat] Using auth user data instead')
-      }
-
-      // Preparar datos del usuario para MarketFit
-      const userData = {
-        name: profile?.name || user.user_metadata?.name || user.user_metadata?.full_name || user.email?.split('@')[0] || 'User',
-        email: profile?.email || user.email || '',
-        // Agregar más campos si es necesario
-        phone: user.user_metadata?.phone || ''
-      }
-
-      
-      
-      // Llamar a la función identify del chat
-      await makinari.chat.identify(userData)
-      
-      
-    } else {
-      // Si MarketFit no está disponible aún, esperar un poco y reintentar
-      if (retryCount < maxRetries) {
-        setTimeout(() => {
-          identifyUserInChat(user, supabaseClient, retryCount + 1)
-        }, 1000)
-      } else {
-        
+        identifiedChatUserId = user.id
+        return
+      } catch (error) {
+        if (attempt === 10) {
+          console.error('[MarketFit Chat] Error identifying user:', error)
+          return
+        }
+        await new Promise((resolve) =>
+          setTimeout(resolve, 1500 + Math.random() * 1000)
+        )
       }
     }
-  } catch (error) {
-    console.error('[MarketFit Chat] Error identifying user:', error)
-    
-    // Si hay un error pero no hemos superado los reintentos, intentar de nuevo
-    if (retryCount < maxRetries) {
-      setTimeout(() => {
-        identifyUserInChat(user, supabaseClient, retryCount + 1)
-      }, 2000) // Esperar más tiempo después de un error
-    }
+  })()
+
+  pendingChatIdentifications.set(user.id, operation)
+  try {
+    await operation
+  } finally {
+    pendingChatIdentifications.delete(user.id)
   }
 }
 
@@ -112,7 +117,7 @@ const clearDemoMode = () => {
   }
 }
 
-export function useAuth() {
+export function useAuthState() {
   const [user, setUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const router = useRouter()
@@ -219,6 +224,7 @@ export function useAuth() {
             console.log('[useAuth] SIGNED_IN event detected but ignoring redirect - user is in password reset flow:', currentPath)
           }
         } else if (event === 'SIGNED_OUT') {
+          identifiedChatUserId = null
           // Limpiar modo demo al cerrar sesión
           clearDemoMode()
           
@@ -408,6 +414,14 @@ export function useAuth() {
     signUpWithEmail,
     signOut
   }
+}
+
+export function useAuth() {
+  const context = useContext(AuthContext)
+  if (context === undefined) {
+    throw new Error('useAuth must be used within an AuthProvider')
+  }
+  return context
 }
 
 export default useAuth 

@@ -1,9 +1,6 @@
 import { createClient } from "@/lib/supabase/client";
 import { isDemoModeActive } from "@/app/services/api-client-service";
 
-// API key predeterminada para el cliente (en desarrollo)
-const CLIENT_API_KEY = 'market-fit-dev-api-key';
-
 export interface SecureToken {
   id: string;
   site_id: string;
@@ -18,18 +15,11 @@ export type TokenType = 'email' | 'whatsapp' | 'twilio_whatsapp' | 'api';
 
 class SecureTokensService {
   private supabase: any;
-  private apiKey: string;
 
   constructor() {
     if (typeof window !== 'undefined') {
       this.initSupabase();
     }
-    
-    // Usar la API key de las variables de entorno o la predeterminada
-    this.apiKey = 
-      (typeof window !== 'undefined' && (window as any).__API_KEY__) || 
-      process.env.NEXT_PUBLIC_API_KEY || 
-      CLIENT_API_KEY;
   }
 
   private async initSupabase() {
@@ -60,12 +50,10 @@ class SecureTokensService {
 
       console.log(`storeToken called: siteId=${siteId}, tokenType=${tokenType}, identifier=${identifier}`);
       
-      // Enviar la solicitud con la API key
       const response = await fetch('/api/secure-tokens', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'X-API-Key': this.apiKey
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({
           operation: 'store',
@@ -121,8 +109,7 @@ class SecureTokensService {
       const response = await fetch('/api/secure-tokens', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'X-API-Key': this.apiKey
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({
           operation: 'verify',
@@ -189,8 +176,7 @@ class SecureTokensService {
       const response = await fetch('/api/secure-tokens', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'X-API-Key': this.apiKey
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({
           operation: 'delete',
@@ -283,12 +269,10 @@ class SecureTokensService {
         return true;
       }
 
-      // Send request with API key
       const response = await fetch('/api/secure-tokens', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'X-API-Key': this.apiKey
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({
           operation: 'check',

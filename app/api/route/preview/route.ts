@@ -27,8 +27,11 @@ export async function GET(request: NextRequest) {
     const url =
       `https://router.project-osrm.org/route/v1/driving/` +
       `${fromLon},${fromLat};${toLon},${toLat}` +
-      `?overview=full&geometries=geojson`
-    const res = await fetch(url, { next: { revalidate: 300 } })
+      `?overview=simplified&geometries=geojson`
+    const res = await fetch(url, {
+      next: { revalidate: 300 },
+      signal: AbortSignal.timeout(8_000),
+    })
     if (!res.ok) {
       return NextResponse.json({ error: "Routing failed" }, { status: 502 })
     }

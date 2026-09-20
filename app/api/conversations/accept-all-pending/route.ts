@@ -1,7 +1,16 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createClient, createServiceClient } from "@/lib/supabase/server"
+import { acquireOperationLease } from "@/lib/redis/operation-lease"
+import {
+  decodeRequestBody,
+  readLimitedRequestBody,
+  RequestBodyTooLargeError,
+} from "@/lib/http/read-limited-request-body"
+import { z } from "zod"
 
-const BATCH_SIZE = 200
+const BATCH_SIZE = 20
+const MAX_MESSAGES = 1000
+const bodySchema = z.object({ siteId: z.string().uuid() })
 
 export async function POST(request: NextRequest) {
   try {
@@ -12,12 +21,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 })
     }
 
-    const body = await request.json()
-    const { siteId } = body
-
-    if (!siteId) {
-      return NextResponse.json({ success: false, error: "Missing siteId" }, { status: 400 })
+    const parsed = bodySchema.safeParse(
+      JSON.parse(
+        decodeRequestBody(await readLimitedRequestBody(request, 8 * 1024))
+      )
+    )
+    if (!parsed.success) {
+      return NextResponse.json(
+        { success: false, error: "Invalid request" },
+        { status: 400 }
+      )
     }
+    const { siteId } = parsed.data
 
     // Verify user has access to this site before using admin client
     const { data: siteAccess, error: siteAccessError } = await supabase
@@ -31,6 +46,19 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: "Forbidden: You don't have permissions" }, { status: 403 })
     }
 
+    const lease = await acquireOperationLease(
+      "accept-all-pending",
+      siteId,
+      60_000
+    )
+    if (!lease) {
+      return NextResponse.json(
+        { success: false, error: "This operation is already running" },
+        { status: 409, headers: { "Retry-After": "5" } }
+      )
+    }
+
+    try {
     // Use service client for ALL operations to bypass any RLS silent failures
     const supabaseAdmin = await createServiceClient()
 
@@ -41,6 +69,7 @@ export async function POST(request: NextRequest) {
       .eq("conversations.site_id", siteId)
       .eq("conversations.is_archived", false)
       .eq("custom_data->>status", "pending")
+      .limit(MAX_MESSAGES + 1)
 
     if (msgsError) {
       console.error("Error fetching pending messages:", msgsError)
@@ -48,6 +77,12 @@ export async function POST(request: NextRequest) {
     }
 
     const allMessages = msgs || []
+    if (allMessages.length > MAX_MESSAGES) {
+      return NextResponse.json(
+        { success: false, error: `At most ${MAX_MESSAGES} messages can be processed at once` },
+        { status: 413 }
+      )
+    }
     console.log(`Found ${allMessages.length} pending messages to accept for site ${siteId}`)
 
     if (allMessages.length === 0) {
@@ -62,7 +97,7 @@ export async function POST(request: NextRequest) {
       const batch = allMessages.slice(i, i + BATCH_SIZE)
 
       const results = await Promise.all(
-        batch.map((m) =>
+        batch.map((m: any) =>
           supabaseAdmin
             .from("messages")
             .update({
@@ -117,7 +152,22 @@ export async function POST(request: NextRequest) {
       updatedCount: allMessages.length,
       conversationIds,
     })
+    } finally {
+      await lease.release()
+    }
   } catch (error) {
+    if (error instanceof RequestBodyTooLargeError) {
+      return NextResponse.json(
+        { success: false, error: error.message },
+        { status: 413 }
+      )
+    }
+    if (error instanceof SyntaxError) {
+      return NextResponse.json(
+        { success: false, error: "Invalid JSON payload" },
+        { status: 400 }
+      )
+    }
     console.error("Error in accept-all-pending:", error)
     return NextResponse.json({ success: false, error: "Internal server error" }, { status: 500 })
   }

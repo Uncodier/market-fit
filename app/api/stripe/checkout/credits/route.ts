@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import Stripe from 'stripe'
+import { createHash } from 'node:crypto'
+import { requireStripeSiteAccess } from '@/lib/auth/api-stripe-access'
+import { resolveCheckoutUrls } from '@/app/api/stripe/checkout/checkout-url-security'
 
 // Validate Stripe configuration
 const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY
@@ -27,13 +30,26 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const { credits, amount, siteId, userEmail, successUrl, cancelUrl } = await request.json()
+    const { credits, amount, siteId, successUrl, cancelUrl } = await request.json()
 
-    if (!credits || !amount || !siteId || !userEmail) {
+    if (!credits || !amount || !siteId) {
       return NextResponse.json(
         { error: 'Missing required fields' },
         { status: 400 }
       )
+    }
+
+    const access = await requireStripeSiteAccess(request, siteId)
+    if (access.error) return access.error
+
+    const checkoutUrls = resolveCheckoutUrls(
+      request,
+      cancelUrl,
+      successUrl,
+      {}
+    )
+    if (checkoutUrls.error) {
+      return NextResponse.json({ error: checkoutUrls.error }, { status: 400 })
     }
 
     // Validate credits packages
@@ -66,10 +82,12 @@ export async function POST(request: NextRequest) {
     if (!customerId) {
       // Create new Stripe customer
       const customer = await stripe.customers.create({
-        email: userEmail,
+        email: access.userEmail || undefined,
         metadata: {
           site_id: siteId
         }
+      }, {
+        idempotencyKey: `credits-customer-${siteId}`,
       })
       customerId = customer.id
 
@@ -82,6 +100,10 @@ export async function POST(request: NextRequest) {
     }
 
     // Create checkout session
+    const requestWindow = Math.floor(Date.now() / (10 * 60 * 1000))
+    const idempotencyKey = createHash('sha256')
+      .update(`${access.userId}:${siteId}:${credits}:${requestWindow}`)
+      .digest('hex')
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       payment_method_types: ['card'],
@@ -100,8 +122,8 @@ export async function POST(request: NextRequest) {
         }
       ],
       mode: 'payment',
-      success_url: successUrl,
-      cancel_url: cancelUrl,
+      success_url: checkoutUrls.successUrl,
+      cancel_url: checkoutUrls.cancelUrl,
       metadata: {
         site_id: siteId,
         credits: credits.toString(),
@@ -114,7 +136,7 @@ export async function POST(request: NextRequest) {
           type: 'credits_purchase'
         }
       }
-    })
+    }, { idempotencyKey })
 
     return NextResponse.json({ 
       url: session.url,

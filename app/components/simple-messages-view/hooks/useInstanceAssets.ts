@@ -127,12 +127,22 @@ export const useInstanceAssets = ({ instanceId }: UseInstanceAssetsProps) => {
           table: 'assets',
           filter: `instance_id=eq.${instanceId}`
         },
-        (payload) => {
-          console.log(`[useInstanceAssets] Realtime update for instance ${instanceId}`)
-          fetchAssets()
+        (payload: { eventType: string; old: { id?: string }; new: unknown }) => {
+          setAssets((current) => {
+            if (payload.eventType === 'DELETE') {
+              return current.filter((asset) => asset.id !== payload.old.id)
+            }
+            const next = payload.new as InstanceAsset
+            if (payload.eventType === 'INSERT') {
+              return current.some((asset) => asset.id === next.id)
+                ? current
+                : [next, ...current]
+            }
+            return current.map((asset) => asset.id === next.id ? next : asset)
+          })
         }
       )
-      .subscribe((status) => {
+      .subscribe((status: string) => {
         console.log(`[useInstanceAssets] Subscription status for ${instanceId}:`, status)
       })
 

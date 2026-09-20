@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
+import { requireAnalyticsAccess } from "@/lib/auth/api-analytics-access";
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
@@ -17,9 +18,11 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Start date and end date are required" }, { status: 400 });
   }
 
-  const supabase = await createServiceClient();
+  const access = await requireAnalyticsAccess(request);
+  if (access.error) return access.error;
 
-    try {
+  try {
+      const supabase = await createServiceClient();
       console.log(`[ClientConversion API] Calculating conversion for site: ${siteId}, segment: ${segmentId || 'all'}, dates: ${startDate} to ${endDate}`);
       
       let allLeads: any[] = [];

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { subDays, subMonths, format, startOfMonth, endOfMonth, subQuarters, subYears } from 'date-fns';
 import { createApiClient, createServiceApiClient } from "@/lib/supabase/server-client";
+import { requireAnalyticsAccess } from "@/lib/auth/api-analytics-access";
 import crypto from 'crypto';
 
 interface KpiData {
@@ -279,7 +280,6 @@ async function findOrCreateKpi(
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
   const siteId = searchParams.get('siteId');
-  const userId = searchParams.get('userId');
   const startDateStr = searchParams.get('startDate');
   const endDateStr = searchParams.get('endDate');
   const segmentId = searchParams.get('segmentId') || 'all'; // Usar 'all' como valor predeterminado
@@ -289,6 +289,10 @@ export async function GET(request: NextRequest) {
   if (!siteId) {
     return NextResponse.json({ error: 'Site ID is required' }, { status: 400 });
   }
+
+  const access = await requireAnalyticsAccess(request);
+  if (access.error) return access.error;
+  const userId = access.userId;
 
   
   console.log('[ROI API] Request parameters:', { 

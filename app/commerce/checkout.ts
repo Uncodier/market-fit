@@ -19,6 +19,11 @@ import { processCheckoutLines } from "./checkout-lines"
 import { persistCheckoutRecords } from "./checkout-records"
 import { finalizeCheckout } from "./checkout-finalize"
 import type { CheckoutCartParams } from "./checkout-types"
+import {
+  claimCheckoutMutation,
+  completeCheckoutMutation,
+  releaseCheckoutMutation,
+} from "./checkout-idempotency"
 
 export type {
   CheckoutCartParams,
@@ -32,6 +37,13 @@ export async function checkoutCart(params: CheckoutCartParams) {
     claimId: string
   } | null = null
   let quotationClaimClient: any = null
+  let publicMutationClaim: {
+    siteId: string
+    clientMutationId: string
+    ownerToken: string
+  } | null = null
+  let checkoutAdminClient: any = null
+  let publicMutationHasSideEffects = false
 
   try {
     if (params.clientMutationId && params.source === "pos") {
@@ -51,6 +63,7 @@ export async function checkoutCart(params: CheckoutCartParams) {
 
     const supabase = await createClient()
     const supabaseAdmin = await createServiceClient(true)
+    checkoutAdminClient = supabaseAdmin
     const authenticatedUserId =
       (await supabase.auth.getUser()).data.user?.id || null
     const derivesBuyerIdentity = ["shop", "marketplace", "quote"].includes(
@@ -198,6 +211,30 @@ export async function checkoutCart(params: CheckoutCartParams) {
       scheduledFor: params.scheduledFor,
       isStaffMutation: params.isStaffMutation,
     })
+
+    if (source === "shop" || source === "marketplace") {
+      if (!params.clientMutationId) {
+        throw new Error("An idempotency key is required")
+      }
+      const claim = await claimCheckoutMutation(supabaseAdmin, {
+        siteId: params.siteId,
+        clientMutationId: params.clientMutationId,
+        source,
+      })
+      if (claim.state === "error") throw new Error(claim.error)
+      if (claim.state === "processing") {
+        throw new Error("This checkout is already being processed")
+      }
+      if (claim.state === "completed") {
+        return { ...claim.result, idempotent: true }
+      }
+      publicMutationClaim = {
+        siteId: params.siteId,
+        clientMutationId: params.clientMutationId,
+        ownerToken: claim.ownerToken,
+      }
+    }
+
     const attribution = await resolveCheckoutAttribution({
       supabaseAdmin,
       siteId: params.siteId,
@@ -207,6 +244,7 @@ export async function checkoutCart(params: CheckoutCartParams) {
       requestedByLeadId: environment.finalLeadId,
     })
 
+    publicMutationHasSideEffects = Boolean(publicMutationClaim)
     const lineResult = await processCheckoutLines({
       supabase,
       supabaseAdmin,
@@ -289,8 +327,23 @@ export async function checkoutCart(params: CheckoutCartParams) {
     })
     if (result.quotationCompleted) activeQuotationClaim = null
     const { quotationCompleted: _, ...checkoutResult } = result
+    if (publicMutationClaim) {
+      const completedClaim = publicMutationClaim
+      publicMutationClaim = null
+      await completeCheckoutMutation(supabaseAdmin, {
+        ...completedClaim,
+        result: checkoutResult,
+      })
+    }
     return checkoutResult
   } catch (error: any) {
+    if (
+      publicMutationClaim &&
+      checkoutAdminClient &&
+      !publicMutationHasSideEffects
+    ) {
+      await releaseCheckoutMutation(checkoutAdminClient, publicMutationClaim)
+    }
     if (activeQuotationClaim && quotationClaimClient) {
       await releaseQuotationCheckoutClaim(
         quotationClaimClient,

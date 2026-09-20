@@ -71,7 +71,9 @@ export const useInstanceLogs = ({
 
   const logs = excludeQueuedUserLogs(
     collapseDuplicateUserActions(
-      (logsData || []).filter((log: InstanceLog) => !log.instance_id || log.instance_id === activeRobotInstance?.id)
+      ((logsData || []) as InstanceLog[]).filter(
+        (log) => !log.instance_id || log.instance_id === activeRobotInstance?.id
+      )
     )
   )
   
@@ -214,7 +216,7 @@ export const useInstanceLogs = ({
         setHasMoreLogs(fetchedLogs.length === 100)
         
         if (fetchedLogs.length > 0) {
-          setLogs(prevLogs => {
+          setLogs((prevLogs: InstanceLog[]) => {
             const prevIds = new Set(prevLogs.map((l: InstanceLog) => l.id))
             const newLogs = fetchedLogs.filter((l: InstanceLog) => !prevIds.has(l.id))
             return [...newLogs, ...prevLogs]
@@ -272,7 +274,7 @@ export const useInstanceLogs = ({
       }
     }
 
-    setLogs(prev => [...prev, newMessage])
+    setLogs((prev: InstanceLog[]) => [...prev, newMessage])
   }, [activeRobotInstance?.id, setLogs])
 
   const patchLogDetails = useCallback((logId: string, patch: Record<string, unknown>) => {
@@ -360,14 +362,50 @@ export const useInstanceLogs = ({
 
     if (!shouldReconcile) return
 
-    const interval = setInterval(() => {
-      // Solo hacer mutate si seguimos en la misma instancia
-      if (activeRobotInstance?.id === currentRobotInstanceIdRef.current) {
-        mutate()
+    let disposed = false
+    let inFlight = false
+    let timer: ReturnType<typeof setTimeout> | null = null
+    const schedule = () => {
+      if (!disposed) {
+        if (timer) clearTimeout(timer)
+        timer = setTimeout(run, 4000)
       }
-    }, 4000)
+    }
+    const run = async () => {
+      if (
+        disposed ||
+        inFlight ||
+        document.visibilityState === 'hidden' ||
+        !navigator.onLine ||
+        activeRobotInstance.id !== currentRobotInstanceIdRef.current
+      ) {
+        schedule()
+        return
+      }
+      inFlight = true
+      try {
+        await mutate()
+      } finally {
+        inFlight = false
+        schedule()
+      }
+    }
+    const resume = () => {
+      if (document.visibilityState === 'visible' && navigator.onLine) {
+        if (timer) clearTimeout(timer)
+        void run()
+      }
+    }
 
-    return () => clearInterval(interval)
+    schedule()
+    document.addEventListener('visibilitychange', resume)
+    window.addEventListener('online', resume)
+    return () => {
+      disposed = true
+      if (timer) clearTimeout(timer)
+      document.removeEventListener('visibilitychange', resume)
+      window.removeEventListener('online', resume)
+    }
   }, [activeRobotInstance?.id, activeRobotInstance?.status, waitingForMessageId, mutate])
 
   return {

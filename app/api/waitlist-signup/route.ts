@@ -1,13 +1,17 @@
 import { createClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
+import {
+  decodeRequestBody,
+  readLimitedRequestBody,
+  RequestBodyTooLargeError,
+} from '@/lib/http/read-limited-request-body'
 
-// Validation schema for the request data
 const WaitlistSignupSchema = z.object({
-  name: z.string().min(1, "Name is required"),
-  email: z.string().email("Invalid email address"),
-  referralCode: z.string().optional(),
-  source: z.string().optional().default("waitlist")
+  name: z.string().trim().min(1, "Name is required").max(160),
+  email: z.string().trim().email("Invalid email address").max(320),
+  referralCode: z.string().trim().max(160).optional(),
+  source: z.string().trim().max(80).optional().default("waitlist")
 })
 
 export async function POST(request: Request) {
@@ -18,9 +22,10 @@ export async function POST(request: Request) {
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     )
 
-    // Parse request body
-    const body = await request.json()
-    const validatedData = WaitlistSignupSchema.parse(body)
+    const body = decodeRequestBody(
+      await readLimitedRequestBody(request, 8 * 1024)
+    )
+    const validatedData = WaitlistSignupSchema.parse(JSON.parse(body))
     
     const siteId = '9be0a6a2-5567-41bf-ad06-cb4014f0faf2'
     const systemUserId = '541396e1-a904-4a81-8cbf-0ca4e3b8b2b4'
@@ -56,10 +61,7 @@ export async function POST(request: Request) {
 
     if (leadError) {
       console.error('Error creating lead:', leadError)
-      return NextResponse.json({
-        error: 'Failed to create lead',
-        details: leadError.message
-      }, { status: 500 })
+      return NextResponse.json({ error: 'Failed to create lead' }, { status: 500 })
     }
 
     // 2. Create a task for processing the waitlist signup
@@ -89,10 +91,7 @@ export async function POST(request: Request) {
         .delete()
         .eq('id', lead.id)
       
-      return NextResponse.json({
-        error: 'Failed to create processing task',
-        details: taskError.message
-      }, { status: 500 })
+      return NextResponse.json({ error: 'Failed to create processing task' }, { status: 500 })
     }
 
     // 3. Create a completed website visit task for the same lead
@@ -126,10 +125,7 @@ export async function POST(request: Request) {
         .delete()
         .eq('id', lead.id)
       
-      return NextResponse.json({
-        error: 'Failed to create website visit task',
-        details: websiteVisitTaskError.message
-      }, { status: 500 })
+      return NextResponse.json({ error: 'Failed to create website visit task' }, { status: 500 })
     }
 
     return NextResponse.json({
@@ -143,9 +139,21 @@ export async function POST(request: Request) {
       }
     })
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Waitlist signup error:', error)
-    
+
+    if (error instanceof RequestBodyTooLargeError) {
+      return NextResponse.json(
+        { error: error.message },
+        { status: error.status }
+      )
+    }
+    if (error instanceof SyntaxError) {
+      return NextResponse.json(
+        { error: "Invalid JSON payload" },
+        { status: 400 }
+      )
+    }
     if (error instanceof z.ZodError) {
       return NextResponse.json({
         error: 'Validation failed',
@@ -154,8 +162,7 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json({
-      error: 'Internal server error',
-      details: error.message
+      error: 'Internal server error'
     }, { status: 500 })
   }
 }

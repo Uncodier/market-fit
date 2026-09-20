@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createApiClient, createServiceApiClient } from "@/lib/supabase/server-client";
 import { subDays } from 'date-fns';
+import { requireAnalyticsAccess } from "@/lib/auth/api-analytics-access";
 
 export const dynamic = 'force-dynamic';
 
@@ -8,7 +9,6 @@ export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
     const siteId = searchParams.get('siteId');
-    const userId = searchParams.get('userId');
     const segmentId = searchParams.get('segmentId');
     const startDateParam = searchParams.get('startDate');
     const endDateParam = searchParams.get('endDate');
@@ -19,6 +19,10 @@ export async function GET(request: NextRequest) {
         { status: 400 }
       );
     }
+
+    const access = await requireAnalyticsAccess(request);
+    if (access.error) return access.error;
+    const userId = access.userId;
 
 
     // Parse dates

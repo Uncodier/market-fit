@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import Stripe from 'stripe'
+import { createHash } from 'node:crypto'
+import { requireStripeSiteAccess } from '@/lib/auth/api-stripe-access'
+import { resolveCheckoutUrls } from '@/app/api/stripe/checkout/checkout-url-security'
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2025-05-28.basil',
@@ -8,13 +11,26 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 
 export async function POST(request: NextRequest) {
   try {
-    const { plan, siteId, userEmail, addonsCount, successUrl, cancelUrl } = await request.json()
+    const { plan, siteId, addonsCount, successUrl, cancelUrl } = await request.json()
 
-    if (!plan || !siteId || !userEmail) {
+    if (!plan || !siteId) {
       return NextResponse.json(
         { error: 'Missing required fields' },
         { status: 400 }
       )
+    }
+
+    const access = await requireStripeSiteAccess(request, siteId)
+    if (access.error) return access.error
+
+    const checkoutUrls = resolveCheckoutUrls(
+      request,
+      cancelUrl,
+      successUrl,
+      {}
+    )
+    if (checkoutUrls.error) {
+      return NextResponse.json({ error: checkoutUrls.error }, { status: 400 })
     }
 
     // Validate subscription plans
@@ -56,10 +72,12 @@ export async function POST(request: NextRequest) {
     if (!customerId) {
       // Create new Stripe customer
       const customer = await stripe.customers.create({
-        email: userEmail,
+        email: access.userEmail || undefined,
         metadata: {
           site_id: siteId
         }
+      }, {
+        idempotencyKey: `subscription-customer-${siteId}`,
       })
       customerId = customer.id
 
@@ -109,7 +127,10 @@ export async function POST(request: NextRequest) {
       }
     ]
 
-    const parsedAddons = parseInt(addonsCount || '0', 10)
+    const parsedAddons = Number.parseInt(addonsCount || '0', 10)
+    if (!Number.isSafeInteger(parsedAddons) || parsedAddons < 0 || parsedAddons > 100) {
+      return NextResponse.json({ error: 'Invalid add-on count' }, { status: 400 })
+    }
     if (parsedAddons > 0) {
       lineItems.push({
         price: process.env.STRIPE_ACCOUNT_ADDON_PRICE_ID || 'price_addon',
@@ -117,13 +138,17 @@ export async function POST(request: NextRequest) {
       })
     }
 
+    const requestWindow = Math.floor(Date.now() / (10 * 60 * 1000))
+    const idempotencyKey = createHash('sha256')
+      .update(`${access.userId}:${siteId}:${plan}:${parsedAddons}:${requestWindow}`)
+      .digest('hex')
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       payment_method_types: ['card'],
       line_items: lineItems,
       mode: 'subscription',
-      success_url: successUrl,
-      cancel_url: cancelUrl,
+      success_url: checkoutUrls.successUrl,
+      cancel_url: checkoutUrls.cancelUrl,
       metadata: {
         site_id: siteId,
         plan: plan,
@@ -137,7 +162,7 @@ export async function POST(request: NextRequest) {
           addons_count: parsedAddons.toString()
         }
       }
-    })
+    }, { idempotencyKey })
 
     return NextResponse.json({ 
       url: session.url,

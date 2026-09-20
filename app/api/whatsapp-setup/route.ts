@@ -1,16 +1,21 @@
-import { createClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
+import { requireSiteAccess } from '@/lib/auth/api-site-access'
+import { createServiceClient } from '@/lib/supabase/server'
+import {
+  decodeRequestBody,
+  readLimitedRequestBody,
+  RequestBodyTooLargeError,
+} from '@/lib/http/read-limited-request-body'
 
-// Validation schema for the WhatsApp setup request
 const requestBodySchema = z.object({
-  siteId: z.string().min(1, "Site ID is required"),
-  siteName: z.string().min(1, "Site name is required"),
+  siteId: z.string().uuid("Invalid site ID"),
+  siteName: z.string().trim().min(1).max(160).optional(),
   setupType: z.enum(["new_number", "port_existing", "api_key"]),
-  country: z.string().optional(),
-  region: z.string().optional(),
-  existingNumber: z.string().optional(),
-  apiToken: z.string().optional()
+  country: z.string().trim().max(2).optional(),
+  region: z.string().trim().max(160).optional(),
+  existingNumber: z.string().trim().max(32).optional(),
+  apiToken: z.string().trim().max(512).optional()
 }).refine((data) => {
   // If porting existing number, existingNumber is required
   if (data.setupType === "port_existing" && !data.existingNumber) {
@@ -36,30 +41,40 @@ const requestBodySchema = z.object({
 
 export async function POST(request: Request) {
   try {
-    // Use service role client to bypass RLS
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    const rawBody = decodeRequestBody(
+      await readLimitedRequestBody(request, 16 * 1024)
     )
+    const validatedData = requestBodySchema.parse(JSON.parse(rawBody))
+    const access = await requireSiteAccess(request, validatedData.siteId, {
+      requireManager: true,
+    })
+    if (access.error) return access.error
 
-    // Parse request body
-    const body = await request.json()
-    const validatedData = requestBodySchema.parse(body)
+    const supabase = await createServiceClient()
+    const { data: site, error: siteError } = await supabase
+      .from("sites")
+      .select("name")
+      .eq("id", validatedData.siteId)
+      .single()
+    if (siteError || !site) {
+      return NextResponse.json({ error: "Site not found" }, { status: 404 })
+    }
+    const siteName = site.name
     
     const systemUserId = '541396e1-a904-4a81-8cbf-0ca4e3b8b2b4'
 
     // Create task description based on setup type
     let taskDescription = '';
     if (validatedData.setupType === 'new_number') {
-      taskDescription = `WhatsApp & SMS setup request for ${validatedData.siteName}. 
+      taskDescription = `WhatsApp & SMS setup request for ${siteName}.
         New number requested for ${validatedData.country}${validatedData.region ? ` in ${validatedData.region} city area` : ''}.
         Customer needs assistance with Twilio WhatsApp Business API & SMS setup and number provisioning.`;
     } else if (validatedData.setupType === 'port_existing') {
-      taskDescription = `WhatsApp Business setup request for ${validatedData.siteName}. 
+      taskDescription = `WhatsApp Business setup request for ${siteName}.
         Number porting requested for existing number: ${validatedData.existingNumber}.
         Customer needs assistance with Twilio WhatsApp Business API setup and number porting process.`;
     } else {
-      taskDescription = `Twilio API integration for ${validatedData.siteName}. 
+      taskDescription = `Twilio API integration for ${siteName}.
         Customer has provided their Twilio API key for WhatsApp & SMS integration.
         Phone number to configure: ${validatedData.existingNumber}
         API key needs to be validated and integrated into the system.`;
@@ -67,7 +82,7 @@ export async function POST(request: Request) {
 
     // Create a task for processing the WhatsApp setup request
     const taskData = {
-      title: `WhatsApp Business Setup: ${validatedData.siteName}`,
+      title: `WhatsApp Business Setup: ${siteName}`,
       description: taskDescription,
       status: 'pending' as const,
       stage: 'purchase' as const,
@@ -115,9 +130,21 @@ export async function POST(request: Request) {
       }
     })
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('WhatsApp setup error:', error)
-    
+
+    if (error instanceof RequestBodyTooLargeError) {
+      return NextResponse.json(
+        { error: error.message },
+        { status: error.status }
+      )
+    }
+    if (error instanceof SyntaxError) {
+      return NextResponse.json(
+        { error: "Invalid JSON payload" },
+        { status: 400 }
+      )
+    }
     if (error instanceof z.ZodError) {
       return NextResponse.json({
         error: 'Validation failed',
@@ -126,8 +153,7 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json({
-      error: 'Internal server error',
-      details: error.message
+      error: 'Internal server error'
     }, { status: 500 })
   }
 }

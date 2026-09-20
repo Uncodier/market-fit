@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/server';
 import { isMakinariInternalReferrerHostname } from '@/lib/traffic/makinari-internal-referrer';
 import { isExternalReferralPageview } from '@/lib/traffic/external-referral-pageview';
+import { requireAnalyticsAccess } from '@/lib/auth/api-analytics-access';
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -19,6 +20,9 @@ export async function GET(request: NextRequest) {
   if (!startDate || !endDate) {
     return NextResponse.json({ error: 'Start date and end date are required' }, { status: 400 });
   }
+
+  const access = await requireAnalyticsAccess(request);
+  if (access.error) return access.error;
 
   try {
     const supabase = await createServiceClient();

@@ -1,4 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server'
+import {
+  getCachedJson,
+  hashRedisKeyPart,
+  setCachedJson,
+} from '@/lib/redis/control-plane'
+import { z } from 'zod'
+import {
+  decodeRequestBody,
+  readLimitedRequestBody,
+  RequestBodyTooLargeError,
+} from '@/lib/http/read-limited-request-body'
+
+const MAX_BODY_BYTES = 32 * 1024
+const requestSchema = z.object({
+  subreddit: z.string().regex(/^[A-Za-z0-9_+]{1,100}$/).default('all'),
+  sortBy: z.enum(['hot', 'new', 'top', 'rising']).default('hot'),
+  timeframe: z.enum(['hour', 'day', 'week', 'month', 'year', 'all']).default('day'),
+  limit: z.number().int().min(1).max(25).default(10),
+  segments: z.array(z.object({
+    name: z.string().max(80),
+    description: z.string().max(240).optional(),
+  })).max(8).default([]),
+  keywords: z.array(z.string().max(80)).max(12).default([]),
+})
 
 interface RedditPost {
   title: string
@@ -82,7 +106,11 @@ async function getRedditAccessToken(): Promise<string | null> {
 
   try {
     console.log('🔑 [Reddit API] Authenticating with Reddit...')
-    
+
+    const tokenCacheKey = `cache:v1:reddit:token:${await hashRedisKeyPart(clientId)}`
+    const cachedToken = await getCachedJson<string>(tokenCacheKey)
+    if (cachedToken) return cachedToken
+
     const authString = Buffer.from(`${clientId}:${clientSecret}`).toString('base64')
     
     const response = await fetch('https://www.reddit.com/api/v1/access_token', {
@@ -92,7 +120,8 @@ async function getRedditAccessToken(): Promise<string | null> {
         'Content-Type': 'application/x-www-form-urlencoded',
         'User-Agent': process.env.REDDIT_USER_AGENT || 'MarketFit/1.0'
       },
-      body: 'grant_type=client_credentials'
+      body: 'grant_type=client_credentials',
+      signal: AbortSignal.timeout(10_000),
     })
 
     if (!response.ok) {
@@ -100,7 +129,13 @@ async function getRedditAccessToken(): Promise<string | null> {
       return null
     }
 
-    const authData = await response.json()
+    const authData = await response.json() as {
+      access_token?: string
+      expires_in?: number
+    }
+    if (!authData.access_token) return null
+    const ttl = Math.max(60, Math.min((authData.expires_in || 3600) - 60, 3600))
+    await setCachedJson(tokenCacheKey, authData.access_token, ttl)
     console.log('✅ [Reddit API] Authentication successful')
     return authData.access_token
   } catch (error) {
@@ -111,7 +146,20 @@ async function getRedditAccessToken(): Promise<string | null> {
 
 export async function POST(request: NextRequest) {
   try {
-    const { subreddit = 'all', sortBy = 'hot', timeframe = 'day', limit = 10, segments, keywords } = await request.json()
+    const parsed = requestSchema.safeParse(
+      JSON.parse(
+        decodeRequestBody(
+          await readLimitedRequestBody(request, MAX_BODY_BYTES)
+        )
+      )
+    )
+    if (!parsed.success) {
+      return NextResponse.json(
+        { success: false, error: 'Invalid trend request' },
+        { status: 400 }
+      )
+    }
+    const { subreddit, sortBy, timeframe, limit, segments, keywords } = parsed.data
 
     // Smart subreddit selection based on segments
     const targetSubreddit = segments && segments.length > 0 ? selectSubredditFromSegments(segments) : subreddit
@@ -126,7 +174,7 @@ export async function POST(request: NextRequest) {
     
     // Use official API if we have token, otherwise fallback to public API
     let redditUrl: string
-    const fetchLimit = Math.max(50, limit * 3)
+    const fetchLimit = Math.min(75, Math.max(25, limit * 3))
     
     if (accessToken) {
       headers['Authorization'] = `Bearer ${accessToken}`
@@ -141,22 +189,17 @@ export async function POST(request: NextRequest) {
     console.log('📊 [Reddit API] Target subreddits:', targetSubreddit)
     console.log('🔍 [Reddit API] Filtering for segments:', segments?.map((s: any) => s.name).join(', ') || 'None')
 
-    const response = await fetch(redditUrl, { headers })
+    const response = await fetch(redditUrl, {
+      headers,
+      signal: AbortSignal.timeout(10_000),
+    })
 
     if (!response.ok) {
-      console.warn(`Reddit API error: ${response.status}. Returning empty fallback to avoid crashing.`);
-      return NextResponse.json({
-        success: true, // We act as if successful but empty so UI doesn't break
-        trends: [],
-        metadata: {
-          subreddit,
-          sortBy,
-          timeframe,
-          timestamp: new Date().toISOString(),
-          source: 'reddit-api-fallback',
-          total: 0
-        }
-      });
+      console.warn(`Reddit API error: ${response.status}`)
+      return NextResponse.json(
+        { success: false, error: 'Reddit provider request failed' },
+        { status: 502 }
+      )
     }
 
     const data: RedditApiResponse = await response.json()
@@ -284,6 +327,18 @@ export async function POST(request: NextRequest) {
     })
 
   } catch (error) {
+    if (error instanceof RequestBodyTooLargeError) {
+      return NextResponse.json(
+        { success: false, error: error.message },
+        { status: 413 }
+      )
+    }
+    if (error instanceof SyntaxError) {
+      return NextResponse.json(
+        { success: false, error: 'Invalid JSON payload' },
+        { status: 400 }
+      )
+    }
     console.error('Reddit Trends API error:', error)
     return NextResponse.json(
       {

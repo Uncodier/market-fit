@@ -9,6 +9,7 @@ import { resolveBlockedScreenRedirect } from '@/lib/auth/enforce-screen-access'
 import { shouldClearDemoCookieOnPath } from '@/lib/auth/workspace-site-redirect'
 import { isRouterPrefetchRequest } from '@/lib/navigation/is-router-prefetch'
 import { isServerActionRequest } from '@/lib/navigation/is-server-action'
+import { enforceApiAdmission } from '@/lib/redis/api-admission'
 
 // Lista específica y exacta de rutas públicas permitidas
 const ALLOWED_PUBLIC_PATHS = [
@@ -371,6 +372,9 @@ export async function middleware(request: NextRequest) {
   // against Supabase; with many parallel fetches (layout, RSC, etc.) the connection
   // pool gets exhausted and connections go stale.
   if (pathname.startsWith('/api/')) {
+    const denied = await enforceApiAdmission(request)
+    if (denied) return getCorsHeaders(denied, request, isPublicBooking)
+
     const res = nextWithAlignedServerActionHost(request)
     return getCorsHeaders(res, request, isPublicBooking)
   }

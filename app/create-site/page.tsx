@@ -120,21 +120,23 @@ function CreateSitePageContent() {
       setIsSaving(false)
 
       // Site setup is optional background work and must not block the success step
-      const apiKey = process.env.NEXT_PUBLIC_API_KEY || "market-fit-dev-api-key"
-      const apiSecret = process.env.NEXT_PUBLIC_API_SECRET || "market-fit-dev-api-secret"
-      void apiClient.postWithApiKeys(
-        '/api/site/setup',
-        { site_id: newSite.id },
-        apiKey,
-        apiSecret,
-        { timeout: 15000 }
-      ).then((setupResponse) => {
-        if (!setupResponse.success) {
-          console.warn("Site setup initiation failed:", setupResponse.error?.message)
-        }
-      }).catch((setupError) => {
-        console.warn("Error initiating site setup:", setupError)
-      })
+      const apiKey = process.env.NEXT_PUBLIC_API_KEY
+      const apiSecret = process.env.NEXT_PUBLIC_API_SECRET
+      if (apiKey && apiSecret) {
+        void apiClient.postWithApiKeys(
+          '/api/site/setup',
+          { site_id: newSite.id },
+          apiKey,
+          apiSecret,
+          { timeout: 15000 }
+        ).then((setupResponse) => {
+          if (!setupResponse.success) {
+            console.warn("Site setup initiation failed:", setupResponse.error?.message)
+          }
+        }).catch((setupError) => {
+          console.warn("Error initiating site setup:", setupError)
+        })
+      }
     } catch (error) {
       console.error(error)
       toast.error(getCreateSiteErrorMessage(error))

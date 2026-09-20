@@ -1,49 +1,118 @@
 import { NextRequest, NextResponse } from "next/server"
-import { createClient } from "@/lib/supabase/client"
+import twilio from "twilio"
+import { z } from "zod"
+import { createServiceClient } from "@/lib/supabase/server"
+import {
+  decodeRequestBody,
+  readLimitedRequestBody,
+  RequestBodyTooLargeError,
+} from "@/lib/http/read-limited-request-body"
+
+const MAX_BODY_BYTES = 32 * 1024
+
+const webhookSchema = z.object({
+  AccountSid: z.string().max(64).optional(),
+  From: z.string().max(64).optional(),
+  To: z.string().max(64).optional(),
+  Body: z.string().max(4096).optional(),
+  MessageSid: z.string().max(64).optional(),
+  ComplianceStatus: z.string().max(64).optional(),
+  PhoneNumber: z.string().max(64).optional(),
+  metadata: z.string().max(4096).optional(),
+})
+
+const metadataSchema = z.object({
+  siteId: z.string().uuid(),
+})
+
+function getWebhookUrl(request: NextRequest): string {
+  const configured = process.env.TWILIO_WHATSAPP_WEBHOOK_URL?.trim()
+  if (configured) return configured
+
+  const url = new URL(request.url)
+  const forwardedHost = request.headers.get("x-forwarded-host")
+  const forwardedProto = request.headers.get("x-forwarded-proto")
+  if (forwardedHost) url.host = forwardedHost.split(",")[0].trim()
+  if (forwardedProto) url.protocol = `${forwardedProto.split(",")[0].trim()}:`
+  return url.toString()
+}
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json()
-    
-    console.log("WhatsApp webhook received:", body)
-    
-    // Extract relevant information from Twilio webhook
-    const {
-      AccountSid,
-      From,
-      To,
-      Body,
-      MessageSid,
-      // Compliance/authorization specific fields
-      ComplianceStatus,
-      PhoneNumber,
-      metadata
-    } = body
-
-    // Parse metadata if it exists
-    let siteInfo = null
-    try {
-      if (metadata) {
-        siteInfo = JSON.parse(metadata)
-      }
-    } catch (parseError) {
-      console.warn("Could not parse metadata:", parseError)
+    const authToken = process.env.TWILIO_AUTH_TOKEN
+    if (!authToken) {
+      return NextResponse.json(
+        { error: "Webhook verification is unavailable" },
+        { status: 503 }
+      )
     }
 
-    // Handle different types of webhooks
+    const rawBody = decodeRequestBody(
+      await readLimitedRequestBody(request, MAX_BODY_BYTES)
+    )
+    const signature = request.headers.get("x-twilio-signature")
+    if (!signature) {
+      return NextResponse.json(
+        { error: "Invalid webhook signature" },
+        { status: 401 }
+      )
+    }
+
+    const contentType = request.headers.get("content-type") || ""
+    let rawPayload: unknown
+    let signatureValid = false
+    if (contentType.includes("application/json")) {
+      signatureValid = twilio.validateRequestWithBody(
+        authToken,
+        signature,
+        getWebhookUrl(request),
+        rawBody
+      )
+      rawPayload = JSON.parse(rawBody)
+    } else {
+      const params = Object.fromEntries(new URLSearchParams(rawBody).entries())
+      signatureValid = twilio.validateRequest(
+        authToken,
+        signature,
+        getWebhookUrl(request),
+        params
+      )
+      rawPayload = params
+    }
+
+    if (!signatureValid) {
+      return NextResponse.json(
+        { error: "Invalid webhook signature" },
+        { status: 401 }
+      )
+    }
+
+    const parsed = webhookSchema.safeParse(rawPayload)
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: "Invalid webhook payload" },
+        { status: 400 }
+      )
+    }
+
+    const { From, Body, ComplianceStatus, PhoneNumber, metadata } = parsed.data
+
     if (ComplianceStatus) {
-      // This is a compliance/authorization status update
-      console.log("Compliance status update:", {
-        status: ComplianceStatus,
-        phoneNumber: PhoneNumber,
-        siteInfo
-      })
+      let siteInfo: z.infer<typeof metadataSchema> | null = null
+      if (metadata) {
+        try {
+          const parsedMetadata = metadataSchema.safeParse(JSON.parse(metadata))
+          siteInfo = parsedMetadata.success ? parsedMetadata.data : null
+        } catch {
+          return NextResponse.json(
+            { error: "Invalid webhook metadata" },
+            { status: 400 }
+          )
+        }
+      }
 
       if (ComplianceStatus === 'approved' && siteInfo?.siteId) {
-        // Update the site settings to mark WhatsApp as connected
-        const supabase = createClient()
-        
-        // First get existing settings to preserve other fields
+        const supabase = await createServiceClient()
         const { data: existingSettings } = await supabase
           .from('settings')
           .select('*')
@@ -72,9 +141,11 @@ export async function POST(request: NextRequest) {
           })
 
         if (updateError) {
-          console.error("Error updating site settings:", updateError)
-        } else {
-          console.log("Successfully updated site settings for WhatsApp connection")
+          console.error("Failed to persist WhatsApp compliance status")
+          return NextResponse.json(
+            { error: "Webhook processing failed" },
+            { status: 500 }
+          )
         }
       }
 
@@ -84,33 +155,31 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    // Handle incoming WhatsApp messages
     if (From && Body) {
-      console.log("Incoming WhatsApp message:", {
-        from: From,
-        to: To,
-        body: Body,
-        messageSid: MessageSid
-      })
-
-      // Here you can implement your WhatsApp message processing logic
-      // For now, we'll just log it and return success
-      
       return NextResponse.json({ 
         success: true, 
         message: "WhatsApp message received" 
       })
     }
 
-    // Default response for other webhook types
     return NextResponse.json({ 
       success: true, 
       message: "Webhook received" 
     })
-
   } catch (error) {
+    if (error instanceof RequestBodyTooLargeError) {
+      return NextResponse.json(
+        { error: error.message },
+        { status: error.status }
+      )
+    }
+    if (error instanceof SyntaxError) {
+      return NextResponse.json(
+        { error: "Invalid webhook payload" },
+        { status: 400 }
+      )
+    }
     console.error("Error processing WhatsApp webhook:", error)
-    
     return NextResponse.json(
       { error: "Failed to process webhook" },
       { status: 500 }
@@ -119,8 +188,7 @@ export async function POST(request: NextRequest) {
 }
 
 // Handle GET requests for webhook verification
-export async function GET(request: NextRequest) {
-  // Some webhook services require GET endpoint verification
+export async function GET() {
   return NextResponse.json({ 
     status: "WhatsApp webhook endpoint active",
     timestamp: new Date().toISOString()

@@ -1,11 +1,8 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createServiceClient } from "@/lib/supabase/server"
-import { cookies } from "next/headers"
+import { requireAnalyticsAccess } from "@/lib/auth/api-analytics-access"
 
 export async function GET(request: NextRequest) {
-  const cookieStore = cookies()
-  const supabase = await createServiceClient()
-
   const { searchParams } = new URL(request.url)
   const siteId = searchParams.get("siteId")
   const userId = searchParams.get("userId")
@@ -17,7 +14,11 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Missing required parameters" }, { status: 400 })
   }
 
+  const access = await requireAnalyticsAccess(request)
+  if (access.error) return access.error
+
   try {
+    const supabase = await createServiceClient()
     const currentStart = new Date(startDate)
     const currentEnd = new Date(endDate)
     const periodLength = currentEnd.getTime() - currentStart.getTime()

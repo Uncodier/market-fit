@@ -51,6 +51,7 @@ async function nominatimFetch(url: URL): Promise<NominatimResult[]> {
       "Accept-Language": "en-US,en;q=0.9",
     },
     next: { revalidate: 86400 },
+    signal: AbortSignal.timeout(8_000),
   })
   if (!response.ok) {
     throw new Error(`Nominatim API returned ${response.status}`)
@@ -70,13 +71,8 @@ export async function searchPlaces(query: string, limit = 5): Promise<GeocodedPl
   url.searchParams.set("limit", String(limit))
   url.searchParams.set("q", q)
 
-  try {
-    const rows = await nominatimFetch(url)
-    return rows.map(placeFromNominatim)
-  } catch (error) {
-    console.error("Place search error:", error)
-    return []
-  }
+  const rows = await nominatimFetch(url)
+  return rows.map(placeFromNominatim)
 }
 
 /** Reverse geocode lat/lon → city/country. */
@@ -92,12 +88,7 @@ export async function reverseGeocodePlace(
   url.searchParams.set("lat", String(lat))
   url.searchParams.set("lon", String(lon))
 
-  try {
-    const rows = await nominatimFetch(url)
-    if (rows.length === 0) return null
-    return placeFromNominatim(rows[0])
-  } catch (error) {
-    console.error("Reverse geocode error:", error)
-    return null
-  }
+  const rows = await nominatimFetch(url)
+  if (rows.length === 0) return null
+  return placeFromNominatim(rows[0])
 }

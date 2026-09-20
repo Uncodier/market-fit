@@ -3,7 +3,10 @@
 import { createClient as createClientAdmin } from "@supabase/supabase-js";
 import { DynamicQuoteMetadata } from "@/app/types";
 import { extractQuotePriceFromAssistantText } from "./dynamic-quote-prompt";
-import { fetchTunneledInstanceLogs } from "./dynamic-quote-api";
+import {
+  fetchTunneledInstanceLogs,
+  type TunneledInstanceLog,
+} from "./dynamic-quote-api";
 import { applyPricedResult } from "./dynamic-quote-apply";
 
 function adminClient() {
@@ -100,7 +103,10 @@ export async function findPricedAgentLog(
  * Poll instance_logs for the assistant JSON quote and apply it to the quotation item.
  * Uses service role for DB writes so shop buyers (incl. anonymous) can still get priced.
  */
-export async function syncDynamicQuoteFromInstanceLogs(quotationItemId: string) {
+export async function syncDynamicQuoteFromInstanceLogs(
+  quotationItemId: string,
+  prefetchedLogs?: TunneledInstanceLog[]
+) {
   const admin = adminClient();
 
   const { data: item, error } = await admin
@@ -169,13 +175,17 @@ export async function syncDynamicQuoteFromInstanceLogs(quotationItemId: string) 
     return { data: { status: "processing" as const } };
   }
 
-  const pricedLog = await findPricedAgentLog(instanceId, quotationItemId);
+  const sourceLogs =
+    prefetchedLogs ||
+    (await fetchTunneledInstanceLogs(instanceId, 100)).logs;
+  const pricedLog = tryExtractFromRows(sourceLogs);
 
   if (!pricedLog) {
     return {
       data: {
         status: "processing" as const,
         assistantInstanceId: instanceId,
+        sourceLogs,
       },
     };
   }
@@ -216,6 +226,7 @@ export async function syncDynamicQuoteFromInstanceLogs(quotationItemId: string) 
         unitPrice: priced.unitPrice,
         validUntil: priced.validUntil,
         assistantInstanceId: instanceId,
+        sourceLogs,
       },
     };
   } catch (err: any) {

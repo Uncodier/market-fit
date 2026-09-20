@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
+import { requireAnalyticsAccess } from "@/lib/auth/api-analytics-access";
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
@@ -11,6 +12,9 @@ export async function GET(request: NextRequest) {
   if (!siteId || !startDate || !endDate) {
     return NextResponse.json({ error: "Missing required parameters" }, { status: 400 });
   }
+
+  const access = await requireAnalyticsAccess(request);
+  if (access.error) return access.error;
 
   try {
     const supabase = await createServiceClient();

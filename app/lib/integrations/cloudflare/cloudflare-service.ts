@@ -23,6 +23,26 @@ export interface AddDnsRecordsOptions {
 }
 
 const CF_API_BASE = 'https://api.cloudflare.com/client/v4'
+const CF_TIMEOUT_MS = 10_000
+
+async function fetchCloudflare(
+  input: string,
+  init: RequestInit
+): Promise<Response> {
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), CF_TIMEOUT_MS)
+  const abort = () => controller.abort()
+  init.signal?.addEventListener("abort", abort, { once: true })
+  try {
+    return await fetch(input, {
+      ...init,
+      signal: controller.signal,
+    })
+  } finally {
+    clearTimeout(timeout)
+    init.signal?.removeEventListener("abort", abort)
+  }
+}
 
 /**
  * Searches for a zone by domain name. 
@@ -33,7 +53,7 @@ const CF_API_BASE = 'https://api.cloudflare.com/client/v4'
 export async function getZoneByDomain(domain: string, token: string): Promise<CloudflareZone | null> {
   // To handle complex TLDs (like .co.uk, .com.mx), fetch zones and find the best match
   // For most tokens, the number of zones is small enough that a single API call is fast
-  let res = await fetch(`${CF_API_BASE}/zones?per_page=50`, {
+  let res = await fetchCloudflare(`${CF_API_BASE}/zones?per_page=50`, {
     headers: {
       'Authorization': `Bearer ${token}`,
       'Content-Type': 'application/json'
@@ -66,7 +86,7 @@ export async function getZoneByDomain(domain: string, token: string): Promise<Cl
     searchName = domainParts.slice(-2).join('.')
   }
 
-  res = await fetch(`${CF_API_BASE}/zones?name=${searchName}`, {
+  res = await fetchCloudflare(`${CF_API_BASE}/zones?name=${searchName}`, {
     headers: {
       'Authorization': `Bearer ${token}`,
       'Content-Type': 'application/json'
@@ -79,7 +99,7 @@ export async function getZoneByDomain(domain: string, token: string): Promise<Cl
   }
 
   if (!data.result || data.result.length === 0) {
-    res = await fetch(`${CF_API_BASE}/zones?name=${domain}`, {
+    res = await fetchCloudflare(`${CF_API_BASE}/zones?name=${domain}`, {
       headers: {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json'
@@ -118,7 +138,7 @@ export async function addDnsRecords(
       throw new Error('Inbound MX replacement requires the current Zavu MX target')
     }
 
-    const existingRes = await fetch(`${CF_API_BASE}/zones/${zoneId}/dns_records?type=${record.type}&name=${record.name}`, {
+    const existingRes = await fetchCloudflare(`${CF_API_BASE}/zones/${zoneId}/dns_records?type=${record.type}&name=${record.name}`, {
       headers: {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json'
@@ -162,7 +182,7 @@ export async function addDnsRecords(
       if (priorityMatches) {
         results.push({ skipped: true, name: record.name, type: record.type })
       } else {
-        const updateRes = await fetch(`${CF_API_BASE}/zones/${zoneId}/dns_records/${sameTarget.id}`, {
+        const updateRes = await fetchCloudflare(`${CF_API_BASE}/zones/${zoneId}/dns_records/${sameTarget.id}`, {
           method: 'PATCH',
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -179,7 +199,7 @@ export async function addDnsRecords(
         }
       }
     } else {
-      const createRes = await fetch(`${CF_API_BASE}/zones/${zoneId}/dns_records`, {
+      const createRes = await fetchCloudflare(`${CF_API_BASE}/zones/${zoneId}/dns_records`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -209,7 +229,7 @@ export async function addDnsRecords(
       recordSucceeded
     ) {
       for (const existing of otherMxRecords) {
-        const deleteRes = await fetch(
+        const deleteRes = await fetchCloudflare(
           `${CF_API_BASE}/zones/${zoneId}/dns_records/${existing.id}`,
           {
             method: 'DELETE',

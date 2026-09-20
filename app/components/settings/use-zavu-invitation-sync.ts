@@ -12,6 +12,7 @@ import {
 } from "./zavu-invitation-helpers"
 
 const POLL_INTERVAL_MS = 3000
+const POLL_DEADLINE_MS = 10 * 60 * 1000
 
 type UseZavuInvitationSyncOptions = {
   connections: ConnectionLike[]
@@ -40,6 +41,7 @@ export function useZavuInvitationSync({
 
   const sync = useCallback(async () => {
     if (inflightRef.current) return inflightRef.current
+    if (document.visibilityState === "hidden" || !navigator.onLine) return
 
     const pending = connectionsRef.current
       .map((channel, index) => ({ channel, index }))
@@ -105,23 +107,43 @@ export function useZavuInvitationSync({
 
   useEffect(() => {
     if (!enabled || !pendingKey) return
+    let cancelled = false
+    let timeoutId: number | null = null
+    const deadline = Date.now() + POLL_DEADLINE_MS
 
-    void sync()
-    const intervalId = window.setInterval(() => {
-      void sync()
-    }, POLL_INTERVAL_MS)
-
-    const onVisible = () => {
-      if (document.visibilityState === "visible") void sync()
+    const schedule = () => {
+      if (!cancelled && Date.now() < deadline) {
+        if (timeoutId !== null) window.clearTimeout(timeoutId)
+        timeoutId = window.setTimeout(run, POLL_INTERVAL_MS)
+      }
+    }
+    const run = async () => {
+      await sync()
+      schedule()
     }
 
+    const onVisible = () => {
+      if (
+        document.visibilityState === "visible" &&
+        navigator.onLine &&
+        Date.now() < deadline
+      ) {
+        if (timeoutId !== null) window.clearTimeout(timeoutId)
+        void run()
+      }
+    }
+
+    void run()
     document.addEventListener("visibilitychange", onVisible)
     window.addEventListener("focus", onVisible)
+    window.addEventListener("online", onVisible)
 
     return () => {
-      window.clearInterval(intervalId)
+      cancelled = true
+      if (timeoutId !== null) window.clearTimeout(timeoutId)
       document.removeEventListener("visibilitychange", onVisible)
       window.removeEventListener("focus", onVisible)
+      window.removeEventListener("online", onVisible)
     }
   }, [enabled, pendingKey, sync])
 

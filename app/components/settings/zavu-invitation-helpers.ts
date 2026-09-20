@@ -1,6 +1,11 @@
 export const PARTNER_LINK_TYPES = new Set(["whatsapp", "messenger"])
 
-const TERMINAL_STATUSES = new Set(["connected", "expired", "cancelled"])
+const TERMINAL_STATUSES = new Set([
+  "connected",
+  "failed",
+  "expired",
+  "cancelled",
+])
 
 export type InvitationLike = {
   id?: string

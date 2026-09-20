@@ -17,12 +17,28 @@ export async function GET(request: NextRequest) {
 
   try {
     if (q) {
-      const places = await searchPlaces(q, 5)
+      const normalizedQuery = q.trim()
+      if (!normalizedQuery || normalizedQuery.length > 200) {
+        return NextResponse.json({ error: "Invalid query" }, { status: 400 })
+      }
+      const places = await searchPlaces(normalizedQuery, 5)
       return NextResponse.json({ places }, { headers: cacheHeaders })
     }
 
     if (lat && lon) {
-      const place = await reverseGeocodePlace(parseFloat(lat), parseFloat(lon))
+      const latitude = Number(lat)
+      const longitude = Number(lon)
+      if (
+        !Number.isFinite(latitude) ||
+        !Number.isFinite(longitude) ||
+        latitude < -90 ||
+        latitude > 90 ||
+        longitude < -180 ||
+        longitude > 180
+      ) {
+        return NextResponse.json({ error: "Invalid coordinates" }, { status: 400 })
+      }
+      const place = await reverseGeocodePlace(latitude, longitude)
       return NextResponse.json({ place }, { headers: cacheHeaders })
     }
 
@@ -32,13 +48,21 @@ export async function GET(request: NextRequest) {
         { status: 400 }
       )
     }
+    if (
+      (address && address.length > 300) ||
+      (city && city.length > 120) ||
+      (name && name.length > 160)
+    ) {
+      return NextResponse.json({ error: "Location input is too long" }, { status: 400 })
+    }
 
     const coords = await geocodeVenueLocation({ address, city, name })
     return NextResponse.json({ coords }, { headers: cacheHeaders })
   } catch (error) {
     console.error("[geocode] Error:", error)
-    if (q) return NextResponse.json({ places: [] }, { status: 200 })
-    if (lat && lon) return NextResponse.json({ place: null }, { status: 200 })
-    return NextResponse.json({ coords: null }, { status: 200 })
+    return NextResponse.json(
+      { error: "Geocoding provider request failed" },
+      { status: 502 }
+    )
   }
 }

@@ -1,5 +1,6 @@
 "use server";
 
+import { after } from "next/server";
 import { computeValidUntil } from "@/app/catalog/dynamic-pricing";
 import { DynamicQuoteMetadata } from "@/app/types";
 import { getTaxesByCatalogItemIds } from "@/app/catalog/tax-actions";
@@ -141,11 +142,29 @@ export async function applyPricedResult(params: {
 
   const { data: item } = await supabase
     .from("quotation_items")
-    .select("quantity")
+    .select("quantity, unit_price, metadata, quotation:quotations(valid_until)")
     .eq("id", quotationItemId)
     .single();
 
   const quantity = Number(item?.quantity) || 1;
+  const existingPrice = Number(item?.unit_price) || 0;
+  const existingMeta = item?.metadata?.dynamic_quote as
+    | DynamicQuoteMetadata
+    | undefined;
+  if (
+    existingPrice > 0 &&
+    (existingMeta?.status === "priced" ||
+      existingMeta?.status === "awaiting_authorization")
+  ) {
+    const quotation = Array.isArray(item.quotation)
+      ? item.quotation[0]
+      : item.quotation;
+    return {
+      unitPrice: existingPrice,
+      validUntil: quotation?.valid_until || null,
+      metadata: existingMeta,
+    };
+  }
   const floor =
     minPrice !== undefined && minPrice !== null && !Number.isNaN(Number(minPrice))
       ? Number(minPrice)
@@ -162,17 +181,45 @@ export async function applyPricedResult(params: {
     min_price: floor || metadata.min_price,
   };
 
-  const { error: itemUpdateError } = await supabase
+  const { data: updatedItem, error: itemUpdateError } = await supabase
     .from("quotation_items")
     .update({
       unit_price: finalPrice,
       subtotal: finalPrice * quantity,
       metadata: { dynamic_quote: nextMeta },
     })
-    .eq("id", quotationItemId);
+    .eq("id", quotationItemId)
+    .eq("unit_price", existingPrice)
+    .select("id")
+    .maybeSingle();
 
   if (itemUpdateError) {
     throw new Error(itemUpdateError.message || "Failed to update quotation item price");
+  }
+  if (!updatedItem) {
+    const { data: winner } = await supabase
+      .from("quotation_items")
+      .select("unit_price, metadata, quotation:quotations(valid_until)")
+      .eq("id", quotationItemId)
+      .single();
+    const winnerMeta = winner?.metadata?.dynamic_quote as
+      | DynamicQuoteMetadata
+      | undefined;
+    const winnerQuotation = Array.isArray(winner?.quotation)
+      ? winner.quotation[0]
+      : winner?.quotation;
+    if (
+      Number(winner?.unit_price) > 0 &&
+      (winnerMeta?.status === "priced" ||
+        winnerMeta?.status === "awaiting_authorization")
+    ) {
+      return {
+        unitPrice: Number(winner.unit_price),
+        validUntil: winnerQuotation?.valid_until || null,
+        metadata: winnerMeta,
+      };
+    }
+    throw new Error("Quote price could not be claimed");
   }
 
   const { error: quotationUpdateError } = await supabase

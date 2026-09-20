@@ -22,6 +22,8 @@ type PhoneConnection = {
   [key: string]: unknown
 }
 
+const PHONE_SYNC_DEADLINE_MS = 15 * 60 * 1000
+
 export function applyRegulatoryStatuses(
   connections: PhoneConnection[],
   phoneNumbers: ZavuPhoneNumber[]
@@ -60,14 +62,6 @@ export function applyRegulatoryStatuses(
       }
     }
     if (phoneNumber.regulatoryStatus === "rejected") {
-      if (
-        connection.status === "failed" &&
-        connection.metadata?.regulatory_status === "rejected" &&
-        connection.metadata?.failure_reason ===
-          "Phone number regulatory review was rejected."
-      ) {
-        return connection
-      }
       changed = true
       return {
         ...connection,
@@ -110,26 +104,71 @@ export function useZavuPhoneStatusSync(params: {
   useEffect(() => {
     if (!params.enabled || !siteId || !pendingKey) return
     let cancelled = false
+    let inFlight = false
+    let timeoutId: number | null = null
+    const deadline = Date.now() + PHONE_SYNC_DEADLINE_MS
 
     const sync = async () => {
-      const response = await apiClient.get(
-        `/api/integrations/zavu/phone-numbers?siteId=${encodeURIComponent(siteId)}`
-      )
-      if (cancelled || !response.success) return
-      const result = applyRegulatoryStatuses(
-        connectionsRef.current,
-        unwrapZavuItems<ZavuPhoneNumber>(response.data)
-      )
-      if (result.changed) {
-        await callbackRef.current(result.connections)
+      if (
+        cancelled ||
+        inFlight ||
+        Date.now() >= deadline ||
+        document.visibilityState === "hidden" ||
+        !navigator.onLine
+      ) {
+        return
+      }
+      inFlight = true
+      try {
+        const response = await apiClient.get(
+          `/api/integrations/zavu/phone-numbers?siteId=${encodeURIComponent(siteId)}`
+        )
+        if (cancelled || !response.success) return
+        const result = applyRegulatoryStatuses(
+          connectionsRef.current,
+          unwrapZavuItems<ZavuPhoneNumber>(response.data)
+        )
+        if (result.changed) {
+          await callbackRef.current(result.connections)
+        }
+      } finally {
+        inFlight = false
       }
     }
 
-    void sync()
-    const interval = window.setInterval(sync, params.intervalMs ?? 30_000)
+    const schedule = () => {
+      if (!cancelled && Date.now() < deadline) {
+        if (timeoutId !== null) window.clearTimeout(timeoutId)
+        timeoutId = window.setTimeout(run, params.intervalMs ?? 30_000)
+      }
+    }
+    const run = async () => {
+      try {
+        await sync()
+      } finally {
+        schedule()
+      }
+    }
+    const resume = () => {
+      if (
+        document.visibilityState === "visible" &&
+        navigator.onLine &&
+        !inFlight &&
+        Date.now() < deadline
+      ) {
+        if (timeoutId !== null) window.clearTimeout(timeoutId)
+        void run()
+      }
+    }
+
+    void run()
+    document.addEventListener("visibilitychange", resume)
+    window.addEventListener("online", resume)
     return () => {
       cancelled = true
-      window.clearInterval(interval)
+      if (timeoutId !== null) window.clearTimeout(timeoutId)
+      document.removeEventListener("visibilitychange", resume)
+      window.removeEventListener("online", resume)
     }
   }, [params.enabled, params.intervalMs, siteId, pendingKey])
 }

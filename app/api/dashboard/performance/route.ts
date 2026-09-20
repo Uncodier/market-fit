@@ -11,6 +11,14 @@ import { GET as tokens } from "@/app/api/performance/tokens/route"
 import { GET as videoMinutes } from "@/app/api/performance/video-minutes/route"
 import { GET as imagesGenerated } from "@/app/api/performance/images-generated/route"
 import { GET as metricsOverview } from "@/app/api/performance/metrics-overview/route"
+import {
+  markAnalyticsRequestAuthorized,
+  requireAnalyticsAccess,
+} from "@/lib/auth/api-analytics-access"
+import {
+  normalizedRequestCacheKey,
+  readThroughJsonCache,
+} from "@/lib/redis/json-cache"
 
 type Handler = (request: NextRequest) => Promise<Response>
 
@@ -29,11 +37,18 @@ const HANDLERS: Record<string, Handler> = {
   "metrics-overview": metricsOverview,
 }
 
-async function readHandler(handler: Handler, request: NextRequest, path: string) {
+async function readHandler(
+  handler: Handler,
+  request: NextRequest,
+  path: string,
+  userId: string
+) {
   const url = new URL(request.url)
   url.pathname = `/api/performance/${path}`
   try {
-    const response = await handler(new NextRequest(url, { headers: request.headers }))
+    const childRequest = new NextRequest(url, { headers: request.headers })
+    markAnalyticsRequestAuthorized(childRequest, userId)
+    const response = await handler(childRequest)
     return await response.json()
   } catch (error) {
     return { error: error instanceof Error ? error.message : "Failed to load" }
@@ -41,11 +56,34 @@ async function readHandler(handler: Handler, request: NextRequest, path: string)
 }
 
 export async function GET(request: NextRequest) {
-  const entries = await Promise.all(
-    Object.entries(HANDLERS).map(async ([key, handler]) => [
-      key,
-      await readHandler(handler, request, key),
-    ])
+  const access = await requireAnalyticsAccess(request)
+  if (access.error) return access.error
+
+  const cacheKey = await normalizedRequestCacheKey(
+    "dashboard-performance",
+    request
   )
-  return NextResponse.json(Object.fromEntries(entries))
+  const result = await readThroughJsonCache({
+    key: cacheKey,
+    ttlSeconds: 60,
+    compute: async () => {
+      const entries = await Promise.all(
+        Object.entries(HANDLERS).map(async ([key, handler]) => [
+          key,
+          await readHandler(handler, request, key, access.userId),
+        ])
+      )
+      return Object.fromEntries(entries)
+    },
+  })
+
+  if (result.status === "busy") {
+    return NextResponse.json(
+      { error: "Analytics are being refreshed" },
+      { status: 503, headers: { "Retry-After": "2" } }
+    )
+  }
+  return NextResponse.json(result.value, {
+    headers: { "X-Cache": result.status.toUpperCase() },
+  })
 }

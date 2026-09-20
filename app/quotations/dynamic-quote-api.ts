@@ -5,7 +5,7 @@
 
 export function getApiServerUrl(): string {
   const base =
-    process.env.NEXT_PUBLIC_API_SERVER_URL || process.env.API_SERVER_URL || "";
+    process.env.API_SERVER_URL || process.env.NEXT_PUBLIC_API_SERVER_URL || "";
   if (!base) return "";
   if (base.startsWith("http://") || base.startsWith("https://")) return base;
   const lower = base.toLowerCase();
@@ -20,19 +20,25 @@ export function getApiServerUrl(): string {
  * Read instance_logs via the tunneled API (SERVICE_API_KEY).
  * API uses supabaseAdmin — shop buyers cannot read instance_logs via RLS.
  */
+export type TunneledInstanceLog = {
+  id: string;
+  message?: string | null;
+  log_type?: string;
+  tool_name?: string | null;
+  created_at?: string;
+};
+
 export async function fetchTunneledInstanceLogs(
   instanceId: string,
   limit = 100
 ): Promise<{
-  logs: Array<{
-    id: string;
-    message?: string | null;
-    log_type?: string;
-    tool_name?: string | null;
-    created_at?: string;
-  }>;
+  logs: TunneledInstanceLog[];
   error?: string;
 }> {
+  if (!/^[a-zA-Z0-9_-]{1,128}$/.test(instanceId)) {
+    return { logs: [], error: "Invalid instance ID" };
+  }
+
   const serviceApiKey = process.env.SERVICE_API_KEY?.trim();
   if (!serviceApiKey) {
     return { logs: [], error: "SERVICE_API_KEY is not configured" };
@@ -43,7 +49,8 @@ export async function fetchTunneledInstanceLogs(
     return { logs: [], error: "API_SERVER_URL is not configured" };
   }
 
-  const url = `${apiBase}/api/instances/${instanceId}/logs?limit=${limit}&offset=0`;
+  const safeLimit = Math.min(Math.max(Math.trunc(limit), 1), 100);
+  const url = `${apiBase}/api/instances/${encodeURIComponent(instanceId)}/logs?limit=${safeLimit}&offset=0`;
   try {
     const res = await fetch(url, {
       method: "GET",
@@ -52,6 +59,7 @@ export async function fetchTunneledInstanceLogs(
         "x-api-key": serviceApiKey,
       },
       cache: "no-store",
+      signal: AbortSignal.timeout(10_000),
     });
     const text = await res.text();
     let data: any = null;
@@ -75,11 +83,14 @@ export async function fetchTunneledInstanceLogs(
     }
     const logs = Array.isArray(data?.logs) ? data.logs : [];
     return { logs };
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error("[fetchTunneledInstanceLogs] fetch error", {
       instanceId,
-      error: err?.message || String(err),
+      error: err instanceof Error ? err.message : String(err),
     });
-    return { logs: [], error: err?.message || "Failed to fetch instance logs" };
+    return {
+      logs: [],
+      error: err instanceof Error ? err.message : "Failed to fetch instance logs",
+    };
   }
 }

@@ -81,12 +81,24 @@ export const useInstanceArtifacts = ({ instanceId }: UseInstanceArtifactsProps) 
           table: 'instance_artifacts',
           filter: `instance_id=eq.${instanceId}`
         },
-        (payload) => {
-          console.log(`[useInstanceArtifacts] Realtime update for instance ${instanceId}`)
-          fetchArtifacts()
+        (payload: { eventType: string; old: { id?: string }; new: unknown }) => {
+          setArtifacts((current) => {
+            if (payload.eventType === 'DELETE') {
+              return current.filter((artifact) => artifact.id !== payload.old.id)
+            }
+            const next = payload.new as InstanceArtifact
+            if (payload.eventType === 'INSERT') {
+              return current.some((artifact) => artifact.id === next.id)
+                ? current
+                : [next, ...current]
+            }
+            return current.map((artifact) =>
+              artifact.id === next.id ? next : artifact
+            )
+          })
         }
       )
-      .subscribe((status) => {
+      .subscribe((status: string) => {
         console.log(`[useInstanceArtifacts] Subscription status for ${instanceId}:`, status)
       })
 

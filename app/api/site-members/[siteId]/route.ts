@@ -18,7 +18,8 @@ async function withSiteOwner(
 ) {
   if (members.some((member) => member.user_id === ownerUserId)) return members
 
-  const { data: authUser } = await admin.auth.admin.getUserById(ownerUserId)
+  const { data: authResult } = await admin.auth.admin.getUserById(ownerUserId)
+  const authUser = authResult.user
   const { data: profile } = await admin
     .from("profiles")
     .select("name, email")
@@ -95,8 +96,12 @@ export async function GET(
       listedMembers || []
     )
 
-    const membersWithStatus = await Promise.all(
-      (siteMembers || []).map(async (member: any) => {
+    const membersWithStatus: any[] = []
+    const memberBatches = siteMembers || []
+    for (let offset = 0; offset < memberBatches.length; offset += 10) {
+      const batch = memberBatches.slice(offset, offset + 10)
+      const resolved = await Promise.all(
+        batch.map(async (member: any) => {
         if (!member.user_id) {
           return {
             ...member,
@@ -146,8 +151,10 @@ export async function GET(
             lastSignIn: null,
           }
         }
-      })
-    )
+        })
+      )
+      membersWithStatus.push(...resolved)
+    }
 
     return NextResponse.json({
       success: true,

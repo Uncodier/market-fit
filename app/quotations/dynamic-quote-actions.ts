@@ -23,6 +23,7 @@ import {
   recalculateQuotationTotals,
 } from "./dynamic-quote-apply";
 import { scheduleAssistantQuoteResolution } from "./dynamic-quote-resolve";
+import { ensurePublicAccessTokenForRecord } from "@/app/documents/public-token-store";
 
 function adminClient() {
   return createClientAdmin(
@@ -113,6 +114,18 @@ export async function requestDynamicQuote(params: {
     }
     quotationId = quotation.id;
   }
+
+  const accessTokenResult = await ensurePublicAccessTokenForRecord(
+    adminClient(),
+    "quotations",
+    quotationId!
+  );
+  if (!accessTokenResult.token) {
+    return {
+      error: accessTokenResult.error || "Failed to secure quote progress",
+    };
+  }
+  const progressAccessToken = accessTokenResult.token;
 
   const baseMeta: DynamicQuoteMetadata = {
     field_values: fieldValues,
@@ -237,6 +250,7 @@ export async function requestDynamicQuote(params: {
             data: {
               quotationId,
               quotationItemId: line.id,
+              progressAccessToken,
               status: priced.metadata.status,
               unitPrice: priced.unitPrice,
               validUntil: priced.validUntil,
@@ -253,6 +267,7 @@ export async function requestDynamicQuote(params: {
         data: {
           quotationId,
           quotationItemId: line.id,
+          progressAccessToken,
           status: "processing" as const,
           catalogItemRequirementId: triad.data.id,
         },
@@ -335,6 +350,7 @@ export async function requestDynamicQuote(params: {
       data: {
         quotationId,
         quotationItemId: line.id,
+        progressAccessToken,
         status: "processing" as const,
         assistantInstanceId: instanceId,
       },

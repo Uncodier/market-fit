@@ -142,6 +142,7 @@ export function PaymentHistory({ className }: PaymentHistoryProps) {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
+            siteId: currentSite?.id,
             stripe_invoice_id: stripeInvoiceId,
             stripe_payment_intent_id: stripePaymentIntentId
           })

@@ -1,6 +1,29 @@
 import { NextRequest, NextResponse } from "next/server"
+import {
+  decodeRequestBody,
+  readLimitedRequestBody,
+  RequestBodyTooLargeError,
+} from "@/lib/http/read-limited-request-body"
+import {
+  timingSafeEqual,
+} from "node:crypto"
+import { requireSiteAccess } from "@/lib/auth/api-site-access"
 
 const ASSISTANT_PATH = "/api/robots/instance/assistant"
+const MAX_BODY_BYTES = 1024 * 1024
+const UPSTREAM_TIMEOUT_MS = 60_000
+
+function hasValidServiceApiKey(request: Request): boolean {
+  const provided = request.headers.get("x-api-key")?.trim()
+  const expected = process.env.SERVICE_API_KEY?.trim()
+  if (!provided || !expected) return false
+  const providedBytes = Buffer.from(provided)
+  const expectedBytes = Buffer.from(expected)
+  return (
+    providedBytes.length === expectedBytes.length &&
+    timingSafeEqual(providedBytes, expectedBytes)
+  )
+}
 
 function getServerApiUrl(): string {
   const value = (
@@ -43,18 +66,51 @@ export async function POST(request: NextRequest) {
   }
 
   try {
+    const body = await readLimitedRequestBody(request, MAX_BODY_BYTES)
+    let parsedBody: Record<string, unknown>
+    try {
+      parsedBody = JSON.parse(decodeRequestBody(body))
+    } catch {
+      return NextResponse.json(
+        { success: false, error: { message: "Invalid JSON payload" } },
+        { status: 400 }
+      )
+    }
+    const siteId =
+      typeof parsedBody.site_id === "string" ? parsedBody.site_id : ""
+    if (!siteId) {
+      return NextResponse.json(
+        { success: false, error: { message: "site_id is required" } },
+        { status: 400 }
+      )
+    }
+    if (!hasValidServiceApiKey(request)) {
+      const access = await requireSiteAccess(request, siteId)
+      if (access.error) return access.error
+    }
+
+    const upstreamBody = new ArrayBuffer(body.byteLength)
+    new Uint8Array(upstreamBody).set(body)
     const headers = new Headers()
     for (const name of ["authorization", "content-type", "accept", "x-api-key"]) {
       const value = request.headers.get(name)
       if (value) headers.set(name, value)
     }
 
-    const response = await fetch(targetUrl, {
-      method: "POST",
-      headers,
-      body: await request.arrayBuffer(),
-      cache: "no-store",
-    })
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), UPSTREAM_TIMEOUT_MS)
+    let response: Response
+    try {
+      response = await fetch(targetUrl, {
+        method: "POST",
+        headers,
+        body: upstreamBody,
+        cache: "no-store",
+        signal: controller.signal,
+      })
+    } finally {
+      clearTimeout(timeout)
+    }
 
     const responseHeaders = new Headers()
     for (const name of ["content-type", "cache-control", "x-workflow-run-id"]) {
@@ -68,6 +124,24 @@ export async function POST(request: NextRequest) {
       headers: responseHeaders,
     })
   } catch (error) {
+    if (error instanceof RequestBodyTooLargeError) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: { message: error.message },
+        },
+        { status: error.status }
+      )
+    }
+    if (error instanceof DOMException && error.name === "AbortError") {
+      return NextResponse.json(
+        {
+          success: false,
+          error: { message: "The API server request timed out" },
+        },
+        { status: 504 }
+      )
+    }
     console.error("Failed to proxy assistant request to API server:", error)
     return NextResponse.json(
       {

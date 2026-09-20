@@ -10,8 +10,7 @@ export async function POST(request: Request) {
     }
 
     // 1. Authenticate (Dual Auth: API Key or User Cookie)
-    const url = new URL(request.url)
-    const apiKey = getApiKeyFromRequest(request.headers, url.searchParams)
+    const apiKey = getApiKeyFromRequest(request.headers)
     const isServerRequest = isValidApiKey(apiKey)
 
     let mainSupabase;

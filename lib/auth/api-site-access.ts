@@ -12,12 +12,14 @@ type SiteAccessResult =
       error: NextResponse
       role?: undefined
       supabase?: undefined
+      userEmail?: undefined
       userId?: undefined
     }
   | {
       error?: undefined
       role: string
       supabase: Awaited<ReturnType<typeof createClient>>
+      userEmail: string | null
       userId: string
     }
 
@@ -67,5 +69,10 @@ export async function requireSiteAccess(
     }
   }
 
-  return { role, supabase, userId: user.id }
+  return {
+    role,
+    supabase,
+    userEmail: user.email ?? null,
+    userId: user.id,
+  }
 }

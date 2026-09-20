@@ -3,6 +3,27 @@ import { resolveAppApiUrl } from '@/app/commerce/app-api-url'
 
 import type { KitchenDelta } from "@/lib/printer/core/types"
 
+const MAX_PENDING_MUTATIONS = 100
+const pendingMutationIds = new Map<string, string>()
+
+function checkoutMutation(params: CheckoutCartParams): {
+  fingerprint: string
+  id: string
+} {
+  const fingerprint = JSON.stringify(params)
+  const existing = pendingMutationIds.get(fingerprint)
+  if (existing) return { fingerprint, id: existing }
+
+  if (pendingMutationIds.size >= MAX_PENDING_MUTATIONS) {
+    const oldest = pendingMutationIds.keys().next().value
+    if (oldest) pendingMutationIds.delete(oldest)
+  }
+
+  const id = crypto.randomUUID()
+  pendingMutationIds.set(fingerprint, id)
+  return { fingerprint, id }
+}
+
 export type CheckoutCartSuccess = {
   success: true
   saleId: string
@@ -36,10 +57,15 @@ export type CheckoutCartResult =
 export async function checkoutCartRequest(
   params: CheckoutCartParams
 ): Promise<CheckoutCartResult> {
+  const mutation = checkoutMutation(params)
+  const payload = {
+    ...params,
+    clientMutationId: params.clientMutationId || mutation.id,
+  }
   const res = await fetch(resolveAppApiUrl('/api/commerce/checkout'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(params),
+    body: JSON.stringify(payload),
     credentials: 'include',
   })
 
@@ -48,6 +74,10 @@ export async function checkoutCartRequest(
     data = await res.json()
   } catch {
     return { error: 'Checkout failed. Please try again.' }
+  }
+
+  if (res.ok || (res.status >= 400 && res.status < 500)) {
+    pendingMutationIds.delete(mutation.fingerprint)
   }
 
   if (!res.ok) {

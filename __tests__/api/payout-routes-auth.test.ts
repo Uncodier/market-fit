@@ -1,3 +1,5 @@
+/** @jest-environment node */
+
 import { createClient, createServiceClient } from "@/lib/supabase/server"
 import { POST as requestPayout } from "@/app/api/payouts/request/route"
 import { POST as resolvePayout } from "@/app/api/payouts/resolve/route"
@@ -20,7 +22,29 @@ const siteId = "00000000-0000-4000-8000-000000000001"
 const payoutId = "00000000-0000-4000-8000-000000000002"
 
 function request(body: Record<string, unknown>) {
-  return { json: async () => body } as any
+  const bytes = Buffer.from(JSON.stringify(body))
+  let consumed = false
+  return {
+    url: "https://example.test/api/payouts/request",
+    headers: {
+      get: jest.fn((name: string) => {
+        if (name.toLowerCase() === "cookie") return "sb-access-token=test"
+        if (name.toLowerCase() === "content-length") return String(bytes.length)
+        return null
+      }),
+    },
+    body: {
+      getReader: () => ({
+        read: jest.fn(async () => {
+          if (consumed) return { done: true, value: undefined }
+          consumed = true
+          return { done: false, value: bytes }
+        }),
+        cancel: jest.fn(),
+      }),
+    },
+    json: async () => body,
+  } as any
 }
 
 function userClient(
@@ -31,9 +55,17 @@ function userClient(
   const membershipQuery: any = {}
   membershipQuery.select = jest.fn(() => membershipQuery)
   membershipQuery.eq = jest.fn(() => membershipQuery)
-  membershipQuery.single = jest.fn().mockResolvedValue(
-    membership ?? { data: null, error: null }
-  )
+  membershipQuery.single = jest.fn().mockResolvedValue({
+    data: {
+      shop: {
+        bank_account_name: "Test",
+        bank_name: "Test Bank",
+        bank_routing_number: "123",
+        bank_account_number: "456",
+      },
+    },
+    error: null,
+  })
 
   return {
     auth: {
@@ -71,7 +103,7 @@ describe("payout route authorization", () => {
     const response = await requestPayout(request({
       siteId,
       requestedCredits: 100,
-      bankDetails: { account: "test-only" },
+      idempotencyKey: "payout-request-test-key",
     }))
 
     expect(response.status).toBe(401)
@@ -89,7 +121,7 @@ describe("payout route authorization", () => {
     const response = await requestPayout(request({
       siteId,
       requestedCredits: 100,
-      bankDetails: { account: "test-only" },
+      idempotencyKey: "payout-request-test-key",
     }))
 
     expect(response.status).toBe(403)
@@ -115,7 +147,7 @@ describe("payout route authorization", () => {
       request({
         siteId,
         requestedCredits: 100,
-        bankDetails: { account: "test-only" },
+        idempotencyKey: "payout-request-test-key",
       })
     )
 
@@ -123,8 +155,14 @@ describe("payout route authorization", () => {
     expect(serviceClient.rpc).toHaveBeenCalledWith("create_payout_request", {
       p_site_id: siteId,
       p_requested_credits: 100,
-      p_bank_details: { account: "test-only" },
+      p_bank_details: {
+        accountName: "Test",
+        bankName: "Test Bank",
+        routingNumber: "123",
+        accountNumber: "456",
+      },
       p_requested_by: "owner-1",
+      p_idempotency_key: "payout-request-test-key",
     })
   })
 

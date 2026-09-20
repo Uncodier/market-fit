@@ -1,10 +1,9 @@
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef, useCallback, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { useRobots } from '@/app/context/RobotsContext'
 import { useSite } from '@/app/context/SiteContext'
 import { useToast } from '@/app/components/ui/use-toast'
-import { markRobotInstanceError } from './send-message-reliability'
 
 interface UseRobotInstanceProps {
   onClearNewMakinaThinking?: () => void
@@ -15,6 +14,7 @@ export const useRobotInstance = ({ onClearNewMakinaThinking, onScrollToBottom }:
   const [isStartingRobot, setIsStartingRobot] = useState(false)
   const queuedMessageRef = useRef<string | null>(null)
   const startTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const pollingRunRef = useRef(0)
   const { currentSite } = useSite()
   const { toast } = useToast()
   const router = useRouter()
@@ -22,23 +22,24 @@ export const useRobotInstance = ({ onClearNewMakinaThinking, onScrollToBottom }:
 
   // Start polling for a newly created or resumed instance until it becomes running/active or fails
   const startInstancePolling = useCallback(async (activityName: string, instanceId?: string, shouldAutoNavigate: boolean = true) => {
+    if (startTimeoutRef.current) clearTimeout(startTimeoutRef.current)
+    const runId = ++pollingRunRef.current
     let attempts = 0
     const maxAttempts = 40 // ~60s at 1.5s interval
     let active = true
     const supabase = createClient()
 
     const tick = async () => {
-      if (!active) return
+      if (!active || pollingRunRef.current !== runId) return
       attempts += 1
 
       try {
-        await refreshRobots()
-
         let query = supabase
           .from('remote_instances')
           .select('id, status, name')
           .eq('site_id', currentSite!.id)
           .neq('status', 'stopped')
+          .order('created_at', { ascending: false })
           .limit(1)
 
         if (instanceId) {
@@ -94,7 +95,7 @@ export const useRobotInstance = ({ onClearNewMakinaThinking, onScrollToBottom }:
       }
 
       if (attempts < maxAttempts && active) {
-        setTimeout(tick, 1500)
+        startTimeoutRef.current = setTimeout(tick, 1500)
       } else if (active) {
         active = false
         if (startTimeoutRef.current) {
@@ -103,21 +104,21 @@ export const useRobotInstance = ({ onClearNewMakinaThinking, onScrollToBottom }:
         }
         setIsStartingRobot(false)
         queuedMessageRef.current = null
-        if (instanceId && currentSite?.id) {
-          await markRobotInstanceError({
-            instanceId,
-            siteId: currentSite.id,
-            errorMessage: 'Robot failed to start in time',
-          })
-          await refreshRobots()
-        }
+        await refreshRobots()
         onClearNewMakinaThinking?.()
         toast({ title: 'Failed to start robot in time', description: 'Please try again.', variant: 'destructive' })
       }
     }
 
-    setTimeout(tick, 1500)
+    startTimeoutRef.current = setTimeout(tick, 1500)
   }, [currentSite?.id, refreshRobots, router, onClearNewMakinaThinking, onScrollToBottom, toast])
+
+  useEffect(() => {
+    return () => {
+      pollingRunRef.current += 1
+      if (startTimeoutRef.current) clearTimeout(startTimeoutRef.current)
+    }
+  }, [currentSite?.id])
 
   return {
     isStartingRobot,

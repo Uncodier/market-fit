@@ -11,7 +11,7 @@ export async function GET(request: Request) {
   }
 
   // 1. Authenticate (Dual Auth: API Key or User Cookie)
-  const apiKey = getApiKeyFromRequest(request.headers, searchParams)
+  const apiKey = getApiKeyFromRequest(request.headers)
   const isServerRequest = isValidApiKey(apiKey)
 
   if (!isServerRequest) {
@@ -48,8 +48,10 @@ export async function GET(request: Request) {
       .single()
 
     if (accessError || !userAccess) {
-      // For development/admins we might want to let them see tables anyway
-      // return NextResponse.json({ error: "Forbidden: User does not have access to this tenant" }, { status: 403 })
+      return NextResponse.json(
+        { error: "Forbidden: User does not have access to this tenant" },
+        { status: 403 }
+      )
     }
   }
 
