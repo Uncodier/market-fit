@@ -7,11 +7,12 @@ import { useSite } from "@/app/context/SiteContext";
 import { useLocalization } from "@/app/context/LocalizationContext";
 import { useAuthContext as useAuth } from "@/app/components/auth/auth-provider";
 import { StickyHeader } from "@/app/components/ui/sticky-header";
-import { Tabs, TabsList, TabsTrigger } from "@/app/components/ui/tabs";
+import { Tabs } from "@/app/components/ui/tabs";
 import { Button } from "@/app/components/ui/button";
 import { SearchInput } from "@/app/components/ui/search-input";
 import { Sheet, SheetContent, SheetTrigger } from "@/app/components/ui/sheet";
 import { ShoppingCart } from "@/app/components/ui/icons";
+import { PosCategoryTabs } from "./components/PosCategoryTabs";
 import { PosPageDialogs } from "./components/PosPageDialogs";
 import { CartPanel } from "./components/CartPanel";
 import { PosCatalogGrid } from "./components/PosCatalogGrid";
@@ -37,12 +38,17 @@ export default function POSPage() {
 
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
+  const [isSearchExpanded, setIsSearchExpanded] = useState(false);
   const [isMobileCartOpen, setIsMobileCartOpen] = useState(false);
   const [syncIssuesOpen, setSyncIssuesOpen] = useState(false);
   const [isSplitBillOpen, setIsSplitBillOpen] = useState(false);
   const [leadGate, setLeadGate] = useState<null | "promo" | "checkout" | "send">(
     null,
   );
+  const handleSearchExpandedChange = useCallback((expanded: boolean) => {
+    setIsSearchExpanded(expanded);
+    if (expanded) setSelectedCategory("all");
+  }, []);
 
   const { status: syncStatus, retrySync } = usePosSyncStatus(siteId);
   const catalog = usePosCatalog(siteId);
@@ -230,15 +236,7 @@ export default function POSPage() {
     });
   }, [catalog.availableItems, catalog.unavailableItems, catalog.catalogItems, searchQuery, selectedCategory]);
 
-  const hasProducts = catalog.availableItems.some((i) => i.kind === "product" && !i.parent_id);
-  const hasServices = catalog.availableItems.some((i) => i.kind === "service" && !i.parent_id);
-  const hasDigital = catalog.availableItems.some(
-    (i) => i.kind === "digital_asset" && !i.parent_id,
-  );
   const hasUnavailable = catalog.unavailableItems.some((i) => !i.parent_id);
-  const nonEmptyCategories = catalog.categories.filter((cat: any) =>
-    catalog.availableItems.some((i) => i.category_id === cat.id && !i.parent_id),
-  );
 
   useEffect(() => {
     if (selectedCategory === "unavailable" && !hasUnavailable) {
@@ -336,68 +334,53 @@ export default function POSPage() {
 
                   
 
-                  <FilterSection title={t('catalog.kind.label') === 'catalog.kind.label' ? 'Categoría' : t('catalog.kind.label')} className={searchQuery ? "max-md:hidden" : ""}>
-                    <TabsList className="h-auto md:h-8 p-0 md:p-0.5 bg-transparent md:bg-muted/30 rounded-none md:rounded-full flex flex-wrap md:flex-nowrap md:flex-row w-full md:max-w-full overflow-y-visible md:overflow-x-auto justify-start items-center gap-2 md:gap-0">
-                      <TabsTrigger value="all" className="w-auto justify-center rounded-full text-sm md:text-xs py-1.5 px-3 md:py-1 md:px-3 text-foreground/80 md:text-foreground border border-border/50 md:border-transparent data-[state=active]:bg-foreground data-[state=active]:text-background md:data-[state=active]:bg-background md:data-[state=active]:text-foreground data-[state=active]:shadow-sm md:data-[state=active]:border-transparent whitespace-nowrap flex items-center gap-1.5">
-                        {t("pos.filters.all") || "All"}
-                      </TabsTrigger>
-                      {hasProducts && (
-                        <TabsTrigger
-                          value="kind_product"
-                          className="w-auto justify-center rounded-full text-sm md:text-xs py-1.5 px-3 md:py-1 md:px-3 text-foreground/80 md:text-foreground border border-border/50 md:border-transparent data-[state=active]:bg-foreground data-[state=active]:text-background md:data-[state=active]:bg-background md:data-[state=active]:text-foreground data-[state=active]:shadow-sm md:data-[state=active]:border-transparent whitespace-nowrap flex items-center gap-1.5"
-                        >
-                          {t("pos.filters.products") || "Products"}
-                        </TabsTrigger>
-                      )}
-                      {hasServices && (
-                        <TabsTrigger
-                          value="kind_service"
-                          className="w-auto justify-center rounded-full text-sm md:text-xs py-1.5 px-3 md:py-1 md:px-3 text-foreground/80 md:text-foreground border border-border/50 md:border-transparent data-[state=active]:bg-foreground data-[state=active]:text-background md:data-[state=active]:bg-background md:data-[state=active]:text-foreground data-[state=active]:shadow-sm md:data-[state=active]:border-transparent whitespace-nowrap flex items-center gap-1.5"
-                        >
-                          {t("pos.filters.services") || "Services"}
-                        </TabsTrigger>
-                      )}
-                      {hasDigital && (
-                        <TabsTrigger
-                          value="kind_digital_asset"
-                          className="w-auto justify-center rounded-full text-sm md:text-xs py-1.5 px-3 md:py-1 md:px-3 text-foreground/80 md:text-foreground border border-border/50 md:border-transparent data-[state=active]:bg-foreground data-[state=active]:text-background md:data-[state=active]:bg-background md:data-[state=active]:text-foreground data-[state=active]:shadow-sm md:data-[state=active]:border-transparent whitespace-nowrap flex items-center gap-1.5"
-                        >
-                          {t("pos.filters.digitalAssets") || "Digital"}
-                        </TabsTrigger>
-                      )}
-                      {nonEmptyCategories.map((cat: any) => (
-                        <TabsTrigger
-                          key={cat.id}
-                          value={cat.id}
-                          className="w-auto justify-center rounded-full text-sm md:text-xs py-1.5 px-3 md:py-1 md:px-3 text-foreground/80 md:text-foreground border border-border/50 md:border-transparent data-[state=active]:bg-foreground data-[state=active]:text-background md:data-[state=active]:bg-background md:data-[state=active]:text-foreground data-[state=active]:shadow-sm md:data-[state=active]:border-transparent whitespace-nowrap flex items-center gap-1.5"
-                        >
-                          {cat.name}
-                        </TabsTrigger>
-                      ))}
-                      {hasUnavailable && (
-                        <TabsTrigger
-                          value="unavailable"
-                          className="w-auto justify-center rounded-full text-sm md:text-xs py-1.5 px-3 md:py-1 md:px-3 text-foreground/80 md:text-foreground border border-border/50 md:border-transparent data-[state=active]:bg-foreground data-[state=active]:text-background md:data-[state=active]:bg-background md:data-[state=active]:text-foreground data-[state=active]:shadow-sm md:data-[state=active]:border-transparent whitespace-nowrap flex items-center gap-1.5"
-                        >
-                          {t("pos.filters.unavailable") || "Unavailable"}
-                        </TabsTrigger>
-                      )}
-                    </TabsList>
+                  <FilterSection
+                    title={t('catalog.kind.label') === 'catalog.kind.label' ? 'Category' : t('catalog.kind.label')}
+                    className={
+                      isSearchExpanded
+                        ? "hidden"
+                        : searchQuery
+                          ? "max-md:hidden min-w-0 flex-1"
+                          : "min-w-0 flex-1"
+                    }
+                  >
+                    <PosCategoryTabs
+                      activeCategory={selectedCategory}
+                      availableItems={catalog.availableItems}
+                      categories={catalog.categories}
+                      onCategoryChange={setSelectedCategory}
+                      t={t}
+                      unavailableItems={catalog.unavailableItems}
+                    />
                   </FilterSection>
 
-                  <FilterSection desktopOnly>
-                    <SearchInput  placeholder={t("pos.searchCatalog") || "Search catalog..."} value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} type="text"    className="w-full"  containerClassName="w-64" />
+                  <FilterSection
+                    desktopOnly
+                    className={isSearchExpanded ? "min-w-0 flex-1" : undefined}
+                  >
+                    <SearchInput
+                      placeholder={t("pos.searchCatalog") || "Search catalog..."}
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      onExpandedChange={handleSearchExpandedChange}
+                      type="text"
+                      className="w-full"
+                      containerClassName={isSearchExpanded ? "w-full" : "w-64"}
+                    />
                   </FilterSection>
                 </FilterContainer>
               </MobileFiltersDrawer>
 
-              <div className="flex-1 flex justify-end items-center gap-2 pr-1 shrink-0">
-                <PrinterSyncBadge module="pos" />
-                <PosSyncBadge
-                  status={syncStatus}
-                  onClick={() => setSyncIssuesOpen(true)}
-                  t={t} />
-              </div>
+              {!isSearchExpanded && (
+                <div className="flex shrink-0 justify-end items-center gap-2 pr-1">
+                  <PrinterSyncBadge module="pos" />
+                  <PosSyncBadge
+                    status={syncStatus}
+                    onClick={() => setSyncIssuesOpen(true)}
+                    t={t}
+                  />
+                </div>
+              )}
 
               <div className="flex justify-end md:hidden flex-shrink-0">
                 <Sheet
@@ -408,17 +391,12 @@ export default function POSPage() {
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="relative h-9 w-9 rounded-full"
+                      className="h-9 w-9 rounded-full"
                     >
                       <ShoppingCart className="h-4 w-4" />
-                      {cartApi.cart.length > 0 && (
-                        <span className="absolute -top-2 -right-2 bg-blue-600 text-white text-[10px] w-4 h-4 rounded-full flex items-center justify-center">
-                          {cartApi.cart.reduce((s, c) => s + c.cartQty, 0)}
-                        </span>
-                      )}
                     </Button>
                   </SheetTrigger>
-                  <SheetContent className="w-full sm:max-w-md p-0 flex flex-col z-[100]">
+                  <SheetContent className="w-full sm:max-w-md p-0 flex flex-col">
                     <CartPanel
                       {...cartPanelProps}
                       isMobile

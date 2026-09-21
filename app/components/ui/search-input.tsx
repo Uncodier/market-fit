@@ -15,6 +15,7 @@ export interface SearchInputProps extends Omit<React.InputHTMLAttributes<HTMLInp
   className?: string
   containerClassName?: string
   alwaysExpanded?: boolean
+  onExpandedChange?: (expanded: boolean) => void
 }
 
 const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
@@ -28,6 +29,7 @@ const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
     containerClassName,
     value,
     alwaysExpanded = false,
+    onExpandedChange,
     ...props 
   }, ref) => {
     const searchParams = useSearchParams()
@@ -38,6 +40,10 @@ const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
     // Expand state
     const hasValue = value !== undefined && value !== null && value !== ""
     const [isExpanded, setIsExpanded] = useState(alwaysExpanded || hasValue)
+
+    useEffect(() => {
+      onExpandedChange?.(isExpanded)
+    }, [isExpanded, onExpandedChange])
 
     // Expand automatically if a value is set from outside or if alwaysExpanded changes
     useEffect(() => {
