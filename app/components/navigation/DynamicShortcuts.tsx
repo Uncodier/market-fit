@@ -39,6 +39,7 @@ import {
   SIDEBAR_PINNED_NAV_KEYS,
   type ShortcutRecord,
 } from "./shortcut-types"
+import { canonicalizeShortcutRecords } from "./shortcut-normalization"
 import { useShortcutSlotCount } from "./use-shortcut-slot-count"
 import { NAV_ITEM_ICON, getModuleVisual, ModuleVariant } from "@/app/config/module-visuals"
 import { setVisibleSidebarShortcutKeys } from "./use-sidebar-nav-keys"
@@ -134,7 +135,11 @@ export function DynamicShortcuts({ isCollapsed }: DynamicShortcutsProps) {
           setShortcuts(
             ensureOverviewShortcut(
               withoutConfigurationShortcuts(
-                withoutFixedShortcuts(loadedShortcuts.map(normalizeShortcut))
+                withoutFixedShortcuts(
+                  canonicalizeShortcutRecords(
+                    loadedShortcuts.map(normalizeShortcut),
+                  ),
+                )
               )
             )
           )
@@ -154,7 +159,11 @@ export function DynamicShortcuts({ isCollapsed }: DynamicShortcutsProps) {
         setShortcuts(
           ensureOverviewShortcut(
             withoutConfigurationShortcuts(
-              withoutFixedShortcuts(JSON.parse(saved).map(normalizeShortcut))
+              withoutFixedShortcuts(
+                canonicalizeShortcutRecords(
+                  JSON.parse(saved).map(normalizeShortcut),
+                ),
+              )
             )
           )
         )
@@ -201,18 +210,26 @@ export function DynamicShortcuts({ isCollapsed }: DynamicShortcutsProps) {
     if (activeItem) {
       if (screenAccess && !screenAccess.canAccessNavKey(activeItem.key)) return
       setShortcuts(prev => {
-        const exists = prev.some((shortcut) => shortcut.id === activeItem.key)
+        const canonicalShortcuts = canonicalizeShortcutRecords(prev)
+        const exists = canonicalShortcuts.some(
+          (shortcut) => shortcut.id === activeItem.key,
+        )
         if (!exists) {
-          return [{ id: activeItem.key, pinned: false }, ...prev]
+          return [
+            { id: activeItem.key, pinned: false },
+            ...canonicalShortcuts,
+          ]
         } else {
-          const index = prev.findIndex((shortcut) => shortcut.id === activeItem.key)
+          const index = canonicalShortcuts.findIndex(
+            (shortcut) => shortcut.id === activeItem.key,
+          )
           if (index >= slots) {
-            const next = [...prev];
+            const next = [...canonicalShortcuts];
             const item = next.splice(index, 1)[0];
             return [item, ...next];
           }
         }
-        return prev
+        return canonicalShortcuts
       })
     } else {
       // Exclude paths that are handled explicitly in Sidebar or are root
@@ -348,7 +365,9 @@ export function DynamicShortcuts({ isCollapsed }: DynamicShortcutsProps) {
   }
 
   const allowedShortcuts = useMemo(() => {
-    const eligible = withoutConfigurationShortcuts(shortcuts)
+    const eligible = withoutConfigurationShortcuts(
+      canonicalizeShortcutRecords(shortcuts),
+    )
     if (!screenAccess) return eligible
     return eligible.filter((entry) => {
       if (!entry.isCustom) return screenAccess.canAccessNavKey(entry.id)

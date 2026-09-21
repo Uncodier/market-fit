@@ -45,6 +45,7 @@ const routeTitles: Record<string, string> = {
   'catalog': 'Catalog',
   'promotions': 'Promotions',
   'orders': 'Orders',
+  'order-lines': 'Order Lines',
   'price-lists': 'Price Lists',
   'inventory': 'Inventory',
   'shipments': 'Shipments',

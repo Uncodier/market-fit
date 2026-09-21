@@ -89,6 +89,7 @@ export const NAVIGATION_AREAS: Record<
       { key: "chat", href: "/chat" },
       { key: "records", href: "/records" },
       { key: "orders", href: "/orders" },
+      { key: "orderLines", href: "/order-lines" },
       { key: "shipments", href: "/shipments" },
       { key: "controlCenter", href: "/control-center" },
       { key: "reservations", href: "/reservations" },

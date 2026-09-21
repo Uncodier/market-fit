@@ -1,5 +1,6 @@
 "use client"
 
+import { useCallback, useMemo, useRef } from "react"
 import { CatalogItem } from "@/app/types"
 import { Card } from "@/app/components/ui/card"
 import { Badge } from "@/app/components/ui/badge"
@@ -9,6 +10,13 @@ import { resolveItemImage } from "@/app/lib/image-utils"
 import { Skeleton } from "@/app/components/ui/skeleton"
 import { useDisplayCurrency } from "@/app/context/DisplayCurrencyContext"
 import { isStorefrontAvailable } from "@/app/catalog/storefront-availability"
+import { useIsMobile } from "@/app/hooks/use-mobile-view"
+import {
+  getCatalogInitials,
+  getCatalogItemInitial,
+  sortCatalogItemsAlphabetically,
+} from "@/app/pos/catalog-alphabet"
+import { PosAlphabetIndex } from "./PosAlphabetIndex"
 
 interface PosCatalogGridProps {
   items: CatalogItem[]
@@ -19,10 +27,37 @@ interface PosCatalogGridProps {
 
 export function PosCatalogGrid({ items, loading, onAdd, t }: PosCatalogGridProps) {
   const { formatPrice } = useDisplayCurrency()
+  const isMobile = useIsMobile()
+  const gridRef = useRef<HTMLDivElement>(null)
+  const displayedItems = useMemo(
+    () => (isMobile ? sortCatalogItemsAlphabetically(items) : items),
+    [isMobile, items],
+  )
+  const letters = useMemo(
+    () => (isMobile ? getCatalogInitials(displayedItems) : []),
+    [displayedItems, isMobile],
+  )
+  const letterAnchors = useMemo(() => {
+    const anchors = new Map<string, string>()
+    displayedItems.forEach((item) => {
+      const letter = getCatalogItemInitial(item.name)
+      if (!anchors.has(letter)) anchors.set(letter, item.id)
+    })
+    return anchors
+  }, [displayedItems])
+  const scrollToLetter = useCallback((letter: string) => {
+    const target = gridRef.current?.querySelector<HTMLElement>(
+      `[data-catalog-letter="${letter}"]`,
+    )
+    target?.scrollIntoView({ block: "start" })
+  }, [])
 
   return (
-    <div className="p-4 bg-muted/30">
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+    <div className="relative bg-muted/30 p-4">
+      <div
+        ref={gridRef}
+        className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4"
+      >
         {loading ? (
           Array.from({ length: 15 }).map((_, i) => (
             <Card key={i} className="relative overflow-hidden flex flex-col h-40">
@@ -49,13 +84,16 @@ export function PosCatalogGrid({ items, loading, onAdd, t }: PosCatalogGridProps
             />
           </div>
         ) : (
-          items.map((item) => {
+          displayedItems.map((item) => {
             const isAvailable = isStorefrontAvailable(item)
+            const itemInitial = getCatalogItemInitial(item.name)
+            const isLetterAnchor = letterAnchors.get(itemInitial) === item.id
             return (
               <Card
                 key={item.id}
                 data-catalog-item-id={item.id}
-                className={`relative cursor-pointer transition-shadow hover:shadow-md overflow-hidden flex flex-col h-40 ${!isAvailable ? "opacity-50 grayscale" : ""}`}
+                data-catalog-letter={isLetterAnchor ? itemInitial : undefined}
+                className={`relative cursor-pointer transition-shadow hover:shadow-md overflow-hidden flex flex-col h-40 ${isLetterAnchor ? "scroll-mt-[calc(var(--topbar-height,64px)+87px)]" : ""} ${!isAvailable ? "opacity-50 grayscale" : ""}`}
                 onClick={() => isAvailable && onAdd(item)}
               >
                 <img
@@ -123,6 +161,9 @@ export function PosCatalogGrid({ items, loading, onAdd, t }: PosCatalogGridProps
           })
         )}
       </div>
+      {!loading && letters.length > 1 && (
+        <PosAlphabetIndex letters={letters} onSelect={scrollToLetter} />
+      )}
     </div>
   )
 }

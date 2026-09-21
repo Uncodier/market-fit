@@ -1,5 +1,11 @@
 import { getDemoData } from "./index";
 import { applyNotFilter, applySelectEmbeds, getRowValue } from "./mock-query";
+import {
+  mutateDemoOrderLineUnits,
+  cascadeDeleteDemoOrderItems,
+  syncDemoUnitDelivery,
+  syncDemoUnitsFromOrderItems,
+} from "./mock-order-line-units"
 
 // Mock instance for the demo data cache 
 const memoryCache: Record<string, Record<string, any[]>> = {};
@@ -8,6 +14,50 @@ const getMemoryCache = (siteId: string, demoData: any) => {
   if (!memoryCache[siteId]) {
     // Deep clone the demo data into memory cache so mutations only affect the current session
     memoryCache[siteId] = JSON.parse(JSON.stringify(demoData || {}));
+  } else if (
+    !Array.isArray(memoryCache[siteId].sale_order_item_units) &&
+    Array.isArray(demoData?.sale_order_item_units)
+  ) {
+    memoryCache[siteId].sale_order_item_units = JSON.parse(
+      JSON.stringify(demoData.sale_order_item_units),
+    )
+  } else {
+    for (const sourceOrder of demoData?.sale_orders || []) {
+      const cachedOrder = memoryCache[siteId].sale_orders?.find(
+        (order) => order.id === sourceOrder.id,
+      )
+      if (cachedOrder && sourceOrder.scheduled_for) {
+        cachedOrder.scheduled_for = sourceOrder.scheduled_for
+      }
+    }
+    for (const sourceItem of demoData?.sale_order_items || []) {
+      const cachedItems = memoryCache[siteId].sale_order_items || []
+      const cachedItem = cachedItems.find((item) => item.id === sourceItem.id)
+      if (!cachedItem) {
+        cachedItems.push(JSON.parse(JSON.stringify(sourceItem)))
+      } else if (sourceItem.shipment_id && !cachedItem.shipment_id) {
+        cachedItem.shipment_id = sourceItem.shipment_id
+      }
+    }
+    for (const sourceUnit of demoData?.sale_order_item_units || []) {
+      const cachedUnit = memoryCache[siteId].sale_order_item_units?.find(
+        (unit) => unit.id === sourceUnit.id,
+      )
+      for (const key of [
+        "shipment_id",
+        "in_progress_at",
+        "ready_at",
+        "delivered_at",
+      ]) {
+        if (
+          cachedUnit &&
+          (cachedUnit[key] === undefined ||
+            (sourceUnit[key] && !cachedUnit[key]))
+        ) {
+          cachedUnit[key] = sourceUnit[key]
+        }
+      }
+    }
   }
   return memoryCache[siteId];
 };
@@ -39,6 +89,7 @@ export async function createDemoMockClientImpl(demoSiteId: string) {
   // Simple query builder simulator
   const buildQuery = (tableData: any[], tableName: string) => {
     let result = [...(tableData || [])];
+    let countBeforeWindow: number | null = null;
     const rootOrder: Array<{ column: string; ascending: boolean }> = []
     const embeddedOrder = new Map<
       string,
@@ -162,10 +213,12 @@ export async function createDemoMockClientImpl(demoSiteId: string) {
           return queryBuilder
         }
 
+        countBeforeWindow ??= result.length;
         result = result.slice(0, count);
         return queryBuilder;
       },
       range: (from: number, to: number) => {
+        countBeforeWindow ??= result.length;
         result = result.slice(from, to + 1);
         return queryBuilder;
       },
@@ -195,11 +248,21 @@ export async function createDemoMockClientImpl(demoSiteId: string) {
         return queryBuilder;
       },
       csv: () => queryBuilder,
-      then: (resolve: any) => resolve({ data: result, error: null, count: result.length })
+      then: (resolve: any) =>
+        resolve({
+          data: result,
+          error: null,
+          count: countBeforeWindow ?? result.length,
+        })
     };
     
     // Add Promise chaining support
-    queryBuilder.catch = (reject: any) => Promise.resolve({ data: result, error: null, count: result.length }).catch(reject);
+    queryBuilder.catch = (reject: any) =>
+      Promise.resolve({
+        data: result,
+        error: null,
+        count: countBeforeWindow ?? result.length,
+      }).catch(reject);
     
     return queryBuilder;
   };
@@ -233,7 +296,9 @@ export async function createDemoMockClientImpl(demoSiteId: string) {
           if (needsCount) {
             const originalThen = query.then;
             query.then = (resolve: any) => {
-              return originalThen((res: any) => resolve({ ...res, count: res.data?.length || 0 }));
+              return originalThen((res: any) =>
+                resolve({ ...res, count: res.count ?? res.data?.length ?? 0 }),
+              );
             };
           }
           return query;
@@ -253,6 +318,14 @@ export async function createDemoMockClientImpl(demoSiteId: string) {
              if (idx >= 0) memoryData[table][idx] = { ...memoryData[table][idx], ...inserted };
              else memoryData[table].push(inserted);
           }
+          if (table === "sale_order_items") {
+            for (const changes of Array.isArray(inserted) ? inserted : [inserted]) {
+              const item = memoryData[table].find(
+                (candidate: any) => candidate.id === changes.id,
+              )
+              if (item) syncDemoUnitsFromOrderItems(memoryData, [item], changes)
+            }
+          }
 
           return {
             select: () => ({
@@ -271,6 +344,11 @@ export async function createDemoMockClientImpl(demoSiteId: string) {
              memoryData[table].push(...inserted);
           } else {
              memoryData[table].push(inserted);
+          }
+          if (table === "sale_order_items") {
+            for (const item of Array.isArray(inserted) ? inserted : [inserted]) {
+              syncDemoUnitsFromOrderItems(memoryData, [item], item)
+            }
           }
 
           return {
@@ -293,6 +371,11 @@ export async function createDemoMockClientImpl(demoSiteId: string) {
               updated.push(next);
               return next;
             });
+            if (table === "sale_order_items") {
+              syncDemoUnitsFromOrderItems(memoryData, updated, data)
+            } else if (table === "shipments") {
+              syncDemoUnitDelivery(memoryData, updated)
+            }
             return updated;
           };
           const builder: any = {
@@ -336,7 +419,10 @@ export async function createDemoMockClientImpl(demoSiteId: string) {
                if (memoryData[table]) {
                  const itemIndex = memoryData[table].findIndex((item: any) => item[column] === value);
                  if (itemIndex >= 0) {
-                   memoryData[table].splice(itemIndex, 1);
+                    const [removed] = memoryData[table].splice(itemIndex, 1);
+                    if (table === "sale_order_items") {
+                      cascadeDeleteDemoOrderItems(memoryData, [removed])
+                    }
                  }
                }
                return {
@@ -349,7 +435,10 @@ export async function createDemoMockClientImpl(demoSiteId: string) {
                  values.forEach(val => {
                     const itemIndex = memoryData[table].findIndex((item: any) => item[column] === val);
                     if (itemIndex >= 0) {
-                      memoryData[table].splice(itemIndex, 1);
+                      const [removed] = memoryData[table].splice(itemIndex, 1);
+                      if (table === "sale_order_items") {
+                        cascadeDeleteDemoOrderItems(memoryData, [removed])
+                      }
                     }
                  });
                }
@@ -378,6 +467,11 @@ export async function createDemoMockClientImpl(demoSiteId: string) {
            },
            error: null,
          });
+       }
+       if (fn === "mutate_sale_order_item_units") {
+         return Promise.resolve(
+           mutateDemoOrderLineUnits(memoryData, params || {}),
+         );
        }
        return Promise.resolve({ data: null, error: null });
     },

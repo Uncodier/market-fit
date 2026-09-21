@@ -14,6 +14,10 @@ describe("shouldUseLayout", () => {
     expect(shouldUseLayout("/profile")).toBe(true)
   })
 
+  it("uses workspace chrome for order lines", () => {
+    expect(shouldUseLayout("/order-lines")).toBe(true)
+  })
+
   it("does not wrap billing success in workspace chrome, but wraps other billing paths", () => {
     expect(shouldUseLayout("/billing/success")).toBe(false)
     expect(shouldUseLayout("/billing/success?credits=10")).toBe(false)

@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
-import { Image, FileVideo, Settings, LayoutGrid, BarChart, Clock, Speaker, Hash, Type, AlignLeft } from "@/app/components/ui/icons"
+import { Image, FileVideo, LayoutGrid, BarChart, Clock, Speaker, Hash, Type, AlignLeft } from "@/app/components/ui/icons"
 import { ImageParameters, VideoParameters, AudioParameters, TextParameters } from '../types'
 
 interface MediaParametersToolbarProps {
@@ -33,11 +33,13 @@ export const MediaParametersToolbar: React.FC<MediaParametersToolbarProps> = ({
   const [resolutionOpen, setResolutionOpen] = useState(false)
   const [durationOpen, setDurationOpen] = useState(false)
   const [formatOpen, setFormatOpen] = useState(false)
-  const [sampleRateOpen, setSampleRateOpen] = useState(false)
-  const [channelsOpen, setChannelsOpen] = useState(false)
   const [expectedResultsOpen, setExpectedResultsOpen] = useState(false)
   const [textLengthOpen, setTextLengthOpen] = useState(false)
   const [textStyleOpen, setTextStyleOpen] = useState(false)
+  const normalizedImageQuality = imageParameters?.quality === 'standard'
+    || imageParameters?.quality === 'hd'
+    ? imageParameters.quality
+    : Number(imageParameters?.quality) >= 85 ? 'hd' : 'standard'
 
   // Only show toolbar for media generation activities
   if (!['prompt', 'generate-image', 'generate-video', 'generate-audio'].includes(selectedActivity)) {
@@ -173,8 +175,8 @@ export const MediaParametersToolbar: React.FC<MediaParametersToolbarProps> = ({
           {/* Quality Selector - Icon Button */}
           <div className="relative">
             <Select 
-              value={(imageParameters?.quality ?? 100).toString()} 
-              onValueChange={(value) => onImageParameterChange('quality', parseInt(value))}
+              value={normalizedImageQuality}
+              onValueChange={(value) => onImageParameterChange('quality', value)}
               open={qualityOpen}
               onOpenChange={setQualityOpen}
             >
@@ -186,16 +188,12 @@ export const MediaParametersToolbar: React.FC<MediaParametersToolbarProps> = ({
                   <div className="flex items-center justify-center w-[16px] h-[16px] relative shrink-0 overflow-hidden">
                     <BarChart className="w-[16px] h-[16px] absolute left-0 top-0 m-0" style={{ margin: 0, top: 0, left: 0, bottom: 0, right: 0 }} />
                   </div>
-                  <span>{imageParameters?.quality ?? 100}%</span>
+                  <span>{normalizedImageQuality === 'standard' ? 'Standard' : 'HD'}</span>
                 </div>
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="25" hideIndicator className="data-[state=checked]:bg-blue-50 data-[state=checked]:text-blue-700">Baja</SelectItem>
-                <SelectItem value="50" hideIndicator className="data-[state=checked]:bg-blue-50 data-[state=checked]:text-blue-700">Regular</SelectItem>
-                <SelectItem value="75" hideIndicator className="data-[state=checked]:bg-blue-50 data-[state=checked]:text-blue-700">Buena</SelectItem>
-                <SelectItem value="85" hideIndicator className="data-[state=checked]:bg-blue-50 data-[state=checked]:text-blue-700">Alta</SelectItem>
-                <SelectItem value="95" hideIndicator className="data-[state=checked]:bg-blue-50 data-[state=checked]:text-blue-700">Muy Alta</SelectItem>
-                <SelectItem value="100" hideIndicator className="data-[state=checked]:bg-blue-50 data-[state=checked]:text-blue-700">Máxima</SelectItem>
+                <SelectItem value="standard" hideIndicator className="data-[state=checked]:bg-blue-50 data-[state=checked]:text-blue-700">Standard</SelectItem>
+                <SelectItem value="hd" hideIndicator className="data-[state=checked]:bg-blue-50 data-[state=checked]:text-blue-700">HD</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -314,87 +312,6 @@ export const MediaParametersToolbar: React.FC<MediaParametersToolbarProps> = ({
               <SelectContent>
                 <SelectItem value="MP3" hideIndicator className="data-[state=checked]:bg-amber-50 data-[state=checked]:text-amber-700">MP3</SelectItem>
                 <SelectItem value="WAV" hideIndicator className="data-[state=checked]:bg-amber-50 data-[state=checked]:text-amber-700">WAV</SelectItem>
-                <SelectItem value="AAC" hideIndicator className="data-[state=checked]:bg-amber-50 data-[state=checked]:text-amber-700">AAC</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Sample Rate Selector - Icon Button */}
-          <div className="relative">
-            <Select 
-              value={audioParameters?.sampleRate ?? '44.1kHz'} 
-              onValueChange={(value) => onAudioParameterChange('sampleRate', value)}
-              open={sampleRateOpen}
-              onOpenChange={setSampleRateOpen}
-            >
-              <SelectTrigger 
-                hideIcon 
-                className="h-8 bg-secondary hover:bg-secondary/80 border-secondary text-xs w-auto min-w-fit"
-              >
-                <div className="flex items-center gap-2 w-full">
-                  <div className="flex items-center justify-center w-[16px] h-[16px] relative shrink-0 overflow-hidden">
-                    <BarChart className="w-[16px] h-[16px] absolute left-0 top-0 m-0" style={{ margin: 0, top: 0, left: 0, bottom: 0, right: 0 }} />
-                  </div>
-                  <span>{audioParameters?.sampleRate ?? '44.1kHz'}</span>
-                </div>
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="44.1kHz" hideIndicator className="data-[state=checked]:bg-amber-50 data-[state=checked]:text-amber-700">44.1kHz</SelectItem>
-                <SelectItem value="48kHz" hideIndicator className="data-[state=checked]:bg-amber-50 data-[state=checked]:text-amber-700">48kHz</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Channels Selector - Icon Button */}
-          <div className="relative">
-            <Select 
-              value={audioParameters?.channels ?? 'stereo'} 
-              onValueChange={(value) => onAudioParameterChange('channels', value)}
-              open={channelsOpen}
-              onOpenChange={setChannelsOpen}
-            >
-              <SelectTrigger 
-                hideIcon 
-                className="h-8 bg-secondary hover:bg-secondary/80 border-secondary text-xs w-auto min-w-fit"
-              >
-                <div className="flex items-center gap-2 w-full">
-                  <div className="flex items-center justify-center w-[16px] h-[16px] relative shrink-0 overflow-hidden">
-                    <Settings className="w-[16px] h-[16px] absolute left-0 top-0 m-0" style={{ margin: 0, top: 0, left: 0, bottom: 0, right: 0 }} />
-                  </div>
-                  <span>{audioParameters?.channels ?? 'stereo'}</span>
-                </div>
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="mono" hideIndicator className="data-[state=checked]:bg-amber-50 data-[state=checked]:text-amber-700">Mono</SelectItem>
-                <SelectItem value="stereo" hideIndicator className="data-[state=checked]:bg-amber-50 data-[state=checked]:text-amber-700">Estéreo</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Duration Selector - Icon Button */}
-          <div className="relative">
-            <Select 
-              value={(audioParameters?.duration ?? 15).toString()} 
-              onValueChange={(value) => onAudioParameterChange('duration', parseInt(value))}
-              open={durationOpen}
-              onOpenChange={setDurationOpen}
-            >
-              <SelectTrigger 
-                hideIcon 
-                className="h-8 bg-secondary hover:bg-secondary/80 border-secondary text-xs w-auto min-w-fit"
-              >
-                <div className="flex items-center gap-2 w-full">
-                  <div className="flex items-center justify-center w-[16px] h-[16px] relative shrink-0 overflow-hidden">
-                    <Clock className="w-[16px] h-[16px] absolute left-0 top-0 m-0" style={{ margin: 0, top: 0, left: 0, bottom: 0, right: 0 }} />
-                  </div>
-                  <span>{audioParameters?.duration ?? 15}s</span>
-                </div>
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="5" hideIndicator className="data-[state=checked]:bg-amber-50 data-[state=checked]:text-amber-700">5s</SelectItem>
-                <SelectItem value="15" hideIndicator className="data-[state=checked]:bg-amber-50 data-[state=checked]:text-amber-700">15s</SelectItem>
-                <SelectItem value="30" hideIndicator className="data-[state=checked]:bg-amber-50 data-[state=checked]:text-amber-700">30s</SelectItem>
-                <SelectItem value="60" hideIndicator className="data-[state=checked]:bg-amber-50 data-[state=checked]:text-amber-700">60s</SelectItem>
               </SelectContent>
             </Select>
           </div>

@@ -8,6 +8,10 @@ import {
   timingSafeEqual,
 } from "node:crypto"
 import { requireSiteAccess } from "@/lib/auth/api-site-access"
+import {
+  strengthenImprentaAssistantPayload,
+  type ImprentaNodeSnapshot,
+} from "./imprenta-contract"
 
 const ASSISTANT_PATH = "/api/robots/instance/assistant"
 const MAX_BODY_BYTES = 1024 * 1024
@@ -87,10 +91,43 @@ export async function POST(request: NextRequest) {
     if (!hasValidServiceApiKey(request)) {
       const access = await requireSiteAccess(request, siteId)
       if (access.error) return access.error
+      parsedBody.user_id = access.userId
+
+      const nodeId =
+        typeof parsedBody.instance_node_id === "string"
+          ? parsedBody.instance_node_id
+          : ""
+      if (nodeId) {
+        const { data: node, error: nodeError } = await access.supabase
+          .from("instance_nodes")
+          .select("id, instance_id, site_id, type, prompt, settings, updated_at")
+          .eq("id", nodeId)
+          .eq("site_id", siteId)
+          .maybeSingle()
+        if (nodeError || !node) {
+          return NextResponse.json(
+            { success: false, error: { message: "Imprenta node not found" } },
+            { status: 404 }
+          )
+        }
+        if (
+          typeof parsedBody.instance_id === "string"
+          && parsedBody.instance_id !== node.instance_id
+        ) {
+          return NextResponse.json(
+            { success: false, error: { message: "Node does not belong to the requested instance" } },
+            { status: 409 }
+          )
+        }
+        parsedBody = strengthenImprentaAssistantPayload(
+          parsedBody,
+          node as ImprentaNodeSnapshot
+        )
+      }
+    } else {
+      parsedBody = strengthenImprentaAssistantPayload(parsedBody)
     }
 
-    const upstreamBody = new ArrayBuffer(body.byteLength)
-    new Uint8Array(upstreamBody).set(body)
     const headers = new Headers()
     for (const name of ["authorization", "content-type", "accept", "x-api-key"]) {
       const value = request.headers.get(name)
@@ -104,7 +141,7 @@ export async function POST(request: NextRequest) {
       response = await fetch(targetUrl, {
         method: "POST",
         headers,
-        body: upstreamBody,
+        body: JSON.stringify(parsedBody),
         cache: "no-store",
         signal: controller.signal,
       })

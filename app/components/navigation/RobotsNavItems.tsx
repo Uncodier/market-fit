@@ -3,7 +3,7 @@
 import { useMemo } from "react"
 import { usePathname, useSearchParams } from "next/navigation"
 import { MenuItem } from "./MenuItem"
-import { Bot, Printer, Workflow } from "@/app/components/ui/icons"
+import { Home, Printer, Workflow } from "@/app/components/ui/icons"
 import { RobotsBadge } from "./RobotsBadge"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { useLayout } from "@/app/context/LayoutContext"
@@ -58,7 +58,7 @@ export function RobotsNavItems({ isCollapsed }: RobotsNavItemsProps) {
       <MenuItem
         id="tour-agents-nav"
         href={agentHref}
-        icon={Bot}
+        icon={Home}
         title={t("layout.sidebar.agents") || "AI Workspace"}
         isActive={agentActive}
         isCollapsed={isCollapsed}

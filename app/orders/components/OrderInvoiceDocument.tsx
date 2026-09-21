@@ -8,8 +8,6 @@ import { OrderWithRelations } from "../types"
 import { Button } from "@/app/components/ui/button"
 import { Badge } from "@/app/components/ui/badge"
 import { ActionFooter } from "@/app/components/ui/card-footer"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/app/components/ui/table"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
 import { Save, ExternalLink, Calendar, Send, Clock } from "@/app/components/ui/icons"
 import { cn } from "@/lib/utils"
 import { navigateToLead, navigateToSale, navigateToShipment } from "@/lib/navigation/navigation-helpers"
@@ -23,23 +21,31 @@ import {
   fulfillmentLabel,
   parseItemName,
 } from "./order-invoice-helpers"
+import {
+  OrderItemStatusSelect,
+  OrderItemsBulkStatusMenu,
+} from "./OrderItemStatusControls"
 
 interface OrderInvoiceDocumentProps {
   order: OrderWithRelations
   items: any[]
   savingLines: boolean
+  updatingAllLines: boolean
   hasModifiedLines: boolean
   onLineStatusChange: (itemId: string, newStatus: string) => void
   onSaveLineItems: () => void
+  onAllLineStatusesChange: (status: string) => void
 }
 
 export function OrderInvoiceDocument({
   order,
   items,
   savingLines,
+  updatingAllLines,
   hasModifiedLines,
   onLineStatusChange,
   onSaveLineItems,
+  onAllLineStatusesChange,
 }: OrderInvoiceDocumentProps) {
   const { t } = useLocalization()
   const router = useRouter()
@@ -258,9 +264,16 @@ export function OrderInvoiceDocument({
 
                 {/* Line items */}
                 <div className="p-6">
-                  <h3 className="text-sm font-semibold uppercase text-muted-foreground mb-4">
-                    {t('orders.detail.lineItems') || 'Line Items'}
-                  </h3>
+                  <div className="mb-4 flex items-center justify-between gap-3">
+                    <h3 className="text-sm font-semibold uppercase text-muted-foreground">
+                      {t('orders.detail.lineItems') || 'Line Items'}
+                    </h3>
+                    <OrderItemsBulkStatusMenu
+                      disabled={items.length === 0}
+                      loading={updatingAllLines}
+                      onValueChange={onAllLineStatusesChange}
+                    />
+                  </div>
                   <div className="border border-border rounded-md overflow-hidden bg-card">
                     <div className="hidden md:flex items-center gap-4 border-b border-border bg-muted/30 text-xs font-medium text-muted-foreground uppercase tracking-wider px-6 py-3">
                       <div className="flex-1">{t('orders.detail.item') || 'Item'}</div>
@@ -315,21 +328,12 @@ export function OrderInvoiceDocument({
 
                                     <div className="hidden md:flex items-center">
                                       <div className="w-[120px]">
-                                        <Select
+                                        <OrderItemStatusSelect
                                           value={item.status || 'draft'}
                                           onValueChange={(val) => onLineStatusChange(item.id, val)}
                                           disabled={!item.id}
-                                        >
-                                          <SelectTrigger className={cn("h-8 text-[10px] uppercase tracking-wider w-full", ORDER_LINE_STATUS_STYLES[item.status || 'draft'])}>
-                                            <SelectValue />
-                                          </SelectTrigger>
-                                          <SelectContent>
-                                            <SelectItem value="draft" className="text-xs">{t('orders.status.draft') || 'Draft'}</SelectItem>
-                                            <SelectItem value="new" className="text-xs">{t('orders.status.new') || 'New'}</SelectItem>
-                                            <SelectItem value="preparing" className="text-xs">{t('orders.status.preparing') || 'Preparing'}</SelectItem>
-                                            <SelectItem value="completed" className="text-xs">{t('orders.status.completed') || 'Completed'}</SelectItem>
-                                          </SelectContent>
-                                        </Select>
+                                          className="w-full"
+                                        />
                                       </div>
                                       
                                   <div className="w-[120px] text-right text-sm text-muted-foreground">{item.quantity} ×</div>
@@ -355,21 +359,12 @@ export function OrderInvoiceDocument({
                                   </div>
 
                                   <div className="flex items-center gap-2 mt-4 md:hidden">
-                                    <Select
+                                    <OrderItemStatusSelect
                                       value={item.status || 'draft'}
                                       onValueChange={(val) => onLineStatusChange(item.id, val)}
                                       disabled={!item.id}
-                                    >
-                                      <SelectTrigger className={cn("h-8 text-[10px] uppercase tracking-wider flex-1", ORDER_LINE_STATUS_STYLES[item.status || 'draft'])}>
-                                        <SelectValue />
-                                      </SelectTrigger>
-                                      <SelectContent>
-                                        <SelectItem value="draft" className="text-xs">{t('orders.status.draft') || 'Draft'}</SelectItem>
-                                        <SelectItem value="new" className="text-xs">{t('orders.status.new') || 'New'}</SelectItem>
-                                        <SelectItem value="preparing" className="text-xs">{t('orders.status.preparing') || 'Preparing'}</SelectItem>
-                                        <SelectItem value="completed" className="text-xs">{t('orders.status.completed') || 'Completed'}</SelectItem>
-                                      </SelectContent>
-                                    </Select>
+                                      className="flex-1"
+                                    />
                                     
                                     <div className="flex-1 flex justify-end">
                                       {item.shipment_id ? (

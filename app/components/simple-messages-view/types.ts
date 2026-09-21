@@ -11,7 +11,7 @@ export interface SimpleMessagesViewProps {
 export interface ImageParameters {
   format: 'PNG' | 'JPG' | 'WebP'
   aspectRatio: '1:1' | '4:3' | '3:4' | '16:9' | '9:16' | '3:2' | '2:3'
-  quality: number
+  quality: 'standard' | 'hd'
   expectedResults?: number
 }
 
@@ -23,10 +23,7 @@ export interface VideoParameters {
 }
 
 export interface AudioParameters {
-  format: 'MP3' | 'WAV' | 'AAC'
-  sampleRate: '44.1kHz' | '48kHz'
-  channels: 'mono' | 'stereo'
-  duration?: number // in seconds
+  format: 'MP3' | 'WAV'
   expectedResults?: number
 }
 

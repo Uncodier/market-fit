@@ -1,9 +1,12 @@
 import { attachDemoAccounting } from "./accounting"
 import { mergeDemoData } from "./merge"
+import { attachDemoOrderLineUnits } from "./order-line-units"
 import { applyDemoTimeline } from "./timeline"
 
 function finalizeDemoData(data: Record<string, any>) {
-  return attachDemoAccounting(applyDemoTimeline(data))
+  return attachDemoOrderLineUnits(
+    attachDemoAccounting(applyDemoTimeline(data)),
+  )
 }
 
 export const availableDemos = [

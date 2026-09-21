@@ -382,7 +382,7 @@ export default function POSPage() {
                 </div>
               )}
 
-              <div className="flex justify-end md:hidden flex-shrink-0">
+              <div className="ml-auto flex flex-shrink-0 justify-end md:hidden">
                 <Sheet
                   open={isMobileCartOpen}
                   onOpenChange={setIsMobileCartOpen}

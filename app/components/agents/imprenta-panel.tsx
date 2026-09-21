@@ -46,7 +46,6 @@ import { AudioPlayer } from "./audio-player"
 import { SocialIcon } from "@/app/components/ui/social-icons"
 import { InstanceNode } from "@/app/types/instance-nodes"
 import { toast } from "sonner"
-import { apiClient } from "@/app/services/api-client-service"
 import { uploadAssetFile } from "@/app/assets/actions"
 import { AnimatedConnectionLine } from "./animated-connection-line"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
@@ -56,6 +55,10 @@ import { Switch } from "@/app/components/ui/switch"
 import { Textarea } from "@/app/components/ui/textarea"
 import { MediaParametersToolbar } from "../simple-messages-view/components/MediaParametersToolbar"
 import { ImageParameters, VideoParameters, AudioParameters } from "../simple-messages-view/types"
+import {
+  applyVideoParameterChange,
+  normalizeVideoParametersForExecution,
+} from "../simple-messages-view/media-parameter-normalization"
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { copyToClipboard } from "@/app/utils/clipboard"
@@ -98,6 +101,8 @@ import {
   getPublishChannelAvailability,
   getTestRecipient,
 } from "@/app/components/agents/imprenta-publish-routing"
+import { executeImprentaNode } from "@/app/components/agents/imprenta-execution-client"
+import { ImprentaPersistenceBarrier } from "@/app/lib/imprenta-persistence-barrier"
 
 /** Treat inherited / mistaken DB copies of the parent's coordinates as invalid for child nodes. */
 function positionsNearlyEqual(
@@ -959,6 +964,7 @@ const ImprentaNodeCardInner = memo(({
     handleConnectionDrop: (e: any, id: string, type?: "content" | "context" | "audience") => void
     handleConnectionStart: (e: any, id: string) => void
     handleExecuteNode: (node: InstanceNode, testDestinations?: Record<string, string>) => void
+    trackNodeSave: (nodeId: string, operation: PromiseLike<any>, category?: string) => Promise<any>
     setNodes: any
     setZoomedMedia: any
     handleImprentaNodeHover: (id: string | null) => void
@@ -1197,10 +1203,14 @@ const ImprentaNodeCardInner = memo(({
                                             actions.setNodes((prev: InstanceNode[]) =>
                                               prev.map((n: InstanceNode) => (n.id === node.id ? { ...n, type: modeType } : n))
                                             )
-                                            await supabase
-                                              .from("instance_nodes")
-                                              .update({ type: modeType })
-                                              .eq("id", node.id)
+                                            await actions.trackNodeSave(
+                                              node.id,
+                                              supabase
+                                                .from("instance_nodes")
+                                                .update({ type: modeType })
+                                                .eq("id", node.id),
+                                              "type"
+                                            )
                                           }}
                                         >
                                           {label}
@@ -1218,10 +1228,14 @@ const ImprentaNodeCardInner = memo(({
                                     const newText = e.target.value;
                                     if (newText !== node.prompt?.text) {
                                       actions.setNodes((prev: InstanceNode[]) => prev.map((n: InstanceNode) => n.id === node.id ? { ...n, prompt: { ...n.prompt, text: newText } } : n));
-                                      const { error } = await supabase
-                                        .from('instance_nodes')
-                                        .update({ prompt: { ...node.prompt, text: newText } })
-                                        .eq('id', node.id);
+                                      const { error } = await actions.trackNodeSave(
+                                        node.id,
+                                        supabase
+                                          .from('instance_nodes')
+                                          .update({ prompt: { ...node.prompt, text: newText } })
+                                          .eq('id', node.id),
+                                        "prompt"
+                                      );
                                         
                                       if (error) {
                                         toast.error("Failed to save node text");
@@ -1249,9 +1263,13 @@ const ImprentaNodeCardInner = memo(({
                                             ? current.filter((c: string) => c !== key)
                                             : [...current, key];
                                           actions.setNodes((prev: InstanceNode[]) => prev.map((n: InstanceNode) => n.id === node.id ? { ...n, settings: { ...((n.settings as any) || {}), audience_channels: newChannels } } : n));
-                                          await supabase.from('instance_nodes').update({
-                                            settings: { ...((node.settings as any) || {}), audience_channels: newChannels }
-                                          }).eq('id', node.id);
+                                          await actions.trackNodeSave(
+                                            node.id,
+                                            supabase.from('instance_nodes').update({
+                                              settings: { ...((node.settings as any) || {}), audience_channels: newChannels }
+                                            }).eq('id', node.id),
+                                            "settings"
+                                          );
                                         };
                                         return (
                                           <Tooltip key={key}>
@@ -1299,9 +1317,13 @@ const ImprentaNodeCardInner = memo(({
                                       ? currentDestinations.filter((d: string) => d !== key)
                                       : [...currentDestinations, key];
                                     actions.setNodes((prev: InstanceNode[]) => prev.map((n: InstanceNode) => n.id === node.id ? { ...n, settings: { ...((n.settings as any) || {}), publish_destinations: newDest } } : n));
-                                    await supabase.from('instance_nodes').update({
-                                      settings: { ...((node.settings as any) || {}), publish_destinations: newDest }
-                                    }).eq('id', node.id);
+                                    await actions.trackNodeSave(
+                                      node.id,
+                                      supabase.from('instance_nodes').update({
+                                        settings: { ...((node.settings as any) || {}), publish_destinations: newDest }
+                                      }).eq('id', node.id),
+                                      "settings"
+                                    );
                                   };
 
                                   const renderToggle = (key: string, label: string, icon: React.ReactNode, hint: string) => {
@@ -1412,28 +1434,44 @@ const ImprentaNodeCardInner = memo(({
                                         const newParams = { ...currentParams, [key]: value };
                                         const updatedSettings = { ...((node.settings as any) || {}), media_type: 'text', parameters: newParams };
                                         actions.setNodes((prev: InstanceNode[]) => prev.map((n: InstanceNode) => n.id === node.id ? { ...n, settings: updatedSettings } : n));
-                                        await supabase.from('instance_nodes').update({ settings: updatedSettings }).eq('id', node.id);
+                                        await actions.trackNodeSave(
+                                          node.id,
+                                          supabase.from('instance_nodes').update({ settings: updatedSettings }).eq('id', node.id),
+                                          "settings"
+                                        );
                                       }}
                                       onImageParameterChange={async (key, value) => {
                                         const currentParams = (node.settings as any)?.parameters || imageParams;
                                         const newParams = { ...currentParams, [key]: value };
                                         const updatedSettings = { ...((node.settings as any) || {}), media_type: 'image', parameters: newParams };
                                         actions.setNodes((prev: InstanceNode[]) => prev.map((n: InstanceNode) => n.id === node.id ? { ...n, settings: updatedSettings } : n));
-                                        await supabase.from('instance_nodes').update({ settings: updatedSettings }).eq('id', node.id);
+                                        await actions.trackNodeSave(
+                                          node.id,
+                                          supabase.from('instance_nodes').update({ settings: updatedSettings }).eq('id', node.id),
+                                          "settings"
+                                        );
                                       }}
                                       onVideoParameterChange={async (key, value) => {
                                         const currentParams = (node.settings as any)?.parameters || videoParams;
-                                        const newParams = { ...currentParams, [key]: value };
+                                        const newParams = applyVideoParameterChange(currentParams, key, value);
                                         const updatedSettings = { ...((node.settings as any) || {}), media_type: 'video', parameters: newParams };
                                         actions.setNodes((prev: InstanceNode[]) => prev.map((n: InstanceNode) => n.id === node.id ? { ...n, settings: updatedSettings } : n));
-                                        await supabase.from('instance_nodes').update({ settings: updatedSettings }).eq('id', node.id);
+                                        await actions.trackNodeSave(
+                                          node.id,
+                                          supabase.from('instance_nodes').update({ settings: updatedSettings }).eq('id', node.id),
+                                          "settings"
+                                        );
                                       }}
                                       onAudioParameterChange={async (key, value) => {
                                         const currentParams = (node.settings as any)?.parameters || audioParams;
                                         const newParams = { ...currentParams, [key]: value };
                                         const updatedSettings = { ...((node.settings as any) || {}), media_type: 'audio', parameters: newParams };
                                         actions.setNodes((prev: InstanceNode[]) => prev.map((n: InstanceNode) => n.id === node.id ? { ...n, settings: updatedSettings } : n));
-                                        await supabase.from('instance_nodes').update({ settings: updatedSettings }).eq('id', node.id);
+                                        await actions.trackNodeSave(
+                                          node.id,
+                                          supabase.from('instance_nodes').update({ settings: updatedSettings }).eq('id', node.id),
+                                          "settings"
+                                        );
                                       }}
                                     />
                                   </div>
@@ -2020,6 +2058,7 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
   const imprentaSyncedInstanceRef = useRef<string | null>(null)
   const deletedNodeIdsRef = useRef<Set<string>>(new Set())
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const persistenceBarrier = useMemo(() => new ImprentaPersistenceBarrier(), [])
 
   const [dummyNodes, setDummyNodes] = useState<InstanceNode[]>([])
   const [generatingNodeIds, setGeneratingNodeIds] = useState<Set<string>>(new Set())
@@ -2438,9 +2477,9 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
   // Media parameters state
   const [selectedMediaType, setSelectedMediaType] = useState<'text' | 'image' | 'video' | 'audio' | 'audience' | 'publish'>('text')
   const [textParams, setTextParams] = useState<any>({ expectedResults: 1, length: 'medium', styles: ['default'] })
-  const [imageParams, setImageParams] = useState<ImageParameters>({ format: 'PNG', aspectRatio: '1:1', quality: 100, expectedResults: 1 })
-  const [videoParams, setVideoParams] = useState<VideoParameters>({ aspectRatio: '16:9', resolution: '1080p', duration: 4, expectedResults: 1 })
-  const [audioParams, setAudioParams] = useState<AudioParameters>({ format: 'MP3', sampleRate: '44.1kHz', channels: 'stereo', duration: 15, expectedResults: 1 })
+  const [imageParams, setImageParams] = useState<ImageParameters>({ format: 'PNG', aspectRatio: '1:1', quality: 'hd', expectedResults: 1 })
+  const [videoParams, setVideoParams] = useState<VideoParameters>({ aspectRatio: '16:9', resolution: '720p', duration: 4, expectedResults: 1 })
+  const [audioParams, setAudioParams] = useState<AudioParameters>({ format: 'MP3', expectedResults: 1 })
 
   const imprentaRequestedInstanceRef = useRef<string | null>(null)
 
@@ -2681,6 +2720,38 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
   }, [activeInstanceId, supabase, refreshImprentaData])
 
   const handleExecuteNode = async (node: InstanceNode, testDestinations?: Record<string, string>) => {
+    try {
+      await persistenceBarrier.wait(node.id)
+      node = nodesRef.current.find((candidate) => candidate.id === node.id) ?? node
+      if (node.type === "generate-video") {
+        const currentParameters = (node.settings as any)?.parameters || videoParams
+        const normalizedParameters = normalizeVideoParametersForExecution(currentParameters)
+        if (
+          normalizedParameters.aspectRatio !== currentParameters.aspectRatio
+          || normalizedParameters.duration !== currentParameters.duration
+        ) {
+          const settings = {
+            ...((node.settings as any) || {}),
+            media_type: "video",
+            parameters: normalizedParameters,
+          }
+          await persistenceBarrier.track(
+            node.id,
+            supabase.from("instance_nodes").update({ settings }).eq("id", node.id),
+            "settings"
+          )
+          await persistenceBarrier.wait(node.id)
+          setNodes((previous) => previous.map((candidate) =>
+            candidate.id === node.id ? { ...candidate, settings } : candidate))
+          node = { ...node, settings }
+        }
+      }
+    } catch (error) {
+      console.error("Failed to save node before execution:", error)
+      toast.error("Save the latest node changes before executing")
+      return
+    }
+
     if (node.type === "publish") {
       if (!testDestinations) {
         const err = validatePublishNodeInputs(node, contexts, canvasNodes, logs)
@@ -2808,8 +2879,8 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
         ...(toolOverrides ? { tool_overrides: toolOverrides } : {})
       }
       
-      // Use apiClient to ensure it hits the external backend (where the workflow is actually executed)
-      const res = await apiClient.post('/api/robots/instance/assistant', requestPayload)
+      // Route through the web contract proxy so persisted UI state is authoritative.
+      const res = await executeImprentaNode(requestPayload)
       
       const response = res as any
 
@@ -3503,20 +3574,28 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
           (c) => c.target_node_id === targetNodeId && c.type === PUBLISH_SLOT_AUDIENCE
         );
         for (const row of stale) {
-          await supabase.from("instance_node_contexts").delete().eq("id", row.id);
+          await persistenceBarrier.track(
+            targetNodeId,
+            supabase.from("instance_node_contexts").delete().eq("id", row.id),
+            "context"
+          );
         }
         if (stale.length) {
           setContexts((prev) => prev.filter((c) => !stale.some((s) => s.id === c.id)));
         }
       }
 
-      const { error } = await supabase.from("instance_node_contexts").insert([{
-            target_node_id: targetNodeId,
-            context_node_id: sourceNodeId,
-            site_id: currentSite.id,
-        user_id: session.user.id,
-        ...(insertType ? { type: insertType } : {}),
-          }]);
+      const { error } = await persistenceBarrier.track<any>(
+        targetNodeId,
+        supabase.from("instance_node_contexts").insert([{
+          target_node_id: targetNodeId,
+          context_node_id: sourceNodeId,
+          site_id: currentSite.id,
+          user_id: session.user.id,
+          ...(insertType ? { type: insertType } : {}),
+        }]),
+        "context"
+      );
           
           if (error) {
         if (error.code === "23505") toast.error("Context already linked");
@@ -3538,10 +3617,14 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
 
   const handleDeleteContext = async (contextId: string) => {
     try {
-      const { error } = await supabase
-        .from('instance_node_contexts')
-        .delete()
-        .eq('id', contextId);
+      const targetNodeId = contexts.find((context) => context.id === contextId)?.target_node_id
+      const operation = supabase
+          .from('instance_node_contexts')
+          .delete()
+          .eq('id', contextId);
+      const { error } = targetNodeId
+        ? await persistenceBarrier.track(targetNodeId, operation, "context")
+        : await operation;
       
       if (error) throw error;
       
@@ -3559,11 +3642,15 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
 
   const handleUpdateContextType = async (contextId: string, type: string) => {
     try {
+      const targetNodeId = contexts.find((context) => context.id === contextId)?.target_node_id
       setContexts(prev => prev.map(c => c.id === contextId ? { ...c, type } : c));
-      const { error } = await supabase
+      const operation = supabase
         .from('instance_node_contexts')
         .update({ type })
         .eq('id', contextId);
+      const { error } = targetNodeId
+        ? await persistenceBarrier.track(targetNodeId, operation, "context")
+        : await operation;
         
       if (error) throw error;
       
@@ -4059,6 +4146,12 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
     }
   }, [positions])
 
+  const trackNodeSave = useCallback(
+    <T,>(nodeId: string, operation: PromiseLike<T>, category?: string) =>
+      persistenceBarrier.track(nodeId, operation, category),
+    [persistenceBarrier]
+  )
+
   const actionsRef = useRef({
     handleNodeMouseDown,
     handleDeleteNode,
@@ -4066,6 +4159,7 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
     handleConnectionDrop,
     handleConnectionStart,
     handleExecuteNode,
+    trackNodeSave,
     setNodes,
     setZoomedMedia,
     handleImprentaNodeHover,
@@ -4082,6 +4176,7 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
       handleConnectionDrop,
       handleConnectionStart,
       handleExecuteNode,
+      trackNodeSave,
       setNodes,
       setZoomedMedia,
       handleImprentaNodeHover,

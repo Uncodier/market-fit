@@ -217,6 +217,9 @@ export async function getOrder(id: string) {
 }
 
 export async function updateOrderStatus(siteId: string, orderId: string, status: string) {
+  if (!["pending", "in_progress", "completed", "cancelled"].includes(status)) {
+    return { error: "Invalid order status" }
+  }
   try {
     const supabase = await createClient();
 
@@ -228,6 +231,9 @@ export async function updateOrderStatus(siteId: string, orderId: string, status:
       .single();
 
     if (fetchError) throw new Error(fetchError.message);
+    if (currentOrder?.status === "cancelled" && status !== "cancelled") {
+      return { error: "Cancelled orders cannot be reopened" }
+    }
 
     const { data, error } = await supabase
       .from("sale_orders")
@@ -239,12 +245,23 @@ export async function updateOrderStatus(siteId: string, orderId: string, status:
 
     if (error) throw new Error(error.message);
 
-    if (status === 'completed') {
-      await supabase
+    const lineStatusByOrderStatus: Record<string, string> = {
+      pending: "new",
+      in_progress: "preparing",
+      completed: "completed",
+      cancelled: "cancelled",
+    }
+    const lineStatus = lineStatusByOrderStatus[status]
+    if (lineStatus) {
+      const { error: lineStatusError } = await supabase
         .from("sale_order_items")
-        .update({ status: 'completed' })
+        .update({ status: lineStatus })
+        .eq("site_id", siteId)
         .eq("sale_order_id", orderId);
+      if (lineStatusError) throw new Error(lineStatusError.message);
+    }
 
+    if (status === 'completed') {
       if (currentOrder?.sale_id) {
         const { data: paidSale } = await supabase
           .from("sales")
@@ -316,6 +333,39 @@ export async function updateOrderItemStatus(siteId: string, itemId: string, orde
   } catch (error: any) {
     console.error("Error in updateOrderItemStatus:", error);
     return { error: error.message };
+  }
+}
+
+export async function updateOrderItemsStatus(
+  siteId: string,
+  orderId: string,
+  status: string,
+) {
+  const allowedStatuses = new Set([
+    "draft",
+    "new",
+    "preparing",
+    "completed",
+    "returned",
+    "cancelled",
+  ])
+  if (!allowedStatuses.has(status)) return { error: "Invalid item status" }
+
+  try {
+    const supabase = await createClient()
+    const { error } = await supabase
+      .from("sale_order_items")
+      .update({ status })
+      .eq("site_id", siteId)
+      .eq("sale_order_id", orderId)
+
+    if (error) throw new Error(error.message)
+    revalidatePath("/order-lines")
+    revalidatePath(`/orders/${orderId}`)
+    return { success: true }
+  } catch (error: any) {
+    console.error("Error in updateOrderItemsStatus:", error)
+    return { error: error.message }
   }
 }
 

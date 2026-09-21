@@ -1,5 +1,6 @@
 import {
   isoDaysAgo,
+  isoDaysFromNow,
   isoNow,
   makeCatalogItemTax,
   makeCategory,
@@ -175,6 +176,10 @@ const onlineOrder = makeLinkedOrder({
     { catalogItemId: "item-ecom-bag", name: "Canvas tote", qty: 1, unitPrice: 29 },
   ],
 })
+const onlineOrderItems = onlineOrder.items.map((item) => ({
+  ...item,
+  shipment_id: "shp-ecom-1",
+}))
 
 const openOrder = makeLinkedOrder({
   siteId: SITE,
@@ -192,6 +197,26 @@ const openOrder = makeLinkedOrder({
     { catalogItemId: "item-ecom-tee-m", name: "Essential tee / M", qty: 2, unitPrice: 24 },
   ],
 })
+Object.assign(openOrder.order, { scheduled_for: isoDaysFromNow(1) })
+const openOrderItems = openOrder.items.map((item, index) =>
+  index === 1
+    ? { ...item, metadata: { client_line_key: "ecom-web-2-tee" } }
+    : item,
+)
+const openOrderModifier = {
+  ...openOrder.items[1],
+  id: "soi-ecom-web-2-tee-gift-wrap",
+  catalog_item_id: null,
+  name: "Gift wrapping",
+  quantity: 2,
+  unit_price: 0,
+  subtotal: 0,
+  parent_sale_order_item_id: openOrder.items[1].id,
+  metadata: {
+    is_modifier: true,
+    parent_client_line_key: "ecom-web-2-tee",
+  },
+}
 
 const posOrder = makeLinkedOrder({
   siteId: SITE,
@@ -256,7 +281,12 @@ export const ecomCommerce = {
   promotion_catalog_categories: [],
   sales: [onlineOrder.sale, openOrder.sale, posOrder.sale],
   sale_orders: [onlineOrder.order, openOrder.order, posOrder.order],
-  sale_order_items: [...onlineOrder.items, ...openOrder.items, ...posOrder.items],
+  sale_order_items: [
+    ...onlineOrderItems,
+    ...openOrderItems,
+    openOrderModifier,
+    ...posOrder.items,
+  ],
   shipments: [
     {
       id: "shp-ecom-1",

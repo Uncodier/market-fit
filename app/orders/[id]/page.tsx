@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react"
 import { useLocalization } from "@/app/context/LocalizationContext"
-import { getOrder, updateOrderStatus, updateOrderNotes, updateOrderItemStatus } from "../actions"
+import { getOrder, updateOrderStatus, updateOrderNotes, updateOrderItemStatus, updateOrderItemsStatus } from "../actions"
 import { createShipment } from "@/app/shipments/actions"
 import { listLocations } from "@/app/inventory/actions"
 import { OrderWithRelations } from "../types"
@@ -33,6 +33,7 @@ export default function OrderDetail(props: { params: Promise<{ id: string }> }) 
   const [savingNotes, setSavingNotes] = useState(false)
   const [updatingStatus, setUpdatingStatus] = useState(false)
   const [savingLines, setSavingLines] = useState(false)
+  const [updatingAllLines, setUpdatingAllLines] = useState(false)
   const [isCreatingShipment, setIsCreatingShipment] = useState(false)
   const [modifiedLines, setModifiedLines] = useState<Record<string, string>>({})
   const [sending, setSending] = useState(false)
@@ -57,6 +58,12 @@ export default function OrderDetail(props: { params: Promise<{ id: string }> }) 
 
   const handleStatusChange = async (newStatus: string) => {
     if (!currentSite || !order) return
+    const lineStatusByOrderStatus: Record<string, string> = {
+      pending: "new",
+      in_progress: "preparing",
+      completed: "completed",
+      cancelled: "cancelled",
+    }
     setUpdatingStatus(true)
     const { data, error } = await updateOrderStatus(currentSite.id, order.id, newStatus)
     
@@ -67,8 +74,11 @@ export default function OrderDetail(props: { params: Promise<{ id: string }> }) 
       setOrder(prev => prev ? { 
         ...prev, 
         status: newStatus as any,
-        sale_order_items: newStatus === 'completed'
-          ? prev.sale_order_items?.map((item: any) => ({ ...item, status: 'completed' }))
+        sale_order_items: lineStatusByOrderStatus[newStatus]
+          ? prev.sale_order_items?.map((item: any) => ({
+              ...item,
+              status: lineStatusByOrderStatus[newStatus],
+            }))
           : prev.sale_order_items
       } : null)
     }
@@ -94,11 +104,13 @@ export default function OrderDetail(props: { params: Promise<{ id: string }> }) 
     try {
       // Loop over the updates and perform them
       // Alternatively we can use Promise.all to run them concurrently
-      await Promise.all(
+      const results = await Promise.all(
         idsToUpdate.map(itemId => 
           updateOrderItemStatus(currentSite.id, itemId, order.id, modifiedLines[itemId])
         )
       )
+      const failedUpdate = results.find((result) => result.error)
+      if (failedUpdate?.error) throw new Error(failedUpdate.error)
       
       toast.success(t('orders.success.lineItemsUpdated') || "Line items updated")
       setModifiedLines({})
@@ -106,6 +118,40 @@ export default function OrderDetail(props: { params: Promise<{ id: string }> }) 
       toast.error(e.message || t('orders.error.lineItemsUpdateFailed') || "Failed to save line items")
     } finally {
       setSavingLines(false)
+    }
+  }
+
+  const handleAllLineStatusesChange = async (status: string) => {
+    if (!order || !currentSite) return
+    setUpdatingAllLines(true)
+    try {
+      const result = await updateOrderItemsStatus(
+        currentSite.id,
+        order.id,
+        status,
+      )
+      if (result.error) throw new Error(result.error)
+      setOrder((previous) =>
+        previous
+          ? {
+              ...previous,
+              sale_order_items: previous.sale_order_items?.map((item: any) => ({
+                ...item,
+                status,
+              })),
+            }
+          : previous,
+      )
+      setModifiedLines({})
+      toast.success(t("orders.success.lineItemsUpdated"))
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : t("orders.error.lineItemsUpdateFailed"),
+      )
+    } finally {
+      setUpdatingAllLines(false)
     }
   }
 
@@ -297,6 +343,7 @@ export default function OrderDetail(props: { params: Promise<{ id: string }> }) 
       notes={notes}
       modifiedLines={modifiedLines}
       savingLines={savingLines}
+      updatingAllLines={updatingAllLines}
       savingNotes={savingNotes}
       updatingStatus={updatingStatus}
       sending={sending}
@@ -309,6 +356,7 @@ export default function OrderDetail(props: { params: Promise<{ id: string }> }) 
       onNotesChange={setNotes}
       onLineStatusChange={handleLineStatusChange}
       onSaveLineItems={handleSaveLineItems}
+      onAllLineStatusesChange={handleAllLineStatusesChange}
       onSaveNotes={handleSaveNotes}
       onStatusChange={handleStatusChange}
       onOpenPayment={handleOpenPayment}

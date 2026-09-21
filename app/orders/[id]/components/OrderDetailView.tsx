@@ -50,6 +50,7 @@ type OrderDetailViewProps = {
   notes: string
   modifiedLines: Record<string, string>
   savingLines: boolean
+  updatingAllLines: boolean
   savingNotes: boolean
   updatingStatus: boolean
   sending: boolean
@@ -62,6 +63,7 @@ type OrderDetailViewProps = {
   onNotesChange: (value: string) => void
   onLineStatusChange: (itemId: string, status: string) => void
   onSaveLineItems: () => void
+  onAllLineStatusesChange: (status: string) => void
   onSaveNotes: () => void
   onStatusChange: (status: string) => void
   onOpenPayment: () => void
@@ -125,6 +127,7 @@ export function OrderDetailView(props: OrderDetailViewProps) {
     notes,
     modifiedLines,
     savingLines,
+    updatingAllLines,
     savingNotes,
     updatingStatus,
     sending,
@@ -202,9 +205,11 @@ export function OrderDetailView(props: OrderDetailViewProps) {
                 order={order}
                 items={items}
                 savingLines={savingLines}
+                updatingAllLines={updatingAllLines}
                 hasModifiedLines={Object.keys(modifiedLines).length > 0}
                 onLineStatusChange={props.onLineStatusChange}
                 onSaveLineItems={props.onSaveLineItems}
+                onAllLineStatusesChange={props.onAllLineStatusesChange}
               />
 
               <SectionCard>

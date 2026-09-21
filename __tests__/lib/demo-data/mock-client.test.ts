@@ -98,6 +98,138 @@ describe("demo mock client", () => {
     expect(data.filter((node: { type: string }) => node.type === "wf-step").length).toBeGreaterThan(0)
     expect(data.every((node: { type: string }) => node.type.startsWith("wf-"))).toBe(true)
   })
+
+  it("keeps exact counts before applying a page range", async () => {
+    const client = await createDemoMockClientImpl("demo-ecom-es-456")
+    const { data, count } = await client
+      .from("sale_order_item_units")
+      .select("*", { count: "exact" })
+      .eq("site_id", "demo-ecom-es-456")
+      .range(0, 0)
+
+    expect(data).toHaveLength(1)
+    expect(count).toBeGreaterThan(1)
+  })
+
+  it("updates quantity-split units independently through the mutation RPC", async () => {
+    const client = await createDemoMockClientImpl("demo-ecom-es-456")
+    const { data: units } = await client
+      .from("sale_order_item_units")
+      .select("*")
+      .eq("site_id", "demo-ecom-es-456")
+    const grouped = new Map<string, any[]>()
+    for (const unit of units) {
+      const group = grouped.get(unit.sale_order_item_id) || []
+      group.push(unit)
+      grouped.set(unit.sale_order_item_id, group)
+    }
+    const pair = [...grouped.values()].find(
+      (group) =>
+        group.length > 1 &&
+        ["draft", "new", "pending"].includes(group[0].status),
+    )
+    expect(pair).toBeDefined()
+
+    const { data: updated, error } = await client.rpc(
+      "mutate_sale_order_item_units",
+      {
+        p_site_id: "demo-ecom-es-456",
+        p_unit_ids: [pair![0].id],
+        p_operation: "set_status",
+        p_status: "preparing",
+      },
+    )
+
+    expect(error).toBeNull()
+    expect(updated).toBe(1)
+    expect(pair![0].status).toBe("preparing")
+    expect(pair![0].in_progress_at).toBeTruthy()
+    expect(pair![0].ready_at).toBeNull()
+    expect(["draft", "new", "pending"]).toContain(pair![1].status)
+
+    const advanced = await client.rpc("mutate_sale_order_item_units", {
+      p_site_id: "demo-ecom-es-456",
+      p_unit_ids: [pair![0].id],
+      p_operation: "advance",
+      p_status: JSON.stringify({ [pair![0].id]: "completed" }),
+    })
+    expect(advanced.error).toBeNull()
+    expect(pair![0].status).toBe("completed")
+    expect(pair![0].ready_at).toBeTruthy()
+  })
+
+  it("cascades parent order-item statuses to every operational unit", async () => {
+    const client = await createDemoMockClientImpl("demo-ecom-es-456")
+    const { data: units } = await client
+      .from("sale_order_item_units")
+      .select("*")
+      .eq("site_id", "demo-ecom-es-456")
+    const itemId = units[0].sale_order_item_id
+
+    await client
+      .from("sale_order_items")
+      .update({ status: "cancelled" })
+      .eq("id", itemId)
+
+    const { data: updatedUnits } = await client
+      .from("sale_order_item_units")
+      .select("*")
+      .eq("sale_order_item_id", itemId)
+    expect(updatedUnits.every((unit: any) => unit.status === "cancelled")).toBe(
+      true,
+    )
+  })
+
+  it("creates, resizes, and removes demo operational units with parent items", async () => {
+    const client = await createDemoMockClientImpl("demo-ecom-es-456")
+    await client.from("sale_order_items").insert({
+      id: "demo-runtime-line",
+      site_id: "demo-ecom-es-456",
+      sale_order_id: "so-ecom-web-2",
+      name: "Runtime product",
+      quantity: 2,
+      status: "new",
+      created_at: new Date().toISOString(),
+    })
+
+    let result = await client
+      .from("sale_order_item_units")
+      .select("*")
+      .eq("sale_order_item_id", "demo-runtime-line")
+    expect(result.data).toHaveLength(2)
+
+    await client
+      .from("sale_order_items")
+      .update({ quantity: 1 })
+      .eq("id", "demo-runtime-line")
+    result = await client
+      .from("sale_order_item_units")
+      .select("*")
+      .eq("sale_order_item_id", "demo-runtime-line")
+    expect(result.data).toHaveLength(1)
+
+    await client.from("sale_order_items").insert({
+      id: "demo-runtime-modifier",
+      site_id: "demo-ecom-es-456",
+      sale_order_id: "so-ecom-web-2",
+      parent_sale_order_item_id: "demo-runtime-line",
+      name: "Runtime modifier",
+      quantity: 1,
+      status: "new",
+      created_at: new Date().toISOString(),
+    })
+    await client.from("sale_order_items").delete().eq("id", "demo-runtime-line")
+    result = await client
+      .from("sale_order_item_units")
+      .select("*")
+      .eq("sale_order_item_id", "demo-runtime-line")
+    expect(result.data).toHaveLength(0)
+    const modifiers = await client
+      .from("sale_order_items")
+      .select("*")
+      .eq("id", "demo-runtime-modifier")
+    expect(modifiers.data).toHaveLength(0)
+  })
 })
 
 

@@ -15,6 +15,7 @@ const KNOWN_TABLES = new Set([
   "sales",
   "sale_orders",
   "sale_order_items",
+  "sale_order_item_units",
   "shipments",
   "locations",
   "price_lists",

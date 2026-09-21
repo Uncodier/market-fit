@@ -1,8 +1,10 @@
+import type { DatabaseFunctions } from "./database-functions.types"
+import type { SaleOrderItemUnitsTable } from "./database-order-line.types"
+import type { CompetitorUrl, ResourceUrl } from "./database-domain.types"
+export * from "./database-domain.types"
+
 export type Json =
-  | string
-  | number
-  | boolean
-  | null
+  | string | number | boolean | null
   | { [key: string]: Json | undefined }
   | Json[]
 
@@ -131,6 +133,7 @@ export interface Database {
         Insert: any
         Update: any
       }
+      sale_order_item_units: SaleOrderItemUnitsTable
       shipments: {
         Row: {
           id: string
@@ -486,116 +489,9 @@ export interface Database {
       }
     }
     Views: {}
-    Functions: {
-      get_my_accessible_sites: {
-        Args: Record<PropertyKey, never>
-        Returns: Database["public"]["Tables"]["sites"]["Row"][]
-      }
-      current_user_site_role: {
-        Args: { p_site_id: string }
-        Returns: string | null
-      }
-      user_can: {
-        Args: { p_site_id: string; p_command: string }
-        Returns: boolean
-      }
-      get_my_site_capabilities: {
-        Args: { p_site_id: string }
-        Returns: {
-          role: string | null
-          is_owner: boolean
-          select: boolean
-          insert: boolean
-          update: boolean
-          delete: boolean
-          can_select?: boolean
-          can_insert?: boolean
-          can_update?: boolean
-          can_delete?: boolean
-        }
-      }
-    }
+    Functions: DatabaseFunctions<Database["public"]["Tables"]["sites"]["Row"]>
     Enums: {}
   }
-}
-
-export interface ResourceUrl {
-  key: string
-  url: string
-}
-
-export interface CompetitorUrl {
-  url: string
-  name?: string
-}
-
-// Create more specific types for the settings fields
-export interface Location {
-  name: string
-  address?: string
-  city?: string
-  state?: string
-  zip?: string
-  country?: string
-}
-
-export interface SwotAnalysis {
-  strengths: string
-  weaknesses: string
-  opportunities: string
-  threats: string
-}
-
-export interface MarketingBudget {
-  total: number
-  available: number
-}
-
-export interface SocialMedia {
-  platform: string
-  url: string
-  handle?: string
-}
-
-export interface MarketingChannel {
-  name: string
-  status: 'active' | 'inactive' | 'planned'
-  budget?: number
-  notes?: string
-}
-
-export interface TrackingSettings {
-  track_visitors: boolean
-  track_actions: boolean
-  record_screen: boolean
-}
-
-export interface TeamMember {
-  email: string
-  role: 'view' | 'create' | 'delete' | 'admin'
-  name?: string
-  position?: string
-}
-
-export interface TeamRole {
-  name: string
-  permissions: string[]
-  description?: string
-}
-
-export interface SiteMember {
-  id: string
-  site_id: string
-  user_id: string | null
-  role: 'owner' | 'admin' | 'marketing' | 'collaborator'
-  added_by: string | null
-  created_at: string
-  updated_at: string
-  email: string
-  name: string | null
-  position: string | null
-  status: 'pending' | 'active' | 'rejected'
-  blocked_screens?: string[]
 }
 
 export type Tables<T extends keyof Database['public']['Tables']> = Database['public']['Tables'][T]['Row']

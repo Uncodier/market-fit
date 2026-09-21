@@ -1,8 +1,11 @@
 import {
   NAVIGATION_MENU_AREA_ORDER,
+  NAVIGATION_AREAS,
   isConfigurationNavPath,
   isSettingsNavKey,
 } from '@/app/config/navigation-areas'
+import { NAV_ITEM_ICON } from '@/app/config/module-visuals'
+import { ClipboardList } from '@/app/components/ui/icons'
 
 describe('navigation-areas', () => {
   it('includes Settings in the apps launcher but not as sidebar shortcuts', () => {
@@ -31,5 +34,14 @@ describe('navigation-areas', () => {
     expect(isConfigurationNavPath('/settings', new URLSearchParams('tab=channels'))).toBe(false)
     expect(isConfigurationNavPath('/settings', new URLSearchParams('tab=activities'))).toBe(false)
     expect(isConfigurationNavPath('/leads')).toBe(false)
+  })
+
+  it('includes order lines in Operations', () => {
+    expect(NAVIGATION_AREAS.operations.items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ key: 'orderLines', href: '/order-lines' }),
+      ])
+    )
+    expect(NAV_ITEM_ICON.orderLines).toBe(ClipboardList)
   })
 })

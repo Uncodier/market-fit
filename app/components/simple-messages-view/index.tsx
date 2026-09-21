@@ -23,6 +23,7 @@ import { markdownComponents } from './utils/markdownComponents'
 
 // Import types
 import { SimpleMessagesViewProps, InstanceLog, SelectedContextIds, ImageParameters, VideoParameters, AudioParameters, MessageAttachment } from './types'
+import { applyVideoParameterChange } from './media-parameter-normalization'
 
 // Import hooks
 import { useInstanceLogs } from './hooks/useInstanceLogs'
@@ -142,18 +143,15 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
   const [imageParameters, setImageParameters] = useState<ImageParameters>({
     format: 'PNG',
     aspectRatio: '1:1',
-    quality: 85 // High quality by default
+    quality: 'hd'
   })
   const [videoParameters, setVideoParameters] = useState<VideoParameters>({
     aspectRatio: '16:9',
-    resolution: '1080p',
+    resolution: '720p',
     duration: 6
   })
   const [audioParameters, setAudioParameters] = useState<AudioParameters>({
-    format: 'MP3',
-    sampleRate: '44.1kHz',
-    channels: 'stereo',
-    duration: 15
+    format: 'MP3'
   })
   
   
@@ -168,7 +166,7 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
   }, [])
   
   const handleVideoParameterChange = useCallback((key: keyof VideoParameters, value: any) => {
-    setVideoParameters(prev => ({ ...prev, [key]: value }))
+    setVideoParameters(prev => applyVideoParameterChange(prev, key, value))
   }, [])
   
   const handleAudioParameterChange = useCallback((key: keyof AudioParameters, value: any) => {

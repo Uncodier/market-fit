@@ -76,6 +76,7 @@ export function TopBarTitle({
       'inventory': t('layout.sidebar.inventory') || 'Inventory',
       'price-lists': t('layout.sidebar.priceLists') || 'Price Lists',
       'orders': t('layout.sidebar.orders') || 'Orders',
+      'order-lines': t('layout.sidebar.orderLines') || 'Order Lines',
       'shipments': t('layout.sidebar.shipments') || 'Shipments',
       'promotions': t('layout.sidebar.promotions') || 'Promotions',
       'subscriptions': t('layout.sidebar.subscriptions') || 'Subscriptions',

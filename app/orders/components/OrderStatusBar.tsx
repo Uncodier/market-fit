@@ -39,7 +39,7 @@ export function OrderStatusBar({ currentStatus, onStatusChange, disabled }: Orde
       styles={STATUS_STYLES}
       labels={(status) => t(STATUS_KEYS[status].key) || STATUS_KEYS[status].fallback}
       onChange={onStatusChange}
-      disabled={disabled}
+      disabled={disabled || currentStatus === "cancelled"}
     />
   )
 }

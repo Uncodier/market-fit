@@ -3,6 +3,8 @@ export const ORDER_ROW_STATUS_STYLES: Record<string, string> = {
   new: "bg-amber-50/50 dark:bg-amber-950/30",
   preparing: "bg-blue-50/50 dark:bg-blue-950/30",
   completed: "bg-green-50/50 dark:bg-green-950/30",
+  returned: "bg-violet-50/50 dark:bg-violet-950/30",
+  cancelled: "bg-rose-50/50 dark:bg-rose-950/30",
 }
 
 export const ORDER_LINE_STATUS_STYLES: Record<string, string> = {
@@ -10,6 +12,8 @@ export const ORDER_LINE_STATUS_STYLES: Record<string, string> = {
   new: "bg-white text-amber-700 border-amber-200 dark:bg-amber-950/50 dark:text-amber-400 dark:border-amber-900",
   preparing: "bg-white text-blue-700 border-blue-200 dark:bg-blue-950/50 dark:text-blue-400 dark:border-blue-900",
   completed: "bg-white text-green-700 border-green-200 dark:bg-green-950/50 dark:text-green-400 dark:border-green-900",
+  returned: "bg-white text-violet-700 border-violet-200 dark:bg-violet-950/50 dark:text-violet-400 dark:border-violet-900",
+  cancelled: "bg-white text-rose-700 border-rose-200 dark:bg-rose-950/50 dark:text-rose-400 dark:border-rose-900",
 }
 
 type Translate = (key: string) => string | undefined

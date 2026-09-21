@@ -96,8 +96,8 @@ export const getSystemPromptForActivity = (
   }
   
       if (activity === 'generate-audio' && mediaParams?.audioParameters) {
-        const { format, sampleRate, channels, duration } = mediaParams.audioParameters
-        return `Generate audio with format: ${format}, sample rate: ${sampleRate}, channels: ${channels}${duration ? `, duration: ${duration}s` : ''}`
+        const { format } = mediaParams.audioParameters
+        return `Generate audio with format: ${format}`
       }
   
   // Add attachments to system prompt if provided
