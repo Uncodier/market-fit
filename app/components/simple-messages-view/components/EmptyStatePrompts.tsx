@@ -13,6 +13,14 @@ interface PromptCard {
   color: string
 }
 
+export const EMPTY_STATE_TYPEWRITER_PROMPTS = [
+  'Analyze our product-market fit...',
+  'Define our ideal customer profile...',
+  'Create a product launch strategy...',
+  'Write a cold outreach sequence...',
+  'Plan four weeks of social content...',
+] as const
+
 const ALL_PROMPT_CARDS: PromptCard[] = [
   // Strategy
   {

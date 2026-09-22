@@ -36,7 +36,8 @@ import { useBacklogManagement } from './hooks/useBacklogManagement'
 import { useInstanceAssets } from './hooks/useInstanceAssets'
 
 // Import components
-import { EmptyStatePrompts } from './components/EmptyStatePrompts'
+import { EmptyStatePrompts, EMPTY_STATE_TYPEWRITER_PROMPTS } from './components/EmptyStatePrompts'
+import { EmptyStateWelcome } from './components/EmptyStateWelcome'
 import { MessageInput } from './components/MessageInput'
 import { MessageItem } from './components/MessageItem'
 import { ProcessGroupItem } from './components/ProcessGroupItem'
@@ -1143,15 +1144,10 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
             </div>
           </div>
         )}
-        {/* Prompt suggestion carousel - shown only when chat is empty, fades out when content appears */}
+        {/* Welcome - shown only when chat is empty */}
         {isEmpty && (
-          <div className="w-full animate-in fade-in duration-500 delay-300 mx-auto max-w-[800px] overflow-hidden">
-            <EmptyStatePrompts
-              onSelectPrompt={(prompt) => {
-                setMessage(prompt)
-                setTimeout(() => textareaRef.current?.focus(), 0)
-              }}
-            />
+          <div className="w-full animate-in fade-in duration-500 mx-auto max-w-[800px]">
+            <EmptyStateWelcome userName={userProfile?.name} />
           </div>
         )}
         <MessageInput
@@ -1174,7 +1170,19 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
           onAudioParameterChange={handleAudioParameterChange}
           activeRobotInstance={activeRobotInstance}
           isBrowserVisible={isBrowserVisible}
+          placeholderSuggestions={isEmpty ? EMPTY_STATE_TYPEWRITER_PROMPTS : undefined}
         />
+        {/* Prompt suggestion carousel - shown below the input when chat is empty */}
+        {isEmpty && (
+          <div className="w-full animate-in fade-in duration-500 delay-300 mx-auto max-w-[800px] overflow-hidden">
+            <EmptyStatePrompts
+              onSelectPrompt={(prompt) => {
+                setMessage(prompt)
+                setTimeout(() => textareaRef.current?.focus(), 0)
+              }}
+            />
+          </div>
+        )}
         </div>
       </div>
 

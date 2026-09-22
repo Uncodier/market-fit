@@ -13,6 +13,7 @@ import { useSite } from '@/app/context/SiteContext'
 import { useLocalization } from '@/app/context/LocalizationContext'
 import { areMentionsEqual, getMentionQuery } from '@/app/components/context/mention-query'
 import { ContextMentionPicker } from '@/app/components/context/context-mention-picker'
+import { useTypewriterPlaceholder } from '../hooks/useTypewriterPlaceholder'
 
 const COMPOSER_TEXTAREA_STYLE: React.CSSProperties = {
   lineHeight: '1.5',
@@ -45,6 +46,7 @@ interface MessageInputProps {
   // Instance prop
   activeRobotInstance?: any
   isBrowserVisible?: boolean
+  placeholderSuggestions?: readonly string[]
 }
 
 const MessageInputComponent: React.FC<MessageInputProps> = ({
@@ -66,7 +68,8 @@ const MessageInputComponent: React.FC<MessageInputProps> = ({
   onVideoParameterChange,
   onAudioParameterChange,
   activeRobotInstance,
-  isBrowserVisible = false
+  isBrowserVisible = false,
+  placeholderSuggestions
 }) => {
   const [mentionState, setMentionState] = useState<{ query: string, start: number, end: number } | null>(null)
   const [hasInput, setHasInput] = useState(() => message.trim().length > 0)
@@ -90,8 +93,17 @@ const MessageInputComponent: React.FC<MessageInputProps> = ({
 
   // Calculate dynamic placeholder based on context and requirements
   const contextCount = Object.values(selectedContext).reduce((acc: number, curr: any) => acc + (curr?.length || 0), 0) as number
+  const shouldAnimatePlaceholder = Boolean(placeholderSuggestions?.length) &&
+    !hasInput &&
+    !disabled &&
+    !requirementName &&
+    contextCount === 0
+  const typewriterPlaceholder = useTypewriterPlaceholder({
+    phrases: placeholderSuggestions ?? [],
+    enabled: shouldAnimatePlaceholder,
+  })
   
-  let dynamicPlaceholder = placeholder
+  let dynamicPlaceholder = shouldAnimatePlaceholder ? typewriterPlaceholder : placeholder
   if (placeholder === 'Ask anything...' || placeholder === 'Ask anything' || placeholder === 'Pregunta cualquier cosa...' || placeholder === 'Pregunta cualquier cosa' || placeholder === '¿Cómo te puedo ayudar hoy?') {
     const askAnythingStr = t('chat.askAnything') !== 'chat.askAnything' ? t('chat.askAnything') : '¿Cómo te puedo ayudar hoy?'
     const aboutStr = t('chat.about') !== 'chat.about' ? t('chat.about') : 'sobre'
