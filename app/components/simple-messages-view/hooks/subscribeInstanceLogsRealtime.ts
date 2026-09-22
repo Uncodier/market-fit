@@ -5,6 +5,18 @@ import type { Dispatch, MutableRefObject, SetStateAction } from 'react'
 
 type SetLogs = (updater: (prevLogs: InstanceLog[]) => InstanceLog[]) => void
 
+export function isTerminalAgentResponse(log: InstanceLog): boolean {
+  const hasMessage = (log.message?.trim().length || 0) > 0
+  return (
+    (
+      log.log_type === 'agent_action'
+      && log.details?.streaming !== true
+      && hasMessage
+    )
+    || log.log_type === 'error'
+  )
+}
+
 export function subscribeInstanceLogsRealtime(params: {
   instanceId: string
   currentRobotInstanceIdRef: MutableRefObject<string | null>
@@ -32,6 +44,21 @@ export function subscribeInstanceLogsRealtime(params: {
   let retryCount = 0
   let retryTimeout: NodeJS.Timeout | null = null
   let disposed = false
+
+  const stopLatestRunningUserLog = () => {
+    setLogs((prevLogs: InstanceLog[]) => {
+      const running = [...prevLogs]
+        .reverse()
+        .find((log) => log.log_type === 'user_action' && log.details?.status === 'running')
+      if (!running) return prevLogs
+      void markUserLogWorkflowStatus({ logId: running.id, status: 'stopped' })
+      return prevLogs.map((log) =>
+        log.id === running.id
+          ? { ...log, details: { ...(log.details || {}), status: 'stopped' } }
+          : log
+      )
+    })
+  }
 
   const onRealtimePayload = (payload: any) => {
     if (payload?.new?.instance_id && payload.new.instance_id !== currentRobotInstanceIdRef.current) return
@@ -62,26 +89,10 @@ export function subscribeInstanceLogsRealtime(params: {
 
       const waitingId = waitingForMessageIdRef.current
       if (waitingId) {
-        const isResponseToOurMessage = (
-          (newLog.log_type === 'agent_action') ||
-          (newLog.log_type === 'tool_result') ||
-          (newLog.log_type === 'system' && (
-            (newLog.message || '').toLowerCase().includes('processing') ||
-            (newLog.message || '').toLowerCase().includes('received') ||
-            (newLog.message || '').toLowerCase().includes('completed') ||
-            (newLog.message || '').toLowerCase().includes('response') ||
-            (newLog.message || '').toLowerCase().includes('answer')
-          )) ||
-          (newLog.log_type === 'system' && (newLog.message?.length || 0) > 10) ||
-          (newLog.log_type !== 'user_action' && (newLog.message?.length || 0) > 5)
-        )
-
-        if (isResponseToOurMessage) {
+        if (isTerminalAgentResponse(newLog)) {
           const timeDiff = new Date(newLog.created_at).getTime() - new Date().getTime()
           if (Math.abs(timeDiff) < 60000) onResponseReceivedRef.current?.()
         }
-      } else if (newLog.log_type !== 'user_action' && (newLog.message?.length || 0) > 5) {
-        onResponseReceivedRef.current?.()
       }
 
       if (newLog.log_type === 'system' && (newLog.message?.length || 0) > 200) {
@@ -100,24 +111,18 @@ export function subscribeInstanceLogsRealtime(params: {
 
       const isPlaceholderResponse = (newLog.message || '').includes('placeholder response')
       if (
-        (newLog.log_type === 'agent_action' || newLog.log_type === 'tool_result') &&
+        isTerminalAgentResponse(newLog) &&
         !isPlaceholderResponse
       ) {
-        setLogs((prevLogs: InstanceLog[]) => {
-          const running = [...prevLogs]
-            .reverse()
-            .find((log) => log.log_type === 'user_action' && log.details?.status === 'running')
-          if (!running) return prevLogs
-          void markUserLogWorkflowStatus({ logId: running.id, status: 'stopped' })
-          return prevLogs.map((log) =>
-            log.id === running.id
-              ? { ...log, details: { ...(log.details || {}), status: 'stopped' } }
-              : log
-          )
-        })
+        stopLatestRunningUserLog()
       }
     } else if (payload.eventType === 'UPDATE') {
-      setLogs((prevLogs: InstanceLog[]) => prevLogs.map((log: InstanceLog) => log.id === payload.new.id ? payload.new as InstanceLog : log))
+      const updatedLog = payload.new as InstanceLog
+      setLogs((prevLogs: InstanceLog[]) => prevLogs.map((log: InstanceLog) => log.id === updatedLog.id ? updatedLog : log))
+      if (isTerminalAgentResponse(updatedLog)) {
+        stopLatestRunningUserLog()
+        onResponseReceivedRef.current?.()
+      }
     } else if (payload.eventType === 'DELETE') {
       setLogs((prevLogs: InstanceLog[]) => prevLogs.filter((log: InstanceLog) => log.id !== payload.old.id))
     }

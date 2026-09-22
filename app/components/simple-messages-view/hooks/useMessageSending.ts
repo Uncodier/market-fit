@@ -92,6 +92,7 @@ export const useMessageSending = ({
 
     loadingInstanceIdRef.current = currentInstanceId
     setIsWaitingForResponse(true)
+    setWaitingForMessageId(`pending-${Date.now()}`)
 
     if (thinkingTimeoutRef.current) {
       clearTimeout(thinkingTimeoutRef.current)
@@ -102,7 +103,7 @@ export const useMessageSending = ({
         clearThinkingState()
         loadingInstanceIdRef.current = null
       }
-    }, 30000)
+    }, 5 * 60 * 1000)
   }, [activeRobotInstance?.id, clearThinkingState])
 
   const handleAssistantMessage = useCallback(async (messageToSend: string, activity = selectedActivity) => {

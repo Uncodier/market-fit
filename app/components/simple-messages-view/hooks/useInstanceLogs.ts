@@ -4,7 +4,11 @@ import { createClient } from '@/lib/supabase/client'
 import { InstanceLog } from '../types'
 import { collapseDuplicateUserActions } from './send-message-reliability'
 import { excludeQueuedUserLogs } from './command-queue'
-import { subscribeInstanceLogsRealtime } from './subscribeInstanceLogsRealtime'
+import {
+  isTerminalAgentResponse,
+  subscribeInstanceLogsRealtime,
+} from './subscribeInstanceLogsRealtime'
+import { useLiveInstanceLogs } from './use-live-instance-logs'
 
 interface UseInstanceLogsProps {
   activeRobotInstance?: any
@@ -120,7 +124,7 @@ export const useInstanceLogs = ({
       // If we just fetched logs and the latest one is a response, clear thinking state
       if (fetchedLogs.length > 0) {
         const latestLog = fetchedLogs[fetchedLogs.length - 1] as InstanceLog
-        if (latestLog.log_type !== 'user_action' && (latestLog.message?.length || 0) > 5) {
+        if (isTerminalAgentResponse(latestLog)) {
           onResponseReceivedRef.current?.()
         }
       }
@@ -351,62 +355,15 @@ export const useInstanceLogs = ({
     })
   }, [activeRobotInstance?.id, setLogs])
 
-  // Reconcile logs while waiting for a response (covers missed Realtime events)
-  useEffect(() => {
-    if (!activeRobotInstance?.id || !waitingForMessageId) return
-
-    const instanceStatus = (activeRobotInstance as any)?.status
-    const shouldReconcile =
-      Boolean(waitingForMessageId) ||
-      ['starting', 'pending', 'initializing', 'running', 'active'].includes(instanceStatus)
-
-    if (!shouldReconcile) return
-
-    let disposed = false
-    let inFlight = false
-    let timer: ReturnType<typeof setTimeout> | null = null
-    const schedule = () => {
-      if (!disposed) {
-        if (timer) clearTimeout(timer)
-        timer = setTimeout(run, 4000)
-      }
-    }
-    const run = async () => {
-      if (
-        disposed ||
-        inFlight ||
-        document.visibilityState === 'hidden' ||
-        !navigator.onLine ||
-        activeRobotInstance.id !== currentRobotInstanceIdRef.current
-      ) {
-        schedule()
-        return
-      }
-      inFlight = true
-      try {
-        await mutate()
-      } finally {
-        inFlight = false
-        schedule()
-      }
-    }
-    const resume = () => {
-      if (document.visibilityState === 'visible' && navigator.onLine) {
-        if (timer) clearTimeout(timer)
-        void run()
-      }
-    }
-
-    schedule()
-    document.addEventListener('visibilitychange', resume)
-    window.addEventListener('online', resume)
-    return () => {
-      disposed = true
-      if (timer) clearTimeout(timer)
-      document.removeEventListener('visibilitychange', resume)
-      window.removeEventListener('online', resume)
-    }
-  }, [activeRobotInstance?.id, activeRobotInstance?.status, waitingForMessageId, mutate])
+  useLiveInstanceLogs({
+    instanceId: activeRobotInstance?.id,
+    instanceStatus: activeRobotInstance?.status,
+    waitingForMessageId,
+    logs,
+    setLogs,
+    mutate,
+    onResponseReceivedRef,
+  })
 
   return {
     logs,
