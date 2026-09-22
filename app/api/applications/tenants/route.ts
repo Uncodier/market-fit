@@ -2,6 +2,28 @@ import { NextResponse } from "next/server"
 import { createClient } from "@supabase/supabase-js"
 import { createClient as createMainClient, createServiceClient } from "@/lib/supabase/server"
 import { getApiKeyFromRequest, isValidApiKey } from "@/app/lib/api-keys-config"
+import {
+  getCurrentUserSiteRole,
+  isSiteManagerRole,
+} from "@/lib/auth/api-site-access"
+
+interface RequirementSummary {
+  id: string
+  title: string | null
+  status: string | null
+  created_at: string | null
+  updated_at: string | null
+}
+
+interface TenantSummary {
+  tenant_id: string
+  schema: string
+  bucket: string
+}
+
+type RequirementWithTenants = RequirementSummary & {
+  apps_tenants: TenantSummary[]
+}
 
 export async function GET(request: Request) {
   try {
@@ -42,31 +64,68 @@ export async function GET(request: Request) {
     const reposSupabase = createClient(repositoriesUrl, repositoriesKey)
 
     if (tenantId) {
-      // Just fetch the tenant by ID
       const { data, error } = await reposSupabase
         .from("apps_tenants")
-        .select("schema")
+        .select("schema, site_id")
         .eq("tenant_id", tenantId)
-        .single()
+        .maybeSingle()
         
-      if (error) {
+      if (error || !data) {
         return NextResponse.json({ error: "Tenant not found" }, { status: 404 })
       }
-      return NextResponse.json(data)
+      if (!isServerRequest) {
+        const role = await getCurrentUserSiteRole(mainSupabase, data.site_id)
+        if (!isSiteManagerRole(role)) {
+          return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+        }
+      }
+      return NextResponse.json({ schema: data.schema })
     }
 
     if (requirementId) {
-      // Just fetch the tenant by requirement ID
       const { data, error } = await reposSupabase
         .from("apps_tenants")
-        .select("tenant_id, schema, bucket")
+        .select("tenant_id, schema, bucket, site_id")
         .eq("requirement_id", requirementId)
-        .single()
+        .maybeSingle()
         
-      if (error) {
+      if (error || !data) {
         return NextResponse.json({ error: "Tenant not found" }, { status: 404 })
       }
-      return NextResponse.json(data)
+      if (!isServerRequest) {
+        const role = await getCurrentUserSiteRole(mainSupabase, data.site_id)
+        if (!isSiteManagerRole(role)) {
+          return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+        }
+      }
+      return NextResponse.json({
+        tenant_id: data.tenant_id,
+        schema: data.schema,
+        bucket: data.bucket,
+      })
+    }
+
+    if (siteId && !isServerRequest) {
+      const role = await getCurrentUserSiteRole(mainSupabase, siteId)
+      if (!isSiteManagerRole(role)) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+      }
+    }
+
+    if (robotInstanceId && !isServerRequest) {
+      const { data: instance, error: instanceError } = await mainSupabase
+        .from("remote_instances")
+        .select("site_id")
+        .eq("id", robotInstanceId)
+        .maybeSingle()
+
+      if (instanceError || !instance?.site_id) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+      }
+      const role = await getCurrentUserSiteRole(mainSupabase, instance.site_id)
+      if (!isSiteManagerRole(role)) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+      }
     }
 
     // First get the requirements for this site from the main database
@@ -81,7 +140,9 @@ export async function GET(request: Request) {
         .select('requirement_id')
         .eq('instance_id', robotInstanceId)
         
-      const instanceReqIds = (instanceStatuses || []).map(s => s.requirement_id)
+      const instanceReqIds = (instanceStatuses || []).map(
+        (status: { requirement_id: string }) => status.requirement_id
+      )
       
       if (instanceReqIds.length > 0) {
         requirementsQuery = requirementsQuery.in('id', instanceReqIds)
@@ -99,7 +160,9 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "Failed to fetch requirements" }, { status: 500 })
     }
 
-    const requirementIds = (requirements || []).map(r => r.id)
+    const requirementIds = (requirements || []).map(
+      (requirement: RequirementSummary) => requirement.id
+    )
 
     if (requirementIds.length === 0) {
       return NextResponse.json({ tenants: [] })
@@ -129,15 +192,17 @@ export async function GET(request: Request) {
     }
 
     // Merge tenants into requirements
-    let merged = (requirements || [])
-      .map((req) => ({
-        ...req,
-        apps_tenants: tenantsByRequirement.get(req.id) ?? [],
+    const merged: RequirementWithTenants[] = (requirements || [])
+      .map((requirement: RequirementSummary) => ({
+        ...requirement,
+        apps_tenants: tenantsByRequirement.get(requirement.id) ?? [],
       }))
-      .filter(app => app.apps_tenants.length > 0)
+      .filter((application: RequirementWithTenants) =>
+        application.apps_tenants.length > 0
+      )
 
     const sort = searchParams.get("sort") || "newest"
-    merged.sort((a, b) => {
+    merged.sort((a: RequirementWithTenants, b: RequirementWithTenants) => {
       const dateA = new Date(a.created_at || 0).getTime()
       const dateB = new Date(b.created_at || 0).getTime()
       const updateA = new Date(a.updated_at || a.created_at || 0).getTime()

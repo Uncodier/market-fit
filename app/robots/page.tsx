@@ -6,7 +6,7 @@ import { useRouter, useSearchParams, usePathname } from "next/navigation"
 import { Tabs, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/app/components/ui/dialog"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
-import { Globe, Pause, Play, MicroPause, MicroPlay, Plus, MoreHorizontal, ExternalLink, RotateCw, Loader, Monitor, Laptop, Tablet, Smartphone, Folder, Download, Archive, PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, LayoutGrid, Shield, Key, MessageSquare } from "@/app/components/ui/icons"
+import { Globe, Pause, Play, MicroPause, MicroPlay, X, Plus, MoreHorizontal, ExternalLink, RotateCw, Loader, Monitor, Laptop, Tablet, Smartphone, Folder, Download, Archive, PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, LayoutGrid, Shield, Key, MessageSquare } from "@/app/components/ui/icons"
 import { Button } from "@/app/components/ui/button"
 import { ResponsiveTabsList, type TabItem } from "@/app/components/ui/responsive-tabs-list"
 import { useLayout } from "@/app/context/LayoutContext"
@@ -58,6 +58,8 @@ import {
   type BrowserTab,
   type WorkspaceLayout,
 } from "./instance-workspace-state"
+import { deleteInstanceArtifacts } from "./delete-instance-artifacts"
+import { pinArtifactToNavigation } from "./artifact-navigation-shortcut"
 
 import { cn } from "@/lib/utils"
 
@@ -1135,6 +1137,8 @@ function RobotsPageContent() {
   const {
     artifacts,
     isLoading: isArtifactsLoading,
+    refetchArtifacts,
+    removeArtifactLocally,
   } = useInstanceArtifacts({ instanceId: activeRobotInstance?.id })
   
   const artifactScreens = useMemo(() => {
@@ -1439,6 +1443,57 @@ function RobotsPageContent() {
 
   const { displayUrl: displayedIframeUrl, iframeSrc, handleIframeLoad } = useIframeUrl(iframeRef, activeUrlToDisplay)
 
+  const closeArtifact = useCallback(async (screen: string) => {
+    const artifactIds = artifacts
+      .filter((artifact) => artifact.screen === screen)
+      .map((artifact) => artifact.id)
+
+    if (artifactIds.length === 0) return
+
+    removeArtifactLocally(screen)
+    if (activeBrowserTab.kind === 'artifact' && activeBrowserTab.screen === screen) {
+      setActiveBrowserTab({ kind: 'preview' })
+    }
+
+    try {
+      await deleteInstanceArtifacts(artifactIds)
+    } catch (error) {
+      console.error("Error deleting artifact:", error)
+      await refetchArtifacts()
+      toast({
+        title: "Could not close artifact",
+        description: error instanceof Error ? error.message : "Please try again.",
+        variant: "destructive",
+      })
+    }
+  }, [
+    activeBrowserTab,
+    artifacts,
+    refetchArtifacts,
+    removeArtifactLocally,
+    toast,
+  ])
+
+  const pinArtifact = useCallback(async (screen: string) => {
+    const artifact = artifacts.find((candidate) => candidate.screen === screen)
+    if (!artifact) return
+
+    try {
+      pinArtifactToNavigation({
+        artifactUrl: artifact.url,
+        title: getScreenMetadata(screen, t).label,
+      })
+      await closeArtifact(screen)
+    } catch (error) {
+      console.error("Error pinning artifact:", error)
+      toast({
+        title: "Could not pin artifact",
+        description: error instanceof Error ? error.message : "Please try again.",
+        variant: "destructive",
+      })
+    }
+  }, [artifacts, closeArtifact, t, toast])
+
   const calculateScale = useCallback(() => {
     if (!containerRef.current) return
 
@@ -1531,13 +1586,30 @@ function RobotsPageContent() {
     },
     ...allArtifactItems.map((item) => {
       const Icon = item.icon
+      const canManageArtifact =
+        item.kind === 'artifact' && item.screen && item.screen !== 'database'
+
       return {
         value: item.id,
         label: item.label,
         icon: Icon ? <Icon className="h-3.5 w-3.5" /> : undefined,
+        leadingAction: canManageArtifact
+          ? {
+              label: `Pin ${item.label} to navigation`,
+              icon: <Plus className="h-2.5 w-2.5" />,
+              onSelect: () => void pinArtifact(item.screen!),
+            }
+          : undefined,
+        trailingAction: canManageArtifact
+          ? {
+              label: `Close ${item.label} artifact`,
+              icon: <X className="h-2.5 w-2.5" />,
+              onSelect: () => void closeArtifact(item.screen!),
+            }
+          : undefined,
       }
     }),
-  ], [allArtifactItems])
+  ], [allArtifactItems, closeArtifact, pinArtifact])
   const desktopWorkspaceTabs = useMemo(() => workspaceTabs.slice(1), [workspaceTabs])
 
   const activeWorkspaceTab = workspaceTabs.some((tab) => tab.value === mobileWorkspaceTab)

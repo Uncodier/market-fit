@@ -29,6 +29,22 @@ function hasAuthenticationCredentials(request: Request): boolean {
   return Boolean(authorization?.trim() || cookie?.trim())
 }
 
+export function isSiteManagerRole(role: unknown): role is string {
+  return typeof role === "string" && SITE_MANAGER_ROLES.has(role)
+}
+
+export async function getCurrentUserSiteRole(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  siteId: string
+): Promise<string | null> {
+  const { data: role, error } = await supabase.rpc(
+    "current_user_site_role",
+    { p_site_id: siteId }
+  )
+
+  return error || typeof role !== "string" ? null : role
+}
+
 export async function requireSiteAccess(
   request: Request,
   siteId: string,
@@ -52,18 +68,14 @@ export async function requireSiteAccess(
     }
   }
 
-  const { data: role, error: roleError } = await supabase.rpc(
-    "current_user_site_role",
-    { p_site_id: siteId }
-  )
-
-  if (roleError || typeof role !== "string") {
+  const role = await getCurrentUserSiteRole(supabase, siteId)
+  if (!role) {
     return {
       error: NextResponse.json({ error: "Forbidden" }, { status: 403 }),
     }
   }
 
-  if (options.requireManager && !SITE_MANAGER_ROLES.has(role)) {
+  if (options.requireManager && !isSiteManagerRole(role)) {
     return {
       error: NextResponse.json({ error: "Forbidden" }, { status: 403 }),
     }

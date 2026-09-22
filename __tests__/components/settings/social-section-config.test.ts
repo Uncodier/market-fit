@@ -4,10 +4,10 @@ import {
 } from "@/app/components/settings/social-section-config"
 
 describe("social settings platform options", () => {
-  it("hides Instagram from new account connections", () => {
+  it("allows Instagram for new account connections", () => {
     expect(
       NEW_ACCOUNT_SOCIAL_PLATFORMS.map(({ value }) => value)
-    ).not.toContain("instagram")
+    ).toContain("instagram")
   })
 
   it("keeps Instagram metadata for existing accounts", () => {

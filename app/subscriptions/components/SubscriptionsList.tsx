@@ -1,6 +1,7 @@
 "use client"
 
 import React, { useState } from "react"
+import { useRouter } from "next/navigation"
 import { Subscription } from "@/app/types"
 import { Button } from "@/app/components/ui/button"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/app/components/ui/dropdown-menu"
@@ -44,6 +45,7 @@ interface SubscriptionsListProps {
 
 export function SubscriptionsList({ subscriptions, siteId, onUpdate }: SubscriptionsListProps) {
   const { t } = useLocalization()
+  const router = useRouter()
   const [updating, setUpdating] = useState<string | null>(null)
   const pageTotal = subscriptions.reduce((sum, sub) => sum + (Number(sub.amount) || 0), 0)
 
@@ -94,7 +96,11 @@ export function SubscriptionsList({ subscriptions, siteId, onUpdate }: Subscript
             const amount = Number(sub.amount) || 0
 
             return (
-              <DocumentListRow key={sub.id} accent={subscriptionAccent(sub.status)}>
+              <DocumentListRow
+                key={sub.id}
+                accent={subscriptionAccent(sub.status)}
+                onClick={() => router.push(`/subscriptions/${sub.id}`)}
+              >
                 <TableCell className="py-3.5">
                   <EntityCell
                     name={customer}

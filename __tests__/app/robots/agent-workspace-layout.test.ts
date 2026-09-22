@@ -28,6 +28,13 @@ describe("agent workspace layout", () => {
     expect(robotsPageSource).toContain("lg:grid-rows-[auto_1fr]")
   })
 
+  it("keeps pin and close actions on artifact tabs", () => {
+    expect(robotsPageSource).toContain("leadingAction: canManageArtifact")
+    expect(robotsPageSource).toContain("trailingAction: canManageArtifact")
+    expect(robotsPageSource).toContain("pinArtifact(item.screen!)")
+    expect(robotsPageSource).toContain("closeArtifact(item.screen!)")
+  })
+
   it("shrinks the address or file field before the view selector", () => {
     expect(robotsPageSource).toContain(
       "grid-cols-[minmax(33%,1fr)_auto_auto_auto]",

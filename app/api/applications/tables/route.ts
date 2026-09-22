@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server"
-import { createClient, createServiceClient } from "@/lib/supabase/server"
+import { createClient } from "@/lib/supabase/server"
 import { getApiKeyFromRequest, isValidApiKey } from "@/app/lib/api-keys-config"
+import {
+  getCurrentUserSiteRole,
+  isSiteManagerRole,
+} from "@/lib/auth/api-site-access"
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
@@ -13,60 +17,53 @@ export async function GET(request: Request) {
   // 1. Authenticate (Dual Auth: API Key or User Cookie)
   const apiKey = getApiKeyFromRequest(request.headers)
   const isServerRequest = isValidApiKey(apiKey)
+  const mainSupabase = isServerRequest ? null : await createClient()
 
-  if (!isServerRequest) {
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+  if (mainSupabase) {
+    const { data: { user }, error: authError } = await mainSupabase.auth.getUser()
 
-    if (!user) {
+    if (authError || !user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
+  }
 
-    // 2. Authorize via tenant_users
-    // apps_tenants is in the repositories database
-    const { createClient: createSupabaseClient } = await import('@supabase/supabase-js')
-    const reposSupabase = createSupabaseClient(
-      process.env.NEXT_PUBLIC_REPOSITORIES_SUPABASE_URL!,
-      process.env.REPOSITORIES_SUPABASE_SECRET_KEY!
-    )
+  try {
+    const repositoriesUrl = process.env.NEXT_PUBLIC_REPOSITORIES_SUPABASE_URL
+    const repositoriesKey = process.env.REPOSITORIES_SUPABASE_SECRET_KEY
+    if (!repositoriesUrl || !repositoriesKey) {
+      return NextResponse.json(
+        { error: "Repositories database not configured" },
+        { status: 500 }
+      )
+    }
 
+    const { createClient: createSupabaseClient } = await import("@supabase/supabase-js")
+    const reposSupabase = createSupabaseClient(repositoriesUrl, repositoriesKey)
     const { data: tenantData, error: tenantError } = await reposSupabase
       .from("apps_tenants")
-      .select("tenant_id")
+      .select("tenant_id, site_id, schema")
       .eq("schema", schema)
-      .single()
+      .maybeSingle()
 
     if (tenantError || !tenantData) {
       return NextResponse.json({ error: "Tenant not found for schema" }, { status: 404 })
     }
 
-    const { data: userAccess, error: accessError } = await reposSupabase
-      .from("tenant_users")
-      .select("id")
-      .eq("tenant_id", tenantData.tenant_id)
-      .eq("user_id", user.id)
-      .single()
-
-    if (accessError || !userAccess) {
-      return NextResponse.json(
-        { error: "Forbidden: User does not have access to this tenant" },
-        { status: 403 }
-      )
+    if (mainSupabase) {
+      const role = await getCurrentUserSiteRole(mainSupabase, tenantData.site_id)
+      if (!isSiteManagerRole(role)) {
+        return NextResponse.json(
+          { error: "Forbidden: User does not have access to this tenant" },
+          { status: 403 }
+        )
+      }
     }
-  }
 
-  try {
-    // 3. Introspect schema using our custom RPC function
+    // 2. Introspect schema using our custom RPC function
     // This bypasses the need for PostgREST to have the schema exposed directly
     // which can be buggy in Supabase when dynamically creating schemas
-    const { createClient: createSupabaseClient } = await import('@supabase/supabase-js')
-    const reposSupabase = createSupabaseClient(
-      process.env.NEXT_PUBLIC_REPOSITORIES_SUPABASE_URL!,
-      process.env.REPOSITORIES_SUPABASE_SECRET_KEY!
-    )
-
     const { data: introspectData, error: introspectError } = await reposSupabase
-      .rpc('introspect_schema_tables', { schema_name: schema })
+      .rpc("introspect_schema_tables", { schema_name: tenantData.schema })
 
     if (introspectError) {
       console.error(`Error introspecting schema ${schema} via RPC:`, introspectError)
@@ -74,7 +71,7 @@ export async function GET(request: Request) {
     }
 
     const { data: countsData, error: countsError } = await reposSupabase
-      .rpc('get_schema_table_counts', { schema_name: schema })
+      .rpc("get_schema_table_counts", { schema_name: tenantData.schema })
 
     if (countsError) {
       console.error(`Error getting table counts for schema ${schema} via RPC:`, countsError)
@@ -92,7 +89,7 @@ export async function GET(request: Request) {
 
       return {
         name: tableName,
-        schema: schema,
+        schema: tenantData.schema,
         columns: tableColumns,
         primaryKey: primaryKeyCol ? primaryKeyCol.name : null,
         count: counts[tableName] || 0

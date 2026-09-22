@@ -5,10 +5,18 @@ import { TabsList, TabsTrigger } from "@/app/components/ui/tabs"
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/app/components/ui/dropdown-menu"
 import { MoreHorizontal } from "@/app/components/ui/icons"
 
+export interface TabAction {
+  label: string
+  icon: React.ReactNode
+  onSelect: () => void
+}
+
 export interface TabItem {
   value: string
   label: React.ReactNode
   icon?: React.ReactNode
+  leadingAction?: TabAction
+  trailingAction?: TabAction
 }
 
 interface ResponsiveTabsListProps {
@@ -151,6 +159,32 @@ export function ResponsiveTabsList({
     }
   }
 
+  const renderAction = (
+    action: TabAction,
+    position: "leading" | "trailing",
+    compact = false,
+  ) => (
+    <button
+      type="button"
+      aria-label={action.label}
+      title={action.label}
+      className={
+        compact
+          ? "inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-black/10 hover:text-foreground dark:hover:bg-white/10"
+          : `absolute top-1/2 z-10 inline-flex h-4 w-4 -translate-y-1/2 items-center justify-center rounded-full text-muted-foreground opacity-0 transition-opacity hover:bg-black/10 hover:text-foreground group-hover:opacity-100 group-focus-within:opacity-100 dark:hover:bg-white/10 ${
+              position === "leading" ? "left-1.5" : "right-1.5"
+            }`
+      }
+      onClick={(event) => {
+        event.preventDefault()
+        event.stopPropagation()
+        action.onSelect()
+      }}
+    >
+      {action.icon}
+    </button>
+  )
+
   return (
     <div
       className={`flex items-center w-full min-w-0 ${containerClassName || ''}`}
@@ -167,7 +201,11 @@ export function ResponsiveTabsList({
             key={tab.value} 
             className={`inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ${triggerClassName || ''}`}
           >
-            <span className="flex items-center gap-2 whitespace-nowrap px-2 py-0">
+            <span
+              className={`flex items-center gap-2 whitespace-nowrap py-0 ${
+                tab.leadingAction || tab.trailingAction ? "px-7" : "px-2"
+              }`}
+            >
               {tab.icon && (
                 <span className="inline-flex h-4 w-4 shrink-0 items-center justify-center leading-none [&>svg]:block [&>svg]:h-4 [&>svg]:w-4">
                   {tab.icon}
@@ -181,20 +219,27 @@ export function ResponsiveTabsList({
 
       <TabsList className={`inline-flex max-w-full flex-nowrap justify-start ${className || ''}`}>
         {visibleTabs.map((tab) => (
-          <TabsTrigger
-            key={tab.value}
-            value={tab.value}
-            className={`rounded-[inherit] ${triggerClassName || ''}`}
-          >
-            <span className="flex items-center gap-2 whitespace-nowrap truncate max-w-[200px] px-2 py-0">
-              {tab.icon && (
-                <span className="inline-flex h-4 w-4 shrink-0 items-center justify-center leading-none [&>svg]:block [&>svg]:h-4 [&>svg]:w-4">
-                  {tab.icon}
-                </span>
-              )}
-              <span className="truncate">{tab.label}</span>
-            </span>
-          </TabsTrigger>
+          <div key={tab.value} className="group relative shrink-0">
+            <TabsTrigger
+              value={tab.value}
+              className={`rounded-[inherit] ${triggerClassName || ''}`}
+            >
+              <span
+                className={`flex max-w-[200px] items-center gap-2 whitespace-nowrap py-0 ${
+                  tab.leadingAction || tab.trailingAction ? "px-7" : "px-2"
+                }`}
+              >
+                {tab.icon && (
+                  <span className="inline-flex h-4 w-4 shrink-0 items-center justify-center leading-none [&>svg]:block [&>svg]:h-4 [&>svg]:w-4">
+                    {tab.icon}
+                  </span>
+                )}
+                <span className="truncate">{tab.label}</span>
+              </span>
+            </TabsTrigger>
+            {tab.leadingAction && renderAction(tab.leadingAction, "leading")}
+            {tab.trailingAction && renderAction(tab.trailingAction, "trailing")}
+          </div>
         ))}
 
         {needsOverflow && hiddenTabs.length > 0 && (
@@ -218,13 +263,23 @@ export function ResponsiveTabsList({
                   onClick={() => onTabChange(tab.value)}
                   className={tab.value === activeTab ? 'bg-muted font-medium' : ''}
                 >
-                  <div className="flex items-center gap-2 w-full">
-                    {tab.icon && (
-                      <span className="inline-flex h-4 w-4 shrink-0 items-center justify-center leading-none [&>svg]:block [&>svg]:h-4 [&>svg]:w-4">
-                        {tab.icon}
-                      </span>
+                  <div className="flex w-full items-center justify-between gap-2">
+                    <div className="flex min-w-0 items-center gap-2">
+                      {tab.icon && (
+                        <span className="inline-flex h-4 w-4 shrink-0 items-center justify-center leading-none [&>svg]:block [&>svg]:h-4 [&>svg]:w-4">
+                          {tab.icon}
+                        </span>
+                      )}
+                      <span className="truncate">{tab.label}</span>
+                    </div>
+                    {(tab.leadingAction || tab.trailingAction) && (
+                      <div className="flex shrink-0 items-center gap-1">
+                        {tab.leadingAction &&
+                          renderAction(tab.leadingAction, "leading", true)}
+                        {tab.trailingAction &&
+                          renderAction(tab.trailingAction, "trailing", true)}
+                      </div>
                     )}
-                    <span className="truncate">{tab.label}</span>
                   </div>
                 </DropdownMenuItem>
               ))}

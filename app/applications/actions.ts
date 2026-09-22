@@ -2,17 +2,48 @@
 
 import { createClient } from "@supabase/supabase-js"
 import { createClient as createServerClient } from "@/lib/supabase/server"
+import {
+  getCurrentUserSiteRole,
+  isSiteManagerRole,
+} from "@/lib/auth/api-site-access"
 
-// Create a client for the repositories database with the service role key
-function getReposClient(schema: string) {
-  const supabaseUrl = process.env.NEXT_PUBLIC_REPOSITORIES_SUPABASE_URL!
-  const supabaseKey = process.env.REPOSITORIES_SUPABASE_SECRET_KEY!
-  
-  const client = createClient(supabaseUrl, supabaseKey, {
+async function getAuthorizedReposContext(schema: string) {
+  const authClient = await createServerClient()
+  const { data: { user }, error: authError } = await authClient.auth.getUser()
+
+  if (authError || !user) {
+    throw new Error("Unauthorized")
+  }
+
+  const supabaseUrl = process.env.NEXT_PUBLIC_REPOSITORIES_SUPABASE_URL
+  const supabaseKey = process.env.REPOSITORIES_SUPABASE_SECRET_KEY
+  if (!supabaseUrl || !supabaseKey) {
+    throw new Error("Repositories database not configured")
+  }
+
+  const repositories = createClient(supabaseUrl, supabaseKey, {
     auth: { persistSession: false }
   })
-  
-  return client.schema(schema)
+
+  const { data: tenant, error: tenantError } = await repositories
+    .from("apps_tenants")
+    .select("site_id, schema")
+    .eq("schema", schema)
+    .maybeSingle()
+
+  if (tenantError || !tenant) {
+    throw new Error("Tenant not found")
+  }
+
+  const role = await getCurrentUserSiteRole(authClient, tenant.site_id)
+  if (!isSiteManagerRole(role)) {
+    throw new Error("Forbidden")
+  }
+
+  return {
+    client: repositories.schema("public"),
+    schema: tenant.schema as string,
+  }
 }
 
 export async function updateTableRow({
@@ -29,17 +60,11 @@ export async function updateTableRow({
   data: Record<string, any>
 }) {
   try {
-    const authClient = await createServerClient()
-    const { data: { user } } = await authClient.auth.getUser()
-    
-    if (!user) {
-      throw new Error("Unauthorized")
-    }
-    
-    const client = getReposClient('public')
+    const { client, schema: authorizedSchema } =
+      await getAuthorizedReposContext(schema)
     
     const { data: rpcData, error } = await client.rpc('update_schema_table_row', {
-      schema_name: schema,
+      schema_name: authorizedSchema,
       table_name: table,
       pk_col: primaryKey,
       pk_val: String(primaryKeyValue),
@@ -68,17 +93,11 @@ export async function insertTableRow({
   data: Record<string, any>
 }) {
   try {
-    const authClient = await createServerClient()
-    const { data: { user } } = await authClient.auth.getUser()
-    
-    if (!user) {
-      throw new Error("Unauthorized")
-    }
-    
-    const client = getReposClient('public')
+    const { client, schema: authorizedSchema } =
+      await getAuthorizedReposContext(schema)
     
     const { data: rpcData, error } = await client.rpc('insert_schema_table_row', {
-      schema_name: schema,
+      schema_name: authorizedSchema,
       table_name: table,
       insert_data: data
     })
@@ -113,18 +132,11 @@ export async function fetchTableData({
   sorts?: { column: string; ascending: boolean }[]
 }) {
   try {
-    // Basic auth check
-    const authClient = await createServerClient()
-    const { data: { user } } = await authClient.auth.getUser()
-    
-    if (!user) {
-      throw new Error("Unauthorized")
-    }
-    
-    const client = getReposClient('public')
+    const { client, schema: authorizedSchema } =
+      await getAuthorizedReposContext(schema)
     
     const { data: rpcData, error } = await client.rpc('select_schema_table', {
-      schema_name: schema,
+      schema_name: authorizedSchema,
       table_name: table,
       query_filters: filters,
       query_sorts: sorts,
@@ -159,17 +171,11 @@ export async function deleteTableRows({
   primaryKeyValues: any[]
 }) {
   try {
-    const authClient = await createServerClient()
-    const { data: { user } } = await authClient.auth.getUser()
-    
-    if (!user) {
-      throw new Error("Unauthorized")
-    }
-    
-    const client = getReposClient('public')
+    const { client, schema: authorizedSchema } =
+      await getAuthorizedReposContext(schema)
     
     const { data: rpcData, error } = await client.rpc('delete_schema_table_rows', {
-      schema_name: schema,
+      schema_name: authorizedSchema,
       table_name: table,
       pk_col: primaryKey,
       pk_vals: primaryKeyValues

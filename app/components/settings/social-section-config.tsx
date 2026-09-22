@@ -35,10 +35,7 @@ export const SOCIAL_PLATFORMS: SocialPlatformOption[] = [
   { value: "bluesky", label: "Bluesky", icon: BlueskyIcon },
 ]
 
-// Instagram remains in the complete list so existing accounts keep their label and icon.
-export const NEW_ACCOUNT_SOCIAL_PLATFORMS = SOCIAL_PLATFORMS.filter(
-  ({ value }) => value !== "instagram"
-)
+export const NEW_ACCOUNT_SOCIAL_PLATFORMS = SOCIAL_PLATFORMS
 
 const OAUTH_CONNECT_PLATFORM_VALUES = new Set([
   "facebook",
