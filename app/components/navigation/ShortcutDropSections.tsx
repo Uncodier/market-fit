@@ -30,11 +30,13 @@ export function ShortcutDropSections({
           isOverPinned ? "bg-accent/40" : ""
         }`}
       >
-        {pinnedShortcuts.map(renderShortcut)}
-        {pinnedOverview && (
+        {pinnedOverview ? (
           <div className="my-2 w-full border-y border-black/5 py-2 dark:border-white/5">
             {renderShortcut(pinnedOverview)}
+            {pinnedShortcuts.map(renderShortcut)}
           </div>
+        ) : (
+          pinnedShortcuts.map(renderShortcut)
         )}
       </div>
 
