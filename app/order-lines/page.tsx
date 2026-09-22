@@ -49,6 +49,7 @@ import {
   OrderLinesTable,
   OrderLinesTableSkeleton,
 } from "./components/OrderLinesTable"
+import { useDebounce } from "use-debounce"
 
 const PAGE_SIZE = 50
 
@@ -106,6 +107,7 @@ export default function OrderLinesPage() {
   const router = useRouter()
   const [page, setPage] = useState(1)
   const [searchQuery, setSearchQuery] = useState("")
+  const [debouncedSearchQuery] = useDebounce(searchQuery, 300)
   const [statusFilter, setStatusFilter] =
     useState<OrderLineFilter>("all")
   const [locationFilter, setLocationFilter] = useState("all")
@@ -146,7 +148,7 @@ export default function OrderLinesPage() {
         siteId: currentSite.id,
         page,
         pageSize: PAGE_SIZE,
-        q: searchQuery,
+        q: debouncedSearchQuery,
         status: statusFilter,
         locationId: locationFilter,
         startDate: dateRange?.startDate.toISOString(),
@@ -156,8 +158,8 @@ export default function OrderLinesPage() {
     : null
 
   const { data, error, isLoading, mutate } = useSWR(
-    params,
-    async (request) => {
+    params ? { resource: "order-lines", ...params } : null,
+    async ({ resource: _resource, ...request }) => {
       const result = await listOrderLines(request)
       if (result.error) throw new Error(result.error)
       return result
@@ -166,7 +168,7 @@ export default function OrderLinesPage() {
 
   useOrdersRealtime(currentSite?.id, () => {
     void mutate()
-  })
+  }, { includeUnits: true })
   const operations = useOrderLineOperations({
     siteId: currentSite?.id,
     user,

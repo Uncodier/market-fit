@@ -41,9 +41,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/ca
 import { Badge } from "@/app/components/ui/badge"
 import { Button } from "@/app/components/ui/button"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/app/components/ui/tooltip"
-import { Plus, Play, RotateCcw as RefreshCw, AlertCircle, FileText, Bot, Eye, Trash2, GitFork, Link, Copy, Globe, Mail, Phone, Tag, UploadCloud, Download, ZoomIn, X, Send } from "@/app/components/ui/icons"
+import { Plus, Play, RotateCcw as RefreshCw, AlertCircle, Bot, Eye, Trash2, GitFork, Link, Copy, Tag, UploadCloud, Download, ZoomIn, X, Send } from "@/app/components/ui/icons"
 import { AudioPlayer } from "./audio-player"
-import { SocialIcon } from "@/app/components/ui/social-icons"
 import { InstanceNode } from "@/app/types/instance-nodes"
 import { toast } from "sonner"
 import { uploadAssetFile } from "@/app/assets/actions"
@@ -72,8 +71,8 @@ import {
   ImprentaLazyCardImage,
 } from "@/app/components/agents/imprenta-lazy-media"
 import { ImprentaAudienceLeadsCarousel } from "@/app/components/agents/imprenta-audience-leads-carousel"
+import { ImprentaPublishDestinationSelector } from "@/app/components/agents/imprenta-publish-destination-selector"
 import type { AudienceLeadRow } from "@/app/audiences/actions"
-import { isSocialMediaEntryConnected } from "@/app/components/settings/data-adapter"
 import {
   destinationsRequireAudience,
   getPublishContextAnchorY,
@@ -98,7 +97,6 @@ import {
 import { WF_LOAD_NODE_TYPES } from "@/app/components/workflows/types"
 import {
   buildPublishRouting,
-  getPublishChannelAvailability,
   getTestRecipient,
 } from "@/app/components/agents/imprenta-publish-routing"
 import { executeImprentaNode } from "@/app/components/agents/imprenta-execution-client"
@@ -1297,129 +1295,33 @@ const ImprentaNodeCardInner = memo(({
                                   </TooltipProvider>
                                 )}
 
-                                {node.type === 'publish' && (() => {
-                                  const siteUrl = currentSite?.url && String(currentSite.url).trim();
-                                  const channelAvailability = getPublishChannelAvailability(currentSite);
-                                  const isEmailDistributionAvailable = channelAvailability.email;
-                                  const isWhatsappAvailable = channelAvailability.whatsapp;
-                                  const isTelegramAvailable = channelAvailability.telegram;
-                                  const isSmsAvailable = channelAvailability.sms;
-                                  const isVoiceAvailable = channelAvailability.voice;
-                                  const rawDestinations = (node.settings as any)?.publish_destinations;
-                                  // Treat unset destinations as blog-on-by-default when the site has a URL,
-                                  // so new publish nodes land preconfigured for the most common case.
-                                  const currentDestinations: string[] = Array.isArray(rawDestinations)
-                                    ? rawDestinations
-                                    : (siteUrl ? ['blog'] : []);
-                                  const toggleDestination = async (key: string) => {
-                                    const isOn = currentDestinations.includes(key);
-                                    const newDest = isOn
-                                      ? currentDestinations.filter((d: string) => d !== key)
-                                      : [...currentDestinations, key];
-                                    actions.setNodes((prev: InstanceNode[]) => prev.map((n: InstanceNode) => n.id === node.id ? { ...n, settings: { ...((n.settings as any) || {}), publish_destinations: newDest } } : n));
-                                    await actions.trackNodeSave(
-                                      node.id,
-                                      supabase.from('instance_nodes').update({
-                                        settings: { ...((node.settings as any) || {}), publish_destinations: newDest }
-                                      }).eq('id', node.id),
-                                      "settings"
-                                    );
-                                  };
-
-                                  const renderToggle = (key: string, label: string, icon: React.ReactNode, hint: string) => {
-                                    const isSelected = currentDestinations.includes(key);
-                                    return (
-                                      <Tooltip key={key}>
-                                        <TooltipTrigger asChild>
-                                          <label
-                                            className="flex w-full min-w-0 cursor-pointer select-none items-center gap-1.5 text-[11px]"
-                                            onClick={(e) => e.stopPropagation()}
-                                          >
-                                            <span className="flex items-center justify-center shrink-0 text-muted-foreground w-[12px] h-[12px] [&>span]:w-full [&>span]:h-full [&>div]:w-full [&>div]:h-full [&>svg]:w-full [&>svg]:h-full">
-                                              {icon}
-                                            </span>
-                                            <span
-                                              className={`min-w-0 flex-1 truncate text-right font-medium ${isSelected ? 'text-foreground' : 'text-muted-foreground'}`}
-                                            >
-                                              {label}
-                                            </span>
-                                            <Switch
-                                              checked={isSelected}
-                                              onCheckedChange={() => toggleDestination(key)}
-                                              onClick={(e) => e.stopPropagation()}
-                                            />
-                                          </label>
-                                        </TooltipTrigger>
-                                        <TooltipContent side="top" className="text-[11px] max-w-[220px]">
-                                          {hint}
-                                        </TooltipContent>
-                                      </Tooltip>
-                                    );
-                                  };
-
-                                  return (
-                                    <TooltipProvider delayDuration={200}>
-                                      <div className="grid w-full grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-3 lg:grid-cols-4 [&>*]:min-w-0">
-                                        {(currentSite?.settings?.social_media || [])
-                                          .filter(isSocialMediaEntryConnected)
-                                          .map((sm: any) => {
-                                            const platformLabel = String(sm.platform).charAt(0).toUpperCase() + String(sm.platform).slice(1);
-                                            return renderToggle(
-                                              sm.platform,
-                                              platformLabel,
-                                              <SocialIcon platform={sm.platform} size={12} color="currentColor" />,
-                                              `Publish this content to your connected ${platformLabel} account.`
-                                            );
-                                          })}
-                                        {siteUrl && renderToggle(
-                                          'blog',
-                                          'Blog',
-                                          <Globe size={12} />,
-                                          'Publish this content as a blog post on your site.'
-                                        )}
-                                        {isEmailDistributionAvailable && renderToggle(
-                                          'mail',
-                                          'Mail',
-                                          <Mail size={12} />,
-                                          'Send this content as an individual email to the selected audience.'
-                                        )}
-                                        {isEmailDistributionAvailable && renderToggle(
-                                          'newsletter',
-                                          'Newsletter',
-                                          <FileText
-                                            size={12}
-                                            className="[&>svg]:block [&>svg]:-translate-x-px"
-                                          />,
-                                          'Include this content in your next newsletter to subscribers.'
-                                        )}
-                                        {isWhatsappAvailable && renderToggle(
-                                          'whatsapp',
-                                          'WhatsApp',
-                                          <SocialIcon platform="whatsapp" size={12} color="currentColor" />,
-                                          'Send this content through your connected WhatsApp channel.'
-                                        )}
-                                        {isTelegramAvailable && renderToggle(
-                                          'telegram',
-                                          'Telegram',
-                                          <SocialIcon platform="telegram" size={12} color="currentColor" />,
-                                          'Send this content through your connected Telegram channel.'
-                                        )}
-                                        {isSmsAvailable && renderToggle(
-                                          'sms',
-                                          'SMS',
-                                          <Phone size={12} />,
-                                          'Send this content as an SMS message.'
-                                        )}
-                                        {isVoiceAvailable && renderToggle(
-                                          'voice',
-                                          'Voice',
-                                          <Play size={12} />,
-                                          'Broadcast this content as a voice message.'
-                                        )}
-                                      </div>
-                                    </TooltipProvider>
-                                  );
-                                })()}
+                                {node.type === 'publish' && (
+                                  <ImprentaPublishDestinationSelector
+                                    site={currentSite}
+                                    destinations={(node.settings as any)?.publish_destinations}
+                                    onDestinationsChange={async (publishDestinations) => {
+                                      const settings = {
+                                        ...((node.settings as any) || {}),
+                                        publish_destinations: publishDestinations,
+                                      }
+                                      actions.setNodes((prev: InstanceNode[]) =>
+                                        prev.map((item: InstanceNode) =>
+                                          item.id === node.id
+                                            ? { ...item, settings }
+                                            : item
+                                        )
+                                      )
+                                      await actions.trackNodeSave(
+                                        node.id,
+                                        supabase
+                                          .from('instance_nodes')
+                                          .update({ settings })
+                                          .eq('id', node.id),
+                                        "settings"
+                                      )
+                                    }}
+                                  />
+                                )}
                                 
                                 {node.type !== 'publish' && node.type !== 'generate-audience' && (
                                   <div className="flex justify-start w-full">
@@ -2680,8 +2582,8 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
       .subscribe()
 
     let visibilityTimeout: NodeJS.Timeout | null = null
-    const reconcileFromServer = async () => {
-      const data = await refreshImprentaData()
+    const reconcileFromServer = async (includeLogs: boolean) => {
+      const data = await refreshImprentaData({ includeLogs })
       if (!data) return
       setNodes(data.nodes.filter(n => !deletedNodeIdsRef.current.has(n.id)))
       setContexts(data.contexts)
@@ -2691,7 +2593,7 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
       if (document.visibilityState === 'visible') {
         if (visibilityTimeout) clearTimeout(visibilityTimeout)
         visibilityTimeout = setTimeout(() => {
-          void reconcileFromServer()
+          void reconcileFromServer(true)
         }, 1000)
       }
     }
@@ -2704,9 +2606,9 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
         ['running', 'pending', 'starting'].includes(n.status)
       )
       if (hasInFlight && document.visibilityState === 'visible') {
-        void reconcileFromServer()
+        void reconcileFromServer(false)
       }
-    }, 5000)
+    }, 15000)
 
     return () => {
       if (visibilityTimeout) clearTimeout(visibilityTimeout)
@@ -2814,6 +2716,9 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
         contextObj.publish_channels = publishRouting.deliveryChannels
         contextObj.channel_routing = publishRouting.channelRouting
         contextObj.distributionModes = publishRouting.distributionModes
+        if (publishRouting.voiceMode) {
+          contextObj.publish_voice_mode = publishRouting.voiceMode
+        }
       }
 
       // Remove expectedResults from context to prevent the LLM from duplicating output internally

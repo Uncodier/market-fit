@@ -11,12 +11,43 @@ const DISTRIBUTION_DESTINATIONS = new Set([
   "telegram",
   "sms",
   "voice",
+  "voice-agent-call",
 ])
 
 function destinationChannel(destination: string): string | undefined {
   if (destination === "mail" || destination === "newsletter") return "email"
+  if (destination === "voice-agent-call") return "voice"
   if (DISTRIBUTION_DESTINATIONS.has(destination)) return destination
   return undefined
+}
+
+export type PublishVoiceMode = "tts" | "agent_call"
+
+export function getPublishVoiceMode(destinations: string[]): PublishVoiceMode | undefined {
+  if (destinations.includes("voice-agent-call")) return "agent_call"
+  if (destinations.includes("voice")) return "tts"
+  return undefined
+}
+
+export function togglePublishDestination(
+  destinations: string[],
+  destination: string
+): string[] {
+  if (destinations.includes(destination)) {
+    return destinations.filter((item) => item !== destination)
+  }
+
+  const nextDestinations = destination === "voice-agent-call"
+    ? destinations.filter((item) => !DISTRIBUTION_DESTINATIONS.has(item))
+    : DISTRIBUTION_DESTINATIONS.has(destination)
+      ? destinations.filter(
+          (item) => item !== "voice-agent-call" && (
+            destination !== "voice" || item !== "voice"
+          )
+        )
+      : destinations
+
+  return [...nextDestinations, destination]
 }
 
 export function getPublishChannelAvailability(site?: SiteChannelSource | null) {
@@ -34,10 +65,18 @@ export function buildPublishRouting(
   destinations: string[],
   site?: SiteChannelSource | null
 ) {
+  const effectiveDestinations = destinations.includes("voice-agent-call")
+    ? destinations.filter(
+        (destination) =>
+          destination === "voice-agent-call"
+          || !DISTRIBUTION_DESTINATIONS.has(destination)
+      )
+    : destinations
+  const voiceMode = getPublishVoiceMode(effectiveDestinations)
   const deliveryChannels = Array.from(
-    new Set(destinations.map(destinationChannel).filter((channel): channel is string => !!channel))
+    new Set(effectiveDestinations.map(destinationChannel).filter((channel): channel is string => !!channel))
   )
-  const socialAccounts = destinations.filter(
+  const socialAccounts = effectiveDestinations.filter(
     (destination) => destination !== "blog" && !DISTRIBUTION_DESTINATIONS.has(destination)
   )
   const channelRouting = Object.fromEntries(
@@ -57,10 +96,17 @@ export function buildPublishRouting(
   // channels, Temporal uses publish_channels to invoke the tool once per route.
   if (deliveryChannels.length === 1) {
     bulkMessageOverride.channel = deliveryChannels[0]
+    publishOverride.channel = deliveryChannels[0]
     if (deliveryChannels[0] === "email") {
-      bulkMessageOverride.audience_email_mode = destinations.includes("newsletter")
+      const audienceEmailMode = effectiveDestinations.includes("newsletter")
         ? "newsletter"
         : "mail"
+      bulkMessageOverride.audience_email_mode = audienceEmailMode
+      publishOverride.audience_email_mode = audienceEmailMode
+    }
+    if (deliveryChannels[0] === "voice" && voiceMode) {
+      bulkMessageOverride.voice_mode = voiceMode
+      publishOverride.voice_mode = voiceMode
     }
   }
 
@@ -68,13 +114,15 @@ export function buildPublishRouting(
     deliveryChannels,
     channelRouting,
     distributionModes: {
-      mail: destinations.includes("mail"),
-      newsletter: destinations.includes("newsletter"),
-      whatsapp: destinations.includes("whatsapp"),
-      telegram: destinations.includes("telegram"),
-      sms: destinations.includes("sms"),
-      voice: destinations.includes("voice"),
+      mail: effectiveDestinations.includes("mail"),
+      newsletter: effectiveDestinations.includes("newsletter"),
+      whatsapp: effectiveDestinations.includes("whatsapp"),
+      telegram: effectiveDestinations.includes("telegram"),
+      sms: effectiveDestinations.includes("sms"),
+      voice: effectiveDestinations.includes("voice"),
+      voiceAgentCall: effectiveDestinations.includes("voice-agent-call"),
     },
+    voiceMode,
     bulkMessageOverride,
     publishOverride,
   }

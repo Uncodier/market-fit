@@ -4,6 +4,9 @@ import {
   createPhoneConnectionMetadata,
   filterPhoneNumbersForSite,
   formatPhoneCapabilities,
+  formatPhoneNumber,
+  getAssignedPhoneNumber,
+  getZavuSenderPhoneNumber,
   getVoiceConnectionSuccessMessage,
   getVoiceConnectionStatus,
   hasPhoneCapability,
@@ -13,6 +16,28 @@ import {
 } from "@/app/components/settings/zavu-phone-number-utils"
 
 describe("zavu phone number helpers", () => {
+  it("formats phone numbers for readable display", () => {
+    expect(formatPhoneNumber("+14155550100")).toBe("+1 (415) 555-0100")
+    expect(formatPhoneNumber("+525512345678")).toBe("+52 55 1234 5678")
+    expect(formatPhoneNumber("+442071838750")).toBe("+44 207 183 8750")
+    expect(formatPhoneNumber("4155550100")).toBe("415 555 0100")
+  })
+
+  it("reads assigned numbers from persisted connections and sender responses", () => {
+    expect(getAssignedPhoneNumber({
+      metadata: { phone_number: "+14155550100" },
+    })).toBe("+14155550100")
+    expect(getAssignedPhoneNumber({
+      connected_account: { phoneNumber: "+14155550200" },
+    })).toBe("+14155550200")
+    expect(getZavuSenderPhoneNumber({
+      sender: {
+        phoneNumber: "+14155550300",
+        whatsapp: { displayPhoneNumber: "+14155550400" },
+      },
+    })).toBe("+14155550400")
+  })
+
   it("supports documented and legacy list response shapes", () => {
     const items = [{ id: "pn_1", phoneNumber: "+14155550100" }]
 

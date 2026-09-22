@@ -1,12 +1,67 @@
-import { createApiClient } from "@/lib/supabase/server-client";
 import { NextResponse } from "next/server";
-import { format, subDays, subMonths, startOfMonth, format as formatDate } from "date-fns";
+import { format, subDays, format as formatDate } from "date-fns";
 import { createServiceApiClient } from "@/lib/supabase/server-client";
+import { requireAnalyticsAccess } from "@/lib/auth/api-analytics-access";
+import {
+  normalizedRequestCacheKey,
+  readThroughJsonCache,
+} from "@/lib/redis/json-cache";
 
-// Función auxiliar para crear variación en datos de cohorte
-function createVariation(baseValue: number, maxVariation: number, seed: number): number {
-  const variation = (Math.sin(seed) + 1) * maxVariation - maxVariation / 2;
-  return Math.round(Math.max(0, Math.min(100, baseValue + variation)));
+function analyticsAccessRequest(request: Request) {
+  const url = new URL(request.url);
+  const endValue = url.searchParams.get("endDate");
+  const endDate = endValue ? new Date(endValue) : new Date();
+
+  if (!endValue) url.searchParams.set("endDate", endDate.toISOString());
+  if (!url.searchParams.has("startDate")) {
+    const startDate = new Date(
+      (Number.isFinite(endDate.getTime()) ? endDate : new Date()).getTime()
+        - 30 * 24 * 60 * 60 * 1000
+    );
+    url.searchParams.set("startDate", startDate.toISOString());
+  }
+
+  return new Request(url, { headers: request.headers });
+}
+
+async function withAnalyticsCache(
+  request: Request,
+  namespace: string,
+  load: (request: Request) => Promise<Response>
+) {
+  const scopedRequest = analyticsAccessRequest(request);
+  const access = await requireAnalyticsAccess(scopedRequest);
+  if (access.error) return access.error;
+
+  try {
+    const key = await normalizedRequestCacheKey(namespace, request);
+    const result = await readThroughJsonCache({
+      key,
+      ttlSeconds: 45,
+      compute: async () => {
+        const response = await load(scopedRequest);
+        if (!response.ok) throw response;
+        return {
+          body: await response.json(),
+          headers: Object.fromEntries(response.headers.entries()),
+        };
+      },
+    });
+
+    if (result.status === "busy") {
+      return NextResponse.json(
+        { error: "Analytics are being refreshed" },
+        { status: 503, headers: { "Retry-After": "2" } }
+      );
+    }
+
+    const headers = new Headers(result.value.headers);
+    headers.set("X-Cache", result.status.toUpperCase());
+    return NextResponse.json(result.value.body, { headers });
+  } catch (error) {
+    if (error instanceof Response) return error;
+    throw error;
+  }
 }
 
 interface SegmentDetails {
@@ -58,14 +113,12 @@ async function verifySegmentForSite(supabase: any, segmentId: string, siteId: st
   }
 }
 
-export async function GET(request: Request) {
+async function getCohorts(request: Request) {
   const { searchParams } = new URL(request.url);
   const segmentId = searchParams.get("segmentId");
   const startDateParam = searchParams.get("startDate");
   const endDateParam = searchParams.get("endDate");
   const siteId = searchParams.get("siteId");
-  const userId = searchParams.get("userId");
-  
   if (!siteId) {
     console.error("[Cohorts API] Missing site ID");
     return NextResponse.json(
@@ -77,10 +130,8 @@ export async function GET(request: Request) {
   
   try {
     console.log(`[Cohorts API] Received request for site: ${siteId}, segment: ${segmentId || 'all'}`);
-    // Usar el cliente con permisos de servicio
     const supabase = createServiceApiClient(siteId);
     
-    // Verificar que el sitio existe antes de continuar
     const { data: siteData, error: siteError } = await supabase
       .from("sites")
       .select("id")
@@ -94,22 +145,14 @@ export async function GET(request: Request) {
     
     console.log(`[Cohorts API] Site found: ${siteId}`);
     
-    // Parámetros para las fechas
     const startDate = startDateParam ? new Date(startDateParam) : subDays(new Date(), 30);
     const endDate = endDateParam ? new Date(endDateParam) : new Date();
     
-    // Cohorts always use weekly periods - date range only affects data scope
-    const periodType = 'week'; // Always weekly for consistent cohort analysis
-    
-    console.log(`[Cohorts API] Using ${periodType} periods (always weekly for cohorts)`);
-    
-    // Comprobar si hay ventas sin lead_id asignado
     let salesQuery = supabase
       .from("sales")
       .select("id, lead_id, created_at, amount")
       .eq("site_id", siteId);
       
-    // Aplicar filtros de fecha si están disponibles
     if (startDateParam) {
       salesQuery = salesQuery.gte("created_at", startDate.toISOString());
     }
@@ -121,7 +164,10 @@ export async function GET(request: Request) {
     
     if (salesError) {
       console.error(`[Cohorts API] Error al verificar ventas:`, salesError);
-      return NextResponse.json({ salesCohorts: [], usageCohorts: [] });
+      return NextResponse.json(
+        { salesCohorts: [], usageCohorts: [] },
+        { status: 500 }
+      );
     }
     
     if (!salesData || salesData.length === 0) {
@@ -131,7 +177,6 @@ export async function GET(request: Request) {
     
     console.log(`[Cohorts API] Encontradas ${salesData.length} ventas para el sitio`);
     
-    // Verificar si hay ventas sin lead_id asignado y asignarlas a anonymous_lead
     for (const sale of salesData) {
       if (!sale.lead_id) {
         sale.lead_id = "anonymous_lead";
@@ -141,62 +186,38 @@ export async function GET(request: Request) {
     const salesWithoutLead = salesData.filter(sale => sale.lead_id === "anonymous_lead").length;
     const hasAnonymousLeads = salesWithoutLead > 0;
     
-    if (hasAnonymousLeads) {
-      console.log(`[Cohorts API] Asignadas ${salesWithoutLead} ventas sin lead_id a "anonymous_lead"`);
-      
-      // Mostrar algunas ventas para debug
-      if (salesData.length > 0) {
-        const sampleSale = salesData.find(sale => sale.lead_id === "anonymous_lead");
-        if (sampleSale) {
-          console.log(`[Cohorts API] Ejemplo de venta anónima:`, sampleSale);
-        }
-      }
-    }
-    
-    // Si se solicitó un segmento específico, verificamos que exista
     if (segmentId && segmentId !== "all") {
-      // Verificar que el segmento pertenece al sitio
       const isValidSegment = await verifySegmentForSite(supabase, segmentId, siteId);
       if (!isValidSegment) {
         console.log(`[Cohorts API] Segment ${segmentId} not found or not valid for site ${siteId}`);
         
-        // Si no es válido pero hay ventas sin lead, mostramos la cohorte Unassigned
         if (!hasAnonymousLeads) {
           return NextResponse.json({ salesCohorts: [], usageCohorts: [] });
         }
       }
     }
     
-    // Obtener datos específicos del segmento si se ha seleccionado uno
-    let segmentDetails = null;
     if (segmentId && segmentId !== "all") {
-      // Obtener detalles del segmento
       console.log(`[Cohorts API] Fetching segment details: ${segmentId}`);
-      segmentDetails = await getSegmentDetails(supabase, segmentId);
+      const segmentDetails = await getSegmentDetails(supabase, segmentId);
       
       if (!segmentDetails) {
         console.log(`[Cohorts API] Segment not found: ${segmentId}`);
         
-        // Si no se encontró pero hay ventas sin lead, mostramos la cohorte Unassigned
         if (!hasAnonymousLeads) {
           return NextResponse.json({ salesCohorts: [], usageCohorts: [] });
         }
       }
     }
     
-    // Generar cohortes con fechas actuales (últimos 8 meses)
-    const cohortMonths: { cohort: string, date: Date }[] = [];
     const now = new Date();
     
-    // Generar los periodos para el análisis de cohortes
     let cohortPeriods: { cohort: string, date: Date }[] = [];
     
-    // Función para formatear el periodo - always weekly for cohorts
     const formatPeriod = (date: Date) => {
       return `W${formatDate(date, "w")} ${formatDate(date, "yyyy")}`;
     };
 
-    // Generar periodos para las últimas 8 semanas - always weekly for cohorts
     for (let i = 0; i < 8; i++) {
       const date = subDays(now, i * 7); // Always weekly intervals
       
@@ -207,12 +228,6 @@ export async function GET(request: Request) {
     }
 
     console.log(`[Cohorts API] Generated ${cohortPeriods.length} cohort periods: ${cohortPeriods.map(p => p.cohort).join(', ')}`);
-
-    // DEBUG: Mostrar el orden de las semanas para entender la lógica
-    console.log(`[Cohorts API] DEBUG - Orden de semanas (de más reciente a más antigua):`);
-    cohortPeriods.forEach((period, index) => {
-      console.log(`[Cohorts API] DEBUG - Index ${index}: ${period.cohort} (${formatDate(period.date, 'yyyy-MM-dd')})`);
-    });
 
     // Organizar las ventas por periodo y por lead
     const salesByPeriod = new Map<string, Set<string>>();
@@ -354,31 +369,6 @@ export async function GET(request: Request) {
               }
             });
             
-            console.log(`[Cohorts API] Mapeo visitor_id -> lead_id creado: ${visitorToLead.size} asociaciones`);
-            
-            // DEBUG: Mostrar algunos lead_ids de ventas para comparación
-            const sampleSalesLeads = leadsWithSales.slice(0, 5);
-            console.log(`[Cohorts API] DEBUG - Sample lead_ids from sales:`, sampleSalesLeads);
-            
-            // DEBUG: Mostrar rango de fechas de los eventos
-            if (allSessionsData && allSessionsData.length > 0) {
-              const sessionDates = allSessionsData.map(s => s.created_at).sort();
-              console.log(`[Cohorts API] DEBUG - Rango de fechas de eventos: ${sessionDates[0]} a ${sessionDates[sessionDates.length - 1]}`);
-              
-              // Mostrar distribución de eventos por visitor_id
-              const eventsByVisitor = new Map<string, number>();
-              allSessionsData.forEach(event => {
-                const count = eventsByVisitor.get(event.visitor_id) || 0;
-                eventsByVisitor.set(event.visitor_id, count + 1);
-              });
-              
-              console.log(`[Cohorts API] DEBUG - Distribución de eventos por visitor_id (primeros 5):`);
-              Array.from(eventsByVisitor.entries()).slice(0, 5).forEach(([visitorId, count]) => {
-                const leadId = visitorToLead.get(visitorId) || 'unknown';
-                console.log(`  Visitor ${visitorId} (Lead: ${leadId}): ${count} eventos`);
-              });
-            }
-            
             // Organizar TODOS los eventos por lead_id y fecha
             const sessionsByUserAndWeek = new Map<string, Set<string>>();
             
@@ -398,40 +388,6 @@ export async function GET(request: Request) {
               }
             }
             
-            console.log(`[Cohorts API] Organizados eventos para ${sessionsByUserAndWeek.size} leads únicos`);
-            
-            // DEBUG: Verificar que tenemos eventos para los leads con ventas
-            const leadsWithEvents = Array.from(sessionsByUserAndWeek.keys());
-            const overlap = leadsWithSales.filter(leadId => leadsWithEvents.includes(leadId));
-            console.log(`[Cohorts API] DEBUG - Lead_ids que aparecen en ambos (ventas y eventos):`, overlap.length, 'de', leadsWithSales.length, 'leads con ventas');
-            
-            // DEBUG: Mostrar ejemplo detallado del usuario W28
-            const w28User = 'b46314c1-a7a8-493f-8ff6-6f72df3541fc';
-            if (sessionsByUserAndWeek.has(w28User)) {
-              const w28UserWeeks = sessionsByUserAndWeek.get(w28User);
-              console.log(`[Cohorts API] DEBUG - Usuario W28 ${w28User} activo en semanas:`, Array.from(w28UserWeeks || []).sort());
-              
-              // Mostrar sus eventos más recientes
-              const userVisitorIds = Array.from(visitorToLead.entries())
-                .filter(([_, leadId]) => leadId === w28User)
-                .map(([visitorId, _]) => visitorId);
-              
-              const userEvents = allSessionsData?.filter(e => userVisitorIds.includes(e.visitor_id)) || [];
-              console.log(`[Cohorts API] DEBUG - Eventos del usuario W28 (${userEvents.length}):`);
-              
-              userEvents.slice(0, 10).forEach((event, index) => {
-                const eventDate = new Date(event.created_at);
-                const weekKey = `W${formatDate(eventDate, "w")} ${formatDate(eventDate, "yyyy")}`;
-                const readableDate = formatDate(eventDate, "yyyy-MM-dd HH:mm:ss");
-                
-                console.log(`  Evento ${index + 1}: ${readableDate} → ${weekKey} (visitor: ${event.visitor_id})`);
-              });
-              
-            } else {
-              console.log(`[Cohorts API] DEBUG - Usuario W28 ${w28User} NO encontrado en eventos`);
-              console.log(`[Cohorts API] DEBUG - Leads disponibles:`, Array.from(sessionsByUserAndWeek.keys()).slice(0, 10));
-            }
-            
             // Calcular usage cohorts: usuarios que compraron en semana X -> ¿tuvieron eventos en semanas X+1, X+2, etc.?
             usageCohorts = cohortPeriods.map((cohort, cohortIndex) => {
               const cohortKey = cohort.cohort;
@@ -449,11 +405,6 @@ export async function GET(request: Request) {
               const cohortLeads = salesByPeriod.get(cohortKey)!;
               const originalCount = cohortLeads.size;
               
-              console.log(`[Cohorts API] Procesando usage cohort ${cohortKey} con ${originalCount} usuarios que compraron`);
-              
-              // DEBUG: Mostrar los lead_ids del cohort
-              console.log(`[Cohorts API] DEBUG - Lead_ids en cohort ${cohortKey}:`, Array.from(cohortLeads));
-              
               // Para cada semana posterior, calcular cuántos del cohort original tuvieron EVENTOS
               const periods = Array.from({ length: cohortIndex + 1 }).map((_, periodIndex) => {
                 // Primer valor siempre es 100% para el periodo 0 (semana de compra)
@@ -470,28 +421,15 @@ export async function GET(request: Request) {
                 
                 const futureWeek = cohortPeriods[futureWeekIndex].cohort;
                 
-                // DEBUG: Para el primer cohort, mostrar el cálculo detallado
-                if (cohortIndex === 0 && periodIndex <= 2) {
-                  console.log(`[Cohorts API] DEBUG - Calculando semana +${weeksAfterPurchase} para cohort ${cohortKey}`);
-                  console.log(`[Cohorts API] DEBUG - futureWeekIndex: ${futureWeekIndex}, futureWeek: ${futureWeek}`);
-                }
-                
                 // Contar cuántos usuarios del cohort original tuvieron eventos en esta semana futura
                 let usersWithEvents = 0;
-                const activeUsers: string[] = [];
                 
                 cohortLeads.forEach(leadId => {
                   const userWeeks = sessionsByUserAndWeek.get(leadId);
                   if (userWeeks && userWeeks.has(futureWeek)) {
                     usersWithEvents++;
-                    activeUsers.push(leadId);
                   }
                 });
-                
-                // DEBUG: Para el primer cohort, mostrar usuarios activos
-                if (cohortIndex === 0 && periodIndex <= 2) {
-                  console.log(`[Cohorts API] DEBUG - Usuarios activos en ${futureWeek}:`, activeUsers);
-                }
                 
                 // Calcular el porcentaje de retención de USO
                 const retentionRate = originalCount > 0 ? Math.round((usersWithEvents / originalCount) * 100) : 0;
@@ -511,7 +449,6 @@ export async function GET(request: Request) {
       }
     }
     
-    // Definir la interfaz para los objetos de cohorte
     interface CohortWithPeriods {
       cohort: string;
       periods: (number | null)[];
@@ -522,7 +459,6 @@ export async function GET(request: Request) {
       weeks: (number | null)[];
     }
     
-    // Adaptamos los nombres para mantener compatibilidad con el frontend
     const finalSalesCohorts = salesCohorts.map((cohort: CohortWithPeriods): CohortWithWeeks => ({
       cohort: cohort.cohort,
       weeks: cohort.periods
@@ -533,14 +469,12 @@ export async function GET(request: Request) {
       weeks: cohort.periods
     }));
     
-    // Registro de la solicitud
     console.log(`[Cohorts API] Period: ${format(startDate, "yyyy-MM-dd")} to ${format(endDate, "yyyy-MM-dd")}`);
     console.log(`[Cohorts API] Returning sales cohorts: ${finalSalesCohorts.length}, usage cohorts: ${finalUsageCohorts.length}`);
     
     if (hasAnonymousLeads) {
       console.log(`[Cohorts API] Ventas sin lead_id asignadas a anonymous_lead e incluidas en cohortes por fecha`);
       
-      // Registrar los periodos con datos anónimos
       const periodsWithAnonymousData = periodsWithSales.join(', ');
       console.log(`[Cohorts API] Periodos que incluyen ventas anónimas: ${periodsWithAnonymousData}`);
     }
@@ -552,8 +486,14 @@ export async function GET(request: Request) {
   } catch (error) {
     console.error("Error in cohorts API:", error);
     
-    // Don't return demo data - return empty to show actual no-data state
     console.log("[Cohorts API] Returning empty data due to error");
-    return NextResponse.json({ salesCohorts: [], usageCohorts: [] });
+    return NextResponse.json(
+      { salesCohorts: [], usageCohorts: [] },
+      { status: 500 }
+    );
   }
-} 
+}
+
+export async function GET(request: Request) {
+  return withAnalyticsCache(request, "cohorts", getCohorts);
+}

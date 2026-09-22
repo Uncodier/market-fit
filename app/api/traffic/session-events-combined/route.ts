@@ -3,6 +3,7 @@ import { createServiceClient } from '@/lib/supabase/server';
 import { isMakinariInternalReferrerHostname } from '@/lib/traffic/makinari-internal-referrer';
 import { isExternalReferralPageview } from '@/lib/traffic/external-referral-pageview';
 import { requireAnalyticsAccess } from '@/lib/auth/api-analytics-access';
+import { readThroughAnalyticsResponseCache } from '@/lib/redis/analytics-response-cache';
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -24,6 +25,12 @@ export async function GET(request: NextRequest) {
   const access = await requireAnalyticsAccess(request);
   if (access.error) return access.error;
 
+  return readThroughAnalyticsResponseCache({
+    request,
+    namespace: 'traffic:session-events-combined',
+    siteId: access.siteId,
+    lockTtlMs: 30_000,
+    load: async () => {
   try {
     const supabase = await createServiceClient();
     console.log('Fetching page visits combined data for site:', siteId, 'segment:', segmentId || 'all', 'from:', startDate, 'to:', endDate);
@@ -283,4 +290,6 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     );
   }
+    },
+  });
 } 

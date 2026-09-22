@@ -5,11 +5,20 @@ import {
   releaseLock,
   setCachedJson,
 } from "@/lib/redis/control-plane"
-import { isRedisConfigured } from "@/lib/redis/upstash-rest"
+import {
+  executeRedisCommand,
+  isRedisConfigured,
+} from "@/lib/redis/upstash-rest"
 
 type CacheResult<T> =
   | { status: "hit" | "stale" | "computed"; value: T }
   | { status: "busy" }
+
+const BUMP_CACHE_EPOCH_SCRIPT = `
+local value = redis.call("INCR", KEYS[1])
+redis.call("EXPIRE", KEYS[1], ARGV[1])
+return value
+`
 
 export async function normalizedRequestCacheKey(
   namespace: string,
@@ -67,4 +76,29 @@ export async function readThroughJsonCache<T>(options: {
   } finally {
     await releaseLock(lockKey, ownerToken)
   }
+}
+
+export async function readCacheEpoch(namespace: string, scope: string) {
+  if (!isRedisConfigured()) return "0"
+  const scopeHash = await hashRedisKeyPart(scope)
+  const value = await getCachedJson<number>(
+    `cache-epoch:v1:${namespace}:${scopeHash}`,
+  )
+  return String(value ?? 0)
+}
+
+export async function bumpCacheEpoch(
+  namespace: string,
+  scope: string,
+): Promise<boolean> {
+  if (!isRedisConfigured()) return true
+  const scopeHash = await hashRedisKeyPart(scope)
+  const response = await executeRedisCommand<number>([
+    "EVAL",
+    BUMP_CACHE_EPOCH_SCRIPT,
+    1,
+    `cache-epoch:v1:${namespace}:${scopeHash}`,
+    30 * 24 * 60 * 60,
+  ])
+  return response.configured && !response.error
 }

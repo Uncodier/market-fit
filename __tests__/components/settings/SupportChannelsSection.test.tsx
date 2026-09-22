@@ -4,6 +4,7 @@ import {
   SupportChannelsSection,
 } from "@/app/components/settings/SupportChannelsSection"
 import type { SiteFormValues } from "@/app/components/settings/form-schema"
+import { apiClient } from "@/app/services/api-client-service"
 
 const canonicalConnections = [{
   id: "voice-1",
@@ -18,6 +19,7 @@ const canonicalConnections = [{
   name: "SMS",
   status: "connected",
   zavu_sender_id: "sender_new",
+  metadata: { phone_number: "+14155550102" },
 }]
 
 jest.mock("next/navigation", () => ({
@@ -71,11 +73,17 @@ jest.mock("@/app/components/settings/EmailChannelSetup", () => ({
   EmailChannelSetup: () => null,
 }))
 
-function TestForm({ onSave }: { onSave: jest.Mock }) {
+function TestForm({
+  onSave,
+  initialConnections,
+}: {
+  onSave: jest.Mock
+  initialConnections?: SiteFormValues["channels"]["connections"]
+}) {
   const form = useForm<SiteFormValues>({
     defaultValues: {
       channels: {
-        connections: [{
+        connections: initialConnections || [{
           id: "voice-1",
           type: "voice",
           name: "Voice",
@@ -96,6 +104,10 @@ function TestForm({ onSave }: { onSave: jest.Mock }) {
 }
 
 describe("SupportChannelsSection", () => {
+  afterEach(() => {
+    jest.restoreAllMocks()
+  })
+
   it("adopts the backend connection snapshot without resaving stale form data", async () => {
     const onSave = jest.fn()
     render(<TestForm onSave={onSave} />)
@@ -109,5 +121,51 @@ describe("SupportChannelsSection", () => {
       )
     })
     expect(onSave).not.toHaveBeenCalled()
+  })
+
+  it("shows assigned numbers for connected WhatsApp, Voice, and SMS cards", async () => {
+    const getSpy = jest.spyOn(apiClient, "get").mockResolvedValue({
+      success: true,
+      data: {
+        sender: {
+          phoneNumber: "+14155550100",
+          whatsapp: { displayPhoneNumber: "+14155550101" },
+        },
+      },
+    })
+
+    render(
+      <TestForm
+        onSave={jest.fn()}
+        initialConnections={[{
+          id: "whatsapp-1",
+          type: "whatsapp",
+          name: "WhatsApp",
+          status: "connected",
+          zavu_sender_id: "sender-whatsapp",
+        }, {
+          id: "voice-1",
+          type: "voice",
+          name: "Voice / Audio Agent",
+          status: "connected",
+          metadata: { phone_number: "+14155550102" },
+        }, {
+          id: "sms-1",
+          type: "sms",
+          name: "SMS",
+          status: "connected",
+          metadata: { routing: { phone_number: "+14155550103" } },
+        }]}
+      />
+    )
+
+    expect(screen.getByText("+1 (415) 555-0102")).toBeInTheDocument()
+    expect(screen.getByText("+1 (415) 555-0103")).toBeInTheDocument()
+    await waitFor(() => {
+      expect(screen.getByText("+1 (415) 555-0101")).toBeInTheDocument()
+    })
+    expect(getSpy).toHaveBeenCalledWith(
+      "/api/integrations/zavu/senders/sender-whatsapp"
+    )
   })
 })

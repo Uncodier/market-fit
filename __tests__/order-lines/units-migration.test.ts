@@ -31,6 +31,13 @@ const hardeningMigration = readFileSync(
   ),
   "utf8",
 )
+const queryOptimizationMigration = readFileSync(
+  join(
+    process.cwd(),
+    "supabase/migrations/20260921191000_optimize_order_operational_queries.sql",
+  ),
+  "utf8",
+)
 
 describe("order-line operational units migration", () => {
   it("creates one independently actionable record per item unit", () => {
@@ -65,6 +72,24 @@ describe("order-line operational units migration", () => {
     )
     expect(unitsMigration).toContain(
       "sync_sale_order_item_units_after_update",
+    )
+  })
+
+  it("indexes operational sorting and partial-text order searches", () => {
+    expect(queryOptimizationMigration).not.toContain(
+      "CREATE INDEX CONCURRENTLY",
+    )
+    expect(queryOptimizationMigration).toContain(
+      "CREATE EXTENSION IF NOT EXISTS pg_trgm",
+    )
+    expect(queryOptimizationMigration).toContain(
+      "sale_orders_site_order_number_trgm_idx",
+    )
+    expect(queryOptimizationMigration).toContain(
+      "sale_order_items_site_name_trgm_idx",
+    )
+    expect(queryOptimizationMigration).toContain(
+      "sale_order_item_units_site_created_idx",
     )
   })
 

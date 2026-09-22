@@ -50,6 +50,75 @@ type SitePhoneConnection = {
   }
 }
 
+function asRecord(value: unknown): Record<string, unknown> | undefined {
+  return value && typeof value === "object"
+    ? value as Record<string, unknown>
+    : undefined
+}
+
+function firstNonEmptyString(...values: unknown[]): string | undefined {
+  for (const value of values) {
+    if (typeof value === "string" && value.trim()) return value
+  }
+  return undefined
+}
+
+export function formatPhoneNumber(phoneNumber: string): string {
+  const trimmed = phoneNumber.trim()
+  const digits = trimmed.replace(/\D/g, "")
+  if (!digits) return trimmed
+
+  if (trimmed.startsWith("+1") && digits.length === 11) {
+    return `+1 (${digits.slice(1, 4)}) ${digits.slice(4, 7)}-${digits.slice(7)}`
+  }
+  if (trimmed.startsWith("+52") && digits.length === 12) {
+    return `+52 ${digits.slice(2, 4)} ${digits.slice(4, 8)} ${digits.slice(8)}`
+  }
+  if (trimmed.startsWith("+")) {
+    const groups = [digits.slice(-4)]
+    let remaining = digits.slice(0, -4)
+    while (remaining.length > 3) {
+      groups.unshift(remaining.slice(-3))
+      remaining = remaining.slice(0, -3)
+    }
+    if (remaining) groups.unshift(remaining)
+    return `+${groups.join(" ")}`
+  }
+  if (digits.length === 10) {
+    return `${digits.slice(0, 3)} ${digits.slice(3, 6)} ${digits.slice(6)}`
+  }
+  return trimmed
+}
+
+export function getAssignedPhoneNumber(connection: unknown): string | undefined {
+  const root = asRecord(connection)
+  const metadata = asRecord(root?.metadata)
+  const routing = asRecord(metadata?.routing)
+  const account = asRecord(root?.connected_account)
+  const rootWhatsapp = asRecord(root?.whatsapp)
+  const accountWhatsapp = asRecord(account?.whatsapp)
+
+  return firstNonEmptyString(
+    metadata?.phone_number,
+    routing?.phone_number,
+    rootWhatsapp?.displayPhoneNumber,
+    rootWhatsapp?.display_phone_number,
+    accountWhatsapp?.displayPhoneNumber,
+    accountWhatsapp?.display_phone_number,
+    account?.phoneNumber,
+    account?.phone_number,
+    root?.phoneNumber,
+    root?.phone_number,
+  )
+}
+
+export function getZavuSenderPhoneNumber(payload: unknown): string | undefined {
+  const root = asRecord(payload)
+  const data = asRecord(root?.data) || root
+  const sender = asRecord(data?.sender) || data
+  return getAssignedPhoneNumber(sender)
+}
+
 export function unwrapZavuItems<T>(data: unknown): T[] {
   if (Array.isArray(data)) return data as T[]
   if (data && typeof data === "object" && Array.isArray((data as { items?: unknown }).items)) {
@@ -127,10 +196,7 @@ export function filterPhoneNumbersForSite(
       const phoneNumberId =
         connection.metadata?.phone_number_id ||
         connection.metadata?.routing?.phone_number_id
-      const phoneNumber =
-        connection.metadata?.phone_number ||
-        connection.metadata?.routing?.phone_number ||
-        connection.connected_account?.phoneNumber
+      const phoneNumber = getAssignedPhoneNumber(connection)
       if (phoneNumberId) assignedIds.add(phoneNumberId)
       if (phoneNumber) assignedNumbers.add(phoneNumber)
     }

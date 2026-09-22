@@ -1,6 +1,68 @@
 import { createServiceClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 import { format, subDays } from "date-fns";
+import { requireAnalyticsAccess } from "@/lib/auth/api-analytics-access";
+import {
+  normalizedRequestCacheKey,
+  readThroughJsonCache,
+} from "@/lib/redis/json-cache";
+
+function analyticsAccessRequest(request: Request) {
+  const url = new URL(request.url);
+  const endValue = url.searchParams.get("endDate");
+  const endDate = endValue ? new Date(endValue) : new Date();
+
+  if (!endValue) url.searchParams.set("endDate", endDate.toISOString());
+  if (!url.searchParams.has("startDate")) {
+    const startDate = new Date(
+      (Number.isFinite(endDate.getTime()) ? endDate : new Date()).getTime()
+        - 30 * 24 * 60 * 60 * 1000
+    );
+    url.searchParams.set("startDate", startDate.toISOString());
+  }
+
+  return new Request(url, { headers: request.headers });
+}
+
+async function withAnalyticsCache(
+  request: Request,
+  namespace: string,
+  load: (request: Request) => Promise<Response>
+) {
+  const scopedRequest = analyticsAccessRequest(request);
+  const access = await requireAnalyticsAccess(scopedRequest);
+  if (access.error) return access.error;
+
+  try {
+    const key = await normalizedRequestCacheKey(namespace, request);
+    const result = await readThroughJsonCache({
+      key,
+      ttlSeconds: 45,
+      compute: async () => {
+        const response = await load(scopedRequest);
+        if (!response.ok) throw response;
+        return {
+          body: await response.json(),
+          headers: Object.fromEntries(response.headers.entries()),
+        };
+      },
+    });
+
+    if (result.status === "busy") {
+      return NextResponse.json(
+        { error: "Analytics are being refreshed" },
+        { status: 503, headers: { "Retry-After": "2" } }
+      );
+    }
+
+    const headers = new Headers(result.value.headers);
+    headers.set("X-Cache", result.status.toUpperCase());
+    return NextResponse.json(result.value.body, { headers });
+  } catch (error) {
+    if (error instanceof Response) return error;
+    throw error;
+  }
+}
 
 interface SegmentInfo {
   id: string;
@@ -44,12 +106,12 @@ async function getSegmentsForSite(supabase: any, siteId: string): Promise<Segmen
   }
 }
 
-export async function GET(request: Request) {
+async function getClientsBySegment(request: Request) {
   const { searchParams } = new URL(request.url);
   const startDateParam = searchParams.get("startDate");
   const endDateParam = searchParams.get("endDate");
   const siteId = searchParams.get("siteId");
-  const userId = searchParams.get("userId");
+  const userId = null;
   
   if (!siteId) {
     console.error("[Clients By Segment API] Missing site ID");
@@ -134,14 +196,6 @@ export async function GET(request: Request) {
     
     console.log(`[Clients By Segment API] Found ${leadsData?.length || 0} leads for the period`);
     
-    // Diagnóstico: Mostrar las fechas de los leads encontrados
-    if (leadsData && leadsData.length > 0) {
-      console.log(`[Clients By Segment API] Lead dates sample (first 5):`);
-      leadsData.slice(0, 5).forEach((lead, index) => {
-        console.log(`  Lead ${index+1}: ID=${lead.id}, Created=${new Date(lead.created_at).toISOString()}`);
-      });
-    }
-    
     // Also get leads from sales in case there are sales with leads not directly in the leads table
     const { data: salesData, error: salesError } = await supabase
       .from("sales")
@@ -162,26 +216,6 @@ export async function GET(request: Request) {
       salesData.slice(0, 5).forEach((sale, index) => {
         console.log(`  Sale ${index+1}: Lead=${sale.lead_id}, Segment=${sale.segment_id}, Created=${new Date(sale.created_at).toISOString()}, Amount=${sale.amount}`);
       });
-    }
-    
-    // Diagnóstico: Obtener TODAS las ventas sin filtro de fechas para comparar
-    try {
-      const { data: allSalesData } = await supabase
-        .from("sales")
-        .select("lead_id, segment_id, created_at, amount")
-        .eq("site_id", siteId)
-        .not("lead_id", "is", null)
-        .order("created_at", { ascending: false })
-        .limit(10);
-      
-      if (allSalesData && allSalesData.length > 0) {
-        console.log(`[Clients By Segment API] All sales sample (first 10, regardless of date range):`);
-        allSalesData.forEach((sale, index) => {
-          console.log(`  AllSale ${index+1}: Lead=${sale.lead_id}, Segment=${sale.segment_id}, Created=${new Date(sale.created_at).toISOString()}, Amount=${sale.amount}`);
-        });
-      }
-    } catch (error) {
-      console.error("[Clients By Segment API] Error fetching all sales for diagnosis:", error);
     }
     
     // Check if we have any data at all for the specified period
@@ -453,4 +487,8 @@ export async function GET(request: Request) {
       { status: 500 }
     );
   }
-} 
+}
+
+export async function GET(request: Request) {
+  return withAnalyticsCache(request, "clients-by-segment", getClientsBySegment);
+}

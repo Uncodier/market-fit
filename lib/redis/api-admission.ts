@@ -24,6 +24,16 @@ function routePolicy(pathname: string): RoutePolicy | null {
       "/api/active-users",
       "/api/active-segments",
       "/api/active-campaigns",
+      "/api/clients-by-segment",
+      "/api/clients-by-campaign",
+      "/api/revenue-by-segment",
+      "/api/revenue-by-campaign",
+      "/api/cohorts",
+      "/api/leads-cohorts",
+      "/api/visitor-cohorts",
+      "/api/campaign-revenue",
+      "/api/recent-activity",
+      "/api/sales",
       "/api/dashboard/export",
     ].includes(pathname) ||
     pathname === "/api/dashboard/overview" ||
@@ -36,7 +46,10 @@ function routePolicy(pathname: string): RoutePolicy | null {
       failureMode,
     }
   }
-  if (pathname === "/api/assets/proxy") {
+  if (
+    pathname === "/api/assets/proxy"
+    || pathname === "/api/assets/proxy-zip"
+  ) {
     return {
       routeClass: "asset-proxy",
       limit: 10,

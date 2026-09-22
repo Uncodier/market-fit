@@ -361,8 +361,6 @@ export const useInstanceLogs = ({
     waitingForMessageId,
     logs,
     setLogs,
-    mutate,
-    onResponseReceivedRef,
   })
 
   return {

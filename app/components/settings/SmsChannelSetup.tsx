@@ -16,6 +16,7 @@ import {
   buildAvailablePhoneNumbersQuery,
   canAssignPhoneNumber,
   createPhoneConnectionMetadata,
+  formatPhoneNumber,
   formatPhoneCapabilities,
   getRequirementSummary,
   unwrapPurchasedPhoneNumber,
@@ -26,26 +27,6 @@ import {
 } from "./zavu-phone-number-utils"
 import { ChannelSetupStepper } from "./ChannelSetupStepper"
 import { buildPhoneSetupSteps } from "./channel-setup-steps"
-
-function formatPhoneNumber(phoneNumber: string): string {
-  if (!phoneNumber) return phoneNumber;
-  
-  const cleaned = phoneNumber.replace(/[^\d+]/g, '');
-  
-  if (cleaned.startsWith('+1') && cleaned.length === 12) {
-    return `+1 (${cleaned.slice(2, 5)}) ${cleaned.slice(5, 8)}-${cleaned.slice(8)}`;
-  }
-  
-  if (cleaned.startsWith('+52') && cleaned.length === 13) {
-    return `+52 ${cleaned.slice(3, 5)} ${cleaned.slice(5, 9)} ${cleaned.slice(9)}`;
-  }
-
-  if (cleaned.startsWith('+')) {
-    return cleaned.replace(/(\+\d{1,3})(\d{2,4})(\d{3,4})(\d{3,4})/, '$1 $2 $3 $4').trim();
-  }
-
-  return phoneNumber;
-}
 
 export function SmsChannelSetup({ 
   siteId, 

@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createServiceClient } from "@/lib/supabase/server"
 import { requireAnalyticsAccess } from "@/lib/auth/api-analytics-access"
+import { readThroughAnalyticsResponseCache } from "@/lib/redis/analytics-response-cache"
 
 export async function GET(request: NextRequest) {
-  try {
     const { searchParams } = new URL(request.url)
     const siteId = searchParams.get("siteId")
     const userId = searchParams.get("userId")
@@ -18,6 +18,12 @@ export async function GET(request: NextRequest) {
     const access = await requireAnalyticsAccess(request)
     if (access.error) return access.error
 
+    return readThroughAnalyticsResponseCache({
+      request,
+      namespace: "performance:approved-contents",
+      siteId: access.siteId,
+      load: async () => {
+  try {
     const supabase = await createServiceClient()
 
     // Calculate previous period for comparison
@@ -86,4 +92,6 @@ export async function GET(request: NextRequest) {
     console.error("Error in approved contents API:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
+      },
+    })
 }

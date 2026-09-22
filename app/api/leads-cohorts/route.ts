@@ -1,6 +1,68 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { format as formatDate, subDays, subMonths, differenceInDays } from "date-fns";
+import { requireAnalyticsAccess } from "@/lib/auth/api-analytics-access";
+import {
+  normalizedRequestCacheKey,
+  readThroughJsonCache,
+} from "@/lib/redis/json-cache";
+
+function analyticsAccessRequest(request: Request) {
+  const url = new URL(request.url);
+  const endValue = url.searchParams.get("endDate");
+  const endDate = endValue ? new Date(endValue) : new Date();
+
+  if (!endValue) url.searchParams.set("endDate", endDate.toISOString());
+  if (!url.searchParams.has("startDate")) {
+    const startDate = new Date(
+      (Number.isFinite(endDate.getTime()) ? endDate : new Date()).getTime()
+        - 30 * 24 * 60 * 60 * 1000
+    );
+    url.searchParams.set("startDate", startDate.toISOString());
+  }
+
+  return new Request(url, { headers: request.headers });
+}
+
+async function withAnalyticsCache(
+  request: Request,
+  namespace: string,
+  load: (request: Request) => Promise<Response>
+) {
+  const scopedRequest = analyticsAccessRequest(request);
+  const access = await requireAnalyticsAccess(scopedRequest);
+  if (access.error) return access.error;
+
+  try {
+    const key = await normalizedRequestCacheKey(namespace, request);
+    const result = await readThroughJsonCache({
+      key,
+      ttlSeconds: 45,
+      compute: async () => {
+        const response = await load(scopedRequest);
+        if (!response.ok) throw response;
+        return {
+          body: await response.json(),
+          headers: Object.fromEntries(response.headers.entries()),
+        };
+      },
+    });
+
+    if (result.status === "busy") {
+      return NextResponse.json(
+        { error: "Analytics are being refreshed" },
+        { status: 503, headers: { "Retry-After": "2" } }
+      );
+    }
+
+    const headers = new Headers(result.value.headers);
+    headers.set("X-Cache", result.status.toUpperCase());
+    return NextResponse.json(result.value.body, { headers });
+  } catch (error) {
+    if (error instanceof Response) return error;
+    throw error;
+  }
+}
 
 // Helper function to verify segment belongs to site
 async function verifySegmentForSite(supabase: any, segmentId: string, siteId: string) {
@@ -25,33 +87,20 @@ async function getSegmentDetails(supabase: any, segmentId: string) {
   return segment;
 }
 
-export async function GET(request: Request) {
+async function getLeadsCohorts(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const siteId = searchParams.get("siteId");
-    const userId = searchParams.get("userId");
     const startDate = new Date(searchParams.get("startDate") || "");
     const endDate = new Date(searchParams.get("endDate") || "");
     const segmentId = searchParams.get("segmentId");
 
-    if (!siteId || !userId) {
+    if (!siteId) {
       return NextResponse.json({ error: "Missing required parameters" }, { status: 400 });
     }
 
 
     const supabase = await createClient();
-
-    // Verify user has access to site
-    const { data: siteAccess } = await supabase
-      .from("site_members")
-      .select("role")
-      .eq("site_id", siteId)
-      .eq("user_id", userId)
-      .single();
-
-    if (!siteAccess) {
-      return NextResponse.json({ error: "Access denied" }, { status: 403 });
-    }
 
     // If segment is specified, verify it belongs to the site
     if (segmentId && segmentId !== "all") {
@@ -252,6 +301,10 @@ export async function GET(request: Request) {
     
     // Return empty data on error
     console.log("[Leads Cohorts API] Returning empty data due to error");
-    return NextResponse.json({ leadCohorts: [] });
+    return NextResponse.json({ leadCohorts: [] }, { status: 500 });
   }
-} 
+}
+
+export async function GET(request: Request) {
+  return withAnalyticsCache(request, "leads-cohorts", getLeadsCohorts);
+}

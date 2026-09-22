@@ -5,19 +5,27 @@ import {
   readLimitedRequestBody,
   RequestBodyTooLargeError,
 } from '@/lib/http/read-limited-request-body'
+import {
+  normalizedRequestCacheKey,
+  readThroughJsonCache,
+} from '@/lib/redis/json-cache'
 
 const MAX_BODY_BYTES = 32 * 1024
+const TREND_CACHE_TTL_SECONDS = 180
+const TREND_CACHE_LOCK_TTL_MS = 75_000
 const requestSchema = z.object({
-  geo: z.string().regex(/^[A-Za-z]{2}$/).default('US'),
-  hl: z.string().regex(/^[A-Za-z-]{2,10}$/).default('en'),
-  timeframe: z.string().max(20).default('now 1-d'),
+  geo: z.string().trim().regex(/^[A-Za-z]{2}$/).transform(value => value.toUpperCase()).default('US'),
+  hl: z.string().trim().regex(/^[A-Za-z-]{2,10}$/).transform(value => value.toLowerCase()).default('en'),
+  timeframe: z.string().trim().max(20).default('now 1-d'),
   limit: z.number().int().min(1).max(25).default(10),
   segments: z.array(z.object({
-    name: z.string().min(1).max(80),
-    description: z.string().max(240).optional(),
+    name: z.string().trim().min(1).max(80).transform(value => value.toLowerCase()),
+    description: z.string().trim().max(240).transform(value => value.toLowerCase()).optional(),
   })).max(5).default([]),
   mode: z.literal('news').default('news'),
 })
+
+class UncacheableGoogleResponse { constructor(readonly body: unknown) {} }
 
 // Simple HTML cleaning function directly in this file
 function cleanHtmlContent(htmlString: string): string {
@@ -95,7 +103,7 @@ function isValidCleanedContent(content: string): boolean {
 }
 
 // Real Google News RSS implementation - no API key needed!
-async function fetchGoogleNews(query: string, limit: number = 10): Promise<any[]> {
+async function fetchGoogleNews(query: string, limit: number = 10): Promise<any[] | null> {
   try {
     const encodedQuery = encodeURIComponent(query)
     const rssUrl = `https://news.google.com/rss/search?q=${encodedQuery}&hl=en&gl=US&ceid=US:en`
@@ -121,12 +129,12 @@ async function fetchGoogleNews(query: string, limit: number = 10): Promise<any[]
     return newsItems
   } catch (error) {
     console.error(`❌ [Google News RSS] Error fetching ${query}:`, error)
-    return []
+    return null
   }
 }
 
 // Parse RSS XML and extract news items
-function parseRSSFeed(xmlText: string, limit: number): any[] {
+function parseRSSFeed(xmlText: string, limit: number): any[] | null {
   const items: any[] = []
   
   try {
@@ -266,7 +274,7 @@ function parseRSSFeed(xmlText: string, limit: number): any[] {
     
   } catch (error) {
     console.error('❌ [Google News RSS] Parse error:', error)
-    return []
+    return null
   }
 }
 
@@ -374,6 +382,56 @@ function generateSearchQueries(segments: any[]): string[] {
   return Array.from(new Set(queries)).slice(0, 8)
 }
 
+async function loadGoogleTrends(input: z.infer<typeof requestSchema>) {
+  const { geo, hl, timeframe, limit, segments } = input
+
+  console.log(`🎯 [Google News RSS] Request params:`, { geo, timeframe, limit, segmentCount: segments?.length || 0 })
+
+  const searchQueries = generateSearchQueries(segments)
+  console.log(`🔍 [Google News RSS] Search queries:`, searchQueries)
+
+  const allNews: any[] = []
+  let successfulQueries = 0
+  const itemsPerQuery = Math.ceil(limit / searchQueries.length)
+
+  for (const query of searchQueries) {
+    const newsItems = await fetchGoogleNews(query, itemsPerQuery)
+    if (newsItems !== null) {
+      successfulQueries += 1
+      allNews.push(...newsItems)
+    }
+    await new Promise(resolve => setTimeout(resolve, 100))
+  }
+
+  const uniqueNews = allNews
+    .filter((item, index, self) =>
+      index === self.findIndex(other => other.title === item.title)
+    )
+    .sort((a, b) => b.relevance_score - a.relevance_score)
+    .slice(0, limit)
+
+  console.log(`✅ [Google News RSS] Returning ${uniqueNews.length} real news items`)
+  console.log(`📰 [Google News RSS] Sample headlines:`, uniqueNews.slice(0, 2).map(n => n.title))
+  console.log(`🔍 [Google News RSS] Sample full items:`, JSON.stringify(uniqueNews.slice(0, 2), null, 2))
+
+  const body = {
+    success: true,
+    trends: uniqueNews,
+    metadata: {
+      geo,
+      hl,
+      timeframe,
+      timestamp: new Date().toISOString(),
+      source: 'google-news-rss-real',
+      mode: 'news',
+      queryCount: searchQueries.length,
+      note: 'Real news data from Google News RSS feed'
+    }
+  }
+  if (successfulQueries === 0) throw new UncacheableGoogleResponse(body)
+  return body
+}
+
 export async function POST(request: NextRequest) {
   console.log('🚨 [Google News RSS] API CALLED - POST REQUEST RECEIVED!')
   
@@ -391,54 +449,31 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       )
     }
-    const { geo, hl, timeframe, limit, segments, mode } = parsed.data
-
-    console.log(`🎯 [Google News RSS] Request params:`, { geo, timeframe, limit, segmentCount: segments?.length || 0 })
-
-    // Generate search queries from segments
-    const searchQueries = generateSearchQueries(segments)
-    console.log(`🔍 [Google News RSS] Search queries:`, searchQueries)
-
-    // Fetch news from multiple queries
-    const allNews: any[] = []
-    const itemsPerQuery = Math.ceil(limit / searchQueries.length)
-
-    for (const query of searchQueries) {
-      const newsItems = await fetchGoogleNews(query, itemsPerQuery)
-      allNews.push(...newsItems)
-      
-      // Add small delay to avoid rate limiting
-      await new Promise(resolve => setTimeout(resolve, 100))
-    }
-
-    // Remove duplicates by title and sort by relevance
-    const uniqueNews = allNews
-      .filter((item, index, self) => 
-        index === self.findIndex(other => other.title === item.title)
-      )
-      .sort((a, b) => b.relevance_score - a.relevance_score)
-      .slice(0, limit)
-
-    console.log(`✅ [Google News RSS] Returning ${uniqueNews.length} real news items`)
-    console.log(`📰 [Google News RSS] Sample headlines:`, uniqueNews.slice(0, 2).map(n => n.title))
-    console.log(`🔍 [Google News RSS] Sample full items:`, JSON.stringify(uniqueNews.slice(0, 2), null, 2))
-
-      return NextResponse.json({
-        success: true,
-      trends: uniqueNews,
-        metadata: {
-          geo,
-          hl,
-          timeframe,
-          timestamp: new Date().toISOString(),
-        source: 'google-news-rss-real',
-        mode: 'news',
-        queryCount: searchQueries.length,
-        note: 'Real news data from Google News RSS feed'
-      }
+    const input = parsed.data
+    const cacheUrl = new URL('https://cache.local')
+    cacheUrl.searchParams.set('input', JSON.stringify(input))
+    const cacheKey = await normalizedRequestCacheKey(
+      'provider:trends:google',
+      new Request(cacheUrl)
+    )
+    const cached = await readThroughJsonCache({
+      key: cacheKey,
+      ttlSeconds: TREND_CACHE_TTL_SECONDS,
+      lockTtlMs: TREND_CACHE_LOCK_TTL_MS,
+      compute: () => loadGoogleTrends(input),
     })
 
+    if (cached.status === 'busy') {
+      return NextResponse.json(
+        { success: false, error: 'Google trends are being refreshed' },
+        { status: 503, headers: { 'Retry-After': '2' } }
+      )
+    }
+    return NextResponse.json(cached.value)
   } catch (error) {
+    if (error instanceof UncacheableGoogleResponse) {
+      return NextResponse.json(error.body)
+    }
     if (error instanceof RequestBodyTooLargeError) {
       return NextResponse.json(
         { success: false, error: error.message },

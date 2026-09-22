@@ -6,8 +6,13 @@ import {
   readLimitedBody,
   validateAssetUrl,
 } from '../proxy-security'
+import {
+  acquireOperationLease,
+  type OperationLease,
+} from '@/lib/redis/operation-lease'
 
 export async function GET(request: NextRequest) {
+  const leases: OperationLease[] = []
   try {
     const urlParam = request.nextUrl.searchParams.get('url')
 
@@ -25,6 +30,35 @@ export async function GET(request: NextRequest) {
     if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
+
+    const userLease = await acquireOperationLease(
+      'asset-proxy-zip-user',
+      user.id,
+      90_000,
+    )
+    if (!userLease) {
+      return NextResponse.json(
+        { error: 'A ZIP download is already in progress' },
+        { status: 429, headers: { 'Retry-After': '5' } },
+      )
+    }
+    leases.push(userLease)
+
+    const globalLease = await acquireOperationLease(
+      'asset-proxy-zip-global',
+      'global',
+      90_000,
+      4,
+    )
+    if (!globalLease) {
+      await userLease.release()
+      leases.length = 0
+      return NextResponse.json(
+        { error: 'ZIP download capacity is temporarily full' },
+        { status: 503, headers: { 'Retry-After': '5' } },
+      )
+    }
+    leases.push(globalLease)
 
     const fetched = await fetchValidatedAsset(
       targetUrl,
@@ -59,9 +93,11 @@ export async function GET(request: NextRequest) {
       })
     } finally {
       fetched.dispose()
+      await Promise.allSettled(leases.map((lease) => lease.release()))
     }
 
   } catch (error) {
+    await Promise.allSettled(leases.map((lease) => lease.release()))
     if (error instanceof AssetProxyError) {
       return NextResponse.json({ error: error.message }, { status: error.status })
     }

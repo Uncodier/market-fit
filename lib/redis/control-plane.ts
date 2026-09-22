@@ -45,6 +45,15 @@ redis.call("PEXPIRE", KEYS[1], ARGV[5])
 return { 1, count }
 `
 
+const RENEW_SEMAPHORE_SCRIPT = `
+if redis.call("ZSCORE", KEYS[1], ARGV[1]) then
+  redis.call("ZADD", KEYS[1], "XX", ARGV[2], ARGV[1])
+  redis.call("PEXPIRE", KEYS[1], ARGV[3])
+  return 1
+end
+return 0
+`
+
 export async function hashRedisKeyPart(value: string): Promise<string> {
   const bytes = new TextEncoder().encode(value)
   const digest = await crypto.subtle.digest("SHA-256", bytes)
@@ -192,4 +201,21 @@ export async function releaseSemaphore(
   ownerToken: string
 ): Promise<void> {
   await executeRedisCommand(["ZREM", key, ownerToken])
+}
+
+export async function renewSemaphore(
+  key: string,
+  ownerToken: string,
+  ttlMs: number
+): Promise<boolean> {
+  const response = await executeRedisCommand<number>([
+    "EVAL",
+    RENEW_SEMAPHORE_SCRIPT,
+    1,
+    key,
+    ownerToken,
+    Date.now() + ttlMs,
+    ttlMs,
+  ])
+  return response.configured && !response.error && response.result === 1
 }

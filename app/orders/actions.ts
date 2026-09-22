@@ -7,8 +7,14 @@ import { SaleOrderData } from "@/app/types";
 import { shouldCancelLinkedSale } from "./cancel-linked-sale";
 import { grantFromOrder } from "@/app/commerce/entitlements";
 import { revokeOrderFulfillment } from "@/app/commerce/order-fulfillment-sync";
+import { hashRedisKeyPart } from "@/lib/redis/control-plane";
+import {
+  bumpCacheEpoch,
+  readCacheEpoch,
+  readThroughJsonCache,
+} from "@/lib/redis/json-cache";
 
-export async function listOrders({ siteId, status, paymentStatus, q, locationId, page = 1, pageSize = 50, startDate, endDate, sort }: OrderParams) {
+async function queryOrders({ siteId, status, paymentStatus, q, locationId, page = 1, pageSize = 50, startDate, endDate, sort }: OrderParams) {
   try {
     const supabase = await createClient();
     const searchQuery = q?.trim();
@@ -130,6 +136,52 @@ export async function listOrders({ siteId, status, paymentStatus, q, locationId,
   }
 }
 
+export async function listOrders(params: OrderParams) {
+  try {
+    const supabase = await createClient()
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser()
+    if (authError || !user) {
+      return { data: [], count: 0, error: "Not authenticated" }
+    }
+
+    const epoch = await readCacheEpoch("order-data", params.siteId)
+    const cacheIdentity = await hashRedisKeyPart(
+      JSON.stringify({
+        epoch,
+        userId: user.id,
+        ...params,
+        q: params.q?.trim() || "",
+      }),
+    )
+    const cached = await readThroughJsonCache({
+      key: `cache:v1:orders-list:${cacheIdentity}`,
+      ttlSeconds: 5,
+      lockTtlMs: 15_000,
+      compute: async () => {
+        const result = await queryOrders(params)
+        if (result.error) throw new Error(result.error)
+        return result
+      },
+    })
+    if (cached.status === "busy") {
+      return { data: [], count: 0, error: "Orders are being refreshed" }
+    }
+    return cached.value
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "Failed to load orders"
+    console.error("Error in listOrders cache:", error)
+    return { data: [], count: 0, error: message }
+  }
+}
+
+async function invalidateOrderCaches(siteId: string) {
+  await bumpCacheEpoch("order-data", siteId)
+}
+
 export async function getOrder(id: string) {
   const supabase = await createClient();
   const { data, error } = await supabase
@@ -245,22 +297,6 @@ export async function updateOrderStatus(siteId: string, orderId: string, status:
 
     if (error) throw new Error(error.message);
 
-    const lineStatusByOrderStatus: Record<string, string> = {
-      pending: "new",
-      in_progress: "preparing",
-      completed: "completed",
-      cancelled: "cancelled",
-    }
-    const lineStatus = lineStatusByOrderStatus[status]
-    if (lineStatus) {
-      const { error: lineStatusError } = await supabase
-        .from("sale_order_items")
-        .update({ status: lineStatus })
-        .eq("site_id", siteId)
-        .eq("sale_order_id", orderId);
-      if (lineStatusError) throw new Error(lineStatusError.message);
-    }
-
     if (status === 'completed') {
       if (currentOrder?.sale_id) {
         const { data: paidSale } = await supabase
@@ -309,6 +345,7 @@ export async function updateOrderStatus(siteId: string, orderId: string, status:
       }
     }
 
+    await invalidateOrderCaches(siteId);
     revalidatePath(`/orders`);
     revalidatePath(`/orders/${orderId}`);
     return { data: data as SaleOrderData };
@@ -328,6 +365,7 @@ export async function updateOrderItemStatus(siteId: string, itemId: string, orde
       .eq("id", itemId);
 
     if (error) throw new Error(error.message);
+    await invalidateOrderCaches(siteId);
     revalidatePath(`/orders/${orderId}`);
     return { success: true };
   } catch (error: any) {
@@ -360,6 +398,7 @@ export async function updateOrderItemsStatus(
       .eq("sale_order_id", orderId)
 
     if (error) throw new Error(error.message)
+    await invalidateOrderCaches(siteId)
     revalidatePath("/order-lines")
     revalidatePath(`/orders/${orderId}`)
     return { success: true }
@@ -381,6 +420,7 @@ export async function updateOrderNotes(siteId: string, orderId: string, notes: s
       .single();
 
     if (error) throw new Error(error.message);
+    await invalidateOrderCaches(siteId);
     revalidatePath(`/orders`);
     revalidatePath(`/orders/${orderId}`);
     return { data: data as SaleOrderData };

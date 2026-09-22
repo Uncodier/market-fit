@@ -55,6 +55,7 @@ export async function GET(request: NextRequest) {
   const result = await readThroughJsonCache({
     key: cacheKey,
     ttlSeconds: 60,
+    lockTtlMs: 60_000,
     compute: async () => {
       const entries = await Promise.all(
         Object.entries(HANDLERS).map(async ([key, handler]) => [

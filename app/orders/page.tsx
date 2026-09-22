@@ -39,6 +39,7 @@ import {
 import { ConfirmDialog } from "@/app/components/ui/confirm-dialog"
 import { usePermissions } from "@/app/context/PermissionContext"
 import { useOrderPrinting } from "@/app/orders/hooks/use-order-printing"
+import { useDebounce } from "use-debounce"
 
 function defaultOrdersDateRange(): OrdersDateRange {
   return {
@@ -65,6 +66,7 @@ export default function OrdersPage() {
   const [page, setPage] = useState(1)
   const pageSize = 50
   const [searchQuery, setSearchQuery] = useState("")
+  const [debouncedSearchQuery] = useDebounce(searchQuery, 300)
   const [statusFilter, setStatusFilter] = useState('all')
   const [locationFilter, setLocationFilter] = useState('all')
   const [viewType, setViewType] = useMobileView("kanban")
@@ -119,19 +121,20 @@ export default function OrdersPage() {
 
   const { data, error, isLoading, mutate } = useSWR(
     currentSite?.id && dateRangeSiteId === currentSite.id
-      ? { 
-          siteId: currentSite.id, 
-          page, 
-          pageSize, 
-          q: searchQuery, 
-          status: statusFilter, 
+      ? {
+          resource: "orders",
+          siteId: currentSite.id,
+          page,
+          pageSize,
+          q: debouncedSearchQuery,
+          status: statusFilter,
           locationId: locationFilter,
           startDate: dateRange?.startDate.toISOString(),
           endDate: dateRange?.endDate.toISOString(),
           sort: sortBy
         }
       : null,
-    fetcher
+    ({ resource: _resource, ...request }) => fetcher(request)
   )
 
   useOrdersRealtime(currentSite?.id, () => {

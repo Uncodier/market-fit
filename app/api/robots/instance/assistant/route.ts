@@ -12,6 +12,11 @@ import {
   strengthenImprentaAssistantPayload,
   type ImprentaNodeSnapshot,
 } from "./imprenta-contract"
+import {
+  acquireOperationLease,
+  releaseLeasesWithStream,
+  type OperationLease,
+} from "@/lib/redis/operation-lease"
 
 const ASSISTANT_PATH = "/api/robots/instance/assistant"
 const MAX_BODY_BYTES = 1024 * 1024
@@ -46,6 +51,7 @@ function getServerApiUrl(): string {
 }
 
 export async function POST(request: NextRequest) {
+  const leases: OperationLease[] = []
   const apiServerUrl = getServerApiUrl()
 
   if (!apiServerUrl) {
@@ -128,6 +134,46 @@ export async function POST(request: NextRequest) {
       parsedBody = strengthenImprentaAssistantPayload(parsedBody)
     }
 
+    const executionId =
+      (typeof parsedBody.instance_node_id === "string"
+        && parsedBody.instance_node_id)
+      || (typeof parsedBody.instance_id === "string" && parsedBody.instance_id)
+      || siteId
+    const executionLease = await acquireOperationLease(
+      "assistant-execution",
+      executionId,
+      UPSTREAM_TIMEOUT_MS + 15_000,
+    )
+    if (!executionLease) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: { message: "This assistant execution is already in progress" },
+        },
+        { status: 409, headers: { "Retry-After": "5" } },
+      )
+    }
+    leases.push(executionLease)
+
+    const globalLease = await acquireOperationLease(
+      "assistant-execution-global",
+      "global",
+      UPSTREAM_TIMEOUT_MS + 15_000,
+      8,
+    )
+    if (!globalLease) {
+      await executionLease.release()
+      leases.length = 0
+      return NextResponse.json(
+        {
+          success: false,
+          error: { message: "Assistant capacity is temporarily full" },
+        },
+        { status: 503, headers: { "Retry-After": "5" } },
+      )
+    }
+    leases.push(globalLease)
+
     const headers = new Headers()
     for (const name of ["authorization", "content-type", "accept", "x-api-key"]) {
       const value = request.headers.get(name)
@@ -155,12 +201,13 @@ export async function POST(request: NextRequest) {
       if (value) responseHeaders.set(name, value)
     }
 
-    return new Response(response.body, {
+    return new Response(releaseLeasesWithStream(response.body, leases), {
       status: response.status,
       statusText: response.statusText,
       headers: responseHeaders,
     })
   } catch (error) {
+    await Promise.allSettled(leases.map((lease) => lease.release()))
     if (error instanceof RequestBodyTooLargeError) {
       return NextResponse.json(
         {

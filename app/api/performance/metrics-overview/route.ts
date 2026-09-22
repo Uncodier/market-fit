@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
 import { requireAnalyticsAccess } from "@/lib/auth/api-analytics-access";
+import { readThroughAnalyticsResponseCache } from "@/lib/redis/analytics-response-cache";
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
@@ -16,6 +17,11 @@ export async function GET(request: NextRequest) {
   const access = await requireAnalyticsAccess(request);
   if (access.error) return access.error;
 
+  return readThroughAnalyticsResponseCache({
+    request,
+    namespace: "performance:metrics-overview",
+    siteId: access.siteId,
+    load: async () => {
   try {
     const supabase = await createServiceClient();
     
@@ -384,4 +390,6 @@ export async function GET(request: NextRequest) {
       }
     });
   }
+    },
+  });
 }

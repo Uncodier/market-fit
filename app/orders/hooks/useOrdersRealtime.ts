@@ -8,7 +8,12 @@ import {
   unlockAudio,
 } from "@/lib/audio"
 
-export function useOrdersRealtime(siteId: string | undefined, onInvalidate: () => void) {
+export function useOrdersRealtime(
+  siteId: string | undefined,
+  onInvalidate: () => void,
+  options: { includeUnits?: boolean } = {},
+) {
+  const { includeUnits = false } = options
   const refreshTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const onInvalidateRef = useRef(onInvalidate)
   onInvalidateRef.current = onInvalidate
@@ -48,7 +53,7 @@ export function useOrdersRealtime(siteId: string | undefined, onInvalidate: () =
       }, delay)
     }
 
-    const channel = supabase
+    let channel = supabase
       .channel(`sale_orders_${siteId}`)
       .on(
         "postgres_changes",
@@ -70,7 +75,21 @@ export function useOrdersRealtime(siteId: string | undefined, onInvalidate: () =
         },
         handleEvent
       )
-      .subscribe((status: string, err?: unknown) => {
+
+    if (includeUnits) {
+      channel = channel.on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "sale_order_item_units",
+          filter: `site_id=eq.${siteId}`,
+        },
+        handleEvent
+      )
+    }
+
+    channel.subscribe((status: string, err?: unknown) => {
         if (status === "CHANNEL_ERROR") {
           console.warn("[useOrdersRealtime] Temporary subscription error", err || "")
         } else if (status === "TIMED_OUT") {
@@ -89,5 +108,5 @@ export function useOrdersRealtime(siteId: string | undefined, onInvalidate: () =
         console.warn("[useOrdersRealtime] Failed to unsubscribe from realtime channel:", e)
       }
     }
-  }, [siteId])
+  }, [includeUnits, siteId])
 }

@@ -134,9 +134,25 @@ export function useImprentaData(instanceId?: string, siteId?: string) {
 
   const isLoading = Boolean(isSwrLoading && !data && instanceId)
 
-  const refreshImprentaData = useCallback(async (): Promise<ImprentaData | undefined> => {
-    return mutate()
-  }, [mutate])
+  const refreshImprentaData = useCallback(async (
+    options: { includeLogs?: boolean } = {},
+  ): Promise<ImprentaData | undefined> => {
+    if (options.includeLogs !== false) return mutate()
+    if (!instanceId) return undefined
+
+    const nodes = await fetchAllNodes(instanceId)
+    const contexts = await fetchContextsForNodes(nodes.map((node) => node.id))
+    let refreshed: ImprentaData | undefined
+    await mutate((current) => {
+      refreshed = {
+        nodes,
+        contexts,
+        logs: current?.logs || [],
+      }
+      return refreshed
+    }, false)
+    return refreshed
+  }, [instanceId, mutate])
 
   const updateImprentaCache = useCallback(
     (updater: ImprentaData | ((prev: ImprentaData | undefined) => ImprentaData | undefined)) => {

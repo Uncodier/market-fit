@@ -9,7 +9,7 @@ import {
   SectionCardFooter,
 } from "@/app/components/ui/section-card"
 import { Button } from "@/app/components/ui/button"
-import { PlusCircle } from "@/app/components/ui/icons"
+import { Bot, PlusCircle } from "@/app/components/ui/icons"
 import { EmptyCard } from "@/app/components/ui/empty-card"
 import { GlobeIcon } from "@/app/components/ui/social-icons"
 import { ConfirmDialog } from "@/app/components/ui/confirm-dialog"
@@ -23,13 +23,14 @@ import { SmsChannelSetup } from "./SmsChannelSetup"
 import { useZavuInvitationSync } from "./use-zavu-invitation-sync"
 import { useZavuPhoneStatusSync } from "./use-zavu-phone-status-sync"
 import { reconcilePhoneConnections } from "./zavu-phone-number-utils"
-import { Bot } from "@/app/components/ui/icons"
 import {
+  getSupportChannelAccountLabel,
   getSupportChannelIcon,
   getSupportChannelLabel,
   SupportChannelHeader,
   SupportChannelTypeSelector,
 } from "./support-channel-card-parts"
+import { useZavuSenderPhoneNumbers } from "./use-zavu-sender-phone-numbers"
 
 import { countAgentChannels, getAgentChannelLimit, canConnectAgentChannel } from "@/lib/billing-limits"
 import { useSite } from "@/app/context/SiteContext"
@@ -118,6 +119,10 @@ export function SupportChannelsSection({ active, siteId, onSave }: SupportChanne
     connections,
     enabled: active,
     onConnectionsChange: persistConnections,
+  })
+  const senderPhoneNumbers = useZavuSenderPhoneNumbers({
+    connections,
+    enabled: active,
   })
 
   const addChannel = useCallback(() => {
@@ -273,6 +278,11 @@ export function SupportChannelsSection({ active, siteId, onSave }: SupportChanne
           const failureReason = channel.metadata?.failure_reason
           const label = channel.name || getSupportChannelLabel(type)
           const waitingForAuth = !!invitationUrl && channel.status !== "failed"
+          const accountLabel = getSupportChannelAccountLabel(
+            channel,
+            label,
+            senderPhoneNumbers[channel.zavu_sender_id || ""],
+          )
 
           return (
             <SectionCard key={field.id} id={`support-channel-${index}`}>
@@ -297,11 +307,7 @@ export function SupportChannelsSection({ active, siteId, onSave }: SupportChanne
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="text-base font-medium truncate">
-                            {type === "telegram"
-                              ? `@${channel.metadata?.bot_username || "Bot"}`
-                              : type === "email"
-                                ? channel.metadata?.from_address || label
-                                : label}
+                            {accountLabel}
                           </p>
                           <div className="flex items-center gap-2 mt-1">
                             <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">

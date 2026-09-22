@@ -27,6 +27,10 @@ import {
   Trash2,
 } from "@/app/components/ui/icons"
 import { getChannelLabel } from "@/lib/site-channels"
+import {
+  formatPhoneNumber,
+  getAssignedPhoneNumber,
+} from "./zavu-phone-number-utils"
 
 const CHANNEL_TYPES = [
   { value: "whatsapp", label: "WhatsApp", icon: WhatsAppIcon },
@@ -38,6 +42,7 @@ const CHANNEL_TYPES = [
 ] as const
 
 const PARTNER_LINK_TYPES = new Set(["whatsapp", "messenger"])
+const PHONE_CHANNEL_TYPES = new Set(["whatsapp", "sms", "voice"])
 
 export function getSupportChannelIcon(type: string | undefined, size = 16) {
   if (!type) return <GlobeIcon size={size} />
@@ -47,6 +52,24 @@ export function getSupportChannelIcon(type: string | undefined, size = 16) {
 export function getSupportChannelLabel(type: string | undefined) {
   if (!type) return "New Channel"
   return CHANNEL_TYPES.find((item) => item.value === type)?.label || getChannelLabel(type)
+}
+
+export function getSupportChannelAccountLabel(
+  channel: Record<string, any>,
+  fallbackLabel: string,
+  fetchedPhoneNumber?: string,
+) {
+  if (channel.type === "telegram") {
+    return `@${channel.metadata?.bot_username || "Bot"}`
+  }
+  if (channel.type === "email") {
+    return channel.metadata?.from_address || fallbackLabel
+  }
+  if (PHONE_CHANNEL_TYPES.has(channel.type)) {
+    const phoneNumber = getAssignedPhoneNumber(channel) || fetchedPhoneNumber
+    return phoneNumber ? formatPhoneNumber(phoneNumber) : fallbackLabel
+  }
+  return fallbackLabel
 }
 
 export function SupportChannelHeader({

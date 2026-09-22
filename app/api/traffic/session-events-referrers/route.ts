@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/server';
 import { isMakinariInternalReferrerHostname } from '@/lib/traffic/makinari-internal-referrer';
 import { requireAnalyticsAccess } from '@/lib/auth/api-analytics-access';
+import { readThroughAnalyticsResponseCache } from '@/lib/redis/analytics-response-cache';
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -22,6 +23,11 @@ export async function GET(request: NextRequest) {
   const access = await requireAnalyticsAccess(request);
   if (access.error) return access.error;
 
+  return readThroughAnalyticsResponseCache({
+    request,
+    namespace: 'traffic:session-events-referrers',
+    siteId: access.siteId,
+    load: async () => {
   try {
     const supabase = await createServiceClient();
     console.log('Fetching page visits referrers for site:', siteId, 'from:', startDate, 'to:', endDate);
@@ -192,4 +198,6 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     );
   }
+    },
+  });
 } 

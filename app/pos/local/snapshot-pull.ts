@@ -235,7 +235,7 @@ export async function pullAndStorePosCatalogSnapshot(siteId: string, revision: s
   error?: string;
   pulledAt?: string;
 }> {
-  const res = await pullPosCatalogSnapshot(siteId);
+  const res = await pullPosCatalogSnapshot(siteId, revision);
   if ("error" in res) {
     return { ok: false, error: res.error };
   }

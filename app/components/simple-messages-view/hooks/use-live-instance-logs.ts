@@ -1,8 +1,6 @@
-import { useEffect, type MutableRefObject } from 'react'
+import { useEffect } from 'react'
 import type { InstanceLog } from '../types'
 import { fetchLiveInstanceLogs } from './fetch-live-instance-logs'
-import { markUserLogWorkflowStatus } from './send-message-reliability'
-import { isTerminalAgentResponse } from './subscribeInstanceLogsRealtime'
 
 type SetLogs = (updater: (current: InstanceLog[]) => InstanceLog[]) => void
 
@@ -12,8 +10,6 @@ interface UseLiveInstanceLogsOptions {
   waitingForMessageId?: string | null
   logs: InstanceLog[]
   setLogs: SetLogs
-  mutate: () => Promise<InstanceLog[] | undefined>
-  onResponseReceivedRef: MutableRefObject<(() => void) | undefined>
 }
 
 export function useLiveInstanceLogs({
@@ -22,8 +18,6 @@ export function useLiveInstanceLogs({
   waitingForMessageId,
   logs,
   setLogs,
-  mutate,
-  onResponseReceivedRef,
 }: UseLiveInstanceLogsOptions): void {
   const hasInFlightLog = logs.some(
     (log) =>
@@ -81,77 +75,4 @@ export function useLiveInstanceLogs({
       if (timer) clearTimeout(timer)
     }
   }, [instanceId, shouldTrackExecution, setLogs])
-
-  useEffect(() => {
-    if (!instanceId || !shouldTrackExecution) return
-    let disposed = false
-    let inFlight = false
-    let timer: ReturnType<typeof setTimeout> | null = null
-
-    const schedule = () => {
-      if (!disposed) timer = setTimeout(run, 4000)
-    }
-    const run = async () => {
-      if (
-        disposed
-        || inFlight
-        || document.visibilityState === 'hidden'
-        || !navigator.onLine
-      ) {
-        schedule()
-        return
-      }
-      inFlight = true
-      try {
-        const reconciled = await mutate()
-        if (disposed) return
-        const latest = reconciled?.[reconciled.length - 1]
-        if (latest && isTerminalAgentResponse(latest)) {
-          setLogs((current) => stopLatestRunningUserLog(current))
-          onResponseReceivedRef.current?.()
-        }
-      } finally {
-        inFlight = false
-        schedule()
-      }
-    }
-    const resume = () => {
-      if (document.visibilityState === 'visible' && navigator.onLine) {
-        if (timer) clearTimeout(timer)
-        void run()
-      }
-    }
-
-    schedule()
-    document.addEventListener('visibilitychange', resume)
-    window.addEventListener('online', resume)
-    return () => {
-      disposed = true
-      if (timer) clearTimeout(timer)
-      document.removeEventListener('visibilitychange', resume)
-      window.removeEventListener('online', resume)
-    }
-  }, [
-    instanceId,
-    shouldTrackExecution,
-    mutate,
-    onResponseReceivedRef,
-    setLogs,
-  ])
-}
-
-function stopLatestRunningUserLog(logs: InstanceLog[]): InstanceLog[] {
-  const running = [...logs]
-    .reverse()
-    .find(
-      (log) =>
-        log.log_type === 'user_action' && log.details?.status === 'running',
-    )
-  if (!running) return logs
-  void markUserLogWorkflowStatus({ logId: running.id, status: 'stopped' })
-  return logs.map((log) =>
-    log.id === running.id
-      ? { ...log, details: { ...(log.details || {}), status: 'stopped' } }
-      : log,
-  )
 }

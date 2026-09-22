@@ -5,26 +5,16 @@ import {
   markAnalyticsRequestAuthorized,
   requireAnalyticsAccess,
 } from '@/lib/auth/api-analytics-access'
-import { GET as revenueHandler } from '@/app/api/revenue/route'
-import { GET as activeUsersHandler } from '@/app/api/active-users/route'
-import { GET as ltvHandler } from '@/app/api/ltv/route'
-import { GET as roiHandler } from '@/app/api/roi/route'
-import { GET as cacHandler } from '@/app/api/cac/route'
-import { GET as cplHandler } from '@/app/api/cpl/route'
+import { GET as overviewHandler } from '@/app/api/dashboard/overview/route'
 
-async function readHandler(
-  handler: (request: NextRequest) => Promise<Response>,
-  request: NextRequest,
-  path: string,
-  userId: string
-) {
+async function readOverview(request: NextRequest, userId: string) {
   const url = new URL(request.url)
-  url.pathname = `/api/${path}`
+  url.pathname = '/api/dashboard/overview'
   const childRequest = new NextRequest(url, { headers: request.headers })
   markAnalyticsRequestAuthorized(childRequest, userId)
-  const response = await handler(childRequest)
+  const response = await overviewHandler(childRequest)
   if (!response.ok) {
-    throw new Error(`Dashboard dependency returned ${response.status}`)
+    throw new Error(`Dashboard overview returned ${response.status}`)
   }
   return response.json()
 }
@@ -52,21 +42,13 @@ export async function GET(request: NextRequest) {
     const startDateTime = new Date(startDate)
     const endDateTime = new Date(endDate)
 
-    const [
-      revenue,
-      activeUsers,
-      ltv,
-      roi,
-      cac,
-      cpl
-    ] = await Promise.all([
-      readHandler(revenueHandler, request, 'revenue', access.userId),
-      readHandler(activeUsersHandler, request, 'active-users', access.userId),
-      readHandler(ltvHandler, request, 'ltv', access.userId),
-      readHandler(roiHandler, request, 'roi', access.userId),
-      readHandler(cacHandler, request, 'cac', access.userId),
-      readHandler(cplHandler, request, 'cpl', access.userId),
-    ])
+    const overview = await readOverview(request, access.userId)
+    const revenue = overview.revenue || {}
+    const activeUsers = overview['active-users'] || {}
+    const ltv = overview.ltv || {}
+    const roi = overview.roi || {}
+    const cac = overview.cac || {}
+    const cpl = overview.cpl || {}
 
     // Transform data for CSV
     const reportData = [{

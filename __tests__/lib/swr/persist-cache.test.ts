@@ -24,6 +24,8 @@ describe('SWR persist cache', () => {
       [['imprenta-data', 'i1', 's1'], { data: { nodes: [] } }],
       [['instance_logs', 'r1'], { data: { logs: [] } }],
       ['@"leads","site-1",', { data: { leads: [{ id: 1 }] } }],
+      [{ resource: 'orders', siteId: 'site-1' }, { data: [{ id: 'order-1' }] }],
+      [{ resource: 'order-lines', siteId: 'site-1' }, { data: [{ id: 'line-1' }] }],
       ['locations', { data: [{ id: 'loc-1' }] }],
     ])
 
@@ -35,6 +37,8 @@ describe('SWR persist cache', () => {
     expect(keys.some((key) => key.includes('imprenta-data'))).toBe(false)
     expect(keys.some((key) => key.includes('instance_logs'))).toBe(false)
     expect(keys.some((key) => key.includes('leads'))).toBe(false)
+    expect(keys.some((key) => key.includes('"resource":"orders"'))).toBe(false)
+    expect(keys.some((key) => key.includes('"resource":"order-lines"'))).toBe(false)
   })
 
   it('drops entries larger than the per-entry budget', () => {

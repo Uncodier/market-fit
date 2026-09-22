@@ -4,20 +4,30 @@ import {
   acquireLock,
   checkRateLimit,
   releaseLock,
+  renewSemaphore,
 } from "@/lib/redis/control-plane"
-import { normalizedRequestCacheKey } from "@/lib/redis/json-cache"
+import {
+  bumpCacheEpoch,
+  normalizedRequestCacheKey,
+  readCacheEpoch,
+} from "@/lib/redis/json-cache"
+import { acquireOperationLease } from "@/lib/redis/operation-lease"
 
 describe("Redis control plane", () => {
   const originalUrl = process.env.REDIS_URL
+  const originalRequired = process.env.REDIS_REQUIRED
 
   beforeEach(() => {
     jest.clearAllMocks()
     delete process.env.REDIS_URL
+    delete process.env.REDIS_REQUIRED
   })
 
   afterAll(() => {
     if (originalUrl === undefined) delete process.env.REDIS_URL
     else process.env.REDIS_URL = originalUrl
+    if (originalRequired === undefined) delete process.env.REDIS_REQUIRED
+    else process.env.REDIS_REQUIRED = originalRequired
   })
 
   it("honors explicit fail-open and fail-closed policies", async () => {
@@ -85,6 +95,78 @@ describe("Redis control plane", () => {
         }),
       })
     )
+  })
+
+  it("renews a semaphore only for its current owner token", async () => {
+    process.env.REDIS_URL =
+      "rediss://default:test-token@credible-cattle.upstash.io:6379"
+    ;(global.fetch as jest.Mock).mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ result: 1 }),
+    })
+
+    await expect(
+      renewSemaphore("sem:test", "owner", 30_000)
+    ).resolves.toBe(true)
+
+    expect(global.fetch).toHaveBeenCalledWith(
+      "https://credible-cattle.upstash.io",
+      expect.objectContaining({
+        body: expect.stringContaining('"owner"'),
+      })
+    )
+  })
+
+  it("fails closed for operation leases when Redis is required", async () => {
+    process.env.REDIS_REQUIRED = "true"
+    await expect(
+      acquireOperationLease("export", "site-1", 30_000)
+    ).resolves.toBeNull()
+  })
+
+  it("renews and releases an acquired operation lease", async () => {
+    jest.useFakeTimers()
+    process.env.REDIS_URL =
+      "rediss://default:test-token@credible-cattle.upstash.io:6379"
+    ;(global.fetch as jest.Mock)
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ result: [1, 1] }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ result: 1 }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ result: 1 }),
+      })
+
+    const lease = await acquireOperationLease("export", "site-1", 30_000)
+    expect(lease).not.toBeNull()
+
+    await jest.advanceTimersByTimeAsync(10_000)
+    await lease?.release()
+
+    expect(global.fetch).toHaveBeenCalledTimes(3)
+    jest.useRealTimers()
+  })
+
+  it("reads and atomically bumps cache epochs", async () => {
+    process.env.REDIS_URL =
+      "rediss://default:test-token@credible-cattle.upstash.io:6379"
+    ;(global.fetch as jest.Mock)
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ result: "4" }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ result: 5 }),
+      })
+
+    await expect(readCacheEpoch("orders", "site-1")).resolves.toBe("4")
+    await expect(bumpCacheEpoch("orders", "site-1")).resolves.toBe(true)
   })
 
   it("normalizes parameter order while isolating tenant cache keys", async () => {

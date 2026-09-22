@@ -15,6 +15,8 @@ const SKIP_KEY_PARTS = [
   'catalog',
   'content',
   'robots',
+  '"resource":"orders"',
+  '"resource":"order-lines"',
 ]
 
 function keyToString(key: unknown): string {
