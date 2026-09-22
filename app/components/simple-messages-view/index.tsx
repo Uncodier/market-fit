@@ -1146,7 +1146,7 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
         )}
         {/* Welcome - shown only when chat is empty */}
         {isEmpty && (
-          <div className="w-full animate-in fade-in duration-500 mx-auto max-w-[800px]">
+          <div className="mb-3 w-full animate-in fade-in duration-500 mx-auto max-w-[800px]">
             <EmptyStateWelcome userName={userProfile?.name} />
           </div>
         )}
@@ -1171,6 +1171,7 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
           activeRobotInstance={activeRobotInstance}
           isBrowserVisible={isBrowserVisible}
           placeholderSuggestions={isEmpty ? EMPTY_STATE_TYPEWRITER_PROMPTS : undefined}
+          isEmptyState={isEmpty}
         />
         {/* Prompt suggestion carousel - shown below the input when chat is empty */}
         {isEmpty && (

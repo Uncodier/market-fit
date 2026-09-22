@@ -23,7 +23,7 @@ describe('EmptyStateWelcome', () => {
     render(<EmptyStateWelcome userName="Sergio Prado" />)
 
     expect(screen.getByRole('heading', { name: 'Good evening, Sergio' })).toBeInTheDocument()
-    expect(screen.getByText('What would you like to work on?')).toBeInTheDocument()
+    expect(screen.getByText('Start with a goal, question, or task.')).toBeInTheDocument()
 
     jest.useRealTimers()
   })

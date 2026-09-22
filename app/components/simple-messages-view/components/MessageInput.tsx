@@ -3,6 +3,7 @@ import { ArrowUp, Plus } from "@/app/components/ui/icons"
 import { ContextSelectorModal } from "@/app/components/ui/context-selector-modal"
 import { Button } from "@/app/components/ui/button"
 import { OptimizedTextarea } from "@/app/components/ui/optimized-textarea"
+import { cn } from "@/lib/utils"
 import { type SelectedContextIds } from '@/app/services/context-service'
 import { MediaParametersToolbar } from './MediaParametersToolbar'
 import { ActivitySelector } from './ActivitySelector'
@@ -47,6 +48,7 @@ interface MessageInputProps {
   activeRobotInstance?: any
   isBrowserVisible?: boolean
   placeholderSuggestions?: readonly string[]
+  isEmptyState?: boolean
 }
 
 const MessageInputComponent: React.FC<MessageInputProps> = ({
@@ -69,7 +71,8 @@ const MessageInputComponent: React.FC<MessageInputProps> = ({
   onAudioParameterChange,
   activeRobotInstance,
   isBrowserVisible = false,
-  placeholderSuggestions
+  placeholderSuggestions,
+  isEmptyState = false,
 }) => {
   const [mentionState, setMentionState] = useState<{ query: string, start: number, end: number } | null>(null)
   const [hasInput, setHasInput] = useState(() => message.trim().length > 0)
@@ -225,10 +228,17 @@ const MessageInputComponent: React.FC<MessageInputProps> = ({
                 }
               }}
               placeholder={dynamicPlaceholder}
-              className="resize-none min-h-[135px] w-full py-4 pl-[27px] pr-[27px] rounded-2xl border border-input focus-visible:outline-none bg-background text-base box-border peer"
+              className={cn(
+                "peer w-full resize-none box-border border focus-visible:outline-none",
+                isEmptyState
+                  ? "min-h-[148px] rounded-[24px] border-border/70 bg-card/90 px-6 py-5 text-[17px] shadow-lg shadow-black/[0.04] transition-[border-color,box-shadow,background-color] duration-200 placeholder:text-muted-foreground/70 focus-visible:border-primary/30 focus-visible:bg-card focus-visible:ring-4 focus-visible:ring-primary/[0.06] dark:border-white/10 dark:bg-card/75 dark:shadow-black/25"
+                  : "min-h-[135px] rounded-2xl border-input bg-background py-4 pl-[27px] pr-[27px] text-base"
+              )}
               disabled={disabled}
               style={{
                 ...COMPOSER_TEXTAREA_STYLE,
+                height: isEmptyState ? '148px' : COMPOSER_TEXTAREA_STYLE.height,
+                paddingBottom: isEmptyState ? '64px' : COMPOSER_TEXTAREA_STYLE.paddingBottom,
                 opacity: disabled ? 1 : undefined
               }}
             />
@@ -243,7 +253,7 @@ const MessageInputComponent: React.FC<MessageInputProps> = ({
             />
             
             {/* Context selector button in bottom left */}
-            <div className="absolute bottom-[15px] left-[15px] z-50">
+            <div className={cn("absolute z-50", isEmptyState ? "bottom-[18px] left-[18px]" : "bottom-[15px] left-[15px]")}>
               <div className="flex items-center gap-2">
                 <ActivitySelector
                   selectedActivity={selectedActivity}
@@ -271,7 +281,10 @@ const MessageInputComponent: React.FC<MessageInputProps> = ({
             </div>
             
             {/* Attachment and Send buttons on the right */}
-            <div className="absolute bottom-[15px] right-[15px] flex items-center gap-2" style={{ zIndex: 51 }}>
+            <div
+              className={cn("absolute flex items-center gap-2", isEmptyState ? "bottom-[18px] right-[18px]" : "bottom-[15px] right-[15px]")}
+              style={{ zIndex: 51 }}
+            >
               <Button 
                 type="button"
                 size="icon"

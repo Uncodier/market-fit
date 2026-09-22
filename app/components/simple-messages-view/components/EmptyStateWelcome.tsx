@@ -20,11 +20,11 @@ export function EmptyStateWelcome({ userName }: EmptyStateWelcomeProps) {
 
   return (
     <div className="px-4 text-center">
-      <h1 className="text-xl font-medium tracking-tight text-foreground sm:text-2xl">
+      <h1 className="text-2xl font-semibold tracking-[-0.025em] text-foreground sm:text-[32px] sm:leading-[1.15]">
         {greeting}{firstName ? `, ${firstName}` : ''}
       </h1>
-      <p className="mt-1.5 text-sm text-muted-foreground">
-        What would you like to work on?
+      <p className="mt-2 text-sm leading-6 text-muted-foreground sm:text-[15px]">
+        Start with a goal, question, or task.
       </p>
     </div>
   )
