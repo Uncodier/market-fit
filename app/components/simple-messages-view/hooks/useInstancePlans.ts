@@ -7,46 +7,67 @@ interface UseInstancePlansProps {
   activeRobotInstance?: any
 }
 
+const INSTANCE_PLAN_FIELDS = [
+  'id',
+  'title',
+  'description',
+  'plan_type',
+  'priority',
+  'status',
+  'instructions',
+  'expected_output',
+  'progress_percentage',
+  'steps_completed',
+  'steps_total',
+  'instance_id',
+  'created_at',
+  'updated_at',
+  'completed_at',
+  'steps',
+  'completion_reason',
+  'metadata',
+].join(', ')
+
 export const useInstancePlans = ({ activeRobotInstance }: UseInstancePlansProps) => {
+  const instanceId = activeRobotInstance?.id as string | undefined
   const [steps, setSteps] = useState<PlanStep[]>([])
   const [instancePlans, setInstancePlans] = useState<InstancePlan[]>([])
   const [completedPlans, setCompletedPlans] = useState<InstancePlan[]>([])
   const [isLoadingPlans, setIsLoadingPlans] = useState(false)
   const refreshTimeoutRef = useRef<NodeJS.Timeout | null>(null)
-  const loadInFlightRef = useRef(false)
-  const loadQueuedRef = useRef(false)
+  const loadRequestRef = useRef(0)
+  const activeInstanceIdRef = useRef(instanceId)
+  activeInstanceIdRef.current = instanceId
 
   // Load instance plans with proper status management
   const loadInstancePlans = useCallback(async () => {
-    if (loadInFlightRef.current) {
-      loadQueuedRef.current = true
-      return
-    }
-
-    if (!activeRobotInstance?.id) {
+    if (!instanceId) {
+      loadRequestRef.current += 1
       setInstancePlans([])
+      setCompletedPlans([])
       setSteps([])
+      setIsLoadingPlans(false)
       return
     }
 
-    loadInFlightRef.current = true
-    loadQueuedRef.current = false
-    const instanceId = activeRobotInstance.id
-    
-
+    const requestId = ++loadRequestRef.current
     setIsLoadingPlans(true)
     try {
       const supabase = createClient()
       
       
       // Query instance plans using the remote_instances.id
-      const { data, error, count } = await supabase
+      const { data, error } = await supabase
         .from('instance_plans')
-        .select('*', { count: 'exact' })
+        .select(INSTANCE_PLAN_FIELDS)
         .eq('instance_id', instanceId)
         .order('priority', { ascending: true })
         .order('created_at', { ascending: true })
 
+      if (
+        requestId !== loadRequestRef.current ||
+        activeInstanceIdRef.current !== instanceId
+      ) return
 
       if (error) {
         console.error('❌ Error loading instance plans:', error)
@@ -136,18 +157,22 @@ export const useInstancePlans = ({ activeRobotInstance }: UseInstancePlansProps)
         setSteps(uniqueSteps)
       }
     } catch (error) {
+      if (
+        requestId !== loadRequestRef.current ||
+        activeInstanceIdRef.current !== instanceId
+      ) return
       console.error('Error loading instance plans:', error)
       setInstancePlans([])
       setSteps([])
     } finally {
-      loadInFlightRef.current = false
-      setIsLoadingPlans(false)
-      if (loadQueuedRef.current) {
-        loadQueuedRef.current = false
-        window.setTimeout(() => void loadInstancePlans(), 0)
+      if (
+        requestId === loadRequestRef.current &&
+        activeInstanceIdRef.current === instanceId
+      ) {
+        setIsLoadingPlans(false)
       }
     }
-  }, [activeRobotInstance])
+  }, [instanceId])
 
   // Get current step
   const getCurrentStep = useCallback(() => {
@@ -199,16 +224,18 @@ export const useInstancePlans = ({ activeRobotInstance }: UseInstancePlansProps)
 
   // Load data when activeRobotInstance changes
   useEffect(() => {
-    loadInstancePlans()
-  }, [activeRobotInstance?.id])
+    setInstancePlans([])
+    setCompletedPlans([])
+    setSteps([])
+    void loadInstancePlans()
+  }, [loadInstancePlans])
 
   // Set up real-time subscription for plan updates
   useEffect(() => {
-    if (!activeRobotInstance?.id) return
+    if (!instanceId) return
 
     
     const supabase = createClient()
-    const instanceId = activeRobotInstance.id
     
     const subscription = supabase
       .channel(`instance_plans_changes_${instanceId}_${Date.now()}`)
@@ -249,7 +276,7 @@ export const useInstancePlans = ({ activeRobotInstance }: UseInstancePlansProps)
       supabase.removeChannel(subscription)
       if (refreshTimeoutRef.current) clearTimeout(refreshTimeoutRef.current)
     }
-  }, [activeRobotInstance?.id, loadInstancePlans])
+  }, [instanceId, loadInstancePlans])
 
   return {
     steps,

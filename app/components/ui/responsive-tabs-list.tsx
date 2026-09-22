@@ -218,15 +218,16 @@ export function ResponsiveTabsList({
       </div>
 
       <TabsList className={`inline-flex max-w-full flex-nowrap justify-start ${className || ''}`}>
-        {visibleTabs.map((tab) => (
-          <div key={tab.value} className="group relative shrink-0">
+        {visibleTabs.map((tab) => {
+          const hasActions = Boolean(tab.leadingAction || tab.trailingAction)
+          const trigger = (
             <TabsTrigger
               value={tab.value}
               className={`rounded-[inherit] ${triggerClassName || ''}`}
             >
               <span
                 className={`flex max-w-[200px] items-center gap-2 whitespace-nowrap py-0 ${
-                  tab.leadingAction || tab.trailingAction ? "px-7" : "px-2"
+                  hasActions ? "px-7" : "px-2"
                 }`}
               >
                 {tab.icon && (
@@ -237,10 +238,23 @@ export function ResponsiveTabsList({
                 <span className="truncate">{tab.label}</span>
               </span>
             </TabsTrigger>
-            {tab.leadingAction && renderAction(tab.leadingAction, "leading")}
-            {tab.trailingAction && renderAction(tab.trailingAction, "trailing")}
-          </div>
-        ))}
+          )
+
+          if (!hasActions) {
+            return <React.Fragment key={tab.value}>{trigger}</React.Fragment>
+          }
+
+          return (
+            <div
+              key={tab.value}
+              className="group relative inline-flex shrink-0 items-center self-center rounded-[inherit]"
+            >
+              {trigger}
+              {tab.leadingAction && renderAction(tab.leadingAction, "leading")}
+              {tab.trailingAction && renderAction(tab.trailingAction, "trailing")}
+            </div>
+          )
+        })}
 
         {needsOverflow && hiddenTabs.length > 0 && (
           <DropdownMenu>

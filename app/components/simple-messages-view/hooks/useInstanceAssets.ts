@@ -24,7 +24,7 @@ export const useInstanceAssets = ({ instanceId }: UseInstanceAssetsProps) => {
       const supabase = createClient()
       const { data, error } = await supabase
         .from('assets')
-        .select('*')
+        .select('id, name, file_path, file_type, file_size, site_id, instance_id, created_at')
         .eq('instance_id', instanceId)
         .order('created_at', { ascending: false })
 

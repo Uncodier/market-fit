@@ -10,6 +10,25 @@ import {
 } from './subscribeInstanceLogsRealtime'
 import { useLiveInstanceLogs } from './use-live-instance-logs'
 
+const INSTANCE_LOG_FIELDS = [
+  'id',
+  'instance_id',
+  'site_id',
+  'user_id',
+  'log_type',
+  'level',
+  'message',
+  'details',
+  'tool_name',
+  'tool_args',
+  'tool_result',
+  'screenshot_base64',
+  'parent_log_id',
+  'created_at',
+].join(', ')
+const INSTANCE_LOG_ID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
 interface UseInstanceLogsProps {
   activeRobotInstance?: any
   waitingForMessageId?: string | null
@@ -55,9 +74,10 @@ export const useInstanceLogs = ({
       const supabase = createClient()
       const { data, error } = await supabase
         .from('instance_logs')
-        .select('*')
+        .select(INSTANCE_LOG_FIELDS)
         .eq('instance_id', instanceId)
         .order('created_at', { ascending: false })
+        .order('id', { ascending: false })
         .limit(100)
         
       if (error) throw error
@@ -196,19 +216,29 @@ export const useInstanceLogs = ({
       return
     }
 
+    const oldestPersistedLog = logs.find((log) => INSTANCE_LOG_ID_PATTERN.test(log.id))
+    if (!oldestPersistedLog) {
+      setHasMoreLogs(false)
+      return
+    }
+
     setIsLoadingMore(true)
     isLoadingMoreRef.current = true
     const instanceId = activeRobotInstance.id
-    const oldestLogTime = logs[0].created_at
+    const oldestLogTime = oldestPersistedLog.created_at
+    const oldestLogId = oldestPersistedLog.id
 
     try {
       const supabase = createClient()
       const { data, error } = await supabase
         .from('instance_logs')
-        .select('*')
+        .select(INSTANCE_LOG_FIELDS)
         .eq('instance_id', instanceId)
-        .lt('created_at', oldestLogTime)
+        .or(
+          `created_at.lt.${oldestLogTime},and(created_at.eq.${oldestLogTime},id.lt.${oldestLogId})`
+        )
         .order('created_at', { ascending: false })
+        .order('id', { ascending: false })
         .limit(100)
 
       if (instanceId !== currentRobotInstanceIdRef.current) return;

@@ -44,6 +44,7 @@ export function subscribeInstanceLogsRealtime(params: {
   let retryCount = 0
   let retryTimeout: NodeJS.Timeout | null = null
   let disposed = false
+  let channelStatus = 'CLOSED'
 
   const stopLatestRunningUserLog = () => {
     setLogs((prevLogs: InstanceLog[]) => {
@@ -132,7 +133,9 @@ export function subscribeInstanceLogsRealtime(params: {
     if (
       disposed ||
       document.visibilityState === 'hidden' ||
-      !navigator.onLine
+      !navigator.onLine ||
+      channelStatus === 'SUBSCRIBED' ||
+      channelStatus === 'SUBSCRIBING'
     ) return
     if (retryTimeout) clearTimeout(retryTimeout)
     const baseDelay = Math.min(1000 * Math.pow(2, retryCount), 30000)
@@ -143,10 +146,15 @@ export function subscribeInstanceLogsRealtime(params: {
 
   const subscribe = () => {
     if (disposed) return
+    if (retryTimeout) {
+      clearTimeout(retryTimeout)
+      retryTimeout = null
+    }
     if (currentChannel) {
       try { supabase.removeChannel(currentChannel) } catch { /* ignore */ }
     }
 
+    channelStatus = 'SUBSCRIBING'
     const channelId = `instance_logs_${instanceId}_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`
     const newChannel = supabase
       .channel(channelId)
@@ -165,8 +173,13 @@ export function subscribeInstanceLogsRealtime(params: {
 
     newChannel.subscribe((status: string) => {
       if (disposed || currentChannel !== newChannel) return
+      channelStatus = status
       if (status === 'SUBSCRIBED') {
         retryCount = 0
+        if (retryTimeout) {
+          clearTimeout(retryTimeout)
+          retryTimeout = null
+        }
       } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
         handleRetry()
       }
@@ -180,8 +193,10 @@ export function subscribeInstanceLogsRealtime(params: {
       if (visibilityTimeout) clearTimeout(visibilityTimeout)
       visibilityTimeout = setTimeout(() => {
         loadInstanceLogsRef.current()
-        retryCount = 0
-        subscribe()
+        if (channelStatus !== 'SUBSCRIBED' && channelStatus !== 'SUBSCRIBING') {
+          retryCount = 0
+          subscribe()
+        }
       }, 1000)
     }
   }
@@ -198,5 +213,6 @@ export function subscribeInstanceLogsRealtime(params: {
     if (currentChannel) {
       try { supabase.removeChannel(currentChannel) } catch { /* ignore */ }
     }
+    channelStatus = 'CLOSED'
   }
 }

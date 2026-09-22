@@ -28,7 +28,7 @@ export const useInstanceArtifacts = ({ instanceId }: UseInstanceArtifactsProps) 
       const supabase = createClient()
       const { data, error } = await supabase
         .from('instance_artifacts')
-        .select('*')
+        .select('id, instance_id, site_id, user_id, screen, url, title, description, should_reload, context, created_at')
         .eq('instance_id', instanceId)
         .order('created_at', { ascending: false })
 

@@ -47,6 +47,15 @@ describe("ResponsiveTabsList", () => {
     fireEvent.click(screen.getByRole("button", { name: "Pin People to navigation" }))
     fireEvent.click(screen.getByRole("button", { name: "Close People artifact" }))
 
+    expect(screen.getByRole("tab", { name: "People" }).parentElement).toHaveClass(
+      "inline-flex",
+      "items-center",
+      "self-center",
+      "rounded-[inherit]",
+    )
+    expect(screen.getByRole("tab", { name: "Preview" }).parentElement).not.toHaveClass(
+      "group",
+    )
     expect(onPin).toHaveBeenCalledTimes(1)
     expect(onClose).toHaveBeenCalledTimes(1)
     expect(onTabChange).not.toHaveBeenCalled()
