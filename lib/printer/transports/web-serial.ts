@@ -35,7 +35,21 @@ function isUserCancel(err: unknown): boolean {
 }
 
 async function ensureOpen(port: SerialPortLike, baudRate: number): Promise<void> {
-  if (openSession?.port === port) return
+  if (
+    openSession?.port === port &&
+    openSession.baudRate === baudRate &&
+    port.writable
+  ) {
+    return
+  }
+  if (openSession?.port === port) {
+    openSession = null
+    try {
+      await port.close()
+    } catch {
+      // The browser may already consider a disconnected port closed.
+    }
+  }
   if (openSession) {
     try {
       await openSession.port.close()
@@ -82,8 +96,8 @@ export async function requestUsbPrinter(): Promise<{
     try {
       return await requestWebUsbPrinter()
     } catch (err) {
-      if (isUserCancel(err)) throw err // Si canceló, no seguimos preguntando
-      usbError = err // Guardamos el error para fallback
+      if (isUserCancel(err)) throw err
+      usbError = err
     }
   }
 
@@ -140,10 +154,10 @@ export async function writeUsbBytes(
     throw new Error("USB printing is not supported in this browser")
   }
 
-  // Attempt Web Serial first
+  // Attempt Web Serial first.
   let port = await findPort(vendorId, productId)
   
-  // If not found in serial, try WebUSB before prompting for serial again
+  // Try an existing WebUSB permission before prompting for Serial again.
   if (!port && isWebUsbSupported()) {
     try {
       const { writeWebUsbBytes } = await import("./web-usb")
@@ -172,9 +186,21 @@ export async function writeUsbBytes(
   await ensureOpen(port, options?.baudRate || DEFAULT_BAUD)
   if (!port.writable) throw new Error("Printer port is not writable")
   const writer = port.writable.getWriter()
+  let failed = false
   try {
     await writer.write(data)
+  } catch (err) {
+    failed = true
+    throw err
   } finally {
     writer.releaseLock()
+    if (failed && openSession?.port === port) {
+      openSession = null
+      try {
+        await port.close()
+      } catch {
+        // A disconnected port may reject close; the next print will reopen it.
+      }
+    }
   }
 }

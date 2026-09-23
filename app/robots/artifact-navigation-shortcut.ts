@@ -2,22 +2,12 @@ import {
   NAVIGATION_AREAS,
   isNavItemActive,
 } from "@/app/config/navigation-areas"
+import type { ShortcutRecord } from "@/app/components/navigation/shortcut-types"
 import {
-  normalizeShortcut,
-  type ShortcutRecord,
-} from "@/app/components/navigation/shortcut-types"
-
-const SHORTCUTS_STORAGE_KEY = "navigationShortcuts_v3"
-
-function loadStoredShortcuts(): ShortcutRecord[] {
-  const saved = localStorage.getItem(SHORTCUTS_STORAGE_KEY)
-  if (!saved) return []
-
-  const parsed: unknown = JSON.parse(saved)
-  if (!Array.isArray(parsed)) return []
-
-  return parsed.map(normalizeShortcut)
-}
+  loadShortcutsFromLocalStorage,
+  notifyShortcutsUpdated,
+  saveShortcutsToLocalStorage,
+} from "@/app/components/navigation/shortcut-storage"
 
 function findNavigationKey(
   pathname: string,
@@ -61,6 +51,11 @@ export function pinArtifactToNavigation({
   artifactUrl,
   title,
 }: PinArtifactShortcutOptions): void {
+  const siteId = localStorage.getItem("currentSiteId")
+  if (!siteId) {
+    throw new Error("Select a site before pinning an artifact.")
+  }
+
   const url = new URL(artifactUrl, window.location.origin)
   const searchParams = new URLSearchParams(url.search)
   const navigationKey = findNavigationKey(url.pathname, searchParams)
@@ -80,9 +75,9 @@ export function pinArtifactToNavigation({
         pinned: true,
       }
 
-  localStorage.setItem(
-    SHORTCUTS_STORAGE_KEY,
-    JSON.stringify(upsertShortcut(loadStoredShortcuts(), shortcut)),
+  saveShortcutsToLocalStorage(
+    siteId,
+    upsertShortcut(loadShortcutsFromLocalStorage(siteId), shortcut),
   )
-  window.dispatchEvent(new Event("shortcuts-updated"))
+  notifyShortcutsUpdated(siteId)
 }

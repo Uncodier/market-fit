@@ -1,31 +1,32 @@
 "use client"
 
-import { useState, useEffect, useMemo } from "react"
-import { useFormContext } from "react-hook-form"
-import { toast } from "sonner"
+import { Button } from "@/app/components/ui/button"
+import {
+  AlertCircle,
+  Check,
+  CheckCircle2,
+  Cloud,
+  Copy,
+  Download,
+  Mail,
+  Trash2,
+} from "@/app/components/ui/icons"
+import { Input } from "@/app/components/ui/input"
+import { Label } from "@/app/components/ui/label"
 import {
   SectionCard,
-  SectionCardHeader,
-  SectionCardTitle,
-  SectionCardDescription,
   SectionCardContent,
   SectionCardFooter,
+  SectionCardHeader,
+  SectionCardTitle,
 } from "@/app/components/ui/section-card"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../ui/table"
-import { Button } from "../ui/button"
-import { Input } from "../ui/input"
-import { Label } from "../ui/label"
-import { Mail, CheckCircle2, AlertCircle, Trash2, Download, Check, Copy, Cloud } from "../ui/icons"
-import { type SiteFormValues } from "./form-schema"
-import { useSite } from "../../context/SiteContext"
-import { apiClient } from "../../services/api-client-service"
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "../ui/select"
+} from "@/app/components/ui/select"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -35,624 +36,48 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "../ui/alert-dialog"
-import {
-  Dialog,
-  DialogBody,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "../ui/dialog"
-import { secretsService } from "../../services/secrets-service"
+} from "@/app/components/ui/alert-dialog"
+import type { SiteFormValues } from "./form-schema"
+import { apiClient } from "@/app/services/api-client-service"
+import { AgentEmailDnsDialog } from "./AgentEmailDnsDialog"
+import { AgentMailCredentials } from "./AgentMailCredentials"
+import { buildAgentMailWebhookUrl } from "./agentmail-settings"
+import { useAgentEmailChannel } from "./use-agent-email-channel"
+import { useAgentMailSecrets } from "./use-agentmail-secrets"
 
 interface AgentEmailSectionProps {
   active: boolean
   siteId?: string
-  onSave?: (data: SiteFormValues) => void
+  onSave?: (data: SiteFormValues) => void | Promise<void>
 }
 
-export function AgentEmailSection({ active, siteId, onSave }: AgentEmailSectionProps) {
-  const form = useFormContext<SiteFormValues>()
-  const [isRequesting, setIsRequesting] = useState(false)
-  const [isSaving, setIsSaving] = useState(false)
-  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
-  const [isDeleting, setIsDeleting] = useState(false)
-  const [isGettingDnsFiles, setIsGettingDnsFiles] = useState(false)
-  const [isVerifying, setIsVerifying] = useState(false)
-  const [cooldownSeconds, setCooldownSeconds] = useState(0)
-  const [showDnsModal, setShowDnsModal] = useState(false)
-  const [copiedIndex, setCopiedIndex] = useState<number | null>(null)
-  const [apiKey, setApiKey] = useState("")
-  const [isApiKeyStored, setIsApiKeyStored] = useState(false)
-  const [isSavingApiKey, setIsSavingApiKey] = useState(false)
-  const [isCloudflareConnected, setIsCloudflareConnected] = useState(false)
-  const [isSyncingCloudflare, setIsSyncingCloudflare] = useState(false)
-  const { currentSite, updateSettings } = useSite()
-
-  // Get current values from form - watch only what user can change
-  const domain = form.watch("channels.agent_email.domain")
-  const customDomain = form.watch("channels.agent_email.customDomain") || ""
-  const username = form.watch("channels.agent_email.username") || ""
-  const displayName = form.watch("channels.agent_email.displayName") || ""
-  const setupRequested = form.watch("channels.agent_email.setupRequested") || false
-  const status = form.watch("channels.agent_email.status") || "not_configured"
-
-  const isPending = status === "pending" || setupRequested
-  const isActive = status === "active"
-  const isNotConfigured = status === "not_configured"
-  const isWaitingForVerification = status === "waiting_for_verification"
-  
-  // Get DNS records from currentSite settings - check both locations for compatibility
-  const dnsRecords = currentSite?.settings?.channels?.agent_email?.dns_records || 
-                     currentSite?.settings?.channels?.agent_email?.data?.dns_records
-  const hasDnsRecords = Array.isArray(dnsRecords) && dnsRecords.length > 0
-  
-  // Group DNS records by type
-  const mxRecords = hasDnsRecords ? dnsRecords.filter(record => record.type === "MX" || record.type === "mx") : []
-  const txtRecords = hasDnsRecords ? dnsRecords.filter(record => record.type === "TXT" || record.type === "txt") : []
-  const otherRecords = hasDnsRecords ? dnsRecords.filter(record => 
-    record.type !== "MX" && record.type !== "mx" && record.type !== "TXT" && record.type !== "txt"
-  ) : []
-
-  const handleSave = async () => {
-    if (apiKey && !isApiKeyStored) {
-      await handleSaveApiKey()
-    }
-
-    if (!onSave) return
-    setIsSaving(true)
-    try {
-      const formData = form.getValues()
-      await onSave(formData)
-      form.reset(formData)
-    } catch (error) {
-      console.error("Error saving agent email settings:", error)
-    } finally {
-      setIsSaving(false)
-    }
-  }
-
-  useEffect(() => {
-    const checkSecrets = async () => {
-      if (siteId) {
-        const apiKeyExists = await secretsService.checkSecretExists(siteId, 'agentmail', 'integrations')
-        setIsApiKeyStored(apiKeyExists)
-        
-        const cfExists = await secretsService.checkSecretExists(siteId, 'cloudflare', 'dns_sync')
-        setIsCloudflareConnected(cfExists)
-      }
-    }
-    checkSecrets()
-  }, [siteId])
-
-  // Get domain ID (URL) for API calls - use domain_id from metadata if available, otherwise calculate
-  const getDomainId = () => {
-    // First try to get domain_id from stored metadata (check both locations)
-    const storedDomainId = currentSite?.settings?.channels?.agent_email?.domain_id ||
-                          currentSite?.settings?.channels?.agent_email?.data?.domain_id
-    if (storedDomainId) {
-      return storedDomainId
-    }
-    // Fallback to calculating from domain/customDomain
-    if (domain === "custom") {
-      return customDomain
-    }
-    return domain || ""
-  }
-
-  // Trigger sync if coming back from oauth
-  useEffect(() => {
-    if (typeof window === 'undefined') return
-    const params = new URLSearchParams(window.location.search)
-    if (params.get('cloudflare_sync_pending') === 'true' && isCloudflareConnected && hasDnsRecords && !isSyncingCloudflare) {
-      // Clean url to avoid multiple syncs
-      const newUrl = window.location.pathname + window.location.search.replace(/&?cloudflare_sync_pending=true/, '')
-      window.history.replaceState({}, document.title, newUrl)
-      
-      // Auto trigger sync
-      if (!siteId || !getDomainId()) return
-      handleSyncCloudflare()
-    }
-  }, [isCloudflareConnected, hasDnsRecords, isSyncingCloudflare, siteId])
-  const handleSaveApiKey = async () => {
-    if (!siteId || !apiKey) return
-    setIsSavingApiKey(true)
-    try {
-      const success = await secretsService.storeSecret(
-        siteId, 
-        'agentmail', 
-        'integrations', 
-        'AgentMail API Key (BYOK)', 
-        apiKey
-      )
-      if (success) {
-        setIsApiKeyStored(true)
-        setApiKey("") // Clear it from memory
-        toast.success("AgentMail API Key saved securely")
-      } else {
-        toast.error("Failed to save AgentMail API Key")
-      }
-    } catch (error) {
-      console.error(error)
-      toast.error("Failed to save AgentMail API Key")
-    } finally {
-      setIsSavingApiKey(false)
-    }
-  }
-
-  const handleDeleteApiKey = async () => {
-    if (!siteId) return
-    setIsSavingApiKey(true)
-    try {
-      const success = await secretsService.deleteSecret(siteId, 'agentmail', 'integrations')
-      if (success) {
-        setIsApiKeyStored(false)
-        toast.success("AgentMail API Key removed")
-      } else {
-        toast.error("Failed to remove AgentMail API Key")
-      }
-    } catch (error) {
-      console.error(error)
-      toast.error("Failed to remove AgentMail API Key")
-    } finally {
-      setIsSavingApiKey(false)
-    }
-  }
-
-  const handleSyncCloudflare = async () => {
-    if (!isCloudflareConnected) {
-      window.location.href = `/api/integrations/cloudflare/oauth/authorize?site_id=${siteId}`
-      return
-    }
-
-    if (!siteId || !getDomainId() || !hasDnsRecords) return
-
-    setIsSyncingCloudflare(true)
-    try {
-      const response = await fetch('/api/integrations/cloudflare/sync/agentmail', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          siteId,
-          domain: getDomainId(),
-          records: dnsRecords
-        })
-      })
-
-      const data = await response.json()
-      if (response.ok && data.success) {
-        toast.success("DNS records synced with Cloudflare successfully")
-      } else {
-        toast.error(data.error || "Failed to sync DNS records")
-      }
-    } catch (error: any) {
-      console.error("Error syncing with Cloudflare:", error)
-      toast.error("An error occurred while syncing with Cloudflare")
-    } finally {
-      setIsSyncingCloudflare(false)
-    }
-  }
-
-  const canRequest = () => {
-    if (!domain || !username || !displayName) return false
-    if (domain === "custom" && !customDomain) return false
-    return true
-  }
-
-  const handleRequestAgentEmail = async () => {
-    if (!currentSite || !siteId || !canRequest()) return
-
-    setIsRequesting(true)
-    try {
-      // Prepare request data
-      const requestData = {
-        domain: domain === "custom" ? customDomain : domain,
-        username: username,
-        displayName: displayName,
-        siteId: siteId,
-        siteName: currentSite.name
-      }
-
-      // Call the API
-      const response = await apiClient.post('/api/integrations/agentmail/inbox/create', requestData)
-
-      if (response.success) {
-        // Extract metadata from response if available
-        // The API may return data directly or nested in agent_email
-        const responseData = response.data || {}
-        const agentEmailData = responseData.agent_email || responseData
-        
-        const responseStatus = agentEmailData.status || responseData.status || "pending"
-        const domainId = agentEmailData.domain_id || responseData.domain_id || (domain === "custom" ? customDomain : domain)
-        const inboxId = agentEmailData.inbox_id || agentEmailData.id || responseData.inbox_id || responseData.id
-        const dnsRecords = agentEmailData.dns_records || responseData.dns_records || []
-        const domainStatus = agentEmailData.domain_status || responseData.domain_status
-        const errorMessage = agentEmailData.error_message || responseData.error_message
-        const responseUsername = agentEmailData.username || responseData.username || username
-        const responseDisplayName = agentEmailData.display_name || agentEmailData.displayName || responseData.display_name || responseData.displayName || displayName
-
-        // Update form values
-        // If status is "active", don't set setupRequested to true, just update the values directly
-        if (responseStatus === "active") {
-          form.setValue("channels.agent_email.setupRequested", false)
-          form.setValue("channels.agent_email.username", responseUsername)
-          form.setValue("channels.agent_email.displayName", responseDisplayName)
-        } else {
-          form.setValue("channels.agent_email.setupRequested", true)
-        }
-        form.setValue("channels.agent_email.status", responseStatus)
-
-        // Update settings in database with metadata - store directly in agent_email to match API structure
-        await updateSettings(currentSite.id, {
-          channels: {
-            ...currentSite.settings?.channels,
-            agent_email: {
-              domain: domain as "makinari.email" | "custom" | undefined,
-              customDomain: domain === "custom" ? customDomain : undefined,
-              username: responseUsername,
-              displayName: responseDisplayName,
-              setupRequested: responseStatus === "active" ? false : true,
-              status: responseStatus,
-              inbox_id: inboxId,
-              id: inboxId,
-              domain_id: domainId,
-              dns_records: Array.isArray(dnsRecords) && dnsRecords.length > 0 ? dnsRecords : undefined,
-              domain_status: domainStatus,
-              error_message: errorMessage,
-              // Also keep data for backward compatibility
-              data: {
-                domain: (domain === "custom" ? customDomain : domain) as "makinari.email" | "custom" | undefined,
-                username: responseUsername,
-                displayName: responseDisplayName,
-                inbox_id: inboxId,
-                id: inboxId,
-                domain_id: domainId,
-                dns_records: Array.isArray(dnsRecords) && dnsRecords.length > 0 ? dnsRecords : undefined,
-                domain_status: domainStatus,
-                error_message: errorMessage
-              }
-            }
-          }
-        })
-
-        toast.success("Agent email request submitted successfully")
-      } else {
-        const errorMessage = typeof response.error === 'string' 
-          ? response.error 
-          : response.error?.message 
-          ? String(response.error.message)
-          : "Failed to request agent email"
-        toast.error(errorMessage)
-      }
-    } catch (error: any) {
-      console.error("Error requesting agent email:", error)
-      const errorMessage = error instanceof Error 
-        ? error.message 
-        : typeof error === 'string' 
-        ? error 
-        : error?.error?.message 
-        ? String(error.error.message)
-        : error?.message 
-        ? String(error.message)
-        : "Failed to request agent email"
-      toast.error(errorMessage)
-    } finally {
-      setIsRequesting(false)
-    }
-  }
-
-  // Initialize form values from site settings - only once when site changes
-  useEffect(() => {
-    if (!currentSite?.settings?.channels?.agent_email) return
-    
-    const agentEmailData = currentSite.settings.channels.agent_email
-    const currentValues = form.getValues("channels.agent_email")
-    
-    // Only update if values are different to avoid infinite loops
-    if (currentValues.domain !== agentEmailData.domain) {
-      form.setValue("channels.agent_email.domain", agentEmailData.domain, { shouldDirty: false, shouldValidate: false })
-    }
-    if (currentValues.customDomain !== (agentEmailData.customDomain || "")) {
-      form.setValue("channels.agent_email.customDomain", agentEmailData.customDomain || "", { shouldDirty: false, shouldValidate: false })
-    }
-    if (currentValues.username !== (agentEmailData.username || "")) {
-      form.setValue("channels.agent_email.username", agentEmailData.username || "", { shouldDirty: false, shouldValidate: false })
-    }
-    if (currentValues.displayName !== (agentEmailData.displayName || "")) {
-      form.setValue("channels.agent_email.displayName", agentEmailData.displayName || "", { shouldDirty: false, shouldValidate: false })
-    }
-    if (currentValues.setupRequested !== (agentEmailData.setupRequested || false)) {
-      form.setValue("channels.agent_email.setupRequested", agentEmailData.setupRequested || false, { shouldDirty: false, shouldValidate: false })
-    }
-    if (currentValues.status !== (agentEmailData.status || "not_configured")) {
-      form.setValue("channels.agent_email.status", agentEmailData.status || "not_configured", { shouldDirty: false, shouldValidate: false })
-    }
-  }, [currentSite?.id])
-
-  // Update cooldown timer when waiting for verification
-  useEffect(() => {
-    if (!isWaitingForVerification) {
-      setCooldownSeconds(0)
-      return
-    }
-
-    const updateCooldown = () => {
-      if (!siteId || !getDomainId()) {
-        setCooldownSeconds(0)
-        return
-      }
-      
-      const storageKey = `agent_email_verify_${siteId}_${getDomainId()}`
-      const lastVerifyTime = localStorage.getItem(storageKey)
-      
-      if (!lastVerifyTime) {
-        setCooldownSeconds(0)
-        return
-      }
-      
-      const timeSinceLastVerify = Date.now() - parseInt(lastVerifyTime, 10)
-      const fiveMinutes = 5 * 60 * 1000
-      
-      if (timeSinceLastVerify >= fiveMinutes) {
-        setCooldownSeconds(0)
-      } else {
-        setCooldownSeconds(Math.ceil((fiveMinutes - timeSinceLastVerify) / 1000))
-      }
-    }
-
-    updateCooldown()
-    const interval = setInterval(updateCooldown, 1000)
-
-    return () => clearInterval(interval)
-  }, [isWaitingForVerification, siteId, domain, customDomain])
-
-  const handleDeleteInbox = async () => {
-    if (!currentSite || !siteId) return
-
-    // Get inbox id from stored data
-    const agentEmail = currentSite?.settings?.channels?.agent_email
-    const inboxId = agentEmail?.inbox_id ||
-                    agentEmail?.id ||
-                    agentEmail?.data?.inbox_id ||
-                    agentEmail?.data?.id ||
-                    (agentEmail?.username && agentEmail?.domain ? `${agentEmail.username}@${agentEmail.domain === "custom" && agentEmail.customDomain ? agentEmail.customDomain : agentEmail.domain}` : undefined)
-
-    if (!inboxId) {
-      toast.error("Inbox ID not found. Cannot delete inbox.")
-      return
-    }
-
-    setIsDeleting(true)
-    try {
-      const response = await apiClient.post('/api/integrations/agentmail/inbox/delete', {
-        inbox_id: inboxId,
-        siteId: siteId
-      })
-
-      if (response.success) {
-        // Reset form values
-        form.setValue("channels.agent_email.domain", undefined)
-        form.setValue("channels.agent_email.customDomain", "")
-        form.setValue("channels.agent_email.username", "")
-        form.setValue("channels.agent_email.displayName", "")
-        form.setValue("channels.agent_email.setupRequested", false)
-        form.setValue("channels.agent_email.status", "not_configured")
-
-        // Update settings in database
-        await updateSettings(currentSite.id, {
-          channels: {
-            ...currentSite.settings?.channels,
-            agent_email: {
-              domain: undefined,
-              customDomain: undefined,
-              username: undefined,
-              displayName: undefined,
-              setupRequested: false,
-              status: "not_configured",
-              data: undefined
-            }
-          }
-        })
-
-        toast.success("Inbox deleted successfully")
-        setShowDeleteDialog(false)
-      } else {
-        const errorMessage = typeof response.error === 'string' 
-          ? response.error 
-          : response.error?.message 
-          ? String(response.error.message)
-          : "Failed to delete inbox"
-        toast.error(errorMessage)
-      }
-    } catch (error: any) {
-      console.error("Error deleting inbox:", error)
-      const errorMessage = error instanceof Error 
-        ? error.message 
-        : typeof error === 'string' 
-        ? error 
-        : error?.error?.message 
-        ? String(error.error.message)
-        : error?.message 
-        ? String(error.message)
-        : "Failed to delete inbox"
-      toast.error(errorMessage)
-    } finally {
-      setIsDeleting(false)
-    }
-  }
-
-  // Check if verify button is rate limited (5 minutes = 300000ms)
-  const canVerify = () => {
-    if (!siteId || !getDomainId()) return false
-    
-    const storageKey = `agent_email_verify_${siteId}_${getDomainId()}`
-    const lastVerifyTime = localStorage.getItem(storageKey)
-    
-    if (!lastVerifyTime) return true
-    
-    const timeSinceLastVerify = Date.now() - parseInt(lastVerifyTime, 10)
-    const fiveMinutes = 5 * 60 * 1000 // 300000ms
-    
-    return timeSinceLastVerify >= fiveMinutes
-  }
-
-  // Get remaining cooldown time in seconds
-  const getRemainingCooldown = () => {
-    if (!siteId || !getDomainId()) return 0
-    
-    const storageKey = `agent_email_verify_${siteId}_${getDomainId()}`
-    const lastVerifyTime = localStorage.getItem(storageKey)
-    
-    if (!lastVerifyTime) return 0
-    
-    const timeSinceLastVerify = Date.now() - parseInt(lastVerifyTime, 10)
-    const fiveMinutes = 5 * 60 * 1000
-    
-    if (timeSinceLastVerify >= fiveMinutes) return 0
-    
-    return Math.ceil((fiveMinutes - timeSinceLastVerify) / 1000)
-  }
-
-  const handleGetDnsFiles = async () => {
-    if (!currentSite || !siteId) return
-
-    const domainId = getDomainId()
-    if (!domainId) {
-      toast.error("Domain information is missing")
-      return
-    }
-
-    setIsGettingDnsFiles(true)
-    try {
-      const response = await apiClient.get(`/api/integrations/agentmail/domains/${encodeURIComponent(domainId)}/zone-file`)
-
-      if (response.success && response.data) {
-        // Download the zone file
-        const zoneFileContent = typeof response.data === 'string' 
-          ? response.data 
-          : JSON.stringify(response.data, null, 2)
-        
-        const blob = new Blob([zoneFileContent], { type: 'text/plain' })
-        const url = URL.createObjectURL(blob)
-        const a = document.createElement('a')
-        a.href = url
-        a.download = `dns-zone-${domainId.replace(/\./g, '-')}.txt`
-        document.body.appendChild(a)
-        a.click()
-        document.body.removeChild(a)
-        URL.revokeObjectURL(url)
-
-        toast.success("DNS zone file downloaded successfully")
-      } else {
-        const errorMessage = typeof response.error === 'string' 
-          ? response.error 
-          : response.error?.message 
-          ? String(response.error.message)
-          : "Failed to get DNS files"
-        toast.error(errorMessage)
-      }
-    } catch (error: any) {
-      console.error("Error getting DNS files:", error)
-      const errorMessage = error instanceof Error 
-        ? error.message 
-        : typeof error === 'string' 
-        ? error 
-        : error?.error?.message 
-        ? String(error.error.message)
-        : error?.message 
-        ? String(error.message)
-        : "Failed to get DNS files"
-      toast.error(errorMessage)
-    } finally {
-      setIsGettingDnsFiles(false)
-    }
-  }
-
-  const handleVerify = async () => {
-    if (!currentSite || !siteId || !canVerify()) return
-
-    const domainId = getDomainId()
-    if (!domainId) {
-      toast.error("Domain information is missing")
-      return
-    }
-
-    setIsVerifying(true)
-    try {
-      const response = await apiClient.post(`/api/integrations/agentmail/domains/${encodeURIComponent(domainId)}/verify`, {})
-
-      if (response.success) {
-        // Store verification timestamp in localStorage
-        const storageKey = `agent_email_verify_${siteId}_${getDomainId()}`
-        localStorage.setItem(storageKey, Date.now().toString())
-
-        // Extract updated metadata from response
-        const responseData = response.data || {}
-        const agentEmailResponse = responseData.agent_email || responseData
-        const newStatus = agentEmailResponse.status || responseData.status || currentSite.settings?.channels?.agent_email?.status || "pending"
-        const updatedDomainId = agentEmailResponse.domain_id || responseData.domain_id || getDomainId()
-        const updatedDnsRecords = agentEmailResponse.dns_records || responseData.dns_records || 
-                                  currentSite.settings?.channels?.agent_email?.dns_records ||
-                                  currentSite.settings?.channels?.agent_email?.data?.dns_records
-        const updatedDomainStatus = agentEmailResponse.domain_status || responseData.domain_status || 
-                                   currentSite.settings?.channels?.agent_email?.domain_status ||
-                                   currentSite.settings?.channels?.agent_email?.data?.domain_status
-        const updatedErrorMessage = agentEmailResponse.error_message || responseData.error_message
-
-        form.setValue("channels.agent_email.status", newStatus)
-
-        // Update settings in database with latest metadata - store directly in agent_email
-        await updateSettings(currentSite.id, {
-          channels: {
-            ...currentSite.settings?.channels,
-            agent_email: {
-              ...currentSite.settings?.channels?.agent_email,
-              status: newStatus,
-              domain_id: updatedDomainId,
-              dns_records: updatedDnsRecords,
-              domain_status: updatedDomainStatus,
-              error_message: updatedErrorMessage,
-              // Also update data for backward compatibility
-              data: {
-                ...currentSite.settings?.channels?.agent_email?.data,
-                domain_id: updatedDomainId,
-                dns_records: updatedDnsRecords,
-                domain_status: updatedDomainStatus,
-                error_message: updatedErrorMessage
-              }
-            }
-          }
-        })
-
-        toast.success("Domain verification initiated successfully")
-      } else {
-        const errorMessage = typeof response.error === 'string' 
-          ? response.error 
-          : response.error?.message 
-          ? String(response.error.message)
-          : "Failed to verify domain"
-        toast.error(errorMessage)
-      }
-    } catch (error: any) {
-      console.error("Error verifying domain:", error)
-      const errorMessage = error instanceof Error 
-        ? error.message 
-        : typeof error === 'string' 
-        ? error 
-        : error?.error?.message 
-        ? String(error.error.message)
-        : error?.message 
-        ? String(error.message)
-        : "Failed to verify domain"
-      toast.error(errorMessage)
-    } finally {
-      setIsVerifying(false)
-    }
-  }
+export function AgentEmailSection({
+  active,
+  siteId,
+  onSave,
+}: AgentEmailSectionProps) {
+  const channel = useAgentEmailChannel({ siteId, onSave })
+  const secrets = useAgentMailSecrets(siteId)
+  const webhookUrl = buildAgentMailWebhookUrl(apiClient.getApiUrl())
 
   if (!active) return null
+
+  const save = async () => {
+    if (!(await secrets.savePendingSecrets())) return
+    await channel.saveForm()
+  }
+
+  const emailUsername =
+    channel.agentEmail?.username || channel.agentEmail?.data?.username
+  const emailDisplayName =
+    channel.agentEmail?.displayName || channel.agentEmail?.data?.displayName
+  const emailDomain = channel.agentEmail?.domain === "custom"
+    ? channel.agentEmail.customDomain
+      || channel.agentEmail.data?.customDomain
+      || channel.agentEmail.data?.domain
+    : channel.agentEmail?.domain || channel.agentEmail?.data?.domain
+  const errorMessage =
+    channel.agentEmail?.error_message || channel.agentEmail?.data?.error_message
 
   return (
     <SectionCard id="agent-email-channel">
@@ -661,53 +86,24 @@ export function AgentEmailSection({ active, siteId, onSave }: AgentEmailSectionP
           <Mail className="h-5 w-5" />
           Agent Email Channel
         </SectionCardTitle>
-        <p className="text-sm text-muted-foreground mt-1">
+        <p className="mt-1 text-sm text-muted-foreground">
           Request an agent email address for automated customer communication
         </p>
       </SectionCardHeader>
-      <SectionCardContent className="pb-4 space-y-4">
-        <div className="space-y-2 pb-4 border-b dark:border-white/5 border-black/5">
-          <Label className="text-sm font-medium text-foreground">AgentMail API Key (BYOK)</Label>
-          <p className="text-xs text-muted-foreground mb-4">
-            Bring your own API key to bypass system rate limits and use your own AgentMail account.
-          </p>
-          {isApiKeyStored ? (
-            <div className="flex items-center gap-2 mt-2 p-3 bg-muted/20 rounded-md border">
-              <CheckCircle2 className="h-4 w-4 text-green-500" />
-              <span className="text-sm">API Key is securely stored in Vault</span>
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                className="ml-auto text-destructive h-7 hover:bg-destructive/10"
-                onClick={handleDeleteApiKey}
-                disabled={isSavingApiKey}
-              >
-                Remove
-              </Button>
-            </div>
-          ) : (
-            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
-              <Input
-                type="password"
-                placeholder="am_live_..."
-                value={apiKey}
-                onChange={(e) => setApiKey(e.target.value)}
-                className="font-mono text-sm w-full"
-              />
-            </div>
-          )}
-        </div>
 
-        {isNotConfigured && (
+      <SectionCardContent className="space-y-4 pb-4">
+        <AgentMailCredentials secrets={secrets} webhookUrl={webhookUrl} />
+
+        {channel.isNotConfigured && (
           <div className="space-y-4">
             <div>
               <Label className="text-sm font-medium text-foreground">Domain</Label>
               <Select
-                value={domain || ""}
+                value={channel.domain || ""}
                 onValueChange={(value: "makinari.email" | "custom") => {
-                  form.setValue("channels.agent_email.domain", value)
+                  channel.form.setValue("channels.agent_email.domain", value)
                   if (value !== "custom") {
-                    form.setValue("channels.agent_email.customDomain", "")
+                    channel.form.setValue("channels.agent_email.customDomain", "")
                   }
                 }}
               >
@@ -719,21 +115,24 @@ export function AgentEmailSection({ active, siteId, onSave }: AgentEmailSectionP
                   <SelectItem value="custom">Custom Domain</SelectItem>
                 </SelectContent>
               </Select>
-              <p className="text-xs text-muted-foreground mt-1">
+              <p className="mt-1 text-xs text-muted-foreground">
                 Choose between our managed domain or use your own custom domain
               </p>
             </div>
 
-            {domain === "custom" && (
+            {channel.domain === "custom" && (
               <div>
                 <Label className="text-sm font-medium text-foreground">Custom Domain</Label>
                 <Input
                   placeholder="example.com"
-                  value={customDomain || ""}
-                  onChange={(e) => form.setValue("channels.agent_email.customDomain", e.target.value)}
+                  value={channel.customDomain}
+                  onChange={(event) => channel.form.setValue(
+                    "channels.agent_email.customDomain",
+                    event.target.value,
+                  )}
                 />
-                <p className="text-xs text-muted-foreground mt-1">
-                  Enter your custom domain (without @ or www)
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Enter your custom domain without @ or www
                 </p>
               </div>
             )}
@@ -742,11 +141,14 @@ export function AgentEmailSection({ active, siteId, onSave }: AgentEmailSectionP
               <Label className="text-sm font-medium text-foreground">Username</Label>
               <Input
                 placeholder="support"
-                value={username || ""}
-                onChange={(e) => form.setValue("channels.agent_email.username", e.target.value)}
+                value={channel.username}
+                onChange={(event) => channel.form.setValue(
+                  "channels.agent_email.username",
+                  event.target.value,
+                )}
               />
-              <p className="text-xs text-muted-foreground mt-1">
-                The username part of the email address (e.g., support@domain.com)
+              <p className="mt-1 text-xs text-muted-foreground">
+                The username part of the email address, such as support@domain.com
               </p>
             </div>
 
@@ -754,52 +156,51 @@ export function AgentEmailSection({ active, siteId, onSave }: AgentEmailSectionP
               <Label className="text-sm font-medium text-foreground">Display Name</Label>
               <Input
                 placeholder="Support Team"
-                value={displayName || ""}
-                onChange={(e) => form.setValue("channels.agent_email.displayName", e.target.value)}
+                value={channel.displayName}
+                onChange={(event) => channel.form.setValue(
+                  "channels.agent_email.displayName",
+                  event.target.value,
+                )}
               />
-              <p className="text-xs text-muted-foreground mt-1">
+              <p className="mt-1 text-xs text-muted-foreground">
                 The display name shown to recipients
               </p>
             </div>
           </div>
         )}
 
-        {isPending && (
-          <div className="flex items-center space-x-2 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-md border border-blue-200 dark:border-blue-900">
+        {channel.isPending && (
+          <div className="flex items-center space-x-2 rounded-md border border-blue-200 bg-blue-50 p-4 dark:border-blue-900 dark:bg-blue-900/20">
             <CheckCircle2 className="h-5 w-5 text-blue-600" />
             <div className="flex-1">
               <p className="text-sm font-medium">Agent email request submitted</p>
               <p className="text-xs text-muted-foreground">
-                Your request is being processed. We'll contact you soon to complete the setup.
+                Your request is being processed. We&apos;ll contact you to complete the setup.
               </p>
             </div>
           </div>
         )}
 
-        {isWaitingForVerification && (
-          <div className="space-y-4">
-            <div className="flex items-center space-x-2 p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-md border border-yellow-200 dark:border-yellow-900">
-              <AlertCircle className="h-5 w-5 text-yellow-600" />
-              <div className="flex-1">
-                <p className="text-sm font-medium">Waiting for DNS verification</p>
-                <p className="text-xs text-muted-foreground">
-                  Configure your DNS records using the zone file, then verify your domain.
+        {channel.isWaitingForVerification && (
+          <div className="flex items-center space-x-2 rounded-md border border-yellow-200 bg-yellow-50 p-4 dark:border-yellow-900 dark:bg-yellow-900/20">
+            <AlertCircle className="h-5 w-5 text-yellow-600" />
+            <div className="flex-1">
+              <p className="text-sm font-medium">Waiting for DNS verification</p>
+              <p className="text-xs text-muted-foreground">
+                Configure your DNS records using the zone file, then verify your domain.
+              </p>
+              {errorMessage && (
+                <p className="mt-1 text-xs text-red-600 dark:text-red-400">
+                  {errorMessage}
                 </p>
-                {(currentSite?.settings?.channels?.agent_email?.error_message || 
-                  currentSite?.settings?.channels?.agent_email?.data?.error_message) && (
-                  <p className="text-xs text-red-600 dark:text-red-400 mt-1">
-                    {currentSite.settings.channels.agent_email.error_message || 
-                     currentSite.settings.channels.agent_email.data?.error_message}
-                  </p>
-                )}
-              </div>
+              )}
             </div>
           </div>
         )}
 
-        {isActive && (
+        {channel.isActive && (
           <div className="space-y-4">
-            <div className="flex items-center space-x-2 p-4 bg-green-50 dark:bg-green-900/20 rounded-md border border-green-200 dark:border-green-900">
+            <div className="flex items-center space-x-2 rounded-md border border-green-200 bg-green-50 p-4 dark:border-green-900 dark:bg-green-900/20">
               <CheckCircle2 className="h-5 w-5 text-green-600" />
               <div className="flex-1">
                 <p className="text-sm font-medium">Agent email active</p>
@@ -809,124 +210,120 @@ export function AgentEmailSection({ active, siteId, onSave }: AgentEmailSectionP
               </div>
             </div>
 
-            {(() => {
-              const agentEmail = currentSite?.settings?.channels?.agent_email
-              const emailUsername = agentEmail?.username || agentEmail?.data?.username
-              const emailDisplayName = agentEmail?.displayName || agentEmail?.data?.displayName
-              const emailDomain = agentEmail?.domain === "custom" 
-                ? agentEmail?.customDomain 
-                : agentEmail?.domain || agentEmail?.data?.domain
-              
-              if (!emailUsername || !emailDomain) return null
-              
-              return (
-                <div className="space-y-2">
+            {emailUsername && emailDomain && (
+              <div className="space-y-2">
+                <div>
+                  <Label className="text-sm font-medium text-foreground">Email Address</Label>
+                  <div className="mt-1 flex items-center gap-2 rounded-md border bg-gray-50 p-3 dark:bg-gray-900">
+                    <Mail className="h-4 w-4 text-muted-foreground" />
+                    <span className="font-mono">{emailUsername}@{emailDomain}</span>
+                  </div>
+                </div>
+                {emailDisplayName && (
                   <div>
-                    <Label className="text-sm font-medium text-foreground">Email Address</Label>
-                    <div className="mt-1 p-3 bg-gray-50 dark:bg-gray-900 rounded-md border flex items-center gap-2">
-                      <Mail className="h-4 w-4 text-muted-foreground" />
-                      <span className="font-mono">
-                        {emailUsername}@{emailDomain}
-                      </span>
+                    <Label className="text-sm font-medium text-foreground">Display Name</Label>
+                    <div className="mt-1 rounded-md border bg-gray-50 p-3 dark:bg-gray-900">
+                      {emailDisplayName}
                     </div>
                   </div>
-                  {emailDisplayName && (
-                    <div>
-                      <Label className="text-sm font-medium text-foreground">Display Name</Label>
-                      <div className="mt-1 p-3 bg-gray-50 dark:bg-gray-900 rounded-md border">
-                        {emailDisplayName}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )
-            })()}
+                )}
+              </div>
+            )}
           </div>
         )}
       </SectionCardContent>
 
-
       <SectionCardFooter
-        onSave={handleSave}
-        saving={isSaving || isSavingApiKey}
-        dirty={form.formState.isDirty || (apiKey !== "" && !isApiKeyStored)}
+        onSave={save}
+        saving={channel.isSaving || secrets.isSaving}
+        dirty={channel.form.formState.isDirty || secrets.isDirty}
       >
-        {isNotConfigured && (
-          <div className="flex items-center justify-between w-full mr-2">
+        {channel.isNotConfigured && (
+          <div className="mr-2 flex w-full items-center justify-between">
             <div className="text-sm text-muted-foreground">
               Configure your agent email address above
             </div>
             <Button
+              type="button"
               variant="outline"
-              onClick={handleRequestAgentEmail}
-              disabled={isRequesting || !canRequest()}
+              onClick={channel.requestAgentEmail}
+              disabled={channel.isRequesting || !channel.canRequest}
             >
-              {isRequesting ? "Requesting..." : "Request Agent Email"}
+              {channel.isRequesting ? "Requesting..." : "Request Agent Email"}
             </Button>
           </div>
         )}
 
-        {isWaitingForVerification && (
-          <div className="flex items-center justify-end w-full gap-2 mr-2">
+        {channel.isWaitingForVerification && (
+          <div className="mr-2 flex w-full items-center justify-end gap-2">
             <Button
               type="button"
               variant="outline"
-              onClick={handleSyncCloudflare}
-              disabled={isSyncingCloudflare || !hasDnsRecords}
+              onClick={channel.syncCloudflare}
+              disabled={channel.isSyncingCloudflare || !channel.hasDnsRecords}
             >
-              <Cloud className="h-4 w-4 mr-2" />
-              {isSyncingCloudflare ? "Syncing..." : isCloudflareConnected ? "Sync with Cloudflare" : "Connect Cloudflare"}
+              <Cloud className="mr-2 h-4 w-4" />
+              {channel.isSyncingCloudflare
+                ? "Syncing..."
+                : channel.isCloudflareConnected
+                  ? "Sync with Cloudflare"
+                  : "Connect Cloudflare"}
             </Button>
             <Button
               type="button"
               variant="outline"
-              onClick={() => setShowDnsModal(true)}
-              disabled={!hasDnsRecords}
+              onClick={() => channel.setShowDnsModal(true)}
+              disabled={!channel.hasDnsRecords}
             >
-              <Copy className="h-4 w-4 mr-2" />
+              <Copy className="mr-2 h-4 w-4" />
               View All & Copy
             </Button>
             <Button
               type="button"
               variant="outline"
-              onClick={handleGetDnsFiles}
-              disabled={isGettingDnsFiles}
+              onClick={channel.getDnsFiles}
+              disabled={channel.isGettingDnsFiles}
             >
-              <Download className="h-4 w-4 mr-2" />
-              {isGettingDnsFiles ? "Getting..." : "Get DNS Files"}
+              <Download className="mr-2 h-4 w-4" />
+              {channel.isGettingDnsFiles ? "Getting..." : "Get DNS Files"}
             </Button>
             <Button
               type="button"
-              onClick={handleVerify}
-              disabled={isVerifying || !canVerify()}
+              onClick={channel.verifyDomain}
+              disabled={channel.isVerifying || !channel.canVerify}
             >
-              <Check className="h-4 w-4 mr-2" />
-              {isVerifying 
-                ? "Verifying..." 
-                : !canVerify() 
-                  ? `Verify (${Math.floor(cooldownSeconds / 60)}:${String(cooldownSeconds % 60).padStart(2, '0')})`
+              <Check className="mr-2 h-4 w-4" />
+              {channel.isVerifying
+                ? "Verifying..."
+                : !channel.canVerify
+                  ? `Verify (${Math.floor(channel.cooldownSeconds / 60)}:${String(
+                    channel.cooldownSeconds % 60,
+                  ).padStart(2, "0")})`
                   : "Verify"}
             </Button>
           </div>
         )}
 
-        {isActive && (
-          <div className="flex items-center justify-start w-full mr-2">
+        {channel.isActive && (
+          <div className="mr-2 flex w-full items-center justify-start">
             <Button
               type="button"
               variant="outline"
-              onClick={() => setShowDeleteDialog(true)}
-              disabled={isDeleting}
-              className="text-destructive hover:text-destructive hover:bg-destructive/10"
+              onClick={() => channel.setShowDeleteDialog(true)}
+              disabled={channel.isDeleting}
+              className="text-destructive hover:bg-destructive/10 hover:text-destructive"
             >
-              <Trash2 className="h-4 w-4 mr-2" />
+              <Trash2 className="mr-2 h-4 w-4" />
               Delete Inbox
             </Button>
           </div>
         )}
       </SectionCardFooter>
 
-      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+      <AlertDialog
+        open={channel.showDeleteDialog}
+        onOpenChange={channel.setShowDeleteDialog}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
@@ -934,202 +331,36 @@ export function AgentEmailSection({ active, siteId, onSave }: AgentEmailSectionP
               Delete Inbox
             </AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete this inbox? This action cannot be undone and 
-              all email functionality for this inbox will be permanently removed.
+              Are you sure you want to delete this inbox? This action cannot be undone and all
+              email functionality for this inbox will be permanently removed.
             </AlertDialogDescription>
-            {currentSite?.settings?.channels?.agent_email?.data && (
-              <div className="mt-2 p-2 border rounded bg-muted/50">
-                <span className="font-medium text-sm">
-                  {currentSite.settings.channels.agent_email.data.username}@
-                  {currentSite.settings.channels.agent_email.data.domain}
-                </span>
+            {emailUsername && emailDomain && (
+              <div className="mt-2 rounded border bg-muted/50 p-2">
+                <span className="text-sm font-medium">{emailUsername}@{emailDomain}</span>
               </div>
             )}
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={channel.isDeleting}>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              onClick={handleDeleteInbox}
-              disabled={isDeleting}
+              onClick={channel.deleteInbox}
+              disabled={channel.isDeleting}
               className="!bg-destructive !text-destructive-foreground hover:!bg-destructive/90"
             >
-              {isDeleting ? (
-                <>
-                  <div className="h-4 w-4 mr-2 animate-pulse bg-muted rounded" />
-                  Deleting...
-                </>
-              ) : (
-                <>Delete</>
-              )}
+              {channel.isDeleting ? "Deleting..." : "Delete"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
-      <Dialog open={showDnsModal} onOpenChange={setShowDnsModal}>
-        <DialogContent size="lg">
-          <div
-            data-slot="dialog-form"
-            className="flex min-h-0 max-h-[inherit] flex-1 flex-col overflow-hidden"
-          >
-          <DialogHeader>
-            <DialogTitle>DNS Records Configuration</DialogTitle>
-            <DialogDescription>
-              Configure these DNS records in your domain provider. Click on any cell to copy its value.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogBody className="grid gap-6">
-            {hasDnsRecords && (() => {
-              const handleCopy = async (text: string, label: string) => {
-                try {
-                  if (navigator.clipboard && navigator.clipboard.writeText) {
-                    await navigator.clipboard.writeText(text)
-                    toast.success(`${label} copied to clipboard`)
-                  } else {
-                    const textArea = document.createElement('textarea')
-                    textArea.value = text
-                    textArea.style.position = 'fixed'
-                    textArea.style.left = '-999999px'
-                    textArea.style.top = '-999999px'
-                    document.body.appendChild(textArea)
-                    textArea.focus()
-                    textArea.select()
-                    const success = document.execCommand('copy')
-                    document.body.removeChild(textArea)
-                    if (success) {
-                      toast.success(`${label} copied to clipboard`)
-                    } else {
-                      throw new Error("Copy command failed")
-                    }
-                  }
-                } catch (err) {
-                  console.error("Error copying:", err)
-                  toast.error("Failed to copy")
-                }
-              }
-
-              const renderTable = (records: typeof dnsRecords, title: string, showPriority: boolean = true) => {
-                if (!Array.isArray(records) || records.length === 0) return null
-
-                return (
-                  <div className="space-y-2">
-                    <h3 className="text-sm font-semibold">{title}</h3>
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead className="w-[120px]">Name</TableHead>
-                          <TableHead className="w-[100px]">Type</TableHead>
-                          {showPriority && <TableHead className="w-[100px]">Priority</TableHead>}
-                          <TableHead>Value</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {records.map((record, index) => (
-                          <TableRow key={index}>
-                            <TableCell 
-                              className="font-medium cursor-pointer hover:bg-muted/50 transition-colors"
-                              onClick={() => handleCopy(record.name || "@", "Name")}
-                            >
-                              {record.name || "@"}
-                            </TableCell>
-                            <TableCell 
-                              className="cursor-pointer hover:bg-muted/50 transition-colors"
-                              onClick={() => handleCopy(record.type, "Type")}
-                            >
-                              <span className="text-xs bg-muted px-2 py-1 rounded">{record.type}</span>
-                            </TableCell>
-                            {showPriority && (
-                              <TableCell 
-                                className="cursor-pointer hover:bg-muted/50 transition-colors"
-                                onClick={() => handleCopy(record.priority !== undefined ? String(record.priority) : "-", "Priority")}
-                              >
-                                {record.priority !== undefined ? record.priority : "-"}
-                              </TableCell>
-                            )}
-                            <TableCell 
-                              className="cursor-pointer hover:bg-muted/50 transition-colors"
-                              onClick={() => handleCopy(record.value, "Value")}
-                            >
-                              <code className="text-sm font-mono break-all">{record.value}</code>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
-                )
-              }
-
-              return (
-                <>
-                  {renderTable(mxRecords, "MX Records", true)}
-                  {renderTable(txtRecords, "TXT Records", false)}
-                  {renderTable(otherRecords, "Other Records", true)}
-                </>
-              )
-            })()}
-          </DialogBody>
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleSyncCloudflare}
-              disabled={isSyncingCloudflare || !hasDnsRecords}
-            >
-              <Cloud className="h-4 w-4 mr-2" />
-              {isSyncingCloudflare ? "Syncing..." : isCloudflareConnected ? "Sync with Cloudflare" : "Connect Cloudflare"}
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={async () => {
-                if (!hasDnsRecords) return
-                
-                const allRecords = dnsRecords
-                  .map(record => `${record.name || "@"} ${record.type} ${record.priority ? `${record.priority} ` : ""}${record.value}`)
-                  .join('\n')
-                
-                try {
-                  if (navigator.clipboard && navigator.clipboard.writeText) {
-                    await navigator.clipboard.writeText(allRecords)
-                    toast.success("All DNS records copied to clipboard")
-                  } else {
-                    const textArea = document.createElement('textarea')
-                    textArea.value = allRecords
-                    textArea.style.position = 'fixed'
-                    textArea.style.left = '-999999px'
-                    textArea.style.top = '-999999px'
-                    document.body.appendChild(textArea)
-                    textArea.focus()
-                    textArea.select()
-                    const success = document.execCommand('copy')
-                    document.body.removeChild(textArea)
-                    if (success) {
-                      toast.success("All DNS records copied to clipboard")
-                    } else {
-                      throw new Error("Copy command failed")
-                    }
-                  }
-                } catch (err) {
-                  console.error("Error copying all DNS records:", err)
-                  toast.error("Failed to copy DNS records")
-                }
-              }}
-            >
-              <Copy className="h-4 w-4 mr-2" />
-              Copy All Records
-            </Button>
-            <Button
-              type="button"
-              onClick={() => setShowDnsModal(false)}
-            >
-              Close
-            </Button>
-          </DialogFooter>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <AgentEmailDnsDialog
+        open={channel.showDnsModal}
+        onOpenChange={channel.setShowDnsModal}
+        records={channel.dnsRecords}
+        isCloudflareConnected={channel.isCloudflareConnected}
+        isSyncingCloudflare={channel.isSyncingCloudflare}
+        onSyncCloudflare={channel.syncCloudflare}
+      />
     </SectionCard>
   )
 }
-

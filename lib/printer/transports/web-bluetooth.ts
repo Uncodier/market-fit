@@ -34,6 +34,7 @@ type BluetoothDeviceLike = {
     listener: () => void,
     opts?: { once?: boolean },
   ) => void
+  removeEventListener?: (type: string, listener: () => void) => void
 }
 
 type BluetoothRemoteGattServiceLike = {
@@ -71,6 +72,8 @@ function rethrowBluetooth(err: unknown): never {
 }
 
 const deviceCache = new Map<string, BluetoothDeviceLike>()
+const observedDevices = new WeakSet<BluetoothDeviceLike>()
+const pendingConnections = new Map<string, Promise<BluetoothRemoteGattServerLike>>()
 
 function getBluetooth(): BluetoothApi | null {
   if (typeof navigator === "undefined") return null
@@ -78,7 +81,17 @@ function getBluetooth(): BluetoothApi | null {
 }
 
 function rememberDevice(device: BluetoothDeviceLike) {
-  if (device?.id) deviceCache.set(device.id, device)
+  if (!device?.id) return
+  deviceCache.set(device.id, device)
+  if (!observedDevices.has(device) && device.addEventListener) {
+    observedDevices.add(device)
+    device.addEventListener("gattserverdisconnected", () => {
+      pendingConnections.delete(device.id)
+      void connectGatt(device).catch(() => {
+        // The next health check can retry or ask the user to reconnect.
+      })
+    })
+  }
 }
 
 export function isWebBluetoothSupported(): boolean {
@@ -126,7 +139,7 @@ export async function requestBluetoothPrinter(): Promise<{ deviceId: string; nam
   const device = await requestDevice(bluetooth)
   if (!device.gatt) rethrowBluetooth(new Error("Unsupported device"))
   try {
-    if (!device.gatt.connected) await device.gatt.connect()
+    await connectGatt(device)
   } catch (err) {
     rethrowBluetooth(err)
   }
@@ -134,63 +147,100 @@ export async function requestBluetoothPrinter(): Promise<{ deviceId: string; nam
 }
 
 async function findDevice(deviceId?: string): Promise<BluetoothDeviceLike | null> {
-  if (deviceId) {
-    const cached = deviceCache.get(deviceId)
-    if (cached) return cached
-  }
   const bluetooth = getBluetooth()
   if (bluetooth?.getDevices) {
     try {
       const devices = await bluetooth.getDevices()
       for (const device of devices) rememberDevice(device)
-      if (deviceId) return deviceCache.get(deviceId) || null
+      if (deviceId) {
+        const found = devices.find((device) => device.id === deviceId) || null
+        if (!found) deviceCache.delete(deviceId)
+        return found
+      }
       return devices[0] || null
     } catch {
       // getDevices is unavailable or blocked in this context
     }
   }
+  if (deviceId) return deviceCache.get(deviceId) || null
   if (!deviceId && deviceCache.size === 1) {
     return [...deviceCache.values()][0]
   }
   return null
 }
 
-async function connectGatt(device: BluetoothDeviceLike): Promise<BluetoothRemoteGattServerLike> {
-  if (!device.gatt) throw new Error("Bluetooth printer has no GATT server")
-  if (device.gatt.connected) return device.gatt
-  try {
-    return await device.gatt.connect()
-  } catch {
-    // Chrome often needs an advertisement after a reload before GATT will connect.
-  }
-  if (!device.watchAdvertisements || !device.addEventListener) {
+function wait(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+async function connectAfterAdvertisement(
+  device: BluetoothDeviceLike,
+): Promise<BluetoothRemoteGattServerLike> {
+  if (!device.gatt || !device.watchAdvertisements || !device.addEventListener) {
     throw new Error("Bluetooth printer is not connected on this station")
   }
   const abort = new AbortController()
+  let timer: ReturnType<typeof setTimeout> | undefined
+  let resolveAdvertisement!: () => void
+  let rejectAdvertisement!: (reason: Error) => void
+  const advertisement = new Promise<void>((resolve, reject) => {
+    resolveAdvertisement = resolve
+    rejectAdvertisement = reject
+  })
+  const onAdvertisement = () => resolveAdvertisement()
+  device.addEventListener("advertisementreceived", onAdvertisement, { once: true })
+  timer = setTimeout(() => {
+    abort.abort()
+    rejectAdvertisement(new Error("Bluetooth printer is not connected on this station"))
+  }, 8000)
   try {
     await device.watchAdvertisements({ signal: abort.signal })
-  } catch {
+    await advertisement
     abort.abort()
+    return await device.gatt.connect()
+  } catch {
     throw new Error("Bluetooth printer is not connected on this station")
+  } finally {
+    if (timer) clearTimeout(timer)
+    abort.abort()
+    device.removeEventListener?.("advertisementreceived", onAdvertisement)
   }
-  return new Promise<BluetoothRemoteGattServerLike>((resolve, reject) => {
-    const timer = setTimeout(() => {
-      abort.abort()
-      reject(new Error("Bluetooth printer is not connected on this station"))
-    }, 8000)
-    device.addEventListener?.(
-      "advertisementreceived",
-      () => {
-        clearTimeout(timer)
-        abort.abort()
-        device.gatt
-          ?.connect()
-          .then(resolve)
-          .catch(() => reject(new Error("Bluetooth printer is not connected on this station")))
-      },
-      { once: true },
-    )
-  })
+}
+
+async function connectGattUncached(
+  device: BluetoothDeviceLike,
+): Promise<BluetoothRemoteGattServerLike> {
+  if (!device.gatt) throw new Error("Bluetooth printer has no GATT server")
+  if (device.gatt.connected) return device.gatt
+  let lastError: unknown
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      return await device.gatt.connect()
+    } catch (err) {
+      lastError = err
+      if (attempt === 0) await wait(100)
+    }
+  }
+  if (!device.watchAdvertisements || !device.addEventListener) {
+    throw lastError || new Error("Bluetooth printer is not connected on this station")
+  }
+  return connectAfterAdvertisement(device)
+}
+
+async function connectGatt(device: BluetoothDeviceLike): Promise<BluetoothRemoteGattServerLike> {
+  if (!device.gatt) throw new Error("Bluetooth printer has no GATT server")
+  if (device.gatt.connected) return device.gatt
+  const pending = pendingConnections.get(device.id)
+  if (pending) return pending
+  const connection = connectGattUncached(device)
+  pendingConnections.set(device.id, connection)
+  try {
+    return await connection
+  } finally {
+    if (pendingConnections.get(device.id) === connection) {
+      pendingConnections.delete(device.id)
+    }
+  }
 }
 
 export async function warmBluetoothPrinter(deviceId?: string): Promise<boolean> {
@@ -208,12 +258,13 @@ async function writeCharacteristic(
   characteristic: BluetoothRemoteGattCharacteristicLike,
   chunk: Uint8Array,
 ) {
+  const data = Uint8Array.from(chunk).buffer
   if (characteristic.properties.writeWithoutResponse && characteristic.writeValueWithoutResponse) {
-    await characteristic.writeValueWithoutResponse(chunk)
+    await characteristic.writeValueWithoutResponse(data)
     return
   }
   if (characteristic.writeValue) {
-    await characteristic.writeValue(chunk)
+    await characteristic.writeValue(data)
     return
   }
   throw new Error("Bluetooth characteristic is not writable")

@@ -161,6 +161,8 @@ describe("SupportChannelsSection", () => {
 
     expect(screen.getByText("+1 (415) 555-0102")).toBeInTheDocument()
     expect(screen.getByText("+1 (415) 555-0103")).toBeInTheDocument()
+    expect(screen.getByText("Call language")).toBeInTheDocument()
+    expect(screen.getByText("Speaking voice")).toBeInTheDocument()
     await waitFor(() => {
       expect(screen.getByText("+1 (415) 555-0101")).toBeInTheDocument()
     })

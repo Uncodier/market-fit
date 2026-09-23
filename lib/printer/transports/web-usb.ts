@@ -56,7 +56,7 @@ function matches(
   productId?: number,
   serialNumber?: string,
 ) {
-  if (serialNumber && device.serialNumber && device.serialNumber !== serialNumber) return false
+  if (serialNumber && device.serialNumber !== serialNumber) return false
   if (vendorId != null && device.vendorId !== vendorId) return false
   if (productId != null && device.productId !== productId) return false
   return true
@@ -67,12 +67,21 @@ async function findDevice(
   productId?: number,
   serialNumber?: string,
 ): Promise<UsbDeviceLike | null> {
-  if (cached && matches(cached, vendorId, productId, serialNumber)) return cached
   const usb = getUsb()
   if (!usb) return null
   const devices = await usb.getDevices()
-  const found =
-    devices.find((d) => matches(d, vendorId, productId, serialNumber)) || devices[0] || null
+  if (
+    cached &&
+    devices.includes(cached) &&
+    matches(cached, vendorId, productId, serialNumber)
+  ) {
+    return cached
+  }
+  cached = null
+  const hasFingerprint =
+    vendorId != null || productId != null || Boolean(serialNumber)
+  const found = devices.find((d) => matches(d, vendorId, productId, serialNumber))
+    || (!hasFingerprint ? devices[0] : null)
   if (found) cached = found
   return found
 }
@@ -90,7 +99,7 @@ async function claimBulkOut(device: UsbDeviceLike): Promise<number> {
 
   const interfaces = device.configuration?.interfaces || []
   
-  // Buscar endpoint bulk/interrupt de salida
+  // Prefer a bulk or interrupt output endpoint.
   for (const iface of interfaces) {
     for (const alternate of iface.alternates || []) {
       const endpoint = alternate.endpoints?.find(
@@ -101,7 +110,7 @@ async function claimBulkOut(device: UsbDeviceLike): Promise<number> {
           try {
             await device.claimInterface(iface.interfaceNumber)
           } catch (e) {
-            console.error("No se pudo reclamar la interfaz", iface.interfaceNumber, e)
+            console.error("Could not claim USB printer interface", iface.interfaceNumber, e)
             continue
           }
         }
@@ -110,7 +119,7 @@ async function claimBulkOut(device: UsbDeviceLike): Promise<number> {
     }
   }
 
-  // Fallback: si no encontramos la clase específica pero hay un endpoint out, intentarlo
+  // Fall back to any output endpoint exposed by the printer.
   for (const iface of interfaces) {
     for (const alternate of iface.alternates || []) {
       const endpoint = alternate.endpoints?.find(
@@ -146,6 +155,7 @@ export async function requestWebUsbPrinter(): Promise<{
   try {
     await claimBulkOut(device)
   } catch (err) {
+    cached = null
     if (device.opened) {
       try {
         await device.close()
@@ -160,6 +170,22 @@ export async function requestWebUsbPrinter(): Promise<{
     vendorId: device.vendorId,
     productId: device.productId,
     serialNumber: device.serialNumber,
+  }
+}
+
+export async function warmWebUsbPrinter(
+  vendorId?: number,
+  productId?: number,
+  serialNumber?: string,
+): Promise<boolean> {
+  const device = await findDevice(vendorId, productId, serialNumber)
+  if (!device) return false
+  try {
+    await claimBulkOut(device)
+    return true
+  } catch {
+    if (cached === device) cached = null
+    return false
   }
 }
 
@@ -187,8 +213,8 @@ export async function writeWebUsbBytes(
       const result = await device.transferOut(endpoint, data.slice(i, i + chunkSize))
       if (result.status !== "ok") throw new Error("USB printer transfer failed")
     }
-  } finally {
-    // Si queremos cerrarla después de cada print (recomendado para webusb printers)
-    // await device.close()
+  } catch (err) {
+    if (cached === device) cached = null
+    throw err
   }
 }

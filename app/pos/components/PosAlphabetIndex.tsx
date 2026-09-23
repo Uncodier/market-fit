@@ -44,31 +44,33 @@ export function PosAlphabetIndex({
   };
 
   return (
-    <div
-      ref={railRef}
-      role="navigation"
-      aria-label="Catalog alphabet index"
-      className="fixed right-1 top-1/2 z-30 flex h-[64dvh] -translate-y-1/2 touch-none select-none flex-col justify-around rounded-full border border-border/40 bg-background/55 px-1 py-1.5 shadow-sm backdrop-blur-md supports-[backdrop-filter]:bg-background/35 md:hidden"
-      onPointerDown={handlePointerDown}
-      onPointerMove={handlePointerMove}
-      onPointerUp={() => setActiveLetter(null)}
-      onPointerCancel={() => setActiveLetter(null)}
-    >
-      {letters.map((letter) => (
-        <button
-          key={letter}
-          type="button"
-          tabIndex={-1}
-          aria-label={`Jump to items starting with ${letter}`}
-          className={cn(
-            "flex min-h-2.5 max-h-4 w-3 flex-1 items-center justify-center rounded-full text-[9px] font-semibold leading-none text-primary",
-            activeLetter === letter && "bg-primary text-primary-foreground",
-          )}
-          onClick={() => onSelect(letter)}
-        >
-          {letter}
-        </button>
-      ))}
+    <div className="pointer-events-none fixed bottom-0 right-1 top-[calc(var(--topbar-height,64px)+71px)] z-30 flex items-center md:hidden">
+      <div
+        ref={railRef}
+        role="navigation"
+        aria-label="Catalog alphabet index"
+        className="pointer-events-auto flex h-[64%] touch-none select-none flex-col justify-around rounded-full border border-border/40 bg-background/55 px-1 py-1.5 shadow-sm backdrop-blur-md supports-[backdrop-filter]:bg-background/35"
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={() => setActiveLetter(null)}
+        onPointerCancel={() => setActiveLetter(null)}
+      >
+        {letters.map((letter) => (
+          <button
+            key={letter}
+            type="button"
+            tabIndex={-1}
+            aria-label={`Jump to items starting with ${letter}`}
+            className={cn(
+              "flex min-h-2.5 max-h-4 w-3 flex-1 items-center justify-center rounded-full text-[9px] font-semibold leading-none text-primary",
+              activeLetter === letter && "bg-primary text-primary-foreground",
+            )}
+            onClick={() => onSelect(letter)}
+          >
+            {letter}
+          </button>
+        ))}
+      </div>
     </div>
   );
 }

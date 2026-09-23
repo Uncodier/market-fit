@@ -136,7 +136,7 @@ export function ModuleTile({ area, itemKey, title, icon: Icon, onClick, inMenu =
     <div
       id={`tour-app-${itemKey}`}
       onClick={onClick}
-      className="flex flex-col items-center group outline-none cursor-pointer focus-visible:outline-none w-[112px]"
+      className="group flex w-full min-w-0 cursor-pointer flex-col items-center outline-none focus-visible:outline-none md:w-[112px]"
       role="button"
       tabIndex={0}
       onKeyDown={(e) => {
@@ -150,7 +150,7 @@ export function ModuleTile({ area, itemKey, title, icon: Icon, onClick, inMenu =
         className={[
           "flex flex-col items-center gap-3 w-full transition-all duration-300 ease-out",
           "group-hover:-translate-y-0.5 group-focus-visible:-translate-y-0.5",
-          "rounded-[22px] px-2 pt-2 pb-2.5 border",
+          "rounded-[22px] border px-1 pb-2.5 pt-2 md:px-2",
           marked
             ? "border-black/12 dark:border-white/14 bg-black/[0.05] dark:bg-white/[0.07]"
             : "border-transparent bg-transparent",

@@ -2,19 +2,15 @@
 import { useEffect, useState, useMemo, useRef } from "react"
 import { usePathname, useSearchParams } from "next/navigation"
 import {
-  NAVIGATION_AREAS,
-  NAVIGATION_MENU_AREA_ORDER,
   isNavItemActive,
   buildNavItemHref,
-  AreaNavItem,
-  WorkspaceArea,
+  type AreaNavItem,
   getNavItemTitle,
-  isSettingsNavKey,
   isConfigurationNavPath,
 } from "@/app/config/navigation-areas"
 import { useLocalization } from "@/app/context/LocalizationContext"
+import { useSite } from "@/app/context/SiteContext"
 import { useAuth } from "@/app/hooks/use-auth"
-import { createClient } from "@/lib/supabase/client"
 import {
   DndContext,
   closestCenter,
@@ -35,8 +31,6 @@ import {
 import { Star } from "@/app/components/ui/icons"
 import {
   isPinnedShortcutKey,
-  normalizeShortcut,
-  SIDEBAR_PINNED_NAV_KEYS,
   type ShortcutRecord,
 } from "./shortcut-types"
 import { canonicalizeShortcutRecords } from "./shortcut-normalization"
@@ -47,42 +41,22 @@ import { useOptionalScreenAccess } from "@/app/context/ScreenAccessContext"
 import { getNavKeyForPath } from "@/lib/auth/screen-access"
 import { SortableShortcutItem } from "./SortableShortcutItem"
 import { ShortcutDropSections } from "./ShortcutDropSections"
+import {
+  ALL_SHORTCUT_ITEMS,
+  type AreaNavItemWithArea,
+  prepareSidebarShortcuts,
+  withoutConfigurationShortcuts,
+} from "./dynamic-shortcut-utils"
+import {
+  loadShortcuts,
+  loadShortcutsFromLocalStorage,
+  saveShortcuts,
+  SHORTCUTS_UPDATED_EVENT,
+  type ShortcutsUpdatedDetail,
+} from "./shortcut-storage"
 
 interface DynamicShortcutsProps { isCollapsed: boolean }
-const PINNED_NAV_KEYS = new Set<string>(SIDEBAR_PINNED_NAV_KEYS)
-// Sidebar shortcuts exclude Settings — those stay in Configuration and the launcher
-type AreaNavItemWithArea = AreaNavItem & { area: WorkspaceArea }
-const ALL_ITEMS: AreaNavItemWithArea[] = []
-for (const areaKey of NAVIGATION_MENU_AREA_ORDER) {
-  if (areaKey === "settings") continue
-  const area = NAVIGATION_AREAS[areaKey]
-  if (!area?.items) continue
-  for (const item of area.items) {
-    if (!PINNED_NAV_KEYS.has(item.key) && !isSettingsNavKey(item.key)) {
-      ALL_ITEMS.push({ ...item, area: areaKey })
-    }
-  }
-}
-function withoutConfigurationShortcuts(entries: ShortcutRecord[]): ShortcutRecord[] {
-  return entries.filter((entry) => {
-    if (!entry.isCustom || !entry.href) return !isSettingsNavKey(entry.id)
-    try {
-      const url = new URL(entry.href, "http://local")
-      return !isConfigurationNavPath(url.pathname, url.searchParams) && url.pathname !== "/onboarding" && url.pathname !== "/navigation"
-    } catch {
-      return true
-    }
-  })
-}
-
-function withoutFixedShortcuts(entries: ShortcutRecord[]): ShortcutRecord[] {
-  return entries.filter((entry) => !isPinnedShortcutKey(entry.id))
-}
-
-function ensureOverviewShortcut(entries: ShortcutRecord[]): ShortcutRecord[] {
-  if (entries.some((entry) => entry.id === "reportOverview")) return entries
-  return [...entries, { id: "reportOverview", pinned: true }]
-}
+const ALL_ITEMS = ALL_SHORTCUT_ITEMS
 
 export function DynamicShortcuts({ isCollapsed }: DynamicShortcutsProps) {
   const { t } = useLocalization()
@@ -94,112 +68,70 @@ export function DynamicShortcuts({ isCollapsed }: DynamicShortcutsProps) {
   const slots = useShortcutSlotCount(containerRef)
 
   const { user, isLoading: isAuthLoading } = useAuth()
+  const { currentSite, isLoading: isSiteLoading } = useSite()
+  const siteId = currentSite?.id ?? null
+  const shortcutScope = siteId
+    ? `${user?.id ?? "anonymous"}:${siteId}`
+    : null
   const screenAccess = useOptionalScreenAccess()
   const [shortcuts, setShortcuts] = useState<ShortcutRecord[]>([])
-  const [isLoaded, setIsLoaded] = useState(false)
+  const [loadedScope, setLoadedScope] = useState<string | null>(null)
+  const isLoaded = shortcutScope !== null && loadedScope === shortcutScope
 
   // Load from DB or local storage
   useEffect(() => {
-    // Wait until auth is resolved (user is either present or null, not loading)
-    if (isAuthLoading) return;
+    if (isAuthLoading || isSiteLoading || !siteId || !shortcutScope) return
 
-    let isMounted = true;
+    let isMounted = true
 
-    const loadShortcuts = async () => {
+    const loadSiteShortcuts = async () => {
       try {
-        let loadedShortcuts: any[] = []
-        let hasLoadedFromDB = false
-
-        if (user?.id) {
-          const supabase = createClient()
-          const { data, error } = await supabase
-            .from('user_shortcuts')
-            .select('shortcuts')
-            .eq('user_id', user.id)
-            .single()
-            
-          if (data && data.shortcuts && Array.isArray(data.shortcuts)) {
-            loadedShortcuts = data.shortcuts
-            hasLoadedFromDB = true
-          }
-        }
-
-        if (!hasLoadedFromDB) {
-          const saved = localStorage.getItem("navigationShortcuts_v3")
-          if (saved) {
-            loadedShortcuts = JSON.parse(saved)
-          }
-        }
+        const loadedShortcuts = await loadShortcuts(user?.id, siteId)
 
         if (isMounted) {
-          setShortcuts(
-            ensureOverviewShortcut(
-              withoutConfigurationShortcuts(
-                withoutFixedShortcuts(
-                  canonicalizeShortcutRecords(
-                    loadedShortcuts.map(normalizeShortcut),
-                  ),
-                )
-              )
-            )
-          )
-          setIsLoaded(true)
+          setShortcuts(prepareSidebarShortcuts(loadedShortcuts))
+          setLoadedScope(shortcutScope)
         }
-      } catch (e) {
-        console.error("Failed to load shortcuts", e)
-        if (isMounted) setIsLoaded(true)
+      } catch (error) {
+        console.error("Failed to load shortcuts", error)
+        if (isMounted) {
+          setShortcuts(prepareSidebarShortcuts([]))
+          setLoadedScope(shortcutScope)
+        }
       }
     }
-    loadShortcuts()
-    
-    // Fallback sync for manual event triggers across components
-    const handleLocalSync = () => {
-      const saved = localStorage.getItem("navigationShortcuts_v3")
-      if (saved) {
-        setShortcuts(
-          ensureOverviewShortcut(
-            withoutConfigurationShortcuts(
-              withoutFixedShortcuts(
-                canonicalizeShortcutRecords(
-                  JSON.parse(saved).map(normalizeShortcut),
-                ),
-              )
-            )
-          )
-        )
-      }
+    void loadSiteShortcuts()
+
+    const handleLocalSync = (event: Event) => {
+      const eventSiteId = (
+        event as CustomEvent<ShortcutsUpdatedDetail>
+      ).detail?.siteId
+      if (eventSiteId && eventSiteId !== siteId) return
+
+      setShortcuts(
+        prepareSidebarShortcuts(loadShortcutsFromLocalStorage(siteId)),
+      )
     }
-    
-    window.addEventListener("shortcuts-updated", handleLocalSync)
+
+    window.addEventListener(SHORTCUTS_UPDATED_EVENT, handleLocalSync)
     return () => {
-      isMounted = false;
-      window.removeEventListener("shortcuts-updated", handleLocalSync)
+      isMounted = false
+      window.removeEventListener(SHORTCUTS_UPDATED_EVENT, handleLocalSync)
     }
-  }, [user?.id, isAuthLoading])
+  }, [
+    user?.id,
+    isAuthLoading,
+    isSiteLoading,
+    siteId,
+    shortcutScope,
+  ])
 
   // Save to DB and local storage
   useEffect(() => {
-    if (!isLoaded) return;
-    
-    localStorage.setItem("navigationShortcuts_v3", JSON.stringify(shortcuts))
-    
-    if (user?.id) {
-      const saveToDb = async () => {
-        const supabase = createClient()
-        // Upsert to the new collection
-        await supabase
-          .from('user_shortcuts')
-          .upsert({ 
-            user_id: user.id, 
-            shortcuts: shortcuts,
-            updated_at: new Date().toISOString()
-          }, { 
-            onConflict: 'user_id' 
-          })
-      }
-      saveToDb()
-    }
-  }, [shortcuts, isLoaded, user?.id])
+    if (!isLoaded || !siteId) return
+
+    void saveShortcuts(user?.id, siteId, shortcuts)
+  }, [shortcuts, isLoaded, siteId, user?.id])
 
   // Check if current route matches any item and add it if not exists
   useEffect(() => {
@@ -365,6 +297,8 @@ export function DynamicShortcuts({ isCollapsed }: DynamicShortcutsProps) {
   }
 
   const allowedShortcuts = useMemo(() => {
+    if (!isLoaded) return []
+
     const eligible = withoutConfigurationShortcuts(
       canonicalizeShortcutRecords(shortcuts),
     )
@@ -380,7 +314,7 @@ export function DynamicShortcuts({ isCollapsed }: DynamicShortcutsProps) {
         return true
       }
     })
-  }, [screenAccess, shortcuts])
+  }, [isLoaded, screenAccess, shortcuts])
 
   const pinnedShortcuts = useMemo(
     () => allowedShortcuts.filter((entry) => entry.pinned),
@@ -487,7 +421,7 @@ export function DynamicShortcuts({ isCollapsed }: DynamicShortcutsProps) {
     )
   }
 
-  if (visibleShortcuts.length === 0) return null
+  if (!isLoaded || visibleShortcuts.length === 0) return null
 
   return (
     <div ref={containerRef} className="flex min-h-0 w-full flex-1 flex-col space-y-1">

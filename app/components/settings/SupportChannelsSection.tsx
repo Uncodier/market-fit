@@ -19,6 +19,7 @@ import { apiClient } from "@/app/services/api-client-service"
 import { TelegramChannelSetup } from "./TelegramChannelSetup"
 import { EmailChannelSetup } from "./EmailChannelSetup"
 import { VoiceChannelSetup } from "./VoiceChannelSetup"
+import { VoiceChannelSettings } from "./VoiceChannelSettings"
 import { SmsChannelSetup } from "./SmsChannelSetup"
 import { useZavuInvitationSync } from "./use-zavu-invitation-sync"
 import { useZavuPhoneStatusSync } from "./use-zavu-phone-status-sync"
@@ -27,6 +28,7 @@ import {
   getSupportChannelAccountLabel,
   getSupportChannelIcon,
   getSupportChannelLabel,
+  ConnectedSupportChannelSummary,
   SupportChannelHeader,
   SupportChannelTypeSelector,
 } from "./support-channel-card-parts"
@@ -300,24 +302,21 @@ export function SupportChannelsSection({ active, siteId, onSave }: SupportChanne
 
                 {isConnected && hasType && (
                   <SectionCardContent className="pt-0">
-                    <div className="flex flex-col sm:flex-row sm:items-center gap-4 w-full p-4 bg-muted/20 rounded-lg border dark:border-white/5 border-black/5 justify-between">
-                      <div className="flex items-center gap-4 min-w-0">
-                        <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center flex-shrink-0 border dark:border-white/5 border-black/5">
-                          {getSupportChannelIcon(type, 24)}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-base font-medium truncate">
-                            {accountLabel}
-                          </p>
-                          <div className="flex items-center gap-2 mt-1">
-                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
-                              Connected
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
+                    <ConnectedSupportChannelSummary
+                      type={type}
+                      accountLabel={accountLabel}
+                    />
                   </SectionCardContent>
+                )}
+
+                {isConnected && type === "voice" && siteId && (
+                  <VoiceChannelSettings
+                    siteId={siteId}
+                    channel={channel}
+                    onUpdated={async (payload) => {
+                      await persistPhoneConnection(index, payload)
+                    }}
+                  />
                 )}
 
                 {hasType && type === "email" && siteId && (

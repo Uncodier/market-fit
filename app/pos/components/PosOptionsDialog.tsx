@@ -326,7 +326,11 @@ export function PosOptionsDialog({
                 {t("pos.modifiers.skip") || "No extras"}
               </Button>
             )}
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+          <Button
+            variant="outline"
+            className="hidden md:inline-flex"
+            onClick={() => onOpenChange(false)}
+          >
             {t("common.cancel") || "Cancel"}
           </Button>
           <Button onClick={handleConfirm} disabled={!canConfirm}>

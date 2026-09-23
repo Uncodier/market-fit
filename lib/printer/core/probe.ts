@@ -5,9 +5,8 @@ import { isTransportSupported } from "./station-status"
 import { printerSyncToken, stationOwnsPrinter } from "./station-claim"
 import { getPrinterWorkstation } from "./workstation"
 import type { PrinterDevice, PrinterModule, PrintersSettings, PrinterTransport } from "./types"
-import { printOnDevice } from "../transports/dispatch"
+import { printOnDevice, warmUsbPrinterConnection } from "../transports/dispatch"
 import { warmBluetoothPrinter } from "../transports/web-bluetooth"
-import { warmUsbPrinter } from "../transports/web-serial"
 
 export type PrinterAidKind = "bluetooth" | "usb"
 
@@ -81,7 +80,7 @@ async function confirmDevice(
       return
     }
     if (device.transport === "usb") {
-      const ok = await warmUsbPrinter(bind?.usbVendorId, bind?.usbProductId, bind?.baudRate)
+      const ok = await warmUsbPrinterConnection(bind)
       if (!ok) throw new Error("USB printer is not connected on this computer")
       return
     }

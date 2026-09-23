@@ -29,6 +29,13 @@ import {
 } from "./zavu-phone-number-utils"
 import { ChannelSetupStepper } from "./ChannelSetupStepper"
 import { buildPhoneSetupSteps } from "./channel-setup-steps"
+import { VoiceAgentSettingsFields } from "./VoiceAgentSettingsFields"
+import {
+  readVoiceAgentSettings,
+  type VoiceAgentSettingsValue,
+} from "./voice-agent-settings"
+import { useZavuVoiceOptions } from "./use-zavu-voice-options"
+import { useCanManageVoiceChannel } from "./use-can-manage-voice-channel"
 
 export function VoiceChannelSetup({ 
   siteId, 
@@ -55,8 +62,26 @@ export function VoiceChannelSetup({
 
   const [selectedNumber, setSelectedNumber] = useState("")
   const [isConnecting, setIsConnecting] = useState(false)
+  const [voiceSettings, setVoiceSettings] = useState<VoiceAgentSettingsValue>(
+    () => readVoiceAgentSettings(channel)
+  )
+  const [voiceSettingsTouched, setVoiceSettingsTouched] = useState(false)
+  const voiceOptions = useZavuVoiceOptions(siteId)
+  const canManageVoice = useCanManageVoiceChannel()
   const eligibleOwnedNumbers = ownedNumbers.filter((number) => canAssignPhoneNumber(number, "voice"))
   const setupSteps = buildPhoneSetupSteps(channel)
+
+  useEffect(() => {
+    if (voiceSettingsTouched || !voiceOptions.preferences) return
+    setVoiceSettings({
+      language: voiceOptions.preferences.language,
+      ttsVoiceId: voiceOptions.preferences.ttsVoiceId || "",
+    })
+  }, [
+    voiceOptions.preferences?.language,
+    voiceOptions.preferences?.ttsVoiceId,
+    voiceSettingsTouched,
+  ])
 
   useEffect(() => {
     const fetchOwnedNumbers = async () => {
@@ -160,6 +185,12 @@ export function VoiceChannelSetup({
         name: channel.name,
         phoneNumber: selectedNumber,
         active: true,
+        ...(voiceSettingsTouched
+          ? {
+              language: voiceSettings.language,
+              ttsVoiceId: voiceSettings.ttsVoiceId || null,
+            }
+          : {}),
       })
 
       if (!response.success) {
@@ -202,6 +233,26 @@ export function VoiceChannelSetup({
           <p className="text-xs text-muted-foreground">
             Activate the autonomous Voice agent. Select an existing number or search for a new one.
           </p>
+        </div>
+
+        <div className="rounded-lg border border-black/5 bg-muted/20 p-4 dark:border-white/5">
+          <VoiceAgentSettingsFields
+            value={voiceSettings}
+            onChange={(value) => {
+              setVoiceSettings(value)
+              setVoiceSettingsTouched(true)
+            }}
+            options={voiceOptions}
+            onRetry={() => {
+              void voiceOptions.mutate()
+            }}
+            disabled={isConnecting || !canManageVoice}
+          />
+          {!canManageVoice && (
+            <p className="mt-2 text-xs text-muted-foreground">
+              Only site owners and administrators can change Voice settings.
+            </p>
+          )}
         </div>
 
         <Tabs value={tab} onValueChange={(v) => { setTab(v as any); setSelectedNumber(""); }}>
@@ -408,7 +459,7 @@ export function VoiceChannelSetup({
         <Button 
           type="button" 
           onClick={handleConnect} 
-          disabled={isConnecting || !selectedNumber}
+          disabled={isConnecting || !selectedNumber || !canManageVoice}
         >
           {isConnecting 
             ? (tab === "new" ? "Purchasing & Activating..." : "Activating Voice Agent...") 

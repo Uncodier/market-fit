@@ -6,11 +6,12 @@ import type {
   PrinterDevice,
   PrinterModule,
   PrintersSettings,
+  WorkstationBind,
 } from "../core/types"
 import { printersForAutoPrint, printersForJob } from "../core/format"
 import { encodeJob, htmlForJob } from "../templates"
 import { printHtml } from "./browser-print"
-import { isWebUsbSupported, writeWebUsbBytes } from "./web-usb"
+import { isWebUsbSupported, warmWebUsbPrinter, writeWebUsbBytes } from "./web-usb"
 import { warmUsbPrinter, writeUsbBytes } from "./web-serial"
 import { warmBluetoothPrinter, writeBluetoothBytes } from "./web-bluetooth"
 
@@ -36,6 +37,43 @@ async function writeUsb(device: PrinterDevice, bytes: Uint8Array, allowPrompt: b
   }
 }
 
+export async function warmUsbPrinterConnection(
+  bind: WorkstationBind | null | undefined,
+): Promise<boolean> {
+  if (bind?.usbKind === "webusb") {
+    return warmWebUsbPrinter(
+      bind.usbVendorId,
+      bind.usbProductId,
+      bind.usbSerialNumber,
+    )
+  }
+
+  if (bind?.usbKind === "serial") {
+    try {
+      return await warmUsbPrinter(bind.usbVendorId, bind.usbProductId, bind.baudRate)
+    } catch {
+      return false
+    }
+  }
+
+  try {
+    const serialReady = await warmUsbPrinter(
+      bind?.usbVendorId,
+      bind?.usbProductId,
+      bind?.baudRate,
+    )
+    if (serialReady) return true
+  } catch {
+    // Legacy bindings may have been created through WebUSB.
+  }
+
+  return warmWebUsbPrinter(
+    bind?.usbVendorId,
+    bind?.usbProductId,
+    bind?.usbSerialNumber,
+  )
+}
+
 export async function warmStationPrinters(settings: PrintersSettings | null | undefined): Promise<void> {
   for (const device of settings?.devices || []) {
     if (device.enabled === false) continue
@@ -44,7 +82,7 @@ export async function warmStationPrinters(settings: PrintersSettings | null | un
       if (device.transport === "bluetooth") {
         await warmBluetoothPrinter(bind?.bluetoothDeviceId)
       } else if (device.transport === "usb") {
-        await warmUsbPrinter(bind?.usbVendorId, bind?.usbProductId, bind?.baudRate)
+        await warmUsbPrinterConnection(bind)
       }
     } catch {
       // Keep going; print jobs will surface a real error.

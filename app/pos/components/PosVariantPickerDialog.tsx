@@ -137,7 +137,11 @@ export function PosVariantPickerDialog({ item, open, onOpenChange, onConfirm }: 
         </DialogBody>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+          <Button
+            variant="outline"
+            className="hidden md:inline-flex"
+            onClick={() => onOpenChange(false)}
+          >
             {t("common.cancel") || "Cancel"}
           </Button>
           <Button onClick={handleConfirm} disabled={!resolvedChild || loading}>

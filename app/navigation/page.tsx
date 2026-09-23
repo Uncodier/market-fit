@@ -74,8 +74,8 @@ export default function NavigationPage({ isOverlay, onClose }: NavigationPagePro
           ? "bg-background/60 backdrop-blur-3xl" 
           : "bg-background/70 backdrop-blur-sm"
       )}>
-        <div className="flex h-[64px] items-center justify-between px-4 lg:px-8 w-full max-w-full">
-          <div className="flex items-center flex-1 min-w-0">
+        <div className="grid h-[64px] w-full max-w-full grid-cols-[auto_minmax(0,1fr)] items-center gap-3 px-4 md:grid-cols-[1fr_auto_1fr] lg:px-8">
+          <div className="flex min-w-0 items-center">
             <Button 
               variant="ghost" 
               size="sm" 
@@ -87,7 +87,7 @@ export default function NavigationPage({ isOverlay, onClose }: NavigationPagePro
             </Button>
           </div>
           
-          <div className="flex items-center justify-center flex-1 min-w-0">
+          <div className="flex min-w-0 items-center justify-end md:justify-center">
             <SearchInput 
               ref={inputRef}
               data-command-k-input
@@ -95,12 +95,12 @@ export default function NavigationPage({ isOverlay, onClose }: NavigationPagePro
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="rounded-full pr-14 bg-background border-border focus:border-muted-foreground/20 focus:ring-muted-foreground/20"
-              containerClassName="w-[280px] lg:w-[400px]"
+              containerClassName="w-full md:w-[280px] lg:w-[400px]"
               alwaysExpanded={true}
             />
           </div>
 
-          <div className="flex items-center justify-end flex-1 min-w-0">
+          <div className="hidden min-w-0 items-center justify-end md:flex">
           </div>
         </div>
       </div>
@@ -136,7 +136,7 @@ export default function NavigationPage({ isOverlay, onClose }: NavigationPagePro
                   </div>
                   <h2 className="text-lg font-semibold text-foreground capitalize tracking-tight">{categoryTitle}</h2>
                 </div>
-                <div className="flex flex-wrap gap-8">
+                <div className="grid grid-cols-3 gap-x-2 gap-y-6 md:flex md:flex-wrap md:gap-8">
                   {items.map((item) => {
                     const Icon = NAV_ITEM_ICON[item.key] || Star
                     return (

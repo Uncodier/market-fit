@@ -103,6 +103,32 @@ export function SupportChannelHeader({
   )
 }
 
+export function ConnectedSupportChannelSummary({
+  type,
+  accountLabel,
+}: {
+  type: string
+  accountLabel: string
+}) {
+  return (
+    <div className="flex w-full flex-col justify-between gap-4 rounded-lg border border-black/5 bg-muted/20 p-4 dark:border-white/5 sm:flex-row sm:items-center">
+      <div className="flex min-w-0 items-center gap-4">
+        <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full border border-black/5 bg-muted dark:border-white/5">
+          {getSupportChannelIcon(type, 24)}
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-base font-medium">{accountLabel}</p>
+          <div className="mt-1 flex items-center gap-2">
+            <span className="inline-flex rounded bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800">
+              Connected
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export function SupportChannelTypeSelector({
   form,
   index,
