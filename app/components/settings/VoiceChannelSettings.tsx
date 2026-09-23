@@ -167,6 +167,7 @@ export function VoiceChannelSettings({
       <SectionCardFooter className="justify-end">
         <Button
           type="button"
+          variant="outline"
           size="sm"
           onClick={save}
           disabled={!isDirty || isSaving || !canManageVoice}

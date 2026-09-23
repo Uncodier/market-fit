@@ -231,50 +231,46 @@ export function EmailInboundSettings({
         </div>
       </SectionCardContent>
 
-      {(!isMxConfigured || hasReceivingChanges || showActivation) && (
-        <SectionCardFooter className="justify-end gap-2 flex-wrap">
-          {!isMxConfigured && (
-            <>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={onSync}
-                disabled={isProcessing || isSyncingCloudflare || isActivating}
-              >
-                <Cloud className="h-4 w-4 mr-2" />
-                {isSyncingCloudflare ? "Syncing..." : isCloudflareConnected ? "Sync with Cloudflare" : "Connect Cloudflare"}
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={onVerify}
-                disabled={isProcessing || isVerifyingMx || isActivating}
-              >
-                {isVerifyingMx ? "Checking..." : "Verify MX"}
-              </Button>
-            </>
-          )}
-          {hasReceivingChanges && (
+      <SectionCardFooter className="justify-end gap-2 flex-wrap">
+        {!isMxConfigured && (
+          <>
             <Button
               type="button"
               variant="outline"
-              onClick={onSave}
-              disabled={isProcessing || isActivating}
+              onClick={onSync}
+              disabled={isProcessing || isSyncingCloudflare || isActivating}
             >
-              {isProcessing ? "Saving..." : "Save Changes"}
+              <Cloud className="h-4 w-4 mr-2" />
+              {isSyncingCloudflare ? "Syncing..." : isCloudflareConnected ? "Sync with Cloudflare" : "Connect Cloudflare"}
             </Button>
-          )}
-          {showActivation && (
             <Button
               type="button"
-              onClick={onActivate}
-              disabled={isProcessing || isActivating}
+              variant="outline"
+              onClick={onVerify}
+              disabled={isProcessing || isVerifyingMx || isActivating}
             >
-              {isActivating ? "Activating..." : "Activate Email Channel"}
+              {isVerifyingMx ? "Checking..." : "Verify MX"}
             </Button>
-          )}
-        </SectionCardFooter>
-      )}
+          </>
+        )}
+        <Button
+          type="button"
+          variant="outline"
+          onClick={onSave}
+          disabled={!hasReceivingChanges || isProcessing || isActivating}
+        >
+          {isProcessing ? "Saving..." : "Save Changes"}
+        </Button>
+        {showActivation && (
+          <Button
+            type="button"
+            onClick={onActivate}
+            disabled={isProcessing || isActivating}
+          >
+            {isActivating ? "Activating..." : "Activate Email Channel"}
+          </Button>
+        )}
+      </SectionCardFooter>
     </>
   )
 }

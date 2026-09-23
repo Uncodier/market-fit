@@ -22,14 +22,14 @@ const baseProps = {
 }
 
 describe("EmailInboundSettings", () => {
-  it("hides completed MX setup controls", () => {
+  it("keeps the footer and disabled save action visible after setup is complete", () => {
     render(<EmailInboundSettings {...baseProps} isMxConfigured />)
 
     expect(screen.getByText("Verified")).toBeInTheDocument()
     expect(screen.queryByText(/MX 10 inbound\.zavu\.dev/)).not.toBeInTheDocument()
     expect(screen.queryByRole("button", { name: "Sync with Cloudflare" })).not.toBeInTheDocument()
     expect(screen.queryByRole("button", { name: "Verify MX" })).not.toBeInTheDocument()
-    expect(screen.queryByRole("button", { name: "Save Changes" })).not.toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "Save Changes" })).toBeDisabled()
   })
 
   it("keeps save available when the receiving setting changes", () => {
