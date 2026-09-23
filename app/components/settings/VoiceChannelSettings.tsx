@@ -11,6 +11,7 @@ import {
 import { VoiceAgentSettingsFields } from "./VoiceAgentSettingsFields"
 import {
   readVoiceAgentSettings,
+  resolveSavedVoiceAgentSettings,
   type VoiceAgentSettingsValue,
 } from "./voice-agent-settings"
 import { useCanManageVoiceChannel } from "./use-can-manage-voice-channel"
@@ -111,10 +112,11 @@ export function VoiceChannelSettings({
       if (!payload?.connection && !Array.isArray(payload?.connections)) {
         throw new Error("Voice settings were saved but the response was incomplete")
       }
-      const savedValue = {
-        language: payload.voiceLanguage || value.language,
-        ttsVoiceId: payload.ttsVoiceId || "",
-      }
+      const savedValue = resolveSavedVoiceAgentSettings(
+        payload,
+        channel.id,
+        value,
+      )
       await voiceOptions.mutate(
         (current) => ({
           ...(current || { items: [], languages: [] }),
@@ -130,7 +132,7 @@ export function VoiceChannelSettings({
       setValue(savedValue)
       setDirty({ language: false, ttsVoiceId: false })
       await onUpdated(payload)
-      toast.success("Voice settings saved")
+      toast.success("Voice channel settings saved successfully")
     } catch (error: any) {
       toast.error(error?.message || "Failed to save Voice settings")
     } finally {

@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { VoiceChannelSettings } from "@/app/components/settings/VoiceChannelSettings"
 import { apiClient } from "@/app/services/api-client-service"
+import { toast } from "sonner"
 
 jest.mock("@/app/components/settings/VoiceAgentSettingsFields", () => ({
   VoiceAgentSettingsFields: ({ value, onChange }: {
@@ -23,6 +24,12 @@ jest.mock("@/app/components/settings/VoiceAgentSettingsFields", () => ({
       </button>
     </>
   ),
+}))
+jest.mock("sonner", () => ({
+  toast: {
+    success: jest.fn(),
+    error: jest.fn(),
+  },
 }))
 
 describe("VoiceChannelSettings", () => {
@@ -81,6 +88,13 @@ describe("VoiceChannelSettings", () => {
     expect(onUpdated).toHaveBeenCalledWith(expect.objectContaining({
       connections: [expect.objectContaining({ id: "voice-1" })],
     }))
+    expect(screen.getByTestId("voice-draft")).toHaveTextContent("es:voice-es")
+    expect(
+      screen.getByRole("button", { name: "Save Voice Settings" }),
+    ).toBeDisabled()
+    expect(toast.success).toHaveBeenCalledWith(
+      "Voice channel settings saved successfully",
+    )
   })
 
   it("preserves a dirty draft across equivalent channel object replacements", async () => {
