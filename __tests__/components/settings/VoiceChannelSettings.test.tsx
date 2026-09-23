@@ -32,7 +32,7 @@ describe("VoiceChannelSettings", () => {
 
   it("saves language and voice and forwards the canonical connection snapshot", async () => {
     const onUpdated = jest.fn()
-    jest.spyOn(apiClient, "get").mockResolvedValue({
+    const get = jest.spyOn(apiClient, "get").mockResolvedValue({
       success: true,
       data: {
         items: [],
@@ -66,6 +66,7 @@ describe("VoiceChannelSettings", () => {
       />
     )
 
+    await waitFor(() => expect(get).toHaveBeenCalled())
     fireEvent.click(screen.getByRole("button", { name: "Choose Spanish voice" }))
     fireEvent.click(screen.getByRole("button", { name: "Save Voice Settings" }))
 
@@ -83,7 +84,7 @@ describe("VoiceChannelSettings", () => {
   })
 
   it("preserves a dirty draft across equivalent channel object replacements", async () => {
-    jest.spyOn(apiClient, "get").mockResolvedValue({
+    const get = jest.spyOn(apiClient, "get").mockResolvedValue({
       success: true,
       data: {
         items: [],
@@ -101,6 +102,7 @@ describe("VoiceChannelSettings", () => {
     }
     const { rerender } = render(<VoiceChannelSettings {...props} />)
 
+    await waitFor(() => expect(get).toHaveBeenCalled())
     fireEvent.click(screen.getByRole("button", { name: "Choose Spanish voice" }))
     expect(screen.getByTestId("voice-draft")).toHaveTextContent("es:voice-es")
 

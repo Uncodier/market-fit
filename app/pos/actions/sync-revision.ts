@@ -24,6 +24,12 @@ export async function getPosCatalogRevision(siteId: string): Promise<{ data: str
           { count: priceListsCount },
           { data: promotions },
           { count: promotionsCount },
+          { data: modifierGroups },
+          { count: modifierGroupsCount },
+          { data: modifierLinks },
+          { count: modifierLinksCount },
+          { data: modifierItems },
+          { count: modifierItemsCount },
         ] = await Promise.all([
           access.supabase.from("catalog_items").select("updated_at").eq("site_id", siteId).order("updated_at", { ascending: false }).limit(1),
           access.supabase.from("catalog_items").select("id", { count: "exact", head: true }).eq("site_id", siteId),
@@ -33,6 +39,12 @@ export async function getPosCatalogRevision(siteId: string): Promise<{ data: str
           access.supabase.from("price_lists").select("id", { count: "exact", head: true }).eq("site_id", siteId),
           access.supabase.from("promotions").select("updated_at").eq("site_id", siteId).order("updated_at", { ascending: false }).limit(1),
           access.supabase.from("promotions").select("id", { count: "exact", head: true }).eq("site_id", siteId),
+          access.supabase.from("modifier_groups").select("updated_at").eq("site_id", siteId).order("updated_at", { ascending: false }).limit(1),
+          access.supabase.from("modifier_groups").select("id", { count: "exact", head: true }).eq("site_id", siteId),
+          access.supabase.from("catalog_item_modifier_groups").select("created_at").eq("site_id", siteId).order("created_at", { ascending: false }).limit(1),
+          access.supabase.from("catalog_item_modifier_groups").select("id", { count: "exact", head: true }).eq("site_id", siteId),
+          access.supabase.from("modifier_group_items").select("created_at").eq("site_id", siteId).order("created_at", { ascending: false }).limit(1),
+          access.supabase.from("modifier_group_items").select("id", { count: "exact", head: true }).eq("site_id", siteId),
         ]);
 
         return [
@@ -40,6 +52,9 @@ export async function getPosCatalogRevision(siteId: string): Promise<{ data: str
           `${categories?.[0]?.updated_at || "0"}:${categoriesCount ?? 0}`,
           `${priceLists?.[0]?.updated_at || "0"}:${priceListsCount ?? 0}`,
           `${promotions?.[0]?.updated_at || "0"}:${promotionsCount ?? 0}`,
+          `${modifierGroups?.[0]?.updated_at || "0"}:${modifierGroupsCount ?? 0}`,
+          `${modifierLinks?.[0]?.created_at || "0"}:${modifierLinksCount ?? 0}`,
+          `${modifierItems?.[0]?.created_at || "0"}:${modifierItemsCount ?? 0}`,
         ].join("|");
       },
     });

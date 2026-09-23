@@ -61,7 +61,7 @@ export function VoiceAgentSettingsFields({
           <Label htmlFor={languageId}>Call language</Label>
           <Select
             value={value.language}
-            disabled={disabled || isLoading}
+            disabled={disabled || isLoading || !!error}
             onValueChange={(language) => {
               onChange({
                 language,
@@ -92,7 +92,7 @@ export function VoiceAgentSettingsFields({
           <Label htmlFor={voiceId}>Speaking voice</Label>
           <Select
             value={value.ttsVoiceId || DEFAULT_VOICE_VALUE}
-            disabled={disabled || isLoading}
+            disabled={disabled || isLoading || !!error}
             onValueChange={(ttsVoiceId) => {
               onChange({
                 ...value,
