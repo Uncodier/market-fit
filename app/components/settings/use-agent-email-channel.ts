@@ -8,6 +8,7 @@ import { apiClient } from "@/app/services/api-client-service"
 import { secretsService } from "@/app/services/secrets-service"
 import type { SiteFormValues } from "./form-schema"
 import type { AgentMailDnsRecord } from "./AgentEmailDnsDialog"
+import { deleteAgentMailInbox } from "./agentmail-inbox-api"
 
 type AgentEmailStatus =
   | "not_configured"
@@ -328,14 +329,7 @@ export function useAgentEmailChannel({
 
     setIsDeleting(true)
     try {
-      const response = await apiClient.post("/api/integrations/agentmail/inbox/delete", {
-        inbox_id: inboxId,
-        siteId,
-      })
-      if (!response.success) {
-        toast.error(errorMessage(response.error, "Failed to delete inbox"))
-        return
-      }
+      await deleteAgentMailInbox(inboxId)
 
       form.setValue("channels.agent_email.domain", undefined)
       form.setValue("channels.agent_email.customDomain", "")
