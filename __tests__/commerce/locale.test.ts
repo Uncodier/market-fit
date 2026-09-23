@@ -78,6 +78,11 @@ describe('loadLocaleMessages', () => {
       const messages = await loadLocaleMessages(locale);
       expect(messages['pdp.getTickets']).toBe(expectedTickets[locale]);
       expect(messages['marketplace.add']).not.toBe('Add to Cart');
+      expect(messages['pos.modifiers.title']).not.toBe('Add extras');
+      expect(messages['pos.modifiers.required']).not.toBe('Required');
+      expect(messages['pos.modifiers.errors.selectAtLeast']).not.toBe(
+        'Select at least {{count}} from {{group}}',
+      );
       expect(messages['checkout.success.title']).not.toBe('Order Confirmed');
       expect(messages['dashboard.analytics.clientCohort.title']).toBe('Client Cohort Analysis');
     },

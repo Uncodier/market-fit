@@ -14,6 +14,7 @@ import { useIsMobile } from "@/app/hooks/use-mobile-view"
 import {
   getCatalogInitials,
   getCatalogItemInitial,
+  moveUncategorizedCatalogItemsToEnd,
   sortCatalogItemsAlphabetically,
 } from "@/app/pos/catalog-alphabet"
 import { PosAlphabetIndex } from "./PosAlphabetIndex"
@@ -30,7 +31,12 @@ export function PosCatalogGrid({ items, loading, onAdd, t }: PosCatalogGridProps
   const isMobile = useIsMobile()
   const gridRef = useRef<HTMLDivElement>(null)
   const displayedItems = useMemo(
-    () => (isMobile ? sortCatalogItemsAlphabetically(items) : items),
+    () =>
+      isMobile
+        ? moveUncategorizedCatalogItemsToEnd(
+            sortCatalogItemsAlphabetically(items),
+          )
+        : items,
     [isMobile, items],
   )
   const letters = useMemo(

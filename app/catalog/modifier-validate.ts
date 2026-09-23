@@ -2,7 +2,25 @@ import type { ModifierGroupWithItems, ModifierSelection } from "./modifier-types
 
 export type ModifierValidationResult =
   | { ok: true }
-  | { ok: false; error: string; groupId?: string }
+  | {
+      ok: false
+      error: string
+      errorKey: string
+      errorParams?: Record<string, string | number>
+      groupId?: string
+    }
+
+type Translate = (
+  key: string,
+  params?: Record<string, string | number>,
+) => string
+
+export function getModifierValidationError(
+  result: Extract<ModifierValidationResult, { ok: false }>,
+  t: Translate,
+): string {
+  return t(result.errorKey, result.errorParams) || result.error
+}
 
 /**
  * Validate modifier selections against group min/max and allowed option ids.
@@ -23,12 +41,17 @@ export function validateModifierSelections(
 
   for (const sel of selections) {
     if (!sel.catalogItemId || !sel.groupId) {
-      return { ok: false, error: "Selección de modificador inválida" }
+      return {
+        ok: false,
+        error: "Invalid modifier selection",
+        errorKey: "pos.modifiers.errors.invalidSelection",
+      }
     }
     if (!Number.isFinite(sel.quantity) || sel.quantity < 1) {
       return {
         ok: false,
-        error: "La cantidad del modificador debe ser al menos 1",
+        error: "Modifier quantity must be at least 1",
+        errorKey: "pos.modifiers.errors.invalidQuantity",
         groupId: sel.groupId,
       }
     }
@@ -36,14 +59,16 @@ export function validateModifierSelections(
     if (!allowed) {
       return {
         ok: false,
-        error: "Grupo de modificador desconocido",
+        error: "Unknown modifier group",
+        errorKey: "pos.modifiers.errors.unknownGroup",
         groupId: sel.groupId,
       }
     }
     if (!allowed.has(sel.catalogItemId)) {
       return {
         ok: false,
-        error: "El modificador no pertenece a este grupo",
+        error: "Modifier does not belong to this group",
+        errorKey: "pos.modifiers.errors.invalidGroupItem",
         groupId: sel.groupId,
       }
     }
@@ -56,14 +81,24 @@ export function validateModifierSelections(
     if (totalUnits < (group.min_select ?? 0)) {
       return {
         ok: false,
-        error: `Selecciona al menos ${group.min_select} de ${group.name}`,
+        error: `Select at least ${group.min_select} from ${group.name}`,
+        errorKey: "pos.modifiers.errors.selectAtLeast",
+        errorParams: {
+          count: group.min_select ?? 0,
+          group: group.name,
+        },
         groupId: group.id,
       }
     }
     if (group.max_select != null && totalUnits > group.max_select) {
       return {
         ok: false,
-        error: `Selecciona como máximo ${group.max_select} de ${group.name}`,
+        error: `Select at most ${group.max_select} from ${group.name}`,
+        errorKey: "pos.modifiers.errors.selectAtMost",
+        errorParams: {
+          count: group.max_select,
+          group: group.name,
+        },
         groupId: group.id,
       }
     }

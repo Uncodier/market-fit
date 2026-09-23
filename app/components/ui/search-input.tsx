@@ -1,6 +1,6 @@
 "use client"
 
-import React, { forwardRef, useEffect, useRef, useState } from "react"
+import React, { forwardRef, useCallback, useEffect, useRef, useState } from "react"
 import { useSearchParams } from "next/navigation"
 import { Input } from "./input"
 import { Search, X } from "./icons"
@@ -41,25 +41,26 @@ const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
     const hasValue = value !== undefined && value !== null && value !== ""
     const [isExpanded, setIsExpanded] = useState(alwaysExpanded || hasValue)
 
-    useEffect(() => {
-      onExpandedChange?.(isExpanded)
-    }, [isExpanded, onExpandedChange])
+    const updateExpanded = useCallback((expanded: boolean) => {
+      setIsExpanded(expanded)
+      onExpandedChange?.(expanded)
+    }, [onExpandedChange])
 
     // Expand automatically if a value is set from outside or if alwaysExpanded changes
     useEffect(() => {
       if (alwaysExpanded && !isExpanded) {
-        setIsExpanded(true)
+        updateExpanded(true)
       } else if (hasValue && !isExpanded) {
-        setIsExpanded(true)
+        updateExpanded(true)
       }
-    }, [hasValue, isExpanded, alwaysExpanded])
+    }, [hasValue, isExpanded, alwaysExpanded, updateExpanded])
 
     // Manejar el atajo de teclado (Command+K o Ctrl+K)
     useEffect(() => {
       const handleKeyDown = (e: KeyboardEvent) => {
         if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === shortcut.toLowerCase()) {
           e.preventDefault()
-          setIsExpanded(true)
+          updateExpanded(true)
           
           setTimeout(() => {
             // Usar la ref correcta para acceder al elemento
@@ -74,7 +75,7 @@ const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
 
       window.addEventListener("keydown", handleKeyDown)
       return () => window.removeEventListener("keydown", handleKeyDown)
-    }, [shortcut, actualRef])
+    }, [shortcut, actualRef, updateExpanded])
 
     // Configurar el atributo para que useCommandK pueda encontrarlo
     useEffect(() => {
@@ -95,7 +96,7 @@ const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
       const e = { target: { value: '' } } as React.ChangeEvent<HTMLInputElement>
       handleInputChange(e)
       if (!alwaysExpanded) {
-        setIsExpanded(false)
+        updateExpanded(false)
       }
     }
 
@@ -106,7 +107,7 @@ const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
     return (
       <div 
         className={cn(
-          "relative transition-all duration-300 ease-in-out",
+          "relative transition-[width,height] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none",
           isExpanded ? cn(expandedWidthClass, expandedHeightClass) : "w-9 h-9",
           // Add containerClassName when expanded so any other classes apply
           isExpanded && containerClassName
@@ -115,8 +116,10 @@ const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
         {/* Collapsed State: Button */}
         <div 
           className={cn(
-            "absolute right-0 top-1/2 -translate-y-1/2 h-9 w-9 transition-all duration-300 ease-in-out",
-            isExpanded ? "opacity-0 scale-75 pointer-events-none" : "opacity-100 scale-100"
+            "absolute right-0 top-1/2 -translate-y-1/2 h-9 w-9 transition-[opacity,transform] duration-150 ease-out motion-reduce:transition-none",
+            isExpanded
+              ? "opacity-0 scale-90 translate-x-1 pointer-events-none"
+              : "opacity-100 scale-100 translate-x-0 delay-150"
           )}
         >
           <Button
@@ -125,7 +128,7 @@ const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
             size="icon"
             className="h-9 w-9 rounded-full"
             onClick={() => {
-              setIsExpanded(true)
+              updateExpanded(true)
               setTimeout(() => {
                 if (typeof actualRef !== 'function' && actualRef.current) {
                   actualRef.current.focus()
@@ -141,8 +144,10 @@ const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
         {/* Expanded State: Input */}
         <div 
           className={cn(
-            "absolute right-0 top-0 w-full flex items-center transition-all duration-300 ease-in-out origin-right",
-            isExpanded ? cn("opacity-100 scale-100", expandedHeightClass) : "opacity-0 scale-95 pointer-events-none h-9"
+            "absolute right-0 top-0 w-full flex origin-right items-center transition-[opacity,transform] duration-200 ease-out motion-reduce:transition-none",
+            isExpanded
+              ? cn("opacity-100 scale-100 translate-x-0 delay-75", expandedHeightClass)
+              : "opacity-0 scale-[0.98] translate-x-1 pointer-events-none h-9"
           )}
         >
           <Input
@@ -161,7 +166,7 @@ const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
                 // Delay collapse to allow 'Clear' button click to register
                 setTimeout(() => {
                   if (!val && !alwaysExpanded) {
-                    setIsExpanded(false)
+                    updateExpanded(false)
                   }
                 }, 150)
               }

@@ -19,6 +19,7 @@ interface TopBarTitleProps extends React.HTMLAttributes<HTMLDivElement> {
   helpText?: string
   helpWelcomeMessage?: string
   helpTask?: string
+  afterTitle?: React.ReactNode
   isCollapsed: boolean
   onCollapse: () => void
   hideSidebarToggle?: boolean
@@ -30,6 +31,7 @@ export function TopBarTitle({
   helpText,
   helpWelcomeMessage,
   helpTask,
+  afterTitle,
   isCollapsed,
   onCollapse,
   hideSidebarToggle,
@@ -256,6 +258,8 @@ export function TopBarTitle({
       ) : (
         <h1 className="text-2xl font-semibold text-foreground font-inter truncate">{customTitle || getDefaultTitle()}</h1>
       )}
+
+      {afterTitle ? <div className="shrink-0">{afterTitle}</div> : null}
       
       {(helpText || helpWelcomeMessage || helpTask) && (
         <HelpButton

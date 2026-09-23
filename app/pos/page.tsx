@@ -16,7 +16,6 @@ import { PosCategoryTabs } from "./components/PosCategoryTabs";
 import { PosPageDialogs } from "./components/PosPageDialogs";
 import { CartPanel } from "./components/CartPanel";
 import { PosCatalogGrid } from "./components/PosCatalogGrid";
-import { PosSyncBadge } from "./components/PosSyncBadge";
 import { PrinterSyncBadge } from "@/app/components/printer/PrinterSyncBadge";
 import { PosSyncIssues } from "./components/PosSyncIssues";
 import { usePosCatalog } from "./hooks/use-pos-catalog";
@@ -27,7 +26,8 @@ import { usePosAddItem } from "./hooks/use-pos-add-item";
 import { usePosLead } from "./hooks/use-pos-lead";
 import { usePosOrderNotesAutosave } from "./hooks/use-pos-order-notes-autosave";
 import { usePosOrderAction } from "./hooks/use-pos-order-action";
-import { drainPosOutbox } from "./local/sync-engine";
+import { moveUncategorizedCatalogItemsToEnd } from "./catalog-alphabet";
+import { cn } from "@/lib/utils";
 
 export default function POSPage() {
   const { currentSite } = useSite();
@@ -50,7 +50,7 @@ export default function POSPage() {
     if (expanded) setSelectedCategory("all");
   }, []);
 
-  const { status: syncStatus, retrySync } = usePosSyncStatus(siteId);
+  const { status: syncStatus } = usePosSyncStatus(siteId);
   const catalog = usePosCatalog(siteId);
   const cartApi = usePosCart({
     siteId,
@@ -211,7 +211,7 @@ export default function POSPage() {
       }
     }
 
-    return list.map((item) => {
+    return moveUncategorizedCatalogItemsToEnd(list).map((item) => {
       const children = catalog.catalogItems.filter(
         (child) => 
           child.parent_id === item.id && 
@@ -251,6 +251,13 @@ export default function POSPage() {
       }),
     );
   }, [t]);
+
+  useEffect(() => {
+    const handleOpenSyncIssues = () => setSyncIssuesOpen(true);
+    window.addEventListener("pos:open-sync-issues", handleOpenSyncIssues);
+    return () =>
+      window.removeEventListener("pos:open-sync-issues", handleOpenSyncIssues);
+  }, []);
 
   useEffect(() => {
     const handler = () => {
@@ -325,9 +332,19 @@ export default function POSPage() {
       >
         <StickyHeader>
           <div className="w-full pt-0">
-            <div className="flex items-center gap-2 sm:gap-4 w-full">
+            <div
+              className={cn(
+                "flex w-full items-center gap-2 transition-[gap] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] sm:gap-4 motion-reduce:transition-none",
+                isSearchExpanded && "md:gap-0",
+              )}
+            >
               <MobileFiltersDrawer triggerText={t('common.search') || "Search"}>
-                <FilterContainer>
+                <FilterContainer
+                  className={cn(
+                    "md:transition-[gap] md:duration-300 md:ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none",
+                    isSearchExpanded && "md:gap-0",
+                  )}
+                >
                   <FilterSection mobileOnly>
                     <SearchInput  placeholder={t("pos.searchCatalog") || "Search catalog..."} value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} type="text" alwaysExpanded={true}    className="w-full h-10 md:h-9"  containerClassName="w-full" />
                   </FilterSection>
@@ -336,13 +353,13 @@ export default function POSPage() {
 
                   <FilterSection
                     title={t('catalog.kind.label') === 'catalog.kind.label' ? 'Category' : t('catalog.kind.label')}
-                    className={
+                    className={cn(
+                      "min-w-0 overflow-hidden md:transition-[flex-grow,flex-basis,opacity,transform] md:duration-300 md:ease-[cubic-bezier(0.22,1,0.36,1)] md:will-change-[flex-grow,opacity,transform] motion-reduce:transition-none",
                       isSearchExpanded
-                        ? "hidden"
-                        : searchQuery
-                          ? "max-md:hidden min-w-0 flex-1"
-                          : "min-w-0 flex-1"
-                    }
+                        ? "md:flex-[0_1_0%] md:-translate-x-2 md:opacity-0 md:pointer-events-none"
+                        : "md:flex-[1_1_0%] md:translate-x-0 md:opacity-100",
+                      searchQuery && "max-md:hidden",
+                    )}
                   >
                     <PosCategoryTabs
                       activeCategory={selectedCategory}
@@ -356,7 +373,12 @@ export default function POSPage() {
 
                   <FilterSection
                     desktopOnly
-                    className={isSearchExpanded ? "min-w-0 flex-1" : undefined}
+                    className={cn(
+                      "min-w-0 md:transition-[flex-grow,flex-basis] md:duration-300 md:ease-[cubic-bezier(0.22,1,0.36,1)] md:will-change-[flex-grow] motion-reduce:transition-none",
+                      isSearchExpanded
+                        ? "md:flex-[1_1_0%]"
+                        : "md:flex-[0_0_2.25rem]",
+                    )}
                   >
                     <SearchInput
                       placeholder={t("pos.searchCatalog") || "Search catalog..."}
@@ -365,22 +387,23 @@ export default function POSPage() {
                       onExpandedChange={handleSearchExpandedChange}
                       type="text"
                       className="w-full"
-                      containerClassName={isSearchExpanded ? "w-full" : "w-64"}
+                      containerClassName="w-full"
                     />
                   </FilterSection>
                 </FilterContainer>
               </MobileFiltersDrawer>
 
-              {!isSearchExpanded && (
-                <div className="flex shrink-0 justify-end items-center gap-2 pr-1">
+              <div
+                aria-hidden={isSearchExpanded}
+                inert={isSearchExpanded}
+                className={cn(
+                  "flex max-w-56 shrink-0 items-center justify-end overflow-hidden pr-1 opacity-100 transition-[max-width,opacity,transform,padding] duration-200 ease-out motion-reduce:transition-none",
+                  isSearchExpanded &&
+                    "max-w-0 translate-x-2 p-0 opacity-0 pointer-events-none",
+                )}
+              >
                   <PrinterSyncBadge module="pos" />
-                  <PosSyncBadge
-                    status={syncStatus}
-                    onClick={() => setSyncIssuesOpen(true)}
-                    t={t}
-                  />
-                </div>
-              )}
+              </div>
 
               <div className="ml-auto flex flex-shrink-0 justify-end md:hidden">
                 <Sheet

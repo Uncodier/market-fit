@@ -17,10 +17,9 @@ import { PdpMobileBuyBar } from "./PdpMobileBuyBar"
 import { PdpMetricChips } from "./PdpMetricChips"
 import { PdpItemDescription } from "./PdpItemDescription"
 import { PdpProductDetails } from "./PdpProductDetails"
-import { BuyerAvatarStack } from "@/app/components/commerce/BuyerAvatarStack"
-import { getInventoryDisplayRule } from "@/app/commerce/storefront-display-helpers"
 import { PdpProductGallery } from "./PdpProductGallery"
 import { PdpModifierSkeleton } from "./PdpPageSkeleton"
+import { PdpInventoryStatus } from "./PdpInventoryStatus"
 import { hasPdpProductDetails } from "./pdp-item-description"
 import { VariantPicker } from "./VariantPicker"
 import { useSiteTracking } from "@/app/hooks/useSiteTracking"
@@ -34,6 +33,7 @@ import {
   modifiersUnitTotal,
   type CartModifier,
 } from "@/app/commerce/cart-modifiers"
+import { getModifierValidationError } from "@/app/catalog/modifier-validate"
 import { SubscriptionManagePanel } from "./SubscriptionManagePanel"
 import {
   DynamicQuoteMobileBar,
@@ -135,7 +135,7 @@ export function ProductPdpLayout({ item, backUrl, experience: _experience, catal
       : !modifiersReady
         ? null
         : !modifiersValid && "error" in modifierValidationResult
-          ? modifierValidationResult.error
+          ? getModifierValidationError(modifierValidationResult, t)
           : t("pdp.soldOut") || "Sold Out"
 
   const galleryEntries = useMemo(
@@ -222,7 +222,7 @@ export function ProductPdpLayout({ item, backUrl, experience: _experience, catal
     }
     const modCheck = isModifierSelectionValid(modifierGroups, selectedModifiers)
     if (!modCheck.ok) {
-      return toast.error(modCheck.error)
+      return toast.error(getModifierValidationError(modCheck, t))
     }
 
     trackEvent('add_to_cart', {
@@ -243,7 +243,7 @@ export function ProductPdpLayout({ item, backUrl, experience: _experience, catal
     }
     const modCheck = isModifierSelectionValid(modifierGroups, selectedModifiers)
     if (!modCheck.ok) {
-      return toast.error(modCheck.error)
+      return toast.error(getModifierValidationError(modCheck, t))
     }
 
     trackEvent('buy_now', {
@@ -262,7 +262,7 @@ export function ProductPdpLayout({ item, backUrl, experience: _experience, catal
     }
     const modCheck = isModifierSelectionValid(modifierGroups, selectedModifiers)
     if (!modCheck.ok) {
-      return toast.error(modCheck.error)
+      return toast.error(getModifierValidationError(modCheck, t))
     }
     const bookItemId = resolvedChild?.id || item.id
     const bookPath = pathname.replace(/\/[^/]+\/?$/, `/${bookItemId}`)
@@ -428,45 +428,7 @@ export function ProductPdpLayout({ item, backUrl, experience: _experience, catal
           ) : null}
 
           <div className="hidden lg:block p-8 bg-card border border-border/50 rounded-3xl shadow-2xl shadow-black/5 relative overflow-hidden">
-            {(() => {
-              const shop = activeItem._shop || {}
-              const meta = activeItem.metadata || {}
-              
-              let inventoryLine: React.ReactNode = null
-              const rule = getInventoryDisplayRule(activeItem, shop)
-              
-              if (rule.type === 'spots_left') {
-                inventoryLine = (
-                  <span className={`w-fit inline-flex items-center text-sm ${rule.isUrgent ? "font-semibold text-destructive" : "font-medium text-muted-foreground"}`}>
-                    {rule.count} {t("pdp.spotsLeftNextSlot") || "spots left in the next slot"}
-                  </span>
-                )
-              } else if (rule.type === 'only_left') {
-                inventoryLine = (
-                  <span className={`w-fit inline-flex items-center text-sm ${rule.isUrgent ? "font-semibold text-destructive" : "font-medium text-muted-foreground"}`}>
-                    {t("pdp.onlyUnitsLeft") || "Only"} {rule.count} {t("pdp.unitsLeftInStock") || "units left in stock"}
-                  </span>
-                )
-              }
-
-              const hasBuyers = meta.show_buyers && shop.buyers && shop.buyers.length > 0
-
-              if (!inventoryLine && !hasBuyers) return null
-
-              return (
-                <div className="flex flex-col gap-2 mb-4">
-                  {inventoryLine}
-                  {hasBuyers && (
-                    <div className="flex items-center gap-2">
-                      <BuyerAvatarStack buyers={shop.buyers!} size="md" totalCount={shop.buyerCount} />
-                      <span className="text-sm font-medium text-muted-foreground">
-                        {shop.buyerCount} {t("pdp.boughtThis") || "bought this"}
-                      </span>
-                    </div>
-                  )}
-                </div>
-              )
-            })()}
+            <PdpInventoryStatus item={activeItem} />
             <div className="space-y-3">
               {isDropIn ? (
                 <PdpCtaButton onClick={handleBook} disabled={!isSellable}>

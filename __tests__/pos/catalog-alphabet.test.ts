@@ -1,6 +1,7 @@
 import {
   getCatalogInitials,
   getCatalogItemInitial,
+  moveUncategorizedCatalogItemsToEnd,
   sortCatalogItemsAlphabetically,
 } from "@/app/pos/catalog-alphabet";
 
@@ -20,6 +21,25 @@ describe("POS catalog alphabet", () => {
       "Zebra",
     ]);
     expect(items.map((item) => item.name)).toEqual(["Zebra", "Ágave", "item 2"]);
+  });
+
+  it("moves uncategorized items to the end without changing group order", () => {
+    const items = [
+      { name: "Uncategorized A" },
+      { name: "Category B", category_id: "category-b" },
+      { name: "Uncategorized B", category_id: undefined },
+      { name: "Category A", category_id: "category-a" },
+    ];
+
+    expect(
+      moveUncategorizedCatalogItemsToEnd(items).map((item) => item.name),
+    ).toEqual([
+      "Category B",
+      "Category A",
+      "Uncategorized A",
+      "Uncategorized B",
+    ]);
+    expect(items[0].name).toBe("Uncategorized A");
   });
 
   it("returns each available initial once with symbols last", () => {

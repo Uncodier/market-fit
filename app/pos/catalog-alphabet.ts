@@ -25,6 +25,15 @@ export function sortCatalogItemsAlphabetically<T extends Pick<CatalogItem, "name
   );
 }
 
+export function moveUncategorizedCatalogItemsToEnd<
+  T extends Pick<CatalogItem, "category_id">,
+>(items: T[]): T[] {
+  return [
+    ...items.filter((item) => Boolean(item.category_id)),
+    ...items.filter((item) => !item.category_id),
+  ];
+}
+
 export function getCatalogInitials(
   items: Array<Pick<CatalogItem, "name">>,
 ): string[] {

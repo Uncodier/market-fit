@@ -6,7 +6,10 @@ import type {
   ModifierImageContext,
   ModifierSelection,
 } from "@/app/catalog/modifier-types"
-import { validateModifierSelections } from "@/app/catalog/modifier-validate"
+import {
+  getModifierValidationError,
+  validateModifierSelections,
+} from "@/app/catalog/modifier-validate"
 import type { CartModifier } from "@/app/commerce/cart-modifiers"
 import { Button } from "@/app/components/ui/button"
 import { Minus, Plus } from "@/app/components/ui/icons"
@@ -269,7 +272,9 @@ export function ModifierPickerPanel({
         )
       })}
       {!validation.ok && (
-        <p className="text-xs text-destructive">{validation.error}</p>
+        <p className="text-xs text-destructive">
+          {getModifierValidationError(validation, t)}
+        </p>
       )}
       <input type="hidden" data-modifiers={JSON.stringify(modifiers)} readOnly />
     </div>

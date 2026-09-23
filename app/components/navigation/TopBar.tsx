@@ -8,6 +8,7 @@ import { useSite } from "@/app/context/SiteContext"
 import { createClient } from "@/lib/supabase/client"
 import { TopBarTitle } from "./TopBarTitle"
 import { PosTopBarActions } from "./PosTopBarActions"
+import { PosTopBarSync } from "./PosTopBarSync"
 import { Button } from "../ui/button"
 import { Menu } from "@/app/components/ui/icons"
 
@@ -289,6 +290,7 @@ export function TopBar({
               helpText={helpText}
               helpWelcomeMessage={helpWelcomeMessage}
               helpTask={helpTask}
+              afterTitle={pathname === "/pos" ? <PosTopBarSync /> : null}
               isCollapsed={isCollapsed}
               onCollapse={onCollapse}
               hideSidebarToggle={hideSidebarToggle}
