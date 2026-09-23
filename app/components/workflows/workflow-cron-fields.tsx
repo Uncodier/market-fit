@@ -126,10 +126,12 @@ export function WorkflowCronFields({
         </label>
       )}
 
-      <div className="flex justify-between items-center px-1">
-        <p className="text-[10px] text-muted-foreground font-mono">{schedule.expression}</p>
-        <p className="text-[10px] text-muted-foreground">Times in {timezone}</p>
-      </div>
+      {schedule.preset !== "none" && (
+        <div className="flex justify-between items-center px-1">
+          <p className="text-[10px] text-muted-foreground font-mono">{schedule.expression}</p>
+          <p className="text-[10px] text-muted-foreground">Times in {timezone}</p>
+        </div>
+      )}
     </div>
   )
 }

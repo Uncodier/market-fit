@@ -2223,7 +2223,7 @@ function RobotsPageContent() {
                 <div className="grid grid-rows-[1fr] lg:grid-rows-[auto_1fr] m-0 bg-card absolute inset-x-0 bottom-0 top-[calc(var(--topbar-height,64px)+71px)] overflow-hidden">
                   <div
                     ref={desktopToolbarRef}
-                    className="hidden lg:grid grid-cols-[minmax(33%,1fr)_auto_auto_auto] items-center gap-2 px-3 py-1.5 border-b border-black/5 dark:border-white/5 bg-background"
+                    className="hidden h-11 shrink-0 lg:grid grid-cols-[minmax(33%,1fr)_auto_auto_auto] items-center gap-2 px-3 py-1.5 border-b border-black/5 dark:border-white/5 bg-background"
                   >
                     {hasRequirementPreview && activeBrowserTab.kind !== 'artifact' ? (
                       <div className="flex min-w-0 items-center gap-2 bg-black/5 dark:bg-white/10 border border-transparent rounded-full px-2.5 py-1">

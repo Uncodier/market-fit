@@ -3,6 +3,7 @@ export const DEFAULT_CRON_HOUR = 9
 export const DEFAULT_CRON_WEEKDAY = 1
 
 export type CronPreset =
+  | "none"
   | "hourly"
   | "every_2h"
   | "every_3h"
@@ -22,7 +23,7 @@ export interface CronSchedule {
   expression: string
 }
 
-const HOUR_INTERVALS: Record<number, Exclude<CronPreset, "hourly" | "daily" | "weekdays" | "weekly" | "custom">> = {
+const HOUR_INTERVALS: Record<number, Exclude<CronPreset, "none" | "hourly" | "daily" | "weekdays" | "weekly" | "custom">> = {
   2: "every_2h",
   3: "every_3h",
   4: "every_4h",
@@ -32,6 +33,7 @@ const HOUR_INTERVALS: Record<number, Exclude<CronPreset, "hourly" | "daily" | "w
 }
 
 export const CRON_PRESET_OPTIONS: readonly { value: CronPreset; label: string }[] = [
+  { value: "none", label: "None" },
   { value: "hourly", label: "Every hour" },
   { value: "every_2h", label: "Every 2 hours" },
   { value: "every_3h", label: "Every 3 hours" },
@@ -78,6 +80,7 @@ function intervalHours(preset: CronPreset): number | null {
 export function buildCronExpression(schedule: Pick<CronSchedule, "preset" | "hour" | "weekday">, custom?: string) {
   const hour = clampHour(schedule.hour)
   const weekday = clampWeekday(schedule.weekday)
+  if (schedule.preset === "none") return ""
   if (schedule.preset === "custom") return (custom || "").trim() || DEFAULT_CRON
   if (schedule.preset === "hourly") return "0 * * * *"
   const hours = intervalHours(schedule.preset)
@@ -88,7 +91,15 @@ export function buildCronExpression(schedule: Pick<CronSchedule, "preset" | "hou
 }
 
 export function parseCronSchedule(cron?: string): CronSchedule {
-  const expression = (cron || DEFAULT_CRON).trim() || DEFAULT_CRON
+  const expression = (cron || "").trim()
+  if (!expression) {
+    return {
+      preset: "none",
+      hour: DEFAULT_CRON_HOUR,
+      weekday: DEFAULT_CRON_WEEKDAY,
+      expression: "",
+    }
+  }
   const fallback: CronSchedule = {
     preset: "custom",
     hour: DEFAULT_CRON_HOUR,

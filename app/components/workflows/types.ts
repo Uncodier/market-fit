@@ -168,7 +168,7 @@ export type WorkflowStepStatus = 'pending' | 'in_progress' | 'completed' | 'fail
 
 export interface McpCatalogTool {
   name: string
-  description?: string
+  label?: string
   actions?: string[]
 }
 

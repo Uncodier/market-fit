@@ -1,5 +1,4 @@
 import {
-  DEFAULT_CRON,
   buildCronExpression,
   cronNeedsHour,
   cronNeedsWeekday,
@@ -7,12 +6,12 @@ import {
 } from "@/app/components/workflows/workflow-cron"
 
 describe("parseCronSchedule", () => {
-  it("defaults empty cron to every hour", () => {
+  it("defaults empty cron to none", () => {
     expect(parseCronSchedule()).toEqual({
-      preset: "hourly",
+      preset: "none",
       hour: 9,
       weekday: 1,
-      expression: DEFAULT_CRON,
+      expression: "",
     })
   })
 
@@ -37,6 +36,7 @@ describe("parseCronSchedule", () => {
 
 describe("buildCronExpression", () => {
   it("serializes hour presets", () => {
+    expect(buildCronExpression({ preset: "none", hour: 9, weekday: 1 })).toBe("")
     expect(buildCronExpression({ preset: "hourly", hour: 9, weekday: 1 })).toBe("0 * * * *")
     expect(buildCronExpression({ preset: "every_2h", hour: 9, weekday: 1 })).toBe("0 */2 * * *")
     expect(buildCronExpression({ preset: "daily", hour: 9, weekday: 1 })).toBe("0 9 * * *")

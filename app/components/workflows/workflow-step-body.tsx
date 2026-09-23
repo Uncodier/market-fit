@@ -5,7 +5,6 @@ import type { InstanceNode } from "@/app/types/instance-nodes";
 import { Button } from "@/app/components/ui/button";
 import { Switch } from "@/app/components/ui/switch";
 import { Textarea } from "@/app/components/ui/textarea";
-import { Plus, X } from "@/app/components/ui/icons";
 import { apiClient } from "@/app/services/api-client-service";
 import { cn } from "@/lib/utils";
 import {
@@ -18,12 +17,12 @@ import {
   WF_TEXTAREA_CLASS,
   roleFromSkill,
   type McpCatalogTool,
-  type WorkflowMcpAction,
   type WorkflowStepSettings,
   type WorkflowStepStatus,
 } from "./types";
 import { WorkflowStepValidationList } from "./workflow-step-validation";
 import { WorkflowSearchSelect } from "./workflow-search-select";
+import { WorkflowStepToolsList } from "./workflow-step-tools-list";
 import { AddSecretDialog } from "@/app/components/ui/add-secret-dialog";
 
 type StepTab = "task" | "output" | "validation" | "environment" | "tools";
@@ -102,111 +101,6 @@ function WorkflowStepTaskFields({
   );
 }
 
-function WorkflowStepToolsList({
-  actions,
-  catalog,
-  onChange,
-}: {
-  actions: WorkflowMcpAction[];
-  catalog: McpCatalogTool[];
-  onChange: (actions: WorkflowMcpAction[]) => void;
-}) {
-  const selected = new Set(actions.map((item) => item.tool).filter(Boolean));
-  const unused = catalog.filter((tool) => !selected.has(tool.name));
-
-  const addTool = () => {
-    const next = unused[0];
-    onChange([
-      ...actions,
-      next
-        ? { tool: next.name, hint: `Use ${next.name} to fulfill this step` }
-        : { tool: "", hint: "" },
-    ]);
-  };
-
-  const updateAt = (index: number, patch: Partial<WorkflowMcpAction>) => {
-    onChange(
-      actions.map((item, i) => (i === index ? { ...item, ...patch } : item)),
-    );
-  };
-
-  return (
-    <div className="flex flex-col gap-2">
-      <div className="flex items-center justify-between">
-        <p className="text-xs text-muted-foreground">Tools</p>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          className="h-7 px-2 text-xs"
-          onClick={addTool}
-        >
-          <Plus className="h-3 w-3 mr-1" />
-          Add
-        </Button>
-      </div>
-
-      {actions.length === 0 ? (
-        <p className="text-xs text-muted-foreground py-1">
-          None (agent infers)
-        </p>
-      ) : (
-        actions.map((action, index) => {
-          const meta = catalog.find((tool) => tool.name === action.tool);
-          const toolOptions = catalog
-            .filter(
-              (tool) => tool.name === action.tool || !selected.has(tool.name),
-            )
-            .map((tool) => ({ value: tool.name, label: tool.name }));
-          const actionOptions = (meta?.actions || []).map((name) => ({
-            value: name,
-            label: name,
-          }));
-          return (
-            <div
-              key={`${action.tool}-${index}`}
-              className="flex items-start gap-2"
-            >
-              <div className="flex-1 min-w-0 flex flex-col gap-1.5">
-                <WorkflowSearchSelect
-                  options={toolOptions}
-                  value={action.tool}
-                  placeholder="Tool"
-                  onChange={(tool) =>
-                    updateAt(index, {
-                      tool,
-                      action: undefined,
-                      hint: tool ? `Use ${tool} to fulfill this step` : "",
-                    })
-                  }
-                />
-                <WorkflowSearchSelect
-                  options={actionOptions}
-                  value={action.action || ""}
-                  placeholder="Any action"
-                  clearable
-                  onChange={(next) =>
-                    updateAt(index, { action: next || undefined })
-                  }
-                />
-              </div>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="h-7 w-7 p-0 shrink-0 text-muted-foreground hover:text-destructive mt-1"
-                onClick={() => onChange(actions.filter((_, i) => i !== index))}
-              >
-                <X className="h-3.5 w-3.5" />
-              </Button>
-            </div>
-          );
-        })
-      )}
-    </div>
-  );
-}
-
 export function WorkflowStepBody({
   node,
   runStatus,
@@ -217,6 +111,9 @@ export function WorkflowStepBody({
   onChange: (id: string, patch: Partial<InstanceNode>) => Promise<unknown>;
 }) {
   const [catalog, setCatalog] = useState<McpCatalogTool[]>([]);
+  const [catalogLoading, setCatalogLoading] = useState(false);
+  const [catalogError, setCatalogError] = useState<string | null>(null);
+  const [catalogRequestKey, setCatalogRequestKey] = useState(0);
   const [tab, setTab] = useState<StepTab>("task");
   const settings = (node.settings || {}) as {
     title?: string;
@@ -229,13 +126,30 @@ export function WorkflowStepBody({
   const tabs = STEP_TABS;
 
   useEffect(() => {
+    if (tab !== "tools") return;
+    let active = true;
+    setCatalogLoading(true);
+    setCatalogError(null);
     void apiClient
       .get<{ tools?: McpCatalogTool[] }>("/api/workflows/mcp-catalog")
       .then((res) => {
+        if (!active) return;
         const tools = (res.data as { tools?: McpCatalogTool[] })?.tools;
-        if (Array.isArray(tools)) setCatalog(tools);
+        if (res.success && Array.isArray(tools)) {
+          setCatalog(tools);
+          return;
+        }
+        setCatalogError(
+          res.error?.message || "The tool catalog returned no tools.",
+        );
+      })
+      .finally(() => {
+        if (active) setCatalogLoading(false);
       });
-  }, []);
+    return () => {
+      active = false;
+    };
+  }, [tab, catalogRequestKey]);
 
   const persist = (
     nextSettings: Record<string, unknown>,
@@ -457,6 +371,9 @@ export function WorkflowStepBody({
           <WorkflowStepToolsList
             actions={step.mcp_actions || []}
             catalog={catalog}
+            loading={catalogLoading}
+            error={catalogError}
+            onRetry={() => setCatalogRequestKey((key) => key + 1)}
             onChange={(mcp_actions) =>
               void persist(
                 mergeSettings(node, { step: { ...step, mcp_actions } }),

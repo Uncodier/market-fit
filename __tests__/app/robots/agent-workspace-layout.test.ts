@@ -24,7 +24,7 @@ describe("agent workspace layout", () => {
   it("keeps desktop preview controls out of the mobile layout", () => {
     expect(robotsPageSource).toContain("setViewportSize")
     expect(robotsPageSource).toContain("displayedIframeUrl")
-    expect(robotsPageSource).toContain("hidden lg:grid grid-cols-")
+    expect(robotsPageSource).toContain("hidden h-11 shrink-0 lg:grid grid-cols-")
     expect(robotsPageSource).toContain("lg:grid-rows-[auto_1fr]")
   })
 
