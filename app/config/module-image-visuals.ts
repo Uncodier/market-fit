@@ -51,7 +51,7 @@ export const MODULE_IMAGE_SUBJECTS: Record<string, string> = {
   purchasesQuotes: "supplier quote inside an inbox tray",
   purchasesLibrary: "archive shelf with purchased files",
 
-  aiWorkspace: "friendly AI assistant at a modular workspace",
+  aiWorkspace: "home",
   context: "open knowledge book with connected nodes",
   agentsConfiguration: "friendly AI robot head with controls",
   requirements: "requirements checklist with checkmarks",
