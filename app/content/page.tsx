@@ -14,9 +14,8 @@ import { useSite } from "@/app/context/SiteContext"
 import { useLayout } from "@/app/context/LayoutContext"
 import { useIsMobile } from "@/app/hooks/use-mobile-view"
 import { getContent, updateContentStatus, type ContentItem } from "./actions"
-import { combineOutstandContent, filterAndSortContent } from "./content-list"
+import { filterAndSortContent } from "./content-list"
 import { openContentItem } from "./open-content-item"
-import { fetchOutstandPosts } from "./outstand"
 import { getSocialPerformanceSnapshots } from "@/app/components/dashboard/social-actions"
 import { getContentAssetsByContentIds } from "@/app/assets/actions"
 import { getSegments } from "@/app/segments/actions"
@@ -66,17 +65,6 @@ export default function ContentPage() {
     {}
   );
   const campaigns = campaignsData;
-
-  const { data: outstandPostsData, isLoading: isLoadingOutstand, mutate: mutateOutstand } = useSWR(
-    currentSite?.id ? ['outstand', currentSite.id] : null,
-    async ([_, siteId]) => {
-      const result = await fetchOutstandPosts(siteId);
-      if (result?.error) throw new Error(result.error);
-      return { posts: result?.data || [] };
-    },
-    {}
-  );
-  const outstandPosts = outstandPostsData?.posts || [];
 
   const { data: contentData, isLoading: isContentLoading, mutate: mutateContent, isValidating: isContentValidating } = useSWR(
     currentSite?.id ? ['content', currentSite.id] : null,
@@ -130,11 +118,6 @@ export default function ContentPage() {
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(10)
 
-  const combinedContentItems = React.useMemo(
-    () => combineOutstandContent(contentItems, outstandPosts, currentSite?.id),
-    [contentItems, outstandPosts, currentSite?.id]
-  )
-
   const searchParams = useSearchParams()
   const urlSort = searchParams ? searchParams.get('sort') : null
   const defaultSort = urlSort === 'updated_at' ? 'newest' : (urlSort === 'created_at' || urlSort === 'newest' ? 'newest' : (urlSort === 'oldest' ? 'oldest' : (urlSort === 'rate_desc' ? 'rate_desc' : (urlSort === 'rate_asc' ? 'rate_asc' : 'newest'))))
@@ -166,8 +149,8 @@ export default function ContentPage() {
   const refreshContentList = mutateContent;
 
   const filteredContent = React.useMemo(
-    () => filterAndSortContent(combinedContentItems, searchTerm, filters, sortBy),
-    [combinedContentItems, sortBy, searchTerm, filters]
+    () => filterAndSortContent(contentItems, searchTerm, filters, sortBy),
+    [contentItems, sortBy, searchTerm, filters]
   )
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -452,7 +435,7 @@ export default function ContentPage() {
                   campaigns={campaigns}
                   isLoadingCampaigns={isLoadingCampaigns}
                   assetsByContentId={assetsByContentId}
-                  outstandPosts={outstandPosts}
+                  outstandPosts={[]}
                   performanceData={performanceData}
                   onUpdateContentStatus={handleUpdateContentStatus}
                   onContentClick={handleContentClick}
@@ -494,7 +477,7 @@ export default function ContentPage() {
         socialMedia={socialMedia}
         siteId={currentSite?.id}
         onClose={() => setPublishingContent(null)}
-        onPublished={() => mutateOutstand()}
+        onPublished={() => mutateContent()}
         onUpdateStatus={handleUpdateContentStatus} />
 
 
