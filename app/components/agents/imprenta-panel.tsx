@@ -41,7 +41,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/ca
 import { Badge } from "@/app/components/ui/badge"
 import { Button } from "@/app/components/ui/button"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/app/components/ui/tooltip"
-import { Plus, Play, RotateCcw as RefreshCw, AlertCircle, Bot, Eye, Trash2, GitFork, Link, Copy, Tag, UploadCloud, Download, ZoomIn, X, Send } from "@/app/components/ui/icons"
+import { Plus, Play, RotateCcw as RefreshCw, AlertCircle, Bot, Eye, Trash2, GitFork, Link, Copy, Tag, UploadCloud, Download, ZoomIn, X, Send, Mail, Globe, Phone } from "@/app/components/ui/icons"
 import { AudioPlayer } from "./audio-player"
 import { InstanceNode } from "@/app/types/instance-nodes"
 import { toast } from "sonner"
@@ -51,7 +51,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ImprentaContextTypeSelect } from "@/app/components/agents/imprenta-context-type-select"
 import { ScreenAnchoredPanel } from "@/app/components/ui/screen-anchored-panel"
 import { Switch } from "@/app/components/ui/switch"
-import { Textarea } from "@/app/components/ui/textarea"
+import { ImprentaAutoResizeTextarea } from "./imprenta-auto-resize-textarea"
+import { isLargeImprentaGraph } from "./imprenta-detail-mode"
 import { MediaParametersToolbar } from "../simple-messages-view/components/MediaParametersToolbar"
 import { ImageParameters, VideoParameters, AudioParameters } from "../simple-messages-view/types"
 import {
@@ -1220,7 +1221,7 @@ const ImprentaNodeCardInner = memo(({
                               
                               {!hasResult && (
                                 <>
-                                <Textarea 
+                                <ImprentaAutoResizeTextarea
                                   defaultValue={node.prompt?.text || ''}
                                   onBlur={async (e) => {
                                     const newText = e.target.value;
@@ -1241,7 +1242,7 @@ const ImprentaNodeCardInner = memo(({
                                       }
                                     }
                                   }}
-                                  className="text-xs text-muted-foreground bg-muted/30 p-2 rounded-xl resize-none focus-visible:ring-1 focus-visible:ring-secondary min-h-[60px] max-h-[150px]"
+                                  className="min-h-[60px] resize-none overflow-hidden rounded-xl bg-muted/30 p-2 text-xs text-muted-foreground focus-visible:ring-1 focus-visible:ring-secondary"
                                   placeholder={node.type === 'publish' ? "Optional: custom instructions for publishing..." : "Type to edit prompt..."}
                                 />
                                 
@@ -2201,8 +2202,10 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
    * is only a win when DOM full-cards would otherwise flood the viewport at far
    * zoom; React virtualization helps but canvas scale determines DOM mounting.
    */
+  const isLargeGraph = isLargeImprentaGraph(canvasNodes.length)
   const showFullNodeDetail =
     !viewportInfo ||
+    !isLargeGraph ||
     viewportInfo.scale >= IMPRENTA_LOD_FULL_DETAIL_SCALE
   /** Nodes we keep in DOM (dummies + drag origin + temp-connection origin). Canvas skips them. */
   const domOnlyNodeIds = useMemo(() => {
@@ -4141,7 +4144,7 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
               viewportStore={viewportStore}
               // On small graphs we keep full bezier edges at every zoom; the
               // straight-line LOD only pays off when many edges fit on screen.
-              straightLinesBelowScale={IMPRENTA_LOD_FULL_DETAIL_SCALE}
+              straightLinesBelowScale={isLargeGraph ? IMPRENTA_LOD_FULL_DETAIL_SCALE : 0}
               markerMax={IMPRENTA_LOD_LITE_MARKER_MAX}
             />
           }
@@ -4157,7 +4160,7 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
               // it an unreachable threshold — it stays mounted (no layer
               // thrash on count crossings) but bails out of every paint and
               // hit test, so DOM cards render at every zoom.
-              fullDetailScale={IMPRENTA_LOD_FULL_DETAIL_SCALE}
+              fullDetailScale={isLargeGraph ? IMPRENTA_LOD_FULL_DETAIL_SCALE : 0}
               liteMarkerMax={IMPRENTA_LOD_LITE_MARKER_MAX}
               liteMicroMax={IMPRENTA_LOD_LITE_MICRO_MAX}
               liteSimpleMax={IMPRENTA_LOD_LITE_SIMPLE_MAX}
