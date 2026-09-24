@@ -39,6 +39,17 @@ describe("module image visuals", () => {
     )
   })
 
+  it("uses a home subject for the AI Workspace icon", () => {
+    const prompt = getModuleImagePrompt(
+      "automation",
+      "aiWorkspace",
+      "AI Workspace",
+    )
+
+    expect(prompt).toContain("3D isometric icon of home")
+    expect(prompt).toContain("glossy plastic and frosted glass")
+  })
+
   it.each(Object.keys(NAVIGATION_AREAS) as WorkspaceArea[])(
     "uses a distinct color family for %s apps",
     (area) => {

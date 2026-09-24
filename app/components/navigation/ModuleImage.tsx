@@ -3,7 +3,6 @@
 import { useState } from "react"
 import type { WorkspaceArea } from "@/app/config/navigation-areas"
 import { getModuleImageUrl } from "@/app/config/module-image-visuals"
-import { getModuleVisual } from "@/app/config/module-visuals"
 import { cn } from "@/lib/utils"
 
 interface ModuleImageProps {
@@ -24,12 +23,13 @@ export function ModuleImage({
   loading = "lazy",
 }: ModuleImageProps) {
   const [failed, setFailed] = useState(false)
-  const visual = getModuleVisual(area, itemKey)
 
   return (
     <span
-      className={cn("relative inline-flex shrink-0 overflow-hidden", className)}
-      style={{ background: visual.gradient }}
+      className={cn(
+        "relative inline-flex shrink-0 overflow-hidden bg-muted/50",
+        className,
+      )}
     >
       {!failed ? (
         <img
@@ -44,14 +44,6 @@ export function ModuleImage({
           onError={() => setFailed(true)}
         />
       ) : null}
-      <span
-        aria-hidden
-        className="pointer-events-none absolute inset-0"
-        style={{
-          background:
-            "linear-gradient(180deg, rgba(255,255,255,0.2) 0%, transparent 35%, rgba(0,0,0,0.08) 100%)",
-        }}
-      />
     </span>
   )
 }
