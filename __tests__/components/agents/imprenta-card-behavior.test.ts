@@ -1,6 +1,7 @@
 import { resizeImprentaTextarea } from "@/app/components/agents/imprenta-auto-resize-textarea"
 import {
   IMPRENTA_LOD_LITE_MIN_NODES,
+  imprentaNodeTypeForResultMediaType,
   isLargeImprentaGraph,
 } from "@/app/components/agents/imprenta-detail-mode"
 
@@ -9,6 +10,12 @@ describe("Imprenta card behavior", () => {
     expect(isLargeImprentaGraph(3)).toBe(false)
     expect(isLargeImprentaGraph(IMPRENTA_LOD_LITE_MIN_NODES - 1)).toBe(false)
     expect(isLargeImprentaGraph(IMPRENTA_LOD_LITE_MIN_NODES)).toBe(true)
+  })
+
+  it("does not turn a text response into an editable prompt", () => {
+    expect(imprentaNodeTypeForResultMediaType("response", "text")).toBe("response")
+    expect(imprentaNodeTypeForResultMediaType("prompt", "text")).toBe("prompt")
+    expect(imprentaNodeTypeForResultMediaType("response", "image")).toBe("generate-image")
   })
 
   it("expands the prompt textarea to its full content height", () => {

@@ -52,7 +52,11 @@ import { ImprentaContextTypeSelect } from "@/app/components/agents/imprenta-cont
 import { ScreenAnchoredPanel } from "@/app/components/ui/screen-anchored-panel"
 import { Switch } from "@/app/components/ui/switch"
 import { ImprentaAutoResizeTextarea } from "./imprenta-auto-resize-textarea"
-import { isLargeImprentaGraph } from "./imprenta-detail-mode"
+import {
+  imprentaNodeTypeForResultMediaType,
+  isLargeImprentaGraph,
+  type ImprentaResultMediaType,
+} from "./imprenta-detail-mode"
 import { MediaParametersToolbar } from "../simple-messages-view/components/MediaParametersToolbar"
 import { ImageParameters, VideoParameters, AudioParameters } from "../simple-messages-view/types"
 import {
@@ -449,8 +453,6 @@ function imprentaNodeHasResult(node: InstanceNode): boolean {
   return !!r && typeof r === "object" && Object.keys(r).length > 0
 }
 
-type ImprentaResultMediaType = "text" | "image" | "video" | "audio" | "audience"
-
 function inferImprentaResultMediaType(node: InstanceNode, nodes: InstanceNode[] = []): ImprentaResultMediaType | null {
   if (!imprentaNodeHasResult(node)) return null
   const res = (node.result || {}) as any
@@ -503,12 +505,6 @@ function inferImprentaResultMediaType(node: InstanceNode, nodes: InstanceNode[] 
   return "text"
 }
 
-function imprentaNodeTypeForResultMediaType(mediaType: ImprentaResultMediaType): string {
-  if (mediaType === "text") return "prompt"
-  if (mediaType === "audience") return "generate-audience"
-  return `generate-${mediaType}`
-}
-
 function normalizeImprentaNodeForResultMediaType(node: InstanceNode, nodes: InstanceNode[]): InstanceNode {
   if (node.id?.startsWith("dummy-")) return node
   if (node.type === "publish") return node
@@ -516,7 +512,7 @@ function normalizeImprentaNodeForResultMediaType(node: InstanceNode, nodes: Inst
   const mediaType = inferImprentaResultMediaType(node, nodes)
   if (!mediaType) return node
 
-  const nextType = imprentaNodeTypeForResultMediaType(mediaType)
+  const nextType = imprentaNodeTypeForResultMediaType(node.type, mediaType)
   const prevMediaType = (node.settings as any)?.media_type
   const shouldSetMediaType = mediaType !== "text" && prevMediaType !== mediaType
 
@@ -3246,6 +3242,7 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
     if (!nodeId) return
 
     const newPos = lastNodeDragPosRef.current
+    const didMove = nodeDragMovedRef.current
     if (nodeDragRafRef.current != null) {
       cancelAnimationFrame(nodeDragRafRef.current)
       nodeDragRafRef.current = null
@@ -3268,6 +3265,16 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
 
     dragStore.set(null)
     setDraggingNodeId(null)
+    nodeDragMovedRef.current = false
+
+    // A click or double click is not a drag. Avoid a no-op database update,
+    // which otherwise produces a realtime UPDATE capable of changing how a
+    // response node is normalized and rendered.
+    if (!didMove) {
+      lastNodeDragPosRef.current = null
+      return
+    }
+
     if (newPos) {
       setPositions((prev) => ({ ...prev, [nodeId]: newPos }))
     }
@@ -3326,6 +3333,11 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
 
   const handleNodeMouseDown = (e: React.MouseEvent, nodeId: string) => {
     if (e.button !== 0) return // Only left click
+    if (e.detail > 1) {
+      e.stopPropagation()
+      e.preventDefault()
+      return
+    }
     const target = e.target as HTMLElement
     // Prevent dragging if clicking on an input/button or an SVG icon inside a button
     if (target.closest('button') || target.closest('textarea') || target.closest('input') || target.closest('a') || target.closest('[role="button"]') || target.closest('[role="menuitem"]') || target.closest('[role="menu"]') || target.closest('[role="dialog"]') || target.closest('[role="listbox"]') || target.closest('[role="option"]') || target.closest('[role="combobox"]') || target.closest('[role="tab"]') || target.closest('[role="tabpanel"]')) {

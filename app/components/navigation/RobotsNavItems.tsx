@@ -3,7 +3,6 @@
 import { useMemo } from "react"
 import { usePathname, useSearchParams } from "next/navigation"
 import { MenuItem } from "./MenuItem"
-import { Home, Printer, Workflow } from "@/app/components/ui/icons"
 import { RobotsBadge } from "./RobotsBadge"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { useLayout } from "@/app/context/LayoutContext"
@@ -58,7 +57,7 @@ export function RobotsNavItems({ isCollapsed }: RobotsNavItemsProps) {
       <MenuItem
         id="tour-agents-nav"
         href={agentHref}
-        icon={Home}
+        moduleImage={{ area: "automation", itemKey: "aiWorkspace" }}
         title={t("layout.sidebar.agents") || "AI Workspace"}
         isActive={agentActive}
         isCollapsed={isCollapsed}
@@ -73,7 +72,7 @@ export function RobotsNavItems({ isCollapsed }: RobotsNavItemsProps) {
       <MenuItem
         id="tour-content-nav"
         href={imprentaHref}
-        icon={Printer}
+        moduleImage={{ area: "marketing", itemKey: "contentCreator" }}
         title={t("layout.sidebar.imprenta") || "Content Creator"}
         isActive={imprentaActive}
         isCollapsed={isCollapsed}
@@ -87,7 +86,7 @@ export function RobotsNavItems({ isCollapsed }: RobotsNavItemsProps) {
       <MenuItem
         id="tour-workflows-nav"
         href={workflowHref}
-        icon={Workflow}
+        moduleImage={{ area: "automation", itemKey: "workflows" }}
         title={t("layout.sidebar.workflows") || "Workflows"}
         isActive={workflowActive}
         isCollapsed={isCollapsed}

@@ -1,11 +1,12 @@
 "use client"
 
 import { cn } from "@/lib/utils"
-import { Settings, Shield, CreditCard, Plug, Sun, Moon } from "@/app/components/ui/icons"
+import { Shield, CreditCard, Plug, Sun, Moon } from "@/app/components/ui/icons"
 import { Switch } from "@/app/components/ui/switch"
 import { useTheme } from "@/app/context/ThemeContext"
 import { BusinessOpenToggle } from "@/app/components/settings/BusinessOpenToggle"
-import { MenuItem, EmojiIcon } from "./MenuItem"
+import { MenuItem } from "./MenuItem"
+import { ModuleImage } from "./ModuleImage"
 import {
   Tooltip,
   TooltipContent,
@@ -214,9 +215,14 @@ export function ConfigurationSection({
           isCollapsed ? "h-full w-full" : "h-[24px] w-[24px] safari-icon-fix"
         )}
       >
-        <Settings 
-          className={cn("shrink-0", isGeneralSettingsActive ? "text-primary-foreground" : "text-muted-foreground")} 
-          size={16} 
+        <ModuleImage
+          area="settings"
+          itemKey="settingsGeneral"
+          title={settingsTitle}
+          className={cn(
+            "h-6 w-6 rounded-[7px] border border-black/10 shadow-sm dark:border-white/10",
+            isGeneralSettingsActive && "ring-1 ring-white/40",
+          )}
         />
       </div>
       {!isCollapsed && (
@@ -358,6 +364,7 @@ export function ConfigurationSection({
                   <MenuItem
                     href={item.href}
                     icon={item.icon}
+                    moduleImage={{ area: "settings", itemKey: item.titleKey }}
                     title={t(`layout.sidebar.${item.titleKey}`) || item.titleKey}
                     isActive={isActive}
                     isCollapsed={isCollapsed}

@@ -10,7 +10,10 @@ import {
 import { useSortable } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
 import { cn } from "@/lib/utils"
-import type { AreaNavItem } from "@/app/config/navigation-areas"
+import type {
+  AreaNavItem,
+  WorkspaceArea,
+} from "@/app/config/navigation-areas"
 import type { ModuleVariant } from "@/app/config/module-visuals"
 
 interface SortableShortcutItemProps {
@@ -24,6 +27,10 @@ interface SortableShortcutItemProps {
   canRemove?: boolean
   title: string
   visual?: ModuleVariant
+  moduleImage?: {
+    area: WorkspaceArea
+    itemKey: string
+  }
   onPinnedChange: (key: string, pinned: boolean) => void
   onRemove: (key: string) => void
   t: (k: string) => string
@@ -40,6 +47,7 @@ export function SortableShortcutItem({
   canRemove = true,
   title,
   visual,
+  moduleImage,
   onPinnedChange,
   onRemove,
   t,
@@ -112,6 +120,7 @@ export function SortableShortcutItem({
             isActive={isActive}
             isCollapsed={isCollapsed}
             visual={visual}
+            moduleImage={moduleImage}
           />
         </div>
       </ContextMenuTrigger>

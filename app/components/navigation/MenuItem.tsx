@@ -13,6 +13,8 @@ import {
 import { useRef } from "react"
 import { useTheme } from "@/app/context/ThemeContext"
 import { ModuleVariant } from "@/app/config/module-visuals"
+import type { WorkspaceArea } from "@/app/config/navigation-areas"
+import { ModuleImage } from "./ModuleImage"
 
 // Wrapper component for emoji icons with grayscale filter that adapts to theme
 interface EmojiIconProps {
@@ -131,6 +133,10 @@ interface MenuItemProps {
   isActive?: boolean
   isCollapsed?: boolean
   visual?: ModuleVariant
+  moduleImage?: {
+    area: WorkspaceArea
+    itemKey: string
+  }
   children?: React.ReactNode
   className?: string
   onClick?: (e: React.MouseEvent<HTMLAnchorElement>) => void
@@ -148,6 +154,7 @@ export function MenuItem({
   isActive, 
   isCollapsed,
   visual,
+  moduleImage,
   children,
   className,
   onClick
@@ -169,6 +176,16 @@ export function MenuItem({
           </MenuAvatar>
         ) : emoji ? (
           <EmojiIcon emoji={emoji} isActive={isActive} isCollapsed={isCollapsed} />
+        ) : moduleImage ? (
+          <ModuleImage
+            area={moduleImage.area}
+            itemKey={moduleImage.itemKey}
+            title={title}
+            className={cn(
+              "h-6 w-6 rounded-[7px] border border-black/10 shadow-sm dark:border-white/10",
+              isActive && "ring-1 ring-white/40",
+            )}
+          />
         ) : Icon && (
           <AnimatedIcon 
             icon={Icon} 

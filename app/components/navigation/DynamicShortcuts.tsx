@@ -7,6 +7,7 @@ import {
   type AreaNavItem,
   getNavItemTitle,
   isConfigurationNavPath,
+  type WorkspaceArea,
 } from "@/app/config/navigation-areas"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { useSite } from "@/app/context/SiteContext"
@@ -385,6 +386,9 @@ export function DynamicShortcuts({ isCollapsed }: DynamicShortcutsProps) {
     let linkHref = ""
     let title = ""
     let visual: ModuleVariant | undefined
+    let moduleImage:
+      | { area: WorkspaceArea; itemKey: string }
+      | undefined
 
     if (isCustom && entry.href) {
       item = { key: id, href: entry.href }
@@ -397,7 +401,9 @@ export function DynamicShortcuts({ isCollapsed }: DynamicShortcutsProps) {
       linkHref = buildNavItemHref(item, navSearchParams)
       title = getNavItemTitle(item, t) || item.key
       if ((item as AreaNavItemWithArea).area) {
-        visual = getModuleVisual((item as AreaNavItemWithArea).area, item.key)
+        const area = (item as AreaNavItemWithArea).area
+        visual = getModuleVisual(area, item.key)
+        moduleImage = { area, itemKey: item.key }
       }
     }
 
@@ -414,6 +420,7 @@ export function DynamicShortcuts({ isCollapsed }: DynamicShortcutsProps) {
         canRemove={id !== "reportOverview"}
         title={title}
         visual={visual}
+        moduleImage={moduleImage}
         onPinnedChange={handlePinnedChange}
         onRemove={handleRemove}
         t={t}

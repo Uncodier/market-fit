@@ -28,7 +28,7 @@ import { ChatsBadge } from "./ChatsBadge"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { useLayout } from "@/app/context/LayoutContext"
 
-import { AREA_ICON, NAV_ITEM_ICON } from "@/app/config/module-visuals"
+import { AREA_ICON } from "@/app/config/module-visuals"
 import { useOptionalScreenAccess } from "@/app/context/ScreenAccessContext"
 
 interface NavigationAreaGroupsProps {
@@ -130,9 +130,7 @@ export function NavigationAreaGroups({
     return null
   }
 
-  const renderItem = (item: AreaNavItem) => {
-    const Icon = NAV_ITEM_ICON[item.key]
-    if (!Icon) return null
+  const renderItem = (item: AreaNavItem, area: WorkspaceArea) => {
     const linkHref = buildNavItemHref(item, navSearchParams)
     const isActive = item.robotsMode
       ? pathname.startsWith("/robots") && robotsViewMode === item.robotsMode
@@ -142,7 +140,7 @@ export function NavigationAreaGroups({
       <MenuItem
         key={item.key}
         href={linkHref}
-        icon={Icon}
+        moduleImage={{ area, itemKey: item.key }}
         title={title}
         isActive={isActive}
         isCollapsed={renderCollapsed}
@@ -288,7 +286,7 @@ export function NavigationAreaGroups({
                   renderCollapsed ? "items-center px-0 w-full" : "px-1"
                 )}
               >
-                {visibleItems.map((item) => renderItem(item))}
+                {visibleItems.map((item) => renderItem(item, area))}
               </div>
             </div>
           </div>

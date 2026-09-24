@@ -3,12 +3,12 @@
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { useState, useRef, useEffect } from "react"
 import { SearchInput } from "@/app/components/ui/search-input"
-import { ArrowLeft, Star } from "@/app/components/ui/icons"
+import { ArrowLeft } from "@/app/components/ui/icons"
 import { Button } from "@/app/components/ui/button"
 import { useRouter, useSearchParams } from "next/navigation"
 import { navigateOrAssign } from "@/lib/navigation/stale-router"
 import { NAVIGATION_AREAS, AreaNavItem, buildNavItemHref, getNavItemTitle, NAVIGATION_MENU_AREA_ORDER } from "@/app/config/navigation-areas"
-import { AREA_ICON, NAV_ITEM_ICON, getAreaFamilyAccent } from "@/app/config/module-visuals"
+import { AREA_ICON, getAreaFamilyAccent } from "@/app/config/module-visuals"
 import { ModuleTile } from "@/app/components/navigation/ModuleTile"
 import { useSidebarNavKeys } from "@/app/components/navigation/use-sidebar-nav-keys"
 import { useOptionalScreenAccess } from "@/app/context/ScreenAccessContext"
@@ -137,20 +137,16 @@ export default function NavigationPage({ isOverlay, onClose }: NavigationPagePro
                   <h2 className="text-lg font-semibold text-foreground capitalize tracking-tight">{categoryTitle}</h2>
                 </div>
                 <div className="grid grid-cols-3 gap-x-2 gap-y-6 md:flex md:flex-wrap md:gap-8">
-                  {items.map((item) => {
-                    const Icon = NAV_ITEM_ICON[item.key] || Star
-                    return (
-                      <ModuleTile
-                        key={item.key}
-                        area={areaKey}
-                        itemKey={item.key}
-                        title={getTitle(item)}
-                        icon={Icon}
-                        inMenu={sidebarNavKeys.has(item.key)}
-                        onClick={() => handleTileClick(item)}
-                      />
-                    )
-                  })}
+                  {items.map((item) => (
+                    <ModuleTile
+                      key={item.key}
+                      area={areaKey}
+                      itemKey={item.key}
+                      title={getTitle(item)}
+                      inMenu={sidebarNavKeys.has(item.key)}
+                      onClick={() => handleTileClick(item)}
+                    />
+                  ))}
                 </div>
               </div>
             )
