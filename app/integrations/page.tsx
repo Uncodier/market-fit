@@ -7,47 +7,34 @@ import {
   SectionCard,
   SectionCardHeader,
   SectionCardTitle,
-  SectionCardDescription,
   SectionCardContent,
-  SectionCardFooter,
 } from "@/app/components/ui/section-card"
 import { Button } from "@/app/components/ui/button"
 import { Input } from "@/app/components/ui/input"
-import { Copy, ChevronDown, ChevronRight, Trash2, Play, PlusCircle } from "@/app/components/ui/icons"
+import { Copy } from "@/app/components/ui/icons"
 import { useSite } from "@/app/context/SiteContext"
 import { Skeleton } from "@/app/components/ui/skeleton"
 import { toast } from "sonner"
-import { Label } from "@/app/components/ui/label"
-import { Checkbox } from "@/app/components/ui/checkbox"
 import { CreateEndpointDialog } from "@/app/components/webhooks/create-endpoint-dialog"
+import { WebhookEndpointCard } from "@/app/components/webhooks/webhook-endpoint-card"
 import { ActionFooter } from "@/app/components/ui/card-footer"
 import { apiClient } from "@/app/services/api-client-service"
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/app/components/ui/alert-dialog"
 import { createClient as createSbClient } from "@/lib/supabase/client"
 import { TestEndpointDialog } from "@/app/components/webhooks/test-endpoint-dialog"
 import { ChannelsSection } from "@/app/components/integrations/channels-section"
 import { ComposioSection } from "@/app/components/settings/ComposioSection"
 import {
   listWebhookEndpoints,
-  createWebhookEndpoint,
   deleteWebhookEndpoint,
   listWebhookSubscriptions,
   upsertSubscription,
   type WebhookEndpoint,
-  type WebhookSubscription,
-  type WebhookEventType
 } from "@/lib/webhooks"
-import { useAuth } from "@/app/hooks/use-auth"
+import {
+  buildWebhookTestRequest,
+  type WebhookEventType,
+  type WebhookTestOperation,
+} from "@/lib/webhook-events"
 import { QuickNav, type QuickNavSection } from "@/app/components/ui/quick-nav"
 
 function IntegrationsSkeleton() {
@@ -68,15 +55,6 @@ function IntegrationsSkeleton() {
   )
 }
 
-const SUPPORTED_EVENTS: WebhookEventType[] = [
-  "task.created",
-  "task.updated",
-  "message.created",
-  "lead.created",
-  "lead.updated",
-  "lead.deleted",
-]
-
 // Section configurations for quick navigation
 const getInitialWebhooksSections = (): QuickNavSection[] => [
   { 
@@ -95,16 +73,12 @@ const channelsSections: QuickNavSection[] = [
 
 export default function IntegrationsPage() {
   const { currentSite, isLoading } = useSite()
-  const { user } = useAuth()
   const [activeSegment, setActiveSegment] = useState("webhooks")
 
   const [endpoints, setEndpoints] = useState<WebhookEndpoint[]>([])
   const [selectedEndpointId, setSelectedEndpointId] = useState<string | null>(null)
   const [subscriptions, setSubscriptions] = useState<Record<string, boolean>>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [newName, setNewName] = useState("")
-  const [newTargetUrl, setNewTargetUrl] = useState("")
-  const [newSecret, setNewSecret] = useState("")
   const [webhooksSections, setWebhooksSections] = useState<QuickNavSection[]>(getInitialWebhooksSections())
 
   // Test dialog state
@@ -202,38 +176,6 @@ export default function IntegrationsPage() {
     loadSubs()
   }, [selectedEndpointId])
 
-  const handleCreateEndpoint = async () => {
-    if (!currentSite || !user) {
-      toast.error("Select a site and sign in")
-      return
-    }
-    if (!newName || !newTargetUrl) {
-      toast.error("Name and URL are required")
-      return
-    }
-    try {
-      setIsSubmitting(true)
-      const ep = await createWebhookEndpoint({
-        site_id: currentSite.id,
-        created_by: user.id,
-        name: newName,
-        target_url: newTargetUrl,
-        secret: newSecret || undefined
-      })
-      toast.success("Endpoint created")
-      setNewName("")
-      setNewTargetUrl("")
-      setNewSecret("")
-      // Add the new endpoint at the beginning of the list
-      setEndpoints(prev => [ep, ...prev])
-      setSelectedEndpointId(ep.id)
-    } catch (e: any) {
-      toast.error(e?.message || "Failed to create endpoint")
-    } finally {
-      setIsSubmitting(false)
-    }
-  }
-
   const handleToggleEvent = async (event: WebhookEventType, checked: boolean) => {
     if (!currentSite || !selectedEndpointId) return
     try {
@@ -263,19 +205,20 @@ export default function IntegrationsPage() {
     }
   }
 
-  const handleTestEndpoint = async (endpointId: string, opts?: { operation?: 'INSERT' | 'UPDATE' | 'DELETE', table?: string, record?: any }) => {
+  const handleTestEndpoint = async (endpointId: string, opts?: { operation?: WebhookTestOperation, table?: string, record?: unknown }) => {
     if (!currentSite) return
     try {
       setIsSubmitting(true)
-      const op = (opts?.operation || 'INSERT') as 'INSERT' | 'UPDATE' | 'DELETE'
+      const op = (opts?.operation || 'INSERT') as WebhookTestOperation
       const table = (opts?.table || 'tasks') as string
 
-      const res = await apiClient.post('/api/webhooks/test', {
-        endpoint_id: endpointId,
-        site_id: currentSite.id,
+      const res = await apiClient.post('/api/webhooks/test', buildWebhookTestRequest({
+        endpointId,
+        siteId: currentSite.id,
         operation: op,
-        table
-      })
+        table,
+        record: opts?.record,
+      }))
       if (!res.success) {
         throw new Error(res.error?.message || 'Request failed')
       }
@@ -433,101 +376,18 @@ export default function IntegrationsPage() {
                 {endpoints.map((ep, index) => {
                   const isExpanded = selectedEndpointId === ep.id
                   return (
-                    <SectionCard key={ep.id} id={`webhook-endpoint-${index}`} className="border border-border">
-                      {/* Collapsible Header */}
-                      <SectionCardHeader className="cursor-pointer hover:bg-muted/50 transition-colors"
-                        onClick={() => setSelectedEndpointId((prev) => (prev === ep.id ? null : ep.id))}
-                      >
-                        <div className="flex items-center justify-between">
-                          <div className="flex-1 min-w-0">
-                            <SectionCardTitle className="text-lg font-semibold truncate">{ep.name}</SectionCardTitle>
-                            <p className="text-sm text-muted-foreground truncate mt-1">{ep.target_url}</p>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            {isExpanded ? (
-                              <ChevronDown className="h-5 w-5 text-muted-foreground" />
-                            ) : (
-                              <ChevronRight className="h-5 w-5 text-muted-foreground" />
-                            )}
-                          </div>
-                        </div>
-                      </SectionCardHeader>
-
-                      {/* Collapsible Content */}
-                      {isExpanded && (
-                        <>
-                          <SectionCardContent className="space-y-4 border-t">
-                            <div className="space-y-2">
-                              <Label>Subscribed Events</Label>
-                              <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-                                {SUPPORTED_EVENTS.map((evt) => (
-                                  <label key={evt} className="flex items-center gap-2 text-sm">
-                                    <Checkbox
-                                      checked={!!subscriptions[evt]}
-                                      onCheckedChange={(checked: boolean) => handleToggleEvent(evt, !!checked)}
-                                      disabled={isSubmitting}
-                                    />
-                                    <span className="capitalize">{evt.replace('.', ' ')}</span>
-                                  </label>
-                                ))}
-                              </div>
-                            </div>
-
-                            <div className="space-y-2">
-                              <Label>Endpoint ID</Label>
-                              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                <span className="font-mono bg-muted px-2 py-1 rounded">{ep.id}</span>
-                              </div>
-                            </div>
-                          </SectionCardContent>
-
-                          {/* Card Footer with individual buttons */}
-                          <ActionFooter>
-                            <div className="flex items-center gap-2">
-                              <AlertDialog>
-                                <AlertDialogTrigger asChild>
-                                  <Button
-                                    type="button"
-                                    variant="outline"
-                                    disabled={isSubmitting}
-                                    className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                                  >
-                                    <Trash2 className="h-4 w-4 mr-2" />
-                                    Delete Endpoint
-                                  </Button>
-                                </AlertDialogTrigger>
-                                <AlertDialogContent>
-                                  <AlertDialogHeader>
-                                    <AlertDialogTitle>Delete Endpoint</AlertDialogTitle>
-                                    <AlertDialogDescription>
-                                      Are you sure you want to delete this webhook endpoint "{ep.name}"? This action cannot be undone and all subscriptions will be removed.
-                                    </AlertDialogDescription>
-                                  </AlertDialogHeader>
-                                  <AlertDialogFooter>
-                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                    <AlertDialogAction
-                                      onClick={() => handleDeleteEndpoint(ep.id)}
-                                      className="!bg-destructive hover:!bg-destructive/90 !text-destructive-foreground"
-                                    >
-                                      Delete Endpoint
-                                    </AlertDialogAction>
-                                  </AlertDialogFooter>
-                                </AlertDialogContent>
-                              </AlertDialog>
-                              <Button
-                                type="button"
-                                variant="outline"
-                                onClick={() => openTestDialog(ep.id)}
-                                disabled={isSubmitting}
-                              >
-                                <Play className="h-4 w-4 mr-2" />
-                                Test Endpoint
-                              </Button>
-                            </div>
-                          </ActionFooter>
-                        </>
-                      )}
-                    </SectionCard>
+                    <WebhookEndpointCard
+                      key={ep.id}
+                      endpoint={ep}
+                      index={index}
+                      isExpanded={isExpanded}
+                      subscriptions={subscriptions}
+                      isSubmitting={isSubmitting}
+                      onToggle={() => setSelectedEndpointId((prev) => (prev === ep.id ? null : ep.id))}
+                      onToggleEvent={(event, checked) => void handleToggleEvent(event, checked)}
+                      onDelete={() => void handleDeleteEndpoint(ep.id)}
+                      onTest={() => openTestDialog(ep.id)}
+                    />
                   )
                 })}
               </div>

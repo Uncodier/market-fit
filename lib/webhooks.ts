@@ -1,15 +1,7 @@
 import { createClient } from "@/lib/supabase/client";
+import type { WebhookEventType } from "@/lib/webhook-events";
 
-export type WebhookEventType =
-  | "task.created"
-  | "task.updated"
-  | "task.deleted"
-  | "message.created"
-  | "message.updated"
-  | "message.deleted"
-  | "lead.created"
-  | "lead.updated"
-  | "lead.deleted";
+export type { WebhookEventType } from "@/lib/webhook-events";
 
 export interface WebhookEndpoint {
   id: string;

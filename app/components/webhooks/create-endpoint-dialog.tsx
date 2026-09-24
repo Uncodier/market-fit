@@ -8,21 +8,10 @@ import { Label } from "@/app/components/ui/label"
 import { toast } from "sonner"
 import { useSite } from "@/app/context/SiteContext"
 import { useAuth } from "@/app/hooks/use-auth"
-import { createWebhookEndpoint, upsertSubscription, type WebhookEventType } from "@/lib/webhooks"
+import { createWebhookEndpoint, upsertSubscription } from "@/lib/webhooks"
+import { WEBHOOK_EVENT_OPTIONS, type WebhookEventType } from "@/lib/webhook-events"
 import { Dialog, DialogTrigger, DialogBody, DialogContent, DialogForm, DialogFooter, DialogHeader, DialogTitle } from "@/app/components/ui/dialog"
 import { Checkbox } from "@/app/components/ui/checkbox"
-
-const EVENT_OPTIONS = [
-  { id: "task.created", label: "Task created" },
-  { id: "task.updated", label: "Task updated" },
-  { id: "task.deleted", label: "Task deleted" },
-  { id: "message.created", label: "Message created" },
-  { id: "message.updated", label: "Message updated" },
-  { id: "message.deleted", label: "Message deleted" },
-  { id: "lead.created", label: "Lead created" },
-  { id: "lead.updated", label: "Lead updated" },
-  { id: "lead.deleted", label: "Lead deleted" },
-]
 
 export function CreateEndpointDialog({ onSuccess, triggerLabel = "Create endpoint" }: { onSuccess: () => void, triggerLabel?: string }) {
   const { currentSite } = useSite()
@@ -33,12 +22,13 @@ export function CreateEndpointDialog({ onSuccess, triggerLabel = "Create endpoin
   const [secret, setSecret] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [open, setOpen] = useState(false)
-  const [selectedEvents, setSelectedEvents] = useState<string[]>([])
+  const [selectedEvents, setSelectedEvents] = useState<WebhookEventType[]>([])
 
   const reset = () => {
     setName("")
     setTargetUrl("")
     setSecret("")
+    setSelectedEvents([])
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -63,7 +53,7 @@ export function CreateEndpointDialog({ onSuccess, triggerLabel = "Create endpoin
       // Subscribe initial events
       if (selectedEvents.length > 0) {
         await Promise.all(
-          selectedEvents.map(evt => upsertSubscription(currentSite.id, ep.id, evt as WebhookEventType, true))
+          selectedEvents.map(evt => upsertSubscription(currentSite.id, ep.id, evt, true))
         )
       }
       toast.success("Endpoint created")
@@ -108,7 +98,7 @@ export function CreateEndpointDialog({ onSuccess, triggerLabel = "Create endpoin
           <div className="space-y-2">
             <Label>Events</Label>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-              {EVENT_OPTIONS.map(opt => (
+              {WEBHOOK_EVENT_OPTIONS.map(opt => (
                 <label key={opt.id} className="flex items-center gap-2 text-sm">
                   <Checkbox
                     checked={selectedEvents.includes(opt.id)}
@@ -120,7 +110,7 @@ export function CreateEndpointDialog({ onSuccess, triggerLabel = "Create endpoin
                 </label>
               ))}
             </div>
-            <p className="text-xs text-muted-foreground">Select which events this endpoint will listen to (Tasks CUD, Messages CUD, Leads CUD).</p>
+            <p className="text-xs text-muted-foreground">Select which create, update, and delete events this endpoint will receive.</p>
           </div>
 
           </DialogBody>

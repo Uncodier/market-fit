@@ -5,6 +5,7 @@ import { Label } from "@/app/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
 import { Button } from "@/app/components/ui/button"
 import { Play } from "@/app/components/ui/icons"
+import { WEBHOOK_TABLE_OPTIONS } from "@/lib/webhook-events"
 
 type TestOperation = 'INSERT' | 'UPDATE' | 'DELETE'
 
@@ -67,12 +68,14 @@ export function TestEndpointDialog(props: TestEndpointDialogProps) {
                 <SelectValue className="text-left" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="tasks">tasks</SelectItem>
-                <SelectItem value="messages">messages</SelectItem>
-                <SelectItem value="leads">leads</SelectItem>
+                {WEBHOOK_TABLE_OPTIONS.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
-            <p className="text-xs text-muted-foreground">Select the table to simulate events for. Messages are scoped via related leads.</p>
+            <p className="text-xs text-muted-foreground">Select the table to simulate events for.</p>
           </div>
           <div className="space-y-1">
             <Label>Record</Label>
