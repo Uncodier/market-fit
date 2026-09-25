@@ -137,11 +137,13 @@ const MODULE_IMAGE_CLARIFIERS: Partial<Record<string, string>> = {
   activities:
     "Show one simple four-point AI sparkle star, centered and large; no timeline, clock, robot, multiple stars, text, circle, or extra objects",
   workflows:
-    "Show one large, unmistakable lightning bolt; no arrows, gears, flowchart, network, or extra objects",
+    "Show one large, unmistakable lightning bolt in saturated deep violet with a bright pearlescent highlight and crisp dark-violet edges, creating strong luminance and color contrast against the pale lime background; no washed-out tones, arrows, gears, flowchart, network, outline container, or extra objects",
   payments:
     "Show one open leather wallet with a visible bill compartment; no hand, coin, payment card, purse, or extra objects",
   reportPerformance:
     "Show one highly readable speedometer-style semicircular gauge with a bold needle pointing upward and three broad colored zones; no chart, dashboard panel, numbers, or extra objects",
+  reportSocial:
+    "Show one extremely simple solid heart silhouette centered and large, with a smooth clean outline; no chart, graph, counter, engagement badge, social media logo, inner symbol, text, or extra objects",
   team:
     "Show exactly three oversized circular person avatar icons filling most of the canvas, arranged as a tight group; no full bodies, tiny icons, text, or surrounding container",
   integrations:
