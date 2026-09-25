@@ -1,4 +1,5 @@
 import {
+  FULL_SIZE_MODULE_IMAGE_KEYS,
   getModuleImagePrompt,
   getModuleImageUrl,
   MODULE_IMAGE_HINTS,
@@ -137,6 +138,38 @@ describe("module image visuals", () => {
       expect(prompt).toContain("complementary pastel accent colors")
     },
   )
+
+  it.each([
+    ["sales", "pos"],
+    ["sales", "catalog"],
+    ["operations", "shipments"],
+    ["operations", "reservations"],
+    ["operations", "inventory"],
+    ["operations", "printers"],
+    ["automation", "channels"],
+    ["finance", "payments"],
+    ["reports", "reportTraffic"],
+    ["settings", "company"],
+    ["settings", "marketplace"],
+    ["settings", "calendar"],
+  ] as const)("renders %s/%s as a full-size isolated object", (area, itemKey) => {
+    expect(FULL_SIZE_MODULE_IMAGE_KEYS.has(itemKey)).toBe(true)
+
+    const prompt = getModuleImagePrompt(area, itemKey, "Ignored Title")
+    expect(prompt).toContain("full-size cutout occupying 88 to 92 percent")
+    expect(prompt).toContain("no visible backdrop treatment")
+    expect(prompt).toContain("without a background")
+    expect(prompt).not.toContain("seamless mint pastel gradient background")
+  })
+
+  it("keeps the standard composition for modules outside the full-size set", () => {
+    const prompt = getModuleImagePrompt("marketing", "campaigns", "Campaigns")
+
+    expect(FULL_SIZE_MODULE_IMAGE_KEYS.has("campaigns")).toBe(false)
+    expect(prompt).toContain("large and filling most of the canvas")
+    expect(prompt).toContain("seamless mint pastel gradient background")
+    expect(prompt).not.toContain("full-size cutout occupying 88 to 92 percent")
+  })
 
   it("requests square 256px images from the public prompt endpoint", () => {
     const previousApiUrl = process.env.NEXT_PUBLIC_API_SERVER_URL

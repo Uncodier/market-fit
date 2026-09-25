@@ -103,6 +103,22 @@ export const MODULE_IMAGE_HINTS: Record<string, string> = {
   security: "shield",
 }
 
+/** Objects with strong silhouettes that benefit from a near edge-to-edge cutout composition. */
+export const FULL_SIZE_MODULE_IMAGE_KEYS = new Set([
+  "pos",
+  "catalog",
+  "shipments",
+  "reservations",
+  "inventory",
+  "printers",
+  "channels",
+  "payments",
+  "reportTraffic",
+  "company",
+  "marketplace",
+  "calendar",
+])
+
 const MODULE_IMAGE_CLARIFIERS: Partial<Record<string, string>> = {
   content:
     "Show one large triangular play symbol by itself; no screen, media player controls, file, document, or surrounding button container",
@@ -110,6 +126,8 @@ const MODULE_IMAGE_CLARIFIERS: Partial<Record<string, string>> = {
     "Show one recognizable classic desktop printer with a large sheet of paper; no printing press, modern multifunction copier, or extra objects",
   assets:
     "Show a folder containing one large landscape image thumbnail; no abstract shapes",
+  pos:
+    "Show one substantial cash register with a clearly visible display and cash drawer; no countertop, shop scene, receipt, payment card, products, or extra objects",
   catalog:
     "Show one retail shelf displaying several clearly separated products; no single box, shopping cart, storefront, or extra objects",
   subscriptions:
@@ -124,12 +142,18 @@ const MODULE_IMAGE_CLARIFIERS: Partial<Record<string, string>> = {
     "Show one spreadsheet sheet with a clear grid of rows and columns and one folded corner; no database cylinder, clipboard, chart, or extra objects",
   orderLines:
     "Show only four large seven-segment digital digits reading 12:45; no timer body, clock casing, screen, border, buttons, label, or extra objects",
+  shipments:
+    "Show one substantial sealed shipping parcel with visible folded flaps and one simple blank label; no delivery truck, warehouse, hand, text, or extra objects",
+  reservations:
+    "Show one substantial desktop reservation calendar with two large binding rings and one date marked by color only; no clock, checkmark, text, numbers, badge, desk, or extra objects",
   quotations:
     "Show a simple stack of exactly three overlapping paper sheets with clearly visible offset edges; no currency symbol, writing, quotation marks, speech bubble, folder, clipboard, or extra objects",
   visits:
     "Show one visitor identification badge with a person silhouette and lanyard; no map or route",
   checkIn:
     "Show one large handwritten signature stroke with a short underline; no pen, document, QR code, scanner, text, or extra objects",
+  inventory:
+    "Show exactly three substantial storage crates in one compact stack, with clearly separated silhouettes; no shelf, warehouse, forklift, labels, text, or extra objects",
   printers:
     "Show one compact thermal receipt printer producing one visible receipt; no office printer, inkjet printer, copier, or extra objects",
   channels:
@@ -140,16 +164,24 @@ const MODULE_IMAGE_CLARIFIERS: Partial<Record<string, string>> = {
     "Show one large, unmistakable lightning bolt in saturated deep violet with a bright pearlescent highlight and crisp dark-violet edges, creating strong luminance and color contrast against the pale lime background; no washed-out tones, arrows, gears, flowchart, network, outline container, or extra objects",
   payments:
     "Show one open leather wallet with a visible bill compartment; no hand, coin, payment card, purse, or extra objects",
+  reportTraffic:
+    "Show one substantial freestanding globe with simplified continents and a short curved stand; no map pins, chart, arrows, airplane, text, desk, or extra objects",
   reportPerformance:
     "Show one highly readable speedometer-style semicircular gauge with a bold needle pointing upward and three broad colored zones; no chart, dashboard panel, numbers, or extra objects",
   reportSocial:
     "Show one extremely simple solid heart silhouette centered and large, with a smooth clean outline; no chart, graph, counter, engagement badge, social media logo, inner symbol, text, or extra objects",
+  company:
+    "Show one substantial freestanding office building with a simple entrance and a few broad window rows; no street, trees, skyline, sign, text, base, or extra objects",
+  marketplace:
+    "Show one substantial storefront with a bold striped awning, central door, and two simple display windows; no street, products outside, sign, text, base, or extra objects",
   team:
     "Show exactly three oversized circular person avatar icons filling most of the canvas, arranged as a tight group; no full bodies, tiny icons, text, or surrounding container",
   integrations:
     "Show one unmistakable electrical power plug with two metal prongs and a short curved cable; no socket, puzzle piece, connector nodes, or extra objects",
   social:
     "Show one extremely simple solid heart silhouette centered and large, with a smooth clean outline; no thumbs-up, share nodes, social media logos, inner symbols, text, or extra objects",
+  calendar:
+    "Show one substantial clean wall-calendar sheet with two large binding rings and a simple blank date grid; no marked date, clock, checkmark, text, numbers, badge, wall, or extra objects",
   security:
     "Show one extremely simple solid shield silhouette centered and large, with a smooth clean outline; no lock, key, checkmark, API text, inner symbols, badge, border, or extra objects",
 }
@@ -170,17 +202,22 @@ export function getModuleImagePrompt(
   const color = AREA_IMAGE_COLORS[area]
   const background = AREA_IMAGE_BACKGROUNDS[area]
   const clarifier = MODULE_IMAGE_CLARIFIERS[itemKey]
+  const isFullSize = FULL_SIZE_MODULE_IMAGE_KEYS.has(itemKey)
 
   return [
     `Front-facing 3D ${subject}, viewed straight on at eye level, centered and symmetrical, no isometric angle and no tilted perspective`,
     clarifier,
-    "Render the subject itself directly on the background, large and filling most of the canvas; do not place it inside an app tile, iOS-style squircle, rounded-square container, badge, button, frame, plaque, or secondary icon",
+    isFullSize
+      ? "Render the isolated object as a full-size cutout occupying 88 to 92 percent of the canvas, with only a narrow safe margin and no visible backdrop treatment; no app tile, iOS-style squircle, rounded-square container, badge, button, frame, plaque, pedestal, floor, horizon, scenery, or secondary icon"
+      : "Render the subject itself directly on the background, large and filling most of the canvas; do not place it inside an app tile, iOS-style squircle, rounded-square container, badge, button, frame, plaque, or secondary icon",
     "Minimalist design, smooth glossy plastic and frosted glass texture, soft rounded edges",
     `Soft pastel color palette featuring ${color}`,
     "Use one or two complementary pastel accent colors on key object details, with clear tonal separation between adjacent parts, defined edges, and a readable silhouette; preserve the glossy glass style and avoid a flat monochrome look",
     "Keep the composition simple, with one primary symbol, few large components, no tiny details, and strong legibility at small UI sizes",
     "Pearlescent finish, gentle ambient inner glow, soft studio lighting",
-    `Set against a clean, seamless ${background} gradient background`,
+    isFullSize
+      ? `Keep the otherwise empty canvas in an extremely subtle uniform ${background} tone so it visually recedes and the cutout object reads without a background`
+      : `Set against a clean, seamless ${background} gradient background`,
     "Dreamy, modern UI asset style, clean geometry, Octane render, 8k resolution",
   ].filter(Boolean).join(". ")
 }
