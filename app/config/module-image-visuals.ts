@@ -41,15 +41,15 @@ export const MODULE_IMAGE_HINTS: Record<string, string> = {
   priceLists: "price tag",
   subscriptions: "ID card",
   sales: "coins",
-  leads: "contact cards",
+  leads: "person",
   deals: "briefcase",
   quotations: "price estimate document",
-  people: "person profile",
+  people: "magnifying glass",
 
-  chat: "two chat bubbles",
+  chat: "chat bubble",
   records: "spreadsheet sheet",
   orders: "clipboard",
-  orderLines: "timer",
+  orderLines: "digital numbers",
   shipments: "parcel",
   controlCenter: "checklist",
   reservations: "calendar",
@@ -95,9 +95,9 @@ export const MODULE_IMAGE_HINTS: Record<string, string> = {
   company: "building",
   marketplace: "storefront",
   settingsVisits: "location pin",
-  team: "avatar group",
+  team: "large avatar group",
   calendar: "calendar",
-  social: "share nodes",
+  social: "thumbs-up",
   integrations: "plug",
   billing: "credit card",
   security: "shield",
@@ -114,12 +114,16 @@ const MODULE_IMAGE_CLARIFIERS: Partial<Record<string, string>> = {
     "Show one retail shelf displaying several clearly separated products; no single box, shopping cart, storefront, or extra objects",
   subscriptions:
     "Show one identification card with a person silhouette and a few simple detail lines; no credit card, membership text, lanyard, or extra objects",
+  leads:
+    "Show one large person silhouette centered by itself; no cards, group, badge, text, or extra objects",
+  people:
+    "Show one large magnifying glass centered by itself; no person, document, text, search bar, or extra objects",
   chat:
-    "Show exactly two large overlapping speech bubbles facing each other; no phone, person, text, or extra objects",
+    "Show one single large speech bubble centered by itself; no second bubble, phone, person, text, or extra objects",
   records:
     "Show one spreadsheet sheet with a clear grid of rows and columns and one folded corner; no database cylinder, clipboard, chart, or extra objects",
   orderLines:
-    "Show one large timer with a clear circular dial and top button; no item list, document, clock face, hourglass, or extra objects",
+    "Show only four large seven-segment digital digits reading 12:45; no timer body, clock casing, screen, border, buttons, label, or extra objects",
   quotations:
     "Show a commercial price estimate sheet with a currency symbol and total line; not quotation marks, a speech bubble, a calendar, or an appointment",
   visits:
@@ -137,9 +141,13 @@ const MODULE_IMAGE_CLARIFIERS: Partial<Record<string, string>> = {
   reportPerformance:
     "Show one highly readable speedometer-style semicircular gauge with a bold needle pointing upward and three broad colored zones; no chart, dashboard panel, numbers, or extra objects",
   team:
-    "Show exactly three distinct circular person avatar icons arranged as a compact group; no full bodies, single person, text, or surrounding container",
+    "Show exactly three oversized circular person avatar icons filling most of the canvas, arranged as a tight group; no full bodies, tiny icons, text, or surrounding container",
   integrations:
     "Show one unmistakable electrical power plug with two metal prongs and a short curved cable; no socket, puzzle piece, connector nodes, or extra objects",
+  social:
+    "Show one large thumbs-up like symbol centered by itself; no heart, share nodes, social media logos, hand cuff, text, or extra objects",
+  security:
+    "Show one large plain shield centered by itself; no lock, key, checkmark, API text, badge, border, or extra objects",
 }
 
 function screenIconSubject(itemKey: string, title: string): string {

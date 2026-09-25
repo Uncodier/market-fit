@@ -25,9 +25,9 @@ describe("module image visuals", () => {
     }
   })
 
-  it("avoids literal leads wording and depicts quotations as price estimates", () => {
+  it("depicts leads as a person and quotations as price estimates", () => {
     expect(getModuleImagePrompt("sales", "leads", "Leads")).toContain(
-      "Front-facing 3D contact cards",
+      "Front-facing 3D person",
     )
     expect(getModuleImagePrompt("sales", "leads", "Leads")).not.toContain(
       "leads icon",
@@ -95,10 +95,12 @@ describe("module image visuals", () => {
     ["marketing", "assets", "image folder", "landscape image thumbnail"],
     ["sales", "catalog", "product shelf", "several clearly separated products"],
     ["sales", "subscriptions", "ID card", "person silhouette"],
+    ["sales", "leads", "person", "centered by itself"],
     ["sales", "quotations", "price estimate document", "currency symbol"],
-    ["operations", "chat", "two chat bubbles", "facing each other"],
+    ["sales", "people", "magnifying glass", "no person, document"],
+    ["operations", "chat", "chat bubble", "one single large speech bubble"],
     ["operations", "records", "spreadsheet sheet", "grid of rows and columns"],
-    ["operations", "orderLines", "timer", "circular dial"],
+    ["operations", "orderLines", "digital numbers", "seven-segment digital digits"],
     ["operations", "controlCenter", "checklist", null],
     ["operations", "visits", "visitor ID badge", "person silhouette"],
     ["operations", "checkIn", "signature", "handwritten signature stroke"],
@@ -108,8 +110,10 @@ describe("module image visuals", () => {
     ["finance", "chartOfAccounts", "ledger book", null],
     ["finance", "payments", "wallet", "visible bill compartment"],
     ["reports", "reportPerformance", "speedometer gauge", "bold needle"],
-    ["settings", "team", "avatar group", "three distinct circular person avatar icons"],
+    ["settings", "team", "large avatar group", "filling most of the canvas"],
     ["settings", "integrations", "plug", "two metal prongs"],
+    ["settings", "social", "thumbs-up", "like symbol"],
+    ["settings", "security", "shield", "plain shield centered by itself"],
   ] as const)(
     "uses a simple, recognizable symbol for %s/%s",
     (area, itemKey, hint, detail) => {
