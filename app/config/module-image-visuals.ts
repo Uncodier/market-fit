@@ -41,9 +41,9 @@ export const MODULE_IMAGE_HINTS: Record<string, string> = {
   priceLists: "price tag",
   subscriptions: "ID card",
   sales: "coins",
-  leads: "person",
+  leads: "user avatar",
   deals: "briefcase",
-  quotations: "price estimate document",
+  quotations: "stack of papers",
   people: "magnifying glass",
 
   chat: "chat bubble",
@@ -70,7 +70,7 @@ export const MODULE_IMAGE_HINTS: Record<string, string> = {
   agentsConfiguration: "robot",
   requirements: "checklist",
   channels: "classic telephone",
-  activities: "timeline",
+  activities: "AI sparkle",
   skills: "brain",
   workflows: "lightning bolt",
 
@@ -97,7 +97,7 @@ export const MODULE_IMAGE_HINTS: Record<string, string> = {
   settingsVisits: "location pin",
   team: "large avatar group",
   calendar: "calendar",
-  social: "thumbs-up",
+  social: "heart",
   integrations: "plug",
   billing: "credit card",
   security: "shield",
@@ -115,7 +115,7 @@ const MODULE_IMAGE_CLARIFIERS: Partial<Record<string, string>> = {
   subscriptions:
     "Show one identification card with a person silhouette and a few simple detail lines; no credit card, membership text, lanyard, or extra objects",
   leads:
-    "Show one large person silhouette centered by itself; no cards, group, badge, text, or extra objects",
+    "Show one simple Windows-style user avatar silhouette with only a round head and rounded shoulders or upper torso, centered and large; no face details, arms, lower body, card, group, badge, text, or extra objects",
   people:
     "Show one large magnifying glass centered by itself; no person, document, text, search bar, or extra objects",
   chat:
@@ -125,7 +125,7 @@ const MODULE_IMAGE_CLARIFIERS: Partial<Record<string, string>> = {
   orderLines:
     "Show only four large seven-segment digital digits reading 12:45; no timer body, clock casing, screen, border, buttons, label, or extra objects",
   quotations:
-    "Show a commercial price estimate sheet with a currency symbol and total line; not quotation marks, a speech bubble, a calendar, or an appointment",
+    "Show a simple stack of exactly three overlapping paper sheets with clearly visible offset edges; no currency symbol, writing, quotation marks, speech bubble, folder, clipboard, or extra objects",
   visits:
     "Show one visitor identification badge with a person silhouette and lanyard; no map or route",
   checkIn:
@@ -134,6 +134,8 @@ const MODULE_IMAGE_CLARIFIERS: Partial<Record<string, string>> = {
     "Show one compact thermal receipt printer producing one visible receipt; no office printer, inkjet printer, copier, or extra objects",
   channels:
     "Show one classic landline telephone with a separate curved handset resting on top; no smartphone, mobile phone, headset, or extra objects",
+  activities:
+    "Show one simple four-point AI sparkle star, centered and large; no timeline, clock, robot, multiple stars, text, circle, or extra objects",
   workflows:
     "Show one large, unmistakable lightning bolt; no arrows, gears, flowchart, network, or extra objects",
   payments:
@@ -145,9 +147,9 @@ const MODULE_IMAGE_CLARIFIERS: Partial<Record<string, string>> = {
   integrations:
     "Show one unmistakable electrical power plug with two metal prongs and a short curved cable; no socket, puzzle piece, connector nodes, or extra objects",
   social:
-    "Show one large thumbs-up like symbol centered by itself; no heart, share nodes, social media logos, hand cuff, text, or extra objects",
+    "Show one extremely simple solid heart silhouette centered and large, with a smooth clean outline; no thumbs-up, share nodes, social media logos, inner symbols, text, or extra objects",
   security:
-    "Show one large plain shield centered by itself; no lock, key, checkmark, API text, badge, border, or extra objects",
+    "Show one extremely simple solid shield silhouette centered and large, with a smooth clean outline; no lock, key, checkmark, API text, inner symbols, badge, border, or extra objects",
 }
 
 function screenIconSubject(itemKey: string, title: string): string {

@@ -25,24 +25,24 @@ describe("module image visuals", () => {
     }
   })
 
-  it("depicts leads as a person and quotations as price estimates", () => {
+  it("depicts leads as an avatar and quotations as a paper stack", () => {
     expect(getModuleImagePrompt("sales", "leads", "Leads")).toContain(
-      "Front-facing 3D person",
+      "Front-facing 3D user avatar",
     )
     expect(getModuleImagePrompt("sales", "leads", "Leads")).not.toContain(
       "leads icon",
     )
     expect(getModuleImagePrompt("sales", "quotations", "Quotations")).toContain(
-      "Front-facing 3D price estimate document",
+      "Front-facing 3D stack of papers",
     )
     const quotationPrompt = getModuleImagePrompt(
       "sales",
       "quotations",
       "Quotations",
     )
-    expect(quotationPrompt).toContain("commercial price estimate sheet")
-    expect(quotationPrompt).toContain("not quotation marks")
-    expect(quotationPrompt).toContain("a calendar, or an appointment")
+    expect(quotationPrompt).toContain("exactly three overlapping paper sheets")
+    expect(quotationPrompt).toContain("no currency symbol")
+    expect(quotationPrompt).toContain("quotation marks")
   })
 
   it("builds the requested glossy glass campaign style with object contrast", () => {
@@ -95,8 +95,8 @@ describe("module image visuals", () => {
     ["marketing", "assets", "image folder", "landscape image thumbnail"],
     ["sales", "catalog", "product shelf", "several clearly separated products"],
     ["sales", "subscriptions", "ID card", "person silhouette"],
-    ["sales", "leads", "person", "centered by itself"],
-    ["sales", "quotations", "price estimate document", "currency symbol"],
+    ["sales", "leads", "user avatar", "round head and rounded shoulders"],
+    ["sales", "quotations", "stack of papers", "visible offset edges"],
     ["sales", "people", "magnifying glass", "no person, document"],
     ["operations", "chat", "chat bubble", "one single large speech bubble"],
     ["operations", "records", "spreadsheet sheet", "grid of rows and columns"],
@@ -107,13 +107,14 @@ describe("module image visuals", () => {
     ["operations", "printers", "thermal printer", "visible receipt"],
     ["automation", "workflows", "lightning bolt", "no arrows, gears"],
     ["automation", "channels", "classic telephone", "curved handset"],
+    ["automation", "activities", "AI sparkle", "four-point AI sparkle star"],
     ["finance", "chartOfAccounts", "ledger book", null],
     ["finance", "payments", "wallet", "visible bill compartment"],
     ["reports", "reportPerformance", "speedometer gauge", "bold needle"],
     ["settings", "team", "large avatar group", "filling most of the canvas"],
     ["settings", "integrations", "plug", "two metal prongs"],
-    ["settings", "social", "thumbs-up", "like symbol"],
-    ["settings", "security", "shield", "plain shield centered by itself"],
+    ["settings", "social", "heart", "simple solid heart silhouette"],
+    ["settings", "security", "shield", "simple solid shield silhouette"],
   ] as const)(
     "uses a simple, recognizable symbol for %s/%s",
     (area, itemKey, hint, detail) => {
