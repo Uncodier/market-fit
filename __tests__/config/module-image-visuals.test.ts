@@ -24,7 +24,7 @@ describe("module image visuals", () => {
     }
   })
 
-  it("avoids literal leads and quotations wording", () => {
+  it("avoids literal leads wording and depicts quotations as price estimates", () => {
     expect(getModuleImagePrompt("sales", "leads", "Leads")).toContain(
       "contact cards app icon",
     )
@@ -32,11 +32,16 @@ describe("module image visuals", () => {
       "leads icon",
     )
     expect(getModuleImagePrompt("sales", "quotations", "Quotations")).toContain(
-      "quote paper app icon",
+      "price estimate document app icon",
     )
-    expect(getModuleImagePrompt("sales", "quotations", "Quotations")).not.toContain(
-      "quotations icon",
+    const quotationPrompt = getModuleImagePrompt(
+      "sales",
+      "quotations",
+      "Quotations",
     )
+    expect(quotationPrompt).toContain("commercial price estimate sheet")
+    expect(quotationPrompt).toContain("not quotation marks")
+    expect(quotationPrompt).toContain("a calendar, or an appointment")
   })
 
   it("builds the requested glossy glass campaign style with object contrast", () => {
@@ -46,7 +51,10 @@ describe("module image visuals", () => {
       "Campaigns",
     )
 
-    expect(prompt).toContain("3D isometric icon of a target app icon")
+    expect(prompt).toContain("Front-facing 3D icon of a target app icon")
+    expect(prompt).toContain("viewed straight on at eye level")
+    expect(prompt).toContain("no isometric angle")
+    expect(prompt).toContain("no tilted perspective")
     expect(prompt).toContain("smooth glossy plastic and frosted glass texture")
     expect(prompt).toContain("Soft pastel color palette featuring red")
     expect(prompt).toContain("complementary pastel accent colors")
@@ -72,24 +80,29 @@ describe("module image visuals", () => {
       "AI Workspace",
     )
 
-    expect(prompt).toContain("3D isometric icon of a house app icon")
+    expect(prompt).toContain("Front-facing 3D icon of a house app icon")
     expect(prompt).toContain("featuring violet")
   })
 
   it.each([
-    ["operations", "controlCenter", "checklist"],
-    ["operations", "visits", "map pin"],
-    ["operations", "checkIn", "QR code"],
-    ["automation", "workflows", "three linked nodes"],
-    ["finance", "financeReports", "bar chart"],
-    ["finance", "chartOfAccounts", "ledger book"],
+    ["marketing", "assets", "image folder", "landscape image thumbnail"],
+    ["sales", "quotations", "price estimate document", "currency symbol"],
+    ["operations", "controlCenter", "checklist", null],
+    ["operations", "visits", "visitor ID badge", "person silhouette"],
+    ["operations", "checkIn", "QR scanner", "scanner corner brackets"],
+    ["automation", "workflows", "three step arrows", "sequential steps"],
+    ["finance", "financeReports", "bar chart", null],
+    ["finance", "chartOfAccounts", "ledger book", null],
+    ["finance", "payments", "hand holding coin", "currency symbol"],
   ] as const)(
     "uses a simple, recognizable symbol for %s/%s",
-    (area, itemKey, hint) => {
+    (area, itemKey, hint, detail) => {
       expect(MODULE_IMAGE_HINTS[itemKey]).toBe(hint)
-      expect(getModuleImagePrompt(area, itemKey, "Ignored Title")).toContain(
+      const prompt = getModuleImagePrompt(area, itemKey, "Ignored Title")
+      expect(prompt).toContain(
         `icon of a ${hint} app icon`,
       )
+      if (detail) expect(prompt).toContain(detail)
     },
   )
 

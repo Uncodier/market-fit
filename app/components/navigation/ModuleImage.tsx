@@ -40,7 +40,10 @@ export function ModuleImage({
           loading={loading}
           decoding="async"
           draggable={false}
-          className={cn("h-full w-full object-cover", imageClassName)}
+          className={cn(
+            "h-full w-full object-cover dark:brightness-[0.82]",
+            imageClassName,
+          )}
           onError={() => setFailed(true)}
         />
       ) : null}

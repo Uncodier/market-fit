@@ -33,7 +33,7 @@ export const MODULE_IMAGE_HINTS: Record<string, string> = {
   promotions: "coupon",
   content: "media file",
   contentCreator: "print press",
-  assets: "folder",
+  assets: "image folder",
 
   salesHome: "sales board",
   pos: "cash register",
@@ -43,7 +43,7 @@ export const MODULE_IMAGE_HINTS: Record<string, string> = {
   sales: "coins",
   leads: "contact cards",
   deals: "briefcase",
-  quotations: "quote paper",
+  quotations: "price estimate document",
   people: "person profile",
 
   chat: "chat bubble",
@@ -53,8 +53,8 @@ export const MODULE_IMAGE_HINTS: Record<string, string> = {
   shipments: "parcel",
   controlCenter: "checklist",
   reservations: "calendar",
-  visits: "map pin",
-  checkIn: "QR code",
+  visits: "visitor ID badge",
+  checkIn: "QR scanner",
   inventory: "crates",
   printers: "printer",
 
@@ -72,7 +72,7 @@ export const MODULE_IMAGE_HINTS: Record<string, string> = {
   channels: "phone",
   activities: "timeline",
   skills: "brain",
-  workflows: "three linked nodes",
+  workflows: "three step arrows",
 
   applicationsDatabase: "database",
   applicationsRepositories: "code folder",
@@ -81,7 +81,7 @@ export const MODULE_IMAGE_HINTS: Record<string, string> = {
   financeReports: "bar chart",
   journalEntries: "ledger",
   chartOfAccounts: "ledger book",
-  payments: "wallet",
+  payments: "hand holding coin",
 
   reportPerformance: "gauge",
   reportOverview: "pie chart",
@@ -103,6 +103,21 @@ export const MODULE_IMAGE_HINTS: Record<string, string> = {
   security: "shield",
 }
 
+const MODULE_IMAGE_CLARIFIERS: Partial<Record<string, string>> = {
+  assets:
+    "Show a folder containing one large landscape image thumbnail; no abstract shapes",
+  quotations:
+    "Show a commercial price estimate sheet with a currency symbol and total line; not quotation marks, a speech bubble, a calendar, or an appointment",
+  visits:
+    "Show one visitor identification badge with a person silhouette and lanyard; no map or route",
+  checkIn:
+    "Show one QR code centered inside four scanner corner brackets; no extra objects",
+  workflows:
+    "Show exactly three large sequential steps connected left to right by bold arrows; no complex flowchart or network",
+  payments:
+    "Show one open hand holding one large coin with a currency symbol; no wallet or complex finance scene",
+}
+
 function screenIconSubject(itemKey: string, title: string): string {
   const hint = MODULE_IMAGE_HINTS[itemKey]
   if (hint) return `${hint} app icon`
@@ -118,9 +133,11 @@ export function getModuleImagePrompt(
   const subject = screenIconSubject(itemKey, title)
   const color = AREA_IMAGE_COLORS[area]
   const background = AREA_IMAGE_BACKGROUNDS[area]
+  const clarifier = MODULE_IMAGE_CLARIFIERS[itemKey]
 
   return [
-    `3D isometric icon of a ${subject}`,
+    `Front-facing 3D icon of a ${subject}, viewed straight on at eye level, centered and symmetrical, no isometric angle and no tilted perspective`,
+    clarifier,
     "Minimalist design, smooth glossy plastic and frosted glass texture, soft rounded edges",
     `Soft pastel color palette featuring ${color}`,
     "Use one or two complementary pastel accent colors on key object details, with clear tonal separation between adjacent parts, defined edges, and a readable silhouette; preserve the glossy glass style and avoid a flat monochrome look",
@@ -128,7 +145,7 @@ export function getModuleImagePrompt(
     "Pearlescent finish, gentle ambient inner glow, soft studio lighting",
     `Set against a clean, seamless ${background} gradient background`,
     "Dreamy, modern UI asset style, clean geometry, Octane render, 8k resolution",
-  ].join(". ")
+  ].filter(Boolean).join(". ")
 }
 
 export function getModuleImageUrl(
