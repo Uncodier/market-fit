@@ -103,7 +103,7 @@ const CONTAINER_FREE_MODULE_IMAGE_KEYS = new Set([
 ])
 
 const ALTERNATIVE_MODULE_IMAGE_KEYS = new Set([
-  "subscriptions",
+  "purchasesSubscriptions",
   "payments",
   "integrations",
   "company",

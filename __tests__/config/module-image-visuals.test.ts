@@ -204,7 +204,7 @@ describe("module image visuals", () => {
   })
 
   it.each([
-    ["sales", "subscriptions"],
+    ["buying", "purchasesSubscriptions"],
     ["finance", "payments"],
     ["settings", "integrations"],
     ["settings", "company"],
@@ -236,6 +236,9 @@ describe("module image visuals", () => {
   it("does not request an alternative composition for unrelated modules", () => {
     expect(
       getModuleImagePrompt("marketing", "campaigns", "Campaigns"),
+    ).not.toContain("Create a fresh alternative composition")
+    expect(
+      getModuleImagePrompt("sales", "subscriptions", "Subscriptions"),
     ).not.toContain("Create a fresh alternative composition")
   })
 
