@@ -31,8 +31,8 @@ export const MODULE_IMAGE_HINTS: Record<string, string> = {
   campaigns: "target",
   segments: "audience tags",
   promotions: "coupon",
-  content: "media file",
-  contentCreator: "print press",
+  content: "play button",
+  contentCreator: "classic printer",
   assets: "image folder",
 
   salesHome: "sales board",
@@ -69,7 +69,7 @@ export const MODULE_IMAGE_HINTS: Record<string, string> = {
   context: "book",
   agentsConfiguration: "robot",
   requirements: "checklist",
-  channels: "phone",
+  channels: "classic telephone",
   activities: "timeline",
   skills: "brain",
   workflows: "lightning bolt",
@@ -81,7 +81,7 @@ export const MODULE_IMAGE_HINTS: Record<string, string> = {
   financeReports: "bar chart",
   journalEntries: "ledger",
   chartOfAccounts: "ledger book",
-  payments: "hand holding coin",
+  payments: "wallet",
 
   reportPerformance: "gauge",
   reportOverview: "pie chart",
@@ -104,6 +104,10 @@ export const MODULE_IMAGE_HINTS: Record<string, string> = {
 }
 
 const MODULE_IMAGE_CLARIFIERS: Partial<Record<string, string>> = {
+  content:
+    "Show one large triangular play symbol by itself; no screen, media player controls, file, document, or surrounding button container",
+  contentCreator:
+    "Show one recognizable classic desktop printer with a large sheet of paper; no printing press, modern multifunction copier, or extra objects",
   assets:
     "Show a folder containing one large landscape image thumbnail; no abstract shapes",
   quotations:
@@ -112,10 +116,12 @@ const MODULE_IMAGE_CLARIFIERS: Partial<Record<string, string>> = {
     "Show one visitor identification badge with a person silhouette and lanyard; no map or route",
   checkIn:
     "Show one QR code centered inside four scanner corner brackets; no extra objects",
+  channels:
+    "Show one classic landline telephone with a separate curved handset resting on top; no smartphone, mobile phone, headset, or extra objects",
   workflows:
     "Show one large, unmistakable lightning bolt; no arrows, gears, flowchart, network, or extra objects",
   payments:
-    "Show one open hand holding one large coin with a currency symbol; no wallet or complex finance scene",
+    "Show one open leather wallet with a visible bill compartment; no hand, coin, payment card, purse, or extra objects",
 }
 
 function screenIconSubject(itemKey: string, title: string): string {

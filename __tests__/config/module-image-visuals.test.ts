@@ -90,6 +90,8 @@ describe("module image visuals", () => {
   })
 
   it.each([
+    ["marketing", "content", "play button", "triangular play symbol"],
+    ["marketing", "contentCreator", "classic printer", "sheet of paper"],
     ["marketing", "assets", "image folder", "landscape image thumbnail"],
     ["sales", "quotations", "price estimate document", "currency symbol"],
     ["operations", "controlCenter", "checklist", null],
@@ -98,7 +100,8 @@ describe("module image visuals", () => {
     ["automation", "workflows", "lightning bolt", "no arrows, gears"],
     ["finance", "financeReports", "bar chart", null],
     ["finance", "chartOfAccounts", "ledger book", null],
-    ["finance", "payments", "hand holding coin", "currency symbol"],
+    ["automation", "channels", "classic telephone", "curved handset"],
+    ["finance", "payments", "wallet", "visible bill compartment"],
   ] as const)(
     "uses a simple, recognizable symbol for %s/%s",
     (area, itemKey, hint, detail) => {
