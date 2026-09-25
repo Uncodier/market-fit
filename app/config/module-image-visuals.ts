@@ -2,15 +2,28 @@ import { publicPromptImageUrl } from "@/app/lib/image-utils"
 import type { WorkspaceArea } from "./navigation-areas"
 
 const AREA_IMAGE_COLORS: Record<WorkspaceArea, string> = {
-  marketing: "coral red and rose",
-  sales: "sky blue and indigo",
-  operations: "teal and aqua",
-  buying: "amber and soft orange",
-  automation: "violet and lavender",
-  applications: "slate blue and periwinkle",
-  finance: "emerald and mint",
-  reports: "lime and chartreuse",
-  settings: "magenta and pink",
+  marketing: "red",
+  sales: "blue",
+  operations: "teal",
+  buying: "amber",
+  automation: "violet",
+  applications: "indigo",
+  finance: "emerald",
+  reports: "lime",
+  settings: "magenta",
+}
+
+/** Contrasting pastel field with subtle gradients of the dominant object color. */
+const AREA_IMAGE_BACKGROUNDS: Record<WorkspaceArea, string> = {
+  marketing: "mint pastel with subtle red gradients",
+  sales: "peach pastel with subtle blue gradients",
+  operations: "blush pastel with subtle teal gradients",
+  buying: "periwinkle pastel with subtle amber gradients",
+  automation: "pale lime pastel with subtle violet gradients",
+  applications: "peach pastel with subtle indigo gradients",
+  finance: "blush pastel with subtle emerald gradients",
+  reports: "lavender pastel with subtle lime gradients",
+  settings: "mint pastel with subtle magenta gradients",
 }
 
 export const MODULE_IMAGE_SUBJECTS: Record<string, string> = {
@@ -96,14 +109,17 @@ export function getModuleImagePrompt(
 ): string {
   const subject = MODULE_IMAGE_SUBJECTS[itemKey] ?? `${title} app symbol`
   const color = AREA_IMAGE_COLORS[area]
+  const background = AREA_IMAGE_BACKGROUNDS[area]
 
   return [
-    `3D isometric icon of ${subject}`,
-    "minimalist glossy plastic and frosted glass, soft rounded edges",
-    `soft pastel ${color} palette`,
-    "pearlescent inner glow, soft studio lighting",
-    "seamless pastel gradient background",
-    "dreamy modern UI asset, clean geometry, Octane render, 8k",
+    `Volumetric 3D isometric object of a ${subject}, highly recognizable, completely textless, no words and clean surface without any typography`,
+    "Photorealistic and lifelike everyday object, standalone item floating purely in mid-air",
+    "ZERO contact shadows, NO drop shadow on the floor",
+    "Fully solid 3D geometry with highly realistic physically based materials (PBR), authentic textures (lifelike metal, glass, fabric, etc.) with crisp raytraced specular reflections",
+    `High-contrast vibrant color palette featuring ${color} as the dominant color`,
+    `Set against a standardized, uniform ${background} background to create a consistent, cohesive color-blocked contrast and make the main object pop brightly`,
+    "Photorealistic studio lighting, global illumination, and a bright rim light around the object to separate it completely from the background",
+    "Unreal Engine 5 render, 8k resolution, highly detailed macro photography style",
   ].join(". ")
 }
 

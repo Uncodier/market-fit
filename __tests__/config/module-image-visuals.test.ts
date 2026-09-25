@@ -24,11 +24,12 @@ describe("module image visuals", () => {
       "Campaigns",
     )
 
-    expect(prompt).toContain("3D isometric icon")
-    expect(prompt).toContain("bullseye target")
-    expect(prompt).toContain("coral red and rose")
-    expect(prompt).toContain("glossy plastic and frosted glass")
-    expect(prompt).toContain("Octane render, 8k")
+    expect(prompt).toContain("Volumetric 3D isometric object of a bullseye target")
+    expect(prompt).toContain("completely textless")
+    expect(prompt).toContain("featuring red as the dominant color")
+    expect(prompt).toContain("mint pastel with subtle red gradients")
+    expect(prompt).toContain("ZERO contact shadows")
+    expect(prompt).toContain("Unreal Engine 5 render, 8k")
   })
 
   it("keeps the same prompt for a known app across UI contexts", () => {
@@ -46,15 +47,16 @@ describe("module image visuals", () => {
       "AI Workspace",
     )
 
-    expect(prompt).toContain("3D isometric icon of home")
-    expect(prompt).toContain("glossy plastic and frosted glass")
+    expect(prompt).toContain("Volumetric 3D isometric object of a home")
+    expect(prompt).toContain("featuring violet as the dominant color")
   })
 
   it.each(Object.keys(NAVIGATION_AREAS) as WorkspaceArea[])(
     "uses a distinct color family for %s apps",
     (area) => {
       const prompt = getModuleImagePrompt(area, "unknown", "Example")
-      expect(prompt).toMatch(/soft pastel .+ palette/)
+      expect(prompt).toMatch(/featuring .+ as the dominant color/)
+      expect(prompt).toMatch(/uniform .+ pastel with subtle .+ gradients background/)
     },
   )
 
