@@ -13,7 +13,7 @@ const AREA_IMAGE_COLORS: Record<WorkspaceArea, string> = {
   settings: "magenta",
 }
 
-/** Contrasting pastel field with a smooth linear wash — not blotchy stains. */
+/** Contrasting pastel background used to separate each area from its icon. */
 const AREA_IMAGE_BACKGROUNDS: Record<WorkspaceArea, string> = {
   marketing: "mint pastel",
   sales: "peach pastel",
@@ -51,7 +51,7 @@ export const MODULE_IMAGE_HINTS: Record<string, string> = {
   orders: "clipboard",
   orderLines: "item list",
   shipments: "parcel",
-  controlCenter: "console",
+  controlCenter: "checklist",
   reservations: "calendar",
   visits: "map pin",
   checkIn: "QR code",
@@ -72,15 +72,15 @@ export const MODULE_IMAGE_HINTS: Record<string, string> = {
   channels: "phone",
   activities: "timeline",
   skills: "brain",
-  workflows: "flowchart",
+  workflows: "three linked nodes",
 
   applicationsDatabase: "database",
   applicationsRepositories: "code folder",
   applicationsSecrets: "key",
 
-  financeReports: "finance chart",
+  financeReports: "bar chart",
   journalEntries: "ledger",
-  chartOfAccounts: "account tree",
+  chartOfAccounts: "ledger book",
   payments: "wallet",
 
   reportPerformance: "gauge",
@@ -120,14 +120,14 @@ export function getModuleImagePrompt(
   const background = AREA_IMAGE_BACKGROUNDS[area]
 
   return [
-    `Volumetric 3D isometric object of a ${subject}, highly recognizable, completely textless, no words and clean surface without any typography`,
-    "Photorealistic and lifelike everyday object, standalone item floating purely in mid-air",
-    "ZERO contact shadows, NO drop shadow on the floor",
-    "Fully solid 3D geometry with highly realistic physically based materials (PBR), authentic textures (lifelike metal, glass, fabric, etc.) with crisp raytraced specular reflections",
-    `High-contrast vibrant color palette featuring ${color} as the dominant color`,
-    `Set against a standardized, uniform ${background} background with a very subtle smooth linear gradient (even studio wash from slightly lighter to slightly darker, no blobs, no stains, no patchy color spots) to create a consistent, cohesive color-blocked contrast and make the main object pop brightly`,
-    "Photorealistic studio lighting, global illumination, and a bright rim light around the object to separate it completely from the background",
-    "Unreal Engine 5 render, 8k resolution, highly detailed macro photography style",
+    `3D isometric icon of a ${subject}`,
+    "Minimalist design, smooth glossy plastic and frosted glass texture, soft rounded edges",
+    `Soft pastel color palette featuring ${color}`,
+    "Use one or two complementary pastel accent colors on key object details, with clear tonal separation between adjacent parts, defined edges, and a readable silhouette; preserve the glossy glass style and avoid a flat monochrome look",
+    "Keep the composition simple, with one primary symbol, few large components, no tiny details, and strong legibility at small UI sizes",
+    "Pearlescent finish, gentle ambient inner glow, soft studio lighting",
+    `Set against a clean, seamless ${background} gradient background`,
+    "Dreamy, modern UI asset style, clean geometry, Octane render, 8k resolution",
   ].join(". ")
 }
 

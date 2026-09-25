@@ -17,7 +17,7 @@ describe("module image visuals", () => {
         expect(hint.split(" ").length).toBeLessThanOrEqual(3)
 
         const prompt = getModuleImagePrompt(area, item.key, "Ignored Title")
-        expect(prompt).toContain(`object of a ${hint} app icon`)
+        expect(prompt).toContain(`icon of a ${hint} app icon`)
         expect(prompt).not.toContain(`${item.key} icon`)
         expect(prompt).not.toMatch(/bullseye target|checkout terminal|discount ticket/)
       }
@@ -39,21 +39,22 @@ describe("module image visuals", () => {
     )
   })
 
-  it("builds the requested campaign style with a smooth linear background", () => {
+  it("builds the requested glossy glass campaign style with object contrast", () => {
     const prompt = getModuleImagePrompt(
       "marketing",
       "campaigns",
       "Campaigns",
     )
 
-    expect(prompt).toContain("Volumetric 3D isometric object of a target app icon")
-    expect(prompt).toContain("completely textless")
-    expect(prompt).toContain("featuring red as the dominant color")
-    expect(prompt).toContain("uniform mint pastel background")
-    expect(prompt).toContain("very subtle smooth linear gradient")
-    expect(prompt).toContain("no blobs, no stains")
-    expect(prompt).toContain("ZERO contact shadows")
-    expect(prompt).toContain("Unreal Engine 5 render, 8k")
+    expect(prompt).toContain("3D isometric icon of a target app icon")
+    expect(prompt).toContain("smooth glossy plastic and frosted glass texture")
+    expect(prompt).toContain("Soft pastel color palette featuring red")
+    expect(prompt).toContain("complementary pastel accent colors")
+    expect(prompt).toContain("clear tonal separation")
+    expect(prompt).toContain("avoid a flat monochrome look")
+    expect(prompt).toContain("strong legibility at small UI sizes")
+    expect(prompt).toContain("seamless mint pastel gradient background")
+    expect(prompt).toContain("Octane render, 8k resolution")
   })
 
   it("keeps the same prompt for a known app across UI contexts", () => {
@@ -71,17 +72,34 @@ describe("module image visuals", () => {
       "AI Workspace",
     )
 
-    expect(prompt).toContain("Volumetric 3D isometric object of a house app icon")
-    expect(prompt).toContain("featuring violet as the dominant color")
+    expect(prompt).toContain("3D isometric icon of a house app icon")
+    expect(prompt).toContain("featuring violet")
   })
+
+  it.each([
+    ["operations", "controlCenter", "checklist"],
+    ["operations", "visits", "map pin"],
+    ["operations", "checkIn", "QR code"],
+    ["automation", "workflows", "three linked nodes"],
+    ["finance", "financeReports", "bar chart"],
+    ["finance", "chartOfAccounts", "ledger book"],
+  ] as const)(
+    "uses a simple, recognizable symbol for %s/%s",
+    (area, itemKey, hint) => {
+      expect(MODULE_IMAGE_HINTS[itemKey]).toBe(hint)
+      expect(getModuleImagePrompt(area, itemKey, "Ignored Title")).toContain(
+        `icon of a ${hint} app icon`,
+      )
+    },
+  )
 
   it.each(Object.keys(NAVIGATION_AREAS) as WorkspaceArea[])(
     "uses a distinct color family for %s apps",
     (area) => {
       const prompt = getModuleImagePrompt(area, "unknown", "Example")
-      expect(prompt).toMatch(/featuring .+ as the dominant color/)
-      expect(prompt).toMatch(/uniform .+ pastel background/)
-      expect(prompt).toContain("very subtle smooth linear gradient")
+      expect(prompt).toMatch(/featuring .+/)
+      expect(prompt).toMatch(/seamless .+ pastel gradient background/)
+      expect(prompt).toContain("complementary pastel accent colors")
     },
   )
 
