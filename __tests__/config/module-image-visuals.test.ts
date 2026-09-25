@@ -233,6 +233,19 @@ describe("module image visuals", () => {
     expect(prompt).not.toContain("Choose a simple harmonious palette freely")
   })
 
+  it.each([
+    ["settings", "marketplace"],
+    ["settings", "company"],
+    ["operations", "printers"],
+    ["automation", "channels"],
+    ["finance", "payments"],
+  ] as const)("forces a second generation pass for %s/%s", (area, itemKey) => {
+    const prompt = getModuleImagePrompt(area, itemKey, "Ignored Title")
+
+    expect(prompt).toContain("completely new second-pass render")
+    expect(prompt).toContain("rather than reusing any previous result")
+  })
+
   it("does not request an alternative composition for unrelated modules", () => {
     expect(
       getModuleImagePrompt("marketing", "campaigns", "Campaigns"),
@@ -240,6 +253,9 @@ describe("module image visuals", () => {
     expect(
       getModuleImagePrompt("sales", "subscriptions", "Subscriptions"),
     ).not.toContain("Create a fresh alternative composition")
+    expect(
+      getModuleImagePrompt("sales", "subscriptions", "Subscriptions"),
+    ).not.toContain("completely new second-pass render")
   })
 
   it("keeps the standard composition for modules outside the full-size set", () => {

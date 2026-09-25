@@ -112,6 +112,14 @@ const ALTERNATIVE_MODULE_IMAGE_KEYS = new Set([
   "marketplace",
 ])
 
+const SECOND_GENERATION_PASS_MODULE_IMAGE_KEYS = new Set([
+  "marketplace",
+  "company",
+  "printers",
+  "channels",
+  "payments",
+])
+
 const MODULE_IMAGE_PALETTES: Partial<Record<string, string>> = {
   campaigns:
     "Use vivid red with medium-to-high saturation as the unmistakable dominant hue across the target, supported by a smaller harmonious warm accent. Black, charcoal, gray, and white may appear only in small details, shadows, highlights, or separators; do not use pink, orange, neutrals, or any other hue as the dominant color, while maintaining strong contrast, clear separation between adjacent parts, defined edges, and a readable silhouette",
@@ -209,12 +217,16 @@ export function getModuleImagePrompt(
   const isContainerFree = CONTAINER_FREE_MODULE_IMAGE_KEYS.has(itemKey)
   const palette = MODULE_IMAGE_PALETTES[itemKey]
   const isAlternative = ALTERNATIVE_MODULE_IMAGE_KEYS.has(itemKey)
+  const needsSecondGenerationPass =
+    SECOND_GENERATION_PASS_MODULE_IMAGE_KEYS.has(itemKey)
 
   return [
     `Front-facing 3D ${subject}, viewed straight on at eye level, centered and symmetrical, no isometric angle and no tilted perspective`,
     clarifier,
     isAlternative &&
       "Create a fresh alternative composition with a distinctly new arrangement and proportions while preserving the same single recognizable subject and minimalist visual language",
+    needsSecondGenerationPass &&
+      "Generate this as a completely new second-pass render rather than reusing any previous result",
     isContainerFree &&
       "Show only the standalone symbol itself with its natural silhouette completely visible; remove any surrounding icon container, enclosing shell, outer tile, background plate, bezel, frame, or housing that is not an intrinsic functional part of the object",
     isFullSize
