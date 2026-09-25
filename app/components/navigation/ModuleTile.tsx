@@ -8,6 +8,7 @@ import { ModuleImage } from "./ModuleImage"
 interface ModuleTileProps {
   area: WorkspaceArea
   itemKey: string
+  visualKey?: string
   title: string
   onClick: () => void
   /** True when this module is currently in the sidebar nav / shortcuts. */
@@ -20,11 +21,12 @@ const ICON_PLATE =
 export function ModuleTile({
   area,
   itemKey,
+  visualKey = itemKey,
   title,
   onClick,
   inMenu = false,
 }: ModuleTileProps) {
-  const visual = getModuleVisual(area, itemKey)
+  const visual = getModuleVisual(area, visualKey)
   const marked = inMenu
 
   return (
@@ -70,7 +72,7 @@ export function ModuleTile({
           >
             <ModuleImage
               area={area}
-              itemKey={itemKey}
+              itemKey={visualKey}
               title={title}
               className="absolute inset-0 rounded-[15px]"
               imageClassName="transition-transform duration-300 ease-out group-hover:scale-105 group-focus-visible:scale-105"

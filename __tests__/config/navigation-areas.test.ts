@@ -52,7 +52,11 @@ describe('navigation-areas', () => {
     const automationItems = getNavigationMenuItems('automation')
 
     expect(automationItems[0]).toEqual(
-      expect.objectContaining({ key: 'salesHome', href: '/sales-home' })
+      expect.objectContaining({
+        key: 'salesHome',
+        visualKey: 'aiWorkspace',
+        href: '/sales-home',
+      })
     )
     expect(automationItems).toEqual(
       expect.arrayContaining([

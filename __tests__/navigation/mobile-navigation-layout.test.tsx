@@ -1,5 +1,6 @@
 import { render, screen, within } from "@testing-library/react"
 import NavigationPage from "@/app/navigation/page"
+import { getModuleImageUrl } from "@/app/config/module-image-visuals"
 
 jest.mock("next/navigation", () => ({
   useRouter: () => ({
@@ -56,5 +57,9 @@ describe("mobile navigation layout", () => {
     )
     expect(automationTiles[0]).toHaveAttribute("id", "tour-app-salesHome")
     expect(within(automationTiles[0]).getByText("Home")).toBeInTheDocument()
+    expect(within(automationTiles[0]).getByAltText("Home app icon")).toHaveAttribute(
+      "src",
+      getModuleImageUrl("automation", "aiWorkspace", "Home"),
+    )
   })
 })

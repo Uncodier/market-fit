@@ -41,6 +41,8 @@ export const ALL_NAV_AREA_ORDER: WorkspaceArea[] = NAVIGATION_MENU_AREA_ORDER
 export interface AreaNavItem {
   /** Stable id for i18n / emoji map */
   key: string
+  /** Optional visual identity shared with another navigation surface. */
+  visualKey?: string
   /** Path without query (e.g. `/dashboard`, `/costs`) */
   href: string
   /** When set, navigation uses `/dashboard?tab=…` and active state matches this tab */
@@ -71,7 +73,12 @@ export const NAVIGATION_AREAS: Record<
   sales: {
     categoryKey: "layout.category.sales",
     items: [
-      { key: "salesHome", href: "/sales-home", hidden: true },
+      {
+        key: "salesHome",
+        visualKey: "aiWorkspace",
+        href: "/sales-home",
+        hidden: true,
+      },
       { key: "pos", href: "/pos" },
       { key: "catalog", href: "/catalog" },
       { key: "priceLists", href: "/price-lists" },

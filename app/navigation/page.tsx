@@ -141,6 +141,7 @@ export default function NavigationPage({ isOverlay, onClose }: NavigationPagePro
                       key={item.key}
                       area={areaKey}
                       itemKey={item.key}
+                      visualKey={item.visualKey}
                       title={getTitle(item)}
                       inMenu={sidebarNavKeys.has(item.key)}
                       onClick={() => handleTileClick(item)}
