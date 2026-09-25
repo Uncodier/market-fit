@@ -46,7 +46,7 @@ describe("module image visuals", () => {
     expect(quotationPrompt).toContain("quotation marks")
   })
 
-  it("builds the requested glossy glass campaign style with object contrast", () => {
+  it("builds the requested glossy glass campaign style for maximum clarity", () => {
     const prompt = getModuleImagePrompt(
       "marketing",
       "campaigns",
@@ -58,16 +58,22 @@ describe("module image visuals", () => {
     expect(prompt).toContain("no isometric angle")
     expect(prompt).toContain("no tilted perspective")
     expect(prompt).toContain("smooth glossy plastic and frosted glass texture")
-    expect(prompt).toContain("Soft pastel color palette featuring red")
-    expect(prompt).toContain("complementary pastel accent colors")
-    expect(prompt).toContain("clear tonal separation")
-    expect(prompt).toContain("avoid a flat monochrome look")
+    expect(prompt).toContain("Choose a simple harmonious palette freely")
+    expect(prompt).toContain("one clearly dominant color")
+    expect(prompt).toContain("one supporting secondary color")
+    expect(prompt).toContain("only minimal functional accents")
+    expect(prompt).toContain("Avoid busy multicolor treatment")
+    expect(prompt).toContain("maintaining strong contrast")
+    expect(prompt).toContain("prioritize icon visibility and clarity")
+    expect(prompt).toContain("over any predetermined color family")
     expect(prompt).toContain("strong legibility at small UI sizes")
     expect(prompt).toContain("large and filling most of the canvas")
     expect(prompt).toContain("do not place it inside an app tile")
     expect(prompt).toContain("iOS-style squircle")
     expect(prompt).toContain("rounded-square container")
-    expect(prompt).toContain("seamless mint pastel gradient background")
+    expect(prompt).toContain(
+      "clean, seamless background chosen to provide maximum contrast",
+    )
     expect(prompt).toContain("Octane render, 8k resolution")
   })
 
@@ -87,7 +93,9 @@ describe("module image visuals", () => {
     )
 
     expect(prompt).toContain("Front-facing 3D house")
-    expect(prompt).toContain("featuring violet")
+    expect(prompt).toContain("Choose a simple harmonious palette freely")
+    expect(prompt).toContain("one clearly dominant color")
+    expect(prompt).not.toContain("violet")
   })
 
   it.each([
@@ -130,12 +138,17 @@ describe("module image visuals", () => {
   )
 
   it.each(Object.keys(NAVIGATION_AREAS) as WorkspaceArea[])(
-    "uses a distinct color family for %s apps",
+    "prioritizes visibility over a fixed color family for %s apps",
     (area) => {
       const prompt = getModuleImagePrompt(area, "unknown", "Example")
-      expect(prompt).toMatch(/featuring .+/)
-      expect(prompt).toMatch(/seamless .+ pastel gradient background/)
-      expect(prompt).toContain("complementary pastel accent colors")
+      expect(prompt).toContain("one clearly dominant color")
+      expect(prompt).toContain("one supporting secondary color")
+      expect(prompt).toContain("Avoid busy multicolor treatment")
+      expect(prompt).toContain("prioritize icon visibility and clarity")
+      expect(prompt).toContain("background chosen to provide maximum contrast")
+      expect(prompt).not.toMatch(
+        /pastel|featuring (?:red|blue|teal|amber|violet|indigo|emerald|lime|magenta)/i,
+      )
     },
   )
 
@@ -168,7 +181,7 @@ describe("module image visuals", () => {
     expect(prompt).not.toMatch(
       /transparent|alpha channel|checkerboard|backdrop|without (?:a )?background/i,
     )
-    expect(prompt).not.toContain("seamless mint pastel gradient background")
+    expect(prompt).not.toContain("background chosen to provide maximum contrast")
   })
 
   it("keeps the standard composition for modules outside the full-size set", () => {
@@ -176,7 +189,7 @@ describe("module image visuals", () => {
 
     expect(FULL_SIZE_MODULE_IMAGE_KEYS.has("campaigns")).toBe(false)
     expect(prompt).toContain("large and filling most of the canvas")
-    expect(prompt).toContain("seamless mint pastel gradient background")
+    expect(prompt).toContain("background chosen to provide maximum contrast")
     expect(prompt).not.toContain("full-size at 88 to 92 percent")
   })
 

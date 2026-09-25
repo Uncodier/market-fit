@@ -1,31 +1,6 @@
 import { publicPromptImageUrl } from "@/app/lib/image-utils"
 import type { WorkspaceArea } from "./navigation-areas"
 
-const AREA_IMAGE_COLORS: Record<WorkspaceArea, string> = {
-  marketing: "red",
-  sales: "blue",
-  operations: "teal",
-  buying: "amber",
-  automation: "violet",
-  applications: "indigo",
-  finance: "emerald",
-  reports: "lime",
-  settings: "magenta",
-}
-
-/** Contrasting pastel background used to separate each area from its icon. */
-const AREA_IMAGE_BACKGROUNDS: Record<WorkspaceArea, string> = {
-  marketing: "mint pastel",
-  sales: "peach pastel",
-  operations: "blush pastel",
-  buying: "periwinkle pastel",
-  automation: "pale lime pastel",
-  applications: "peach pastel",
-  finance: "blush pastel",
-  reports: "lavender pastel",
-  settings: "mint pastel",
-}
-
 /** Short object noun so the model is not literal with screen names like "leads". */
 export const MODULE_IMAGE_HINTS: Record<string, string> = {
   campaigns: "target",
@@ -195,13 +170,11 @@ function screenIconSubject(itemKey: string, title: string): string {
 }
 
 export function getModuleImagePrompt(
-  area: WorkspaceArea,
+  _area: WorkspaceArea,
   itemKey: string,
   title: string,
 ): string {
   const subject = screenIconSubject(itemKey, title)
-  const color = AREA_IMAGE_COLORS[area]
-  const background = AREA_IMAGE_BACKGROUNDS[area]
   const clarifier = MODULE_IMAGE_CLARIFIERS[itemKey]
   const isFullSize = FULL_SIZE_MODULE_IMAGE_KEYS.has(itemKey)
 
@@ -212,11 +185,11 @@ export function getModuleImagePrompt(
       ? "Use the Apple iOS Calendar, Notes, Contacts, and Reminders icons as visual references for exceptionally precise icon composition: a single instantly recognizable object, full-size at 88 to 92 percent of the canvas, optically centered, evenly balanced, with a narrow consistent safe margin, polished dimensional layers, softly rounded geometry, and a crisp readable silhouette. Replicate their visual polish, spacing discipline, and clarity rather than copying their symbols or outer app tiles; no app tile, iOS-style squircle, rounded-square container, badge, button, frame, plaque, pedestal, floor, horizon, scenery, or secondary icon"
       : "Render the subject itself directly on the background, large and filling most of the canvas; do not place it inside an app tile, iOS-style squircle, rounded-square container, badge, button, frame, plaque, or secondary icon",
     "Minimalist design, smooth glossy plastic and frosted glass texture, soft rounded edges",
-    `Soft pastel color palette featuring ${color}`,
-    "Use one or two complementary pastel accent colors on key object details, with clear tonal separation between adjacent parts, defined edges, and a readable silhouette; preserve the glossy glass style and avoid a flat monochrome look",
+    "Choose a simple harmonious palette freely, with one clearly dominant color and one supporting secondary color; use only minimal functional accents when they improve recognition. Avoid busy multicolor treatment while maintaining strong contrast, clear separation between adjacent parts, defined edges, and a readable silhouette; prioritize icon visibility and clarity over any predetermined color family",
     "Keep the composition simple, with one primary symbol, few large components, no tiny details, and strong legibility at small UI sizes",
     "Pearlescent finish, gentle ambient inner glow, soft studio lighting",
-    !isFullSize && `Set against a clean, seamless ${background} gradient background`,
+    !isFullSize &&
+      "Set against a clean, seamless background chosen to provide maximum contrast with the object",
     "Dreamy, modern UI asset style, clean geometry, Octane render, 8k resolution",
   ].filter(Boolean).join(". ")
 }
