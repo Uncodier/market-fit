@@ -21,6 +21,7 @@ Implementation:
 - `app/api/stripe/webhook/webhook-delivery.ts`
 - `app/api/stripe/webhook/route.ts`
 - `supabase/migrations/20260917210100_stripe_webhook_delivery_claims.sql`
+- `supabase/migrations/20260925000000_fix_webhook_events_status_constraint.sql`
 
 ## Business-effect idempotency
 

@@ -15,6 +15,13 @@ const webhookMigration = readFileSync(
   ),
   "utf8",
 )
+const webhookStatusMigration = readFileSync(
+  path.join(
+    process.cwd(),
+    "supabase/migrations/20260925000000_fix_webhook_events_status_constraint.sql",
+  ),
+  "utf8",
+)
 const effectStateMigration = readFileSync(
   path.join(
     process.cwd(),
@@ -97,6 +104,18 @@ describe("Stripe payment security migration", () => {
     )
     expect(webhookMigration).toContain(
       "DROP FUNCTION IF EXISTS public.mark_webhook_event_failed(uuid)",
+    )
+  })
+
+  it("allows every webhook delivery status used by the claim protocol", () => {
+    expect(webhookStatusMigration).toContain(
+      "DROP CONSTRAINT IF EXISTS webhook_events_status_check",
+    )
+    expect(webhookStatusMigration).toContain(
+      "status IN ('processing', 'processed', 'failed', 'skipped')",
+    )
+    expect(webhookStatusMigration).toContain(
+      "VALIDATE CONSTRAINT webhook_events_status_check",
     )
   })
 

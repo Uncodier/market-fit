@@ -14,6 +14,7 @@ const paymentSources = [
   "app/shipments/actions.ts",
   "supabase/migrations/20260917210000_stripe_payment_security.sql",
   "supabase/migrations/20260917210100_stripe_webhook_delivery_claims.sql",
+  "supabase/migrations/20260925000000_fix_webhook_events_status_constraint.sql",
   "supabase/migrations/20260917210200_stripe_settlement_effect_state.sql",
   "supabase/migrations/20260917210300_stripe_settlement_effect_execution.sql",
 ]

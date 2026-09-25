@@ -36,8 +36,9 @@ functions before executing handlers. The claim protocol:
 - requires the matching claim token to complete or fail processing.
 
 The supporting SQL is versioned in `supabase/migrations/`, including
-`20260917210100_stripe_webhook_delivery_claims.sql`. Application deployment must
-not precede required migrations.
+`20260917210100_stripe_webhook_delivery_claims.sql` and its status-constraint
+correction, `20260925000000_fix_webhook_events_status_constraint.sql`.
+Application deployment must not precede required migrations.
 
 ### Retry-safe settlement
 
