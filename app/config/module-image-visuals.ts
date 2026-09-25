@@ -105,8 +105,8 @@ export const MODULE_IMAGE_HINTS: Record<string, string> = {
 
 /** Objects with strong silhouettes that benefit from a near edge-to-edge cutout composition. */
 export const FULL_SIZE_MODULE_IMAGE_KEYS = new Set([
-  "pos",
   "catalog",
+  "records",
   "shipments",
   "reservations",
   "inventory",
@@ -126,8 +126,6 @@ const MODULE_IMAGE_CLARIFIERS: Partial<Record<string, string>> = {
     "Show one recognizable classic desktop printer with a large sheet of paper; no printing press, modern multifunction copier, or extra objects",
   assets:
     "Show a folder containing one large landscape image thumbnail; no abstract shapes",
-  pos:
-    "Show one substantial cash register with a clearly visible display and cash drawer; no countertop, shop scene, receipt, payment card, products, or extra objects",
   catalog:
     "Show one retail shelf displaying several clearly separated products; no single box, shopping cart, storefront, or extra objects",
   subscriptions:
@@ -216,7 +214,7 @@ export function getModuleImagePrompt(
     "Keep the composition simple, with one primary symbol, few large components, no tiny details, and strong legibility at small UI sizes",
     "Pearlescent finish, gentle ambient inner glow, soft studio lighting",
     isFullSize
-      ? `Keep the otherwise empty canvas in an extremely subtle uniform ${background} tone so it visually recedes and the cutout object reads without a background`
+      ? "Use a fully transparent canvas with a real alpha channel, like a standalone polished iOS 3D glyph exported as a transparent PNG; no solid color, gradient, white fill, checkerboard pattern, backdrop, or background of any kind"
       : `Set against a clean, seamless ${background} gradient background`,
     "Dreamy, modern UI asset style, clean geometry, Octane render, 8k resolution",
   ].filter(Boolean).join(". ")

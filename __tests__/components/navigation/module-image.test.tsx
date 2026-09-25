@@ -15,4 +15,64 @@ describe("ModuleImage", () => {
       "dark:brightness-[0.82]",
     )
   })
+
+  it("renders full-size iOS-style glyphs without a component background", () => {
+    const { container } = render(
+      <ModuleImage
+        area="sales"
+        itemKey="catalog"
+        title="Catalog"
+      />,
+    )
+
+    expect(container.firstChild).not.toHaveClass("bg-muted/50")
+    expect(screen.getByRole("img", { name: "Catalog app icon" })).toHaveClass(
+      "object-contain",
+    )
+  })
+
+  it("renders Records with the full-size transparent treatment", () => {
+    const { container } = render(
+      <ModuleImage
+        area="operations"
+        itemKey="records"
+        title="Records"
+      />,
+    )
+
+    expect(container.firstChild).not.toHaveClass("bg-muted/50")
+    expect(screen.getByRole("img", { name: "Records app icon" })).toHaveClass(
+      "object-contain",
+    )
+  })
+
+  it("keeps the existing crop and fallback background for standard images", () => {
+    const { container } = render(
+      <ModuleImage
+        area="marketing"
+        itemKey="assets"
+        title="Assets"
+      />,
+    )
+
+    expect(container.firstChild).toHaveClass("bg-muted/50")
+    expect(screen.getByRole("img", { name: "Assets app icon" })).toHaveClass(
+      "object-cover",
+    )
+  })
+
+  it("keeps Point of Sale on the standard image treatment", () => {
+    const { container } = render(
+      <ModuleImage
+        area="sales"
+        itemKey="pos"
+        title="Point of Sale"
+      />,
+    )
+
+    expect(container.firstChild).toHaveClass("bg-muted/50")
+    expect(
+      screen.getByRole("img", { name: "Point of Sale app icon" }),
+    ).toHaveClass("object-cover")
+  })
 })

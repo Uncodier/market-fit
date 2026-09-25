@@ -2,7 +2,10 @@
 
 import { useState } from "react"
 import type { WorkspaceArea } from "@/app/config/navigation-areas"
-import { getModuleImageUrl } from "@/app/config/module-image-visuals"
+import {
+  FULL_SIZE_MODULE_IMAGE_KEYS,
+  getModuleImageUrl,
+} from "@/app/config/module-image-visuals"
 import { cn } from "@/lib/utils"
 
 interface ModuleImageProps {
@@ -23,11 +26,13 @@ export function ModuleImage({
   loading = "lazy",
 }: ModuleImageProps) {
   const [failed, setFailed] = useState(false)
+  const isFullSize = FULL_SIZE_MODULE_IMAGE_KEYS.has(itemKey)
 
   return (
     <span
       className={cn(
-        "relative inline-flex shrink-0 overflow-hidden bg-muted/50",
+        "relative inline-flex shrink-0 overflow-hidden",
+        !isFullSize && "bg-muted/50",
         className,
       )}
     >
@@ -41,7 +46,8 @@ export function ModuleImage({
           decoding="async"
           draggable={false}
           className={cn(
-            "h-full w-full object-cover dark:brightness-[0.82]",
+            "h-full w-full dark:brightness-[0.82]",
+            isFullSize ? "object-contain" : "object-cover",
             imageClassName,
           )}
           onError={() => setFailed(true)}
