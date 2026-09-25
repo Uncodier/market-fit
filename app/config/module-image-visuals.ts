@@ -72,7 +72,7 @@ export const MODULE_IMAGE_HINTS: Record<string, string> = {
   channels: "phone",
   activities: "timeline",
   skills: "brain",
-  workflows: "three step arrows",
+  workflows: "lightning bolt",
 
   applicationsDatabase: "database",
   applicationsRepositories: "code folder",
@@ -113,16 +113,16 @@ const MODULE_IMAGE_CLARIFIERS: Partial<Record<string, string>> = {
   checkIn:
     "Show one QR code centered inside four scanner corner brackets; no extra objects",
   workflows:
-    "Show exactly three large sequential steps connected left to right by bold arrows; no complex flowchart or network",
+    "Show one large, unmistakable lightning bolt; no arrows, gears, flowchart, network, or extra objects",
   payments:
     "Show one open hand holding one large coin with a currency symbol; no wallet or complex finance scene",
 }
 
 function screenIconSubject(itemKey: string, title: string): string {
   const hint = MODULE_IMAGE_HINTS[itemKey]
-  if (hint) return `${hint} app icon`
+  if (hint) return hint
   const fromTitle = title.trim().toLowerCase()
-  return fromTitle ? `${fromTitle} app icon` : "app icon"
+  return fromTitle || "simple object"
 }
 
 export function getModuleImagePrompt(
@@ -136,8 +136,9 @@ export function getModuleImagePrompt(
   const clarifier = MODULE_IMAGE_CLARIFIERS[itemKey]
 
   return [
-    `Front-facing 3D icon of a ${subject}, viewed straight on at eye level, centered and symmetrical, no isometric angle and no tilted perspective`,
+    `Front-facing 3D ${subject}, viewed straight on at eye level, centered and symmetrical, no isometric angle and no tilted perspective`,
     clarifier,
+    "Render the subject itself directly on the background, large and filling most of the canvas; do not place it inside an app tile, iOS-style squircle, rounded-square container, badge, button, frame, plaque, or secondary icon",
     "Minimalist design, smooth glossy plastic and frosted glass texture, soft rounded edges",
     `Soft pastel color palette featuring ${color}`,
     "Use one or two complementary pastel accent colors on key object details, with clear tonal separation between adjacent parts, defined edges, and a readable silhouette; preserve the glossy glass style and avoid a flat monochrome look",

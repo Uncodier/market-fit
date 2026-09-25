@@ -17,7 +17,8 @@ describe("module image visuals", () => {
         expect(hint.split(" ").length).toBeLessThanOrEqual(3)
 
         const prompt = getModuleImagePrompt(area, item.key, "Ignored Title")
-        expect(prompt).toContain(`icon of a ${hint} app icon`)
+        expect(prompt).toContain(`Front-facing 3D ${hint}`)
+        expect(prompt).not.toContain("app icon")
         expect(prompt).not.toContain(`${item.key} icon`)
         expect(prompt).not.toMatch(/bullseye target|checkout terminal|discount ticket/)
       }
@@ -26,13 +27,13 @@ describe("module image visuals", () => {
 
   it("avoids literal leads wording and depicts quotations as price estimates", () => {
     expect(getModuleImagePrompt("sales", "leads", "Leads")).toContain(
-      "contact cards app icon",
+      "Front-facing 3D contact cards",
     )
     expect(getModuleImagePrompt("sales", "leads", "Leads")).not.toContain(
       "leads icon",
     )
     expect(getModuleImagePrompt("sales", "quotations", "Quotations")).toContain(
-      "price estimate document app icon",
+      "Front-facing 3D price estimate document",
     )
     const quotationPrompt = getModuleImagePrompt(
       "sales",
@@ -51,7 +52,7 @@ describe("module image visuals", () => {
       "Campaigns",
     )
 
-    expect(prompt).toContain("Front-facing 3D icon of a target app icon")
+    expect(prompt).toContain("Front-facing 3D target")
     expect(prompt).toContain("viewed straight on at eye level")
     expect(prompt).toContain("no isometric angle")
     expect(prompt).toContain("no tilted perspective")
@@ -61,6 +62,10 @@ describe("module image visuals", () => {
     expect(prompt).toContain("clear tonal separation")
     expect(prompt).toContain("avoid a flat monochrome look")
     expect(prompt).toContain("strong legibility at small UI sizes")
+    expect(prompt).toContain("large and filling most of the canvas")
+    expect(prompt).toContain("do not place it inside an app tile")
+    expect(prompt).toContain("iOS-style squircle")
+    expect(prompt).toContain("rounded-square container")
     expect(prompt).toContain("seamless mint pastel gradient background")
     expect(prompt).toContain("Octane render, 8k resolution")
   })
@@ -80,7 +85,7 @@ describe("module image visuals", () => {
       "AI Workspace",
     )
 
-    expect(prompt).toContain("Front-facing 3D icon of a house app icon")
+    expect(prompt).toContain("Front-facing 3D house")
     expect(prompt).toContain("featuring violet")
   })
 
@@ -90,7 +95,7 @@ describe("module image visuals", () => {
     ["operations", "controlCenter", "checklist", null],
     ["operations", "visits", "visitor ID badge", "person silhouette"],
     ["operations", "checkIn", "QR scanner", "scanner corner brackets"],
-    ["automation", "workflows", "three step arrows", "sequential steps"],
+    ["automation", "workflows", "lightning bolt", "no arrows, gears"],
     ["finance", "financeReports", "bar chart", null],
     ["finance", "chartOfAccounts", "ledger book", null],
     ["finance", "payments", "hand holding coin", "currency symbol"],
@@ -100,7 +105,7 @@ describe("module image visuals", () => {
       expect(MODULE_IMAGE_HINTS[itemKey]).toBe(hint)
       const prompt = getModuleImagePrompt(area, itemKey, "Ignored Title")
       expect(prompt).toContain(
-        `icon of a ${hint} app icon`,
+        `Front-facing 3D ${hint}`,
       )
       if (detail) expect(prompt).toContain(detail)
     },
