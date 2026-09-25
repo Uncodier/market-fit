@@ -10,7 +10,7 @@ export const MODULE_IMAGE_HINTS: Record<string, string> = {
   contentCreator: "classic printer",
   assets: "image folder",
 
-  salesHome: "sales board",
+  salesHome: "house",
   pos: "cash register",
   catalog: "product shelf",
   priceLists: "price tag",
@@ -103,6 +103,7 @@ const CONTAINER_FREE_MODULE_IMAGE_KEYS = new Set([
 ])
 
 const ALTERNATIVE_MODULE_IMAGE_KEYS = new Set([
+  "salesHome",
   "purchasesSubscriptions",
   "payments",
   "integrations",
@@ -113,6 +114,7 @@ const ALTERNATIVE_MODULE_IMAGE_KEYS = new Set([
 ])
 
 const SECOND_GENERATION_PASS_MODULE_IMAGE_KEYS = new Set([
+  "salesHome",
   "marketplace",
   "company",
   "printers",
@@ -140,6 +142,8 @@ const COMPACT_FULL_SIZE_COMPOSITION =
   "Use the Apple iOS Calendar, Notes, Contacts, and Reminders icons as references for visual polish, spacing discipline, and clarity rather than copying their symbols or outer app tiles: one recognizable object, full-size at 88 to 92 percent of the canvas, optically centered, evenly balanced, with a narrow consistent safe margin and softly rounded geometry; no app tile, iOS-style squircle, rounded-square container, badge, frame, floor, scenery, or secondary icon"
 
 const MODULE_IMAGE_CLARIFIERS: Partial<Record<string, string>> = {
+  salesHome:
+    "Show one welcoming detached house with a broad roof, centered front door, and two simple windows; no dashboard, chart, sales board, storefront, office building, garden, street, text, or extra objects",
   financeReports:
     "Show exactly three substantial hardcover accounting books in one neat stack with clearly separated covers and visible page edges; no chart, graph, spreadsheet, loose paper, currency symbol, text, labels, or extra objects",
   content:
@@ -195,7 +199,7 @@ const MODULE_IMAGE_CLARIFIERS: Partial<Record<string, string>> = {
   company:
     "Show one substantial freestanding office building with a simple entrance and a few broad window rows; no street, trees, skyline, sign, text, base, or extra objects",
   marketplace:
-    "Show one substantial storefront with a bold striped awning, central door, and two simple display windows; no street, products outside, sign, text, base, or extra objects",
+    "Create a new marketplace variant as one substantial boutique storefront with an arched central doorway, one wide display window, and a striped awning offset to one side; use clearly different proportions from the previous symmetric storefront, with no street, products outside, sign, text, base, or extra objects",
   team:
     "Show exactly three oversized circular person avatar icons filling most of the canvas, arranged as a tight group; no full bodies, tiny icons, text, or surrounding container",
   integrations:

@@ -106,6 +106,7 @@ describe("module image visuals", () => {
     ["marketing", "content", "play button", "triangular play symbol"],
     ["marketing", "contentCreator", "classic printer", "sheet of paper"],
     ["marketing", "assets", "image folder", "landscape image thumbnail"],
+    ["sales", "salesHome", "house", "welcoming detached house"],
     ["sales", "catalog", "product shelf", "several clearly separated products"],
     ["sales", "subscriptions", "ID card", "person silhouette"],
     ["sales", "leads", "user avatar", "round head and rounded shoulders"],
@@ -205,6 +206,7 @@ describe("module image visuals", () => {
   })
 
   it.each([
+    ["sales", "salesHome"],
     ["buying", "purchasesSubscriptions"],
     ["finance", "payments"],
     ["settings", "integrations"],
@@ -235,6 +237,7 @@ describe("module image visuals", () => {
   })
 
   it.each([
+    ["sales", "salesHome"],
     ["settings", "marketplace"],
     ["settings", "company"],
     ["operations", "printers"],
@@ -249,6 +252,7 @@ describe("module image visuals", () => {
   })
 
   it.each([
+    ["sales", "salesHome"],
     ["settings", "marketplace"],
     ["settings", "company"],
     ["operations", "printers"],
@@ -259,6 +263,23 @@ describe("module image visuals", () => {
     const prompt = getModuleImagePrompt(area, itemKey, "Ignored Title")
 
     expect(prompt.length).toBeLessThanOrEqual(2_000)
+  })
+
+  it("uses clearly distinct new compositions for Home and Marketplace", () => {
+    const homePrompt = getModuleImagePrompt("sales", "salesHome", "Home")
+    const marketplacePrompt = getModuleImagePrompt(
+      "settings",
+      "marketplace",
+      "Marketplace",
+    )
+
+    expect(homePrompt).toContain("centered front door")
+    expect(homePrompt).toContain("no dashboard, chart, sales board")
+    expect(marketplacePrompt).toContain("arched central doorway")
+    expect(marketplacePrompt).toContain("striped awning offset to one side")
+    expect(marketplacePrompt).toContain(
+      "clearly different proportions from the previous symmetric storefront",
+    )
   })
 
   it("does not request an alternative composition for unrelated modules", () => {
