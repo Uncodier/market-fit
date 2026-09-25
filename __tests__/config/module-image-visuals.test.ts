@@ -140,6 +140,7 @@ describe("module image visuals", () => {
   )
 
   it.each([
+    ["sales", "pos"],
     ["sales", "catalog"],
     ["operations", "records"],
     ["operations", "shipments"],
@@ -156,11 +157,17 @@ describe("module image visuals", () => {
     expect(FULL_SIZE_MODULE_IMAGE_KEYS.has(itemKey)).toBe(true)
 
     const prompt = getModuleImagePrompt(area, itemKey, "Ignored Title")
-    expect(prompt).toContain("full-size cutout occupying 88 to 92 percent")
-    expect(prompt).toContain("no visible backdrop treatment")
-    expect(prompt).toContain("fully transparent canvas with a real alpha channel")
-    expect(prompt).toContain("standalone polished iOS 3D glyph")
-    expect(prompt).toContain("no solid color, gradient, white fill")
+    expect(prompt).toContain(
+      "Apple iOS Calendar, Notes, Contacts, and Reminders icons",
+    )
+    expect(prompt).toContain("visual polish, spacing discipline, and clarity")
+    expect(prompt).toContain("rather than copying their symbols or outer app tiles")
+    expect(prompt).toContain("full-size at 88 to 92 percent")
+    expect(prompt).toContain("optically centered, evenly balanced")
+    expect(prompt).toContain("narrow consistent safe margin")
+    expect(prompt).not.toMatch(
+      /transparent|alpha channel|checkerboard|backdrop|without (?:a )?background/i,
+    )
     expect(prompt).not.toContain("seamless mint pastel gradient background")
   })
 
@@ -170,17 +177,7 @@ describe("module image visuals", () => {
     expect(FULL_SIZE_MODULE_IMAGE_KEYS.has("campaigns")).toBe(false)
     expect(prompt).toContain("large and filling most of the canvas")
     expect(prompt).toContain("seamless mint pastel gradient background")
-    expect(prompt).not.toContain("full-size cutout occupying 88 to 92 percent")
-  })
-
-  it("keeps Point of Sale unchanged with the standard composition", () => {
-    const prompt = getModuleImagePrompt("sales", "pos", "Point of Sale")
-
-    expect(FULL_SIZE_MODULE_IMAGE_KEYS.has("pos")).toBe(false)
-    expect(prompt).toContain("Front-facing 3D cash register")
-    expect(prompt).toContain("large and filling most of the canvas")
-    expect(prompt).toContain("seamless peach pastel gradient background")
-    expect(prompt).not.toContain("fully transparent canvas")
+    expect(prompt).not.toContain("full-size at 88 to 92 percent")
   })
 
   it("requests square 256px images from the public prompt endpoint", () => {

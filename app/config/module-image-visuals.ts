@@ -105,6 +105,7 @@ export const MODULE_IMAGE_HINTS: Record<string, string> = {
 
 /** Objects with strong silhouettes that benefit from a near edge-to-edge cutout composition. */
 export const FULL_SIZE_MODULE_IMAGE_KEYS = new Set([
+  "pos",
   "catalog",
   "records",
   "shipments",
@@ -126,6 +127,8 @@ const MODULE_IMAGE_CLARIFIERS: Partial<Record<string, string>> = {
     "Show one recognizable classic desktop printer with a large sheet of paper; no printing press, modern multifunction copier, or extra objects",
   assets:
     "Show a folder containing one large landscape image thumbnail; no abstract shapes",
+  pos:
+    "Show one substantial cash register with a clearly visible display and cash drawer; no countertop, shop scene, receipt, payment card, products, or extra objects",
   catalog:
     "Show one retail shelf displaying several clearly separated products; no single box, shopping cart, storefront, or extra objects",
   subscriptions:
@@ -206,16 +209,14 @@ export function getModuleImagePrompt(
     `Front-facing 3D ${subject}, viewed straight on at eye level, centered and symmetrical, no isometric angle and no tilted perspective`,
     clarifier,
     isFullSize
-      ? "Render the isolated object as a full-size cutout occupying 88 to 92 percent of the canvas, with only a narrow safe margin and no visible backdrop treatment; no app tile, iOS-style squircle, rounded-square container, badge, button, frame, plaque, pedestal, floor, horizon, scenery, or secondary icon"
+      ? "Use the Apple iOS Calendar, Notes, Contacts, and Reminders icons as visual references for exceptionally precise icon composition: a single instantly recognizable object, full-size at 88 to 92 percent of the canvas, optically centered, evenly balanced, with a narrow consistent safe margin, polished dimensional layers, softly rounded geometry, and a crisp readable silhouette. Replicate their visual polish, spacing discipline, and clarity rather than copying their symbols or outer app tiles; no app tile, iOS-style squircle, rounded-square container, badge, button, frame, plaque, pedestal, floor, horizon, scenery, or secondary icon"
       : "Render the subject itself directly on the background, large and filling most of the canvas; do not place it inside an app tile, iOS-style squircle, rounded-square container, badge, button, frame, plaque, or secondary icon",
     "Minimalist design, smooth glossy plastic and frosted glass texture, soft rounded edges",
     `Soft pastel color palette featuring ${color}`,
     "Use one or two complementary pastel accent colors on key object details, with clear tonal separation between adjacent parts, defined edges, and a readable silhouette; preserve the glossy glass style and avoid a flat monochrome look",
     "Keep the composition simple, with one primary symbol, few large components, no tiny details, and strong legibility at small UI sizes",
     "Pearlescent finish, gentle ambient inner glow, soft studio lighting",
-    isFullSize
-      ? "Use a fully transparent canvas with a real alpha channel, like a standalone polished iOS 3D glyph exported as a transparent PNG; no solid color, gradient, white fill, checkerboard pattern, backdrop, or background of any kind"
-      : `Set against a clean, seamless ${background} gradient background`,
+    !isFullSize && `Set against a clean, seamless ${background} gradient background`,
     "Dreamy, modern UI asset style, clean geometry, Octane render, 8k resolution",
   ].filter(Boolean).join(". ")
 }

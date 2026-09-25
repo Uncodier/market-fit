@@ -61,7 +61,7 @@ describe("ModuleImage", () => {
     )
   })
 
-  it("keeps Point of Sale on the standard image treatment", () => {
+  it("renders Point of Sale with the full-size transparent treatment", () => {
     const { container } = render(
       <ModuleImage
         area="sales"
@@ -70,9 +70,9 @@ describe("ModuleImage", () => {
       />,
     )
 
-    expect(container.firstChild).toHaveClass("bg-muted/50")
+    expect(container.firstChild).not.toHaveClass("bg-muted/50")
     expect(
       screen.getByRole("img", { name: "Point of Sale app icon" }),
-    ).toHaveClass("object-cover")
+    ).toHaveClass("object-contain")
   })
 })
