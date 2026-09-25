@@ -93,7 +93,31 @@ export const FULL_SIZE_MODULE_IMAGE_KEYS = new Set([
   "company",
   "marketplace",
   "calendar",
+  "settingsGeneral",
 ])
+
+const CONTAINER_FREE_MODULE_IMAGE_KEYS = new Set([
+  "settingsGeneral",
+  "channels",
+  "printers",
+])
+
+const ALTERNATIVE_MODULE_IMAGE_KEYS = new Set([
+  "payments",
+  "integrations",
+  "company",
+  "purchasesOrders",
+  "context",
+  "marketplace",
+])
+
+const MODULE_IMAGE_PALETTES: Partial<Record<string, string>> = {
+  campaigns:
+    "Use vivid red with medium-to-high saturation as the unmistakable dominant hue across the target, supported by a smaller harmonious warm accent. Black, charcoal, gray, and white may appear only in small details, shadows, highlights, or separators; do not use pink, orange, neutrals, or any other hue as the dominant color, while maintaining strong contrast, clear separation between adjacent parts, defined edges, and a readable silhouette",
+}
+
+const DEFAULT_MODULE_IMAGE_PALETTE =
+  "Choose a simple harmonious palette freely, led by one clearly chromatic dominant hue with medium-to-high saturation and one supporting secondary hue; use only minimal functional accents when they improve recognition. Black, charcoal, gray, and white may appear only in small details, shadows, highlights, or separators and must never dominate the object or occupy large surfaces. Avoid busy multicolor treatment while maintaining strong contrast, clear separation between adjacent parts, defined edges, and a readable silhouette; prioritize icon visibility and clarity over any predetermined color family"
 
 const MODULE_IMAGE_CLARIFIERS: Partial<Record<string, string>> = {
   content:
@@ -177,15 +201,22 @@ export function getModuleImagePrompt(
   const subject = screenIconSubject(itemKey, title)
   const clarifier = MODULE_IMAGE_CLARIFIERS[itemKey]
   const isFullSize = FULL_SIZE_MODULE_IMAGE_KEYS.has(itemKey)
+  const isContainerFree = CONTAINER_FREE_MODULE_IMAGE_KEYS.has(itemKey)
+  const palette = MODULE_IMAGE_PALETTES[itemKey]
+  const isAlternative = ALTERNATIVE_MODULE_IMAGE_KEYS.has(itemKey)
 
   return [
     `Front-facing 3D ${subject}, viewed straight on at eye level, centered and symmetrical, no isometric angle and no tilted perspective`,
     clarifier,
+    isAlternative &&
+      "Create a fresh alternative composition with a distinctly new arrangement and proportions while preserving the same single recognizable subject and minimalist visual language",
+    isContainerFree &&
+      "Show only the standalone symbol itself with its natural silhouette completely visible; remove any surrounding icon container, enclosing shell, outer tile, background plate, bezel, frame, or housing that is not an intrinsic functional part of the object",
     isFullSize
       ? "Use the Apple iOS Calendar, Notes, Contacts, and Reminders icons as visual references for exceptionally precise icon composition: a single instantly recognizable object, full-size at 88 to 92 percent of the canvas, optically centered, evenly balanced, with a narrow consistent safe margin, polished dimensional layers, softly rounded geometry, and a crisp readable silhouette. Replicate their visual polish, spacing discipline, and clarity rather than copying their symbols or outer app tiles; no app tile, iOS-style squircle, rounded-square container, badge, button, frame, plaque, pedestal, floor, horizon, scenery, or secondary icon"
       : "Render the subject itself directly on the background, large and filling most of the canvas; do not place it inside an app tile, iOS-style squircle, rounded-square container, badge, button, frame, plaque, or secondary icon",
     "Minimalist design, smooth glossy plastic and frosted glass texture, soft rounded edges",
-    "Choose a simple harmonious palette freely, led by one clearly chromatic dominant hue with medium-to-high saturation and one supporting secondary hue; use only minimal functional accents when they improve recognition. Black, charcoal, gray, and white may appear only in small details, shadows, highlights, or separators and must never dominate the object or occupy large surfaces. Avoid busy multicolor treatment while maintaining strong contrast, clear separation between adjacent parts, defined edges, and a readable silhouette; prioritize icon visibility and clarity over any predetermined color family",
+    palette ?? DEFAULT_MODULE_IMAGE_PALETTE,
     "Keep the composition simple, with one primary symbol, few large components, no tiny details, and strong legibility at small UI sizes",
     "Pearlescent finish, gentle ambient inner glow, soft studio lighting",
     !isFullSize &&

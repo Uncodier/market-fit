@@ -58,19 +58,17 @@ describe("module image visuals", () => {
     expect(prompt).toContain("no isometric angle")
     expect(prompt).toContain("no tilted perspective")
     expect(prompt).toContain("smooth glossy plastic and frosted glass texture")
-    expect(prompt).toContain("Choose a simple harmonious palette freely")
-    expect(prompt).toContain("one clearly chromatic dominant hue")
+    expect(prompt).toContain("vivid red with medium-to-high saturation")
+    expect(prompt).toContain("unmistakable dominant hue")
     expect(prompt).toContain("medium-to-high saturation")
-    expect(prompt).toContain("one supporting secondary hue")
-    expect(prompt).toContain("only minimal functional accents")
+    expect(prompt).toContain("smaller harmonious warm accent")
     expect(prompt).toContain(
       "Black, charcoal, gray, and white may appear only in small details",
     )
-    expect(prompt).toContain("must never dominate the object or occupy large surfaces")
-    expect(prompt).toContain("Avoid busy multicolor treatment")
     expect(prompt).toContain("maintaining strong contrast")
-    expect(prompt).toContain("prioritize icon visibility and clarity")
-    expect(prompt).toContain("over any predetermined color family")
+    expect(prompt).toContain("do not use pink, orange, neutrals")
+    expect(prompt).not.toContain("Choose a simple harmonious palette freely")
+    expect(prompt).not.toContain("over any predetermined color family")
     expect(prompt).toContain("strong legibility at small UI sizes")
     expect(prompt).toContain("large and filling most of the canvas")
     expect(prompt).toContain("do not place it inside an app tile")
@@ -173,6 +171,7 @@ describe("module image visuals", () => {
     ["settings", "company"],
     ["settings", "marketplace"],
     ["settings", "calendar"],
+    ["settings", "settingsGeneral"],
   ] as const)("renders %s/%s as a full-size isolated object", (area, itemKey) => {
     expect(FULL_SIZE_MODULE_IMAGE_KEYS.has(itemKey)).toBe(true)
 
@@ -189,6 +188,40 @@ describe("module image visuals", () => {
       /transparent|alpha channel|checkerboard|backdrop|without (?:a )?background/i,
     )
     expect(prompt).not.toContain("background chosen to provide maximum contrast")
+  })
+
+  it.each([
+    ["settings", "settingsGeneral"],
+    ["automation", "channels"],
+    ["operations", "printers"],
+  ] as const)("removes the icon container from %s/%s", (area, itemKey) => {
+    const prompt = getModuleImagePrompt(area, itemKey, "Ignored Title")
+
+    expect(prompt).toContain("Show only the standalone symbol itself")
+    expect(prompt).toContain("remove any surrounding icon container")
+    expect(prompt).toContain("outer tile")
+    expect(prompt).toContain("background plate")
+  })
+
+  it.each([
+    ["finance", "payments"],
+    ["settings", "integrations"],
+    ["settings", "company"],
+    ["buying", "purchasesOrders"],
+    ["automation", "context"],
+    ["settings", "marketplace"],
+  ] as const)("requests a fresh alternative for %s/%s", (area, itemKey) => {
+    const prompt = getModuleImagePrompt(area, itemKey, "Ignored Title")
+
+    expect(prompt).toContain("Create a fresh alternative composition")
+    expect(prompt).toContain("distinctly new arrangement and proportions")
+    expect(prompt).toContain("same single recognizable subject")
+  })
+
+  it("does not request an alternative composition for unrelated modules", () => {
+    expect(
+      getModuleImagePrompt("marketing", "campaigns", "Campaigns"),
+    ).not.toContain("Create a fresh alternative composition")
   })
 
   it("keeps the standard composition for modules outside the full-size set", () => {
