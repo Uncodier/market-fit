@@ -98,7 +98,7 @@ describe("module image visuals", () => {
     ["sales", "leads", "user avatar", "round head and rounded shoulders"],
     ["sales", "quotations", "stack of papers", "visible offset edges"],
     ["sales", "people", "magnifying glass", "no person, document"],
-    ["operations", "chat", "chat bubble", "one single large speech bubble"],
+    ["operations", "chat", "chat bubble", "round, nearly circular body"],
     ["operations", "records", "spreadsheet sheet", "grid of rows and columns"],
     ["operations", "orderLines", "digital numbers", "seven-segment digital digits"],
     ["operations", "controlCenter", "checklist", null],
