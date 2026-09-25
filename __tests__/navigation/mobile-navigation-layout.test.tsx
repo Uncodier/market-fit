@@ -59,7 +59,7 @@ describe("mobile navigation layout", () => {
     expect(within(automationTiles[0]).getByText("Home")).toBeInTheDocument()
     expect(within(automationTiles[0]).getByAltText("Home app icon")).toHaveAttribute(
       "src",
-      getModuleImageUrl("automation", "aiWorkspace", "Home"),
+      getModuleImageUrl("automation", "salesHome", "Home"),
     )
   })
 })
