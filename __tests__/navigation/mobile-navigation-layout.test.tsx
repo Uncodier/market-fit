@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react"
+import { render, screen, within } from "@testing-library/react"
 import NavigationPage from "@/app/navigation/page"
 
 jest.mock("next/navigation", () => ({
@@ -42,5 +42,19 @@ describe("mobile navigation layout", () => {
       "grid-cols-3",
       "md:flex",
     )
+  })
+
+  it("shows Home as the first app in Automation", () => {
+    render(<NavigationPage />)
+
+    const automationHeading = screen.getByRole("heading", { name: "automation" })
+    const automationSection = automationHeading.parentElement?.parentElement
+    expect(automationSection).toBeTruthy()
+
+    const automationTiles = within(automationSection as HTMLElement).getAllByRole(
+      "button",
+    )
+    expect(automationTiles[0]).toHaveAttribute("id", "tour-app-salesHome")
+    expect(within(automationTiles[0]).getByText("Home")).toBeInTheDocument()
   })
 })

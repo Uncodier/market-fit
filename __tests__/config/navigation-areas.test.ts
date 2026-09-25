@@ -1,6 +1,9 @@
 import {
   NAVIGATION_MENU_AREA_ORDER,
   NAVIGATION_AREAS,
+  findNavigationMenuItem,
+  getNavigationMenuItems,
+  getNavItemTitle,
   isConfigurationNavPath,
   isSettingsNavKey,
 } from '@/app/config/navigation-areas'
@@ -43,5 +46,53 @@ describe('navigation-areas', () => {
       ])
     )
     expect(NAV_ITEM_ICON.orderLines).toBe(ClipboardList)
+  })
+
+  it('shows Home first in Automation only in the apps launcher', () => {
+    const automationItems = getNavigationMenuItems('automation')
+
+    expect(automationItems[0]).toEqual(
+      expect.objectContaining({ key: 'salesHome', href: '/sales-home' })
+    )
+    expect(automationItems).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ key: 'agentsConfiguration', href: '/agents' }),
+      ])
+    )
+    expect(getNavigationMenuItems('sales')).not.toEqual(
+      expect.arrayContaining([expect.objectContaining({ key: 'salesHome' })])
+    )
+    expect(NAVIGATION_AREAS.sales.items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ key: 'salesHome', hidden: true }),
+      ])
+    )
+  })
+
+  it('iterates Home exactly once under Automation for launcher consumers', () => {
+    const launcherEntries = NAVIGATION_MENU_AREA_ORDER.flatMap((area) =>
+      getNavigationMenuItems(area).map((item) => ({ area, item })),
+    )
+
+    expect(
+      launcherEntries.filter(({ item }) => item.key === 'salesHome'),
+    ).toEqual([
+      expect.objectContaining({
+        area: 'automation',
+        item: expect.objectContaining({ key: 'salesHome' }),
+      }),
+    ])
+    expect(findNavigationMenuItem('salesHome')).toEqual(
+      expect.objectContaining({
+        area: 'automation',
+        item: expect.objectContaining({ key: 'salesHome' }),
+      }),
+    )
+  })
+
+  it('uses a readable fallback title for Home', () => {
+    const homeItem = getNavigationMenuItems('automation')[0]
+
+    expect(getNavItemTitle(homeItem, (key) => key)).toBe('Home')
   })
 })

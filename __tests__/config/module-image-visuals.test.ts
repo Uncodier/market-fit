@@ -275,11 +275,10 @@ describe("module image visuals", () => {
 
     expect(homePrompt).toContain("centered front door")
     expect(homePrompt).toContain("no dashboard, chart, sales board")
-    expect(marketplacePrompt).toContain("arched central doorway")
-    expect(marketplacePrompt).toContain("striped awning offset to one side")
-    expect(marketplacePrompt).toContain(
-      "clearly different proportions from the previous symmetric storefront",
-    )
+    expect(marketplacePrompt).toContain("one open market stall")
+    expect(marketplacePrompt).toContain("broad scalloped canopy")
+    expect(marketplacePrompt).toContain("exactly two large produce crates")
+    expect(marketplacePrompt).toContain("no enclosed shop facade")
   })
 
   it("does not request an alternative composition for unrelated modules", () => {

@@ -168,6 +168,33 @@ export const NAVIGATION_AREAS: Record<
   },
 }
 
+/**
+ * Items shown in the apps launcher. Home remains hidden from the sidebar but
+ * is presented as the first Automation app in `/navigation`.
+ */
+export function getNavigationMenuItems(area: WorkspaceArea): AreaNavItem[] {
+  const visibleItems = NAVIGATION_AREAS[area].items.filter((item) => !item.hidden)
+  if (area !== "automation") return visibleItems
+
+  const homeItem = NAVIGATION_AREAS.sales.items.find(
+    (item) => item.key === "salesHome",
+  )
+  return homeItem ? [homeItem, ...visibleItems] : visibleItems
+}
+
+/** Resolve an app from the launcher view, including launcher-only regrouping. */
+export function findNavigationMenuItem(
+  itemKey: string,
+): { area: WorkspaceArea; item: AreaNavItem } | undefined {
+  for (const area of NAVIGATION_MENU_AREA_ORDER) {
+    const item = getNavigationMenuItems(area).find(
+      (candidate) => candidate.key === itemKey,
+    )
+    if (item) return { area, item }
+  }
+  return undefined
+}
+
 export function buildNavItemHref(
   item: AreaNavItem,
   currentSearch?: URLSearchParams | string
@@ -295,6 +322,7 @@ export function getNavItemTitle(item: AreaNavItem, t: (k: string) => string): st
   const sidebarKey = `layout.sidebar.${item.key}`
   const sidebarTitle = t(sidebarKey)
   if (sidebarTitle !== sidebarKey) return sidebarTitle
+  if (item.key === "salesHome") return "Home"
   if (item.settingsTab) {
     const tabKey = `settings.tabs.${item.settingsTab}`
     const tabTitle = t(tabKey)

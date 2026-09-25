@@ -7,7 +7,7 @@ import { ArrowLeft } from "@/app/components/ui/icons"
 import { Button } from "@/app/components/ui/button"
 import { useRouter, useSearchParams } from "next/navigation"
 import { navigateOrAssign } from "@/lib/navigation/stale-router"
-import { NAVIGATION_AREAS, AreaNavItem, buildNavItemHref, getNavItemTitle, NAVIGATION_MENU_AREA_ORDER } from "@/app/config/navigation-areas"
+import { NAVIGATION_AREAS, AreaNavItem, buildNavItemHref, getNavigationMenuItems, getNavItemTitle, NAVIGATION_MENU_AREA_ORDER } from "@/app/config/navigation-areas"
 import { AREA_ICON, getAreaFamilyAccent } from "@/app/config/module-visuals"
 import { ModuleTile } from "@/app/components/navigation/ModuleTile"
 import { useSidebarNavKeys } from "@/app/components/navigation/use-sidebar-nav-keys"
@@ -108,8 +108,7 @@ export default function NavigationPage({ isOverlay, onClose }: NavigationPagePro
         <div className="flex flex-col gap-12 w-full pb-12">
           {sectionsOrder.map((areaKey) => {
             const area = NAVIGATION_AREAS[areaKey]
-            const items = area.items.filter(item => {
-              if (item.hidden) return false
+            const items = getNavigationMenuItems(areaKey).filter(item => {
               if (screenAccess && !screenAccess.canAccessNavKey(item.key)) return false
               const title = getTitle(item).toLowerCase()
               return title.includes(searchQuery.toLowerCase())

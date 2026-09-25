@@ -199,7 +199,7 @@ const MODULE_IMAGE_CLARIFIERS: Partial<Record<string, string>> = {
   company:
     "Show one substantial freestanding office building with a simple entrance and a few broad window rows; no street, trees, skyline, sign, text, base, or extra objects",
   marketplace:
-    "Create a new marketplace variant as one substantial boutique storefront with an arched central doorway, one wide display window, and a striped awning offset to one side; use clearly different proportions from the previous symmetric storefront, with no street, products outside, sign, text, base, or extra objects",
+    "Create a completely new marketplace variant as one open market stall with a broad scalloped canopy, a simple waist-high counter, and exactly two large produce crates tucked beneath it; use a wide airy silhouette with no enclosed shop facade, doorway, display window, street, vendor, sign, text, base, or extra objects",
   team:
     "Show exactly three oversized circular person avatar icons filling most of the canvas, arranged as a tight group; no full bodies, tiny icons, text, or surrounding container",
   integrations:

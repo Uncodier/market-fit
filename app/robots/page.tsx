@@ -41,7 +41,7 @@ import { useRequirementStatus } from "@/app/components/simple-messages-view/hook
 import { useInstanceArtifacts } from "@/app/components/simple-messages-view/hooks/useInstanceArtifacts"
 import { useIframeUrl } from "@/app/hooks/use-iframe-url"
 import { useIsMobile } from "@/app/hooks/use-mobile-view"
-import { NAVIGATION_AREAS, getModuleArea, getNavItemTitle, type AreaNavItem } from "@/app/config/navigation-areas"
+import { findNavigationMenuItem, getNavItemTitle } from "@/app/config/navigation-areas"
 import { AREA_ICON, NAV_ITEM_ICON } from "@/app/config/module-visuals"
 import {
   resolveInstanceIdParam,
@@ -85,24 +85,16 @@ const SCREEN_ALIASES: Record<string, string> = {
   workflow: "workflows",
 }
 
-function findNavItem(key: string): AreaNavItem | undefined {
-  for (const area of Object.values(NAVIGATION_AREAS)) {
-    const item = area.items.find((entry) => entry.key === key)
-    if (item) return item
-  }
-  return undefined
-}
-
 const getScreenMetadata = (screen: string | undefined, t: (k: string) => string) => {
   if (!screen) return { label: "App", icon: LayoutGrid }
 
   const key = SCREEN_ALIASES[screen] ?? screen
-  const item = findNavItem(key)
-  if (item) {
-    const area = getModuleArea(item.key)
+  const navigationEntry = findNavigationMenuItem(key)
+  if (navigationEntry) {
+    const { area, item } = navigationEntry
     return {
       label: getNavItemTitle(item, t),
-      icon: NAV_ITEM_ICON[item.key] ?? (area ? AREA_ICON[area] : LayoutGrid),
+      icon: NAV_ITEM_ICON[item.key] ?? AREA_ICON[area],
     }
   }
 

@@ -35,6 +35,14 @@ describe("agent workspace layout", () => {
     expect(robotsPageSource).toContain("closeArtifact(item.screen!)")
   })
 
+  it("resolves artifact metadata from the launcher iteration", () => {
+    expect(robotsPageSource).toContain(
+      'import { findNavigationMenuItem, getNavItemTitle } from "@/app/config/navigation-areas"',
+    )
+    expect(robotsPageSource).toContain("findNavigationMenuItem(key)")
+    expect(robotsPageSource).not.toContain("Object.values(NAVIGATION_AREAS)")
+  })
+
   it("shrinks the address or file field before the view selector", () => {
     expect(robotsPageSource).toContain(
       "grid-cols-[minmax(33%,1fr)_auto_auto_auto]",
