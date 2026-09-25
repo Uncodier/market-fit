@@ -204,6 +204,7 @@ describe("module image visuals", () => {
   })
 
   it.each([
+    ["sales", "subscriptions"],
     ["finance", "payments"],
     ["settings", "integrations"],
     ["settings", "company"],
@@ -216,6 +217,20 @@ describe("module image visuals", () => {
     expect(prompt).toContain("Create a fresh alternative composition")
     expect(prompt).toContain("distinctly new arrangement and proportions")
     expect(prompt).toContain("same single recognizable subject")
+  })
+
+  it.each([
+    ["settings", "billing"],
+    ["buying", "purchasesOrders"],
+  ] as const)("uses a bright high-contrast palette for %s/%s", (area, itemKey) => {
+    const prompt = getModuleImagePrompt(area, itemKey, "Ignored Title")
+
+    expect(prompt).toContain("bright high-contrast palette")
+    expect(prompt).toContain("luminous golden yellow and vivid warm orange")
+    expect(prompt).toContain("Do not use blue and black together")
+    expect(prompt).toContain("do not place dark blue elements on black")
+    expect(prompt).toContain("dark tones for small functional details only")
+    expect(prompt).not.toContain("Choose a simple harmonious palette freely")
   })
 
   it("does not request an alternative composition for unrelated modules", () => {

@@ -103,6 +103,7 @@ const CONTAINER_FREE_MODULE_IMAGE_KEYS = new Set([
 ])
 
 const ALTERNATIVE_MODULE_IMAGE_KEYS = new Set([
+  "subscriptions",
   "payments",
   "integrations",
   "company",
@@ -114,6 +115,10 @@ const ALTERNATIVE_MODULE_IMAGE_KEYS = new Set([
 const MODULE_IMAGE_PALETTES: Partial<Record<string, string>> = {
   campaigns:
     "Use vivid red with medium-to-high saturation as the unmistakable dominant hue across the target, supported by a smaller harmonious warm accent. Black, charcoal, gray, and white may appear only in small details, shadows, highlights, or separators; do not use pink, orange, neutrals, or any other hue as the dominant color, while maintaining strong contrast, clear separation between adjacent parts, defined edges, and a readable silhouette",
+  billing:
+    "Use a bright high-contrast palette led by luminous golden yellow and vivid warm orange across the credit card, with light cream highlights and clearly separated surfaces. Do not use blue and black together, do not place dark blue elements on black or charcoal surfaces, and never let black, charcoal, navy, or other dark tones dominate; reserve dark tones for small functional details only. Keep every major shape bright and immediately distinguishable from adjacent parts and the background",
+  purchasesOrders:
+    "Use a bright high-contrast palette led by luminous golden yellow and vivid warm orange across the shopping cart, with light cream highlights and clearly separated surfaces. Do not use blue and black together, do not place dark blue elements on black or charcoal surfaces, and never let black, charcoal, navy, or other dark tones dominate; reserve dark tones for small functional details only. Keep every major shape bright and immediately distinguishable from adjacent parts and the background",
 }
 
 const DEFAULT_MODULE_IMAGE_PALETTE =
