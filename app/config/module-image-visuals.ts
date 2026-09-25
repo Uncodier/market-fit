@@ -53,7 +53,7 @@ export const MODULE_IMAGE_HINTS: Record<string, string> = {
   applicationsRepositories: "code folder",
   applicationsSecrets: "key",
 
-  financeReports: "bar chart",
+  financeReports: "stack of books",
   journalEntries: "ledger",
   chartOfAccounts: "ledger book",
   payments: "wallet",
@@ -118,6 +118,7 @@ const SECOND_GENERATION_PASS_MODULE_IMAGE_KEYS = new Set([
   "printers",
   "channels",
   "payments",
+  "financeReports",
 ])
 
 const MODULE_IMAGE_PALETTES: Partial<Record<string, string>> = {
@@ -132,7 +133,15 @@ const MODULE_IMAGE_PALETTES: Partial<Record<string, string>> = {
 const DEFAULT_MODULE_IMAGE_PALETTE =
   "Choose a simple harmonious palette freely, led by one clearly chromatic dominant hue with medium-to-high saturation and one supporting secondary hue; use only minimal functional accents when they improve recognition. Black, charcoal, gray, and white may appear only in small details, shadows, highlights, or separators and must never dominate the object or occupy large surfaces. Avoid busy multicolor treatment while maintaining strong contrast, clear separation between adjacent parts, defined edges, and a readable silhouette; prioritize icon visibility and clarity over any predetermined color family"
 
+const COMPACT_SECOND_PASS_PALETTE =
+  "Choose one clearly chromatic dominant hue with medium-to-high saturation and one supporting secondary hue. Use black, gray, and white only for small details, shadows, or highlights; maintain strong contrast and a readable silhouette"
+
+const COMPACT_FULL_SIZE_COMPOSITION =
+  "Use the Apple iOS Calendar, Notes, Contacts, and Reminders icons as references for visual polish, spacing discipline, and clarity rather than copying their symbols or outer app tiles: one recognizable object, full-size at 88 to 92 percent of the canvas, optically centered, evenly balanced, with a narrow consistent safe margin and softly rounded geometry; no app tile, iOS-style squircle, rounded-square container, badge, frame, floor, scenery, or secondary icon"
+
 const MODULE_IMAGE_CLARIFIERS: Partial<Record<string, string>> = {
+  financeReports:
+    "Show exactly three substantial hardcover accounting books in one neat stack with clearly separated covers and visible page edges; no chart, graph, spreadsheet, loose paper, currency symbol, text, labels, or extra objects",
   content:
     "Show one large triangular play symbol by itself; no screen, media player controls, file, document, or surrounding button container",
   contentCreator:
@@ -219,6 +228,9 @@ export function getModuleImagePrompt(
   const isAlternative = ALTERNATIVE_MODULE_IMAGE_KEYS.has(itemKey)
   const needsSecondGenerationPass =
     SECOND_GENERATION_PASS_MODULE_IMAGE_KEYS.has(itemKey)
+  const fullSizeComposition = needsSecondGenerationPass
+    ? COMPACT_FULL_SIZE_COMPOSITION
+    : "Use the Apple iOS Calendar, Notes, Contacts, and Reminders icons as visual references for exceptionally precise icon composition: a single instantly recognizable object, full-size at 88 to 92 percent of the canvas, optically centered, evenly balanced, with a narrow consistent safe margin, polished dimensional layers, softly rounded geometry, and a crisp readable silhouette. Replicate their visual polish, spacing discipline, and clarity rather than copying their symbols or outer app tiles; no app tile, iOS-style squircle, rounded-square container, badge, button, frame, plaque, pedestal, floor, horizon, scenery, or secondary icon"
 
   return [
     `Front-facing 3D ${subject}, viewed straight on at eye level, centered and symmetrical, no isometric angle and no tilted perspective`,
@@ -230,10 +242,12 @@ export function getModuleImagePrompt(
     isContainerFree &&
       "Show only the standalone symbol itself with its natural silhouette completely visible; remove any surrounding icon container, enclosing shell, outer tile, background plate, bezel, frame, or housing that is not an intrinsic functional part of the object",
     isFullSize
-      ? "Use the Apple iOS Calendar, Notes, Contacts, and Reminders icons as visual references for exceptionally precise icon composition: a single instantly recognizable object, full-size at 88 to 92 percent of the canvas, optically centered, evenly balanced, with a narrow consistent safe margin, polished dimensional layers, softly rounded geometry, and a crisp readable silhouette. Replicate their visual polish, spacing discipline, and clarity rather than copying their symbols or outer app tiles; no app tile, iOS-style squircle, rounded-square container, badge, button, frame, plaque, pedestal, floor, horizon, scenery, or secondary icon"
+      ? fullSizeComposition
       : "Render the subject itself directly on the background, large and filling most of the canvas; do not place it inside an app tile, iOS-style squircle, rounded-square container, badge, button, frame, plaque, or secondary icon",
     "Minimalist design, smooth glossy plastic and frosted glass texture, soft rounded edges",
-    palette ?? DEFAULT_MODULE_IMAGE_PALETTE,
+    palette ?? (needsSecondGenerationPass
+      ? COMPACT_SECOND_PASS_PALETTE
+      : DEFAULT_MODULE_IMAGE_PALETTE),
     "Keep the composition simple, with one primary symbol, few large components, no tiny details, and strong legibility at small UI sizes",
     "Pearlescent finish, gentle ambient inner glow, soft studio lighting",
     !isFullSize &&

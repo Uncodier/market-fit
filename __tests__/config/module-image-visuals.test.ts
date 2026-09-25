@@ -121,6 +121,7 @@ describe("module image visuals", () => {
     ["automation", "workflows", "lightning bolt", "strong luminance and color contrast"],
     ["automation", "channels", "classic telephone", "curved handset"],
     ["automation", "activities", "AI sparkle", "four-point AI sparkle star"],
+    ["finance", "financeReports", "stack of books", "three substantial hardcover accounting books"],
     ["finance", "chartOfAccounts", "ledger book", null],
     ["finance", "payments", "wallet", "visible bill compartment"],
     ["reports", "reportPerformance", "speedometer gauge", "bold needle"],
@@ -239,11 +240,25 @@ describe("module image visuals", () => {
     ["operations", "printers"],
     ["automation", "channels"],
     ["finance", "payments"],
+    ["finance", "financeReports"],
   ] as const)("forces a second generation pass for %s/%s", (area, itemKey) => {
     const prompt = getModuleImagePrompt(area, itemKey, "Ignored Title")
 
     expect(prompt).toContain("completely new second-pass render")
     expect(prompt).toContain("rather than reusing any previous result")
+  })
+
+  it.each([
+    ["settings", "marketplace"],
+    ["settings", "company"],
+    ["operations", "printers"],
+    ["automation", "channels"],
+    ["finance", "payments"],
+    ["finance", "financeReports"],
+  ] as const)("keeps the second-pass prompt within the image API limit for %s/%s", (area, itemKey) => {
+    const prompt = getModuleImagePrompt(area, itemKey, "Ignored Title")
+
+    expect(prompt.length).toBeLessThanOrEqual(2_000)
   })
 
   it("does not request an alternative composition for unrelated modules", () => {
