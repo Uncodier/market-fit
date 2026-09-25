@@ -59,9 +59,14 @@ describe("module image visuals", () => {
     expect(prompt).toContain("no tilted perspective")
     expect(prompt).toContain("smooth glossy plastic and frosted glass texture")
     expect(prompt).toContain("Choose a simple harmonious palette freely")
-    expect(prompt).toContain("one clearly dominant color")
-    expect(prompt).toContain("one supporting secondary color")
+    expect(prompt).toContain("one clearly chromatic dominant hue")
+    expect(prompt).toContain("medium-to-high saturation")
+    expect(prompt).toContain("one supporting secondary hue")
     expect(prompt).toContain("only minimal functional accents")
+    expect(prompt).toContain(
+      "Black, charcoal, gray, and white may appear only in small details",
+    )
+    expect(prompt).toContain("must never dominate the object or occupy large surfaces")
     expect(prompt).toContain("Avoid busy multicolor treatment")
     expect(prompt).toContain("maintaining strong contrast")
     expect(prompt).toContain("prioritize icon visibility and clarity")
@@ -94,7 +99,8 @@ describe("module image visuals", () => {
 
     expect(prompt).toContain("Front-facing 3D house")
     expect(prompt).toContain("Choose a simple harmonious palette freely")
-    expect(prompt).toContain("one clearly dominant color")
+    expect(prompt).toContain("one clearly chromatic dominant hue")
+    expect(prompt).toContain("must never dominate the object")
     expect(prompt).not.toContain("violet")
   })
 
@@ -141,8 +147,9 @@ describe("module image visuals", () => {
     "prioritizes visibility over a fixed color family for %s apps",
     (area) => {
       const prompt = getModuleImagePrompt(area, "unknown", "Example")
-      expect(prompt).toContain("one clearly dominant color")
-      expect(prompt).toContain("one supporting secondary color")
+      expect(prompt).toContain("one clearly chromatic dominant hue")
+      expect(prompt).toContain("one supporting secondary hue")
+      expect(prompt).toContain("must never dominate the object")
       expect(prompt).toContain("Avoid busy multicolor treatment")
       expect(prompt).toContain("prioritize icon visibility and clarity")
       expect(prompt).toContain("background chosen to provide maximum contrast")
