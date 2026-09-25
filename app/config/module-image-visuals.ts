@@ -119,7 +119,7 @@ const MODULE_IMAGE_CLARIFIERS: Partial<Record<string, string>> = {
   people:
     "Show one large magnifying glass centered by itself; no person, document, text, search bar, or extra objects",
   chat:
-    "Show one single large speech bubble with a round, nearly circular body and one short tail, centered by itself; no rectangular or pill-shaped bubble, second bubble, phone, person, text, or extra objects",
+    "Show one single large message bubble with the familiar clean silhouette of a modern mobile messaging bubble: a horizontally wide body, fully rounded corners, and one small smooth tail integrated into the lower-left edge, centered by itself; no sharp corners, circular bubble, second bubble, Apple logo, app interface, phone, person, text, dots, or extra objects",
   records:
     "Show one spreadsheet sheet with a clear grid of rows and columns and one folded corner; no database cylinder, clipboard, chart, or extra objects",
   orderLines:
