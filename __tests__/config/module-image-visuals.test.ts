@@ -1,6 +1,7 @@
 import {
   getModuleImagePrompt,
   getModuleImageUrl,
+  MODULE_IMAGE_HINTS,
 } from "@/app/config/module-image-visuals"
 import {
   NAVIGATION_AREAS,
@@ -8,31 +9,49 @@ import {
 } from "@/app/config/navigation-areas"
 
 describe("module image visuals", () => {
-  it("names every app as its screen icon instead of a described object", () => {
+  it("uses a short object hint for every app instead of the raw screen name", () => {
     for (const area of Object.keys(NAVIGATION_AREAS) as WorkspaceArea[]) {
       for (const item of NAVIGATION_AREAS[area].items) {
+        const hint = MODULE_IMAGE_HINTS[item.key]
+        expect(hint).toBeTruthy()
+        expect(hint.split(" ").length).toBeLessThanOrEqual(3)
+
         const prompt = getModuleImagePrompt(area, item.key, "Ignored Title")
-        const expected = item.key
-          .replace(/([a-z])([A-Z])/g, "$1 $2")
-          .toLowerCase()
-        expect(prompt).toContain(`object of a ${expected} icon`)
-        expect(prompt).not.toMatch(/bullseye|checkout terminal|discount ticket/)
-        expect(prompt).not.toMatch(/gradient/i)
+        expect(prompt).toContain(`object of a ${hint} app icon`)
+        expect(prompt).not.toContain(`${item.key} icon`)
+        expect(prompt).not.toMatch(/bullseye target|checkout terminal|discount ticket/)
       }
     }
   })
 
-  it("builds the requested campaign style with the marketing color", () => {
+  it("avoids literal leads and quotations wording", () => {
+    expect(getModuleImagePrompt("sales", "leads", "Leads")).toContain(
+      "contact cards app icon",
+    )
+    expect(getModuleImagePrompt("sales", "leads", "Leads")).not.toContain(
+      "leads icon",
+    )
+    expect(getModuleImagePrompt("sales", "quotations", "Quotations")).toContain(
+      "quote paper app icon",
+    )
+    expect(getModuleImagePrompt("sales", "quotations", "Quotations")).not.toContain(
+      "quotations icon",
+    )
+  })
+
+  it("builds the requested campaign style with a smooth linear background", () => {
     const prompt = getModuleImagePrompt(
       "marketing",
       "campaigns",
       "Campaigns",
     )
 
-    expect(prompt).toContain("Volumetric 3D isometric object of a campaigns icon")
+    expect(prompt).toContain("Volumetric 3D isometric object of a target app icon")
     expect(prompt).toContain("completely textless")
     expect(prompt).toContain("featuring red as the dominant color")
     expect(prompt).toContain("uniform mint pastel background")
+    expect(prompt).toContain("very subtle smooth linear gradient")
+    expect(prompt).toContain("no blobs, no stains")
     expect(prompt).toContain("ZERO contact shadows")
     expect(prompt).toContain("Unreal Engine 5 render, 8k")
   })
@@ -45,14 +64,14 @@ describe("module image visuals", () => {
     )
   })
 
-  it("uses a home icon for the AI Workspace", () => {
+  it("uses a house icon for the AI Workspace", () => {
     const prompt = getModuleImagePrompt(
       "automation",
       "aiWorkspace",
       "AI Workspace",
     )
 
-    expect(prompt).toContain("Volumetric 3D isometric object of a home icon")
+    expect(prompt).toContain("Volumetric 3D isometric object of a house app icon")
     expect(prompt).toContain("featuring violet as the dominant color")
   })
 
@@ -62,7 +81,7 @@ describe("module image visuals", () => {
       const prompt = getModuleImagePrompt(area, "unknown", "Example")
       expect(prompt).toMatch(/featuring .+ as the dominant color/)
       expect(prompt).toMatch(/uniform .+ pastel background/)
-      expect(prompt).not.toMatch(/gradient/i)
+      expect(prompt).toContain("very subtle smooth linear gradient")
     },
   )
 
