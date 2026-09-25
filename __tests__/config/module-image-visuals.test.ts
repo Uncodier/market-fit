@@ -1,7 +1,6 @@
 import {
   getModuleImagePrompt,
   getModuleImageUrl,
-  MODULE_IMAGE_SUBJECTS,
 } from "@/app/config/module-image-visuals"
 import {
   NAVIGATION_AREAS,
@@ -9,10 +8,16 @@ import {
 } from "@/app/config/navigation-areas"
 
 describe("module image visuals", () => {
-  it("defines a specific image subject for every app", () => {
-    for (const area of Object.values(NAVIGATION_AREAS)) {
-      for (const item of area.items) {
-        expect(MODULE_IMAGE_SUBJECTS[item.key]).toBeTruthy()
+  it("names every app as its screen icon instead of a described object", () => {
+    for (const area of Object.keys(NAVIGATION_AREAS) as WorkspaceArea[]) {
+      for (const item of NAVIGATION_AREAS[area].items) {
+        const prompt = getModuleImagePrompt(area, item.key, "Ignored Title")
+        const expected = item.key
+          .replace(/([a-z])([A-Z])/g, "$1 $2")
+          .toLowerCase()
+        expect(prompt).toContain(`object of a ${expected} icon`)
+        expect(prompt).not.toMatch(/bullseye|checkout terminal|discount ticket/)
+        expect(prompt).not.toMatch(/gradient/i)
       }
     }
   })
@@ -24,10 +29,10 @@ describe("module image visuals", () => {
       "Campaigns",
     )
 
-    expect(prompt).toContain("Volumetric 3D isometric object of a bullseye target")
+    expect(prompt).toContain("Volumetric 3D isometric object of a campaigns icon")
     expect(prompt).toContain("completely textless")
     expect(prompt).toContain("featuring red as the dominant color")
-    expect(prompt).toContain("mint pastel with subtle red gradients")
+    expect(prompt).toContain("uniform mint pastel background")
     expect(prompt).toContain("ZERO contact shadows")
     expect(prompt).toContain("Unreal Engine 5 render, 8k")
   })
@@ -40,14 +45,14 @@ describe("module image visuals", () => {
     )
   })
 
-  it("uses a home subject for the AI Workspace icon", () => {
+  it("uses a home icon for the AI Workspace", () => {
     const prompt = getModuleImagePrompt(
       "automation",
       "aiWorkspace",
       "AI Workspace",
     )
 
-    expect(prompt).toContain("Volumetric 3D isometric object of a home")
+    expect(prompt).toContain("Volumetric 3D isometric object of a home icon")
     expect(prompt).toContain("featuring violet as the dominant color")
   })
 
@@ -56,7 +61,8 @@ describe("module image visuals", () => {
     (area) => {
       const prompt = getModuleImagePrompt(area, "unknown", "Example")
       expect(prompt).toMatch(/featuring .+ as the dominant color/)
-      expect(prompt).toMatch(/uniform .+ pastel with subtle .+ gradients background/)
+      expect(prompt).toMatch(/uniform .+ pastel background/)
+      expect(prompt).not.toMatch(/gradient/i)
     },
   )
 
