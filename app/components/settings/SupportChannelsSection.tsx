@@ -33,7 +33,6 @@ import {
   SupportChannelTypeSelector,
 } from "./support-channel-card-parts"
 import { useZavuSenderPhoneNumbers } from "./use-zavu-sender-phone-numbers"
-
 import { countAgentChannels, getAgentChannelLimit, canConnectAgentChannel } from "@/lib/billing-limits"
 import { useSite } from "@/app/context/SiteContext"
 import { useBillingLimit } from "@/app/context/BillingLimitContext"
@@ -41,19 +40,16 @@ import { disconnectZavuChannel, shouldDeleteZavuSender } from "./disconnect-remo
 import { useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import { buildSupportChannelNavigation } from "./support-channel-navigation"
-
 interface SupportChannelsSectionProps {
   active: boolean
   siteId?: string
   onSave?: (data: SiteFormValues) => void
 }
-
 export function SupportChannelsSection({ active, siteId, onSave }: SupportChannelsSectionProps) {
   const form = useFormContext<SiteFormValues>()
   const { currentSite } = useSite()
   const router = useRouter()
   const { showBillingLimit, showBillingLimitFromError } = useBillingLimit()
-  
   const handleConfigureAgent = async () => {
     if (!currentSite?.id) return
     try {
@@ -75,7 +71,6 @@ export function SupportChannelsSection({ active, siteId, onSave }: SupportChanne
       toast.error("Error finding Customer Support agent")
     }
   }
-
   const openAccountLimit = () => {
     showBillingLimit({
       kind: "accounts",
@@ -91,7 +86,6 @@ export function SupportChannelsSection({ active, siteId, onSave }: SupportChanne
   const [connectingIndex, setConnectingIndex] = useState<number | null>(null)
   const [checkingIndex, setCheckingIndex] = useState<number | null>(null)
   const [channelToDelete, setChannelToDelete] = useState<number | null>(null)
-
   useEffect(() => {
     if (!active) return
     const timer = window.setTimeout(() => {
@@ -324,12 +318,21 @@ export function SupportChannelsSection({ active, siteId, onSave }: SupportChanne
                   <EmailChannelSetup
                     siteId={siteId}
                     channel={channel}
-                    onUpdated={(payload) => {
+                    onUpdated={async (payload) => {
                       if (payload?.status === "connected" && !canConnectAgentChannel(currentSite)) {
                         openAccountLimit()
                         return
                       }
-                      update(index, { ...channel, ...payload })
+                      const currentConnections = form.getValues("channels.connections") || []
+                      const currentChannel = currentConnections[index] || channel
+                      const nextChannel = {
+                        ...currentChannel, ...payload,
+                        metadata: { ...currentChannel.metadata, ...payload.metadata },
+                      }
+                      await persistConnections(currentConnections.map(
+                        (connection, connectionIndex) =>
+                          connectionIndex === index ? nextChannel : connection
+                      ))
                     }}
                   />
                   ) : (

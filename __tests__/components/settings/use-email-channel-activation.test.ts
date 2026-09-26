@@ -3,6 +3,7 @@ import { useEmailChannelActivation } from "@/app/components/settings/use-email-c
 
 const postMock = jest.fn()
 const successMock = jest.fn()
+const errorMock = jest.fn()
 
 jest.mock("@/app/services/api-client-service", () => ({
   apiClient: {
@@ -13,7 +14,7 @@ jest.mock("@/app/services/api-client-service", () => ({
 jest.mock("sonner", () => ({
   toast: {
     success: (...args: unknown[]) => successMock(...args),
-    error: jest.fn(),
+    error: (...args: unknown[]) => errorMock(...args),
   },
 }))
 
@@ -25,7 +26,11 @@ describe("useEmailChannelActivation", () => {
   it("activates the Zavu email channel and persists its status", async () => {
     postMock.mockResolvedValue({
       success: true,
-      data: { activated: true, chargedCents: 0 },
+      data: {
+        activated: true,
+        chargedCents: 0,
+        sender: { channels: ["email"] },
+      },
     })
     const onUpdated = jest.fn()
     const { result } = renderHook(() =>
@@ -42,7 +47,7 @@ describe("useEmailChannelActivation", () => {
     )
 
     await act(async () => {
-      await result.current.activateEmailChannel()
+      expect(await result.current.activateEmailChannel()).toBe(true)
     })
 
     expect(postMock).toHaveBeenCalledWith(
@@ -57,5 +62,49 @@ describe("useEmailChannelActivation", () => {
       },
     })
     expect(successMock).toHaveBeenCalledWith("Email channel activated")
+  })
+
+  it("accepts an already-active channel when Zavu confirms it on the sender", async () => {
+    postMock.mockResolvedValue({
+      success: true,
+      data: {
+        activated: false,
+        chargedCents: 0,
+        sender: { channels: ["email"] },
+      },
+    })
+    const onUpdated = jest.fn()
+    const { result } = renderHook(() => useEmailChannelActivation({
+      siteId: "site_1",
+      channel: { id: "channel_1", zavu_sender_id: "sender_1" },
+      metadata: {},
+      onUpdated,
+    }))
+
+    await act(async () => {
+      expect(await result.current.activateEmailChannel()).toBe(true)
+    })
+
+    expect(onUpdated).toHaveBeenCalledWith(expect.objectContaining({
+      metadata: { emailChannelActive: true },
+    }))
+  })
+
+  it("does not persist activation unless Zavu confirms it", async () => {
+    postMock.mockResolvedValue({ success: true, data: { chargedCents: 0 } })
+    const onUpdated = jest.fn()
+    const { result } = renderHook(() => useEmailChannelActivation({
+      siteId: "site_1",
+      channel: { id: "channel_1", zavu_sender_id: "sender_1" },
+      metadata: {},
+      onUpdated,
+    }))
+
+    await act(async () => {
+      expect(await result.current.activateEmailChannel()).toBe(false)
+    })
+
+    expect(onUpdated).not.toHaveBeenCalled()
+    expect(errorMock).toHaveBeenCalledWith("Zavu did not confirm email channel activation")
   })
 })

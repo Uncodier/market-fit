@@ -8,11 +8,10 @@ interface EmailReceivingResponse {
 }
 
 export function resolveEmailReceivingEnabled(
-  responseData: unknown,
-  requestedValue: boolean
-): boolean {
+  responseData: unknown
+): boolean | undefined {
   if (!responseData || typeof responseData !== "object") {
-    return requestedValue
+    return undefined
   }
 
   const response = responseData as EmailReceivingResponse
@@ -20,7 +19,7 @@ export function resolveEmailReceivingEnabled(
     response.sender?.emailReceivingEnabled ??
     response.emailReceivingEnabled
 
-  return typeof returnedValue === "boolean" ? returnedValue : requestedValue
+  return typeof returnedValue === "boolean" ? returnedValue : undefined
 }
 
 export function isEmailChannelActive(responseData: unknown): boolean {

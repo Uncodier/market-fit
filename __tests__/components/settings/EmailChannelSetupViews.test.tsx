@@ -46,7 +46,7 @@ describe("EmailInboundSettings", () => {
     expect(screen.queryByRole("button", { name: "Verify MX" })).not.toBeInTheDocument()
   })
 
-  it("shows activation as the final step after MX verification", () => {
+  it("explains that activation happens before receiving is enabled", () => {
     render(
       <EmailInboundSettings
         {...baseProps}
@@ -55,12 +55,12 @@ describe("EmailInboundSettings", () => {
       />
     )
 
-    expect(screen.getByText(/Final step: activate this connection/)).toBeInTheDocument()
-    expect(screen.getByRole("button", { name: "Activate Email Channel" })).toBeInTheDocument()
+    expect(screen.getByText(/will be activated before email receiving/)).toBeInTheDocument()
+    expect(screen.queryByRole("button", { name: "Activate Email Channel" })).not.toBeInTheDocument()
     expect(screen.queryByRole("button", { name: "Verify MX" })).not.toBeInTheDocument()
   })
 
-  it("waits for inbound receiving to be enabled before activation", () => {
+  it("allows explicit activation before inbound receiving is enabled", () => {
     render(
       <EmailInboundSettings
         {...baseProps}
@@ -70,6 +70,6 @@ describe("EmailInboundSettings", () => {
       />
     )
 
-    expect(screen.queryByRole("button", { name: "Activate Email Channel" })).not.toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "Activate Email Channel" })).toBeInTheDocument()
   })
 })

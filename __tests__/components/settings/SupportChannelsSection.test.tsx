@@ -70,7 +70,19 @@ jest.mock("@/app/components/settings/TelegramChannelSetup", () => ({
   TelegramChannelSetup: () => null,
 }))
 jest.mock("@/app/components/settings/EmailChannelSetup", () => ({
-  EmailChannelSetup: () => null,
+  EmailChannelSetup: ({ onUpdated }: {
+    onUpdated: (payload: unknown) => Promise<void>
+  }) => (
+    <button
+      type="button"
+      onClick={() => {
+        const payload = { metadata: { domain_status: "verified" } }
+        void onUpdated(payload)
+      }}
+    >
+      Reconcile email domain
+    </button>
+  ),
 }))
 
 function TestForm({
@@ -169,5 +181,33 @@ describe("SupportChannelsSection", () => {
     expect(getSpy).toHaveBeenCalledWith(
       "/api/integrations/zavu/senders/sender-whatsapp"
     )
+  })
+
+  it("persists a reconciled email domain status", async () => {
+    const onSave = jest.fn().mockResolvedValue(undefined)
+    render(
+      <TestForm
+        onSave={onSave}
+        initialConnections={[{
+          id: "email-1",
+          type: "email",
+          name: "Email",
+          status: "pending",
+          metadata: { domain_status: "pending" },
+        }]}
+      />
+    )
+
+    fireEvent.click(screen.getByRole("button", { name: "Reconcile email domain" }))
+
+    await waitFor(() => {
+      expect(onSave).toHaveBeenCalledWith(expect.objectContaining({
+        channels: expect.objectContaining({
+          connections: [expect.objectContaining({
+            metadata: { domain_status: "verified" },
+          })],
+        }),
+      }))
+    })
   })
 })

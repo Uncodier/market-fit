@@ -7,8 +7,10 @@ import { apiClient } from "@/app/services/api-client-service"
 import { SectionCardFooter, SectionCardContent } from "@/app/components/ui/section-card"
 import { secretsService } from "@/app/services/secrets-service"
 import { EmailDnsSetup, EmailInboundSettings } from "./EmailChannelSetupViews"
-import { isEmailChannelActive, resolveEmailReceivingEnabled } from "./email-channel-utils"
+import { isEmailChannelActive } from "./email-channel-utils"
 import { useEmailChannelActivation } from "./use-email-channel-activation"
+import { useEmailReceivingUpdate } from "./use-email-receiving-update"
+import { useZavuEmailDomainSync } from "./use-zavu-email-domain-sync"
 import { ChannelSetupStepper } from "./ChannelSetupStepper"
 import { buildEmailSetupSteps } from "./channel-setup-steps"
 import { ZAVU_INBOUND_MX_HOST, ZAVU_INBOUND_MX_PRIORITY } from "@/lib/zavu-email-dns"
@@ -16,11 +18,11 @@ import { ZAVU_INBOUND_MX_HOST, ZAVU_INBOUND_MX_PRIORITY } from "@/lib/zavu-email
 export function EmailChannelSetup({ 
   siteId, 
   channel, 
-  onUpdated 
+  onUpdated,
 }: { 
   siteId: string, 
   channel: any, 
-  onUpdated: (payload: any) => void 
+  onUpdated: (payload: any) => void | Promise<void>
 }) {
   const metadata = channel.metadata || {}
   const domainStatus = metadata.domain_status || "not_started"
@@ -42,12 +44,42 @@ export function EmailChannelSetup({
     emailReceivingEnabled ? true : null
   )
   const [isVerifyingMx, setIsVerifyingMx] = useState(false)
-  const [localReceivingEnabled, setLocalReceivingEnabled] = useState(emailReceivingEnabled)
   const {
     activateEmailChannel,
     isActivating,
     isEmailChannelActive: emailChannelActive,
   } = useEmailChannelActivation({ siteId, channel, metadata, onUpdated })
+  const {
+    isUpdating: isUpdatingReceiving,
+    receivingEnabled: localReceivingEnabled,
+    setReceivingEnabled: setLocalReceivingEnabled,
+    saveReceiving: handleSaveReceiving,
+  } = useEmailReceivingUpdate({
+    siteId,
+    channel,
+    metadata,
+    channelActive: emailChannelActive,
+    activateChannel: activateEmailChannel,
+    onUpdated,
+  })
+  useZavuEmailDomainSync({
+    siteId,
+    channelId: channel.id,
+    domainId: metadata.email_domain_id,
+    status: domainStatus,
+    enabled: true,
+    onDomainChange: async (updatedDomain) => {
+      const payload = {
+        ...(updatedDomain.status === "failed" ? { status: "failed" } : {}),
+        metadata: {
+          ...metadata,
+          domain_status: updatedDomain.status,
+          dns_records: updatedDomain.dnsRecords || metadata.dns_records,
+        },
+      }
+      await onUpdated(payload)
+    },
+  })
   const setupSteps = buildEmailSetupSteps({
     domainVerified: domainStatus === "verified",
     inboundEnabled: emailReceivingEnabled,
@@ -55,10 +87,7 @@ export function EmailChannelSetup({
   })
 
   useEffect(() => {
-    setLocalReceivingEnabled(emailReceivingEnabled)
-    if (emailReceivingEnabled) {
-      setIsMxVerified(true)
-    }
+    if (emailReceivingEnabled) setIsMxVerified(true)
   }, [emailReceivingEnabled])
 
   useEffect(() => {
@@ -315,49 +344,6 @@ export function EmailChannelSetup({
     }
   }
 
-  const handleSaveReceiving = async () => {
-    if (!channel.zavu_sender_id) return
-
-    setIsProcessing(true)
-    try {
-      const response = await apiClient.put("/api/integrations/zavu/channels/email", {
-        siteId,
-        channelId: channel.id,
-        senderId: channel.zavu_sender_id,
-        emailReceivingEnabled: localReceivingEnabled
-      })
-
-      if (!response.success) throw new Error(response.error?.message || "Failed to update receiving status")
-
-      const appliedReceivingEnabled = resolveEmailReceivingEnabled(
-        response.data,
-        localReceivingEnabled
-      )
-
-      if (localReceivingEnabled && !appliedReceivingEnabled) {
-        setLocalReceivingEnabled(false)
-        setIsMxVerified(false)
-        throw new Error("Zavu could not enable receiving. Verify that the MX record has propagated.")
-      }
-
-      setLocalReceivingEnabled(appliedReceivingEnabled)
-      if (appliedReceivingEnabled) {
-        setIsMxVerified(true)
-      }
-      onUpdated({
-        metadata: {
-          ...metadata,
-          emailReceivingEnabled: appliedReceivingEnabled
-        }
-      })
-      toast.success(`Email receiving ${appliedReceivingEnabled ? 'enabled' : 'disabled'}`)
-    } catch (error: any) {
-      toast.error(error.message || "An error occurred")
-    } finally {
-      setIsProcessing(false)
-    }
-  }
-
   // Step 1: Add Domain
   if (!metadata.email_domain_id) {
     return (
@@ -477,7 +463,7 @@ export function EmailChannelSetup({
         isMxConfigured={isMxConfigured}
         isMxVerified={isMxVerified}
         isVerifyingMx={isVerifyingMx}
-        isProcessing={isProcessing}
+        isProcessing={isProcessing || isUpdatingReceiving}
         isSyncingCloudflare={isSyncingCloudflare}
         isCloudflareConnected={isCloudflareConnected}
         isChannelActive={emailChannelActive}

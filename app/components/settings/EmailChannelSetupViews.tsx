@@ -162,9 +162,6 @@ export function EmailInboundSettings({
   onSave,
   onActivate,
 }: EmailInboundSettingsProps) {
-  const showActivation =
-    isMxConfigured && receivingEnabled && !isChannelActive && !hasReceivingChanges
-
   return (
     <>
       <SectionCardContent className="space-y-4 pt-0">
@@ -219,11 +216,11 @@ export function EmailInboundSettings({
             />
           </div>
 
-          {showActivation && (
+          {isMxConfigured && receivingEnabled && !isChannelActive && (
             <div className="p-3 bg-background rounded border">
               <Label className="text-sm">Activate Email Channel</Label>
               <p className="text-xs text-muted-foreground mt-0.5">
-                Final step: activate this connection before it can send or receive email.
+                The channel will be activated before email receiving is enabled.
                 Activation may use an included connection or add your plan&apos;s monthly channel fee.
               </p>
             </div>
@@ -261,7 +258,7 @@ export function EmailInboundSettings({
         >
           {isProcessing ? "Saving..." : "Save Changes"}
         </Button>
-        {showActivation && (
+        {isMxConfigured && !receivingEnabled && !isChannelActive && !hasReceivingChanges && (
           <Button
             type="button"
             onClick={onActivate}
