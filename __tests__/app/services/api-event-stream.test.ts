@@ -25,13 +25,26 @@ it('does not resolve when only accepted has arrived', async () => {
   let controller!: ReadableStreamDefaultController<Uint8Array>
   const stream = new ReadableStream<Uint8Array>({ start(c) { controller = c } })
   const settled = jest.fn()
-  const pending = handleApiResponse(new Response(stream, { headers: { 'content-type': 'text/event-stream' } })).then(settled)
+  const onAccepted = jest.fn()
+  const pending = handleApiResponse(new Response(stream, { headers: { 'content-type': 'text/event-stream' } }), { onAccepted }).then(settled)
   controller.enqueue(encoder.encode(accepted))
   await new Promise(resolve => setTimeout(resolve, 0))
+  expect(onAccepted).toHaveBeenCalledTimes(1)
   expect(settled).not.toHaveBeenCalled()
   controller.enqueue(encoder.encode(completed))
   await pending
   expect(settled).toHaveBeenCalledWith(expect.objectContaining({ success: true }))
+})
+
+it('does not acknowledge keepalives, rejected or malformed acceptance events', async () => {
+  const onAccepted = jest.fn()
+  const invalid = [
+    ': keepalive\n\n',
+    'event: accepted\ndata: {"type":"accepted","success":false}\n\n',
+    'event: accepted\ndata: {"type":"other","success":true}\n\n',
+  ].join('')
+  await handleApiResponse(response([invalid, completed]), { onAccepted })
+  expect(onAccepted).not.toHaveBeenCalled()
 })
 
 it('surfaces terminal error with a safe message/code and forbids replay', async () => {

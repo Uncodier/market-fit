@@ -108,6 +108,29 @@ it.each([false, true])('clears only the successfully sent draft, preserving new 
   hook.unmount()
 })
 
+it.each([false, true])('clears the admitted assistant draft before completion, preserving later edits: %s', async edited => {
+  let accept!: () => void
+  let complete!: (result: boolean) => void
+  ;(sendAssistantMessage as jest.Mock).mockImplementation(({ onAccepted }) => {
+    accept = onAccepted
+    return new Promise(resolve => { complete = resolve })
+  })
+  const options = props()
+  const onClearMessage = jest.fn(() => { options.messageRef.current = '' })
+  const hook = renderHook(() => useMessageSending({ ...options, onClearMessage }))
+  let pending!: Promise<void>
+  act(() => { pending = hook.result.current.handleSendMessage() })
+  expect(sendAssistantMessage).toHaveBeenCalledWith(expect.objectContaining({ messageToSend: 'hello', onAccepted: expect.any(Function) }))
+  if (edited) options.messageRef.current = 'new draft'
+  act(() => { accept() })
+  expect(options.messageRef.current).toBe(edited ? 'new draft' : '')
+  expect(onClearMessage).toHaveBeenCalledTimes(edited ? 0 : 1)
+  expect(hook.result.current.isSendingMessage).toBe(true)
+  await act(async () => { complete(true); await pending })
+  expect(onClearMessage).toHaveBeenCalledTimes(edited ? 0 : 1)
+  hook.unmount()
+})
+
 it('does not clear another conversation draft after a late successful send', async () => {
   let complete!: (result: boolean) => void
   ;(sendAssistantMessage as jest.Mock).mockImplementation(() => new Promise(resolve => { complete = resolve }))
