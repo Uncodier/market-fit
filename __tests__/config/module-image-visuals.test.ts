@@ -115,7 +115,7 @@ describe("module image visuals", () => {
     ["operations", "chat", "chat bubble", "tail integrated into the lower-left edge"],
     ["operations", "records", "spreadsheet sheet", "grid of rows and columns"],
     ["operations", "orderLines", "digital numbers", "seven-segment digital digits"],
-    ["operations", "controlCenter", "checklist", null],
+    ["operations", "controlCenter", "white dove", "both wings clearly spread"],
     ["operations", "visits", "visitor ID badge", "person silhouette"],
     ["operations", "checkIn", "signature", "handwritten signature stroke"],
     ["operations", "printers", "thermal printer", "visible receipt"],
@@ -214,6 +214,7 @@ describe("module image visuals", () => {
     ["buying", "purchasesOrders"],
     ["automation", "context"],
     ["settings", "marketplace"],
+    ["operations", "controlCenter"],
   ] as const)("requests a fresh alternative for %s/%s", (area, itemKey) => {
     const prompt = getModuleImagePrompt(area, itemKey, "Ignored Title")
 
@@ -246,6 +247,7 @@ describe("module image visuals", () => {
     ["finance", "financeReports"],
     ["reports", "reportAnalytics"],
     ["reports", "reportCosts"],
+    ["operations", "controlCenter"],
   ] as const)("forces a second generation pass for %s/%s", (area, itemKey) => {
     const prompt = getModuleImagePrompt(area, itemKey, "Ignored Title")
 
@@ -263,6 +265,7 @@ describe("module image visuals", () => {
     ["finance", "financeReports"],
     ["reports", "reportAnalytics"],
     ["reports", "reportCosts"],
+    ["operations", "controlCenter"],
   ] as const)("keeps the second-pass prompt within the image API limit for %s/%s", (area, itemKey) => {
     const prompt = getModuleImagePrompt(area, itemKey, "Ignored Title")
 
@@ -304,6 +307,19 @@ describe("module image visuals", () => {
     expect(costsPrompt).toContain("thick golden coins")
     expect(costsPrompt).toContain("descending staircase")
     expect(costsPrompt).toContain("no chart, line, arrows")
+  })
+
+  it("uses a dove composition for Tasks", () => {
+    const prompt = getModuleImagePrompt(
+      "operations",
+      "controlCenter",
+      "Tasks",
+    )
+
+    expect(prompt).toContain("Front-facing 3D white dove")
+    expect(prompt).toContain("one graceful white dove in flight")
+    expect(prompt).toContain("one small green olive branch")
+    expect(prompt).toContain("no checklist, clipboard, document, checkmark")
   })
 
   it("does not request an alternative composition for unrelated modules", () => {

@@ -7,7 +7,7 @@ import { Badge } from "@/app/components/ui/badge"
 import { Input } from "@/app/components/ui/input"
 import { Skeleton } from "@/app/components/ui/skeleton"
 import { Dialog, DialogBody, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/app/components/ui/dialog"
-import { Search } from "@/app/components/ui/icons"
+import { AtSign, Search } from "@/app/components/ui/icons"
 import { useContextEntitiesSearch } from "@/app/hooks/use-context-entities-search"
 import { SelectedContextIds } from "@/app/components/simple-messages-view/types"
 import {
@@ -366,7 +366,7 @@ export function ContextSelectorModal({ onContextChange, selectedContext, isBrows
             className="h-8 hover:bg-secondary/80 transition-colors duration-200 px-3"
             title="Add context"
           >
-            @
+            <AtSign size={16} aria-hidden />
             <span className="ml-1">context</span>
             {hideChips && totalSelected > 0 && (
               <Badge variant="outline" className="ml-1.5 h-5 px-1.5 py-0 text-[10px] flex items-center justify-center">

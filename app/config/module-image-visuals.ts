@@ -26,7 +26,7 @@ export const MODULE_IMAGE_HINTS: Record<string, string> = {
   orders: "clipboard",
   orderLines: "digital numbers",
   shipments: "parcel",
-  controlCenter: "checklist",
+  controlCenter: "white dove",
   reservations: "calendar",
   visits: "visitor ID badge",
   checkIn: "signature",
@@ -113,6 +113,7 @@ const ALTERNATIVE_MODULE_IMAGE_KEYS = new Set([
   "marketplace",
   "reportAnalytics",
   "reportCosts",
+  "controlCenter",
 ])
 
 const SECOND_GENERATION_PASS_MODULE_IMAGE_KEYS = new Set([
@@ -125,6 +126,7 @@ const SECOND_GENERATION_PASS_MODULE_IMAGE_KEYS = new Set([
   "financeReports",
   "reportAnalytics",
   "reportCosts",
+  "controlCenter",
 ])
 
 const MODULE_IMAGE_PALETTES: Partial<Record<string, string>> = {
@@ -170,6 +172,8 @@ const MODULE_IMAGE_CLARIFIERS: Partial<Record<string, string>> = {
     "Show one single large message bubble with the familiar clean silhouette of a modern mobile messaging bubble: a horizontally wide body, fully rounded corners, and one small smooth tail integrated into the lower-left edge, centered by itself; no sharp corners, circular bubble, second bubble, Apple logo, app interface, phone, person, text, dots, or extra objects",
   records:
     "Show one spreadsheet sheet with a clear grid of rows and columns and one folded corner; no database cylinder, clipboard, chart, or extra objects",
+  controlCenter:
+    "Create a completely new Tasks variant as one graceful white dove in flight, viewed from the side with both wings clearly spread and carrying one small green olive branch in its beak; use a clean unmistakable bird silhouette with no checklist, clipboard, document, checkmark, cage, flock, text, badge, or extra objects",
   orderLines:
     "Show only four large seven-segment digital digits reading 12:45; no timer body, clock casing, screen, border, buttons, label, or extra objects",
   shipments:

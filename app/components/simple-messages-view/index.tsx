@@ -37,7 +37,6 @@ import { useInstanceAssets } from './hooks/useInstanceAssets'
 
 // Import components
 import { EmptyStatePrompts, EMPTY_STATE_TYPEWRITER_PROMPTS } from './components/EmptyStatePrompts'
-import { EmptyStateWelcome } from './components/EmptyStateWelcome'
 import { MessageInput } from './components/MessageInput'
 import { type SkillSelection } from './components/SkillSelector'
 import { MessageItem } from './components/MessageItem'
@@ -1041,12 +1040,12 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
         </div>
       </div>
 
-      {/* Message input - centered when empty, fixed at bottom when has content - animates between states */}
+      {/* Center the empty composer in the viewport, accounting for the header and suggestions below it. */}
       <div 
         className={cn(
           "absolute right-0 left-0 bottom-0 z-20 pointer-events-none flex flex-col items-center transition-colors duration-300 ease-in-out chat-input-container !bg-transparent",
-          // Inset top by TopBar (64px) + StickyHeader (min 71px) so empty-state input + prompts center in the visible pane, not under fixed headers
-          isEmpty ? "top-[calc(var(--topbar-height,64px)+71px)] justify-center pb-[10vh]" : "top-auto justify-end pb-[15px]"
+          // Half of the header inset (135px) minus half of the carousel + gap (48px) requires 87px of bottom padding.
+          isEmpty ? "top-[calc(var(--topbar-height,64px)+71px)] justify-center pb-[calc(var(--topbar-height,64px)+23px)]" : "top-auto justify-end pb-[15px]"
         )}
         style={{
           width: '100%',
@@ -1065,7 +1064,7 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
           ref={bottomContainerRef}
           className={cn(
             "w-full max-w-[800px] px-4 pointer-events-auto relative z-10 !bg-transparent !p-0 mx-auto transition-colors duration-300",
-            isEmpty ? "flex flex-col gap-3 -mt-12" : "flex flex-col w-full gap-2"
+            isEmpty ? "flex flex-col gap-3" : "flex flex-col w-full gap-2"
           )}
         >
         {showJumpToLatest && !isEmpty && (
@@ -1146,12 +1145,6 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
                 isCancelling={isCancelling}
               />
             </div>
-          </div>
-        )}
-        {/* Welcome - shown only when chat is empty */}
-        {isEmpty && (
-          <div className="mb-3 w-full animate-in fade-in duration-500 mx-auto max-w-[800px]">
-            <EmptyStateWelcome userName={userProfile?.name} />
           </div>
         )}
         <MessageInput
