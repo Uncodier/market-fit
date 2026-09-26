@@ -113,6 +113,7 @@ export const NAVIGATION_AREAS: Record<
   automation: {
     categoryKey: "layout.category.automation",
     items: [
+      { key: "aiWorkspace", href: "/robots", hidden: true },
       { key: "context", href: "/context" },
       { key: "agentsConfiguration", href: "/agents" },
       { key: "requirements", href: "/requirements" },
@@ -169,17 +170,17 @@ export const NAVIGATION_AREAS: Record<
 }
 
 /**
- * Items shown in the apps launcher. Home remains hidden from the sidebar but
- * is presented as the first Automation app in `/navigation`.
+ * Items shown in the apps launcher. AI Workspace is already pinned in the
+ * sidebar, so show it only in the Automation section of `/navigation`.
  */
 export function getNavigationMenuItems(area: WorkspaceArea): AreaNavItem[] {
   const visibleItems = NAVIGATION_AREAS[area].items.filter((item) => !item.hidden)
   if (area !== "automation") return visibleItems
 
-  const homeItem = NAVIGATION_AREAS.sales.items.find(
-    (item) => item.key === "salesHome",
+  const workspaceItem = NAVIGATION_AREAS.automation.items.find(
+    (item) => item.key === "aiWorkspace",
   )
-  return homeItem ? [homeItem, ...visibleItems] : visibleItems
+  return workspaceItem ? [workspaceItem, ...visibleItems] : visibleItems
 }
 
 /** Resolve an app from the launcher view, including launcher-only regrouping. */
@@ -322,6 +323,10 @@ export function getNavItemTitle(item: AreaNavItem, t: (k: string) => string): st
   const sidebarKey = `layout.sidebar.${item.key}`
   const sidebarTitle = t(sidebarKey)
   if (sidebarTitle !== sidebarKey) return sidebarTitle
+  if (item.key === "aiWorkspace") {
+    const translation = t("layout.sidebar.agents")
+    return translation === "layout.sidebar.agents" ? "AI Workspace" : translation
+  }
   if (item.key === "salesHome") return "Home"
   if (item.settingsTab) {
     const tabKey = `settings.tabs.${item.settingsTab}`

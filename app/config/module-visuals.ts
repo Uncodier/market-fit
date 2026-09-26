@@ -81,6 +81,7 @@ export const NAV_ITEM_ICON: Record<string, React.ComponentType<any>> = {
     purchasesQuotes: Inbox,
     purchasesLibrary: Archive,
     salesHome: Home,
+    aiWorkspace: Home,
     pos: Store,
     checkIn: QrCode,
     catalog: Package,

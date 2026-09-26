@@ -7,9 +7,9 @@ const robotsNavSource = readFileSync(
 )
 
 describe("Robots sidebar navigation", () => {
-  it("uses the Home visual for the AI Workspace access", () => {
+  it("uses the AI Workspace visual for the AI Workspace access", () => {
     expect(robotsNavSource).toContain(
-      'moduleImage={{ area: "automation", itemKey: "salesHome" }}',
+      'moduleImage={{ area: "automation", itemKey: "aiWorkspace" }}',
     )
   })
 })

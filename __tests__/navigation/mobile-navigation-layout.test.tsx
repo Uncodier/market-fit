@@ -1,6 +1,7 @@
-import { render, screen, within } from "@testing-library/react"
+import { fireEvent, render, screen, within } from "@testing-library/react"
 import NavigationPage from "@/app/navigation/page"
 import { getModuleImageUrl } from "@/app/config/module-image-visuals"
+import { navigateOrAssign } from "@/lib/navigation/stale-router"
 
 jest.mock("next/navigation", () => ({
   useRouter: () => ({
@@ -45,7 +46,7 @@ describe("mobile navigation layout", () => {
     )
   })
 
-  it("shows Home as the first app in Automation", () => {
+  it("opens AI Workspace from the first Automation app", () => {
     render(<NavigationPage />)
 
     const automationHeading = screen.getByRole("heading", { name: "automation" })
@@ -55,11 +56,13 @@ describe("mobile navigation layout", () => {
     const automationTiles = within(automationSection as HTMLElement).getAllByRole(
       "button",
     )
-    expect(automationTiles[0]).toHaveAttribute("id", "tour-app-salesHome")
-    expect(within(automationTiles[0]).getByText("Home")).toBeInTheDocument()
-    expect(within(automationTiles[0]).getByAltText("Home app icon")).toHaveAttribute(
+    expect(automationTiles[0]).toHaveAttribute("id", "tour-app-aiWorkspace")
+    expect(within(automationTiles[0]).getByText("AI Workspace")).toBeInTheDocument()
+    expect(within(automationTiles[0]).getByAltText("AI Workspace app icon")).toHaveAttribute(
       "src",
-      getModuleImageUrl("automation", "salesHome", "Home"),
+      getModuleImageUrl("automation", "aiWorkspace", "AI Workspace"),
     )
+    fireEvent.click(automationTiles[0])
+    expect(navigateOrAssign).toHaveBeenCalledWith(expect.anything(), "/robots")
   })
 })
