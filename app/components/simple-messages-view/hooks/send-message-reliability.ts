@@ -1,27 +1,31 @@
 import { createClient } from '@/lib/supabase/client'
+import { withTimeout } from '@/app/services/request-timeout'
 
 const RETRYABLE_STATUS = new Set([408, 429, 502, 503, 504])
-const RESPONSE_LOG_TYPES = ['agent_action', 'tool_call', 'tool_result']
 export const USER_ACTION_DEDUPE_WINDOW_MS = 2 * 60 * 1000
 
 export type ApiPostResult<T = any> = {
   success: boolean
   data?: T
-  error?: { message: string }
+  error?: { message: string; code?: string }
   status?: number
+  retryable?: boolean
 }
 
 export type PostWithRetryOptions = {
   maxAttempts?: number
   instanceId?: string
   message?: string
+  requestId?: string
 }
 
 export function isRetryableApiFailure(response: {
   success: boolean
   status?: number
+  retryable?: boolean
 }): boolean {
   if (response.success) return false
+  if (response.retryable === false) return false
   if (response.status == null) return true
   if (RETRYABLE_STATUS.has(response.status)) return true
   return response.status >= 500
@@ -81,6 +85,7 @@ export function collapseDuplicateUserActions<T extends {
   log_type?: string
   message?: string | null
   created_at?: string
+  details?: { request_id?: unknown } | null
 }>(logs: T[]): T[] {
   const result: T[] = []
   for (const log of logs) {
@@ -96,6 +101,12 @@ export function collapseDuplicateUserActions<T extends {
       previous.created_at &&
       log.created_at
     ) {
+      const previousRequest = previous.details?.request_id
+      const currentRequest = log.details?.request_id
+      if ((previousRequest || currentRequest) && previousRequest !== currentRequest) {
+        result.push(log)
+        continue
+      }
       const delta = Math.abs(
         new Date(log.created_at).getTime() - new Date(previous.created_at).getTime()
       )
@@ -110,7 +121,10 @@ export function collapseDuplicateUserActions<T extends {
 export async function hasAgentResponseForMessage(params: {
   instanceId: string
   message: string
+  requestId?: string
 }): Promise<boolean> {
+  // Text is not a turn identity. Repeating a prompt must never reuse an old answer.
+  if (!params.requestId) return false
   const supabase = createClient()
 
   const { data: userLogs, error: userError } = await supabase
@@ -119,7 +133,8 @@ export async function hasAgentResponseForMessage(params: {
     .eq('instance_id', params.instanceId)
     .eq('log_type', 'user_action')
     .eq('message', params.message)
-    .order('created_at', { ascending: true })
+    .eq('details->>request_id', params.requestId)
+    .order('created_at', { ascending: false })
     .limit(1)
 
   if (userError) {
@@ -130,13 +145,27 @@ export async function hasAgentResponseForMessage(params: {
   const userLog = userLogs?.[0]
   if (!userLog?.created_at) return false
 
-  const { data: responses, error: responseError } = await supabase
+  const { data: laterTurns, error: laterError } = await supabase
+    .from('instance_logs')
+    .select('created_at')
+    .eq('instance_id', params.instanceId)
+    .eq('log_type', 'user_action')
+    .gt('created_at', userLog.created_at)
+    .order('created_at', { ascending: true })
+    .limit(1)
+  if (laterError) return false
+
+  let responseQuery = supabase
     .from('instance_logs')
     .select('id')
     .eq('instance_id', params.instanceId)
-    .in('log_type', RESPONSE_LOG_TYPES)
+    .eq('log_type', 'agent_action')
+    .or('details->>streaming.is.null,details->>streaming.eq.false')
     .gt('created_at', userLog.created_at)
-    .limit(1)
+  if (laterTurns?.[0]?.created_at) {
+    responseQuery = responseQuery.lt('created_at', laterTurns[0].created_at)
+  }
+  const { data: responses, error: responseError } = await responseQuery.limit(1)
 
   if (responseError) {
     console.error('Failed to look up agent response for retry skip:', responseError)
@@ -181,24 +210,16 @@ export async function persistUserActionLog(params: {
 }): Promise<{ id: string } | null> {
   const supabase = createClient()
 
-  const { data: existing, error: lookupError } = await supabase
-    .from('instance_logs')
-    .select('id, details')
-    .eq('instance_id', params.instanceId)
-    .eq('log_type', 'user_action')
-    .eq('message', params.message)
-    .order('created_at', { ascending: false })
-    .limit(1)
-
-  if (lookupError) {
-    console.error('Failed to check existing user message:', lookupError)
-  } else if (existing?.[0]?.id) {
-    const merged = buildWorkflowDetails(params, existing[0].details || {})
-    await supabase
+  if (params.requestId) {
+    const { data: existing, error: lookupError } = await supabase
       .from('instance_logs')
-      .update({ details: merged })
-      .eq('id', existing[0].id)
-    return { id: existing[0].id }
+      .select('id')
+      .eq('instance_id', params.instanceId)
+      .eq('log_type', 'user_action')
+      .eq('details->>request_id', params.requestId)
+      .limit(1)
+    if (lookupError) return null
+    if (existing?.[0]?.id) return { id: existing[0].id }
   }
 
   const { data, error } = await supabase
@@ -307,10 +328,12 @@ export async function markRobotInstanceErrorIfUnanswered(params: {
   userId?: string | null
   errorMessage: string
   message?: string
+  requestId?: string
 }): Promise<boolean> {
   if (params.message && await hasAgentResponseForMessage({
     instanceId: params.instanceId,
     message: params.message,
+    requestId: params.requestId,
   })) {
     return false
   }
@@ -327,16 +350,25 @@ function resolveRetryOptions(
     maxAttempts: maxAttemptsOrOptions.maxAttempts ?? 3,
     instanceId: maxAttemptsOrOptions.instanceId,
     message: maxAttemptsOrOptions.message,
+    requestId: maxAttemptsOrOptions.requestId,
   }
 }
 
 async function skipIfAlreadyAnswered<T>(
   instanceId?: string,
-  message?: string
+  message?: string,
+  requestId?: string,
 ): Promise<ApiPostResult<T> | null> {
-  if (!instanceId || !message) return null
-  if (await hasAgentResponseForMessage({ instanceId, message })) {
-    return { success: true, data: { alreadyAnswered: true } as T }
+  if (!instanceId || !message || !requestId) return null
+  try {
+    if (await withTimeout(
+      hasAgentResponseForMessage({ instanceId, message, requestId }), 2500,
+      'Checking the current assistant response timed out.',
+    )) {
+      return { success: true, data: { alreadyAnswered: true } as T }
+    }
+  } catch {
+    // A failed read is not proof of completion and must not prevent the POST.
   }
   return null
 }
@@ -347,33 +379,40 @@ export async function postWithRetry<T = any>(
   maxAttemptsOrOptions: number | PostWithRetryOptions = 3
 ): Promise<ApiPostResult<T>> {
   const { apiClient } = await import('@/app/services/api-client-service')
-  const { maxAttempts, instanceId, message } = resolveRetryOptions(maxAttemptsOrOptions)
+  const { maxAttempts, instanceId, message, requestId } = resolveRetryOptions(maxAttemptsOrOptions)
   let lastResponse: ApiPostResult<T> | null = null
 
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     if (attempt > 1) {
       await waitUntilTabVisible()
+      const skipped = await skipIfAlreadyAnswered<T>(instanceId, message, requestId)
+      if (skipped) return skipped
     }
-
-    const skipped = await skipIfAlreadyAnswered<T>(instanceId, message)
-    if (skipped) return skipped
 
     lastResponse = await apiClient.post<T>(endpoint, payload)
     if (lastResponse.success) return lastResponse
+    if (endpoint === '/api/robots/instance/assistant' && (
+      lastResponse.error?.code?.startsWith('ASSISTANT_') ||
+      [500, 502, 504].includes(lastResponse.status ?? 0)
+    )) {
+      // Gateway/start failures cannot establish whether the workflow was accepted.
+      return { ...lastResponse, retryable: false }
+    }
+    if (!isRetryableApiFailure(lastResponse)) return lastResponse
 
     if (attempt < maxAttempts && isRetryableApiFailure(lastResponse)) {
-      const skippedAfterFailure = await skipIfAlreadyAnswered<T>(instanceId, message)
+      const skippedAfterFailure = await skipIfAlreadyAnswered<T>(instanceId, message, requestId)
       if (skippedAfterFailure) return skippedAfterFailure
       await new Promise((resolve) => setTimeout(resolve, 500 * 2 ** (attempt - 1)))
       continue
     }
 
-    const skippedOnGiveUp = await skipIfAlreadyAnswered<T>(instanceId, message)
+    const skippedOnGiveUp = await skipIfAlreadyAnswered<T>(instanceId, message, requestId)
     if (skippedOnGiveUp) return skippedOnGiveUp
     return lastResponse
   }
 
-  const skippedFinal = await skipIfAlreadyAnswered<T>(instanceId, message)
+  const skippedFinal = await skipIfAlreadyAnswered<T>(instanceId, message, requestId)
   if (skippedFinal) return skippedFinal
   return lastResponse || { success: false, error: { message: 'Request failed' } }
 }

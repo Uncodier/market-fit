@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/client";
-import { getDemoData } from "@/lib/demo-data";
-import { emitBillingLimit, parseBillingLimitError } from "@/lib/billing-limit-errors";
+import { handleApiResponse, type ApiResponse } from "./api-client-response";
+import { withTimeout } from "./request-timeout";
 
 // Helper functions for URL validation
 const isValidUrl = (url: string): boolean => {
@@ -9,24 +9,6 @@ const isValidUrl = (url: string): boolean => {
     return true;
   } catch {
     return false;
-  }
-};
-
-const tryParseUrl = (url: string): any => {
-  try {
-    const parsed = new URL(url);
-    return {
-      protocol: parsed.protocol,
-      hostname: parsed.hostname,
-      port: parsed.port,
-      pathname: parsed.pathname,
-      valid: true
-    };
-  } catch (error) {
-    return {
-      error: error instanceof Error ? error.message : 'Invalid URL',
-      valid: false
-    };
   }
 };
 
@@ -54,20 +36,7 @@ const getFullApiUrl = (baseUrl: string) => {
 // Full URL with protocol
 const FULL_API_SERVER_URL = getFullApiUrl(API_SERVER_URL);
 
-/**
- * Verifica si el código está ejecutándose en el servidor
- */
-function isServerSide(): boolean {
-  return (
-    typeof window === 'undefined' || 
-    typeof document === 'undefined' ||
-    typeof process !== 'undefined' && process.env?.NEXT_RUNTIME === 'nodejs'
-  )
-}
-
-/**
- * Helper para leer la cookie del modo demo (funciona en cliente y servidor)
- */
+// Read the demo-mode cookie in either runtime.
 async function getDemoSiteIdAsync(): Promise<string | null> {
   if (typeof window !== 'undefined') {
     try {
@@ -96,30 +65,10 @@ interface ApiClientOptions {
   cache?: RequestCache;
 }
 
-interface ApiResponse<T = any> {
-  success: boolean;
-  data?: T;
-  error?: {
-    message: string;
-    code?: string;
-    details?: any;
-  };
-  status?: number;
-}
 
 export async function isDemoModeActive(): Promise<boolean> {
   const id = await getDemoSiteIdAsync();
   return !!id;
-}
-
-function notifyBillingLimitError(...sources: unknown[]) {
-  for (const source of sources) {
-    const payload = parseBillingLimitError(source)
-    if (payload) {
-      emitBillingLimit(payload)
-      return
-    }
-  }
 }
 
 export class ApiClientService {
@@ -145,6 +94,12 @@ export class ApiClientService {
     // Allow absolute URLs.
     if (endpoint && isValidUrl(endpoint)) return endpoint;
 
+    // Keep browser assistant traffic same-origin: localhost refers to the user's
+    // machine, not the API host. This route authenticates and forwards the stream.
+    if (typeof window !== 'undefined' && endpoint === '/api/robots/instance/assistant') {
+      return endpoint;
+    }
+
     // If an API server URL is configured, send all requests (including /api/*) to it.
     if (this.apiServerUrl && this.apiServerUrl.trim() !== '') {
       return `${this.apiServerUrl}${endpoint}`;
@@ -156,149 +111,13 @@ export class ApiClientService {
 
   private async getAuthToken(): Promise<string | null> {
     const supabase = createClient();
-    const { data: { session } } = await supabase.auth.getSession();
+    const { data: { session } } = await withTimeout<{ data: { session: { access_token: string } | null } }>(
+      supabase.auth.getSession(), 10_000,
+      'Checking your session timed out. Please sign in again and retry.',
+    );
     return session?.access_token || null;
   }
 
-  private async handleResponse<T>(response: Response): Promise<ApiResponse<T>> {
-    const contentType = response.headers.get('content-type');
-
-    // Assistant/workflow endpoints stream SSE; results land in instance_logs.
-    // Drain in the background so the caller can continue without aborting the workflow.
-    if (response.ok && contentType && contentType.includes('text/event-stream')) {
-      const reader = response.body?.getReader();
-      if (reader) {
-        void (async () => {
-          try {
-            while (!(await reader.read()).done) {
-              // Keep the stream connected until the remote workflow finishes.
-            }
-          } catch {
-            // The durable result is read from instance_logs.
-          } finally {
-            reader.releaseLock();
-          }
-        })();
-      }
-      return {
-        success: true,
-        data: { streaming: true } as T,
-        status: response.status
-      };
-    }
-
-    // Read response body as text first to avoid "body stream already read" error
-    let responseText: string;
-    try {
-      responseText = await response.text();
-    } catch (error) {
-      console.error('Failed to read response text:', error);
-      return {
-        success: false,
-        error: {
-          message: 'Failed to read server response',
-          details: error
-        },
-        status: response.status
-      };
-    }
-
-    if (!response.ok) {
-      // If the response is HTML (error page)
-      if (contentType && contentType.includes('text/html')) {
-        console.error('Server returned HTML:', responseText);
-        return {
-          success: false,
-          error: {
-            message: 'Server returned an HTML error page instead of JSON',
-            details: { htmlContent: responseText.substring(0, 500) }
-          },
-          status: response.status
-        };
-      }
-
-      // Try to parse as JSON, but handle text responses too
-      try {
-        const errorData = JSON.parse(responseText);
-        const nested = errorData.error;
-        let message: string;
-        if (typeof nested === 'string') {
-          message = nested;
-        } else if (nested && typeof nested === 'object' && typeof nested.message === 'string') {
-          message = nested.message;
-          const d = nested.details;
-          if (typeof d === 'string' && d && d !== nested.message) {
-            message = `${nested.message}: ${d}`;
-          }
-        } else {
-          message =
-            (typeof errorData.message === 'string' ? errorData.message : '') ||
-            `Server error: ${response.status} ${response.statusText}`;
-        }
-        const errorResult = {
-          success: false as const,
-          error: {
-            message,
-            code: errorData.code ?? (typeof nested === 'object' ? nested?.code : undefined),
-            details: typeof nested === 'object' ? nested : errorData
-          },
-          status: response.status
-        };
-        notifyBillingLimitError(errorResult.error, errorData)
-        return errorResult;
-      } catch (parseError) {
-        console.error('Server returned non-JSON error:', responseText);
-        return {
-          success: false,
-          error: {
-            message: `Server error: ${response.status} ${response.statusText}`,
-            details: { textContent: responseText.substring(0, 500) }
-          },
-          status: response.status
-        };
-      }
-    }
-
-    // Success response
-    try {
-      const data = JSON.parse(responseText);
-      
-      // Check if the response has a success field
-      if (typeof data.success === 'boolean' && !data.success) {
-        const err = data.error;
-        let msg = (err && typeof err.message === 'string' && err.message) || 'Unknown error';
-        const d = err && typeof err.details === 'string' ? err.details : '';
-        if (d && d !== msg) {
-          msg = `${msg}: ${d}`;
-        }
-        const limitResult = {
-          success: false as const,
-          error: {
-            message: msg,
-            code: err?.code,
-            details: err
-          },
-          status: response.status
-        };
-        notifyBillingLimitError(limitResult.error, data)
-        return limitResult;
-      }
-
-      // Return successful response
-      return {
-        success: true,
-        data: data.data || data,
-        status: response.status
-      };
-    } catch (parseError) {
-      // If can't parse as JSON, return as text
-      return {
-        success: true,
-        data: responseText as T,
-        status: response.status
-      };
-    }
-  }
 
   async get<T = any>(endpoint: string, options: ApiClientOptions = {}): Promise<ApiResponse<T>> {
     const demoSiteId = await getDemoSiteIdAsync();
@@ -331,7 +150,7 @@ export class ApiClientService {
         ...(options.timeout && { signal: AbortSignal.timeout(options.timeout) })
       });
 
-      return await this.handleResponse<T>(response);
+      return await handleApiResponse<T>(response);
     } catch (error) {
       console.error('Error in GET request:', error);
       return {
@@ -427,15 +246,24 @@ export class ApiClientService {
         }
       }
 
-      const response = await fetch(url, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(body),
-        cache: options.cache || 'no-cache',
-        ...(options.timeout && { signal: AbortSignal.timeout(options.timeout) })
-      });
+      // Bound connection setup separately from the long-running assistant stream.
+      const controller = new AbortController();
+      const isAssistant = endpoint === '/api/robots/instance/assistant';
+      const timer = isAssistant && !options.timeout ? setTimeout(() => controller.abort(), 75_000) : undefined;
+      let response: Response;
+      try {
+        response = await fetch(url, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify(body),
+          cache: options.cache || 'no-cache',
+          signal: options.timeout ? AbortSignal.timeout(options.timeout) : isAssistant ? controller.signal : undefined,
+        });
+      } finally {
+        clearTimeout(timer);
+      }
 
-      return await this.handleResponse<T>(response);
+      return await handleApiResponse<T>(response);
     } catch (error) {
       console.error('Error in POST request:', error);
       
@@ -454,6 +282,9 @@ export class ApiClientService {
       } else if (error instanceof Error) {
         errorMessage = error.message;
       }
+      if (endpoint === '/api/robots/instance/assistant' && error instanceof Error && error.name === 'AbortError') {
+        errorMessage = 'The assistant connection timed out. The workflow may still be running. Check the conversation before sending again.';
+      }
       
       // Add debugging information
       errorDetails.requestUrl = url;
@@ -462,6 +293,8 @@ export class ApiClientService {
       
       return {
         success: false,
+        // A disconnected assistant POST may already have started a workflow.
+        retryable: endpoint === '/api/robots/instance/assistant' ? false : undefined,
         error: {
           message: errorMessage,
           details: errorDetails
@@ -503,7 +336,7 @@ export class ApiClientService {
         ...(options.timeout && { signal: AbortSignal.timeout(options.timeout) })
       });
 
-      return await this.handleResponse<T>(response);
+      return await handleApiResponse<T>(response);
     } catch (error) {
       console.error('Error in PUT request:', error);
       return {
@@ -546,7 +379,7 @@ export class ApiClientService {
         ...(options.timeout && { signal: AbortSignal.timeout(options.timeout) })
       });
 
-      return await this.handleResponse<T>(response);
+      return await handleApiResponse<T>(response);
     } catch (error) {
       console.error('Error in PATCH request:', error);
       return {
@@ -590,7 +423,7 @@ export class ApiClientService {
         ...(options.timeout && { signal: AbortSignal.timeout(options.timeout) })
       });
 
-      return await this.handleResponse<T>(response);
+      return await handleApiResponse<T>(response);
     } catch (error) {
       console.error('Error in DELETE request:', error);
       return {

@@ -102,12 +102,13 @@ export const useMessageSending = ({
     }
 
     thinkingTimeoutRef.current = setTimeout(() => {
+      if (selectedActivity !== 'robot' && sendingLockRef.current) return // Assistant owns its terminal state.
       if (loadingInstanceIdRef.current === currentInstanceId) {
         clearThinkingState()
         loadingInstanceIdRef.current = null
       }
     }, 5 * 60 * 1000)
-  }, [activeRobotInstance?.id, clearThinkingState])
+  }, [activeRobotInstance?.id, clearThinkingState, selectedActivity])
 
   const handleAssistantMessage = useCallback(async (messageToSend: string, activity = selectedActivity) => {
     if (!currentSite?.id) return
@@ -123,6 +124,9 @@ export const useMessageSending = ({
       audioParameters,
       toast,
     })
+    // SSE completion is authoritative even if realtime log delivery was missed.
+    clearThinkingState()
+    clearNewMakinaThinking()
   }, [
     currentSite?.id,
     selectedActivity,
@@ -133,6 +137,8 @@ export const useMessageSending = ({
     videoParameters,
     audioParameters,
     toast,
+    clearThinkingState,
+    clearNewMakinaThinking,
   ])
 
   const handleRobotMessage = useCallback(async (messageToSend: string) => {
@@ -176,14 +182,17 @@ export const useMessageSending = ({
     sendingLockRef.current = true
     setIsSendingMessage(true)
 
-    const safetyUnlockTimeout = setTimeout(() => {
+    // Temporal robot requests keep their existing unlock behavior; assistant
+    // requests settle only when their bounded stream reaches a terminal state.
+    const safetyUnlockTimeout = activity === 'robot' ? setTimeout(() => {
       if (activeRequestIdRef.current === requestId) {
         sendingLockRef.current = false
         setIsSendingMessage(false)
         activeRequestIdRef.current = null
       }
-    }, 35000)
+    }, 35000) : undefined
 
+    // Keep the send lock until the bounded request settles, not just SSE headers.
     try {
       if (activity === 'robot') {
         await handleRobotMessageRef.current(messageToSend)
@@ -192,8 +201,8 @@ export const useMessageSending = ({
       }
     } finally {
       clearTimeout(safetyUnlockTimeout)
-      sendingLockRef.current = false
       if (activeRequestIdRef.current === requestId) {
+        sendingLockRef.current = false
         setIsSendingMessage(false)
         activeRequestIdRef.current = null
       }
@@ -209,7 +218,9 @@ export const useMessageSending = ({
       toast({ title: 'Select a skill', description: 'Choose at least one required skill before sending.', variant: 'destructive' })
       return
     }
-    const isBusy = shouldQueueCommand(Boolean(findRunningUserLog(logsRef?.current || [])) || sendingLockRef.current || isSendingMessage)
+    // A failed preflight can leave an optimistic row, but it is not a running workflow.
+    const durableLogs = (logsRef?.current || []).filter(log => !log.details?.temp_message)
+    const isBusy = shouldQueueCommand(Boolean(findRunningUserLog(durableLogs)) || sendingLockRef.current || isSendingMessage)
 
     if (isBusy && activeRobotInstance?.id) {
       if (selectedActivity !== 'robot' && skillSelection.skill_mode === 'required') {
@@ -267,6 +278,7 @@ export const useMessageSending = ({
       await dispatchPreparedMessage(messageToSend, selectedActivity)
     } catch (error) {
       console.error('Error sending message:', error)
+      toast({ title: 'Error', description: 'The message could not be sent. Please try again.', variant: 'destructive' })
       if (!activeRobotInstance) {
         clearNewMakinaThinking()
       } else {

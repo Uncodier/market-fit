@@ -21,6 +21,9 @@ import {
 const ASSISTANT_PATH = "/api/robots/instance/assistant"
 const MAX_BODY_BYTES = 1024 * 1024
 const UPSTREAM_TIMEOUT_MS = 60_000
+// Leave room for the API's 750-second terminal event and proxy overhead.
+export const maxDuration = 800
+const EXECUTION_LEASE_MS = maxDuration * 1000 + 15_000
 
 function hasValidServiceApiKey(request: Request): boolean {
   const provided = request.headers.get("x-api-key")?.trim()
@@ -153,7 +156,7 @@ export async function POST(request: NextRequest) {
     const executionLease = await acquireOperationLease(
       "assistant-execution",
       executionId,
-      UPSTREAM_TIMEOUT_MS + 15_000,
+      EXECUTION_LEASE_MS,
     )
     if (!executionLease) {
       return NextResponse.json(
@@ -169,7 +172,7 @@ export async function POST(request: NextRequest) {
     const globalLease = await acquireOperationLease(
       "assistant-execution-global",
       "global",
-      UPSTREAM_TIMEOUT_MS + 15_000,
+      EXECUTION_LEASE_MS,
       8,
     )
     if (!globalLease) {
@@ -212,7 +215,7 @@ export async function POST(request: NextRequest) {
     }
 
     const responseHeaders = new Headers()
-    for (const name of ["content-type", "cache-control", "x-workflow-run-id"]) {
+    for (const name of ["content-type", "cache-control", "x-workflow-run-id", "x-assistant-stream-version"]) {
       const value = response.headers.get(name)
       if (value) responseHeaders.set(name, value)
     }

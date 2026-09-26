@@ -3,6 +3,7 @@ import { contextService, type SelectedContextIds } from '@/app/services/context-
 import { getSystemPromptForActivity } from '../utils'
 import { ImageParameters, VideoParameters, AudioParameters } from '../types'
 import { type SkillSelection } from '../components/SkillSelector'
+import { withTimeout } from '@/app/services/request-timeout'
 import {
   persistUserActionLog,
   markRobotInstanceErrorIfUnanswered,
@@ -11,6 +12,13 @@ import {
 } from './send-message-reliability'
 
 type ToastFn = (opts: { title: string; description: string; variant?: 'default' | 'destructive' }) => void
+
+// Error telemetry must never delay the error shown to the person sending.
+function recordSendFailure(params: Parameters<typeof markRobotInstanceErrorIfUnanswered>[0]) {
+  void Promise.resolve().then(() => markRobotInstanceErrorIfUnanswered(params)).catch(() => {
+    console.warn('Could not record the failed send.')
+  })
+}
 
 export async function sendAssistantMessage(params: {
   messageToSend: string
@@ -23,7 +31,7 @@ export async function sendAssistantMessage(params: {
   videoParameters?: VideoParameters
   audioParameters?: AudioParameters
   toast: ToastFn
-}): Promise<void> {
+}): Promise<boolean> {
   const {
     messageToSend,
     siteId,
@@ -37,8 +45,12 @@ export async function sendAssistantMessage(params: {
     toast,
   } = params
 
+  const requestId = createRequestId()
   try {
-    const contextData = await contextService.getContextData(selectedContext, siteId)
+    const contextData = await withTimeout(
+      contextService.getContextData(selectedContext, siteId), 15_000,
+      'Loading the selected context timed out. Please try again.',
+    )
 
     let mediaType = 'text'
     let currentParams: any = {}
@@ -74,14 +86,9 @@ export async function sendAssistantMessage(params: {
       delete contextObj.parameters.expectedResults
     }
 
-    const supabase = createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-
-    const requestId = createRequestId()
     const requestPayload: any = {
       message: messageToSend,
       site_id: siteId,
-      user_id: user?.id,
       context: JSON.stringify(contextObj),
       system_prompt: getSystemPromptForActivity(selectedActivity, {
         imageParameters,
@@ -90,7 +97,8 @@ export async function sendAssistantMessage(params: {
       }),
       expected_results_amount: expectedResults,
       request_id: requestId,
-      client_persisted: true,
+      // The authenticated API owns durable user logs, including persistence failures.
+      client_persisted: false,
       activity: selectedActivity,
       skill_mode: skillSelection.skill_mode,
       skill_slugs: skillSelection.skill_slugs,
@@ -99,47 +107,31 @@ export async function sendAssistantMessage(params: {
     const instanceId = activeRobotInstance?.id
     if (instanceId) {
       requestPayload.instance_id = instanceId
-      await persistUserActionLog({
-        instanceId,
-        siteId,
-        userId: user?.id,
-        message: messageToSend,
-        requestId,
-        activity: selectedActivity,
-        context: selectedContext,
-      })
     }
 
     const response = await postWithRetry('/api/robots/instance/assistant', requestPayload, {
       instanceId,
       message: messageToSend,
+      requestId,
     })
 
-    if (response.success) return
+    if (response.success) return true
 
-    if (instanceId && response.status !== 400) {
-      await markRobotInstanceErrorIfUnanswered({
+    toast({ title: 'Error', description: response.error?.message || 'The assistant request failed. Please try again.', variant: 'destructive' })
+    if (instanceId && response.status !== 400 && response.retryable !== false) {
+      recordSendFailure({
         instanceId,
         siteId,
-        userId: user?.id,
         errorMessage: response.error?.message || 'Assistant request failed',
         message: messageToSend,
+        requestId,
       })
     }
-    toast({ title: 'Error', description: response.status === 400
-      ? response.error?.message || 'Invalid assistant request.' : 'Please try again.', variant: 'destructive' })
+    return false
   } catch (error) {
     console.error('Error sending assistant message:', error)
-    const instanceId = activeRobotInstance?.id
-    if (instanceId) {
-      await markRobotInstanceErrorIfUnanswered({
-        instanceId,
-        siteId,
-        errorMessage: error instanceof Error ? error.message : 'Assistant request failed',
-        message: messageToSend,
-      })
-    }
-    toast({ title: 'Error', description: 'Please try again.', variant: 'destructive' })
+    toast({ title: 'Error', description: error instanceof Error ? error.message : 'The assistant request failed. Please try again.', variant: 'destructive' })
+    return false
   }
 }
 
@@ -172,10 +164,13 @@ export async function sendRobotMessage(params: {
     startInstancePolling,
   } = params
 
+  const requestId = createRequestId()
   try {
     const supabase = createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    const contextData = await contextService.getContextData(selectedContext, siteId)
+    const { data: { user } } = await withTimeout<{ data: { user: { id: string } | null } }>(
+      supabase.auth.getUser(), 10_000, 'Checking your session timed out. Please try again.',
+    )
+    const contextData = await withTimeout(contextService.getContextData(selectedContext, siteId), 15_000, 'Loading the selected context timed out. Please try again.')
     const robotContext = {
       ...selectedContext,
       record_diagrams: contextData.records
@@ -195,7 +190,6 @@ export async function sendRobotMessage(params: {
         onMessageSent?.(true)
       }
 
-      const requestId = createRequestId()
       const promptPayload = {
         instance_id: activeRobotInstance.id,
         message: messageToSend,
@@ -204,21 +198,23 @@ export async function sendRobotMessage(params: {
         context: JSON.stringify(robotContext),
         activity: 'robot',
         request_id: requestId,
-        client_persisted: true,
+        client_persisted: false,
       }
 
-      await persistUserActionLog({
+      const persisted = await withTimeout(persistUserActionLog({
         instanceId: activeRobotInstance.id,
         siteId,
         userId: user?.id,
         message: messageToSend,
         requestId,
         activity: 'robot',
-      })
+      }), 5000, 'Saving the message timed out.').catch(() => null)
+      promptPayload.client_persisted = Boolean(persisted?.id)
 
       response = await postWithRetry('/api/workflow/promptRobot', promptPayload, {
         instanceId: activeRobotInstance.id,
         message: messageToSend,
+        requestId,
       })
     } else {
       setNewMakinaThinking()
@@ -228,7 +224,7 @@ export async function sendRobotMessage(params: {
         activity: 'robot',
         message: messageToSend,
         context: JSON.stringify(robotContext),
-        request_id: createRequestId(),
+        request_id: requestId,
       })
     }
 
@@ -246,37 +242,26 @@ export async function sendRobotMessage(params: {
       return
     }
 
-    if (activeRobotInstance?.id) {
-      await markRobotInstanceErrorIfUnanswered({
+    clearThinkingState()
+    clearNewMakinaThinking()
+    toast({ title: 'Error', description: response.error?.message || 'Failed to start robot workflow. Please try again.', variant: 'destructive' })
+    if (activeRobotInstance?.id && response.retryable !== false) {
+      recordSendFailure({
         instanceId: activeRobotInstance.id,
         siteId,
         userId: user?.id,
         errorMessage: response.error?.message || 'Failed to start robot workflow',
         message: messageToSend,
+        requestId,
       })
     }
-    clearThinkingState()
-    clearNewMakinaThinking()
-    toast({
-      title: 'Error',
-      description: 'Failed to start robot workflow. Please try again.',
-      variant: 'destructive',
-    })
   } catch (error) {
     console.error('Error starting robot workflow:', error)
-    if (activeRobotInstance?.id) {
-      await markRobotInstanceErrorIfUnanswered({
-        instanceId: activeRobotInstance.id,
-        siteId,
-        errorMessage: error instanceof Error ? error.message : 'Failed to start robot workflow',
-        message: messageToSend,
-      })
-    }
     clearThinkingState()
     clearNewMakinaThinking()
     toast({
       title: 'Error',
-      description: 'Failed to start robot workflow. Please try again.',
+      description: error instanceof Error ? error.message : 'Failed to start robot workflow. Please try again.',
       variant: 'destructive',
     })
   }

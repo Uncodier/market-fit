@@ -31,6 +31,8 @@ function createChain(result: { data?: any; error?: any } = {}) {
   chain.eq = jest.fn().mockReturnValue(chain)
   chain.gte = jest.fn().mockReturnValue(chain)
   chain.gt = jest.fn().mockReturnValue(chain)
+  chain.lt = jest.fn().mockReturnValue(chain)
+  chain.or = jest.fn().mockReturnValue(chain)
   chain.in = jest.fn().mockReturnValue(chain)
   chain.order = jest.fn().mockReturnValue(chain)
   chain.limit = jest.fn().mockResolvedValue(result)
@@ -47,6 +49,7 @@ function mockAlreadyAnswered() {
       data: [{ id: 'user-1', created_at: '2026-08-31T17:10:00.000Z' }],
       error: null,
     }))
+    .mockReturnValueOnce(createChain({ data: [], error: null }))
     .mockReturnValueOnce(createChain({
       data: [{ id: 'agent-1' }],
       error: null,
@@ -110,7 +113,7 @@ describe('persistUserActionLog', () => {
     jest.clearAllMocks()
   })
 
-  it('returns the existing id when a duplicate exists, even if it is old', async () => {
+  it('reuses only the exact request, without rewriting a historical row', async () => {
     fromMock.mockReturnValue(createChain({ data: [{ id: 'existing-1' }], error: null }))
 
     const result = await persistUserActionLog({
@@ -118,10 +121,12 @@ describe('persistUserActionLog', () => {
       siteId: 'site-1',
       userId: 'user-1',
       message: 'hello',
+      requestId: 'req-1',
     })
 
     expect(result).toEqual({ id: 'existing-1' })
-    expect(fromMock.mock.results[0].value.gte).not.toHaveBeenCalled()
+    expect(fromMock.mock.results[0].value.eq).toHaveBeenCalledWith('details->>request_id', 'req-1')
+    expect(fromMock.mock.results[0].value.update).not.toHaveBeenCalled()
   })
 
   it('inserts the user message when none exists', async () => {
@@ -139,7 +144,7 @@ describe('persistUserActionLog', () => {
 
     expect(result).toEqual({ id: 'new-1' })
     expect(insert.insert).toHaveBeenCalledWith(
-      expect.objectContaining({
+      [expect.objectContaining({
         log_type: 'user_action',
         message: 'hello',
         instance_id: 'inst-1',
@@ -149,7 +154,7 @@ describe('persistUserActionLog', () => {
           status: 'running',
           request_type: 'ask',
         }),
-      })
+      })]
     )
   })
 
@@ -162,6 +167,7 @@ describe('persistUserActionLog', () => {
       instanceId: 'inst-1',
       siteId: 'site-1',
       message: 'hello',
+      requestId: 'req-1',
     })
 
     expect(result).toBeNull()
@@ -178,6 +184,7 @@ describe('hasAgentResponseForMessage', () => {
     await expect(hasAgentResponseForMessage({
       instanceId: 'inst-1',
       message: 'hello',
+      requestId: 'req-1',
     })).resolves.toBe(true)
   })
 
@@ -186,6 +193,7 @@ describe('hasAgentResponseForMessage', () => {
     await expect(hasAgentResponseForMessage({
       instanceId: 'inst-1',
       message: 'hello',
+      requestId: 'req-1',
     })).resolves.toBe(false)
   })
 
@@ -195,17 +203,18 @@ describe('hasAgentResponseForMessage', () => {
       error: null,
     })
     const responseQuery = createChain({ data: [], error: null })
-    fromMock.mockReturnValueOnce(userQuery).mockReturnValueOnce(responseQuery)
+    fromMock.mockReturnValueOnce(userQuery).mockReturnValueOnce(createChain({ data: [] })).mockReturnValueOnce(responseQuery)
 
     await expect(hasAgentResponseForMessage({
       instanceId: 'inst-1',
       message: 'hello',
+      requestId: 'req-1',
     })).resolves.toBe(false)
 
-    expect(responseQuery.in).toHaveBeenCalledWith(
-      'log_type',
-      ['agent_action', 'tool_call', 'tool_result']
-    )
+    expect(userQuery.eq).toHaveBeenCalledWith('details->>request_id', 'req-1')
+    expect(userQuery.order).toHaveBeenCalledWith('created_at', { ascending: false })
+    expect(responseQuery.eq).toHaveBeenCalledWith('log_type', 'agent_action')
+    expect(responseQuery.or).toHaveBeenCalledWith('details->>streaming.is.null,details->>streaming.eq.false')
   })
 })
 
@@ -230,7 +239,7 @@ describe('markRobotInstanceError', () => {
       expect.objectContaining({ status: 'error' })
     )
     expect(insert.insert).toHaveBeenCalledWith(
-      expect.objectContaining({ log_type: 'error', instance_id: 'inst-1' })
+      [expect.objectContaining({ log_type: 'error', instance_id: 'inst-1' })]
     )
   })
 })
@@ -248,10 +257,11 @@ describe('markRobotInstanceErrorIfUnanswered', () => {
       siteId: 'site-1',
       errorMessage: 'Network error',
       message: 'hello',
+      requestId: 'req-1',
     })
 
     expect(ok).toBe(false)
-    expect(fromMock).toHaveBeenCalledTimes(2)
+    expect(fromMock).toHaveBeenCalledTimes(3)
   })
 })
 
@@ -292,7 +302,7 @@ describe('postWithRetry', () => {
   it('marks retries exhausted after 3 failures', async () => {
     postMock.mockResolvedValue({ success: false, status: 502, error: { message: 'bad gateway' } })
 
-    const pending = postWithRetry('/api/robots/instance/assistant', { message: 'hi' }, 3)
+    const pending = postWithRetry('/api/workflow/promptRobot', { message: 'hi' }, 3)
     await jest.runAllTimersAsync()
     const result = await pending
 
@@ -300,17 +310,19 @@ describe('postWithRetry', () => {
     expect(postMock).toHaveBeenCalledTimes(3)
   })
 
-  it('does not POST when the agent already answered that message', async () => {
+  it('always POSTs first and skips retries only after this turn has completed', async () => {
     mockAlreadyAnswered()
+    postMock.mockResolvedValueOnce({ success: false, status: 503 })
 
     const result = await postWithRetry('/api/workflow/promptRobot', { message: 'hello' }, {
       instanceId: 'inst-1',
       message: 'hello',
+      requestId: 'req-1',
     })
 
     expect(result.success).toBe(true)
     expect(result.data).toEqual({ alreadyAnswered: true })
-    expect(postMock).not.toHaveBeenCalled()
+    expect(postMock).toHaveBeenCalledTimes(1)
   })
 
   it('does not retry while the tab is hidden, then skips if a reply appeared', async () => {
@@ -321,6 +333,7 @@ describe('postWithRetry', () => {
     const pending = postWithRetry('/api/workflow/promptRobot', { message: 'hello' }, {
       instanceId: 'inst-1',
       message: 'hello',
+      requestId: 'req-1',
     })
 
     // First attempt happens immediately, even if hidden
@@ -354,6 +367,7 @@ describe('postWithRetry', () => {
     const pending = postWithRetry('/api/workflow/promptRobot', { message: 'hello' }, {
       instanceId: 'inst-1',
       message: 'hello',
+      requestId: 'req-1',
     })
 
     await jest.advanceTimersByTimeAsync(0)

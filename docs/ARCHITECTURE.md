@@ -111,6 +111,26 @@ workflow.
 - Keep modules below 500 lines; split by responsibility when a change would
   exceed that limit.
 
+## Assistant send lifecycle
+
+Browser assistant sends use the authenticated same-origin
+`/api/robots/instance/assistant` proxy, not the configured external API URL
+directly. The API owns user-log persistence; a new send carries a fresh
+`request_id`. Repeating the same text is a new turn, not a duplicate. Retries
+may only recognize a final response associated with the current request's user
+log, never a historical answer or tool activity.
+
+The API client waits for SSE `completed` or `error` events; `accepted` and
+keepalives are not completion. Explicit stream failures, interrupted streams,
+and ambiguous gateway/start failures are shown without automatically replaying
+the request. Context/session checks and stream waits are bounded, and secondary
+error logging cannot delay the user-visible failure.
+
+Roll out the API lifecycle producer and web consumer together: the consumer
+requires an explicit terminal event and treats an older, silently closed stream
+as unconfirmed. The proxy requests an 800-second execution budget to allow the
+API's 750-second terminal timeout; deployment-platform limits still apply.
+
 ## Workflow relations
 
 The workflow canvas saves each incoming relation on its destination `wf-step`:
