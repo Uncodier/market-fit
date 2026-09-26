@@ -133,24 +133,11 @@ describe("channel-message workflow trigger", () => {
     expect(screen.getByRole("button", { name: "Test" })).toBeDisabled()
   })
 
-  it("tests using a sample message without sending to a customer channel", async () => {
+  it("disables the old channel test until it can run via bounded Temporal execution", () => {
     const post = jest.spyOn(apiClient, "post").mockResolvedValue({ success: true })
     show({ kind: "channel_message", channel: "email", connection_id: "email-2", priority: 90 })
-    fireEvent.change(screen.getByRole("textbox", { name: "Sample customer message (test only)" }), {
-      target: { value: "Where is my order?" },
-    })
+    expect(screen.getByRole("button", { name: "Test" })).toBeDisabled()
     fireEvent.click(screen.getByRole("button", { name: "Test" }))
-    await waitFor(() => expect(post).toHaveBeenCalledWith("/api/workflows/instance-1/sync-triggers", {}))
-    await waitFor(() => expect(post).toHaveBeenCalledWith("/api/workflows/instance-1/test", {
-      payload: {
-        source: "channel_message",
-        trigger_id: "trigger-1",
-        test: true,
-        channel: "email",
-        connection_id: "email-2",
-        message: "Where is my order?",
-      },
-    }))
-    expect(post.mock.invocationCallOrder[0]).toBeLessThan(post.mock.invocationCallOrder[1])
+    expect(post).not.toHaveBeenCalled()
   })
 })

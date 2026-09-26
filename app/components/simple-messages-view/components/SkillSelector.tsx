@@ -9,6 +9,11 @@ import { Badge } from "@/app/components/ui/badge"
 import { skillsFromResponse, type ManagedSkill } from "@/app/components/settings/SkillManager"
 
 export type SkillSelection = { skill_mode: "auto" | "required"; skill_slugs: string[] }
+const MAX_ASSISTANT_SKILL_BYTES = 48_000
+
+function skillBytes(skill: ManagedSkill): number {
+  return typeof skill.content === "string" ? new Blob([skill.content]).size : 0
+}
 
 export function SkillSelector({ siteId, value, onChange, disabled }: {
   siteId?: string; value: SkillSelection; onChange: (value: SkillSelection) => void; disabled?: boolean
@@ -19,6 +24,8 @@ export function SkillSelector({ siteId, value, onChange, disabled }: {
   const rootRef = useRef<HTMLDivElement>(null)
   const triggerRef = useRef<HTMLButtonElement>(null)
   const id = useId()
+  const selectedBytes = skills.filter(skill => value.skill_slugs.includes(skill.slug))
+    .reduce((total, skill) => total + skillBytes(skill), 0)
 
   useEffect(() => {
     setSkills([])
@@ -100,11 +107,17 @@ export function SkillSelector({ siteId, value, onChange, disabled }: {
         </TabsContent>
         <TabsContent value="required" className="max-h-44 overflow-auto text-sm">
           <input aria-label="Filter skills" className="w-full rounded-md border bg-background p-1 text-sm" value={search} onChange={event => setSearch(event.target.value)} placeholder="Find a skill" />
-          {skills.length ? skills.filter(skill => `${skill.name} ${skill.slug}`.toLowerCase().includes(search.toLowerCase())).map(skill => <label key={skill.id} className="flex gap-2 py-1">
-            <input type="checkbox" checked={value.skill_slugs.includes(skill.slug)} disabled={disabled || (value.skill_slugs.length >= 5 && !value.skill_slugs.includes(skill.slug))}
-              onChange={event => onChange({ skill_mode: "required", skill_slugs: event.target.checked ? [...value.skill_slugs, skill.slug] : value.skill_slugs.filter(slug => slug !== skill.slug) })} />{skill.name}
-          </label>) : <p className="text-muted-foreground">No site skills available. Add them on the Skills page.</p>}
-          <p className="text-xs text-muted-foreground">Select 1–5 skills.</p>
+          {skills.length ? skills.filter(skill => `${skill.name} ${skill.slug}`.toLowerCase().includes(search.toLowerCase())).map(skill => {
+            const selected = value.skill_slugs.includes(skill.slug)
+            const exceedsBudget = !selected && selectedBytes + skillBytes(skill) > MAX_ASSISTANT_SKILL_BYTES
+            return <label key={skill.id} className="flex gap-2 py-1">
+              <input type="checkbox" checked={selected} disabled={disabled || (!selected && (value.skill_slugs.length >= 5 || exceedsBudget))}
+                onChange={event => onChange({ skill_mode: "required", skill_slugs: event.target.checked ? [...value.skill_slugs, skill.slug] : value.skill_slugs.filter(slug => slug !== skill.slug) })} />{skill.name}
+              {exceedsBudget && <span className="text-xs text-muted-foreground">(exceeds 48 KB limit)</span>}
+            </label>
+          }) : <p className="text-muted-foreground">No site skills available. Add them on the Skills page.</p>}
+          <p className="text-xs text-muted-foreground">Select 1–5 skills, up to 48 KB total. Shorten large skills on the Skills page.</p>
+          {selectedBytes > MAX_ASSISTANT_SKILL_BYTES && <p role="alert" className="text-xs text-destructive">Selected skills exceed the 48 KB limit. Deselect or shorten a skill.</p>}
         </TabsContent>
       </Tabs>
       <div role="menu" aria-label="Skill actions" className="mt-2 border-t pt-2">

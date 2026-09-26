@@ -300,9 +300,10 @@ describe("module image visuals", () => {
     expect(analyticsPrompt).toContain("exactly three substantial vertical bars")
     expect(analyticsPrompt).toContain("rising from left to right")
     expect(analyticsPrompt).toContain("one smooth upward trend line")
-    expect(costsPrompt).toContain("one bold descending zigzag line")
-    expect(costsPrompt).toContain("exactly three large circular data points")
-    expect(costsPrompt).toContain("no bars, axes, grid")
+    expect(costsPrompt).toContain("exactly three substantial stacks")
+    expect(costsPrompt).toContain("thick golden coins")
+    expect(costsPrompt).toContain("descending staircase")
+    expect(costsPrompt).toContain("no chart, line, arrows")
   })
 
   it("does not request an alternative composition for unrelated modules", () => {

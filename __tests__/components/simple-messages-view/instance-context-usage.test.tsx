@@ -88,6 +88,13 @@ describe('InstanceContextUsage composition pie', () => {
     expect(screen.getByRole('dialog')).toHaveTextContent('Estimated input total: 1,000 tokens')
   })
 
+  it('does not label unreported streamed output as a measured zero', () => {
+    mockedSWR.mockReturnValue({ data: { context: { ...usage, outputTokens: null } } })
+    render(<InstanceContextUsage instanceId="instance" siteId="site" />)
+    open()
+    expect(screen.getByRole('dialog')).toHaveTextContent('Last output: Unknown (provider did not report usage)')
+  })
+
   it('shows an explicit provider adjustment instead of pretending provider input is categorized', () => {
     mockedSWR.mockReturnValue({ data: { context: { ...usage, source: 'provider', usedTokens: 1200 } } })
     render(<InstanceContextUsage instanceId="instance" siteId="site" />)

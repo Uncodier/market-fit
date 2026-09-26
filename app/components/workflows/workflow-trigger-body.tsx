@@ -180,22 +180,10 @@ export function WorkflowTriggerBody({
     setTesting(true)
     try {
       if (currentKind === "channel_message") {
-        // The editor syncs with a short debounce; ensure the selected trigger
-        // has a materialized row before running the existing dry-run endpoint.
-        const sync = await apiClient.post(`/api/workflows/${node.instance_id}/sync-triggers`, {})
-        if (!sync.success) throw new Error(sync.error?.message || "Could not sync workflow trigger")
+        throw new Error("Channel message tests are temporarily unavailable while bounded Temporal execution is enabled.")
       }
       const response = await apiClient.post(`/api/workflows/${node.instance_id}/test`, {
-        payload: currentKind === "channel_message"
-          ? {
-              source: currentKind,
-              trigger_id: node.id,
-              test: true,
-              channel: trigger.channel || "web",
-              connection_id: trigger.connection_id,
-              message: sampleMessage.trim(),
-            }
-          : { source: currentKind, trigger_id: node.id },
+        payload: { source: currentKind, trigger_id: node.id },
       })
       if (!response.success) throw new Error(response.error?.message || "Test failed")
       toast.success("Test run started (no side effects).")
@@ -337,7 +325,8 @@ export function WorkflowTriggerBody({
             variant="outline"
             size="sm"
             className="h-8 rounded-full"
-            disabled={testing || (currentKind === "channel_message" && (!hasExecutableStep || hasUnsupportedChannelStep || !sampleMessage.trim()))}
+            disabled={testing || currentKind === "channel_message"}
+            title={currentKind === "channel_message" ? "Channel message tests require the bounded Temporal runner; test by sending a message through the channel." : undefined}
             onClick={() => void runTest()}
           >
             {testing ? (

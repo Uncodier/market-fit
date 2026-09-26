@@ -116,6 +116,19 @@ describe('GET robot instance context', () => {
     expect(stateReads).toBe(2)
   })
 
+  it('uses the same model-specific reserve as the API when a legacy writer cleared the saved reserve', async () => {
+    const from = jest.fn((table: string) => scopedQuery(table === 'remote_instances'
+      ? { data: { id: instanceId }, error: null }
+      : { data: { model: 'gemini-3.1-pro-preview', provider: 'gemini', used_tokens: 800,
+        output_tokens: null, available_tokens: 1048576, reserved_output_tokens: null,
+        measured_at: '2026-09-25T00:00:00Z', source: 'estimate' }, error: null }))
+    requireAccess.mockResolvedValue({ supabase: { from } })
+    const response = await GET(new NextRequest(url))
+    expect((await response.json()).context).toEqual(expect.objectContaining({
+      reservedOutputTokens: 0, outputTokens: null,
+    }))
+  })
+
   it('reads a measurement from a deployed table without output_tokens', async () => {
     let stateReads = 0
     const from = jest.fn((table: string) => {
@@ -130,7 +143,7 @@ describe('GET robot instance context', () => {
     const response = await GET(new NextRequest(url))
     expect(response.status).toBe(200)
     expect(await response.json()).toEqual({ context: expect.objectContaining({
-      usedTokens: 700, outputTokens: 0, availableTokens: null, utilization: null,
+      usedTokens: 700, outputTokens: null, availableTokens: null, utilization: null,
     }) })
     expect(stateReads).toBe(3)
   })
@@ -150,7 +163,7 @@ describe('GET robot instance context', () => {
     const response = await GET(new NextRequest(url))
     expect(response.status).toBe(200)
     expect(await response.json()).toEqual({ context: expect.objectContaining({
-      usedTokens: 700, outputTokens: 0, reservedOutputTokens: 1024,
+      usedTokens: 700, outputTokens: null, reservedOutputTokens: 1024,
     }) })
     expect(stateReads).toBe(2)
   })

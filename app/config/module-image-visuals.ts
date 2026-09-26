@@ -201,7 +201,7 @@ const MODULE_IMAGE_CLARIFIERS: Partial<Record<string, string>> = {
   reportAnalytics:
     "Create a completely new analytics variant as exactly three substantial vertical bars rising from left to right, with clearly different heights and one smooth upward trend line crossing their upper halves; no axes, grid, dashboard panel, pie chart, numbers, text, currency symbol, or extra objects",
   reportCosts:
-    "Create a completely new cost-report variant as one bold descending zigzag line connecting exactly three large circular data points, ending at the lowest point; no bars, axes, grid, dashboard panel, receipt, calculator, coins, currency symbol, numbers, text, or extra objects",
+    "Create a completely new cost-report variant as exactly three substantial stacks of thick golden coins, arranged as a clear descending staircase from a tall stack on the left to a short stack on the right; give every coin a visible raised rim and warm metallic highlights, with no chart, line, arrows, axes, grid, dashboard panel, receipt, calculator, banknotes, currency symbol, numbers, text, or extra objects",
   reportSocial:
     "Show one extremely simple solid heart silhouette centered and large, with a smooth clean outline; no chart, graph, counter, engagement badge, social media logo, inner symbol, text, or extra objects",
   company:

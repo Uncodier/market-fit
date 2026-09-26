@@ -1,6 +1,24 @@
 import React from "react"
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { SkillSelector } from "@/app/components/simple-messages-view/components/SkillSelector"
+import { MessageInput } from "@/app/components/simple-messages-view/components/MessageInput"
+
+jest.mock("@/app/context/SiteContext", () => ({ useSite: () => ({ currentSite: { id: "site" } }) }))
+jest.mock("@/app/context/LocalizationContext", () => ({ useLocalization: () => ({ t: (key: string) => key }) }))
+jest.mock("@/app/components/simple-messages-view/hooks/useAttachmentUpload", () => ({
+  useAttachmentUpload: () => ({ uploadFile: jest.fn(), isUploading: false }),
+}))
+jest.mock("@/app/components/simple-messages-view/hooks/useRequirementStatus", () => ({
+  useRequirementStatus: () => ({ requirementStatuses: [] }),
+}))
+jest.mock("@/app/components/ui/context-selector-modal", () => ({ ContextSelectorModal: () => null }))
+jest.mock("@/app/components/context/context-mention-picker", () => ({ ContextMentionPicker: () => null }))
+jest.mock("@/app/components/simple-messages-view/components/MediaParametersToolbar", () => ({
+  MediaParametersToolbar: () => null,
+}))
+jest.mock("@/app/components/simple-messages-view/components/InstanceContextUsage", () => ({
+  InstanceContextUsage: () => null,
+}))
 
 const originalFetch = global.fetch
 
@@ -75,5 +93,50 @@ describe("robot skill selector", () => {
     unmount()
     fireEvent(window, new Event("focus"))
     expect(fetchMock).toHaveBeenCalledTimes(3)
+  })
+
+  it("prevents selections exceeding the cumulative 48 KB UTF-8 assistant budget", async () => {
+    global.fetch = jest.fn().mockResolvedValue({ ok: true, json: async () => ({ skills: [
+      { id: "big", slug: "big", name: "Big", content: "é".repeat(24_001), enabled: true },
+      { id: "first", slug: "first", name: "First", content: "a".repeat(47_999), enabled: true },
+      { id: "second", slug: "second", name: "Second", content: "aa", enabled: true },
+    ] }) })
+    const onChange = jest.fn()
+    const { rerender } = render(<SkillSelector siteId="site" value={{ skill_mode: "required", skill_slugs: [] }} onChange={onChange} />)
+    fireEvent.click(screen.getByRole("button", { name: "Select skills" }))
+    await waitFor(() => expect(screen.getByRole("checkbox", { name: /^Big/ })).toBeDisabled())
+    expect(screen.getByText("Big").closest("label")).toHaveTextContent("exceeds 48 KB limit")
+    expect(screen.getByLabelText("First")).not.toBeDisabled()
+    rerender(<SkillSelector siteId="site" value={{ skill_mode: "required", skill_slugs: ["first"] }} onChange={onChange} />)
+    expect(screen.getByRole("checkbox", { name: /^Second/ })).toBeDisabled()
+    expect(screen.getByLabelText("First")).not.toBeDisabled()
+    fireEvent.click(screen.getByLabelText("First"))
+    expect(onChange).toHaveBeenCalledWith({ skill_mode: "required", skill_slugs: [] })
+    rerender(<SkillSelector siteId="site" value={{ skill_mode: "required", skill_slugs: ["big"] }} onChange={onChange} />)
+    expect(screen.getByRole("alert")).toHaveTextContent("Selected skills exceed the 48 KB limit")
+  })
+
+  it("shows skills only for instance assistant activities, not the Temporal robot activity", async () => {
+    global.fetch = jest.fn().mockResolvedValue({ ok: true, json: async () => ({ skills: [] }) })
+    const props = {
+      message: "", selectedActivity: "ask", selectedContext: {
+        leads: [], contents: [], requirements: [], tasks: [], campaigns: [],
+        quotations: [], deals: [], records: [],
+      },
+      onMessageChange: jest.fn(), onActivityChange: jest.fn(), onContextChange: jest.fn(),
+      onSubmit: jest.fn(), disabled: false, placeholder: "Ask anything", textareaRef: { current: null },
+      imageParameters: {} as any, videoParameters: {} as any, audioParameters: {} as any,
+      onImageParameterChange: jest.fn(), onVideoParameterChange: jest.fn(), onAudioParameterChange: jest.fn(),
+      skillSelection: { skill_mode: "auto" as const, skill_slugs: [] }, onSkillSelectionChange: jest.fn(),
+    }
+    const { rerender } = render(<MessageInput {...props} />)
+    expect(screen.getByRole("button", { name: "Select skills" })).toBeInTheDocument()
+    await waitFor(() => expect(global.fetch).toHaveBeenCalledWith("/api/skills?site_id=site", expect.anything()))
+    await act(async () => { await Promise.resolve() })
+    rerender(<MessageInput {...props} selectedActivity="robot" />)
+    expect(screen.queryByRole("button", { name: "Select skills" })).not.toBeInTheDocument()
+    rerender(<MessageInput {...props} selectedActivity="plan" />)
+    expect(screen.getByRole("button", { name: "Select skills" })).toBeInTheDocument()
+    await act(async () => { await Promise.resolve() })
   })
 })

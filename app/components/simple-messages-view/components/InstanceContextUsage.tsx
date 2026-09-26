@@ -14,7 +14,7 @@ type Breakdown = {
 type ContextUsage = {
   model: string
   usedTokens: number
-  outputTokens?: number
+  outputTokens?: number | null
   availableTokens: number | null
   reservedOutputTokens: number
   source: 'estimate' | 'provider'
@@ -75,7 +75,7 @@ export function InstanceContextUsage({ instanceId, siteId }: { instanceId?: stri
   const detail = usage
     ? budget === null
       ? `Model ${usage.model}: context limit unknown. Last input ${usage.usedTokens.toLocaleString()} tokens (${usage.source === 'estimate' ? 'estimated' : 'measured'}).`
-      : `Next turn estimate: ${projected.toLocaleString()} of ${budget.toLocaleString()} input tokens (${usage.source === 'estimate' ? 'last input estimated' : 'based on last measured input'}).`
+      : `Next turn estimate: ${projected.toLocaleString()} of ${budget.toLocaleString()} input tokens (${usage.source === 'estimate' ? 'last input estimated' : 'based on last measured input'}${usage.outputTokens == null ? '; last output unknown, shown as a lower bound' : ''}).`
     : error ? `Unable to load context usage${error instanceof Error ? `: ${error.message}` : ''}.`
       : data?.context === null ? 'No context usage recorded for this instance yet.'
         : isLoading || !data ? 'Loading context usage.' : 'No context usage recorded for this instance yet.'
@@ -140,7 +140,7 @@ export function InstanceContextUsage({ instanceId, siteId }: { instanceId?: stri
                 <div className="space-y-1">
                   <p className="font-medium">{usage.model}</p>
                   <p>Input: {usage.usedTokens.toLocaleString()} tokens {usage.source === 'provider' ? '(provider)' : '(estimated)'}</p>
-                  <p>Last output: {(usage.outputTokens || 0).toLocaleString()} tokens</p>
+                   <p>Last output: {usage.outputTokens == null ? 'Unknown (provider did not report usage)' : `${usage.outputTokens.toLocaleString()} tokens`}</p>
                   <p>{percentage === null ? 'Window capacity unverified' : `Window used for next turn: ${percentage}`}</p>
                 </div>
               </div>
@@ -157,7 +157,7 @@ export function InstanceContextUsage({ instanceId, siteId }: { instanceId?: stri
                   <p>Estimated input total: {breakdown.estimatedInputTokens.toLocaleString()} tokens</p>
                   {usage.source === 'provider' && breakdown.estimatedInputTokens !== usage.usedTokens &&
                     <p className="text-muted-foreground">Provider total differs by {(usage.usedTokens - breakdown.estimatedInputTokens).toLocaleString()} tokens. Provider tokens cannot be assigned reliably to individual sectors.</p>}
-                  <p className="text-muted-foreground">Sector sizes are estimates of the prompt sent, not provider measurements per category. Skills loaded by a tool appear under tool calls; other context is grouped with instructions. The draft and the full log archive are excluded.</p>
+                   <p className="text-muted-foreground">Sector sizes are estimates of the prompt sent, not provider measurements per category. Instance log messages and tool results embedded in the system prompt are attributed to their historical categories. Skills loaded by a tool appear under tool calls. The draft and the full log archive are excluded.</p>
                 </>
               ) : <p className="text-muted-foreground">Breakdown unavailable for this measurement. A new model turn is needed after the breakdown storage migration.</p>}
             </>

@@ -117,7 +117,7 @@ export async function sendAssistantMessage(params: {
 
     if (response.success) return
 
-    if (instanceId) {
+    if (instanceId && response.status !== 400) {
       await markRobotInstanceErrorIfUnanswered({
         instanceId,
         siteId,
@@ -126,7 +126,8 @@ export async function sendAssistantMessage(params: {
         message: messageToSend,
       })
     }
-    toast({ title: 'Error', description: 'Please try again.', variant: 'destructive' })
+    toast({ title: 'Error', description: response.status === 400
+      ? response.error?.message || 'Invalid assistant request.' : 'Please try again.', variant: 'destructive' })
   } catch (error) {
     console.error('Error sending assistant message:', error)
     const instanceId = activeRobotInstance?.id
@@ -146,7 +147,6 @@ export async function sendRobotMessage(params: {
   messageToSend: string
   siteId: string
   selectedContext: SelectedContextIds
-  skillSelection: SkillSelection
   activeRobotInstance?: { id?: string; status?: string } | null
   toast: ToastFn
   setThinkingStateWithTimeout: () => void
@@ -161,7 +161,6 @@ export async function sendRobotMessage(params: {
     messageToSend,
     siteId,
     selectedContext,
-    skillSelection,
     activeRobotInstance,
     toast,
     setThinkingStateWithTimeout,
@@ -204,8 +203,6 @@ export async function sendRobotMessage(params: {
         site_id: siteId,
         context: JSON.stringify(robotContext),
         activity: 'robot',
-        skill_mode: skillSelection.skill_mode,
-        skill_slugs: skillSelection.skill_slugs,
         request_id: requestId,
         client_persisted: true,
       }
@@ -229,8 +226,6 @@ export async function sendRobotMessage(params: {
         site_id: siteId,
         user_id: user?.id,
         activity: 'robot',
-        skill_mode: skillSelection.skill_mode,
-        skill_slugs: skillSelection.skill_slugs,
         message: messageToSend,
         context: JSON.stringify(robotContext),
         request_id: createRequestId(),

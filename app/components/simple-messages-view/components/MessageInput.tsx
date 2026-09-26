@@ -271,7 +271,9 @@ const MessageInputComponent: React.FC<MessageInputProps> = ({
                   selectedActivity={selectedActivity}
                   onActivityChange={onActivityChange}
                 />
-                <SkillSelector siteId={currentSite?.id} value={skillSelection} onChange={onSkillSelectionChange} disabled={disabled} />
+                {selectedActivity !== 'robot' && (
+                  <SkillSelector siteId={currentSite?.id} value={skillSelection} onChange={onSkillSelectionChange} disabled={disabled} />
+                )}
                 
                 <MediaParametersToolbar
                   selectedActivity={selectedActivity}

@@ -141,7 +141,6 @@ export const useMessageSending = ({
       messageToSend,
       siteId: currentSite.id,
       selectedContext,
-      skillSelection,
       activeRobotInstance,
       toast,
       setThinkingStateWithTimeout,
@@ -155,7 +154,6 @@ export const useMessageSending = ({
   }, [
     currentSite?.id,
     selectedContext,
-    skillSelection,
     activeRobotInstance,
     toast,
     setThinkingStateWithTimeout,
@@ -207,14 +205,14 @@ export const useMessageSending = ({
     if (!currentMessage.trim() || !currentSite?.id) return
 
     const messageToSend = currentMessage.trim()
-    if (skillSelection.skill_mode === 'required' && skillSelection.skill_slugs.length === 0) {
+    if (selectedActivity !== 'robot' && skillSelection.skill_mode === 'required' && skillSelection.skill_slugs.length === 0) {
       toast({ title: 'Select a skill', description: 'Choose at least one required skill before sending.', variant: 'destructive' })
       return
     }
     const isBusy = shouldQueueCommand(Boolean(findRunningUserLog(logsRef?.current || [])) || sendingLockRef.current || isSendingMessage)
 
     if (isBusy && activeRobotInstance?.id) {
-      if (skillSelection.skill_mode === 'required') {
+      if (selectedActivity !== 'robot' && skillSelection.skill_mode === 'required') {
         toast({ title: 'Wait to send', description: 'Required skills cannot be attached to queued commands. Wait for the current task to finish.', variant: 'destructive' })
         return
       }
