@@ -4,6 +4,7 @@ import { getSystemPromptForActivity } from '../utils'
 import { ImageParameters, VideoParameters, AudioParameters } from '../types'
 import { type SkillSelection } from '../components/SkillSelector'
 import { withTimeout } from '@/app/services/request-timeout'
+import { assistantAdmissionNotification, getAssistantAdmissionFailure } from './assistant-admission-error'
 import {
   persistUserActionLog,
   markRobotInstanceErrorIfUnanswered,
@@ -116,6 +117,12 @@ export async function sendAssistantMessage(params: {
     })
 
     if (response.success) return true
+
+    const admissionFailure = getAssistantAdmissionFailure(response)
+    if (admissionFailure) {
+      toast(assistantAdmissionNotification(admissionFailure))
+      return false
+    }
 
     toast({ title: 'Error', description: response.error?.message || 'The assistant request failed. Please try again.', variant: 'destructive' })
     if (instanceId && response.status !== 400 && response.retryable !== false) {

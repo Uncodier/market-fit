@@ -13,7 +13,7 @@ import {
   type ImprentaNodeSnapshot,
 } from "./imprenta-contract"
 import {
-  acquireOperationLease,
+  acquireOperationLeaseResult,
   releaseLeasesWithStream,
   type OperationLease,
 } from "@/lib/redis/operation-lease"
@@ -24,6 +24,22 @@ const UPSTREAM_TIMEOUT_MS = 60_000
 // Leave room for the API's 750-second terminal event and proxy overhead.
 export const maxDuration = 800
 const EXECUTION_LEASE_MS = maxDuration * 1000 + 15_000
+const RESPONSE_BUDGET_MS = maxDuration * 1000 - 10_000
+
+function admissionError(status: "contended" | "unavailable", global = false) {
+  const unavailable = status === "unavailable"
+  return NextResponse.json({
+    success: false,
+    execution_started: false,
+    error: {
+      code: unavailable ? "ASSISTANT_ADMISSION_UNAVAILABLE"
+        : global ? "ASSISTANT_CAPACITY_FULL" : "ASSISTANT_EXECUTION_BUSY",
+      message: unavailable ? "Assistant request admission is temporarily unavailable. Your command was not started."
+        : global ? "Assistant capacity is temporarily full. Your command was not started."
+          : "This assistant execution is already in progress. Your new command was not started.",
+    },
+  }, { status: unavailable || global ? 503 : 409, headers: { "Retry-After": "5" } })
+}
 
 function hasValidServiceApiKey(request: Request): boolean {
   const provided = request.headers.get("x-api-key")?.trim()
@@ -54,7 +70,10 @@ function getServerApiUrl(): string {
 }
 
 export async function POST(request: NextRequest) {
+  const deadline = Date.now() + RESPONSE_BUDGET_MS
   const leases: OperationLease[] = []
+  let upstreamController: AbortController | undefined
+  let detachDisconnect: (() => void) | undefined
   const apiServerUrl = getServerApiUrl()
 
   if (!apiServerUrl) {
@@ -153,40 +172,33 @@ export async function POST(request: NextRequest) {
         && parsedBody.instance_node_id)
       || (typeof parsedBody.instance_id === "string" && parsedBody.instance_id)
       || siteId
-    const executionLease = await acquireOperationLease(
+    if (request.signal.aborted || Date.now() >= deadline) {
+      throw new DOMException("Request admission timed out or disconnected", "AbortError")
+    }
+    const executionAdmission = await acquireOperationLeaseResult(
       "assistant-execution",
       executionId,
       EXECUTION_LEASE_MS,
+      1,
+      { renewAutomatically: false },
     )
-    if (!executionLease) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: { message: "This assistant execution is already in progress" },
-        },
-        { status: 409, headers: { "Retry-After": "5" } },
-      )
-    }
+    if (executionAdmission.status !== "acquired") return admissionError(executionAdmission.status)
+    const executionLease = executionAdmission.lease
     leases.push(executionLease)
 
-    const globalLease = await acquireOperationLease(
+    const globalAdmission = await acquireOperationLeaseResult(
       "assistant-execution-global",
       "global",
       EXECUTION_LEASE_MS,
       8,
+      { renewAutomatically: false },
     )
-    if (!globalLease) {
+    if (globalAdmission.status !== "acquired") {
       await executionLease.release()
       leases.length = 0
-      return NextResponse.json(
-        {
-          success: false,
-          error: { message: "Assistant capacity is temporarily full" },
-        },
-        { status: 503, headers: { "Retry-After": "5" } },
-      )
+      return admissionError(globalAdmission.status, true)
     }
-    leases.push(globalLease)
+    leases.push(globalAdmission.lease)
 
     const headers = new Headers()
     for (const name of ["authorization", "content-type", "accept", "x-api-key"]) {
@@ -200,7 +212,12 @@ export async function POST(request: NextRequest) {
     }
 
     const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), UPSTREAM_TIMEOUT_MS)
+    upstreamController = controller
+    const onDisconnect = () => controller.abort()
+    request.signal.addEventListener("abort", onDisconnect, { once: true })
+    detachDisconnect = () => request.signal.removeEventListener("abort", onDisconnect)
+    if (request.signal.aborted) throw new DOMException("Request disconnected", "AbortError")
+    const timeout = setTimeout(() => controller.abort(), Math.max(1, Math.min(UPSTREAM_TIMEOUT_MS, deadline - Date.now())))
     let response: Response
     try {
       response = await fetch(targetUrl, {
@@ -215,17 +232,26 @@ export async function POST(request: NextRequest) {
     }
 
     const responseHeaders = new Headers()
-    for (const name of ["content-type", "cache-control", "x-workflow-run-id", "x-assistant-stream-version"]) {
+    for (const name of ["content-type", "cache-control", "x-workflow-run-id", "x-assistant-stream-version", "retry-after"]) {
       const value = response.headers.get(name)
       if (value) responseHeaders.set(name, value)
     }
 
-    return new Response(releaseLeasesWithStream(response.body, leases), {
+    return new Response(releaseLeasesWithStream(response.body, leases, {
+      signal: request.signal,
+      maxDurationMs: Math.max(1, deadline - Date.now()),
+      onClose: () => {
+        detachDisconnect?.()
+        controller.abort()
+      },
+    }), {
       status: response.status,
       statusText: response.statusText,
       headers: responseHeaders,
     })
   } catch (error) {
+    detachDisconnect?.()
+    upstreamController?.abort()
     await Promise.allSettled(leases.map((lease) => lease.release()))
     if (error instanceof RequestBodyTooLargeError) {
       return NextResponse.json(

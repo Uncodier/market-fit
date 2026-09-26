@@ -177,6 +177,15 @@ export async function acquireSemaphore(
   limit: number,
   ttlMs: number
 ): Promise<boolean> {
+  return (await acquireSemaphoreResult(key, ownerToken, limit, ttlMs)) === "acquired"
+}
+
+export async function acquireSemaphoreResult(
+  key: string,
+  ownerToken: string,
+  limit: number,
+  ttlMs: number,
+): Promise<"acquired" | "contended" | "unavailable"> {
   const now = Date.now()
   const response = await executeRedisCommand<[number, number]>([
     "EVAL",
@@ -189,18 +198,20 @@ export async function acquireSemaphore(
     limit,
     ttlMs,
   ])
-  return (
-    response.configured &&
-    !response.error &&
-    Number(response.result?.[0]) === 1
-  )
+  if (!response.configured || response.error || !Array.isArray(response.result)) {
+    return "unavailable"
+  }
+  if (response.result[0] === 1) return "acquired"
+  return response.result[0] === 0 ? "contended" : "unavailable"
 }
 
 export async function releaseSemaphore(
   key: string,
   ownerToken: string
-): Promise<void> {
-  await executeRedisCommand(["ZREM", key, ownerToken])
+): Promise<boolean> {
+  const response = await executeRedisCommand<number>(["ZREM", key, ownerToken])
+  // Zero also confirms that this owner is no longer present (idempotent release).
+  return response.configured && !response.error && (response.result === 0 || response.result === 1)
 }
 
 export async function renewSemaphore(

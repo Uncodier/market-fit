@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/client'
 import { withTimeout } from '@/app/services/request-timeout'
+import { getAssistantAdmissionFailure } from './assistant-admission-error'
 
 const RETRYABLE_STATUS = new Set([408, 429, 502, 503, 504])
 export const USER_ACTION_DEDUPE_WINDOW_MS = 2 * 60 * 1000
@@ -10,6 +11,7 @@ export type ApiPostResult<T = any> = {
   error?: { message: string; code?: string }
   status?: number
   retryable?: boolean
+  execution_started?: boolean
 }
 
 export type PostWithRetryOptions = {
@@ -19,12 +21,9 @@ export type PostWithRetryOptions = {
   requestId?: string
 }
 
-export function isRetryableApiFailure(response: {
-  success: boolean
-  status?: number
-  retryable?: boolean
-}): boolean {
+export function isRetryableApiFailure(response: ApiPostResult): boolean {
   if (response.success) return false
+  if (getAssistantAdmissionFailure(response)) return false
   if (response.retryable === false) return false
   if (response.status == null) return true
   if (RETRYABLE_STATUS.has(response.status)) return true
@@ -392,9 +391,11 @@ export async function postWithRetry<T = any>(
     lastResponse = await apiClient.post<T>(endpoint, payload)
     if (lastResponse.success) return lastResponse
     if (endpoint === '/api/robots/instance/assistant' && (
+      getAssistantAdmissionFailure(lastResponse) ||
       lastResponse.error?.code?.startsWith('ASSISTANT_') ||
       [500, 502, 504].includes(lastResponse.status ?? 0)
     )) {
+      // Admission rejections require an explicit resend, not automatic replay.
       // Gateway/start failures cannot establish whether the workflow was accepted.
       return { ...lastResponse, retryable: false }
     }

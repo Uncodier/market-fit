@@ -131,6 +131,20 @@ requires an explicit terminal event and treats an older, silently closed stream
 as unconfirmed. The proxy requests an 800-second execution budget to allow the
 API's 750-second terminal timeout; deployment-platform limits still apply.
 
+Assistant admission distinguishes a busy execution (409) from unavailable Redis
+or global capacity (503), with an explicit `execution_started: false` and error
+code. These rejections do not mark the robot as failed or consume the unsent
+draft. They are not evidence that a new workflow failed.
+
+The proxy uses a non-renewing 815-second admission lease and closes its response
+within a 790-second budget from request entry. EOF, errors, downstream cancellation,
+and request abort release owner-scoped leases; release never waits for upstream
+stream cancellation. Failed releases are retried within the bounded Redis
+request timeout. Ambiguous acquisition failures clean up only their own token.
+These are HTTP admission leases, not durable workflow ownership: disconnecting
+or timing out does not prove that background work stopped, so never automatically
+replay an ambiguous started request or delete another execution's lease.
+
 ## Workflow relations
 
 The workflow canvas saves each incoming relation on its destination `wf-step`:

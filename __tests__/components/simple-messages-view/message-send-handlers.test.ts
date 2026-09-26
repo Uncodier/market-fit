@@ -57,6 +57,24 @@ it('does not mark a possibly running workflow failed for interrupted SSE', async
   expect(markRobotInstanceErrorIfUnanswered).not.toHaveBeenCalled()
 })
 
+it.each([
+  [409, 'ASSISTANT_EXECUTION_BUSY', 'This assistant execution is already in progress', 'Assistant is busy'],
+  [503, 'ASSISTANT_CAPACITY_FULL', 'Assistant capacity is temporarily full', 'Assistant is temporarily unavailable'],
+  [503, 'ASSISTANT_ADMISSION_UNAVAILABLE', 'Admission is unavailable', 'Assistant is temporarily unavailable'],
+  [409, undefined, 'This assistant execution is already in progress', 'Assistant is busy'],
+  [503, undefined, 'Assistant capacity is temporarily full', 'Assistant is temporarily unavailable'],
+])('never marks admission rejection %s/%s as retries exhausted', async (status, code, message, title) => {
+  ;(postWithRetry as jest.Mock).mockResolvedValue({
+    success: false, status, error: { code, message },
+    ...(code ? { execution_started: false } : {}),
+    retryable: true, // Admission classification must not depend on retry metadata.
+  })
+  await expect(sendAssistantMessage(params)).resolves.toBe(false)
+  expect(params.toast).toHaveBeenCalledWith({ title, description: expect.stringContaining('This message was not sent.') })
+  expect(markRobotInstanceErrorIfUnanswered).not.toHaveBeenCalled()
+  expect(persistUserActionLog).not.toHaveBeenCalled()
+})
+
 it('reports context rejection without issuing a POST or trying to write an error log', async () => {
   ;(contextService.getContextData as jest.Mock).mockRejectedValue(new Error('Failed to fetch context data'))
   await expect(sendAssistantMessage(params)).resolves.toBe(false)

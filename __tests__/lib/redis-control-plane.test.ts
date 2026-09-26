@@ -2,8 +2,10 @@
 
 import {
   acquireLock,
+  acquireSemaphoreResult,
   checkRateLimit,
   releaseLock,
+  releaseSemaphore,
   renewSemaphore,
 } from "@/lib/redis/control-plane"
 import {
@@ -115,6 +117,39 @@ describe("Redis control plane", () => {
         body: expect.stringContaining('"owner"'),
       })
     )
+  })
+
+  it.each([
+    [[1, 1], 'acquired'],
+    [[0, 1], 'contended'],
+    [undefined, 'unavailable'],
+    [[null, 1], 'unavailable'],
+    [[false, 1], 'unavailable'],
+    [['', 1], 'unavailable'],
+    [[], 'unavailable'],
+    [[9, 1], 'unavailable'],
+  ])('classifies semaphore result %j as %s', async (result, expected) => {
+    process.env.REDIS_URL = "https://default:test-token@redis.example"
+    ;(global.fetch as jest.Mock).mockResolvedValueOnce({ ok: true, json: async () => ({ result }) })
+    await expect(acquireSemaphoreResult('sem:test', 'owner', 1, 30_000)).resolves.toBe(expected)
+  })
+
+  it('reports transport failure as unavailable, never as contention', async () => {
+    process.env.REDIS_URL = "https://default:test-token@redis.example"
+    ;(global.fetch as jest.Mock).mockResolvedValueOnce({ ok: false, status: 503 })
+    await expect(acquireSemaphoreResult('sem:test', 'owner', 1, 30_000)).resolves.toBe('unavailable')
+  })
+
+  it.each([0, 1])('confirms idempotent owner release with Redis result %s', async result => {
+    process.env.REDIS_URL = "https://default:test-token@redis.example"
+    ;(global.fetch as jest.Mock).mockResolvedValueOnce({ ok: true, json: async () => ({ result }) })
+    await expect(releaseSemaphore('sem:test', 'owner')).resolves.toBe(true)
+  })
+
+  it('does not silently confirm a failed release', async () => {
+    process.env.REDIS_URL = "https://default:test-token@redis.example"
+    ;(global.fetch as jest.Mock).mockResolvedValueOnce({ ok: false, status: 503 })
+    await expect(releaseSemaphore('sem:test', 'owner')).resolves.toBe(false)
   })
 
   it("fails closed for operation leases when Redis is required", async () => {

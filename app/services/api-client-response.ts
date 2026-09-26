@@ -12,6 +12,7 @@ export interface ApiResponse<T = any> {
   };
   status?: number;
   retryable?: boolean;
+  execution_started?: boolean;
 }
 
 function notifyBillingLimitError(...sources: unknown[]) {
@@ -82,6 +83,7 @@ export async function handleApiResponse<T>(response: Response): Promise<ApiRespo
       }
       const errorResult = {
         success: false as const,
+        ...(typeof errorData.execution_started === 'boolean' ? { execution_started: errorData.execution_started } : {}),
         error: {
           message,
           code: errorData.code ?? (typeof nested === 'object' ? nested?.code : undefined),
@@ -118,6 +120,7 @@ export async function handleApiResponse<T>(response: Response): Promise<ApiRespo
       }
       const limitResult = {
         success: false as const,
+        ...(typeof data.execution_started === 'boolean' ? { execution_started: data.execution_started } : {}),
         error: {
           message: msg,
           code: err?.code,

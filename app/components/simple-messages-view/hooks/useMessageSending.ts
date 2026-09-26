@@ -53,9 +53,13 @@ export const useMessageSending = ({
   const thinkingTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const activeRequestIdRef = useRef<string | null>(null)
   const sendingLockRef = useRef(false)
+  const sendingMessageRef = useRef<string | null>(null)
   const loadingInstanceIdRef = useRef<string | null>(null)
   const { currentSite } = useSite()
   const { toast } = useToast()
+  const sendScope = `${currentSite?.id || ''}:${activeRobotInstance?.id || ''}`
+  const sendScopeRef = useRef(sendScope)
+  sendScopeRef.current = sendScope
 
   const clearThinkingState = useCallback(() => {
     const currentInstanceId = activeRobotInstance?.id
@@ -112,7 +116,7 @@ export const useMessageSending = ({
 
   const handleAssistantMessage = useCallback(async (messageToSend: string, activity = selectedActivity) => {
     if (!currentSite?.id) return
-    await sendAssistantMessage({
+    const success = await sendAssistantMessage({
       messageToSend,
       siteId: currentSite.id,
       selectedActivity: activity,
@@ -127,6 +131,7 @@ export const useMessageSending = ({
     // SSE completion is authoritative even if realtime log delivery was missed.
     clearThinkingState()
     clearNewMakinaThinking()
+    return success
   }, [
     currentSite?.id,
     selectedActivity,
@@ -180,6 +185,7 @@ export const useMessageSending = ({
     const requestId = Date.now().toString()
     activeRequestIdRef.current = requestId
     sendingLockRef.current = true
+    sendingMessageRef.current = messageToSend
     setIsSendingMessage(true)
 
     // Temporal robot requests keep their existing unlock behavior; assistant
@@ -196,13 +202,15 @@ export const useMessageSending = ({
     try {
       if (activity === 'robot') {
         await handleRobotMessageRef.current(messageToSend)
+        return true
       } else {
-        await handleAssistantMessageRef.current(messageToSend, activity)
+        return await handleAssistantMessageRef.current(messageToSend, activity)
       }
     } finally {
       clearTimeout(safetyUnlockTimeout)
       if (activeRequestIdRef.current === requestId) {
         sendingLockRef.current = false
+        sendingMessageRef.current = null
         setIsSendingMessage(false)
         activeRequestIdRef.current = null
       }
@@ -214,6 +222,9 @@ export const useMessageSending = ({
     if (!currentMessage.trim() || !currentSite?.id) return
 
     const messageToSend = currentMessage.trim()
+    // Assistant drafts stay visible until success; a second click must not queue
+    // the unchanged in-flight message as an unintended replay.
+    if (selectedActivity !== 'robot' && sendingLockRef.current && sendingMessageRef.current === messageToSend) return
     if (selectedActivity !== 'robot' && skillSelection.skill_mode === 'required' && skillSelection.skill_slugs.length === 0) {
       toast({ title: 'Select a skill', description: 'Choose at least one required skill before sending.', variant: 'destructive' })
       return
@@ -264,22 +275,36 @@ export const useMessageSending = ({
       setHasMessageBeenSent(true)
       onMessageSent?.(true)
     } else {
-      onAddOptimisticMessage?.(messageToSend, {
-        status: 'running',
-        request_type: selectedActivity,
-        context: selectedContext,
-      })
+      if (selectedActivity === 'robot') {
+        onAddOptimisticMessage?.(messageToSend, {
+          status: 'running',
+          request_type: selectedActivity,
+          context: selectedContext,
+        })
+      }
+      // Assistant user logs come from the API after admission. A rejected send
+      // must not leave an optimistic row claiming that unsent work is running.
       setThinkingStateWithTimeout()
     }
 
-    onClearMessage?.()
+    if (selectedActivity === 'robot') onClearMessage?.()
 
     try {
-      await dispatchPreparedMessage(messageToSend, selectedActivity)
+      const success = await dispatchPreparedMessage(messageToSend, selectedActivity)
+      if (sendScopeRef.current !== sendScope) return
+      if (selectedActivity !== 'robot' && success && messageRef.current === currentMessage) {
+        onClearMessage?.()
+      }
+      if (!success && !activeRobotInstance) {
+        setHasMessageBeenSent(false)
+        onMessageSent?.(false)
+      }
     } catch (error) {
       console.error('Error sending message:', error)
       toast({ title: 'Error', description: 'The message could not be sent. Please try again.', variant: 'destructive' })
       if (!activeRobotInstance) {
+        setHasMessageBeenSent(false)
+        onMessageSent?.(false)
         clearNewMakinaThinking()
       } else {
         clearThinkingState()
@@ -307,6 +332,7 @@ export const useMessageSending = ({
     clearThinkingState,
     dispatchPreparedMessage,
     messageRef,
+    sendScope,
   ])
 
   const resetMessageSentState = useCallback(() => {

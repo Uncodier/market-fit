@@ -46,3 +46,29 @@ it('never retries an ambiguous assistant network failure', async () => {
   const { apiClient } = await import('@/app/services/api-client-service')
   await expect(apiClient.post('/api/robots/instance/assistant', {})).resolves.toMatchObject({ success: false, retryable: false })
 })
+
+it.each([
+  [409, 'ASSISTANT_EXECUTION_BUSY'],
+  [503, 'ASSISTANT_CAPACITY_FULL'],
+  [503, 'ASSISTANT_ADMISSION_UNAVAILABLE'],
+])('preserves the admission error contract for HTTP %s / %s', async (status, code) => {
+  const error = { code, message: 'The request was not admitted.' }
+  ;(fetch as jest.Mock).mockResolvedValue({
+    ok: false, status, headers: { get: () => 'application/json' },
+    text: async () => JSON.stringify({ success: false, error, execution_started: false }),
+  })
+  const { apiClient } = await import('@/app/services/api-client-service')
+  await expect(apiClient.post('/api/robots/instance/assistant', {})).resolves.toMatchObject({
+    success: false, status, error, execution_started: false,
+  })
+})
+
+it.each([false, true, 'false', undefined])('preserves only boolean execution_started values: %s', async execution_started => {
+  const { handleApiResponse } = await import('@/app/services/api-client-response')
+  const response = {
+    ...jsonResponse(),
+    text: async () => JSON.stringify({ success: false, error: { code: 'ASSISTANT_CAPACITY_FULL', message: 'Full' }, execution_started }),
+  }
+  const result = await handleApiResponse(response as unknown as Response)
+  expect(result.execution_started).toBe(typeof execution_started === 'boolean' ? execution_started : undefined)
+})

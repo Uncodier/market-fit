@@ -299,6 +299,30 @@ describe('postWithRetry', () => {
     expect(postMock).toHaveBeenCalledTimes(1)
   })
 
+  it.each([
+    { status: 409, error: { code: 'ASSISTANT_EXECUTION_BUSY', message: 'Busy' }, execution_started: false },
+    { status: 503, error: { code: 'ASSISTANT_CAPACITY_FULL', message: 'Full' }, execution_started: false },
+    { status: 503, error: { code: 'ASSISTANT_ADMISSION_UNAVAILABLE', message: 'Unavailable' }, execution_started: false },
+    { status: 409, error: { message: 'This assistant execution is already in progress' } },
+    { status: 503, error: { message: 'Assistant capacity is temporarily full' } },
+    { status: 500, error: { message: 'Start outcome unknown' } },
+    { status: 502, error: { message: 'Bad gateway' } },
+    { status: 504, error: { message: 'Gateway timeout' } },
+    { status: 200, error: { code: 'ASSISTANT_STREAM_INTERRUPTED', message: 'Interrupted' }, retryable: false },
+    { status: 200, error: { code: 'ASSISTANT_STREAM_INCOMPLETE', message: 'Incomplete' }, retryable: false },
+    { error: { message: 'The connection timed out' }, retryable: false },
+  ])('does not replay or infer completion for admission/ambiguous failure %j', async failure => {
+    postMock.mockReset().mockResolvedValue({ success: false, ...failure })
+    fromMock.mockClear()
+    const pending = postWithRetry('/api/robots/instance/assistant', { message: 'hello' }, {
+      instanceId: 'instance', message: 'hello', requestId: 'current-request',
+    })
+    await jest.runAllTimersAsync()
+    await expect(pending).resolves.toMatchObject({ success: false, ...failure, retryable: false })
+    expect(postMock).toHaveBeenCalledTimes(1)
+    expect(fromMock).not.toHaveBeenCalled()
+  })
+
   it('marks retries exhausted after 3 failures', async () => {
     postMock.mockResolvedValue({ success: false, status: 502, error: { message: 'bad gateway' } })
 
