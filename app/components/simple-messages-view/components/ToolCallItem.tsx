@@ -137,7 +137,12 @@ export const ToolCallItem: React.FC<ToolCallItemProps> = ({
 
   // Helper to check if tool result has an error
   const hasError = toolResult && (toolResult.error || toolResult.success === false)
-  const errorMessage = toolResult?.error || toolResult?.output
+  const errorValue = toolResult?.error || toolResult?.output
+  const errorMessage = typeof errorValue === 'string'
+    ? errorValue
+    : errorValue == null
+      ? 'Tool failed'
+      : JSON.stringify(errorValue, null, 2) ?? 'Tool failed'
 
   // Extract status from details object
   const status = log.details?.status

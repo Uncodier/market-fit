@@ -1,10 +1,13 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { toast } from "sonner"
 import { createClient } from "@/lib/supabase/client"
 import { apiClient } from "@/app/services/api-client-service"
 import type { InstanceNode } from "@/app/types/instance-nodes"
 import { DEFAULT_PLAN_TYPE, WF_LOAD_NODE_TYPES, type WorkflowNodeType } from "./types"
+import { canSetWorkflowParent } from "./workflow-relations"
+import { DEFAULT_RELATION_CONTEXT, MAX_RELATION_CONTEXT_LENGTH, workflowRelationContext } from "./workflow-relation-context"
 
 const supabase = createClient()
 const seedPending = new Set<string>()
@@ -77,7 +80,11 @@ export function useWorkflowGraph(instanceId?: string, siteId?: string) {
         const seeded = await seedTrigger(instanceId, siteId)
         if (seeded) next = [seeded]
       }
-      next = next.filter(n => !deletedNodeIdsRef.current.has(n.id) && !(n.parent_node_id && deletedNodeIdsRef.current.has(n.parent_node_id)))
+      next = next
+        .filter((node) => !deletedNodeIdsRef.current.has(node.id))
+        .map((node) => node.parent_node_id && deletedNodeIdsRef.current.has(node.parent_node_id)
+          ? { ...node, parent_node_id: null }
+          : node)
       if (instanceId !== instanceIdRef.current) return
       setNodes(next)
     } finally {
@@ -125,9 +132,11 @@ export function useWorkflowGraph(instanceId?: string, siteId?: string) {
         const response = await apiClient.post(`/api/workflows/${instanceIdToSync}/sync-triggers`, {})
         if (!response.success) {
           console.error("Failed to sync triggers: API returned success=false", response.error)
+          toast.error(response.error?.message || "Could not sync workflow. Changes may not be active.")
         }
       } catch (err) {
         console.error("Failed to sync triggers (network error):", err)
+        toast.error("Could not sync workflow. Changes may not be active.")
       }
     }, 1000)
   }, [])
@@ -158,6 +167,9 @@ export function useWorkflowGraph(instanceId?: string, siteId?: string) {
             title: params.title,
             ui_position: params.position,
             ...(params.settings || {}),
+            ...(params.type === "wf-step" && params.parentId
+              ? { relation_context: DEFAULT_RELATION_CONTEXT }
+              : {}),
           },
           result: {},
         }])
@@ -167,7 +179,7 @@ export function useWorkflowGraph(instanceId?: string, siteId?: string) {
       const created = data as InstanceNode
       setNodes((prev) => (prev.some((n) => n.id === created.id) ? prev : [...prev, created]))
       
-      if (created.type === "wf-trigger" && created.instance_id) {
+      if (isWorkflowNode(created) && created.instance_id) {
         syncTriggers(created.instance_id)
       }
       
@@ -182,35 +194,103 @@ export function useWorkflowGraph(instanceId?: string, siteId?: string) {
     const updated = data as InstanceNode
     setNodes((prev) => prev.map((n) => (n.id === id ? updated : n)))
     
-    if (updated.type === "wf-trigger" && updated.instance_id) {
-      // We use a 1000ms debounce in syncTriggers to avoid spamming the API on drags
+    if (isWorkflowNode(updated) && updated.instance_id) {
+      // Keep the execution plan and trigger eligibility current after edits to
+      // either the trigger or its steps; the debounce also covers drag updates.
       syncTriggers(updated.instance_id)
     }
     
     return updated
   }, [syncTriggers])
 
+  const setStepParent = useCallback(async (stepId: string, parentId: string | null) => {
+    const step = nodesRef.current.find((node) => node.id === stepId)
+    if (!instanceId || !siteId || !step || step.instance_id !== instanceId || step.site_id !== siteId || !canSetWorkflowParent(nodesRef.current, stepId, parentId)) {
+      throw new Error("Cannot connect these workflow nodes")
+    }
+    if (step.parent_node_id === parentId) return step
+    const settings = { ...(step.settings || {}) }
+    if (parentId) settings.relation_context = DEFAULT_RELATION_CONTEXT
+    else delete settings.relation_context
+    const { data, error } = await supabase.from("instance_nodes")
+      .update({ parent_node_id: parentId, settings })
+      .eq("id", stepId)
+      .eq("instance_id", instanceId)
+      .eq("site_id", siteId)
+      .select("*")
+      .single()
+    if (error) throw error
+    const updated = data as InstanceNode
+    setNodes((prev) => prev.map((node) => node.id === stepId ? updated : node))
+    syncTriggers(instanceId)
+    return updated
+  }, [instanceId, siteId, syncTriggers])
+
+  const setRelationContext = useCallback(async (stepId: string, context: string) => {
+    const step = nodesRef.current.find((node) => node.id === stepId)
+    if (!instanceId || !siteId || !step || step.type !== "wf-step" || !step.parent_node_id ||
+      step.instance_id !== instanceId || step.site_id !== siteId || context.length > MAX_RELATION_CONTEXT_LENGTH) {
+      throw new Error("Cannot update this workflow relation")
+    }
+    const label = workflowRelationContext(context)
+    const { data, error } = await supabase.from("instance_nodes")
+      .update({ settings: { ...(step.settings || {}), relation_context: label } })
+      .eq("id", stepId)
+      .eq("instance_id", instanceId)
+      .eq("site_id", siteId)
+      .eq("parent_node_id", step.parent_node_id)
+      .select("*")
+      .maybeSingle()
+    if (error) throw error
+    if (!data) throw new Error("The relation changed before it could be saved")
+    const updated = data as InstanceNode
+    setNodes((prev) => prev.map((node) => node.id === stepId ? updated : node))
+    syncTriggers(instanceId)
+    return updated
+  }, [instanceId, siteId, syncTriggers])
+
   const deleteNode = useCallback(async (id: string) => {
-    // Find the node before deleting it to know if it's a trigger
+    // Find the node before deleting it to refresh its workflow definition.
     const target = nodesRef.current.find((n) => n.id === id)
-    
-    // Optimistic update
-    deletedNodeIdsRef.current.add(id)
-    setNodes((prev) => prev.filter((n) => n.id !== id && n.parent_node_id !== id))
-    
+    if (!target || target.instance_id !== instanceId) return
+    const children = nodesRef.current.filter((node) => node.parent_node_id === id)
+    let detached = false
     try {
-      const { error } = await supabase.from("instance_nodes").delete().eq("id", id)
+      if (children.length) {
+        const { error } = await supabase.from("instance_nodes")
+          .update({ parent_node_id: null })
+          .eq("instance_id", target.instance_id)
+          .eq("site_id", target.site_id)
+          .eq("parent_node_id", id)
+          .in("id", children.map((node) => node.id))
+        if (error) throw error
+        detached = true
+        setNodes((prev) => prev.map((node) => node.parent_node_id === id ? { ...node, parent_node_id: null } : node))
+      }
+      const { error } = await supabase.from("instance_nodes")
+        .delete()
+        .eq("id", id)
+        .eq("instance_id", target.instance_id)
+        .eq("site_id", target.site_id)
       if (error) throw error
+      deletedNodeIdsRef.current.add(id)
+      setNodes((prev) => prev.filter((node) => node.id !== id))
     } catch (e) {
-      deletedNodeIdsRef.current.delete(id)
+      if (detached) {
+        const { error } = await supabase.from("instance_nodes")
+          .update({ parent_node_id: id })
+          .eq("instance_id", target.instance_id)
+          .eq("site_id", target.site_id)
+          .in("id", children.map((node) => node.id))
+        if (error) console.error("Failed to restore workflow relations after deletion error:", error)
+      }
       void reload()
       throw e
     }
-    
-    if (target?.type === "wf-trigger" && target.instance_id) {
+    if (isWorkflowNode(target) && target.instance_id) {
       syncTriggers(target.instance_id)
     }
-  }, [syncTriggers, reload])
+  }, [instanceId, syncTriggers, reload])
 
   const hasSandboxStep = useMemo(
     () =>
@@ -223,5 +303,5 @@ export function useWorkflowGraph(instanceId?: string, siteId?: string) {
 
   const isLoading = Boolean(instanceId) && loadedInstanceId !== instanceId
 
-  return { nodes, isLoading, reload, createNode, updateNode, deleteNode, hasSandboxStep }
+  return { nodes, isLoading, reload, createNode, updateNode, setStepParent, setRelationContext, deleteNode, hasSandboxStep }
 }

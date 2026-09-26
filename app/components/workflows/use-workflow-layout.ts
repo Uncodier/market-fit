@@ -54,11 +54,38 @@ export function unstackOverlaps(
         if (!pa || !pb) continue
         const ha = heights[a.id] || NODE_H
         const hb = heights[b.id] || NODE_H
-        if (!overlaps(pa, ha, pb, hb)) continue
+        if (!overlaps(pa, ha, pb, hb, V_GAP)) continue
         next[b.id] = { x: pb.x, y: pa.y + ha + V_GAP }
         changed = true
       }
     }
+  }
+  return next
+}
+
+/** Preserve parent-child spacing in saved layouts without persisting new positions. */
+export function spaceWorkflowColumns(
+  nodes: InstanceNode[],
+  positions: Record<string, WFPoint>,
+): Record<string, WFPoint> {
+  const next = { ...positions }
+  const byId = new Map(nodes.map((node) => [node.id, node]))
+  // Parents may appear after children in a saved layout; propagate the shift down the chain.
+  for (let pass = 0; pass < nodes.length; pass++) {
+    let changed = false
+    for (const node of nodes) {
+      const parent = node.parent_node_id ? byId.get(node.parent_node_id) : null
+      if (!parent) continue
+      const from = next[parent.id]
+      const to = next[node.id]
+      if (!from || !to || to.x <= from.x) continue // Keep manually stacked or leftward branches.
+      const minX = from.x + NODE_W + H_GAP
+      if (to.x < minX) {
+        next[node.id] = { ...to, x: minX }
+        changed = true
+      }
+    }
+    if (!changed) break
   }
   return next
 }
@@ -99,7 +126,7 @@ export function placeNewNode({
     const hit = nodes.find((n) => {
       const pos = positions[n.id]
       if (!pos) return false
-      return overlaps(candidate, NODE_H, pos, heights[n.id] || NODE_H)
+      return overlaps(candidate, NODE_H, pos, heights[n.id] || NODE_H, V_GAP)
     })
     if (!hit) break
     const hitPos = positions[hit.id]!
@@ -116,22 +143,20 @@ export function placeResultNodes(
 ): Record<string, WFPoint> {
   const next = { ...positions }
   const placed: InstanceNode[] = [...graphNodes]
-  
-  resultNodes.forEach((result) => {
-    if (next[result.id]) {
-      placed.push(result)
-      return
-    }
+  const resultBottoms = new Map<string, number>()
 
+  resultNodes.forEach((result) => {
     const parentId = (result.settings?.source_node_id as string | undefined) || result.parent_node_id
     if (parentId) {
       const parentPos = next[parentId] || positions[parentId] || { x: 80, y: 80 }
       const parentH = heights[parentId] || NODE_H
-      // Always pin result nodes exactly below their parent
+      // Keep results directly below their parent, with room to distinguish the cards.
+      const y = resultBottoms.get(parentId) ?? parentPos.y + parentH + V_GAP
       next[result.id] = {
         x: parentPos.x,
-        y: parentPos.y + parentH + 12,
+        y,
       }
+      resultBottoms.set(parentId, y + (heights[result.id] || NODE_H) + V_GAP)
       placed.push(result)
     } else {
       const parent = graphNodes.find((node) => node.id === result.parent_node_id) || null
@@ -228,7 +253,7 @@ export function sortWorkflowLayout(
     let h = heights[nodeId] || NODE_H
     const results = resultsByParent.get(nodeId) || []
     results.forEach((res) => {
-      h += 12 + (heights[res.id] || NODE_H)
+      h += V_GAP + (heights[res.id] || NODE_H)
     })
     return h
   }
@@ -246,11 +271,11 @@ export function sortWorkflowLayout(
     pos[node.id] = { x, y }
     
     // Place result nodes exactly below
-    let currentY = y + (heights[node.id] || NODE_H) + 12
+    let currentY = y + (heights[node.id] || NODE_H) + V_GAP
     const results = resultsByParent.get(node.id) || []
     results.forEach((res) => {
       pos[res.id] = { x, y: currentY }
-      currentY += (heights[res.id] || NODE_H) + 12
+      currentY += (heights[res.id] || NODE_H) + V_GAP
     })
 
     const kids = byParent.get(node.id) || []

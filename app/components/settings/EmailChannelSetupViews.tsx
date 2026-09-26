@@ -230,26 +230,24 @@ export function EmailInboundSettings({
 
       <SectionCardFooter className="justify-end gap-2 flex-wrap">
         {!isMxConfigured && (
-          <>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={onSync}
-              disabled={isProcessing || isSyncingCloudflare || isActivating}
-            >
-              <Cloud className="h-4 w-4 mr-2" />
-              {isSyncingCloudflare ? "Syncing..." : isCloudflareConnected ? "Sync with Cloudflare" : "Connect Cloudflare"}
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={onVerify}
-              disabled={isProcessing || isVerifyingMx || isActivating}
-            >
-              {isVerifyingMx ? "Checking..." : "Verify MX"}
-            </Button>
-          </>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onSync}
+            disabled={isProcessing || isSyncingCloudflare || isActivating}
+          >
+            <Cloud className="h-4 w-4 mr-2" />
+            {isSyncingCloudflare ? "Syncing..." : isCloudflareConnected ? "Sync with Cloudflare" : "Connect Cloudflare"}
+          </Button>
         )}
+        <Button
+          type="button"
+          variant="outline"
+          onClick={onVerify}
+          disabled={isProcessing || isVerifyingMx || isActivating}
+        >
+          {isVerifyingMx ? "Checking..." : isMxConfigured ? "Recheck MX" : "Verify MX"}
+        </Button>
         <Button
           type="button"
           variant="outline"

@@ -39,6 +39,7 @@ import { useInstanceAssets } from './hooks/useInstanceAssets'
 import { EmptyStatePrompts, EMPTY_STATE_TYPEWRITER_PROMPTS } from './components/EmptyStatePrompts'
 import { EmptyStateWelcome } from './components/EmptyStateWelcome'
 import { MessageInput } from './components/MessageInput'
+import { type SkillSelection } from './components/SkillSelector'
 import { MessageItem } from './components/MessageItem'
 import { ProcessGroupItem } from './components/ProcessGroupItem'
 import { CompletedPlanCard } from './components/CompletedPlanCard'
@@ -61,8 +62,10 @@ import { groupTimelineProcess, isProcessGroupLive } from './group-timeline-proce
 const SCROLL_BOTTOM_THRESHOLD_PX = 80
 
 export function SimpleMessagesView({ className = "", activeRobotInstance, isBrowserVisible = false, onMessageSent, onNewInstanceCreated, hasTopHeaderSpace = true }: SimpleMessagesViewProps) {
+  const [skillSelection, setSkillSelection] = useState<SkillSelection>({ skill_mode: 'auto', skill_slugs: [] })
   const { isDarkMode } = useTheme()
   const { currentSite } = useSite()
+  useEffect(() => { setSkillSelection({ skill_mode: 'auto', skill_slugs: [] }) }, [currentSite?.id])
   const { isLayoutCollapsed } = useLayout()
   const isMobile = useIsMobile()
   const { toast } = useToast()
@@ -330,6 +333,7 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
     activeRobotInstance,
     selectedActivity,
     selectedContext,
+    skillSelection,
     messageRef,
     logsRef: instanceLogsRef,
     onMessageSent: handleMessageSent,
@@ -1151,6 +1155,8 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
           </div>
         )}
         <MessageInput
+          skillSelection={skillSelection}
+          onSkillSelectionChange={setSkillSelection}
           message={message}
           selectedActivity={selectedActivity}
           selectedContext={selectedContext}

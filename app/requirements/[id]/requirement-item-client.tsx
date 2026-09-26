@@ -12,6 +12,7 @@ import { toast } from "sonner"
 import { updateRequirementStatus, updateCompletionStatus, updateRequirementPriority, updateRequirementInstructions, updateRequirement, deleteRequirement } from "../actions"
 import { markdownToHTML } from "../utils"
 import { RequirementStatusList } from "./components/RequirementStatusList"
+import { RequirementViewSwitcher, type RequirementView } from "./components/RequirementViewSwitcher"
 import { AddSecretDialog } from "@/app/components/ui/add-secret-dialog"
 
 // Function to convert HTML back to markdown
@@ -351,8 +352,7 @@ function RequirementDetailContent() {
   const [error, setError] = useState<string | null>(null)
   const [hasRequirementStatus, setHasRequirementStatus] = useState(false)
   const [showRightPanel, setShowRightPanel] = useState(true)
-  const [editorHeight, setEditorHeight] = useState(400) // Default height for editor
-  const [isResizing, setIsResizing] = useState(false)
+  const [activeView, setActiveView] = useState<RequirementView>("document")
   
   // Custom nodes for the workflow builder
   const [nodes, setNodes] = useState<any[]>([
@@ -1295,38 +1295,6 @@ function RequirementDetailContent() {
     setUnsavedChanges(true);
   };
 
-  // Add event listeners for resizing
-  useEffect(() => {
-    if (!isResizing) return;
-    
-    const handleMouseMove = (e: MouseEvent) => {
-      // Limit the height to prevent it from taking the entire screen or disappearing
-      // The header is ~64px and the toolbar is ~71px, total ~135px
-      const minHeight = 150; // Minimum editor height
-      const maxHeight = window.innerHeight - 135 - 150; // Keep at least 150px for the workflow builder
-      
-      const newHeight = Math.max(minHeight, Math.min(maxHeight, e.clientY - 135));
-      setEditorHeight(newHeight);
-    };
-    
-    const handleMouseUp = () => {
-      setIsResizing(false);
-      document.body.style.cursor = ''; // Reset cursor
-    };
-    
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', handleMouseUp);
-    
-    // Add a class to body to prevent text selection while resizing
-    document.body.style.cursor = 'row-resize';
-    
-    return () => {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
-      document.body.style.cursor = '';
-    };
-  }, [isResizing]);
-
   // Handle adding requirement secret
   const handleAddRequirementSecret = async (id: string, name: string) => {
     try {
@@ -1997,38 +1965,28 @@ function RequirementDetailContent() {
             hasRequirementStatus={hasRequirementStatus}
             showRightPanel={showRightPanel}
             setShowRightPanel={setShowRightPanel}
+            activeView={activeView}
             canUndoWorkflow={workflowHistory.past.length > 1}
             canRedoWorkflow={workflowHistory.future.length > 0}
-          onUndoWorkflow={handleUndoWorkflow}
-          onRedoWorkflow={handleRedoWorkflow}
-        />
+            onUndoWorkflow={handleUndoWorkflow}
+            onRedoWorkflow={handleRedoWorkflow}
+          />
         </div>
-        <div className="flex-1 flex flex-col h-full overflow-hidden">
-          <div 
-            className="p-0 flex flex-col mx-auto w-full overflow-y-auto" 
-            style={{ flexBasis: `${editorHeight}px`, flexShrink: 0 }}
-          >
-            <div className="max-w-4xl mx-auto w-full h-full">
-            <EditorContent 
-              editor={editor} 
-                className={`prose prose-sm dark:prose-invert max-w-none flex-1 [&>.tiptap]:outline-none [&>.tiptap]:px-4 [&>.tiptap]:lg:px-8 [&>.tiptap]:py-8 [&>.tiptap]:min-h-full`} 
-            />
-          </div>
-        </div>
-          <div className="w-full flex flex-col flex-1 border-t relative overflow-hidden">
-            <div 
-              className="absolute top-0 left-0 right-0 h-2 -mt-1 z-20 cursor-row-resize hover:bg-primary/20 transition-colors flex items-center justify-center group"
-              onMouseDown={(e) => {
-                e.preventDefault(); // Prevent text selection
-                setIsResizing(true);
-              }}
-            >
-              <div className="w-12 h-1 rounded-full bg-border group-hover:bg-primary/50 transition-colors"></div>
-      </div>
-            <div className="flex-1 overflow-hidden relative">
+        <RequirementViewSwitcher
+          activeView={activeView}
+          onViewChange={setActiveView}
+          documentView={(
+            <div className="max-w-4xl mx-auto w-full min-h-full">
+              <EditorContent
+                editor={editor}
+                className="prose prose-sm dark:prose-invert max-w-none [&>.tiptap]:outline-none [&>.tiptap]:px-4 [&>.tiptap]:lg:px-8 [&>.tiptap]:py-8 [&>.tiptap]:min-h-full"
+              />
+            </div>
+          )}
+        >
               <ZoomableCanvas 
                 className="w-full h-full" 
-                recenterDependency={showRightPanel}
+                recenterDependency={`${showRightPanel}-${activeView}`}
                 dotColorLight="rgba(0, 0, 0, 0.15)"
                 dotColorDark="rgba(255, 255, 255, 0.15)"
                 dotSize="20px"
@@ -2957,9 +2915,7 @@ function RequirementDetailContent() {
                     })}
                 </div>
               </ZoomableCanvas>
-            </div>
-          </div>
-        </div>
+        </RequirementViewSwitcher>
       </div>
 
       {/* Right Panel */}
@@ -3002,6 +2958,7 @@ const MenuBar = ({
   hasRequirementStatus,
   showRightPanel,
   setShowRightPanel,
+  activeView,
   canUndoWorkflow,
   canRedoWorkflow,
   onUndoWorkflow,
@@ -3015,6 +2972,7 @@ const MenuBar = ({
   hasRequirementStatus?: boolean,
   showRightPanel: boolean,
   setShowRightPanel: (show: boolean) => void,
+  activeView: "document" | "nodes",
   canUndoWorkflow: boolean,
   canRedoWorkflow: boolean,
   onUndoWorkflow: () => void,
@@ -3055,10 +3013,10 @@ const MenuBar = ({
           variant="ghost"
           size="sm"
           onClick={() => {
-            if (editor.can().undo()) editor.chain().focus().undo().run();
-            if (canUndoWorkflow) onUndoWorkflow();
+            if (activeView === "document" && editor.can().undo()) editor.chain().focus().undo().run();
+            if (activeView === "nodes" && canUndoWorkflow) onUndoWorkflow();
           }}
-          disabled={!editor.can().undo() && !canUndoWorkflow}
+          disabled={activeView === "document" ? !editor.can().undo() : !canUndoWorkflow}
           className="h-9 px-2 text-muted-foreground hover:text-foreground hover:bg-muted"
           title="Undo"
         >
@@ -3068,10 +3026,10 @@ const MenuBar = ({
           variant="ghost"
           size="sm"
           onClick={() => {
-            if (editor.can().redo()) editor.chain().focus().redo().run();
-            if (canRedoWorkflow) onRedoWorkflow();
+            if (activeView === "document" && editor.can().redo()) editor.chain().focus().redo().run();
+            if (activeView === "nodes" && canRedoWorkflow) onRedoWorkflow();
           }}
-          disabled={!editor.can().redo() && !canRedoWorkflow}
+          disabled={activeView === "document" ? !editor.can().redo() : !canRedoWorkflow}
           className="h-9 px-2 text-muted-foreground hover:text-foreground hover:bg-muted"
           title="Redo"
         >

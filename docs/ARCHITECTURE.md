@@ -110,3 +110,18 @@ workflow.
 - Do not add direct `lucide-react` usage.
 - Keep modules below 500 lines; split by responsibility when a change would
   exceed that limit.
+
+## Workflow relations
+
+The workflow canvas saves each incoming relation on its destination `wf-step`:
+`parent_node_id` identifies the source and `settings.relation_context` holds its
+label (default `on success`). Clicking the line or its label opens the same
+screen-anchored relation editor used by the other graph views, with a searchable
+picker for presets and custom labels and a control to disconnect the step.
+The external orchestration API copies both into the run plan. `on success` runs
+after a completed parent, `on fail` / `on error` after an exhausted failure, and
+`always` after either result; an omitted branch is cancelled. Custom text is
+passed to the agent alongside the trigger payload and previous step outputs so
+it can assess the condition and skip the step without side effects when it does
+not apply. A trigger has no failure status, so failure-only relations directly
+from a trigger do not run. Existing unlabeled relations behave as `on success`.

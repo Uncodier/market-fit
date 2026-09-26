@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/client'
 import { contextService, type SelectedContextIds } from '@/app/services/context-service'
 import { getSystemPromptForActivity } from '../utils'
 import { ImageParameters, VideoParameters, AudioParameters } from '../types'
+import { type SkillSelection } from '../components/SkillSelector'
 import {
   persistUserActionLog,
   markRobotInstanceErrorIfUnanswered,
@@ -16,6 +17,7 @@ export async function sendAssistantMessage(params: {
   siteId: string
   selectedActivity: string
   selectedContext: SelectedContextIds
+  skillSelection: SkillSelection
   activeRobotInstance?: { id?: string } | null
   imageParameters?: ImageParameters
   videoParameters?: VideoParameters
@@ -27,6 +29,7 @@ export async function sendAssistantMessage(params: {
     siteId,
     selectedActivity,
     selectedContext,
+    skillSelection,
     activeRobotInstance,
     imageParameters,
     videoParameters,
@@ -89,6 +92,8 @@ export async function sendAssistantMessage(params: {
       request_id: requestId,
       client_persisted: true,
       activity: selectedActivity,
+      skill_mode: skillSelection.skill_mode,
+      skill_slugs: skillSelection.skill_slugs,
     }
 
     const instanceId = activeRobotInstance?.id
@@ -141,6 +146,7 @@ export async function sendRobotMessage(params: {
   messageToSend: string
   siteId: string
   selectedContext: SelectedContextIds
+  skillSelection: SkillSelection
   activeRobotInstance?: { id?: string; status?: string } | null
   toast: ToastFn
   setThinkingStateWithTimeout: () => void
@@ -155,6 +161,7 @@ export async function sendRobotMessage(params: {
     messageToSend,
     siteId,
     selectedContext,
+    skillSelection,
     activeRobotInstance,
     toast,
     setThinkingStateWithTimeout,
@@ -197,6 +204,8 @@ export async function sendRobotMessage(params: {
         site_id: siteId,
         context: JSON.stringify(robotContext),
         activity: 'robot',
+        skill_mode: skillSelection.skill_mode,
+        skill_slugs: skillSelection.skill_slugs,
         request_id: requestId,
         client_persisted: true,
       }
@@ -220,6 +229,8 @@ export async function sendRobotMessage(params: {
         site_id: siteId,
         user_id: user?.id,
         activity: 'robot',
+        skill_mode: skillSelection.skill_mode,
+        skill_slugs: skillSelection.skill_slugs,
         message: messageToSend,
         context: JSON.stringify(robotContext),
         request_id: createRequestId(),

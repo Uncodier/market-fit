@@ -244,6 +244,8 @@ describe("module image visuals", () => {
     ["automation", "channels"],
     ["finance", "payments"],
     ["finance", "financeReports"],
+    ["reports", "reportAnalytics"],
+    ["reports", "reportCosts"],
   ] as const)("forces a second generation pass for %s/%s", (area, itemKey) => {
     const prompt = getModuleImagePrompt(area, itemKey, "Ignored Title")
 
@@ -259,6 +261,8 @@ describe("module image visuals", () => {
     ["automation", "channels"],
     ["finance", "payments"],
     ["finance", "financeReports"],
+    ["reports", "reportAnalytics"],
+    ["reports", "reportCosts"],
   ] as const)("keeps the second-pass prompt within the image API limit for %s/%s", (area, itemKey) => {
     const prompt = getModuleImagePrompt(area, itemKey, "Ignored Title")
 
@@ -279,6 +283,26 @@ describe("module image visuals", () => {
     expect(marketplacePrompt).toContain("broad scalloped canopy")
     expect(marketplacePrompt).toContain("exactly two large produce crates")
     expect(marketplacePrompt).toContain("no enclosed shop facade")
+  })
+
+  it("uses clearly distinct new compositions for Analytics and Cost reports", () => {
+    const analyticsPrompt = getModuleImagePrompt(
+      "reports",
+      "reportAnalytics",
+      "Analytics",
+    )
+    const costsPrompt = getModuleImagePrompt(
+      "reports",
+      "reportCosts",
+      "Cost reports",
+    )
+
+    expect(analyticsPrompt).toContain("exactly three substantial vertical bars")
+    expect(analyticsPrompt).toContain("rising from left to right")
+    expect(analyticsPrompt).toContain("one smooth upward trend line")
+    expect(costsPrompt).toContain("one bold descending zigzag line")
+    expect(costsPrompt).toContain("exactly three large circular data points")
+    expect(costsPrompt).toContain("no bars, axes, grid")
   })
 
   it("does not request an alternative composition for unrelated modules", () => {

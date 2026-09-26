@@ -94,10 +94,21 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       )
     }
+    let verifiedImportAuthorization: string | null = null
     if (!hasValidServiceApiKey(request)) {
       const access = await requireSiteAccess(request, siteId)
       if (access.error) return access.error
       parsedBody.user_id = access.userId
+      if (typeof parsedBody.message === "string" && /^import reviewed skill:/i.test(parsedBody.message.trim())) {
+        if (access.role !== "owner" && access.role !== "admin") {
+          return NextResponse.json({ error: { message: "Site manager access required to import skills" } }, { status: 403 })
+        }
+        const { data: { session }, error: sessionError } = await access.supabase.auth.getSession()
+        if (sessionError || !session?.access_token || session.user?.id !== access.userId) {
+          return NextResponse.json({ error: { message: "Authenticated session required to import skills" } }, { status: 401 })
+        }
+        verifiedImportAuthorization = `Bearer ${session.access_token}`
+      }
 
       const nodeId =
         typeof parsedBody.instance_node_id === "string"
@@ -178,6 +189,11 @@ export async function POST(request: NextRequest) {
     for (const name of ["authorization", "content-type", "accept", "x-api-key"]) {
       const value = request.headers.get(name)
       if (value) headers.set(name, value)
+    }
+
+    if (verifiedImportAuthorization) {
+      headers.delete("x-api-key")
+      headers.set("authorization", verifiedImportAuthorization)
     }
 
     const controller = new AbortController()

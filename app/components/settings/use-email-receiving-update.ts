@@ -45,6 +45,7 @@ export function useEmailReceivingUpdate({
         emailReceivingEnabled: receivingEnabled,
       })
       if (!response.success) {
+        if (receivingEnabled) setReceivingEnabled(false)
         throw new Error(response.error?.message || "Failed to update receiving status")
       }
 

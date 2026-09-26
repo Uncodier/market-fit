@@ -28,7 +28,7 @@ describe("EmailInboundSettings", () => {
     expect(screen.getByText("Verified")).toBeInTheDocument()
     expect(screen.queryByText(/MX 10 inbound\.zavu\.dev/)).not.toBeInTheDocument()
     expect(screen.queryByRole("button", { name: "Sync with Cloudflare" })).not.toBeInTheDocument()
-    expect(screen.queryByRole("button", { name: "Verify MX" })).not.toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "Recheck MX" })).toBeInTheDocument()
     expect(screen.getByRole("button", { name: "Save Changes" })).toBeDisabled()
   })
 
@@ -43,7 +43,7 @@ describe("EmailInboundSettings", () => {
     )
 
     expect(screen.getByRole("button", { name: "Save Changes" })).toBeInTheDocument()
-    expect(screen.queryByRole("button", { name: "Verify MX" })).not.toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "Recheck MX" })).toBeInTheDocument()
   })
 
   it("explains that activation happens before receiving is enabled", () => {
@@ -57,7 +57,7 @@ describe("EmailInboundSettings", () => {
 
     expect(screen.getByText(/will be activated before email receiving/)).toBeInTheDocument()
     expect(screen.queryByRole("button", { name: "Activate Email Channel" })).not.toBeInTheDocument()
-    expect(screen.queryByRole("button", { name: "Verify MX" })).not.toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "Recheck MX" })).toBeInTheDocument()
   })
 
   it("allows explicit activation before inbound receiving is enabled", () => {

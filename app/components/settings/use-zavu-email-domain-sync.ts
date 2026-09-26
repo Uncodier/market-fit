@@ -64,9 +64,9 @@ export function useZavuEmailDomainSync({
           domain.status === status ||
           !isSupportedEmailDomainStatus(domain.status)
         ) return
-        terminal = TERMINAL_DOMAIN_STATUSES.has(domain.status)
         await callbackRef.current(domain)
         if (cancelled) return
+        terminal = TERMINAL_DOMAIN_STATUSES.has(domain.status)
         if (domain.status === "verified") {
           toast.success("Email domain verified")
         } else if (domain.status === "failed") {
@@ -85,6 +85,8 @@ export function useZavuEmailDomainSync({
     const run = async () => {
       try {
         await sync()
+      } catch (error) {
+        console.error("Failed to persist the email domain status:", error)
       } finally {
         schedule()
       }

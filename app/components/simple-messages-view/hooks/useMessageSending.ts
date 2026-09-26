@@ -4,6 +4,7 @@ import { useToast } from '@/app/components/ui/use-toast'
 import { type SelectedContextIds } from '@/app/services/context-service'
 import { ImageParameters, VideoParameters, AudioParameters, InstanceLog } from '../types'
 import { sendAssistantMessage, sendRobotMessage } from './message-send-handlers'
+import { type SkillSelection } from '../components/SkillSelector'
 import { findRunningUserLog } from './useRunningWorkflow'
 import { shouldQueueCommand } from './command-queue'
 import { buildPendingWorkPayload, enqueuePendingWork } from './pending-work'
@@ -12,6 +13,7 @@ interface UseMessageSendingProps {
   activeRobotInstance?: any
   selectedActivity: string
   selectedContext: SelectedContextIds
+  skillSelection: SkillSelection
   messageRef: React.MutableRefObject<string>
   logsRef?: MutableRefObject<InstanceLog[]>
   onMessageSent?: (hasMessageBeenSent: boolean) => void
@@ -30,6 +32,7 @@ export const useMessageSending = ({
   activeRobotInstance,
   selectedActivity,
   selectedContext,
+  skillSelection,
   messageRef,
   logsRef,
   onMessageSent,
@@ -113,6 +116,7 @@ export const useMessageSending = ({
       siteId: currentSite.id,
       selectedActivity: activity,
       selectedContext,
+      skillSelection,
       activeRobotInstance,
       imageParameters,
       videoParameters,
@@ -123,6 +127,7 @@ export const useMessageSending = ({
     currentSite?.id,
     selectedActivity,
     selectedContext,
+    skillSelection,
     activeRobotInstance,
     imageParameters,
     videoParameters,
@@ -136,6 +141,7 @@ export const useMessageSending = ({
       messageToSend,
       siteId: currentSite.id,
       selectedContext,
+      skillSelection,
       activeRobotInstance,
       toast,
       setThinkingStateWithTimeout,
@@ -149,6 +155,7 @@ export const useMessageSending = ({
   }, [
     currentSite?.id,
     selectedContext,
+    skillSelection,
     activeRobotInstance,
     toast,
     setThinkingStateWithTimeout,
@@ -200,9 +207,17 @@ export const useMessageSending = ({
     if (!currentMessage.trim() || !currentSite?.id) return
 
     const messageToSend = currentMessage.trim()
+    if (skillSelection.skill_mode === 'required' && skillSelection.skill_slugs.length === 0) {
+      toast({ title: 'Select a skill', description: 'Choose at least one required skill before sending.', variant: 'destructive' })
+      return
+    }
     const isBusy = shouldQueueCommand(Boolean(findRunningUserLog(logsRef?.current || [])) || sendingLockRef.current || isSendingMessage)
 
     if (isBusy && activeRobotInstance?.id) {
+      if (skillSelection.skill_mode === 'required') {
+        toast({ title: 'Wait to send', description: 'Required skills cannot be attached to queued commands. Wait for the current task to finish.', variant: 'destructive' })
+        return
+      }
       const payload = await buildPendingWorkPayload({
         siteId: currentSite.id,
         activity: selectedActivity,
@@ -266,6 +281,7 @@ export const useMessageSending = ({
     activeRobotInstance,
     selectedActivity,
     selectedContext,
+    skillSelection,
     imageParameters,
     videoParameters,
     audioParameters,

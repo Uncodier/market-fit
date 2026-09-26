@@ -3,6 +3,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { ZoomableCanvas } from "@/app/components/agents/zoomable-canvas"
 import { ImprentaLoadingRouteEdges } from "@/app/components/agents/imprenta-world-svg"
+import { Button } from "@/app/components/ui/button"
+import { X } from "@/app/components/ui/icons"
+import { toast } from "sonner"
 import { useSite } from "@/app/context/SiteContext"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { createViewportStore } from "@/app/lib/imprenta-viewport-store"
@@ -27,6 +30,7 @@ import {
   placeResultNodes,
   positionsMoved,
   readSavedPosition,
+  spaceWorkflowColumns,
   sortWorkflowLayout,
   unstackOverlaps,
   type WFPoint,
@@ -34,13 +38,17 @@ import {
 import { WorkflowPalette } from "./workflow-palette"
 import { WorkflowNodeCard } from "./workflow-node-card"
 import { WorkflowResultCard } from "./workflow-result-card"
+import { triggerHasExecutableStep, triggerHasUnsupportedChannelStep } from "./workflow-trigger-branches"
 import { WorkflowEdges } from "./workflow-edges"
+import { WorkflowRelationEditor } from "./workflow-relation-editor"
+import { workflowRelationContext } from "./workflow-relation-context"
+import { canSetWorkflowParent } from "./workflow-relations"
 import { WorkflowSkeleton } from "@/app/components/skeletons/workflow-skeleton"
 
 export function WorkflowPanel({ activeInstanceId }: { activeInstanceId?: string }) {
   const { currentSite } = useSite()
   const { t } = useLocalization()
-  const { nodes, isLoading, createNode, updateNode, deleteNode, hasSandboxStep } = useWorkflowGraph(
+  const { nodes, isLoading, createNode, updateNode, setStepParent, setRelationContext, deleteNode, hasSandboxStep } = useWorkflowGraph(
     activeInstanceId,
     currentSite?.id,
   )
@@ -54,11 +62,16 @@ export function WorkflowPanel({ activeInstanceId }: { activeInstanceId?: string 
   const canvasNodes = useMemo(() => [...nodes, ...resultNodes], [nodes, resultNodes])
   const viewportStore = useMemo(() => createViewportStore(), [])
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [selectedRelationId, setSelectedRelationId] = useState<string | null>(null)
+  const [relationAnchor, setRelationAnchor] = useState<WFPoint | null>(null)
+  const [connectionSourceId, setConnectionSourceId] = useState<string | null>(null)
+  const [connectionPoint, setConnectionPoint] = useState<WFPoint | null>(null)
   const [dragId, setDragId] = useState<string | null>(null)
   const [positions, setPositions] = useState<Record<string, WFPoint>>({})
   const [heightTick, setHeightTick] = useState(0)
   const heightsRef = useRef<Record<string, number>>({})
   const nodeElsRef = useRef<Record<string, HTMLDivElement | null>>({})
+  const graphElRef = useRef<HTMLDivElement>(null)
   const positionsRef = useRef(positions)
   const lastDragPosRef = useRef<WFPoint | null>(null)
   positionsRef.current = positions
@@ -69,6 +82,91 @@ export function WorkflowPanel({ activeInstanceId }: { activeInstanceId?: string 
   const resultNodesRef = useRef(resultNodes)
   nodesRef.current = nodes
   resultNodesRef.current = resultNodes
+  const selectedRelation = nodes.find((node) => node.id === selectedRelationId && node.type === "wf-step" && node.parent_node_id)
+
+  const closeRelationEditor = () => {
+    setSelectedRelationId(null)
+    setRelationAnchor(null)
+  }
+
+  useEffect(() => {
+    setSelectedRelationId(null)
+    setRelationAnchor(null)
+  }, [activeInstanceId])
+
+  const cancelConnection = useCallback(() => {
+    setConnectionSourceId(null)
+    setConnectionPoint(null)
+  }, [])
+
+  useEffect(() => {
+    if (!connectionSourceId) return
+    if (!nodes.some((node) => node.id === connectionSourceId)) {
+      cancelConnection()
+      return
+    }
+    let frame = 0
+    const onMove = (event: MouseEvent) => {
+      const { clientX, clientY } = event
+      cancelAnimationFrame(frame)
+      frame = requestAnimationFrame(() => {
+        const rect = graphElRef.current?.getBoundingClientRect()
+        if (!rect) return
+        const scale = viewportStore.get().scale || 1
+        setConnectionPoint({ x: (clientX - rect.left) / scale, y: (clientY - rect.top) / scale })
+      })
+    }
+    const onEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") cancelConnection()
+    }
+    window.addEventListener("mousemove", onMove)
+    window.addEventListener("keydown", onEscape)
+    return () => {
+      cancelAnimationFrame(frame)
+      window.removeEventListener("mousemove", onMove)
+      window.removeEventListener("keydown", onEscape)
+    }
+  }, [connectionSourceId, graphSig, viewportStore, cancelConnection])
+
+  useEffect(() => {
+    cancelConnection()
+  }, [activeInstanceId, cancelConnection])
+
+  const startConnection = (nodeId: string) => {
+    if (connectionSourceId === nodeId) {
+      cancelConnection()
+      return
+    }
+    const node = nodes.find((item) => item.id === nodeId)
+    if (!node) return
+    const pos = positionsRef.current[nodeId] || readSavedPosition(node, 0)
+    setConnectionSourceId(nodeId)
+    setConnectionPoint({ x: pos.x + NODE_W, y: pos.y + (heightsRef.current[nodeId] || NODE_H) / 2 })
+  }
+
+  const connectStep = async (stepId: string) => {
+    const parentId = connectionSourceId
+    if (!parentId) {
+      const step = nodes.find((node) => node.id === stepId)
+      if (!step?.parent_node_id) return
+      try {
+        await setStepParent(stepId, null)
+      } catch {
+        toast.error("Could not disconnect step")
+      }
+      return
+    }
+    if (!canSetWorkflowParent(nodes, stepId, parentId)) {
+      toast.error("A step cannot be connected to itself or one of its descendants")
+      return
+    }
+    try {
+      await setStepParent(stepId, parentId)
+      cancelConnection()
+    } catch {
+      toast.error("Could not connect steps")
+    }
+  }
 
   useEffect(() => {
     if (dragId) return
@@ -82,7 +180,8 @@ export function WorkflowPanel({ activeInstanceId }: { activeInstanceId?: string 
       results.forEach((node) => {
         if (prev[node.id]) incoming[node.id] = prev[node.id]
       })
-      const placed = placeResultNodes(graph, results, incoming, heightsRef.current)
+      const spaced = spaceWorkflowColumns(graph, incoming)
+      const placed = placeResultNodes(graph, results, spaced, heightsRef.current)
       return unstackOverlaps([...graph, ...results], placed, heightsRef.current)
     })
   }, [graphSig, resultSig, dragId, heightTick])
@@ -228,6 +327,17 @@ export function WorkflowPanel({ activeInstanceId }: { activeInstanceId?: string 
 
   return (
     <div className="h-full min-h-0 absolute inset-0 flex flex-col">
+      {selectedRelation && relationAnchor && (
+        <WorkflowRelationEditor
+          key={selectedRelation.id}
+          stepId={selectedRelation.id}
+          context={workflowRelationContext(selectedRelation.settings?.relation_context)}
+          anchor={relationAnchor}
+          onChange={setRelationContext}
+          onDisconnect={(id) => setStepParent(id, null)}
+          onClose={closeRelationEditor}
+        />
+      )}
       {hasSandboxStep && (
         <div className="absolute left-1/2 -translate-x-1/2 top-3 z-20 rounded-full border border-amber-500/40 bg-amber-500/10 px-3 py-1 text-[11px] text-amber-800 dark:text-amber-300">
           {t("workflows.sandboxBadge") || "This workflow can start a billed VM on matching triggers."}
@@ -243,21 +353,43 @@ export function WorkflowPanel({ activeInstanceId }: { activeInstanceId?: string 
         viewportStore={viewportStore}
         onSort={sortLayout}
         extraControls={
-          <WorkflowPalette
-            onAdd={(type) => void addNode(type)}
-            canAddChild={Boolean(selectedId && !isWorkflowResultId(selectedId))}
-          />
+          <div className="flex items-center gap-2">
+            <WorkflowPalette
+              onAdd={(type) => void addNode(type)}
+              canAddChild={Boolean(selectedId && !isWorkflowResultId(selectedId))}
+            />
+            {connectionSourceId && (
+              <Button type="button" variant="destructive" size="sm" className="h-8 rounded-full text-xs" onClick={cancelConnection}>
+                <X className="mr-1.5 h-3.5 w-3.5" /> Cancel connection
+              </Button>
+            )}
+          </div>
         }
       >
-        <div className="relative" style={{ width: graphBounds.width, height: graphBounds.height }}>
-          <WorkflowEdges nodes={canvasNodes} positions={positions} heights={heightsRef.current} />
+        <div
+          ref={graphElRef}
+          className="relative"
+          style={{ width: graphBounds.width, height: graphBounds.height }}
+          onClick={() => { cancelConnection(); closeRelationEditor() }}
+        >
+          <WorkflowEdges
+            nodes={canvasNodes}
+            positions={positions}
+            heights={heightsRef.current}
+            preview={connectionSourceId && connectionPoint ? { fromNode: connectionSourceId, to: connectionPoint } : null}
+            selectedRelationId={selectedRelationId}
+            onSelectRelation={(id, anchor) => {
+              setSelectedRelationId(id)
+              setRelationAnchor(anchor)
+              setSelectedId(null)
+            }}
+          />
           <ImprentaLoadingRouteEdges
             edges={loadingEdges}
             positions={positions}
             nodeHeights={heightsRef.current}
             nodeW={NODE_W}
             rowH={NODE_H}
-            visibleNodeIds={null}
           />
           {canvasNodes.map((node, index) => {
             const pos = positions[node.id] || readSavedPosition(node, index)
@@ -291,13 +423,34 @@ export function WorkflowPanel({ activeInstanceId }: { activeInstanceId?: string 
                     selected={selectedId === node.id || dragId === node.id}
                     runStatus={statusByNode[node.id]}
                     actionRunning={actionNodeIds.has(node.id)}
+                    hasExecutableStep={triggerHasExecutableStep(nodes, node.id)}
+                    hasUnsupportedChannelStep={triggerHasUnsupportedChannelStep(nodes, node.id)}
+                    overlappingTriggers={nodes.filter((candidate) => {
+                      if (candidate.id === node.id || candidate.type !== "wf-trigger" || !candidate.settings?.enabled) return false
+                      const other = candidate.settings.trigger
+                      const own = node.settings?.trigger
+                      const ownKinds = own?.active_kinds || (own?.kind ? [own.kind] : [])
+                      const otherKinds = other?.active_kinds || (other?.kind ? [other.kind] : [])
+                      if (!ownKinds.includes("channel_message") || !otherKinds.includes("channel_message")) return false
+                      const sameChannel = !own.channel || !other.channel || own.channel === other.channel
+                      const sameConnection = !own.connection_id || !other.connection_id || own.connection_id === other.connection_id
+                      return sameChannel && sameConnection
+                    }).length}
                     onSelect={() => setSelectedId(node.id)}
                     onMouseDown={(e) => onNodeMouseDown(node, e)}
                     onChange={updateNode}
+                    connectionSourceId={connectionSourceId}
+                    onStartConnection={() => startConnection(node.id)}
+                    onInputConnection={() => void connectStep(node.id)}
                     onAddStep={() => void addNode("wf-step", node.id)}
                     onDelete={async (id) => {
-                      await deleteNode(id)
-                      if (selectedId === id) setSelectedId(null)
+                      try {
+                        await deleteNode(id)
+                        if (selectedId === id) setSelectedId(null)
+                        if (connectionSourceId === id) cancelConnection()
+                      } catch {
+                        toast.error("Could not delete workflow node")
+                      }
                     }}
                   />
                 )}

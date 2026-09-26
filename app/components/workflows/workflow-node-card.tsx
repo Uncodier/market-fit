@@ -24,6 +24,7 @@ const TITLE_MAP: Record<WorkflowTriggerKind, string> = {
   db_event: "Table",
   webhook: "Webhook",
   manual: "Manual",
+  channel_message: "Channel message",
 }
 
 function triggerTitle(kinds: WorkflowTriggerKind[]) {
@@ -36,35 +37,48 @@ function mergeSettings(node: InstanceNode, patch: Record<string, unknown>) {
   return { ...((node.settings as Record<string, unknown>) || {}), ...patch }
 }
 
-function WorkflowAddStepPort({ onAddStep }: { onAddStep: () => void }) {
+function WorkflowOutputPorts({
+  active,
+  onStartConnection,
+  onAddStep,
+}: {
+  active: boolean
+  onStartConnection: () => void
+  onAddStep: () => void
+}) {
   return (
-    <div className="absolute z-20 h-4 w-4" style={{ top: "50%", right: -12, marginTop: -8 }}>
+    <div className="absolute z-20 top-1/2 -right-3 -translate-y-3 h-20 w-6">
+      <button
+        type="button"
+        aria-label={active ? "Cancel connection" : "Start connection"}
+        title={active ? "Cancel connection" : "Connect to a step"}
+        className={cn(
+          "flex h-6 w-6 items-center justify-center rounded-full border-2 bg-background transition-transform hover:scale-125",
+          active ? "border-primary ring-2 ring-primary/30" : "border-primary",
+        )}
+        onMouseDown={(event) => event.stopPropagation()}
+        onClick={(event) => {
+          event.stopPropagation()
+          onStartConnection()
+        }}
+      >
+        <span className="h-2 w-2 rounded-full bg-primary" />
+      </button>
       <button
         type="button"
         aria-label="Add step"
         title="Add step"
         className={cn(
-          "relative box-border h-4 w-4 cursor-pointer appearance-none p-0 leading-none",
-          "border-2 border-solid border-primary bg-background text-primary",
-          "hover:bg-primary hover:text-primary-foreground",
-          "focus-visible:outline-none",
+          "absolute top-14 left-0 flex h-6 w-6 items-center justify-center rounded-full border-2 border-primary bg-background text-primary",
+          "opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 hover:bg-primary hover:text-primary-foreground focus-visible:opacity-100",
         )}
-        style={{ borderRadius: "50%", transform: "none" }}
         onMouseDown={(event) => event.stopPropagation()}
         onClick={(event) => {
           event.stopPropagation()
           onAddStep()
         }}
       >
-        <span className="pointer-events-none absolute inset-0 flex items-center justify-center group-hover:opacity-0">
-          <span className="block h-1.5 w-1.5 bg-primary" style={{ borderRadius: "50%" }} />
-        </span>
-        <span className="pointer-events-none absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100">
-          <span className="relative block h-[7px] w-[7px]">
-            <span className="absolute bg-current" style={{ left: 3, top: 0, width: 1, height: 7 }} />
-            <span className="absolute bg-current" style={{ left: 0, top: 3, width: 7, height: 1 }} />
-          </span>
-        </span>
+        <span aria-hidden className="text-base leading-none">+</span>
       </button>
     </div>
   )
@@ -80,6 +94,12 @@ export function WorkflowNodeCard({
   onChange,
   onDelete,
   onAddStep,
+  onStartConnection,
+  onInputConnection,
+  connectionSourceId = null,
+  hasExecutableStep = true,
+  hasUnsupportedChannelStep = false,
+  overlappingTriggers = 0,
 }: {
   node: InstanceNode
   selected: boolean
@@ -90,6 +110,12 @@ export function WorkflowNodeCard({
   onChange: (id: string, patch: Partial<InstanceNode>) => Promise<unknown>
   onDelete: (id: string) => Promise<unknown>
   onAddStep: () => void
+  onStartConnection: () => void
+  onInputConnection: () => void
+  connectionSourceId?: string | null
+  hasExecutableStep?: boolean
+  hasUnsupportedChannelStep?: boolean
+  overlappingTriggers?: number
 }) {
   const settings = (node.settings || {}) as {
     enabled?: boolean
@@ -142,20 +168,33 @@ export function WorkflowNodeCard({
 
       <div className="relative p-5">
         {node.type !== "wf-trigger" && (
-          <div
-            className="absolute top-1/2 -translate-y-1/2 -left-3 w-4 h-4 bg-background border-2 border-muted-foreground rounded-full flex items-center justify-center z-20"
-            aria-hidden
+          <button
+            type="button"
+            className={cn(
+              "absolute top-1/2 -translate-y-1/2 -left-3 z-20 flex h-6 w-6 items-center justify-center rounded-full border-2 bg-background transition-transform hover:scale-125",
+              connectionSourceId ? "border-primary" : "border-muted-foreground",
+            )}
+            aria-label={connectionSourceId ? "Connect step here" : node.parent_node_id ? "Disconnect step" : "Step input"}
+            title={connectionSourceId ? "Connect step here" : node.parent_node_id ? "Disconnect from parent" : "Select an output to connect"}
+            onMouseDown={(event) => event.stopPropagation()}
+            onClick={(event) => {
+              event.stopPropagation()
+              onInputConnection()
+            }}
           >
-            <div className="w-1.5 h-1.5 bg-muted-foreground rounded-full" />
-          </div>
+            <span className={cn("h-2 w-2 rounded-full", connectionSourceId ? "bg-primary" : "bg-muted-foreground")} />
+          </button>
         )}
-        <WorkflowAddStepPort onAddStep={onAddStep} />
+        <WorkflowOutputPorts active={connectionSourceId === node.id} onStartConnection={onStartConnection} onAddStep={onAddStep} />
 
         {isTrigger ? (
           <WorkflowTriggerBody
             node={node}
             trigger={trigger}
             enabled={Boolean(settings.enabled)}
+            hasExecutableStep={hasExecutableStep}
+            hasUnsupportedChannelStep={hasUnsupportedChannelStep}
+            overlappingTriggers={overlappingTriggers}
             onPersist={persist}
             onKindsChange={(kinds) =>
               void persist({
@@ -166,6 +205,7 @@ export function WorkflowNodeCard({
                   ...(kinds.includes("cron") && !trigger.cron ? { cron: DEFAULT_CRON } : {}),
                 },
                 title: triggerTitle(kinds),
+                ...(kinds.includes("channel_message") && (!hasExecutableStep || hasUnsupportedChannelStep) ? { enabled: false } : {}),
               })
             }
           />

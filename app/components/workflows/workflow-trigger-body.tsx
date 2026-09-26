@@ -7,6 +7,7 @@ import { Button } from "@/app/components/ui/button"
 import { Switch } from "@/app/components/ui/switch"
 import { Check, Copy, PlayCircle, Plus, X } from "@/app/components/ui/icons"
 import { LoadingSkeleton } from "@/app/components/ui/loading-skeleton"
+import { ImprentaAutoResizeTextarea } from "@/app/components/agents/imprenta-auto-resize-textarea"
 import { apiClient } from "@/app/services/api-client-service"
 import {
   DB_EVENT_TABLES,
@@ -20,6 +21,7 @@ import {
 } from "./types"
 import { WorkflowCronFields } from "./workflow-cron-fields"
 import { WorkflowSearchSelect } from "./workflow-search-select"
+import { WorkflowChannelMessageFields } from "./workflow-channel-message-fields"
 
 function stopInteract(event: React.SyntheticEvent) {
   event.stopPropagation()
@@ -151,17 +153,24 @@ export function WorkflowTriggerBody({
   node,
   trigger,
   enabled,
+  hasExecutableStep,
+  hasUnsupportedChannelStep = false,
+  overlappingTriggers = 0,
   onPersist,
   onKindsChange,
 }: {
   node: InstanceNode
   trigger: WorkflowTriggerConfig
   enabled: boolean
+  hasExecutableStep: boolean
+  hasUnsupportedChannelStep?: boolean
+  overlappingTriggers?: number
   onPersist: (patch: Record<string, unknown>) => Promise<unknown>
   onKindsChange: (kinds: WorkflowTriggerKind[]) => void
 }) {
   const [testing, setTesting] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [sampleMessage, setSampleMessage] = useState("Example customer message")
   const webhookUrl = useMemo(() => webhookCallUrl(node), [node.id, node.instance_id, node.site_id])
   const planType = trigger.plan_type || DEFAULT_PLAN_TYPE
   const activeKinds = trigger.active_kinds || (trigger.kind ? [trigger.kind] : ["manual"])
@@ -170,8 +179,23 @@ export function WorkflowTriggerBody({
   const runTest = async () => {
     setTesting(true)
     try {
+      if (currentKind === "channel_message") {
+        // The editor syncs with a short debounce; ensure the selected trigger
+        // has a materialized row before running the existing dry-run endpoint.
+        const sync = await apiClient.post(`/api/workflows/${node.instance_id}/sync-triggers`, {})
+        if (!sync.success) throw new Error(sync.error?.message || "Could not sync workflow trigger")
+      }
       const response = await apiClient.post(`/api/workflows/${node.instance_id}/test`, {
-        payload: { source: currentKind, trigger_id: node.id },
+        payload: currentKind === "channel_message"
+          ? {
+              source: currentKind,
+              trigger_id: node.id,
+              test: true,
+              channel: trigger.channel || "web",
+              connection_id: trigger.connection_id,
+              message: sampleMessage.trim(),
+            }
+          : { source: currentKind, trigger_id: node.id },
       })
       if (!response.success) throw new Error(response.error?.message || "Test failed")
       toast.success("Test run started (no side effects).")
@@ -208,7 +232,7 @@ export function WorkflowTriggerBody({
               type="button"
               variant={isActive ? "outline" : "ghost"}
               size="sm"
-              className={`flex-1 h-7 text-[11px] rounded-full font-medium ${
+              className={`min-w-0 flex-1 h-7 px-2 text-[11px] whitespace-nowrap rounded-full font-medium ${
                 isActive
                   ? "bg-background shadow-sm border-white/10"
                   : "text-muted-foreground hover:text-foreground"
@@ -232,7 +256,7 @@ export function WorkflowTriggerBody({
             key={`${node.id}-name`}
             onBlur={(event) => void onPersist({ trigger: { ...trigger, name: event.target.value } })}
           />
-          <textarea
+          <ImprentaAutoResizeTextarea
             className={WF_TEXTAREA_CLASS}
             placeholder="Description..."
             defaultValue={trigger.description || ""}
@@ -274,13 +298,46 @@ export function WorkflowTriggerBody({
 
         {currentKind === "db_event" && <WorkflowTriggerTableEvents trigger={trigger} onPersist={onPersist} />}
 
+        {currentKind === "channel_message" && (
+          <>
+            <WorkflowChannelMessageFields trigger={trigger} onPersist={onPersist} />
+            <label className="flex flex-col gap-1">
+              <span className="text-[11px] font-medium">Sample customer message (test only)</span>
+              <ImprentaAutoResizeTextarea
+                value={sampleMessage}
+                onChange={(event) => setSampleMessage(event.target.value)}
+                className={WF_TEXTAREA_CLASS}
+                maxLength={2000}
+              />
+            </label>
+          </>
+        )}
+
+        {currentKind === "channel_message" && overlappingTriggers > 0 && (
+          <p role="status" className="text-[11px] text-amber-700 dark:text-amber-300">
+            {overlappingTriggers} other active trigger{overlappingTriggers === 1 ? "" : "s"} may run for the same channel. Results are ordered by priority before Customer Support replies.
+          </p>
+        )}
+
+        {currentKind === "channel_message" && !hasExecutableStep && (
+          <p role="alert" className="text-[11px] text-amber-700 dark:text-amber-300">
+            Add a workflow step before activating this trigger.
+          </p>
+        )}
+
+        {currentKind === "channel_message" && hasUnsupportedChannelStep && (
+          <p role="alert" className="text-[11px] text-amber-700 dark:text-amber-300">
+            Channel message workflows cannot run sandbox or browser steps. Use text-only steps before activating this trigger.
+          </p>
+        )}
+
         <div className="flex items-center justify-between gap-3">
           <Button
             type="button"
             variant="outline"
             size="sm"
             className="h-8 rounded-full"
-            disabled={testing}
+            disabled={testing || (currentKind === "channel_message" && (!hasExecutableStep || hasUnsupportedChannelStep || !sampleMessage.trim()))}
             onClick={() => void runTest()}
           >
             {testing ? (
@@ -294,7 +351,11 @@ export function WorkflowTriggerBody({
           </Button>
           <label className="flex items-center gap-2">
             <span className="text-[11px] font-medium">Active</span>
-            <Switch checked={enabled} onCheckedChange={(checked) => void onPersist({ enabled: checked })} />
+            <Switch
+              checked={enabled}
+              disabled={currentKind === "channel_message" && (!hasExecutableStep || hasUnsupportedChannelStep) && !enabled}
+              onCheckedChange={(checked) => void onPersist({ enabled: checked })}
+            />
           </label>
         </div>
       </div>

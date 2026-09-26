@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import type { InstanceNode } from "@/app/types/instance-nodes";
 import { Button } from "@/app/components/ui/button";
 import { Switch } from "@/app/components/ui/switch";
-import { Textarea } from "@/app/components/ui/textarea";
+import { ImprentaAutoResizeTextarea } from "@/app/components/agents/imprenta-auto-resize-textarea";
 import { apiClient } from "@/app/services/api-client-service";
 import { cn } from "@/lib/utils";
 import {
@@ -65,11 +65,11 @@ function WorkflowStepTaskFields({
 
   return (
     <>
-      <Textarea
+      <ImprentaAutoResizeTextarea
         defaultValue={instructions}
         key={`${nodeId}-instructions`}
         placeholder="Describe what this step should accomplish."
-        className={`${WF_TEXTAREA_CLASS} max-h-[160px]`}
+        className={WF_TEXTAREA_CLASS}
         onBlur={(event) => void onPersist({}, event.target.value)}
       />
       <div className="grid grid-cols-2 gap-2">
@@ -244,11 +244,11 @@ export function WorkflowStepBody({
         )}
 
         {tab === "output" && (
-          <Textarea
+          <ImprentaAutoResizeTextarea
             defaultValue={step.expected_output || ""}
             key={`${node.id}-expected`}
             placeholder="Expected output"
-            className={`${WF_TEXTAREA_CLASS} font-mono max-h-[140px]`}
+            className={`${WF_TEXTAREA_CLASS} font-mono`}
             onBlur={(event) =>
               void persist(
                 mergeSettings(node, {
@@ -263,11 +263,11 @@ export function WorkflowStepBody({
           <>
             <label className="flex flex-col gap-1">
               <span className="text-[11px] font-medium">Success criteria</span>
-              <Textarea
+              <ImprentaAutoResizeTextarea
                 defaultValue={(step.success_criteria || []).join("\n")}
                 key={`${node.id}-criteria`}
                 placeholder="How this step is considered done (one per line)"
-                className={`${WF_TEXTAREA_CLASS} max-h-[120px]`}
+                className={WF_TEXTAREA_CLASS}
                 onBlur={(event) =>
                   void persist(
                     mergeSettings(node, {
@@ -335,11 +335,11 @@ export function WorkflowStepBody({
             </label>
             <label className="flex flex-col gap-1">
               <span className="text-[11px] font-medium">Recovery plan</span>
-              <Textarea
+              <ImprentaAutoResizeTextarea
                 defaultValue={step.recovery_plan || ""}
                 key={`${node.id}-recovery`}
                 placeholder="If this step fails, try this instead of the original Task (used only on retry)."
-                className={`${WF_TEXTAREA_CLASS} max-h-[120px]`}
+                className={WF_TEXTAREA_CLASS}
                 onBlur={(event) =>
                   void persist(
                     mergeSettings(node, {

@@ -46,13 +46,14 @@ export const DB_EVENT_TABLES = [
   'sales',
 ] as const
 
-export type WorkflowTriggerKind = 'cron' | 'db_event' | 'webhook' | 'manual'
+export type WorkflowTriggerKind = 'cron' | 'db_event' | 'webhook' | 'manual' | 'channel_message'
 
 export const TRIGGER_KIND_OPTIONS: readonly { kind: WorkflowTriggerKind; label: string }[] = [
   { kind: 'manual', label: 'Manual' },
   { kind: 'cron', label: 'Cron' },
   { kind: 'db_event', label: 'Table' },
   { kind: 'webhook', label: 'Webhook' },
+  { kind: 'channel_message', label: 'Channel message' },
 ]
 
 export type WorkflowPlanType = 'objective' | 'task' | 'verification' | 'milestone'
@@ -78,6 +79,9 @@ export interface WorkflowTriggerConfig {
   // Multiple table events
   db_events?: { table: string; op: ('insert' | 'update' | 'delete')[] }[]
   filter?: Record<string, unknown>
+  channel?: string
+  connection_id?: string
+  priority?: number
 }
 
 export const STEP_SKILL_OPTIONS: readonly { value: string; label: string }[] = [
@@ -172,13 +176,13 @@ export interface McpCatalogTool {
   actions?: string[]
 }
 
-export const NODE_W = 480
+export const NODE_W = 640
 export const NODE_H = 196
-export const H_GAP = 80
-export const V_GAP = 40
+export const H_GAP = 160
+export const V_GAP = 80
 
 export const WF_FIELD_CLASS =
   "min-w-0 min-h-9 h-9 text-xs bg-background/70 border border-border/60 px-3 rounded-full outline-none focus-visible:ring-1 focus-visible:ring-secondary placeholder:text-muted-foreground/60"
 
 export const WF_TEXTAREA_CLASS =
-  "min-w-0 min-h-[72px] w-full text-xs bg-background/70 border-border/60 px-3 py-2.5 rounded-3xl outline-none resize-none focus-visible:ring-1 focus-visible:ring-secondary placeholder:text-muted-foreground/60"
+  "min-w-0 min-h-[60px] w-full text-xs bg-background/70 border-border/60 px-3 py-2.5 rounded-3xl outline-none resize-none focus-visible:ring-1 focus-visible:ring-secondary placeholder:text-muted-foreground/60"

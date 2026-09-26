@@ -22,6 +22,7 @@ interface ImprentaContextTypeSelectProps {
   className?: string
   contentClassName?: string
   placeholder?: string
+  maxLength?: number
 }
 
 /**
@@ -36,6 +37,7 @@ export function ImprentaContextTypeSelect({
   className,
   contentClassName,
   placeholder = "Type",
+  maxLength,
 }: ImprentaContextTypeSelectProps) {
   const [open, setOpen] = React.useState(false)
   const [query, setQuery] = React.useState("")
@@ -127,6 +129,7 @@ export function ImprentaContextTypeSelect({
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={handleKeyDown}
+            maxLength={maxLength}
             placeholder="Search or type custom..."
             className="h-7 border-0 shadow-none focus-visible:ring-0 px-0 text-xs font-inter"
           />

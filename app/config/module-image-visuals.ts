@@ -111,6 +111,8 @@ const ALTERNATIVE_MODULE_IMAGE_KEYS = new Set([
   "purchasesOrders",
   "context",
   "marketplace",
+  "reportAnalytics",
+  "reportCosts",
 ])
 
 const SECOND_GENERATION_PASS_MODULE_IMAGE_KEYS = new Set([
@@ -121,6 +123,8 @@ const SECOND_GENERATION_PASS_MODULE_IMAGE_KEYS = new Set([
   "channels",
   "payments",
   "financeReports",
+  "reportAnalytics",
+  "reportCosts",
 ])
 
 const MODULE_IMAGE_PALETTES: Partial<Record<string, string>> = {
@@ -194,6 +198,10 @@ const MODULE_IMAGE_CLARIFIERS: Partial<Record<string, string>> = {
     "Show one substantial freestanding globe with simplified continents and a short curved stand; no map pins, chart, arrows, airplane, text, desk, or extra objects",
   reportPerformance:
     "Show one highly readable speedometer-style semicircular gauge with a bold needle pointing upward and three broad colored zones; no chart, dashboard panel, numbers, or extra objects",
+  reportAnalytics:
+    "Create a completely new analytics variant as exactly three substantial vertical bars rising from left to right, with clearly different heights and one smooth upward trend line crossing their upper halves; no axes, grid, dashboard panel, pie chart, numbers, text, currency symbol, or extra objects",
+  reportCosts:
+    "Create a completely new cost-report variant as one bold descending zigzag line connecting exactly three large circular data points, ending at the lowest point; no bars, axes, grid, dashboard panel, receipt, calculator, coins, currency symbol, numbers, text, or extra objects",
   reportSocial:
     "Show one extremely simple solid heart silhouette centered and large, with a smooth clean outline; no chart, graph, counter, engagement badge, social media logo, inner symbol, text, or extra objects",
   company:

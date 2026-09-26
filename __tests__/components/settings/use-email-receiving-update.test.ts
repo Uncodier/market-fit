@@ -128,4 +128,23 @@ describe("useEmailReceivingUpdate", () => {
 
     expect(result.current.receivingEnabled).toBe(false)
   })
+
+  it("resets the toggle when the remote MX recheck is not ready", async () => {
+    putMock.mockResolvedValue({
+      success: false,
+      status: 409,
+      error: { message: "The MX record is not verified in Zavu yet. Retry Verify MX." },
+    })
+    const onUpdated = jest.fn()
+    const { result } = renderHook(() => useEmailReceivingUpdate({
+      ...options(jest.fn(), onUpdated),
+      channelActive: true,
+    }))
+
+    act(() => result.current.setReceivingEnabled(true))
+    await act(async () => result.current.saveReceiving())
+
+    expect(result.current.receivingEnabled).toBe(false)
+    expect(onUpdated).not.toHaveBeenCalled()
+  })
 })

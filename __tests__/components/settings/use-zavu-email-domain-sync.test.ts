@@ -84,4 +84,43 @@ describe("useZavuEmailDomainSync", () => {
     })
     expect(onDomainChange).not.toHaveBeenCalled()
   })
+
+  it("retries a terminal update when local persistence fails", async () => {
+    jest.useFakeTimers()
+    jest.spyOn(console, "error").mockImplementation(() => undefined)
+    getMock.mockResolvedValue({
+      success: true,
+      data: { domain: { id: "domain_1", status: "verified" } },
+    })
+    const onDomainChange = jest.fn()
+      .mockRejectedValueOnce(new Error("save failed"))
+      .mockResolvedValueOnce(undefined)
+
+    const { unmount } = renderHook(() => useZavuEmailDomainSync({
+      siteId: "site_1",
+      channelId: "channel_1",
+      domainId: "domain_1",
+      status: "pending",
+      enabled: true,
+      intervalMs: 10,
+      onDomainChange,
+    }))
+
+    await act(async () => {
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+    expect(onDomainChange).toHaveBeenCalledTimes(1)
+
+    await act(async () => {
+      jest.advanceTimersByTime(10)
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(onDomainChange).toHaveBeenCalledTimes(2)
+    expect(toast.success).toHaveBeenCalledTimes(1)
+    unmount()
+    jest.useRealTimers()
+  })
 })

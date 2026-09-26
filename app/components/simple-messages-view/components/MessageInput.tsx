@@ -6,6 +6,7 @@ import { OptimizedTextarea } from "@/app/components/ui/optimized-textarea"
 import { cn } from "@/lib/utils"
 import { type SelectedContextIds } from '@/app/services/context-service'
 import { MediaParametersToolbar } from './MediaParametersToolbar'
+import { InstanceContextUsage } from './InstanceContextUsage'
 import { ActivitySelector } from './ActivitySelector'
 import { ImageParameters, VideoParameters, AudioParameters } from '../types'
 import { useAttachmentUpload } from '../hooks/useAttachmentUpload'
@@ -15,6 +16,7 @@ import { useLocalization } from '@/app/context/LocalizationContext'
 import { areMentionsEqual, getMentionQuery } from '@/app/components/context/mention-query'
 import { ContextMentionPicker } from '@/app/components/context/context-mention-picker'
 import { useTypewriterPlaceholder } from '../hooks/useTypewriterPlaceholder'
+import { SkillSelector, type SkillSelection } from './SkillSelector'
 
 const COMPOSER_TEXTAREA_STYLE: React.CSSProperties = {
   lineHeight: '1.5',
@@ -49,6 +51,8 @@ interface MessageInputProps {
   isBrowserVisible?: boolean
   placeholderSuggestions?: readonly string[]
   isEmptyState?: boolean
+  skillSelection: SkillSelection
+  onSkillSelectionChange: (selection: SkillSelection) => void
 }
 
 const MessageInputComponent: React.FC<MessageInputProps> = ({
@@ -73,6 +77,8 @@ const MessageInputComponent: React.FC<MessageInputProps> = ({
   isBrowserVisible = false,
   placeholderSuggestions,
   isEmptyState = false,
+  skillSelection,
+  onSkillSelectionChange,
 }) => {
   const [mentionState, setMentionState] = useState<{ query: string, start: number, end: number } | null>(null)
   const [hasInput, setHasInput] = useState(() => message.trim().length > 0)
@@ -239,10 +245,16 @@ const MessageInputComponent: React.FC<MessageInputProps> = ({
                 ...COMPOSER_TEXTAREA_STYLE,
                 height: isEmptyState ? '148px' : COMPOSER_TEXTAREA_STYLE.height,
                 paddingBottom: isEmptyState ? '64px' : COMPOSER_TEXTAREA_STYLE.paddingBottom,
+                paddingRight: activeRobotInstance?.id ? '114px' : undefined,
                 opacity: disabled ? 1 : undefined
               }}
             />
             
+            {/* Instance context sits inside the composer, clear of the bottom toolbar. */}
+            <div className={cn("absolute right-3 top-3 z-10", isEmptyState && "right-4 top-4")}>
+              <InstanceContextUsage instanceId={activeRobotInstance?.id} siteId={currentSite?.id} />
+            </div>
+
             {/* Hidden file input */}
             <input
               ref={fileInputRef}
@@ -259,6 +271,7 @@ const MessageInputComponent: React.FC<MessageInputProps> = ({
                   selectedActivity={selectedActivity}
                   onActivityChange={onActivityChange}
                 />
+                <SkillSelector siteId={currentSite?.id} value={skillSelection} onChange={onSkillSelectionChange} disabled={disabled} />
                 
                 <MediaParametersToolbar
                   selectedActivity={selectedActivity}

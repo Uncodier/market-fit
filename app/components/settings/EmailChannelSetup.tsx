@@ -13,6 +13,7 @@ import { useEmailReceivingUpdate } from "./use-email-receiving-update"
 import { useZavuEmailDomainSync } from "./use-zavu-email-domain-sync"
 import { ChannelSetupStepper } from "./ChannelSetupStepper"
 import { buildEmailSetupSteps } from "./channel-setup-steps"
+import { buildEmailDomainUpdate } from "./email-domain-update"
 import { ZAVU_INBOUND_MX_HOST, ZAVU_INBOUND_MX_PRIORITY } from "@/lib/zavu-email-dns"
 
 export function EmailChannelSetup({ 
@@ -69,15 +70,7 @@ export function EmailChannelSetup({
     status: domainStatus,
     enabled: true,
     onDomainChange: async (updatedDomain) => {
-      const payload = {
-        ...(updatedDomain.status === "failed" ? { status: "failed" } : {}),
-        metadata: {
-          ...metadata,
-          domain_status: updatedDomain.status,
-          dns_records: updatedDomain.dnsRecords || metadata.dns_records,
-        },
-      }
-      await onUpdated(payload)
+      await onUpdated(buildEmailDomainUpdate(metadata, updatedDomain, emailChannelActive))
     },
   })
   const setupSteps = buildEmailSetupSteps({
@@ -117,12 +110,32 @@ export function EmailChannelSetup({
         throw new Error(data.error || "Failed to verify MX record")
       }
 
-      setIsMxVerified(data.verified)
-      if (data.verified) {
-        toast.success("MX record verified. You can now enable receiving.")
-      } else {
+      if (!data.verified) {
+        setIsMxVerified(false)
         toast.error("MX record is not available yet. DNS propagation may take a few minutes.")
+        return
       }
+
+      if (metadata.email_domain_id) {
+        const response = await apiClient.post(
+          `/api/integrations/zavu/email-domains/${metadata.email_domain_id}/verify`,
+          { siteId, channelId: channel.id }
+        )
+        if (!response.success) {
+          throw new Error(response.error?.message || "Zavu could not refresh the MX verification")
+        }
+        const updatedDomain = response.data?.domain
+        if (!updatedDomain) throw new Error("Zavu returned an incomplete domain verification")
+        await onUpdated(buildEmailDomainUpdate(metadata, updatedDomain, emailChannelActive))
+        if (updatedDomain.status !== "verified") {
+          setIsMxVerified(false)
+          toast.error("MX record is still pending in Zavu. Check DNS propagation and retry.")
+          return
+        }
+      }
+
+      setIsMxVerified(true)
+      toast.success("MX record rechecked in Zavu. You can now enable receiving.")
     } catch (error: any) {
       setIsMxVerified(false)
       toast.error(error.message || "Failed to verify MX record")
@@ -171,7 +184,7 @@ export function EmailChannelSetup({
       const newDomain = response.data?.domain
       if (!newDomain?.id) throw new Error("Domain was added but the response was incomplete")
 
-      onUpdated({
+      await onUpdated({
         status: "pending",
         metadata: {
           ...metadata,
@@ -289,13 +302,7 @@ export function EmailChannelSetup({
       const updatedDomain = response.data?.domain
       if (!updatedDomain) throw new Error("Verification started but the response was incomplete")
 
-      onUpdated({
-        metadata: {
-          ...metadata,
-          domain_status: updatedDomain.status,
-          dns_records: updatedDomain.dnsRecords || metadata.dns_records,
-        },
-      })
+      await onUpdated(buildEmailDomainUpdate(metadata, updatedDomain, emailChannelActive))
       toast.success("Verification check started")
     } catch (error: any) {
       toast.error(error.message || "An error occurred")
@@ -325,7 +332,7 @@ export function EmailChannelSetup({
       if (!response.success) throw new Error(response.error?.message || "Failed to create sender")
 
       const channelActive = isEmailChannelActive(response.data)
-      onUpdated({
+      await onUpdated({
         zavu_sender_id: response.data.senderId,
         status: channelActive ? "connected" : "in_progress",
         metadata: {

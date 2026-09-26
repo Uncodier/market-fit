@@ -5,6 +5,7 @@ import {
 } from "@/app/components/settings/SupportChannelsSection"
 import type { SiteFormValues } from "@/app/components/settings/form-schema"
 import { apiClient } from "@/app/services/api-client-service"
+import { reconcileSupportConnectionById } from "@/app/components/settings/support-channel-connection-utils"
 
 const canonicalConnections = [{
   id: "voice-1",
@@ -209,5 +210,27 @@ describe("SupportChannelsSection", () => {
         }),
       }))
     })
+  })
+
+  it("reconciles a delayed update by stable id after connections reorder", () => {
+    const reordered = [{
+      id: "voice-1",
+      type: "voice",
+      metadata: { untouched: true },
+    }, {
+      id: "email-1",
+      type: "email",
+      metadata: { domain_status: "pending" },
+    }]
+
+    expect(reconcileSupportConnectionById(
+      reordered,
+      "email-1",
+      { metadata: { domain_status: "verified" } },
+    )).toEqual([reordered[0], expect.objectContaining({
+      id: "email-1",
+      metadata: { domain_status: "verified" },
+    })])
+    expect(reconcileSupportConnectionById(reordered, "deleted-email", {})).toBeNull()
   })
 })

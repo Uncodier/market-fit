@@ -40,6 +40,7 @@ import { disconnectZavuChannel, shouldDeleteZavuSender } from "./disconnect-remo
 import { useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import { buildSupportChannelNavigation } from "./support-channel-navigation"
+import { reconcileSupportConnectionById } from "./support-channel-connection-utils"
 interface SupportChannelsSectionProps {
   active: boolean
   siteId?: string
@@ -324,15 +325,12 @@ export function SupportChannelsSection({ active, siteId, onSave }: SupportChanne
                         return
                       }
                       const currentConnections = form.getValues("channels.connections") || []
-                      const currentChannel = currentConnections[index] || channel
-                      const nextChannel = {
-                        ...currentChannel, ...payload,
-                        metadata: { ...currentChannel.metadata, ...payload.metadata },
-                      }
-                      await persistConnections(currentConnections.map(
-                        (connection, connectionIndex) =>
-                          connectionIndex === index ? nextChannel : connection
-                      ))
+                      const nextConnections = reconcileSupportConnectionById(
+                        currentConnections,
+                        channel.id,
+                        payload,
+                      )
+                      if (nextConnections) await persistConnections(nextConnections)
                     }}
                   />
                   ) : (

@@ -56,7 +56,7 @@ export function ActivitySelector({ selectedActivity, onActivityChange }: Activit
         type="button"
         variant="secondary"
         size="sm"
-        className="h-8 hover:bg-secondary/80 transition-all duration-200 px-2 md:px-3 w-auto md:w-40 justify-center md:justify-start"
+        className={`h-8 hover:bg-secondary/80 transition-all duration-200 px-2 md:px-3 w-auto justify-center md:justify-start ${selected.id === 'ask' ? '' : 'md:w-40'}`}
         onClick={handleDropdownToggle}
         title={selected.label}
       >
