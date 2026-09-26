@@ -14,6 +14,8 @@ jest.mock("@/app/context/SiteContext", () => ({
             { id: "email-1", type: "email", name: "Sales inbox", status: "connected" },
             { id: "email-2", type: "email", name: "Support inbox", status: "connected" },
             { id: "wa-1", type: "whatsapp", name: "Main phone", status: "connected" },
+            { id: "voice-1", type: "voice", status: "active", zavu_sender_id: "sender-1", metadata: { phone_number: "+14155550100" } },
+            { id: "voice-2", type: "voice", status: "synced", zavu_sender_id: "sender-2", metadata: { phone_number: "+14155550200" } },
             { id: "sms-1", type: "sms", status: "disconnected" },
           ],
         },
@@ -99,6 +101,17 @@ describe("channel-message workflow trigger", () => {
     expect(onPersist).toHaveBeenCalledWith({
       trigger: { kind: "channel_message", channel: "whatsapp", connection_id: "wa-1" },
     })
+  })
+
+  it("lists numbers for multiple Voice accounts whose inbound calls can be verified", () => {
+    const onPersist = show({ kind: "channel_message", channel: "voice" })
+    const connection = screen.getByRole("combobox", { name: "Connection" })
+    expect(connection).not.toBeDisabled()
+    expect(screen.getByRole("option", { name: "Voice · +1 (415) 555-0100" })).toBeInTheDocument()
+    expect(screen.getByRole("option", { name: "Voice · +1 (415) 555-0200" })).toBeInTheDocument()
+    fireEvent.change(connection, { target: { value: "voice-2" } })
+    expect(onPersist).toHaveBeenCalledWith({ trigger: { kind: "channel_message", channel: "voice", connection_id: "voice-2" } })
+    expect(screen.getByText(/only works for inbound calls with a verified provider identity/)).toBeInTheDocument()
   })
 
   it("clears an old connection filter when the channel becomes ambiguous", () => {

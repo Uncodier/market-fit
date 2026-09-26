@@ -139,12 +139,7 @@ describe("SupportChannelsSection", () => {
   it("shows assigned numbers for connected WhatsApp, Voice, and SMS cards", async () => {
     const getSpy = jest.spyOn(apiClient, "get").mockResolvedValue({
       success: true,
-      data: {
-        sender: {
-          phoneNumber: "+14155550100",
-          whatsapp: { displayPhoneNumber: "+14155550101" },
-        },
-      },
+      data: [{ id: "phone-1", senderId: "sender-whatsapp", phoneNumber: "+14155550101" }],
     })
 
     render(
@@ -180,7 +175,7 @@ describe("SupportChannelsSection", () => {
       expect(screen.getByText("+1 (415) 555-0101")).toBeInTheDocument()
     })
     expect(getSpy).toHaveBeenCalledWith(
-      "/api/integrations/zavu/senders/sender-whatsapp"
+      "/api/integrations/zavu/phone-numbers?siteId=site-1"
     )
   })
 

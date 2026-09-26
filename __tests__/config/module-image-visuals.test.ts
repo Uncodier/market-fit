@@ -115,7 +115,7 @@ describe("module image visuals", () => {
     ["operations", "chat", "chat bubble", "tail integrated into the lower-left edge"],
     ["operations", "records", "spreadsheet sheet", "grid of rows and columns"],
     ["operations", "orderLines", "digital numbers", "seven-segment digital digits"],
-    ["operations", "controlCenter", "white dove", "both wings clearly spread"],
+    ["operations", "controlCenter", "check mark", "thick rounded stroke"],
     ["operations", "visits", "visitor ID badge", "person silhouette"],
     ["operations", "checkIn", "signature", "handwritten signature stroke"],
     ["operations", "printers", "thermal printer", "visible receipt"],
@@ -309,17 +309,17 @@ describe("module image visuals", () => {
     expect(costsPrompt).toContain("no chart, line, arrows")
   })
 
-  it("uses a dove composition for Tasks", () => {
+  it("uses a check mark composition for Tasks", () => {
     const prompt = getModuleImagePrompt(
       "operations",
       "controlCenter",
       "Tasks",
     )
 
-    expect(prompt).toContain("Front-facing 3D white dove")
-    expect(prompt).toContain("one graceful white dove in flight")
-    expect(prompt).toContain("one small green olive branch")
-    expect(prompt).toContain("no checklist, clipboard, document, checkmark")
+    expect(prompt).toContain("Front-facing 3D check mark")
+    expect(prompt).toContain("one large bold check mark symbol")
+    expect(prompt).toContain("instantly recognizable as a completed-task tick")
+    expect(prompt).toContain("no bird, dove, wings, feathers, olive branch")
   })
 
   it("does not request an alternative composition for unrelated modules", () => {

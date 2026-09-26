@@ -50,7 +50,7 @@ export function useZavuSenderPhoneNumbers(params: {
 }): Record<string, string> {
   const { currentSite } = useSite()
   const siteId = currentSite?.id
-  const [lookup, setLookup] = useState<{ siteId?: string; attempted: boolean; phoneNumbers: Record<string, string> }>({ attempted: false, phoneNumbers: {} })
+  const [lookup, setLookup] = useState<{ siteId?: string; attemptedKey?: string; phoneNumbers: Record<string, string> }>({ phoneNumbers: {} })
   const phoneNumbers = lookup.siteId === siteId ? lookup.phoneNumbers : {}
   const unresolvedSenderKey = Array.from(new Set(
     params.connections
@@ -61,11 +61,11 @@ export function useZavuSenderPhoneNumbers(params: {
         !getAssignedPhoneNumber(connection) &&
         !phoneNumbers[connection.zavu_sender_id]
       )
-      .map((connection) => connection.zavu_sender_id as string)
+      .map((connection) => `${connection.zavu_sender_id}:${connection.metadata?.phone_number_id || connection.metadata?.routing?.phone_number_id || ""}`)
   )).sort().join(",")
 
   useEffect(() => {
-    if (!params.enabled || !siteId || !unresolvedSenderKey || (lookup.siteId === siteId && lookup.attempted)) return
+    if (!params.enabled || !siteId || !unresolvedSenderKey || (lookup.siteId === siteId && lookup.attemptedKey === unresolvedSenderKey)) return
     let cancelled = false
 
     void (async () => {
@@ -78,7 +78,7 @@ export function useZavuSenderPhoneNumbers(params: {
             params.connections,
             unwrapZavuItems<ZavuPhoneNumber>(response.data),
           )
-          setLookup({ siteId, attempted: true, phoneNumbers: entries })
+          setLookup({ siteId, attemptedKey: unresolvedSenderKey, phoneNumbers: { ...phoneNumbers, ...entries } })
         }
       } catch {
         // Connection metadata remains available as a fallback when lookup fails.
@@ -88,7 +88,7 @@ export function useZavuSenderPhoneNumbers(params: {
     return () => {
       cancelled = true
     }
-  }, [params.enabled, siteId, unresolvedSenderKey, lookup.siteId, lookup.attempted])
+  }, [params.enabled, siteId, unresolvedSenderKey, lookup.siteId, lookup.attemptedKey])
 
   return phoneNumbers
 }

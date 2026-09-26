@@ -32,7 +32,7 @@ export function WorkflowChannelMessageFields({
       ...channels.map((channel) => ({ value: channel, label: getChannelLabel(channel) })),
     ]
   }, [available])
-  const hasAmbiguousConnections = channel === "any" || connections.length !== 1
+  const hasAmbiguousConnections = channel === "any" || connections.length === 0 || (channel !== "voice" && connections.length !== 1)
   const priority = Number.isInteger(trigger.priority) && trigger.priority! >= 0 && trigger.priority! <= 100
     ? trigger.priority!
     : 50
@@ -75,7 +75,7 @@ export function WorkflowChannelMessageFields({
           {hasAmbiguousConnections && (
             <div className="flex flex-col gap-1">
               <span className="text-[10px] text-muted-foreground">
-                Connection filtering requires exactly one connected account for this channel. Choose a channel with one account, or use Any connection.
+                Connection filtering requires exactly one connected account for this channel, except verified inbound Voice calls. Choose a channel with one account, or use Any connection.
               </span>
               {trigger.connection_id && (
                 <Button
@@ -89,6 +89,11 @@ export function WorkflowChannelMessageFields({
                 </Button>
               )}
             </div>
+          )}
+          {channel === "voice" && connections.length > 1 && (
+            <span className="text-[10px] text-muted-foreground">
+              For multiple Voice accounts, connection filtering only works for inbound calls with a verified provider identity.
+            </span>
           )}
         </label>
       )}

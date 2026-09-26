@@ -26,7 +26,7 @@ export const MODULE_IMAGE_HINTS: Record<string, string> = {
   orders: "clipboard",
   orderLines: "digital numbers",
   shipments: "parcel",
-  controlCenter: "white dove",
+  controlCenter: "check mark",
   reservations: "calendar",
   visits: "visitor ID badge",
   checkIn: "signature",
@@ -173,7 +173,7 @@ const MODULE_IMAGE_CLARIFIERS: Partial<Record<string, string>> = {
   records:
     "Show one spreadsheet sheet with a clear grid of rows and columns and one folded corner; no database cylinder, clipboard, chart, or extra objects",
   controlCenter:
-    "Create a completely new Tasks variant as one graceful white dove in flight, viewed from the side with both wings clearly spread and carrying one small green olive branch in its beak; use a clean unmistakable bird silhouette with no checklist, clipboard, document, checkmark, cage, flock, text, badge, or extra objects",
+    "Create a completely new Tasks variant as one large bold check mark symbol with a thick rounded stroke, angled upward and centered by itself; make it instantly recognizable as a completed-task tick, with no bird, dove, wings, feathers, olive branch, checklist, clipboard, document, circle, surrounding container, text, badge, or extra objects",
   orderLines:
     "Show only four large seven-segment digital digits reading 12:45; no timer body, clock casing, screen, border, buttons, label, or extra objects",
   shipments:
