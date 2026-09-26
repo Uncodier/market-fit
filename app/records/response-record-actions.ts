@@ -103,6 +103,14 @@ function feedbackDescription(input: FeedbackRecordInput) {
   return `Rating: ${input.rating}\nSource: ${sourceLabel}\n\n${input.response}`
 }
 
+function feedbackRecordError(error: unknown): string {
+  const code = error && typeof error === "object" && "code" in error ? error.code : null
+  if (code === "PGRST204" || code === "42703" || code === "42P10") {
+    return "AI feedback records are unavailable. Ask an administrator to verify migration 20260926075940_restore_ai_feedback_record_keys and the database schema cache."
+  }
+  return error instanceof Error ? error.message : "Could not save feedback record"
+}
+
 export async function getResponseRecordCategories(
   siteId: string
 ): Promise<{ categories: ResponseRecordCategory[]; error?: string }> {
@@ -189,7 +197,7 @@ export async function syncAiFeedbackRecord(rawInput: FeedbackRecordInput): Promi
     return { success: true, recordId: record.id }
   } catch (error) {
     console.error("[syncAiFeedbackRecord]", error)
-    return { success: false, error: error instanceof Error ? error.message : "Could not save feedback record" }
+    return { success: false, error: feedbackRecordError(error) }
   }
 }
 
