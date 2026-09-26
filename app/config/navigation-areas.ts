@@ -113,7 +113,6 @@ export const NAVIGATION_AREAS: Record<
   automation: {
     categoryKey: "layout.category.automation",
     items: [
-      { key: "aiWorkspace", href: "/robots", hidden: true },
       { key: "context", href: "/context" },
       { key: "agentsConfiguration", href: "/agents" },
       { key: "requirements", href: "/requirements" },
@@ -170,17 +169,14 @@ export const NAVIGATION_AREAS: Record<
 }
 
 /**
- * Items shown in the apps launcher. AI Workspace is already pinned in the
- * sidebar, so show it only in the Automation section of `/navigation`.
+ * Items shown in the apps launcher. AI Workspace has its own sidebar access,
+ * so add it only to the Automation section of `/navigation`.
  */
 export function getNavigationMenuItems(area: WorkspaceArea): AreaNavItem[] {
   const visibleItems = NAVIGATION_AREAS[area].items.filter((item) => !item.hidden)
   if (area !== "automation") return visibleItems
 
-  const workspaceItem = NAVIGATION_AREAS.automation.items.find(
-    (item) => item.key === "aiWorkspace",
-  )
-  return workspaceItem ? [workspaceItem, ...visibleItems] : visibleItems
+  return [{ key: "aiWorkspace", href: "/robots" }, ...visibleItems]
 }
 
 /** Resolve an app from the launcher view, including launcher-only regrouping. */

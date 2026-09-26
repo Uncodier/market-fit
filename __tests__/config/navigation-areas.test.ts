@@ -68,10 +68,8 @@ describe('navigation-areas', () => {
     expect(getNavigationMenuItems('sales')).not.toEqual(
       expect.arrayContaining([expect.objectContaining({ key: 'salesHome' })])
     )
-    expect(NAVIGATION_AREAS.automation.items).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ key: 'aiWorkspace', hidden: true }),
-      ])
+    expect(NAVIGATION_AREAS.automation.items).not.toEqual(
+      expect.arrayContaining([expect.objectContaining({ key: 'aiWorkspace' })])
     )
     expect(NAVIGATION_AREAS.sales.items).toEqual(
       expect.arrayContaining([
