@@ -57,7 +57,7 @@ export function RobotsNavItems({ isCollapsed }: RobotsNavItemsProps) {
       <MenuItem
         id="tour-agents-nav"
         href={agentHref}
-        moduleImage={{ area: "automation", itemKey: "aiWorkspace" }}
+        moduleImage={{ area: "automation", itemKey: "salesHome" }}
         title={t("layout.sidebar.agents") || "AI Workspace"}
         isActive={agentActive}
         isCollapsed={isCollapsed}

@@ -378,7 +378,8 @@ function deriveVariant(area: WorkspaceArea, itemKey: string): ModuleVariant {
 }
 
 export function getModuleVisual(area: WorkspaceArea, itemKey: string): ModuleVariant {
-  return MODULE_VARIANTS[itemKey] ?? deriveVariant(area, itemKey)
+  const visualKey = itemKey === "aiWorkspace" ? "salesHome" : itemKey
+  return MODULE_VARIANTS[visualKey] ?? deriveVariant(area, visualKey)
 }
 
 export function getAreaFamilyAccent(area: WorkspaceArea): string {

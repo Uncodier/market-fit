@@ -8,7 +8,7 @@ import {
   isConfigurationNavPath,
   isSettingsNavKey,
 } from '@/app/config/navigation-areas'
-import { NAV_ITEM_ICON } from '@/app/config/module-visuals'
+import { NAV_ITEM_ICON, getModuleVisual } from '@/app/config/module-visuals'
 import { ClipboardList, Home } from '@/app/components/ui/icons'
 
 describe('navigation-areas', () => {
@@ -57,6 +57,9 @@ describe('navigation-areas', () => {
     )
     expect(buildNavItemHref(automationItems[0])).toBe('/robots')
     expect(NAV_ITEM_ICON.aiWorkspace).toBe(Home)
+    expect(getModuleVisual('automation', 'aiWorkspace')).toEqual(
+      getModuleVisual('automation', 'salesHome'),
+    )
     expect(automationItems).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ key: 'agentsConfiguration', href: '/agents' }),

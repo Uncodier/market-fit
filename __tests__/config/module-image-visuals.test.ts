@@ -88,18 +88,19 @@ describe("module image visuals", () => {
     )
   })
 
-  it("uses a house icon for the AI Workspace", () => {
+  it("reuses the original Home image prompt and URL for AI Workspace", () => {
     const prompt = getModuleImagePrompt(
       "automation",
       "aiWorkspace",
       "AI Workspace",
     )
 
-    expect(prompt).toContain("Front-facing 3D house")
-    expect(prompt).toContain("Choose a simple harmonious palette freely")
-    expect(prompt).toContain("one clearly chromatic dominant hue")
-    expect(prompt).toContain("must never dominate the object")
-    expect(prompt).not.toContain("violet")
+    expect(prompt).toBe(getModuleImagePrompt("automation", "salesHome", "Home"))
+    expect(getModuleImageUrl("automation", "aiWorkspace", "AI Workspace")).toBe(
+      getModuleImageUrl("automation", "salesHome", "Home"),
+    )
+    expect(prompt).toContain("welcoming detached house")
+    expect(prompt).toContain("completely new second-pass render")
   })
 
   it.each([

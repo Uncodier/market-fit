@@ -236,14 +236,16 @@ export function getModuleImagePrompt(
   itemKey: string,
   title: string,
 ): string {
-  const subject = screenIconSubject(itemKey, title)
-  const clarifier = MODULE_IMAGE_CLARIFIERS[itemKey]
-  const isFullSize = FULL_SIZE_MODULE_IMAGE_KEYS.has(itemKey)
-  const isContainerFree = CONTAINER_FREE_MODULE_IMAGE_KEYS.has(itemKey)
-  const palette = MODULE_IMAGE_PALETTES[itemKey]
-  const isAlternative = ALTERNATIVE_MODULE_IMAGE_KEYS.has(itemKey)
+  // AI Workspace replaces the old Home tile, but keeps its exact image prompt.
+  const imageKey = itemKey === "aiWorkspace" ? "salesHome" : itemKey
+  const subject = screenIconSubject(imageKey, title)
+  const clarifier = MODULE_IMAGE_CLARIFIERS[imageKey]
+  const isFullSize = FULL_SIZE_MODULE_IMAGE_KEYS.has(imageKey)
+  const isContainerFree = CONTAINER_FREE_MODULE_IMAGE_KEYS.has(imageKey)
+  const palette = MODULE_IMAGE_PALETTES[imageKey]
+  const isAlternative = ALTERNATIVE_MODULE_IMAGE_KEYS.has(imageKey)
   const needsSecondGenerationPass =
-    SECOND_GENERATION_PASS_MODULE_IMAGE_KEYS.has(itemKey)
+    SECOND_GENERATION_PASS_MODULE_IMAGE_KEYS.has(imageKey)
   const fullSizeComposition = needsSecondGenerationPass
     ? COMPACT_FULL_SIZE_COMPOSITION
     : "Use the Apple iOS Calendar, Notes, Contacts, and Reminders icons as visual references for exceptionally precise icon composition: a single instantly recognizable object, full-size at 88 to 92 percent of the canvas, optically centered, evenly balanced, with a narrow consistent safe margin, polished dimensional layers, softly rounded geometry, and a crisp readable silhouette. Replicate their visual polish, spacing discipline, and clarity rather than copying their symbols or outer app tiles; no app tile, iOS-style squircle, rounded-square container, badge, button, frame, plaque, pedestal, floor, horizon, scenery, or secondary icon"
