@@ -122,6 +122,7 @@
     "remark-gfm": "4.0.1",
     "remove-markdown": "0.7.0",
     "shadcn-ui": "^0.9.4",
+    "sharp": "0.35.4",
     "shiplightai": "0.1.104",
     "sonner": "^2.0.1",
     "stream-browserify": "3.0.0",

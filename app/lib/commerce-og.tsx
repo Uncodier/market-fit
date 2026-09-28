@@ -1,4 +1,5 @@
 import { ImageResponse } from "next/og"
+import sharp from "sharp"
 import {
   type ShareImageSource,
   toAbsoluteShareImageUrl,
@@ -8,8 +9,34 @@ export const OG_SIZE = { width: 1200, height: 630 }
 export const ICON_SIZE = { width: 64, height: 64 }
 export const APPLE_ICON_SIZE = { width: 180, height: 180 }
 
-async function resolveImageSrc(source: ShareImageSource): Promise<string | null> {
-  if (source.kind === "data") return source.dataUrl
+const MAX_WEBP_BYTES = 8 * 1024 * 1024
+
+async function webpToPngSrc(bytes: Buffer, size: { width: number; height: number }) {
+  if (!bytes.length || bytes.length > MAX_WEBP_BYTES) return null
+  try {
+    // The ImageResponse renderer cannot decode WebP (it fails while streaming
+    // the PNG). Convert before passing the data URL to Satori.
+    const png = await sharp(bytes, { limitInputPixels: 24_000_000 })
+      .resize(size.width, size.height, { fit: "inside", withoutEnlargement: true })
+      .png()
+      .toBuffer()
+    return `data:image/png;base64,${png.toString("base64")}`
+  } catch {
+    return null
+  }
+}
+
+async function resolveImageSrc(
+  source: ShareImageSource,
+  size: { width: number; height: number },
+): Promise<string | null> {
+  if (source.kind === "data") {
+    if (!source.dataUrl.toLowerCase().startsWith("data:image/webp;")) return source.dataUrl
+    const encoded = /^data:image\/webp;base64,([a-z0-9+/=]+)$/i.exec(source.dataUrl)?.[1]
+    return encoded && encoded.length <= Math.ceil(MAX_WEBP_BYTES * 4 / 3) + 4
+      ? webpToPngSrc(Buffer.from(encoded, "base64"), size)
+      : null
+  }
 
   try {
     const absoluteUrl = toAbsoluteShareImageUrl(source.url)
@@ -20,7 +47,9 @@ async function resolveImageSrc(source: ShareImageSource): Promise<string | null>
     if (!res.ok) return null
     const contentType = res.headers.get("content-type") || "image/jpeg"
     if (!contentType.startsWith("image/")) return null
-    const base64 = Buffer.from(await res.arrayBuffer()).toString("base64")
+    const bytes = Buffer.from(await res.arrayBuffer())
+    if (/^image\/webp(?:;|$)/i.test(contentType)) return webpToPngSrc(bytes, size)
+    const base64 = bytes.toString("base64")
     return `data:${contentType};base64,${base64}`
   } catch {
     return null
@@ -34,11 +63,11 @@ export async function renderCommerceOgImage(opts: {
   subtitle?: string
   eyebrow?: string
 }): Promise<ImageResponse> {
-  const src = await resolveImageSrc(opts.source)
+  const src = await resolveImageSrc(opts.source, OG_SIZE)
   const fit = opts.fit || "cover"
   const hasTextOverlay = !!(opts.title || opts.subtitle || opts.eyebrow)
 
-  if (hasTextOverlay && src) {
+  if (hasTextOverlay) {
     const heading = opts.title || ""
     const subtitle = opts.subtitle || ""
     const eyebrow = opts.eyebrow || ""
@@ -55,20 +84,22 @@ export async function renderCommerceOgImage(opts: {
             fontFamily: "sans-serif",
           }}
         >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={src}
-            alt=""
-            style={{
-              position: "absolute",
-              top: 0,
-              left: 0,
-              width: "100%",
-              height: "100%",
-              objectFit: fit,
-              objectPosition: "center",
-            }}
-          />
+          {src ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={src}
+              alt=""
+              style={{
+                position: "absolute",
+                top: 0,
+                left: 0,
+                width: "100%",
+                height: "100%",
+                objectFit: fit,
+                objectPosition: "center",
+              }}
+            />
+          ) : null}
           <div
             style={{
               position: "absolute",
@@ -161,7 +192,7 @@ export async function renderCommerceIcon(
   size: { width: number; height: number },
   opts?: { fit?: "cover" | "contain" },
 ): Promise<ImageResponse> {
-  const src = await resolveImageSrc(source)
+  const src = await resolveImageSrc(source, size)
   const fit = opts?.fit || "cover"
 
   return new ImageResponse(

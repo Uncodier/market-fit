@@ -63,6 +63,7 @@ interface ApiClientOptions {
   includeAuth?: boolean;
   timeout?: number;
   cache?: RequestCache;
+  onAccepted?: () => void;
 }
 
 
@@ -150,7 +151,7 @@ export class ApiClientService {
         ...(options.timeout && { signal: AbortSignal.timeout(options.timeout) })
       });
 
-      return await handleApiResponse<T>(response);
+      return await handleApiResponse<T>(response, { onAccepted: options.onAccepted });
     } catch (error) {
       console.error('Error in GET request:', error);
       return {

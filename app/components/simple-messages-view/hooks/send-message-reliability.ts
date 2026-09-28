@@ -19,6 +19,7 @@ export type PostWithRetryOptions = {
   instanceId?: string
   message?: string
   requestId?: string
+  onAccepted?: () => void
 }
 
 export function isRetryableApiFailure(response: ApiPostResult): boolean {
@@ -350,6 +351,7 @@ function resolveRetryOptions(
     instanceId: maxAttemptsOrOptions.instanceId,
     message: maxAttemptsOrOptions.message,
     requestId: maxAttemptsOrOptions.requestId,
+    onAccepted: maxAttemptsOrOptions.onAccepted,
   }
 }
 
@@ -378,7 +380,7 @@ export async function postWithRetry<T = any>(
   maxAttemptsOrOptions: number | PostWithRetryOptions = 3
 ): Promise<ApiPostResult<T>> {
   const { apiClient } = await import('@/app/services/api-client-service')
-  const { maxAttempts, instanceId, message, requestId } = resolveRetryOptions(maxAttemptsOrOptions)
+  const { maxAttempts, instanceId, message, requestId, onAccepted } = resolveRetryOptions(maxAttemptsOrOptions)
   let lastResponse: ApiPostResult<T> | null = null
 
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
@@ -388,7 +390,9 @@ export async function postWithRetry<T = any>(
       if (skipped) return skipped
     }
 
-    lastResponse = await apiClient.post<T>(endpoint, payload)
+    lastResponse = onAccepted
+      ? await apiClient.post<T>(endpoint, payload, { onAccepted })
+      : await apiClient.post<T>(endpoint, payload)
     if (lastResponse.success) return lastResponse
     if (endpoint === '/api/robots/instance/assistant' && (
       getAssistantAdmissionFailure(lastResponse) ||

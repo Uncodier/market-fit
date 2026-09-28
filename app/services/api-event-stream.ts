@@ -9,7 +9,7 @@ function streamFailure(message: string, code: string): ApiResponse<never> {
   return { success: false, status: 200, retryable: false, error: { message, code } }
 }
 
-function readEvent<T>(frame: string): ApiResponse<T> | null {
+function readEvent<T>(frame: string, onAccepted?: () => void): ApiResponse<T> | null {
   let event = ''
   const data: string[] = []
   for (const line of frame.split(/\r?\n/)) {
@@ -27,13 +27,17 @@ function readEvent<T>(frame: string): ApiResponse<T> | null {
       typeof payload.error?.code === 'string' ? payload.error.code : 'ASSISTANT_WORKFLOW_FAILED',
     )
   }
+  if (event === 'accepted' && payload.type === 'accepted' && payload.success === true) {
+    onAccepted?.()
+    return null
+  }
   if ((event === 'completed' || payload.type === 'completed') && payload.success === true) {
     return { success: true, status: 200, data: payload.data ?? payload }
   }
   return null // An accepted event is not evidence of success.
 }
 
-export async function consumeApiEventStream<T>(response: Response): Promise<ApiResponse<T>> {
+export async function consumeApiEventStream<T>(response: Response, onAccepted?: () => void): Promise<ApiResponse<T>> {
   const reader = response.body?.getReader()
   if (!reader) return streamFailure('The assistant response stream is missing.', 'ASSISTANT_STREAM_MISSING')
 
@@ -53,7 +57,7 @@ export async function consumeApiEventStream<T>(response: Response): Promise<ApiR
         const frame = buffer.slice(0, boundary.index)
         buffer = buffer.slice(boundary.index + boundary[0].length)
         if (frame.length > MAX_EVENT_CHARACTERS) throw new Error('Assistant response event is too large.')
-        const result = readEvent<T>(frame)
+        const result = readEvent<T>(frame, onAccepted)
         if (result) return result
       }
       if (buffer.length > MAX_EVENT_CHARACTERS) throw new Error('Assistant response event is too large.')

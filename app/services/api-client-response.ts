@@ -25,11 +25,11 @@ function notifyBillingLimitError(...sources: unknown[]) {
   }
 }
 
-export async function handleApiResponse<T>(response: Response): Promise<ApiResponse<T>> {
+export async function handleApiResponse<T>(response: Response, options: { onAccepted?: () => void } = {}): Promise<ApiResponse<T>> {
   const contentType = response.headers.get('content-type');
 
   if (response.ok && contentType?.includes('text/event-stream')) {
-    return consumeApiEventStream<T>(response)
+    return consumeApiEventStream<T>(response, options.onAccepted)
   }
 
   // Read response body as text first to avoid "body stream already read" error

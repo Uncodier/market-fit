@@ -114,7 +114,7 @@ export const useMessageSending = ({
     }, 5 * 60 * 1000)
   }, [activeRobotInstance?.id, clearThinkingState, selectedActivity])
 
-  const handleAssistantMessage = useCallback(async (messageToSend: string, activity = selectedActivity) => {
+  const handleAssistantMessage = useCallback(async (messageToSend: string, activity = selectedActivity, onAccepted?: () => void) => {
     if (!currentSite?.id) return
     const success = await sendAssistantMessage({
       messageToSend,
@@ -127,6 +127,7 @@ export const useMessageSending = ({
       videoParameters,
       audioParameters,
       toast,
+      onAccepted,
     })
     // SSE completion is authoritative even if realtime log delivery was missed.
     clearThinkingState()
@@ -181,7 +182,7 @@ export const useMessageSending = ({
   handleRobotMessageRef.current = handleRobotMessage
   handleAssistantMessageRef.current = handleAssistantMessage
 
-  const dispatchPreparedMessage = useCallback(async (messageToSend: string, activity: string) => {
+  const dispatchPreparedMessage = useCallback(async (messageToSend: string, activity: string, onAccepted?: () => void) => {
     const requestId = Date.now().toString()
     activeRequestIdRef.current = requestId
     sendingLockRef.current = true
@@ -204,7 +205,7 @@ export const useMessageSending = ({
         await handleRobotMessageRef.current(messageToSend)
         return true
       } else {
-        return await handleAssistantMessageRef.current(messageToSend, activity)
+        return await handleAssistantMessageRef.current(messageToSend, activity, onAccepted)
       }
     } finally {
       clearTimeout(safetyUnlockTimeout)
@@ -289,10 +290,18 @@ export const useMessageSending = ({
 
     if (selectedActivity === 'robot') onClearMessage?.()
 
+    let wasAccepted = false
     try {
-      const success = await dispatchPreparedMessage(messageToSend, selectedActivity)
+      const success = await dispatchPreparedMessage(messageToSend, selectedActivity, () => {
+        wasAccepted = true
+        // Acceptance confirms the send, even though the assistant is still working.
+        // Do not discard a draft typed while the request was being admitted.
+        if (sendScopeRef.current === sendScope && messageRef.current === currentMessage) {
+          onClearMessage?.()
+        }
+      })
       if (sendScopeRef.current !== sendScope) return
-      if (selectedActivity !== 'robot' && success && messageRef.current === currentMessage) {
+      if (selectedActivity !== 'robot' && success && !wasAccepted && messageRef.current === currentMessage) {
         onClearMessage?.()
       }
       if (!success && !activeRobotInstance) {

@@ -32,6 +32,7 @@ export async function sendAssistantMessage(params: {
   videoParameters?: VideoParameters
   audioParameters?: AudioParameters
   toast: ToastFn
+  onAccepted?: () => void
 }): Promise<boolean> {
   const {
     messageToSend,
@@ -44,6 +45,7 @@ export async function sendAssistantMessage(params: {
     videoParameters,
     audioParameters,
     toast,
+    onAccepted,
   } = params
 
   const requestId = createRequestId()
@@ -114,6 +116,7 @@ export async function sendAssistantMessage(params: {
       instanceId,
       message: messageToSend,
       requestId,
+      onAccepted,
     })
 
     if (response.success) return true
