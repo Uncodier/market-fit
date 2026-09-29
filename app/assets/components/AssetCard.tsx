@@ -4,6 +4,7 @@ import { useState, useRef } from "react"
 import { Button } from "@/app/components/ui/button"
 import { Card } from "@/app/components/ui/card"
 import { Badge } from "@/app/components/ui/badge"
+import { LoadingSkeleton } from "@/app/components/ui/loading-skeleton"
 import { ExternalLink, Trash2, Download, Image, FileVideo, FileText, Link as LinkIcon, Unlink } from "@/app/components/ui/icons"
 import { toast } from "sonner"
 import {
