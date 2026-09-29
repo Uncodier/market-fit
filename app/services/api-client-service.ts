@@ -60,6 +60,7 @@ async function getDemoSiteIdAsync(): Promise<string | null> {
 
 interface ApiClientOptions {
   headers?: Record<string, string>;
+  // Finder requires a user session even for legacy callers that opt out.
   includeAuth?: boolean;
   timeout?: number;
   cache?: RequestCache;
@@ -119,6 +120,29 @@ export class ApiClientService {
     return session?.access_token || null;
   }
 
+  private requiresFinderSession(url: string): boolean {
+    if (url.startsWith('/api/finder/')) return true;
+    const apiOrigin = this.apiServerUrl || (typeof window !== 'undefined' ? window.location.origin : '');
+    if (!apiOrigin) return false;
+    try {
+      const target = new URL(url);
+      // Never force the user's token onto a third-party URL with a similar path.
+      return target.origin === new URL(apiOrigin).origin && target.pathname.startsWith('/api/finder/');
+    } catch {
+      return false;
+    }
+  }
+
+  private async applyAuthHeaders(url: string, headers: Record<string, string>, options: ApiClientOptions): Promise<void> {
+    const requiresSession = this.requiresFinderSession(url);
+    if (!requiresSession && options.includeAuth === false) return;
+    const token = await this.getAuthToken();
+    if (requiresSession && !token) {
+      throw new Error('Your session has expired. Please sign in again to use Find People.');
+    }
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+  }
+
 
   async get<T = any>(endpoint: string, options: ApiClientOptions = {}): Promise<ApiResponse<T>> {
     const demoSiteId = await getDemoSiteIdAsync();
@@ -137,12 +161,7 @@ export class ApiClientService {
         ...options.headers
       };
 
-      if (options.includeAuth !== false) {
-        const token = await this.getAuthToken();
-        if (token) {
-          headers['Authorization'] = `Bearer ${token}`;
-        }
-      }
+      await this.applyAuthHeaders(url, headers, options);
 
       const response = await fetch(url, {
         method: 'GET',
@@ -240,12 +259,7 @@ export class ApiClientService {
         ...options.headers
       };
 
-      if (options.includeAuth !== false) {
-        const token = await this.getAuthToken();
-        if (token) {
-          headers['Authorization'] = `Bearer ${token}`;
-        }
-      }
+      await this.applyAuthHeaders(url, headers, options);
 
       // Bound connection setup separately from the long-running assistant stream.
       const controller = new AbortController();
@@ -322,12 +336,7 @@ export class ApiClientService {
         ...options.headers
       };
 
-      if (options.includeAuth !== false) {
-        const token = await this.getAuthToken();
-        if (token) {
-          headers['Authorization'] = `Bearer ${token}`;
-        }
-      }
+      await this.applyAuthHeaders(url, headers, options);
 
       const response = await fetch(url, {
         method: 'PUT',
@@ -365,12 +374,7 @@ export class ApiClientService {
         ...options.headers
       };
 
-      if (options.includeAuth !== false) {
-        const token = await this.getAuthToken();
-        if (token) {
-          headers['Authorization'] = `Bearer ${token}`;
-        }
-      }
+      await this.applyAuthHeaders(url, headers, options);
 
       const response = await fetch(url, {
         method: 'PATCH',
@@ -410,12 +414,7 @@ export class ApiClientService {
         ...options.headers
       };
 
-      if (options.includeAuth !== false) {
-        const token = await this.getAuthToken();
-        if (token) {
-          headers['Authorization'] = `Bearer ${token}`;
-        }
-      }
+      await this.applyAuthHeaders(url, headers, options);
 
       const response = await fetch(url, {
         method: 'DELETE',

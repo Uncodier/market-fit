@@ -34,6 +34,7 @@ describe("mergeOutstandIntoSocialMedia", () => {
         username: "@uncodie",
         handle: "@uncodie",
         isActive: false,
+        initialImport: { status: "completed", jobId: "old-job" },
       }],
       [linkedinAccount],
       "linkedin"
@@ -46,6 +47,7 @@ describe("mergeOutstandIntoSocialMedia", () => {
       username: "@uncodie",
       isActive: true,
     })
+    expect(socialMedia[0].initialImport).toBeUndefined()
   })
 
   it("updates an existing account by id without adding a duplicate", () => {
@@ -55,6 +57,7 @@ describe("mergeOutstandIntoSocialMedia", () => {
         platform: "linkedin",
         username: "@uncodie",
         isActive: false,
+        initialImport: { status: "completed", jobId: "same-account-job" },
       }],
       [linkedinAccount],
       "linkedin"
@@ -63,5 +66,15 @@ describe("mergeOutstandIntoSocialMedia", () => {
     expect(mergedCount).toBe(0)
     expect(socialMedia).toHaveLength(1)
     expect(socialMedia[0].isActive).toBe(true)
+    expect(socialMedia[0].initialImport).toEqual({ status: "completed", jobId: "same-account-job" })
+  })
+
+  it("never accepts an import flag sent in Outstand account metadata", () => {
+    const { socialMedia } = mergeOutstandIntoSocialMedia(
+      [{ id: "new-linkedin-id", platform: "linkedin", isActive: false }],
+      [{ ...linkedinAccount, initialImport: { status: "completed", jobId: "fake" } }],
+      "linkedin"
+    )
+    expect(socialMedia[0].initialImport).toBeUndefined()
   })
 })

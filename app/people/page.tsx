@@ -37,6 +37,7 @@ import { useIsMobile } from "@/app/hooks/use-mobile-view"
 import pricingConfig from "@/app/config/pricing.json"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { useSearchParams } from "next/navigation"
+import { createFinderQuery, lookupFetcher, searchFinderPeople, type LookupOption } from "./finder-api"
 
 type Person = {
   id: string
@@ -50,12 +51,6 @@ type Person = {
   positionStart?: string
   positionEnd?: string
   avatarUrl?: string
-}
-
-// Generic option returned by autocomplete endpoints
-interface LookupOption {
-  id?: number | string | null
-  text: string
 }
 
 // Finder request types based on server route contract
@@ -383,44 +378,6 @@ function LookupChipsInput({
       {loading && <p className="text-xs text-muted-foreground">Searching…</p>}
     </div>
   )
-}
-
-// Centralized lookup fetcher: hits external Finder autocomplete endpoints
-async function lookupFetcher(type: string, q: string, siteId?: string): Promise<LookupOption[]> {
-  // Map UI field keys to server categories
-  const categoryMap: Record<string, string> = {
-    industries: 'industries',
-    organizations: 'organizations',
-    org_keywords: 'organization_keywords',
-    locations: 'locations',
-    skills: 'person_skills',
-    web_technologies: 'web_technologies'
-  }
-
-  const category = categoryMap[type] || type
-
-  try {
-    const url = `/api/finder/autocomplete/${encodeURIComponent(category)}?q=${encodeURIComponent(q)}&page=0${siteId ? `&site_id=${encodeURIComponent(siteId)}` : ''}`
-    const res = await apiClient.get(url, { includeAuth: false })
-    if (!res.success) throw new Error(res.error?.message || 'lookup failed')
-    const data: any = res.data
-    const results = Array.isArray(data?.results) ? data.results : []
-    return results
-      .map((r: any) => ({ id: r?.id ?? null, text: r?.text }))
-      .filter((v: any) => typeof v.text === 'string' && v.text.length > 0)
-  } catch {
-    // Fallback local suggestions for development
-    const samples: Record<string, string[]> = {
-      industries: ["Health", "Finance", "Insurance", "Retail", "SaaS", "E-commerce"],
-      organizations: ["Acme Corp", "Globex", "Umbrella", "Initech", "Stark Industries"],
-      org_keywords: ["Fintech", "Insurtech", "AI", "Cloud", "Cybersecurity"],
-      locations: ["São Paulo", "Mexico City", "Bogotá", "Lima", "Buenos Aires"],
-      skills: ["React", "Node.js", "Python", "Sales", "Marketing"],
-      web_technologies: ["Next.js", "Vue", "Angular", "Django", "Rails"]
-    }
-    const arr = (samples as any)[type]?.filter((s: string) => s.toLowerCase().includes(q.toLowerCase())) || []
-    return arr.map((text: string) => ({ id: null, text }))
-  }
 }
 
 export default function PeopleSearchPage() {
@@ -1160,22 +1117,7 @@ export default function PeopleSearchPage() {
       // Debug: Log payload being sent
       console.log('[People] Sending request with payload:', JSON.stringify(payload, null, 2))
       
-      const [res, totals] = await Promise.all([
-        apiClient.post<{ search_results: any[]; total_search_results: number }>(
-          '/api/finder/person_role_search',
-          payload,
-          { includeAuth: false }
-        ),
-        apiClient.post<{
-          total_search_results: number;
-          total_persons: number;
-          total_organizations: number;
-        }>(
-          '/api/finder/person_role_search/totals',
-          payload,
-          { includeAuth: false }
-        )
-      ])
+      const [res, totals] = await searchFinderPeople(payload)
       if (!res.success) {
         throw new Error(res.error?.message || 'Finder request failed')
       }
@@ -1247,7 +1189,7 @@ export default function PeopleSearchPage() {
       }
       // Add total_targets with current search results total
       payload.total_targets = totalResults
-      const res = await apiClient.post('/api/finder/person_role_search/createQuery', payload, { includeAuth: false })
+      const res = await createFinderQuery(payload)
       if (!res.success) {
         throw new Error(res.error?.message || 'Failed to create query')
       }

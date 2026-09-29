@@ -118,6 +118,15 @@ export function mergeOutstandIntoSocialMedia(
         ...socialMedia[slotIdx],
         ...mapOutstandRow(account, String(socialMedia[slotIdx].platform || uiPlatform)),
       }
+      // The flag is local state, never provider metadata. A different provider
+      // ID represents a new import allowance rather than an old completed job.
+      if (previousId !== account.id) {
+        delete socialMedia[slotIdx].initialImport
+      } else if (existing[slotIdx]?.initialImport === undefined) {
+        delete socialMedia[slotIdx].initialImport
+      } else {
+        socialMedia[slotIdx].initialImport = existing[slotIdx].initialImport
+      }
       if (!previousId || String(previousId).trim() === "" || previousId !== account.id) {
         mergedCount += 1
       }
