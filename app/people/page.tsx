@@ -2474,7 +2474,7 @@ export default function PeopleSearchPage() {
       {/* Main content: hidden on mobile step 1, full-screen on step 2 */}
       <div 
         className={cn(
-          "flex flex-col h-full transition-all duration-300 ease-in-out min-w-0 min-h-0 fixed right-0 top-[var(--topbar-height,64px)] bottom-0",
+          "flex flex-col transition-all duration-300 ease-in-out min-w-0 min-h-0 fixed right-0 top-[var(--topbar-height,64px)] bottom-0",
           !showResultsOnMobile ? "hidden md:flex" : "flex"
         )}
         style={{
@@ -2535,7 +2535,7 @@ export default function PeopleSearchPage() {
           </div>
         </StickyHeader>
         </div>
-        <div className={cn("flex-1 overflow-y-auto min-w-0 w-full relative pt-[71px] flex flex-col bg-muted/30 transition-colors duration-300 ease-in-out", isEmptyView ? "overflow-visible" : "overflow-auto")} style={isEmptyView ? { height: 'calc(100vh - var(--topbar-height, 64px) - 71px)' } : undefined}>
+        <div className={cn("flex-1 min-h-0 min-w-0 w-full relative pt-[71px] flex flex-col bg-muted/30 transition-colors duration-300 ease-in-out", isEmptyView ? "overflow-visible" : "overflow-y-auto")} style={isEmptyView ? { height: 'calc(100vh - var(--topbar-height, 64px) - 71px)' } : undefined}>
           <div 
             className={cn("transition-all duration-300 ease-in-out flex-1 flex flex-col min-h-full", isEmptyView ? "" : "p-8 space-y-4")}
           >

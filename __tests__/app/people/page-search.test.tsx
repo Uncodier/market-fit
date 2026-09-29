@@ -64,3 +64,34 @@ it('cancels the actual page lookup when Clear resets filters', async () => {
   expect(input).toHaveValue('')
   expect(apiClient.get).not.toHaveBeenCalled()
 })
+
+it('keeps the pagination inside a viewport-sized, scrollable results panel', async () => {
+  ;(apiClient.post as jest.Mock)
+    .mockResolvedValueOnce({
+      success: true,
+      data: {
+        search_results: [{
+          id: 'person-1',
+          person: { id: 'person-1', full_name: 'Ada Lovelace' },
+          organization: { id: 'org-1', name: 'Analytical Engines' },
+          role_title: 'CTO',
+        }],
+        total_search_results: 20,
+      },
+    })
+    .mockResolvedValueOnce({ success: true, data: { total_persons: 20 } })
+
+  render(<PeopleSearchPage />)
+  await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Search' })) })
+
+  const nextPage = screen.getByRole('button', { name: 'Next page' })
+  const resultsPanel = nextPage.closest('div.fixed')
+  const scrollArea = nextPage.closest('.overflow-y-auto')
+
+  expect(resultsPanel).not.toBeNull()
+  expect(resultsPanel).not.toHaveClass('h-full')
+  expect(scrollArea).not.toBeNull()
+  expect(scrollArea).toHaveClass('min-h-0')
+  expect(scrollArea).toContainElement(nextPage)
+  expect(nextPage).toBeEnabled()
+})
