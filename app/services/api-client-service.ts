@@ -264,7 +264,7 @@ export class ApiClientService {
         clearTimeout(timer);
       }
 
-      return await handleApiResponse<T>(response);
+      return await handleApiResponse<T>(response, { onAccepted: options.onAccepted });
     } catch (error) {
       console.error('Error in POST request:', error);
       
