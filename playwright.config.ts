@@ -1,69 +1,55 @@
 import { defineConfig, shiplightConfig } from 'shiplightai';
 import dotenv from 'dotenv';
-import path from 'path';
+import path from 'node:path';
+import { storageStatePath, type TestSuite } from './tests/support/environment';
 
-// Load environment variables from .env and .env.local
-dotenv.config({ path: path.resolve(__dirname, '.env') });
-dotenv.config({ path: path.resolve(__dirname, '.env.local') });
+dotenv.config({ path: path.resolve(__dirname, '.env'), quiet: true });
+dotenv.config({ path: path.resolve(__dirname, '.env.local'), quiet: true });
 
-const ADMIN_STORAGE_STATE_PATH = '.auth/admin.json';
+const suite = (process.env.TEST_SUITE || 'smoke') as TestSuite;
+if (!['smoke', 'regression', 'buyer', 'roles'].includes(suite)) throw new Error('Invalid TEST_SUITE');
+const generated = shiplightConfig();
+const shared = { browserName: 'chromium' as const };
+const adminState = storageStatePath('admin');
+const projects = suite === 'roles' ? [{ name: 'roles', testMatch: /tests\/boundaries\/.*\.spec\.ts$/ }]
+  : suite === 'buyer' ? [
+    { name: 'buyer-setup', testMatch: /tests\/auth\/buyer\.setup\.ts$/, use: { storageState: { cookies: [], origins: [] } } },
+    { name: 'buyer', testMatch: /tests\/buyer-navigation\.yaml\.spec\.ts$/, use: { ...shared, baseURL: process.env.TEST_COMMERCE_BASE_URL, storageState: storageStatePath('buyer') }, dependencies: ['buyer-setup'] },
+  ] : [
+    { name: 'setup', testMatch: /(^|\/)auth\.setup\.ts$/, use: { storageState: { cookies: [], origins: [] } } },
+    { name: 'public', testMatch: suite === 'smoke' ? /tests\/smoke\/public\.spec\.ts$/ : /tests\/public-commerce-navigation\.yaml\.spec\.ts$/, use: { ...shared, baseURL: process.env.TEST_COMMERCE_BASE_URL, storageState: { cookies: [], origins: [] } } },
+    { name: 'admin', testMatch: suite === 'smoke' ? /tests\/smoke\/workspace\.spec\.ts$/ : path.join(__dirname, 'tests/*.yaml.spec.ts'), testIgnore: ['**/tests/agent/**', /(?:example|browser-quality-mobile|buyer-navigation|public-commerce-navigation)\.yaml\.spec\.ts$/], use: { ...shared, storageState: adminState }, dependencies: ['setup'] },
+    ...(suite === 'regression' ? [{ name: 'mobile-chromium', testMatch: /tests\/browser-quality-mobile\.yaml\.spec\.ts$/, use: { ...shared, storageState: adminState, viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true }, dependencies: ['setup'] }] : []),
+  ];
 
 export default defineConfig({
-  ...shiplightConfig(),
+  ...generated,
   testDir: '.',
-  testMatch: ['**/*.yaml.spec.ts'],
-  timeout: 300_000,
-  expect: { timeout: 10_000 },
-  // Most CRUD scenarios mutate the same configured site. Keep them serialized
-  // unless the caller explicitly provisions isolated test data per worker.
-  workers: Number(process.env.TEST_WORKERS || 1),
-  retries: process.env.CI ? 1 : 0,
+  testIgnore: ['**/node_modules/**', '**/tests/agent/**', '**/arch.yaml.spec.ts'],
+  globalSetup: './tests/support/preflight.ts',
+  timeout: suite === 'smoke' ? 90_000 : 300_000,
+  globalTimeout: suite === 'smoke' ? 600_000 : 7_200_000,
+  expect: { timeout: 15_000 },
+  workers: 1,
+  retries: 0,
+  forbidOnly: true,
+  fullyParallel: false,
+  metadata: {
+    target: process.env.TEST_TARGET || 'unconfigured',
+    suite,
+    appOrigin: process.env.TEST_BASE_URL || 'unconfigured',
+    commerceOrigin: process.env.TEST_COMMERCE_BASE_URL || 'unconfigured',
+    deployedSha: process.env.TEST_DEPLOYED_SHA || 'unknown',
+  },
   use: {
-    baseURL: process.env.TEST_BASE_URL || 'http://localhost:3000',
+    baseURL: process.env.TEST_BASE_URL,
     headless: true,
     viewport: { width: 1920, height: 1080 },
     actionTimeout: 15_000,
-    video: 'on',
-    screenshot: 'on',
-    trace: 'on',
-    // executablePath removed
+    navigationTimeout: 45_000,
+    video: 'retain-on-failure',
+    screenshot: 'only-on-failure',
+    trace: 'retain-on-failure',
   },
-  projects: [
-    {
-      name: 'setup',
-      testMatch: 'auth.setup.ts',
-      use: {
-        storageState: { cookies: [], origins: [] },
-      },
-    },
-    {
-      name: 'admin',
-      testIgnore: /browser-quality-mobile.*\.yaml\.spec\.ts/,
-      use: {
-        storageState: ADMIN_STORAGE_STATE_PATH,
-      },
-      dependencies: ['setup'],
-    },
-    {
-      name: 'mobile-chromium',
-      testMatch: /browser-quality-mobile.*\.yaml\.spec\.ts/,
-      use: {
-        browserName: 'chromium',
-        storageState: ADMIN_STORAGE_STATE_PATH,
-        viewport: { width: 390, height: 844 },
-        isMobile: true,
-        hasTouch: true,
-      },
-      dependencies: ['setup'],
-    },
-    /*
-    {
-      name: 'marketing',
-      use: {
-        storageState: '.auth/marketing.json',
-      },
-      dependencies: ['setup'],
-    }
-    */
-  ],
+  projects,
 });

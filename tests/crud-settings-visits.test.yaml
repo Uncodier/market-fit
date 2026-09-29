@@ -1,49 +1,18 @@
-goal: Update and restore Visits settings
-
+goal: Read, update, and restore the explicitly selected visits setting
+tags:
+  - regression
+  - mutation
 statements:
-  - URL: /projects
-  - intent: Select the first available project
-    action: click
-    locator: "getByRole('button', { name: 'Select' }).first()"
-
-  - WAIT_UNTIL: The user is navigated to the default project page
-    js: "await page.url().includes('/robots')"
-    timeout_seconds: 5
-
-  - URL: /settings
-  - WAIT_UNTIL: The settings page is loaded
-    js: "await page.url().endsWith('/settings')"
-    timeout_seconds: 15
-
-  - intent: Click Visits tab
-    action: click
-    locator: "getByRole('tab', { name: /Visits/i })"
-
-  - description: Preserve and update the default visit duration
-    js: |
-      const field = page.locator('#visit-duration');
-      const original = await field.inputValue();
-      await page.evaluate((value) => sessionStorage.setItem('shiplight:settings:visits', value), original);
-      await field.fill(String(Number(original || '60') + 1));
-
-  - intent: Save the updated Visits settings
-    action: click
-    locator: "getByRole('button', { name: /^Save$/i }).first()"
-
-  - WAIT_UNTIL: The Visits settings save completes
-    js: "await page.waitForTimeout(1000)"
-    timeout_seconds: 5
-
-  - intent: Return to the Visits tab after settings refresh
-    action: click
-    locator: "getByRole('tab', { name: /Visits/i })"
-
-  - description: Restore the original default visit duration
-    js: |
-      const field = page.locator('#visit-duration');
-      const original = await page.evaluate(() => sessionStorage.getItem('shiplight:settings:visits') || '60');
-      await field.fill(original);
-
-  - intent: Save the restored Visits settings
-    action: click
-    locator: "getByRole('button', { name: /^Save$/i }).first()"
+  - description: Require explicit TEST_SITE_NAME and TEST_SITE_ID on a disposable mutation target before navigation
+    js: require(process.cwd() + '/tests/support/mutation-safety').requireMutationEnvironment();
+  - description: Select and verify the explicit workspace
+    js: |-
+      await require(process.cwd() + '/tests/support/workspace').selectWorkspace(page);
+      testContext.set("mutationObservationStarted", true);
+  - description: Capture the original visits value before editing, save, and assert persistence after reload
+    js: await require(process.cwd() + '/tests/support/mutation-settings').updateField(page, testContext, 'visits');
+teardown:
+  - description: Restore only the captured original in teardown even after failure; assert restoration after reload
+    js: await require(process.cwd() + '/tests/support/mutation-settings').restoreField(page, testContext);
+  - description: Fail on observed HTTP, application, network, or console errors even when UI assertions passed
+    js: if (testContext.get("mutationObservationStarted")) await require(process.cwd() + '/tests/support/read-observation').assertReadObservation(page);

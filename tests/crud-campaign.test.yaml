@@ -1,61 +1,67 @@
 goal: Create, read, and update a Campaign (no delete control wired in the UI)
-
 statements:
-  - URL: /projects
-  - intent: Select the first available project
-    action: click
-    locator: "getByRole('button', { name: 'Select' }).first()"
-
-  - WAIT_UNTIL: The user is navigated to the default project page
-    js: "await page.url().includes('/robots')"
-    timeout_seconds: 5
-
+  - description: Require TEST_SITE_NAME and TEST_SITE_ID and an explicit disposable mutation target before navigation
+    js: require(process.cwd() + '/tests/support/mutation-safety').requireMutationEnvironment();
+  - description: Register run-owned fixture names before any creation
+    js: |-
+      await require(process.cwd() + '/tests/support/mutation-fixtures').fixtureClient();
+      const runId = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+      testContext.set('campaignEditedName', `Shiplight Campaign ${runId} Edited`);
+      testContext.set('campaignName', `Shiplight Campaign ${runId}`);
+      require(process.cwd() + '/tests/support/mutation-fixtures').own(testContext, 'campaign', [testContext.get('campaignEditedName'), testContext.get('campaignName')]);
+  - description: Select and verify the explicit workspace
+    js: |-
+      await require(process.cwd() + '/tests/support/workspace').selectWorkspace(page);
+      testContext.set("mutationObservationStarted", true);
+  - description: Bind the browser session to the explicitly selected cleanup backend and account
+    js: await require(process.cwd() + '/tests/support/mutation-fixtures').bindBrowserFixture(page);
   - URL: /campaigns
-  
-  - WAIT_UNTIL: The user is on the campaigns list page
-    js: "await page.url().endsWith('/campaigns')"
-    timeout_seconds: 10
-
+  - js: "await expect.poll(async () => Boolean(await page.url().endsWith('/campaigns')), { timeout: 10000 }).toBe(true);"
+    description: The user is on the campaigns list page
   - intent: Click New Campaign in the top bar
     action: click
-    locator: "getByRole('button', { name: /New Campaign|Nueva/i }).first()"
-
+    locator: "getByRole('button', { name: 'New Campaign', exact: true })"
   - intent: Fill the required campaign title
     action: fill
-    locator: "locator('#title')"
-    value: "Automated Test Campaign"
-
+    locator: locator('#title')
+    value: "{{campaignName}}"
   - intent: Submit the create campaign form
     action: click
     locator: "getByRole('button', { name: 'Create campaign' })"
-
-  - WAIT_UNTIL: The create campaign modal closes
-    js: "await page.getByRole('dialog').count() === 0"
-    timeout_seconds: 10
-
-  - WAIT_UNTIL: The campaign details page is open
-    js: "await page.url().includes('/campaigns/') && !page.url().endsWith('/campaigns')"
-    timeout_seconds: 15
-
-  - VERIFY: The details heading shows the created campaign title
-    js: "await expect(page.getByRole('heading', { name: 'Automated Test Campaign' }).first()).toBeVisible()"
-
-  - intent: Click the campaign title heading to start inline edit
-    action: click
-    locator: "getByRole('heading', { name: 'Automated Test Campaign' }).nth(1)"
-
+  - js: "await expect.poll(async () => Boolean(await page.getByRole('dialog').count() === 0), { timeout: 10000 }).toBe(true);"
+    description: The create campaign modal closes
+  - js: "await expect.poll(async () => Boolean(await page.url().includes('/campaigns/') && !page.url().endsWith('/campaigns')), { timeout: 15000 }).toBe(true);"
+    description: The campaign details page is open
+  - js: "await expect(page.getByRole('heading', { name: testContext.get('campaignName') }).first()).toBeVisible()"
+    description: The details heading shows the created campaign title
+  - description: Remember the exact created entity ID and URL for teardown
+    js: |-
+      testContext.set('campaignUrl', page.url());
+      await require(process.cwd() + '/tests/support/mutation-fixtures').remember(testContext, 'campaign');
+  - description: Click the campaign title heading to start inline edit
+    js: "await page.getByRole('heading', { name: `${testContext.get('campaignName')}` }).nth(1).click();"
   - intent: Replace the campaign title with the edited value
     action: fill
-    locator: "locator('input.h-8')"
-    value: "Automated Test Campaign - Edited"
-
+    locator: locator('input.h-8')
+    value: "{{campaignEditedName}}"
   - intent: Save the inline title edit
     action: press
     keys: Enter
-
-  - WAIT_UNTIL: The heading shows the edited title
-    js: "await page.getByRole('heading', { name: 'Automated Test Campaign - Edited' }).count() > 0"
-    timeout_seconds: 10
-
-  - VERIFY: The edited campaign title is visible
-    js: "await expect(page.getByRole('heading', { name: 'Automated Test Campaign - Edited' }).first()).toBeVisible()"
+  - js: "await expect.poll(async () => Boolean(await page.getByRole('heading', { name: testContext.get('campaignEditedName') }).count() > 0), { timeout: 10000 }).toBe(true);"
+    description: The heading shows the edited title
+  - description: Reload the created entity before checking persistence
+    js: await page.reload();
+  - js: "await expect(page.getByRole('heading', { name: testContext.get('campaignEditedName') }).first()).toBeVisible()"
+    description: The edited campaign title is visible persists after reload
+  - description: Require the exact updated entity to persist under its saved ID in the selected site
+    js: await require(process.cwd() + '/tests/support/mutation-fixtures').assertPersisted(testContext, 'campaign', testContext.get('campaignEditedName'));
+tags:
+  - regression
+  - mutation
+teardown:
+  - description: Clean up exact run-scoped entities and dependencies even after failure
+    js: |-
+      await require(process.cwd() + '/tests/support/mutation-fixtures').cleanup(testContext);
+      if (testContext.get('mutationJournal')) await page.goto('/campaigns');
+  - description: Fail on observed HTTP, application, network, or console errors even when UI assertions passed
+    js: if (testContext.get("mutationObservationStarted")) await require(process.cwd() + '/tests/support/read-observation').assertReadObservation(page);

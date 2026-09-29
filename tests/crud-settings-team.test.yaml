@@ -1,71 +1,44 @@
-goal: Complete CRUD cycle for a Team Member in Settings
-
+goal: Create, read, and delete a run-owned team invitation in a disposable mail sink
 statements:
-  - URL: /projects
-  - intent: Select the first available project
-    action: click
-    locator: "getByRole('button', { name: 'Select' }).first()"
-
-  - WAIT_UNTIL: The user is navigated to the default project page
-    js: "await page.url().includes('/robots')"
-    timeout_seconds: 5
-
-  - URL: /settings
-  - WAIT_UNTIL: The settings page is loaded
-    js: "await page.url().endsWith('/settings')"
-    timeout_seconds: 15
-
-  - intent: Click Team tab
-    action: click
-    locator: "getByRole('tab', { name: /Team|Equipo/i })"
-
+  - description: Require explicit TEST_SITE_NAME and TEST_SITE_ID before navigation and register a unique run
+    js: |-
+      require(process.cwd() + '/tests/support/mutation-safety').requireMutationEnvironment();
+      const runId = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+      testContext.set('collectionName', `Shiplight team ${runId}`);
+      const sink = require(process.cwd() + '/tests/support/mutation-safety').invitationDomain();
+      testContext.set('collectionName', 'shiplight-e2e-' + runId + '@' + sink);
+  - description: Select and verify the explicit workspace
+    js: |-
+      await require(process.cwd() + '/tests/support/workspace').selectWorkspace(page);
+      testContext.set("mutationObservationStarted", true);
+  - description: Bind the UI account and fixture backend before any mutation
+    js: await require(process.cwd() + '/tests/support/mutation-fixtures').bindBrowserFixture(page);
+  - description: Wait for the real collection data before creation
+    js: await require(process.cwd() + '/tests/support/mutation-collections').prepareCollection(page, testContext, 'team');
   - intent: Click Add Team Member button
     action: click
     locator: "getByRole('button', { name: 'Invite New Member to Team' })"
-
-  - description: Fill a unique invitation email
-    js: |
-      const email = `shiplight-e2e-${Date.now()}@example.com`;
-      await page.evaluate((value) => sessionStorage.setItem('shiplight:settings:team-email', value), email);
-      const field = page.getByPlaceholder('Email address').first();
-      await field.click();
-      await field.pressSequentially(email, { delay: 10 });
-      await field.blur();
-
-  - WAIT_UNTIL: The invitation is ready to save
-    js: "await page.getByRole('button', { name: 'Save & Invite' }).first().isEnabled()"
-    timeout_seconds: 10
-
-  - intent: Click Invite
+  - description: Fill the explicitly configured disposable invitation sink
+    js: await page.getByPlaceholder('Email address').fill(testContext.get('collectionName'));
+  - intent: Save and invite only the run-specific disposable recipient
     action: click
-    locator: "getByRole('button', { name: 'Save & Invite' }).first()"
-
-  - WAIT_UNTIL: The invitation save has finished
-    js: "await page.getByRole('button', { name: 'Save & Invite' }).count() === 0"
-    timeout_seconds: 30
-
-  - VERIFY: The team member is visible in the list
-    js: |
-      const email = await page.evaluate(() => sessionStorage.getItem('shiplight:settings:team-email'));
-      await expect(page.locator(`input[value="${email}"]`)).toBeVisible();
-
-  - description: Click Remove on the E2E member row
-    js: |
-      const email = await page.evaluate(() => sessionStorage.getItem('shiplight:settings:team-email'));
-      const member = page.locator(`input[value="${email}"]`);
-      const card = page.locator('[id^="team-member-"]').filter({ has: member });
-      await expect(card).toHaveCount(1);
-      await card.getByRole('button', { name: 'Remove', exact: true }).click();
-
-  - WAIT_UNTIL: The delete confirmation modal is open
-    js: "await page.getByRole('alertdialog').count() > 0"
-    timeout_seconds: 5
-
-  - intent: Confirm deletion
-    action: click
-    locator: "getByRole('alertdialog').getByRole('button', { name: 'Remove', exact: true })"
-
-  - VERIFY: The E2E team member is removed
-    js: |
-      const email = await page.evaluate(() => sessionStorage.getItem('shiplight:settings:team-email'));
-      await expect(page.locator(`input[value="${email}"]`)).toHaveCount(0);
+    locator: "getByRole('button', { name: 'Save & Invite', exact: true })"
+  - description: Require invitation completion and reject delivery errors even when a member row was inserted
+    js: |-
+      await expect(page.getByText('Successfully added 1 team member(s)!', { exact: true })).toBeVisible();
+      await expect(page.locator('[data-sonner-toast][data-type="error"]')).toHaveCount(0);
+      await expect(page.getByText(/Member added but invitation failed|Failed to save/)).toHaveCount(0);
+  - description: Reload and prove the created run-owned entity persists, saving its ID when exposed
+    js: |-
+      await page.reload();
+      await require(process.cwd() + '/tests/support/mutation-collections').rememberCollection(page, testContext, 'team');
+  - description: Delete only the run-owned entity and assert absence after reload
+    js: await require(process.cwd() + '/tests/support/mutation-collections').removeCollection(page, testContext, 'team', true);
+tags:
+  - regression
+  - mutation
+teardown:
+  - description: Cleanup only this run-owned entity even when an earlier assertion fails
+    js: await require(process.cwd() + '/tests/support/mutation-collections').removeCollection(page, testContext, 'team');
+  - description: Fail on observed HTTP, application, network, or console errors even when UI assertions passed
+    js: if (testContext.get("mutationObservationStarted")) await require(process.cwd() + '/tests/support/read-observation').assertReadObservation(page);

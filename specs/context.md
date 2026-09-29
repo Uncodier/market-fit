@@ -95,15 +95,17 @@ App env vars are documented in `docs/ENVIRONMENT_VARIABLES.md` (Supabase, API se
 
 - Do not use Lucide-react; the app has its own icons.
 - `package.json` `"test"` is Jest. Shiplight scripts are `test:e2e` / `test:e2e:headed`. Do not overwrite `test`.
-- `playwright.config.ts` uses project-based shared accounts (e.g. `admin`). Auth setup is in `auth.setup.ts`, which saves `storageState` to `.auth/admin.json`.
+- `playwright.config.ts` selects explicit `smoke`, `regression`, `buyer`, or `roles` suites. Smoke is the default and never discovers root CRUD or nested agent tests. Auth state is isolated under `.auth/<target>/<run-id>/<role>.json`; buyer uses its own account and commerce host.
 - `package.json` has no `"type": "module"` — Next config is CommonJS (`module.exports`). Leave it that way.
 - `auth/example.login.ts` was deleted in favor of `auth.setup.ts`.
 - Middleware aliases: `/chat/123` → `/chat?conversationId=123`, `/robots/123` → `/robots?instance=123`.
 - GitHub icon on the landing page links to makinari.org (open source), not GitHub OAuth.
 
-## Open questions
+## Execution contract
 
-- Which deployment should YAML `base_url` use by default? Use `TEST_BASE_URL` env var (e.g. `TEST_BASE_URL=https://app.makinari.com`) with a fallback to `http://localhost:3000`.
-- Dedicated E2E accounts (owner, admin, collaborator, marketing, buyer) and env var names — `TEST_ADMIN_EMAIL` and `TEST_ADMIN_PASSWORD` are now set up. Other roles need accounts provisioned in local DB to be fully enabled in `playwright.config.ts`.
-- Should storefront checkout hit Stripe test mode or stop before payment?
-- Is a stable test site (name/slug) already available on the chosen target?
+- No live environment is inferred. `TEST_TARGET`, `TEST_BASE_URL`, `TEST_COMMERCE_BASE_URL`, `TEST_SITE_ID`, and `TEST_SITE_NAME` are mandatory.
+- Production allows read-only smoke/buyer only. Mutating suites and agent workflows require disposable local/staging targets and two explicit mutation flags.
+- Dedicated role/buyer credentials and foreign site fixtures remain operational provisioning requirements. Missing fixtures fail before execution, not as successful skips.
+- Paid checkout and complete POS reservation remain unverified live journeys; cash-zero Shop checkout is not Stripe evidence.
+- Smoke reads named pre-existing catalog/content/lead fixtures. CRUD uses run-owned data and scoped authenticated cleanup, never a service-role global reset.
+- The supported commands, exact-run reports and residual blockers are documented in `docs/E2E_TESTING.md`.

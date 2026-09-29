@@ -1,26 +1,35 @@
 goal: Read inventory levels and locations
 
 statements:
-  - URL: /projects
-  - intent: Select the first available project
-    action: click
-    locator: "getByRole('button', { name: 'Select' }).first()"
-
-  - WAIT_UNTIL: The user is navigated to the default project page
-    js: "await page.url().includes('/robots')"
-    timeout_seconds: 5
+  - description: Select the exact configured workspace and validate its ID
+    js: |
+      const { selectWorkspace } = require(process.cwd() + '/tests/support/workspace');
+      await selectWorkspace(page);
 
   - URL: /inventory
-  - WAIT_UNTIL: The page is loaded
-    js: "await page.url().endsWith('/inventory')"
-    timeout_seconds: 15
+  - description: Require the loaded /inventory read surface
+    js: |
+      const { assertReadRoute } = require(process.cwd() + '/tests/support/read-navigation');
+      await assertReadRoute(page, '/inventory');
 
-  - VERIFY: The Stock Levels tab is visible
-    js: "await expect(page.getByRole('tab', { name: 'Stock Levels' })).toBeVisible()"
+  - description: The Stock Levels tab is visible
+    js: |
+      const { assertReadReady } = require(process.cwd() + '/tests/support/read-assertions');
+      await expect(page.getByRole('tab', { name: 'Stock Levels' })).toHaveAttribute('aria-selected', 'true');
+      await assertReadReady(page, '/inventory', page.getByRole('table').or(page.getByText('No stock levels found', { exact: true })).first());
 
   - intent: Open inventory locations
     action: click
     locator: "getByRole('tab', { name: 'Locations' })"
 
-  - VERIFY: The locations section is visible
-    js: "await expect(page.getByText('Physical Locations')).toBeVisible()"
+  - description: The locations section is visible
+    js: |
+      const { assertReadReady } = require(process.cwd() + '/tests/support/read-assertions');
+      await expect(page.getByRole('tab', { name: 'Locations' })).toHaveAttribute('aria-selected', 'true');
+      await assertReadReady(page, '/inventory', page.getByRole('heading', { name: 'Physical Locations', exact: true }));
+      await expect(page.getByRole('table').or(page.getByText('No locations found', { exact: true })).first()).toBeVisible();
+
+  - description: Fail on observed application or dependency read errors
+    js: |
+      const { assertReadObservation } = require(process.cwd() + '/tests/support/read-observation');
+      await assertReadObservation(page);

@@ -1,62 +1,72 @@
-goal: Complete CRUD cycle for a Bill
-
+goal: Create, read, and delete a run-owned vendor bill
 statements:
-  - URL: /projects
-  - description: Select the configured test project
-    js: |
+  - description: Require TEST_SITE_NAME and TEST_SITE_ID and an explicit disposable mutation target before navigation
+    js: require(process.cwd() + '/tests/support/mutation-safety').requireMutationEnvironment();
+  - description: Register run-owned fixture names before any creation
+    js: |-
+      await require(process.cwd() + '/tests/support/mutation-fixtures').fixtureClient();
       const runId = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
-      testContext.set("billTitle", `Automated Test Bill ${runId}`);
-      const siteName = process.env.TEST_SITE_NAME;
-      if (!siteName) throw new Error("TEST_SITE_NAME is required");
-      await page.getByRole('button', { name: `Select ${siteName}`, exact: true }).click();
-
-  - WAIT_UNTIL: The user is navigated to the default project page
-    js: "await page.url().includes('/robots')"
-    timeout_seconds: 5
-
+      testContext.set('billTitle', `Shiplight Bill ${runId}`);
+      require(process.cwd() + '/tests/support/mutation-fixtures').own(testContext, 'bill', [testContext.get('billTitle')]);
+  - description: Select and verify the explicit workspace
+    js: |-
+      await require(process.cwd() + '/tests/support/workspace').selectWorkspace(page);
+      testContext.set("mutationObservationStarted", true);
+  - description: Bind the browser session to the explicitly selected cleanup backend and account
+    js: await require(process.cwd() + '/tests/support/mutation-fixtures').bindBrowserFixture(page);
   - URL: /bills
   - intent: Click New bill in the top bar
     action: click
     locator: "getByRole('button', { name: 'New bill' })"
-
   - intent: Fill the bill title
     action: fill
     locator: "getByRole('dialog', { name: 'New vendor bill' }).getByLabel('Title', { exact: true })"
     value: "{{billTitle}}"
-
-  - VERIFY: The bill title input contains the run-scoped title
-    js: "await expect(page.getByRole('dialog', { name: 'New vendor bill' }).getByLabel('Title', { exact: true })).toHaveValue(testContext.get('billTitle'))"
-
+  - js: "await expect(page.getByRole('dialog', { name: 'New vendor bill' }).getByLabel('Title', { exact: true })).toHaveValue(testContext.get('billTitle'))"
+    description: The bill title input contains the run-scoped title
   - intent: Fill the line item name
     action: fill
     locator: "getByRole('dialog', { name: 'New vendor bill' }).getByLabel('Name', { exact: true })"
-    value: "Test Line Item"
-
-  - VERIFY: The bill line item name is filled
-    js: "await expect(page.getByRole('dialog', { name: 'New vendor bill' }).getByLabel('Name', { exact: true })).toHaveValue('Test Line Item')"
-
+    value: Test Line Item
+  - js: "await expect(page.getByRole('dialog', { name: 'New vendor bill' }).getByLabel('Name', { exact: true })).toHaveValue('Test Line Item')"
+    description: The bill line item name is filled
   - intent: Submit the create bill form
     action: click
     locator: "getByRole('button', { name: 'Create bill' })"
-
-  - WAIT_UNTIL: The bill creation completes
-    js: "(await page.getByRole('dialog', { name: 'New vendor bill' }).count()) === 0 && /\\/bills\\/[^/]+$/.test(page.url())"
-    timeout_seconds: 20
-
-  - VERIFY: The created bill title is visible
-    js: "await expect(page.getByText(testContext.get('billTitle'), { exact: true }).first()).toBeVisible()"
-
+  - js: "await expect.poll(async () => Boolean((await page.getByRole('dialog', { name: 'New vendor bill' }).count()) === 0 && /\\/bills\\/[^/]+$/.test(page.url())), { timeout: 20000 }).toBe(true);"
+    description: The bill creation completes
+  - js: "await expect(page.getByText(testContext.get('billTitle'), { exact: true }).first()).toBeVisible()"
+    description: The created bill title is visible
+  - description: Remember the exact created entity ID and URL for teardown
+    js: |-
+      testContext.set('billUrl', page.url());
+      await require(process.cwd() + '/tests/support/mutation-fixtures').remember(testContext, 'bill');
+  - description: Read the exact created site-scoped entity before deletion
+    js: await require(process.cwd() + '/tests/support/mutation-fixtures').assertPersisted(testContext, 'bill', testContext.get('billTitle'));
   - intent: Click Delete on the bill details toolbar
     action: click
     locator: "getByRole('button', { name: 'Delete' })"
-
   - intent: Confirm deletion of the bill
     action: click
     locator: "getByRole('button', { name: 'Delete' }).last()"
-
-  - WAIT_UNTIL: The user is back on the bills list
-    js: "await page.url().endsWith('/bills')"
-    timeout_seconds: 15
-
-  - VERIFY: The bill is gone from the list
-    js: "await expect(page.getByText(testContext.get('billTitle'), { exact: true })).toHaveCount(0)"
+  - js: "await expect.poll(async () => Boolean(await page.url().endsWith('/bills')), { timeout: 15000 }).toBe(true);"
+    description: The user is back on the bills list
+  - js: "await expect(page.getByText(testContext.get('billTitle'), { exact: true })).toHaveCount(0)"
+    description: The bill is gone from the list
+  - description: Reload the list and wait for loaded data before the final removal check
+    js: |-
+      await page.goto('/bills');
+      await page.reload();
+      await expect(page.locator('.animate-pulse:visible')).toHaveCount(0);
+  - description: Verify removal by saved entity ID before cleanup can change the outcome
+    js: await require(process.cwd() + '/tests/support/mutation-fixtures').assertRemoved(testContext, 'bill');
+tags:
+  - regression
+  - mutation
+teardown:
+  - description: Clean up exact run-scoped entities and dependencies even after failure
+    js: |-
+      await require(process.cwd() + '/tests/support/mutation-fixtures').cleanup(testContext);
+      if (testContext.get('mutationJournal')) await page.goto('/bills');
+  - description: Fail on observed HTTP, application, network, or console errors even when UI assertions passed
+    js: if (testContext.get("mutationObservationStarted")) await require(process.cwd() + '/tests/support/read-observation').assertReadObservation(page);

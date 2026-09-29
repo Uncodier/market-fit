@@ -1,99 +1,95 @@
 goal: Create, read, and update a Deal (no delete control in the UI)
-
 statements:
-  - URL: /projects
-  - intent: Select the first available project
-    action: click
-    locator: "getByRole('button', { name: 'Select' }).first()"
-
-  - WAIT_UNTIL: The user is navigated to the default project page
-    js: "await page.url().includes('/robots')"
-    timeout_seconds: 5
-
+  - description: Require TEST_SITE_NAME and TEST_SITE_ID and an explicit disposable mutation target before navigation
+    js: require(process.cwd() + '/tests/support/mutation-safety').requireMutationEnvironment();
+  - description: Register run-owned fixture names before any creation
+    js: |-
+      await require(process.cwd() + '/tests/support/mutation-fixtures').fixtureClient();
+      const runId = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+      testContext.set('dealEditedName', `Shiplight Deal ${runId} Edited`);
+      testContext.set('dealName', `Shiplight Deal ${runId}`);
+      testContext.set('dealLeadName', `Shiplight Deal Contact ${runId}`);
+      require(process.cwd() + '/tests/support/mutation-fixtures').own(testContext, 'lead', [testContext.get('dealLeadName')]);
+      require(process.cwd() + '/tests/support/mutation-fixtures').own(testContext, 'deal', [testContext.get('dealEditedName'), testContext.get('dealName')]);
+      const companyName = process.env.TEST_COMPANY_NAME;
+      if (!companyName) throw new Error('TEST_COMPANY_NAME is required; companies are global and must not be created or deleted by this site-scoped journey');
+      testContext.set('dealCompanyName', companyName);
+  - description: Select and verify the explicit workspace
+    js: |-
+      await require(process.cwd() + '/tests/support/workspace').selectWorkspace(page);
+      testContext.set("mutationObservationStarted", true);
+  - description: Bind the browser session to the explicitly selected cleanup backend and account
+    js: await require(process.cwd() + '/tests/support/mutation-fixtures').bindBrowserFixture(page);
   - URL: /deals
-  - WAIT_UNTIL: The deals page actions are ready
-    js: "await page.getByRole('button', { name: 'Create Deal' }).count() > 0"
-    timeout_seconds: 30
-
+  - js: "await expect.poll(async () => Boolean(await page.getByRole('button', { name: 'Create Deal' }).count() > 0), { timeout: 30000 }).toBe(true);"
+    description: The deals page actions are ready
   - intent: Click Create Deal in the top bar
     action: click
     locator: "getByRole('button', { name: 'Create Deal' })"
-
   - intent: Fill the deal name
     action: fill
-    locator: "locator('#name')"
-    value: "Automated Test Deal"
-
+    locator: locator('#name')
+    value: "{{dealName}}"
   - intent: Fill the deal amount
     action: fill
-    locator: "locator('#amount')"
+    locator: locator('#amount')
     value: "1000"
-
   - intent: Type a new company name in the dependency selector
     action: fill
-    locator: "getByPlaceholder('Search company...')"
-    value: "Automated Deal Company"
-
-  - WAIT_UNTIL: The company dropdown options are visible
-    js: "await page.getByText(/Use \"Automated Deal Company\"|Automated Deal Company/).count() > 0"
-    timeout_seconds: 5
-
-  - intent: Create the company on the fly with Use
-    action: click
-    locator: "getByText(/Use \"Automated Deal Company\"|Automated Deal Company/).first()"
-
+    locator: getByPlaceholder('Search company...')
+    value: "{{dealCompanyName}}"
+  - description: Select the configured existing company, never create a global company
+    js: |-
+      const option = page.locator('[data-relation-id]').filter({ has: page.getByText(testContext.get('dealCompanyName'), { exact: true }) });
+      await expect(option).toHaveCount(1);
+      await option.click();
   - intent: Type a new lead name in the dependency selector
     action: fill
-    locator: "getByPlaceholder('Search lead...')"
-    value: "Automated Deal Contact"
-
-  - WAIT_UNTIL: The lead dropdown options are visible
-    js: "await page.getByText(/Use \"Automated Deal Contact\"|Automated Deal Contact/).count() > 0"
-    timeout_seconds: 5
-
-  - intent: Create the lead on the fly with Use
-    action: click
-    locator: "getByText(/Use \"Automated Deal Contact\"|Automated Deal Contact/).first()"
-
+    locator: getByPlaceholder('Search lead...')
+    value: "{{dealLeadName}}"
+  - description: Create the lead on the fly with Use
+    js: "await page.getByText(`Use \"${testContext.get('dealLeadName')}\"`, { exact: true }).click();"
   - intent: Submit the create deal form
     action: click
     locator: "getByRole('button', { name: 'Create deal' })"
-
-  - WAIT_UNTIL: The create deal modal closes
-    js: "await page.getByRole('dialog').count() === 0"
-    timeout_seconds: 10
-
-  - WAIT_UNTIL: The new deal appears in the list
-    js: "await page.getByText('Automated Test Deal').count() > 0"
-    timeout_seconds: 15
-
-  - intent: Open the deal details page
-    action: click
-    locator: "getByText('Automated Test Deal').first()"
-
-  - WAIT_UNTIL: The deal details route is open
-    js: "await page.url().includes('/deals/') && !page.url().endsWith('/deals')"
-    timeout_seconds: 10
-
-  - VERIFY: The details heading shows the created deal name
-    js: "await expect(page.getByRole('heading', { name: 'Automated Test Deal' })).toBeVisible()"
-
-  - intent: Click the deal name heading to start inline edit
-    action: click
-    locator: "getByRole('heading', { name: 'Automated Test Deal' })"
-
+  - js: "await expect.poll(async () => Boolean(await page.getByRole('dialog').count() === 0), { timeout: 10000 }).toBe(true);"
+    description: The create deal modal closes
+  - js: "await expect.poll(async () => Boolean(await page.getByText(testContext.get('dealName')).count() > 0), { timeout: 15000 }).toBe(true);"
+    description: The new deal appears in the list
+  - description: Open the deal details page
+    js: await page.getByText(`${testContext.get('dealName')}`).first().click();
+  - js: "await expect.poll(async () => Boolean(await page.url().includes('/deals/') && !page.url().endsWith('/deals')), { timeout: 10000 }).toBe(true);"
+    description: The deal details route is open
+  - js: "await expect(page.getByRole('heading', { name: testContext.get('dealName') })).toBeVisible()"
+    description: The details heading shows the created deal name
+  - description: Remember the exact created entity ID and URL for teardown
+    js: |-
+      testContext.set('dealUrl', page.url());
+      await require(process.cwd() + '/tests/support/mutation-fixtures').remember(testContext, 'deal');
+  - description: Click the deal name heading to start inline edit
+    js: "await page.getByRole('heading', { name: `${testContext.get('dealName')}` }).click();"
   - intent: Replace the deal name with the edited value
     action: fill
-    locator: "locator('input.h-8')"
-    value: "Automated Test Deal - Edited"
-
+    locator: locator('input.h-8')
+    value: "{{dealEditedName}}"
   - intent: Save the inline name edit
     action: press
     keys: Enter
-
-  - WAIT_UNTIL: The heading shows the edited name
-    js: "await page.getByRole('heading', { name: 'Automated Test Deal - Edited' }).count() > 0"
-    timeout_seconds: 10
-
-  - VERIFY: The edited deal name is visible
-    js: "await expect(page.getByRole('heading', { name: 'Automated Test Deal - Edited' })).toBeVisible()"
+  - js: "await expect.poll(async () => Boolean(await page.getByRole('heading', { name: testContext.get('dealEditedName') }).count() > 0), { timeout: 10000 }).toBe(true);"
+    description: The heading shows the edited name
+  - description: Reload the created entity before checking persistence
+    js: await page.reload();
+  - js: "await expect(page.getByRole('heading', { name: testContext.get('dealEditedName') })).toBeVisible()"
+    description: The edited deal name is visible persists after reload
+  - description: Require the exact updated entity to persist under its saved ID in the selected site
+    js: await require(process.cwd() + '/tests/support/mutation-fixtures').assertPersisted(testContext, 'deal', testContext.get('dealEditedName'));
+tags:
+  - regression
+  - mutation
+teardown:
+  - description: Clean up exact run-scoped entities and dependencies even after failure
+    js: |-
+      await require(process.cwd() + '/tests/support/mutation-fixtures').cleanup(testContext);
+      if (testContext.get('mutationJournal')) await page.goto('/deals');
+  - description: Fail on observed HTTP, application, network, or console errors even when UI assertions passed
+    js: if (testContext.get("mutationObservationStarted")) await require(process.cwd() + '/tests/support/read-observation').assertReadObservation(page);

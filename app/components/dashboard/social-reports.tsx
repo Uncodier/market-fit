@@ -9,6 +9,8 @@ import { getNetworkIcon } from "@/app/content/content-shared"
 import { Skeleton } from "@/app/components/ui/skeleton"
 import { EmptyCard } from "@/app/components/ui/empty-card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/app/components/ui/avatar"
+import { SocialTrendsChart } from "./social-trends-chart"
+import { normalizeSocialEngagementRate } from "./social-trends"
 
 interface SocialReportsProps {
   startDate: Date
@@ -19,7 +21,7 @@ interface SocialReportsProps {
 function formatEngagement(rate: number) {
   const n = Number(rate) || 0
   return new Intl.NumberFormat("en-US", { style: "percent", minimumFractionDigits: 1, maximumFractionDigits: 2 })
-    .format(n > 1 ? n / 100 : n)
+    .format(n)
 }
 
 function KpiCard({ title, value, icon: Icon, isLoading }: { title: string; value?: React.ReactNode; icon: React.ComponentType<{ className?: string }>; isLoading?: boolean }) {
@@ -38,33 +40,42 @@ function KpiCard({ title, value, icon: Icon, isLoading }: { title: string; value
 
 export function SocialReports({ startDate, endDate }: SocialReportsProps) {
   const { currentSite } = useSite()
+  const siteId = currentSite?.id
   const [data, setData] = useState<Awaited<ReturnType<typeof getSocialPerformanceData>> | null>(null)
   const [topCommenters, setTopCommenters] = useState<Awaited<ReturnType<typeof getTopCommentersData>>["data"]>([])
+  const [commentersError, setCommentersError] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    if (!currentSite || currentSite.id === "default") {
+    if (!siteId || siteId === "default") {
+      setData(null)
+      setTopCommenters([])
+      setCommentersError(false)
       setIsLoading(false)
       return
     }
 
     let cancelled = false
     setIsLoading(true)
+    setCommentersError(false)
+    const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone
     
-    Promise.all([
-      getSocialPerformanceData(currentSite.id, startDate, endDate),
-      getTopCommentersData(currentSite.id, startDate, endDate)
+    Promise.allSettled([
+      getSocialPerformanceData(siteId, startDate, endDate, timeZone),
+      getTopCommentersData(siteId, startDate, endDate, timeZone)
     ]).then(([res, commentersRes]) => {
       if (cancelled) return
-      setData(res)
-      setTopCommenters(commentersRes.data || [])
+      setData(res.status === "fulfilled" ? res.value : { error: "Unable to load social performance" })
+      const failed = commentersRes.status === "rejected" || !!commentersRes.value.error
+      setCommentersError(failed)
+      setTopCommenters(commentersRes.status === "fulfilled" && !failed ? commentersRes.value.data : [])
       setIsLoading(false)
     })
     
     return () => {
       cancelled = true
     }
-  }, [currentSite, startDate, endDate])
+  }, [siteId, startDate, endDate])
 
   if (isLoading) {
     return (
@@ -75,6 +86,8 @@ export function SocialReports({ startDate, endDate }: SocialReportsProps) {
           <KpiCard title="Engagement Rate" isLoading icon={Activity} />
           <KpiCard title="Comments" isLoading icon={MessageCircle} />
         </div>
+
+        <SocialTrendsChart isLoading />
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <Card>
@@ -175,6 +188,8 @@ export function SocialReports({ startDate, endDate }: SocialReportsProps) {
         <KpiCard title="Comments" value={numberFormatter.format(kpis.totalComments)} icon={MessageCircle} />
       </div>
 
+      <SocialTrendsChart data={data?.trends} error={!!data?.error} />
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <Card>
           <CardHeader>
@@ -217,7 +232,17 @@ export function SocialReports({ startDate, endDate }: SocialReportsProps) {
             <CardDescription>Most active users engaging with your content</CardDescription>
           </CardHeader>
           <CardContent>
-            {topCommenters.length > 0 ? (
+            {commentersError ? (
+              <div role="alert">
+                <EmptyCard
+                  icon={<Users className="h-8 w-8" />}
+                  title="Unable to load top commenters"
+                  description="Commenter data could not be loaded. Please try again later."
+                  showShadow={false}
+                  variant="simple"
+                />
+              </div>
+            ) : topCommenters.length > 0 ? (
               <div className="space-y-3">
                 {topCommenters.map((commenter) => (
                   <div key={commenter.id} className="flex items-center justify-between rounded-lg bg-muted/30 p-3">
@@ -240,8 +265,10 @@ export function SocialReports({ startDate, endDate }: SocialReportsProps) {
             ) : (
               <EmptyCard
                 icon={<Users className="h-8 w-8" />}
-                title="No commenters found"
-                description="There are no comments for the selected time period."
+                title={kpis.totalComments > 0 ? "Comment authors not synchronized" : "No commenters found"}
+                description={kpis.totalComments > 0
+                  ? "Post metrics report comments, but no synchronized comment authors are available for the selected time period."
+                  : "No synchronized commenters were found for the selected time period."}
                 showShadow={false}
                 variant="simple"
               />
@@ -276,7 +303,7 @@ export function SocialReports({ startDate, endDate }: SocialReportsProps) {
                       </td>
                       <td className="py-3 text-right">{numberFormatter.format(post.views)}</td>
                       <td className="py-3 text-right">{numberFormatter.format(post.reach)}</td>
-                      <td className="py-3 text-right">{formatEngagement(post.engagement_rate)}</td>
+                      <td className="py-3 text-right">{formatEngagement(normalizeSocialEngagementRate(post.engagement_rate))}</td>
                       <td className="py-3 text-right">{numberFormatter.format(post.likes)}</td>
                     </tr>
                   ))}

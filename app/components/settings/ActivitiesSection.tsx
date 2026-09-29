@@ -5,23 +5,28 @@ import {
   SectionCard,
   SectionCardHeader,
   SectionCardTitle,
-  SectionCardDescription,
   SectionCardContent,
   SectionCardFooter,
 } from "@/app/components/ui/section-card"
 import { Button } from "../ui/button"
-import { FormField, FormItem, FormLabel, FormControl, FormMessage } from "../ui/form"
+import { FormField, FormItem, FormControl, FormMessage } from "../ui/form"
 import { RadioGroup, RadioGroupItem } from "../ui/radio-group"
 import { Badge } from "../ui/badge"
 import { type SiteFormValues } from "./form-schema"
 import { cn } from "../../lib/utils"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { NavigationLink } from "../navigation/NavigationLink"
 import { useLocalization } from "@/app/context/LocalizationContext"
+import { useSite } from "@/app/context/SiteContext"
+import { getOutreachTimezone, isValidOutreachTimezone, isOutreachActivity, OUTREACH_ACTIVITY_KEYS, normalizeOutreachSettings, validateOutreachSettings } from "@/lib/outreach-settings"
+import { OutreachActivityFields } from "./OutreachActivityFields"
+import { getUsableOutreachAccounts } from "./outreach-accounts"
+import { useOutreachSegments } from "./use-outreach-segments"
 
 interface ActivitiesSectionProps {
   active: boolean
-  onSave?: (data: SiteFormValues) => void
+  onSave?: (data: SiteFormValues) => boolean | void | Promise<boolean | void>
+  siteId?: string
 }
 
 type ActivityKey = keyof SiteFormValues["activities"]
@@ -45,12 +50,12 @@ const ACTIVITIES: { key: ActivityKey; title: string; description: string }[] = [
   {
     key: "leads_initial_cold_outreach",
     title: "Leads Initial Cold Outreach",
-    description: "Draft and send first-touch cold outreach tailored to the prospect and channel. Runs according to your company's operating hours."
+    description: "Reach contacts who have never written or replied, including repeat outreach after the reply-wait period. Runs according to your company's operating hours."
   },
   {
     key: "leads_follow_up",
     title: "Leads Follow Up",
-    description: "Automate thoughtful follow-ups to increase reply rates and move deals forward. Runs Tuesday, Wednesday, and Thursday."
+    description: "Follow up only with contacts who have previously written or replied. Choose the weekdays below."
   },
   {
     key: "email_sync",
@@ -74,19 +79,45 @@ const ACTIVITIES: { key: ActivityKey; title: string; description: string }[] = [
   }
 ]
 
-export function ActivitiesSection({ active, onSave }: ActivitiesSectionProps) {
+export function ActivitiesSection({ active, onSave, siteId }: ActivitiesSectionProps) {
   const { t } = useLocalization()
   const form = useFormContext<SiteFormValues>()
   const [savingCard, setSavingCard] = useState<string | null>(null)
+  const [errors, setErrors] = useState<Record<string, string[]>>({})
+  const { currentSite } = useSite()
+  const segments = useOutreachSegments(active ? siteId || currentSite?.id : undefined)
+  const accounts = getUsableOutreachAccounts(currentSite?.settings?.channels)
+  const businessHours = form.watch("business_hours")
+  const timezone = getOutreachTimezone(businessHours)
+  const coldOutreachStatus = form.watch("activities.leads_initial_cold_outreach.status")
+  const assignStatus = form.watch("activities.assign_leads_to_team.status")
+  useEffect(() => {
+    if (coldOutreachStatus !== "active" && assignStatus !== "inactive") {
+      form.setValue("activities.assign_leads_to_team.status", "inactive", { shouldDirty: true })
+    }
+  }, [coldOutreachStatus, assignStatus, form])
+  useEffect(() => { setErrors({}) }, [siteId, currentSite?.id])
   const sectionTitle = t("settings.nav.activities") || "AI Activities"
+
+  const validate = (key: typeof OUTREACH_ACTIVITY_KEYS[number], enabling = false) => {
+    const value = normalizeOutreachSettings(form.getValues(`activities.${key}`))
+    if (enabling) value.status = "active"
+    const messages = validateOutreachSettings(value, key, accounts, segments.segments.map(segment => segment.id)).map(error => error.message)
+    if (value.status === "active" && !isValidOutreachTimezone(timezone)) messages.push("Set a valid business-hours timezone in Context before enabling this activity.")
+    if (value.status === "active" && !value.all_segments && (segments.loading || segments.error)) messages.push("Wait for this site's segments to load successfully before enabling or saving.")
+    return messages
+  }
 
   const handleSave = async (id: string) => {
     if (!onSave) return
+    const validation = Object.fromEntries(OUTREACH_ACTIVITY_KEYS.map(key => [key, validate(key)]))
+    setErrors(validation)
+    if (Object.values(validation).some(messages => messages.length)) return
     setSavingCard(id)
     try {
       const formData = form.getValues()
-      await onSave(formData)
-      form.reset(formData)
+      const saved = await onSave(formData)
+      if (saved !== false) form.reset(formData)
     } catch (error) {
       console.error("Error saving activities:", error)
     } finally {
@@ -113,15 +144,15 @@ export function ActivitiesSection({ active, onSave }: ActivitiesSectionProps) {
       {/* Activity Cards */}
       {ACTIVITIES.map(({ key, title, description }) => {
         const status = form.watch(`activities.${key}.status` as const) as 'default' | 'inactive' | 'active' | undefined
-        const isInactive = status === 'inactive'
+        const isOutreach = isOutreachActivity(key)
+        const isInactive = status === 'inactive' || (isOutreach && status !== 'active')
         
         // Check dependency for assign_leads_to_team
         const isAssignLeads = key === 'assign_leads_to_team'
         const isSuperviseConversations = key === 'supervise_conversations'
         const isDailyResumeAndStandUp = key === 'daily_resume_and_stand_up'
-        const isOptIn = isAssignLeads || isSuperviseConversations || isDailyResumeAndStandUp
-        const coldOutreachStatus = form.watch('activities.leads_initial_cold_outreach.status')
-        const isDependencyInactive = isAssignLeads && coldOutreachStatus === 'inactive'
+        const isOptIn = isAssignLeads || isSuperviseConversations || isDailyResumeAndStandUp || isOutreach
+        const isDependencyInactive = isAssignLeads && coldOutreachStatus !== 'active'
         
         return (
           <SectionCard 
@@ -158,11 +189,6 @@ export function ActivitiesSection({ active, onSave }: ActivitiesSectionProps) {
                 control={form.control}
                 name={`activities.${key}.status` as const}
                 render={({ field }) => {
-                  // Auto-set to inactive if dependency is inactive
-                  if (isDependencyInactive && field.value !== 'inactive') {
-                    field.onChange('inactive')
-                  }
-                  
                   const options = isOptIn ? [
                     {
                       value: "inactive",
@@ -193,11 +219,7 @@ export function ActivitiesSection({ active, onSave }: ActivitiesSectionProps) {
                     // For legacy opt-in activities, we might need to map them properly
                     // assign_leads_to_team and supervise_conversations mapped to active previously
                     // daily_resume_and_stand_up now maps to inactive since it's inactive by default
-                    normalizedValue = isDailyResumeAndStandUp ? "inactive" : "active"
-                    // Update the field value if it was "default"
-                    if (field.value === "default") {
-                      field.onChange(normalizedValue)
-                    }
+                    normalizedValue = isDailyResumeAndStandUp || isOutreach ? "inactive" : "active"
                   }
                   
                   const currentValue = normalizedValue || options[0].value
@@ -207,7 +229,14 @@ export function ActivitiesSection({ active, onSave }: ActivitiesSectionProps) {
                       <FormControl>
                         <RadioGroup
                           value={currentValue}
-                          onValueChange={field.onChange}
+                          onValueChange={next => {
+                            if (isOutreach && next === "active") {
+                              const messages = validate(key, true)
+                              setErrors(previous => ({ ...previous, [key]: messages }))
+                              if (messages.length) return
+                            } else setErrors(previous => ({ ...previous, [key]: [] }))
+                            field.onChange(next)
+                          }}
                           disabled={isDependencyInactive}
                           className="space-y-3"
                         >
@@ -254,9 +283,11 @@ export function ActivitiesSection({ active, onSave }: ActivitiesSectionProps) {
                   )
                 }}
               />
+              {isOutreach && <OutreachActivityFields activityKey={key} accounts={accounts} {...segments} timezone={timezone} />}
+              {!!errors[key]?.length && <ul role="alert" className="mt-4 space-y-1 text-sm text-destructive">{errors[key].map(message => <li key={message}>{message}</li>)}</ul>}
             </SectionCardContent>
             <SectionCardFooter>
-              <Button variant="outline" size="sm"
+              <Button type="button" variant="outline" size="sm"
                 onClick={() => handleSave(key)}
                 disabled={savingCard === key || !form.formState.isDirty}
               >

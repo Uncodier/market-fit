@@ -14,9 +14,12 @@ Use the guides below before relying on older implementation notes.
 - [Maintenance](MAINTENANCE.md) — dependency, documentation, and release hygiene.
 - [`specs/context.md`](../specs/context.md) — browser-test routes, roles, targets,
   and data assumptions.
+- [E2E execution and evidence](E2E_TESTING.md) — safe suite selection, fixtures,
+  run provenance, strict assertions and unresolved live-verification blockers.
 
 ## Integration guides
 
+- [Automated outreach settings](OUTREACH_SETTINGS.md)
 - [Stripe setup](STRIPE_SETUP.md)
 - [Stripe environment variables](STRIPE_ENVIRONMENT_VARIABLES.md)
 - [Stripe webhook security](STRIPE_WEBHOOK_SECURITY.md)

@@ -1,0 +1,38 @@
+name: E2E safety logic
+
+on:
+  pull_request:
+    paths:
+      - 'scripts/e2e/**'
+      - 'tests/**'
+      - '__tests__/e2e/**'
+      - 'playwright.config.ts'
+      - 'auth.setup.ts'
+      - '.github/workflows/e2e-*.yml'
+      - 'package*.json'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  safety:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - name: Strictly transpile suites needed by clean-checkout discovery tests
+        env:
+          SHIPLIGHT_OFFLINE: '1'
+        run: |
+          npm run test:e2e:validate
+          npm run test:e2e -- --suite buyer --validate
+      # No application, browser, cloud or environment credentials in a PR job.
+      - run: npm test -- --runInBand __tests__/e2e

@@ -41,16 +41,14 @@ type CampaignForm = z.infer<typeof campaignFormSchema>
 export function CreateCampaignFields({
   form,
   segments,
-  requirements,
   t,
 }: {
   form: UseFormReturn<CampaignForm>
   segments: Array<{ id: string; name: string; description: string }>
-  requirements: Array<{ id: string; title: string; description: string }>
   t: (key: string) => string
 }) {
   const selectedSegments = form.watch("segments") || []
-  const selectedRequirements = form.watch("requirements") || []
+  const createWithAi = form.watch("createWithAi")
   const dueDate = form.watch("dueDate")
   const errors = form.formState.errors
 
@@ -206,25 +204,24 @@ export function CreateCampaignFields({
         }}
       />
 
-      <ToggleList
-        label={t("campaigns.create.relatedRequirements") || "Related requirements"}
-        empty={t("campaigns.create.noRequirements") || "No requirements available"}
-        items={requirements.map((requirement) => ({
-          id: requirement.id,
-          title: requirement.title,
-          description: requirement.description,
-          checked: selectedRequirements.includes(requirement.id),
-        }))}
-        onToggle={(id, checked) => {
-          form.setValue(
-            "requirements",
-            checked
-              ? [...selectedRequirements, id]
-              : selectedRequirements.filter((item) => item !== id),
-            { shouldDirty: true }
-          )
-        }}
-      />
+      <div className="flex items-start justify-between gap-4 rounded-lg border p-4">
+        <div className="grid gap-1.5">
+          <Label htmlFor="createWithAi" className="cursor-pointer">
+            {t("campaigns.create.createWithAi")}
+          </Label>
+          <p id="createWithAiDescription" className="text-sm text-muted-foreground">
+            {t("campaigns.create.createWithAiDescription")}
+          </p>
+        </div>
+        <Switch
+          id="createWithAi"
+          aria-describedby="createWithAiDescription"
+          checked={createWithAi}
+          onCheckedChange={(checked) =>
+            form.setValue("createWithAi", checked, { shouldDirty: true, shouldValidate: true })
+          }
+        />
+      </div>
     </>
   )
 }

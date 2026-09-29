@@ -1,69 +1,66 @@
-goal: Create when needed, read, update, and restore a Price List
-
+goal: Create, read, and update a run-owned Price List; remove only that fixture in teardown
 statements:
-  - URL: /projects
-  - intent: Select the first available project
-    action: click
-    locator: "getByRole('button', { name: 'Select' }).first()"
-
-  - WAIT_UNTIL: The user is navigated to the default project page
-    js: "await page.url().includes('/robots')"
-    timeout_seconds: 5
-
+  - description: Require TEST_SITE_NAME and TEST_SITE_ID and an explicit disposable mutation target before navigation
+    js: require(process.cwd() + '/tests/support/mutation-safety').requireMutationEnvironment();
+  - description: Register run-owned fixture names before any creation
+    js: |-
+      await require(process.cwd() + '/tests/support/mutation-fixtures').fixtureClient();
+      const runId = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+      testContext.set('priceListEditedName', `Shiplight Price List ${runId} Edited`);
+      testContext.set('priceListName', `Shiplight Price List ${runId}`);
+      require(process.cwd() + '/tests/support/mutation-fixtures').own(testContext, 'priceList', [testContext.get('priceListEditedName'), testContext.get('priceListName')]);
+  - description: Select and verify the explicit workspace
+    js: |-
+      await require(process.cwd() + '/tests/support/workspace').selectWorkspace(page);
+      testContext.set("mutationObservationStarted", true);
+  - description: Bind the browser session to the explicitly selected cleanup backend and account
+    js: await require(process.cwd() + '/tests/support/mutation-fixtures').bindBrowserFixture(page);
   - URL: /price-lists
-  - description: Create the reusable E2E price list when it does not exist
-    js: |
-      const existing = page.getByText('Automated Test Price List', { exact: true });
-      if ((await existing.count()) === 0) {
-        await page.getByRole('button', { name: 'Create List' }).first().evaluate((button) => button.click());
-        await page.locator('#price-list-name').fill('Automated Test Price List');
-        await page.getByRole('button', { name: 'Create List' }).last().click();
-      }
-
-  - WAIT_UNTIL: The new price list appears in the list
-    js: "await page.getByText('Automated Test Price List').count() > 0"
-    timeout_seconds: 15
-
-  - intent: Open the price list details page
+  - intent: Open the Create List dialog
     action: click
-    locator: "getByText('Automated Test Price List', { exact: true }).first()"
-
-  - WAIT_UNTIL: The price list details route is open
-    js: "await page.url().includes('/price-lists/') && !page.url().endsWith('/price-lists')"
-    timeout_seconds: 10
-
+    locator: "getByRole('button', { name: 'Create List', exact: true }).first()"
+  - intent: Fill the run-owned price list name
+    action: fill
+    locator: locator('#price-list-name')
+    value: "{{priceListName}}"
+  - intent: Create the run-owned price list
+    action: click
+    locator: "getByRole('dialog').getByRole('button', { name: 'Create List', exact: true })"
+  - js: "await expect.poll(async () => Boolean(await page.getByText(testContext.get('priceListName')).count() > 0), { timeout: 15000 }).toBe(true);"
+    description: The new price list appears in the list
+  - description: Open the price list details page
+    js: "await page.getByText(`${testContext.get('priceListName')}`, { exact: true }).first().click();"
+  - js: "await expect.poll(async () => Boolean(await page.url().includes('/price-lists/') && !page.url().endsWith('/price-lists')), { timeout: 10000 }).toBe(true);"
+    description: The price list details route is open
   - intent: Open the Edit list dialog from the top bar
     action: click
     locator: "getByRole('button', { name: 'Edit list' })"
-
+  - description: Remember the exact created entity ID and URL for teardown
+    js: |-
+      testContext.set('priceListUrl', page.url());
+      await require(process.cwd() + '/tests/support/mutation-fixtures').remember(testContext, 'priceList');
   - intent: Update the price list name
     action: fill
-    locator: "locator('#price-list-name')"
-    value: "Automated Test Price List - Edited"
-
+    locator: locator('#price-list-name')
+    value: "{{priceListEditedName}}"
   - intent: Save the edited price list
     action: click
     locator: "getByRole('button', { name: 'Save' })"
-
-  - WAIT_UNTIL: The edited name is visible
-    js: "await page.getByText('Automated Test Price List - Edited').count() > 0"
-    timeout_seconds: 10
-
-  - VERIFY: The edited price list name is visible
-    js: "await expect(page.getByText('Automated Test Price List - Edited').first()).toBeVisible()"
-
-  - intent: Reopen the Edit list dialog
-    action: click
-    locator: "getByRole('button', { name: 'Edit list' })"
-
-  - intent: Restore the reusable price list name
-    action: fill
-    locator: "locator('#price-list-name')"
-    value: "Automated Test Price List"
-
-  - intent: Save the restored price list
-    action: click
-    locator: "getByRole('button', { name: 'Save' })"
-
-  - VERIFY: The original price list name is restored
-    js: "await expect(page.getByText('Automated Test Price List', { exact: true }).first()).toBeVisible()"
+  - js: "await expect.poll(async () => Boolean(await page.getByText(testContext.get('priceListEditedName')).count() > 0), { timeout: 10000 }).toBe(true);"
+    description: The edited name is visible
+  - description: Reload the created entity before checking persistence
+    js: await page.reload();
+  - js: await expect(page.getByText(testContext.get('priceListEditedName')).first()).toBeVisible()
+    description: The edited price list name is visible persists after reload
+  - description: Require the exact updated entity to persist under its saved ID in the selected site
+    js: await require(process.cwd() + '/tests/support/mutation-fixtures').assertPersisted(testContext, 'priceList', testContext.get('priceListEditedName'));
+tags:
+  - regression
+  - mutation
+teardown:
+  - description: Clean up exact run-scoped entities and dependencies even after failure
+    js: |-
+      await require(process.cwd() + '/tests/support/mutation-fixtures').cleanup(testContext);
+      if (testContext.get('mutationJournal')) await page.goto('/price-lists');
+  - description: Fail on observed HTTP, application, network, or console errors even when UI assertions passed
+    js: if (testContext.get("mutationObservationStarted")) await require(process.cwd() + '/tests/support/read-observation').assertReadObservation(page);

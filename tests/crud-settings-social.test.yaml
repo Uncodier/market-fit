@@ -1,51 +1,20 @@
+# Intended journey: add, persist and remove only the run-owned Pinterest account card.
+# Blocked: OAuth-only cards have no editable run identity before connection.
 goal: Create, read, and delete a Social Network setting
-
+tags:
+  - regression
+  - mutation
 statements:
-  - URL: /projects
-  - intent: Select the first available project
-    action: click
-    locator: "getByRole('button', { name: 'Select' }).first()"
-
-  - WAIT_UNTIL: The user is navigated to the default project page
-    js: "await page.url().includes('/robots')"
-    timeout_seconds: 5
-
-  - URL: /settings
-  - WAIT_UNTIL: The settings page is loaded
-    js: "await page.url().endsWith('/settings')"
-    timeout_seconds: 15
-
-  - intent: Click Social tab
-    action: click
-    locator: "getByRole('tab', { name: /Social/i })"
-
-  - intent: Add a social network
-    action: click
-    locator: "getByRole('button', { name: 'Add Social Network' })"
-
-  - intent: Open the platform selector
-    action: click
-    locator: "getByRole('button', { name: 'Select Platform' }).last()"
-
-  - intent: Select Pinterest as the E2E platform
-    action: click
-    locator: "getByText('Pinterest', { exact: true }).last()"
-
-  - intent: Save the social network
-    action: click
-    locator: "getByRole('button', { name: /^Save$/i }).last()"
-
-  - intent: Return to the Social tab after settings refresh
-    action: click
-    locator: "getByRole('tab', { name: /Social/i })"
-
-  - VERIFY: The Pinterest network is visible
-    js: "await expect(page.getByText('Pinterest', { exact: true }).last()).toBeVisible()"
-
-  - intent: Remove the E2E social network
-    action: click
-    locator: "locator('button[title=\"Remove Network\"]').last()"
-
-  - intent: Confirm deletion of the social network
-    action: click
-    locator: "getByRole('button', { name: 'Delete' })"
+  - description: Require explicit TEST_SITE_NAME and TEST_SITE_ID and a disposable mutation environment
+    js: require(process.cwd() + '/tests/support/mutation-safety').requireMutationEnvironment();
+  - description: Fail closed for the unavailable isolated fixture instead of reporting an empty success
+    js: throw new Error("[E2E_BLOCKED] Social CRUD requires a disposable OAuth account fixture and a stable account ID. Current platform cards expose no run-specific editable identity before OAuth. Refusing to create an unnamed Pinterest card or delete the last existing network.");
+  - description: Select and verify the explicit workspace
+    js: |-
+      await require(process.cwd() + '/tests/support/workspace').selectWorkspace(page);
+      testContext.set("mutationObservationStarted", true);
+teardown:
+  - description: "No mutation occurred: validate the environment again instead of deleting arbitrary existing records"
+    js: require(process.cwd() + '/tests/support/mutation-safety').requireMutationEnvironment();
+  - description: Fail on observed HTTP, application, network, or console errors even when UI assertions passed
+    js: if (testContext.get("mutationObservationStarted")) await require(process.cwd() + '/tests/support/read-observation').assertReadObservation(page);

@@ -1,31 +1,40 @@
 goal: Validate manual check-in error handling
 
 statements:
-  - URL: /projects
-  - intent: Select the first available project
-    action: click
-    locator: "getByRole('button', { name: 'Select' }).first()"
-
-  - WAIT_UNTIL: The workspace is selected
-    js: "await page.url().includes('/robots')"
-    timeout_seconds: 10
+  - description: Select the exact configured workspace and validate its ID
+    js: |
+      const { selectWorkspace } = require(process.cwd() + '/tests/support/workspace');
+      await selectWorkspace(page);
 
   - URL: /pos/check-in
-  - WAIT_UNTIL: Manual check-in is ready
-    js: "await page.getByPlaceholder('Enter code...').count() > 0"
-    timeout_seconds: 15
+  - description: Require the loaded /pos/check-in read surface
+    js: |
+      const { assertReadRoute } = require(process.cwd() + '/tests/support/read-navigation');
+      await assertReadRoute(page, '/pos/check-in');
 
   - intent: Enter an invalid ticket code
     action: fill
     locator: "getByPlaceholder('Enter code...')"
     value: "SHIPLIGHT-INVALID-CHECK-IN"
 
+  - description: Declare the exact expected validation error, without suppressing provider or server errors
+    js: require(process.cwd() + '/tests/support/read-observation').expectActionError(page, '/pos/check-in', 'Invalid code');
+
   - intent: Submit the invalid ticket code
     action: click
     locator: "getByRole('button', { name: 'Submit' })"
 
-  - VERIFY: An error notification is shown
-    js: "await expect(page.locator('li[data-sonner-toast]')).toBeVisible()"
+  - description: The invalid code is rejected, not accepted or queued offline
+    js: |
+      await expect(page.locator('[data-sonner-toast][data-type="error"]').filter({ hasText: /^Invalid code$/ })).toBeVisible();
+      await expect(page.locator('[data-sonner-toast][data-type="success"]')).toHaveCount(0);
 
-  - VERIFY: Manual entry remains available for retry
-    js: "await expect(page.getByPlaceholder('Enter code...')).toBeVisible()"
+  - description: Manual entry remains available for retry
+    js: |
+      await expect(page.getByPlaceholder('Enter code...')).toBeEnabled();
+      await expect(page.getByPlaceholder('Enter code...')).toHaveValue('');
+
+  - description: Fail on observed application or dependency read errors
+    js: |
+      const { assertReadObservation } = require(process.cwd() + '/tests/support/read-observation');
+      await assertReadObservation(page);

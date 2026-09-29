@@ -1,5 +1,9 @@
 # Test Report: Application Coverage Gaps
 
+> Historical report. See [2026-09-28 remediation](remediation-report.md) for the
+> current test infrastructure and explicit live-verification blockers. Findings
+> below are not a statement about the current deployed application.
+
 **Test spec**: [test-spec.md](./test-spec.md)
 **Branch / commit**: current working tree; commit not recorded
 **Last updated**: 2026-09-16

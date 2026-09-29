@@ -38,6 +38,7 @@ npm test
 npm run test:watch
 npm run test:e2e
 npm run test:e2e:headed
+npm run test:e2e:validate
 npm run test:e2e:report
 npm run agent:verify
 npm run test:magic-links
@@ -80,9 +81,10 @@ Run the complete Jest suite:
 npm test -- --runInBand
 ```
 
-Authenticated E2E setup reads `TEST_ADMIN_EMAIL` and
-`TEST_ADMIN_PASSWORD`; deterministic scenarios may also require the
-`TEST_*_NAME` values documented in `.env.example`.
+Authenticated E2E setup requires explicit target/site configuration and dedicated
+account credentials. The default E2E command selects a read-only smoke, not CRUD.
+See [E2E execution and evidence](E2E_TESTING.md) for suites, environment gates,
+fixture requirements, reporting commands and known blockers.
 
 Shiplight CRUD suites create, update, and delete real records. Run E2E or agent
 verification only against an explicitly approved disposable target. Generated

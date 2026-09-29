@@ -1,5 +1,7 @@
 "use client";
 
+import { getSiteFormDefaults } from "./site-form-defaults";
+import { useActivityHydration } from "./use-activity-hydration";
 import { useForm, FormProvider } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useState, useEffect, useCallback } from "react";
@@ -75,7 +77,7 @@ interface SiteFormProps {
   onSaveCustomerJourney?: (data: SiteFormValues) => void;
   onSaveSocial?: (data: SiteFormValues) => void;
   onSaveChannels?: (data: SiteFormValues) => boolean | void | Promise<boolean | void>;
-  onSaveActivities?: (data: SiteFormValues) => void;
+  onSaveActivities?: (data: SiteFormValues) => boolean | void | Promise<boolean | void>;
   onSaveShop?: (data: SiteFormValues) => void;
   onSavePrinters?: (data: SiteFormValues) => void;
   onDeleteSite?: () => void;
@@ -107,178 +109,11 @@ export function SiteForm({
 
   const form = useForm<SiteFormValues>({
     resolver: zodResolver(siteFormSchema),
-    defaultValues: {
-      name: initialData?.name || "",
-      url: initialData?.url || "",
-      description: initialData?.description || "",
-      logo_url: initialData?.logo_url || "",
-      resource_urls: initialData?.resource_urls || [],
-      competitors: initialData?.competitors || [],
-      focusMode: initialData?.focusMode || 50,
-      default_locale: initialData?.default_locale || "en",
-      currency: initialData?.currency || "USD",
-      about: initialData?.about || "",
-      company_size: initialData?.company_size || "",
-      industry: initialData?.industry || "",
-      products: Array.isArray(initialData?.products)
-        ? [...initialData.products]
-        : [],
-      services: Array.isArray(initialData?.services)
-        ? [...initialData.services]
-        : [],
-      locations: initialData?.locations || [],
-      business_hours: initialData?.business_hours || [],
-      goals: initialData?.goals || {
-        quarterly: "",
-        yearly: "",
-        fiveYear: "",
-        tenYear: "",
-      },
-      swot: initialData?.swot || {
-        strengths: "",
-        weaknesses: "",
-        opportunities: "",
-        threats: "",
-      },
-      marketing_budget: initialData?.marketing_budget || {
-        total: 0,
-        available: 0,
-      },
-      channels: initialData?.channels || {
-        email: {
-          enabled: false,
-          email: "",
-          password: "",
-          incomingServer: "",
-          incomingPort: "",
-          outgoingServer: "",
-          outgoingPort: "",
-          status: "not_configured",
-        },
-        whatsapp: {
-          enabled: false,
-          setupRequested: false,
-          status: "not_configured",
-        },
-        website: {
-          enabled: false,
-          track_visitors: false,
-          track_actions: false,
-          record_screen: false,
-          show_cookie_consent: false,
-          enable_chat: false,
-          chat_accent_color: "#e0ff17",
-          allow_anonymous_messages: false,
-          chat_position: "bottom-right",
-          welcome_message:
-            "Welcome to our website! How can we assist you today?",
-          chat_title: "Chat with us",
-          analytics_provider: "",
-          analytics_id: "",
-          tracking_code: "",
-        },
-      },
-      marketing_channels: initialData?.marketing_channels || [],
-      social_media: initialData?.social_media?.length
-        ? initialData.social_media
-        : [],
-      team_members:
-        initialData?.team_members?.map((member) => ({
-          ...member,
-          position: member.position || "",
-        })) || [],
-      tracking: initialData?.tracking || {
-        track_visitors: false,
-        track_actions: false,
-        record_screen: false,
-        show_cookie_consent: false,
-        enable_chat: false,
-        chat_accent_color: "#e0ff17",
-        allow_anonymous_messages: false,
-        chat_position: "bottom-right",
-        welcome_message: "Welcome to our website! How can we assist you today?",
-        chat_title: "Chat with us",
-      },
-      billing: initialData?.billing || {
-        plan: "commission",
-        auto_renew: true,
-        card_name: "",
-        card_number: "",
-        card_expiry: "",
-        card_cvc: "",
-        billing_address: "",
-        billing_city: "",
-        billing_postal_code: "",
-        billing_country: "",
-      },
-      branding: initialData?.branding || {
-        brand_essence: "",
-        brand_personality: "",
-        brand_benefits: "",
-        brand_attributes: "",
-        brand_values: "",
-        brand_promise: "",
-        primary_color: "#000000",
-        secondary_color: "#666666",
-        accent_color: "#e0ff17",
-        success_color: "#22c55e",
-        warning_color: "#f59e0b",
-        error_color: "#ef4444",
-        background_color: "#ffffff",
-        surface_color: "#f8fafc",
-        primary_font: "",
-        secondary_font: "",
-        font_size_scale: "medium",
-        communication_style: "friendly",
-        personality_traits: [],
-        forbidden_words: [],
-        preferred_phrases: [],
-        logo_variations: [],
-        do_list: [],
-        dont_list: [],
-        emotions_to_evoke: [],
-        brand_archetype: undefined,
-      },
-      customer_journey: initialData?.customer_journey || {
-        awareness: { metrics: [], actions: [], tactics: [] },
-        consideration: { metrics: [], actions: [], tactics: [] },
-        decision: { metrics: [], actions: [], tactics: [] },
-        purchase: { metrics: [], actions: [], tactics: [] },
-        retention: { metrics: [], actions: [], tactics: [] },
-        referral: { metrics: [], actions: [], tactics: [] },
-      },
-      activities: initialData?.activities || {
-        daily_resume_and_stand_up: { status: "inactive" },
-        local_lead_generation: { status: "default" },
-        icp_lead_generation: { status: "default" },
-        leads_initial_cold_outreach: { status: "default" },
-        leads_follow_up: { status: "default" },
-        email_sync: { status: "default" },
-        assign_leads_to_team: { status: "inactive" },
-        notify_team_on_inbound_conversations: { status: "default" },
-        supervise_conversations: { status: "inactive" },
-      },
-      shop: initialData?.shop || {
-        hero_title: "",
-        hero_subtitle: "",
-        hero_cta_label: "Shop Now",
-        hero_cta_destination_type: "scroll",
-        hero_cta_destination_value: "",
-        hero_order_bar: false,
-        hero_image_url: "",
-        shipping_cost: null,
-        free_shipping_threshold: null,
-        return_policy_summary: "30-Day Returns",
-        trust_badges: [],
-        payment_methods: ["card", "cash_on_pickup"],
-        default_delivery_options: ["pickup", "ship", "dine_in"],
-        bank_transfer: {},
-      },
-      printers: initialData?.printers || { devices: [] },
-    },
+    defaultValues: getSiteFormDefaults(initialData),
   });
 
   const [codeCopied, setCodeCopied] = useState(false);
+  useActivityHydration(form, initialData?.activities, siteId);
 
   // Debounce function to avoid too many updates to localStorage
   const debounce = (func: Function, wait: number) => {
@@ -387,16 +222,7 @@ export function SiteForm({
         "- resetting form",
       );
       setLastSiteId(siteId);
-      form.reset({
-        ...stableInitialData,
-        // Ensure goals are properly structured
-        goals: stableInitialData.goals || {
-          quarterly: "",
-          yearly: "",
-          fiveYear: "",
-          tenYear: "",
-        },
-      });
+      form.reset(getSiteFormDefaults(stableInitialData));
     }
   }, [siteId, lastSiteId, form]); // CRITICAL: Don't include stableInitialData - only reset on site ID change, not after saves
 
@@ -538,7 +364,7 @@ export function SiteForm({
 
           {renderCard(
             "activities",
-            <ActivitiesSection active={true} onSave={onSaveActivities} />,
+            <ActivitiesSection active={true} onSave={onSaveActivities} siteId={siteId} />,
           )}
 
           {renderCard(

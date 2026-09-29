@@ -1,19 +1,13 @@
 "use server"
 
 import { createClient } from "@/lib/supabase/server"
+import { buildSocialTrends, getSocialDateRange, getSocialPostDate, normalizeSocialEngagementRate } from "./social-trends"
+import { aggregateTopCommenters } from "./social-commenters"
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 
 function isUuid(value?: string | null): value is string {
   return !!value && UUID_RE.test(value)
-}
-
-function toDayRange(startDate: Date | string, endDate: Date | string) {
-  const start = new Date(startDate)
-  const end = new Date(endDate)
-  start.setHours(0, 0, 0, 0)
-  end.setHours(23, 59, 59, 999)
-  return { start: start.getTime(), end: end.getTime() }
 }
 
 export type ContentPerformanceRow = {
@@ -56,32 +50,42 @@ export async function getSocialPerformanceSnapshots(siteId: string) {
   const { supabase, error: authError } = await requireUserClient()
   if (!supabase) return { error: authError, data: [], byContentId: {}, byPostId: {} }
 
-  const { data, error } = await supabase
-    .from("content_performance")
-    .select("*, content(title, status, published_at)")
-    .eq("site_id", siteId)
-    .order("fetched_at", { ascending: false })
+  const rows: ContentPerformanceRow[] = []
+  const pageSize = 1000
+  let cursor: string | undefined
+  // An immutable cursor avoids skipped/duplicate posts when metrics refresh mid-fetch.
+  while (true) {
+    let query = supabase
+      .from("content_performance")
+      .select("*, content(title, status, published_at)")
+      .eq("site_id", siteId)
+      .order("id", { ascending: false })
+      .limit(pageSize)
+    if (cursor) query = query.lt("id", cursor)
+    const { data, error } = await query
 
-  if (error) {
-    console.error("Error fetching social performance snapshots:", error)
-    return { error: error.message, data: [], byContentId: {}, byPostId: {} }
+    if (error) {
+      console.error("Error fetching social performance snapshots:", error)
+      return { error: error.message, data: [], byContentId: {}, byPostId: {} }
+    }
+    rows.push(...((data || []) as ContentPerformanceRow[]))
+    if (!data || data.length < pageSize) break
+    cursor = data[data.length - 1].id
   }
 
-  const rows = (data || []) as ContentPerformanceRow[]
+  rows.sort((a, b) => new Date(b.fetched_at).getTime() - new Date(a.fetched_at).getTime())
   return { data: rows, ...indexSnapshots(rows) }
 }
 
-export async function getSocialPerformanceData(siteId: string, startDate: Date, endDate: Date) {
+export async function getSocialPerformanceData(siteId: string, startDate: Date, endDate: Date, timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone) {
   const result = await getSocialPerformanceSnapshots(siteId)
   if (result.error) return { error: result.error }
 
-  const { start, end } = toDayRange(startDate, endDate)
+  const { start, end } = getSocialDateRange(startDate, endDate, timeZone)
 
   const uniquePosts = (result.data || []).filter((post) => {
-    const publishedAt = post.content?.published_at ? new Date(post.content.published_at).getTime() : null
-    if (publishedAt != null) return publishedAt >= start && publishedAt <= end
-    const fetchedAt = post.fetched_at ? new Date(post.fetched_at).getTime() : null
-    return fetchedAt != null && fetchedAt >= start && fetchedAt <= end
+    const timestamp = getSocialPostDate(post)?.date.getTime()
+    return timestamp != null && timestamp >= start && timestamp <= end
   })
 
   const kpis = {
@@ -103,7 +107,7 @@ export async function getSocialPerformanceData(siteId: string, startDate: Date, 
     kpis.totalShares += post.shares || 0
     kpis.totalViews += post.views || 0
     kpis.totalReach += post.reach || 0
-    engagementSum += Number(post.engagement_rate) || 0
+    engagementSum += normalizeSocialEngagementRate(post.engagement_rate)
 
     for (const acc of post.metrics_by_account || []) {
       const network = String(acc.network || "unknown").toLowerCase()
@@ -121,12 +125,13 @@ export async function getSocialPerformanceData(siteId: string, startDate: Date, 
     kpis.avgEngagementRate = engagementSum / kpis.postCount
   }
 
-  const ranked = [...uniquePosts].sort((a, b) => (Number(b.engagement_rate) || 0) - (Number(a.engagement_rate) || 0))
+  const ranked = [...uniquePosts].sort((a, b) => normalizeSocialEngagementRate(b.engagement_rate) - normalizeSocialEngagementRate(a.engagement_rate))
 
   return {
     data: ranked,
     kpis,
     networks: Object.values(byNetwork).sort((a, b) => b.views - a.views),
+    trends: buildSocialTrends(result.data || [], startDate, endDate, timeZone),
   }
 }
 
@@ -220,15 +225,15 @@ export async function getContentCommentConversations(
 }
 
 
-export async function getTopCommentersData(siteId: string, startDate: Date, endDate: Date) {
+export async function getTopCommentersData(siteId: string, startDate: Date, endDate: Date, timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone) {
   const { supabase, error: authError } = await requireUserClient()
   if (!supabase) return { error: authError, data: [] }
 
-  const { start, end } = toDayRange(startDate, endDate)
+  const { start, end } = getSocialDateRange(startDate, endDate, timeZone)
 
   const { data, error } = await supabase
     .from("messages")
-    .select("custom_data, visitor_id, lead_id, conversations!inner(site_id)")
+    .select("custom_data, visitor_id, lead_id, conversations!inner(site_id, channel)")
     .eq("conversations.site_id", siteId)
     .not("custom_data->>outstand_post_id", "is", null)
     .in("role", ["visitor", "user"])
@@ -241,23 +246,5 @@ export async function getTopCommentersData(siteId: string, startDate: Date, endD
     return { error: error.message, data: [] }
   }
 
-  const commentersMap = new Map<string, { id: string; name: string; avatar: string | null; count: number }>()
-
-  for (const row of data || []) {
-    const cd = (row.custom_data as any) || {}
-    const authorName = cd.author?.name || cd.from?.name || cd.author || cd.username || cd.from || "Anonymous Visitor"
-    const authorId = cd.author?.id || cd.from?.id || row.lead_id || row.visitor_id || authorName
-    const avatar = cd.author?.avatar || cd.from?.avatar || cd.avatar || cd.profile_image_url || null
-
-    if (!commentersMap.has(authorId)) {
-      commentersMap.set(authorId, { id: authorId, name: typeof authorName === 'string' ? authorName : "Anonymous Visitor", avatar, count: 0 })
-    }
-    commentersMap.get(authorId)!.count++
-  }
-
-  const sorted = Array.from(commentersMap.values())
-    .sort((a, b) => b.count - a.count)
-    .slice(0, 5)
-
-  return { data: sorted }
+  return { data: aggregateTopCommenters(data || []) }
 }

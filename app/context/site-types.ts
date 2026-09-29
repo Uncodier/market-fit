@@ -75,6 +75,8 @@ export interface RoundRobinCalendar {
   created_at: string
 }
 
+type ActivityStatus = "active" | "inactive" | "default" | { status: "active" | "inactive" | "default" }
+
 export interface SiteSettings {
   id?: string
   site_id?: string
@@ -327,15 +329,15 @@ export interface SiteSettings {
     }
   } | null
   activities?: {
-    daily_resume_and_stand_up?: 'inactive' | 'active'
-    local_lead_generation?: 'default' | 'inactive'
-    icp_lead_generation?: 'default' | 'inactive'
-    leads_initial_cold_outreach?: 'default' | 'inactive'
-    leads_follow_up?: 'default' | 'inactive'
-    email_sync?: 'default' | 'inactive'
-    assign_leads_to_team?: 'inactive' | 'active'
-    notify_team_on_inbound_conversations?: 'default' | 'inactive'
-    supervise_conversations?: 'inactive' | 'active'
+    daily_resume_and_stand_up?: ActivityStatus
+    local_lead_generation?: ActivityStatus
+    icp_lead_generation?: ActivityStatus
+    leads_initial_cold_outreach?: Partial<import("@/lib/outreach-settings").OutreachSettings> | ActivityStatus
+    leads_follow_up?: Partial<import("@/lib/outreach-settings").OutreachSettings> | ActivityStatus
+    email_sync?: ActivityStatus
+    assign_leads_to_team?: ActivityStatus
+    notify_team_on_inbound_conversations?: ActivityStatus
+    supervise_conversations?: ActivityStatus
   } | null
   // allowed_domains is handled in a separate table, not in settings
   // allowed_domains?: Array<{

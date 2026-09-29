@@ -2,6 +2,7 @@
 
 import type { Site } from "./site-types"
 import { setLocalStorage } from "./site-storage"
+import { normalizeActivitySettings } from "@/app/components/settings/activity-settings"
 
 export function parseJsonField(field: any, defaultValue: any) {
   if (!field) return defaultValue
@@ -51,7 +52,7 @@ export async function applyCurrentSite({
     if (site && site.id) {
       // ACTUALIZACIÓN OPTIMISTA: Cambiar el UI inmediatamente sin bloquear
       setLocalStorage("currentSiteId", site.id)
-      setCurrentSite(site)
+      setCurrentSite({ ...site, settings: site.settings ? { ...site.settings, activities: normalizeActivitySettings(site.settings.activities) } : site.settings })
       
       try {
         // Cargar los settings y detalles de sitio en background
@@ -152,14 +153,7 @@ export async function applyCurrentSite({
                 team_roles: parseJsonField(settingsData.team_roles, []),
                 org_structure: parseJsonField(settingsData.org_structure, {}),
                 calendars: parseJsonField(settingsData.calendars, []),
-                activities: parseJsonField(settingsData.activities, {
-                  daily_resume_and_stand_up: { status: 'inactive' },
-                  local_lead_generation: { status: 'default' },
-                  icp_lead_generation: { status: 'default' },
-                  leads_initial_cold_outreach: { status: 'default' },
-                  leads_follow_up: { status: 'default' },
-                  email_sync: { status: 'default' }
-                }),
+                activities: normalizeActivitySettings(parseJsonField(settingsData.activities, {})),
                 created_at: settingsData.created_at,
                 updated_at: settingsData.updated_at,
                 competitors: parseJsonField(settingsData.competitors, []),
@@ -298,6 +292,7 @@ export async function fetchSiteSettings(supabase: any, siteId: string) {
   }
   const row = unwrapSettingsRow(data)
   if (row) {
+    row.activities = normalizeActivitySettings(parseJsonField(row.activities, {}))
     row.social_media = parseJsonField(row.social_media, [])
     row.calendars = parseJsonField(row.calendars, [])
     row.goals = parseJsonField(row.goals, {

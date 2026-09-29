@@ -1,53 +1,49 @@
-# Draft spec for reserving in POS
-goal: Add the reservable item to POS cart and checkout
-
+goal: Select the run-owned reservable item and reach POS checkout (payment completion requires agent verification)
 statements:
+  - description: Require isolated agent context and exact selected workspace
+    js: |-
+      if (!process.env.TEST_PROJECT_ROOT) throw new Error('TEST_PROJECT_ROOT is required');
+      const f = require(process.env.TEST_PROJECT_ROOT + '/tests/agent/reservations/fixture');
+      const fixture = f.loadItem();
+      testContext.set('agentItemName', fixture.itemName);
+      testContext.set('agentItemId', fixture.itemId);
+      await require(process.env.TEST_PROJECT_ROOT + '/tests/support/workspace').selectWorkspace(page);
   - URL: /pos
-  
   - WAIT_UNTIL: POS page loaded
-    js: "await page.locator('text=Reservable Item Agent').count() > 0"
+    js: "await page.getByText(testContext.get('agentItemName'), { exact: true }).count() > 0"
     timeout_seconds: 15
-
-  - intent: Select the reservable item
-    action: click
-    locator: "locator('[data-catalog-item-id=\"ee5d191a-9510-4723-8ec1-ca5ade5e8d28\"]')"
-
+  - description: Select the reservable item
+    js: |-
+      const id = testContext.get('agentItemId');
+      if (!id) throw new Error('Required run fixture ID is missing');
+      await page.locator('[data-catalog-item-id="' + id + '"]').click();
   - WAIT_UNTIL: Reservation dialog opens
-    js: "await page.getByRole('dialog').count() > 0"
+    js: await page.getByRole('dialog').count() > 0
     timeout_seconds: 5
-
   - intent: Select customer
     action: click
-    locator: "getByPlaceholder('Select a customer')"
-
+    locator: getByPlaceholder('Select a customer')
   - intent: Type new customer name
     action: fill
-    locator: "getByPlaceholder('Select a customer')"
-    value: "POS Reservator"
-
+    locator: getByPlaceholder('Select a customer')
+    value: POS Reservator
   - WAIT_UNTIL: Wait for create option to appear
     js: "await page.locator('.cursor-pointer.font-inter').filter({ hasText: /Use \"POS Reservator\"|POS Reservator/i }).count() > 0"
     timeout_seconds: 10
-
   - intent: Click create new customer option
     action: click
     locator: "locator('.cursor-pointer.font-inter').filter({ hasText: /Use \"POS Reservator\"|POS Reservator/i }).first()"
-
   - WAIT_UNTIL: Customer details dialog opens
-    js: "await page.getByRole('dialog').count() > 0"
+    js: await page.getByRole('dialog').count() > 0
     timeout_seconds: 5
-
   - description: Fill customer email with unique value
-    js: "await page.locator('input[type=\"email\"]').first().fill(`pos-reservator-${Date.now()}@marketfit.test`)"
-
+    js: await page.locator('input[type="email"]').first().fill(`pos-reservator-${Date.now()}@marketfit.test`)
   - intent: Save new customer
     action: click
     locator: "getByRole('button', { name: /Save|Guardar/i })"
-
   - WAIT_UNTIL: Wait for details dialog to close
-    js: "await page.getByRole('dialog').count() === 0 && await page.locator('.fixed.inset-0.bg-black\\\\/40').count() === 0"
+    js: await page.getByRole('dialog').count() === 0 && await page.locator('.fixed.inset-0.bg-black\\/40').count() === 0
     timeout_seconds: 15
-
   - description: Select an available date
     js: |
       await page.waitForTimeout(1000);
@@ -64,27 +60,23 @@ statements:
           }
         }
       }
-      await btn.click({ timeout: 5000, force: true });
-
+      await btn.click({ timeout: 5000, force: false });
   - description: Wait for time slots to load
-    js: "await page.waitForTimeout(2000)"
-
+    js: await page.waitForTimeout(2000)
   - intent: Select first time slot
     action: click
-    locator: "locator('button:has-text(\":\")').first()"
-
+    locator: locator('button:has-text(":")').first()
   - intent: Confirm reservation
     action: click
     locator: "getByRole('button', { name: /Confirm|Confirmar/i })"
-    
   - WAIT_UNTIL: Wait for details dialog to close
-    js: "await page.getByRole('dialog').count() === 0"
+    js: await page.getByRole('dialog').count() === 0
     timeout_seconds: 5
-
   - intent: Click Checkout
     action: click
     locator: "getByRole('button', { name: /Checkout|Charge|Cobrar/i })"
-    
   - WAIT_UNTIL: Checkout page loads
-    js: "await page.url().includes('/checkout')"
+    js: await page.url().includes('/checkout')
     timeout_seconds: 10
+  - description: Require actual POS checkout, not a timed-out advisory wait
+    js: await expect(page).toHaveURL(/\/checkout(?:[?#]|$)/);

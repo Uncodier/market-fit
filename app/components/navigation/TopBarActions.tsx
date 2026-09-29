@@ -16,7 +16,7 @@ import { CreateRequirementDialog } from "../create-requirement-dialog";
 import { CreateLeadDialog } from "../create-lead-dialog";
 import { ImportLeadsDialog } from "../leads/import-leads-dialog";
 import { CreateContentDialog } from "@/app/content/components";
-import { CreateCampaignDialog } from "../create-campaign-dialog";
+import { TopBarCampaignAction } from "./TopBarCampaignAction";
 import { CreateTaskDialog } from "../create-task-dialog";
 import { CreateDealDialog } from "@/app/deals/components/CreateDealDialog";
 import { CreateQuotationDialog } from "@/app/quotations/components/CreateQuotationDialog";
@@ -415,66 +415,6 @@ export function TopBarActions({
     }
   };
 
-  const handleCreateCampaign = async (
-    values: any,
-  ): Promise<{ data?: any; error?: string }> => {
-    try {
-      const supabase = createClient();
-      const { data: campaign, error: campaignError } = await supabase
-        .from("campaigns")
-        .insert([{
-          title: values.title,
-          description: values.description,
-          priority: values.priority,
-          status: values.status && values.status !== "draft" ? values.status : "active",
-          due_date: values.dueDate,
-          type: values.type,
-          site_id: values.site_id,
-          user_id: values.user_id,
-          assignees: 0,
-          issues: 0,
-          revenue: values.revenue || { actual: 0, projected: 0, estimated: 0, currency: "USD" },
-          budget: values.budget || { allocated: 0, remaining: 0, currency: "USD" },
-        }])
-        .select()
-        .single();
-
-      if (campaignError) {
-        return { error: campaignError.message };
-      }
-
-      if (values.segments?.length) {
-        const { error: segmentError } = await supabase
-          .from("campaign_segments")
-          .insert(values.segments.map((segmentId: string) => ({
-            campaign_id: campaign.id,
-            segment_id: segmentId,
-          })));
-        if (segmentError) console.error("Error linking segments:", segmentError);
-      }
-
-      if (values.requirements?.length) {
-        const { error: requirementError } = await supabase
-          .from("campaign_requirements")
-          .insert(values.requirements.map((requirementId: string) => ({
-            campaign_id: campaign.id,
-            requirement_id: requirementId,
-          })));
-        if (requirementError) console.error("Error linking requirements:", requirementError);
-      }
-
-      return { data: campaign };
-    } catch (error) {
-      console.error("Error creating campaign:", error);
-      return {
-        error:
-          error instanceof Error
-            ? error.message
-            : "An unexpected error occurred",
-      };
-    }
-  };
-
   // Handle logout function
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
@@ -745,21 +685,8 @@ export function TopBarActions({
         ) : null)}
       {isCampaignsPage &&
         (currentSite ? (
-          <CreateCampaignDialog
+          <TopBarCampaignAction
             segments={segments.length > 0 ? segments : propSegments || []}
-            requirements={requirements}
-            onCreateCampaign={handleCreateCampaign}
-            trigger={
-              <Button
-                className="flex items-center justify-center gap-2 !min-w-0 sm:!min-w-[155px] md:!min-w-[200px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
-                title={t("layout.topbar.newCampaign")}
-              >
-                <PlusCircle className="h-4 w-4 shrink-0" />
-                <span className="hidden sm:inline ml-2">
-                  {t("layout.topbar.newCampaign")}
-                </span>
-              </Button>
-            }
           />
         ) : null)}
         

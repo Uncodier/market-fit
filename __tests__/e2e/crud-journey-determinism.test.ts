@@ -74,7 +74,9 @@ describe("deterministic CRUD journeys", () => {
       const teardownText = teardownSteps.map(stepText).join("\n")
 
       expect(statements.length).toBeGreaterThan(0)
-      expect(statementText).toContain("TEST_SITE_NAME is required")
+      expect(statementText).toContain("requireMutationEnvironment")
+      expect(statementText).toContain("TEST_SITE_ID")
+      expect(statementText).toContain(".selectWorkspace(page)")
       expect(statementText).toContain("Date.now()")
       expect(teardown.length).toBeGreaterThan(0)
       expect(teardownText).toMatch(/run-scoped|CleanupName|NeedsCleanup|Url/)
@@ -112,8 +114,8 @@ describe("deterministic CRUD journeys", () => {
       )
       const persistenceCheck = statements.find(
         (step) =>
-          typeof step.VERIFY === "string" &&
-          /persist(?:s|ence)? after reload/i.test(step.VERIFY),
+          /persist(?:s|ence)? after reload/i.test(step.description ?? "") &&
+          typeof step.js === "string" && step.js.includes("expect("),
       )
 
       expect(updateStep).toBeDefined()
@@ -128,14 +130,15 @@ describe("deterministic CRUD journeys", () => {
     (fileName) => {
       const statements = parseJourney(fileName).statements ?? []
       const absenceIndexes = statements
-        .map((step, index) => ({ index, label: step.VERIFY }))
+        .map((step, index) => ({ index, label: step.description }))
         .filter(({ label }) => typeof label === "string" && /absent/i.test(label))
 
       expect(absenceIndexes.length).toBeGreaterThan(0)
       for (const { index } of absenceIndexes) {
         const readinessStep = statements[index - 1]
-        expect(readinessStep?.WAIT_UNTIL).toMatch(/finished loading/i)
+        expect(readinessStep?.description).toMatch(/finished loading/i)
         expect(readinessStep?.js).toContain("animate-pulse:visible")
+        expect(readinessStep?.js).toContain("expect.poll")
       }
     },
   )
@@ -151,6 +154,15 @@ describe("deterministic CRUD journeys", () => {
   it("never falls back to a generic record for teardown", () => {
     const source = readJourney("crud-record.test.yaml")
     expect(source).not.toContain("Untitled Record")
+  })
+
+  it.each(CRUD_JOURNEYS)("%s uses hard assertions without AI fallback and proves DB state before cleanup", fileName => {
+    const journey = parseJourney(fileName)
+    const statements = flattenSteps(journey.statements ?? [])
+    expect(statements.some(step => step.VERIFY || step.WAIT_UNTIL)).toBe(false)
+    expect(statements.map(stepText).join('\n')).toContain('.assertPersisted(')
+    expect(statements.map(stepText).join('\n')).toContain('.assertRemoved(')
+    expect(flattenSteps(journey.teardown ?? []).map(stepText).join('\n')).toContain('.cleanup(testContext)')
   })
 
   it("describes catalog removal as archival and verifies archived state", () => {

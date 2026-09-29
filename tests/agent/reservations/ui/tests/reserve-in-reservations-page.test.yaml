@@ -1,55 +1,54 @@
-# Draft spec for reserving manually from Reservations page
 goal: Create a reservation manually from the back office
-
 statements:
-  - URL: "/reservations"
-  
+  - description: Require isolated agent context and exact selected workspace
+    js: |-
+      if (!process.env.TEST_PROJECT_ROOT) throw new Error('TEST_PROJECT_ROOT is required');
+      const f = require(process.env.TEST_PROJECT_ROOT + '/tests/agent/reservations/fixture');
+      const fixture = f.loadItem();
+      testContext.set('agentItemName', fixture.itemName);
+      testContext.set('agentItemId', fixture.itemId);
+      await require(process.env.TEST_PROJECT_ROOT + '/tests/support/workspace').selectWorkspace(page);
+      if (!process.env.TEST_RESERVATION_CUSTOMER_ID || !process.env.TEST_RESERVATION_CUSTOMER_NAME) throw new Error('Explicit reservation customer fixture is required');
+  - URL: /reservations
   - WAIT_UNTIL: Reservations page loads
-    js: "await page.locator('button:has-text(\"Create Reservation\")').count() > 0"
+    js: await page.locator('button:has-text("Create Reservation")').count() > 0
     timeout_seconds: 15
-
   - intent: Open new reservation dialog
     action: click
     locator: "getByRole('button', { name: 'Create Reservation' }).first()"
-
   - WAIT_UNTIL: Reservation dialog opens
-    js: "await page.getByRole('dialog').count() > 0"
+    js: await page.getByRole('dialog').count() > 0
     timeout_seconds: 5
-
   - intent: Open service select dropdown
     action: click
-    locator: "getByPlaceholder(/Select a reservable service/i)"
-
+    locator: getByPlaceholder(/Select a reservable service/i)
   - intent: Select the Reservable Item
     action: fill
-    locator: "getByPlaceholder(/Select a reservable service/i)"
-    value: "Reservable Item Agent"
-    
-  - WAIT_UNTIL: Wait for Reservable Item Agent option
-    js: "await page.locator('.cursor-pointer.font-inter').filter({ hasText: 'Reservable Item Agent' }).count() > 0"
+    locator: getByPlaceholder(/Select a reservable service/i)
+    value: "{{agentItemName}}"
+  - WAIT_UNTIL: Wait for the current run reservable item option
+    js: "await page.locator('.cursor-pointer.font-inter').filter({ hasText: testContext.get('agentItemName') }).count() > 0"
     timeout_seconds: 5
-
-  - intent: Click item
-    action: click
-    locator: "locator('[data-relation-id=\"ee5d191a-9510-4723-8ec1-ca5ade5e8d28\"]')"
-
+  - description: Click item
+    js: |-
+      const id = testContext.get('agentItemId');
+      if (!id) throw new Error('Required run fixture ID is missing');
+      await page.locator('[data-relation-id="' + id + '"]').click();
   - intent: Open customer dropdown
     action: click
-    locator: "getByPlaceholder(/Select customer/i)"
-
+    locator: getByPlaceholder(/Select customer/i)
   - intent: Search for customer
     action: fill
-    locator: "getByPlaceholder(/Select customer/i)"
-    value: "Admin"
-
-  - WAIT_UNTIL: Wait for Admin customer option
-    js: "await page.locator('.cursor-pointer.font-inter').filter({ hasText: /Timothy Meehan|Admin/i }).count() > 0"
+    locator: getByPlaceholder(/Select customer/i)
+    value: "{{TEST_RESERVATION_CUSTOMER_NAME}}"
+  - WAIT_UNTIL: Configured customer is available
+    js: await page.locator('[data-relation-id="' + process.env.TEST_RESERVATION_CUSTOMER_ID + '"]').count() === 1
     timeout_seconds: 5
-
-  - intent: Select customer
-    action: click
-    locator: "locator('.cursor-pointer.font-inter').filter({ hasText: /Timothy Meehan|Admin/i }).first()"
-
+  - description: Select customer
+    js: |-
+      const id = process.env.TEST_RESERVATION_CUSTOMER_ID;
+      if (!id) throw new Error('Required run fixture ID is missing');
+      await page.locator('[data-relation-id="' + id + '"]').click();
   - description: Select an available date
     js: |
       await page.waitForTimeout(1000);
@@ -66,30 +65,24 @@ statements:
           }
         }
       }
-      await btn.click({ timeout: 5000, force: true });
-      
+      await btn.click({ timeout: 5000, force: false });
   - description: Wait for time slots to load
-    js: "await page.waitForTimeout(2000)"
-
+    js: await page.waitForTimeout(2000)
   - intent: Select first time slot
     action: click
-    locator: "locator('button:has-text(\":\")').first()"
-
+    locator: locator('button:has-text(":")').first()
   - description: Record the number of confirmed reservations
     js: |
       testContext.set(
         "confirmedReservationsBefore",
         await page.getByText("Confirmed", { exact: true }).count()
       );
-
   - intent: Create reservation
     action: click
     locator: "getByRole('button', { name: /Create|Crear/i }).last()"
-    
   - WAIT_UNTIL: Wait for dialog to close
-    js: "(await page.getByRole('dialog').count()) === 0"
+    js: (await page.getByRole('dialog').count()) === 0
     timeout_seconds: 30
-
   - VERIFY: A confirmed reservation was added
     js: |
       await expect

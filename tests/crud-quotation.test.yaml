@@ -1,71 +1,90 @@
-goal: Complete CRUD cycle for a Quotation
-
+goal: Create, read, and delete a run-owned quotation and clean up its dependencies
 statements:
-  - URL: /projects
-  - intent: Select the first available project
-    action: click
-    locator: "getByRole('button', { name: 'Select' }).first()"
-
-  - WAIT_UNTIL: The user is navigated to the default project page
-    js: "await page.url().includes('/robots')"
-    timeout_seconds: 5
-
+  - description: Require TEST_SITE_NAME and TEST_SITE_ID and an explicit disposable mutation target before navigation
+    js: require(process.cwd() + '/tests/support/mutation-safety').requireMutationEnvironment();
+  - description: Register run-owned fixture names before any creation
+    js: |-
+      await require(process.cwd() + '/tests/support/mutation-fixtures').fixtureClient();
+      const runId = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+      testContext.set('quotationName', `Shiplight Quotation ${runId}`);
+      testContext.set('quoteLeadName', `Shiplight Quote Client ${runId}`);
+      testContext.set('quoteItemName', `Shiplight Quote Item ${runId}`);
+      require(process.cwd() + '/tests/support/mutation-fixtures').own(testContext, 'lead', [testContext.get('quoteLeadName')]);
+      require(process.cwd() + '/tests/support/mutation-fixtures').own(testContext, 'catalog', [testContext.get('quoteItemName')]);
+      require(process.cwd() + '/tests/support/mutation-fixtures').own(testContext, 'deal', [testContext.get('quotationName')]);
+      require(process.cwd() + '/tests/support/mutation-fixtures').own(testContext, 'quotation', [testContext.get('quotationName')]);
+      testContext.set('quoteRunId', runId);
+  - description: Select and verify the explicit workspace
+    js: |-
+      await require(process.cwd() + '/tests/support/workspace').selectWorkspace(page);
+      testContext.set("mutationObservationStarted", true);
+  - description: Bind the browser session to the explicitly selected cleanup backend and account
+    js: await require(process.cwd() + '/tests/support/mutation-fixtures').bindBrowserFixture(page);
   - URL: /quotations
   - intent: Click Create Quotation in the top bar
     action: click
     locator: "getByRole('button', { name: 'Create Quotation' })"
-
   - intent: Fill the quotation name
     action: fill
-    locator: "locator('#name')"
-    value: "Automated Test Quotation"
-
+    locator: locator('#name')
+    value: "{{quotationName}}"
   - intent: Type a new client name in the dependency selector
     action: fill
-    locator: "getByPlaceholder('Select or create client...')"
-    value: "Automated Quote Client"
-
-  - intent: Create the client on the fly with Use
-    action: click
-    locator: "getByText('Use \"Automated Quote Client\"')"
-
+    locator: getByPlaceholder('Select or create client...')
+    value: "{{quoteLeadName}}"
+  - description: Create the client on the fly with Use
+    js: await page.getByText(`Use "${testContext.get('quoteLeadName')}"`).click();
   - intent: Fill the client email required for a new client
     action: fill
-    locator: "locator('#clientEmail')"
-    value: "shiplight.quote.client@example.com"
-
+    locator: locator('#clientEmail')
+    value: shiplight.quote.{{quoteRunId}}@example.invalid
   - intent: Type a new catalog item in the line-item dependency selector
     action: fill
-    locator: "getByPlaceholder('Select or create an item...')"
-    value: "Automated Quote Item"
-
-  - intent: Create the catalog item on the fly with Use
-    action: click
-    locator: "getByText('Use \"Automated Quote Item\"')"
-
+    locator: getByPlaceholder('Select or create an item...')
+    value: "{{quoteItemName}}"
+  - description: Create the catalog item on the fly with Use
+    js: await page.getByText(`Use "${testContext.get('quoteItemName')}"`).click();
+  - intent: Store the run-owned quotation marker in notes
+    action: fill
+    locator: locator('#notes')
+    value: "{{quotationName}}"
   - intent: Submit the create quotation form
     action: click
     locator: "getByRole('button', { name: 'Create Quotation' }).last()"
-
-  - WAIT_UNTIL: The create quotation modal closes
-    js: "await page.getByRole('dialog').count() === 0"
-    timeout_seconds: 10
-
-  - WAIT_UNTIL: The quotation details page is open
-    js: "await page.url().includes('/quotations/') && !page.url().endsWith('/quotations')"
-    timeout_seconds: 15
-
-  - VERIFY: The quotation page loaded
-    js: "await expect(page.getByRole('button', { name: 'Delete' })).toBeVisible()"
-
+  - js: "await expect.poll(async () => Boolean(await page.getByRole('dialog').count() === 0), { timeout: 10000 }).toBe(true);"
+    description: The create quotation modal closes
+  - js: "await expect.poll(async () => Boolean(await page.url().includes('/quotations/') && !page.url().endsWith('/quotations')), { timeout: 15000 }).toBe(true);"
+    description: The quotation details page is open
+  - js: "await expect(page.getByRole('button', { name: 'Delete' })).toBeVisible()"
+    description: The quotation page loaded
+  - description: Remember the exact created entity ID and URL for teardown
+    js: |-
+      testContext.set('quotationUrl', page.url());
+      await require(process.cwd() + '/tests/support/mutation-fixtures').remember(testContext, 'quotation');
+  - description: Read the exact created site-scoped entity before deletion
+    js: await require(process.cwd() + '/tests/support/mutation-fixtures').assertPersisted(testContext, 'quotation', testContext.get('quotationName'));
   - intent: Click Delete on the quotation toolbar
     action: click
     locator: "getByRole('button', { name: 'Delete' })"
-
   - intent: Confirm deletion of the quotation
     action: click
     locator: "getByRole('button', { name: 'Delete' }).last()"
-
-  - WAIT_UNTIL: The user is back on the quotations list
-    js: "await page.url().endsWith('/quotations')"
-    timeout_seconds: 15
+  - js: "await expect.poll(async () => Boolean(await page.url().endsWith('/quotations')), { timeout: 15000 }).toBe(true);"
+    description: The user is back on the quotations list
+  - description: Reload the list and wait for loaded data before the final removal check
+    js: |-
+      await page.goto('/quotations');
+      await page.reload();
+      await expect(page.locator('.animate-pulse:visible')).toHaveCount(0);
+  - description: Verify removal by saved entity ID before cleanup can change the outcome
+    js: await require(process.cwd() + '/tests/support/mutation-fixtures').assertRemoved(testContext, 'quotation');
+tags:
+  - regression
+  - mutation
+teardown:
+  - description: Clean up exact run-scoped entities and dependencies even after failure
+    js: |-
+      await require(process.cwd() + '/tests/support/mutation-fixtures').cleanup(testContext);
+      if (testContext.get('mutationJournal')) await page.goto('/quotations');
+  - description: Fail on observed HTTP, application, network, or console errors even when UI assertions passed
+    js: if (testContext.get("mutationObservationStarted")) await require(process.cwd() + '/tests/support/read-observation').assertReadObservation(page);

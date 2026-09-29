@@ -2,6 +2,7 @@
 
 import type { Site, SiteSettings } from "./site-types"
 import { requestVoiceAgentResync } from "@/app/agents/voice-sync"
+import { normalizeActivitySettings } from "@/app/components/settings/activity-settings"
 
 type PersistArgs = {
   supabase: any
@@ -40,6 +41,9 @@ export async function persistSiteSettings({
         ...settings,
         updated_at: now
       };
+      if (settings.activities !== undefined) {
+        formattedSettings.activities = normalizeActivitySettings(settings.activities)
+      }
       
       // Process JSON fields to make sure they are valid
       if (settings.products !== undefined) {

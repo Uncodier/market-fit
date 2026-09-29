@@ -1,260 +1,155 @@
 goal: Complete CRUD cycle for a Requirement
-
 statements:
+  - description: Require TEST_SITE_NAME and TEST_SITE_ID and an explicit disposable mutation target before navigation
+    js: require(process.cwd() + '/tests/support/mutation-safety').requireMutationEnvironment();
   - URL: /projects
   - description: Select the configured test project
-    js: |
+    js: |-
+      await require(process.cwd() + '/tests/support/mutation-fixtures').fixtureClient();
       const runId = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
       testContext.set("requirementSegmentName", `Shiplight Requirement Segment ${runId}`);
       testContext.set("requirementName", `Shiplight Requirement ${runId}`);
       testContext.set("requirementEditedName", `Shiplight Requirement ${runId} Edited`);
       const siteName = process.env.TEST_SITE_NAME;
       if (!siteName) throw new Error("TEST_SITE_NAME is required");
-      await page.getByRole('button', { name: `Select ${siteName}`, exact: true }).click();
+      await require(process.cwd() + '/tests/support/workspace').selectWorkspace(page);
 
-  - WAIT_UNTIL: The user is navigated to the default project page
-    js: "await page.url().includes('/robots')"
-    timeout_seconds: 5
-
+      require(process.cwd() + '/tests/support/mutation-fixtures').own(testContext, 'segment', [testContext.get('requirementSegmentName')]);
+      require(process.cwd() + '/tests/support/mutation-fixtures').own(testContext, 'requirement', [testContext.get('requirementName'), testContext.get('requirementEditedName')]);
+      testContext.set("mutationObservationStarted", true);
+  - description: Bind the browser session to the explicitly selected cleanup backend and account
+    js: await require(process.cwd() + '/tests/support/mutation-fixtures').bindBrowserFixture(page);
+  - js: "await expect.poll(async () => Boolean(await page.url().includes('/robots')), { timeout: 5000 }).toBe(true);"
+    description: The user is navigated to the default project page
   - URL: /segments
   - intent: Click New Segment in the top bar
     action: click
     locator: "getByRole('button', { name: 'New Segment' })"
-
   - intent: Fill the segment name
     action: fill
-    locator: "locator('#name')"
+    locator: locator('#name')
     value: "{{requirementSegmentName}}"
-
   - intent: Fill the segment description
     action: fill
-    locator: "locator('#description')"
-    value: "Description"
-
+    locator: locator('#description')
+    value: Description
   - intent: Open audience dropdown
     action: click
-    locator: "getByRole('combobox').nth(0)"
-
-  - description: Wait for the audience dropdown animation
-    js: "await page.waitForTimeout(500)"
-
+    locator: getByRole('combobox').nth(0)
   - intent: Select audience type
     action: click
     locator: "getByRole('option', { name: 'Technology' })"
-
   - intent: Open language dropdown
     action: click
-    locator: "getByRole('combobox').nth(1)"
-
-  - description: Wait for the language dropdown animation
-    js: "await page.waitForTimeout(500)"
-
+    locator: getByRole('combobox').nth(1)
   - intent: Select language
     action: click
     locator: "getByRole('option', { name: 'English' })"
-
   - intent: Submit the create segment form
     action: click
     locator: "getByRole('button', { name: 'Create Segment' })"
-
-  - WAIT_UNTIL: The create segment modal closes
-    js: "await page.getByRole('dialog').count() === 0"
-    timeout_seconds: 10
-
+  - js: "await expect.poll(async () => Boolean(await page.getByRole('dialog').count() === 0), { timeout: 10000 }).toBe(true);"
+    description: The create segment modal closes
   - URL: /requirements
-  
-  # Ensure a segment exists
   - intent: Click New Requirement in the top bar
     action: click
     locator: "getByRole('button', { name: 'New Requirement' })"
-
   - intent: Fill the requirement title
     action: fill
-    locator: "locator('input[name=\"title\"]')"
+    locator: locator('input[name="title"]')
     value: "{{requirementName}}"
-
   - intent: Fill the requirement description
     action: fill
-    locator: "locator('textarea[name=\"description\"]')"
-    value: "Automated Test Requirement Description"
-
+    locator: locator('textarea[name="description"]')
+    value: Automated Test Requirement Description
   - description: Select the run-scoped requirement segment
     js: |
       const segmentName = testContext.get("requirementSegmentName");
       await page.getByRole('switch', { name: segmentName, exact: true }).click();
-
   - intent: Submit the create requirement form
     action: click
     locator: "getByRole('button', { name: 'Create requirement' })"
-
-  - WAIT_UNTIL: The create requirement modal closes
-    js: "await page.getByRole('dialog').count() === 0"
-    timeout_seconds: 10
-
-  - WAIT_UNTIL: The new requirement appears in the list
-    js: "(await page.getByText(testContext.get('requirementName'), { exact: true }).count()) > 0"
-    timeout_seconds: 15
-
+  - js: "await expect.poll(async () => Boolean(await page.getByRole('dialog').count() === 0), { timeout: 10000 }).toBe(true);"
+    description: The create requirement modal closes
+  - js: "await expect.poll(async () => Boolean((await page.getByText(testContext.get('requirementName'), { exact: true }).count()) > 0), { timeout: 15000 }).toBe(true);"
+    description: The new requirement appears in the list
   - description: Open the run-scoped requirement row menu
     js: |
       const requirementName = testContext.get("requirementName");
       await page.locator('tbody tr').filter({ hasText: requirementName }).first().getByRole('button', { name: 'Open' }).click();
-
   - intent: Open the requirement details page
     action: click
     locator: "getByRole('menuitem', { name: 'Open', exact: true })"
-
-  - WAIT_UNTIL: The requirement details route is open
-    js: "await page.url().includes('/requirements/') && !page.url().endsWith('/requirements')"
-    timeout_seconds: 10
-
+  - js: "await expect.poll(async () => Boolean(await page.url().includes('/requirements/') && !page.url().endsWith('/requirements')), { timeout: 10000 }).toBe(true);"
+    description: The requirement details route is open
   - intent: Update the requirement title
     action: fill
-    locator: "getByPlaceholder('Requirement title')"
+    locator: getByPlaceholder('Requirement title')
     value: "{{requirementEditedName}}"
-
-  - VERIFY: The requirement title input contains the edited title
-    js: "await expect(page.getByPlaceholder('Requirement title')).toHaveValue(testContext.get('requirementEditedName'))"
-
+  - js: await expect(page.getByPlaceholder('Requirement title')).toHaveValue(testContext.get('requirementEditedName'))
+    description: The requirement title input contains the edited title
   - intent: Save the requirement
     action: click
     locator: "getByRole('button', { name: 'Save' })"
-
-  - WAIT_UNTIL: The edited title is visible
-    js: "(await page.locator('input[placeholder=\"Requirement title\"]').inputValue()) === testContext.get('requirementEditedName')"
-    timeout_seconds: 10
-
-  - WAIT_UNTIL: The requirement update succeeds
-    js: "await page.getByText('Requirement updated successfully').count() > 0"
-    timeout_seconds: 10
-
+  - js: "await expect.poll(async () => Boolean((await page.locator('input[placeholder=\"Requirement title\"]').inputValue()) === testContext.get('requirementEditedName')), { timeout: 10000 }).toBe(true);"
+    description: The edited title is visible
+  - js: "await expect.poll(async () => Boolean(await page.getByText('Requirement updated successfully').count() > 0), { timeout: 10000 }).toBe(true);"
+    description: The requirement update succeeds
   - description: Reload the requirement details page to verify persistence
-    js: "await page.reload()"
-
-  - VERIFY: The edited requirement title persists after reload
-    js: "await expect(page.getByPlaceholder('Requirement title')).toHaveValue(testContext.get('requirementEditedName'))"
-
+    js: await page.reload()
+  - js: await expect(page.getByPlaceholder('Requirement title')).toHaveValue(testContext.get('requirementEditedName'))
+    description: The edited requirement title persists after reload
+  - description: Require the exact updated entity to persist under its saved ID in the selected site
+    js: await require(process.cwd() + '/tests/support/mutation-fixtures').assertPersisted(testContext, 'requirement', testContext.get('requirementEditedName'));
   - intent: Click Delete Requirement in the details toolbar
     action: click
-    locator: "getByTitle('Delete Requirement')"
-
+    locator: getByTitle('Delete Requirement')
   - intent: Confirm requirement deletion
     action: click
     locator: "getByRole('button', { name: 'Delete', exact: true })"
-
-  - WAIT_UNTIL: The user is back on the requirements list
-    js: "await page.url().endsWith('/requirements')"
-    timeout_seconds: 15
-
+  - js: "await expect.poll(async () => Boolean(await page.url().endsWith('/requirements')), { timeout: 15000 }).toBe(true);"
+    description: The user is back on the requirements list
   - description: Reload the requirements list before checking deletion
-    js: "await page.reload()"
-
-  - WAIT_UNTIL: The requirements list has finished loading
-    js: "(await page.getByPlaceholder('Search requirements...').count()) > 0 && (await page.locator('.animate-pulse:visible').count()) === 0"
-    timeout_seconds: 15
-
-  - VERIFY: The deleted requirement is absent from the list
-    js: "await expect(page.getByText(testContext.get('requirementEditedName'), { exact: true })).toHaveCount(0)"
-
+    js: await page.reload()
+  - js: "await expect.poll(async () => Boolean((await page.getByPlaceholder('Search requirements...').count()) > 0 && (await page.locator('.animate-pulse:visible').count()) === 0), { timeout: 15000 }).toBe(true);"
+    description: The requirements list has finished loading
+  - js: "await expect(page.getByText(testContext.get('requirementEditedName'), { exact: true })).toHaveCount(0)"
+    description: The deleted requirement is absent from the list
   - URL: /segments
-
-  - WAIT_UNTIL: The run-scoped requirement segment appears for cleanup
-    js: "(await page.getByText(testContext.get('requirementSegmentName'), { exact: true }).count()) > 0"
-    timeout_seconds: 15
-
+  - js: "await expect.poll(async () => Boolean((await page.getByText(testContext.get('requirementSegmentName'), { exact: true }).count()) > 0), { timeout: 15000 }).toBe(true);"
+    description: The run-scoped requirement segment appears for cleanup
   - description: Open the run-scoped requirement segment from its name cell
     js: |
       const segmentName = testContext.get("requirementSegmentName");
       await page.locator('tbody tr').filter({ hasText: segmentName }).first().locator('td').first().click();
-
-  - WAIT_UNTIL: The requirement segment details route is open
-    js: "page.url().includes('/segments/') && !page.url().endsWith('/segments')"
-    timeout_seconds: 15
-
-  - VERIFY: The requirement segment details route is open
-    js: "await expect(page).toHaveURL(/\\/segments\\/[^/]+$/)"
-
+  - js: "await expect.poll(async () => Boolean(page.url().includes('/segments/') && !page.url().endsWith('/segments')), { timeout: 15000 }).toBe(true);"
+    description: The requirement segment details route is open
+  - js: await expect(page).toHaveURL(/\/segments\/[^/]+$/)
+    description: The requirement segment details route is open
   - intent: Open the segment Details tab
     action: click
     locator: "getByRole('tab', { name: 'Details', exact: true })"
-
   - intent: Click Delete in the segment danger zone
     action: click
     locator: "getByRole('button', { name: 'Delete', exact: true })"
-
   - intent: Confirm deletion of the run-scoped requirement segment
     action: click
     locator: "getByRole('button', { name: 'Delete Segment', exact: true })"
-
-  - WAIT_UNTIL: The user is back on the segments list
-    js: "page.url().endsWith('/segments')"
-    timeout_seconds: 15
-
-  - WAIT_UNTIL: The segments list has finished loading
-    js: "(await page.getByPlaceholder('Search segments...').count()) > 0 && (await page.locator('.animate-pulse:visible').count()) === 0"
-    timeout_seconds: 15
-
-  - VERIFY: The run-scoped requirement segment is absent from the list
-    js: "await expect(page.getByText(testContext.get('requirementSegmentName'), { exact: true })).toHaveCount(0)"
-
+  - js: "await expect.poll(async () => Boolean(page.url().endsWith('/segments')), { timeout: 15000 }).toBe(true);"
+    description: The user is back on the segments list
+  - js: "await expect.poll(async () => Boolean((await page.getByPlaceholder('Search segments...').count()) > 0 && (await page.locator('.animate-pulse:visible').count()) === 0), { timeout: 15000 }).toBe(true);"
+    description: The segments list has finished loading
+  - js: "await expect(page.getByText(testContext.get('requirementSegmentName'), { exact: true })).toHaveCount(0)"
+    description: The run-scoped requirement segment is absent from the list
+  - description: Verify removal by saved entity ID before cleanup can change the outcome
+    js: await require(process.cwd() + '/tests/support/mutation-fixtures').assertRemoved(testContext, 'requirement');
 teardown:
-  - URL: /requirements
-
-  - WAIT_UNTIL: The requirements list is ready for cleanup
-    js: "(await page.getByPlaceholder('Search requirements...').count()) > 0 && (await page.locator('.animate-pulse:visible').count()) === 0"
-    timeout_seconds: 15
-
-  - description: Select the surviving requirement name for cleanup
-    js: |
-      const editedName = testContext.get("requirementEditedName");
-      const originalName = testContext.get("requirementName");
-      const editedExists = editedName
-        ? (await page.getByText(editedName, { exact: true }).count()) > 0
-        : false;
-      testContext.set("requirementCleanupName", editedExists ? editedName : (originalName || ""));
-
-  - IF: "js: Boolean(testContext.get('requirementCleanupName')) && (await page.getByText(testContext.get('requirementCleanupName'), { exact: true }).count()) > 0"
-    THEN:
-      - description: Open the surviving run-scoped requirement row menu
-        js: |
-          const requirementName = testContext.get("requirementCleanupName");
-          await page.locator('tbody tr').filter({ hasText: requirementName }).first().getByRole('button', { name: 'Open' }).click();
-      - intent: Open the surviving run-scoped requirement
-        action: click
-        locator: "getByRole('menuitem', { name: 'Open', exact: true })"
-      - intent: Delete the surviving run-scoped requirement
-        action: click
-        locator: "getByTitle('Delete Requirement')"
-      - intent: Confirm cleanup of the run-scoped requirement
-        action: click
-        locator: "getByRole('button', { name: 'Delete', exact: true })"
-      - WAIT_UNTIL: The requirement cleanup returns to the list
-        js: "page.url().endsWith('/requirements')"
-        timeout_seconds: 15
-
-  - URL: /segments
-
-  - WAIT_UNTIL: The segments list is ready for cleanup
-    js: "(await page.getByPlaceholder('Search segments...').count()) > 0 && (await page.locator('.animate-pulse:visible').count()) === 0"
-    timeout_seconds: 15
-
-  - IF: "js: Boolean(testContext.get('requirementSegmentName')) && (await page.getByText(testContext.get('requirementSegmentName'), { exact: true }).count()) > 0"
-    THEN:
-      - description: Open the surviving run-scoped requirement segment from its name cell
-        js: |
-          const segmentName = testContext.get("requirementSegmentName");
-          await page.locator('tbody tr').filter({ hasText: segmentName }).first().locator('td').first().click();
-      - WAIT_UNTIL: The segment details route is ready for cleanup
-        js: "page.url().includes('/segments/') && !page.url().endsWith('/segments')"
-        timeout_seconds: 15
-      - VERIFY: The segment details route is ready for cleanup
-        js: "await expect(page).toHaveURL(/\\/segments\\/[^/]+$/)"
-      - intent: Open the segment Details tab for cleanup
-        action: click
-        locator: "getByRole('tab', { name: 'Details', exact: true })"
-      - intent: Delete the surviving run-scoped requirement segment
-        action: click
-        locator: "getByRole('button', { name: 'Delete', exact: true })"
-      - intent: Confirm cleanup of the run-scoped requirement segment
-        action: click
-        locator: "getByRole('button', { name: 'Delete Segment', exact: true })"
+  - description: Cleanup the exact run-scoped fixture journal, including partial failures
+    js: |-
+      await require(process.cwd() + '/tests/support/mutation-fixtures').cleanup(testContext);
+      if (testContext.get('mutationJournal')) await page.goto('/requirements');
+  - description: Fail on observed HTTP, application, network, or console errors even when UI assertions passed
+    js: if (testContext.get("mutationObservationStarted")) await require(process.cwd() + '/tests/support/read-observation').assertReadObservation(page);
+tags:
+  - regression
+  - mutation

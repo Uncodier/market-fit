@@ -68,3 +68,5 @@ shiplight-report/
 *.yaml.spec.ts
 .auth
 mac-x64.zip
+agent-test-reports/
+tests/agent/**/.runtime/

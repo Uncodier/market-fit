@@ -1,9 +1,11 @@
 goal: Complete CRUD cycle for a Record
-
 statements:
+  - description: Require TEST_SITE_NAME and TEST_SITE_ID and an explicit disposable mutation target before navigation
+    js: require(process.cwd() + '/tests/support/mutation-safety').requireMutationEnvironment();
   - URL: /projects
   - description: Select the configured test project
-    js: |
+    js: |-
+      await require(process.cwd() + '/tests/support/mutation-fixtures').fixtureClient();
       const runId = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
       testContext.set("recordName", `Shiplight Record ${runId}`);
       const siteName = process.env.TEST_SITE_NAME;
@@ -11,125 +13,76 @@ statements:
       const categoryName = process.env.TEST_RECORD_CATEGORY_NAME;
       if (!categoryName) throw new Error("TEST_RECORD_CATEGORY_NAME is required");
       testContext.set("recordCategoryName", categoryName);
-      await page.getByRole('button', { name: `Select ${siteName}`, exact: true }).click();
+      await require(process.cwd() + '/tests/support/workspace').selectWorkspace(page);
 
-  - WAIT_UNTIL: The user is navigated to the default project page
-    js: "await page.url().includes('/robots')"
-    timeout_seconds: 5
-
+      require(process.cwd() + '/tests/support/mutation-fixtures').own(testContext, 'record', [testContext.get('recordName')]);
+      testContext.set("mutationObservationStarted", true);
+  - description: Bind the browser session to the explicitly selected cleanup backend and account
+    js: await require(process.cwd() + '/tests/support/mutation-fixtures').bindBrowserFixture(page);
+  - js: "await expect.poll(async () => Boolean(await page.url().includes('/robots')), { timeout: 5000 }).toBe(true);"
+    description: The user is navigated to the default project page
   - URL: /records
-
-  - WAIT_UNTIL: The user is on the records list page
-    js: "await page.url().endsWith('/records')"
-    timeout_seconds: 15
-
-  - WAIT_UNTIL: The configured record category is visible
-    js: "(await page.getByRole('button', { name: testContext.get('recordCategoryName'), exact: true }).count()) > 0"
-    timeout_seconds: 15
-
+  - js: "await expect.poll(async () => Boolean(await page.url().endsWith('/records')), { timeout: 15000 }).toBe(true);"
+    description: The user is on the records list page
+  - js: "await expect.poll(async () => Boolean((await page.getByRole('button', { name: testContext.get('recordCategoryName'), exact: true }).count()) > 0), { timeout: 15000 }).toBe(true);"
+    description: The configured record category is visible
   - description: Select the configured record category
     js: |
       const categoryName = testContext.get("recordCategoryName");
       await page.getByRole('button', { name: categoryName, exact: true }).click();
-
+  - description: Register the automatic record-create attempt before clicking; do not guess cleanup if no ID returns
+    js: require(process.cwd() + '/tests/support/mutation-fixtures').beginRecordCreation(testContext);
   - intent: Click New Record in the top bar to create the record in the selected category
     action: click
-    locator: "getByRole('button', { name: /New Record|Nuevo|Nuevo/i }).first()"
-
-  - WAIT_UNTIL: The record details route is open and loaded
-    js: "await page.url().match(/\\/records\\/[^?]+$/) !== null && await page.locator('input[placeholder=\"Record Title\"]').count() > 0"
-    timeout_seconds: 15
-
+    locator: "getByRole('button', { name: 'New Record', exact: true })"
   - description: Remember the created record route for cleanup
-    js: |
-      if (/\/records\/[^?]+$/.test(page.url())) {
-        testContext.set("recordUrl", page.url());
-      }
-
+    js: |-
+      await expect(page).toHaveURL(/\/records\/[^/?]+$/);
+      testContext.set('recordUrl', page.url());
+      require(process.cwd() + '/tests/support/mutation-fixtures').rememberCreatedRecord(testContext, page.url());
+  - js: "await expect.poll(async () => Boolean(await page.url().match(/\\/records\\/[^?]+$/) !== null && await page.locator('input[placeholder=\"Record Title\"]').count() > 0), { timeout: 15000 }).toBe(true);"
+    description: The record details route is open and loaded
   - intent: Update the record title
     action: fill
-    locator: "locator('input[placeholder=\"Record Title\"]')"
+    locator: locator('input[placeholder="Record Title"]')
     value: "{{recordName}}"
-
   - intent: Save the record
     action: click
     locator: "getByRole('button', { name: 'Save' })"
-
-  - WAIT_UNTIL: The record update succeeds
-    js: "await page.getByText('Record saved').count() > 0"
-    timeout_seconds: 10
-
+  - js: "await expect.poll(async () => Boolean(await page.getByText('Record saved').count() > 0), { timeout: 10000 }).toBe(true);"
+    description: The record update succeeds
   - description: Reload the record details page to verify persistence
-    js: "await page.reload()"
-
-  - VERIFY: The edited record title persists after reload
-    js: "await expect(page.locator('input[placeholder=\"Record Title\"]')).toHaveValue(testContext.get('recordName'))"
-
+    js: await page.reload()
+  - js: await expect(page.locator('input[placeholder="Record Title"]')).toHaveValue(testContext.get('recordName'))
+    description: The edited record title persists after reload
+  - description: Require the exact updated entity to persist under its saved ID in the selected site
+    js: await require(process.cwd() + '/tests/support/mutation-fixtures').assertPersisted(testContext, 'record', testContext.get('recordName'));
   - intent: Click Delete record in the details toolbar
     action: click
     locator: "getByRole('button', { name: 'Delete record' })"
-
   - intent: Confirm record deletion
     action: click
     locator: "getByRole('button', { name: 'Delete', exact: true })"
-
-  - WAIT_UNTIL: The user is back on the records list
-    js: "await page.url().endsWith('/records')"
-    timeout_seconds: 15
-
+  - js: "await expect.poll(async () => Boolean(await page.url().endsWith('/records')), { timeout: 15000 }).toBe(true);"
+    description: The user is back on the records list
   - description: Reload the records list before checking deletion
-    js: "await page.reload()"
-
-  - WAIT_UNTIL: The records list has finished loading
-    js: "(await page.getByPlaceholder('Search records...').count()) > 0 && (await page.locator('.animate-pulse:visible').count()) === 0"
-    timeout_seconds: 15
-
-  - VERIFY: The deleted record is absent from the list
-    js: "await expect(page.getByText(testContext.get('recordName'), { exact: true })).toHaveCount(0)"
-
+    js: await page.reload()
+  - js: "await expect.poll(async () => Boolean((await page.getByPlaceholder('Search records...').count()) > 0 && (await page.locator('.animate-pulse:visible').count()) === 0), { timeout: 15000 }).toBe(true);"
+    description: The records list has finished loading
+  - js: "await expect(page.getByText(testContext.get('recordName'), { exact: true })).toHaveCount(0)"
+    description: The deleted record is absent from the list
+  - description: Verify removal by saved entity ID before cleanup can change the outcome
+    js: await require(process.cwd() + '/tests/support/mutation-fixtures').assertRemoved(testContext, 'record');
 teardown:
-  - description: Open the created record route for cleanup when available
-    js: |
-      const recordUrl = testContext.get("recordUrl");
-      if (recordUrl) await page.goto(recordUrl);
-
-  - IF: "js: Boolean(testContext.get('recordUrl')) && (await page.getByRole('button', { name: 'Delete record' }).count()) > 0"
-    THEN:
-      - intent: Delete the surviving run-scoped record
-        action: click
-        locator: "getByRole('button', { name: 'Delete record' })"
-      - intent: Confirm cleanup of the run-scoped record
-        action: click
-        locator: "getByRole('button', { name: 'Delete', exact: true })"
-
-  - URL: /records
-
-  - WAIT_UNTIL: The records page is ready for cleanup
-    js: "(await page.getByPlaceholder('Search records...').count()) > 0 && (await page.locator('.animate-pulse:visible').count()) === 0"
-    timeout_seconds: 15
-
-  - IF: "js: Boolean(testContext.get('recordCategoryName')) && (await page.getByText(testContext.get('recordCategoryName'), { exact: true }).count()) > 0"
-    THEN:
-      - description: Select the run-scoped record category for fallback cleanup
-        js: |
-          const categoryName = testContext.get("recordCategoryName");
-          await page.getByRole('button', { name: categoryName, exact: true }).click();
-      - description: Select only the surviving run-scoped record title for fallback cleanup
-        js: |
-          const recordName = testContext.get("recordName");
-          const renamedExists = recordName
-            ? (await page.getByText(recordName, { exact: true }).count()) > 0
-            : false;
-          testContext.set("recordCleanupName", renamedExists ? recordName : "");
-      - IF: "js: Boolean(testContext.get('recordCleanupName')) && (await page.getByText(testContext.get('recordCleanupName'), { exact: true }).count()) > 0"
-        THEN:
-          - description: Open the surviving record from its run-scoped category
-            js: |
-              const recordName = testContext.get("recordCleanupName");
-              await page.getByRole('row').filter({ hasText: recordName }).click();
-          - intent: Delete the surviving record from its details page
-            action: click
-            locator: "getByRole('button', { name: 'Delete record' })"
-          - intent: Confirm deletion of the surviving record
-            action: click
-            locator: "getByRole('button', { name: 'Delete', exact: true })"
+  - description: Cleanup the exact run-scoped fixture journal, including partial failures
+    js: |-
+      if (!testContext.get('recordUrl') && /\/records\/[0-9a-f-]{36}$/.test(new URL(page.url()).pathname)) {
+        require(process.cwd() + '/tests/support/mutation-fixtures').rememberCreatedRecord(testContext, page.url());
+      }
+      await require(process.cwd() + '/tests/support/mutation-fixtures').cleanup(testContext);
+      if (testContext.get('mutationJournal')) await page.goto('/records');
+  - description: Fail on observed HTTP, application, network, or console errors even when UI assertions passed
+    js: if (testContext.get("mutationObservationStarted")) await require(process.cwd() + '/tests/support/read-observation').assertReadObservation(page);
+tags:
+  - regression
+  - mutation

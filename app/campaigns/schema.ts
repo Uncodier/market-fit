@@ -14,7 +14,7 @@ export const campaignFormSchema = z.object({
       name: z.string()
     })
   ).optional(),
-  requirements: z.array(z.string()).optional(),
+  createWithAi: z.boolean().default(false),
   budget: z.object({
     allocated: z.number().min(0, "Budget cannot be negative"),
     remaining: z.number().optional(),
@@ -28,6 +28,14 @@ export const campaignFormSchema = z.object({
   }).optional(),
   site_id: z.string(),
   user_id: z.string()
+}).superRefine((values, context) => {
+  if (values.createWithAi && (!values.description || values.description.trim().length < 10)) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["description"],
+      message: "Describe the campaign goals in at least 10 characters to use AI",
+    })
+  }
 })
 
 export type CampaignFormValues = z.infer<typeof campaignFormSchema> 

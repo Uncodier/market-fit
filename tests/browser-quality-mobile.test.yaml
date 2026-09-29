@@ -1,24 +1,32 @@
 goal: Verify mobile browser quality on stable read-only routes
 
 statements:
-  - URL: /marketplace
-  - WAIT_UNTIL: Marketplace landmarks are ready
-    js: "await page.getByRole('main').count() > 0 && await page.getByRole('contentinfo').count() > 0"
-    timeout_seconds: 20
+  - description: Require a mobile viewport and navigate the explicit commerce host
+    js: |
+      const { commerceFixtures, commerceUrl, assertReadReady, catalogItemLink } = require(process.cwd() + '/tests/support/read-assertions');
+      const { startReadObservation } = require(process.cwd() + '/tests/support/read-observation');
+      const { dismissConsent } = require(process.cwd() + '/tests/support/workspace');
+      expect(page.viewportSize()?.width).toBeLessThan(768);
+      const { itemId, itemName } = commerceFixtures();
+      startReadObservation(page);
+      const response = await page.goto(commerceUrl('/marketplace'), { waitUntil: 'domcontentloaded' });
+      expect(response?.ok()).toBe(true);
+      await dismissConsent(page);
+      await assertReadReady(page, commerceUrl('/marketplace'), catalogItemLink(page, `/marketplace/${itemId}`, itemName));
 
-  - VERIFY: Marketplace header is visible
+  - description: Marketplace header is visible
     js: await expect(page.getByRole('banner').first()).toBeVisible()
 
-  - VERIFY: Marketplace has exactly one main landmark
+  - description: Marketplace has exactly one main landmark
     js: await expect(page.getByRole('main')).toHaveCount(1)
 
-  - VERIFY: Marketplace main content is visible
+  - description: Marketplace main content is visible
     js: await expect(page.getByRole('main')).toBeVisible()
 
-  - VERIFY: Marketplace footer is visible
+  - description: Marketplace footer is visible
     js: await expect(page.getByRole('contentinfo').first()).toBeVisible()
 
-  - VERIFY: Marketplace does not overflow the mobile viewport
+  - description: Marketplace does not overflow the mobile viewport
     js: |
       await expect.poll(async () => page.evaluate(
         () => document.documentElement.scrollWidth <= document.documentElement.clientWidth
@@ -27,8 +35,8 @@ statements:
   - description: Check marketplace accessibility
     js: |
       const { default: AxeBuilder } = await import('@axe-core/playwright');
-      await page.evaluate(() => document.querySelector('nextjs-portal')?.remove());
       const results = await new AxeBuilder({ page })
+        .exclude('nextjs-portal')
         .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
         .analyze();
       expect(results.violations, JSON.stringify(results.violations, null, 2)).toEqual([]);
@@ -43,55 +51,60 @@ statements:
       await expect(search).toBeFocused();
       await page.keyboard.press('Enter');
 
-  - VERIFY: Keyboard activation opens mobile search
+  - description: Keyboard activation opens mobile search
     js: await expect(page.locator('#mobile-search-input')).toBeVisible()
 
-  - VERIFY: Keyboard activation moves focus into mobile search
+  - description: Keyboard activation moves focus into mobile search
     js: await expect(page.locator('#mobile-search-input')).toBeFocused()
 
   - description: Close mobile search with the keyboard
     js: |
       await page.keyboard.press('Escape');
 
-  - VERIFY: Mobile search closes
+  - description: Mobile search closes
     js: await expect(page.locator('#mobile-search-input')).toBeHidden()
 
-  - VERIFY: Mobile search restores opener focus
+  - description: Mobile search restores opener focus
     js: "await expect(page.getByRole('button', { name: 'Search', exact: true })).toBeFocused()"
 
-  - URL: /projects
-  - WAIT_UNTIL: The no-layout project chooser is ready
-    js: "await page.getByRole('button', { name: /^Select / }).count() > 0"
-    timeout_seconds: 20
+  - description: Navigate to the workspace project chooser on TEST_BASE_URL
+    js: |
+      const { requiredReadFixture, assertReadReady } = require(process.cwd() + '/tests/support/read-assertions');
+      const { dismissConsent } = require(process.cwd() + '/tests/support/workspace');
+      const target = new URL('/projects?manage=1', requiredReadFixture('TEST_BASE_URL')).href;
+      await page.goto(target, { waitUntil: 'domcontentloaded' });
+      await dismissConsent(page);
+      const siteName = requiredReadFixture('TEST_SITE_NAME');
+      await assertReadReady(page, target, page.getByRole('button', { name: `Select ${siteName}`, exact: true }));
 
-  - VERIFY: The project chooser receives exactly one main landmark
+  - description: The project chooser receives exactly one main landmark
     js: await expect(page.getByRole('main')).toHaveCount(1)
 
-  - VERIFY: The project chooser main landmark is visible
+  - description: The project chooser main landmark is visible
     js: await expect(page.getByRole('main')).toBeVisible()
 
-  - intent: Select the first available project
-    action: click
-    locator: "getByRole('button', { name: /^Select / }).first()"
-
-  - WAIT_UNTIL: The workspace is selected
-    js: "await page.url().includes('/robots')"
-    timeout_seconds: 10
+  - description: Select the exact configured workspace and validate its ID
+    js: |
+      const { selectWorkspace } = require(process.cwd() + '/tests/support/workspace');
+      await selectWorkspace(page);
 
   - URL: /content
-  - WAIT_UNTIL: Mobile content controls are ready
-    js: "await page.getByRole('button', { name: 'Search', exact: true }).count() > 0"
-    timeout_seconds: 20
+  - description: Require the mobile content search control before opening its dialog
+    js: |
+      const { assertReadReady } = require(process.cwd() + '/tests/support/read-assertions');
+      const { dismissConsent } = require(process.cwd() + '/tests/support/workspace');
+      await assertReadReady(page, '/content', page.getByRole('button', { name: 'Search', exact: true }).first());
+      await dismissConsent(page);
 
   - description: Open the mobile search and filters dialog
     js: |
       const trigger = page.getByRole('button', { name: 'Search', exact: true }).first();
       await trigger.click();
 
-  - VERIFY: The mobile search dialog opens
+  - description: The mobile search dialog opens
     js: "await expect(page.getByRole('dialog', { name: 'Search' })).toBeVisible()"
 
-  - VERIFY: The mobile search dialog receives focus
+  - description: The mobile search dialog receives focus
     js: "await expect(page.getByRole('dialog', { name: 'Search' }).locator(':focus')).toHaveCount(1)"
 
   - description: Check mobile search dialog accessibility
@@ -99,6 +112,7 @@ statements:
       const { default: AxeBuilder } = await import('@axe-core/playwright');
       const results = await new AxeBuilder({ page })
         .include('[role="dialog"]')
+        .exclude('nextjs-portal')
         .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
         .analyze();
       expect(results.violations, JSON.stringify(results.violations, null, 2)).toEqual([]);
@@ -107,8 +121,13 @@ statements:
     js: |
       await page.keyboard.press('Escape');
 
-  - VERIFY: The mobile search dialog closes
+  - description: The mobile search dialog closes
     js: "await expect(page.getByRole('dialog', { name: 'Search' })).toBeHidden()"
 
-  - VERIFY: The mobile search dialog restores trigger focus
+  - description: The mobile search dialog restores trigger focus
     js: "await expect(page.getByRole('button', { name: 'Search', exact: true }).first()).toBeFocused()"
+
+  - description: Fail on observed application or dependency read errors
+    js: |
+      const { assertReadObservation } = require(process.cwd() + '/tests/support/read-observation');
+      await assertReadObservation(page);

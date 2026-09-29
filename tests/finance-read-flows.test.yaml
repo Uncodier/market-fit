@@ -1,52 +1,64 @@
 goal: Read accounting and payment views without changing financial data
 
 statements:
-  - URL: /projects
-  - intent: Select the first available project
-    action: click
-    locator: "getByRole('button', { name: 'Select' }).first()"
-
-  - WAIT_UNTIL: The workspace is selected
-    js: "await page.url().includes('/robots')"
-    timeout_seconds: 10
+  - description: Select the exact configured workspace and validate its ID
+    js: |
+      const { selectWorkspace } = require(process.cwd() + '/tests/support/workspace');
+      await selectWorkspace(page);
 
   - description: Navigate to accounting without waiting for long-lived resources
-    js: "await page.goto('/accounting', { waitUntil: 'domcontentloaded', timeout: 60000 })"
-  - WAIT_UNTIL: Chart of Accounts is ready
-    js: "await page.getByRole('tab', { name: 'All' }).count() > 0"
-    timeout_seconds: 15
-
+    js: |
+      const { assertReadRoute } = require(process.cwd() + '/tests/support/read-navigation');
+      await page.goto('/accounting', { waitUntil: 'domcontentloaded', timeout: 60000 });
+      await assertReadRoute(page, '/accounting');
   - intent: Filter asset accounts
     action: click
     locator: "getByRole('tab', { name: 'Asset', exact: true })"
-  - VERIFY: Asset accounts filter is active
-    js: "await expect(page.getByRole('tab', { name: 'Asset', exact: true })).toHaveAttribute('data-state', 'active')"
+  - description: Asset accounts filter is active
+    js: |
+      const { assertReadReady } = require(process.cwd() + '/tests/support/read-assertions');
+      await expect(page.getByRole('tab', { name: 'Asset', exact: true })).toHaveAttribute('aria-selected', 'true');
+      await assertReadReady(page, '/accounting', page.getByRole('table').or(page.getByText('No accounts found matching this filter.', { exact: true })).first());
 
   - intent: Open Opening Balances
     action: click
     locator: "getByRole('button', { name: 'Opening Balances' })"
-  - VERIFY: Opening Balances dialog is visible
+  - description: Opening Balances dialog is visible
     js: "await expect(page.getByRole('dialog').getByText('Opening Balances', { exact: true })).toBeVisible()"
   - intent: Close Opening Balances without changes
     action: click
     locator: "getByRole('dialog').getByRole('button', { name: 'Cancel' })"
+  - description: Opening Balances closes without saving
+    js: "await expect(page.getByRole('dialog')).toHaveCount(0)"
 
   - URL: /payments
-  - WAIT_UNTIL: Payment tabs are ready
-    js: "await page.getByRole('tab', { name: 'Overview' }).count() > 0"
-    timeout_seconds: 15
+  - description: Require the loaded /payments read surface
+    js: |
+      const { assertReadRoute } = require(process.cwd() + '/tests/support/read-navigation');
+      await assertReadRoute(page, '/payments');
 
-  - VERIFY: Payment summary is visible
+  - description: Payment summary is visible
     js: "await expect(page.getByText('Total Usable Credits')).toBeVisible()"
 
   - intent: Open payment operations
     action: click
     locator: "getByRole('tab', { name: 'Operations' })"
-  - VERIFY: Operations view is selected
-    js: "await expect(page.getByRole('tab', { name: 'Operations' })).toHaveAttribute('data-state', 'active')"
+  - description: Operations view is selected
+    js: |
+      const { assertReadReady } = require(process.cwd() + '/tests/support/read-assertions');
+      await expect(page.getByRole('tab', { name: 'Operations' })).toHaveAttribute('aria-selected', 'true');
+      await assertReadReady(page, '/payments', page.getByRole('tabpanel').getByRole('heading', { name: 'Operations', exact: true }));
 
   - intent: Open withdrawals
     action: click
     locator: "getByRole('tab', { name: 'Withdrawals' })"
-  - VERIFY: Withdrawals view is selected
-    js: "await expect(page.getByRole('tab', { name: 'Withdrawals' })).toHaveAttribute('data-state', 'active')"
+  - description: Withdrawals view is selected
+    js: |
+      const { assertReadReady } = require(process.cwd() + '/tests/support/read-assertions');
+      await expect(page.getByRole('tab', { name: 'Withdrawals' })).toHaveAttribute('aria-selected', 'true');
+      await assertReadReady(page, '/payments', page.getByRole('tabpanel').getByRole('heading', { name: 'Withdrawals', exact: true }));
+
+  - description: Fail on observed application or dependency read errors
+    js: |
+      const { assertReadObservation } = require(process.cwd() + '/tests/support/read-observation');
+      await assertReadObservation(page);

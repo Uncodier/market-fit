@@ -1,35 +1,71 @@
-goal: Smoke test public commerce and storefront routes
+goal: Read the configured public catalog item, shop, privacy policy and empty checkout
 
 statements:
-  - URL: /marketplace
-  - VERIFY: Marketplace renders its product catalog
+  - description: Require TEST_SHOP_SLUG, TEST_CATALOG_ITEM_ID, TEST_CATALOG_ITEM_NAME and TEST_COMMERCE_BASE_URL before reading
     js: |
-      await expect(page).toHaveURL(/\/marketplace$/);
-      await expect(page).toHaveTitle(/Marketplace/);
+      const { commerceFixtures } = require(process.cwd() + '/tests/support/read-assertions');
+      const { startReadObservation } = require(process.cwd() + '/tests/support/read-observation');
+      commerceFixtures();
+      startReadObservation(page);
 
-  - description: Navigate to the seeded marketplace item
-    js: "await page.goto('/marketplace/ee5d191a-9510-4723-8ec1-ca5ade5e8d28', { waitUntil: 'domcontentloaded', timeout: 60000 })"
-  - VERIFY: The seeded marketplace item is rendered
+  - description: Require the marketplace catalog content on the explicit commerce host
     js: |
-      await expect(page).toHaveURL(/\/marketplace\/ee5d191a-9510-4723-8ec1-ca5ade5e8d28$/);
-      await expect(page.getByRole('heading', { name: 'Reservable Item Agent' })).toBeVisible();
+      const { commerceFixtures, commerceUrl, assertReadReady, catalogItemLink } = require(process.cwd() + '/tests/support/read-assertions');
+      const { dismissConsent } = require(process.cwd() + '/tests/support/workspace');
+      const { slug, itemId, itemName } = commerceFixtures();
+      const target = commerceUrl('/marketplace');
+      const response = await page.goto(target, { waitUntil: 'domcontentloaded' });
+      expect(response?.ok()).toBe(true);
+      await dismissConsent(page);
+      await assertReadReady(page, target, catalogItemLink(page, `/marketplace/${itemId}`, itemName));
 
-  - description: Navigate to the seeded storefront
-    js: "await page.goto('/shop/dea92504-319d-4950-943f-503280f1727c', { waitUntil: 'domcontentloaded', timeout: 60000 })"
-  - VERIFY: The seeded storefront is rendered
+  - description: Require the marketplace item content on the explicit commerce host
     js: |
-      await expect(page).toHaveURL(/\/shop\/dea92504-319d-4950-943f-503280f1727c(?:\?|$)/);
-      await expect(page.getByText('Reservable Item Agent', { exact: true }).first()).toBeVisible();
+      const { commerceFixtures, commerceUrl, assertReadReady, catalogItemLink } = require(process.cwd() + '/tests/support/read-assertions');
+      const { dismissConsent } = require(process.cwd() + '/tests/support/workspace');
+      const { slug, itemId, itemName } = commerceFixtures();
+      const target = commerceUrl(`/marketplace/${itemId}`);
+      const response = await page.goto(target, { waitUntil: 'domcontentloaded' });
+      expect(response?.ok()).toBe(true);
+      await dismissConsent(page);
+      await assertReadReady(page, target, page.getByRole('heading', { name: itemName, exact: true }));
 
-  - description: Navigate to the storefront privacy policy
-    js: "await page.goto('/shop/dea92504-319d-4950-943f-503280f1727c/privacy', { waitUntil: 'domcontentloaded', timeout: 60000 })"
-  - VERIFY: Storefront privacy policy is rendered
+  - description: Require the storefront catalog content on the explicit commerce host
     js: |
-      await expect(page).toHaveURL(/\/shop\/dea92504-319d-4950-943f-503280f1727c\/privacy$/);
-      await expect(page.getByRole('heading', { name: 'Privacy Policy', exact: true })).toBeVisible();
+      const { commerceFixtures, commerceUrl, assertReadReady, catalogItemLink } = require(process.cwd() + '/tests/support/read-assertions');
+      const { dismissConsent } = require(process.cwd() + '/tests/support/workspace');
+      const { slug, itemId, itemName } = commerceFixtures();
+      const target = commerceUrl(`/shop/${slug}`);
+      const response = await page.goto(target, { waitUntil: 'domcontentloaded' });
+      expect(response?.ok()).toBe(true);
+      await dismissConsent(page);
+      await assertReadReady(page, target, catalogItemLink(page, `/shop/${slug}/${itemId}`, itemName));
 
-  - description: Navigate to checkout with an empty cart
-    js: "await page.goto('/cart/checkout', { waitUntil: 'domcontentloaded', timeout: 60000 })"
-  - VERIFY: Empty-cart checkout stays on the checkout route
+  - description: Require the storefront privacy policy content on the explicit commerce host
     js: |
-      await expect(page).toHaveURL(/\/cart\/checkout$/);
+      const { commerceFixtures, commerceUrl, assertReadReady, catalogItemLink } = require(process.cwd() + '/tests/support/read-assertions');
+      const { dismissConsent } = require(process.cwd() + '/tests/support/workspace');
+      const { slug, itemId, itemName } = commerceFixtures();
+      const target = commerceUrl(`/shop/${slug}/privacy`);
+      const response = await page.goto(target, { waitUntil: 'domcontentloaded' });
+      expect(response?.ok()).toBe(true);
+      await dismissConsent(page);
+      await assertReadReady(page, target, page.getByRole('heading', { name: 'Privacy Policy', exact: true }));
+
+  - description: Require the empty checkout content on the explicit commerce host
+    js: |
+      const { commerceFixtures, commerceUrl, assertReadReady, catalogItemLink } = require(process.cwd() + '/tests/support/read-assertions');
+      const { dismissConsent } = require(process.cwd() + '/tests/support/workspace');
+      const { slug, itemId, itemName } = commerceFixtures();
+      const target = commerceUrl('/cart/checkout');
+      const response = await page.goto(target, { waitUntil: 'domcontentloaded' });
+      expect(response?.ok()).toBe(true);
+      await dismissConsent(page);
+      await assertReadReady(page, target, page.getByRole('heading', { name: 'Checkout empty', exact: true }));
+      await expect(page.getByText("You don't have any items to checkout.", { exact: true })).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Continue Shopping', exact: true })).toBeVisible();
+
+  - description: Fail on observed application or dependency read errors
+    js: |
+      const { assertReadObservation } = require(process.cwd() + '/tests/support/read-observation');
+      await assertReadObservation(page);

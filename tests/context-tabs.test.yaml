@@ -1,37 +1,50 @@
 goal: Read every Context workspace
 
 statements:
-  - URL: /projects
-  - intent: Select the first available project
-    action: click
-    locator: "getByRole('button', { name: 'Select' }).first()"
-
-  - WAIT_UNTIL: The workspace is selected
-    js: "await page.url().includes('/robots')"
-    timeout_seconds: 10
+  - description: Select the exact configured workspace and validate its ID
+    js: |
+      const { selectWorkspace } = require(process.cwd() + '/tests/support/workspace');
+      await selectWorkspace(page);
 
   - URL: /context
-  - WAIT_UNTIL: Context tabs are ready
-    js: "await page.getByRole('tab', { name: 'Branding' }).count() > 0"
-    timeout_seconds: 15
+  - description: Require the loaded /context read surface
+    js: |
+      const { assertReadRoute } = require(process.cwd() + '/tests/support/read-navigation');
+      await assertReadRoute(page, '/context');
 
-  - VERIFY: Branding is selected by default
-    js: "await expect(page.getByRole('tab', { name: 'Branding' }).first()).toHaveAttribute('data-state', 'active')"
+  - description: Branding is selected by default
+    js: |
+      await expect(page.getByRole('tab', { name: 'Branding', exact: true })).toHaveAttribute('aria-selected', 'true');
+      await expect(page.locator('#context-form').getByPlaceholder('We are...')).toBeVisible();
 
   - intent: Open Marketing context
     action: click
     locator: "getByRole('tab', { name: 'Marketing' }).first()"
-  - VERIFY: Marketing context is selected
-    js: "await expect(page.getByRole('tab', { name: 'Marketing' }).first()).toHaveAttribute('data-state', 'active')"
+  - description: Marketing context is selected
+    js: |
+      const { assertReadReady } = require(process.cwd() + '/tests/support/read-assertions');
+      await expect(page.getByRole('tab', { name: 'Marketing', exact: true })).toHaveAttribute('aria-selected', 'true');
+      await assertReadReady(page, '/context', page.locator('#context-form #ai-focus-mode'));
 
   - intent: Open Copy Sequences context
     action: click
     locator: "getByRole('tab', { name: 'Copy Sequences' }).first()"
-  - VERIFY: Copy Sequences context is selected
-    js: "await expect(page.getByRole('tab', { name: 'Copy Sequences' }).first()).toHaveAttribute('data-state', 'active')"
+  - description: Copy Sequences context is selected
+    js: |
+      const { assertReadReady } = require(process.cwd() + '/tests/support/read-assertions');
+      await expect(page.getByRole('tab', { name: 'Copy Sequences', exact: true })).toHaveAttribute('aria-selected', 'true');
+      await assertReadReady(page, '/context', page.locator('#copywriting-collection').getByRole('heading', { name: 'Copy Sequences', exact: true }));
 
   - intent: Open Customer Journey context
     action: click
     locator: "getByRole('tab', { name: 'Customer Journey' }).first()"
-  - VERIFY: Customer Journey context is selected
-    js: "await expect(page.getByRole('tab', { name: 'Customer Journey' }).first()).toHaveAttribute('data-state', 'active')"
+  - description: Customer Journey context is selected
+    js: |
+      const { assertReadReady } = require(process.cwd() + '/tests/support/read-assertions');
+      await expect(page.getByRole('tab', { name: 'Customer Journey', exact: true })).toHaveAttribute('aria-selected', 'true');
+      await assertReadReady(page, '/context', page.locator('#journey-awareness'));
+
+  - description: Fail on observed application or dependency read errors
+    js: |
+      const { assertReadObservation } = require(process.cwd() + '/tests/support/read-observation');
+      await assertReadObservation(page);

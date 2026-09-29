@@ -28,8 +28,7 @@ enough evidence for PASS, FAIL, or an environment/setup BLOCKED result, write
 `Status: BLOCKED` only if the interruption exposed a concrete environment or
 setup blocker named by this case. Otherwise write `Status: ABORTED` in the
 report body, explain the orchestration interruption, and do not end the report
-with PASS, FAIL, or BLOCKED. Release gates should ignore ABORTED reports and
-rerun the case.
+with PASS, FAIL, or BLOCKED. Release gates must reject ABORTED reports. Never replay an ambiguous mutating case automatically.
 
 UI is codified as Shiplight YAML in `./ui/` and run as a subprocess (see the UI
 section). Its Shiplight report, trace, and screenshots are the UI evidence —
@@ -82,51 +81,16 @@ Sources:
 - `app/shop/[siteSlug]/page.tsx`
 - `app/reservations/page.tsx`
 
-## Project Context
+## Environment contract
 
-- Product/project name: `market-fit`
-- Local URLs: `http://localhost:3000` (Main), POS (`/pos`), Shop (`/shop`), Reservations (`/reservations`)
-- Staging URLs: `https://staging.market-fit.example.com`
-- Production URLs: `https://market-fit.example.com`
-- Fixture setup and mutation policy: Agent may create a test catalog item and submit test orders/reservations.
-- Cleanup ownership: Test should remove the test catalog item and reservations if possible, or leave them with prefix `agent-reservations-`.
-
-## Testing Environments
-
-The orchestrator or tester must specify one listed target environment before
-execution, for example through `AGENT_VERIFICATION_TARGET=local` or an equivalent
-parameter. If no target environment is specified, stop before preflight and
-report `Status: BLOCKED` with blocker `target_environment_missing`. Record the
-selected target in the report. A PASS is valid only for the selected target
-environment.
-
-### Local Development
-
-- Web URL: `http://localhost:3000`
-- Admin URL: `http://localhost:3000`
-- API URL: `http://localhost:3000/api`
-- Backend setup:
-  - `npm run dev`
-- Fixture setup authority: Agent can use Supabase local instance / standard API routes to insert test data.
-- Required accounts: Test user should have access to admin pages (`/catalog`, `/pos`, `/reservations`).
-- Mutation policy: test-owned records only.
-
-### Staging
-
-- Web URL: `<staging-web-url>`
-- Admin URL: `<staging-admin-url>`
-- API URL: `<staging-api-url>`
-- Environment preflight command: Verify access to staging.
-- Fixture setup command: Agent can create a test product.
-- Mutation policy: seeded fixtures or clearly test-owned records only.
-
-### Production
-
-- Web URL: `<production-web-url>`
-- Admin URL: `<production-admin-url>`
-- API URL: `<production-api-url>`
-- Production policy: read-only unless this case lists exact synthetic fixtures
-  and explicit mutation approval.
+- Only `local` and explicitly disposable `staging` are supported. Production execution is forbidden.
+- Set `TEST_TARGET`, `TEST_BASE_URL` (workspace), `TEST_COMMERCE_BASE_URL`, `TEST_SITE_ID`, and `TEST_SITE_NAME` explicitly. No default host is inferred.
+- Both `TEST_ALLOW_MUTATIONS=1` and `TEST_DISPOSABLE_ENVIRONMENT=1` are required.
+- Set `TEST_SUPABASE_URL`, `TEST_SUPABASE_ANON_KEY`, and (staging) `TEST_SUPABASE_PROJECT_REF`; authenticate as the dedicated test user. Never use service role for verification or cleanup.
+- Provide `TEST_AGENT_STORAGE_STATE`, a freshly authenticated state for the disposable workspace, and `TEST_RESERVATION_CUSTOMER_ID` / `TEST_RESERVATION_CUSTOMER_NAME` for an existing synthetic customer.
+- The runner sets `TEST_PROJECT_ROOT`, `AGENT_VERIFICATION_RUN_ID`, and exact report/evidence paths. Each attempt has separate state.
+- Backend identity and selected site must match the browser before creating records.
+- The orchestration account must have enough authorization to remove only its run-owned data. Missing fixture support is BLOCKED, not permission to pick the first customer or item.
 
 ## Environment Preflight
 
@@ -159,12 +123,12 @@ otherwise:
 Deterministic UI is codified in the feature group's shared embedded project
 `tests/agent/reservations/ui/`. 
 
-- Setup writes each role's `storageState` to `tests/agent/reservations/.runtime/`, where the YAML's `use.storageState` points.
+- Setup writes each role's `storageState` to `TEST_AGENT_STORAGE_STATE`; the embedded Playwright config requires this explicit path.
 - Run a segment: `cd tests/agent/reservations/ui && npx shiplight test tests/<segment>.test.yaml`.
 - Segments to run:
-  1. `tests/create-reservable-item.test.yaml`: Creates the reservable item in `/catalog` and extracts its ID to `evidence.json`.
-  2. `tests/reserve-in-pos.test.yaml`: Navigates to `/pos`, adds the item to the cart, completes checkout, and creates a reservation.
-  3. `tests/reserve-in-shop.test.yaml`: Navigates to `/shop/:slug`, finds the item, checks out, and reserves.
+  1. `tests/create-reservable-item.test.yaml`: Creates a run-named item and writes its ID to `.runtime/<run-id>/fixture.json` using the case-root helper.
+  2. `tests/reserve-in-pos.test.yaml`: Navigates to `/pos` and reaches checkout. It does NOT complete payment or prove a persisted reservation; the case cannot PASS until this missing evidence is supplied by a verified test-mode completion step.
+  3. `tests/reserve-in-shop.test.yaml`: Uses the configured commerce host and current run item for a zero-total cash order. It does not test Stripe.
   4. `tests/reserve-in-reservations-page.test.yaml`: Navigates to `/reservations`, creates a reservation manually for the same item.
 
 ## Task
@@ -173,7 +137,7 @@ Execute the verification steps:
 
 1. Run setup (fixture mechanism + `storageState`).
 2. Run the UI YAML segments under `tests/agent/reservations/ui/tests/`.
-3. Read `tests/agent/reservations/.runtime/evidence.json` to get the item ID and reservation IDs.
+3. Read `.runtime/<run-id>/fixture.json` for the shared item. Capture each exact reservation ID from its successful response and correlate it with a user-scoped database read; never infer IDs from an unrelated existing row.
 4. Verify in the database (Supabase or API) that the reservations were correctly inserted for POS, Shop, and Manual admin entry.
 5. Cleanup.
 
@@ -205,5 +169,14 @@ instead of `Status: FAIL`.
 
 ## Cleanup
 
-Describe cleanup for all records (catalog item, reservations) created by the case. If cleanup is not safe, leave
-records clearly named with the agent test id and note them in the report.
+Cleanup every exact run-owned reservation, order and synthetic customer, and archive the run-owned catalog item. Verify the final state through successful user-scoped reads. Incomplete or unsafe cleanup prevents PASS; retain the exact journal and report the blocker instead of broad deletion.
+
+## Structured evidence gate
+
+Write JSON to `AGENT_VERIFICATION_EVIDENCE_PATH` matching `tests/agent/agent-evidence.ts`:
+
+- Current `runId`, `target`, `siteId`, and the one created `itemId`.
+- Exactly three `observations`, one each for `pos`, `shop`, and `manual`, with distinct `reservationId`, matching `itemId`/`siteId`, current `observedAt`, `persisted: true`, and the actual successful `uiReportPath`.
+- `cleanup.completed` and `cleanup.verified` must both be true.
+
+The runner rejects stale/missing evidence, missing/failed UI artifacts, contradictory status lines and missing cleanup. It validates structure and artifact results; it does not independently execute the database observations written by the agent. This is agent-adjudicated evidence, not deterministic payment certification. A missing POS completion step must remain FAIL/BLOCKED, never a claimed reservation success.

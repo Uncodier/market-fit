@@ -1,168 +1,99 @@
 goal: Complete CRUD cycle for a Lead
-
 statements:
+  - description: Require TEST_SITE_NAME and TEST_SITE_ID and an explicit disposable mutation target before navigation
+    js: require(process.cwd() + '/tests/support/mutation-safety').requireMutationEnvironment();
   - URL: /projects
   - description: Select the configured test project
-    js: |
+    js: |-
+      await require(process.cwd() + '/tests/support/mutation-fixtures').fixtureClient();
       const runId = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
       testContext.set("leadName", `Shiplight Lead ${runId}`);
       testContext.set("leadEditedName", `Shiplight Lead ${runId} Edited`);
       testContext.set("leadEmail", `shiplight.lead.${runId}@example.com`);
       const siteName = process.env.TEST_SITE_NAME;
       if (!siteName) throw new Error("TEST_SITE_NAME is required");
-      await page.getByRole('button', { name: `Select ${siteName}`, exact: true }).click();
+      await require(process.cwd() + '/tests/support/workspace').selectWorkspace(page);
 
-  - WAIT_UNTIL: The user is navigated to the default project page
-    js: "await page.url().includes('/robots')"
-    timeout_seconds: 5
-
+      require(process.cwd() + '/tests/support/mutation-fixtures').own(testContext, 'lead', [testContext.get('leadName'), testContext.get('leadEditedName')]);
+      testContext.set("mutationObservationStarted", true);
+  - description: Bind the browser session to the explicitly selected cleanup backend and account
+    js: await require(process.cwd() + '/tests/support/mutation-fixtures').bindBrowserFixture(page);
+  - js: "await expect.poll(async () => Boolean(await page.url().includes('/robots')), { timeout: 5000 }).toBe(true);"
+    description: The user is navigated to the default project page
   - URL: /leads
   - intent: Click Add Lead in the top bar to open the create dialog
     action: click
     locator: "getByRole('button', { name: 'Add Lead' })"
-
   - intent: Fill the required lead name
     action: fill
-    locator: "locator('#name')"
+    locator: locator('#name')
     value: "{{leadName}}"
-
   - description: Fill the required lead email with a unique value
-    js: "await page.locator('#email').fill(testContext.get('leadEmail'))"
-
+    js: await page.locator('#email').fill(testContext.get('leadEmail'))
   - intent: Submit the create lead form
     action: click
     locator: "getByRole('button', { name: 'Create lead' })"
-
-  - WAIT_UNTIL: The create lead modal closes
-    js: "await page.getByRole('dialog').count() === 0"
-    timeout_seconds: 10
-
-  - WAIT_UNTIL: The create lead modal closes
-    js: "await page.getByRole('button', { name: 'Create lead' }).count() === 0"
-    timeout_seconds: 10
-
-  - WAIT_UNTIL: The new lead appears in the list
-    js: "(await page.getByText(testContext.get('leadName'), { exact: true }).count()) > 0"
-    timeout_seconds: 15
-
+  - js: "await expect.poll(async () => Boolean(await page.getByRole('dialog').count() === 0), { timeout: 10000 }).toBe(true);"
+    description: The create lead modal closes
+  - js: "await expect.poll(async () => Boolean(await page.getByRole('button', { name: 'Create lead' }).count() === 0), { timeout: 10000 }).toBe(true);"
+    description: The create lead modal closes
+  - js: "await expect.poll(async () => Boolean((await page.getByText(testContext.get('leadName'), { exact: true }).count()) > 0), { timeout: 15000 }).toBe(true);"
+    description: The new lead appears in the list
   - description: Open the run-scoped lead details page
     js: |
       const leadName = testContext.get("leadName");
       await page.getByText(leadName, { exact: true }).first().click();
-
-  - WAIT_UNTIL: The lead details route is open and loaded
-    js: "(await page.getByRole('heading', { name: testContext.get('leadName'), exact: true }).count()) > 0"
-    timeout_seconds: 15
-
+  - js: "await expect.poll(async () => Boolean((await page.getByRole('heading', { name: testContext.get('leadName'), exact: true }).count()) > 0), { timeout: 15000 }).toBe(true);"
+    description: The lead details route is open and loaded
   - description: Remember the created lead route for cleanup
-    js: "testContext.set('leadUrl', page.url())"
-
-  - VERIFY: The details heading shows the created lead name
-    js: "await expect(page.getByRole('heading', { name: testContext.get('leadName'), exact: true })).toBeVisible()"
-
+    js: testContext.set('leadUrl', page.url())
+  - js: "await expect(page.getByRole('heading', { name: testContext.get('leadName'), exact: true })).toBeVisible()"
+    description: The details heading shows the created lead name
   - description: Click the run-scoped lead name to start inline editing
     js: |
       const leadName = testContext.get("leadName");
       await page.getByRole('heading', { name: leadName, exact: true }).click();
-
   - intent: Replace the lead name with the edited value
     action: fill
-    locator: "locator('input.h-8')"
+    locator: locator('input.h-8')
     value: "{{leadEditedName}}"
-
   - intent: Save the inline name edit
     action: press
     keys: Enter
-
-  - WAIT_UNTIL: The heading shows the edited name
-    js: "(await page.getByRole('heading', { name: testContext.get('leadEditedName'), exact: true }).count()) > 0"
-    timeout_seconds: 10
-
+  - js: "await expect.poll(async () => Boolean((await page.getByRole('heading', { name: testContext.get('leadEditedName'), exact: true }).count()) > 0), { timeout: 10000 }).toBe(true);"
+    description: The heading shows the edited name
   - description: Reload the lead details page to verify persistence
-    js: "await page.reload()"
-
-  - VERIFY: The edited lead name persists after reload
-    js: "await expect(page.getByRole('heading', { name: testContext.get('leadEditedName'), exact: true })).toBeVisible()"
-
+    js: await page.reload()
+  - js: "await expect(page.getByRole('heading', { name: testContext.get('leadEditedName'), exact: true })).toBeVisible()"
+    description: The edited lead name persists after reload
+  - description: Require the exact updated entity to persist under its saved ID in the selected site
+    js: await require(process.cwd() + '/tests/support/mutation-fixtures').assertPersisted(testContext, 'lead', testContext.get('leadEditedName'));
   - intent: Open the lead actions menu
     action: click
     locator: "getByRole('button', { name: 'Open menu' })"
-
   - intent: Choose Delete Lead
     action: click
     locator: "getByRole('menuitem', { name: 'Delete Lead' })"
-
   - intent: Confirm lead deletion
     action: click
     locator: "getByRole('button', { name: 'Delete Lead', exact: true })"
-
-  - WAIT_UNTIL: The user is back on the leads list
-    js: "await page.url().endsWith('/leads')"
-    timeout_seconds: 15
-
+  - js: "await expect.poll(async () => Boolean(await page.url().endsWith('/leads')), { timeout: 15000 }).toBe(true);"
+    description: The user is back on the leads list
   - description: Reload the leads list before checking deletion
-    js: "await page.reload()"
-
-  - WAIT_UNTIL: The leads list has finished loading
-    js: "(await page.getByPlaceholder('Search leads...').count()) > 0 && (await page.locator('.animate-pulse:visible').count()) === 0"
-    timeout_seconds: 15
-
-  - VERIFY: The deleted lead is absent from the list
-    js: "await expect(page.getByText(testContext.get('leadEditedName'), { exact: true })).toHaveCount(0)"
-
+    js: await page.reload()
+  - js: "await expect.poll(async () => Boolean((await page.getByPlaceholder('Search leads...').count()) > 0 && (await page.locator('.animate-pulse:visible').count()) === 0), { timeout: 15000 }).toBe(true);"
+    description: The leads list has finished loading
+  - js: "await expect(page.getByText(testContext.get('leadEditedName'), { exact: true })).toHaveCount(0)"
+    description: The deleted lead is absent from the list
+  - description: Verify removal by saved entity ID before cleanup can change the outcome
+    js: await require(process.cwd() + '/tests/support/mutation-fixtures').assertRemoved(testContext, 'lead');
 teardown:
-  - description: Check the created lead route for cleanup
-    js: |
-      const leadUrl = testContext.get("leadUrl");
-      let leadNeedsCleanup = false;
-      if (leadUrl) {
-        await page.goto(leadUrl);
-        leadNeedsCleanup = await page.getByRole('button', { name: 'Open menu' })
-          .waitFor({ state: 'visible', timeout: 5000 })
-          .then(() => true)
-          .catch(() => false);
-      }
-      testContext.set("leadNeedsCleanup", leadNeedsCleanup);
-
-  - IF: "js: testContext.get('leadNeedsCleanup') === true"
-    THEN:
-      - intent: Open the surviving run-scoped lead actions menu
-        action: click
-        locator: "getByRole('button', { name: 'Open menu' })"
-      - intent: Choose Delete Lead for the surviving run-scoped lead
-        action: click
-        locator: "getByRole('menuitem', { name: 'Delete Lead' })"
-      - intent: Confirm cleanup of the run-scoped lead
-        action: click
-        locator: "getByRole('button', { name: 'Delete Lead', exact: true })"
-
-  - URL: /leads
-
-  - WAIT_UNTIL: The leads list is ready for fallback cleanup
-    js: "(await page.getByPlaceholder('Search leads...').count()) > 0 && (await page.locator('.animate-pulse:visible').count()) === 0"
-    timeout_seconds: 15
-
-  - description: Select the surviving lead name for fallback cleanup
-    js: |
-      const editedName = testContext.get("leadEditedName");
-      const originalName = testContext.get("leadName");
-      const editedExists = editedName
-        ? (await page.getByText(editedName, { exact: true }).count()) > 0
-        : false;
-      testContext.set("leadCleanupName", editedExists ? editedName : (originalName || ""));
-
-  - IF: "js: Boolean(testContext.get('leadCleanupName')) && (await page.getByText(testContext.get('leadCleanupName'), { exact: true }).count()) > 0"
-    THEN:
-      - description: Open the surviving run-scoped lead from the list
-        js: |
-          const leadName = testContext.get("leadCleanupName");
-          await page.getByText(leadName, { exact: true }).first().click();
-      - intent: Open the surviving run-scoped lead actions menu
-        action: click
-        locator: "getByRole('button', { name: 'Open menu' })"
-      - intent: Choose Delete Lead for fallback cleanup
-        action: click
-        locator: "getByRole('menuitem', { name: 'Delete Lead' })"
-      - intent: Confirm fallback cleanup of the run-scoped lead
-        action: click
-        locator: "getByRole('button', { name: 'Delete Lead', exact: true })"
+  - description: Cleanup the exact run-scoped fixture journal, including partial failures
+    js: |-
+      await require(process.cwd() + '/tests/support/mutation-fixtures').cleanup(testContext);
+      if (testContext.get('mutationJournal')) await page.goto('/leads');
+  - description: Fail on observed HTTP, application, network, or console errors even when UI assertions passed
+    js: if (testContext.get("mutationObservationStarted")) await require(process.cwd() + '/tests/support/read-observation').assertReadObservation(page);
+tags:
+  - regression
+  - mutation

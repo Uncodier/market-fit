@@ -1,9 +1,11 @@
 goal: Complete CRUD cycle for a Promotion
-
 statements:
+  - description: Require TEST_SITE_NAME and TEST_SITE_ID and an explicit disposable mutation target before navigation
+    js: require(process.cwd() + '/tests/support/mutation-safety').requireMutationEnvironment();
   - URL: /projects
   - description: Select the configured test project
-    js: |
+    js: |-
+      await require(process.cwd() + '/tests/support/mutation-fixtures').fixtureClient();
       const runId = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
       testContext.set("promotionName", `Shiplight Promotion ${runId}`);
       testContext.set("promotionEditedName", `Shiplight Promotion ${runId} Edited`);
@@ -12,119 +14,82 @@ statements:
       const campaignName = process.env.TEST_CAMPAIGN_NAME;
       if (!campaignName) throw new Error("TEST_CAMPAIGN_NAME is required");
       testContext.set("promotionCampaignName", campaignName);
-      await page.getByRole('button', { name: `Select ${siteName}`, exact: true }).click();
+      await require(process.cwd() + '/tests/support/workspace').selectWorkspace(page);
 
-  - WAIT_UNTIL: The user is navigated to the default project page
-    js: "await page.url().includes('/robots')"
-    timeout_seconds: 5
-
+      require(process.cwd() + '/tests/support/mutation-fixtures').own(testContext, 'promotion', [testContext.get('promotionName'), testContext.get('promotionEditedName')]);
+      testContext.set("mutationObservationStarted", true);
+  - description: Bind the browser session to the explicitly selected cleanup backend and account
+    js: await require(process.cwd() + '/tests/support/mutation-fixtures').bindBrowserFixture(page);
+  - js: "await expect.poll(async () => Boolean(await page.url().includes('/robots')), { timeout: 5000 }).toBe(true);"
+    description: The user is navigated to the default project page
   - URL: /promotions
   - intent: Click Create Promotion in the top bar
     action: click
     locator: "getByRole('button', { name: 'Create Promotion' })"
-
   - intent: Filter the dependency selector by the configured campaign
     action: fill
-    locator: "getByPlaceholder('Select campaign...')"
+    locator: getByPlaceholder('Select campaign...')
     value: "{{promotionCampaignName}}"
-
-  - WAIT_UNTIL: The configured campaign option is visible
-    js: "(await page.locator('[data-relation-id]').filter({ hasText: testContext.get('promotionCampaignName') }).count()) > 0"
-    timeout_seconds: 5
-
+  - js: "await expect.poll(async () => Boolean((await page.locator('[data-relation-id]').filter({ hasText: testContext.get('promotionCampaignName') }).count()) > 0), { timeout: 5000 }).toBe(true);"
+    description: The configured campaign option is visible
   - description: Select the configured campaign
-    js: |
-      const campaignName = testContext.get("promotionCampaignName");
-      await page.locator('[data-relation-id]').filter({ hasText: campaignName }).first().click();
-
+    js: |-
+      const option = page.locator('[data-relation-id]').filter({ has: page.getByText(testContext.get('promotionCampaignName'), { exact: true }) });
+      await expect(option).toHaveCount(1);
+      await option.click();
   - intent: Fill the promotion name
     action: fill
-    locator: "locator('#name')"
+    locator: locator('#name')
     value: "{{promotionName}}"
-
   - intent: Fill the discount value
     action: fill
-    locator: "locator('#discount_value')"
+    locator: locator('#discount_value')
     value: "10"
-
   - intent: Submit the create promotion form
     action: click
     locator: "getByRole('button', { name: 'Create promotion' })"
-
-  - WAIT_UNTIL: The create promotion modal closes
-    js: "await page.getByRole('dialog').count() === 0"
-    timeout_seconds: 10
-
-  - WAIT_UNTIL: The promotion details page is open
-    js: "await page.url().match(/\\/promotions\\/[^?]+$/) !== null"
-    timeout_seconds: 15
-
+  - js: "await expect.poll(async () => Boolean(await page.getByRole('dialog').count() === 0), { timeout: 10000 }).toBe(true);"
+    description: The create promotion modal closes
+  - js: "await expect.poll(async () => Boolean(await page.url().match(/\\/promotions\\/[^?]+$/) !== null), { timeout: 15000 }).toBe(true);"
+    description: The promotion details page is open
   - intent: Update the promotion name
     action: fill
-    locator: "locator('#name')"
+    locator: locator('#name')
     value: "{{promotionEditedName}}"
-
   - intent: Save the promotion changes
     action: click
     locator: "getByRole('button', { name: 'Save Changes' })"
-
-  - WAIT_UNTIL: A saved toast or the edited name is visible
-    js: "await page.getByText('Saved successfully').count() > 0"
-    timeout_seconds: 10
-
+  - js: "await expect.poll(async () => Boolean(await page.getByText('Saved successfully').count() > 0), { timeout: 10000 }).toBe(true);"
+    description: A saved toast or the edited name is visible
   - description: Reload the promotion details page to verify persistence
-    js: "await page.reload()"
-
-  - VERIFY: The edited promotion name persists after reload
-    js: "await expect(page.locator('#name')).toHaveValue(testContext.get('promotionEditedName'))"
-
+    js: await page.reload()
+  - js: await expect(page.locator('#name')).toHaveValue(testContext.get('promotionEditedName'))
+    description: The edited promotion name persists after reload
+  - description: Require the exact updated entity to persist under its saved ID in the selected site
+    js: await require(process.cwd() + '/tests/support/mutation-fixtures').assertPersisted(testContext, 'promotion', testContext.get('promotionEditedName'));
   - intent: Click Delete Promotion in the danger zone
     action: click
     locator: "getByRole('button', { name: 'Delete Promotion', exact: true })"
-
   - intent: Confirm promotion deletion
     action: click
     locator: "getByRole('button', { name: 'Delete', exact: true })"
-
-  - WAIT_UNTIL: The user is back on the promotions list
-    js: "await page.url().endsWith('/promotions')"
-    timeout_seconds: 15
-
+  - js: "await expect.poll(async () => Boolean(await page.url().endsWith('/promotions')), { timeout: 15000 }).toBe(true);"
+    description: The user is back on the promotions list
   - description: Reload the promotions list before checking deletion
-    js: "await page.reload()"
-
-  - WAIT_UNTIL: The promotions list has finished loading
-    js: "(await page.getByPlaceholder('Search name or code...').count()) > 0 && (await page.locator('.animate-pulse:visible').count()) === 0"
-    timeout_seconds: 15
-
-  - VERIFY: The deleted promotion is absent from the list
-    js: "await expect(page.getByText(testContext.get('promotionEditedName'), { exact: true })).toHaveCount(0)"
-
+    js: await page.reload()
+  - js: "await expect.poll(async () => Boolean((await page.getByPlaceholder('Search name or code...').count()) > 0 && (await page.locator('.animate-pulse:visible').count()) === 0), { timeout: 15000 }).toBe(true);"
+    description: The promotions list has finished loading
+  - js: "await expect(page.getByText(testContext.get('promotionEditedName'), { exact: true })).toHaveCount(0)"
+    description: The deleted promotion is absent from the list
+  - description: Verify removal by saved entity ID before cleanup can change the outcome
+    js: await require(process.cwd() + '/tests/support/mutation-fixtures').assertRemoved(testContext, 'promotion');
 teardown:
-  - URL: /promotions
-
-  - WAIT_UNTIL: The promotions list is ready for cleanup
-    js: "(await page.getByPlaceholder('Search name or code...').count()) > 0 && (await page.locator('.animate-pulse:visible').count()) === 0"
-    timeout_seconds: 15
-
-  - description: Select the surviving promotion name for cleanup
-    js: |
-      const editedName = testContext.get("promotionEditedName");
-      const originalName = testContext.get("promotionName");
-      const editedExists = editedName
-        ? (await page.getByText(editedName, { exact: true }).count()) > 0
-        : false;
-      testContext.set("promotionCleanupName", editedExists ? editedName : (originalName || ""));
-
-  - IF: "js: Boolean(testContext.get('promotionCleanupName')) && (await page.getByText(testContext.get('promotionCleanupName'), { exact: true }).count()) > 0"
-    THEN:
-      - description: Open the surviving run-scoped promotion
-        js: |
-          const promotionName = testContext.get("promotionCleanupName");
-          await page.getByRole('row').filter({ hasText: promotionName }).click();
-      - intent: Delete the surviving run-scoped promotion
-        action: click
-        locator: "getByRole('button', { name: 'Delete Promotion', exact: true })"
-      - intent: Confirm cleanup of the run-scoped promotion
-        action: click
-        locator: "getByRole('button', { name: 'Delete', exact: true })"
+  - description: Cleanup the exact run-scoped fixture journal, including partial failures
+    js: |-
+      await require(process.cwd() + '/tests/support/mutation-fixtures').cleanup(testContext);
+      if (testContext.get('mutationJournal')) await page.goto('/promotions');
+  - description: Fail on observed HTTP, application, network, or console errors even when UI assertions passed
+    js: if (testContext.get("mutationObservationStarted")) await require(process.cwd() + '/tests/support/read-observation').assertReadObservation(page);
+tags:
+  - regression
+  - mutation

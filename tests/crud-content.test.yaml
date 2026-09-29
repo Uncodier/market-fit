@@ -1,153 +1,103 @@
 goal: Complete CRUD cycle for Content
-
 statements:
+  - description: Require TEST_SITE_NAME and TEST_SITE_ID and an explicit disposable mutation target before navigation
+    js: require(process.cwd() + '/tests/support/mutation-safety').requireMutationEnvironment();
   - URL: /projects
   - description: Select the configured test project
-    js: |
+    js: |-
+      await require(process.cwd() + '/tests/support/mutation-fixtures').fixtureClient();
       const runId = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
       testContext.set("contentName", `Shiplight Content ${runId}`);
       testContext.set("contentEditedName", `Shiplight Content ${runId} Edited`);
       const siteName = process.env.TEST_SITE_NAME;
       if (!siteName) throw new Error("TEST_SITE_NAME is required");
-      await page.getByRole('button', { name: `Select ${siteName}`, exact: true }).click();
+      await require(process.cwd() + '/tests/support/workspace').selectWorkspace(page);
 
-  - WAIT_UNTIL: The user is navigated to the default project page
-    js: "await page.url().includes('/robots')"
-    timeout_seconds: 5
-
+      require(process.cwd() + '/tests/support/mutation-fixtures').own(testContext, 'content', [testContext.get('contentName'), testContext.get('contentEditedName')]);
+      testContext.set("mutationObservationStarted", true);
+  - description: Bind the browser session to the explicitly selected cleanup backend and account
+    js: await require(process.cwd() + '/tests/support/mutation-fixtures').bindBrowserFixture(page);
+  - js: "await expect.poll(async () => Boolean(await page.url().includes('/robots')), { timeout: 5000 }).toBe(true);"
+    description: The user is navigated to the default project page
   - URL: /content
   - intent: Click New Content in the top bar
     action: click
     locator: "getByRole('button', { name: 'New Content' })"
-
   - intent: Fill the content title
     action: fill
-    locator: "locator('#title')"
+    locator: locator('#title')
     value: "{{contentName}}"
-
   - intent: Fill the content description
     action: fill
-    locator: "locator('#description')"
-    value: "Automated Test Content Description"
-
+    locator: locator('#description')
+    value: Automated Test Content Description
   - intent: Fill the main content text
     action: fill
-    locator: "locator('#text')"
-    value: "Automated Test Content Text Body"
-
+    locator: locator('#text')
+    value: Automated Test Content Text Body
   - intent: Submit the create content form
     action: click
     locator: "getByRole('button', { name: 'Create Content' })"
-
-  - WAIT_UNTIL: The create content modal closes
-    js: "await page.getByRole('dialog').count() === 0"
-    timeout_seconds: 10
-
-  - WAIT_UNTIL: The new content appears in the list
-    js: "(await page.getByText(testContext.get('contentName'), { exact: true }).count()) > 0"
-    timeout_seconds: 15
-
+  - js: "await expect.poll(async () => Boolean(await page.getByRole('dialog').count() === 0), { timeout: 10000 }).toBe(true);"
+    description: The create content modal closes
+  - js: "await expect.poll(async () => Boolean((await page.getByText(testContext.get('contentName'), { exact: true }).count()) > 0), { timeout: 15000 }).toBe(true);"
+    description: The new content appears in the list
   - description: Open the run-scoped content details page
     js: |
       const contentName = testContext.get("contentName");
       await page.getByText(contentName, { exact: true }).first().click();
-
-  - WAIT_UNTIL: The content details route is open and loaded
-    js: "await page.url().includes('/content/') && !page.url().endsWith('/content')"
-    timeout_seconds: 15
-
-  - WAIT_UNTIL: The content renderer finishes and Details is available
-    js: "await page.getByRole('tab', { name: 'Details' }).count() > 0"
-    timeout_seconds: 60
-
+  - js: "await expect.poll(async () => Boolean(await page.url().includes('/content/') && !page.url().endsWith('/content')), { timeout: 15000 }).toBe(true);"
+    description: The content details route is open and loaded
+  - js: "await expect.poll(async () => Boolean(await page.getByRole('tab', { name: 'Details' }).count() > 0), { timeout: 60000 }).toBe(true);"
+    description: The content renderer finishes and Details is available
   - intent: Click the Details tab
     action: click
     locator: "getByRole('tab', { name: 'Details' })"
-
   - intent: Update the content title
     action: fill
-    locator: "locator('input[placeholder=\"Enter title\"]')"
+    locator: locator('input[placeholder="Enter title"]')
     value: "{{contentEditedName}}"
-
   - intent: Save the content
     action: click
     locator: "getByRole('button', { name: 'Save' })"
-
-  - WAIT_UNTIL: The edited title is visible
-    js: "(await page.locator('input[placeholder=\"Enter title\"]').inputValue()) === testContext.get('contentEditedName')"
-    timeout_seconds: 10
-
-  - WAIT_UNTIL: The content update succeeds
-    js: "await page.getByText('Content updated successfully').count() > 0"
-    timeout_seconds: 10
-
+  - js: "await expect.poll(async () => Boolean((await page.locator('input[placeholder=\"Enter title\"]').inputValue()) === testContext.get('contentEditedName')), { timeout: 10000 }).toBe(true);"
+    description: The edited title is visible
+  - js: "await expect.poll(async () => Boolean(await page.getByText('Content updated successfully').count() > 0), { timeout: 10000 }).toBe(true);"
+    description: The content update succeeds
   - description: Reload the content details page to verify persistence
-    js: "await page.reload()"
-
-  - WAIT_UNTIL: The content renderer finishes after reload
-    js: "await page.getByRole('tab', { name: 'Details' }).count() > 0"
-    timeout_seconds: 60
-
+    js: await page.reload()
+  - js: "await expect.poll(async () => Boolean(await page.getByRole('tab', { name: 'Details' }).count() > 0), { timeout: 60000 }).toBe(true);"
+    description: The content renderer finishes after reload
   - intent: Reopen the Details tab after reload
     action: click
     locator: "getByRole('tab', { name: 'Details' })"
-
-  - VERIFY: The edited content title persists after reload
-    js: "await expect(page.locator('input[placeholder=\"Enter title\"]')).toHaveValue(testContext.get('contentEditedName'))"
-
+  - js: await expect(page.locator('input[placeholder="Enter title"]')).toHaveValue(testContext.get('contentEditedName'))
+    description: The edited content title persists after reload
+  - description: Require the exact updated entity to persist under its saved ID in the selected site
+    js: await require(process.cwd() + '/tests/support/mutation-fixtures').assertPersisted(testContext, 'content', testContext.get('contentEditedName'));
   - intent: Click the accessible content delete action
     action: click
     locator: "getByRole('button', { name: 'Delete content', exact: true })"
-
   - intent: Confirm content deletion
     action: click
     locator: "getByRole('button', { name: 'Delete', exact: true })"
-
-  - WAIT_UNTIL: The user is back on the content list
-    js: "await page.url().endsWith('/content')"
-    timeout_seconds: 15
-
+  - js: "await expect.poll(async () => Boolean(await page.url().endsWith('/content')), { timeout: 15000 }).toBe(true);"
+    description: The user is back on the content list
   - description: Reload the content list before checking deletion
-    js: "await page.reload()"
-
-  - WAIT_UNTIL: The content list has finished loading
-    js: "(await page.getByPlaceholder('Search content...').count()) > 0 && (await page.locator('.animate-pulse:visible').count()) === 0"
-    timeout_seconds: 15
-
-  - VERIFY: The deleted content is absent from the list
-    js: "await expect(page.getByText(testContext.get('contentEditedName'), { exact: true })).toHaveCount(0)"
-
+    js: await page.reload()
+  - js: "await expect.poll(async () => Boolean((await page.getByPlaceholder('Search content...').count()) > 0 && (await page.locator('.animate-pulse:visible').count()) === 0), { timeout: 15000 }).toBe(true);"
+    description: The content list has finished loading
+  - js: "await expect(page.getByText(testContext.get('contentEditedName'), { exact: true })).toHaveCount(0)"
+    description: The deleted content is absent from the list
+  - description: Verify removal by saved entity ID before cleanup can change the outcome
+    js: await require(process.cwd() + '/tests/support/mutation-fixtures').assertRemoved(testContext, 'content');
 teardown:
-  - URL: /content
-
-  - WAIT_UNTIL: The content list is ready for cleanup
-    js: "(await page.getByPlaceholder('Search content...').count()) > 0 && (await page.locator('.animate-pulse:visible').count()) === 0"
-    timeout_seconds: 15
-
-  - description: Select the surviving content title for cleanup
-    js: |
-      const editedName = testContext.get("contentEditedName");
-      const originalName = testContext.get("contentName");
-      const editedExists = editedName
-        ? (await page.getByText(editedName, { exact: true }).count()) > 0
-        : false;
-      testContext.set("contentCleanupName", editedExists ? editedName : (originalName || ""));
-
-  - IF: "js: Boolean(testContext.get('contentCleanupName')) && (await page.getByText(testContext.get('contentCleanupName'), { exact: true }).count()) > 0"
-    THEN:
-      - description: Open the surviving run-scoped content
-        js: |
-          const contentName = testContext.get("contentCleanupName");
-          await page.getByText(contentName, { exact: true }).first().click();
-      - WAIT_UNTIL: The content renderer is ready for cleanup
-        js: "(await page.getByRole('tab', { name: 'Details' }).count()) > 0"
-        timeout_seconds: 60
-      - intent: Open Details for the surviving run-scoped content
-        action: click
-        locator: "getByRole('tab', { name: 'Details' })"
-      - intent: Click the accessible content delete action during cleanup
-        action: click
-        locator: "getByRole('button', { name: 'Delete content', exact: true })"
-      - intent: Confirm cleanup of the run-scoped content
-        action: click
-        locator: "getByRole('button', { name: 'Delete', exact: true })"
+  - description: Cleanup the exact run-scoped fixture journal, including partial failures
+    js: |-
+      await require(process.cwd() + '/tests/support/mutation-fixtures').cleanup(testContext);
+      if (testContext.get('mutationJournal')) await page.goto('/content');
+  - description: Fail on observed HTTP, application, network, or console errors even when UI assertions passed
+    js: if (testContext.get("mutationObservationStarted")) await require(process.cwd() + '/tests/support/read-observation').assertReadObservation(page);
+tags:
+  - regression
+  - mutation

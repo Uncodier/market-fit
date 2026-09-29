@@ -1,0 +1,136 @@
+name: Protected deployed E2E
+
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: Protected target (production only permits smoke)
+        type: choice
+        options: [production, staging]
+        required: true
+      suite:
+        description: Regression requires a disposable staging environment
+        type: choice
+        options: [smoke, regression]
+        required: true
+      deployed_sha:
+        description: Full SHA actually deployed at the protected target, not the test revision
+        type: string
+        required: true
+  deployment_status:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    if: github.event_name == 'workflow_dispatch' || github.event.deployment_status.state == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      target: ${{ steps.policy.outputs.target }}
+      suite: ${{ steps.policy.outputs.suite }}
+      environment: ${{ steps.policy.outputs.environment }}
+      deployed_sha: ${{ steps.policy.outputs.deployedSha }}
+      test_sha: ${{ steps.policy.outputs.testSha }}
+      test_branch: ${{ steps.policy.outputs.branch }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+      - name: Validate trusted event, host, creator and commit ancestry
+        id: policy
+        uses: actions/github-script@v7
+        env:
+          DEPLOYMENT_ENVIRONMENT: ${{ vars.E2E_PRODUCTION_DEPLOYMENT_ENV }}
+          DEPLOYMENT_CREATOR: ${{ vars.E2E_DEPLOYMENT_CREATOR }}
+        with:
+          script: |
+            const { ciPolicy } = require('./scripts/e2e/ci-policy.cjs');
+            const selection = ciPolicy(context.eventName, context.payload, {
+              repository: `${context.repo.owner}/${context.repo.repo}`, ref: context.ref,
+              deploymentEnvironment: process.env.DEPLOYMENT_ENVIRONMENT,
+              deploymentCreator: process.env.DEPLOYMENT_CREATOR,
+            });
+            const { data: head } = await github.rest.repos.getCommit({ ...context.repo, ref: selection.branch });
+            const { data: comparison } = await github.rest.repos.compareCommitsWithBasehead({
+              ...context.repo, basehead: `${selection.deployedSha}...${head.sha}`,
+            });
+            if (!['ahead', 'identical'].includes(comparison.status)) throw new Error('Deployed SHA is not on trusted default-branch history');
+            for (const [key, value] of Object.entries({ ...selection, testSha: head.sha })) core.setOutput(key, value);
+
+  live:
+    needs: validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 140
+    # Configure required reviewers and default-branch-only deployment protection.
+    environment: ${{ needs.validate.outputs.environment }}
+    concurrency:
+      group: e2e-${{ needs.validate.outputs.target }}
+      cancel-in-progress: false
+    env:
+      TEST_TARGET: ${{ needs.validate.outputs.target }}
+      TEST_SUITE: ${{ needs.validate.outputs.suite }}
+      TEST_DEPLOYED_SHA: ${{ needs.validate.outputs.deployed_sha }}
+      TEST_SOURCE_BRANCH: ${{ needs.validate.outputs.test_branch }}
+      SHIPLIGHT_RUN_ID: gh-${{ github.run_id }}-${{ github.run_attempt }}
+      TEST_BASE_URL: ${{ vars.TEST_BASE_URL }}
+      TEST_COMMERCE_BASE_URL: ${{ vars.TEST_COMMERCE_BASE_URL }}
+      TEST_SITE_ID: ${{ vars.TEST_SITE_ID }}
+      TEST_SITE_NAME: ${{ vars.TEST_SITE_NAME }}
+      TEST_SHOP_SLUG: ${{ vars.TEST_SHOP_SLUG }}
+      TEST_CATALOG_ITEM_ID: ${{ vars.TEST_CATALOG_ITEM_ID }}
+      TEST_CATALOG_ITEM_NAME: ${{ vars.TEST_CATALOG_ITEM_NAME }}
+      TEST_CONTENT_NAME: ${{ vars.TEST_CONTENT_NAME }}
+      TEST_LEAD_NAME: ${{ vars.TEST_LEAD_NAME }}
+      TEST_ALLOW_MUTATIONS: ${{ needs.validate.outputs.target == 'staging' && needs.validate.outputs.suite == 'regression' && '1' || '0' }}
+      TEST_DISPOSABLE_ENVIRONMENT: ${{ vars.TEST_DISPOSABLE_ENVIRONMENT }}
+      TEST_SUPABASE_URL: ${{ vars.TEST_SUPABASE_URL }}
+      TEST_SUPABASE_PROJECT_REF: ${{ vars.TEST_SUPABASE_PROJECT_REF }}
+      TEST_INVITE_EMAIL_DOMAIN: ${{ vars.TEST_INVITE_EMAIL_DOMAIN }}
+      TEST_AGENT_ID: ${{ vars.TEST_AGENT_ID }}
+      TEST_CALENDAR_MEMBER_EMAIL: ${{ vars.TEST_CALENDAR_MEMBER_EMAIL }}
+      TEST_CAMPAIGN_NAME: ${{ vars.TEST_CAMPAIGN_NAME }}
+      TEST_CATALOG_CATEGORY_NAME: ${{ vars.TEST_CATALOG_CATEGORY_NAME }}
+      TEST_COMPANY_NAME: ${{ vars.TEST_COMPANY_NAME }}
+      TEST_EXPENSE_ACCOUNT_NAME: ${{ vars.TEST_EXPENSE_ACCOUNT_NAME }}
+      TEST_RECORD_CATEGORY_NAME: ${{ vars.TEST_RECORD_CATEGORY_NAME }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.validate.outputs.test_sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: ./node_modules/.bin/playwright install --with-deps chromium
+      - name: Execute selected suite against the protected target
+        env:
+          TEST_ADMIN_EMAIL: ${{ secrets.TEST_ADMIN_EMAIL }}
+          TEST_ADMIN_PASSWORD: ${{ secrets.TEST_ADMIN_PASSWORD }}
+          TEST_SUPABASE_ANON_KEY: ${{ secrets.TEST_SUPABASE_ANON_KEY }}
+          SHIPLIGHT_API_TOKEN: ${{ secrets.SHIPLIGHT_API_TOKEN }}
+        run: npm run test:e2e
+      - name: Publish this exact run (including failed or partial runs)
+        if: always()
+        env:
+          SHIPLIGHT_API_TOKEN: ${{ secrets.SHIPLIGHT_API_TOKEN }}
+        run: npm run test:e2e:report
+      - name: Retain sanitized machine-readable provenance and health
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-${{ needs.validate.outputs.target }}-${{ needs.validate.outputs.suite }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            shiplight-report/${{ env.SHIPLIGHT_RUN_ID }}/run-manifest.json
+            shiplight-report/${{ env.SHIPLIGHT_RUN_ID }}/run-summary.json
+            shiplight-report/health-*.json
+          if-no-files-found: error
+          retention-days: 14
+      # Raw traces, videos, auth state and vendor JSON are not GitHub artifacts.
+      - name: Remove private browser state
+        if: always()
+        run: rm -rf -- .auth

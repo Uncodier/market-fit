@@ -15,6 +15,14 @@ Primary external boundaries:
 - **External API server** handles robot orchestration and selected integrations.
 - **Cloudflare and Vercel** support deployment and custom-domain workflows.
 
+### Workflow execution debugging
+
+Temporal execution metadata supersedes the former per-activity `cron_status`
+debugging view. The unused `ActivitiesView` component and `/api/cron-status`
+endpoint are retired; do not reintroduce a parallel activity status API for this
+purpose. The historical database table is retained pending verification of any
+external consumers. Its removal is not part of the frontend/API retirement.
+
 ## Repository map
 
 - `app/` — routes, layouts, route handlers, Server Actions, and feature code.

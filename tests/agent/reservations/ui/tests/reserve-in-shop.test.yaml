@@ -1,73 +1,66 @@
-# Draft spec for reserving in Shop
-goal: Purchase and reserve the item through the Shop storefront
-
+goal: Create a zero-total cash reservation order through the commerce host (not Stripe coverage)
 statements:
-  - URL: "/shop/dea92504-319d-4950-943f-503280f1727c/ee5d191a-9510-4723-8ec1-ca5ade5e8d28"
-  
+  - description: Require isolated agent context and exact selected workspace
+    js: |-
+      if (!process.env.TEST_PROJECT_ROOT) throw new Error('TEST_PROJECT_ROOT is required');
+      const f = require(process.env.TEST_PROJECT_ROOT + '/tests/agent/reservations/fixture');
+      const fixture = f.loadItem();
+      testContext.set('agentItemName', fixture.itemName);
+      testContext.set('agentItemId', fixture.itemId);
+      await require(process.env.TEST_PROJECT_ROOT + '/tests/support/workspace').selectWorkspace(page);
+  - description: Open the current run item on the explicit commerce host
+    js: |-
+      const { commerceUrl, requiredReadFixture } = require(process.env.TEST_PROJECT_ROOT + '/tests/support/read-assertions');
+      await page.goto(commerceUrl('/shop/' + encodeURIComponent(requiredReadFixture('TEST_SHOP_SLUG')) + '/' + testContext.get('agentItemId')), { waitUntil: 'domcontentloaded' });
   - WAIT_UNTIL: The reservable item page loads
-    js: "await page.getByRole('heading', { name: 'Reservable Item Agent' }).count() > 0"
+    js: "await page.getByRole('heading', { name: testContext.get('agentItemName') }).count() > 0"
     timeout_seconds: 15
-
   - intent: Click Select a Time / Book
     action: click
     locator: "getByRole('button', { name: /Select Time|Select a Time|Book/i }).first()"
-    
   - WAIT_UNTIL: Booking calendar page loads
-    js: "await page.url().includes('/book')"
+    js: await page.url().includes('/book')
     timeout_seconds: 10
-
   - description: Select an available date
     js: |
       const btn = await page.locator('button:not([disabled])').filter({ hasText: /^([1-9]|[12][0-9]|3[01])$/ }).first();
       await btn.click();
-      
   - WAIT_UNTIL: Wait for time slots to load
-    js: "await page.locator('button:has-text(\":\")').count() > 0"
+    js: await page.locator('button:has-text(":")').count() > 0
     timeout_seconds: 5
-
   - intent: Select first time slot
     action: click
-    locator: "locator('button:has-text(\":\")').first()"
-    
+    locator: locator('button:has-text(":")').first()
   - VERIFY: The selected reservation is visible in the cart
-    js: "await expect(page.getByRole('dialog', { name: 'Shopping Cart' }).getByText('Reservable Item Agent')).toBeVisible()"
-
+    js: "await expect(page.getByRole('dialog', { name: 'Shopping Cart' }).getByText(testContext.get('agentItemName'))).toBeVisible()"
   - intent: Fill the service street address
     action: fill
     locator: "getByRole('textbox', { name: 'Street Address' })"
-    value: "123 Test Street"
-
+    value: 123 Test Street
   - intent: Fill the service city
     action: fill
     locator: "getByRole('textbox', { name: 'City' })"
-    value: "San Francisco"
-
+    value: San Francisco
   - intent: Fill the service state
     action: fill
     locator: "getByRole('textbox', { name: 'State' })"
-    value: "CA"
-
+    value: CA
   - intent: Fill the service ZIP code
     action: fill
     locator: "getByRole('textbox', { name: 'ZIP Code' })"
     value: "94105"
-
   - intent: Fill the service country
     action: fill
     locator: "getByRole('textbox', { name: 'Country' })"
-    value: "US"
-
+    value: US
   - intent: Select cash payment for the zero-total reservation
     action: click
     locator: "getByRole('button', { name: 'Cash (pay at visit)' })"
-
   - intent: Complete the zero-total reservation order
     action: click
     locator: "getByRole('button', { name: /Pay securely|Place order/i })"
-
   - WAIT_UNTIL: The reservation order finishes processing
-    js: "await page.url().includes('#your-orders')"
+    js: await page.url().includes('#your-orders')
     timeout_seconds: 60
-
   - VERIFY: The reservation order is confirmed
-    js: "await expect(page).toHaveURL(/#your-orders$/)"
+    js: await expect(page).toHaveURL(/#your-orders$/)

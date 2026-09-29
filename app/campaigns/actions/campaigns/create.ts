@@ -2,8 +2,9 @@
 
 import { createClient } from "@/lib/supabase/server"
 import { requestServerVoiceAgentResync } from "@/app/agents/server-voice-sync"
-import { transformCampaignData } from "../utils/transformers"
-import { type CampaignFormValues } from "../../schema"
+import { getCurrentUserSiteRole } from "@/lib/auth/api-site-access"
+import { buildAiCampaignBrief } from "../../ai-requirement"
+import { campaignFormSchema, type CampaignFormValues } from "../../schema"
 
 // Create a new campaign
 
@@ -53,71 +54,123 @@ export async function findOrCreateCampaign(site_id: string, title: string) {
 
 export async function createCampaign(values: CampaignFormValues) {
   try {
-    const supabase = await createClient()
+    const parsed = campaignFormSchema.safeParse(values)
+    if (!parsed.success) return { data: null, error: "Invalid campaign details" }
 
-    // Prepare campaign data
-    const campaignInput = {
-      title: values.title,
-      description: values.description,
-      priority: values.priority,
-      status: values.status && values.status !== 'draft' ? values.status : "active",
-      due_date: values.dueDate,
-      type: values.type,
-      site_id: values.site_id,
-      user_id: values.user_id,
-      assignees: 0,
-      issues: 0,
-      revenue: values.revenue || { actual: 0, projected: 0, estimated: 0, currency: "USD" },
-      budget: values.budget || { allocated: 0, remaining: 0, currency: "USD" }
+    const input = parsed.data
+    const supabase = await createClient(true)
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user) return { data: null, error: "Unauthorized" }
+    if (!await getCurrentUserSiteRole(supabase, input.site_id)) {
+      return { data: null, error: "Forbidden" }
     }
 
-    // Insert campaign
-    const { data: campaignData, error: campaignError } = await supabase
+    const segmentIds = [...new Set(input.segments || [])]
+    let segments: Array<{ id: string; name: string }> = []
+    if (segmentIds.length) {
+      const { data, error } = await supabase
+        .from("segments")
+        .select("id, name")
+        .eq("site_id", input.site_id)
+        .in("id", segmentIds)
+      if (error || !data || data.length !== segmentIds.length) {
+        return { data: null, error: "Invalid target segments for this site" }
+      }
+      segments = data
+    }
+
+    const { data: campaign, error: campaignError } = await supabase
       .from("campaigns")
-      .insert(campaignInput)
-      .select()
+      .insert({
+        title: input.title.trim(),
+        description: input.description?.trim() || "",
+        priority: input.priority,
+        status: "active",
+        due_date: input.dueDate || null,
+        type: input.type,
+        site_id: input.site_id,
+        user_id: user.id,
+        assignees: 0,
+        issues: 0,
+        revenue: input.revenue || { actual: 0, projected: 0, estimated: 0, currency: "USD" },
+        budget: input.budget || { allocated: 0, remaining: 0, currency: "USD" },
+      })
+      .select("id")
       .single()
-
-    if (campaignError) {
-      throw new Error(`Error creating campaign: ${campaignError.message}`)
+    if (campaignError || !campaign) {
+      return { data: null, error: "Could not create campaign" }
     }
 
-    // Link segments if provided
-    if (values.segments && values.segments.length > 0) {
-      const segmentRelations = values.segments.map((segmentId: string) => ({
-        campaign_id: campaignData.id,
-        segment_id: segmentId
-      }))
-
-      const { error: segmentError } = await supabase
-        .from("campaign_segments")
-        .insert(segmentRelations)
-
-      if (segmentError) {
-        console.error("Error linking segments:", segmentError)
+    let requirementId: string | null = null
+    try {
+      if (segmentIds.length) {
+        const { error } = await supabase.from("campaign_segments").insert(
+          segmentIds.map((segmentId) => ({ campaign_id: campaign.id, segment_id: segmentId }))
+        )
+        if (error) throw new Error("Could not link campaign segments")
       }
-    }
 
-    // Link requirements if provided
-    if (values.requirements && values.requirements.length > 0) {
-      const requirementRelations = values.requirements.map((requirementId: string) => ({
-        campaign_id: campaignData.id,
-        requirement_id: requirementId
-      }))
+      if (input.createWithAi) {
+        const segmentNames = segmentIds.map((id) => segments.find((segment) => segment.id === id)!.name)
+        const brief = buildAiCampaignBrief(input, segmentNames)
+        const { data: requirement, error } = await supabase
+          .from("requirements")
+          .insert({
+            title: `Campaign: ${input.title.trim()}`,
+            description: brief,
+            instructions: brief,
+            type: "campaign",
+            priority: input.priority,
+            status: "in-progress",
+            completion_status: "pending",
+            cycle: new Date().toISOString(),
+            source: "Campaign",
+            budget: input.budget?.allocated ?? 0,
+            site_id: input.site_id,
+            user_id: user.id,
+          })
+          .select("id")
+          .single()
+        if (error || !requirement) throw new Error("Could not create AI campaign requirement")
+        requirementId = requirement.id
 
-      const { error: requirementError } = await supabase
-        .from("campaign_requirements")
-        .insert(requirementRelations)
+        if (segmentIds.length) {
+          const { error: segmentError } = await supabase.from("requirement_segments").insert(
+            segmentIds.map((segmentId) => ({ requirement_id: requirement.id, segment_id: segmentId }))
+          )
+          if (segmentError) throw new Error("Could not link requirement segments")
+        }
 
-      if (requirementError) {
-        console.error("Error linking requirements:", requirementError)
+        const { error: relationError } = await supabase.from("campaign_requirements").insert({
+          campaign_id: campaign.id,
+          requirement_id: requirement.id,
+        })
+        if (relationError) throw new Error("Could not link AI campaign requirement")
       }
+    } catch (error) {
+      // The UI must not report success if the AI work item cannot be created.
+      // Compensate for the separate RLS-backed inserts when possible.
+      const cleanupErrors: unknown[] = []
+      if (requirementId) {
+        const relation = await supabase.from("campaign_requirements").delete().eq("requirement_id", requirementId)
+        const segments = await supabase.from("requirement_segments").delete().eq("requirement_id", requirementId)
+        const requirement = await supabase.from("requirements").delete().eq("id", requirementId).eq("site_id", input.site_id)
+        cleanupErrors.push(relation.error, segments.error, requirement.error)
+      }
+      const campaignSegments = await supabase.from("campaign_segments").delete().eq("campaign_id", campaign.id)
+      const campaignDelete = await supabase.from("campaigns").delete().eq("id", campaign.id).eq("site_id", input.site_id)
+      cleanupErrors.push(campaignSegments.error, campaignDelete.error)
+      if (cleanupErrors.some(Boolean)) {
+        console.error("Campaign creation cleanup failed", cleanupErrors.filter(Boolean))
+        return { data: null, error: `Campaign ${campaign.id} could not be completed or rolled back. Check it before retrying.` }
+      }
+      return { data: null, error: error instanceof Error ? error.message : "Could not finish creating campaign" }
     }
 
-    await requestServerVoiceAgentResync(values.site_id)
-    return { data: transformCampaignData(campaignData), error: null }
+    await requestServerVoiceAgentResync(input.site_id)
+    return { data: { id: campaign.id }, error: null }
   } catch (error) {
     console.error("Error in createCampaign:", error)
-    return { data: null, error: error instanceof Error ? error.message : "An unknown error occurred" }
+    return { data: null, error: "Could not create campaign" }
   }
-} 
+}

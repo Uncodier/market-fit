@@ -1,37 +1,60 @@
 goal: Smoke test workspace navigation across Operations Area
 
 statements:
-  - URL: /projects
-  - intent: Select the first available project
-    action: click
-    locator: "getByRole('button', { name: 'Select' }).first()"
+  - description: Select the exact configured workspace and validate its ID
+    js: |
+      const { selectWorkspace } = require(process.cwd() + '/tests/support/workspace');
+      await selectWorkspace(page);
 
-  - WAIT_UNTIL: The user is navigated to the default project page
-    js: "await page.url().includes('/robots')"
-    timeout_seconds: 5
-
-  # Operations
   - URL: /chat
-  - VERIFY: The page has loaded successfully
-    js: await expect(page).not.toHaveTitle(/500|Error/i)
+  - description: Require the loaded /chat read surface
+    js: |
+      const { assertReadRoute } = require(process.cwd() + '/tests/support/read-navigation');
+      await assertReadRoute(page, '/chat');
+
   - URL: /records
-  - VERIFY: The page has loaded successfully
-    js: await expect(page).not.toHaveTitle(/500|Error/i)
+  - description: Require the loaded /records read surface
+    js: |
+      const { assertReadRoute } = require(process.cwd() + '/tests/support/read-navigation');
+      await assertReadRoute(page, '/records');
+
   - URL: /orders
-  - VERIFY: The page has loaded successfully
-    js: await expect(page).not.toHaveTitle(/500|Error/i)
+  - description: Require the loaded /orders read surface
+    js: |
+      const { assertReadRoute } = require(process.cwd() + '/tests/support/read-navigation');
+      await assertReadRoute(page, '/orders');
+
   - URL: /shipments
-  - VERIFY: The page has loaded successfully
-    js: await expect(page).not.toHaveTitle(/500|Error/i)
+  - description: Require the loaded /shipments read surface
+    js: |
+      const { assertReadRoute } = require(process.cwd() + '/tests/support/read-navigation');
+      await assertReadRoute(page, '/shipments');
+
   - URL: /control-center
-  - VERIFY: The page has loaded successfully
-    js: await expect(page).not.toHaveTitle(/500|Error/i)
+  - description: Require the loaded /control-center read surface
+    js: |
+      const { assertReadRoute } = require(process.cwd() + '/tests/support/read-navigation');
+      await assertReadRoute(page, '/control-center');
+
   - URL: /reservations
-  - VERIFY: The page has loaded successfully
-    js: await expect(page).not.toHaveTitle(/500|Error/i)
+  - description: Require the loaded /reservations read surface
+    js: |
+      const { assertReadRoute } = require(process.cwd() + '/tests/support/read-navigation');
+      await assertReadRoute(page, '/reservations');
+
   - URL: /visits
-  - VERIFY: The page has loaded successfully
-    js: await expect(page).not.toHaveTitle(/500|Error/i)
+  - description: Require the loaded /visits read surface
+    js: |
+      const { assertReadRoute } = require(process.cwd() + '/tests/support/read-navigation');
+      await assertReadRoute(page, '/visits');
+
   - URL: /inventory
-  - VERIFY: The page has loaded successfully
-    js: await expect(page).not.toHaveTitle(/500|Error/i)
+  - description: Require the loaded /inventory read surface
+    js: |
+      const { assertReadRoute } = require(process.cwd() + '/tests/support/read-navigation');
+      await assertReadRoute(page, '/inventory');
+
+  - description: Fail on observed application or dependency read errors
+    js: |
+      const { assertReadObservation } = require(process.cwd() + '/tests/support/read-observation');
+      await assertReadObservation(page);

@@ -1,48 +1,45 @@
-goal: Complete create, read, and delete cycle for an Asset
-
+goal: Create, read, and delete a run-owned asset
 statements:
-  - URL: /projects
-  - intent: Select the first available project
-    action: click
-    locator: "getByRole('button', { name: 'Select' }).first()"
-
-  - WAIT_UNTIL: The user is navigated to the default project page
-    js: "await page.url().includes('/robots')"
-    timeout_seconds: 5
-
-  - URL: /assets
-  - WAIT_UNTIL: The page is loaded
-    js: "await page.url().endsWith('/assets')"
-    timeout_seconds: 15
-
+  - description: Require explicit TEST_SITE_NAME and TEST_SITE_ID before navigation and register a unique run
+    js: |-
+      require(process.cwd() + '/tests/support/mutation-safety').requireMutationEnvironment();
+      const runId = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+      testContext.set('collectionName', `Shiplight asset ${runId}`);
+  - description: Select and verify the explicit workspace
+    js: |-
+      await require(process.cwd() + '/tests/support/workspace').selectWorkspace(page);
+      testContext.set("mutationObservationStarted", true);
+  - description: Bind browser and exact fixture backend before creating a run-owned entity
+    js: await require(process.cwd() + '/tests/support/mutation-fixtures').bindBrowserFixture(page);
+  - description: Wait for the real collection data before creation
+    js: await require(process.cwd() + '/tests/support/mutation-collections').prepareCollection(page, testContext, 'asset');
   - intent: Click New asset in the top bar
     action: click
     locator: "getByRole('button', { name: 'New asset' })"
-
   - intent: Fill the asset name
     action: fill
-    locator: "getByLabel('Name')"
-    value: "Automated Test Asset"
-
+    locator: getByLabel('Name')
+    value: "{{collectionName}}"
   - intent: Upload the asset fixture
     action: upload_file
-    locator: "getByText('Drag and drop a file or click to select')"
-    paths: "fixtures/e2e-asset.svg"
-
+    locator: getByText('Drag and drop a file or click to select')
+    paths: fixtures/e2e-asset.svg
   - intent: Submit the asset upload form
     action: click
     locator: "getByRole('button', { name: 'Upload Asset' })"
-
-  - VERIFY: The created asset name is visible
-    js: "await expect(page.getByText('Automated Test Asset').first()).toBeVisible()"
-
-  - intent: Delete the uploaded test asset
-    action: click
-    locator: "getByRole('button', { name: 'Delete Automated Test Asset' }).first()"
-
-  - intent: Confirm deletion of the uploaded test asset
-    action: click
-    locator: "getByRole('button', { name: 'Delete Asset' })"
-
-  - VERIFY: The asset is gone from the list
-    js: "await expect(page.getByText('Automated Test Asset')).toHaveCount(0)"
+  - js: await expect(page.getByText(testContext.get('collectionName')).first()).toBeVisible()
+    description: The created asset name is visible
+  - description: Reload and prove the created run-owned entity persists, saving its ID when exposed
+    js: |-
+      await page.reload();
+      await require(process.cwd() + '/tests/support/mutation-collections').rememberCollection(page, testContext, 'asset');
+  - description: Delete only the run-owned entity and assert absence after reload
+    js: await require(process.cwd() + '/tests/support/mutation-collections').removeCollection(page, testContext, 'asset', true);
+tags:
+  - regression
+  - mutation
+teardown:
+  - description: Cleanup only this run-owned entity even when an earlier assertion fails
+    js: await require(process.cwd() + '/tests/support/mutation-collections').removeCollection(page, testContext, 'asset');
+  - description: Fail on observed HTTP, application, network, or console errors even when UI assertions passed
+    js: if (testContext.get("mutationObservationStarted")) await require(process.cwd() + '/tests/support/read-observation').assertReadObservation(page);

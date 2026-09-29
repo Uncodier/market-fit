@@ -1,44 +1,74 @@
-goal: Smoke test the authenticated Buyer workspace
+goal: Read buyer pages as TEST_BUYER_EMAIL without claiming record ownership isolation
 
 statements:
-  - URL: /buyer
-  - VERIFY: Buyer home renders the Buyer workspace
+  - description: Require the configured buyer identity and start read observation
     js: |
-      await expect(page).toHaveURL(/\/buyer$/);
-      await expect(page.locator('main').first()).toBeVisible();
-      await expect(page.locator('input[name="email"]')).toHaveCount(0);
+      const { requiredReadFixture } = require(process.cwd() + '/tests/support/read-assertions');
+      const { startReadObservation } = require(process.cwd() + '/tests/support/read-observation');
+      requiredReadFixture('TEST_BUYER_EMAIL');
+      startReadObservation(page);
 
-  - URL: /buyer/orders
-  - VERIFY: Buyer orders remain in the Buyer workspace
+  - description: Navigate to /buyer/profile on TEST_COMMERCE_BASE_URL and require its completed read
     js: |
-      await expect(page).toHaveURL(/\/buyer\/orders$/);
-      await expect(page.locator('main').first()).toBeVisible();
-      await expect(page.locator('input[name="email"]')).toHaveCount(0);
+      const { commerceUrl } = require(process.cwd() + '/tests/support/read-assertions');
+      const { dismissConsent } = require(process.cwd() + '/tests/support/workspace');
+      const { assertBuyerRead } = require(process.cwd() + '/tests/support/read-buyer');
+      const response = await page.goto(commerceUrl('/buyer/profile'), { waitUntil: 'domcontentloaded' });
+      expect(response?.ok()).toBe(true);
+      await dismissConsent(page);
+      await assertBuyerRead(page, '/buyer/profile');
 
-  - URL: /buyer/subscriptions
-  - VERIFY: Buyer subscriptions remain in the Buyer workspace
+  - description: Navigate to /buyer on TEST_COMMERCE_BASE_URL and require its completed read
     js: |
-      await expect(page).toHaveURL(/\/buyer\/subscriptions$/);
-      await expect(page.locator('main').first()).toBeVisible();
-      await expect(page.locator('input[name="email"]')).toHaveCount(0);
+      const { commerceUrl } = require(process.cwd() + '/tests/support/read-assertions');
+      const { dismissConsent } = require(process.cwd() + '/tests/support/workspace');
+      const { assertBuyerRead } = require(process.cwd() + '/tests/support/read-buyer');
+      const response = await page.goto(commerceUrl('/buyer'), { waitUntil: 'domcontentloaded' });
+      expect(response?.ok()).toBe(true);
+      await dismissConsent(page);
+      await assertBuyerRead(page, '/buyer');
 
-  - URL: /buyer/quotes
-  - VERIFY: Buyer quotes remain in the Buyer workspace
+  - description: Navigate to /buyer/orders on TEST_COMMERCE_BASE_URL and require its completed read
     js: |
-      await expect(page).toHaveURL(/\/buyer\/quotes$/);
-      await expect(page.locator('main').first()).toBeVisible();
-      await expect(page.locator('input[name="email"]')).toHaveCount(0);
+      const { commerceUrl } = require(process.cwd() + '/tests/support/read-assertions');
+      const { dismissConsent } = require(process.cwd() + '/tests/support/workspace');
+      const { assertBuyerRead } = require(process.cwd() + '/tests/support/read-buyer');
+      const response = await page.goto(commerceUrl('/buyer/orders'), { waitUntil: 'domcontentloaded' });
+      expect(response?.ok()).toBe(true);
+      await dismissConsent(page);
+      await assertBuyerRead(page, '/buyer/orders');
 
-  - URL: /buyer/library
-  - VERIFY: Buyer library remains in the Buyer workspace
+  - description: Navigate to /buyer/subscriptions on TEST_COMMERCE_BASE_URL and require its completed read
     js: |
-      await expect(page).toHaveURL(/\/buyer\/library$/);
-      await expect(page.locator('main').first()).toBeVisible();
-      await expect(page.locator('input[name="email"]')).toHaveCount(0);
+      const { commerceUrl } = require(process.cwd() + '/tests/support/read-assertions');
+      const { dismissConsent } = require(process.cwd() + '/tests/support/workspace');
+      const { assertBuyerRead } = require(process.cwd() + '/tests/support/read-buyer');
+      const response = await page.goto(commerceUrl('/buyer/subscriptions'), { waitUntil: 'domcontentloaded' });
+      expect(response?.ok()).toBe(true);
+      await dismissConsent(page);
+      await assertBuyerRead(page, '/buyer/subscriptions');
 
-  - URL: /buyer/profile
-  - VERIFY: Buyer profile remains in the Buyer workspace
+  - description: Navigate to /buyer/quotes on TEST_COMMERCE_BASE_URL and require its completed read
     js: |
-      await expect(page).toHaveURL(/\/buyer\/profile$/);
-      await expect(page.locator('main').first()).toBeVisible();
-      await expect(page.locator('input[name="email"]')).toHaveCount(0);
+      const { commerceUrl } = require(process.cwd() + '/tests/support/read-assertions');
+      const { dismissConsent } = require(process.cwd() + '/tests/support/workspace');
+      const { assertBuyerRead } = require(process.cwd() + '/tests/support/read-buyer');
+      const response = await page.goto(commerceUrl('/buyer/quotes'), { waitUntil: 'domcontentloaded' });
+      expect(response?.ok()).toBe(true);
+      await dismissConsent(page);
+      await assertBuyerRead(page, '/buyer/quotes');
+
+  - description: Navigate to /buyer/library on TEST_COMMERCE_BASE_URL and require its completed read
+    js: |
+      const { commerceUrl } = require(process.cwd() + '/tests/support/read-assertions');
+      const { dismissConsent } = require(process.cwd() + '/tests/support/workspace');
+      const { assertBuyerRead } = require(process.cwd() + '/tests/support/read-buyer');
+      const response = await page.goto(commerceUrl('/buyer/library'), { waitUntil: 'domcontentloaded' });
+      expect(response?.ok()).toBe(true);
+      await dismissConsent(page);
+      await assertBuyerRead(page, '/buyer/library');
+
+  - description: Fail on observed application or dependency read errors
+    js: |
+      const { assertReadObservation } = require(process.cwd() + '/tests/support/read-observation');
+      await assertReadObservation(page);

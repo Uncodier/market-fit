@@ -190,7 +190,7 @@ export default function CampaignsPage() {
                   </Tabs>
                 </FilterSection>
                     
-                    <FilterSection className="flex-col md:flex-row items-stretch md:items-center gap-2">
+                    <FilterSection className="flex-col md:flex-row items-stretch md:items-center gap-2 md:gap-3">
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button variant="secondary" size="sm" className="w-full md:w-auto md:w-9 h-10 md:h-9 gap-2 rounded-md md:rounded-full px-4 md:px-0 justify-between md:justify-center">

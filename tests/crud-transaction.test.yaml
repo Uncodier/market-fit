@@ -1,156 +1,83 @@
-goal: Complete CRUD cycle for an Expense transaction
-
+goal: Create, read, and delete a run-owned unposted expense transaction
+tags:
+  - regression
+  - mutation
 statements:
-  - URL: /projects
-  - intent: Select the first available project
-    action: click
-    locator: "getByRole('button', { name: 'Select' }).first()"
-
-  - WAIT_UNTIL: The user is navigated to the default project page
-    js: "await page.url().includes('/robots')"
-    timeout_seconds: 5
-
-  - description: Reset expenses for test
+  - description: Require an explicit disposable mutation target before navigation
     js: |
-      const { createClient } = require('@supabase/supabase-js');
-      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-      const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-      if (supabaseUrl && supabaseKey) {
-        const supabase = createClient(supabaseUrl, supabaseKey);
-        await supabase.from('transactions').delete().like('description', '%Automated Test Expense%');
-      }
-      await page.goto('/projects');
-      await page.waitForLoadState('networkidle');
-      await page.goto('/transactions');
-      await page.waitForLoadState('networkidle');
-      await page.waitForTimeout(5000);
-
+      require(process.cwd() + '/tests/support/mutation-safety').requireMutationEnvironment();
+      await require(process.cwd() + '/tests/support/mutation-fixtures').fixtureClient();
+      const runId = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+      testContext.set('expenseName', `Shiplight Expense ${runId}`);
+      require(process.cwd() + '/tests/support/mutation-fixtures').own(testContext, 'transaction', [testContext.get('expenseName')]);
+      const account = process.env.TEST_EXPENSE_ACCOUNT_NAME;
+      if (!account) throw new Error('TEST_EXPENSE_ACCOUNT_NAME is required; provision a disposable expense account');
+      testContext.set('expenseAccount', account);
+  - description: Select and verify TEST_SITE_NAME and TEST_SITE_ID
+    js: |-
+      await require(process.cwd() + '/tests/support/workspace').selectWorkspace(page)
+      testContext.set("mutationObservationStarted", true);
+  - description: Bind the browser session to the explicitly selected cleanup backend and account
+    js: await require(process.cwd() + '/tests/support/mutation-fixtures').bindBrowserFixture(page);
   - URL: /transactions
-  - intent: Click Add Expense in the top bar
+  - intent: Open the expense creation dialog
     action: click
-    locator: "getByRole('button', { name: 'Add Expense' })"
-
-  - description: Wait for dialog to open and React state to settle
-    js: "await page.waitForTimeout(1000);"
-
-  - intent: Fill the required expense amount
+    locator: "getByRole('button', { name: 'Add Expense', exact: true })"
+  - intent: Fill the amount for the unposted expense
     action: fill
-    locator: "getByPlaceholder('0.00')"
+    locator: getByRole('dialog').locator('#amount')
     value: "150"
-
-  - description: Wait for category dropdown to load
-    js: "await page.waitForTimeout(2000)"
-
-  - description: Ensure category is selected
-    js: "await page.locator('div[role=\"dialog\"] button[id=\"category\"]').first().click(); await page.locator('div[role=\"option\"]').first().click();"
-
-  - intent: Fill the expense notes used as description
+  - intent: Open the expense account selector
+    action: click
+    locator: getByRole('dialog').locator('#category')
+  - description: Select the explicitly configured expense account
+    js: "await page.getByRole('option', { name: testContext.get('expenseAccount'), exact: true }).click()"
+  - intent: Fill the run-specific expense description
     action: fill
-    locator: "locator('textarea#notes')"
-    value: "Automated Test Expense 60"
-
-  - intent: Type a new campaign name in the dependency selector
-    action: fill
-    locator: "getByPlaceholder('Select campaign (optional)')"
-    value: "Automated Expense Campaign"
-
-  - WAIT_UNTIL: The campaign dropdown options are visible
-    js: "await page.locator('.cursor-pointer.font-inter').filter({ hasText: 'Automated Expense Campaign' }).count() > 0"
-    timeout_seconds: 10
-
-  - description: Click the create campaign button
+    locator: getByRole('dialog').locator('#notes')
+    value: "{{expenseName}}"
+  - intent: Save the unposted expense without publishing to the journal
+    action: click
+    locator: "getByRole('dialog').getByRole('button', { name: 'Save', exact: true })"
+  - description: Require a successful create and remember the exact site-scoped expense ID
     js: |
-      const createOption = page.locator('.cursor-pointer.font-inter').filter({ hasText: /Use \"Automated Expense Campaign\"|Usar \"Automated Expense Campaign\"/i });
-      if (await createOption.count() > 0) {
-        await createOption.first().click();
-      } else {
-        const option = page.locator('.cursor-pointer.font-inter').filter({ hasText: 'Automated Expense Campaign' });
-        if (await option.count() > 0) {
-           await option.first().click();
-        }
-      }
-    
-  - description: Wait for the campaign to be selected
-    js: "await page.waitForTimeout(2000).catch(() => {})"
-
-  - description: Click out to unfocus select input
-    js: "await page.locator('div[role=\"dialog\"] h2').first().click(); await page.waitForTimeout(2000);"
-
-  - description: Save the new expense and wait for response
+      await expect(page.getByRole('dialog')).toHaveCount(0);
+      await expect(page.getByText(testContext.get('expenseName'), { exact: true })).toBeVisible();
+      await expect(page.locator('[data-sonner-toast][data-type="error"]')).toHaveCount(0);
+      const id = await require(process.cwd() + '/tests/support/mutation-fixtures').remember(testContext, 'transaction');
+      testContext.set('expenseUrl', `/transactions/${id}`);
+      await page.goto(testContext.get('expenseUrl'));
+      await page.reload();
+      await expect(page.getByText(testContext.get('expenseName'), { exact: true })).toBeVisible();
+      await expect(page.getByText('$150.00', { exact: true }).first()).toBeVisible();
+  - description: Read the exact created site-scoped entity before deletion
+    js: await require(process.cwd() + '/tests/support/mutation-fixtures').assertPersisted(testContext, 'transaction', testContext.get('expenseName'));
+  - URL: /transactions
+  - description: Delete only the run-owned expense using the list action
     js: |
-      const isValid = await page.evaluate(() => {
-        const f = document.querySelector('div[role="dialog"] form');
-        if (f) {
-           return (f).checkValidity();
-        }
-        return false;
+      const row = page.getByRole('row').filter({ has: page.getByText(testContext.get('expenseName'), { exact: true }) });
+      await expect(row).toHaveCount(1);
+      await row.getByRole('button', { name: 'Open menu', exact: true }).click();
+  - description: Accept only the expected expense deletion confirmation
+    js: |-
+      page.once('dialog', async dialog => {
+        if (dialog.type() !== 'confirm' || !/delete this expense/i.test(dialog.message())) { await dialog.dismiss(); throw new Error('Unexpected expense confirmation'); }
+        await dialog.accept();
       });
-      console.log('Form validity before save:', isValid);
-      if (!isValid) {
-         console.log('Form is invalid. HTML5 validation prevented submission.');
-         const amountValue = await page.locator('input#amount').inputValue();
-         console.log('Amount value:', amountValue);
-      }
-      
-      const clickPromise = page.locator('div[role="dialog"] button').filter({ hasText: /Save|Guardar/i }).first().click();
-      
-      const toastPromise = page.waitForSelector('li[data-sonner-toast]', { timeout: 15000 }).catch(() => null);
-      
-      await clickPromise;
-      const toastElement = await toastPromise;
-      if (toastElement) {
-        const toastText = await toastElement.innerText();
-        console.log('Toast appeared with text:', toastText);
-      } else {
-        console.log('No toast appeared after clicking save.');
-      }
-      
-  - WAIT_UNTIL: The create expense modal closes
-    js: "await page.locator('div[role=\"dialog\"]').count() === 0"
-    timeout_seconds: 60
-
-  - description: Ensure transactions are visible and data is updated
-    js: |
-      await page.waitForTimeout(5000);
-      await page.goto('/projects');
-      await page.waitForLoadState('networkidle');
-      await page.goto('/transactions');
-      await page.waitForLoadState('networkidle');
-      await page.waitForTimeout(10000);
-    
-  - WAIT_UNTIL: The expense appears in the list
-    js: "await page.getByText('Automated Test Expense 60').count() > 0"
-    timeout_seconds: 60
-
-  - intent: Open the expense details page
+  - intent: Delete the unposted expense
     action: click
-    locator: "locator('table').getByText('Automated Test Expense 60').first()"
-
-  - WAIT_UNTIL: The transaction details route is open and loaded
-    js: "await page.locator('div[role=\"dialog\"]').count() > 0 || await page.locator('h2').count() > 0"
-    timeout_seconds: 30
-
-  - VERIFY: The expense amount is visible
-    js: "await expect(page.getByText('$150.00').first()).toBeVisible()"
-
-  - intent: Return to transactions list
-    action: click
-    locator: "getByRole('button', { name: 'Expenses' }).first()"
-
-  - WAIT_UNTIL: The user is back on the transactions list
-    js: "await page.getByRole('button', { name: 'Add Expense' }).count() > 0"
-    timeout_seconds: 30
-
-  - description: Click the open menu button on the expense list dropdown
+    locator: "getByRole('menuitem', { name: 'Delete', exact: true })"
+  - description: Require deletion success and a loaded list after reload
     js: |
-      const row = page.locator('tr').filter({ hasText: 'Automated Test Expense 60' }).first();
-      await row.getByRole('button', { name: /open menu/i }).click();
-
-  - description: Click Delete in the dropdown menu
-    js: "await page.getByRole('menuitem', { name: /delete|eliminar/i }).click();"
-
-  - description: Wait for deletion to complete
-    js: "await page.waitForTimeout(2000);"
-
-  - VERIFY: The expense is gone from the list
-    js: "await expect(page.getByText('Automated Test Expense 60')).toHaveCount(0)"
+      await expect(page.getByText('Expense deleted successfully', { exact: true })).toBeVisible();
+      await page.reload();
+      await expect(page.getByRole('button', { name: 'Add Expense', exact: true })).toBeVisible();
+      await expect(page.locator('.animate-pulse:visible')).toHaveCount(0);
+      await expect(page.getByText(testContext.get('expenseName'), { exact: true })).toHaveCount(0);
+  - description: Verify removal by saved entity ID before cleanup can change the outcome
+    js: await require(process.cwd() + '/tests/support/mutation-fixtures').assertRemoved(testContext, 'transaction');
+teardown:
+  - description: Remove only the exact run-owned expense even when a preceding assertion fails
+    js: await require(process.cwd() + '/tests/support/mutation-fixtures').cleanup(testContext)
+  - description: Fail on observed HTTP, application, network, or console errors even when UI assertions passed
+    js: if (testContext.get("mutationObservationStarted")) await require(process.cwd() + '/tests/support/read-observation').assertReadObservation(page);

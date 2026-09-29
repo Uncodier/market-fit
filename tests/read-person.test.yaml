@@ -1,27 +1,23 @@
 goal: Search and read the People results list
 
 statements:
-  - URL: /projects
-  - intent: Select the first available project
-    action: click
-    locator: "getByRole('button', { name: 'Select' }).first()"
-
-  - WAIT_UNTIL: The user is navigated to the default project page
-    js: "await page.url().includes('/robots')"
-    timeout_seconds: 5
+  - description: Select the exact configured workspace and validate its ID
+    js: |
+      const { selectWorkspace } = require(process.cwd() + '/tests/support/workspace');
+      await selectWorkspace(page);
 
   - URL: /people
-  - WAIT_UNTIL: The people page is loaded
-    js: "await page.url().endsWith('/people')"
-    timeout_seconds: 15
+  - description: Require the loaded /people read surface
+    js: |
+      const { assertReadRoute } = require(process.cwd() + '/tests/support/read-navigation');
+      await assertReadRoute(page, '/people');
 
-  - intent: Run the people search to load results
-    action: click
-    locator: "getByRole('button', { name: /^Search$/i })"
+  - description: Require completed successful People search and visible results or explicit empty success
+    js: |
+      const { searchPeopleAndAssertResults } = require(process.cwd() + '/tests/support/read-people');
+      await searchPeopleAndAssertResults(page);
 
-  - WAIT_UNTIL: The people search has finished
-    js: "(await page.getByRole('button', { name: /^Search$/i }).count()) > 0"
-    timeout_seconds: 30
-
-  - VERIFY: The People search remains available when the external source has no matches
-    js: "await expect(page.getByRole('button', { name: /^Search$/i })).toBeVisible()"
+  - description: Fail on observed application or dependency read errors
+    js: |
+      const { assertReadObservation } = require(process.cwd() + '/tests/support/read-observation');
+      await assertReadObservation(page);

@@ -1,55 +1,68 @@
-goal: Complete CRUD cycle for a Modifier Group
-
+goal: Create, read, and delete a run-owned Modifier Group
 statements:
-  - URL: /projects
-  - intent: Select the first available project
-    action: click
-    locator: "getByRole('button', { name: 'Select' }).first()"
-
-  - WAIT_UNTIL: The user is navigated to the default project page
-    js: "await page.url().includes('/robots')"
-    timeout_seconds: 5
-
+  - description: Require TEST_SITE_NAME and TEST_SITE_ID and an explicit disposable mutation target before navigation
+    js: require(process.cwd() + '/tests/support/mutation-safety').requireMutationEnvironment();
+  - description: Register run-owned fixture names before any creation
+    js: |-
+      await require(process.cwd() + '/tests/support/mutation-fixtures').fixtureClient();
+      const runId = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+      testContext.set('modifierGroupName', `Shiplight Modifier Group ${runId}`);
+      require(process.cwd() + '/tests/support/mutation-fixtures').own(testContext, 'modifierGroup', [testContext.get('modifierGroupName')]);
+  - description: Select and verify the explicit workspace
+    js: |-
+      await require(process.cwd() + '/tests/support/workspace').selectWorkspace(page);
+      testContext.set("mutationObservationStarted", true);
+  - description: Bind the browser session to the explicitly selected cleanup backend and account
+    js: await require(process.cwd() + '/tests/support/mutation-fixtures').bindBrowserFixture(page);
   - URL: /catalog/modifier-groups
-  - WAIT_UNTIL: The page is loaded
-    js: "await page.url().endsWith('/catalog/modifier-groups')"
-    timeout_seconds: 15
-
+  - js: "await expect.poll(async () => Boolean(await page.url().endsWith('/catalog/modifier-groups')), { timeout: 15000 }).toBe(true);"
+    description: The page is loaded
   - intent: Click New modifier group in the top bar
     action: click
     locator: "getByRole('button', { name: 'New modifier group' })"
-
   - intent: Fill the modifier group name
     action: fill
-    locator: "getByRole('textbox').first()"
-    value: "Automated Test Modifier Group"
-
+    locator: getByRole('textbox').first()
+    value: "{{modifierGroupName}}"
   - intent: Submit the create modifier group form
     action: click
     locator: "getByRole('button', { name: 'Create' })"
-
-  - WAIT_UNTIL: The create modal closes
-    js: '(await page.locator("div[role=\"dialog\"]").count()) === 0'
-    timeout_seconds: 10
-
-  - WAIT_UNTIL: The modifier group details page is open
-    js: "await page.url().includes('/catalog/modifier-groups/') && !page.url().endsWith('/catalog/modifier-groups')"
-    timeout_seconds: 15
-
-  - VERIFY: The created modifier group name is visible
-    js: "await expect(page.getByText('Automated Test Modifier Group').first()).toBeVisible()"
-
+  - js: 'await expect.poll(async () => Boolean((await page.locator("div[role=\"dialog\"]").count()) === 0), { timeout: 10000 }).toBe(true);'
+    description: The create modal closes
+  - js: "await expect.poll(async () => Boolean(await page.url().includes('/catalog/modifier-groups/') && !page.url().endsWith('/catalog/modifier-groups')), { timeout: 15000 }).toBe(true);"
+    description: The modifier group details page is open
+  - js: await expect(page.getByText(testContext.get('modifierGroupName')).first()).toBeVisible()
+    description: The created modifier group name is visible
+  - description: Remember the exact created entity ID and URL for teardown
+    js: |-
+      testContext.set('modifierGroupUrl', page.url());
+      await require(process.cwd() + '/tests/support/mutation-fixtures').remember(testContext, 'modifierGroup');
+  - description: Read the exact created site-scoped entity before deletion
+    js: await require(process.cwd() + '/tests/support/mutation-fixtures').assertPersisted(testContext, 'modifierGroup', testContext.get('modifierGroupName'));
   - intent: Click Delete on the details toolbar
     action: click
     locator: "getByRole('button', { name: 'Delete' })"
-
   - intent: Confirm deletion
     action: click
     locator: "getByRole('button', { name: 'Delete' }).last()"
-
-  - WAIT_UNTIL: The user is back on the list
-    js: "await page.url().endsWith('/catalog/modifier-groups')"
-    timeout_seconds: 15
-
-  - VERIFY: The modifier group is gone from the list
-    js: "await expect(page.getByText('Automated Test Modifier Group')).toHaveCount(0)"
+  - js: "await expect.poll(async () => Boolean(await page.url().endsWith('/catalog/modifier-groups')), { timeout: 15000 }).toBe(true);"
+    description: The user is back on the list
+  - js: await expect(page.getByText(testContext.get('modifierGroupName'))).toHaveCount(0)
+    description: The modifier group is gone from the list
+  - description: Reload the list and wait for loaded data before the final removal check
+    js: |-
+      await page.goto('/catalog/modifier-groups');
+      await page.reload();
+      await expect(page.locator('.animate-pulse:visible')).toHaveCount(0);
+  - description: Verify removal by saved entity ID before cleanup can change the outcome
+    js: await require(process.cwd() + '/tests/support/mutation-fixtures').assertRemoved(testContext, 'modifierGroup');
+tags:
+  - regression
+  - mutation
+teardown:
+  - description: Clean up exact run-scoped entities and dependencies even after failure
+    js: |-
+      await require(process.cwd() + '/tests/support/mutation-fixtures').cleanup(testContext);
+      if (testContext.get('mutationJournal')) await page.goto('/catalog/modifier-groups');
+  - description: Fail on observed HTTP, application, network, or console errors even when UI assertions passed
+    js: if (testContext.get("mutationObservationStarted")) await require(process.cwd() + '/tests/support/read-observation').assertReadObservation(page);

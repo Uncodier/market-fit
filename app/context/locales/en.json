@@ -1374,6 +1374,8 @@
   "campaigns.create.budgetPlaceholder": "Budget amount",
   "campaigns.create.cancel": "Cancel",
   "campaigns.create.creating": "Creating",
+  "campaigns.create.createWithAi": "Create campaign with AI",
+  "campaigns.create.createWithAiDescription": "Makinari's agent will use available tools to advance this campaign as far as possible. Your team may need to provide API keys, access, approvals, or other steps. A pending requirement containing the full campaign brief will be created and linked to this campaign. Do not enter API keys here.",
   "campaigns.create.description": "Create a new marketing campaign to organize your marketing activities.",
   "campaigns.create.descriptionLabel": "Description",
   "campaigns.create.descriptionPlaceholder": "Describe the campaign objectives and goals",

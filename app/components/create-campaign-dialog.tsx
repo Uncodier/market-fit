@@ -29,14 +29,12 @@ import { CreateCampaignFields } from "@/app/components/create-campaign-fields"
 
 interface CreateCampaignDialogProps {
   segments?: Array<{ id: string; name: string; description: string }>
-  requirements?: Array<{ id: string; title: string; description: string }>
-  onCreateCampaign: (values: CampaignFormValues) => Promise<{ data?: any; error?: string }>
+  onCreateCampaign: (values: CampaignFormValues) => Promise<{ data?: { id: string } | null; error?: string | null }>
   trigger?: React.ReactNode
 }
 
 export function CreateCampaignDialog({
   segments = [],
-  requirements = [],
   onCreateCampaign,
   trigger,
 }: CreateCampaignDialogProps) {
@@ -55,7 +53,7 @@ export function CreateCampaignDialog({
       priority: "medium",
       type: "inbound",
       segments: [],
-      requirements: [],
+      createWithAi: false,
       budget: { allocated: 0, remaining: 0, currency: "USD" },
       revenue: { actual: 0, projected: 0, estimated: 0, currency: "USD" },
       site_id: currentSite?.id || "",
@@ -90,7 +88,7 @@ export function CreateCampaignDialog({
         return
       }
 
-      toast.success("Campaign created")
+      toast.success(values.createWithAi ? "Campaign and AI requirement created" : "Campaign created")
       const id = response.data?.id
       form.reset()
       setIsOpen(false)
@@ -126,7 +124,6 @@ export function CreateCampaignDialog({
             <CreateCampaignFields
               form={form}
               segments={segments}
-              requirements={requirements}
               t={t}
             />
           </DialogBody>
