@@ -1,6 +1,6 @@
 "use client"
 
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { Fragment, useCallback, useEffect, useMemo, useState } from "react"
 import { toast } from "sonner"
 import { apiClient } from "@/app/services/api-client-service"
 import { cn } from "@/lib/utils"
@@ -37,7 +37,9 @@ import { useIsMobile } from "@/app/hooks/use-mobile-view"
 import pricingConfig from "@/app/config/pricing.json"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { useSearchParams } from "next/navigation"
-import { createFinderQuery, lookupFetcher, searchFinderPeople, type LookupOption } from "./finder-api"
+import { createFinderQuery, lookupFetcher, type LookupOption } from "./finder-api"
+import { LookupChipsInput } from "./lookup-chips-input"
+import { useFinderSearch } from "./use-finder-search"
 
 type Person = {
   id: string
@@ -262,124 +264,6 @@ function ChipsInput({
   )
 }
 
-// Debounce helper
-function debounce<T extends (...args: any[]) => any>(fn: T, delay = 300) {
-  let t: any
-  return (...args: Parameters<T>) => {
-    clearTimeout(t)
-    t = setTimeout(() => fn(...args), delay)
-  }
-}
-
-// Generic async lookup chips input
-function LookupChipsInput({
-  values,
-  onChange,
-  placeholder = "Search",
-  fetcher
-}: {
-  values: LookupOption[]
-  onChange: (next: LookupOption[]) => void
-  placeholder?: string
-  fetcher: (query: string) => Promise<LookupOption[]>
-}) {
-  const [text, setText] = useState("")
-  const [open, setOpen] = useState(false)
-  const [loading, setLoading] = useState(false)
-  const [suggestions, setSuggestions] = useState<LookupOption[]>([])
-  const listRef = useRef<HTMLDivElement | null>(null)
-
-  const doSearch = debounce(async (q: string) => {
-    if (!q) { setSuggestions([]); return }
-    try {
-      setLoading(true)
-      const res = await fetcher(q)
-      const existingTexts = new Set(values.map(v => v.text))
-      setSuggestions(res.filter(s => !existingTexts.has(s.text)))
-      // Ensure the list shows from the top on each new query
-      setTimeout(() => { if (listRef.current) listRef.current.scrollTop = 0 }, 0)
-    } catch {
-      setSuggestions([])
-    } finally {
-      setLoading(false)
-    }
-  }, 250)
-
-  const add = (v: string | LookupOption) => {
-    const val = typeof v === 'string' ? v.trim() : v.text
-    if (!val) return
-    const option: LookupOption = typeof v === 'string' ? { id: null, text: val } : v
-    // Avoid duplicates by text
-    const seen = new Set(values.map(x => x.text))
-    const next = seen.has(option.text) ? values : [...values, option]
-    onChange(next)
-    setText("")
-    setOpen(false)
-  }
-
-  // Keep the suggestions list scrolled to the very top when opening or updating
-  useEffect(() => {
-    if (open && listRef.current) {
-      listRef.current.scrollTop = 0
-    }
-  }, [open, suggestions.length])
-
-  return (
-    <div className="relative space-y-2">
-      <Input
-        placeholder={placeholder}
-        value={text}
-        onChange={(e) => {
-          const v = e.target.value
-          setText(v)
-          setOpen(true)
-          doSearch(v)
-        }}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter') {
-            e.preventDefault()
-            add(text)
-          }
-        }}
-        className="h-10"
-      />
-      {open && suggestions.length > 0 && (
-        <div ref={listRef} className="absolute z-20 top-[44px] left-0 right-0 border bg-background rounded-md shadow-sm max-h-56 overflow-y-auto overflow-x-hidden divide-y max-w-full !flex !flex-col items-start">
-          {suggestions.map(s => (
-            <button
-              key={`${s.id ?? s.text}`}
-              type="button"
-              className="w-full text-left px-3 py-2 text-sm hover:bg-muted leading-snug"
-              onClick={() => add(s)}
-              title={s.text}
-            >
-              <span className="block truncate">{s.text}</span>
-            </button>
-          ))}
-        </div>
-      )}
-      {values.length > 0 && (
-        <div className="flex flex-row flex-wrap gap-2 items-center justify-start">
-          {values.map((v) => (
-            <span key={`${v.id ?? v.text}`} className="inline-flex items-center gap-1 text-xs rounded-full bg-muted px-2 py-1">
-              {v.text}
-              <button
-                type="button"
-                onClick={() => onChange(values.filter((x) => x.text !== v.text))}
-                className="hover:text-destructive"
-                aria-label={`Remove ${v.text}`}
-              >
-                <X className="h-3 w-3" />
-              </button>
-            </span>
-          ))}
-        </div>
-      )}
-      {loading && <p className="text-xs text-muted-foreground">Searching…</p>}
-    </div>
-  )
-}
-
 export default function PeopleSearchPage() {
   const searchParams = useSearchParams()
   const isArtifact = searchParams ? searchParams.get("artifact") === "true" : false
@@ -470,8 +354,15 @@ export default function PeopleSearchPage() {
   // remote data state
   const [searchResults, setSearchResults] = useState<any[]>([])
   const [totalResults, setTotalResults] = useState<number>(0)
-  const [loading, setLoading] = useState<boolean>(false)
   const [error, setError] = useState<string | null>(null)
+  const { loading, executeSearch, isSearchPending } = useFinderSearch({
+    siteId: currentSite?.id,
+    onResults: (results, total) => {
+      setError(null)
+      setSearchResults(results)
+      setTotalResults(total)
+    }
+  })
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({})
   const [addingToLeads, setAddingToLeads] = useState(false)
   const [isSegmentModalOpen, setIsSegmentModalOpen] = useState(false)
@@ -553,12 +444,14 @@ export default function PeopleSearchPage() {
 
   // Helper function to load ICP data
   const handleLoadIcp = async (icpId: string) => {
+    if (isSearchPending()) return
     try {
       const url = `/api/finder/icp?icp_id=${encodeURIComponent(icpId)}${currentSite?.id ? `&site_id=${encodeURIComponent(currentSite.id)}` : ''}`
       const res = await apiClient.get(url)
       if (!res.success) {
         throw new Error(res.error?.message || 'Failed to load saved list')
       }
+      if (isSearchPending()) return
       const q = (res.data as any)?.role_query?.query || {}
       // Apply basic fields to UI
       const parseDate = (s?: string) => (s ? new Date(s) : undefined)
@@ -1106,39 +999,6 @@ export default function PeopleSearchPage() {
     return payload
   }
 
-  const executeSearch = async (payload: FinderRequest) => {
-    setLoading(true)
-    setError(null)
-    try {
-      if (currentSite?.id) {
-        payload.site_id = currentSite.id
-      }
-      
-      // Debug: Log payload being sent
-      console.log('[People] Sending request with payload:', JSON.stringify(payload, null, 2))
-      
-      const [res, totals] = await searchFinderPeople(payload)
-      if (!res.success) {
-        throw new Error(res.error?.message || 'Finder request failed')
-      }
-      const data = res.data as any
-      const totalsData = totals?.data as any
-      setSearchResults(Array.isArray(data?.search_results) ? data.search_results : [])
-      const computedTotal = typeof totalsData?.total_persons === 'number'
-        ? totalsData.total_persons
-        : (typeof data?.total_search_results === 'number' ? data.total_search_results : 0)
-      setTotalResults(computedTotal)
-    } catch (e: any) {
-      console.error('[People] Finder error:', e)
-      toast.error(e?.message || 'Finder request failed')
-      setError(null)
-      setSearchResults([])
-      setTotalResults(0)
-    } finally {
-      setLoading(false)
-    }
-  }
-
   const handleSearch = async (page: number = 1) => {
     const payload = buildFinderPayload(page)
     await executeSearch(payload)
@@ -1207,12 +1067,14 @@ export default function PeopleSearchPage() {
   }
 
   const onClickSearch = () => {
+    if (isSearchPending()) return
     setCurrentPage(1)
     handleSearch(1)
     setShowResultsOnMobile(true)
   }
 
   const onPageChange = (page: number) => {
+    if (isSearchPending()) return
     setCurrentPage(page)
     handleSearch(page)
   }
@@ -2592,7 +2454,7 @@ export default function PeopleSearchPage() {
               >
                 {t('people.search.clear') || 'Clear'}
               </Button>
-            <Button className="flex-1 h-10 gap-2 !min-w-0" onClick={onClickSearch}>
+            <Button className="flex-1 h-10 gap-2 !min-w-0" onClick={onClickSearch} disabled={loading}>
                 <Search className="h-4 w-4" />
               {loading ? (t('people.search.searching') || 'Searching…') : (t('people.search.btnShort') || 'Search')}
               </Button>

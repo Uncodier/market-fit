@@ -131,9 +131,12 @@ describe('Finder screen API authentication', () => {
 
   it('wires the Finder screen to the authenticated helpers without auth opt-outs', () => {
     const page = readFileSync(join(process.cwd(), 'app/people/page.tsx'), 'utf8')
+    const searchHook = readFileSync(join(process.cwd(), 'app/people/use-finder-search.ts'), 'utf8')
     expect(page).toContain('from "./finder-api"')
-    expect(page).toContain('await searchFinderPeople(payload)')
+    expect(page).toContain('useFinderSearch({')
+    expect(searchHook).toContain('await searchFinderPeople(payload)')
     expect(page).toContain('await createFinderQuery(payload)')
     expect(page).not.toMatch(/includeAuth\s*:\s*false/)
+    expect(searchHook).not.toMatch(/includeAuth\s*:\s*false/)
   })
 })
