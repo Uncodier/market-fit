@@ -11,6 +11,7 @@ export interface AttributionData {
 
 export interface Lead {
   id: string
+  buyer_user_id?: string | null
   name: string
   email: string
   personal_email: string | null

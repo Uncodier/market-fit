@@ -62,7 +62,7 @@ export function SafariSettingsLink({
       }
       
       // Encuentra todos los elementos internos
-      const iconContainer = link.querySelector('div:first-child');
+      const iconContainer = link.querySelector<HTMLDivElement>('div:first-child');
       const svgElement = link.querySelector('svg');
       const textContainer = Array.from(link.querySelectorAll('div')).find(div => 
         div !== iconContainer && div.textContent?.trim() === label

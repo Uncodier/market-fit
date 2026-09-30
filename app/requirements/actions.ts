@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
 import { cookies } from "next/headers"
 import { requirementFormSchema, type RequirementFormValues } from "./schema"
+import type { RequirementType } from "./types"
 
 export type { RequirementFormValues } from "./schema"
 
@@ -228,7 +229,7 @@ interface UpdateRequirementData {
   id: string
   title: string
   description: string
-  type: "content" | "design" | "research" | "follow_up" | "task" | "develop" | "analytics" | "testing" | "approval" | "coordination" | "strategy" | "optimization" | "automation" | "integration" | "planning" | "payment"
+  type: RequirementType
   priority: "high" | "medium" | "low"
   status: RequirementStatusType
   completionStatus: CompletionStatusType
@@ -286,7 +287,7 @@ export async function updateRequirement(data: UpdateRequirementData) {
       return { error: `Failed to read requirement segments: ${currentSegmentsError.message}` }
     }
     const currentSegmentIds = (currentSegments || [])
-      .map((relation) => relation.segment_id)
+      .map((relation: { segment_id: string }) => relation.segment_id)
       .sort()
 
     if (JSON.stringify(currentSegmentIds) !== JSON.stringify(desiredSegmentIds)) {
@@ -321,7 +322,7 @@ export async function updateRequirement(data: UpdateRequirementData) {
       return { error: `Failed to read requirement campaigns: ${currentCampaignsError.message}` }
     }
     const currentCampaignIds = (currentCampaigns || [])
-      .map((relation) => relation.campaign_id)
+      .map((relation: { campaign_id: string }) => relation.campaign_id)
       .sort()
 
     if (JSON.stringify(currentCampaignIds) !== JSON.stringify(desiredCampaignIds)) {

@@ -33,7 +33,7 @@ describe('CommandsTable', () => {
   ];
 
   test('renders the table headers correctly', () => {
-    render(<CommandsTable commands={mockCommands} />);
+    render(<CommandsTable onLoadMore={jest.fn()} hasMore={false} commands={mockCommands} />);
     
     expect(screen.getByText('Task')).toBeInTheDocument();
     expect(screen.getByText('Status')).toBeInTheDocument();
@@ -42,7 +42,7 @@ describe('CommandsTable', () => {
   });
 
   test('renders the table rows with correct command data', () => {
-    render(<CommandsTable commands={mockCommands} />);
+    render(<CommandsTable onLoadMore={jest.fn()} hasMore={false} commands={mockCommands} />);
     
     // Check if all task names are displayed
     expect(screen.getByText('First Task')).toBeInTheDocument();
@@ -60,20 +60,20 @@ describe('CommandsTable', () => {
   });
   
   test('renders error context for failed commands', () => {
-    render(<CommandsTable commands={mockCommands} />);
+    render(<CommandsTable onLoadMore={jest.fn()} hasMore={false} commands={mockCommands} />);
     
     // Check if error context is displayed for failed command
     expect(screen.getByText('Error: Something went wrong')).toBeInTheDocument();
   });
   
   test('renders empty state when no commands are provided', () => {
-    render(<CommandsTable commands={[]} />);
+    render(<CommandsTable onLoadMore={jest.fn()} hasMore={false} commands={[]} />);
     
     expect(screen.getByText('No commands found')).toBeInTheDocument();
   });
   
   test('toggles command row expansion when clicked', () => {
-    render(<CommandsTable commands={mockCommands} />);
+    render(<CommandsTable onLoadMore={jest.fn()} hasMore={false} commands={mockCommands} />);
     
     // The behavior should be verified by checking for changes in CSS classes or
     // the appearance of additional elements when a row is clicked
@@ -92,7 +92,7 @@ describe('CommandsTable', () => {
   });
   
   test('formats dates correctly', () => {
-    render(<CommandsTable commands={mockCommands} />);
+    render(<CommandsTable onLoadMore={jest.fn()} hasMore={false} commands={mockCommands} />);
     
     // Since formatDate returns a localized string that may vary by environment,
     // we'll just check that dates are not displayed as raw ISO strings
@@ -133,7 +133,7 @@ describe('CommandsTable', () => {
       }
     ];
     
-    render(<CommandsTable commands={commandsWithVariousDurations} />);
+    render(<CommandsTable onLoadMore={jest.fn()} hasMore={false} commands={commandsWithVariousDurations} />);
     
     // Check for correctly formatted durations
     expect(screen.getByText('750ms')).toBeInTheDocument();

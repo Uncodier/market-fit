@@ -70,9 +70,10 @@ describe("mergeOutstandIntoSocialMedia", () => {
   })
 
   it("never accepts an import flag sent in Outstand account metadata", () => {
+    const untrustedAccount = { ...linkedinAccount, initialImport: { status: "completed", jobId: "fake" } }
     const { socialMedia } = mergeOutstandIntoSocialMedia(
       [{ id: "new-linkedin-id", platform: "linkedin", isActive: false }],
-      [{ ...linkedinAccount, initialImport: { status: "completed", jobId: "fake" } }],
+      [untrustedAccount],
       "linkedin"
     )
     expect(socialMedia[0].initialImport).toBeUndefined()

@@ -56,6 +56,7 @@ export function SimpleAgentCard({
   forceShow = false,
   activityStates = {}
 }: SimpleAgentCardProps) {
+  const { currentSite } = useSite()
   // Si el agente está marcado como deshabilitado y no estamos forzando a mostrarlo, no renderizarlo
   if (agent.isDisabled && !forceShow) {
     console.log(`SimpleAgentCard: Ocultando agente ${agent.name} (${agent.id}) porque isDisabled=true`);
@@ -64,8 +65,9 @@ export function SimpleAgentCard({
 
   // Function to get the icon component based on the name
   const getIconComponent = (iconName: string) => {
-    // @ts-ignore - Icons is an object that contains all the icons
-    return Icons[iconName] || Icons.User;
+    return Object.prototype.hasOwnProperty.call(Icons, iconName)
+      ? Icons[iconName as keyof typeof Icons]
+      : Icons.User;
   };
   
   // Get the icon component
@@ -102,7 +104,6 @@ export function SimpleAgentCard({
     displayStatus === "active"
   )
 
-  const { currentSite } = useSite()
   const enabledChannels = getEnabledSiteChannels(currentSite)
 
   return (

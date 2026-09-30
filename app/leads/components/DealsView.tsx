@@ -9,6 +9,7 @@ import { EmptyCard } from "@/app/components/ui/empty-card"
 import { Target } from "@/app/components/ui/icons"
 import { Deal } from "@/app/deals/types"
 import { DealsTable } from "@/app/deals/components/DealsTable"
+import type { PostgrestSingleResponse } from "@supabase/supabase-js"
 
 interface DealsViewProps {
   leadId: string
@@ -33,7 +34,7 @@ export function DealsView({ leadId }: DealsViewProps) {
         const supabase = createClient()
         
         // We get the deals from deal_leads join table
-        const { data, error } = await supabase
+        const { data, error }: PostgrestSingleResponse<Array<{ deal_id: string; deals: Deal | null }>> = await supabase
           .from('deal_leads')
           .select(`
             deal_id,
@@ -53,14 +54,12 @@ export function DealsView({ leadId }: DealsViewProps) {
           setDeals([])
         } else {
           // Format data
-          let formattedDeals = data
-            .filter((item: any) => item.deals) // Ensure the deal exists
-            .map((item: any) => item.deals as Deal)
+          let formattedDeals = data.flatMap(item => item.deals ? [item.deals] : [])
 
           // Fetch pending tasks
           const dealIds = formattedDeals.map(d => d.id)
           if (dealIds.length > 0) {
-            const { data: tasks } = await supabase
+            const { data: tasks }: PostgrestSingleResponse<Array<NonNullable<Deal["next_task"]> & { deal_id: string }>> = await supabase
               .from('tasks')
               .select('id, deal_id, title, scheduled_date, type')
               .in('deal_id', dealIds)
@@ -74,7 +73,7 @@ export function DealsView({ leadId }: DealsViewProps) {
                   ...deal,
                   next_task: dTasks.length > 0 ? dTasks[0] : null
                 }
-              }) as Deal[]
+              })
             }
           }
             

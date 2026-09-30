@@ -46,7 +46,7 @@ export async function POST(request: Request) {
 
   const decision = decideInvitationAcceptance(invitation, user.id)
 
-  if (decision === 'missing' || decision === 'wrong-user') {
+  if (!invitation || decision === 'missing' || decision === 'wrong-user') {
     return NextResponse.json(
       { success: false, error: 'This invitation was not issued to your account' },
       { status: 403 }

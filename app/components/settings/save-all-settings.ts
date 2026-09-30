@@ -441,19 +441,19 @@ export const handleSave = async (data: SiteFormValues, options: SaveOptions) => 
           // Preserve nested objects that might get overwritten
           channels: {
             ...currentSite.settings?.channels,
-            ...settingsData.channels,
+            ...channels,
             // Deep merge for email, whatsapp, and website to preserve all fields
             email: {
               ...currentSite.settings?.channels?.email,
-              ...settingsData.channels?.email
+              ...channels?.email
             },
             whatsapp: {
               ...currentSite.settings?.channels?.whatsapp,
-              ...settingsData.channels?.whatsapp
+              ...channels?.whatsapp
             },
             website: {
               ...currentSite.settings?.channels?.website,
-              ...settingsData.channels?.website
+              ...channels?.website
             }
           }
         }

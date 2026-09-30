@@ -12,8 +12,8 @@ function markUiNavigation(): void {
 }
 
 export type AppRouterLike = {
-  push: (href: string, options?: unknown) => void
-  replace: (href: string, options?: unknown) => void
+  push: (href: string) => void
+  replace: (href: string) => void
 }
 
 export type NavigateOrAssignOptions = {

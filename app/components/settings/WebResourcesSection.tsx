@@ -32,7 +32,7 @@ export function WebResourcesSection({ active, onSave }: WebResourcesSectionProps
   useEffect(() => {
     const subscription = form.watch((value, { name }) => {
       if (name === 'resource_urls' && value.resource_urls && Array.isArray(value.resource_urls)) {
-        setResourceList(value.resource_urls);
+        setResourceList(value.resource_urls.filter(resource => resource !== undefined).map(resource => ({ key: resource.key ?? "", url: resource.url ?? "" })));
       }
     });
     return () => subscription.unsubscribe();

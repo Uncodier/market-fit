@@ -41,8 +41,8 @@ export function EditCatalogCategoryDialog({ siteId, category, open, onOpenChange
         .eq('active', true)
         
       if (data) {
-        setIncomeAccounts(data.filter(a => a.type === 'income' && a.key))
-        setExpenseAccounts(data.filter(a => a.type === 'expense' && a.key))
+        setIncomeAccounts(data.filter((a: AccountingAccount) => a.type === 'income' && a.key))
+        setExpenseAccounts(data.filter((a: AccountingAccount) => a.type === 'expense' && a.key))
       }
     }
     loadAccounts()

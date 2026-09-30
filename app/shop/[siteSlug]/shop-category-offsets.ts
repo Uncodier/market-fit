@@ -41,7 +41,7 @@ async function loadShopCategoryOffsetsFallback(
   if (error || !rows) return []
 
   const names = rows.map(
-    (row) => categoryNameFromJoin((row as any).category) || SHOP_UNCATEGORIZED_NAME
+    (row: { category: unknown }) => categoryNameFromJoin(row.category) || SHOP_UNCATEGORIZED_NAME
   )
   return buildShopCategoryOffsets(names)
 }

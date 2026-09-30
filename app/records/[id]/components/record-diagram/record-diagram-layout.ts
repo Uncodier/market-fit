@@ -38,14 +38,15 @@ export function getRecordDiagramNodeSize(node: RecordDiagramNode): DiagramSize {
   )
   const titleHeight = node.kind === "description" ? 0 : 40
   const verticalPadding = getRecordNodeVerticalPadding(node.kind)
-  const minimumHeight = {
+  const minimumHeights: Partial<Record<RecordDiagramNode['kind'], number>> = {
     description: 64,
     question: 132,
     decision: 176,
     source: 120,
     database: 132,
     terminator: 112,
-  }[node.kind] || 112
+  }
+  const minimumHeight = minimumHeights[node.kind] || 112
   let height = clampSize(
     verticalPadding + titleHeight + wrappedLines * 20 + attachmentsHeight,
     minimumHeight,

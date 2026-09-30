@@ -2,16 +2,17 @@
 
 import React, { useEffect, useState } from "react"
 import { getBillByPublicToken } from "@/app/bills/send-actions"
-import { PublicDocumentView } from "@/app/documents/components/PublicDocumentView"
+import { PublicDocumentView, type PublicDocumentViewProps } from "@/app/documents/components/PublicDocumentView"
 import { PublicDocumentViewSkeleton } from "@/app/documents/components/PublicDocumentViewSkeleton"
 import { documentT } from "@/app/lib/i18n/document-t"
+import { mapDocumentLineItems } from "@/app/documents/map-document-items"
 
 export default function PublicBillPage(props: {
   params: Promise<{ token: string }>
 }) {
   const params = React.use(props.params)
   const [error, setError] = useState<string | null>(null)
-  const [view, setView] = useState<any>(null)
+  const [view, setView] = useState<PublicDocumentViewProps | null>(null)
 
   useEffect(() => {
     async function load() {
@@ -23,12 +24,7 @@ export default function PublicBillPage(props: {
       const purchase = res.data
       const branding = res.branding
       const locale = branding?.locale || "en"
-      const items = (purchase.items || []).map((item) => ({
-        name: item.name || "Item",
-        quantity: Number(item.quantity) || 0,
-        unit_price: Number(item.unitCost) || 0,
-        subtotal: Number(item.subtotal) || 0,
-      }))
+      const items = mapDocumentLineItems(purchase.items)
 
       setView({
         kindLabel: documentT(locale, "bills.detail.breadcrumb") || "Bill",

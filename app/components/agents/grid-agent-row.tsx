@@ -55,6 +55,7 @@ export function GridAgentRow({
   forceShow = false,
   activityStates = {}
 }: GridAgentRowProps) {
+  const { currentSite } = useSite()
   // Si el agente está marcado como deshabilitado y no estamos forzando a mostrarlo, no renderizarlo
   if (agent.isDisabled && !forceShow) {
     console.log(`GridAgentRow: Ocultando agente ${agent.name} (${agent.id}) porque isDisabled=true`);
@@ -66,8 +67,9 @@ export function GridAgentRow({
   
   // Get the icon component for the agent
   const getIconComponent = (iconName: string) => {
-    // @ts-ignore - Icons is an object that contains all the icons
-    return Icons[iconName] || Icons.User;
+    return Object.prototype.hasOwnProperty.call(Icons, iconName)
+      ? Icons[iconName as keyof typeof Icons]
+      : Icons.User;
   };
   
   // Get the icon component
@@ -88,7 +90,6 @@ export function GridAgentRow({
   const isChatDisabled = !hasCustomData;
   
   // Communication icons logic (same as SimpleAgentCard)
-  const { currentSite } = useSite()
   
   // Determine if this agent should have entry icons (Customer Support)
   const shouldShowEntryIcons = agent.id === "7" && hasCustomData && displayStatus === "active"

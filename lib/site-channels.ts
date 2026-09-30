@@ -40,7 +40,12 @@ export type SiteChannelSource = {
         } | null
       }>
     } | null
-    social_media?: Array<{ platform?: string | null; network?: string | null; isActive?: boolean | number }> | null
+    social_media?: Array<{
+      id?: string | null
+      platform?: string | null
+      network?: string | null
+      isActive?: boolean | number
+    }> | null
   } | null
 }
 

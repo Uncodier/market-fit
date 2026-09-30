@@ -19,7 +19,7 @@ import {
 import { Button } from "@/app/components/ui/button"
 import { toast } from "sonner"
 import { Clock, Building as Building2, RotateCcw as History, ArrowUpRight } from "@/app/components/ui/icons"
-import { format, subDays } from "date-fns"
+import { buildPaymentBalanceHistory } from "./payment-balance-history"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription, DialogForm, DialogBody } from "@/app/components/ui/dialog"
 import { Label } from "@/app/components/ui/label"
 import { Input } from "@/app/components/ui/input"
@@ -29,6 +29,7 @@ import { BaseKpiWidget } from "@/app/components/dashboard/base-kpi-widget"
 import { WalletChart } from "./components/WalletChart"
 import { SalesWithdrawalsChart } from "./components/SalesWithdrawalsChart"
 import { CreditUsageHistory } from "@/app/components/billing/credit-usage-history"
+import type { PayoutRow, PaymentOperationRow, CreditTransactionRow } from "./payment-dashboard-types"
 
 export default function PaymentsPage() {
   return (
@@ -53,10 +54,10 @@ function PaymentsContent() {
 
   // Extract bank details from site settings
   const shopBankDetails = {
-    accountName: currentSite?.shop?.bank_account_name || "",
-    bankName: currentSite?.shop?.bank_name || "",
-    routingNumber: currentSite?.shop?.bank_routing_number || "",
-    accountNumber: currentSite?.shop?.bank_account_number || ""
+    accountName: currentSite?.settings?.shop?.bank_account_name || "",
+    bankName: currentSite?.settings?.shop?.bank_name || "",
+    routingNumber: currentSite?.settings?.shop?.bank_routing_number || "",
+    accountNumber: currentSite?.settings?.shop?.bank_account_number || ""
   }
 
   // Listen for topbar payout requests
@@ -76,7 +77,7 @@ function PaymentsContent() {
   }, [])
 
   // Fetch payout requests
-  const fetchPayouts = async () => {
+  const fetchPayouts = async (): Promise<PayoutRow[]> => {
     if (!currentSite?.id) return []
     const { data } = await supabase
       .from('payout_requests')
@@ -92,7 +93,7 @@ function PaymentsContent() {
   )
 
   // Fetch operations (credits_purchases AND sales AND subscriptions AND commissions) to show in the table
-  const fetchOperations = async () => {
+  const fetchOperations = async (): Promise<PaymentOperationRow[]> => {
     if (!currentSite?.id) return []
     const { data } = await supabase
       .from('payments')
@@ -109,7 +110,7 @@ function PaymentsContent() {
   )
 
   // Fetch all credit transactions to build the accurate history chart (includes sales, purchases, usages, payouts)
-  const fetchCreditTransactions = async () => {
+  const fetchCreditTransactions = async (): Promise<CreditTransactionRow[]> => {
     if (!currentSite?.id) return []
     const { data } = await supabase
       .from('credit_transactions')
@@ -126,70 +127,17 @@ function PaymentsContent() {
 
   const usableCredits = (currentSite?.billing?.credits_available || 0) + (currentSite?.billing?.account_balance || 0)
   const withdrawableBalance = currentSite?.billing?.account_balance || 0
-  const pendingAmount = payouts?.filter((p: any) => p.status === 'pending').reduce((sum: number, p: any) => sum + Number(p.requested_credits), 0) || 0
-  const totalTransferredAmount = payouts?.filter((p: any) => p.status === 'completed').reduce((sum: number, p: any) => sum + Number(p.requested_credits), 0) || 0
+  const pendingAmount = payouts?.filter((p) => p.status === 'pending').reduce((sum, p) => sum + Number(p.requested_credits), 0) || 0
+  const totalTransferredAmount = payouts?.filter((p) => p.status === 'completed').reduce((sum, p) => sum + Number(p.requested_credits), 0) || 0
   
   // Only count visible operations for the payments dashboard table
   const visibleOperations = operations?.filter(op => ['sale', 'commission'].includes(op.transaction_type)) || []
   const totalOperationsCount = visibleOperations.length
   const totalWithdrawalsCount = payouts?.length || 0
 
-  // Extract balance history
-  const chartData = []
-  
-  // Calculate running balance for every day in the last 14 days backwards
-  let runningBalance = usableCredits + withdrawableBalance
-
-  if (allTransactions || visibleOperations || payouts) {
-    for (let i = 0; i < 14; i++) {
-      const date = subDays(new Date(), i)
-      
-      const startOfDay = new Date(date)
-      startOfDay.setHours(0, 0, 0, 0)
-      const endOfDay = new Date(date)
-      endOfDay.setHours(23, 59, 59, 999)
-      
-      // Filter transactions exactly on this date
-      const txOnDate = (allTransactions || []).filter(tx => {
-        const txDate = new Date(tx.created_at)
-        return txDate >= startOfDay && txDate <= endOfDay
-      })
-      
-      const salesOnDate = visibleOperations.filter(op => op.transaction_type === 'sale' && new Date(op.created_at) >= startOfDay && new Date(op.created_at) <= endOfDay)
-      const commissionsOnDate = visibleOperations.filter(op => op.transaction_type === 'commission' && new Date(op.created_at) >= startOfDay && new Date(op.created_at) <= endOfDay)
-      
-      const payoutsOnDate = (payouts || []).filter(p => {
-        const pDate = new Date(p.created_at)
-        return pDate >= startOfDay && pDate <= endOfDay && p.status !== 'rejected'
-      })
-      
-      const creditsAdded = txOnDate.filter(tx => tx.amount > 0).reduce((sum, tx) => sum + Number(tx.amount), 0)
-      const creditsConsumed = txOnDate.filter(tx => tx.amount < 0).reduce((sum, tx) => sum + Math.abs(Number(tx.amount)), 0)
-      
-      // Gross sales added to balance
-      const balanceAdded = salesOnDate.reduce((sum, op) => sum + Number(op.amount), 0)
-      
-      // Commissions and withdrawals consumed from balance
-      const commissionDeducted = commissionsOnDate.reduce((sum, op) => sum + Number(op.amount), 0)
-      const balanceConsumed = payoutsOnDate.reduce((sum, p) => sum + Number(p.requested_credits), 0)
-      
-      const netBalanceAdded = balanceAdded - commissionDeducted
-      
-      const dailyOperations = creditsAdded + netBalanceAdded
-      const dailyConsumed = creditsConsumed + balanceConsumed
-        
-      chartData.unshift({
-        date: format(date, "MMM dd"),
-        operations: Number(dailyOperations.toFixed(2)),
-        consumed: Number(dailyConsumed.toFixed(2)),
-        balance: Number(Math.max(0, runningBalance).toFixed(2)),
-        sales: Number(netBalanceAdded.toFixed(2)),
-        withdrawals: Number(balanceConsumed.toFixed(2))
-      })
-      
-      runningBalance = runningBalance - dailyOperations + dailyConsumed
-    }
-  }
+  const chartData = buildPaymentBalanceHistory({
+    usableCredits, withdrawableBalance, allTransactions, visibleOperations, payouts,
+  })
 
   const handleRequestPayout = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -312,7 +260,7 @@ function PaymentsContent() {
                       </thead>
                       <tbody className="divide-y">
                         {visibleOperations && visibleOperations.length > 0 ? (
-                          visibleOperations.map((op: any) => (
+                          visibleOperations.map((op) => (
                             <tr key={op.id} className="hover:bg-muted/50 transition-colors">
                               <td className="px-4 py-3 text-muted-foreground">
                                 {new Date(op.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
@@ -376,7 +324,7 @@ function PaymentsContent() {
                         </tr>
                       </thead>
                       <tbody className="divide-y">
-                        {payouts.map((payout: any) => (
+                        {payouts.map((payout) => (
                           <tr key={payout.id} className="hover:bg-muted/50 transition-colors">
                             <td className="px-4 py-3 text-muted-foreground">
                               {new Date(payout.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}

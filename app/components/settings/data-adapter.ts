@@ -52,7 +52,9 @@ export const adaptSiteToForm = (site: Site): AdaptedSiteFormValues => {
       email: member.email || "",
       role: member.role || "view",
       name: member.name || "",
-      position: member.position || ""
+      position: member.position || "",
+      blocked_screens: "blocked_screens" in member && Array.isArray(member.blocked_screens)
+        ? member.blocked_screens.filter((screen): screen is string => typeof screen === "string") : [],
     };
     console.log("🔍 ADAPT: Processing member:", member, "→", processed);
     return processed;
@@ -61,6 +63,7 @@ export const adaptSiteToForm = (site: Site): AdaptedSiteFormValues => {
     role: "view" | "create" | "delete" | "admin";
     name?: string;
     position?: string;
+    blocked_screens: string[];
   }[]; // Type assertion and remove null entries
   
   console.log("🔍 ADAPT: Final processed team members:", processedTeamMembers);
@@ -68,13 +71,14 @@ export const adaptSiteToForm = (site: Site): AdaptedSiteFormValues => {
   // Add business_hours
   const business_hours = site.settings?.business_hours?.map(bh => ({
     ...bh,
+    force_closed: bh.force_closed ?? false,
     respectHolidays: bh.respectHolidays ?? true // Ensure it's always boolean, default to true
   })) || [];
   
   console.log("🔍 ADAPT: site.settings?.business_hours:", site.settings?.business_hours)
   console.log("🔍 ADAPT: Final adapted data business_hours:", business_hours)
   
-  const result = {
+  const result: AdaptedSiteFormValues = {
     name: site.name,
     url: site.url || "",
     description: site.description || "",
@@ -156,7 +160,7 @@ export const adaptSiteToForm = (site: Site): AdaptedSiteFormValues => {
           setupRequested: channels.agent_whatsapp?.setupRequested || false,
           status: channels.agent_whatsapp?.status || "not_configured"
         },
-        connections: Array.isArray(channels.connections) ? channels.connections : [],
+        connections: (channels.connections || []).map(connection => ({ ...connection, name: connection.name || "" })),
         website: {
           enabled: channels.website?.enabled ?? (channels.website?.track_visitors || channels.website?.track_actions || channels.website?.record_screen || channels.website?.enable_chat) ?? false,
           track_visitors: channels.website?.track_visitors ?? site.tracking?.track_visitors ?? false,
@@ -264,9 +268,11 @@ export const adaptSiteToForm = (site: Site): AdaptedSiteFormValues => {
     // Add team info
     team_members: processedTeamMembers,
     // Billing info
-    billing: site.billing || {
-      plan: "commission",
-      auto_renew: true
+    billing: {
+      ...site.billing,
+      plan: site.billing?.plan || "commission",
+      auto_renew: site.billing?.auto_renew ?? true,
+      addons_count: site.billing?.addons_count ?? 0,
     },
     // Activities configuration
     activities: normalizeActivitySettings(site.settings?.activities),
@@ -363,7 +369,7 @@ export const adaptSiteToForm = (site: Site): AdaptedSiteFormValues => {
       bank_transfer: site.settings?.shop?.bank_transfer || {}
     },
     printers: {
-      devices: site.settings?.printers?.devices || []
+      devices: (site.settings?.printers?.devices || []).map(device => ({ ...device, enabled: device.enabled ?? true }))
     }
   }
   

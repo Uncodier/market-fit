@@ -3,7 +3,7 @@ import { Badge } from "@/app/components/ui/badge";
 import { 
   Settings, PlusCircle as Zap, MessageSquare, User, Tag, Settings as Sliders
 } from "@/app/components/ui/icons";
-import { SectionCard, SummaryCard } from "../common/Cards";
+import { SectionCard } from "../common/Cards";
 import { ImportanceIndicator } from "../common/Indicators";
 import { ICPProfileData } from "../types";
 

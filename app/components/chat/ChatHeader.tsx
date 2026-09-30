@@ -127,7 +127,7 @@ export function ChatHeader({
   }
 
   // Get current lead status
-  const currentStatus = leadData?.status || "new"
+  const currentStatus: string = leadData?.status || "new"
   
   // Get company name safely
   const companyName = leadData?.company?.name || leadData?.companies?.name || leadData?.company_data?.name
@@ -215,7 +215,7 @@ export function ChatHeader({
                               variant="outline" 
                               className={cn(
                                 "text-xs px-2 py-0 h-5 transition-colors duration-300 flex-shrink-0 truncate max-w-[200px] cursor-pointer",
-                                STATUS_STYLES[currentStatus] || "bg-amber-500/10 text-amber-600 border-amber-500/20"
+                                Object.entries(STATUS_STYLES).find(([status]) => status === currentStatus)?.[1] || "bg-amber-500/10 text-amber-600 border-amber-500/20"
                               )}
                             >
                               {getStatusDisplayName(currentStatus)}

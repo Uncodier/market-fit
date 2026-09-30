@@ -141,7 +141,7 @@ export function useRequirementsList() {
         console.warn("Error loading campaigns:", campaignError.message)
       }
 
-      const mappedSegments = (segmentData || []).map((segment: Segment) => ({
+      const mappedSegments: Segment[] = (segmentData || []).map((segment: Segment) => ({
         id: segment.id,
         name: segment.name,
         description: segment.description || "",

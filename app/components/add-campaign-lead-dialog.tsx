@@ -391,7 +391,7 @@ export function AddCampaignLeadDialog({ campaignId, segments = [], trigger, onLe
                   setPhone("")
                   setCompany("")
                   setPosition("")
-                  setSegmentId("")
+                  setSegmentValue(null)
                   setStatus("new")
                   setNotes("")
                   setOrigin("Campaign")

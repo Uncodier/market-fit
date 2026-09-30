@@ -45,7 +45,8 @@ export async function fetchContextContents(siteId: string, query: string = "", l
   if (error && error.code === 'PGRST116') return []
   if (error) throw error
   
-  return data?.map(content => ({
+  const rows: ContextContent[] = data || []
+  return rows.map(content => ({
     id: content.id,
     title: content.title || '',
     description: content.description || '',
@@ -68,7 +69,8 @@ export async function fetchContextRequirements(siteId: string, limit: number = 2
   if (error && error.code === 'PGRST116') return []
   if (error) throw error
 
-  return data?.map(req => ({
+  const rows: ContextRequirement[] = data || []
+  return rows.map(req => ({
     id: req.id,
     title: req.title || '',
     description: req.description || '',
@@ -92,14 +94,15 @@ export async function fetchContextTasks(siteId: string, limit: number = 20): Pro
   if (error && error.code === 'PGRST116') return []
   if (error) throw error
 
-  return data?.map(task => ({
+  const rows: ContextTask[] = data || []
+  return rows.map(task => ({
     id: task.id,
     serial_id: task.serial_id || '',
     title: task.title || '',
     description: task.description || '',
-    status: task.status || '',
+    status: task.status || 'pending',
     type: task.type || '',
-    priority: task.priority || '',
+    priority: task.priority ?? 0,
     created_at: task.created_at
   })) || []
 }
@@ -116,7 +119,8 @@ export async function fetchContextCampaigns(siteId: string, limit: number = 20):
   if (error && error.code === 'PGRST116') return []
   if (error) throw error
 
-  return data?.map(campaign => ({
+  const rows: ContextCampaign[] = data || []
+  return rows.map(campaign => ({
     id: campaign.id,
     title: campaign.title || '',
     description: campaign.description || '',
@@ -139,7 +143,11 @@ export async function fetchContextQuotations(siteId: string, limit: number = 20)
   if (error && error.code === 'PGRST116') return []
   if (error) throw error
 
-  return data?.map(quote => {
+  const rows: Array<Omit<ContextQuotation, 'title' | 'leadName'> & {
+    lead: { name: string } | { name: string }[] | null
+    deal: { name: string } | { name: string }[] | null
+  }> = data || []
+  return rows.map(quote => {
     const leadName = (quote.lead && !Array.isArray(quote.lead)) ? quote.lead.name : '';
     const dealName = (quote.deal && !Array.isArray(quote.deal)) ? quote.deal.name : '';
     return {
@@ -166,7 +174,8 @@ export async function fetchContextDeals(siteId: string, limit: number = 20): Pro
   if (error && error.code === 'PGRST116') return []
   if (error) throw error
 
-  return data?.map(deal => {
+  const rows: Array<ContextDeal & { company: { name: string } | { name: string }[] | null }> = data || []
+  return rows.map(deal => {
     const companyName = (deal.company && !Array.isArray(deal.company)) ? deal.company.name : '';
     return {
       id: deal.id,
@@ -192,7 +201,8 @@ export async function fetchContextRecords(siteId: string, limit: number = 20): P
   if (error && error.code === 'PGRST116') return []
   if (error) throw error
 
-  return data?.map(record => {
+  const rows: ContextRecord[] = data || []
+  return rows.map(record => {
     let categoryObj = null
     if (record.category && !Array.isArray(record.category)) {
       categoryObj = { name: record.category.name }

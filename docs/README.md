@@ -10,6 +10,8 @@ Use the guides below before relying on older implementation notes.
 - [Security](SECURITY.md) — mandatory controls for auth, data access, payments,
   public links, webhooks, and outbound requests.
 - [Database migrations](DATABASE_MIGRATIONS.md) — safe Supabase migration workflow.
+- [Critical flow security rollout](SECURITY_FINDINGS_ROLLOUT.md) — purchase permissions,
+  internal webhook visibility, task reordering, and deployment validation.
 - [Environment variables](ENVIRONMENT_VARIABLES.md) — configuration by subsystem.
 - [Maintenance](MAINTENANCE.md) — dependency, documentation, and release hygiene.
 - [`specs/context.md`](../specs/context.md) — browser-test routes, roles, targets,
@@ -40,6 +42,7 @@ environment variables before changing production configuration.
 
 ## Architecture reviews
 
+- [Static analysis repair — 2026-09-29](STATIC_ANALYSIS_REPAIR_2026-09-29.md)
 - [Redis/Upstash availability and self-amplification audit — 2026-09-20](REDIS_UPSTASH_AVAILABILITY_AUDIT_2026-09-20.md)
 
 ## Implementation notes

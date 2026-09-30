@@ -128,7 +128,7 @@ export async function persistSiteSettings({
             },
             whatsapp: settings.channels.whatsapp || {
               enabled: false,
-              setupType: "new_number",
+              setupType: "use_own_account",
               country: "",
               region: "",
               existingNumber: "",
@@ -169,7 +169,7 @@ export async function persistSiteSettings({
             },
             whatsapp: {
               enabled: false,
-              setupType: "new_number",
+              setupType: "use_own_account",
               country: "",
               region: "",
               existingNumber: "",

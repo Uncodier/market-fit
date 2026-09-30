@@ -4,6 +4,7 @@ import { createClient } from '@/utils/supabase/client'
 import { siteMembersService } from '@/app/services/site-members-service'
 import { Category, Task } from '@/app/types'
 import { getUserData } from '@/app/services/user-service'
+import { normalizeControlTask, type TaskQueryRow } from '../task-data'
 
 export interface ExtendedTask extends Task {
   leadName?: string
@@ -31,7 +32,7 @@ export interface TasksBundle {
 
 const TASK_STATUSES = ['pending', 'in_progress', 'completed', 'failed', 'canceled'] as const
 
-async function enrichTasks(rawTasks: any[]): Promise<ExtendedTask[]> {
+export async function enrichTasks(rawTasks: TaskQueryRow[]): Promise<ExtendedTask[]> {
   return Promise.all(
     rawTasks.map(async (task) => {
       let assigneeName = undefined
@@ -41,7 +42,7 @@ async function enrichTasks(rawTasks: any[]): Promise<ExtendedTask[]> {
       }
 
       return {
-        ...task,
+        ...normalizeControlTask(task),
         leadName: task.leads?.name,
         assigneeName,
         comments_count: task.comments_count?.[0]?.count || 0,
@@ -52,7 +53,7 @@ async function enrichTasks(rawTasks: any[]): Promise<ExtendedTask[]> {
 
 async function fetchTasksBundle(siteId: string): Promise<TasksBundle> {
   const supabase = createClient()
-  const allTasks: any[] = []
+  const allTasks: TaskQueryRow[] = []
   const counts: Record<string, number> = {}
 
   for (const status of TASK_STATUSES) {

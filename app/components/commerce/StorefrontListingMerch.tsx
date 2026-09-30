@@ -16,7 +16,7 @@ export function StorefrontListingMerch({
   item: CatalogItem
   shop?: StorefrontShopFields
   showSeller?: boolean
-  t: (key: string, vars?: Record<string, unknown>) => string
+  t: (key: string, vars?: Record<string, string | number>) => string
   tone?: "default" | "onDark"
 }) {
   const fields = shop || {}

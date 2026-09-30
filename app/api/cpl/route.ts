@@ -1,3 +1,4 @@
+import type { QueryResult } from '@/app/api/_shared/query-result';
 import { NextRequest, NextResponse } from 'next/server';
 import { createApiClient, createServiceApiClient } from "@/lib/supabase/server-client";
 import { subDays } from 'date-fns';
@@ -65,7 +66,7 @@ export async function GET(request: NextRequest) {
       // Apply segment filter if provided
       if (segmentId && segmentId !== 'all') {
         // Necesitamos obtener primero las campañas del segmento
-        const { data: segmentCampaigns } = await supabase
+        const { data: segmentCampaigns }: QueryResult<{ campaign_id: string }[]> = await supabase
           .from('campaign_segments')
           .select('campaign_id')
           .eq('segment_id', segmentId);
@@ -123,7 +124,7 @@ export async function GET(request: NextRequest) {
       // Apply segment filter if provided
       if (segmentId && segmentId !== 'all') {
         // Usar los mismos IDs de campañas del segmento
-        const { data: segmentCampaigns } = await supabase
+        const { data: segmentCampaigns }: QueryResult<{ campaign_id: string }[]> = await supabase
           .from('campaign_segments')
           .select('campaign_id')
           .eq('segment_id', segmentId);

@@ -16,7 +16,7 @@ interface VideoFullscreenViewerProps {
     resolution?: string
     duration?: number
     generated_at?: string
-    [key: string]: any
+    [key: string]: unknown
   }
   prompt?: string
 }
@@ -39,10 +39,6 @@ export const VideoFullscreenViewer: React.FC<VideoFullscreenViewerProps> = ({
       setSelectedVideoIndex(0)
     }
   }, [isOpen])
-
-  if (!videos || videos.length === 0) {
-    return null
-  }
 
   const currentVideo = videos[selectedVideoIndex]
   let videoUrl = typeof currentVideo === 'string' 
@@ -126,25 +122,24 @@ export const VideoFullscreenViewer: React.FC<VideoFullscreenViewerProps> = ({
     }
   }
 
-  const handleKeyDown = (e: KeyboardEvent) => {
-    if (!isOpen) return
-    if (e.key === 'ArrowLeft' && selectedVideoIndex > 0) {
-      setSelectedVideoIndex(selectedVideoIndex - 1)
-    } else if (e.key === 'ArrowRight' && selectedVideoIndex < videos.length - 1) {
-      setSelectedVideoIndex(selectedVideoIndex + 1)
-    } else if (e.key === 'Escape') {
-      onClose()
-    }
-  }
-
   useEffect(() => {
-    if (isOpen) {
-      window.addEventListener('keydown', handleKeyDown as any)
-      return () => {
-        window.removeEventListener('keydown', handleKeyDown as any)
+    if (!isOpen || videos.length === 0) return
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'ArrowLeft' && selectedVideoIndex > 0) {
+        setSelectedVideoIndex(selectedVideoIndex - 1)
+      } else if (event.key === 'ArrowRight' && selectedVideoIndex < videos.length - 1) {
+        setSelectedVideoIndex(selectedVideoIndex + 1)
+      } else if (event.key === 'Escape') {
+        onClose()
       }
     }
-  }, [isOpen, selectedVideoIndex, videos.length])
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [isOpen, selectedVideoIndex, videos.length, onClose])
+
+  if (!videos || videos.length === 0) {
+    return null
+  }
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>

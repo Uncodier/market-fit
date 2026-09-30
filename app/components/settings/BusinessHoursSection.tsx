@@ -169,6 +169,7 @@ export function BusinessHoursSection({ onSave }: BusinessHoursSectionProps) {
       name: "",
       timezone: "America/Mexico_City",
       respectHolidays: true,
+      force_closed: false,
       days: {
         monday: { enabled: true, start: "09:00", end: "18:00" },
         tuesday: { enabled: true, start: "09:00", end: "18:00" },

@@ -134,7 +134,12 @@ describe('getProcessHeader', () => {
         data: {
           id: 'plan-old',
           title: 'Old plan',
-          status: 'in_progress',
+          status: 'in_progress' as const,
+          plan_type: 'task' as const,
+          progress_percentage: 0,
+          steps_completed: 0,
+          steps_total: 1,
+          priority: 1,
           created_at: '2026-07-09T00:00:00.000Z',
         },
       },

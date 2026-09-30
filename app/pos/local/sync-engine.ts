@@ -157,7 +157,7 @@ async function applyOutboxItem(row: PosOutboxRow): Promise<void> {
       siteId: data.siteId,
       clientMutationId: data.clientMutationId,
     });
-    if (res.error) throw new Error(res.error);
+    if ("error" in res && res.error) throw new Error(res.error);
     await updateOutboxRow(row.id, { status: "synced", lastError: null });
     return;
   }
@@ -170,7 +170,7 @@ async function applyOutboxItem(row: PosOutboxRow): Promise<void> {
     if (!orderId) throw new Error("Waiting for local order to sync");
 
     const res = await updateOrderNotes(data.siteId, orderId, data.notes);
-    if (res.error) throw new Error(res.error);
+    if ("error" in res && res.error) throw new Error(res.error);
     await updateOutboxRow(row.id, { status: "synced", lastError: null });
     return;
   }
@@ -198,7 +198,7 @@ async function applyOutboxItem(row: PosOutboxRow): Promise<void> {
       existingOrderId,
       clientMutationId: data.clientMutationId,
     });
-    if (res.error) throw new Error(res.error);
+    if ("error" in res && res.error) throw new Error(res.error);
 
     if (res.orderId && data.existingOrderId?.startsWith("local_")) {
       await mapLocalId({

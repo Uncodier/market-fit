@@ -225,7 +225,7 @@ export async function POST(request: NextRequest) {
     const data: LeadAnalysisData = await request.json();
     
     // Get client IP and user agent for tracking
-    const ip = request.ip || request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || '';
+    const ip = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || '';
     const userAgent = request.headers.get('user-agent') || '';
     const referrer = request.headers.get('referer') || '';
     

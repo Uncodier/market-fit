@@ -7,7 +7,7 @@ import { CheckCircle2, AlertCircle, Clock, FileText, RotateCcw, PlayCircle } fro
 import { Skeleton } from "@/app/components/ui/skeleton"
 import { Card } from "@/app/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/app/components/ui/table"
-import { InstanceLog } from "@/app/agents/actions"
+import type { InstanceLog } from "@/app/components/simple-messages-view/types"
 import { getInstanceLogs } from "@/app/agents/actions"
 import { AgentToolsTable } from "@/app/components/agents/agent-tools-table"
 import { EmptyCard } from "@/app/components/ui/empty-card"

@@ -39,6 +39,34 @@ const site = {
 }
 
 describe("Imprenta publish routing", () => {
+  it("uses connected account IDs instead of platform names", () => {
+    const routing = buildPublishRouting(["tiktok", "instagram", "blog"], {
+      settings: { social_media: [
+        { id: "tt-account", network: "tiktok", isActive: 1 },
+        { id: "ig-account", platform: "instagram", isActive: true },
+      ] },
+    })
+    expect(routing.publishOverride.social_accounts).toEqual(["tt-account", "ig-account"])
+  })
+
+  it("leaves unresolved selectors for authoritative server validation without dropping destinations", () => {
+    const routing = buildPublishRouting(["instagram", "tiktok"], {
+      settings: { social_media: [
+        { id: "old-ig", platform: "instagram", isActive: false },
+        { id: "tt-one", platform: "tiktok", isActive: true },
+        { id: "tt-two", platform: "tiktok", isActive: true },
+      ] },
+    })
+    expect(routing.publishOverride.social_accounts).toEqual(["instagram", "tiktok"])
+  })
+
+  it("normalizes Twitter aliases and deduplicates IDs", () => {
+    const routing = buildPublishRouting(["twitter", "x"], {
+      settings: { social_media: [{ id: "x-account", network: "x", isActive: true }] },
+    })
+    expect(routing.publishOverride.social_accounts).toEqual(["x-account"])
+  })
+
   it("discovers SMS and Voice from channel connections", () => {
     expect(getPublishChannelAvailability(site)).toMatchObject({
       sms: true,

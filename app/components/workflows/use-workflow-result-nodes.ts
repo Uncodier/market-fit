@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
+import type { RealtimePostgresChangesPayload } from "@supabase/supabase-js"
 import { createClient } from "@/lib/supabase/client"
 import type { InstanceNode } from "@/app/types/instance-nodes"
 import {
@@ -132,8 +133,8 @@ export function useWorkflowResultNodes({
         .limit(200)
       if (cancelled) return
       const next = (data || [])
-        .map((row) => asLog(row as Record<string, unknown>))
-        .filter((row): row is WorkflowResultLog => Boolean(row))
+        .map((row: Record<string, unknown>) => asLog(row))
+        .filter((row: WorkflowResultLog | null): row is WorkflowResultLog => Boolean(row))
         .reverse()
       setLogs(next)
     }
@@ -145,7 +146,7 @@ export function useWorkflowResultNodes({
       .on(
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "instance_logs", filter: `instance_id=eq.${instanceId}` },
-        (payload) => {
+        (payload: RealtimePostgresChangesPayload<Record<string, unknown>>) => {
           const next = asLog((payload.new || {}) as Record<string, unknown>)
           if (!next) return
           setLogs((prev) => (prev.some((log) => log.id === next.id) ? prev : [...prev, next]))

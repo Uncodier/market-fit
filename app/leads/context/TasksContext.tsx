@@ -6,6 +6,7 @@ import { v4 as uuidv4 } from 'uuid'
 import { useSite } from "@/app/context/SiteContext"
 import { createTask as createTaskAction, getTasksByLeadId as getTasksByLeadIdAction, updateTask as updateTaskAction, deleteTask as deleteTaskAction } from '../tasks/actions'
 import { getTasksByDealId } from '@/app/tasks/actions'
+import { normalizeJourneyTask } from '../tasks/normalize-task'
 import { toast } from "sonner"
 
 // Initial values for filters
@@ -59,12 +60,14 @@ export function TasksProvider({ children, leadId }: TasksProviderProps) {
       const isDealRoute = typeof window !== 'undefined' && window.location.pathname.includes('/deals/');
       
       if (isDealRoute) {
-        result = await getTasksByDealId(id);
+        const response = await getTasksByDealId(id);
+        result = { tasks: response.data, error: response.error };
       } else {
-        result = await getTasksByLeadIdAction(id);
+        const response = await getTasksByLeadIdAction(id);
+        result = { tasks: response.tasks?.map(normalizeJourneyTask), error: response.error };
       }
       
-      if (result.error || (!result.tasks && !result.data)) {
+      if (result.error || !result.tasks) {
         const errorMessage = result.error || 'Failed to load tasks'
         setError(errorMessage)
         // Solo mostrar el toast si no es un error de inicialización y la app ya está inicializada
@@ -75,8 +78,7 @@ export function TasksProvider({ children, leadId }: TasksProviderProps) {
         return
       }
       
-      const loadedTasks = result.tasks || result.data;
-      setTasks(loadedTasks as Task[])
+      setTasks(result.tasks)
       setError(null)
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to load tasks'

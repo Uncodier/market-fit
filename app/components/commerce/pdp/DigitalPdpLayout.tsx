@@ -94,9 +94,9 @@ export function DigitalPdpLayout({ item, backUrl, experience, catalogSize = 0 }:
                     </div>
                     <div className="font-semibold truncate">{file.file_name}</div>
                   </div>
-                  <a href={file.downloadUrl} download target="_blank" rel="noopener noreferrer" className="ml-4 shrink-0">
-                    <PdpCtaButton className="px-6 h-10 w-auto">{t('pdp.download') || 'Download'}</PdpCtaButton>
-                  </a>
+                  <PdpCtaButton asChild className="ml-4 shrink-0 px-6 h-10 w-auto">
+                    <a href={file.downloadUrl} download target="_blank" rel="noopener noreferrer">{t('pdp.download') || 'Download'}</a>
+                  </PdpCtaButton>
                 </div>
               ))}
             </div>

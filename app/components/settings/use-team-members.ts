@@ -54,7 +54,7 @@ export function useTeamMembers({ active, siteId }: UseTeamMembersOptions) {
   const validation = useTeamMemberValidation(teamList)
 
   const updateFormValues = useCallback((newTeamList: FormTeamMember[]) => {
-    form.setValue("team_members", newTeamList, {
+    form.setValue("team_members", newTeamList.map(member => ({ ...member, blocked_screens: member.blocked_screens ?? [] })), {
       shouldDirty: true,
       shouldTouch: true,
       shouldValidate: false,

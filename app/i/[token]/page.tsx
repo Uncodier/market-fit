@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react"
 import { getSaleByPublicToken } from "@/app/sales/send-actions"
-import { PublicDocumentView } from "@/app/documents/components/PublicDocumentView"
+import { PublicDocumentView, type PublicDocumentViewProps } from "@/app/documents/components/PublicDocumentView"
 import { PublicDocumentViewSkeleton } from "@/app/documents/components/PublicDocumentViewSkeleton"
 import { mapDocumentLineItems } from "@/app/documents/map-document-items"
 import { documentT } from "@/app/lib/i18n/document-t"
@@ -16,8 +16,8 @@ export default function PublicInvoicePage(props: {
 }) {
   const params = React.use(props.params)
   const [error, setError] = useState<string | null>(null)
-  const [view, setView] = useState<any>(null)
-  const [saleData, setSaleData] = useState<any>(null)
+  const [view, setView] = useState<PublicDocumentViewProps | null>(null)
+  const [saleData, setSaleData] = useState<Awaited<ReturnType<typeof getSaleByPublicToken>>["data"] | null>(null)
   const [isCheckingOut, setIsCheckingOut] = useState(false)
 
   useEffect(() => {
@@ -58,7 +58,7 @@ export default function PublicInvoicePage(props: {
         total: order?.total ?? sale.amount,
         items,
         party: { name: sale.leads?.name, email: sale.leads?.email },
-        siteId: sale.site?.id || branding?.site?.id || sale.site_id || null,
+        siteId: sale.site?.id || branding?.site?.id || null,
         siteName: sale.site?.name || branding?.site?.name || "Invoice",
         siteUrl: sale.site?.url || branding?.site?.url,
         logoUrl: sale.site?.logo_url || branding?.site?.logo_url,
@@ -100,9 +100,9 @@ export default function PublicInvoicePage(props: {
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || "Failed to initiate checkout")
       window.location.href = data.url
-    } catch (err: any) {
+    } catch (err) {
       console.error(err)
-      toast.error(err.message || "Failed to start checkout")
+      toast.error(err instanceof Error ? err.message : "Failed to start checkout")
       setIsCheckingOut(false)
     }
   }

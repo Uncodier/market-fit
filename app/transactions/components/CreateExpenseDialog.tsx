@@ -184,10 +184,11 @@ export function CreateExpenseDialog({ siteId, open, onOpenChange, onSuccess, exp
     let label = selectedCategory?.label || categoryKey
 
     if (categoryKey === 'cogs') {
+      const selectedItem = formData.catalogItemValue
       const catId =
         (formData.catalogCategoryValue?.mode === 'existing' && formData.catalogCategoryValue.id) ||
-        (formData.catalogItemValue?.mode === 'existing'
-          ? catalogItems.find(i => i.id === formData.catalogItemValue!.id)?.category_id
+        (selectedItem?.mode === 'existing'
+          ? catalogItems.find(i => i.id === selectedItem.id)?.category_id
           : null)
       const cat = catalogCategories.find(c => c.id === catId)
       if (cat?.cogs_account_key) {

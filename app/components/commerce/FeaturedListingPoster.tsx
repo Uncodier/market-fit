@@ -19,7 +19,7 @@ import { promoBadgeLabel } from "@/app/promotions/promotion-merchandising"
 import { StorefrontListingMerch } from "@/app/components/commerce/StorefrontListingMerch"
 
 type FeaturedItem = CatalogItem & {
-  site?: { id: string; name: string; logo_url?: string | null }
+  site?: CatalogItem["site"]
   _shop?: { 
     availableQty?: number
     nextSlotAvailable?: number

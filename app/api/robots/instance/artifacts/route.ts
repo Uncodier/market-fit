@@ -1,6 +1,9 @@
+import type { QueryResult } from '@/app/api/_shared/query-result';
 import { NextRequest, NextResponse } from "next/server"
 import { createClient, createServiceClient } from "@/lib/supabase/server"
 import { userCanOnSite } from "@/lib/permissions/site-access"
+
+type Artifact = { id: string; user_id: string; site_id: string | null; instance_id: string };
 
 export async function POST(request: NextRequest) {
   try {
@@ -23,7 +26,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: true })
     }
 
-    const { data: rows, error: fetchError } = await supabase
+    const { data: rows, error: fetchError }: QueryResult<Artifact[]> = await supabase
       .from("instance_artifacts")
       .select("id, user_id, site_id, instance_id")
       .in("id", ids)
@@ -39,7 +42,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: true })
     }
 
-    const siteIds = [...new Set(rows.map((row) => row.site_id).filter(Boolean))] as string[]
+    const siteIds = [...new Set(rows.map((row) => row.site_id).filter((id): id is string => Boolean(id)))]
     for (const siteId of siteIds) {
       const canDismiss = await userCanOnSite(supabase, siteId, "update")
       const ownsRows = rows

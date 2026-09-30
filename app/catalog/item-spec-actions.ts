@@ -27,7 +27,7 @@ export async function ensureDefaultItemSpecCategories(siteId: string) {
       .eq("site_id", siteId)
       .eq("is_system", true);
       
-    const existingSlugs = new Set(existing?.map(c => c.slug) || []);
+    const existingSlugs = new Set(existing?.map((c: Pick<ItemSpecCategory, 'slug'>) => c.slug) || []);
     const missing = SYSTEM_CATEGORIES.filter(c => !existingSlugs.has(c.slug));
     
     if (missing.length > 0) {

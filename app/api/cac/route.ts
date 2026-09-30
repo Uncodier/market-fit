@@ -1,239 +1,11 @@
+import type { QueryResult } from '../_shared/query-result';
+import type { CampaignBudgetRow, TransactionRow, SaleRow } from '../_shared/marketing-query-types';
+import { comparePreviousPeriod } from './comparison';
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-import { subDays, subMonths, format, startOfMonth, endOfMonth, subQuarters, subYears } from 'date-fns';
-import { createApiClient, createServiceApiClient } from "@/lib/supabase/server-client";
-import { requireAnalyticsAccess } from "@/lib/auth/api-analytics-access";
-import crypto from 'crypto';
-
-interface KpiData {
-  id: string;
-  name: string;
-  description: string | null;
-  value: number;
-  previous_value: number;
-  unit: string;
-  type: string;
-  period_start: string;
-  period_end: string;
-  segment_id: string | null;
-  is_highlighted: boolean;
-  target_value: number | null;
-  metadata: any;
-  site_id: string;
-  user_id: string | null;
-  trend: number;
-  benchmark: number | null;
-}
-
-// Helper function to format date for DB
-function formatDateForDb(date: Date): string {
-  return date.toISOString();
-}
-
-// Helper function to calculate trend percentage
-function calculateTrend(current: number, previous: number): number {
-  if (previous === 0) {
-    return current > 0 ? 100 : 0;
-  }
-  return Number((((current - previous) / previous) * 100).toFixed(2));
-}
-
-// Helper function to standardize period dates
-function standardizePeriodDates(
-  periodStart: Date,
-  periodEnd: Date
-): { periodStart: Date; periodEnd: Date; periodType: string } {
-  const daysDiff = Math.ceil((periodEnd.getTime() - periodStart.getTime()) / (1000 * 3600 * 24));
-  
-  let periodType = "monthly";
-  
-  // Solo usamos las fechas originales sin ajustarlas
-  // El tipo de período se determina basado en la duración pero no afecta las fechas
-  if (daysDiff <= 1) {
-    periodType = "daily";
-  } else if (daysDiff <= 7) {
-    periodType = "weekly";
-  } else if (daysDiff <= 31) {
-    periodType = "monthly";
-  } else if (daysDiff <= 90) {
-    periodType = "quarterly";
-  } else {
-    periodType = "yearly";
-  }
-  
-  // Siempre devolvemos las fechas originales sin modificar
-  return { periodStart, periodEnd, periodType };
-}
-
-// Helper function to check if a KPI exists and create it if it doesn't
-async function findOrCreateKpi(
-  supabase: any,
-  supabaseAdmin: any,
-  kpiParams: {
-    siteId: string,
-    userId: string | null,
-    segmentId: string | null,
-    periodStart: Date,
-    periodEnd: Date,
-    type: string,
-    name: string,
-    value: number,
-    previousValue?: number
-  }
-): Promise<{ kpi: any, created: boolean }> {
-  // Get the period type and standardize dates for consistency
-  const { periodStart, periodEnd, periodType } = standardizePeriodDates(
-    kpiParams.periodStart,
-    kpiParams.periodEnd
-  );
-  
-  // Format dates consistently for DB
-  const formattedStart = formatDateForDb(periodStart);
-  const formattedEnd = formatDateForDb(periodEnd);
-  
-  // Create a deterministic ID for this KPI based on its key attributes
-  // This ensures the same KPI always has the same ID, preventing duplicates
-  const segmentPart = kpiParams.segmentId ? kpiParams.segmentId : "00000000-0000-0000-0000-000000000000";
-  
-  const idBase = `${kpiParams.type}:${kpiParams.name}:${kpiParams.siteId}:${formattedStart}:${formattedEnd}:${segmentPart}`;
-  
-  // Create a consistent UUID v5 from the string
-  const deterministicId = crypto.createHash('md5').update(idBase).digest('hex');
-  const kpiId = [
-    deterministicId.substring(0, 8),
-    deterministicId.substring(8, 12),
-    deterministicId.substring(12, 16),
-    deterministicId.substring(16, 20),
-    deterministicId.substring(20, 32),
-  ].join('-');
-  
-  console.log(`Finding/creating KPI with deterministic ID: ${kpiId} for ${idBase}`);
-  
-  // Create query parameters
-  const queryParams = {
-    type: kpiParams.type,
-    name: kpiParams.name,
-    site_id: kpiParams.siteId,
-    period_start: formattedStart,
-    period_end: formattedEnd
-  };
-
-  // Skip query if siteId or segmentId are not valid UUIDs to prevent postgres crash
-  const isUUID = (id: string) => typeof id === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
-  if (!isUUID(kpiParams.siteId) || (kpiParams.segmentId && !isUUID(kpiParams.segmentId))) {
-    console.warn(`Invalid UUID detected in KPI params: siteId=${kpiParams.siteId}, segmentId=${kpiParams.segmentId}. Skipping DB query.`);
-    return { kpi: null, created: false };
-  }
-  
-  // Build query to find existing KPI by attributes
-  let query = supabase
-    .from("kpis")
-    .select("*")
-    .match(queryParams);
-    
-  // Handle segment ID specifically
-  if (kpiParams.segmentId) {
-    query = query.eq("segment_id", kpiParams.segmentId);
-  } else {
-    query = query.is("segment_id", null);
-  }
-  
-  try {
-    // First try to find by ID directly - fastest lookup
-    const { data: existingKpiById, error: idError } = await supabase
-      .from("kpis")
-      .select("*")
-      .eq("id", kpiId)
-      .maybeSingle();
-    
-    if (!idError && existingKpiById) {
-      console.log(`Found existing KPI by ID: ${existingKpiById.id}`);
-      return { kpi: existingKpiById, created: false };
-    }
-    
-    // If ID lookup failed, try attributes lookup
-    const { data: existingKpi, error: fetchError } = await query;
-    
-    if (fetchError) {
-      console.error("Error checking for existing KPI:", fetchError);
-    } else if (existingKpi && existingKpi.length > 0) {
-      console.log(`Found existing KPI by attributes: ${existingKpi[0].id}`);
-      return { kpi: existingKpi[0], created: false };
-    }
-    
-    // Only create KPI if we have a user ID
-    if (!kpiParams.userId) {
-      console.log("Skipping KPI creation: no user ID provided");
-      return { kpi: null, created: false };
-    }
-    
-    // Prepare KPI data with our deterministic ID
-    const trend = kpiParams.previousValue !== undefined ? 
-      calculateTrend(kpiParams.value, kpiParams.previousValue) : 0;
-    
-    const newKpi: Partial<KpiData> = {
-      id: kpiId, // Use our deterministic ID
-      name: kpiParams.name,
-      description: `${kpiParams.name} for ${periodType} period`,
-      value: kpiParams.value,
-      previous_value: kpiParams.previousValue || 0,
-      unit: "currency",
-      type: kpiParams.type,
-      period_start: formattedStart,
-      period_end: formattedEnd,
-      segment_id: kpiParams.segmentId,
-      is_highlighted: true,
-      target_value: null,
-      metadata: {
-        period_type: periodType,
-        currency: "USD"
-      },
-      site_id: kpiParams.siteId,
-      user_id: kpiParams.userId,
-      trend,
-      benchmark: null
-    };
-    
-    // Try to insert with upsert semantics - will update existing records with same ID
-    console.log(`Creating new KPI with ID: ${kpiId}`);
-    const { data: insertedKpi, error: insertError } = await supabaseAdmin
-      .from("kpis")
-      .upsert(newKpi)
-      .select()
-      .maybeSingle();
-    
-    if (insertError) {
-      console.error("Error inserting KPI:", insertError);
-      
-      // Last chance - query again to see if it exists
-      const { data: finalCheckKpi } = await query;
-      if (finalCheckKpi && finalCheckKpi.length > 0) {
-        console.log(`Found KPI in final check: ${finalCheckKpi[0].id}`);
-        return { kpi: finalCheckKpi[0], created: false };
-      }
-      
-      return { kpi: null, created: false };
-    }
-    
-    console.log(`Successfully created KPI with ID: ${insertedKpi.id}`);
-    return { kpi: insertedKpi, created: true };
-  } catch (error) {
-    console.error("Exception during KPI creation:", error);
-    
-    // Final fallback check
-    try {
-      const { data: recoveryCheckKpi } = await query;
-      if (recoveryCheckKpi && recoveryCheckKpi.length > 0) {
-        console.log(`Found KPI during recovery: ${recoveryCheckKpi[0].id}`);
-        return { kpi: recoveryCheckKpi[0], created: false };
-      }
-    } catch (recoveryError) {
-      console.error("Error during recovery check:", recoveryError);
-    }
-    
-    return { kpi: null, created: false };
-  }
-}
+import { subDays, subMonths, format, subQuarters, subYears } from 'date-fns';
+import { createServiceApiClient } from '@/lib/supabase/server-client';
+import { requireAnalyticsAccess } from '@/lib/auth/api-analytics-access';
+import { standardizePeriodDates } from './kpi';
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
@@ -325,7 +97,7 @@ export async function GET(request: NextRequest) {
       campaignQuery = campaignQuery.eq('segment_id', segmentId);
     }
     
-    const { data: campaigns, error: campaignsError } = await campaignQuery;
+    const { data: campaigns, error: campaignsError }: QueryResult<CampaignBudgetRow[]> = await campaignQuery;
     
     if (campaignsError) {
       console.error('[CAC API] Error fetching campaigns:', campaignsError);
@@ -351,7 +123,7 @@ export async function GET(request: NextRequest) {
     // Log the transaction query range
     console.log(`[CAC API] Transactions query range: ${standardizedStart.toISOString()} to ${standardizedEnd.toISOString()}`);
     
-    const { data: transactions, error: transactionsError } = await transactionsQuery;
+    const { data: transactions, error: transactionsError }: QueryResult<TransactionRow[]> = await transactionsQuery;
     
     if (transactionsError) {
       console.error('[CAC API] Error fetching transactions:', transactionsError);
@@ -368,7 +140,7 @@ export async function GET(request: NextRequest) {
       console.log(`[CAC API] No transactions found in date range`);
       
       // Debug query with broader date range to verify if there are any transactions
-      const debugQuery = await supabase
+      const debugQuery: QueryResult<(TransactionRow & { created_at: string })[]> = await supabase
         .from('transactions')
         .select('id, amount, type, campaign_id, created_at')
         .eq('site_id', siteId)
@@ -410,7 +182,7 @@ export async function GET(request: NextRequest) {
       salesQuerySaleDate = salesQuerySaleDate.eq('segment_id', segmentId);
     }
     
-    const { data: salesSaleDate, error: salesErrorSaleDate } = await salesQuerySaleDate;
+    const { data: salesSaleDate, error: salesErrorSaleDate }: QueryResult<SaleRow[]> = await salesQuerySaleDate;
     
     // If sale_date query fails or returns no data, fallback to created_at
     let sales = salesSaleDate;
@@ -432,7 +204,7 @@ export async function GET(request: NextRequest) {
         salesQuery = salesQuery.eq('segment_id', segmentId);
       }
       
-      const result = await salesQuery;
+      const result: QueryResult<SaleRow[]> = await salesQuery;
       sales = result.data;
       salesError = result.error;
     } else {
@@ -458,7 +230,7 @@ export async function GET(request: NextRequest) {
       console.log(`[CAC API] No sales with lead_id found in date range`);
       
       // Debug query with broader date range to verify if there are any sales
-      const debugQuery = await supabase
+      const debugQuery: QueryResult<Omit<SaleRow, 'sale_date'>[]> = await supabase
         .from('sales')
         .select('id, lead_id, amount, created_at, status')
         .eq('site_id', siteId)
@@ -540,208 +312,10 @@ export async function GET(request: NextRequest) {
       }
     }
     
-    // Get previous period CAC for comparison
-    let previousValue = 0;
-    let percentChange = 0;
-    
-    // Create a Supabase admin client for writing to the KPIs table
-    const supabaseAdmin = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    );
-    
-    if (userId && !skipKpiCreation && hasRealData) {
-      // First try to find existing KPI for previous period
-      const { kpi: prevKpi } = await findOrCreateKpi(
-        supabase,
-        supabaseAdmin,
-        {
-          siteId,
-          userId,
-          segmentId: segmentId !== 'all' ? segmentId : null,
-          periodStart: standardizedPrevStart,
-          periodEnd: standardizedPrevEnd,
-          type: "cac",
-          name: "Customer Acquisition Cost",
-          value: 0, // Will be updated if needed
-          previousValue: undefined
-        }
-      );
-      
-      if (prevKpi) {
-        // If we found an existing KPI, use its value
-        previousValue = prevKpi.value;
-        console.log(`[CAC API] Found previous KPI with value: $${previousValue}`);
-      } else {
-        // Calculate previous period CAC
-        let prevCampaignQuery = supabase
-          .from('campaigns')
-          .select('id, budget, metadata')
-          .eq('site_id', siteId)
-          .gte('created_at', standardizedPrevStart.toISOString())
-          .lte('created_at', standardizedPrevEnd.toISOString());
-        
-        // If segmentId is provided, filter by segment
-        if (segmentId && segmentId !== 'all') {
-          prevCampaignQuery = prevCampaignQuery.eq('segment_id', segmentId);
-        }
-        
-        const { data: prevCampaigns } = await prevCampaignQuery;
-        
-        // Get previous period transaction costs
-        let prevTransactionsQuery = supabase
-          .from('transactions')
-          .select('id, amount, type, campaign_id')
-          .eq('site_id', siteId)
-          .gte('created_at', standardizedPrevStart.toISOString())
-          .lte('created_at', standardizedPrevEnd.toISOString());
-          
-        // If segmentId is provided, filter by segment
-        if (segmentId && segmentId !== 'all') {
-          prevTransactionsQuery = prevTransactionsQuery.eq('segment_id', segmentId);
-        }
-        
-        const { data: prevTransactions } = await prevTransactionsQuery;
-        
-        if (prevTransactions && prevTransactions.length > 0) {
-          console.log(`[CAC API] Previous period: Found ${prevTransactions.length} transactions`);
-        }
-        
-        // Obtener ventas con lead_id para el periodo anterior
-        // Try sale_date first, then fallback to created_at
-        const prevSaleDateStart = format(standardizedPrevStart, 'yyyy-MM-dd');
-        const prevSaleDateEnd = format(standardizedPrevEnd, 'yyyy-MM-dd');
-        
-        // First try with sale_date
-        let prevSalesQuerySaleDate = supabase
-          .from('sales')
-          .select('id, lead_id, amount, sale_date')
-          .eq('site_id', siteId)
-          .gte('sale_date', prevSaleDateStart)
-          .lte('sale_date', prevSaleDateEnd)
-          .not('lead_id', 'is', null); // Solo ventas asociadas a leads
-          
-        // If segmentId is provided, filter by segment
-        if (segmentId && segmentId !== 'all') {
-          prevSalesQuerySaleDate = prevSalesQuerySaleDate.eq('segment_id', segmentId);
-        }
-        
-        const { data: prevSalesSaleDate, error: prevSalesErrorSaleDate } = await prevSalesQuerySaleDate;
-        
-        // If sale_date query fails or returns no data, fallback to created_at
-        let prevSales = prevSalesSaleDate;
-        
-        if (prevSalesErrorSaleDate || !prevSalesSaleDate || prevSalesSaleDate.length === 0) {
-          console.log('[CAC API] Using created_at fallback for previous period sales query');
-          
-          let prevSalesQuery = supabase
-            .from('sales')
-            .select('id, lead_id, amount, sale_date')
-            .eq('site_id', siteId)
-            .gte('created_at', standardizedPrevStart.toISOString())
-            .lte('created_at', standardizedPrevEnd.toISOString())
-            .not('lead_id', 'is', null); // Solo ventas asociadas a leads
-            
-          // If segmentId is provided, filter by segment
-          if (segmentId && segmentId !== 'all') {
-            prevSalesQuery = prevSalesQuery.eq('segment_id', segmentId);
-          }
-          
-          const result = await prevSalesQuery;
-          prevSales = result.data;
-        } else {
-          console.log('[CAC API] Using sale_date for previous period sales query');
-        }
-        
-        // Contar ventas únicas por lead_id para no duplicar conversiones
-        const prevUniqueLeadIds = new Set(prevSales?.map(sale => sale.lead_id) || []);
-        const prevSalesCount = prevUniqueLeadIds.size;
-        
-        if (prevSales && prevSales.length > 0) {
-          console.log(`[CAC API] Previous period: Found ${prevSalesCount} unique leads with sales`);
-        }
-        
-        // Sum previous campaign budgets ONLY for paid campaigns
-        const prevTotalCampaignBudget = prevCampaigns?.reduce((sum, campaign) => {
-          // Only count budget if campaign is marked as paid in metadata
-          const isPaid = campaign.metadata?.payment_status?.status === 'paid';
-          if (isPaid) {
-            const budgetAmount = campaign.budget?.allocated || 0;
-            console.log(`[CAC API] Including previous paid campaign budget: $${budgetAmount} (Campaign: ${campaign.id})`);
-            return sum + budgetAmount;
-          } else {
-            console.log(`[CAC API] Skipping previous non-paid campaign budget (Campaign: ${campaign.id})`);
-            return sum;
-          }
-        }, 0) || 0;
-        
-        // Sum previous transaction costs
-        const prevTotalTransactionCosts = prevTransactions?.reduce((sum, transaction) => {
-          return sum + (transaction.amount || 0);
-        }, 0) || 0;
-        
-        // Use transaction costs if available, otherwise fallback to campaign budget
-        const prevCostValue = prevTotalTransactionCosts > 0 ? prevTotalTransactionCosts : prevTotalCampaignBudget;
-        
-        console.log(`[CAC API] Previous period: Campaign budget: $${prevTotalCampaignBudget}, Transaction costs: $${prevTotalTransactionCosts}`);
-        
-        // Usar ventas como conversiones
-        let prevConversionCount = prevSalesCount;
-        
-        if (prevConversionCount > 0 && prevCostValue > 0) {
-          // Calculate previous CAC
-          previousValue = Math.round(prevCostValue / prevConversionCount);
-          console.log(`[CAC API] Previous period: Calculated CAC: $${previousValue} using ${prevTotalTransactionCosts > 0 ? 'transaction costs' : 'campaign budget'}`);
-        }
-        
-        // Store the previous period CAC only if we have real data
-        if (hasRealData) {
-          await findOrCreateKpi(
-            supabase,
-            supabaseAdmin,
-            {
-              siteId,
-              userId,
-              segmentId: segmentId !== 'all' ? segmentId : null,
-              periodStart: standardizedPrevStart,
-              periodEnd: standardizedPrevEnd,
-              type: "cac",
-              name: "Customer Acquisition Cost",
-              value: previousValue,
-              previousValue: undefined
-            }
-          );
-        }
-      }
-      
-      // Create or update the current period KPI only if we have real data
-      if (hasRealData) {
-        const { kpi: currentKpi } = await findOrCreateKpi(
-          supabase,
-          supabaseAdmin,
-          {
-            siteId,
-            userId,
-            segmentId: segmentId !== 'all' ? segmentId : null,
-            periodStart: standardizedStart,
-            periodEnd: standardizedEnd,
-            type: "cac",
-            name: "Customer Acquisition Cost",
-            value: cacValue,
-            previousValue
-          }
-        );
-        
-        if (currentKpi) {
-          // Use the stored trend value if available
-          percentChange = currentKpi.trend;
-        } else {
-          // Calculate trend if KPI creation failed
-          percentChange = calculateTrend(cacValue, previousValue);
-        }
-      }
-    }
-    
+    let { percentChange } = await comparePreviousPeriod({
+      supabase, siteId, userId, segmentId, skipKpiCreation, standardizedStart, standardizedEnd, standardizedPrevStart, standardizedPrevEnd, hasRealData, cacValue
+    });
+
     // If no real data but we have campaign budget, return budget information with warning
     if (!hasRealData && costValue > 0) {
       return NextResponse.json({

@@ -1,11 +1,12 @@
 import enTranslations from "@/app/context/locales/en.json"
 import esTranslations from "@/app/context/locales/es.json"
+import { flattenMessages } from "@/app/context/locale-messages"
 
 export type DocumentLocale = "en" | "es"
 
 const translations: Record<DocumentLocale, Record<string, string>> = {
-  en: enTranslations as Record<string, string>,
-  es: esTranslations as Record<string, string>,
+  en: flattenMessages(enTranslations),
+  es: flattenMessages(esTranslations),
 }
 
 const LOCALE_TO_BCP47: Record<DocumentLocale, string> = {
@@ -32,10 +33,11 @@ export function documentT(
   params?: Record<string, string | number>
 ): string {
   const resolved = resolveDocumentLocale(locale)
-  const raw =
-    translations[resolved]?.[key] ||
-    translations.en?.[key] ||
-    key
+  const localized = translations[resolved][key]
+  const fallback = translations.en[key]
+  const raw = typeof localized === "string" && localized
+    ? localized
+    : typeof fallback === "string" && fallback ? fallback : key
 
   if (!params) return raw
 

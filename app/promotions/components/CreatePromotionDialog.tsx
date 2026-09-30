@@ -138,7 +138,7 @@ export function CreatePromotionDialog({
 
   const { discardOpen, setDiscardOpen, handleOpenChange, confirmDiscard } =
     useDirtyDialogClose({
-      dirty: isDirty || extraDirty,
+      dirty: isDirty || Boolean(extraDirty),
       busy: isSubmitting,
       onOpenChange: (next) => {
         if (!next) resetForm()

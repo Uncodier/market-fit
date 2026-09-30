@@ -21,6 +21,7 @@ export type SlotAvailability = {
   start: string
   end: string
   available: number
+  capacity?: number
   timezone?: string
 }
 

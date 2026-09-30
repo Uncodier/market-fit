@@ -6,7 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/app/components/ui/badge"
 import { Button } from "@/app/components/ui/button"
 import { AlertCircle, Clock, FileText, User, Bot, Settings, CheckCircle2, XCircle } from "@/app/components/ui/icons"
-import { InstanceLog } from "@/app/agents/actions"
+import type { InstanceLog } from "@/app/components/simple-messages-view/types"
 
 interface AgentToolsTableProps {
   logs: InstanceLog[]

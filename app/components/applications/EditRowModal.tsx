@@ -100,7 +100,7 @@ export function EditRowModal({
       })
 
       let result
-      if (row) {
+      if (row && table.primaryKey) {
         result = await updateTableRow({
           schema,
           table: table.name,

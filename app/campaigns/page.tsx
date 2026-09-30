@@ -105,7 +105,6 @@ export default function CampaignsPage() {
 
   const matchesFilters = (campaign: Campaign) => {
     const campaignStatus = campaign.status || "active"
-    if (activeTab === "all" && campaignStatus === "draft") return false
     if (activeTab !== "all" && campaignStatus !== activeTab) return false
     if (!selectedPriorities.includes(campaign.priority)) return false
     if (!searchQuery) return true

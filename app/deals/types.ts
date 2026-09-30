@@ -8,7 +8,7 @@ export interface DealContact {
   role: string | null
   is_primary: boolean
   created_at: string
-  lead?: Lead | null
+  lead?: (Pick<Lead, "id" | "name" | "email"> & Partial<Pick<Lead, "position">>) | null
 }
 
 export interface DealOwner {

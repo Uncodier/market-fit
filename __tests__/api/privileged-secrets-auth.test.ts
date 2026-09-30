@@ -59,6 +59,7 @@ describe.each([
 
   it("rejects missing credentials before creating a service-role client", async () => {
     const response = await handler(request(body))
+    if (!response) throw new Error("Expected an authorization response")
 
     expect(response.status).toBe(401)
     expect(createClient).not.toHaveBeenCalled()

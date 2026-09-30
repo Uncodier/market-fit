@@ -18,6 +18,8 @@ import {
   Target,
   UploadCloud,
   Users,
+  ShoppingCart,
+  Zap,
 } from "@/app/components/ui/icons"
 import type { OnboardingTaskIcon } from "./onboarding-tasks"
 
@@ -39,6 +41,8 @@ const ICON_MAP: Record<OnboardingTaskIcon, typeof Code> = {
   sparkles: Sparkles,
   "external-link": ExternalLink,
   globe: Globe,
+  "shopping-cart": ShoppingCart,
+  zap: Zap,
 }
 
 export function OnboardingTaskIconView({

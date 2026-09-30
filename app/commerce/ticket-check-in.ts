@@ -8,6 +8,10 @@ import {
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
+type CheckInResult =
+  | { error: string; success?: never; message?: never; itemName?: never }
+  | { success: true; message: string; itemName: string; idempotent?: boolean; error?: never }
+
 async function checkInReservation({
   code,
   siteId,
@@ -18,7 +22,7 @@ async function checkInReservation({
   siteId: string
   userId: string
   supabase: Awaited<ReturnType<typeof createClient>>
-}) {
+}): Promise<CheckInResult | null> {
   if (!UUID_RE.test(code)) return null
 
   const { data: reservation, error } = await supabase
@@ -77,7 +81,7 @@ export async function checkInTicket({
   code: string
   siteId: string
   clientMutationId?: string
-}) {
+}): Promise<CheckInResult> {
   const supabase = await createClient()
   const {
     data: { user },
@@ -146,10 +150,10 @@ export async function checkInTicket({
     return { error: "Invalid code" }
   }
 
-  const activeEntitlement = entitlements.find((e) => e.status === "active")
+  const activeEntitlement = entitlements.find((e: { status: string }) => e.status === "active")
 
   if (!activeEntitlement) {
-    const used = entitlements.find((e) => e.status === "used")
+    const used = entitlements.find((e: { status: string }) => e.status === "used")
     if (used) return { error: "Already used" }
     return { error: "Invalid status" }
   }

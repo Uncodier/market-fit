@@ -161,7 +161,7 @@ export async function printAfterPosCheckout(params: {
   const job = {
     id: `kitchen-${orderId || sentAt}`,
     module: "orders" as const,
-    template: (isFull ? "kitchen" : "kitchen-delta") as const,
+    template: isFull ? "kitchen" as const : "kitchen-delta" as const,
     orderId: orderId || undefined,
     sentAt,
     payload: {

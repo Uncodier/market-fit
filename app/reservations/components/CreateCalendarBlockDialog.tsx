@@ -88,7 +88,7 @@ export function CreateCalendarBlockDialog({
       if (block) {
         setEntityType(block.entity_type)
         if (block.entity_id) {
-           setEntityValue({ mode: 'existing', id: block.entity_id, query: '' })
+           setEntityValue({ mode: 'existing', id: block.entity_id, label: '' })
         } else {
            setEntityValue(null)
         }

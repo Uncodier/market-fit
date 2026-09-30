@@ -166,8 +166,8 @@ export async function resolvePromotionDiscount(
           .from("catalog_items")
           .select("id, category_id")
           .in("id", itemIds);
-        const catMap = new Map(
-          (catalogItems || []).map((ci: any) => [ci.id, ci.category_id])
+        const catMap = new Map<string, string | null>(
+          (catalogItems || []).map((ci: { id: string; category_id: string | null }) => [ci.id, ci.category_id])
         );
         linesWithCategories = lines.map((l) => ({
           ...l,

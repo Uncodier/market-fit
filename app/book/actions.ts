@@ -119,7 +119,7 @@ export async function bookRRMeeting(data: {
 
   if (!profiles || profiles.length === 0) throw new Error("No members found");
 
-  const memberIds = profiles.map((p) => p.id);
+  const memberIds: string[] = profiles.map((p: { id: string }) => p.id);
 
   // Count tasks per member for that day
   const { data: taskCounts } = await supabase
@@ -131,7 +131,7 @@ export async function bookRRMeeting(data: {
 
   const counts: Record<string, number> = {};
   memberIds.forEach((id) => (counts[id] = 0));
-  taskCounts?.forEach((t) => {
+  taskCounts?.forEach((t: { assignee: string | null }) => {
     if (t.assignee) counts[t.assignee] = (counts[t.assignee] || 0) + 1;
   });
 

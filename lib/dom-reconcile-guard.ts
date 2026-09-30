@@ -31,10 +31,10 @@ export function installDomReconcileGuard(
   proto.removeChild = function <T extends Node>(this: Node, child: T): T {
     if (child && child.parentNode !== this) {
       return child.parentNode
-        ? originalRemoveChild.call(child.parentNode, child)
+        ? (originalRemoveChild<T>).call(child.parentNode, child)
         : child
     }
-    return originalRemoveChild.call(this, child)
+    return (originalRemoveChild<T>).call(this, child)
   }
 
   proto.insertBefore = function <T extends Node>(
@@ -43,9 +43,9 @@ export function installDomReconcileGuard(
     referenceNode: Node | null
   ): T {
     if (referenceNode && referenceNode.parentNode !== this) {
-      return originalInsertBefore.call(this, newNode, null)
+      return (originalInsertBefore<T>).call(this, newNode, null)
     }
-    return originalInsertBefore.call(this, newNode, referenceNode)
+    return (originalInsertBefore<T>).call(this, newNode, referenceNode)
   }
 
   return true

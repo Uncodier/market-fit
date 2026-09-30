@@ -56,7 +56,7 @@ export async function listPassRoundRobinMemberIds(passCatalogItemId: string): Pr
     .order("created_at", { ascending: true })
 
   if (error) throw new Error(error.message)
-  let orderedIds = (rows || []).map((r) => r.reservable_catalog_item_id as string)
+  let orderedIds: string[] = (rows || []).map((r: { reservable_catalog_item_id: string }) => r.reservable_catalog_item_id)
   
   if (orderedIds.length === 0) return []
 
@@ -67,7 +67,7 @@ export async function listPassRoundRobinMemberIds(passCatalogItemId: string): Pr
     .select("id, status, availability_mode, availability_status")
     .in("id", orderedIds)
 
-  const baseById = new Map((baseItems || []).map((item) => [item.id, item]))
+  const baseById = new Map<string, RoundRobinMemberRow>((baseItems || []).map((item: RoundRobinMemberRow) => [item.id, item]))
   orderedIds = orderedIds.filter((id) => {
     const item = baseById.get(id)
     if (!item || item.status === "archived") return false
@@ -122,14 +122,14 @@ export async function listPassRoundRobinMemberIds(passCatalogItemId: string): Pr
     .in("id", orderedIds)
 
   const byId = new Map<string, RoundRobinMemberRow>(
-    (items || []).map((item) => [item.id, item as RoundRobinMemberRow]),
+    (items || []).map((item: RoundRobinMemberRow) => [item.id, item]),
   )
 
   const parentIds = Array.from(
     new Set(
       (items || [])
-        .map((item) => item.parent_id as string | null)
-        .filter((id): id is string => Boolean(id)),
+        .map((item: RoundRobinMemberRow) => item.parent_id)
+        .filter((id: string | null | undefined): id is string => Boolean(id)),
     ),
   )
   if (parentIds.length > 0) {
@@ -137,7 +137,7 @@ export async function listPassRoundRobinMemberIds(passCatalogItemId: string): Pr
       .from("catalog_items")
       .select("id, status")
       .in("id", parentIds)
-    const parentStatus = new Map((parents || []).map((parent) => [parent.id, parent.status]))
+    const parentStatus = new Map<string, string | null>((parents || []).map((parent: { id: string; status: string | null }) => [parent.id, parent.status]))
     for (const item of byId.values()) {
       if (!item.parent_id) continue
       item.parent = { status: parentStatus.get(item.parent_id) ?? null }

@@ -123,7 +123,7 @@ export async function listVisitEmployees(siteId: string) {
       .select("id, name")
       .in("id", Array.from(userIds))
 
-    const nameById = new Map((profiles || []).map((p) => [p.id, p.name || "Unknown"]))
+    const nameById = new Map<string, string>((profiles || []).map((p: { id: string; name: string | null }) => [p.id, p.name || "Unknown"]))
 
     return {
       data: Array.from(userIds).map((id) => ({

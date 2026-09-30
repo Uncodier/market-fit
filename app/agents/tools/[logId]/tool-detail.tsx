@@ -2,269 +2,22 @@
 
 import { useRouter } from "next/navigation"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
-import { Button } from "@/app/components/ui/button"
+
 import { Card, CardContent } from "@/app/components/ui/card"
-import { Badge } from "@/app/components/ui/badge"
+
 import { StickyHeader } from "@/app/components/ui/sticky-header"
-import { 
-  AlertCircle, 
-  CheckCircle2, 
-  PlayCircle, 
-  ChevronLeft, 
-  Clock, 
-  FileText, 
-  Info, 
-  Target, 
-  User,
-  RotateCcw,
-  ThumbsUp,
-  ThumbsDown,
-  Flag,
-  Bot,
-  Settings,
-  XCircle,
-  Image,
-  Zap
-} from "@/app/components/ui/icons"
+import { AlertCircle, PlayCircle, Clock, FileText, Info, Target, User, Bot, Settings, Zap } from "@/app/components/ui/icons"
 import { JsonHighlighter } from "@/app/components/agents/json-highlighter"
 import { PageTransition } from "@/app/components/ui/page-transition"
 import { EmptyCard } from "@/app/components/ui/empty-card"
-import { cn } from "@/app/lib/utils"
-import { InstanceLog } from "@/app/agents/actions"
-import { useEffect, useState } from "react"
-import React from "react"
-import { useSupabase } from "@/app/hooks/use-supabase"
-import { toast } from "sonner"
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/app/components/ui/tooltip"
+
+import type { SingleInstanceLogResponse } from "@/app/agents/actions"
+type InstanceLog = NonNullable<SingleInstanceLogResponse["log"]>
+import { useEffect } from "react"
+
 import { Breadcrumb } from "@/app/components/navigation/Breadcrumb"
 
-// For consistent formatting of dates across the application
-function formatDate(dateString: string | undefined | null) {
-  if (!dateString) return "N/A";
-  try {
-    const date = new Date(dateString);
-    return new Intl.DateTimeFormat('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit'
-    }).format(date);
-  } catch (error) {
-    console.error("Invalid date format:", dateString);
-    return "Invalid Date";
-  }
-}
-
-// Helper function to format duration in ms to human-readable format
-function formatDuration(durationMs: number | undefined | null) {
-  if (durationMs === undefined || durationMs === null) return "N/A";
-  
-  const seconds = Math.floor(durationMs / 1000);
-  if (seconds < 60) return `${seconds}s`;
-  
-  const minutes = Math.floor(seconds / 60);
-  const remainingSeconds = seconds % 60;
-  if (minutes < 60) return `${minutes}m ${remainingSeconds}s`;
-  
-  const hours = Math.floor(minutes / 60);
-  const remainingMinutes = minutes % 60;
-  return `${hours}h ${remainingMinutes}m ${remainingSeconds}s`;
-}
-
-// Component to show log level with proper styling
-function LevelBadge({ level }: { level: string }) {
-  switch (level) {
-    case "debug":
-      return (
-        <Badge variant="outline" className="bg-muted/10 text-muted-foreground border-muted/30">
-          <Info className="h-3.5 w-3.5 mr-1.5" />
-          Debug
-        </Badge>
-      );
-    case "info":
-      return (
-        <Badge variant="outline" className="bg-info/10 text-info border-info/30">
-          <Info className="h-3.5 w-3.5 mr-1.5" />
-          Info
-        </Badge>
-      );
-    case "warn":
-      return (
-        <Badge variant="outline" className="bg-warning/10 text-warning border-warning/30">
-          <AlertCircle className="h-3.5 w-3.5 mr-1.5" />
-          Warning
-        </Badge>
-      );
-    case "error":
-      return (
-        <Badge variant="outline" className="bg-destructive/10 text-destructive border-destructive/30">
-          <XCircle className="h-3.5 w-3.5 mr-1.5" />
-          Error
-        </Badge>
-      );
-    case "critical":
-      return (
-        <Badge variant="outline" className="bg-destructive/20 text-destructive border-destructive/40">
-          <XCircle className="h-3.5 w-3.5 mr-1.5" />
-          Critical
-        </Badge>
-      );
-    default:
-      return (
-        <Badge variant="outline">
-          {level}
-        </Badge>
-      );
-  }
-}
-
-// Component to show log type with proper styling
-function LogTypeBadge({ logType }: { logType: string }) {
-  const getIcon = () => {
-    switch (logType) {
-      case "system":
-        return <FileText className="h-3.5 w-3.5 mr-1.5" />;
-      case "user_action":
-        return <User className="h-3.5 w-3.5 mr-1.5" />;
-      case "agent_action":
-        return <Bot className="h-3.5 w-3.5 mr-1.5" />;
-      case "tool_call":
-        return <Settings className="h-3.5 w-3.5 mr-1.5" />;
-      case "tool_result":
-        return <CheckCircle2 className="h-3.5 w-3.5 mr-1.5" />;
-      case "error":
-        return <XCircle className="h-3.5 w-3.5 mr-1.5" />;
-      case "performance":
-        return <Zap className="h-3.5 w-3.5 mr-1.5" />;
-      default:
-        return <FileText className="h-3.5 w-3.5 mr-1.5" />;
-    }
-  };
-
-  return (
-    <Badge variant="outline" className="bg-primary/10 text-primary border-primary/30">
-      {getIcon()}
-      {logType.replace('_', ' ')}
-    </Badge>
-  );
-}
-
-// Format token usage display
-function formatTokens(tokensUsed?: any) {
-  if (!tokensUsed) return "N/A";
-  
-  if (typeof tokensUsed === 'object') {
-    const promptTokens = tokensUsed.promptTokens || tokensUsed.prompt_tokens || 0;
-    const completionTokens = tokensUsed.completionTokens || tokensUsed.completion_tokens || 0;
-    const totalTokens = tokensUsed.totalTokens || tokensUsed.total_tokens || (promptTokens + completionTokens);
-    
-    if (totalTokens > 0) {
-      return `${promptTokens.toLocaleString()} / ${completionTokens.toLocaleString()} (${totalTokens.toLocaleString()} total)`;
-    }
-  }
-  
-  return "N/A";
-}
-
-// Render base64 images in content
-function renderBase64Images(contentString: string) {
-  const imageRegex = /(data:image\/[^;]+;base64,[^\s"]+)/g;
-  const urlRegex = /(https?:\/\/[^\s"]+)/g;
-  
-  const extractMatches = (regex: RegExp, type: string) => {
-    const matches = [];
-    let match;
-    
-    regex.lastIndex = 0;
-    
-    while ((match = regex.exec(contentString)) !== null) {
-      matches.push({
-        type,
-        value: match[0],
-        index: match.index
-      });
-    }
-    
-    return matches;
-  };
-  
-  const imageMatches = extractMatches(imageRegex, 'image');
-  const urlMatches = extractMatches(urlRegex, 'url');
-  
-  if (imageMatches.length === 0 && urlMatches.length === 0) {
-    return (
-      <pre 
-        className="text-sm whitespace-pre-wrap font-mono max-w-full overflow-x-auto break-all break-words"
-        style={{ wordWrap: 'break-word', maxWidth: '100%' }}
-      >{contentString}</pre>
-    );
-  }
-
-  const allMatches = [...imageMatches, ...urlMatches].sort((a, b) => a.index - b.index);
-  
-  const parts = [];
-  let lastIndex = 0;
-  
-  for (const match of allMatches) {
-    const matchIndex = match.index;
-    
-    if (matchIndex > lastIndex) {
-      parts.push({
-        type: 'text',
-        value: contentString.substring(lastIndex, matchIndex)
-      });
-    }
-    
-    parts.push(match);
-    lastIndex = matchIndex + match.value.length;
-  }
-  
-  if (lastIndex < contentString.length) {
-    parts.push({
-      type: 'text',
-      value: contentString.substring(lastIndex)
-    });
-  }
-  
-  return (
-    <div className="space-y-4">
-      {parts.map((part, i) => (
-        <React.Fragment key={i}>
-          {part.type === 'text' && part.value.trim() && (
-            <pre 
-              className="text-sm whitespace-pre-wrap font-mono max-w-full overflow-x-auto break-all break-words"
-              style={{ wordWrap: 'break-word', maxWidth: '100%' }}
-            >{part.value}</pre>
-          )}
-          {part.type === 'image' && (
-            <div className="my-4">
-              <img 
-                src={part.value} 
-                alt="Screenshot" 
-                className="max-w-full h-auto rounded-lg border shadow-sm"
-                style={{ maxHeight: '400px' }}
-              />
-            </div>
-          )}
-          {part.type === 'url' && (
-            <div className="my-2">
-              <a 
-                href={part.value} 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="text-blue-600 hover:text-blue-800 underline break-all"
-              >
-                {part.value}
-              </a>
-            </div>
-          )}
-        </React.Fragment>
-      ))}
-    </div>
-  );
-}
+import { formatDate, formatDuration, LevelBadge, LogTypeBadge, formatTokens, renderBase64Images } from "./log-presentation"
 
 export default function ToolDetail({ log, logId }: { log: InstanceLog | null, logId: string }) {
   const router = useRouter();
@@ -288,9 +41,9 @@ export default function ToolDetail({ log, logId }: { log: InstanceLog | null, lo
           section: 'agents',
           breadcrumb: (
             <Breadcrumb items={[
-              { href: '/agents', label: 'Agents', isCurrent: false },
-              { href: '/agents/tools', label: 'Tools', isCurrent: false },
-              { href: typeof window !== 'undefined' ? window.location.pathname : '', label: logTitle, isCurrent: true }
+              { href: '/agents', label: 'Agents' },
+              { href: '/agents/tools', label: 'Tools' },
+              { href: typeof window !== 'undefined' ? window.location.pathname : '', label: logTitle }
             ]} />
           )
         }
@@ -327,7 +80,7 @@ export default function ToolDetail({ log, logId }: { log: InstanceLog | null, lo
   }
 
   // Component Overview Card that will always be visible
-  const OverviewCard = () => (
+  const overviewCard = (
     <Card>
       <CardContent className="pt-6">
         <div className="space-y-6">
@@ -613,7 +366,7 @@ export default function ToolDetail({ log, logId }: { log: InstanceLog | null, lo
 
             {/* Right Column: Overview Card */}
             <div className="lg:w-1/3">
-              <OverviewCard />
+              {overviewCard}
             </div>
           </div>
         </div>

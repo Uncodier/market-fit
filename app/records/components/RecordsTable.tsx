@@ -132,7 +132,7 @@ export function RecordsTable({
             <DocumentListHead className="w-[40%] pl-4">{t("records.table.title") || "Title"}</DocumentListHead>
             <DocumentListHead className="w-[20%]">{t("records.table.category") || "Category"}</DocumentListHead>
             <DocumentListHead className="w-[20%]">{t("records.table.status") || "Status"}</DocumentListHead>
-            <DocumentListHead className="w-[20%]" align="right pr-4">{t("records.table.createdAt") || "Created At"}</DocumentListHead>
+            <DocumentListHead className="w-[20%] pr-4" align="right">{t("records.table.createdAt") || "Created At"}</DocumentListHead>
           </TableRow>
         </TableHeader>
         <TableBody>

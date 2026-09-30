@@ -1,12 +1,16 @@
 /** @jest-environment node */
+import { cookies } from "next/headers"
 import { updatePurchase, deletePurchase } from "@/app/purchases/actions"
 import { purchaseAmountDue } from "@/app/purchases/purchase-payment-state"
 import { createClient } from "@/lib/supabase/server"
+import { userCanOnSite } from "@/lib/permissions/site-access"
 import { upsertPolizaForPurchase, removePolizaForSource } from "@/app/accounting/ensure"
 import { deleteAccountingSource, hasSourceJournal } from '@/app/accounting/source-lifecycle'
 jest.mock('@/app/accounting/source-lifecycle', () => ({ deleteAccountingSource: jest.fn(), hasSourceJournal: jest.fn() }))
 
 jest.mock("@/lib/supabase/server", () => ({ createClient: jest.fn() }))
+jest.mock("@/lib/permissions/site-access", () => ({ userCanOnSite: jest.fn() }))
+jest.mock("next/headers", () => ({ cookies: jest.fn() }))
 jest.mock("next/cache", () => ({ revalidatePath: jest.fn() }))
 jest.mock("@/app/accounting/ensure", () => ({
   upsertPolizaForPurchase: jest.fn(), removePolizaForSource: jest.fn(),
@@ -14,22 +18,29 @@ jest.mock("@/app/accounting/ensure", () => ({
 
 const siteId = "00000000-0000-4000-8000-000000000001"
 const id = "00000000-0000-4000-8000-000000000002"
+const userId = "00000000-0000-4000-8000-000000000003"
 const payment = (amount: number) => ({ id: "pay-1", amount, date: "2026-09-01T00:00:00.000Z", method: "bank" })
 const items = (amount: number) => [{ name: "Materials", quantity: 1, unitCost: amount }]
+type WriteData = Record<string, unknown>
+type QueryResult = { error: { message: string } | null }
+type Query = {
+  select: jest.Mock; eq: jest.Mock; update: jest.Mock; insert: jest.Mock; delete: jest.Mock; single: jest.Mock
+  then: (resolve: (result: QueryResult) => unknown) => Promise<unknown>
+}
 
 function setup(overrides = {}) {
-  const row: any = { id, site_id: siteId, amount: 100, amount_due: 100, payments: [], updated_at: "2026-09-01T00:00:00.000Z", accounting_state: "posted", ...overrides }
-  const writes: { table: string; operation: string; data: any }[] = []
+  const row = { id, site_id: siteId, amount: 100, amount_due: 100, payments: [] as ReturnType<typeof payment>[], updated_at: "2026-09-01T00:00:00.000Z", accounting_state: "posted", ...overrides }
+  const writes: { table: string; operation: string; data: WriteData | null }[] = []
   const errors: Record<string, string> = {}
   const query = (table: string) => {
     let operation = "select"
-    const chain: any = {
+    const chain: Query = {
       select: jest.fn().mockReturnThis(), eq: jest.fn().mockReturnThis(),
       update: jest.fn((data) => { operation = "update"; writes.push({ table, operation, data }); return chain }),
       insert: jest.fn((data) => { operation = "insert"; writes.push({ table, operation, data }); return chain }),
       delete: jest.fn(() => { operation = "delete"; writes.push({ table, operation, data: null }); return chain }),
-      single: jest.fn(async () => ({ data: table === "sites" ? { user_id: "user-1" } : row, error: null })),
-      then: (resolve: any) => {
+      single: jest.fn(async () => ({ data: row, error: null })),
+      then: resolve => {
         const error = errors[`${table}:${operation}`]
         if (!error && table === "purchases" && operation === "update") Object.assign(row, writes.at(-1)?.data)
         return Promise.resolve({ error: error ? { message: error } : null }).then(resolve)
@@ -39,16 +50,18 @@ function setup(overrides = {}) {
   }
   const client = {
     from: jest.fn(query),
-    rpc: jest.fn(async (_name, params) => {
+    rpc: jest.fn(async (_name: string, params: { p_items: { subtotal: number }[]; p_update: WriteData }) => {
       if (errors.rpc) return { error: { message: errors.rpc, code: errors.code } }
-      const amount = params.p_items.reduce((sum: number, item: any) => sum + item.subtotal, 0)
+      const amount = params.p_items.reduce((sum, item) => sum + item.subtotal, 0)
       const amountDue = purchaseAmountDue(row, amount)
       Object.assign(row, params.p_update, { amount, amount_due: amountDue, accounting_state: row.accounting_state === "unpublished" ? "unpublished" : "pending" })
       return { error: null }
     }),
-    auth: { getSession: jest.fn().mockResolvedValue({ data: { session: { user: { id: "user-1" } } } }) },
+    auth: { getUser: jest.fn().mockResolvedValue({ data: { user: { id: userId } }, error: null }) },
   }
-  jest.mocked(createClient).mockResolvedValue(client as any)
+  jest.mocked(createClient).mockResolvedValue(client)
+  jest.mocked(cookies).mockResolvedValue({ get: jest.fn() } as unknown as Awaited<ReturnType<typeof cookies>>)
+  jest.mocked(userCanOnSite).mockResolvedValue(true)
   jest.mocked(upsertPolizaForPurchase).mockImplementation(async () => { row.accounting_state = "posted" })
   return { row, writes, errors, client }
 }
@@ -68,7 +81,7 @@ describe("purchase amount edits", () => {
     expect(result.error).toBeNull()
     expect(row.amount_due).toBe(expectedDue)
     expect(row.payments).toEqual(payments)
-    expect(writes.filter(write => write.table === "purchases").every(write => write.data.accounting_state === "pending")).toBe(true)
+    expect(writes.filter(write => write.table === "purchases").every(write => write.data?.accounting_state === "pending")).toBe(true)
     expect(upsertPolizaForPurchase).toHaveBeenCalledWith(id, siteId)
   })
 
@@ -202,7 +215,7 @@ describe("purchase amount edits", () => {
 
   it("rejects unauthenticated updates before any source read or write", async () => {
     const { client } = setup()
-    client.auth.getSession.mockResolvedValue({ data: { session: null } } as any)
+    client.auth.getUser.mockResolvedValue({ data: { user: null }, error: null })
     expect((await updatePurchase({ siteId, id, items: items(120) })).error).toBe("Not authenticated")
     expect(client.from).not.toHaveBeenCalled()
   })

@@ -1,255 +1,21 @@
+import type { QueryResult } from '../_shared/query-result';
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { cookies } from 'next/headers';
-import { subDays, subMonths, format, startOfMonth, endOfMonth, subQuarters, subYears } from 'date-fns';
-import { createApiClient, createServiceApiClient } from "@/lib/supabase/server-client";
-import crypto from 'crypto';
+import { subDays, subMonths, format, subQuarters, subYears } from 'date-fns';
+import { createServiceApiClient } from '@/lib/supabase/server-client';
+import { requireAnalyticsAccess } from '@/lib/auth/api-analytics-access';
+import { calculateTrend, standardizePeriodDates, findOrCreateKpi } from './kpi';
 
-interface KpiData {
-  id: string;
-  name: string;
-  description: string | null;
-  value: number;
-  previous_value: number;
-  unit: string;
-  type: string;
-  period_start: string;
-  period_end: string;
-  segment_id: string | null;
-  is_highlighted: boolean;
-  target_value: number | null;
-  metadata: any;
-  site_id: string;
-  user_id: string | null;
-  trend: number;
-  benchmark: number | null;
-}
-
-// Helper function to format date for DB
-function formatDateForDb(date: Date): string {
-  return date.toISOString();
-}
-
-// Helper function to calculate trend percentage
-function calculateTrend(current: number, previous: number): number {
-  if (previous === 0) {
-    return current > 0 ? 100 : 0;
-  }
-  return Number((((current - previous) / previous) * 100).toFixed(2));
-}
-
-// Helper function to standardize period dates
-function standardizePeriodDates(
-  periodStart: Date,
-  periodEnd: Date
-): { periodStart: Date; periodEnd: Date; periodType: string } {
-  const daysDiff = Math.ceil((periodEnd.getTime() - periodStart.getTime()) / (1000 * 3600 * 24));
-  
-  let periodType = "monthly";
-  let standardizedStart = periodStart;
-  let standardizedEnd = periodEnd;
-  
-  if (daysDiff <= 1) {
-    periodType = "daily";
-    // Keep as is
-  } else if (daysDiff <= 7) {
-    periodType = "weekly";
-    // Keep as is
-  } else if (daysDiff <= 31) {
-    periodType = "monthly";
-    standardizedStart = startOfMonth(periodStart);
-    standardizedEnd = endOfMonth(periodStart);
-  } else if (daysDiff <= 90) {
-    periodType = "quarterly";
-    // First day of current quarter to last day of current quarter
-    standardizedStart = startOfMonth(periodStart);
-    standardizedEnd = endOfMonth(new Date(periodStart.getFullYear(), periodStart.getMonth() + 2, 1));
-  } else {
-    periodType = "yearly";
-    standardizedStart = new Date(periodStart.getFullYear(), 0, 1);
-    standardizedEnd = new Date(periodStart.getFullYear(), 11, 31);
-  }
-  
-  return { periodStart: standardizedStart, periodEnd: standardizedEnd, periodType };
-}
-
-// Helper function to check if a KPI exists and create it if it doesn't
-async function findOrCreateKpi(
-  supabase: any,
-  supabaseAdmin: any,
-  kpiParams: {
-    siteId: string,
-    userId: string | null,
-    segmentId: string | null,
-    periodStart: Date,
-    periodEnd: Date,
-    type: string,
-    name: string,
-    value: number,
-    previousValue?: number
-  }
-): Promise<{ kpi: any, created: boolean }> {
-  // Get the period type and standardize dates for consistency
-  const { periodStart, periodEnd, periodType } = standardizePeriodDates(
-    kpiParams.periodStart,
-    kpiParams.periodEnd
-  );
-  
-  // Format dates consistently for DB
-  const formattedStart = formatDateForDb(periodStart);
-  const formattedEnd = formatDateForDb(periodEnd);
-  
-  // Create a deterministic ID for this KPI based on its key attributes
-  // This ensures the same KPI always has the same ID, preventing duplicates
-  const segmentPart = kpiParams.segmentId ? kpiParams.segmentId : "00000000-0000-0000-0000-000000000000";
-  
-  const idBase = `${kpiParams.type}:${kpiParams.name}:${kpiParams.siteId}:${formattedStart}:${formattedEnd}:${segmentPart}`;
-  
-  // Create a consistent UUID v5 from the string
-  const deterministicId = crypto.createHash('md5').update(idBase).digest('hex');
-  const kpiId = [
-    deterministicId.substring(0, 8),
-    deterministicId.substring(8, 12),
-    deterministicId.substring(12, 16),
-    deterministicId.substring(16, 20),
-    deterministicId.substring(20, 32),
-  ].join('-');
-  
-  console.log(`Finding/creating KPI with deterministic ID: ${kpiId} for ${idBase}`);
-  
-  // Create query parameters
-  const queryParams = {
-    type: kpiParams.type,
-    name: kpiParams.name,
-    site_id: kpiParams.siteId,
-    period_start: formattedStart,
-    period_end: formattedEnd
-  };
-
-  // Skip query if siteId or segmentId are not valid UUIDs to prevent postgres crash
-  const isUUID = (id: string) => typeof id === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
-  if (!isUUID(kpiParams.siteId) || (kpiParams.segmentId && !isUUID(kpiParams.segmentId))) {
-    console.warn(`Invalid UUID detected in KPI params: siteId=${kpiParams.siteId}, segmentId=${kpiParams.segmentId}. Skipping DB query.`);
-    return { kpi: null, created: false };
-  }
-  
-  // Build query to find existing KPI by attributes
-  let query = supabase
-    .from("kpis")
-    .select("*")
-    .match(queryParams);
-    
-  // Handle segment ID specifically
-  if (kpiParams.segmentId) {
-    query = query.eq("segment_id", kpiParams.segmentId);
-  } else {
-    query = query.is("segment_id", null);
-  }
-  
-  try {
-    // First try to find by ID directly - fastest lookup
-    const { data: existingKpiById, error: idError } = await supabase
-      .from("kpis")
-      .select("*")
-      .eq("id", kpiId)
-      .maybeSingle();
-    
-    if (!idError && existingKpiById) {
-      console.log(`Found existing KPI by ID: ${existingKpiById.id}`);
-      return { kpi: existingKpiById, created: false };
-    }
-    
-    // If ID lookup failed, try attributes lookup
-    const { data: existingKpi, error: fetchError } = await query;
-    
-    if (fetchError) {
-      console.error("Error checking for existing KPI:", fetchError);
-    } else if (existingKpi && existingKpi.length > 0) {
-      console.log(`Found existing KPI by attributes: ${existingKpi[0].id}`);
-      return { kpi: existingKpi[0], created: false };
-    }
-    
-    // Only create KPI if we have a user ID
-    if (!kpiParams.userId) {
-      console.log("Skipping KPI creation: no user ID provided");
-      return { kpi: null, created: false };
-    }
-    
-    // Prepare KPI data with our deterministic ID
-    const trend = kpiParams.previousValue !== undefined ? 
-      calculateTrend(kpiParams.value, kpiParams.previousValue) : 0;
-    
-    const newKpi: Partial<KpiData> = {
-      id: kpiId, // Use our deterministic ID
-      name: kpiParams.name,
-      description: `${kpiParams.name} for ${periodType} period`,
-      value: kpiParams.value,
-      previous_value: kpiParams.previousValue || 0,
-      unit: "count",
-      type: kpiParams.type,
-      period_start: formattedStart,
-      period_end: formattedEnd,
-      segment_id: kpiParams.segmentId,
-      is_highlighted: true,
-      target_value: null,
-      metadata: {
-        period_type: periodType
-      },
-      site_id: kpiParams.siteId,
-      user_id: kpiParams.userId,
-      trend,
-      benchmark: null
-    };
-    
-    // Try to insert with upsert semantics - will update existing records with same ID
-    console.log(`Creating new KPI with ID: ${kpiId}`);
-    const { data: insertedKpi, error: insertError } = await supabaseAdmin
-      .from("kpis")
-      .upsert(newKpi)
-      .select()
-      .maybeSingle();
-    
-    if (insertError) {
-      console.error("Error inserting KPI:", insertError);
-      
-      // Last chance - query again to see if it exists
-      const { data: finalCheckKpi } = await query;
-      if (finalCheckKpi && finalCheckKpi.length > 0) {
-        console.log(`Found KPI in final check: ${finalCheckKpi[0].id}`);
-        return { kpi: finalCheckKpi[0], created: false };
-      }
-      
-      return { kpi: null, created: false };
-    }
-    
-    console.log(`Successfully created KPI with ID: ${insertedKpi.id}`);
-    return { kpi: insertedKpi, created: true };
-  } catch (error) {
-    console.error("Exception during KPI creation:", error);
-    
-    // Final fallback check
-    try {
-      const { data: recoveryCheckKpi } = await query;
-      if (recoveryCheckKpi && recoveryCheckKpi.length > 0) {
-        console.log(`Found KPI during recovery: ${recoveryCheckKpi[0].id}`);
-        return { kpi: recoveryCheckKpi[0], created: false };
-      }
-    } catch (recoveryError) {
-      console.error("Error during recovery check:", recoveryError);
-    }
-    
-    return { kpi: null, created: false };
-  }
-}
+type ExperimentSegment = { experiment_id: string };
+type Experiment = {
+  id: string; name: string; status: string; site_id: string;
+  experiment_segments: { segment_id: string }[];
+};
 
 export async function GET(request: NextRequest) {
-  const cookieStore = cookies();
-  // Usar el cliente de servicio con permisos elevados para evitar restricciones RLS
-  const supabase = createServiceApiClient(siteId);
   
   const searchParams = request.nextUrl.searchParams;
   const siteId = searchParams.get('siteId');
-  const userId = searchParams.get('userId');
   const startDateStr = searchParams.get('startDate');
   const endDateStr = searchParams.get('endDate');
   const skipKpiCreation = searchParams.get('skipKpiCreation') === 'true';
@@ -259,6 +25,14 @@ export async function GET(request: NextRequest) {
   if (!siteId) {
     return NextResponse.json({ error: 'Site ID is required' }, { status: 400 });
   }
+
+  const accessUrl = new URL(request.url);
+  if (!startDateStr) accessUrl.searchParams.set('startDate', subDays(new Date(), 30).toISOString());
+  if (!endDateStr) accessUrl.searchParams.set('endDate', new Date().toISOString());
+  const access = await requireAnalyticsAccess(new Request(accessUrl, { headers: request.headers }));
+  if (access.error) return access.error;
+  const userId = searchParams.has('userId') ? access.userId : null;
+  const supabase = createServiceApiClient(siteId);
 
   
   console.log('[ActiveExperimentsAPI] Request for site ID:', siteId, segmentId ? `with segment ID: ${segmentId}` : '');
@@ -303,7 +77,7 @@ export async function GET(request: NextRequest) {
     // If we have a segment ID, filter to experiments with that segment
     if (segmentId) {
       // Get experiments that have this segment associated
-      const { data: experimentIdsForSegment, error: segmentError } = await supabase
+      const { data: experimentIdsForSegment, error: segmentError }: QueryResult<ExperimentSegment[]> = await supabase
         .from('experiment_segments')
         .select('experiment_id')
         .eq('segment_id', segmentId);
@@ -334,7 +108,7 @@ export async function GET(request: NextRequest) {
       }
     }
     
-    const { data: allExperiments, error: allExperimentsError } = await query;
+    const { data: allExperiments, error: allExperimentsError }: QueryResult<Experiment[]> = await query;
     
     console.log('[ActiveExperimentsAPI] All experiments found:', allExperiments?.length || 0);
     
@@ -395,7 +169,7 @@ export async function GET(request: NextRequest) {
         
         if (segmentId) {
           // Get previous period experiment IDs for this segment
-          const { data: prevExperimentIdsForSegment } = await supabase
+          const { data: prevExperimentIdsForSegment }: QueryResult<ExperimentSegment[]> = await supabase
             .from('experiment_segments')
             .select('experiment_id')
             .eq('segment_id', segmentId);
@@ -409,7 +183,7 @@ export async function GET(request: NextRequest) {
           }
         }
         
-        const { data: prevActiveExperiments, error: prevExperimentsError } = await prevQuery;
+        const { data: prevActiveExperiments, error: prevExperimentsError }: QueryResult<Pick<Experiment, 'id' | 'name'>[]> = await prevQuery;
         
         if (!prevExperimentsError && prevActiveExperiments) {
           previousValue = prevActiveExperiments.length;
@@ -475,7 +249,7 @@ export async function GET(request: NextRequest) {
       
       if (segmentId) {
         // Get previous period experiment IDs for this segment
-        const { data: prevExperimentIdsForSegment } = await supabase
+        const { data: prevExperimentIdsForSegment }: QueryResult<ExperimentSegment[]> = await supabase
           .from('experiment_segments')
           .select('experiment_id')
           .eq('segment_id', segmentId);
@@ -486,7 +260,7 @@ export async function GET(request: NextRequest) {
         }
       }
       
-      const { data: prevActiveExperiments, error: prevExperimentsError } = await prevQuery;
+      const { data: prevActiveExperiments, error: prevExperimentsError }: QueryResult<Pick<Experiment, 'id' | 'name'>[]> = await prevQuery;
       
       if (!prevExperimentsError && prevActiveExperiments) {
         previousValue = prevActiveExperiments.length;

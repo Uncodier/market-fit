@@ -1,8 +1,18 @@
 import { createClient } from "@/lib/supabase/client"
 import { type CopywritingItem } from "../components/settings/form-schema"
+import type { PostgrestSingleResponse } from "@supabase/supabase-js"
+
+type CopywritingRow = Omit<CopywritingItem, "id" | "target_audience" | "use_case" | "notes"> & {
+  id: string
+  site_id: string
+  user_id: string
+  target_audience: string | null
+  use_case: string | null
+  notes: string | null
+}
 
 export interface CopywritingActions {
-  createCopywritingItem: (siteId: string, userId: string, item: CopywritingItem) => Promise<{ success: boolean; error?: string; data?: any }>
+  createCopywritingItem: (siteId: string, userId: string, item: CopywritingItem) => Promise<{ success: boolean; error?: string; data?: CopywritingRow | null }>
   updateCopywritingItem: (id: string, item: Partial<CopywritingItem>) => Promise<{ success: boolean; error?: string }>
   deleteCopywritingItem: (id: string) => Promise<{ success: boolean; error?: string }>
   getCopywritingItems: (siteId: string) => Promise<{ success: boolean; data?: CopywritingItem[]; error?: string }>
@@ -14,7 +24,7 @@ class CopywritingService implements CopywritingActions {
 
   async createCopywritingItem(siteId: string, userId: string, item: CopywritingItem) {
     try {
-      const { data, error } = await this.supabase
+      const { data, error }: PostgrestSingleResponse<CopywritingRow> = await this.supabase
         .from('copywriting')
         .insert({
           site_id: siteId,
@@ -45,7 +55,7 @@ class CopywritingService implements CopywritingActions {
 
   async updateCopywritingItem(id: string, item: Partial<CopywritingItem>) {
     try {
-      const updateData: any = {}
+      const updateData: Partial<CopywritingRow> = {}
       
       if (item.title !== undefined) updateData.title = item.title
       if (item.content !== undefined) updateData.content = item.content
@@ -94,7 +104,7 @@ class CopywritingService implements CopywritingActions {
 
   async getCopywritingItems(siteId: string) {
     try {
-      const { data, error } = await this.supabase
+      const { data, error }: PostgrestSingleResponse<CopywritingRow[]> = await this.supabase
         .from('copywriting')
         .select('*')
         .eq('site_id', siteId)
@@ -137,7 +147,7 @@ class CopywritingService implements CopywritingActions {
       }
 
       // Get existing items from database
-      const { data: existingItems, error: fetchError } = await this.supabase
+      const { data: existingItems, error: fetchError }: PostgrestSingleResponse<CopywritingRow[]> = await this.supabase
         .from('copywriting')
         .select('*')
         .eq('site_id', siteId)
@@ -280,7 +290,7 @@ class CopywritingService implements CopywritingActions {
 
         console.log('COPYWRITING SYNC: Insert data prepared:', JSON.stringify(insertData, null, 2))
 
-        const { data: insertedData, error: insertError } = await this.supabase
+        const { data: insertedData, error: insertError }: PostgrestSingleResponse<CopywritingRow[]> = await this.supabase
           .from('copywriting')
           .insert(insertData)
           .select()
@@ -316,7 +326,7 @@ class CopywritingService implements CopywritingActions {
 
           console.log('COPYWRITING SYNC: Updating item:', { id, updateData })
 
-          const { data: updatedData, error: updateError } = await this.supabase
+          const { error: updateError } = await this.supabase
             .from('copywriting')
             .update(updateData)
             .eq('id', id)

@@ -6,6 +6,11 @@ import { applyChannelPricesToItems } from "@/app/price-lists/apply-channel-price
 import { loadVariantListingPreviews } from "@/app/catalog/variant-resolve"
 import { applyStorefrontAvailability } from "@/app/catalog/storefront-availability"
 import { loadStorefrontDisplay } from "@/app/commerce/storefront-display"
+import type { CatalogItem } from "@/app/types"
+
+type MarketplaceCatalogRow = CatalogItem & {
+  site: { id: string; name: string; logo_url?: string | null }
+}
 
 export const MARKETPLACE_REVALIDATE_SECONDS = 60
 export const MARKETPLACE_CACHE_TAG = "marketplace-home"
@@ -31,7 +36,7 @@ export async function loadMarketplaceHome() {
         console.error("[marketplace] Failed to load products:", error.message)
       }
 
-      const itemsWithSettings = await attachSiteSettings(supabase, catalogItems || [])
+      const itemsWithSettings = await attachSiteSettings<MarketplaceCatalogRow>(supabase, catalogItems || [])
       const pricedItems = await applyChannelPricesToItems(
         supabase,
         itemsWithSettings,

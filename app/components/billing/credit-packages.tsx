@@ -27,7 +27,7 @@ export function CreditPackages({ onBuy }: CreditPackagesProps) {
               <p className="text-sm font-medium">
                 {pkg.credits} {t("billing.credits.credits") || "Credits"}
               </p>
-              {pkg.discount && (
+              {"discount" in pkg && pkg.discount && (
                 <span className="text-xs text-muted-foreground">{pkg.discount}</span>
               )}
             </div>

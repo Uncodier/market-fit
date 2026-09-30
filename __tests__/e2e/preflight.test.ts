@@ -4,6 +4,7 @@ import preflight from '../../tests/support/preflight';
 const original = process.env;
 beforeEach(() => {
   process.env = {
+    NODE_ENV: 'test',
     TEST_TARGET: 'local', TEST_SUITE: 'smoke',
     TEST_BASE_URL: 'http://localhost:3000', TEST_COMMERCE_BASE_URL: 'http://localhost:3000',
     TEST_SITE_ID: '11111111-1111-4111-8111-111111111111', TEST_SITE_NAME: 'E2E',

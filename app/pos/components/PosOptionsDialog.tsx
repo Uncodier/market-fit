@@ -136,7 +136,7 @@ export function PosOptionsDialog({
       .eq("parent_id", itemId)
       .eq("status", "active")
       .eq("is_purchasable", true)
-      .then(({ data, error }) => {
+      .then(({ data, error }: import("@supabase/supabase-js").PostgrestSingleResponse<CatalogItem[]>) => {
         if (cancelled) return
         if (data && !error) {
           const resolved = resolveVariantAxesForDisplay(
@@ -217,7 +217,7 @@ export function PosOptionsDialog({
   const canConfirm = !!sellableItem && modifiersValid && !loading
 
   const handleConfirm = () => {
-    if (!sellableItem || !modifiersValid) return
+    if (!sellableItem || !modifiersValid || !item) return
     const confirmedItem = needsVariant ? { ...sellableItem, _parent: { name: item.name } } : sellableItem
     onConfirm({
       item: confirmedItem,

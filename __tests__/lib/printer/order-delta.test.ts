@@ -1,8 +1,8 @@
 import {
   computeKitchenDelta,
   kitchenDeltaHasWork,
-  type DeltaLineInput,
 } from "../../../lib/printer/core/order-delta"
+import type { DeltaLineInput } from "../../../lib/printer/core/types"
 
 function line(
   partial: Partial<DeltaLineInput> & Pick<DeltaLineInput, "key" | "name" | "quantity">,

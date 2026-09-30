@@ -1,5 +1,5 @@
 /** @jest-environment node */
-const { ciPolicy } = require('../../scripts/e2e/ci-policy.cjs');
+import { ciPolicy } from '../../scripts/e2e/ci-policy.cjs';
 
 const sha = 'a'.repeat(40);
 const config = { repository: 'owner/repo', ref: 'refs/heads/main', deploymentEnvironment: 'Production', deploymentCreator: 'deploy-bot' };
@@ -26,13 +26,13 @@ describe('protected live CI events', () => {
   });
   it('rejects spoofed environments, creator, ref and malformed SHA', () => {
     for (const change of [
-      (e: any) => { e.deployment.environment = 'Preview'; },
-      (e: any) => { e.deployment.creator.login = 'attacker'; },
-      (e: any) => { e.deployment_status.creator.login = 'attacker'; },
-      (e: any) => { e.deployment.ref = 'feature'; },
-      (e: any) => { e.deployment.sha = 'main'; },
-      (e: any) => { e.repository.full_name = 'attacker/fork'; },
-      (e: any) => { e.deployment_status.state = 'failure'; },
+      (e: ReturnType<typeof event>) => { e.deployment.environment = 'Preview'; },
+      (e: ReturnType<typeof event>) => { e.deployment.creator.login = 'attacker'; },
+      (e: ReturnType<typeof event>) => { e.deployment_status.creator.login = 'attacker'; },
+      (e: ReturnType<typeof event>) => { e.deployment.ref = 'feature'; },
+      (e: ReturnType<typeof event>) => { e.deployment.sha = 'main'; },
+      (e: ReturnType<typeof event>) => { e.repository.full_name = 'attacker/fork'; },
+      (e: ReturnType<typeof event>) => { e.deployment_status.state = 'failure'; },
     ]) {
       const e = event(); change(e);
       expect(() => ciPolicy('deployment_status', e, config)).toThrow();

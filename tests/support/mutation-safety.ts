@@ -1,12 +1,12 @@
 import { readEnvironment } from './environment'
 
-export function required(env: NodeJS.ProcessEnv, name: string): string {
+export function required(env: Record<string, string | undefined>, name: string): string {
   const value = env[name]?.trim()
   if (!value) throw new Error(`${name} is required`)
   return value
 }
 
-export function requireMutationEnvironment(env: NodeJS.ProcessEnv = process.env) {
+export function requireMutationEnvironment(env: Record<string, string | undefined> = process.env) {
   required(env, 'TEST_SITE_NAME')
   const siteId = required(env, 'TEST_SITE_ID')
   requireUuid(siteId, 'TEST_SITE_ID')
@@ -27,7 +27,7 @@ export function requireUuid(value: string, label: string): string {
   return value
 }
 
-export function invitationDomain(env: NodeJS.ProcessEnv = process.env): string {
+export function invitationDomain(env: Record<string, string | undefined> = process.env): string {
   requireMutationEnvironment(env)
   const domain = required(env, 'TEST_INVITE_EMAIL_DOMAIN').toLowerCase()
   // Reserved domains cannot route invitations to real users. Configure the
@@ -38,7 +38,7 @@ export function invitationDomain(env: NodeJS.ProcessEnv = process.env): string {
   return domain
 }
 
-export function fixtureConnection(env: NodeJS.ProcessEnv = process.env) {
+export function fixtureConnection(env: Record<string, string | undefined> = process.env) {
   const environment = requireMutationEnvironment(env)
   const url = new URL(required(env, 'TEST_SUPABASE_URL'))
   if (url.username || url.password || url.search || url.hash || url.pathname !== '/') {

@@ -20,7 +20,7 @@ import { StorefrontListingMerch } from "@/app/components/commerce/StorefrontList
 
 interface CatalogListingCardProps {
   item: CatalogItem & { 
-    site?: { id: string; name: string; logo_url?: string | null };
+    site?: CatalogItem["site"];
     _shop?: {
       availableQty?: number
       nextSlotAvailable?: number

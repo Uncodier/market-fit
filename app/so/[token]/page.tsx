@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react"
 import { getOrderByPublicToken } from "@/app/orders/send-actions"
-import { PublicDocumentView } from "@/app/documents/components/PublicDocumentView"
+import { PublicDocumentView, type PublicDocumentViewProps } from "@/app/documents/components/PublicDocumentView"
 import { PublicDocumentViewSkeleton } from "@/app/documents/components/PublicDocumentViewSkeleton"
 import { resolveSalePaymentMethod } from "@/app/documents/document-meta"
 import { mapDocumentLineItems } from "@/app/documents/map-document-items"
@@ -16,8 +16,8 @@ export default function PublicOrderPage(props: {
 }) {
   const params = React.use(props.params)
   const [error, setError] = useState<string | null>(null)
-  const [view, setView] = useState<any>(null)
-  const [orderData, setOrderData] = useState<any>(null)
+  const [view, setView] = useState<PublicDocumentViewProps | null>(null)
+  const [orderData, setOrderData] = useState<Awaited<ReturnType<typeof getOrderByPublicToken>>["data"] | null>(null)
   const [isCheckingOut, setIsCheckingOut] = useState(false)
 
   useEffect(() => {
@@ -44,7 +44,7 @@ export default function PublicOrderPage(props: {
         total: order.total,
         items,
         party: { name: order.leads?.name, email: order.leads?.email },
-        siteId: order.site?.id || branding?.site?.id || order.site_id || order.owner_site_id || null,
+        siteId: order.site?.id || branding?.site?.id || null,
         siteName: order.site?.name || branding?.site?.name || "Order",
         siteUrl: order.site?.url || branding?.site?.url,
         logoUrl: order.site?.logo_url || branding?.site?.logo_url,
@@ -90,9 +90,9 @@ export default function PublicOrderPage(props: {
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || "Failed to initiate checkout")
       window.location.href = data.url
-    } catch (err: any) {
+    } catch (err) {
       console.error(err)
-      toast.error(err.message || "Failed to start checkout")
+      toast.error(err instanceof Error ? err.message : "Failed to start checkout")
       setIsCheckingOut(false)
     }
   }

@@ -18,7 +18,7 @@ type Kind = keyof typeof entities
 type Owned = { kind: Kind; names: string[]; id?: string; createdUrl?: string; creationAttempted?: boolean }
 type Context = { get(key: string): any; set(key: string, value: any): void }
 
-export async function fixtureClient(env: NodeJS.ProcessEnv = process.env) {
+export async function fixtureClient(env: Record<string, string | undefined> = process.env) {
   const config = fixtureConnection(env)
   const client = createClient(config.url, config.key, {
     auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
@@ -41,7 +41,7 @@ export async function fixtureClient(env: NodeJS.ProcessEnv = process.env) {
 }
 
 /** Bind the UI session to the same backend/account as the cleanup client. */
-export async function bindBrowserFixture(page: Page, env: NodeJS.ProcessEnv = process.env) {
+export async function bindBrowserFixture(page: Page, env: Record<string, string | undefined> = process.env) {
   const config = fixtureConnection(env)
   const { client, userId } = await fixtureClient(env)
   const prefix = `sb-${new URL(config.url).hostname.split('.')[0]}-auth-token`
@@ -85,7 +85,7 @@ export function beginRecordCreation(context: Context) {
   entry.creationAttempted = true
 }
 
-export async function remember(context: Context, kind: Kind, env: NodeJS.ProcessEnv = process.env) {
+export async function remember(context: Context, kind: Kind, env: Record<string, string | undefined> = process.env) {
   const entry = (context.get('mutationJournal') as Owned[]).find(item => item.kind === kind)
   if (!entry) throw new Error('Missing cleanup registration')
   const { client, siteId } = await fixtureClient(env)
@@ -148,7 +148,7 @@ async function removeOwned(client: SupabaseClient, siteId: string, entry: Owned)
   }
 }
 
-export async function cleanup(context: Context, env: NodeJS.ProcessEnv = process.env) {
+export async function cleanup(context: Context, env: Record<string, string | undefined> = process.env) {
   const journal: Owned[] = context.get('mutationJournal') || []
   if (!journal.length) return
   const { client, siteId } = await fixtureClient(env)

@@ -167,7 +167,7 @@ export function usePrinterRealtime(
         const job = {
           id: `${orderId}:${delta.kind}:${sentAt}`,
           module: "orders" as const,
-          template: (delta.kind === "full" ? "kitchen" : "kitchen-delta") as const,
+          template: delta.kind === "full" ? "kitchen" as const : "kitchen-delta" as const,
           orderId,
           sentAt,
           payload: {

@@ -6,6 +6,7 @@ import esOverlay from './locales/es.json';
 import frOverlay from './locales/fr.json';
 import deOverlay from './locales/de.json';
 import jaOverlay from './locales/ja.json';
+import { flattenMessages, type MessageTree } from './locale-messages';
 
 export type SupportedLocale = 'en' | 'es' | 'fr' | 'de' | 'ja';
 
@@ -45,12 +46,12 @@ const countryToLocale: Record<string, SupportedLocale> = {
 
 const LocalizationContext = createContext<LocalizationContextType | undefined>(undefined);
 
-function mergeOverlay(overlay: Record<string, string>) {
-  return { ...enTranslations, ...overlay };
+function mergeOverlay(overlay: MessageTree) {
+  return { ...flattenMessages(enTranslations), ...flattenMessages(overlay) };
 }
 
 const translationCache: Record<SupportedLocale, Record<string, string>> = {
-  en: enTranslations,
+  en: flattenMessages(enTranslations),
   es: mergeOverlay(esOverlay),
   fr: mergeOverlay(frOverlay),
   de: mergeOverlay(deOverlay),
@@ -65,7 +66,7 @@ const localeLoaders: Partial<Record<SupportedLocale, () => Promise<Record<string
   ja: async () => translationCache.ja,
 };
 
-export async function loadLocaleMessages(locale: SupportedLocale): Promise<any> {
+export async function loadLocaleMessages(locale: SupportedLocale): Promise<Record<string, string>> {
   if (translationCache[locale]) return translationCache[locale];
   const loader = localeLoaders[locale];
   if (typeof loader === 'function') {
@@ -82,7 +83,7 @@ export async function loadLocaleMessages(locale: SupportedLocale): Promise<any> 
   return translationCache.en;
 }
 
-const localizedAssets: Record<SupportedLocale, Record<string, string>> = {
+const localizedAssets: Partial<Record<SupportedLocale, Record<string, string>>> = {
   en: { 'logo.main': '/images/logo.png', 'hero.image': '/images/hero-en.png' },
 };
 
@@ -175,7 +176,7 @@ export const LocalizationProvider = ({ children }: { children: ReactNode }) => {
       clearLocalePending();
       return;
     }
-    loadLocaleMessages(locale).then((loaded: any) => {
+    loadLocaleMessages(locale).then((loaded) => {
       if (cancelled) return;
       setMessages(loaded);
       document.documentElement.lang = locale;
@@ -245,7 +246,7 @@ export const LocalizationProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const getAsset = (key: string): string => {
-    if (!mounted) return localizedAssets[defaultLocale][key] || key;
+    if (!mounted) return localizedAssets[defaultLocale]?.[key] || key;
     return localizedAssets[locale]?.[key] || localizedAssets[defaultLocale]?.[key] || key;
   };
 

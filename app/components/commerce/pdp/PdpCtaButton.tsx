@@ -4,17 +4,17 @@ import { Button } from "@/app/components/ui/button"
 import { ReactNode } from "react"
 import { cn } from "@/lib/utils"
 
-interface PdpCtaButtonProps {
-  onClick: () => void
+type PdpCtaButtonProps = ({ asChild: true; onClick?: () => void } | { asChild?: false; onClick: () => void }) & {
   disabled?: boolean
   children: ReactNode
   className?: string
   variant?: "default" | "outline" | "secondary"
 }
 
-export function PdpCtaButton({ onClick, disabled, children, className, variant = "default" }: PdpCtaButtonProps) {
+export function PdpCtaButton({ asChild, onClick, disabled, children, className, variant = "default" }: PdpCtaButtonProps) {
   return (
     <Button
+      asChild={asChild}
       variant={variant}
       size="lg"
       className={cn(

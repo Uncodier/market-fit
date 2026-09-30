@@ -50,10 +50,11 @@ export function ScreenAccessProvider({ children }: { children: ReactNode }) {
       .eq("user_id", user.id)
       .eq("status", "active")
       .maybeSingle()
-      .then(({ data }) => {
+      .then(({ data }: { data: { role: SiteMemberRole | null; blocked_screens: unknown } | null }) => {
         if (cancelled) return
-        setMemberRole((data?.role as SiteMemberRole) || null)
-        setBlockedScreens(Array.isArray(data?.blocked_screens) ? data.blocked_screens : [])
+        setMemberRole(data?.role || null)
+        setBlockedScreens(Array.isArray(data?.blocked_screens)
+          ? data.blocked_screens.filter((screen): screen is string => typeof screen === "string") : [])
         setLoadedSiteId(siteId)
       })
       .catch(() => {

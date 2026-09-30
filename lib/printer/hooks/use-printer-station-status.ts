@@ -176,7 +176,7 @@ export function usePrinterStationStatus(module: PrinterModule): LivePrinterStatu
       await persistPrinters(nextDevices)
       const outcome = await runProbe(true, { devices: nextDevices })
       if (outcome.state !== "ready") {
-        throw new Error(outcome.error || "Printer is not connected on this computer")
+        throw new Error(("error" in outcome && outcome.error) || "Printer is not connected on this computer")
       }
     } catch (err) {
       setLive("disconnected")

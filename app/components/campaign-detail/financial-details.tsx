@@ -6,7 +6,7 @@ import { Button } from "@/app/components/ui/button"
 import { getCampaignTransactions } from "@/app/campaigns/actions/transactions/read"
 import { deleteTransaction } from "@/app/campaigns/actions/transactions/delete"
 import { CreateExpenseDialog } from "@/app/transactions/components/CreateExpenseDialog"
-import { Revenue, Budget } from "@/app/types"
+import { Revenue, Budget, type Transaction } from "@/app/types"
 import { useSite } from "@/app/context/SiteContext"
 import { CampaignSales } from "./campaign-sales"
 import { CampaignCostsTable } from "./campaign-costs-table"
@@ -65,7 +65,8 @@ export function FinancialDetails({ campaign }: FinancialDetailsProps) {
         return
       }
 
-      const formattedTransactions = result.data?.map((transaction) => ({
+      const sourceTransactions: Transaction[] = result.data || []
+      const formattedTransactions = sourceTransactions.map((transaction) => ({
         ...transaction,
         id: transaction.id,
         category: transaction.category,

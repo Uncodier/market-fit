@@ -1,5 +1,5 @@
 export interface LocationRestriction {
-  enabled: boolean;
+  enabled?: boolean;
   included_addresses?: Address[];
   excluded_addresses?: Address[];
 }

@@ -27,4 +27,16 @@ export interface Command {
 export interface CommandsResponse {
   commands?: Command[];
   error?: string;
-} 
+}
+
+export interface CommandListRow {
+  id: string
+  task: string
+  status: Command["status"]
+  description: string | null
+  context: string | null
+  created_at: string
+  duration: number | null
+  agent_id: string | null
+  agents: { name: string | null; role: string | null } | null
+}

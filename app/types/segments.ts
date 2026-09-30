@@ -7,6 +7,7 @@ export interface Segment {
   size: string | null
   engagement: number | null
   created_at: string
+  updated_at?: string | null
   url: string | null
   analysis: Record<string, string[]> | null
   topics: {

@@ -5,6 +5,12 @@ import { loadVariantListingPreviews } from "@/app/catalog/variant-resolve"
 import { applyStorefrontAvailability } from "@/app/catalog/storefront-availability"
 import { loadStorefrontDisplay } from "@/app/commerce/storefront-display"
 import { NextResponse } from "next/server"
+import type { CatalogItem, ItemSpec } from "@/app/types"
+
+type MarketplaceCatalogRow = CatalogItem & {
+  site: { id: string; name: string; logo_url?: string | null }
+  raw_specs?: { sort_order: number; item_spec: ItemSpec | null }[]
+}
 
 export async function GET(request: Request) {
   try {
@@ -59,7 +65,7 @@ export async function GET(request: Request) {
 
     if (error) throw error
 
-    const withSettings = await attachSiteSettings(supabase, data || [])
+    const withSettings = await attachSiteSettings<MarketplaceCatalogRow>(supabase, data || [])
     const priced = await applyChannelPricesToItems(supabase, withSettings, "marketplace")
     
     const [variantPreviews, displayMap, inventoryRes] = await Promise.all([

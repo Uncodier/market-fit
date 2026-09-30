@@ -1,5 +1,6 @@
 "use server"
 
+import type { PostgrestSingleResponse } from "@supabase/supabase-js"
 import { createClient } from "@/lib/supabase/server"
 
 export async function updateCampaignRevenue(campaignId: string) {
@@ -7,9 +8,9 @@ export async function updateCampaignRevenue(campaignId: string) {
     const supabase = await createClient()
 
     // Get all completed sales for this campaign
-    const { data: sales, error: salesError } = await supabase
+    const { data: sales, error: salesError }: PostgrestSingleResponse<Array<{ amount: number }>> = await supabase
       .from("sales")
-      .select("*")
+      .select("amount")
       .eq("campaign_id", campaignId)
       .eq("status", "completed")
 

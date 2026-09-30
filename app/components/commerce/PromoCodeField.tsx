@@ -100,7 +100,7 @@ export function PromoCodeField({
         return
       }
 
-      if ("discount" in result) {
+      if ("discount" in result && typeof result.discount === "number") {
         onApplied({
           code: trimmed,
           discount: result.discount,

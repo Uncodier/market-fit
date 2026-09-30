@@ -1,7 +1,10 @@
+import type { QueryResult } from '@/app/api/_shared/query-result';
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
 import { requireAnalyticsAccess } from "@/lib/auth/api-analytics-access";
 import { readThroughAnalyticsResponseCache } from "@/lib/redis/analytics-response-cache";
+
+type VisitorLead = { visitor_id: string; lead_id: string | null };
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
@@ -28,7 +31,7 @@ export async function GET(request: NextRequest) {
     console.log(`[LeadConversion API] Querying visitor_sessions for site_id: ${siteId}, dates: ${startDate} to ${endDate}`);
     
     // Get current period visitor sessions and count those with lead_id
-    const { data: currentData, error: currentError } = await supabase
+    const { data: currentData, error: currentError }: QueryResult<VisitorLead[]> = await supabase
       .from('visitor_sessions')
       .select('visitor_id, lead_id')
       .eq('site_id', siteId)
@@ -70,7 +73,7 @@ export async function GET(request: NextRequest) {
     console.log(`[LeadConversion API] Previous period: ${previousStart.toISOString()} to ${previousEnd.toISOString()}`);
 
     // Get previous period data
-    const { data: previousData, error: previousError } = await supabase
+    const { data: previousData, error: previousError }: QueryResult<VisitorLead[]> = await supabase
       .from('visitor_sessions')
       .select('visitor_id, lead_id')
       .eq('site_id', siteId)

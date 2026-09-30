@@ -170,7 +170,7 @@ export function OfficeLocationsSection({ onSave }: OfficeLocationsSectionProps) 
       const res = await upsertLocation(payload)
       if (res.error) {
         toast.error(res.error)
-      } else {
+      } else if (res.data) {
         toast.success(t("settings.company.locations.toast.saved"))
         // Update local state with the returned location (which includes generated IDs)
         const updatedList = [...locationsList]

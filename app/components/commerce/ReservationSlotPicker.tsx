@@ -76,7 +76,7 @@ export function ReservationSlotPicker({
   const [allSlots, setAllSlots] = useState<ReservationSlotOption[]>([])
   const [monthAvailability, setMonthAvailability] = useState<Record<string, boolean>>({})
   const [isLoadingSlots, setIsLoadingSlots] = useState(true)
-  const [selectedSlot, setSelectedSlot] = useState<{start: string, end: string, available?: number} | null>(null)
+  const [selectedSlot, setSelectedSlot] = useState<{ start: string; end: string; available?: number; timezone?: string } | null>(null)
 
   // Form state
   const [name, setName] = useState("")

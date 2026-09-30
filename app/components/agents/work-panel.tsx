@@ -8,7 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/app/components/ui/avatar"
 import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/card"
 import { ChevronRight, FileText, MessageSquare, PlayCircle, Code } from "@/app/components/ui/icons"
 import { Agent, AgentActivity } from "@/app/types/agents"
-import { useAgentSelection } from "@/app/agents/page"
+import { useAgentSelection } from "./agent-selection-context"
 import { CommandsPanel } from "@/app/components/agents/commands-panel"
 
 // Cpu icon for AI agent representation
@@ -128,7 +128,7 @@ export function WorkPanel() {
                   <div>
                     <div className="text-xs font-medium mb-1.5">Activities</div>
                     <div className="space-y-1">
-                      {selectedAgent.activities && selectedAgent.activities.map((activity) => (
+                      {selectedAgent.activities && selectedAgent.activities.map((activity: import("@/app/types/agents").AgentActivity) => (
                         <Button 
                           key={activity.id}
                           variant="ghost" 

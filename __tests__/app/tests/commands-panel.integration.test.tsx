@@ -14,7 +14,6 @@ import { Command } from '@/app/agents/types';
 // Mock the dependencies
 jest.mock('@/app/agents/actions', () => ({
   getCommands: jest.fn().mockResolvedValue({ commands: [] }),
-  getMockCommands: jest.fn().mockResolvedValue([]),
 }));
 
 // Mock toast functionality
@@ -25,7 +24,7 @@ jest.mock('sonner', () => ({
 }));
 
 // Get the mocked functions
-import { getCommands, getMockCommands } from '@/app/agents/actions';
+import { getCommands } from '@/app/agents/actions';
 
 // Helper to create problematic command data
 function createProblematicCommand(type: string): Command {
@@ -106,6 +105,8 @@ function createProblematicCommand(type: string): Command {
   }
 }
 
+jest.mock("@/app/context/SiteContext", () => ({ useSite: () => ({ currentSite: { id: "site-1" } }) }));
+
 // Mock components
 jest.mock('@/app/components/ui/icons', () => {
   const originalModule = jest.requireActual('@/app/components/ui/icons');
@@ -122,7 +123,7 @@ jest.mock('@/app/components/ui/icons', () => {
 
 // Mock command components
 jest.mock('@/app/components/agents/command-list', () => ({
-  CommandList: ({ commands }) => (
+  CommandList: ({ commands }: { commands: Command[] }) => (
     <div data-testid="command-list">
       {commands.map(cmd => (
         <div key={cmd.id} data-testid="command-item">

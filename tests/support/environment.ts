@@ -13,13 +13,13 @@ const productionHosts = new Set(['app.makinari.com', 'www.makinari.com', 'makina
 const localHosts = new Set(['localhost', '127.0.0.1', '[::1]']);
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-export function required(env: NodeJS.ProcessEnv, name: string): string {
+export function required(env: Record<string, string | undefined>, name: string): string {
   const value = env[name]?.trim();
   if (!value) throw new Error(`${name} is required; refusing an unspecified E2E target or fixture`);
   return value;
 }
 
-export function requiredUuid(env: NodeJS.ProcessEnv, name: string): string {
+export function requiredUuid(env: Record<string, string | undefined>, name: string): string {
   const value = required(env, name);
   if (!uuid.test(value)) throw new Error(`${name} must be a real fixture UUID, never a demo ID`);
   return value;
@@ -47,7 +47,7 @@ export function validateOrigin(value: string, target: TestTarget): string {
   return url.origin;
 }
 
-export function readEnvironment(env: NodeJS.ProcessEnv = process.env): TestEnvironment {
+export function readEnvironment(env: Record<string, string | undefined> = process.env): TestEnvironment {
   const target = required(env, 'TEST_TARGET') as TestTarget;
   const suite = (env.TEST_SUITE || 'smoke') as TestSuite;
   if (!['local', 'staging', 'production'].includes(target)) throw new Error('Invalid TEST_TARGET');
@@ -66,7 +66,7 @@ export function readEnvironment(env: NodeJS.ProcessEnv = process.env): TestEnvir
   return { target, suite, baseURL, commerceBaseURL, siteId, siteName };
 }
 
-export function assertDisposable(env: NodeJS.ProcessEnv = process.env, target = env.TEST_TARGET): void {
+export function assertDisposable(env: Record<string, string | undefined> = process.env, target = env.TEST_TARGET): void {
   if (!['local', 'staging'].includes(target || '')) {
     throw new Error('Mutating E2E and agent workflows are forbidden in production');
   }
@@ -77,7 +77,7 @@ export function assertDisposable(env: NodeJS.ProcessEnv = process.env, target = 
   validateOrigin(required(env, 'TEST_COMMERCE_BASE_URL'), target as TestTarget);
 }
 
-export function storageStatePath(role: string, env: NodeJS.ProcessEnv = process.env): string {
+export function storageStatePath(role: string, env: Record<string, string | undefined> = process.env): string {
   const target = env.TEST_TARGET || 'unconfigured';
   const runId = env.SHIPLIGHT_RUN_ID || 'discovery';
   if (![target, runId, role].every(value => /^[a-zA-Z0-9_-]+$/.test(value))) {

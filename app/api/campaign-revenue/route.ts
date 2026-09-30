@@ -1,3 +1,4 @@
+import type { QueryResult } from '@/app/api/_shared/query-result';
 export const dynamic = 'force-dynamic';
 
 import { createServiceApiClient } from "@/lib/supabase/server-client";
@@ -182,7 +183,7 @@ async function getCampaignRevenue(request: Request) {
     console.log(`[Campaign Revenue API] Ventas encontradas para procesar: ${salesData.length}`);
     
     // Obtenemos todas las campañas activas para tener sus nombres
-    const { data: campaignsData, error: campaignsError } = await supabase
+    const { data: campaignsData, error: campaignsError }: QueryResult<{ id: string; title: string; type: string }[]> = await supabase
       .from("campaigns")
       .select("id, title, type")
       .eq("status", "active") // Only get active campaigns

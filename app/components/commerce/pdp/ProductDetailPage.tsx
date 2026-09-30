@@ -92,7 +92,7 @@ export function ProductDetailPage({ item, site, backUrl, experience, catalogSize
       .eq("catalog_item_id", item.id)
       .in("status", ["active", "paused"])
       .maybeSingle()
-      .then(({ data }) => {
+      .then(({ data }: { data: import("@/app/types").Subscription | null }) => {
         if (cancelled || !data) return
         setClientExperience({ kind: "subscription", subscription: data })
       })

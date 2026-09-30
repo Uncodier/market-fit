@@ -3,6 +3,7 @@
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { PdpItemDescription } from "./PdpItemDescription"
 import { PdpSpecGroups } from "./PdpSpecGroups"
+import type { CatalogItemAttributes } from "@/app/types"
 import type { PdpSpecGroup, PdpSpecRow } from "@/app/catalog/product-details"
 
 export function PdpProductDetails({
@@ -16,7 +17,7 @@ export function PdpProductDetails({
 }: {
   description?: string | null
   attrFields: string[]
-  attributes: Record<string, string | undefined>
+  attributes: CatalogItemAttributes
   specs: PdpSpecRow[]
   specGroups?: PdpSpecGroup[]
   aboutLabel?: string
@@ -45,7 +46,7 @@ export function PdpProductDetails({
                 <div className="text-[10px] sm:text-xs uppercase tracking-widest font-bold text-muted-foreground mb-1 sm:mb-2">
                   {t(`marketplace.catalogDetails.${camelCaseKey}`) || f.replace("_", " ")}
                 </div>
-                <div className="font-semibold text-base sm:text-lg">{attributes[f]}</div>
+                <div className="font-semibold text-base sm:text-lg">{formatAttribute(Object.entries(attributes).find(([key]) => key === f)?.[1])}</div>
               </div>
             )
           })}
@@ -79,4 +80,11 @@ export function PdpProductDetails({
       )}
     </>
   )
+}
+
+function formatAttribute(value: unknown): string {
+  if (typeof value === "string" || typeof value === "number") return String(value)
+  if (typeof value === "boolean") return value ? "Yes" : "No"
+  if (Array.isArray(value)) return value.map(formatAttribute).filter(Boolean).join(", ")
+  return ""
 }

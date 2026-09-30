@@ -105,7 +105,7 @@ export function PrinterSyncBadge({ module }: { module: PrinterModule }) {
         </span>
       </Button>
       <PrinterFirstAidDialog
-        open={aidOpen && status.state !== "checking" && status.state !== "hidden"}
+        open={aidOpen && status.state !== "checking"}
         onOpenChange={setAidOpen}
         aid={status.aid}
         error={status.error}

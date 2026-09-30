@@ -177,7 +177,7 @@ export function TopBar({
           if (error) {
             console.error(error)
           } else {
-            setSegments((data || []).map((s) => ({
+            setSegments((data || []).map((s: { id: string; name: string; description?: string | null }) => ({
               id: s.id,
               name: s.name,
               description: s.description || ""
@@ -236,7 +236,7 @@ export function TopBar({
                 console.error("Error loading campaigns:", error.message);
               }
             } else {
-              setCampaigns((data || []).map((c) => ({
+              setCampaigns((data || []).map((c: { id: string; title?: string | null; description?: string | null }) => ({
                 id: c.id,
                 title: c.title || "",
                 description: c.description || ""

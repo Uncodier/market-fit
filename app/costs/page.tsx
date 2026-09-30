@@ -1,5 +1,6 @@
 "use client"
 
+import type { PostgrestSingleResponse } from "@supabase/supabase-js"
 import { MobileFiltersDrawer, FilterContainer, FilterSection, FilterSeparator } from "@/app/components/ui/mobile-filters-drawer"
 
 import React, { Suspense, useCallback, useEffect, useState } from "react"
@@ -41,7 +42,7 @@ function CostsPageContent() {
     siteKey ? ["campaigns-lite", siteKey] : null,
     async ([, siteId]) => {
       const supabase = createClient()
-      const { data, error } = await supabase
+      const { data, error }: PostgrestSingleResponse<Array<{ id: string; title: string }>> = await supabase
         .from("campaigns")
         .select("id, title")
         .eq("site_id", siteId)

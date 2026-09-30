@@ -1,14 +1,18 @@
+import type { PostgrestSingleResponse } from "@supabase/supabase-js"
 import { createClient } from "@/lib/supabase/client"
 import { z } from "zod"
 import { findOrCreateCompany } from "@/app/companies/actions"
 import { Deal, DealContact, DealOwner } from "./types"
 
-export async function getDeals(siteId: string) {
+type OwnerProfile = { id: string; email: string | null; name: string | null }
+type DealTask = NonNullable<Deal["next_task"]> & { deal_id: string }
+
+export async function getDeals(siteId: string): Promise<{ deals: Deal[] | null; error: string | null }> {
   try {
     const supabase = createClient()
     
     // Get deals with their basic fields, resolving companies
-    const { data: deals, error } = await supabase
+    const { data: deals, error }: PostgrestSingleResponse<Deal[]> = await supabase
       .from("deals")
       .select(`
         *,
@@ -31,17 +35,16 @@ export async function getDeals(siteId: string) {
     }
     
     // If we want deal_owners and deal_leads, we should fetch them too.
-    const dealIds = deals.map((d: any) => d.id)
+    const dealIds = deals.map(d => d.id)
     
     let dealOwners: DealOwner[] = []
     let dealContacts: DealContact[] = []
-    let dealTasks: any[] = []
+    let dealTasks: DealTask[] = []
     if (dealIds.length > 0) {
-      const { data: owners } = await supabase
+      const { data: owners }: PostgrestSingleResponse<DealOwner[]> = await supabase
         .from("deal_owners")
         .select(`
-          deal_id,
-          user_id
+          *
         `)
         .in("deal_id", dealIds)
         
@@ -49,24 +52,23 @@ export async function getDeals(siteId: string) {
       
       if (dealOwners.length > 0) {
         const userIds = [...new Set(dealOwners.map(o => o.user_id))]
-        const { data: profiles } = await supabase
+        const { data: profiles }: PostgrestSingleResponse<OwnerProfile[]> = await supabase
           .from("profiles")
           .select("id, email, name")
           .in("id", userIds)
           
         if (profiles) {
-          dealOwners = dealOwners.map(o => ({
-            ...o,
-            user: profiles.find(p => p.id === o.user_id) || { id: o.user_id, email: "Unknown User" }
-          })) as DealOwner[]
+          dealOwners = dealOwners.map(o => {
+            const profile = profiles.find(p => p.id === o.user_id)
+            return { ...o, user: { id: o.user_id, email: profile?.email || "Unknown User", name: profile?.name || undefined } }
+          })
         }
       }
 
-      const { data: contacts } = await supabase
+      const { data: contacts }: PostgrestSingleResponse<DealContact[]> = await supabase
         .from("deal_leads")
         .select(`
-          deal_id,
-          lead_id,
+          *,
           lead:leads(name, email, id)
         `)
         .in("deal_id", dealIds)
@@ -74,7 +76,7 @@ export async function getDeals(siteId: string) {
       dealContacts = contacts || []
 
       // Fetch pending tasks to find next activity
-      const { data: tasks } = await supabase
+      const { data: tasks }: PostgrestSingleResponse<DealTask[]> = await supabase
         .from("tasks")
         .select(`
           id,
@@ -91,7 +93,7 @@ export async function getDeals(siteId: string) {
     }
 
     // Attach owners, contacts and next task to deals
-    const normalizedDeals = deals.map((deal: any) => {
+    const normalizedDeals = deals.map(deal => {
       const dTasks = dealTasks.filter(t => t.deal_id === deal.id)
       const nextTask = dTasks.length > 0 ? dTasks[0] : null
       
@@ -103,7 +105,7 @@ export async function getDeals(siteId: string) {
       }
     })
 
-    return { deals: normalizedDeals as Deal[], error: null }
+    return { deals: normalizedDeals, error: null }
   } catch (error: any) {
     console.error("Error fetching deals:", error, JSON.stringify(error, null, 2))
     return { deals: null, error: error?.message || "Failed to fetch deals" }
@@ -114,7 +116,7 @@ export async function getDealById(id: string) {
   try {
     const supabase = createClient()
     
-      const { data: deal, error } = await supabase
+      const { data: deal, error }: PostgrestSingleResponse<Deal> = await supabase
         .from("deals")
         .select(`
           *,
@@ -131,7 +133,7 @@ export async function getDealById(id: string) {
     }
     
     // Fetch owners
-    const { data: ownersData, error: ownersError } = await supabase
+    const { data: ownersData, error: ownersError }: PostgrestSingleResponse<DealOwner[]> = await supabase
       .from("deal_owners")
       .select(`*`)
       .eq("deal_id", id)
@@ -145,16 +147,16 @@ export async function getDealById(id: string) {
     // Fetch profiles for owners if any exist
     if (owners.length > 0) {
       const userIds = owners.map(o => o.user_id)
-      const { data: profiles } = await supabase
+      const { data: profiles }: PostgrestSingleResponse<OwnerProfile[]> = await supabase
         .from("profiles")
         .select("id, email, name")
         .in("id", userIds)
         
       if (profiles) {
-        owners = owners.map(o => ({
-          ...o,
-          user: profiles.find(p => p.id === o.user_id) || { id: o.user_id, email: "Unknown User" }
-        }))
+        owners = owners.map(o => {
+          const profile = profiles.find(p => p.id === o.user_id)
+          return { ...o, user: { id: o.user_id, email: profile?.email || "Unknown User", name: profile?.name || undefined } }
+        })
       }
     }
       
@@ -423,7 +425,7 @@ export async function getSiteQualificationCriteriaKeys(siteId: string) {
     const supabase = createClient()
     
     // We only fetch the qualification_criteria column
-    const { data, error } = await supabase
+    const { data, error }: PostgrestSingleResponse<Array<Pick<Deal, "qualification_criteria">>> = await supabase
       .from("deals")
       .select("qualification_criteria")
       .eq("site_id", siteId)

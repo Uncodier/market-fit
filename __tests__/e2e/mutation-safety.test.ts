@@ -5,7 +5,7 @@ import { parse } from 'yaml'
 import { fixtureConnection, invitationDomain, requireMutationEnvironment } from '../../tests/support/mutation-safety'
 
 const root = process.cwd()
-const env: NodeJS.ProcessEnv = {
+const env: Record<string, string | undefined> = {
   TEST_TARGET: 'local', TEST_SUITE: 'regression', TEST_BASE_URL: 'http://localhost:3000',
   TEST_COMMERCE_BASE_URL: 'http://localhost:3000', TEST_SITE_NAME: 'Disposable workspace',
   TEST_SITE_ID: '11111111-1111-4111-8111-111111111111', TEST_ALLOW_MUTATIONS: '1',

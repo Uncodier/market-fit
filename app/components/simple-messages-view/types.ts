@@ -94,6 +94,8 @@ export interface InstanceLog {
   tool_result?: any
   tool_args?: any
   screenshot_base64?: string
+  artifacts?: unknown
+  tokens_used?: number
   parent_log_id?: string | null
   // Support for alternative field names from different data sources
   toolName?: string

@@ -1,4 +1,4 @@
-import { createRef } from "react"
+import type { RefObject } from "react"
 import { fireEvent, render } from "@testing-library/react"
 import { ImprentaContextEdges } from "@/app/components/agents/imprenta-context-edges"
 import { ImprentaTempConnectionLine } from "@/app/components/agents/imprenta-world-svg"
@@ -28,10 +28,8 @@ function node(id: string, overrides: Partial<InstanceNode> = {}): InstanceNode {
 describe("ImprentaContextEdges", () => {
   it("renders a full-screen SVG with overflow visible", () => {
     const nodes = [node("a"), node("b")]
-    const nodesRef = createRef<InstanceNode[]>()
-    nodesRef.current = nodes
-    const heightsRef = createRef<Record<string, number>>()
-    heightsRef.current = { a: 300, b: 300 }
+    const nodesRef: RefObject<InstanceNode[]> = { current: nodes }
+    const heightsRef: RefObject<Record<string, number>> = { current: { a: 300, b: 300 } }
 
     const { container } = render(
       <ImprentaContextEdges
@@ -62,10 +60,8 @@ describe("ImprentaContextEdges", () => {
   })
 
   it("reports the click position when selecting a relation", () => {
-    const nodesRef = createRef<InstanceNode[]>()
-    nodesRef.current = [node("a"), node("b")]
-    const heightsRef = createRef<Record<string, number>>()
-    heightsRef.current = { a: 300, b: 300 }
+    const nodesRef: RefObject<InstanceNode[]> = { current: [node("a"), node("b")] }
+    const heightsRef: RefObject<Record<string, number>> = { current: { a: 300, b: 300 } }
     const onSelectContext = jest.fn()
     const { container } = render(
       <ImprentaContextEdges

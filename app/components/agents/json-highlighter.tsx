@@ -1,10 +1,9 @@
 "use client"
 
 import React, { useMemo } from "react"
-import { Card } from "@/app/components/ui/card"
 
 interface JsonHighlighterProps {
-  data: any
+  data: unknown
   maxHeight?: string
   className?: string
   commandId?: string
@@ -16,12 +15,12 @@ const MAX_JSON_LENGTH = 50000; // Increased for more detailed objects
 /**
  * Safely stringifies an object with circular reference detection and unlimited depth
  */
-function safeStringify(obj: any, visitedObjects = new WeakSet()): string {
+function safeStringify(obj: unknown, visitedObjects = new WeakSet()): string {
   try {
     // Handle primitive values
     if (obj === null) return 'null';
     if (obj === undefined) return 'undefined';
-    if (typeof obj !== 'object') return JSON.stringify(obj);
+    if (typeof obj !== 'object') return JSON.stringify(obj) ?? String(obj);
     
     // Check for circular references
     if (visitedObjects.has(obj)) {
@@ -65,15 +64,6 @@ function safeStringify(obj: any, visitedObjects = new WeakSet()): string {
 }
 
 export function JsonHighlighter({ data, maxHeight = "200px", className = "", commandId }: JsonHighlighterProps) {
-  // Handle null/undefined data
-  if (data === null || data === undefined) {
-    return (
-      <div className={`overflow-hidden ${className}`}>
-        <p className="text-xs text-muted-foreground italic">No data available</p>
-      </div>
-    );
-  }
-
   // Format data safely
   const formattedJson = useMemo(() => {
     try {
@@ -99,6 +89,15 @@ export function JsonHighlighter({ data, maxHeight = "200px", className = "", com
     }
   }, [data]);
   
+  // Handle null/undefined data
+  if (data === null || data === undefined) {
+    return (
+      <div className={`overflow-hidden ${className}`}>
+        <p className="text-xs text-muted-foreground italic">No data available</p>
+      </div>
+    );
+  }
+
   // Function to colorize different parts of the JSON
   const syntaxHighlight = (json: string) => {
     try {
@@ -133,8 +132,9 @@ export function JsonHighlighter({ data, maxHeight = "200px", className = "", com
   const isToolEvaluation = data && 
     typeof data === 'object' && 
     !Array.isArray(data) &&
-    data.type === 'function_call' && 
-    data.reasoning;
+    'type' in data && data.type === 'function_call' &&
+    'reasoning' in data && typeof data.reasoning === 'string' &&
+    data.reasoning.length > 0;
 
   return (
     <div className={`overflow-hidden ${className}`}>
@@ -149,11 +149,11 @@ export function JsonHighlighter({ data, maxHeight = "200px", className = "", com
         <div className="space-y-2">
           <div className="flex items-center gap-2">
             <span className="font-medium text-xs text-muted-foreground">Type:</span>
-            <span className="text-xs font-medium text-primary">{data.type}</span>
+            <span className="text-xs font-medium text-primary">{String(data.type)}</span>
           </div>
           <div className="flex flex-col gap-1">
             <span className="font-medium text-xs text-muted-foreground">Reasoning:</span>
-            <p className="text-xs text-foreground bg-muted/30 p-2 rounded-md">{data.reasoning}</p>
+            <p className="text-xs text-foreground bg-muted/30 p-2 rounded-md">{String(data.reasoning)}</p>
           </div>
         </div>
       ) : (

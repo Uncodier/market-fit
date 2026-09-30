@@ -8,6 +8,7 @@ import { Button } from "@/app/components/ui/button"
 import { Skeleton } from "@/app/components/ui/skeleton"
 import { VariantPicker } from "@/app/components/commerce/pdp/VariantPicker"
 import { createClient } from "@/lib/supabase/client"
+import type { PostgrestSingleResponse } from "@supabase/supabase-js"
 import { resolveVariantAxesForDisplay } from "@/app/catalog/variant-resolve"
 
 interface PosVariantPickerDialogProps {
@@ -46,7 +47,7 @@ export function PosVariantPickerDialog({ item, open, onOpenChange, onConfirm }: 
       .eq("parent_id", itemId)
       .eq("status", "active")
       .eq("is_purchasable", true)
-      .then(({ data, error }) => {
+      .then(({ data, error }: PostgrestSingleResponse<CatalogItem[]>) => {
         if (cancelled) return
         if (data && !error) {
           const resolved = resolveVariantAxesForDisplay(host, data as CatalogItem[])
@@ -77,7 +78,7 @@ export function PosVariantPickerDialog({ item, open, onOpenChange, onConfirm }: 
   }, [selectedOptions, axes.length, children])
 
   const handleConfirm = () => {
-    if (resolvedChild) {
+    if (resolvedChild && item) {
       onConfirm({ ...resolvedChild, _parent: { name: item.name } })
       onOpenChange(false)
     }

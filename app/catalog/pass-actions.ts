@@ -13,7 +13,7 @@ export async function getPassRedeemableItems(passCatalogItemId: string) {
     .order("created_at", { ascending: true });
 
   if (error) throw new Error(error.message);
-  return data.map((d) => d.reservable_catalog_item_id);
+  return data.map((d: { reservable_catalog_item_id: string }) => d.reservable_catalog_item_id);
 }
 
 export async function updatePassRedeemableItems(

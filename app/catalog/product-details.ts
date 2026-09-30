@@ -13,10 +13,14 @@ export function resolveItemSpecDisplays(item: CatalogItem, categorySlug: string)
  * Merge parent catalog display fields into a child (variant / reservable) item.
  * Child values win; parent fills gaps for image, description, specs, and attributes.
  */
-export function mergeParentIntoCatalogItem(
-  item: CatalogItem & { _shop?: any; _parent?: { id: string; name: string; image_url?: string | null } },
+type InheritedCatalogFields = Pick<CatalogItem, "description" | "image_url" | "item_specs" | "metadata"> & {
+  _parent?: { id?: string; name: string; image_url?: string | null }
+}
+
+export function mergeParentIntoCatalogItem<T extends CatalogItem>(
+  item: T,
   parent: (CatalogItem & { item_specs?: ItemSpec[] }) | null | undefined
-): CatalogItem & { _shop?: any; _parent?: { id: string; name: string; image_url?: string | null } } {
+): Omit<T, keyof InheritedCatalogFields> & InheritedCatalogFields {
   if (!parent) return item
 
   const childSpecs = item.item_specs || []

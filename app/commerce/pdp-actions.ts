@@ -19,6 +19,16 @@ type PdpLoadOptions = {
   requireStorefront?: boolean
 }
 
+type PdpCatalogItem = CatalogItem & {
+  site?: {
+    id: string
+    name: string
+    logo_url: string | null
+    description?: string | null
+    settings?: { default_locale?: string }
+  } | null
+}
+
 export async function getPdpCatalogItem(itemId: string, options?: PdpLoadOptions) {
   return unstable_cache(
     () => loadPdpCatalogItem(itemId, options),
@@ -174,7 +184,7 @@ async function loadPdpCatalogItem(itemId: string, options?: PdpLoadOptions) {
     }
   })
 
-  const withSpecs = {
+  const withSpecs: PdpCatalogItem = {
     ...item,
     metadata: {
       ...(item.metadata || {}),
@@ -201,7 +211,7 @@ async function loadPdpCatalogItem(itemId: string, options?: PdpLoadOptions) {
     }
   };
 
-  return mergeParentIntoCatalogItem(withSpecs as any, parent);
+  return mergeParentIntoCatalogItem(withSpecs, parent);
 }
 
 /** Lightweight PDP row for generateMetadata so loading.tsx can paint while the full item loads. */

@@ -461,7 +461,7 @@ export function UploadAssetDialog({ onUploadAsset, contentId, onSuccess, open: c
             variant="outline" 
             onClick={() => {
               resetForm()
-              setIsOpen(false)
+              applyOpen(false)
             }}
             disabled={isSubmitting}
           >

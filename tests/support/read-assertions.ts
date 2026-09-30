@@ -22,13 +22,13 @@ export async function assertReadReady(page: Page, target: string, proof: Locator
   await expect(proof).toBeVisible();
 }
 
-export function requiredReadFixture(name: string, env = process.env): string {
+export function requiredReadFixture(name: string, env: Record<string, string | undefined> = process.env): string {
   const value = env[name]?.trim();
   if (!value) throw new Error(`${name} is required`);
   return value;
 }
 
-export function commerceUrl(path: string, env = process.env): string {
+export function commerceUrl(path: string, env: Record<string, string | undefined> = process.env): string {
   const base = new URL(requiredReadFixture('TEST_COMMERCE_BASE_URL', env));
   if (!['http:', 'https:'].includes(base.protocol) || base.username || base.password ||
       base.pathname !== '/' || base.search || base.hash) {
@@ -40,7 +40,7 @@ export function commerceUrl(path: string, env = process.env): string {
   return target.href;
 }
 
-export function commerceFixtures(env = process.env) {
+export function commerceFixtures(env: Record<string, string | undefined> = process.env) {
   const slug = requiredReadFixture('TEST_SHOP_SLUG', env);
   const itemId = requiredReadFixture('TEST_CATALOG_ITEM_ID', env);
   const itemName = requiredReadFixture('TEST_CATALOG_ITEM_NAME', env);

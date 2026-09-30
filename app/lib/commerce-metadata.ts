@@ -25,7 +25,7 @@ function truncateText(text: string, max = DEFAULT_DESCRIPTION_MAX): string {
 }
 
 /** Public http(s) or site-relative paths crawlers can fetch. */
-export function isUsableShareImageUrl(url?: string | null): url is string {
+export function isUsableShareImageUrl(url?: string | null): url is `https://${string}` | `http://${string}` | `/${string}` {
   if (!url?.trim()) return false
   const value = url.trim()
   if (value.startsWith("data:") || value.startsWith("blob:")) return false
@@ -41,7 +41,7 @@ export function toAbsoluteShareImageUrl(url: string): string {
   return new URL(url, `${appBaseUrl()}/`).toString()
 }
 
-function isDataImageUrl(url?: string | null): url is string {
+function isDataImageUrl(url?: string | null): boolean {
   return !!url?.trim().startsWith("data:image/")
 }
 

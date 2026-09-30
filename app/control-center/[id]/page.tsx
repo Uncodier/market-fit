@@ -1,5 +1,7 @@
 "use client"
 
+import { normalizeControlTask } from "../task-data"
+
 import { useState, useEffect, useRef, MutableRefObject, use } from "react"
 import { useRouter } from "next/navigation"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
@@ -242,7 +244,7 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
         return
       }
 
-      setTask(task)
+      setTask(normalizeControlTask(task))
       setIsLoading(false)
     }
 
@@ -300,7 +302,7 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
 
       if (error) throw error
 
-      setTask(data)
+      setTask(normalizeControlTask(data))
       toast.success(`Status updated to ${newStatus}`)
     } catch (error) {
       console.error('Error updating task status:', error)

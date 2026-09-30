@@ -1,3 +1,4 @@
+import type { QueryResult } from '@/app/api/_shared/query-result';
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/server';
 import { requireAnalyticsAccess } from '@/lib/auth/api-analytics-access';
@@ -45,7 +46,7 @@ export async function GET(request: NextRequest) {
 
     // Query session_events table with date filtering
     // CRITICAL: Filter by event_type to count only actual page views, not all events
-    const { data, error, count } = await supabase
+    const { data, error, count }: QueryResult<{ created_at: string }[]> = await supabase
       .from('session_events')
       .select('created_at', { count: 'exact' })
       .eq('site_id', siteId)
@@ -79,7 +80,7 @@ export async function GET(request: NextRequest) {
     const chartData = Object.entries(groupedData)
       .map(([date, events]) => ({
         date,
-        events: events as number,
+        events,
         label: new Date(date).toLocaleDateString('en-US', { 
           month: 'short', 
           day: 'numeric' 

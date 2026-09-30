@@ -103,7 +103,7 @@ export function InstanceLogCopyFeedbackBar({
             return
           }
         }
-        toast({ title: 'Feedback saved' })
+        toast({ title: 'Feedback saved', description: 'Your feedback has been recorded.' })
       } catch (e) {
         console.error('[InstanceLogCopyFeedbackBar]', e)
         toast({
@@ -125,7 +125,7 @@ export function InstanceLogCopyFeedbackBar({
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
     } else {
-      toast({ title: 'Copy failed', variant: 'destructive' })
+      toast({ title: 'Copy failed', description: 'Could not copy to the clipboard.', variant: 'destructive' })
     }
   }
 

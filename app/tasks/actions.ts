@@ -1,5 +1,8 @@
+import type { PostgrestSingleResponse } from "@supabase/supabase-js"
 import { createClient } from "@/lib/supabase/client"
 import { type CreateTaskFormValues, type Task } from "./types"
+import type { TaskResponse } from "@/app/leads/tasks/actions"
+import { normalizeJourneyTask } from "@/app/leads/tasks/normalize-task"
 
 export async function createTask(values: CreateTaskFormValues): Promise<{ data?: Task; error?: string }> {
   try {
@@ -47,7 +50,7 @@ export async function getTasksByDealId(dealId: string) {
     const supabase = createClient()
     
     // First, get all lead IDs associated with this deal
-    const { data: dealLeads } = await supabase
+    const { data: dealLeads }: PostgrestSingleResponse<Array<{ lead_id: string }>> = await supabase
       .from('deal_leads')
       .select('lead_id')
       .eq('deal_id', dealId)
@@ -55,14 +58,13 @@ export async function getTasksByDealId(dealId: string) {
     const leadIds = (dealLeads || []).map(dl => dl.lead_id)
     
     // Now fetch tasks that are either linked to the deal_id (if it exists) OR linked to any of the leads
-    let query = supabase.from('tasks').select('*')
     
     // We try to use deal_id if it exists, but we can't reliably know without catching the error.
     // However, if we know leadIds, we can definitely fetch by lead_id.
-    let tasks: any[] = []
+    let tasks: NonNullable<TaskResponse["task"]>[] = []
     
     // 1. Try fetching by deal_id
-      const { data: dealTasks, error: dealError } = await supabase
+      const { data: dealTasks, error: dealError }: PostgrestSingleResponse<NonNullable<TaskResponse["task"]>[]> = await supabase
       .from('tasks')
       .select('*')
       .eq('deal_id', dealId)
@@ -74,7 +76,7 @@ export async function getTasksByDealId(dealId: string) {
     
     // 2. Try fetching by lead_id if we have any
     if (leadIds.length > 0) {
-      const { data: leadTasks, error: leadError } = await supabase
+      const { data: leadTasks, error: leadError }: PostgrestSingleResponse<NonNullable<TaskResponse["task"]>[]> = await supabase
         .from('tasks')
         .select('*')
         .in('lead_id', leadIds)
@@ -95,7 +97,7 @@ export async function getTasksByDealId(dealId: string) {
       return new Date(a.scheduled_date).getTime() - new Date(b.scheduled_date).getTime();
     })
 
-    return { data: tasks }
+    return { data: tasks.map(normalizeJourneyTask) }
   } catch (error) {
     console.error("Error fetching tasks by deal:", error)
     return { error: error instanceof Error ? error.message : "An unexpected error occurred" }

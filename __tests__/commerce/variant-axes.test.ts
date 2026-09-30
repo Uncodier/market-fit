@@ -26,7 +26,7 @@ describe("variant-axes catalog", () => {
 describe("variant option resolve", () => {
   it("resolves child by option_values combination", () => {
     const selected = { size: "m", color: "red" }
-    const children = [
+    const children: { id: string; metadata: { option_values: Record<string, string> } }[] = [
       { id: "a", metadata: { option_values: { size: "s", color: "red" } } },
       { id: "b", metadata: { option_values: { size: "m", color: "red" } } },
       { id: "c", metadata: { option_values: { size: "m", color: "blue" } } },

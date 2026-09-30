@@ -1,0 +1,28 @@
+name: TypeScript and compiler contracts
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  typecheck:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      NEXT_TELEMETRY_DISABLED: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - name: Generate route types and check all authored TypeScript
+        run: npm run typecheck
+      - name: Check compiler and static-analysis configuration contracts
+        run: npm test -- --runInBand __tests__/tooling __tests__/purchases/actions-compilation.test.ts

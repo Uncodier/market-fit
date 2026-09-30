@@ -152,7 +152,7 @@ export async function submitCreateQuotation(params: {
 
     let unitPrice = row.unitPrice !== undefined ? row.unitPrice : 0
     if (unitPrice === 0 && row.unitPrice === undefined) {
-      if (row.value.mode === "existing" && selectedItem?.base_price !== undefined) {
+      if (row.value.mode === "existing" && selectedItem && "base_price" in selectedItem && typeof selectedItem.base_price === "number") {
         unitPrice = selectedItem.base_price
       } else if (selectedItem?.target_sale_price != null) {
         unitPrice = Number(selectedItem.target_sale_price)
@@ -201,7 +201,7 @@ export async function submitUpdateQuotation(params: {
     notes: params.data.notes,
   })
 
-  if (res.error) {
+  if (!("data" in res) || !res.data) {
     throw new Error(res.error || params.messages.errorQuote)
   }
 
@@ -212,7 +212,7 @@ export async function submitUpdateQuotation(params: {
   // 1. Remove items that were deleted or changed
   for (const item of existingItems) {
     const matchedLine = params.lineItems.find(l => l.key === `existing_${item.id}`)
-    if (!matchedLine || matchedLine.value?.id !== item.catalog_item_id) {
+    if (!matchedLine || matchedLine.value?.mode !== "existing" || matchedLine.value.id !== item.catalog_item_id) {
       await removeQuotationItem(item.id)
     }
   }
@@ -223,9 +223,9 @@ export async function submitUpdateQuotation(params: {
     if (!row.value) continue
 
     // If it's an existing item, check if quantity, price or product changed
-    if (row.key.startsWith("existing_")) {
+    if (row.key.startsWith("existing_") && row.value.mode === "existing") {
       const originalId = row.key.replace("existing_", "")
-      const originalItem = existingItems.find(i => i.id === originalId)
+      const originalItem = existingItems.find((i: { id: string }) => i.id === originalId)
       if (originalItem && originalItem.catalog_item_id === row.value.id) {
         let updates: any = {}
         if (originalItem.quantity !== row.quantity) {
@@ -267,7 +267,7 @@ export async function submitUpdateQuotation(params: {
 
     let unitPrice = row.unitPrice !== undefined ? row.unitPrice : 0
     if (unitPrice === 0 && row.unitPrice === undefined) {
-      if (row.value.mode === "existing" && selectedItem?.base_price !== undefined) {
+      if (row.value.mode === "existing" && selectedItem && "base_price" in selectedItem && typeof selectedItem.base_price === "number") {
         unitPrice = selectedItem.base_price
       } else if (selectedItem?.target_sale_price != null) {
         unitPrice = Number(selectedItem.target_sale_price)

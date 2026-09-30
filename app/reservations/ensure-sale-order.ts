@@ -285,8 +285,12 @@ export async function loadReservationSalePayments(
       ? await supabase.from("sales").select("id, amount, amount_due").in("id", saleIds)
       : { data: [] as any[] }
 
-  const orderById = new Map((orders || []).map((row: any) => [row.id, row]))
-  const saleById = new Map((sales || []).map((row: any) => [row.id, row]))
+  const orderById = new Map<string, { id: string; sale_id: string | null }>(
+    (orders || []).map((row: { id: string; sale_id: string | null }) => [row.id, row]),
+  )
+  const saleById = new Map<string, { amount: number | null; amount_due: number | null }>(
+    (sales || []).map((row: { id: string; amount: number | null; amount_due: number | null }) => [row.id, row]),
+  )
 
   for (const row of items || []) {
     const order = orderById.get(row.sale_order_id)

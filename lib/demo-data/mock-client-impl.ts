@@ -7,7 +7,7 @@ import {
   syncDemoUnitsFromOrderItems,
 } from "./mock-order-line-units"
 
-// Mock instance for the demo data cache 
+// Mock instance for the demo data cache
 const memoryCache: Record<string, Record<string, any[]>> = {};
 
 const getMemoryCache = (siteId: string, demoData: any) => {
@@ -109,7 +109,7 @@ export async function createDemoMockClientImpl(demoSiteId: string) {
       }
       return 0
     }
-    
+
     const queryBuilder: any = {
       select: () => queryBuilder,
       eq: (column: string, value: any) => {
@@ -255,7 +255,7 @@ export async function createDemoMockClientImpl(demoSiteId: string) {
           count: countBeforeWindow ?? result.length,
         })
     };
-    
+
     // Add Promise chaining support
     queryBuilder.catch = (reject: any) =>
       Promise.resolve({
@@ -263,7 +263,7 @@ export async function createDemoMockClientImpl(demoSiteId: string) {
         error: null,
         count: countBeforeWindow ?? result.length,
       }).catch(reject);
-    
+
     return queryBuilder;
   };
 
@@ -306,7 +306,7 @@ export async function createDemoMockClientImpl(demoSiteId: string) {
         upsert: (data: any) => {
           const inserted = Array.isArray(data) ? data.map(d => ({...d, id: d.id || `demo-id-${Date.now()}`})) : {...data, id: data.id || `demo-id-${Date.now()}`};
           if (!memoryData[table]) memoryData[table] = [];
-          
+
           if (Array.isArray(inserted)) {
              inserted.forEach(item => {
                const idx = memoryData[table].findIndex((i: any) => i.id === item.id);
@@ -330,15 +330,15 @@ export async function createDemoMockClientImpl(demoSiteId: string) {
           return {
             select: () => ({
               single: () => Promise.resolve({ data: Array.isArray(inserted) ? inserted[0] : inserted, error: null }),
-              then: (resolve: any) => resolve({ data: inserted, error: null })
+              then: (resolve: (result: { data: typeof inserted; error: null }) => unknown) => Promise.resolve({ data: inserted, error: null }).then(resolve)
             }),
-            then: (resolve: any) => resolve({ data: inserted, error: null })
+            then: (resolve: (result: { data: typeof inserted; error: null }) => unknown) => Promise.resolve({ data: inserted, error: null }).then(resolve)
           };
         },
         insert: (data: any) => {
           // Simulate insert by returning the data with a fake ID
           const inserted = Array.isArray(data) ? data.map(d => ({...d, id: d.id || `demo-id-${Date.now()}`})) : {...data, id: data.id || `demo-id-${Date.now()}`};
-          
+
           if (!memoryData[table]) memoryData[table] = [];
           if (Array.isArray(inserted)) {
              memoryData[table].push(...inserted);
@@ -354,10 +354,10 @@ export async function createDemoMockClientImpl(demoSiteId: string) {
           return {
             select: () => ({
               single: () => Promise.resolve({ data: Array.isArray(inserted) ? inserted[0] : inserted, error: null }),
-              then: (resolve: any) => resolve({ data: inserted, error: null })
+              then: (resolve: (result: { data: typeof inserted; error: null }) => unknown) => Promise.resolve({ data: inserted, error: null }).then(resolve)
             }),
             single: () => Promise.resolve({ data: Array.isArray(inserted) ? inserted[0] : inserted, error: null }),
-            then: (resolve: any) => resolve({ data: inserted, error: null })
+            then: (resolve: (result: { data: typeof inserted; error: null }) => unknown) => Promise.resolve({ data: inserted, error: null }).then(resolve)
           };
         },
         update: (data: any) => {
@@ -413,7 +413,7 @@ export async function createDemoMockClientImpl(demoSiteId: string) {
           return builder;
         },
         delete: () => {
-          return { 
+          return {
             eq: (column: string, value: any) => {
                // Remove from memory
                if (memoryData[table]) {
@@ -426,7 +426,7 @@ export async function createDemoMockClientImpl(demoSiteId: string) {
                  }
                }
                return {
-                 then: (resolve: any) => resolve({ data: null, error: null }) 
+                 then: (resolve: (result: { data: null; error: null }) => unknown) => Promise.resolve({ data: null, error: null }).then(resolve)
                }
             },
             in: (column: string, values: any[]) => {
@@ -443,9 +443,9 @@ export async function createDemoMockClientImpl(demoSiteId: string) {
                  });
                }
                return {
-                 then: (resolve: any) => resolve({ data: null, error: null }) 
+                 then: (resolve: (result: { data: null; error: null }) => unknown) => Promise.resolve({ data: null, error: null }).then(resolve)
                }
-            } 
+            }
           };
         }
       };

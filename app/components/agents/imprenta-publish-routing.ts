@@ -21,6 +21,21 @@ function destinationChannel(destination: string): string | undefined {
   return undefined
 }
 
+function socialAccountSelector(destination: string, site?: SiteChannelSource | null): string {
+  const normalize = (value: string) => {
+    const network = value.trim().toLowerCase()
+    return network === "twitter" ? "x" : network
+  }
+  const accounts = (site?.settings?.social_media || []).filter((account) =>
+    (account.isActive === true || account.isActive === 1)
+    && normalize(account.network || account.platform || "") === normalize(destination)
+  )
+  // Cached settings are only a hint. The server validates every target against
+  // the provider's site-scoped inventory and rejects missing/ambiguous matches.
+  if (accounts.length === 1 && accounts[0].id?.trim()) return accounts[0].id
+  return destination
+}
+
 export type PublishVoiceMode = "tts" | "agent_call"
 
 export function getPublishVoiceMode(destinations: string[]): PublishVoiceMode | undefined {
@@ -88,7 +103,9 @@ export function buildPublishRouting(
   const publishOverride: Record<string, unknown> = {}
 
   if (socialAccounts.length > 0) {
-    publishOverride.social_accounts = socialAccounts
+    publishOverride.social_accounts = Array.from(new Set(
+      socialAccounts.map((destination) => socialAccountSelector(destination, site))
+    ))
   }
 
   // The existing bulk-message tool accepts one channel per invocation. Only

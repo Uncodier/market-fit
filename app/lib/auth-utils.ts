@@ -31,22 +31,21 @@ export async function syncAuth0User(auth0User: Auth0User): Promise<string> {
  * @param auth0Token Token JWT de Auth0
  * @returns Cliente de Supabase
  */
-export function createSupabaseClientWithAuth0(auth0Token?: string) {
+export async function createSupabaseClientWithAuth0(auth0Token?: string) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   
-  const cookieStore = cookies()
+  const cookieStore = await cookies()
   
   return createServerClient(supabaseUrl, supabaseAnonKey, {
     cookies: {
-      get(name: string) {
-        return cookieStore.get(name)?.value
+      getAll() {
+        return cookieStore.getAll()
       },
-      set(name: string, value: string, options: any) {
-        cookieStore.set({ name, value, ...options })
-      },
-      remove(name: string, options: any) {
-        cookieStore.set({ name, value: '', ...options })
+      setAll(cookiesToSet: { name: string; value: string; options: import('@supabase/ssr').CookieOptions }[]) {
+        cookiesToSet.forEach(({ name, value, options }) => {
+          cookieStore.set(name, value, options)
+        })
       },
     },
     global: {

@@ -1,7 +1,7 @@
 "use client"
-
 import { useCallback, useEffect, useState } from "react"
 import { useFormContext, useFieldArray } from "react-hook-form"
+import { channelsSchema } from "./channel-form-schema"
 import { type SiteFormValues } from "./form-schema"
 import {
   SectionCard,
@@ -61,7 +61,6 @@ export function SupportChannelsSection({ active, siteId, onSave }: SupportChanne
         .eq("site_id", currentSite.id)
         .eq("role", "Customer Support")
         .single()
-
       if (agent?.id) {
         router.push(`/agents/${agent.id}`)
       } else {
@@ -94,10 +93,8 @@ export function SupportChannelsSection({ active, siteId, onSave }: SupportChanne
         detail: buildSupportChannelNavigation(connections),
       }))
     }, 0)
-
     return () => window.clearTimeout(timer)
   }, [active, connections])
-
   const persistConnections = useCallback(async (nextConnections: any[]) => {
     form.setValue("channels.connections", nextConnections, { shouldDirty: true })
     if (onSave) {
@@ -108,7 +105,7 @@ export function SupportChannelsSection({ active, siteId, onSave }: SupportChanne
   const { checkStatus } = useZavuInvitationSync({
     connections,
     enabled: active,
-    update,
+    update: (index, value) => update(index, channelsSchema.removeDefault().unwrap().shape.connections.parse([value])[0]),
     getValues: form.getValues,
     onSave,
   })
@@ -142,11 +139,11 @@ export function SupportChannelsSection({ active, siteId, onSave }: SupportChanne
     index: number,
     payload: any,
   ) => {
-    const nextConnections = reconcilePhoneConnections(
+    const nextConnections = channelsSchema.removeDefault().unwrap().shape.connections.parse(reconcilePhoneConnections(
       form.getValues("channels.connections") || [],
       index,
       payload,
-    )
+    ))
     replace(nextConnections)
     form.setValue("channels.connections", nextConnections, {
       shouldDirty: false,
@@ -324,6 +321,7 @@ export function SupportChannelsSection({ active, siteId, onSave }: SupportChanne
                         openAccountLimit()
                         return
                       }
+                      if (!channel.id) return
                       const currentConnections = form.getValues("channels.connections") || []
                       const nextConnections = reconcileSupportConnectionById(
                         currentConnections,

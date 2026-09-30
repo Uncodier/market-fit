@@ -39,8 +39,9 @@ describe("InventoryLevelsTab", () => {
         data: { data: [], count: 0 },
         error: undefined,
         isLoading: false,
+        isValidating: false,
         mutate: jest.fn(),
-      } as ReturnType<typeof useSWR>
+      } satisfies ReturnType<typeof useSWR>
     })
 
     render(

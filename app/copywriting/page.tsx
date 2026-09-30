@@ -1,416 +1,44 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
-import { Button } from "@/app/components/ui/button"
-import { Card, CardContent } from "@/app/components/ui/card"
-import { Input } from "@/app/components/ui/input"
-import { Badge } from "@/app/components/ui/badge"
-import { 
-  Search, 
-  FileText, 
-  Filter, 
-  Mail, 
-  MessageSquare,
-  Phone,
-  PenTool,
-  Hash,
-  Globe,
-  Target,
-  RotateCcw,
-  Eye,
-  ChevronLeft,
-  ChevronRight,
-  X,
-  CheckCircle2,
-  Pencil,
-  Plus
-} from "@/app/components/ui/icons"
-import { Switch } from "@/app/components/ui/switch"
-import { Pagination } from "@/app/components/ui/pagination"
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/app/components/ui/tabs"
-import { StickyHeader } from "@/app/components/ui/sticky-header"
-import { MobileFiltersDrawer, FilterContainer, FilterSection, FilterSeparator } from "@/app/components/ui/mobile-filters-drawer"
-import { SearchInput } from "@/app/components/ui/search-input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
-import { useSite } from "@/app/context/SiteContext"
-import { getCopywriting, createCopywriting, updateCopywritingStatus, updateCopywriting, type CopywritingItem } from "./actions"
-import { getSegments } from "@/app/segments/actions"
 import { getCampaigns } from "@/app/campaigns/actions/campaigns/read"
-import { toast } from "sonner"
-import React from "react"
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/app/components/ui/sheet"
-import { Skeleton } from "@/app/components/ui/skeleton"
-import { ViewSelector, ViewType } from "@/app/components/view-selector"
-import { Dialog, DialogBody, DialogContent, DialogDescription, DialogFooter, DialogForm, DialogHeader, DialogTitle } from "@/app/components/ui/dialog"
-import { Label } from "@/app/components/ui/label"
-import { Textarea } from "@/app/components/ui/textarea"
-import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd'
-import { ScrollArea } from "@/app/components/ui/scroll-area"
+import { Badge } from "@/app/components/ui/badge"
+import { Button } from "@/app/components/ui/button"
+import {
+PenTool,
+Plus
+} from "@/app/components/ui/icons"
+import { FilterContainer,FilterSection,MobileFiltersDrawer } from "@/app/components/ui/mobile-filters-drawer"
+import { Pagination } from "@/app/components/ui/pagination"
+import { SearchInput } from "@/app/components/ui/search-input"
+import { StickyHeader } from "@/app/components/ui/sticky-header"
+import { Tabs,TabsContent,TabsList,TabsTrigger } from "@/app/components/ui/tabs"
+import { ViewSelector,ViewType } from "@/app/components/view-selector"
+import { useSite } from "@/app/context/SiteContext"
 import { useCommandK } from "@/app/hooks/use-command-k"
+import { getSegments } from "@/app/segments/actions"
 import { useRouter } from "next/navigation"
+import { useCallback,useEffect,useState } from "react"
+import { toast } from "sonner"
+import { createCopywriting,getCopywriting,updateCopywritingStatus,type CopywritingItem } from "./actions"
 
-import { RelationSelect, RelationSelectValue } from "@/app/components/ui/relation-select"
-import { resolveRelationId } from "@/app/commerce/resolve-relation"
 
 import { useLocalization } from "@/app/context/LocalizationContext"
-import { retryOnError, useOptimisticLoadState } from "@/app/hooks/use-optimistic-error"
+import { retryOnError,useOptimisticLoadState } from "@/app/hooks/use-optimistic-error"
 
-// Copywriting types
-const COPYWRITING_TYPES = [
-  { id: 'tweet', label: 'Tweet', icon: Hash },
-  { id: 'pitch', label: 'Pitch', icon: Target },
-  { id: 'blurb', label: 'Blurb', icon: FileText },
-  { id: 'cold_email', label: 'Cold Email', icon: Mail },
-  { id: 'cold_call', label: 'Cold Call Script', icon: Phone },
-  { id: 'social_post', label: 'Social Media Post', icon: MessageSquare },
-  { id: 'ad_copy', label: 'Ad Copy', icon: Globe },
-  { id: 'headline', label: 'Headline', icon: PenTool },
-  { id: 'description', label: 'Product Description', icon: FileText },
-  { id: 'landing_page', label: 'Landing Page Copy', icon: Globe }
-] as const
-
-const getCopywritingTypes = (t: (key: string) => string) => [
-  { id: 'tweet', label: t('copywriting.types.tweet') || 'Tweet', icon: Hash },
-  { id: 'pitch', label: t('copywriting.types.pitch') || 'Pitch', icon: Target },
-  { id: 'blurb', label: t('copywriting.types.blurb') || 'Blurb', icon: FileText },
-  { id: 'cold_email', label: t('copywriting.types.coldEmail') || 'Cold Email', icon: Mail },
-  { id: 'cold_call', label: t('copywriting.types.coldCall') || 'Cold Call Script', icon: Phone },
-  { id: 'social_post', label: t('copywriting.types.socialPost') || 'Social Media Post', icon: MessageSquare },
-  { id: 'ad_copy', label: t('copywriting.types.adCopy') || 'Ad Copy', icon: Globe },
-  { id: 'headline', label: t('copywriting.types.headline') || 'Headline', icon: PenTool },
-  { id: 'description', label: t('copywriting.types.description') || 'Product Description', icon: FileText },
-  { id: 'landing_page', label: t('copywriting.types.landingPage') || 'Landing Page Copy', icon: Globe }
-] as const
-
-type CopywritingType = typeof COPYWRITING_TYPES[number]['id']
-
-const COPYWRITING_STATUS = [
-  'pending',
-  'in_progress', 
-  'completed',
-  'published',
-  'archived'
-] as const
-
-type CopywritingStatus = typeof COPYWRITING_STATUS[number]
-
-interface CopywritingFilters {
-  status: CopywritingStatus[]
-  type: CopywritingType[]
-  segments: string[]
-}
-
-function getCopywritingIcon(type: CopywritingType) {
-  const typeConfig = COPYWRITING_TYPES.find(t => t.id === type)
-  return typeConfig?.icon || FileText
-}
-
-function getCopywritingStatusColor(status: CopywritingStatus): string {
-  switch (status) {
-    case 'pending':
-      return 'bg-yellow-100 text-yellow-800 border-yellow-200'
-    case 'in_progress':
-      return 'bg-blue-100 text-blue-800 border-blue-200'
-    case 'completed':
-      return 'bg-green-100 text-green-800 border-green-200'
-    case 'published':
-      return 'bg-purple-100 text-purple-800 border-purple-200'
-    case 'archived':
-      return 'bg-gray-100 text-gray-800 border-gray-200'
-    default:
-      return 'bg-gray-100 text-gray-800 border-gray-200'
-  }
-}
-
-// Skeleton component
-function CopywritingSkeleton() {
-  return (
-    <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {Array.from({ length: 6 }).map((_, i) => (
-          <Card key={i} className="h-48">
-            <CardContent className="p-6">
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <Skeleton className="h-6 w-24" />
-                  <Skeleton className="h-6 w-16" />
-                </div>
-                <Skeleton className="h-4 w-full" />
-                <Skeleton className="h-4 w-3/4" />
-                <div className="flex items-center justify-between mt-4">
-                  <Skeleton className="h-4 w-20" />
-                  <div className="flex gap-2">
-                    <Skeleton className="h-8 w-8" />
-                    <Skeleton className="h-8 w-8" />
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-    </div>
-  )
-}
-
-// Create copywriting dialog
-interface CreateCopywritingDialogProps {
-  isOpen: boolean
-  onClose: () => void
-  onSubmit: (data: Partial<CopywritingItem>) => Promise<void>
-  segments: Array<{ id: string; name: string }>
-  campaigns: Array<{ id: string; title: string }>
-}
-
-function CreateCopywritingDialog({ 
-  isOpen, 
-  onClose, 
-  onSubmit, 
-  segments, 
-  campaigns 
-}: CreateCopywritingDialogProps) {
-  const [formData, setFormData] = useState({
-    title: '',
-    description: '',
-    type: 'tweet' as CopywritingType,
-    content: '',
-    segment_id: '',
-    campaign_id: '',
-    segmentValue: null as RelationSelectValue,
-    campaignValue: null as RelationSelectValue
-  })
-
-  const { currentSite } = useSite()
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!formData.title.trim()) {
-      toast.error('Title is required')
-      return
-    }
-    
-    if (!currentSite) {
-      toast.error('Site is required')
-      return
-    }
-
-    try {
-      let resolvedSegmentId = null;
-      if (formData.segmentValue) {
-        const { id, error } = await resolveRelationId("segment", formData.segmentValue, currentSite.id);
-        if (error) throw new Error(error);
-        resolvedSegmentId = id;
-      }
-
-      let resolvedCampaignId = null;
-      if (formData.campaignValue) {
-        const { id, error } = await resolveRelationId("campaign", formData.campaignValue, currentSite.id);
-        if (error) throw new Error(error);
-        resolvedCampaignId = id;
-      }
-
-      await onSubmit({
-        ...formData,
-        segment_id: resolvedSegmentId || '',
-        campaign_id: resolvedCampaignId || ''
-      })
-      setFormData({
-        title: '',
-        description: '',
-        type: 'tweet',
-        content: '',
-        segment_id: '',
-        campaign_id: '',
-        segmentValue: null,
-        campaignValue: null
-      })
-      onClose()
-    } catch (err: any) {
-      toast.error(err.message || 'Error resolving relations')
-    }
-  }
-
-  return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent size="lg">
-        <DialogForm onSubmit={handleSubmit}>
-          <DialogHeader>
-            <DialogTitle>Create New Copy</DialogTitle>
-            <DialogDescription>
-              Create a new piece of copywriting content
-            </DialogDescription>
-          </DialogHeader>
-          <DialogBody className="grid gap-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="title">Title</Label>
-              <Input
-                id="title"
-                value={formData.title}
-                onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
-                placeholder="Enter title..."
-                required />
-            </div>
-            <div>
-              <Label htmlFor="type">Type</Label>
-              <Select 
-                value={formData.type} 
-                onValueChange={(value: CopywritingType) => setFormData(prev => ({ ...prev, type: value }))}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {COPYWRITING_TYPES.map(type => (
-                    <SelectItem key={type.id} value={type.id}>
-                      <div className="flex items-center gap-2">
-                        <type.icon className="h-4 w-4" />
-                        {type.label}
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          
-          <div>
-            <Label htmlFor="description">Description</Label>
-            <Input
-              id="description"
-              value={formData.description}
-              onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-              placeholder="Brief description..." />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="segment">Segment (Optional)</Label>
-              <RelationSelect 
-                options={segments.map(s => ({ id: s.id, label: s.name }))}
-                value={formData.segmentValue} 
-                onValueChange={(value) => setFormData(prev => ({ ...prev, segmentValue: value }))}
-                placeholder="Select a segment..."
-                emptyMessage="No segment found" />
-            </div>
-            <div>
-              <Label htmlFor="campaign">Campaign (Optional)</Label>
-              <RelationSelect 
-                options={campaigns.map(c => ({ id: c.id, label: c.title }))}
-                value={formData.campaignValue} 
-                onValueChange={(value) => setFormData(prev => ({ ...prev, campaignValue: value }))}
-                placeholder="Select a campaign..."
-                emptyMessage="No campaign found" />
-            </div>
-          </div>
-
-          <div>
-            <Label htmlFor="content">Content</Label>
-            <Textarea
-              id="content"
-              value={formData.content}
-              onChange={(e) => setFormData(prev => ({ ...prev, content: e.target.value }))}
-              placeholder="Write your copy here..."
-              rows={8} />
-          </div>
-          </DialogBody>
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={onClose}>
-              Cancel
-            </Button>
-            <Button type="submit">
-              Create Copy
-            </Button>
-          </DialogFooter>
-        </DialogForm>
-      </DialogContent>
-    </Dialog>
-  )
-}
-
-// Copywriting card component
-interface CopywritingCardProps {
-  item: CopywritingItem
-  onEdit: (item: CopywritingItem) => void
-  onStatusChange: (id: string, status: CopywritingStatus) => Promise<void>
-}
-
-function CopywritingCard({ item, onEdit, onStatusChange }: CopywritingCardProps) {
-  const Icon = getCopywritingIcon(item.type)
-  
-  return (
-    <Card className="h-full hover:shadow-md transition-shadow cursor-pointer group">
-      <CardContent className="p-6 h-full flex flex-col">
-        <div className="flex items-start justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <Icon className="h-5 w-5 text-muted-foreground" />
-            <Badge variant="outline" className={getCopywritingStatusColor(item.status)}>
-              {item.status.replace('_', ' ')}
-            </Badge>
-          </div>
-          <div className="opacity-0 group-hover:opacity-100 transition-opacity">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={(e) => {
-                e.stopPropagation()
-                onEdit(item)
-              }}
-            >
-              <Pencil className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-
-        <div className="flex-1">
-          <h3 className="font-semibold text-lg mb-2 line-clamp-2">{item.title}</h3>
-          {item.description && (
-            <p className="text-muted-foreground text-sm mb-3 line-clamp-2">
-              {item.description}
-            </p>
-          )}
-          {item.content && (
-            <p className="text-sm line-clamp-3 mb-4">
-              {item.content}
-            </p>
-          )}
-        </div>
-
-        <div className="flex items-center justify-between text-xs text-muted-foreground">
-          <span>
-            {COPYWRITING_TYPES.find(t => t.id === item.type)?.label}
-          </span>
-          <div className="flex gap-2">
-            <Select 
-              value={item.status} 
-              onValueChange={(value: CopywritingStatus) => onStatusChange(item.id, value)}
-            >
-              <SelectTrigger className="h-8 w-auto text-xs">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {COPYWRITING_STATUS.map(status => (
-                  <SelectItem key={status} value={status}>
-                    {status.replace('_', ' ')}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  )
-}
+import { COPYWRITING_TYPES,type CopywritingFilters,type CopywritingStatus } from "./copywriting-presentation"
+import { CopywritingCard,CopywritingSkeleton } from "./CopywritingCards"
+import { CreateCopywritingDialog } from "./CreateCopywritingDialog"
 
 export default function CopywritingPage() {
   const { currentSite } = useSite()
+  const { t } = useLocalization()
   const router = useRouter()
   const [copywritingItems, setCopywritingItems] = useState<CopywritingItem[]>([])
   const [segments, setSegments] = useState<Array<{ id: string; name: string }>>([])
   const [campaigns, setCampaigns] = useState<Array<{ id: string; title: string; description?: string }>>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [viewType, setViewType] = useState<ViewType>('grid')
+  const [viewType, setViewType] = useState<ViewType>('kanban')
   const [selectedCopywriting, setSelectedCopywriting] = useState<CopywritingItem | null>(null)
   const [isDetailOpen, setIsDetailOpen] = useState(false)
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
@@ -457,7 +85,8 @@ export default function CopywritingPage() {
     
     try {
       const segmentsData = await getSegments(currentSite.id)
-      setSegments(segmentsData)
+      if (segmentsData.error) throw new Error(segmentsData.error)
+      setSegments(segmentsData.segments || [])
     } catch (error) {
       console.error('Error loading segments:', error)
     }
@@ -468,7 +97,8 @@ export default function CopywritingPage() {
     
     try {
       const campaignsData = await getCampaigns(currentSite.id)
-      setCampaigns(campaignsData)
+      if (campaignsData.error) throw new Error(campaignsData.error)
+      setCampaigns((campaignsData.data || []).map(({ id, title }) => ({ id, title })))
     } catch (error) {
       console.error('Error loading campaigns:', error)
     }
@@ -556,7 +186,7 @@ export default function CopywritingPage() {
     return (
       <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
         <div className="text-center space-y-4">
-          <p className="text-red-500 mb-4">{visibleError}</p>
+          <p className="text-red-500 mb-4">{String(visibleError)}</p>
           <Button 
             variant="outline" 
             onClick={loadCopywriting}
@@ -622,7 +252,7 @@ export default function CopywritingPage() {
               </FilterContainer>
             </MobileFiltersDrawer>
             <div className="ml-auto flex items-center gap-4 shrink-0 mt-2 md:mt-0">
-              <ViewSelector viewType={viewType} onViewTypeChange={setViewType} />
+              <ViewSelector currentView={viewType} onViewChange={setViewType} />
               
               <Button onClick={() => setIsCreateDialogOpen(true)}>
                 <Plus className="h-4 w-4 mr-2" />

@@ -1,5 +1,3 @@
-const path = require('path');
-
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   // Unique per deploy so stale tabs can detect a new version and prompt reload.
@@ -71,12 +69,6 @@ const nextConfig = {
     ];
   },
   transpilePackages: ['react-force-graph-2d', 'force-graph'],
-  // Desactivar TypeScript durante la compilación
-  typescript: {
-    // ⚠️ Solución temporal para permitir la compilación 
-    // Nota: Esto no es recomendable para producción, solo para desarrollo
-    ignoreBuildErrors: true,
-  },
   // Keep in sync with commercial-site/next.config.js (www → app proxy).
   // /profile must be proxied: www has a leftover workspace profile page whose
   // SiteContext redirect fights auth and loops. Do not list /profile as a

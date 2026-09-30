@@ -149,7 +149,7 @@ export function DealAboutPanel({
                 />
               )}
             />
-            <PropertyRow
+            <PropertyRow<RelationSelectValue>
               icon={<Building />}
               label="Company"
               value={companyName}

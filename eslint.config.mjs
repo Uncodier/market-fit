@@ -1,15 +1,29 @@
-export default [
+import { defineConfig, globalIgnores } from "eslint/config"
+import nextVitals from "eslint-config-next/core-web-vitals"
+import nextTypescript from "eslint-config-next/typescript"
+
+export default defineConfig([
+  ...nextVitals,
+  ...nextTypescript,
+  globalIgnores([
+    ".next/**",
+    "node_modules/**",
+    "out/**",
+    "dist/**",
+    "build/**",
+    "coverage/**",
+    ".playwright-browsers/**",
+    "test-results/**",
+    "shiplight-report/**",
+    ".shiplight/**",
+    "agent-test-reports/**",
+    "tests/agent/**/.runtime/**",
+    "**/*.yaml.spec.ts",
+    "next-env.d.ts",
+  ]),
   {
-    ignores: [
-      ".next/**",
-      "node_modules/**",
-      "dist/**",
-      "build/**",
-      "tests/**",
-      "jest.setup.js",
-      "**/*.test.js",
-      "**/*.test.ts",
-      "app/lib/react-smooth-polyfill.js"
-    ]
-  }
-];
+    // CommonJS is the intentional runtime format for local tooling and configs.
+    files: ["**/*.cjs", "*.config.js", "scripts/**/*.js"],
+    rules: { "@typescript-eslint/no-require-imports": "off" },
+  },
+])

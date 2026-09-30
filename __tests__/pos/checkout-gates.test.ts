@@ -12,22 +12,22 @@ const base = {
 
 describe("getPosCheckoutGate", () => {
   it("requires origin, shipping address, digital buyer, and reservation lead", () => {
-    expect(getPosCheckoutGate({ ...base, originLocationId: "" }).kind).toBe(
-      "origin",
+    expect(getPosCheckoutGate({ ...base, originLocationId: "" })).toEqual(
+      { ok: false, kind: "origin" },
     );
     expect(
       getPosCheckoutGate({
         ...base,
         fulfillment: "ship",
         leadValue: "lead-1",
-      }).kind,
-    ).toBe("ship-address");
+      }),
+    ).toEqual({ ok: false, kind: "ship-address" });
     expect(
       getPosCheckoutGate({
         ...base,
         cart: [{ cartQty: 1, kind: "digital_asset" } as any],
-      }).kind,
-    ).toBe("digital-buyer");
+      }),
+    ).toEqual({ ok: false, kind: "digital-buyer" });
     expect(
       getPosCheckoutGate({
         ...base,
@@ -38,7 +38,7 @@ describe("getPosCheckoutGate", () => {
             reservationStart: "2026-08-13T18:00:00.000Z",
           } as any,
         ],
-      }).kind,
-    ).toBe("reservation-lead");
+      }),
+    ).toEqual({ ok: false, kind: "reservation-lead" });
   });
 });

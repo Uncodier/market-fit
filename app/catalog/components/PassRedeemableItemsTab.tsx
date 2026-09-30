@@ -92,16 +92,11 @@ export function PassRedeemableItemsTab({
       if (!resolvedServiceId) throw new Error(t('catalog.passItems.errorServiceRequired') || "Service is required")
 
       const newIds = [...redeemableIds, resolvedServiceId]
-      const { error } = await updatePassRedeemableItems(currentSite.id, passCatalogItemId, newIds)
-      
-      if (error) {
-        toast.error(error.message)
-      } else {
-        toast.success(t('catalog.passItems.successAdded') || "Service added to pass")
-        setServiceValue(null)
-        setIsModalOpen(false)
-        loadData()
-      }
+      await updatePassRedeemableItems(currentSite.id, passCatalogItemId, newIds)
+      toast.success(t('catalog.passItems.successAdded') || "Service added to pass")
+      setServiceValue(null)
+      setIsModalOpen(false)
+      loadData()
     } catch (err: any) {
       toast.error(err.message || t('catalog.passItems.errorAdding') || "Failed to add service")
     } finally {
@@ -113,13 +108,9 @@ export function PassRedeemableItemsTab({
     if (!currentSite) return
     const newIds = redeemableIds.filter(rid => rid !== id)
     try {
-      const { error } = await updatePassRedeemableItems(currentSite.id, passCatalogItemId, newIds)
-      if (error) {
-        toast.error(error.message)
-      } else {
-        toast.success(t('catalog.passItems.successRemoved') || "Service removed from pass")
-        loadData()
-      }
+      await updatePassRedeemableItems(currentSite.id, passCatalogItemId, newIds)
+      toast.success(t('catalog.passItems.successRemoved') || "Service removed from pass")
+      loadData()
     } catch(err: any) {
        toast.error(err.message)
     }

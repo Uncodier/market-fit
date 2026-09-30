@@ -79,7 +79,7 @@ export function CatalogItemPricingSection({
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {COMMON_CURRENCIES.map(c => (
-                    <SelectItem key={c.code} value={c.code}>{c.code} - {c.name}</SelectItem>
+                    <SelectItem key={c.code} value={c.code}>{c.code} - {c.label}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>

@@ -5,6 +5,7 @@ export type {
   PrinterModule,
   PaperWidthMm,
   PrintJob,
+  PrintTemplateKind,
   KitchenDelta,
   KitchenLine,
   KitchenPayload,

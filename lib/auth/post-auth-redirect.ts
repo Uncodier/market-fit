@@ -15,7 +15,7 @@ const SHOP_AUTH_PATH_PREFIXES = ['/shop', '/marketplace', '/buyer', '/cart'] as 
  * Accept only same-origin relative paths that are not auth flows
  * (prevents open redirects and auth loops).
  */
-export function isSafeInternalPath(path: string | null | undefined): path is string {
+export function isSafeInternalPath(path: string | null | undefined): path is `/${string}` {
   if (!path || typeof path !== 'string') return false
   if (!path.startsWith('/')) return false
   if (path.startsWith('//')) return false

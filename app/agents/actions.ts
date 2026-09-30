@@ -1,8 +1,9 @@
 "use server"
 
+import type { PostgrestSingleResponse } from "@supabase/supabase-js"
 import { createClient } from "@/lib/supabase/server"
 import { z } from "zod"
-import { Command, CommandsResponse } from "./types"
+import { CommandListRow, CommandsResponse } from "./types"
 import { InstanceLog } from "@/app/components/simple-messages-view/types"
 
 // Define response schema
@@ -105,7 +106,7 @@ export async function getCommands(site_id: string, page: number = 1, pageSize: n
     console.log("Iniciando consulta a Supabase en getCommands() para site_id:", site_id, "page:", page)
     
     // First, get agent IDs for this site
-    const { data: agentData, error: agentError } = await supabase
+    const { data: agentData, error: agentError }: PostgrestSingleResponse<Array<{ id: string }>> = await supabase
       .from("agents")
       .select("id")
       .eq('site_id', site_id)
@@ -129,7 +130,7 @@ export async function getCommands(site_id: string, page: number = 1, pageSize: n
     const to = from + pageSize - 1
     
     // Get commands for these agents with pagination, including agent name
-    const { data, error } = await supabase
+    const { data, error }: PostgrestSingleResponse<CommandListRow[]> = await supabase
       .from("commands")
       .select(`
         id,
@@ -156,6 +157,10 @@ export async function getCommands(site_id: string, page: number = 1, pageSize: n
     // Transform data to flatten agent name and role
     const transformedData = data?.map(command => ({
       ...command,
+      description: command.description ?? undefined,
+      context: command.context ?? undefined,
+      duration: command.duration ?? undefined,
+      agent_id: command.agent_id ?? undefined,
       agent_name: command.agents?.name || 'Unknown Agent',
       agent_role: command.agents?.role || 'Unknown Role'
     })) || []
@@ -430,7 +435,7 @@ export async function getInstanceLogById(id: string): Promise<SingleInstanceLogR
       return { error: "Error loading instance log", log: null }
     }
 
-    return { log: data, error: null }
+    return { log: data }
   } catch (error) {
     console.error("Error loading instance log:", error)
     return { error: "Error loading instance log", log: null }
@@ -480,7 +485,7 @@ export async function getInstanceLogs(site_id: string, page: number = 1): Promis
       return { error: "Error loading instance logs", logs: [] }
     }
 
-    return { logs: data || [], error: null }
+    return { logs: data || [] }
   } catch (error) {
     console.error("Error loading instance logs:", error)
     return { error: "Error loading instance logs", logs: [] }

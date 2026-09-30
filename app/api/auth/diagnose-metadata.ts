@@ -1,15 +1,13 @@
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
+import { createClient } from '@/lib/supabase/server'
 import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
-import type { Database } from '@/lib/database.types'
-import { Cookie } from 'next/dist/compiled/@edge-runtime/cookies'
 
 export async function GET(request: Request) {
   console.log("🔍 DIAGNÓSTICO: Iniciando análisis de metadatos")
   
   try {
-    const cookieStore = cookies()
-    const supabase = createRouteHandlerClient<Database>({ cookies: () => cookieStore })
+    const cookieStore = await cookies()
+    const supabase = await createClient(true)
     
     console.log("🔍 DIAGNÓSTICO: Cliente Supabase creado")
     
@@ -24,8 +22,7 @@ export async function GET(request: Request) {
     let cookieNames: string[] = []
     try {
       // Uso del patrón async/await para manejar Promise<ReadonlyRequestCookies>
-      const cookiesList = await Promise.resolve(cookieStore)
-      cookieNames = Array.from(cookiesList.getAll()).map((cookie: Cookie) => cookie.name)
+      cookieNames = cookieStore.getAll().map(cookie => cookie.name)
       console.log("🔍 DIAGNÓSTICO: Cookies disponibles:", cookieNames)
     } catch (cookieError) {
       console.error("🔍 DIAGNÓSTICO: Error al acceder a cookies", cookieError)

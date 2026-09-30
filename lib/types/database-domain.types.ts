@@ -30,9 +30,11 @@ export interface MarketingBudget {
 }
 
 export interface SocialMedia {
+  id?: string
   platform: string
   url: string
   handle?: string
+  isActive?: boolean | number
 }
 
 export interface MarketingChannel {
@@ -53,6 +55,7 @@ export interface TeamMember {
   role: "view" | "create" | "delete" | "admin"
   name?: string
   position?: string
+  blocked_screens?: string[]
 }
 
 export interface TeamRole {

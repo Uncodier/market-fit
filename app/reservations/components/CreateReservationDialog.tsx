@@ -7,10 +7,8 @@ import {
   Dialog,
   DialogBody,
   DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
 } from "@/app/components/ui/dialog"
+import { ReservationDialogHeading } from "./ReservationDialogHeading"
 import { toast } from "sonner"
 import { useSite } from "@/app/context/SiteContext"
 import { useLocalization } from "@/app/context/LocalizationContext"
@@ -125,7 +123,7 @@ export function CreateReservationDialog({
   const combinedCalendars = useMemo(
     () =>
       buildCombinedCalendars({
-        siteCalendars: currentSite?.settings?.calendars,
+        siteCalendars: currentSite?.settings?.calendars ?? undefined,
         profileCalendarsData,
       }),
     [currentSite?.settings?.calendars, profileCalendarsData],
@@ -210,7 +208,7 @@ export function CreateReservationDialog({
       .eq("parent_id", catalogItemId)
       .eq("status", "active")
       .eq("is_purchasable", true)
-      .then(({ data, error }) => {
+      .then(({ data, error }: import("@supabase/supabase-js").PostgrestSingleResponse<CatalogItem[]>) => {
         if (data && !error) {
           const resolved = resolveVariantAxesForDisplay(parentItem, data as CatalogItem[])
           setChildren(resolved.children)
@@ -329,7 +327,7 @@ export function CreateReservationDialog({
         setIsSubmitting(false)
         return
       }
-      const serviceResult = await submitServiceReservationForm({
+      await submitServiceReservationForm({
         siteId: currentSite.id,
         isEdit,
         reservation,
@@ -342,10 +340,6 @@ export function CreateReservationDialog({
         selectedModifiers,
         t,
       })
-      if (serviceResult.error) {
-        setIsSubmitting(false)
-        return
-      }
       resetForm()
       onSuccess()
       onOpenChange(false)
@@ -365,18 +359,7 @@ export function CreateReservationDialog({
     <>
       <Dialog open={open} onOpenChange={handleOpenChange}>
         <DialogContent size="lg" busy={isBusy}>
-          <DialogHeader>
-            <DialogTitle>
-              {isEdit
-                ? (reservation?.is_task ? t("reservations.task.editTitle") || "Edit Task" : t("reservations.dialog.editTitle") || "Edit reservation")
-                : t("reservations.dialog.createTitle") || "Create reservation"}
-            </DialogTitle>
-            <DialogDescription>
-              {isEdit
-                ? (reservation?.is_task ? t("reservations.task.editDescription") || "Update the task details." : t("reservations.dialog.editDescription") || "Update the service, customer, time slot, or notes.")
-                : t("reservations.dialog.createDescription") || "Book a reservable service for a customer."}
-            </DialogDescription>
-          </DialogHeader>
+          <ReservationDialogHeading isEdit={isEdit} isTask={reservation?.is_task} t={t} />
 
           <DialogBody className="space-y-5">
             {!isEdit && (

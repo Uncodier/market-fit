@@ -37,7 +37,7 @@ export function BuyerShell({ children, requireAuth = true }: BuyerShellProps) {
   const [cartCount, setCartCount] = React.useState(0)
 
   const { data: summaryData } = useSWR(
-    session ? { key: "buyer-portal-summary", scope: "personal" } : null,
+    session ? { key: "buyer-portal-summary", scope: "personal" as const } : null,
     async (params) => {
       const res = await getBuyerPortalSummary({ scope: params.scope })
       if (res.error) throw new Error(res.error)

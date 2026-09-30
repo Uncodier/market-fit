@@ -25,10 +25,10 @@ describe("resolveVariantAxesForDisplay", () => {
       },
     } as CatalogItem
 
-    const children = [
+    const children: CatalogItem[] = [
       { id: "c1", name: "Latte / Hot", metadata: { option_values: { style: "hot" } } },
       { id: "c2", name: "Latte / Iced", metadata: { option_values: { style: "iced" } } },
-    ] as CatalogItem[]
+    ].map(value => ({ site_id: "site-1", kind: "product" as const, track_inventory: false, availability_mode: "always" as const, availability_status: "available" as const, status: "active" as const, sort_order: 0, is_pos_available: true, is_recurring: false, is_reservation: false, created_at: "2026-09-01", updated_at: "2026-09-01", ...value }))
 
     const resolved = resolveVariantAxesForDisplay(item, children)
     expect(resolved.axes[0].id).toBe("style")
@@ -43,11 +43,11 @@ describe("resolveVariantAxesForDisplay", () => {
       is_purchasable: true,
     } as CatalogItem
 
-    const children = [
+    const children: CatalogItem[] = [
       { id: "c1", name: "Frappe", metadata: {} },
       { id: "c2", name: "Helado", metadata: {} },
       { id: "c3", name: "Caliente", metadata: {} },
-    ] as CatalogItem[]
+    ].map(value => ({ site_id: "site-1", kind: "product" as const, track_inventory: false, availability_mode: "always" as const, availability_status: "available" as const, status: "active" as const, sort_order: 0, is_pos_available: true, is_recurring: false, is_reservation: false, created_at: "2026-09-01", updated_at: "2026-09-01", ...value }))
 
     const resolved = resolveVariantAxesForDisplay(item, children)
     expect(resolved.axes).toHaveLength(1)

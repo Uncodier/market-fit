@@ -12,11 +12,11 @@ import {
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { CatalogItem } from "@/app/types"
 import { BuyerGeo } from "@/app/commerce/buyer-geo"
-import { isItemLocationAvailable } from "@/app/commerce/buyer-location-availability"
+import { isItemLocationAvailable, type SettingsLocation } from "@/app/commerce/buyer-location-availability"
 import type { PromoBadge } from "@/app/promotions/promotion-merchandising"
 
 interface MarketplaceProductListProps {
-  items: Array<CatalogItem & { site?: { id: string; name: string; logo_url?: string | null; settings?: any } }>
+  items: Array<CatalogItem & { site?: { id: string; name: string; logo_url?: string | null; settings?: { locations?: SettingsLocation[] } } | null }>
   initialCount: number
   isLoading: boolean
   compactMobile: boolean

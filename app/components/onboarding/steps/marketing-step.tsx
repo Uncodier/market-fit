@@ -7,7 +7,7 @@ import { Globe, PlusCircle, Trash2 } from "../../ui/icons"
 import { nonNegativeNumber } from "../utils/onboarding-submit"
 
 interface MarketingStepProps {
-  form: any
+  form: import("react-hook-form").UseFormReturn<import("../schemas/onboarding-schema").SiteOnboardingValues>
   addMarketingChannel: () => void
   removeMarketingChannel: (index: number) => void
 }

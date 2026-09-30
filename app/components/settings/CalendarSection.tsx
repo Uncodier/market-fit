@@ -48,7 +48,7 @@ export function CalendarSection() {
         console.error("Error fetching site members:", err);
         // Fallback
         if (mounted) {
-          const fallback = currentSite.settings?.team_members || [];
+          const fallback = (currentSite.settings?.team_members || []).map(member => ({ email: member.email, name: member.name || member.email }));
           if (user?.email && !fallback.some(m => m.email === user.email)) {
             setTeamMembers([{ email: user.email, name: user.user_metadata?.name || user.email }, ...fallback]);
           } else {

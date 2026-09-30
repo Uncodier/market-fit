@@ -1,15 +1,17 @@
 "use server"
 
+import type { PostgrestSingleResponse } from "@supabase/supabase-js"
 import { createClient } from "@/lib/supabase/server"
 import { transformSaleData } from "@/app/campaigns/actions/utils/transformers"
 import { sumCompletedSalesByLead } from "@/lib/leads/converted-lead-value"
+import type { SaleData } from "@/app/types"
 
 // Get sales for a campaign
 export async function getCampaignSales(campaignId: string) {
   try {
     const supabase = await createClient()
 
-    const { data, error } = await supabase
+    const { data, error }: PostgrestSingleResponse<Array<SaleData & { leads: { name: string } | null }>> = await supabase
       .from("sales")
       .select(`
         *,

@@ -24,7 +24,6 @@ import { Checkbox } from "@/app/components/ui/checkbox"
 import { Popover, PopoverContent, PopoverTrigger } from "@/app/components/ui/popover"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
 import { addDays, format } from "date-fns"
-import { DateRange } from "react-day-picker"
 import { toast } from "sonner"
 
 // Time range presets for search filtering
@@ -41,7 +40,7 @@ const TIME_RANGES = [
 
 interface SearchFilters {
   sources: string[] // Array of URLs only
-  dateRange: DateRange | undefined
+  dateRange: { from?: Date; to?: Date } | undefined
   timeRange: string
   region: string
   language: string
@@ -181,10 +180,8 @@ export default function DeepResearchPage() {
 
   return (
     <div className="h-full flex flex-col">
-      {/* Sticky Header */}
-      <StickyHeader>
-        {/* Header content can be left empty as title is handled automatically */}
-      </StickyHeader>
+      <StickyHeader>{null}</StickyHeader>
+
 
       {/* Main Content - Search Centered */}
       <div className="flex-1 flex flex-col">

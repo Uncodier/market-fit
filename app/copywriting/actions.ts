@@ -21,7 +21,7 @@ export interface CopywritingItem {
 }
 
 export async function getCopywriting(siteId: string): Promise<CopywritingItem[]> {
-  const supabase = createClient()
+  const supabase = await createClient()
 
   const { data, error } = await supabase
     .from('copywriting')
@@ -41,7 +41,7 @@ export async function createCopywriting(
   siteId: string, 
   copywritingData: Partial<CopywritingItem>
 ): Promise<CopywritingItem> {
-  const supabase = createClient()
+  const supabase = await createClient()
 
   const { data, error } = await supabase
     .from('copywriting')
@@ -66,7 +66,7 @@ export async function updateCopywriting(
   id: string, 
   updates: Partial<CopywritingItem>
 ): Promise<CopywritingItem> {
-  const supabase = createClient()
+  const supabase = await createClient()
 
   const { data, error } = await supabase
     .from('copywriting')
@@ -91,7 +91,7 @@ export async function updateCopywritingStatus(
   id: string, 
   status: CopywritingItem['status']
 ): Promise<void> {
-  const supabase = createClient()
+  const supabase = await createClient()
 
   const { error } = await supabase
     .from('copywriting')
@@ -110,7 +110,7 @@ export async function updateCopywritingStatus(
 }
 
 export async function deleteCopywriting(id: string): Promise<void> {
-  const supabase = createClient()
+  const supabase = await createClient()
 
   const { error } = await supabase
     .from('copywriting')
@@ -126,7 +126,7 @@ export async function deleteCopywriting(id: string): Promise<void> {
 }
 
 export async function getCopywritingById(id: string): Promise<CopywritingItem | null> {
-  const supabase = createClient()
+  const supabase = await createClient()
 
   const { data, error } = await supabase
     .from('copywriting')
@@ -146,7 +146,7 @@ export async function updateCopywritingRating(
   id: string, 
   rating: number
 ): Promise<void> {
-  const supabase = createClient()
+  const supabase = await createClient()
 
   const { error } = await supabase
     .from('copywriting')
@@ -168,7 +168,7 @@ export async function getCopywritingByType(
   siteId: string, 
   type: CopywritingItem['type']
 ): Promise<CopywritingItem[]> {
-  const supabase = createClient()
+  const supabase = await createClient()
 
   const { data, error } = await supabase
     .from('copywriting')
@@ -189,7 +189,7 @@ export async function getCopywritingByStatus(
   siteId: string, 
   status: CopywritingItem['status']
 ): Promise<CopywritingItem[]> {
-  const supabase = createClient()
+  const supabase = await createClient()
 
   const { data, error } = await supabase
     .from('copywriting')

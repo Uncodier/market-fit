@@ -9,7 +9,7 @@ export type PosSaleRow = {
   amount?: number | null;
   payment_method?: string | null;
   amount_due?: number | null;
-  payments?: unknown;
+  payments?: Array<{ amount?: number | null }> | null;
   leads?: { id: string; name?: string | null; email?: string | null } | null;
 };
 

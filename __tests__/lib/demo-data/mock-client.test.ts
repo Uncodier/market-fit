@@ -6,6 +6,7 @@ describe("demo mock client", () => {
     const { data, error } = await client.rpc("get_my_accessible_sites", {})
     expect(error).toBeNull()
     expect(Array.isArray(data)).toBe(true)
+    if (!Array.isArray(data)) throw new Error("Expected demo sites")
     expect(data.some((site: { id: string }) => site.id === "demo-saas-en-123")).toBe(true)
   })
 

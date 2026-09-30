@@ -27,7 +27,7 @@ const STATUS_STYLES = {
 }
 
 // Source colors for sales
-const SOURCE_STYLES = {
+const SOURCE_STYLES: Partial<Record<Sale["source"], string>> = {
   retail: "bg-blue-50 text-blue-700 hover:bg-blue-50 border-blue-200",
   online: "bg-indigo-50 text-indigo-700 hover:bg-indigo-50 border-indigo-200"
 }

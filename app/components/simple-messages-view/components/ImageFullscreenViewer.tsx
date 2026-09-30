@@ -15,7 +15,7 @@ interface ImageFullscreenViewerProps {
     size?: string
     quality?: string
     generated_at?: string
-    [key: string]: any
+    [key: string]: unknown
   }
   prompt?: string
 }
@@ -38,10 +38,6 @@ export const ImageFullscreenViewer: React.FC<ImageFullscreenViewerProps> = ({
       setSelectedImageIndex(0)
     }
   }, [isOpen])
-
-  if (!images || images.length === 0) {
-    return null
-  }
 
   const currentImage = images[selectedImageIndex]
   const imageUrl = typeof currentImage === 'string' ? currentImage : currentImage?.url || ''
@@ -110,25 +106,24 @@ export const ImageFullscreenViewer: React.FC<ImageFullscreenViewerProps> = ({
     }
   }
 
-  const handleKeyDown = (e: KeyboardEvent) => {
-    if (!isOpen) return
-    if (e.key === 'ArrowLeft' && selectedImageIndex > 0) {
-      setSelectedImageIndex(selectedImageIndex - 1)
-    } else if (e.key === 'ArrowRight' && selectedImageIndex < images.length - 1) {
-      setSelectedImageIndex(selectedImageIndex + 1)
-    } else if (e.key === 'Escape') {
-      onClose()
-    }
-  }
-
   useEffect(() => {
-    if (isOpen) {
-      window.addEventListener('keydown', handleKeyDown as any)
-      return () => {
-        window.removeEventListener('keydown', handleKeyDown as any)
+    if (!isOpen || images.length === 0) return
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'ArrowLeft' && selectedImageIndex > 0) {
+        setSelectedImageIndex(selectedImageIndex - 1)
+      } else if (event.key === 'ArrowRight' && selectedImageIndex < images.length - 1) {
+        setSelectedImageIndex(selectedImageIndex + 1)
+      } else if (event.key === 'Escape') {
+        onClose()
       }
     }
-  }, [isOpen, selectedImageIndex, images.length])
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [isOpen, selectedImageIndex, images.length, onClose])
+
+  if (!images || images.length === 0) {
+    return null
+  }
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>

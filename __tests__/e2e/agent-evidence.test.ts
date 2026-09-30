@@ -15,7 +15,7 @@ it('never maps production agent execution to localhost or another application', 
   expect(() => targetEnvDefaults('staging', { TEST_TARGET: 'local' })).toThrow('disagrees');
 });
 it('does not expose ambient production backend and payment secrets to the engine', () => {
-  expect(agentEnvironment({ PATH: '/bin', TEST_ADMIN_EMAIL: 'test@example.invalid', SUPABASE_SERVICE_ROLE_KEY: 'secret', STRIPE_SECRET_KEY: 'secret', SERVICE_API_KEY: 'secret' })).toEqual({ PATH: '/bin', TEST_ADMIN_EMAIL: 'test@example.invalid' });
+  expect(agentEnvironment({ PATH: '/bin', TEST_ADMIN_EMAIL: 'test@example.invalid', SUPABASE_SERVICE_ROLE_KEY: 'secret', STRIPE_SECRET_KEY: 'secret', SERVICE_API_KEY: 'secret' })).toEqual({ NODE_ENV: 'test', PATH: '/bin', TEST_ADMIN_EMAIL: 'test@example.invalid' });
 });
 it('requires current distinct channel evidence and successful UI artifacts', () => {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-evidence-'));

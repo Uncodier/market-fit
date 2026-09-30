@@ -209,6 +209,11 @@ export interface SiteSettings {
     }
   } | null
   calendars?: RoundRobinCalendar[] | null
+  commerce?: {
+    stripe_account_id?: string | null
+    currency?: string
+    shipping_methods?: Array<{ name?: string; cost?: number }>
+  } | null
   shop?: {
     hero_title?: string
     hero_subtitle?: string
@@ -218,6 +223,7 @@ export interface SiteSettings {
     hero_order_bar?: boolean
     hero_image_url?: string
     free_shipping_threshold?: number | null
+    shipping_cost?: number | null
     delivery_time_min?: number | null
     delivery_time_max?: number | null
     return_policy_summary?: string
@@ -227,6 +233,10 @@ export interface SiteSettings {
       icon: string
     }>
     payment_methods?: Array<'card' | 'cash_on_pickup' | 'bank_transfer'>
+    bank_account_name?: string
+    bank_name?: string
+    bank_routing_number?: string
+    bank_account_number?: string
     default_delivery_options?: Array<'pickup' | 'ship' | 'none' | 'dine_in'>
     bank_transfer?: {
       bank_name?: string

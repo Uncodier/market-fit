@@ -3,7 +3,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { CommandsPanel } from '@/app/components/agents/commands-panel';
 import { CommandList } from '@/app/components/agents/command-list';
 import { Command } from '@/app/agents/types';
-import { getCommands, getMockCommands } from '@/app/agents/actions';
+import { getCommands } from '@/app/agents/actions';
 
 // Type for test options
 interface CommandTestOptions {

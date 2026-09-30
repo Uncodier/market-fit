@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { Reservation } from "@/app/types";
+import { Reservation, Task } from "@/app/types";
 import { loadReservationSalePayments } from "./ensure-sale-order";
 
 export async function getReservations(siteId: string) {
@@ -25,7 +25,7 @@ export async function getReservations(siteId: string) {
     }
 
     const buyerIds = Array.from(
-      new Set((data || []).map((r) => r.buyer_user_id).filter(Boolean))
+      new Set((data || []).map((r: Reservation) => r.buyer_user_id).filter(Boolean))
     ) as string[]
 
     let profileById = new Map<string, { id: string; name?: string | null; avatar_url?: string | null }>()
@@ -34,7 +34,7 @@ export async function getReservations(siteId: string) {
         .from("profiles")
         .select("id, name, avatar_url")
         .in("id", buyerIds)
-      profileById = new Map((profiles || []).map((p) => [p.id, p]))
+      profileById = new Map((profiles || []).map((p: { id: string; name: string | null; avatar_url: string | null }) => [p.id, p]))
     }
 
     const { data: tasks, error: tasksError } = await supabase
@@ -51,8 +51,8 @@ export async function getReservations(siteId: string) {
     }
 
     const mappedTasks: Reservation[] = (tasks || [])
-      .filter((task) => !!task.assignee) // Remove strict type filter, show all assigned tasks as before per your request
-      .map((task) => {
+      .filter((task: Task) => !!task.assignee) // Show all assigned tasks.
+      .map((task: Task & { user_id?: string; lead?: Reservation["lead"] }) => {
       const startTime = new Date(task.scheduled_date);
       let endTime = (task as any).end_date ? new Date((task as any).end_date) : new Date(startTime.getTime() + 60 * 60 * 1000); // default 1 hour later
       let parsedNotes = task.description || "";
@@ -140,11 +140,11 @@ export async function getReservations(siteId: string) {
     });
 
     const itemIds = Array.from(
-      new Set((data || []).map((r) => r.sale_order_item_id).filter(Boolean))
+      new Set((data || []).map((r: Reservation) => r.sale_order_item_id).filter(Boolean))
     ) as string[]
     const paymentByItemId = await loadReservationSalePayments(supabase, itemIds)
 
-    const enriched = (data || []).map((row) => {
+    const enriched = (data || []).map((row: Reservation) => {
       const payment = row.sale_order_item_id
         ? paymentByItemId.get(row.sale_order_item_id)
         : null

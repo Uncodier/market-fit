@@ -27,7 +27,7 @@ export function useNearbyCheckoutDefaults(params: {
   setFulfillment: (value: CheckoutFulfillmentMethod) => void
   availablePaymentMethods: PaymentMethodType[]
   paymentMethod: string
-  setPaymentMethod: (value: string) => void
+  setPaymentMethod: (value: PaymentMethodType | "") => void
   buyerGeo?: BuyerGeo | null
   inventoryLocations?: NearbyLocationRef[] | null
   settingsLocations?: NearbyLocationRef[] | null
@@ -74,6 +74,7 @@ export function useNearbyCheckoutDefaults(params: {
 
   const setPaymentMethodByUser = useCallback(
     (value: string) => {
+      if (value !== "" && value !== "card" && value !== "cash_on_pickup" && value !== "bank_transfer") return
       userChosePaymentRef.current = true
       setPaymentMethod(value)
     },

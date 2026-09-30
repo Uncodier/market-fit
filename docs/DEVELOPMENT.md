@@ -42,6 +42,7 @@ npm run dev
 npm run dev:webpack
 npm run lint
 npm run lint:fix
+npm run typecheck
 npm test
 npm run test:watch
 npm run test:e2e
@@ -56,11 +57,23 @@ npm run test:api-invitations
 `npm run build` and `npm run start` also exist, but do not run a build as routine
 validation unless the task or release process explicitly requires it.
 
-`next.config.js` currently sets `typescript.ignoreBuildErrors: true`, so a
-successful build is not evidence of type safety. Use `npx tsc --noEmit` when a
-type check is required. `npm run lint` scans the whole repository; during a
-dirty-tree task, targeted `npx eslint <changed-files>` can separate new findings
-from unrelated failures.
+`npm run typecheck` generates Next.js route definitions and checks all authored
+TypeScript, including tests, without building the application. Strict checking
+remains enabled. The ES2018 target matches the modern browsers supported by
+Next.js 16; JavaScript bundling remains Next.js's responsibility.
+Production builds use Next.js's default type-error gate; do not restore
+`typescript.ignoreBuildErrors` to bypass it.
+
+ESLint loads the Next.js and TypeScript rule sets from `eslint.config.mjs` and
+includes authored tests. It excludes generated output, not application modules.
+The repository has existing lint debt; targeted `npx eslint <changed-files>`
+separates touched code from unrelated findings. Do not disable rules or exclude
+source files to make a check appear clean.
+
+The TypeScript and compiler-contract CI workflow runs without database, payment,
+or browser credentials. Its Server Action regression test invokes the installed
+Next.js compiler because the normal Jest transform skips Server Action export
+validation.
 
 There are no `db:migrate` or `db:seed` npm scripts.
 
@@ -76,6 +89,11 @@ Jest defaults to jsdom and `jest.setup.js` installs global mocks, including
 navigation, images, and fetch behavior. Node-only suites should declare
 `@jest-environment node`; tests that need real fetch semantics must replace the
 global mock deliberately.
+
+The Stripe idempotency suite uses an isolated SDK transport and the current
+claim/complete/fail delivery contract. It does not connect to a database or run
+cleanup SQL. Any future live database test must be a separately authorized,
+disposable-target suite, not part of the default Jest command.
 
 Run a focused Jest test:
 

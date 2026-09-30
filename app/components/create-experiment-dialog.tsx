@@ -31,14 +31,6 @@ import * as z from "zod"
 import { RelationSelect, RelationSelectValue } from "@/app/components/ui/relation-select"
 import { resolveRelationId } from "@/app/commerce/resolve-relation"
 
-// Marca para React DevTools
-if (typeof window !== "undefined") {
-  // @ts-ignore
-  window.__REACT_DEVTOOLS_GLOBAL_HOOK__?.on?.("renderer", () => {
-    console.log("🔍 React DevTools detected")
-  })
-}
-
 interface Segment {
   id: string
   name: string
@@ -61,6 +53,7 @@ interface CreateExperimentDialogProps {
 export function CreateExperimentDialog({ segments, campaigns = [], onCreateExperiment, trigger }: CreateExperimentDialogProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  const [campaignValue, setCampaignValue] = useState<RelationSelectValue>(null)
   const [dialogState, setDialogState] = useState({
     isFormValid: false,
     lastAction: 'initial',

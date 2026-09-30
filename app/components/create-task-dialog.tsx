@@ -93,7 +93,7 @@ export function CreateTaskDialog({ trigger, onTaskCreated }: CreateTaskDialogPro
             .in("id", memberIds)
             
           if (profilesData) {
-            profilesData.forEach(profile => {
+            profilesData.forEach((profile: { id: string; name?: string | null; settings?: { calendar?: { event_types?: { id: string; title: string; duration?: number; location?: string | null }[] } } }) => {
               const eventTypes = profile.settings?.calendar?.event_types || []
               eventTypes.forEach((et: any) => {
                 cals.push({
@@ -377,7 +377,7 @@ export function CreateTaskDialog({ trigger, onTaskCreated }: CreateTaskDialogPro
               <div className="grid gap-2">
                 <Label>Type</Label>
                 <Select
-                  value={formData.type}
+                  value={formData.type ?? undefined}
                   onValueChange={(value) => setFormData({ ...formData, type: value })}
                 >
                   <SelectTrigger className="h-12">
@@ -398,7 +398,7 @@ export function CreateTaskDialog({ trigger, onTaskCreated }: CreateTaskDialogPro
               <div className="grid gap-2">
                 <Label>Stage</Label>
                 <Select
-                  value={formData.stage}
+                  value={formData.stage ?? undefined}
                   onValueChange={(value) => setFormData({ ...formData, stage: value })}
                 >
                   <SelectTrigger className="h-12">

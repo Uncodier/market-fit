@@ -13,7 +13,7 @@ export function CommandDetailSkeleton() {
   return (
     <PageTransition>
       <div className="flex min-h-screen flex-col">
-        <StickyHeader showAIButton={false}>
+        <StickyHeader>
           <div className="container py-2 max-w-screen-2xl">
             <div className="flex items-center">
               <Button

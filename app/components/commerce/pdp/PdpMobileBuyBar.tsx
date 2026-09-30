@@ -39,9 +39,9 @@ export function PdpMobileBuyBar({
         <div className="max-w-7xl mx-auto w-full">{children}</div>
       ) : (
         <div className="flex items-center justify-between gap-3 max-w-7xl mx-auto min-w-0">
-          {price > 0 || !emptyPriceLabel ? (
+          {(price ?? 0) > 0 || !emptyPriceLabel ? (
             <PdpPriceBlock
-              price={price}
+              price={price ?? 0}
               isRecurring={isRecurring}
               validityDays={validityDays}
               small={true}

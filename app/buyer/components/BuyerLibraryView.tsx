@@ -56,7 +56,7 @@ export function BuyerLibraryView({
   const { data, error, isLoading, mutate } = useSWR(
     ['buyer-library', page, pageSize, searchQuery, subtypeFilter, effectiveOwnerSiteId, scope],
     async () => {
-      const res = await listBuyerLibrary({ page, pageSize, q: searchQuery, subtype: subtypeFilter, ownerSiteId: effectiveOwnerSiteId, scope })
+      const res = await listBuyerLibrary({ page, pageSize, subtype: subtypeFilter, ownerSiteId: effectiveOwnerSiteId, scope })
       if (res.error) throw new Error(res.error)
       return res
     }

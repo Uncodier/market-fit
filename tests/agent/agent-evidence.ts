@@ -9,7 +9,7 @@ export function parseStatus(report: string): 'PASS' | 'FAIL' | 'BLOCKED' | 'ABOR
   return statuses[0].slice(8) as ReturnType<typeof parseStatus>;
 }
 
-export function targetEnvDefaults(target: string, env: NodeJS.ProcessEnv = process.env): Record<string, string> {
+export function targetEnvDefaults(target: string, env: Record<string, string | undefined> = process.env): Record<string, string> {
   if (target === 'production') throw new Error('Mutating agent workflows are forbidden in production');
   if (env.TEST_TARGET && env.TEST_TARGET !== target) throw new Error('Agent target disagrees with TEST_TARGET');
   const config = readEnvironment({ ...env, TEST_TARGET: target, TEST_SUITE: 'regression' });
@@ -18,10 +18,10 @@ export function targetEnvDefaults(target: string, env: NodeJS.ProcessEnv = proce
 }
 
 /** Do not pass production provider/service credentials from the shell to an agent. */
-export function agentEnvironment(env: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
+export function agentEnvironment(env: Record<string, string | undefined>): NodeJS.ProcessEnv {
   const allowed = new Set(['PATH', 'HOME', 'USER', 'SHELL', 'TMPDIR', 'TEMP', 'TMP', 'LANG', 'TERM',
     'SHIPLIGHT_API_TOKEN', 'ANTHROPIC_API_KEY', 'OPENAI_API_KEY', 'GOOGLE_API_KEY', 'CI']);
-  return Object.fromEntries(Object.entries(env).filter(([key]) => allowed.has(key) || key.startsWith('TEST_') || key.startsWith('AGENT_VERIFICATION_')));
+  return { NODE_ENV: 'test', ...Object.fromEntries(Object.entries(env).filter(([key]) => allowed.has(key) || key.startsWith('TEST_') || key.startsWith('AGENT_VERIFICATION_'))) };
 }
 
 const observation = z.object({

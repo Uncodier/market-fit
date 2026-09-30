@@ -1,5 +1,12 @@
+import type { QueryResult } from '@/app/api/_shared/query-result';
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/server';
+
+type SessionProfile = {
+  device: { type?: string } | null;
+  browser: { language?: string } | null;
+  location: { country?: string } | null;
+};
 
 export async function GET(
   request: NextRequest, 
@@ -27,7 +34,7 @@ export async function GET(
     console.log('Fetching session events for lead:', leadId, 'site:', siteId);
 
     // First, get all visitor sessions for this lead
-    const { data: visitorSessions, error: sessionsError } = await supabase
+    const { data: visitorSessions, error: sessionsError }: QueryResult<{ visitor_id: string }[]> = await supabase
       .from('visitor_sessions')
       .select('visitor_id')
       .eq('lead_id', leadId)
@@ -107,7 +114,7 @@ export async function GET(
       summaryQuery = summaryQuery.lte('created_at', endDate);
     }
 
-    const { data: allEvents, error: summaryError } = await summaryQuery;
+    const { data: allEvents, error: summaryError }: QueryResult<{ event_type: string }[]> = await summaryQuery;
 
     if (summaryError) {
       console.error('Error fetching events summary:', summaryError);
@@ -134,14 +141,14 @@ export async function GET(
       sessionsDataQuery = sessionsDataQuery.lte('created_at', endDate);
     }
 
-    const { data: sessionData, error: sessionError } = await sessionsDataQuery;
+    const { data: sessionData, error: sessionError }: QueryResult<SessionProfile[]> = await sessionsDataQuery;
 
     if (sessionError) {
       console.error('Error fetching session data:', sessionError);
     }
 
     // Analyze devices, languages and regions
-    const analyzeSessionData = (sessions: any[]) => {
+    const analyzeSessionData = (sessions: SessionProfile[]) => {
       if (!sessions || sessions.length === 0) {
         return {
           topDevice: 'Unknown',

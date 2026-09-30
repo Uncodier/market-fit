@@ -10,9 +10,9 @@ export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> 
 const Input = React.forwardRef<HTMLInputElement, InputProps>(
   ({ className, icon, iconPosition = "left", ...props }, ref) => {
     if (icon) {
-      const iconElement = React.isValidElement(icon)
-        ? React.cloneElement(icon as React.ReactElement, {
-            className: cn("h-4 w-4 text-muted-foreground", (icon as React.ReactElement).props?.className)
+      const iconElement = React.isValidElement<{ className?: string }>(icon)
+        ? React.cloneElement(icon, {
+            className: cn("h-4 w-4 text-muted-foreground", icon.props.className)
           })
         : icon
 

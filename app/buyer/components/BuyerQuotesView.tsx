@@ -28,7 +28,7 @@ export function BuyerQuotesView({
   const { data, error, isLoading } = useSWR(
     ["buyer-quotes", page, pageSize, searchQuery, statusFilter, scope],
     async () => {
-      const res = await listBuyerQuotes({ page, pageSize, q: searchQuery, status: statusFilter, scope })
+      const res = await listBuyerQuotes({ page, pageSize, status: statusFilter, scope })
       if (res.error) throw new Error(res.error)
       return res
     }

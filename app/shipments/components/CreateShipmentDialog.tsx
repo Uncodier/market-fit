@@ -84,18 +84,19 @@ export function CreateShipmentDialog() {
       return
     }
 
+    const orderId = orderValue.id
     const fetchItems = async () => {
       const supabase = createClient()
       const { data } = await supabase
         .from("sale_order_items")
         .select("id, name, quantity, shipment_id")
-        .eq("sale_order_id", orderValue.id)
+        .eq("sale_order_id", orderId)
         .eq("site_id", currentSite.id)
         .is("shipment_id", null)
 
       if (data) {
         setOrderItems(data)
-        setSelectedItems(new Set(data.map((i) => i.id)))
+        setSelectedItems(new Set(data.map((i: { id: string }) => i.id)))
       }
     }
     fetchItems()

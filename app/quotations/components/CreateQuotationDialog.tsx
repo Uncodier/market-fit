@@ -127,7 +127,7 @@ export function CreateQuotationDialog({
 
   const catalogItems = (catalogData?.data || []) as CatalogItem[]
 
-  const leadOptions = (leadsData?.leads || leadsData || []).map(
+  const leadOptions = (leadsData?.leads || []).map(
     (l: { id: string; name?: string; email?: string }) => ({
       id: l.id,
       label: l.name || l.email || l.id,
@@ -142,7 +142,8 @@ export function CreateQuotationDialog({
   const dynamicSteps = useMemo(() => {
     return lineItems.flatMap((row) => {
       if (!row.value || row.value.mode !== "existing" || row.key.startsWith("existing_")) return []
-      const item = catalogItems.find((i) => i.id === row.value!.id)
+      const selectedId = row.value.id
+      const item = catalogItems.find((i) => i.id === selectedId)
       if (!item || !hasDynamicQuoteFields(item)) return []
       return [{ lineKey: row.key, item }]
     })

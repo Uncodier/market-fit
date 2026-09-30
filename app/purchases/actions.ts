@@ -1,21 +1,34 @@
 "use server"
 
 import { revalidatePath } from "next/cache"
-import { createClient } from "@/lib/supabase/server"
 import { Purchase, Payment, PurchaseLineInput } from "@/app/types"
 import {
   upsertPolizaForPurchase,
   removePolizaForSource,
 } from "@/app/accounting/ensure"
-import {
-  verifySiteMembership,
-  lineSubtotal,
-} from "./purchase-mappers"
+import { lineSubtotal } from "./purchase-mappers"
+import { authorizePurchaseSite, requirePurchaseAccess, requirePurchaseInSite, validatePurchaseId, validatePurchaseReferences } from "./purchase-access"
 
-export { listPurchases, getPurchaseById, getPurchaseWithoutContext } from "./purchase-queries"
-import { getPurchaseById } from "./purchase-queries"
+import {
+  listPurchases as listPurchasesQuery,
+  getPurchaseById as getPurchaseByIdQuery,
+  getPurchaseWithoutContext as getPurchaseWithoutContextQuery,
+} from "./purchase-queries"
 import { purchaseAmountDue } from "./purchase-payment-state"
 import { deleteAccountingSource, hasSourceJournal } from '@/app/accounting/source-lifecycle'
+
+// Keep explicit async exports so Next.js can register every Server Action.
+export async function listPurchases(params: Parameters<typeof listPurchasesQuery>[0]) {
+  return listPurchasesQuery(params)
+}
+
+export async function getPurchaseById(siteId: string, id: string) {
+  return getPurchaseByIdQuery(siteId, id)
+}
+
+export async function getPurchaseWithoutContext(id: string) {
+  return getPurchaseWithoutContextQuery(id)
+}
 
 export async function createPurchase(values: {
   siteId: string
@@ -30,12 +43,8 @@ export async function createPurchase(values: {
   items: PurchaseLineInput[]
 }) {
   try {
-    const supabase = await createClient()
-    const { data: { session } } = await supabase.auth.getSession()
-    if (!session?.user) return { purchase: null, error: "Not authenticated" }
-
-    const isMember = await verifySiteMembership(supabase, session.user.id, values.siteId)
-    if (!isMember) return { purchase: null, error: "Not authorized for this site" }
+    const { supabase, user } = await requirePurchaseAccess(values.siteId, "insert")
+    await validatePurchaseReferences(supabase, values.siteId, values)
 
     if (!values.items?.length) return { purchase: null, error: "At least one line is required" }
 
@@ -51,7 +60,7 @@ export async function createPurchase(values: {
       .insert({
         site_id: values.siteId,
         vendor_company_id: values.vendorCompanyId || null,
-        user_id: session.user.id,
+        user_id: user.id,
         title: values.title || "Vendor bill",
         status,
         amount,
@@ -109,12 +118,8 @@ export async function updatePurchase(values: {
   items?: PurchaseLineInput[]
 }) {
   try {
-    const supabase = await createClient()
-    const { data: { session } } = await supabase.auth.getSession()
-    if (!session?.user) return { purchase: null, error: "Not authenticated" }
-
-    const isMember = await verifySiteMembership(supabase, session.user.id, values.siteId)
-    if (!isMember) return { purchase: null, error: "Not authorized for this site" }
+    const { supabase } = await requirePurchaseAccess(values.siteId, "update", values.id)
+    await validatePurchaseReferences(supabase, values.siteId, values)
 
     const { data: current, error: currentError } = await supabase.from("purchases")
       .select("amount, amount_due, payments, accounting_state, updated_at")
@@ -169,7 +174,8 @@ export async function updatePurchase(values: {
         unit_cost: line.unitCost,
         subtotal: lineSubtotal(line),
       }))
-      const { updated_at: _version, accounting_state: _state, amount: _amount, amount_due: _due, ...header } = updateData
+      const header = Object.fromEntries(Object.entries(updateData)
+        .filter(([key]) => !["updated_at", "accounting_state", "amount", "amount_due"].includes(key)))
       // The authenticated RPC checks capabilities, locks the source version, and
       // saves header + items together. Failures leave the previous source intact.
       const { error } = await supabase.rpc("accounting_update_purchase_items", {
@@ -218,6 +224,7 @@ export async function registerPurchasePayment(params: {
   notes?: string
 }) {
   try {
+    await requirePurchaseAccess(params.siteId, "update", params.purchaseId)
     const { purchase, error } = await getPurchaseById(params.siteId, params.purchaseId)
     if (error || !purchase) return { purchase: null, error: error || "Purchase not found" }
 
@@ -257,12 +264,8 @@ export async function registerPurchasePayment(params: {
 
 export async function receivePurchaseStock(siteId: string, purchaseId: string, locationId?: string | null) {
   try {
-    const supabase = await createClient()
-    const { data: { session } } = await supabase.auth.getSession()
-    if (!session?.user) return { success: false, error: "Not authenticated" }
-
-    const isMember = await verifySiteMembership(supabase, session.user.id, siteId)
-    if (!isMember) return { success: false, error: "Not authorized for this site" }
+    const { supabase } = await requirePurchaseAccess(siteId, "update", purchaseId)
+    if (locationId != null) validatePurchaseId(locationId, "location")
 
     const { purchase, error } = await getPurchaseById(siteId, purchaseId)
     if (error || !purchase) return { success: false, error: error || "Purchase not found" }
@@ -275,6 +278,7 @@ export async function receivePurchaseStock(siteId: string, purchaseId: string, l
     if (!receiveLocationId) {
       return { success: false, error: "Location is required to receive stock" }
     }
+    await validatePurchaseReferences(supabase, siteId, { locationId: receiveLocationId })
 
     const productLines = (purchase.items || []).filter(
       (item) => item.catalogItemId && item.catalogItemKind === "product" && (Number(item.quantity) || 0) > 0
@@ -304,6 +308,7 @@ export async function receivePurchaseStock(siteId: string, purchaseId: string, l
             updated_at: new Date().toISOString(),
           })
           .eq("id", level.id)
+          .eq("site_id", siteId)
       } else {
         await supabase.from("inventory_levels").insert({
           site_id: siteId,
@@ -341,9 +346,13 @@ export async function receivePurchaseStock(siteId: string, purchaseId: string, l
 
 export async function publishPurchase(siteId: string, purchaseId: string) {
   try {
+    const { supabase } = await requirePurchaseAccess(siteId, "update", purchaseId)
     const { purchase, error } = await getPurchaseById(siteId, purchaseId)
     if (error || !purchase) return { error: error || "Purchase not found" }
     if (purchase.amount <= 0) return { error: "Amount must be greater than zero to publish" }
+    if (purchase.accountingState === "unpublished") {
+      await authorizePurchaseSite(supabase, siteId, "delete")
+    }
     if (purchase.status === "draft") {
       const result = await updatePurchase({
         siteId,
@@ -364,11 +373,8 @@ export async function publishPurchase(siteId: string, purchaseId: string) {
 
 export async function unpublishPurchase(siteId: string, purchaseId: string) {
   try {
-    const supabase = await createClient()
-    const { data: { session } } = await supabase.auth.getSession()
-    if (!session?.user) return { error: "Not authenticated" }
-    const isMember = await verifySiteMembership(supabase, session.user.id, siteId)
-    if (!isMember) return { error: "Not authorized for this site" }
+    const { supabase } = await requirePurchaseAccess(siteId, "delete", purchaseId)
+    await requirePurchaseInSite(supabase, siteId, purchaseId)
 
     await removePolizaForSource("purchase", purchaseId, siteId)
     revalidatePath("/bills")
@@ -382,11 +388,8 @@ export async function unpublishPurchase(siteId: string, purchaseId: string) {
 
 export async function deletePurchase(siteId: string, purchaseId: string) {
   try {
-    const supabase = await createClient()
-    const { data: { session } } = await supabase.auth.getSession()
-    if (!session?.user) return { error: "Not authenticated" }
-    const isMember = await verifySiteMembership(supabase, session.user.id, siteId)
-    if (!isMember) return { error: "Not authorized for this site" }
+    const { supabase } = await requirePurchaseAccess(siteId, "delete", purchaseId)
+    await requirePurchaseInSite(supabase, siteId, purchaseId)
 
     await deleteAccountingSource(siteId, 'purchase', purchaseId)
     revalidatePath("/bills")

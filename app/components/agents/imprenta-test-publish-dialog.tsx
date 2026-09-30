@@ -26,7 +26,7 @@ export function ImprentaTestPublishDialog({
   const [email, setEmail] = useState("")
   const [phone, setPhone] = useState("")
   const [leadValue, setLeadValue] = useState<RelationSelectValue>(null)
-  const [leads, setLeads] = useState<Array<{ id: string; name: string, email?: string, phone?: string }>>([])
+  const [leads, setLeads] = useState<Array<{ id: string; name: string, email?: string, phone?: string | null }>>([])
   
   const { currentSite } = useSite()
 
@@ -55,8 +55,8 @@ export function ImprentaTestPublishDialog({
   const handleConfirm = () => {
     const testDestinations: Record<string, string> = {}
     
-    if (leadValue) {
-      testDestinations.lead_id = typeof leadValue === 'string' ? leadValue : leadValue.id
+    if (leadValue?.mode === 'existing') {
+      testDestinations.lead_id = leadValue.id
     }
     if (hasEmail && email.trim()) {
       testDestinations.email = email.trim()
@@ -90,7 +90,7 @@ export function ImprentaTestPublishDialog({
               value={leadValue}
               onValueChange={(val) => {
                 setLeadValue(val)
-                if (val && typeof val !== 'string' && val.id) {
+                if (val?.mode === 'existing') {
                   const lead = leads.find(l => l.id === val.id)
                   if (lead) {
                     if (lead.email) setEmail(lead.email)

@@ -1,7 +1,6 @@
 "use client"
 
 import React, { useState, useEffect } from "react"
-import { useParams } from "next/navigation"
 import { useSite } from "@/app/context/SiteContext"
 import { getSaleById, getSaleOrderBySaleId } from "@/app/sales/actions"
 import { getSegments } from "@/app/segments/actions"
@@ -23,9 +22,11 @@ const STATUS_STYLES = {
 }
 
 // Source colors for sales
-const SOURCE_STYLES = {
+const SOURCE_STYLES: Record<Sale["source"], string> = {
   retail: "bg-blue-50 text-blue-700 border-blue-200",
-  online: "bg-indigo-50 text-indigo-700 border-indigo-200"
+  online: "bg-indigo-50 text-indigo-700 border-indigo-200",
+  quote: "bg-purple-50 text-purple-700 border-purple-200",
+  marketplace: "bg-teal-50 text-teal-700 border-teal-200"
 }
 
 // Print-optimized skeleton
@@ -104,7 +105,7 @@ function PrintableInvoice({ sale, saleOrder, segments, campaigns, siteName, site
     try {
       const date = new Date(dateString);
       return format(date, 'MMM d, yyyy');
-    } catch (error) {
+    } catch {
       return dateString;
     }
   };

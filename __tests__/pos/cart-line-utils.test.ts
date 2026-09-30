@@ -27,14 +27,14 @@ describe("cartHasReservationSlot", () => {
 describe("cartHasBuyerAccountItem", () => {
   it("is false without digital or recurring lines", () => {
     expect(cartHasBuyerAccountItem([])).toBe(false);
-    expect(cartHasBuyerAccountItem([{ cartQty: 1, kind: "product" }])).toBe(
+    expect(cartHasBuyerAccountItem([{ cartQty: 1, kind: "product", is_recurring: false }])).toBe(
       false,
     );
   });
 
   it("is true for digital assets and recurring plans", () => {
     expect(
-      cartHasBuyerAccountItem([{ cartQty: 1, kind: "digital_asset" }]),
+      cartHasBuyerAccountItem([{ cartQty: 1, kind: "digital_asset", is_recurring: false }]),
     ).toBe(true);
     expect(
       cartHasBuyerAccountItem([{ cartQty: 1, kind: "service", is_recurring: true }]),

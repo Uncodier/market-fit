@@ -6,11 +6,13 @@ import {
 import { wrapSupabaseClient } from "@/lib/permissions/mutation-guard"
 import { capabilitiesFromRole } from "@/lib/permissions/capabilities"
 
-function fakeClient(insertImpl?: () => unknown) {
+type MutationResult = { data: { id: number }[] | null; error: { code: string; message: string } | null }
+
+function fakeClient(insertImpl?: (values: Record<string, unknown>) => Promise<MutationResult>) {
   return {
     from(_table?: string) {
       return {
-        insert: insertImpl || (() => Promise.resolve({ data: [{ id: 1 }], error: null })),
+        insert: insertImpl || ((_values: Record<string, unknown>): Promise<MutationResult> => Promise.resolve({ data: [{ id: 1 }], error: null })),
         update: () => Promise.resolve({ data: [{ id: 1 }], error: null }),
         delete: () => Promise.resolve({ data: null, error: null }),
       }
@@ -51,7 +53,7 @@ describe("mutation-guard", () => {
 
     const remove = jest.fn(() => Promise.resolve({ data: null, error: null }))
     const client = wrapSupabaseClient({
-      from() {
+      from(_table: string) {
         return { delete: remove }
       },
     })
@@ -126,9 +128,9 @@ describe("mutation-guard", () => {
       capabilities: capabilitiesFromRole("marketing"),
       loaded: true,
     })
-    const select = jest.fn(() => Promise.resolve({ data: [{ id: "site-1" }], error: null }))
+    const select = jest.fn((_columns: string) => Promise.resolve({ data: [{ id: "site-1" }], error: null }))
     const client = wrapSupabaseClient({
-      from() {
+      from(_table: string) {
         return { select, insert: () => Promise.resolve({ data: null, error: null }) }
       },
     })

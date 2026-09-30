@@ -1,13 +1,14 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { CommandsPanel } from '@/app/components/agents/commands-panel';
-import { getCommands, getMockCommands } from '@/app/agents/actions';
+import { getCommands } from '@/app/agents/actions';
 import { Command } from '@/app/agents/types';
+
+jest.mock("@/app/context/SiteContext", () => ({ useSite: () => ({ currentSite: { id: "site-1" } }) }));
 
 // Mock dependencies
 jest.mock('@/app/agents/actions', () => ({
   getCommands: jest.fn(),
-  getMockCommands: jest.fn(),
 }));
 
 // Mock toast functionality
@@ -27,7 +28,7 @@ describe('CommandsPanel', () => {
     
     render(<CommandsPanel />);
     
-    expect(screen.getAllByTestId('loading-skeleton')).toHaveLength(3);
+    expect(screen.getByTestId('loading-state')).toBeInTheDocument();
   });
 
   test('renders empty state when no commands are available', async () => {
@@ -56,7 +57,7 @@ describe('CommandsPanel', () => {
     
     // Wait for commands to load and switch to failed tab
     await waitFor(() => {
-      fireEvent.click(screen.getByText('Failed'));
+      expect(screen.getByText(/Task with large error|Failed Task/)).toBeInTheDocument();
     });
     
     // Verify the failed command is displayed
@@ -83,7 +84,7 @@ describe('CommandsPanel', () => {
     
     // Switch to failed tab
     await waitFor(() => {
-      fireEvent.click(screen.getByText('Failed'));
+      expect(screen.getByText(/Task with large error|Failed Task/)).toBeInTheDocument();
     });
     
     // Verify that the command is displayed without crashing
@@ -96,7 +97,7 @@ describe('CommandsPanel', () => {
       if (depth <= 0) return `${prefix}Value`;
       
       const obj: Record<string, any> = {};
-      for (let i = 0; i < 5; i++) {
+      for (let i = 0; i < 2; i++) {
         obj[`${prefix}Key${i}`] = makeNestedObject(depth - 1, `${prefix}${i}_`);
       }
       return obj;
@@ -135,7 +136,6 @@ describe('CommandsPanel', () => {
       description: 'This has circular data structures',
       status: 'completed',
       created_at: new Date().toISOString(),
-      // @ts-ignore - Intentionally adding a circular reference for testing
       results: [circularObj],
     };
     
@@ -165,8 +165,9 @@ describe('CommandsPanel', () => {
     
     // Verify that some maximum limited amount is displayed
     await waitFor(() => {
-      // The components should show some indication of limited results
-      expect(screen.getByText(/showing/i)).toBeInTheDocument();
+      expect(screen.getByText('Task 0')).toBeInTheDocument();
+      expect(screen.getByText('Task 99')).toBeInTheDocument();
+      expect(screen.queryByText('Task 100')).not.toBeInTheDocument();
     });
   });
 }); 

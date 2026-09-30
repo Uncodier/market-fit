@@ -2,6 +2,7 @@ import {
   getItemPaymentOptions, 
   intersectPaymentOptions, 
   getAvailablePaymentMethods,
+  type PaymentMethodType,
   defaultPaymentMethod
 } from '../../app/commerce/payment-options';
 import { CatalogItem } from '../../app/types';
@@ -28,25 +29,25 @@ describe('payment-options', () => {
 
   describe('intersectPaymentOptions', () => {
     it('returns full intersection if all methods allowed', () => {
-      const items = [
-        { allowed: ['card', 'cash_on_pickup', 'bank_transfer'] as const },
-        { allowed: ['card', 'cash_on_pickup', 'bank_transfer'] as const }
+      const items: { allowed: PaymentMethodType[] }[] = [
+        { allowed: ['card', 'cash_on_pickup', 'bank_transfer'] },
+        { allowed: ['card', 'cash_on_pickup', 'bank_transfer'] }
       ];
       expect(intersectPaymentOptions(items)).toEqual(['card', 'cash_on_pickup', 'bank_transfer']);
     });
 
     it('returns empty array if no intersection', () => {
-      const items = [
-        { allowed: ['card'] as const },
-        { allowed: ['cash_on_pickup'] as const }
+      const items: { allowed: PaymentMethodType[] }[] = [
+        { allowed: ['card'] },
+        { allowed: ['cash_on_pickup'] }
       ];
       expect(intersectPaymentOptions(items)).toEqual([]);
     });
 
     it('returns common method', () => {
-      const items = [
-        { allowed: ['card', 'cash_on_pickup'] as const },
-        { allowed: ['card'] as const }
+      const items: { allowed: PaymentMethodType[] }[] = [
+        { allowed: ['card', 'cash_on_pickup'] },
+        { allowed: ['card'] }
       ];
       expect(intersectPaymentOptions(items)).toEqual(['card']);
     });

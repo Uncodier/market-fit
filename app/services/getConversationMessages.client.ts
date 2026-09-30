@@ -69,8 +69,8 @@ export async function getConversationMessages(conversationId: string): Promise<C
 
     // Combine: pending messages first, then non-pending messages. Deduplicate by id
     // in case a message appears in both queries (e.g. status transition or filter edge case).
-    const pendingMessages = pendingData || []
-    const nonPendingMessages = nonPendingData || []
+    const pendingMessages: Message[] = pendingData || []
+    const nonPendingMessages: Message[] = nonPendingData || []
     const seenIds = new Set<string>()
     const combined: typeof pendingMessages = []
     for (const m of pendingMessages) {

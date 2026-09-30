@@ -1,3 +1,4 @@
+import type { QueryResult } from '@/app/api/_shared/query-result';
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/server';
 import { isMakinariInternalReferrerHostname } from '@/lib/traffic/makinari-internal-referrer';
@@ -33,13 +34,13 @@ export async function GET(request: NextRequest) {
     console.log('Fetching page visits referrers for site:', siteId, 'from:', startDate, 'to:', endDate);
 
     // Fetch site information to get main domain
-    const { data: siteData, error: siteError } = await supabase
+    const { data: siteData, error: siteError }: QueryResult<{ url: string | null }> = await supabase
       .from('sites')
       .select('url')
       .eq('id', siteId)
       .single();
 
-    if (siteError) {
+    if (siteError || !siteData) {
       console.error('Error fetching site data:', siteError);
       return NextResponse.json(
         { error: 'Failed to fetch site data' },
@@ -48,7 +49,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Fetch allowed domains for this site
-    const { data: allowedDomains, error: domainsError } = await supabase
+    const { data: allowedDomains, error: domainsError }: QueryResult<{ domain: string }[]> = await supabase
       .from('allowed_domains')
       .select('domain')
       .eq('site_id', siteId);
@@ -100,7 +101,7 @@ export async function GET(request: NextRequest) {
 
     // First, let's check if there are any page visits at all
     // CRITICAL: Filter by event_type to count only actual page views, not all events
-    const { data: allEvents, error: allEventsError } = await supabase
+    const { data: allEvents, error: allEventsError }: QueryResult<{ referrer: string | null }[]> = await supabase
       .from('session_events')
       .select('referrer')
       .eq('site_id', siteId)
@@ -175,7 +176,7 @@ export async function GET(request: NextRequest) {
       .map(([referrer, data]: [string, { count: number; fullUrl: string }]) => ({
         referrer,
         count: data.count,
-        percentage: totalValidEvents > 0 ? Number(((data.count / (totalValidEvents as number)) * 100).toFixed(1)) : 0,
+        percentage: totalValidEvents > 0 ? Number(((data.count / totalValidEvents) * 100).toFixed(1)) : 0,
         fullUrl: data.fullUrl
       }))
       .sort((a, b) => b.count - a.count)
@@ -184,7 +185,7 @@ export async function GET(request: NextRequest) {
     console.log('Page visits referrers data processed:', {
       totalEvents: allEvents.length,
       totalValidEvents,
-      filteredOutEvents: allEvents.length - (totalValidEvents as number),
+      filteredOutEvents: allEvents.length - totalValidEvents,
       uniqueReferrers: Object.keys(referrerCounts).length,
       topReferrers: referrerData.slice(0, 5)
     });

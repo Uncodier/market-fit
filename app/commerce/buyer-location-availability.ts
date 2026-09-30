@@ -20,7 +20,7 @@ export type SettingsLocation = {
   }
 }
 
-function normalize(str?: string): string {
+function normalize(str?: string | null): string {
   return (str || "")
     .trim()
     .toLowerCase()
@@ -50,7 +50,7 @@ export function formatBuyerLocationLabel(
 /** True when buyer city matches a site office / inventory location name or city, AND country matches if specified. */
 export function buyerMatchesSiteLocations(
   buyerGeo: BuyerGeo | null | undefined,
-  siteLocations: Array<{ name?: string; city?: string; country?: string }> | null | undefined
+  siteLocations: Array<{ name?: string; city?: string | null; country?: string | null }> | null | undefined
 ): boolean {
   const city = normalize(buyerGeo?.city)
   if (!city || !siteLocations?.length) return false
@@ -70,7 +70,7 @@ export function buyerMatchesSiteLocations(
 
 function implicitCountryMismatch(
   settingsLocations?: SettingsLocation[] | null,
-  inventoryLocations?: Array<{ name?: string; city?: string; country?: string }> | null,
+  inventoryLocations?: Array<{ name?: string; city?: string | null; country?: string | null }> | null,
   buyerGeo?: BuyerGeo | null
 ): boolean {
   if (!buyerGeo?.country) return false
@@ -82,7 +82,7 @@ function implicitCountryMismatch(
   let countryMatch = false
   const buyerCountry = normalizeCountry(buyerGeo.country)
 
-  const checkLoc = (l: { country?: string }) => {
+  const checkLoc = (l: { country?: string | null }) => {
     if (l.country) {
       hasDefinedCountry = true
       if (normalizeCountry(l.country) === buyerCountry) {
@@ -109,8 +109,8 @@ export const NEARBY_PICKUP_METERS = 500
 export type NearbyLocationRef = {
   id?: string
   name?: string
-  city?: string
-  zip?: string
+  city?: string | null
+  zip?: string | null
   is_default?: boolean
   latitude?: string | number | null
   longitude?: string | number | null
@@ -193,7 +193,7 @@ export function pickPreferredPickupLocation<T extends NearbyLocationRef>(
 
 /** Shop pill: multi inventory stores OR settings geo needs relocate. */
 export function shouldShowShopLocationPill(params: {
-  inventoryLocations: Array<Pick<Location, "id" | "is_active"> & { country?: string }>
+  inventoryLocations: Array<Pick<Location, "id" | "is_active" | "country">>
   settingsLocations?: SettingsLocation[] | null
   buyerGeo?: BuyerGeo | null
 }): boolean {
@@ -224,7 +224,7 @@ export function shouldShowShopLocationPill(params: {
  */
 export function isBuyerLocationIncompatible(params: {
   settingsLocations?: SettingsLocation[] | null
-  inventoryLocations?: Array<{ name?: string; city?: string; country?: string }> | null
+  inventoryLocations?: Array<{ name?: string; city?: string | null; country?: string | null }> | null
   buyerGeo?: BuyerGeo | null
   selectedLocationId?: string | null
 }): boolean {
@@ -248,7 +248,7 @@ export function isBuyerLocationIncompatible(params: {
 export function isItemLocationAvailable(params: {
   item: Partial<CatalogItem>
   settingsLocations?: SettingsLocation[] | null
-  inventoryLocations?: Array<{ name?: string; city?: string; country?: string }> | null
+  inventoryLocations?: Array<{ name?: string; city?: string | null; country?: string | null }> | null
   buyerGeo?: BuyerGeo | null
   selectedLocationId?: string | null
 }): boolean {

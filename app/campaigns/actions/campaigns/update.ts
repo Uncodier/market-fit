@@ -1,5 +1,6 @@
 "use server"
 
+import type { PostgrestSingleResponse } from "@supabase/supabase-js"
 import { createClient } from "@/lib/supabase/server"
 import { requestServerVoiceAgentResync } from "@/app/agents/server-voice-sync"
 import { transformCampaignData, isValidUUID } from "../utils/transformers"
@@ -82,7 +83,7 @@ export async function updateCampaign(
       console.log("[updateCampaign] Segment data type:", typeof segments, Array.isArray(segments));
       
       // First get existing segment relations to know what we're working with
-      const { data: existingRelations, error: fetchError } = await supabase
+      const { data: existingRelations, error: fetchError }: PostgrestSingleResponse<Array<{ segment_id: string }>> = await supabase
         .from("campaign_segments")
         .select("*")
         .eq("campaign_id", id);
@@ -219,7 +220,7 @@ export async function updateCampaign(
 
     // Get updated segment relations after all operations
     try {
-      const { data: finalRelations, error: finalError } = await supabase
+      const { data: finalRelations, error: finalError }: PostgrestSingleResponse<Array<{ segment_id: string }>> = await supabase
         .from("campaign_segments")
         .select("segment_id")
         .eq("campaign_id", id);

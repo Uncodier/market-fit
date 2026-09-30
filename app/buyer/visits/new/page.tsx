@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import type { UserResponse } from "@supabase/supabase-js"
 import useSWR from "swr"
 import Link from "next/link"
 import { createClient } from "@/lib/supabase/client"
@@ -26,7 +27,7 @@ export default function BuyerNewVisitPage() {
 
   useEffect(() => {
     const supabase = createClient()
-    supabase.auth.getUser().then(({ data }) => {
+    supabase.auth.getUser().then(({ data }: UserResponse) => {
       const user = data.user
       if (!user) return
       const name =

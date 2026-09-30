@@ -23,6 +23,7 @@ describe("worldSvgBox", () => {
       60
     )
     expect(box).not.toBeNull()
+    if (!box) throw new Error("Expected a finite layout box")
     expect(box.minX).toBe(40)
     expect(box.minY).toBe(-10)
     expect(box.width).toBe(520)
@@ -31,6 +32,7 @@ describe("worldSvgBox", () => {
 
   it("includes negative coordinates so Chrome does not clip left/up edges", () => {
     const box = worldSvgBox([{ x: -80, y: -20 }, { x: 10, y: 30 }], 10)
+    if (!box) throw new Error("Expected a finite layout box")
     expect(box.minX).toBe(-90)
     expect(box.minY).toBe(-30)
     expect(box.width).toBe(110)
@@ -39,6 +41,7 @@ describe("worldSvgBox", () => {
 
   it("uses the default pad that covers bezier handles", () => {
     const box = worldSvgBox([{ x: 0, y: 0 }, { x: 0, y: 0 }])
+    if (!box) throw new Error("Expected a finite layout box")
     expect(box.width).toBe(WORLD_SVG_EDGE_PAD * 2)
     expect(box.height).toBe(WORLD_SVG_EDGE_PAD * 2)
   })

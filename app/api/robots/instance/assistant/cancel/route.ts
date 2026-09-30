@@ -1,3 +1,4 @@
+import type { QueryResult } from '@/app/api/_shared/query-result';
 import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { userCanOnSite } from "@/lib/permissions/site-access"
@@ -130,7 +131,7 @@ export async function POST(request: NextRequest) {
         .eq("status", "running")
     }
 
-    const { data: plans } = await supabase
+    const { data: plans }: QueryResult<{ id: string }[]> = await supabase
       .from("instance_plans")
       .select("id")
       .eq("instance_id", instance_id)

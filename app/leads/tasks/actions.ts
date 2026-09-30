@@ -10,7 +10,6 @@ const TaskSchema = z.object({
   id: z.string().uuid().optional(),
   lead_id: z.string().uuid().optional().nullable(),
   deal_id: z.string().uuid().optional().nullable(),
-  deal_id: z.string().uuid().optional().nullable(),
   title: z.string().min(1, "Title is required"),
   description: z.string().optional().nullable(),
   type: z.enum([

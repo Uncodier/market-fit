@@ -1,7 +1,7 @@
 "use server"
 
-import { createClient } from "@/lib/supabase/server"
-import { verifySiteMembership, mapPurchase } from "./purchase-mappers"
+import { mapPurchase } from "./purchase-mappers"
+import { authenticatePurchaseRequest, authorizePurchaseSite, purchaseListClient, requirePurchaseAccess, validatePurchaseId } from "./purchase-access"
 
 export async function listPurchases(params: {
   siteId: string
@@ -13,12 +13,8 @@ export async function listPurchases(params: {
   sort?: string
 }) {
   try {
-    const supabase = await createClient()
-    const { data: { session } } = await supabase.auth.getSession()
-    if (!session?.user) return { data: null, count: 0, error: "Not authenticated" }
-
-    const isMember = await verifySiteMembership(supabase, session.user.id, params.siteId)
-    if (!isMember) return { data: null, count: 0, error: "Not authorized for this site" }
+    const { supabase, isDemo } = await purchaseListClient(params.siteId)
+    if (!isDemo && params.locationId && params.locationId !== "all") validatePurchaseId(params.locationId, "location")
 
     const page = params.page || 1
     const pageSize = params.pageSize || 50
@@ -71,12 +67,7 @@ export async function listPurchases(params: {
 
 export async function getPurchaseById(siteId: string, id: string) {
   try {
-    const supabase = await createClient()
-    const { data: { session } } = await supabase.auth.getSession()
-    if (!session?.user) return { purchase: null, error: "Not authenticated" }
-
-    const isMember = await verifySiteMembership(supabase, session.user.id, siteId)
-    if (!isMember) return { purchase: null, error: "Not authorized for this site" }
+    const { supabase } = await requirePurchaseAccess(siteId, "select", id)
 
     const { data, error } = await supabase
       .from("purchases")
@@ -102,7 +93,12 @@ export async function getPurchaseById(siteId: string, id: string) {
 
 export async function getPurchaseWithoutContext(id: string) {
   try {
-    const supabase = await createClient()
+    validatePurchaseId(id)
+    const { supabase } = await authenticatePurchaseRequest()
+    const { data: source, error: sourceError } = await supabase.from("purchases")
+      .select("site_id").eq("id", id).single()
+    if (sourceError || !source) throw new Error("Purchase not found")
+    await authorizePurchaseSite(supabase, source.site_id, "select")
 
     const { data, error } = await supabase
       .from("purchases")
@@ -113,6 +109,7 @@ export async function getPurchaseWithoutContext(id: string) {
         site:sites(id, name, url, logo_url, settings)
       `)
       .eq("id", id)
+      .eq("site_id", source.site_id)
       .single()
 
     if (error) throw new Error(error.message)

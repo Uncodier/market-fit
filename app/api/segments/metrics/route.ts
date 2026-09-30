@@ -1,3 +1,4 @@
+import type { QueryResult } from '@/app/api/_shared/query-result';
 import { createApiClient } from "@/lib/supabase/server-client";
 import { NextResponse } from "next/server";
 import { format, subDays } from "date-fns";
@@ -93,7 +94,7 @@ export async function GET(request: Request) {
       salesQuery = salesQuery.lte("created_at", endDate.toISOString());
     }
     
-    const { data: salesData, error: salesError } = await salesQuery.limit(100);
+    const { data: salesData, error: salesError }: QueryResult<{ segment_id: string | null; created_at: string }[]> = await salesQuery.limit(100);
       
     if (salesError) {
       console.error(`[Segment Metrics API] Error checking sales:`, salesError);

@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import type { RealtimePostgresChangesPayload } from "@supabase/supabase-js"
 import { createClient } from "@/lib/supabase/client"
 import type { WorkflowRunPlan, WorkflowRunPlanStep, WorkflowStepStatus } from "./types"
 
@@ -68,7 +69,7 @@ export function useWorkflowRunStatus(instanceId?: string) {
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "instance_plans", filter: `instance_id=eq.${instanceId}` },
-        (payload) => {
+        (payload: RealtimePostgresChangesPayload<Record<string, unknown>>) => {
           if (payload.eventType === "DELETE") return
           apply(payload.new, { allowEmpty: false })
         },
