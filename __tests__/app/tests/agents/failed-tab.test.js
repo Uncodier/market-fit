@@ -1,12 +1,18 @@
 /**
- * Specific test for the Failed tab
- * This test focuses on verifying that the failed tab doesn't freeze
- * when displaying problematic error contexts
+ * Regression coverage for problematic failed commands in the unified table.
+ * The former Failed tab no longer exists, but large and circular contexts
+ * must not prevent failed commands or their neighbors from rendering.
  */
 
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, within, fireEvent } from '@testing-library/react';
 import { CommandsPanel } from '@/app/components/agents/commands-panel';
+import { getCommands } from '@/app/agents/actions';
+import { useRouter } from 'next/navigation';
+
+jest.mock('@/app/context/SiteContext', () => ({
+  useSite: () => ({ currentSite: { id: 'site-1' } }),
+}));
 
 // Mock the dependencies before imports
 jest.mock('@/app/agents/actions', () => {
@@ -16,6 +22,7 @@ jest.mock('@/app/agents/actions', () => {
       task: 'Failed command with large error',
       description: 'This is a failed command with a very large error context',
       status: 'failed',
+      agent_id: 'agent-1',
       context: 'Error: '.repeat(5000) + 'Rate limit exceeded',
       created_at: new Date().toISOString(),
     },
@@ -24,6 +31,7 @@ jest.mock('@/app/agents/actions', () => {
       task: 'Failed command with circular reference',
       description: 'This command has a circular reference in its data',
       status: 'failed',
+      agent_id: 'agent-1',
       created_at: new Date().toISOString(),
     },
     {
@@ -42,19 +50,6 @@ jest.mock('@/app/agents/actions', () => {
   
   return {
     getCommands: jest.fn().mockResolvedValue({ commands: mockCommands }),
-    getMockCommands: jest.fn().mockResolvedValue([]),
-  };
-});
-
-// Mock UI components
-jest.mock('@/app/components/ui/icons', () => {
-  return {
-    Check: () => <div data-testid="icon-check" />,
-    AlertCircle: () => <div data-testid="icon-alert" />,
-    Clock: () => <div data-testid="icon-clock" />,
-    FileText: () => <div data-testid="icon-file" />,
-    RotateCcw: () => <div data-testid="icon-rotate" />,
-    PlayCircle: () => <div data-testid="icon-play" />
   };
 });
 
@@ -65,31 +60,29 @@ jest.mock('sonner', () => ({
   },
 }));
 
-describe('Failed Tab Tests', () => {
+describe('CommandsPanel failed-command regressions', () => {
   it('safely handles failed commands with problematic data', async () => {
-    // Create a custom container to inject into the DOM
-    const container = document.createElement('div');
-    document.body.appendChild(container);
-    
-    render(<CommandsPanel />, { container });
-    
-    // Verify component renders
-    expect(container.querySelector('[data-testid="commands-panel"]')).toBeTruthy();
-    
-    // Wait for data to load and verify failed tab shows 2 commands
-    await waitFor(() => {
-      expect(container.querySelector('[data-testid="tab-failed"]')).toBeTruthy();
-      expect(container.querySelector('[data-testid="tab-failed"]').textContent).toContain('(2)');
-    });
-    
-    // Switch to failed tab - this is the key test, as it previously caused freezing
-    fireEvent.click(container.querySelector('[data-testid="tab-failed"]'));
-    
-    // Verify the tab switch occurred successfully without freezing
-    await waitFor(() => {
-      // If we make it here without freezing or error, the test passes
-      // The component successfully handled the large error context and circular reference
-      expect(true).toBe(true);
-    });
+    const push = jest.fn();
+    jest.mocked(useRouter).mockReturnValue({ ...useRouter(), push });
+    render(<CommandsPanel />);
+
+    const largeErrorRow = (await screen.findByText('Failed command with large error')).closest('tr');
+    const circularErrorRow = screen.getByText('Failed command with circular reference').closest('tr');
+    const completedRow = screen.getByText('Completed command').closest('tr');
+
+    expect(getCommands).toHaveBeenCalledWith('site-1', 1);
+    expect(screen.getAllByRole('row')).toHaveLength(4);
+    expect(within(largeErrorRow).getByText('Failed')).toBeInTheDocument();
+    expect(within(circularErrorRow).getByText('Failed')).toBeInTheDocument();
+    expect(within(completedRow).getByText('Completed')).toBeInTheDocument();
+    expect(screen.queryByRole('tab')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('loading-state')).not.toBeInTheDocument();
+
+    fireEvent.click(largeErrorRow);
+    fireEvent.click(circularErrorRow);
+    expect(push.mock.calls).toEqual([
+      ['/agents/agent-1/failed-cmd-1'],
+      ['/agents/agent-1/failed-cmd-2'],
+    ]);
   });
 }); 

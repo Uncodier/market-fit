@@ -9,8 +9,8 @@ jest.mock('@/lib/supabase/client', () => ({
   createClient: jest.fn(() => ({ from: jest.fn() })),
 }))
 
-// Mock fetch globally
-global.fetch = fetch as any;
+// Same-origin requests use the signed-in session, never a browser API secret.
+global.fetch = fetch as unknown as typeof global.fetch;
 
 describe('SecureTokensService', () => {
   beforeEach(() => {
@@ -32,7 +32,6 @@ describe('SecureTokensService', () => {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-API-Key': expect.any(String),
       },
       body: JSON.stringify({
         operation: 'store',
@@ -72,7 +71,6 @@ describe('SecureTokensService', () => {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-API-Key': expect.any(String),
       },
       body: JSON.stringify({
         operation: 'verify',
@@ -111,7 +109,6 @@ describe('SecureTokensService', () => {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-API-Key': expect.any(String),
       },
       body: JSON.stringify({
         operation: 'check',
@@ -136,7 +133,6 @@ describe('SecureTokensService', () => {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-API-Key': expect.any(String),
       },
       body: JSON.stringify({
         operation: 'delete',
@@ -157,10 +153,26 @@ describe('SecureTokensService', () => {
     );
 
     expect(result).toBeNull();
+    expect(fetch).not.toHaveBeenCalled();
     expect(consoleSpy).toHaveBeenCalledWith(
       'getToken is deprecated with SHA-256 encryption. Use verifyToken instead.'
     );
     
     consoleSpy.mockRestore();
+  });
+
+  it.each([401, 403])('fails closed for every operation on HTTP %i without retrying', async (status) => {
+    fetch.mockResponse(JSON.stringify({ error: 'Access denied' }), { status });
+
+    await expect(secureTokensService.storeToken('site-123', 'api', 'test-token-value', 'test-identifier')).resolves.toBeNull();
+    await expect(secureTokensService.verifyToken('site-123', 'api', 'test-token-value', 'test-identifier')).resolves.toBe(false);
+    await expect(secureTokensService.hasToken('site-123', 'api', 'test-identifier')).resolves.toBe(false);
+    await expect(secureTokensService.deleteToken('site-123', 'api', 'test-identifier')).resolves.toBe(false);
+
+    expect(fetch).toHaveBeenCalledTimes(4);
+    for (const [url, init] of fetch.mock.calls) {
+      expect(url).toBe('/api/secure-tokens');
+      expect(init?.headers).toEqual({ 'Content-Type': 'application/json' });
+    }
   });
 }); 

@@ -4,8 +4,13 @@
  */
 
 import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import { CommandsPanel } from '@/app/components/agents/commands-panel';
+import { getCommands } from '@/app/agents/actions';
+
+jest.mock('@/app/context/SiteContext', () => ({
+  useSite: () => ({ currentSite: { id: 'site-1' } }),
+}));
 
 // Mock the dependencies before imports
 jest.mock('@/app/agents/actions', () => ({
@@ -21,20 +26,7 @@ jest.mock('@/app/agents/actions', () => ({
       }
     ] 
   }),
-  getMockCommands: jest.fn().mockResolvedValue([]),
 }));
-
-// Mock UI components
-jest.mock('@/app/components/ui/icons', () => {
-  return {
-    Check: () => <div data-testid="icon-check" />,
-    AlertCircle: () => <div data-testid="icon-alert" />,
-    Clock: () => <div data-testid="icon-clock" />,
-    FileText: () => <div data-testid="icon-file" />,
-    RotateCcw: () => <div data-testid="icon-rotate" />,
-    PlayCircle: () => <div data-testid="icon-play" />
-  };
-});
 
 // Mock toast functionality
 jest.mock('sonner', () => ({
@@ -43,37 +35,18 @@ jest.mock('sonner', () => ({
   },
 }));
 
-// Mock command components
-jest.mock('@/app/components/agents/command-list', () => ({
-  CommandList: ({ commands }) => (
-    <div data-testid="command-list">
-      {commands.map(cmd => (
-        <div key={cmd.id} data-testid="command-item">
-          {cmd.task}
-        </div>
-      ))}
-    </div>
-  )
-}));
-
 describe('CommandsPanel - Basic sanity tests', () => {
   it('renders without crashing with failed command data', async () => {
-    // Create a custom container to inject into the DOM
-    const container = document.createElement('div');
-    document.body.appendChild(container);
-    
-    render(<CommandsPanel />, { container });
-    
-    // Verify component renders
-    expect(container.querySelector('[data-testid="commands-panel"]')).toBeTruthy();
-    
-    // Verify the failed tab shows 1 command (the default tab is "completed")
-    await waitFor(() => {
-      expect(container.querySelector('[data-testid="tab-failed"]')).toBeTruthy();
-      expect(container.querySelector('[data-testid="tab-failed"]').textContent).toContain('(1)');
-    });
-    
-    // The test is successful if it renders without crashing - that's our main assertion
-    // The component successfully handling the large error context is a pass
+    render(<CommandsPanel />);
+
+    expect(screen.getByTestId('commands-panel')).toBeInTheDocument();
+    const row = (await screen.findByText('Failed command')).closest('tr');
+
+    expect(getCommands).toHaveBeenCalledWith('site-1', 1);
+    expect(within(row).getByText('This is a failed command')).toBeInTheDocument();
+    expect(within(row).getByText('Failed')).toBeInTheDocument();
+    expect(screen.getAllByRole('row')).toHaveLength(2);
+    expect(screen.queryByTestId('loading-state')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('empty-state')).not.toBeInTheDocument();
   });
 }); 

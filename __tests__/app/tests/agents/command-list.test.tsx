@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent, within } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { CommandList } from '@/app/components/agents/command-list';
 import { Command } from '@/app/agents/types';
@@ -85,7 +85,6 @@ describe('CommandList', () => {
       {
         description: 'Malformed command',
       },
-      // @ts-ignore - invalid status for testing
       {
         id: 'invalid-status',
         task: 'Invalid Status',
@@ -93,18 +92,34 @@ describe('CommandList', () => {
         status: 'not-a-real-status',
         created_at: '2023-01-01T12:00:00Z',
       }
-    ] as any[];
+    ] as unknown as Command[];
     
     render(<CommandList commands={mixedCommands} />);
     
     // Verify the valid command is displayed
     expect(screen.getByText('Valid Command')).toBeInTheDocument();
     
-    // The component should handle the malformed commands without crashing
+    expect(screen.getByText('Unnamed Command')).toBeInTheDocument();
+    expect(screen.getByText('Malformed command')).toBeInTheDocument();
+    const invalidStatusItem = screen.getByText('Invalid Status').closest('h4')!.parentElement!;
+    expect(within(invalidStatusItem).getByText('Pending')).toBeInTheDocument();
+    expect(screen.getAllByRole('heading', { level: 4 })).toHaveLength(3);
   });
 
-  test('limits the number of displayed commands when exceeding MAX_COMMANDS', () => {
-    // Create more commands than MAX_COMMANDS (which is now 25 in the component instead of 50)
+  test('renders the empty state when every command is missing', () => {
+    render(<CommandList commands={[null, undefined] as unknown as Command[]} />);
+
+    expect(screen.getByText('No commands found')).toBeInTheDocument();
+    expect(screen.getByText('Run a new command to get started')).toBeInTheDocument();
+  });
+
+  test.each([null, undefined])('renders the empty state for a %s command collection', commands => {
+    render(<CommandList commands={commands as unknown as Command[]} />);
+
+    expect(screen.getByText('No commands found')).toBeInTheDocument();
+  });
+
+  test('renders every supplied command without a separate display cap', () => {
     const manyCommands: Command[] = Array(30).fill(null).map((_, i) => ({
       id: `cmd-${i}`,
       task: `Task ${i}`,
@@ -115,7 +130,28 @@ describe('CommandList', () => {
     
     render(<CommandList commands={manyCommands} />);
     
-    // Check for the message indicating limited display with updated count
-    expect(screen.getByText('Showing 25 of 30 commands. Use filters to narrow down results.')).toBeInTheDocument();
+    expect(screen.getAllByRole('heading', { level: 4 })).toHaveLength(30);
+    manyCommands.forEach(command => {
+      expect(screen.getByRole('heading', { name: command.task })).toBeInTheDocument();
+    });
+  });
+
+  test('preserves command order and navigation after ignoring missing entries', () => {
+    const onNavigateToCommand = jest.fn();
+    const commands: Command[] = [
+      { id: 'first', task: 'First command', status: 'completed' },
+      { id: 'second', task: 'Second command', status: 'failed' },
+    ];
+    const input = [null, commands[0], undefined, commands[1]] as unknown as Command[];
+
+    render(<CommandList commands={input} onNavigateToCommand={onNavigateToCommand} />);
+
+    expect(screen.getAllByRole('heading').map(heading => heading.textContent)).toEqual([
+      'First command', 'Second command',
+    ]);
+    fireEvent.click(screen.getByText('Second command'));
+    expect(onNavigateToCommand).toHaveBeenCalledTimes(1);
+    expect(onNavigateToCommand).toHaveBeenCalledWith('second');
+    expect(input).toEqual([null, commands[0], undefined, commands[1]]);
   });
 }); 

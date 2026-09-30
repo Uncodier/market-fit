@@ -21,7 +21,9 @@ describe("send quotation email helpers", () => {
     expect(html).toContain("View quote")
   })
 
-  it("builds localized Spanish HTML and subject", () => {
+  // Quotation translations were retired in the English-only locale cleanup;
+  // unlike invoice/order copy, they have not been restored to the Spanish catalog.
+  it("falls back to English HTML and subject for a Spanish site locale", () => {
     const html = buildQuotationEmailHtml({
       toName: "Sergio",
       siteName: "Ofertas en Camino",
@@ -30,17 +32,19 @@ describe("send quotation email helpers", () => {
       buyerLink: "https://app.example.com/q/token",
       locale: "es",
     })
-    expect(html).toContain("Hola Sergio,")
-    expect(html).toContain("Ver cotización")
+    expect(html).toContain('lang="es"')
+    expect(html).toContain("Hi Sergio,")
+    expect(html).toContain("View quote")
     expect(html).toContain("#facf1cf0")
+    expect(html).toContain("$500.00")
+    expect(html).toContain('href="https://app.example.com/q/token"')
 
     const subject = buildQuotationEmailSubject({
       siteName: "Ofertas en Camino",
       quoteRef: "facf1cf0",
       locale: "es",
     })
-    expect(subject).toContain("Cotización #facf1cf0")
-    expect(subject).toContain("Ofertas en Camino")
+    expect(subject).toBe("Quote #facf1cf0 from Ofertas en Camino")
   })
 
   it("builds SendGrid payload with PDF attachment", () => {

@@ -3,6 +3,13 @@
 import sharp from "sharp"
 import { renderCommerceIcon, renderCommerceOgImage } from "@/app/lib/commerce-og"
 
+jest.mock("next/og", () => {
+  // Keep the real ImageResponse/PNG renderer, but let Node load Next's dynamic
+  // imports outside Jest's CommonJS VM (which lacks experimental VM modules).
+  const nativeRequire = process.getBuiltinModule("module").createRequire(__filename)
+  return nativeRequire("next/og")
+})
+
 const pngSignature = Buffer.from("89504e470d0a1a0a", "hex")
 
 async function webpImage(): Promise<Buffer> {
@@ -11,10 +18,12 @@ async function webpImage(): Promise<Buffer> {
   }).webp().toBuffer()
 }
 
-async function expectPng(response: Response) {
+async function expectPng(response: Response, size: { width: number; height: number }) {
   expect(response.status).toBe(200)
   expect(response.headers.get("content-type")).toContain("image/png")
-  expect(Buffer.from(await response.arrayBuffer()).subarray(0, 8)).toEqual(pngSignature)
+  const bytes = Buffer.from(await response.arrayBuffer())
+  expect(bytes.subarray(0, 8)).toEqual(pngSignature)
+  expect(await sharp(bytes).metadata()).toMatchObject({ format: "png", ...size })
 }
 
 describe("commerce image rendering", () => {
@@ -27,7 +36,7 @@ describe("commerce image rendering", () => {
       eyebrow: "Shop",
     })
 
-    await expectPng(response)
+    await expectPng(response, { width: 1200, height: 630 })
   })
 
   it("renders a fetched WebP as an icon PNG", async () => {
@@ -42,7 +51,7 @@ describe("commerce image rendering", () => {
         { width: 64, height: 64 },
       )
 
-      await expectPng(response)
+      await expectPng(response, { width: 64, height: 64 })
       expect(fetchMock).toHaveBeenCalledWith(
         "https://cdn.example.com/product.webp",
         expect.objectContaining({ headers: { Accept: "image/*" } }),
@@ -58,6 +67,6 @@ describe("commerce image rendering", () => {
       title: "Product",
     })
 
-    await expectPng(response)
+    await expectPng(response, { width: 1200, height: 630 })
   })
 })

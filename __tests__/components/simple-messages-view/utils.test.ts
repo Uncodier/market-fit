@@ -8,7 +8,12 @@ import {
   isBase64Image,
   formatBase64Image
 } from '@/app/components/simple-messages-view/utils'
-import { PlanStep } from '@/app/components/simple-messages-view/types'
+import type { InstanceLog, PlanStep } from '@/app/components/simple-messages-view/types'
+
+const toolLog = (fields: Partial<InstanceLog>): InstanceLog => ({
+  id: 'log-1', instance_id: 'instance-1', log_type: 'tool_call',
+  level: 'info', message: '', created_at: '2024-01-30T14:30:00Z', ...fields,
+})
 
 describe('SimpleMessagesView Utils', () => {
   describe('formatTime', () => {
@@ -25,6 +30,16 @@ describe('SimpleMessagesView Utils', () => {
       expect(getActivityName('robot')).toBe('Execute Plan')
       expect(getActivityName('generate-image')).toBe('Publish Content')
       expect(getActivityName('unknown')).toBe('unknown')
+    })
+
+    it.each([
+      ['plan', 'Plan'],
+      ['create-automation', 'Create Automation'],
+      ['create-app', 'Create App'],
+      ['create-presentation', 'Create Presentation'],
+      ['create-document', 'Create Document'],
+    ])('uses an English label for %s', (activity, label) => {
+      expect(getActivityName(activity)).toBe(label)
     })
   })
 
@@ -64,25 +79,21 @@ describe('SimpleMessagesView Utils', () => {
 
   describe('getToolName', () => {
     it('extracts tool name from log', () => {
-      const log = { tool_name: 'test_tool' }
-      expect(getToolName(log as any)).toBe('test_tool')
+      expect(getToolName(toolLog({ tool_name: 'test_tool' }))).toBe('test_tool')
     })
 
     it('handles alternative field names', () => {
-      const log = { toolName: 'alternative_tool' }
-      expect(getToolName(log as any)).toBe('alternative_tool')
+      expect(getToolName(toolLog({ toolName: 'alternative_tool' }))).toBe('alternative_tool')
     })
   })
 
   describe('getToolResult', () => {
     it('extracts tool result from log', () => {
-      const log = { tool_result: { output: 'test' } }
-      expect(getToolResult(log as any)).toEqual({ output: 'test' })
+      expect(getToolResult(toolLog({ tool_result: { output: 'test' } }))).toEqual({ output: 'test' })
     })
 
     it('handles alternative field names', () => {
-      const log = { tool_results: { output: 'test' } }
-      expect(getToolResult(log as any)).toEqual({ output: 'test' })
+      expect(getToolResult(toolLog({ tool_results: { output: 'test' } }))).toEqual({ output: 'test' })
     })
   })
 
@@ -91,9 +102,14 @@ describe('SimpleMessagesView Utils', () => {
       expect(isBase64Image('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==')).toBe(true)
     })
 
-    it('identifies long base64 strings as images', () => {
-      const longBase64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=='.repeat(10)
+    it('identifies long, unwrapped base64 payloads as images', () => {
+      const longBase64 = Buffer.alloc(1024).toString('base64')
       expect(isBase64Image(longBase64)).toBe(true)
+    })
+
+    it('rejects concatenated padded base64 strings even when long', () => {
+      const concatenated = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=='.repeat(20)
+      expect(isBase64Image(concatenated)).toBe(false)
     })
 
     it('rejects short strings', () => {

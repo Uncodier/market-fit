@@ -85,7 +85,9 @@ function normalizeLabel(label: string): string {
 
 function sectionRootItem(item: HistoryItem, timestamp?: number): HistoryItem {
   const section = getSection(item.path)
-  const label = !hasId(item.path) ? item.label : (SECTION_TITLES[section] || item.label)
+  const label = !hasId(item.path) && item.label.trim()
+    ? item.label
+    : (SECTION_TITLES[section] || item.label)
   return {
     path: section,
     label,

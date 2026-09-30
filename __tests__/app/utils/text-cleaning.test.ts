@@ -82,9 +82,9 @@ describe('Text Cleaning Utilities', () => {
 
     it('should return empty string for invalid input', () => {
       expect(cleanHtmlContent('')).toBe('')
-      expect(cleanHtmlContent(null as any)).toBe('')
-      expect(cleanHtmlContent(undefined as any)).toBe('')
-      expect(cleanHtmlContent(123 as any)).toBe('')
+      expect(cleanHtmlContent(null as unknown as string)).toBe('')
+      expect(cleanHtmlContent(undefined as unknown as string)).toBe('')
+      expect(cleanHtmlContent(123 as unknown as string)).toBe('')
     })
 
     it('should handle content with only HTML entities', () => {
@@ -95,6 +95,12 @@ describe('Text Cleaning Utilities', () => {
   })
 
   describe('cleanNewsTitle', () => {
+    it('removes category metadata before applying the title length limit once', () => {
+      expect(cleanNewsTitle('[BREAKING TECHNOLOGY NEWS] ' + 'A'.repeat(490))).toBe('A'.repeat(490))
+      expect(cleanNewsTitle('[' + 'X'.repeat(505) + '] Useful title')).toBe('Useful title')
+      expect(cleanNewsTitle('[BREAKING] ' + 'A'.repeat(600))).toBe('A'.repeat(500) + '...')
+    })
+
     it('should clean news titles specifically', () => {
       const input = '[BREAKING] Tech Company IPO <font color="#666">- Reuters</font>'
       const expected = 'Tech Company IPO'
@@ -193,6 +199,65 @@ describe('Text Cleaning Utilities', () => {
   })
 
   describe('Edge cases', () => {
+    it.each([
+      'Technology firms report strong quarterly results amid market uncertainty.',
+      'New treatments were announced by researchers.',
+      'Important updates from research teams.',
+      'EXCLUSIVE-Major merger talks between tech giants continue, sources say',
+    ])('preserves substantive prose: %s', (content) => {
+      expect(cleanHtmlContent(content)).toBe(content)
+    })
+
+    it('unwraps multiline CDATA and strips multiline non-content elements', () => {
+      const input = `<![CDATA[
+        <p>Research update.</p>
+        <script>const secret =
+          'not visible';</script>
+        <!-- hidden
+          note -->
+        <style>body {
+          display: none;
+        }</style>
+        <p>New findings.</p>
+        <font color="#666">News
+          Agency</font>
+      ]]>`
+      expect(cleanHtmlContent(input)).toBe('Research update. New findings.')
+      expect(cleanNewsTitle(input)).toBe('Research update. New findings.')
+    })
+
+    it('keeps boundaries between block elements and line breaks', () => {
+      expect(cleanHtmlContent('<p>First line</p><p>Second<br>Third</p>')).toBe('First line Second Third')
+    })
+
+    it('decodes Unicode scalars without retaining invalid numeric entities', () => {
+      expect(cleanHtmlContent('New launch &#128640; &#x1F680; today.')).toBe('New launch 🚀 🚀 today.')
+      expect(cleanHtmlContent('News &#0;&#xD800;&#x110000; today.')).toBe('News today.')
+      expect(cleanHtmlContent('Über neue Märkte.')).toBe('Über neue Märkte.')
+      expect(isValidCleanedContent('Über neue Märkte.')).toBe(true)
+    })
+
+    it('normalizes curly quotes without changing apostrophes in words', () => {
+      expect(cleanHtmlContent('The company’s CEO says “growth” matters.')).toBe('The company\'s CEO says "growth" matters.')
+      expect(cleanHtmlContent("The '90s artists' reunion was successful.")).toBe("The '90s artists' reunion was successful.")
+      expect(cleanHtmlContent("Customers' expectations aren't changing.")).toBe("Customers' expectations aren't changing.")
+    })
+
+    it('does not log input or cleaned message content', () => {
+      const log = jest.spyOn(console, 'log').mockImplementation(() => {})
+      try {
+        cleanHtmlContent('<p>Private message content.</p>')
+        cleanNewsTitle('Private subject')
+        expect(log).not.toHaveBeenCalled()
+      } finally {
+        log.mockRestore()
+      }
+    })
+
+    it('normalizes remaining whitespace after removing plain-text links', () => {
+      expect(extractCleanText('Visit https://example.com for details.')).toBe('Visit for details.')
+    })
+
     it('should handle malformed HTML gracefully', () => {
       const input = '<p>Unclosed paragraph <b>with bold text <i>and italic'
       const expected = 'Unclosed paragraph with bold text and italic'

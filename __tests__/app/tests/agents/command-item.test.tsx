@@ -2,8 +2,16 @@ import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { CommandItem, Command } from '@/app/components/agents/command-item';
+import { useRouter } from 'next/navigation';
 
 describe('CommandItem', () => {
+  const push = jest.fn();
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    jest.mocked(useRouter).mockReturnValue({ ...useRouter(), push });
+  });
+
   const baseCommand: Command = {
     id: 'test-cmd-1',
     name: 'Test Command',
@@ -56,7 +64,10 @@ describe('CommandItem', () => {
     expect(badge).toBeInTheDocument();
   });
 
-  test('expands and collapses details when clicking on a command with details', () => {
+  test.each([
+    ['agent-1', '/agents/agent-1/test-cmd-1'],
+    [undefined, '/agents/default/test-cmd-1'],
+  ])('navigates to command details with agent ID %s', (agentId, expectedRoute) => {
     const commandWithDetails: Command = {
       ...baseCommand,
       originalCommand: {
@@ -71,24 +82,24 @@ describe('CommandItem', () => {
       }
     };
     
-    render(<CommandItem command={commandWithDetails} />);
-    
-    // Details should be hidden initially
-    expect(screen.queryByText('General Information')).not.toBeInTheDocument();
-    
-    // Click to expand
+    render(<CommandItem command={commandWithDetails} agentId={agentId} />);
+
     fireEvent.click(screen.getByText('Test Command'));
-    
-    // Details should now be visible
-    expect(screen.getByText('General Information')).toBeInTheDocument();
-    expect(screen.getByText('Model:')).toBeInTheDocument();
-    expect(screen.getByText('claude-3')).toBeInTheDocument();
-    
-    // Click again to collapse
-    fireEvent.click(screen.getByText('Test Command'));
-    
-    // Details should be hidden again
+
+    expect(push).toHaveBeenCalledTimes(1);
+    expect(push).toHaveBeenCalledWith(expectedRoute);
     expect(screen.queryByText('General Information')).not.toBeInTheDocument();
+    expect(screen.queryByText('claude-3')).not.toBeInTheDocument();
+  });
+
+  test('uses the supplied navigation callback instead of the router', () => {
+    const onNavigate = jest.fn();
+    render(<CommandItem command={baseCommand} agentId="agent-1" onNavigate={onNavigate} />);
+
+    fireEvent.click(screen.getByText('Test Command'));
+
+    expect(onNavigate).toHaveBeenCalledTimes(1);
+    expect(push).not.toHaveBeenCalled();
   });
 
   test('handles JSON error messages', () => {
@@ -104,12 +115,12 @@ describe('CommandItem', () => {
     
     render(<CommandItem command={jsonErrorCommand} />);
     
-    // It should parse and display the JSON error
+    // JSON error messages remain readable in the summary.
     expect(screen.getByText(/API_ERROR/)).toBeInTheDocument();
     expect(screen.getByText(/Failed to connect to API/)).toBeInTheDocument();
   });
 
-  test('safely handles complex nested results', () => {
+  test('keeps complex results out of the summary and navigates to their detail page', () => {
     const complexResultsCommand: Command = {
       ...baseCommand,
       name: 'Test Command',
@@ -136,20 +147,13 @@ describe('CommandItem', () => {
       }
     };
     
-    render(<CommandItem command={complexResultsCommand} />);
-    
-    // Click to expand
+    render(<CommandItem command={complexResultsCommand} agentId="agent-1" />);
+
     fireEvent.click(screen.getByText('Test Command'));
-    
-    // Click on Results accordion item
-    fireEvent.click(screen.getByText('Results'));
-    
-    // Should show the topic
-    expect(screen.getByText('Main Topic')).toBeInTheDocument();
-    // Should show the score
-    expect(screen.getByText(/Score: 95%/)).toBeInTheDocument();
-    // Should show the volume (adjust to match the actual rendered format)
-    expect(screen.getByText(/Volume:/)).toBeInTheDocument();
-    expect(screen.getByText(/1250/)).toBeInTheDocument();
+
+    expect(push).toHaveBeenCalledWith('/agents/agent-1/test-cmd-1');
+    expect(screen.getByText('This is a test command')).toBeInTheDocument();
+    expect(screen.queryByText('Results')).not.toBeInTheDocument();
+    expect(screen.queryByText('Main Topic')).not.toBeInTheDocument();
   });
 }); 

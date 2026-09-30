@@ -7,14 +7,17 @@
  * Specifically designed for cleaning Google News RSS feed content
  */
 export function cleanHtmlContent(htmlString: string): string {
-  console.log('🧽 [cleanHtmlContent] Input:', htmlString?.substring(0, 100) + (htmlString?.length > 100 ? '...' : ''))
-  
+  return finalCleanup(cleanHtmlText(htmlString))
+}
+
+// Keep length limiting separate so title metadata cannot consume the text budget.
+function cleanHtmlText(htmlString: string): string {
   if (!htmlString || typeof htmlString !== 'string') return ''
   
   let cleaned = htmlString.trim()
   
   // Step 1: Handle CDATA sections first
-  cleaned = cleaned.replace(/<!\[CDATA\[(.*?)\]\]>/g, '$1')
+  cleaned = cleaned.replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1')
   
   // Step 2: Extract text from common HTML elements before removing them
   // Extract text from <a> tags (preserve the link text)
@@ -34,15 +37,16 @@ export function cleanHtmlContent(htmlString: string): string {
   
   // Step 3: Remove problematic tags completely (including content)
   // Remove font tags (often contain source attribution we don't want)
-  cleaned = cleaned.replace(/<font[^>]*>.*?<\/font>/gi, '')
+  cleaned = cleaned.replace(/<font\b[^>]*>[\s\S]*?<\/font>/gi, '')
   
   // Remove script and style tags with their content
-  cleaned = cleaned.replace(/<(script|style)[^>]*>.*?<\/\1>/gi, '')
+  cleaned = cleaned.replace(/<(script|style)\b[^>]*>[\s\S]*?<\/\1>/gi, '')
   
   // Remove comments
-  cleaned = cleaned.replace(/<!--.*?-->/g, '')
+  cleaned = cleaned.replace(/<!--[\s\S]*?-->/g, '')
   
   // Step 4: Remove all remaining HTML tags
+  cleaned = cleaned.replace(/<\/?(?:p|div|h[1-6]|br|li)\b[^>]*>/gi, ' ')
   cleaned = cleaned.replace(/<[^>]*>/g, '')
   
   // Step 5: Clean HTML entities
@@ -60,10 +64,6 @@ export function cleanHtmlContent(htmlString: string): string {
   // Step 9: Remove common unwanted phrases
   cleaned = removeUnwantedPhrases(cleaned)
   
-  // Step 10: Final cleanup and validation
-  cleaned = finalCleanup(cleaned)
-  
-  console.log('✨ [cleanHtmlContent] Output:', cleaned)
   return cleaned
 }
 
@@ -131,40 +131,11 @@ function cleanHtmlEntities(text: string): string {
     cleaned = cleaned.replace(new RegExp(entity, 'g'), replacement)
   })
   
-  // Handle numeric character references (&#123;)
-  cleaned = cleaned.replace(/&#(\d+);/g, (match, num) => {
-    try {
-      const code = parseInt(num, 10)
-      // Only convert printable characters
-      if (code > 31 && code < 127) {
-        return String.fromCharCode(code)
-      }
-      // For Unicode characters, be selective
-      if (code >= 160 && code <= 255) {
-        return String.fromCharCode(code)
-      }
-      return ''
-    } catch {
-      return ''
-    }
-  })
-  
-  // Handle hexadecimal character references (&#x1A;)
-  cleaned = cleaned.replace(/&#x([0-9a-fA-F]+);/g, (match, hex) => {
-    try {
-      const code = parseInt(hex, 16)
-      // Only convert printable characters
-      if (code > 31 && code < 127) {
-        return String.fromCharCode(code)
-      }
-      // For Unicode characters, be selective
-      if (code >= 160 && code <= 255) {
-        return String.fromCharCode(code)
-      }
-      return ''
-    } catch {
-      return ''
-    }
+  // Decode printable Unicode scalars, including punctuation and astral characters.
+  cleaned = cleaned.replace(/&#(x[0-9a-f]+|\d+);/gi, (_match, value: string) => {
+    const code = /^x/i.test(value) ? parseInt(value.slice(1), 16) : parseInt(value, 10)
+    if (code < 32 || code > 0x10ffff || (code >= 127 && code < 160) || (code >= 0xd800 && code <= 0xdfff)) return ''
+    return String.fromCodePoint(code)
   })
   
   // Remove any remaining unrecognized entities
@@ -200,17 +171,14 @@ function removeUrls(text: string): string {
 function removeSourceAttribution(text: string): string {
   let cleaned = text
   
-  // Remove common source patterns like "- Source Name", "via SourceName", etc.
+  // Require an explicit attribution boundary. Ordinary prose such as "reports
+  // strong results", "by researchers", and hyphenated headlines is content.
   const sourcePatterns = [
-    /\s*[-–—]\s*[A-Za-z][A-Za-z\s&.,]+\s*$/g,
+    /(?:^|\n)\s*Source:\s*[^\n]*(?:\n\s*)?$/g,
+    /\s+[-–—]\s+[A-Z][A-Za-z0-9&.]*(?:\s+[A-Z][A-Za-z0-9&.]*)*\s*$/g,
     /^\s*[-–—]\s*/g,
-    /\s*via\s+[A-Za-z][A-Za-z\s&.,]+$/gi,
-    /\s*source:\s*[A-Za-z][A-Za-z\s&.,]+$/gi,
-    /\s*\|\s*[A-Za-z][A-Za-z\s&.,]+$/g,
-    /\s*by\s+[A-Za-z][A-Za-z\s&.,]+$/gi,
-    /\s*from\s+[A-Za-z][A-Za-z\s&.,]+$/gi,
-    /\s*according\s+to\s+[A-Za-z][A-Za-z\s&.,]+$/gi,
-    /\s*reports?\s+[A-Za-z][A-Za-z\s&.,]+$/gi
+    /\s+(?:via|[Ss]ource:)\s+[A-Z][A-Za-z0-9&.]*(?:\s+[A-Z][A-Za-z0-9&.]*)*\s*$/g,
+    /\s+\|\s+[A-Z][A-Za-z0-9&.]*(?:\s+[A-Z][A-Za-z0-9&.]*)*\s*$/g,
   ]
   
   sourcePatterns.forEach(pattern => {
@@ -233,11 +201,12 @@ function normalizeWhitespace(text: string): string {
   cleaned = cleaned.trim()
   
   // Normalize quotes
-  cleaned = cleaned.replace(/[""]/g, '"')
-  cleaned = cleaned.replace(/['']/g, "'")
+  cleaned = cleaned.replace(/[“”]/g, '"')
+  cleaned = cleaned.replace(/[‘’]/g, "'")
+  cleaned = cleaned.replace(/(^|\s)'(\p{L}[^'\n]*)'(?=\s|[.,!?]|$)/gu, '$1"$2"')
   
   // Normalize dashes
-  cleaned = cleaned.replace(/[–—]/g, '-')
+  cleaned = cleaned.replace(/–/g, '-').replace(/\s+—\s+/g, ' - ')
   
   // Remove zero-width characters
   cleaned = cleaned.replace(/[\u200B-\u200D\uFEFF]/g, '')
@@ -250,7 +219,7 @@ function normalizeWhitespace(text: string): string {
  */
 function removeUnwantedPhrases(text: string): string {
   const unwantedPhrases = [
-    /read\s+more\.?\.?\.?$/gi,
+    /(?:\.{3}\s*)?\bread\s+more(?:\s+at)?\s*\.{0,3}$/gi,
     /continue\s+reading\.?\.?\.?$/gi,
     /click\s+here\.?\.?\.?$/gi,
     /full\s+story\.?\.?\.?$/gi,
@@ -277,13 +246,13 @@ function finalCleanup(text: string): string {
   let cleaned = text.trim()
   
   // Ensure we don't have just punctuation or very short meaningless content
-  if (cleaned.length < 3 || /^[^\w]*$/.test(cleaned)) {
+  if (cleaned.length < 3 || !/[\p{L}\p{N}]/u.test(cleaned)) {
     return ''
   }
   
-  // Remove standalone punctuation at the beginning or end
+  // Remove detached punctuation without deleting a sentence's final punctuation.
   cleaned = cleaned.replace(/^[.,;:!?]+\s*/, '')
-  cleaned = cleaned.replace(/\s*[.,;:!?]+$/, '')
+  cleaned = cleaned.replace(/\s+[.,;:!?]+$/, '')
   
   // Limit maximum length to prevent extremely long descriptions
   if (cleaned.length > 500) {
@@ -293,10 +262,7 @@ function finalCleanup(text: string): string {
     if (lastSpace > 400) {
       cleaned = cleaned.substring(0, lastSpace)
     }
-    // Only add ellipsis if we actually cut off content
-    if (cleaned.length < 500) {
-      cleaned += '...'
-    }
+    cleaned += '...'
   }
   
   return cleaned.trim()
@@ -312,8 +278,8 @@ export function extractCleanText(content: string): string {
   // If content doesn't contain HTML tags, just clean entities and normalize
   if (!/<[^>]+>/.test(content)) {
     let cleaned = cleanHtmlEntities(content)
-    cleaned = normalizeWhitespace(cleaned)
     cleaned = removeUrls(cleaned)
+    cleaned = normalizeWhitespace(cleaned)
     cleaned = finalCleanup(cleaned)
     return cleaned
   }
@@ -326,45 +292,28 @@ export function extractCleanText(content: string): string {
  * Clean news titles specifically
  */
 export function cleanNewsTitle(title: string): string {
-  console.log('📰 [cleanNewsTitle] Input:', title)
-  
   if (!title || typeof title !== 'string') return ''
-  
-  let cleaned = title.trim()
-  
-  // Remove HTML tags
-  cleaned = cleaned.replace(/<[^>]*>/g, '')
-  
-  // Clean entities
-  cleaned = cleanHtmlEntities(cleaned)
-  
-  // Remove source attribution from titles
-  cleaned = removeSourceAttribution(cleaned)
-  
-  // Normalize whitespace
-  cleaned = normalizeWhitespace(cleaned)
+  let cleaned = cleanHtmlText(title)
   
   // Remove unwanted title patterns
   cleaned = cleaned.replace(/^\[.*?\]\s*/, '') // Remove [Category] prefixes
   cleaned = cleaned.replace(/\s*-\s*[A-Z]{2,}\s*$/, '') // Remove - CNN style suffixes
   
-  const result = finalCleanup(cleaned)
-  console.log('📰 [cleanNewsTitle] Output:', result)
-  return result
+  return finalCleanup(cleaned)
 }
 
 /**
  * Validate cleaned content quality
  */
 export function isValidCleanedContent(content: string): boolean {
-  if (!content || content.length < 10) return false
+  if (typeof content !== 'string' || content.length < 10) return false
   
   // Check if content is mostly HTML entities or special characters
-  const specialCharRatio = (content.match(/[^\w\s.,!?-]/g) || []).length / content.length
+  const specialCharRatio = (content.match(/[^\p{L}\p{N}\s.,!?-]/gu) || []).length / content.length
   if (specialCharRatio > 0.3) return false
   
   // Check if content has meaningful words
-  const words = content.split(/\s+/).filter(word => word.length > 2)
+  const words = (content.match(/\p{L}+/gu) || []).filter(word => word.length > 2)
   if (words.length < 3) return false
   
   return true

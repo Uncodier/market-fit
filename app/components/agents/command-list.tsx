@@ -15,7 +15,12 @@ export function CommandList({
   onNavigateToCommand,
   agentId
 }: CommandListProps) {
-  if (!commands.length) {
+  // Ignore missing records before mapping them or deciding whether the list is empty.
+  const availableCommands = Array.isArray(commands)
+    ? commands.filter(command => command != null)
+    : [];
+
+  if (!availableCommands.length) {
     return (
       <div className="h-full flex flex-col items-center justify-center p-6">
         <div className="text-center space-y-1.5">
@@ -38,7 +43,7 @@ export function CommandList({
         </div>
       )}
       <div className="divide-y divide-border/50">
-        {commands.map(command => {
+        {availableCommands.map((command, index) => {
           // Transform Command to CommandItemType
           const commandItemData: CommandItemType = {
             id: command.id,
@@ -53,7 +58,7 @@ export function CommandList({
           
           return (
             <CommandItem 
-              key={command.id} 
+              key={command.id || `command-${index}`}
               command={commandItemData} 
               onNavigate={() => onNavigateToCommand?.(command.id)}
               agentId={agentId}

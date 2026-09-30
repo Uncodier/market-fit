@@ -48,7 +48,7 @@ describe("document email builders", () => {
     ).toContain("Bill #BILL-1")
   })
 
-  it("localizes sales, orders, and bills emails to Spanish site locale", () => {
+  it("uses the supported Spanish invoice and order email copy", () => {
     const salesHtml = buildDocumentEmailHtml({
       toName: "Sergio",
       siteName: "Acme",
@@ -68,7 +68,7 @@ describe("document email builders", () => {
         i18nPrefix: "sales",
         locale: "es",
       })
-    ).toContain("Factura #INV-9")
+    ).toBe("Factura #INV-9 de Acme")
 
     const ordersHtml = buildDocumentEmailHtml({
       toName: "Sergio",
@@ -79,7 +79,12 @@ describe("document email builders", () => {
       i18nPrefix: "orders",
       locale: "es",
     })
-    expect(ordersHtml).toContain("Ver orden")
+    expect(ordersHtml).toContain('lang="es"')
+    expect(ordersHtml).toContain("Hola Sergio,")
+    expect(ordersHtml).toContain("Ver pedido")
+    expect(ordersHtml).toContain("#ORD-1")
+    expect(ordersHtml).toContain("$75.00")
+    expect(ordersHtml).toContain('href="https://app.example.com/so/token"')
     expect(
       buildDocumentEmailSubject({
         siteName: "Acme",
@@ -87,7 +92,28 @@ describe("document email builders", () => {
         i18nPrefix: "orders",
         locale: "es",
       })
-    ).toContain("Orden #ORD-1")
+    ).toBe("Pedido #ORD-1 de Acme")
+  })
+
+  // Spanish copy was selectively restored after the English-only locale cleanup;
+  // bills still use documentT's English fallback rather than retired translations.
+  it("falls back to English bill email copy for a Spanish site locale", () => {
+    const html = buildDocumentEmailHtml({
+      toName: "Sergio",
+      siteName: "Acme",
+      docRef: "BILL-1",
+      totalLabel: "$75.00",
+      viewLink: "https://app.example.com/b/token",
+      i18nPrefix: "bills",
+      locale: "es",
+    })
+
+    expect(html).toContain('lang="es"')
+    expect(html).toContain("Hi Sergio,")
+    expect(html).toContain("View bill")
+    expect(html).toContain("#BILL-1")
+    expect(html).toContain("$75.00")
+    expect(html).toContain('href="https://app.example.com/b/token"')
 
     expect(
       buildDocumentEmailSubject({
@@ -96,7 +122,7 @@ describe("document email builders", () => {
         i18nPrefix: "bills",
         locale: "es",
       })
-    ).toContain("Factura de compra #BILL-1")
+    ).toBe("Bill #BILL-1 from Acme")
   })
 
   it("builds SendGrid payload with PDF attachment", () => {

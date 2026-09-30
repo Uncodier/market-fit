@@ -46,11 +46,12 @@ function baseValues() {
 }
 
 describe("onboarding submit helpers", () => {
-  it("normalizes real-world URLs that zod url() would reject", () => {
+  it("normalizes domain URLs and rejects hostnames without a domain suffix", () => {
     expect(normalizeSiteUrl("example.com")).toBe("https://example.com")
     expect(normalizeSiteUrl(" www.shop.mx ")).toBe("https://www.shop.mx")
-    expect(isUsableSiteUrl("https://myshop")).toBe(true)
-    expect(isUsableSiteUrl("https://localhost:3000")).toBe(true)
+    expect(isUsableSiteUrl("https://myshop")).toBe(false)
+    expect(isUsableSiteUrl("https://localhost:3000")).toBe(false)
+    expect(isUsableSiteUrl("https://www.shop.mx")).toBe(true)
     expect(isUsableSiteUrl("https://")).toBe(false)
     expect(isUsableSiteUrl("")).toBe(false)
   })
@@ -105,7 +106,7 @@ describe("onboarding submit helpers", () => {
           },
         },
       ],
-    } as any)
+    } as unknown as Parameters<typeof prepareOnboardingSubmit>[0])
 
     expect(prepared.ok).toBe(true)
     if (!prepared.ok) return
@@ -144,7 +145,7 @@ describe("onboarding submit helpers", () => {
       "at least 2"
     )
     expect(getRequiredFieldErrors({ ...baseValues(), url: "https://" }).url).toBe(
-      "Must be a valid URL"
+      "Must be a valid URL (e.g. https://example.com)"
     )
 
     const prepared = prepareOnboardingSubmit({ ...baseValues(), name: "A" })

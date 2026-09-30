@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { CommandsPanel } from '@/app/components/agents/commands-panel';
 import { getCommands } from '@/app/agents/actions';
 import { Command } from '@/app/agents/types';
@@ -23,12 +23,14 @@ describe('CommandsPanel', () => {
     jest.clearAllMocks();
   });
 
-  test('renders loading state', () => {
+  test('renders loading state until the request completes', async () => {
     (getCommands as jest.Mock).mockResolvedValue({ commands: [] });
     
     render(<CommandsPanel />);
     
     expect(screen.getByTestId('loading-state')).toBeInTheDocument();
+    expect(await screen.findByText('No commands found')).toBeInTheDocument();
+    expect(screen.queryByTestId('loading-state')).not.toBeInTheDocument();
   });
 
   test('renders empty state when no commands are available', async () => {
@@ -55,10 +57,7 @@ describe('CommandsPanel', () => {
     
     render(<CommandsPanel />);
     
-    // Wait for commands to load and switch to failed tab
-    await waitFor(() => {
-      expect(screen.getByText(/Task with large error|Failed Task/)).toBeInTheDocument();
-    });
+    expect(await screen.findByText('Failed Task')).toBeInTheDocument();
     
     // Verify the failed command is displayed
     expect(screen.getByText('Failed Task')).toBeInTheDocument();
@@ -82,21 +81,15 @@ describe('CommandsPanel', () => {
     
     render(<CommandsPanel />);
     
-    // Switch to failed tab
-    await waitFor(() => {
-      expect(screen.getByText(/Task with large error|Failed Task/)).toBeInTheDocument();
-    });
-    
-    // Verify that the command is displayed without crashing
-    expect(screen.getByText('Task with large error')).toBeInTheDocument();
+    expect(await screen.findByText('Task with large error')).toBeInTheDocument();
   });
 
   test('handles deeply nested results structure', async () => {
     // Create a command with deeply nested results (potentially problematic)
-    const makeNestedObject = (depth: number, prefix = '') => {
+    const makeNestedObject = (depth: number, prefix = ''): unknown => {
       if (depth <= 0) return `${prefix}Value`;
       
-      const obj: Record<string, any> = {};
+      const obj: Record<string, unknown> = {};
       for (let i = 0; i < 2; i++) {
         obj[`${prefix}Key${i}`] = makeNestedObject(depth - 1, `${prefix}${i}_`);
       }
@@ -124,7 +117,7 @@ describe('CommandsPanel', () => {
 
   test('handles circular references in command data', async () => {
     // Create an object with circular references
-    const circularObj: Record<string, any> = {
+    const circularObj: Record<string, unknown> = {
       name: 'Circular Object',
       description: 'This object has circular references'
     };

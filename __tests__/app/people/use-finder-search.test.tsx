@@ -16,8 +16,10 @@ const failure = { success: false, error: { message: 'Too many requests' } }
 type Response = typeof searchResponse | typeof totalsResponse | typeof failure
 
 function SearchHarness({ onResults }: { onResults: (rows: Record<string, unknown>[], total: number) => void }) {
-  const { loading, executeSearch } = useFinderSearch({ siteId: 'site-a', onResults })
+  const { loading, executeSearch, status, error } = useFinderSearch({ siteId: 'site-a', onResults })
   return <>
+    <output aria-label="Search status">{status}</output>
+    {error && <p role="alert">{error}</p>}
     <Button disabled={loading} onClick={() => executeSearch(payload)}>{loading ? 'Searching…' : 'Search'}</Button>
     <button onClick={() => { void executeSearch(payload); void executeSearch(payload) }}>Shared action twice</button>
   </>
@@ -42,11 +44,13 @@ it.each(['success', 'failure', 'rejection'] as const)(
     ;(apiClient.post as jest.Mock).mockReturnValueOnce(search.promise).mockReturnValueOnce(totals.promise)
     const onResults = jest.fn()
     render(<StrictMode><SearchHarness onResults={onResults} /></StrictMode>)
+    expect(screen.getByLabelText('Search status')).toHaveTextContent('idle')
 
     // Both calls happen in one event before React can render the disabled state.
     fireEvent.click(screen.getByText('Shared action twice'))
     expect(apiClient.post).toHaveBeenCalledTimes(2)
     expect(screen.getByRole('button', { name: 'Searching…' })).toBeDisabled()
+    expect(screen.getByLabelText('Search status')).toHaveTextContent('loading')
     for (const suffix of ['', '/totals']) {
       expect(apiClient.post).toHaveBeenCalledWith(`/api/finder/person_role_search${suffix}`,
         { ...payload, site_id: 'site-a' }, { includeAuth: true })
@@ -65,13 +69,18 @@ it.each(['success', 'failure', 'rejection'] as const)(
 
     await act(async () => { totals.resolve(totalsResponse) })
     expect(screen.getByRole('button', { name: 'Search' })).toBeEnabled()
-    expect(onResults).toHaveBeenCalledTimes(1)
     if (outcome === 'success') {
+      expect(onResults).toHaveBeenCalledTimes(1)
       expect(onResults).toHaveBeenCalledWith([{ id: 'p1' }], 2)
       expect(toast.error).not.toHaveBeenCalled()
+      expect(screen.getByLabelText('Search status')).toHaveTextContent('success')
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument()
     } else {
+      expect(onResults).toHaveBeenCalledTimes(1)
       expect(onResults).toHaveBeenCalledWith([], 0)
       expect(toast.error).toHaveBeenCalledTimes(1)
+      expect(screen.getByLabelText('Search status')).toHaveTextContent('error')
+      expect(screen.getByRole('alert')).toHaveTextContent(outcome === 'rejection' ? 'Network failed' : 'Too many requests')
     }
     await act(async () => { jest.advanceTimersByTime(60000) })
     expect(apiClient.post).toHaveBeenCalledTimes(2)
@@ -81,10 +90,12 @@ it.each(['success', 'failure', 'rejection'] as const)(
     expect(apiClient.post).toHaveBeenCalledTimes(4)
     expect(screen.getByRole('button', { name: 'Search' })).toBeEnabled()
     expect(onResults).toHaveBeenLastCalledWith([{ id: 'p1' }], 2)
+    expect(screen.getByLabelText('Search status')).toHaveTextContent('success')
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   }
 )
 
-it('waits for search when totals settles first and preserves the fallback total', async () => {
+it('waits for search when totals fails first and never publishes a fallback success', async () => {
   const search = deferred<Response>()
   ;(apiClient.post as jest.Mock).mockReturnValueOnce(search.promise).mockResolvedValueOnce(failure)
   const onResults = jest.fn()
@@ -94,7 +105,10 @@ it('waits for search when totals settles first and preserves the fallback total'
   fireEvent.click(screen.getByText('Shared action twice'))
   expect(apiClient.post).toHaveBeenCalledTimes(2)
   await act(async () => { search.resolve(searchResponse) })
-  expect(onResults).toHaveBeenCalledWith([{ id: 'p1' }], 3)
+  expect(onResults).toHaveBeenCalledTimes(1)
+  expect(onResults).toHaveBeenCalledWith([], 0)
+  expect(screen.getByLabelText('Search status')).toHaveTextContent('error')
+  expect(toast.error).toHaveBeenCalledWith('Too many requests')
   expect(screen.getByRole('button', { name: 'Search' })).toBeEnabled()
 })
 

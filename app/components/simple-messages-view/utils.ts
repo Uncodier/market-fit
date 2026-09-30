@@ -47,16 +47,16 @@ export const formatTime = (date: Date) => {
 
 export const getActivityName = (tabValue: string): string => {
   const activityMap: Record<string, string> = {
-    "ask": "Preguntar",
-    "plan": "Planificar",
+    "ask": "Ask",
+    "plan": "Plan",
     "robot": "Execute Plan",
     "generate-image": "Publish Content",
     "generate-video": "Publish Content",
     "generate-audio": "Publish Content",
-    "create-automation": "Crear Automatización",
-    "create-app": "Crear App",
-    "create-presentation": "Crear Presentación",
-    "create-document": "Crear Documento"
+    "create-automation": "Create Automation",
+    "create-app": "Create App",
+    "create-presentation": "Create Presentation",
+    "create-document": "Create Document"
   }
   return activityMap[tabValue] || tabValue
 }

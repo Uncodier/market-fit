@@ -17,18 +17,18 @@ describe('breadcrumb-engine', () => {
     expect(state).toEqual([{ path: '/chat', label: 'Chat', timestamp }])
   })
 
-  it('keeps Conversations as origin when going to a lead', () => {
+  it('uses the destination section when opening a lead from Chat', () => {
     let state = reduceBreadcrumb([], nav('/chat', 'Chat'))
     state = reduceBreadcrumb(state, nav('/chat?conversationId=123', 'Chat: Maria'))
     state = reduceBreadcrumb(state, nav('/leads/456?name=Maria', 'Maria Garcia'))
 
     expect(state).toEqual([
-      { path: '/chat', label: 'Chat', timestamp },
+      { path: '/leads', label: 'Leads', timestamp: timestamp - 1 },
       { path: '/leads/456?name=Maria', label: 'Maria Garcia', timestamp },
     ])
   })
 
-  it('collapses a stale chat list + conversation trail when going to a lead', () => {
+  it('replaces a stale chat trail with the destination section when opening a lead', () => {
     const stale = [
       { path: '/chat', label: 'Chat', timestamp: 1 },
       { path: '/chat?conversationId=123', label: 'Chat: Maria', timestamp: 2 },
@@ -36,7 +36,7 @@ describe('breadcrumb-engine', () => {
     const state = reduceBreadcrumb(stale, nav('/leads/456', 'Maria Garcia'))
 
     expect(state).toEqual([
-      { path: '/chat', label: 'Chat', timestamp: 1 },
+      { path: '/leads', label: 'Leads', timestamp: timestamp - 1 },
       { path: '/leads/456', label: 'Maria Garcia', timestamp },
     ])
   })
@@ -57,7 +57,7 @@ describe('breadcrumb-engine', () => {
     ])
   })
 
-  it('ignores a destination-section parent on a cross-section trail', () => {
+  it('keeps a single destination-section parent after a detail title update', () => {
     let state = reduceBreadcrumb([], nav('/chat', 'Chat'))
     state = reduceBreadcrumb(state, nav('/leads/456', 'Maria Garcia'))
     state = reduceBreadcrumb(
@@ -66,7 +66,7 @@ describe('breadcrumb-engine', () => {
     )
 
     expect(state).toEqual([
-      { path: '/chat', label: 'Chat', timestamp },
+      { path: '/leads', label: 'Leads', timestamp: timestamp - 1 },
       { path: '/leads/456', label: 'Maria Garcia', timestamp },
     ])
   })
@@ -82,6 +82,30 @@ describe('breadcrumb-engine', () => {
       { path: '/catalog', label: 'Catalog', timestamp: timestamp - 1 },
       { path: '/catalog/123', label: 'T-Shirt', timestamp },
     ])
+  })
+
+  it.each([
+    ['/catalog/123', 'Catalog', '/catalog'],
+    ['/applications/repositories/123', 'Code', '/applications/repositories'],
+  ])('labels the destination parent for %s before page metadata arrives', (path, label, parent) => {
+    const state = reduceBreadcrumb(
+      reduceBreadcrumb([], nav('/chat', 'Chat')),
+      nav(path, 'Details')
+    )
+
+    expect(state).toEqual([
+      { path: parent, label, timestamp: timestamp - 1 },
+      { path, label: 'Details', timestamp },
+    ])
+  })
+
+  it('preserves an existing root label when normalizing a conversation', () => {
+    const state = reduceBreadcrumb(
+      reduceBreadcrumb([], nav('/chat', 'Conversations')),
+      nav('/chat?conversationId=123', 'Chat: Maria')
+    )
+
+    expect(state).toEqual([{ path: '/chat', label: 'Conversations', timestamp }])
   })
 
   it('resets when navigating to a sidebar root', () => {

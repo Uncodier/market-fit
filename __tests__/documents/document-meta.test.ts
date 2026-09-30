@@ -19,10 +19,16 @@ describe("document-meta", () => {
   })
 
   it("translates fulfillment and payment labels", () => {
-    expect(translateFulfillmentMethod("es", "dine_in")).toBe("En local")
     expect(translateFulfillmentMethod("en", "pickup")).toBe("Pickup")
     expect(translatePaymentMethod("en", "cash")).toBe("Cash")
     expect(translatePaymentMethod("en", "stripe")).toBe("Stripe")
+  })
+
+  it("uses English fallback for fulfillment and payment labels absent from Spanish copy", () => {
+    expect(translateFulfillmentMethod("es", "dine_in")).toBe("Dine in")
+    expect(translateFulfillmentMethod("es", "pickup")).toBe("Pickup")
+    expect(translatePaymentMethod("es", "cash")).toBe("Cash")
+    expect(translatePaymentMethod("es", "stripe")).toBe("Stripe")
   })
 
   it("formats shipping address lines", () => {

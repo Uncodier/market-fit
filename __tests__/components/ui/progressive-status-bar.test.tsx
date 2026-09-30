@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react"
+import { fireEvent, render, screen, within } from "@testing-library/react"
 import {
   ProgressiveStatusBar,
   type ProgressiveStatusBarProps,
@@ -38,57 +38,81 @@ function renderBar(overrides: Partial<ProgressiveStatusBarProps<Status>> = {}) {
       {...overrides}
     />
   )
-  return { ...result, onChange }
+  // jsdom does not apply Tailwind media queries, so both responsive views exist.
+  const desktop = result.container.querySelector<HTMLElement>('.hidden.md\\:flex')!
+  const mobile = result.container.querySelector<HTMLElement>('.md\\:hidden')!
+  expect(desktop).toBeInTheDocument()
+  expect(mobile).toBeInTheDocument()
+  return { ...result, onChange, desktop: within(desktop), mobile: within(mobile) }
 }
 
 describe("ProgressiveStatusBar", () => {
   it("marks earlier forward stages as past with a check and the current without one", () => {
-    renderBar({ current: "contacted" })
+    const { desktop } = renderBar({ current: "contacted" })
 
-    expect(screen.getByText("New").querySelector("svg")).toBeTruthy()
-    expect(screen.getByText("Contacted").querySelector("svg")).toBeFalsy()
-    expect(screen.getByText("Qualified").querySelector("svg")).toBeFalsy()
-    expect(screen.getByText("Converted").querySelector("svg")).toBeFalsy()
+    expect(desktop.getByText("New").querySelector("svg")).toBeTruthy()
+    expect(desktop.getByText("Contacted").querySelector("svg")).toBeFalsy()
+    expect(desktop.getByText("Qualified").querySelector("svg")).toBeFalsy()
+    expect(desktop.getByText("Converted").querySelector("svg")).toBeFalsy()
   })
 
   it("styles the current outcome and leaves inactive outcomes without a check", () => {
-    renderBar({ current: "lost" })
+    const { desktop } = renderBar({ current: "lost" })
 
-    expect(screen.getByText("Lost").className).toContain("bg-gray-100")
-    expect(screen.getByText("Won").className).toContain("bg-transparent")
-    expect(screen.getByText("New").querySelector("svg")).toBeFalsy()
-    expect(screen.getByText("Lost").querySelector("svg")).toBeFalsy()
+    expect(desktop.getByText("Lost").className).toContain("bg-gray-100")
+    expect(desktop.getByText("Won").className).toContain("bg-transparent")
+    expect(desktop.getByText("New").querySelector("svg")).toBeFalsy()
+    expect(desktop.getByText("Lost").querySelector("svg")).toBeFalsy()
   })
 
   it("marks the forward path as past when the current status is a success outcome", () => {
-    renderBar({ current: "won", successOutcomes: ["won"] })
+    const { desktop } = renderBar({ current: "won", successOutcomes: ["won"] })
 
-    expect(screen.getByText("New").querySelector("svg")).toBeTruthy()
-    expect(screen.getByText("Contacted").querySelector("svg")).toBeTruthy()
-    expect(screen.getByText("Qualified").querySelector("svg")).toBeTruthy()
-    expect(screen.getByText("Converted").querySelector("svg")).toBeTruthy()
-    expect(screen.getByText("Won").className).toContain("bg-emerald-100")
+    expect(desktop.getByText("New").querySelector("svg")).toBeTruthy()
+    expect(desktop.getByText("Contacted").querySelector("svg")).toBeTruthy()
+    expect(desktop.getByText("Qualified").querySelector("svg")).toBeTruthy()
+    expect(desktop.getByText("Converted").querySelector("svg")).toBeTruthy()
+    expect(desktop.getByText("Won").className).toContain("bg-emerald-100")
   })
 
   it("does not call onChange for disabled statuses", () => {
-    const { onChange } = renderBar({
+    const { onChange, desktop } = renderBar({
       current: "new",
       disabledStatuses: ["contacted"],
     })
 
-    fireEvent.click(screen.getByText("Contacted"))
+    fireEvent.click(desktop.getByText("Contacted"))
     expect(onChange).not.toHaveBeenCalled()
 
-    fireEvent.click(screen.getByText("Qualified"))
+    fireEvent.click(desktop.getByText("Qualified"))
     expect(onChange).toHaveBeenCalledTimes(1)
     expect(onChange).toHaveBeenCalledWith("qualified")
   })
 
   it("does not call onChange when the bar is fully disabled", () => {
-    const { onChange } = renderBar({ disabled: true })
+    const { onChange, desktop } = renderBar({ disabled: true })
 
-    fireEvent.click(screen.getByText("Qualified"))
-    fireEvent.click(screen.getByText("Lost"))
+    fireEvent.click(desktop.getByText("Qualified"))
+    fireEvent.click(desktop.getByText("Lost"))
     expect(onChange).not.toHaveBeenCalled()
+  })
+
+  it('does not reselect the current status', () => {
+    const { onChange, desktop } = renderBar()
+    fireEvent.click(desktop.getByText('Contacted'))
+    expect(onChange).not.toHaveBeenCalled()
+  })
+
+  it('enforces disabled statuses and selects enabled outcomes in the mobile menu', () => {
+    const { onChange, mobile } = renderBar({ disabledStatuses: ['qualified'] })
+    fireEvent.keyDown(mobile.getByText('Contacted'), { key: 'Enter' })
+    const qualified = screen.getByRole('menuitem', { name: 'Qualified' })
+    expect(qualified).toHaveAttribute('aria-disabled', 'true')
+    fireEvent.click(qualified)
+    expect(onChange).not.toHaveBeenCalled()
+
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Won' }))
+    expect(onChange).toHaveBeenCalledTimes(1)
+    expect(onChange).toHaveBeenCalledWith('won')
   })
 })

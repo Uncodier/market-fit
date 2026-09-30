@@ -43,6 +43,7 @@ environment variables before changing production configuration.
 
 ## Architecture reviews
 
+- [Local QA repair and live-test blockers — 2026-09-29](QA_REPAIR_2026-09-29.md)
 - [Static analysis repair — 2026-09-29](STATIC_ANALYSIS_REPAIR_2026-09-29.md)
 - [Redis/Upstash availability and self-amplification audit — 2026-09-20](REDIS_UPSTASH_AVAILABILITY_AUDIT_2026-09-20.md)
 

@@ -1,11 +1,15 @@
-import React from 'react';
-import { screen, waitFor } from '@testing-library/react';
+import { screen, within } from '@testing-library/react';
 import { CommandsTestInterface } from './test-interfaces';
 import { getCommands } from '@/app/agents/actions';
 
 // Mock the agent actions
 jest.mock('@/app/agents/actions', () => ({
   getCommands: jest.fn(),
+}));
+
+// Site initialization is outside these component tests; requests still need a site.
+jest.mock('@/app/context/SiteContext', () => ({
+  useSite: () => ({ currentSite: { id: 'site-1' } }),
 }));
 
 describe('CommandsTestInterface', () => {
@@ -29,6 +33,7 @@ describe('CommandsTestInterface', () => {
       
       // Verify commands are displayed
       CommandsTestInterface.expectCommandsDisplayed(testCommands);
+      expect(getCommands).toHaveBeenCalledWith('site-1', 1);
     });
     
     it('handles error state correctly', async () => {
@@ -36,10 +41,12 @@ describe('CommandsTestInterface', () => {
         mockErrors: true,
       });
       
-      expect(screen.getByText(/unable to load commands/i)).toBeInTheDocument();
+      expect(screen.getByText('No commands found')).toBeInTheDocument();
+      expect(screen.getByText('Error: Mock error')).toBeInTheDocument();
+      expect(screen.queryByRole('table')).not.toBeInTheDocument();
     });
     
-    it('filters commands by status', async () => {
+    it('displays all statuses together without legacy filter tabs', async () => {
       // Create test commands with different statuses
       const testCommands = [
         ...CommandsTestInterface.createTestCommands(3, { completed: 1, running: 0, failed: 0 }),
@@ -47,21 +54,17 @@ describe('CommandsTestInterface', () => {
         ...CommandsTestInterface.createTestCommands(1, { completed: 0, running: 0, failed: 1 }),
       ];
       
-      // Render with failed tab selected
       await CommandsTestInterface.renderCommandsPanel({
         initialCommands: testCommands,
-        filterStatus: 'failed'
       });
-      
-      // Only failed commands should be displayed
-      const failedCommands = testCommands.filter(cmd => cmd.status === 'failed');
-      CommandsTestInterface.expectCommandsDisplayed(failedCommands);
-      
-      // Completed commands should not be displayed
-      const completedCommands = testCommands.filter(cmd => cmd.status === 'completed');
-      completedCommands.forEach(cmd => {
-        expect(screen.queryByText(cmd.task)).not.toBeInTheDocument();
+
+      CommandsTestInterface.expectCommandsDisplayed(testCommands);
+      expect(screen.getAllByRole('row')).toHaveLength(testCommands.length + 1);
+      testCommands.forEach(cmd => {
+        const row = screen.getByText(cmd.task).closest('tr')!;
+        expect(within(row).getByText(new RegExp(`^${cmd.status}$`, 'i'))).toBeInTheDocument();
       });
+      expect(screen.queryByRole('tab')).not.toBeInTheDocument();
     });
   });
   
@@ -74,10 +77,19 @@ describe('CommandsTestInterface', () => {
       CommandsTestInterface.expectCommandsDisplayed(testCommands);
     });
     
-    it('displays error notification when hasError is true', () => {
-      CommandsTestInterface.renderCommandList([], true);
+    it('displays the connection warning alongside cached commands', () => {
+      const commands = CommandsTestInterface.createTestCommands(1);
+      CommandsTestInterface.renderCommandList(commands, true);
       
-      expect(screen.getByText(/connection issue/i)).toBeInTheDocument();
+      CommandsTestInterface.expectCommandsDisplayed(commands);
+      expect(screen.getByText('Using cached data. Connection to server failed.')).toBeInTheDocument();
+    });
+
+    it('displays the empty state when there are no cached commands', () => {
+      CommandsTestInterface.renderCommandList([], true);
+
+      expect(screen.getByText('No commands found')).toBeInTheDocument();
+      expect(screen.queryByText('Using cached data. Connection to server failed.')).not.toBeInTheDocument();
     });
   });
   
@@ -93,13 +105,10 @@ describe('CommandsTestInterface', () => {
       const runningCount = commands.filter(cmd => cmd.status === 'running').length;
       const failedCount = commands.filter(cmd => cmd.status === 'failed').length;
       
-      // Allow some variation due to randomness
-      expect(completedCount).toBeGreaterThanOrEqual(20);
-      expect(completedCount).toBeLessThanOrEqual(40);
-      expect(runningCount).toBeGreaterThanOrEqual(50);
-      expect(runningCount).toBeLessThanOrEqual(70);
-      expect(failedCount).toBeGreaterThanOrEqual(5);
-      expect(failedCount).toBeLessThanOrEqual(20);
+      expect(completedCount).toBe(30);
+      expect(runningCount).toBe(60);
+      expect(failedCount).toBe(10);
+      expect(new Set(commands.map(command => command.id)).size).toBe(100);
     });
   });
 }); 

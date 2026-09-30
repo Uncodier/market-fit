@@ -4,15 +4,18 @@ import React, { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Subscription } from "@/app/types"
 import { Button } from "@/app/components/ui/button"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/app/components/ui/dropdown-menu"
-import { MoreHorizontal, Play, Pause, Ban, Repeat } from "@/app/components/ui/icons"
+import { ConfirmDialog } from "@/app/components/ui/confirm-dialog"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/app/components/ui/dropdown-menu"
+import { MoreHorizontal, Play, Pause, Ban, Repeat, Trash2 } from "@/app/components/ui/icons"
 import { updateSubscriptionStatus } from "../actions"
+import { deleteSubscription } from "../delete-subscription"
 import { toast } from "sonner"
 import { format } from "date-fns"
 import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/app/components/ui/table"
 import { EmptyCard } from "@/app/components/ui/empty-card"
 import { Skeleton } from "@/app/components/ui/skeleton"
 import { useLocalization } from "@/app/context/LocalizationContext"
+import { useOptionalPermissions } from "@/app/context/PermissionContext"
 import { cn } from "@/lib/utils"
 import { formatCurrency } from "@/app/lib/formatters"
 import {
@@ -45,8 +48,10 @@ interface SubscriptionsListProps {
 
 export function SubscriptionsList({ subscriptions, siteId, onUpdate }: SubscriptionsListProps) {
   const { t } = useLocalization()
+  const permissions = useOptionalPermissions()
   const router = useRouter()
   const [updating, setUpdating] = useState<string | null>(null)
+  const [subscriptionToDelete, setSubscriptionToDelete] = useState<Subscription | null>(null)
   const pageTotal = subscriptions.reduce((sum, sub) => sum + (Number(sub.amount) || 0), 0)
 
   const handleStatusChange = async (id: string, status: Subscription["status"]) => {
@@ -59,6 +64,24 @@ export function SubscriptionsList({ subscriptions, siteId, onUpdate }: Subscript
       onUpdate()
     }
     setUpdating(null)
+  }
+
+  const handleDelete = async () => {
+    if (!subscriptionToDelete) return
+
+    setUpdating(subscriptionToDelete.id)
+    try {
+      const result = await deleteSubscription(siteId, subscriptionToDelete.id)
+      if (result.error) throw new Error(result.error)
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to delete subscription")
+      throw error
+    } finally {
+      setUpdating(null)
+    }
+
+    toast.success("Subscription deleted")
+    onUpdate()
   }
 
   if (subscriptions.length === 0) {
@@ -169,6 +192,19 @@ export function SubscriptionsList({ subscriptions, siteId, onUpdate }: Subscript
                           {t("subscriptions.table.cancel") || "Cancel"}
                         </DropdownMenuItem>
                       )}
+                      {sub.status === "cancelled" && (
+                        <>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            onSelect={() => setSubscriptionToDelete(sub)}
+                            disabled={permissions?.can("delete") === false}
+                            className="text-destructive focus:text-destructive"
+                          >
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Delete
+                          </DropdownMenuItem>
+                        </>
+                      )}
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </TableCell>
@@ -196,6 +232,17 @@ export function SubscriptionsList({ subscriptions, siteId, onUpdate }: Subscript
           {t("subscriptions.table.subscriptions") || "subscriptions"}
         </p>
       </div>
+      <ConfirmDialog
+        open={subscriptionToDelete !== null}
+        onOpenChange={(open) => { if (!open) setSubscriptionToDelete(null) }}
+        title="Delete subscription?"
+        description={`Permanently delete ${subscriptionToDelete?.catalog_item?.name || "this subscription"}${subscriptionToDelete?.lead?.name ? ` for ${subscriptionToDelete.lead.name}` : ""}? Existing invoices and payments will be kept. This action cannot be undone.`}
+        confirmLabel="Delete subscription"
+        variant="destructive"
+        dataPermission="delete"
+        loading={subscriptionToDelete !== null && updating === subscriptionToDelete.id}
+        onConfirm={handleDelete}
+      />
     </div>
   )
 }

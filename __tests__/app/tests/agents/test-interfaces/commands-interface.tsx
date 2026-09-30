@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { CommandsPanel } from '@/app/components/agents/commands-panel';
 import { CommandList } from '@/app/components/agents/command-list';
 import { Command } from '@/app/agents/types';
@@ -9,7 +9,6 @@ import { getCommands } from '@/app/agents/actions';
 interface CommandTestOptions {
   initialCommands?: Command[];
   mockErrors?: boolean;
-  filterStatus?: 'all' | 'completed' | 'running' | 'failed';
 }
 
 /**
@@ -31,18 +30,11 @@ export const CommandsTestInterface = {
     
     const result = render(<CommandsPanel />);
     
-    // Wait for initial render to complete
+    // Wait for the response to render, not merely for the request to start.
     await waitFor(() => {
       expect(getCommands).toHaveBeenCalled();
+      expect(screen.queryByTestId('loading-state')).not.toBeInTheDocument();
     });
-    
-    // Select a specific tab if requested
-    if (options.filterStatus && options.filterStatus !== 'all') {
-      fireEvent.click(screen.getByText(options.filterStatus.charAt(0).toUpperCase() + options.filterStatus.slice(1)));
-      await waitFor(() => {
-        // Wait for tab switch to complete
-      });
-    }
     
     return result;
   },
@@ -62,25 +54,25 @@ export const CommandsTestInterface = {
     const statusDistribution = { ...defaultDistribution, ...distribution };
     
     return Array(count).fill(null).map((_, i) => {
-      // Determine status based on distribution
+      // Use deterministic positions so repeated test runs have the same statuses.
       let status: 'completed' | 'running' | 'failed';
-      const rand = Math.random();
-      if (rand < statusDistribution.completed) {
+      const position = i / count;
+      if (position < statusDistribution.completed) {
         status = 'completed';
-      } else if (rand < statusDistribution.completed + statusDistribution.running) {
+      } else if (position < statusDistribution.completed + statusDistribution.running) {
         status = 'running';
       } else {
         status = 'failed';
       }
       
       return {
-        id: `test-cmd-${i}`,
-        task: `Test Task ${i}`,
-        description: `Test description for task ${i}`,
+        id: `test-cmd-${status}-${i}`,
+        task: `Test Task ${status} ${i}`,
+        description: `Test description for ${status} task ${i}`,
         status,
-        created_at: new Date(Date.now() - i * 60000).toISOString(),
+        created_at: new Date(Date.UTC(2023, 0, 1, 12) - i * 60000).toISOString(),
         context: status === 'failed' ? `Error: Test error for task ${i}` : undefined,
-        duration: status === 'completed' ? Math.floor(Math.random() * 10000) : undefined,
+        duration: status === 'completed' ? (i + 1) * 1000 : undefined,
         results: status === 'completed' ? [{ message: `Result for task ${i}` }] : undefined
       } as Command;
     });
@@ -95,18 +87,6 @@ export const CommandsTestInterface = {
       if (command.description) {
         expect(screen.getByText(command.description)).toBeInTheDocument();
       }
-    });
-  },
-  
-  /**
-   * Helper to trigger the refresh action on CommandsPanel
-   */
-  triggerRefresh: async () => {
-    const refreshButton = screen.getByRole('button', { name: /refresh/i });
-    fireEvent.click(refreshButton);
-    
-    await waitFor(() => {
-      expect(getCommands).toHaveBeenCalledTimes(2); // Once on initial render, once on refresh
     });
   }
 }; 
