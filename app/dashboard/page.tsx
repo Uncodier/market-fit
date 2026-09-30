@@ -86,7 +86,7 @@ function DashboardPageContent() {
         dateOptionsLoading={siteLoading || dateLimits.isLoading || !dateLimits.maxRangeDays}
       />
       <TabsContent value={section} className="m-0 bg-muted/20 flex-1 min-w-0">
-        <div className="mx-auto w-full max-w-[1600px] space-y-5 px-4 py-5 md:px-8 md:py-6">
+        <div data-report-viewport className="mx-auto w-full max-w-[1600px] space-y-5 px-4 py-5 md:px-8 md:py-6">
         <header className="space-y-1">
             <h1 className="text-xl font-semibold tracking-tight md:text-2xl">{definition.title}</h1>
             <p className="text-sm leading-relaxed text-muted-foreground max-w-3xl">{selectedSection.description}</p>

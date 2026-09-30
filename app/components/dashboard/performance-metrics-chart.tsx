@@ -6,6 +6,7 @@ import { usePerformanceSlice } from "@/app/hooks/use-dashboard-batches";
 import { ReportChartLoading } from "./report-visual-loading";
 import { ReportState } from "./report-state";
 import { activityDate, compactActivityCount } from "./activity-chart-format";
+import { ReportChartFrame } from "./report-chart-frame";
 
 interface PerformanceMetricsChartProps {
   startDate: Date;
@@ -66,11 +67,11 @@ export function PerformanceMetricsChart({
   }
 
   if (!data || !data.chartData || data.chartData.length === 0) {
-    return <ReportState state="empty" message="No activity was recorded for these filters. Try another date range or segment." />;
+    return <ReportChartFrame className="flex h-[300px] items-center justify-center sm:h-[360px]"><ReportState state="empty" message="No activity was recorded for these filters. Try another date range or segment." /></ReportChartFrame>;
   }
 
   return (
-    <div role="img" aria-label="Daily engagement, meetings and sales counts" className="h-[300px] w-full min-w-0 sm:h-[360px]">
+    <ReportChartFrame role="img" aria-label="Daily engagement, meetings and sales counts" className="h-[300px] w-full min-w-0 sm:h-[360px]">
       <ResponsiveContainer width="100%" height="100%">
         <LineChart
           data={data.chartData}
@@ -176,6 +177,6 @@ export function PerformanceMetricsChart({
             />
           </LineChart>
       </ResponsiveContainer>
-    </div>
+    </ReportChartFrame>
   );
 }

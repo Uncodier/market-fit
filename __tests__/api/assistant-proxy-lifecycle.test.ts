@@ -13,12 +13,15 @@ jest.mock('@/lib/redis/operation-lease', () => ({
 const previousUrl = process.env.API_SERVER_URL
 const previousKey = process.env.SERVICE_API_KEY
 const release = jest.fn().mockResolvedValue(undefined)
+const getSession = jest.fn()
+const userAccess = () => ({ userId: 'verified-user', role: 'owner', supabase: { auth: { getSession } } })
 beforeEach(() => {
   jest.resetAllMocks()
   release.mockResolvedValue(undefined)
   process.env.API_SERVER_URL = 'http://localhost:3001'
   delete process.env.SERVICE_API_KEY
-  ;(requireSiteAccess as jest.Mock).mockResolvedValue({ userId: 'verified-user', role: 'owner' })
+  getSession.mockResolvedValue({ data: { session: { access_token: 'verified-token', user: { id: 'verified-user' } } }, error: null })
+  ;(requireSiteAccess as jest.Mock).mockResolvedValue(userAccess())
   ;(acquireOperationLeaseResult as jest.Mock).mockResolvedValue({ status: 'acquired', lease: { release } })
 })
 afterAll(() => {
@@ -50,7 +53,8 @@ it('preserves authenticated SSE bytes/metadata and uses a stream-length executio
   const [url, options] = (fetch as jest.Mock).mock.calls[0]
   expect(url.toString()).toBe('http://localhost:3001/api/robots/instance/assistant')
   expect(JSON.parse(options.body).user_id).toBe('verified-user')
-  expect(options.headers.get('authorization')).toBe('Bearer test-token')
+  expect(options.headers.get('authorization')).toBe('Bearer verified-token')
+  expect(options.redirect).toBe('error')
 })
 
 it.each([401, 403])('does not forward requests rejected by site authorization (%s)', async status => {
@@ -124,7 +128,7 @@ it('includes authorization time in the overall response budget', async () => {
   try {
     ;(requireSiteAccess as jest.Mock).mockImplementation(async () => {
       jest.setSystemTime(Date.now() + 30_000)
-      return { userId: 'verified-user', role: 'owner' }
+      return userAccess()
     })
     ;(fetch as jest.Mock).mockResolvedValue(new Response(new ReadableStream()))
     const result = await POST(request())
@@ -134,4 +138,40 @@ it('includes authorization time in the overall response budget', async () => {
     expect(release).toHaveBeenCalledTimes(2)
     expect(jest.getTimerCount()).toBe(0)
   } finally { jest.useRealTimers() }
+})
+
+it('derives upstream authentication for cookie-only browser requests and strips unverified keys', async () => {
+  ;(fetch as jest.Mock).mockResolvedValue(new Response('done'))
+  const input = new NextRequest('http://localhost:3000/api/robots/instance/assistant', {
+    method: 'POST', headers: { cookie: 'session', 'content-type': 'application/json', 'x-api-key': 'unverified-key' },
+    body: JSON.stringify({ site_id: 'site', message: 'hello' }),
+  })
+  const response = await POST(input)
+  expect(await response.text()).toBe('done')
+  const headers = (fetch as jest.Mock).mock.calls[0][1].headers
+  expect(headers.get('authorization')).toBe('Bearer verified-token')
+  expect(headers.has('x-api-key')).toBe(false)
+})
+
+it.each([
+  { data: { session: null }, error: null },
+  { data: { session: { access_token: 'token', user: { id: 'other-user' } } }, error: null },
+  { data: { session: null }, error: { message: 'expired' } },
+])('rejects invalid user sessions before admission or forwarding', async session => {
+  getSession.mockResolvedValueOnce(session)
+  expect((await POST(request())).status).toBe(401)
+  expect(fetch).not.toHaveBeenCalled()
+  expect(acquireOperationLeaseResult).not.toHaveBeenCalled()
+})
+
+it('preserves the explicitly verified internal-service path without requiring a browser session', async () => {
+  process.env.SERVICE_API_KEY = 'test-service-key'
+  ;(fetch as jest.Mock).mockResolvedValue(new Response('done'))
+  const input = request()
+  input.headers.set('x-api-key', 'test-service-key')
+  const response = await POST(input)
+  await response.text()
+  expect(requireSiteAccess).not.toHaveBeenCalled()
+  expect(getSession).not.toHaveBeenCalled()
+  expect((fetch as jest.Mock).mock.calls[0][1].headers.get('x-api-key')).toBe('test-service-key')
 })

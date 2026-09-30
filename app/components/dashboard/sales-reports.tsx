@@ -10,6 +10,7 @@ import { BaseKpiWidget } from "./base-kpi-widget"
 import { SalesDistributionChart } from "./sales-distribution-chart"
 import { MonthlySalesEvolutionChart } from "./monthly-sales-evolution-chart"
 import { SalesBreakdownReport } from "./sales-breakdown-report"
+import { SalesFinancialSummary } from "./sales-financial-summary"
 import { useSalesReport } from "./sales/use-sales-report"
 import { formatSalesChange, formatSalesMoney } from "@/lib/sales/report-format"
 import type { SalesMetric, SalesReportSection } from "@/lib/sales/report-types"
@@ -76,18 +77,14 @@ export function SalesReports({ startDate, endDate, segmentId = "all", section, e
   return <ReportSection
     embedded={embedded}
     title={section === "channels" ? "Sales channels" : section === "categories" ? "Sales categories" : "Sales summary"}
-    description={`${data.metadata.startDate} – ${data.metadata.endDate} · ${data.currency === "UNSPECIFIED" ? "Currency unspecified" : data.currency} · Confirmed sales, not cash received`}
+    description={`${data.metadata.startDate} – ${data.metadata.endDate} · ${data.currency === "UNSPECIFIED" ? "Currency unspecified" : data.currency}`}
     action={currencyPicker}>
     {data.noData && <div role="status" className="rounded-lg border border-dashed px-4 py-3 text-sm">
-      <p className="font-medium">No sales in this period</p>
-      <p className="mt-1 text-muted-foreground">No confirmed sales match this site, segment, date range and currency. Previous-period figures remain visible for comparison.</p>
+      <p className="font-medium">No active sales in this period</p>
+      <p className="mt-1 text-muted-foreground">No active sales match this site, segment, date range and currency. This does not imply zero cash movement: receipts and refunds can relate to older or cancelled sales. Previous-period sales figures remain visible for comparison.</p>
     </div>}
 
-    {showSummary && <ReportKpiGrid columns={3}>
-      {kpi("Confirmed sales", data.totalSales)}
-      {kpi("Transactions", data.transactions, false)}
-      {kpi("Average sale value", data.averageOrderValue)}
-    </ReportKpiGrid>}
+    {showSummary && <SalesFinancialSummary data={data} />}
     {showChannels && <>
       <ReportKpiGrid columns={3}>
         {Object.entries(data.channelSales).map(([key, value]) => kpi(
@@ -96,6 +93,10 @@ export function SalesReports({ startDate, endDate, segmentId = "all", section, e
         ))}
       </ReportKpiGrid>
     </>}
+    <p className="text-sm text-muted-foreground">
+      Active sales are pending and completed sale amounts by sale date, not cash received. Cancelled/refunded sales and any sale linked to a cancelled order are excluded.
+      {` Amounts in ${data.currency === "UNSPECIFIED" ? "unspecified currency" : data.currency}.`}
+    </p>
     {(showSummary || showChannels) && <div className={showChannels
       ? "grid min-w-0 items-stretch gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] xl:grid-rows-[auto_1fr] xl:[&>*]:row-span-2 xl:[&>*]:grid xl:[&>*]:grid-rows-subgrid xl:[&>*]:gap-y-0 [&>*]:min-w-0"
       : "min-w-0"}>
@@ -106,14 +107,14 @@ export function SalesReports({ startDate, endDate, segmentId = "all", section, e
       {showChannels && <SalesDistributionChart data={data.salesDistribution} currency={data.currency} isLoading={false} dataReady />}
     </div>}
     {showCategories && <>
-      <p className="text-sm text-muted-foreground">{data.transactions.actual} transactions · {money(data.totalSales.actual)} this period · {money(data.totalSales.previous)} in the previous period.</p>
+      <p className="text-sm text-muted-foreground">{data.transactions.actual} active sales · {money(data.totalSales.actual)} this period · {money(data.totalSales.previous)} in the previous period.</p>
       <SalesBreakdownReport data={data.salesCategories} currency={data.currency} isLoading={false} dataReady />
     </>}
     <ReportDetails summary="Sales basis and comparisons">
       <p>{data.metadata.startDate} – {data.metadata.endDate}; compared with {data.metadata.prevStartDate} – {data.metadata.prevEndDate} (equal-length period).</p>
       <p>{data.metadata.basis}</p>
       <p>{data.metadata.dateBasis} Amounts: {data.currency === "UNSPECIFIED" ? "currency unspecified" : data.currency}; no currency conversion.</p>
-      {showChannels && <p>Online includes online, shop and marketplace sources. Retail includes retail and POS; all other sources remain unassigned. Total: {money(data.totalSales.actual)} across {data.transactions.actual} transactions.</p>}
+      {showChannels && <p>Online includes online, shop and marketplace sources. Retail includes retail and POS; all other sources remain unassigned. Total: {money(data.totalSales.actual)} across {data.transactions.actual} {data.transactions.actual === 1 ? "sale" : "sales"}.</p>}
       {showCategories && <p>Category totals allocate sale amounts proportionally to top-level order item subtotals; sales without items use their product type or Uncategorized.</p>}
     </ReportDetails>
   </ReportSection>

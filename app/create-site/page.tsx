@@ -7,7 +7,7 @@ import { SiteOnboarding } from "../components/onboarding/site-onboarding"
 import { SiteOnboardingSkeleton } from "../components/onboarding/site-onboarding-skeleton"
 import { useAuth } from "../hooks/use-auth"
 import { useRouter, useSearchParams } from "next/navigation"
-import { apiClient } from "../services/api-client-service"
+import { startSiteSetup } from "./start-site-setup"
 import { useSimpleRefreshPrevention } from "../hooks/use-prevent-refresh"
 import { getCreateSiteErrorMessage } from "../components/onboarding/utils/onboarding-submit"
 import { reloadForNewBuild } from "../components/ChunkErrorGuard"
@@ -120,23 +120,7 @@ function CreateSitePageContent() {
       setIsSaving(false)
 
       // Site setup is optional background work and must not block the success step
-      const apiKey = process.env.NEXT_PUBLIC_API_KEY
-      const apiSecret = process.env.NEXT_PUBLIC_API_SECRET
-      if (apiKey && apiSecret) {
-        void apiClient.postWithApiKeys(
-          '/api/site/setup',
-          { site_id: newSite.id },
-          apiKey,
-          apiSecret,
-          { timeout: 15000 }
-        ).then((setupResponse) => {
-          if (!setupResponse.success) {
-            console.warn("Site setup initiation failed:", setupResponse.error?.message)
-          }
-        }).catch((setupError) => {
-          console.warn("Error initiating site setup:", setupError)
-        })
-      }
+      void startSiteSetup(newSite.id)
     } catch (error) {
       console.error(error)
       toast.error(getCreateSiteErrorMessage(error))

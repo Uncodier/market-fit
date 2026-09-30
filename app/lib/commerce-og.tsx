@@ -1,5 +1,7 @@
 import { ImageResponse } from "next/og"
 import sharp from "sharp"
+import { isPromptImageUrl } from "./prompt-image-url"
+import { resolveCommercePromptImage } from "./commerce-prompt-image"
 import {
   type ShareImageSource,
   toAbsoluteShareImageUrl,
@@ -30,6 +32,9 @@ async function resolveImageSrc(
   source: ShareImageSource,
   size: { width: number; height: number },
 ): Promise<string | null> {
+  if (source.kind === "url" && isPromptImageUrl(source.url)) {
+    return resolveCommercePromptImage(source.url, size)
+  }
   if (source.kind === "data") {
     if (!source.dataUrl.toLowerCase().startsWith("data:image/webp;")) return source.dataUrl
     const encoded = /^data:image\/webp;base64,([a-z0-9+/=]+)$/i.exec(source.dataUrl)?.[1]

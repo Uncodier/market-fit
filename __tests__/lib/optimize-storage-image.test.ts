@@ -126,7 +126,7 @@ describe("resolveItemImage size presets", () => {
 
   it("aligns AI prompt size to the preset", () => {
     const out = resolveItemImage({ name: "Latte", image_url: null }, "card")
-    expect(out).toContain("/api/public/image/prompt/")
+    expect(out).toContain("/api/images/prompt?")
     expect(out).toContain("width=400")
     expect(out).toContain("height=400")
   })

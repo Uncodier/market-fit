@@ -54,21 +54,50 @@ message persistence.
 
 ## Diagnostics and validation
 
+### Direct agent messages after the authentication hardening
+
+`/chat` selects `sendAgentMessage` for agent-only/private conversations and
+`sendTeamMemberIntervention` for interventions. These remain different API
+operations; do not route agent messages through the intervention endpoint.
+
+The external API security change `d69ad7dc` (2026-09-20) removed the old
+`Origin`-only authentication bypass. The direct agent client still called the
+external `/api/agents/chat/message` without credentials, producing `401` with
+`UNAUTHORIZED` and `API key is required for server-to-server requests`. That
+legacy error wording does not establish that the caller is a server: missing
+credentials on a browser request produce the same error.
+
+Direct agent messages now use the authenticated same-origin
+`POST /api/agents/chat/message` proxy. It checks site membership, insert
+capability, the conversation and its assigned agent under user-scoped RLS, then
+forwards the verified user's bearer token and server-derived identities. No API
+key or browser-supplied author identity is needed. The response exposes only
+the saved assistant reply; incomplete/non-JSON responses do not consume the
+draft as successful sends. Requests are bounded and never automatically replayed.
+The browser no longer logs message payloads or raw backend responses.
+
+This diagnosis is verified against source and commit history, not a captured
+production request. The API repository was inspected read-only; its middleware
+already supports validated Supabase user tokens, so this repair changes only
+the web application and does not restore the insecure `Origin` bypass.
+
+### Delivery checks
+
 Check the browser's same-origin request status and the API error code first.
 Determine whether a saved message ID, call ID, or workflow ID exists before
 retrying. Never log message content, phone numbers, authorization headers, or
 provider payloads while collecting evidence.
 
-The local configuration inspected for this repair pointed to the external API
-on port 3001. Read-only schema inspection confirmed the intervention message
-columns and `team_member` role exist. Available logs did not establish a
-specific production message-save failure, so this repair does not claim a
-verified root cause for a particular failed request.
+During the earlier intervention-delivery repair, the inspected local
+configuration pointed to the external API on port 3001. Read-only schema
+inspection confirmed the intervention message columns and `team_member` role
+exist. Those logs did not establish a specific production message-save failure;
+the authentication diagnosis above is separate from that earlier investigation.
 
 Focused offline regression checks:
 
 ```bash
-npm test -- --runInBand __tests__/chat __tests__/api/intervention-proxy.test.ts __tests__/hooks/use-chat-operations.test.tsx __tests__/components/chat/chat-input.test.tsx
+npm test -- --runInBand __tests__/chat __tests__/api/intervention-proxy.test.ts __tests__/api/agent-message-proxy.test.ts __tests__/hooks/use-chat-operations.test.tsx __tests__/components/chat/chat-input.test.tsx
 npm run typecheck
 ```
 

@@ -25,6 +25,7 @@ Use the guides below before relying on older implementation notes.
 - [Site archival](SITE_ARCHIVAL.md)
 - [Support chat identity](CHAT_IDENTITY.md)
 - [Chat intervention delivery and voice/Temporal boundaries](CHAT_INTERVENTION_DELIVERY.md)
+- [Public visitor sessions and image delivery](PUBLIC_VISITOR_AND_IMAGE_DELIVERY.md)
 - [Report sections and data contracts](REPORTS.md)
 - [Automated outreach settings](OUTREACH_SETTINGS.md)
 - [Pending ICP mining list selection](ICP_MINING_LIST_SELECTION.md)
@@ -43,6 +44,7 @@ environment variables before changing production configuration.
 
 ## Architecture reviews
 
+- [External API authentication audit and remaining authorization debt — 2026-09-30](API_AUTH_AUDIT_2026-09-30.md)
 - [Local QA repair and live-test blockers — 2026-09-29](QA_REPAIR_2026-09-29.md)
 - [Static analysis repair — 2026-09-29](STATIC_ANALYSIS_REPAIR_2026-09-29.md)
 - [Redis/Upstash availability and self-amplification audit — 2026-09-20](REDIS_UPSTASH_AVAILABILITY_AUDIT_2026-09-20.md)

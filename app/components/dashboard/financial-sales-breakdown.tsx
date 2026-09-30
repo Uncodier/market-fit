@@ -17,7 +17,7 @@ export function FinancialSalesBreakdown({ categories = [], currency = "UNSPECIFI
   const share = (amount: number) => total > 0 ? `${(amount / total * 100).toFixed(1)}%` : "—"
   return <Card>
     <CardHeader><CardTitle>Sales breakdown</CardTitle>
-      <CardDescription>Allocated confirmed amounts by category, including categories with sales only in the previous period.</CardDescription>
+      <CardDescription>Allocated active sale amounts by category, including categories with sales only in the previous period.</CardDescription>
     </CardHeader>
     <CardContent><Table>
       <TableHeader><TableRow>

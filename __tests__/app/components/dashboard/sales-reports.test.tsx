@@ -6,15 +6,17 @@ import { useAuth } from "@/app/hooks/use-auth"
 import { useWidgetContext } from "@/app/context/WidgetContext"
 import { fetchSalesReport, salesReportUrl } from "@/app/components/dashboard/sales/use-sales-report"
 import type { SalesReportData } from "@/lib/sales/report-types"
+import type { BaseKpiWidgetProps } from "@/app/components/dashboard/base-kpi-widget"
+import type { MonthlySalesEvolutionChart } from "@/app/components/dashboard/monthly-sales-evolution-chart"
 
 jest.mock("@/app/context/SiteContext", () => ({ useSite: jest.fn() }))
 jest.mock("@/app/hooks/use-auth", () => ({ useAuth: jest.fn() }))
 jest.mock("@/app/context/WidgetContext", () => ({ useWidgetContext: jest.fn() }))
 jest.mock("@/app/components/dashboard/base-kpi-widget", () => ({
-  BaseKpiWidget: ({ title, value, changeText }: any) => <div>{title}: {value} <span>{changeText}</span></div>,
+  BaseKpiWidget: ({ title, value, changeText, customStatus }: BaseKpiWidgetProps) => <div>{title}: {value} {customStatus || <span>{changeText}</span>}</div>,
 }))
 jest.mock("@/app/components/dashboard/monthly-sales-evolution-chart", () => ({
-  MonthlySalesEvolutionChart: (props: any) => {
+  MonthlySalesEvolutionChart: (props: React.ComponentProps<typeof MonthlySalesEvolutionChart>) => {
     mockTrendProps(props)
     return <div data-testid="trend">{props.byChannel ? "Channel trend" : "Total trend"}</div>
   },
@@ -34,13 +36,13 @@ const metric = (actual: number, previous = 0) => ({ actual, previous, percentCha
 function report(actual = 20): SalesReportData {
   return {
     totalSales: { ...metric(actual), formattedActual: String(actual), formattedPrevious: "0" },
-    transactions: metric(1), averageOrderValue: metric(actual), currency: "EUR", availableCurrencies: ["EUR"],
+    transactions: metric(actual === 0 ? 0 : 1), averageOrderValue: metric(actual), currency: "EUR", availableCurrencies: ["EUR"],
     channelSales: { online: { amount: actual, prevAmount: 0, percentChange: null }, retail: { amount: 0, prevAmount: 0, percentChange: 0 }, other: { amount: 0, prevAmount: 0, percentChange: 0 } },
     salesCategories: [{ name: "Services", amount: actual, prevAmount: 0, percentChange: null }],
     salesDistribution: [{ category: "Online", amount: actual, percentage: 100 }],
     monthlyData: [{ month: "2025-02", onlineSales: actual, retailSales: 0, otherSales: 0, totalSales: actual }],
     noData: false, periodType: "custom",
-    metadata: { startDate: "2025-02-01", endDate: "2025-02-02", prevStartDate: "2025-01-30", prevEndDate: "2025-01-31", segmentId: "all", basis: "Confirmed amounts, not cash collected.", dateBasis: "Inclusive sale dates.", categoriesIncluded: true },
+    metadata: { startDate: "2025-02-01", endDate: "2025-02-02", prevStartDate: "2025-01-30", prevEndDate: "2025-01-31", segmentId: "all", basis: "Active sale amounts, not cash collected.", dateBasis: "Inclusive sale dates; cash uses UTC movement dates.", categoriesIncluded: true },
   }
 }
 const ok = (body: unknown) => ({ ok: true, status: 200, json: async () => body })
@@ -62,6 +64,8 @@ describe("sales report sections and scoped loading", () => {
     expect(Boolean(screen.queryByTestId("distribution"))).toBe(section === undefined || section === "channels")
     expect(Boolean(screen.queryByTestId("trend"))).toBe(section !== "categories")
     expect(Boolean(screen.queryByText("Sales breakdown"))).toBe(section === undefined || section === "categories")
+    expect(Boolean(screen.queryByText(/Allocated active sale amounts by category/))).toBe(section === undefined || section === "categories")
+    expect(screen.queryByText(/Allocated confirmed/)).not.toBeInTheDocument()
     expect(screen.queryByText(/\+100\.0%/)).not.toBeInTheDocument()
     expect(fetchMock.mock.calls[0][0]).toContain(`includeCategories=${section === undefined || section === "categories"}`)
     expect(fetchMock.mock.calls[0][0]).not.toContain("useDemoData")
@@ -71,22 +75,25 @@ describe("sales report sections and scoped loading", () => {
     fetchMock.mockResolvedValueOnce({ ok: false, status: 500, json: async () => ({ error: "secret detail" }) })
     render(<SalesReports {...props} section="summary" />, { wrapper })
     expect(await screen.findByRole("alert")).toHaveTextContent("Unable to load")
-    expect(screen.queryByText("No sales in this period")).not.toBeInTheDocument()
+    expect(screen.queryByText("No active sales in this period")).not.toBeInTheDocument()
     expect(screen.queryByText(/secret detail/)).not.toBeInTheDocument()
     const empty = report(0)
     empty.noData = true
     fetchMock.mockResolvedValueOnce(ok(empty))
     fireEvent.click(screen.getByRole("button", { name: "Retry" }))
-    expect(await screen.findByText("No sales in this period")).toBeInTheDocument()
+    expect(await screen.findByText("No active sales in this period")).toBeInTheDocument()
+    expect(screen.getByText(/Net collected: Unavailable/)).toBeInTheDocument()
+    expect(screen.getByText(/Outstanding balance: Unavailable/)).toBeInTheDocument()
+    expect(screen.getByText(/This does not imply zero cash movement/)).toBeVisible()
   })
 
   it("provides currency selection for mixed data and scopes the next fetch", async () => {
     fetchMock.mockResolvedValueOnce({ ok: false, status: 422, json: async () => ({ availableCurrencies: ["EUR", "USD"] }) })
     render(<SalesReports {...props} section="summary" />, { wrapper })
     fireEvent.change(await screen.findByLabelText("Sales currency"), { target: { value: "EUR" } })
-    await screen.findByText(/Confirmed sales: EUR/)
+    await screen.findByText(/Active sales: EUR/)
     expect(fetchMock.mock.calls[1][0]).toContain("currency=EUR")
-    expect(screen.queryByText(/Confirmed sales: \$/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/Active sales: \$/)).not.toBeInTheDocument()
   })
 
   it("does not show an old site's delayed response after the scope changes", async () => {
@@ -97,7 +104,7 @@ describe("sales report sections and scoped loading", () => {
     site.mockReturnValue({ currentSite: { id: "site-b" } })
     fetchMock.mockResolvedValueOnce(ok(report(99)))
     view.rerender(<SalesReports {...props} section="summary" />)
-    await screen.findByText(/Confirmed sales: EUR.*99/)
+    await screen.findByText(/Active sales: EUR.*99/)
     await act(async () => { resolveOld(ok(report(777))) })
     expect(screen.queryByText(/777/)).not.toBeInTheDocument()
   })
@@ -155,6 +162,8 @@ describe("sales report sections and scoped loading", () => {
       dailyData: data.dailyData, data: data.monthlyData, startDate, endDate, coverage: data.metadata.trendCoverage,
     }))
     expect(screen.getByText(/Online includes online, shop and marketplace/).closest("details")).not.toHaveAttribute("open")
+    expect(screen.getByText(/Online includes online, shop and marketplace/)).toHaveTextContent("across 1 sale.")
+    expect(screen.getByText(/Online includes online, shop and marketplace/)).not.toHaveTextContent("transactions")
     expect(screen.getByText(/no currency conversion/)).not.toBeVisible()
     expect(screen.getByRole("region", { name: "Sales channels" })).toBeInTheDocument()
   })
@@ -177,6 +186,11 @@ describe("sales report sections and scoped loading", () => {
     const dateLabels = screen.getAllByText(/2025-02-01.*2025-02-02/)
     expect(dateLabels.filter(element => !element.closest("details"))).toHaveLength(1)
     expect(dateLabels.find(element => element.closest("details"))).not.toBeVisible()
+    expect(screen.getByText(/Active sales are pending and completed sale amounts by sale date/)).toBeVisible()
+    if (section === "summary") {
+      expect(screen.getByText(/Cash received and refunded follow each UTC movement date/)).toBeVisible()
+      expect(screen.getByText(/not a historical end-date balance/)).toBeVisible()
+    }
     if (section !== "categories") expect(mockTrendProps).toHaveBeenLastCalledWith(expect.objectContaining({ showPeriod: false }))
   })
 
@@ -192,5 +206,24 @@ describe("sales report sections and scoped loading", () => {
     expect(screen.queryByText("Sales report unavailable")).not.toBeInTheDocument()
     await act(async () => resolve(ok(report())))
     expect(await screen.findByTestId("trend")).toBeInTheDocument()
+  })
+
+  it("keeps movement-date cash visible when there are no active sales in the selected period", async () => {
+    const empty = report(0)
+    empty.noData = true
+    empty.financialSummary = {
+      receipts: metric(100), refunds: metric(150), netCollected: metric(-50),
+      outstanding: { amount: 0, saleCount: 0, unknownSaleCount: 0 },
+      paymentStatus: { paid: { count: 0, amount: 0 }, partial: { count: 0, amount: 0 }, unpaid: { count: 0, amount: 0 }, unknown: { count: 0, amount: 0 } },
+      excluded: { count: 1, amount: 150 }, cashIssues: 0,
+    }
+    fetchMock.mockResolvedValueOnce(ok(empty))
+    render(<SalesReports {...props} section="summary" embedded />, { wrapper })
+    expect(await screen.findByText("No active sales in this period")).toBeVisible()
+    expect(screen.getByText(/Net collected: -EUR.*50.00/)).toBeVisible()
+    expect(screen.getByText(/Received: EUR.*100.00.*Refunded: EUR.*150.00/)).toBeVisible()
+    expect(screen.getByText(/0 sales · Average sale: EUR.*0.00/)).toBeVisible()
+    expect(screen.getByText(/including older and cancelled sales/)).toBeVisible()
+    expect(screen.queryByText(/Confirmed sales/)).not.toBeInTheDocument()
   })
 })

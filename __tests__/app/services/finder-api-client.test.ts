@@ -103,7 +103,6 @@ it('authenticates same-origin Finder requests without an external API configured
 
 it.each([
   '/api/public/posts',
-  '/api/finder-other/search',
   'https://third-party.example/api/finder/person_role_search',
 ])('preserves explicit anonymous requests outside Finder: %s', async endpoint => {
   const { apiClient } = await import('@/app/services/api-client-service')
@@ -115,7 +114,7 @@ it.each([
 })
 
 it.each(['get', 'post', 'put', 'patch', 'delete'] as const)(
-  'preserves default authentication and explicit opt-out for non-Finder %s requests',
+  'requires authentication even with a legacy opt-out for private non-Finder %s requests',
   async method => {
     const { apiClient } = await import('@/app/services/api-client-service')
     const endpoint = '/api/example'
@@ -131,8 +130,8 @@ it.each(['get', 'post', 'put', 'patch', 'delete'] as const)(
     }))
 
     await send(false)
-    expect(getSession).toHaveBeenCalledTimes(1)
-    expect((fetch as jest.Mock).mock.calls[1][1].headers).not.toHaveProperty('Authorization')
+    expect(getSession).toHaveBeenCalledTimes(2)
+    expect((fetch as jest.Mock).mock.calls[1][1].headers).toHaveProperty('Authorization', 'Bearer user-session-token')
   },
 )
 

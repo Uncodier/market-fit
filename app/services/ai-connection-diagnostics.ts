@@ -17,20 +17,12 @@ export async function checkApiConnection(): Promise<AISegmentResponse> {
       };
     }
     
-    // Obtener las credenciales de API (en un entorno real, estas vendrían de una fuente segura)
-    const apiKey = process.env.NEXT_PUBLIC_API_KEY || "YOUR_API_KEY";
-    const apiSecret = process.env.NEXT_PUBLIC_API_SECRET || "YOUR_API_SECRET";
-    
     console.log("Checking API connection at:", apiClient.getApiUrl());
     
     try {
-      const response = await apiClient.get('/', {
-        headers: {
-          'x-api-key': apiKey,
-          'x-api-secret': apiSecret
-        },
+      const response = await apiClient.get('/api/status', {
         timeout: 5000,
-        includeAuth: false // No incluir auth token para este endpoint
+        includeAuth: false // Public reachability check, not proof of private API access.
       });
       
       // Si la respuesta es OK, la conexión está funcionando
@@ -115,19 +107,11 @@ export async function diagnoseApiConnection(): Promise<AISegmentResponse> {
     
     console.log("Authentication session found:", !!session);
     
-    // Obtener las credenciales de API (en un entorno real, estas vendrían de una fuente segura)
-    const apiKey = process.env.NEXT_PUBLIC_API_KEY || "YOUR_API_KEY";
-    const apiSecret = process.env.NEXT_PUBLIC_API_SECRET || "YOUR_API_SECRET";
-    
     // 3. Intentar una solicitud simple para verificar la conexión
     try {
       console.log("Testing API connection with simple request...");
       
-      const response = await apiClient.get('/', {
-        headers: {
-          'x-api-key': apiKey,
-          'x-api-secret': apiSecret
-        },
+      const response = await apiClient.get('/api/status', {
         timeout: 5000,
         includeAuth: false
       });

@@ -97,6 +97,8 @@ const nextConfig = {
       { source: '/api/stripe/checkout/order', destination: `${app}/api/stripe/checkout/order` },
       { source: '/api/fx/rates', destination: `${app}/api/fx/rates` },
       { source: '/api/geocode', destination: `${app}/api/geocode` },
+      { source: '/api/images/prompt', destination: `${app}/api/images/prompt` },
+      { source: '/api/commerce/visitor-session', destination: `${app}/api/commerce/visitor-session` },
       { source: '/api/version', destination: `${app}/api/version` },
     ]
   },

@@ -35,7 +35,7 @@ export function OverviewEconomics({ startDate, endDate, segmentId }: {
           <p>Acquisition cost uses recorded transaction costs or a campaign-budget fallback. Cost per lead uses recorded costs divided by created leads; no leads means unavailable, not zero cost per lead.</p>
         </div>
         <div className="space-y-2">
-          <p>The return chart uses the revenue and cost totals supplied by the ROI source. Its sales basis includes all statuses and is not the confirmed-sales or cash-receipt total in Summary.</p>
+          <p>The return chart uses the revenue and cost totals supplied by the ROI source. Its sales basis includes all statuses, unlike the active-sales total in Summary, and does not represent cash received.</p>
           <p>LTV and CAC label amounts USD without validating the underlying record currencies. These sources do not provide an auditable historical series or normalized currency basis. Charts show reported snapshots only. No history, currency conversion or cross-metric ratio is fabricated.</p>
         </div>
       </div>

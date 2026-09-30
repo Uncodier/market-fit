@@ -4,6 +4,7 @@ import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/app/components/ui/card"
 import { formatSalesMoney } from "@/lib/sales/report-format"
 import type { buildOverviewEconomics, EconomicsBar } from "./overview-economics-data"
+import { ReportChartFrame } from "@/app/components/dashboard/report-chart-frame"
 
 export function economicsAmount(value: number, currency: string, compact = false) {
   return currency === "UNSPECIFIED"
@@ -13,7 +14,7 @@ export function economicsAmount(value: number, currency: string, compact = false
 
 function ComparisonChart({ rows, currency, label }: { rows: EconomicsBar[]; currency: string; label: string }) {
   return <>
-    <div className="h-56 min-w-0 sm:h-64" role="img" aria-label={label}>
+    <ReportChartFrame className="h-56 min-w-0 sm:h-64" role="img" aria-label={label}>
       <ResponsiveContainer width="100%" height="100%">
         <BarChart data={rows} margin={{ top: 12, right: 12, bottom: 8, left: 0 }} barCategoryGap="28%">
           <CartesianGrid vertical={false} stroke="currentColor" opacity={0.1} strokeDasharray="3 3" />
@@ -28,7 +29,7 @@ function ComparisonChart({ rows, currency, label }: { rows: EconomicsBar[]; curr
           </Bar>
         </BarChart>
       </ResponsiveContainer>
-    </div>
+    </ReportChartFrame>
     <dl className="mt-3 grid grid-cols-2 gap-3 border-t pt-4">
       {rows.map(row => <div key={row.name} className="min-w-0">
         <dt className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -50,9 +51,9 @@ export function OverviewEconomicsCharts({ model }: { model: ReturnType<typeof bu
       <CardContent>
         {model.valueBars.length ? <ComparisonChart rows={model.valueBars} currency={model.valueCurrency}
           label="Reported customer value and acquisition cost comparison" />
-          : <div className="flex min-h-64 items-center justify-center text-center text-sm text-muted-foreground">
+          : <ReportChartFrame minimumHeight={256} className="flex min-h-64 items-center justify-center text-center text-sm text-muted-foreground">
             {!model.matchingCurrency ? "A comparison needs matching reported currencies." : "Customer value and acquisition cost are not available for this selection."}
-          </div>}
+          </ReportChartFrame>}
         <p className="mt-4 text-xs leading-relaxed text-muted-foreground">Source currency labels are unverified. Periods and customer populations may differ; no LTV:CAC ratio is inferred.</p>
       </CardContent>
     </Card>
@@ -64,9 +65,9 @@ export function OverviewEconomicsCharts({ model }: { model: ReturnType<typeof bu
       <CardContent>
         {model.returnBars.length ? <ComparisonChart rows={model.returnBars} currency={model.returnCurrency}
           label="Recorded revenue and return cost baseline comparison" />
-          : <div className="flex min-h-64 items-center justify-center text-center text-sm text-muted-foreground">
+          : <ReportChartFrame minimumHeight={256} className="flex min-h-64 items-center justify-center text-center text-sm text-muted-foreground">
             A return cannot be measured without revenue and a positive cost baseline.
-          </div>}
+          </ReportChartFrame>}
         <p className="mt-4 text-xs leading-relaxed text-muted-foreground">
           {model.costLabel === "Campaign budget" ? "Budget is a planning estimate, not verified spend. " : "Uses the source's transaction-cost total. "}
           {model.returnCurrency === "UNSPECIFIED" ? "Currency is unspecified by this source; amounts are not converted." : `Reported in ${model.returnCurrency}; no currency conversion.`}

@@ -34,6 +34,7 @@ export async function fetchSalesReport([, url]: readonly [string, string]): Prom
       : []
     const message = response.status === 400 && typeof body?.error === "string" ? body.error
       : response.status === 422 ? "Select a currency to view sales without combining different currencies."
+      : response.status === 403 ? "This report requires access to all linked sales and orders. Ask a site manager to review your record visibility."
       : "Unable to load sales data. Please try again."
     throw new SalesReportFetchError(message, response.status, currencies)
   }

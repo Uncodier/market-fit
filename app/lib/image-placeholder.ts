@@ -1,0 +1,2 @@
+/** Neutral artwork, not a generated result. Kept inline for server rendering without self-fetches. */
+export const IMAGE_PLACEHOLDER_SVG = '<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512"><rect width="512" height="512" rx="24" fill="#f1f5f9"/><rect x="112" y="128" width="288" height="256" rx="20" fill="none" stroke="#94a3b8" stroke-width="12"/><circle cx="208" cy="208" r="28" fill="#94a3b8"/><path d="M128 360l92-96 64 64 48-48 52 80" fill="none" stroke="#94a3b8" stroke-width="12" stroke-linejoin="round"/></svg>'

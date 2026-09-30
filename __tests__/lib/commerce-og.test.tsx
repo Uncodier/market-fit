@@ -3,6 +3,8 @@
 import sharp from "sharp"
 import { renderCommerceIcon, renderCommerceOgImage } from "@/app/lib/commerce-og"
 
+jest.mock("server-only", () => ({}))
+
 jest.mock("next/og", () => {
   // Keep the real ImageResponse/PNG renderer, but let Node load Next's dynamic
   // imports outside Jest's CommonJS VM (which lacks experimental VM modules).
@@ -68,5 +70,36 @@ describe("commerce image rendering", () => {
     })
 
     await expectPng(response, { width: 1200, height: 630 })
+  })
+
+  it("renders prompt fallbacks without calling a private API or the web application", async () => {
+    jest.mocked(fetch).mockClear()
+    const response = await renderCommerceOgImage({
+      source: { kind: "url", url: "https://api.example.test/api/public/image/prompt/Coffee?width=512&height=512" },
+      title: "Coffee",
+    })
+    await expectPng(response, { width: 1200, height: 630 })
+    expect(fetch).not.toHaveBeenCalled()
+  })
+
+  it("renders an existing site-scoped public prompt cache without generation credentials", async () => {
+    const original = process.env.NEXT_PUBLIC_SUPABASE_URL
+    process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://project.supabase.co'
+    try {
+      jest.mocked(fetch).mockReset().mockResolvedValueOnce(new Response(new Uint8Array(await webpImage()), {
+        headers: { 'content-type': 'image/webp' },
+      }))
+      const response = await renderCommerceOgImage({
+        source: { kind: 'url', url: '/api/images/prompt?prompt=Coffee&width=400&height=400&site_id=00000000-0000-4000-8000-000000000001' },
+        title: 'Coffee',
+      })
+      await expectPng(response, { width: 1200, height: 630 })
+      expect(fetch).toHaveBeenCalledTimes(1)
+      expect(String(jest.mocked(fetch).mock.calls[0][0])).toContain('/storage/v1/object/public/generative_images/prompt_cache/')
+      expect(jest.mocked(fetch).mock.calls[0][1]).toMatchObject({ headers: { Accept: 'image/*' }, credentials: 'omit', redirect: 'error' })
+    } finally {
+      if (original === undefined) delete process.env.NEXT_PUBLIC_SUPABASE_URL
+      else process.env.NEXT_PUBLIC_SUPABASE_URL = original
+    }
   })
 })

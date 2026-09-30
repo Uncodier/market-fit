@@ -344,16 +344,17 @@ describe("module image visuals", () => {
     expect(prompt).not.toContain("full-size at 88 to 92 percent")
   })
 
-  it("requests square 256px images from the public prompt endpoint", () => {
+  it("requests square 256px images through the same-origin image boundary", () => {
     const previousApiUrl = process.env.NEXT_PUBLIC_API_SERVER_URL
     process.env.NEXT_PUBLIC_API_SERVER_URL = "https://images.example.com"
 
     const url = new URL(
       getModuleImageUrl("marketing", "campaigns", "Campaigns"),
+      "https://app.example.test",
     )
 
-    expect(url.origin).toBe("https://images.example.com")
-    expect(url.pathname).toContain("/api/public/image/prompt/")
+    expect(url.origin).toBe("https://app.example.test")
+    expect(url.pathname).toBe("/api/images/prompt")
     expect(url.searchParams.get("width")).toBe("256")
     expect(url.searchParams.get("height")).toBe("256")
 

@@ -1,6 +1,7 @@
 import type { ReactNode } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/app/components/ui/card"
 import { Skeleton } from "@/app/components/ui/skeleton"
+import { ReportChartFrame } from "@/app/components/dashboard/report-chart-frame"
 
 /** Keep the same panel tracks while modules, requests and retries settle. */
 export function OverviewActivityLayout({ chart, activity, action, activityTitle = "Recent commercial activity", loading = false }: {
@@ -22,9 +23,9 @@ export function OverviewActivityLayout({ chart, activity, action, activityTitle 
         </div>
       </CardHeader>
       <CardContent className="min-w-0">
-        <div className="h-[300px] min-w-0 sm:h-[360px] xl:relative xl:h-full xl:min-h-[360px]" data-activity-chart-frame>
+        <ReportChartFrame minimumHeight={360} className="h-[300px] min-w-0 sm:h-[360px] xl:relative xl:h-full xl:min-h-[360px]" data-activity-chart-frame>
           <div className="h-full min-w-0 xl:absolute xl:inset-0 [&>*]:h-full">{chart}</div>
-        </div>
+        </ReportChartFrame>
       </CardContent>
     </Card>
     <Card className="min-w-0 shadow-none" data-report-panel="recent-activity" data-loading-panel={loading ? "list" : undefined}>

@@ -41,7 +41,7 @@ it("keeps a wrapping legend outside the fixed plot so long labels are not croppe
   expect(legend).toHaveClass("flex-wrap", "text-xs")
   expect(legend.previousElementSibling).toBe(frame)
   expect(screen.getByText(category)).toHaveClass("break-words", "[overflow-wrap:anywhere]")
-  expect(screen.getByText(/Share of confirmed sales.*EUR/)).toBeInTheDocument()
+  expect(screen.getByText(/Share of active sale amounts by channel, not cash received.*EUR/)).toBeInTheDocument()
 })
 
 it("preserves the negative-channel safeguard rather than drawing a misleading share", () => {

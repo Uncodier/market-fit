@@ -203,6 +203,8 @@ it("puts the date-scoped trend before distribution and breakdown with details be
   const caveat = screen.getByText(/Cost currency is not supplied/)
   expect(caveat.closest("details")).not.toHaveAttribute("open")
   expect(caveat).not.toBeVisible()
+  expect(screen.getByText(/Efficiency is active sales/)).toHaveTextContent("not cash received")
+  expect(screen.getByText(/Efficiency is active sales/)).toHaveTextContent("sales linked to any cancelled order are excluded")
 })
 
 it.each(["summary", "categories"] as const)("does not duplicate the page heading or selected dates in embedded cost %s", async section => {

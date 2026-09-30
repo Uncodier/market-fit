@@ -1,6 +1,6 @@
 import { buildSalesReport, SalesCurrencyRequiredError } from "@/app/api/revenue/build-sales-report"
 import { aggregateSalesByCategory } from "@/app/api/revenue/revenue-aggregations"
-import { queryReportSales, readSalesPages, SALES_REPORT_FIELDS, type ReportSale } from "@/app/api/sales/sales-query"
+import { queryReportSales, readSalesPages, SALES_FINANCIAL_FIELDS, type ReportSale } from "@/app/api/sales/sales-query"
 import { salesReportPeriod, salesReportFilters } from "@/lib/sales/report-period"
 import { formatSalesMoney } from "@/lib/sales/report-format"
 import { salesTestClient } from "./sales-test-client"
@@ -31,13 +31,13 @@ describe("complete and scoped sales queries", () => {
   it("paginates beyond the provider cap using explicit fields and filters", async () => {
     const rows = Array.from({ length: 1201 }, (_, i) => ({ ...sale(String(i), "2025-02-01", 1), site_id: siteId, segment_id: segmentId }))
     const client = salesTestClient({ sales: rows }, 300)
-    const result = await queryReportSales(client, siteId, segmentId, "2025-02-01", "2025-02-03")
+    const result = await queryReportSales(client, siteId, segmentId)
     expect(result).toHaveLength(1201)
-    expect(client.calls.filter((call) => call.method === "select").every((call) => call.args[0] === SALES_REPORT_FIELDS)).toBe(true)
+    expect(client.calls.filter((call) => call.method === "select").every((call) => call.args[0] === SALES_FINANCIAL_FIELDS)).toBe(true)
     expect(client.calls.filter((call) => call.method === "eq")).toContainEqual({ table: "sales", method: "eq", args: ["segment_id", segmentId] })
     expect(client.calls.filter((call) => call.method === "range").length).toBeGreaterThan(4)
   })
-  it("only falls back to created_at for null sale dates and excludes other tenants/statuses", async () => {
+  it("loads all scoped history including cancelled and older sales for receipt-date reporting", async () => {
     const rows = [
       sale("dated", "2025-02-01", 10), sale("next", "2025-02-03", 10),
       sale("wrong-sale-date", "2025-01-01", 10, { created_at: "2025-02-01T00:00:00Z" }),
@@ -46,11 +46,11 @@ describe("complete and scoped sales queries", () => {
       sale("pending", "2025-02-01", 10, { status: "pending" }),
     ].map((row) => ({ ...row, site_id: siteId }))
     rows.push({ ...sale("foreign", "2025-02-01", 10), site_id: "foreign" })
-    expect((await queryReportSales(salesTestClient({ sales: rows }), siteId, "all", "2025-02-01", "2025-02-03")).map((row) => row.id))
-      .toEqual(["dated", "pending", "fallback"])
+    expect((await queryReportSales(salesTestClient({ sales: rows }), siteId, "all")).map((row) => row.id))
+      .toEqual(["cancelled", "dated", "fallback", "next", "pending", "wrong-sale-date"])
   })
   it("fails on query errors and safety limits instead of returning partial totals", async () => {
-    await expect(queryReportSales(salesTestClient({}, 500, "sales"), siteId, "all", period.start, period.endExclusive)).rejects.toThrow("query failed")
+    await expect(queryReportSales(salesTestClient({}, 500, "sales"), siteId, "all")).rejects.toThrow("query failed")
     const client = salesTestClient({ sales: [{ id: "1" }, { id: "2" }] })
     await expect(readSalesPages(() => client.from("sales").select("id"), 1)).rejects.toThrow("Too many")
   })

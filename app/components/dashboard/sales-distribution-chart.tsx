@@ -8,6 +8,7 @@ import { EmptyCard } from "@/app/components/ui/empty-card"
 import { PieChart as PieChartIcon } from "@/app/components/ui/icons"
 import { Skeleton } from "@/app/components/ui/skeleton"
 import { formatSalesMoney } from "@/lib/sales/report-format"
+import { ReportChartFrame } from "./report-chart-frame"
 
 interface SalesDistribution {
   category: string;
@@ -52,11 +53,11 @@ export function SalesDistributionChart({ data, isLoading, dataReady, currency = 
       <CardHeader className="space-y-2 p-4 pb-3 sm:p-5 sm:pb-3">
         <CardTitle className="text-base">Sales Distribution</CardTitle>
         <CardDescription className="text-xs">
-          Share of confirmed sales by channel{!loading && hasData ? ` - ${formatCurrency(total)}` : ""}
+          Share of active sale amounts by channel, not cash received{!loading && hasData ? ` - ${formatCurrency(total)}` : ""}
         </CardDescription>
       </CardHeader>
       <CardContent className="min-w-0 flex-1 px-3 pb-4 sm:px-5">
-        <div className="h-[300px] min-w-0 w-full sm:h-[340px]" aria-busy={loading}
+        <ReportChartFrame className="h-[300px] min-w-0 w-full sm:h-[340px]" aria-busy={loading}
           role={loading || !hasData ? "status" : "img"}
           aria-label={loading ? "Loading sales distribution" : "Sales distribution by channel"}>
           {loading ? <Skeleton className="h-full w-full" /> : !hasData ? <div className="flex h-full items-center justify-center">
@@ -87,8 +88,8 @@ export function SalesDistributionChart({ data, isLoading, dataReady, currency = 
                 data={data}
                 cx="50%"
                 cy="50%"
-                innerRadius={60}
-                outerRadius={90}
+                innerRadius="45%"
+                outerRadius="70%"
                 paddingAngle={2}
                 dataKey="amount"
                 nameKey="category"
@@ -115,7 +116,7 @@ export function SalesDistributionChart({ data, isLoading, dataReady, currency = 
               }} />
             </PieChart>
           </ResponsiveContainer>}
-        </div>
+        </ReportChartFrame>
         {!loading && hasData && <ul className="mt-3 flex flex-wrap justify-center gap-x-4 gap-y-2 text-xs text-muted-foreground" aria-label="Sales distribution legend">
           {data.map((item, index) => <li key={item.category} className="inline-flex min-w-0 items-center gap-1.5">
             <span aria-hidden="true" className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: COLORS[index % COLORS.length] }} />

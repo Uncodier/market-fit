@@ -2,6 +2,7 @@ import { z } from 'zod'
 import { requireSiteAccess } from '@/lib/auth/api-site-access'
 import { userCanOnSite } from '@/lib/permissions/site-access'
 import { decodeRequestBody, readLimitedRequestBody, RequestBodyTooLargeError } from '@/lib/http/read-limited-request-body'
+import { chatBackendUrl, isSameOriginChatRequest } from '../proxy-security'
 
 export const maxDuration = 120
 const PATH = '/api/agents/chat/intervention'
@@ -46,44 +47,8 @@ function failure(message: string, status: number) {
   })
 }
 
-function backendUrl(request: Request): URL | null {
-  const configured = (process.env.API_SERVER_URL || process.env.NEXT_PUBLIC_API_SERVER_URL || '').trim()
-  const base = /^https?:\/\//i.test(configured) ? configured
-    : `${/^(localhost|127\.0\.0\.1)(:|$)/i.test(configured) ? 'http' : 'https'}://${configured}`
-  try {
-    const url = new URL(base)
-    const local = ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname)
-    if (!configured || url.username || url.password || url.search || url.hash || url.pathname !== '/' ||
-      (url.protocol !== 'https:' && !(url.protocol === 'http:' && local && process.env.NODE_ENV !== 'production')) ||
-      url.origin === new URL(request.url).origin) return null
-    return new URL(PATH, url)
-  } catch {
-    return null
-  }
-}
-
-function isSameOrigin(request: Request): boolean {
-  if (request.headers.get('sec-fetch-site') === 'cross-site') return false
-  const origin = request.headers.get('origin')
-  if (!origin) return true
-  try {
-    const requestUrl = new URL(request.url)
-    if (origin === requestUrl.origin) return true
-    // `next dev -H 0.0.0.0` exposes the bind address in request.url rather
-    // than localhost. Only normalize loopback development requests.
-    const browserOrigin = new URL(origin)
-    return process.env.NODE_ENV !== 'production' &&
-      ['0.0.0.0', 'localhost', '127.0.0.1', '[::1]'].includes(requestUrl.hostname) &&
-      ['localhost', '127.0.0.1', '[::1]'].includes(browserOrigin.hostname) &&
-      browserOrigin.protocol === requestUrl.protocol &&
-      browserOrigin.host === request.headers.get('host')
-  } catch {
-    return false
-  }
-}
-
 export async function POST(request: Request): Promise<Response> {
-  if (!isSameOrigin(request)) {
+  if (!isSameOriginChatRequest(request)) {
     return failure('Origin not allowed', 403)
   }
   if (request.headers.get('content-type')?.split(';')[0].trim() !== 'application/json') {
@@ -132,7 +97,7 @@ export async function POST(request: Request): Promise<Response> {
   if (sessionError || !session?.access_token || session.user?.id !== access.userId) {
     return failure('Please sign in again to send messages.', 401)
   }
-  const target = backendUrl(request)
+  const target = chatBackendUrl(request, PATH)
   if (!target) return failure('Intervention API is not configured', 503)
 
   try {

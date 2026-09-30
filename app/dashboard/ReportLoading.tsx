@@ -10,6 +10,7 @@ import { getReportSection, type ReportId } from "./report-sections"
 import { OverviewActivityLayout } from "./OverviewActivityLayout"
 import { ReportChartLoading } from "@/app/components/dashboard/report-visual-loading"
 import { RecentActivityLoading } from "@/app/components/dashboard/recent-activity-loading"
+import { ReportChartFrame } from "@/app/components/dashboard/report-chart-frame"
 
 type LoadingSelection = { report?: ReportId; section?: string }
 const ReportLoadingContext = createContext<LoadingSelection>({})
@@ -33,6 +34,7 @@ type Panel = {
   bare?: boolean
   compact?: boolean
   scopeNote?: boolean
+  fitViewport?: boolean
 }
 type LoadingLayout = {
   kpis?: number
@@ -77,7 +79,7 @@ function loadingLayout(report: ReportId, section: string): LoadingLayout {
       }
       return { gap: "space-y-6", details: true, groups: Array.from({ length: 2 }, () => ({
         heading: true, columns: "lg:grid-cols-2", panels: [
-          { kind: "distribution", height: "h-56", rows: 4 }, { kind: "distribution", height: "h-56", rows: 4 },
+          { kind: "distribution", height: "h-56", rows: 4, fitViewport: false }, { kind: "distribution", height: "h-56", rows: 4, fitViewport: false },
         ],
       })) }
     case "traffic":
@@ -105,7 +107,7 @@ function Line({ className }: { className: string }) {
 
 function LoadingKpis({ count, report, section }: { count: number; report: ReportId; section: string }) {
   const titles = report === "sales" ? section === "channels"
-    ? ["Online sales", "Retail sales", "Other / unassigned"] : ["Confirmed sales", "Transactions", "Average sale value"]
+    ? ["Online sales", "Retail sales", "Other / unassigned"] : ["Net collected", "Active sales", "Outstanding balance"]
     : report === "costs" ? ["Total Costs", "Marketing Costs", "Efficiency Ratio", "Overhead Costs"]
     : report === "social" ? ["Views", "Reach", "Engagement Rate", "Comments"]
     : report === "traffic" ? ["Sessions", "Session Time", "Lead Conversion", "Client Conversion"]
@@ -128,7 +130,7 @@ function LoadingRows({ rows = 5, columns = 2 }: { rows?: number; columns?: numbe
   </div>
 }
 
-function LoadingPanel({ kind, height, rows, columns, summary, footer, bare, compact, scopeNote }: Panel) {
+function LoadingPanel({ kind, height, rows, columns, summary, footer, bare, compact, scopeNote, fitViewport = true }: Panel) {
   return <div data-loading-panel={kind} className={cn("min-w-0 overflow-hidden", !bare && "h-full rounded-lg border bg-background")}>
     <div className={cn("space-y-2", bare ? "mb-3" : "p-4 pb-3 sm:p-5 sm:pb-3")}>
       <Line className="h-5 w-44" />
@@ -139,18 +141,18 @@ function LoadingPanel({ kind, height, rows, columns, summary, footer, bare, comp
       {summary && <div className="mb-4 flex gap-5" data-loading-summary>
         {Array.from({ length: summary }, (_, index) => <div key={index} className="min-w-0 space-y-2"><Line className="h-3 w-24" /><Line className="h-7 w-20" /></div>)}
       </div>}
-      {kind === "chart" && <div data-loading-plot className={cn("flex min-w-0 flex-col justify-between pb-5 pt-3", height)}>
+      {kind === "chart" && <ReportChartFrame data-loading-plot className={cn("flex min-w-0 flex-col justify-between pb-5 pt-3", height)}>
         <div className="ml-8 flex flex-1 flex-col justify-between border-b border-l border-border/50 px-3 py-2">
           {[0, 1, 2, 3].map(index => <div key={index} className="border-t border-dashed border-border/40" />)}
         </div>
         <div className="mt-3 flex justify-center gap-5"><Line className="h-3 w-20" /><Line className="h-3 w-20" /></div>
-      </div>}
+      </ReportChartFrame>}
       {kind === "distribution" && compact ? <div className="grid min-w-0 items-start gap-3 sm:grid-cols-[112px_minmax(0,1fr)]">
         <div className="mx-auto mt-2 h-[100px] w-[100px] rounded-full border-[18px] border-muted/50" />
         <LoadingRows rows={rows} />
-      </div> : kind === "distribution" && <div data-loading-plot className={cn("flex items-center justify-center", height)}>
+      </div> : kind === "distribution" && <ReportChartFrame enabled={fitViewport} data-loading-plot className={cn("flex items-center justify-center", height)}>
         <div className="h-40 w-40 rounded-full border-[22px] border-muted/50" />
-      </div>}
+      </ReportChartFrame>}
       {kind === "table" && <div className={cn("min-w-0 overflow-hidden", bare && "rounded-md border px-4")}>
         <div className="border-b"><LoadingRows rows={1} columns={columns} /></div>
         <LoadingRows rows={rows} columns={columns} />

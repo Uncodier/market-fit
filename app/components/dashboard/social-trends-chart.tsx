@@ -1,5 +1,7 @@
 "use client"
 
+import { ReportChartFrame } from "./report-chart-frame"
+
 import { useId, useState } from "react"
 import { format, parseISO } from "date-fns"
 import { Area, CartesianGrid, ComposedChart, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts"
@@ -115,14 +117,14 @@ export function SocialTrendsChart({ data, isLoading = false, error = false, show
         {isLoading ? (
           <div role="status" aria-label="Loading performance trends" className="space-y-5">
             <Skeleton className="h-14 w-64 max-w-full" />
-            <Skeleton className="h-[300px] w-full sm:h-[340px]" />
+            <ReportChartFrame className="h-[300px] w-full sm:h-[340px]"><Skeleton className="h-full w-full" /></ReportChartFrame>
           </div>
         ) : error ? (
-          <div role="alert" className="flex h-[300px] items-center justify-center sm:h-[340px]">
+          <ReportChartFrame role="alert" className="flex h-[300px] items-center justify-center sm:h-[340px]">
             <EmptyCard title="Unable to load performance trends" description="Please try again later." variant="simple" showShadow={false} contentClassName="min-h-0 py-6" />
-          </div>
+          </ReportChartFrame>
         ) : !hasPosts || !data || !first || !last ? (
-          <div className="flex h-[300px] flex-col items-center justify-center gap-2 sm:h-[340px]"><EmptyCard
+          <ReportChartFrame className="flex h-[300px] flex-col items-center justify-center gap-2 sm:h-[340px]"><EmptyCard
             icon={<Activity className="h-8 w-8" />}
             title="No post performance data"
             description="There are no post metrics for the selected or previous period. Try a different date range."
@@ -131,7 +133,7 @@ export function SocialTrendsChart({ data, isLoading = false, error = false, show
             contentClassName="min-h-0 py-6"
           />
           {!!data?.undatedPostCount && <p className="text-xs text-muted-foreground">{data.undatedPostCount} posts without a valid publication date were excluded; sync dates are not publication dates.</p>}
-          </div>
+          </ReportChartFrame>
         ) : (
           <>
             <div className="flex flex-wrap items-start gap-x-8 gap-y-3">
@@ -145,7 +147,7 @@ export function SocialTrendsChart({ data, isLoading = false, error = false, show
               </div>
               <p className="text-xs text-muted-foreground sm:ml-auto" aria-live="polite">{comparisonLabel(data, metric)}</p>
             </div>
-            <div className="h-[300px] min-w-0 w-full sm:h-[340px]" role="img"
+            <ReportChartFrame className="h-[300px] min-w-0 w-full sm:h-[340px]" role="img"
               aria-label={`${metricLabel} by publication period, compared with the previous period. Selected: ${formatRange(first.date, last.endDate)}. Previous: ${formatRange(first.previousDate, last.previousEndDate)}.`}>
               <ResponsiveContainer width="100%" height="100%" minWidth={0}>
                 <ComposedChart data={data.points} margin={{ top: 10, right: 12, left: 0, bottom: 5 }} accessibilityLayer>
@@ -181,7 +183,7 @@ export function SocialTrendsChart({ data, isLoading = false, error = false, show
                   )}
                 </ComposedChart>
               </ResponsiveContainer>
-            </div>
+            </ReportChartFrame>
             <div className="flex flex-wrap gap-x-6 gap-y-2 text-xs text-muted-foreground">
               <span className="flex items-center gap-2">
                 <span className="h-0.5 w-5 shrink-0" style={{ backgroundColor: currentColor }} aria-hidden="true" />

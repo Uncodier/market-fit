@@ -1,8 +1,9 @@
 "use client"
 
-import React, { useState, useEffect } from "react"
+import React, { useState } from "react"
 import { resolveItemImage, type ItemImagePromptInput } from "@/app/lib/image-utils"
 import type { ImageSizePreset } from "@/app/lib/optimize-storage-image"
+import { normalizePromptImageUrl } from "@/app/lib/prompt-image-url"
 
 interface ProgressiveImageProps extends React.ImgHTMLAttributes<HTMLImageElement> {
   item?: ItemImagePromptInput | null
@@ -25,20 +26,18 @@ export const ProgressiveImage = React.memo(function ProgressiveImage({
   fetchPriority = "auto",
   ...props
 }: ProgressiveImageProps) {
-  const [isLoaded, setIsLoaded] = useState(false)
+  const [loadedSrc, setLoadedSrc] = useState<string | null>(null)
 
   // Use the direct URL if provided, otherwise resolve via the catalog item.
   // Note: For directUrls we don't automatically generate srcSet variants.
-  const src = directUrl || (item ? resolveItemImage(item, fallbackPreset) : "")
+  const normalizedDirect = directUrl ? normalizePromptImageUrl(directUrl, item?.site_id || item?.site?.id) : null
+  const src = normalizedDirect || (item ? resolveItemImage(item, fallbackPreset) : "")
   
-  const thumbUrl = directUrl ? directUrl : (item ? resolveItemImage(item, "thumb") : src)
-  const cardUrl = directUrl ? directUrl : (item ? resolveItemImage(item, "card") : src)
-  const heroUrl = directUrl ? directUrl : (item ? resolveItemImage(item, "hero") : src)
+  const thumbUrl = normalizedDirect || (item ? resolveItemImage(item, "thumb") : src)
+  const cardUrl = normalizedDirect || (item ? resolveItemImage(item, "card") : src)
+  const heroUrl = normalizedDirect || (item ? resolveItemImage(item, "hero") : src)
 
-  // Reset load state if the base source changes
-  useEffect(() => {
-    setIsLoaded(false)
-  }, [src])
+  const isLoaded = loadedSrc === src
 
   if (!src) return null
 
@@ -66,7 +65,7 @@ export const ProgressiveImage = React.memo(function ProgressiveImage({
         loading={loading}
         decoding="async"
         fetchPriority={fetchPriority}
-        onLoad={() => setIsLoaded(true)}
+        onLoad={() => setLoadedSrc(src)}
         onError={(e) => {
           e.currentTarget.style.opacity = '0'
         }}

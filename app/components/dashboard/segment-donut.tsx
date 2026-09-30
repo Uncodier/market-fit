@@ -38,12 +38,12 @@ export function SegmentDonut({ showTotal = false, segmentId = "all", startDate, 
   // A callback update can notify a new consumer without restarting a request.
   useEffect(() => { onTotalUpdate?.(formattedTotal) }, [formattedTotal, onTotalUpdate])
 
-  if (authLoading || siteLoading || isLoading || isValidating) return <ReportChartLoading />
+  if (authLoading || siteLoading || isLoading || isValidating) return <ReportChartLoading fitViewport={false} />
   if (!user?.id) return <ReportState state="error" message="Sign in to view this report." />
   if (!currentSite || currentSite.id === "default") return <ReportState state="empty" message="Select a site to view this report." />
   if (!period) return <ReportState state="error" message="Select a valid date range." />
   if (error) return <ReportState state="error" message={error.message} onRetry={() => { void mutate() }} />
-  if (!data) return <ReportChartLoading />
+  if (!data) return <ReportChartLoading fitViewport={false} />
   if (!total) return <ReportState state="empty" message="No data for the selected filters." />
   const title = endpoint.replaceAll("-", " ")
   return <DistributionChart data={data} title={title} showTotal={showTotal} formatValues={formatValues} currency={currency} variant={variant} />

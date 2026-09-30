@@ -3,6 +3,7 @@ import {
   optimizeForPreset,
   type ImageSizePreset,
 } from "@/app/lib/optimize-storage-image"
+import { normalizePromptImageUrl, promptImageUrl } from "./prompt-image-url"
 
 export type { ImageSizePreset } from "@/app/lib/optimize-storage-image"
 export {
@@ -17,12 +18,13 @@ export {
 const MAX_PROMPT_CHARS = 220
 
 export type ItemImagePromptInput = {
+  site_id?: string | null
   image_url?: string | null
   name: string
   description?: string | null
   category?: string | { name?: string | null } | null
   siteDescription?: string | null
-  site?: { description?: string | null; name?: string | null } | null
+  site?: { id?: string | null; description?: string | null; name?: string | null } | null
   parent?: { name?: string | null; description?: string | null } | null
   /** How parent context is phrased in AI prompts. Defaults to variant. */
   parentRelation?: "variant" | "addon"
@@ -34,12 +36,8 @@ export type ItemImagePromptInput = {
   } | null
 }
 
-export function publicPromptImageUrl(prompt: string, size = 1024): string {
-  const apiServerUrl =
-    process.env.NEXT_PUBLIC_API_SERVER_URL || "http://localhost:3001";
-  return `${apiServerUrl}/api/public/image/prompt/${encodeURIComponent(
-    prompt.trim(),
-  )}?width=${size}&height=${size}`;
+export function publicPromptImageUrl(prompt: string, size = 1024, siteId?: string | null): string {
+  return promptImageUrl(prompt, size, siteId)
 }
 
 function cleanPromptPart(value?: string | null, max = 80): string {
@@ -131,16 +129,17 @@ export function resolveItemImage(
 ): string {
   const uploaded = realImageUrl(item.image_url)
   if (uploaded) {
-    return size ? optimizeForPreset(uploaded, size) : uploaded
+    const normalized = normalizePromptImageUrl(uploaded, item.site_id || item.site?.id)
+    return size ? optimizeForPreset(normalized, size) : normalized
   }
   const px = size ? IMAGE_SIZE_PX[size] : 1024
-  return publicPromptImageUrl(buildItemImagePrompt(item), px)
+  return publicPromptImageUrl(buildItemImagePrompt(item), px, item.site_id || item.site?.id)
 }
 
-/** Real uploaded URLs only (skips AI prompt placeholders). */
+/** Preserve uploaded media and route legacy prompt URLs through the local boundary. */
 export function realImageUrl(url?: string | null): string | null {
   const trimmed = typeof url === "string" ? url.trim() : ""
-  return trimmed || null
+  return trimmed ? normalizePromptImageUrl(trimmed) : null
 }
 
 export type PdpGalleryEntry = {
@@ -163,7 +162,7 @@ type GalleryChild = {
 
 /**
  * PDP gallery entries for thumbs + main image.
- * With variants: one thumb per child — uploaded image_url, else AI prompt image for the SKU
+ * With variants: one thumb per child — uploaded image_url, else a scoped prompt image for the SKU
  * (includes parent name/description, category, and site description when available).
  * Parent real image is included when children exist and parent has its own photo.
  * Extra metadata.gallery URLs are appended (deduped).
@@ -178,6 +177,7 @@ export function buildPdpGalleryEntries(params: {
   const entries: PdpGalleryEntry[] = []
   const seen = new Set<string>()
   const parentContext = {
+    site_id: params.parent.site_id || params.parent.site?.id,
     parent: {
       name: params.parent.name,
       description: params.parent.description,
@@ -251,9 +251,10 @@ export function buildPdpGalleryUrls(params: {
   }).map((e) => e.url)
 }
 
-/** Same dynamic AI image API as catalog when a promotion has no uploaded image. */
+/** Same authenticated-generation/public-delivery boundary as catalog images. */
 export function resolvePromotionImage(
   promo: {
+    site_id?: string | null
     image_url?: string | null
     name?: string | null
   },
@@ -261,8 +262,9 @@ export function resolvePromotionImage(
 ): string {
   const uploaded = realImageUrl(promo.image_url)
   if (uploaded) {
-    return size ? optimizeForPreset(uploaded, size) : uploaded
+    const normalized = normalizePromptImageUrl(uploaded, promo.site_id)
+    return size ? optimizeForPreset(normalized, size) : normalized
   }
   const px = size ? IMAGE_SIZE_PX[size] : 1024
-  return publicPromptImageUrl(promo.name?.trim() || "Promotion", px)
+  return publicPromptImageUrl(promo.name?.trim() || "Promotion", px, promo.site_id)
 }

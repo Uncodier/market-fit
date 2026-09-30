@@ -60,7 +60,8 @@ export async function dashboardBatchResponse(options: {
 
   try {
     // User-scoped revenue honors RLS; do not share one member's visible rows with another.
-    const cacheKey = await normalizedRequestCacheKey(`dashboard-${kind}:v3:${userId}`, request)
+    const version = kind === "overview" ? "v4" : "v3"
+    const cacheKey = await normalizedRequestCacheKey(`dashboard-${kind}:${version}:${userId}`, request)
     const result = await readThroughJsonCache({
       key: cacheKey,
       ttlSeconds: 60,

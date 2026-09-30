@@ -36,7 +36,7 @@ describe("section-aware report loading", () => {
     const loadingCard = container.querySelector('[data-report-kpi]')!
     const classNames = [loadingCard.className, ...Array.from(loadingCard.querySelectorAll('[data-kpi-slot]')).map(node => node.className)]
     const loadingGrid = loadingCard.parentElement!.className
-    rerender(<ReportKpiGrid columns={3}><BaseKpiWidget title="Confirmed sales" value="$4,250" changeText="No previous baseline" isLoading={false} /></ReportKpiGrid>)
+    rerender(<ReportKpiGrid columns={3}><BaseKpiWidget title="Net collected" value="$4,250" changeText="No previous baseline" isLoading={false} /></ReportKpiGrid>)
     const readyCard = container.querySelector('[data-report-kpi]')!
     expect([readyCard.className, ...Array.from(readyCard.querySelectorAll('[data-kpi-slot]')).map(node => node.className)]).toEqual(classNames)
     expect(readyCard.parentElement!.className).toBe(loadingGrid)
@@ -54,6 +54,14 @@ describe("section-aware report loading", () => {
     expect(container.querySelector('[data-loading-plot]')).toHaveClass("h-[320px]", "sm:h-[360px]")
     expect(container.querySelector('[data-loading-summary]')).toBeInTheDocument()
     expect(container.querySelectorAll('[data-report-kpi]')).toHaveLength(0)
+  })
+
+  it("loads financial summary labels without changing channel amount labels", () => {
+    const { container, rerender } = render(<ReportLoading report="sales" section="summary" />)
+    const titles = () => Array.from(container.querySelectorAll('[data-kpi-slot="title"] h3')).map(node => node.textContent)
+    expect(titles()).toEqual(["Net collected", "Active sales", "Outstanding balance"])
+    rerender(<ReportLoading report="sales" section="channels" />)
+    expect(titles()).toEqual(["Online sales", "Retail sales", "Other / unassigned"])
   })
 
   it("keeps Traffic technology skeletons compact beside their tables", () => {

@@ -2,6 +2,10 @@ import type { ReportSale, SalesClient } from "@/app/api/sales/sales-query"
 import type { SalesReportPeriod } from "@/lib/sales/report-period"
 import type { SalesReportData, SalesMetric } from "@/lib/sales/report-types"
 import { salesCurrency, salesPercentChange } from "@/lib/sales/report-format"
+import { cents, sumCents } from "@/app/accounting/posting-core"
+import { isRecognizedRevenueSale } from "@/lib/sales/recognized-sale"
+import { salePaymentLedger } from "./payment-ledger"
+import { buildFinancialSummary, ledgerInPeriod } from "./financial-summary"
 import {
   aggregateSalesByCategory, buildDailyChannelData, buildMonthlyChannelData, getSalesAmount,
   isOnlineSource, isRetailSource, saleCalendarDate,
@@ -16,7 +20,7 @@ export class SalesCurrencyRequiredError extends Error {
 const metric = (actual: number, previous: number): SalesMetric => ({
   actual, previous, percentChange: salesPercentChange(previous, actual),
 })
-const sum = (sales: ReportSale[]) => sales.reduce((total, sale) => total + getSalesAmount(sale), 0)
+const sum = (sales: ReportSale[]) => sumCents(sales.map(sale => cents(getSalesAmount(sale), "Sale amount"))) / 100
 
 export async function buildSalesReport(
   client: SalesClient,
@@ -24,11 +28,14 @@ export async function buildSalesReport(
   period: SalesReportPeriod,
   options: { currency: string | null; siteCurrency?: unknown; segmentId: string; includeCategories: boolean },
 ): Promise<SalesReportData> {
-  const availableCurrencies = Array.from(new Set(sales.map((sale) => salesCurrency(sale.currency)))).sort()
+  const ledgers = sales.map(salePaymentLedger).filter(ledger => ledgerInPeriod(ledger, period))
+  const availableCurrencies = Array.from(new Set(ledgers.map(({ sale }) => salesCurrency(sale.currency)))).sort()
   if (!options.currency && availableCurrencies.length > 1) throw new SalesCurrencyRequiredError(availableCurrencies)
   // Site settings label empty reports only; never relabel recorded sale amounts.
   const currency = options.currency || availableCurrencies[0] || salesCurrency(options.siteCurrency)
-  const scoped = sales.filter((sale) => salesCurrency(sale.currency) === currency)
+  const scopedLedgers = ledgers.filter(({ sale }) => salesCurrency(sale.currency) === currency)
+  const scoped = scopedLedgers.map(({ sale }) => sale).filter(sale => isRecognizedRevenueSale(sale) &&
+    saleCalendarDate(sale) >= period.previousStart && saleCalendarDate(sale) <= period.end)
   const current = scoped.filter((sale) => saleCalendarDate(sale) >= period.start)
   const previous = scoped.filter((sale) => saleCalendarDate(sale) < period.start)
   const actual = sum(current)
@@ -46,6 +53,7 @@ export async function buildSalesReport(
   ]) : [new Map<string, number>(), new Map<string, number>()]
   const names = new Set([...categories.keys(), ...prevCategories.keys()])
   return {
+    financialSummary: buildFinancialSummary(scopedLedgers, period),
     totalSales: { ...metric(actual, prev), formattedActual: String(actual), formattedPrevious: String(prev) },
     channelSales,
     transactions: metric(current.length, previous.length),
@@ -66,7 +74,7 @@ export async function buildSalesReport(
       trendCoverage: { startDate: period.start, endDate: period.end, complete: true },
       prevStartDate: period.previousStart, prevEndDate: period.previousEnd,
       segmentId: options.segmentId, categoriesIncluded: options.includeCategories,
-      basis: "Confirmed sale amounts (pending and completed); not cash collected. Cancelled and refunded sales are excluded.",
+      basis: "Active sale amounts (pending and completed), regardless of payment. Cancelled/refunded sales and sales linked to any cancelled order are excluded. Net collected uses dated receipts less recorded refunds, including cancelled sales, on each movement's UTC date.",
       dateBasis: "Inclusive sale dates; UTC created date is used only when the sale date is missing.",
     },
   }

@@ -49,6 +49,9 @@ describe("sales trend presentation", () => {
       <MonthlySalesEvolutionChart {...props} byChannel={false} showPeriod={false} /></>)
     expect(screen.getAllByText("Jun 1, 2020 – Jun 30, 2020")).toHaveLength(1)
     expect(screen.getByRole("heading", { name: "Sales trend" })).toBeInTheDocument()
+    expect(screen.getByLabelText("Chart legend")).toHaveTextContent("Active sales")
+    expect(screen.queryByText(/Confirmed sales/)).not.toBeInTheDocument()
+    expect(screen.getByText(/Active sale amounts by day \(sale date\), not cash collected/)).toBeVisible()
     expect(screen.getByRole("img", { name: /Jun 1, 2020 – Jun 30, 2020/ })).toBeInTheDocument()
   })
 
@@ -59,7 +62,7 @@ describe("sales trend presentation", () => {
     expect(screen.queryByText("Jun 1, 2020 – Jun 30, 2020")).not.toBeInTheDocument()
     rerender(<MonthlySalesEvolutionChart {...props} showPeriod={false} dailyData={[]} />)
     expect(screen.getByRole("status", { name: /Sales trend by channel/ })).toBe(frame)
-    const emptyTitle = screen.getByText("No sales amount in this period")
+    const emptyTitle = screen.getByText("No active sales amount in this period")
     expect(emptyTitle.closest(".min-h-0")).toBeInTheDocument()
     rerender(<MonthlySalesEvolutionChart {...props} showPeriod={false} />)
     expect(screen.getByRole("img", { name: /Sales trend by channel/ })).toBe(frame)
@@ -67,7 +70,8 @@ describe("sales trend presentation", () => {
 
   it("distinguishes known zero amounts from unavailable daily coverage", () => {
     const { rerender } = render(<MonthlySalesEvolutionChart {...props} dailyData={[]} />)
-    expect(screen.getByText("No sales amount in this period")).toBeInTheDocument()
+    expect(screen.getByText("No active sales amount in this period")).toBeInTheDocument()
+    expect(screen.getByText(/does not imply zero cash movement/)).toBeVisible()
     expect(screen.queryByRole("img")).not.toBeInTheDocument()
     rerender(<MonthlySalesEvolutionChart {...props} dailyData={[]} coverage={undefined} />)
     expect(screen.getByText("Sales trend unavailable")).toBeInTheDocument()

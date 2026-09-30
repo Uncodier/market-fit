@@ -1,129 +1,35 @@
-import { useCallback, useEffect, useState } from 'react';
+'use client';
 
-const VISITOR_ID_KEY = 'marketfit_visitor_id';
-const SESSION_ID_KEY = 'marketfit_session_id';
-
-const generateId = () => {
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
-    const r = (Math.random() * 16) | 0;
-    const v = c === 'x' ? r : (r & 0x3) | 0x8;
-    return v.toString(16);
-  });
-};
-
-const getOrCreateVisitorId = () => {
-  if (typeof window === 'undefined') return '';
-  let visitorId = localStorage.getItem(VISITOR_ID_KEY);
-  if (!visitorId) {
-    visitorId = generateId();
-    localStorage.setItem(VISITOR_ID_KEY, visitorId);
-  }
-  return visitorId;
-};
-
-const getOrCreateSessionId = () => {
-  if (typeof window === 'undefined') return '';
-  let sessionId = sessionStorage.getItem(SESSION_ID_KEY);
-  if (!sessionId) {
-    sessionId = generateId();
-    sessionStorage.setItem(SESSION_ID_KEY, sessionId);
-  }
-  return sessionId;
-};
+import { useCallback, useEffect, useMemo, useRef, useSyncExternalStore } from 'react';
+import {
+  EMPTY_TRACKING_SNAPSHOT, getVisitorTracker, type VisitorTracker,
+} from './visitor-tracking/client';
+import type { TrackingResult } from './visitor-tracking/http';
 
 export function useSiteTracking(siteId?: string | null) {
-  const [visitorId, setVisitorId] = useState<string>('');
-  const [sessionId, setSessionId] = useState<string>('');
+  const apiUrl = process.env.NEXT_PUBLIC_API_SERVER_URL || '';
+  const tracker = useMemo(() => getVisitorTracker(siteId, apiUrl), [siteId, apiUrl]);
+  const snapshot = useSyncExternalStore(tracker.subscribe, tracker.getSnapshot, () => EMPTY_TRACKING_SNAPSHOT);
+  const page = useRef<{ tracker: VisitorTracker; url: string; result: Promise<TrackingResult> } | null>(null);
 
-  useEffect(() => {
-    setVisitorId(getOrCreateVisitorId());
-    setSessionId(getOrCreateSessionId());
-  }, []);
+  useEffect(() => { void tracker.initialize(); }, [tracker]);
 
-  const getApiUrl = () => {
-    return process.env.NEXT_PUBLIC_API_SERVER_URL || '';
-  };
-
-  const trackEvent = useCallback(
-    async (eventType: string, payload?: Record<string, any>) => {
-      if (!siteId || !visitorId || typeof window === 'undefined') return;
-
-      try {
-        const apiUrl = getApiUrl();
-        if (!apiUrl) return;
-
-        const data = {
-          site_id: siteId,
-          visitor_id: visitorId,
-          session_id: sessionId || getOrCreateSessionId(),
-          event_type: eventType,
-          url: window.location.href,
-          referrer: document.referrer || undefined,
-          timestamp: new Date().toISOString(),
-          ...payload,
-        };
-
-        // Enviar a la API externa
-        await fetch(`${apiUrl}/api/visitors/track`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(data),
-        }).catch(() => {
-          // Silent catch for analytics
-        });
-      } catch (error) {
-        console.error('[SiteTracking] Error tracking event:', error);
-      }
-    },
-    [siteId, visitorId, sessionId]
-  );
-
-  const trackPageview = useCallback(async () => {
-    await trackEvent('pageview');
-  }, [trackEvent]);
-
-  const identifyLead = useCallback(
-    async (leadData: { email?: string; name?: string; phone?: string; [key: string]: any }) => {
-      if (!siteId || !visitorId || typeof window === 'undefined') return;
-
-      try {
-        const apiUrl = getApiUrl();
-        if (!apiUrl) return;
-
-        const sessionIdCurrent = sessionId || getOrCreateSessionId();
-
-        const data = {
-          site_id: siteId,
-          session_id: sessionIdCurrent,
-          visitor_id: visitorId,
-          lead_data: leadData,
-          url: window.location.href,
-        };
-
-        // Identificamos el lead
-        await fetch(`${apiUrl}/api/visitors/session/${sessionIdCurrent}/identify`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(data),
-        }).catch(() => {
-          // Silent catch
-        });
-      } catch (error) {
-        console.error('[SiteTracking] Error identifying lead:', error);
-      }
-    },
-    [siteId, visitorId, sessionId]
-  );
+  const trackPageview = useCallback(() => {
+    const url = window.location.href;
+    // StrictMode effect replay must reuse the original result, including an ambiguous failure.
+    // A changed URL/site or a real remount represents a new pageview.
+    if (page.current?.tracker === tracker && page.current.url === url) return page.current.result;
+    const result = tracker.trackPageview();
+    page.current = { tracker, url, result };
+    return result;
+  }, [tracker]);
 
   return {
     trackPageview,
-    trackEvent,
-    identifyLead,
-    visitorId,
-    sessionId,
+    trackEvent: tracker.trackEvent,
+    identifyLead: tracker.identifyLead,
+    visitorId: snapshot.visitorId,
+    sessionId: snapshot.sessionId,
+    error: snapshot.error,
   };
 }

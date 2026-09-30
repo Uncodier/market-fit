@@ -1,5 +1,6 @@
 import type { Metadata } from "next"
 import { resolveItemImage } from "@/app/lib/image-utils"
+import { normalizePromptImageUrl } from "./prompt-image-url"
 
 const DEFAULT_DESCRIPTION_MAX = 200
 
@@ -51,7 +52,7 @@ function firstShareImageSource(
   for (const candidate of candidates) {
     if (!candidate?.trim()) continue
     if (isUsableShareImageUrl(candidate)) {
-      return { kind: "url", url: toAbsoluteShareImageUrl(candidate) }
+      return { kind: "url", url: toAbsoluteShareImageUrl(normalizePromptImageUrl(candidate)) }
     }
     if (isDataImageUrl(candidate)) {
       return { kind: "data", dataUrl: candidate.trim() }
@@ -60,7 +61,12 @@ function firstShareImageSource(
   return undefined
 }
 
+function scopedShareImage(source: ShareImageSource, siteId?: string | null): ShareImageSource {
+  return source.kind === "url" ? { kind: "url", url: normalizePromptImageUrl(source.url, siteId) } : source
+}
+
 type ShopVisualSite = {
+  id?: string
   name: string
   logo_url?: string | null
   description?: string | null
@@ -80,6 +86,7 @@ function shopFallbackVisual(site: ShopVisualSite, subtitle?: string): ShopShareV
     source: {
       kind: "url",
       url: resolveItemImage({
+        site_id: site.id,
         name: site.name,
         description: subtitle || site.description,
         siteDescription: site.description,
@@ -96,12 +103,12 @@ export function resolveShopShareVisual(site: ShopVisualSite): ShopShareVisual {
   const subtitle = shopSubtitle(site)
   const hero = firstShareImageSource(site.settings?.shop?.hero_image_url)
   if (hero) {
-    return { source: hero, fit: "cover", title: site.name, subtitle }
+    return { source: scopedShareImage(hero, site.id), fit: "cover", title: site.name, subtitle }
   }
 
   const logo = firstShareImageSource(site.logo_url)
   if (logo) {
-    return { source: logo, fit: "contain", title: site.name, subtitle }
+    return { source: scopedShareImage(logo, site.id), fit: "contain", title: site.name, subtitle }
   }
 
   return shopFallbackVisual(site, subtitle)
@@ -112,29 +119,30 @@ export function resolveShopIconVisual(site: ShopVisualSite): ShopShareVisual {
   const subtitle = shopSubtitle(site)
   const logo = firstShareImageSource(site.logo_url)
   if (logo) {
-    return { source: logo, fit: "contain", title: site.name, subtitle }
+    return { source: scopedShareImage(logo, site.id), fit: "contain", title: site.name, subtitle }
   }
 
   return shopFallbackVisual(site, subtitle)
 }
 
 export function resolveCatalogItemShareImageSource(item: {
+  site_id?: string | null
   name: string
   description?: string | null
   image_url?: string | null
   metadata?: { gallery?: string[] } | null
   category?: string | { name?: string | null } | null
-  site?: { description?: string | null } | null
+  site?: { id?: string | null; description?: string | null } | null
   _shop?: {
     categoryName?: string | null
     siteDescription?: string | null
   } | null
 }): ShareImageSource {
-  return (
+  return scopedShareImage(
     firstShareImageSource(item.image_url, item.metadata?.gallery?.[0]) || {
       kind: "url",
       url: resolveItemImage(item),
-    }
+    }, item.site_id || item.site?.id,
   )
 }
 

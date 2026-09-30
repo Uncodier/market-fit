@@ -204,6 +204,7 @@ it("partitions server batch caches by authenticated identity, not query userId",
   const secondKey = (setCachedJson as jest.Mock).mock.calls[2][0]
   expect(firstKey).not.toEqual(secondKey)
   expect(firstKey).toContain("trusted-user")
+  expect(firstKey).toContain("dashboard-overview:v4:")
   expect(secondKey).toContain("another-member")
   expect(firstKey).not.toContain("forged")
 })

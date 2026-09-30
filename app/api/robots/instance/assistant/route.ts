@@ -116,20 +116,20 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       )
     }
-    let verifiedImportAuthorization: string | null = null
+    let verifiedUserAuthorization: string | null = null
     if (!hasValidServiceApiKey(request)) {
       const access = await requireSiteAccess(request, siteId)
       if (access.error) return access.error
       parsedBody.user_id = access.userId
+      const { data: { session }, error: sessionError } = await access.supabase.auth.getSession()
+      if (sessionError || !session?.access_token || session.user?.id !== access.userId) {
+        return NextResponse.json({ error: { message: "Please sign in again to use the assistant" } }, { status: 401 })
+      }
+      verifiedUserAuthorization = `Bearer ${session.access_token}`
       if (typeof parsedBody.message === "string" && /^import reviewed skill:/i.test(parsedBody.message.trim())) {
         if (access.role !== "owner" && access.role !== "admin") {
           return NextResponse.json({ error: { message: "Site manager access required to import skills" } }, { status: 403 })
         }
-        const { data: { session }, error: sessionError } = await access.supabase.auth.getSession()
-        if (sessionError || !session?.access_token || session.user?.id !== access.userId) {
-          return NextResponse.json({ error: { message: "Authenticated session required to import skills" } }, { status: 401 })
-        }
-        verifiedImportAuthorization = `Bearer ${session.access_token}`
       }
 
       const nodeId =
@@ -206,9 +206,9 @@ export async function POST(request: NextRequest) {
       if (value) headers.set(name, value)
     }
 
-    if (verifiedImportAuthorization) {
+    if (verifiedUserAuthorization) {
       headers.delete("x-api-key")
-      headers.set("authorization", verifiedImportAuthorization)
+      headers.set("authorization", verifiedUserAuthorization)
     }
 
     const controller = new AbortController()
@@ -225,6 +225,7 @@ export async function POST(request: NextRequest) {
         headers,
         body: JSON.stringify(parsedBody),
         cache: "no-store",
+        redirect: "error",
         signal: controller.signal,
       })
     } finally {

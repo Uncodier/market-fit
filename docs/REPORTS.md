@@ -44,6 +44,19 @@ screens (three for Sales). Narrow phones keep long amounts readable without clip
 Charts and rankings carry the main visual focus; source definitions and calculation
 details remain accessible in native disclosures instead of repeated header cards.
 
+Time-series, sales/cost distribution and unit-economics plots use a shared
+`ReportChartFrame` within the dashboard canvas. Their minimum height is the dynamic
+viewport (`100dvh`) minus the measured space above the plot (navigation, filters,
+headings and preceding widgets), the canvas bottom gutter and an additional 71px
+of bottom clearance so the plot does not fill to the viewport edge. Resize observers
+recalculate this offset when responsive wrapping or async content changes; scroll
+positions are excluded so scrolling cannot inflate a chart. Existing responsive
+heights remain a readability floor on smaller windows. Loading and empty chart
+frames use the same rule, nested Activity frames inherit their outer size, and
+charts embedded outside Reports retain their original sizing.
+Compact attribution/traffic donuts beside tables and table-only sections retain
+their natural layout rather than reserving a full-height time-series canvas.
+
 - Overview Summary leads into the sales trend; Activity pairs its daily chart with
   the recent-record feed. The Activity pair shares its header and bottom tracks
   on desktop, with the chart filling the available body height. Module loading,
@@ -136,10 +149,37 @@ querying it or silently replacing dates.
 
 ## Sales definitions
 
-The sales report calls `/api/revenue` and reports **confirmed amounts** from
-`pending` and `completed` sales, excluding cancelled/refunded sales. These are not
-cash receipts. The independent `/api/sales` array API keeps its completed-sale,
-creation-timestamp semantics for existing consumers.
+The sales report calls `/api/revenue`. Its summary separates **Net collected**,
+**Active sales**, and **Outstanding balance**, rather than labeling unpaid sales
+as confirmed revenue. The independent `/api/sales` array API retains its existing
+columns, completed-sale status filter and creation-timestamp semantics.
+
+- Active sales (`totalSales`, counts, averages, channels, categories and trends)
+  include `pending` and `completed` sale amounts regardless of payment. They exclude
+  cancelled/refunded sales and any sale linked to a cancelled order. Multiple-order
+  sales with a cancelled order are conservatively excluded in full: there is no
+  approved allocation of one sale's value to surviving orders. This does not change
+  source statuses, accounting recognition or fulfillment.
+- `financialSummary.receipts`, `refunds`, and `netCollected` use dated entries in
+  `sales.payments` and successful records in `accounting_sale_refunds`, grouped by
+  each movement's UTC calendar date. They include older and future-dated sales,
+  cancelled orders and cancelled/refunded sales. A cancellation does not fabricate
+  a cash refund. Partial refunds reduce net cash, not the gross active-sale value.
+  Pending/processing/failed/cancelled payment attempts are not receipts. Current
+  writers mark receipts `completed`; older manual receipts may omit status.
+  Offset-free legacy payment timestamps retain the accounting module's UTC
+  compatibility rule; their original browser timezone cannot be reconstructed.
+- Receipt/refund IDs are deduplicated; conflicting duplicates, malformed money,
+  dates or currencies, unexplained paid balances, and refunds without dated evidence
+  make the affected cash measure unavailable (`null`), not zero. Balance-only legacy
+  payments and `legacy_inferred` / `legacy_balance` receipts never acquire invented
+  cash dates. A history issue can affect any selected cash period; narrowing the
+  sale-date range does not hide it. The UI exposes the affected-record count.
+- `financialSummary.outstanding` and `paymentStatus` use the **current** saved balance
+  on active sales dated in the selected period. They are not historical closing
+  balances and have no prior-period percentage comparison. Unknown/inconsistent
+  balances are not classified as paid. Payment status amounts are full sale values,
+  not received amounts. Excluded sale counts/amounts use the selected sale-date cohort.
 
 - Report dates are inclusive sale dates, falling back to the UTC creation date
   only when `sale_date` is missing.
@@ -148,16 +188,27 @@ creation-timestamp semantics for existing consumers.
 - Monetary totals never combine currencies. Multiple currencies require an
   explicit selection (HTTP 422 with validated currency choices). Sales and the
   overview summary provide selectors. No currency conversion is performed.
-- With no sales in either comparison period and no explicit currency selection,
+- With no sale or cash activity (or unresolved cash history) in either comparison
+  period and no explicit currency selection,
   revenue reads the authorized site's `settings.currency` through user-scoped RLS.
   This labels the empty KPI and trend consistently without inventing transactions.
   Recorded sales (including those missing a currency) retain their own currency
   grouping. Missing or invalid site currency remains unspecified; settings read
   failures return an error instead of a successful empty report.
 - Sales reads use explicit columns, tenant filters and paginated user-scoped RLS
-  queries. A 50,000-row ceiling fails explicitly rather than returning partial
-  totals; use a shorter range or segment when it is reached.
-- Summary and channel sections skip order/category queries. Category amounts
+  queries. Receipt-date reporting scans complete site/segment sales history since
+  receipts are nested JSON, not filtered by sale date. Sales and each related source
+  have a 50,000-row ceiling and fail explicitly instead of returning partial totals;
+  select a segment if reached. Immutable-ID keyset pages avoid offset shifts and
+  reject repeated IDs. Multi-page/cross-table reads are not a transactional snapshot.
+  Unrelated concurrent updates can still change the source between reads.
+- Owners/co-owners and explicitly unrestricted active members may view this report.
+  Assigned-only members receive a visibility error before financial reads because
+  sales and orders have independent assignment RLS; a hidden cancelled order must
+  not look like a sale without cancellations. Reporting never elevates to service
+  role to bypass that restriction.
+- Every section reads linked order statuses and refund records. Summary and channel
+  sections skip order-item/category queries. Category amounts
   allocate each sale's amount using top-level order-item subtotal weights, with
   product type or `Uncategorized` as fallback. Child items are not double-counted.
 - Online includes online/shop/marketplace; retail includes retail/POS. Other
@@ -189,7 +240,7 @@ the legacy no-cost `100%` fallback is not treated as measurable return.
 These are **source snapshots, not verified lifetime/currency-normalized economics**:
 LTV can expand dates and fall back to average sale value, LTV/CAC label USD without
 validating underlying record currencies, and ROI/CPL do not report currencies.
-ROI uses an all-status sales basis distinct from Summary's confirmed sales. The
+ROI uses an all-status sales basis distinct from Summary's active sales. The
 UI exposes these caveats. Legacy endpoints can write KPI snapshots on GET unless
 their no-write option is set; isolated component previews do not exercise those
 endpoints and are not authenticated E2E evidence.
@@ -203,7 +254,11 @@ Additional regressions cover responsive composition, snapshot charts, adaptive
 daily/weekly/monthly buckets, real Recharts rendering, pending-to-error/retry
 sequences and the installed Next compiler's literal dynamic-import options.
 
-No schema migration or new database RPC is required. These changes do not establish
+No new schema migration or database RPC is added by the sales repair. Dated refunds
+depend on the existing `20260929220300_accounting_sale_refunds.sql` migration; a
+missing or inaccessible refund source fails the report instead of implying no
+refunds. Historical provider refunds still require the separately approved backfill
+described in `ACCOUNTING.md`. These changes do not establish
 production latency measurements. The older unit-economics calculations have not
 been comprehensively rewritten; their pre-existing metric definitions, aggregation
 limits and some fallback behavior remain separate audit work. Live

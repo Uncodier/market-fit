@@ -1,5 +1,14 @@
 export type SalesReportSection = "summary" | "channels" | "categories"
 export type SalesMetric = { actual: number; previous: number; percentChange: number | null }
+export type SalesFinancialSummary = {
+  receipts: SalesMetric | null
+  refunds: SalesMetric | null
+  netCollected: SalesMetric | null
+  outstanding: { amount: number | null; saleCount: number; unknownSaleCount: number }
+  paymentStatus: Record<"paid" | "partial" | "unpaid" | "unknown", { count: number; amount: number }>
+  excluded: { count: number; amount: number }
+  cashIssues: number
+}
 export type SalesCategory = { name: string; amount: number; prevAmount: number; percentChange: number | null }
 export type SalesChannelAmounts = {
   onlineSales: number
@@ -16,6 +25,8 @@ export type SalesTrendCoverage = {
 }
 
 export interface SalesReportData {
+  /** Absent only on older responses. Missing cash history is unavailable, never zero. */
+  financialSummary?: SalesFinancialSummary
   totalSales: SalesMetric & { formattedActual: string; formattedPrevious: string }
   channelSales: Record<"online" | "retail" | "other", {
     amount: number; prevAmount: number; percentChange: number | null

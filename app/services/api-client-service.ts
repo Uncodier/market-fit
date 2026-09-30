@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/client";
 import { handleApiResponse, type ApiResponse } from "./api-client-response";
 import { withTimeout } from "./request-timeout";
+import { apiRequestAuthPolicy } from "./api-client-auth-policy";
 
 // Helper functions for URL validation
 const isValidUrl = (url: string): boolean => {
@@ -60,7 +61,7 @@ async function getDemoSiteIdAsync(): Promise<string | null> {
 
 interface ApiClientOptions {
   headers?: Record<string, string>;
-  // Finder requires a user session even for legacy callers that opt out.
+  // Only explicit public reads or uncredentialed third-party requests may opt out.
   includeAuth?: boolean;
   timeout?: number;
   cache?: RequestCache;
@@ -94,13 +95,13 @@ export class ApiClientService {
 
   private buildUrl(endpoint: string): string {
     // Allow absolute URLs.
-    if (endpoint && isValidUrl(endpoint)) return endpoint;
+    if (endpoint && (isValidUrl(endpoint) || endpoint.startsWith('//'))) return endpoint;
 
     // Browser Finder requests use the authenticated Next.js route. Sending the
     // session bearer directly to the external API triggers a cross-origin
     // preflight (which the Finder API does not allow in local development).
     if (typeof window !== 'undefined' &&
-      (endpoint === '/api/robots/instance/assistant' || endpoint.startsWith('/api/finder/'))) {
+      (endpoint === '/api/robots/instance/assistant' || endpoint === '/api/site/setup' || endpoint.startsWith('/api/finder/'))) {
       return endpoint;
     }
 
@@ -115,34 +116,27 @@ export class ApiClientService {
 
   private async getAuthToken(): Promise<string | null> {
     const supabase = createClient();
-    const { data: { session } } = await withTimeout<{ data: { session: { access_token: string } | null } }>(
+    const { data: { session }, error } = await withTimeout<{
+      data: { session: { access_token: string } | null }; error?: unknown
+    }>(
       supabase.auth.getSession(), 10_000,
       'Checking your session timed out. Please sign in again and retry.',
     );
-    return session?.access_token || null;
+    return error ? null : session?.access_token || null;
   }
 
-  private requiresFinderSession(url: string): boolean {
-    if (url.startsWith('/api/finder/')) return true;
-    const apiOrigin = this.apiServerUrl || (typeof window !== 'undefined' ? window.location.origin : '');
-    if (!apiOrigin) return false;
-    try {
-      const target = new URL(url);
-      // Never force the user's token onto a third-party URL with a similar path.
-      return target.origin === new URL(apiOrigin).origin && target.pathname.startsWith('/api/finder/');
-    } catch {
-      return false;
-    }
-  }
-
-  private async applyAuthHeaders(url: string, headers: Record<string, string>, options: ApiClientOptions): Promise<void> {
-    const requiresSession = this.requiresFinderSession(url);
-    if (!requiresSession && options.includeAuth === false) return;
+  private async applyAuthHeaders(url: string, method: string, headers: Record<string, string>, options: ApiClientOptions): Promise<void> {
+    const { requiresSession, finder } = apiRequestAuthPolicy(url, this.apiServerUrl, method, options.includeAuth, headers);
+    if (!requiresSession) return;
     const token = await this.getAuthToken();
-    if (requiresSession && !token) {
-      throw new Error('Your session has expired. Please sign in again to use Find People.');
+    if (!token) {
+      throw new Error(finder ? 'Your session has expired. Please sign in again to use Find People.'
+        : 'Your session has expired. Please sign in again to continue.');
     }
-    if (token) headers['Authorization'] = `Bearer ${token}`;
+    for (const name of Object.keys(headers)) {
+      if (name.toLowerCase() === 'authorization') delete headers[name];
+    }
+    headers['Authorization'] = `Bearer ${token}`;
   }
 
 
@@ -163,10 +157,11 @@ export class ApiClientService {
         ...options.headers
       };
 
-      await this.applyAuthHeaders(url, headers, options);
+      await this.applyAuthHeaders(url, 'GET', headers, options);
 
       const response = await fetch(url, {
         method: 'GET',
+        redirect: 'error',
         headers,
         cache: options.cache || 'no-cache',
         ...(options.timeout && { signal: AbortSignal.timeout(options.timeout) })
@@ -261,7 +256,7 @@ export class ApiClientService {
         ...options.headers
       };
 
-      await this.applyAuthHeaders(url, headers, options);
+      await this.applyAuthHeaders(url, 'POST', headers, options);
 
       // Bound connection setup separately from the long-running assistant stream.
       const controller = new AbortController();
@@ -271,6 +266,7 @@ export class ApiClientService {
       try {
         response = await fetch(url, {
           method: 'POST',
+          redirect: 'error',
           headers,
           body: JSON.stringify(body),
           cache: options.cache || 'no-cache',
@@ -338,10 +334,11 @@ export class ApiClientService {
         ...options.headers
       };
 
-      await this.applyAuthHeaders(url, headers, options);
+      await this.applyAuthHeaders(url, 'PUT', headers, options);
 
       const response = await fetch(url, {
         method: 'PUT',
+        redirect: 'error',
         headers,
         body: JSON.stringify(body),
         cache: options.cache || 'no-cache',
@@ -376,10 +373,11 @@ export class ApiClientService {
         ...options.headers
       };
 
-      await this.applyAuthHeaders(url, headers, options);
+      await this.applyAuthHeaders(url, 'PATCH', headers, options);
 
       const response = await fetch(url, {
         method: 'PATCH',
+        redirect: 'error',
         headers,
         body: JSON.stringify(body),
         cache: options.cache || 'no-cache',
@@ -416,10 +414,11 @@ export class ApiClientService {
         ...options.headers
       };
 
-      await this.applyAuthHeaders(url, headers, options);
+      await this.applyAuthHeaders(url, 'DELETE', headers, options);
 
       const response = await fetch(url, {
         method: 'DELETE',
+        redirect: 'error',
         headers,
         cache: options.cache || 'no-cache',
         ...(options.timeout && { signal: AbortSignal.timeout(options.timeout) })

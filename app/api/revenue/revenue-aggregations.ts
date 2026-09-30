@@ -49,7 +49,7 @@ type OrderItem = {
   catalog_item: CatalogRelation | CatalogRelation[] | null
 }
 
-async function readRelatedRows<T>(client: SalesClient, table: string, fields: string, column: string, ids: string[]) {
+async function readRelatedRows<T extends { id: string }>(client: SalesClient, table: string, fields: string, column: string, ids: string[]) {
   const rows: T[] = []
   for (let i = 0; i < ids.length; i += 100) {
     rows.push(...await readSalesPages<T>(() => client.from(table).select(fields).in(column, ids.slice(i, i + 100))))

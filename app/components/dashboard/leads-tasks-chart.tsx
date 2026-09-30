@@ -6,6 +6,7 @@ import { usePerformanceSlice } from "@/app/hooks/use-dashboard-batches";
 import { ReportChartLoading } from "./report-visual-loading";
 import { ReportState } from "./report-state";
 import { activityDate, compactActivityCount } from "./activity-chart-format";
+import { ReportChartFrame } from "./report-chart-frame";
 
 interface LeadsTasksChartProps {
   startDate: Date;
@@ -47,11 +48,11 @@ export function LeadsTasksChart({ startDate, endDate, segmentId = "all" }: Leads
   }
 
   if (!data || !data.chartData || data.chartData.length === 0) {
-    return <ReportState state="empty" message="No lead or task activity was recorded for these filters. Try another date range or segment." />;
+    return <ReportChartFrame className="flex h-[300px] items-center justify-center sm:h-[360px]"><ReportState state="empty" message="No lead or task activity was recorded for these filters. Try another date range or segment." /></ReportChartFrame>;
   }
 
   return (
-    <div role="img" aria-label="Daily leads created and task counts" className="h-[300px] w-full min-w-0 sm:h-[360px]">
+    <ReportChartFrame role="img" aria-label="Daily leads created and task counts" className="h-[300px] w-full min-w-0 sm:h-[360px]">
       <ResponsiveContainer width="100%" height="100%">
         <AreaChart data={data.chartData} margin={{ top: 12, right: 12, left: 0, bottom: 0 }}>
           <defs>
@@ -106,7 +107,7 @@ export function LeadsTasksChart({ startDate, endDate, segmentId = "all" }: Leads
             dot={data.chartData.length <= 14 ? { r: 3, strokeWidth: 0 } : false} connectNulls={false} isAnimationActive={false} activeDot={{ r: 5, strokeWidth: 0 }} name="Tasks" />
         </AreaChart>
       </ResponsiveContainer>
-    </div>
+    </ReportChartFrame>
   );
 }
 

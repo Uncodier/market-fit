@@ -53,45 +53,6 @@ export function htmlToMarkdown(html: string): string {
   }
 }
 
-function getFullApiUrl(rawUrl: string): string {
-  const baseUrl = rawUrl.trim()
-  if (!baseUrl) return ""
-
-  const invalidIp = baseUrl.match(/^https?:\/\/(\d+\.\d+\.\d+\.\d+)\.(\d+)/)
-  if (invalidIp) {
-    const port = baseUrl.match(/:(\d+)(\/.*)?$/)?.[1]
-    const protocol = baseUrl.startsWith("https://") ? "https" : "http"
-    return `${protocol}://${invalidIp[1]}${port ? `:${port}` : ""}`
-  }
-
-  try {
-    if (baseUrl.startsWith("http://") || baseUrl.startsWith("https://")) {
-      const url = new URL(baseUrl)
-      if (typeof window !== "undefined" && url.hostname === "localhost") {
-        const originUrl = new URL(window.location.origin)
-        if (originUrl.hostname !== "localhost" && /^\d+\.\d+\.\d+\.\d+$/.test(originUrl.hostname)) {
-          return `${url.protocol}//${originUrl.hostname}${url.port ? `:${url.port}` : ""}`
-        }
-      }
-      return baseUrl
-    }
-
-    const isHost =
-      /^[a-zA-Z0-9][-a-zA-Z0-9.]*\.[a-zA-Z]{2,}(:[0-9]+)?$/.test(baseUrl) ||
-      /^localhost(:[0-9]+)?$/.test(baseUrl) ||
-      /^\d+\.\d+\.\d+\.\d+(:[0-9]+)?$/.test(baseUrl)
-    return isHost ? `http://${baseUrl}` : ""
-  } catch (error) {
-    console.error(`Error parsing URL ${baseUrl}:`, error)
-    return ""
-  }
-}
-
-const apiServerUrl =
-  process.env.NEXT_PUBLIC_API_SERVER_URL || process.env.API_SERVER_URL || ""
-
-export const FULL_API_SERVER_URL = getFullApiUrl(apiServerUrl)
-
 function rangeLabel(
   value: number,
   labels: [string, string, string, string, string, string],

@@ -49,6 +49,13 @@ server-validated Supabase session, not `SERVICE_API_KEY`. Its signing secret
 belongs only in the API deployment. See [Support chat identity](CHAT_IDENTITY.md)
 for rollout requirements and exact-origin validation.
 
+The public storefront visitor-session bridge uses the existing server-only
+`SERVICE_API_KEY` after public-site validation and requires Redis admission.
+Visitor requests after bootstrap carry only the API-issued visitor proof.
+Generated-image cache delivery uses `NEXT_PUBLIC_SUPABASE_URL`; generation from
+the workspace uses the verified user bearer, never a browser API key. See
+[Public visitor sessions and image delivery](PUBLIC_VISITOR_AND_IMAGE_DELIVERY.md).
+
 ## Stripe
 
 ```dotenv
@@ -171,9 +178,12 @@ Some legacy or narrow integrations reference additional variables. Before
 deploying one, search that integration's source for `process.env` and add only
 the required values to the deployment secret store.
 
-`NEXT_PUBLIC_API_SECRET` and browser-visible fallback credentials remain in
-legacy code. They are not approved secret-storage patterns and must not be used
-for new integrations.
+`NEXT_PUBLIC_API_KEY` and `NEXT_PUBLIC_API_SECRET` are not required for site
+setup or connectivity diagnostics. Site setup now uses the user's session via
+the authenticated same-origin proxy, and diagnostics use the public status
+endpoint. Do not configure service credentials in browser-visible variables.
+If a real service secret was previously published through either variable,
+remove it from public deployment configuration and rotate it server-side.
 
 ## Debugging
 

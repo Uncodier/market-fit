@@ -32,6 +32,10 @@ it("adds two actual visual comparisons beneath the compact summary, not KPI-only
   expect(screen.getByTestId("economics-analysis")).toHaveClass("min-w-0")
   expect(container.querySelector("details")).not.toHaveAttribute("open")
   expect(screen.getByText("Currency is unspecified by this source; amounts are not converted.", { exact: false })).toBeInTheDocument()
+  const salesBasis = screen.getByText(/Its sales basis includes all statuses/)
+  expect(salesBasis).toHaveTextContent("unlike the active-sales total in Summary")
+  expect(salesBasis).toHaveTextContent("does not represent cash received")
+  expect(salesBasis).not.toHaveTextContent("confirmed-sales")
 })
 
 it("shows a skeleton before data exists and no default error, zero metrics or chart", () => {

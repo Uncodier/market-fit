@@ -9,6 +9,7 @@ import { BarChart as BarChartIcon } from "@/app/components/ui/icons"
 import { Skeleton } from "@/app/components/ui/skeleton"
 import { formatSalesMoney } from "@/lib/sales/report-format"
 import { buildSalesTrend, salesTrendRange, type SalesTrendInput, type SalesTrendBucket } from "./sales-trend-data"
+import { ReportChartFrame } from "./report-chart-frame"
 
 interface MonthlySalesEvolutionChartProps extends SalesTrendInput {
   isLoading: boolean
@@ -42,7 +43,7 @@ export function MonthlySalesEvolutionChart({ data, dailyData, startDate, endDate
   const compactMoney = (value: number) => currency === "UNSPECIFIED"
     ? new Intl.NumberFormat("en-US", { notation: "compact", maximumFractionDigits: 1 }).format(value)
     : formatSalesMoney(value, currency, true)
-  const activeSeries = byChannel ? series : [{ key: "totalSales", name: "Confirmed sales", color: "#10B981" }] as const
+  const activeSeries = byChannel ? series : [{ key: "totalSales", name: "Active sales", color: "#10B981" }] as const
   const title = byChannel ? "Sales trend by channel" : "Sales trend"
 
   return <Card className="min-w-0 overflow-hidden">
@@ -57,14 +58,14 @@ export function MonthlySalesEvolutionChart({ data, dailyData, startDate, endDate
         </span>}
       </div>
       <CardDescription className="text-xs">
-        {loading ? "Loading confirmed sales for the selected period." : `Confirmed sale amounts by ${unit}, not cash collected.`}
+        {loading ? "Loading active sales for the selected period." : `Active sale amounts by ${unit} (sale date), not cash collected.`}
         {!loading && trend.legacy && " Monthly data only; daily detail is unavailable. Edge months may be partial."}
         {!loading && !trend.legacy && trend.granularity === "weekly" && " Weeks are seven-day groups from the selected start date; the last may be shorter."}
         {!loading && !trend.legacy && trend.granularity === "monthly" && " First and last months may be partial."}
       </CardDescription>
     </CardHeader>
     <CardContent className="px-3 pb-4 sm:px-5">
-      <div className="h-[300px] min-w-0 w-full sm:h-[340px]"
+      <ReportChartFrame className="h-[300px] min-w-0 w-full sm:h-[340px]"
         role={loading || !hasAmounts ? "status" : "img"} aria-busy={loading}
         aria-label={loading ? "Loading sales trend" : `${title}, ${trend.granularity} totals. ${period}${trend.hasGaps ? ". Incomplete data; gaps are unavailable." : ""}`}>
         {loading ? <div className="flex h-full items-end gap-3 border-b border-l px-4 pb-2 pt-6" aria-hidden="true">
@@ -74,9 +75,9 @@ export function MonthlySalesEvolutionChart({ data, dailyData, startDate, endDate
         </div> : !hasAmounts ? <div className="flex h-full items-center justify-center">
           <EmptyCard icon={<BarChartIcon className="h-8 w-8 text-muted-foreground" />}
             showShadow={false} variant="simple" contentClassName="min-h-0 py-6"
-            title={observed.length && !trend.hasGaps ? "No sales amount in this period" : "Sales trend unavailable"}
+            title={observed.length && !trend.hasGaps ? "No active sales amount in this period" : "Sales trend unavailable"}
             description={observed.length && !trend.hasGaps
-              ? "Confirmed sales total zero for this period. Try another date range or segment."
+              ? "Active sales total zero for this period; this does not imply zero cash movement. Try another date range or segment."
               : "Dated sales amounts are not available for the full selected period. Missing data is not zero sales."} />
         </div> : <ResponsiveContainer width="100%" height="100%" minWidth={0}>
             <BarChart data={trend.points} margin={{ top: 12, right: 8, left: 0, bottom: 8 }} barGap={1} maxBarSize={44}>
@@ -106,7 +107,7 @@ export function MonthlySalesEvolutionChart({ data, dailyData, startDate, endDate
                 stackId={byChannel ? "channels" : undefined} radius={byChannel ? 0 : [3, 3, 0, 0]} isAnimationActive={false} />)}
             </BarChart>
           </ResponsiveContainer>}
-      </div>
+      </ReportChartFrame>
       {loading ? <Skeleton className="mx-auto mt-3 h-4 w-36" /> : hasAmounts && (
         <div className="mt-3 flex flex-wrap justify-center gap-x-4 gap-y-2 text-xs text-muted-foreground" aria-label="Chart legend">
           {activeSeries.map(item => <span key={item.key} className="inline-flex items-center gap-1.5">

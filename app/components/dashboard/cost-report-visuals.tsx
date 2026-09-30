@@ -8,13 +8,14 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Skeleton } from "@/app/components/ui/skeleton"
 import { costCurrency, formatCost, percentChange, type CostData } from "./cost-report-data"
 import { ReportDetails } from "./report-layout"
+import { ReportChartFrame } from "./report-chart-frame"
 
 type VisualProps = { currency?: string | null; isLoading: boolean; dataReady: boolean }
 const colors = ["#6366f1", "#ec4899", "#14b8a6", "#f97316", "#8b5cf6"]
 
-function CostPanel({ title, description, isLoading, empty, children, context, chartHeight = "h-56" }: {
+function CostPanel({ title, description, isLoading, empty, children, context, chartHeight = "h-56", chart = false }: {
   title: string; description: string; isLoading: boolean; empty?: string; children: ReactNode
-  context?: ReactNode; chartHeight?: string
+  context?: ReactNode; chartHeight?: string; chart?: boolean
 }) {
   return <Card className="flex h-full min-w-0 flex-col" data-report-panel={title}>
     <CardHeader className="space-y-1 p-4 pb-3 sm:p-5 sm:pb-3">
@@ -22,8 +23,8 @@ function CostPanel({ title, description, isLoading, empty, children, context, ch
       {context}
     </CardHeader>
     <CardContent className="min-w-0 flex-1 p-4 pt-0 sm:p-5 sm:pt-0">
-      {isLoading ? <div role="status" aria-label={`Loading ${title}`} className={chartHeight}><Skeleton className="h-full w-full" /></div>
-        : empty ? <div className={`flex items-center justify-center ${chartHeight}`}><p className="text-center text-sm text-muted-foreground">{empty}</p></div> : children}
+      {isLoading ? <ReportChartFrame enabled={chart} role="status" aria-label={`Loading ${title}`} className={chartHeight}><Skeleton className="h-full w-full" /></ReportChartFrame>
+        : empty ? <ReportChartFrame enabled={chart} className={`flex items-center justify-center ${chartHeight}`}><p className="text-center text-sm text-muted-foreground">{empty}</p></ReportChartFrame> : children}
     </CardContent>
   </Card>
 }
@@ -36,17 +37,17 @@ export function CostReportDistribution({ data, currency, isLoading, dataReady }:
   const positive = data.filter((row) => row.amount > 0)
   return <CostPanel title="Cost Distribution by Category" description={`Reported costs by category (${currencyLabel(currency)}).`}
     isLoading={isLoading || !dataReady} empty={positive.length ? undefined : "No cost distribution data for the selected period."}
-    chartHeight="h-56 xl:h-80">
-    <div className="h-56 min-w-0 xl:h-80" aria-label="Cost distribution chart">
+    chart chartHeight="h-56 xl:h-80">
+    <ReportChartFrame className="h-56 min-w-0 xl:h-80" aria-label="Cost distribution chart">
       <ResponsiveContainer width="100%" height="100%" minWidth={0}>
         <PieChart>
-          <Pie data={positive} dataKey="amount" nameKey="category" innerRadius={50} outerRadius={85} isAnimationActive={false}>
+          <Pie data={positive} dataKey="amount" nameKey="category" innerRadius="45%" outerRadius="75%" isAnimationActive={false}>
             {positive.map((row, index) => <Cell key={row.category} fill={colors[index % colors.length]} />)}
           </Pie>
           <Tooltip formatter={(value: number) => formatCost(value, currency)} />
         </PieChart>
       </ResponsiveContainer>
-    </div>
+    </ReportChartFrame>
     <ul className="space-y-2 text-sm">
       {data.map((row) => <li key={row.category} className="flex flex-wrap justify-between gap-x-3 gap-y-1 border-b border-border/50 pb-2 last:border-0">
         <span className="flex min-w-0 items-center gap-2 break-words">
@@ -75,9 +76,9 @@ export function CostReportTrend({ data, currency, isLoading, dataReady, startDat
   }).format(value)
   return <CostPanel title="Monthly Cost Evolution" description={`${context} · ${currencyLabel(currency)}`}
     isLoading={isLoading || !dataReady} empty={data.length ? undefined : "No monthly cost data in the six-month context window."}
-    chartHeight="h-72 sm:h-80"
+    chart chartHeight="h-72 sm:h-80"
     context={<p className="pt-2 text-xs text-muted-foreground">Six-month context ending on the selected end date; not the selected-period total.</p>}>
-    <div className="h-72 min-w-0 sm:h-80" aria-label="Monthly cost chart">
+    <ReportChartFrame className="h-72 min-w-0 sm:h-80" aria-label="Monthly cost chart">
       <ResponsiveContainer width="100%" height="100%">
         <BarChart data={rows} margin={{ left: 0, right: 8, top: 8, bottom: 8 }}>
           <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="currentColor" opacity={0.15} />
@@ -90,7 +91,7 @@ export function CostReportTrend({ data, currency, isLoading, dataReady, startDat
           <Bar dataKey="variableCosts" name="Variable Costs" fill={colors[1]} radius={[4, 4, 0, 0]} isAnimationActive={false} />
         </BarChart>
       </ResponsiveContainer>
-    </div>
+    </ReportChartFrame>
     <ReportDetails summary="How this cost trend is scoped">
       <p>Fixed and variable costs are aggregated monthly across the six calendar months ending on the selected end date. The final month includes only dates through that day. Changing the selected start date does not change this context window.</p>
       {startDate && isValid(startDate) && endDate && isValid(endDate) && <p>KPIs, distribution and category totals use the selected range: {format(startDate, "MMM d, yyyy")} – {format(endDate, "MMM d, yyyy")}.</p>}

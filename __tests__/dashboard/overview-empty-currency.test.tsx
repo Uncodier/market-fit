@@ -21,6 +21,6 @@ it.each(["MXN", "EUR"])("shows the site currency %s in both the empty revenue KP
 
   expect(screen.getByText(new RegExp(`${siteCurrency}\\s0\\.00`))).toBeInTheDocument()
   expect(screen.getByText(`Amounts in ${siteCurrency}.`)).toBeInTheDocument()
-  expect(screen.getByText("No sales amount in this period")).toBeInTheDocument()
+  expect(screen.getByText("No active sales amount in this period")).toBeInTheDocument()
   expect(screen.queryByText(/currency unspecified/i)).not.toBeInTheDocument()
 })

@@ -91,7 +91,7 @@ function CostReportContent({ startDate: start, endDate: end, segmentId = "all", 
             changeText={comparison(marketingChange)} isPositiveChange={marketingChange === null ? undefined : marketingChange < 0}
             isLoading={isLoading} {...dates} />
           <BaseKpiWidget title="Efficiency Ratio" value={efficiency.ratio === null ? "Unavailable" : `${efficiency.ratio.toFixed(1)}:1`}
-            tooltipText="Confirmed sales (pending and completed), not cash received, divided by costs. Requires matching currency and filter scopes."
+            tooltipText="Active sales (eligible pending and completed amounts), not cash received, divided by costs. Cancelled/refunded sales and sales linked to any cancelled order are excluded. Requires matching currency and filter scopes."
             changeText={efficiency.ratio === null ? efficiency.reason : comparison(efficiency.change)}
             isPositiveChange={efficiency.change === null ? undefined : efficiency.change > 0}
             isLoading={isEfficiencyLoading} {...dates} />
@@ -119,7 +119,7 @@ function CostReportContent({ startDate: start, endDate: end, segmentId = "all", 
         {!costCurrency(data.currency) ? <p>
           Cost currency is not supplied by the source. Amounts are shown as recorded, without currency conversion; cross-currency comparisons are unavailable.
         </p> : <p>Amounts are recorded in {data.currency}; no currency conversion is applied.</p>}
-        {showSummary && <p>Efficiency is confirmed sales (pending and completed), not cash received, divided by costs. It requires matching currency and filter scopes. Marketing includes grouped marketing categories; overhead includes Administration and Operations.</p>}
+        {showSummary && <p>Efficiency is active sales (eligible pending and completed amounts), not cash received, divided by costs. Cancelled/refunded sales and sales linked to any cancelled order are excluded. It requires matching currency and filter scopes. Marketing includes grouped marketing categories; overhead includes Administration and Operations.</p>}
       </ReportDetails>
     </ReportSection>
   )

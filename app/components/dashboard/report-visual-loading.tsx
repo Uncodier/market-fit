@@ -1,8 +1,10 @@
 import { Skeleton } from "@/app/components/ui/skeleton"
+import { ReportChartFrame } from "./report-chart-frame"
+import type { DynamicOptionsLoadingProps } from "next/dynamic"
 
-export function ReportChartLoading() {
+export function ReportChartLoading({ fitViewport = true }: DynamicOptionsLoadingProps & { fitViewport?: boolean } = {}) {
   return (
-    <div role="status" aria-label="Loading chart" aria-busy="true" className="flex h-[300px] min-w-0 flex-col gap-5 py-4 sm:h-[360px]">
+    <ReportChartFrame enabled={fitViewport} role="status" aria-label="Loading chart" aria-busy="true" className="flex h-[300px] min-w-0 flex-col gap-5 py-4 sm:h-[360px]">
       <span className="sr-only">Loading chart…</span>
       <div aria-hidden="true" className="ml-8 flex flex-1 flex-col justify-between border-b border-l px-3 py-2">
         {Array.from({ length: 4 }, (_, index) => <div key={index} className="border-t border-dashed" />)}
@@ -10,7 +12,7 @@ export function ReportChartLoading() {
       <div aria-hidden="true" className="flex justify-center gap-5">
         {[0, 1, 2].map(index => <Skeleton key={index} className="h-3 w-16 motion-reduce:animate-none" />)}
       </div>
-    </div>
+    </ReportChartFrame>
   )
 }
 

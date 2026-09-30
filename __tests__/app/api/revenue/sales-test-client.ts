@@ -1,5 +1,5 @@
 type Row = Record<string, unknown>
-type FilterName = "eq" | "in" | "is" | "gte" | "lte" | "lt"
+type FilterName = "eq" | "in" | "is" | "gt" | "gte" | "lte" | "lt"
 type QueryResult<T> = Promise<{ data: T; error: { message: string } | null }>
 type Query = Record<FilterName | "select" | "order", (...args: unknown[]) => Query> & {
   range: (start: number, end: number) => QueryResult<Row[]>
@@ -21,6 +21,7 @@ export function salesTestClient(tables: Record<string, Row[]>, cap = 500, errorT
       in: (row, key, values) => Array.isArray(values) && values.includes(row[key]),
       is: (row, key, value) => (row[key] ?? null) === value,
       gte: (row, key, value) => compare(row[key], value) >= 0,
+      gt: (row, key, value) => compare(row[key], value) > 0,
       lte: (row, key, value) => compare(row[key], value) <= 0,
       lt: (row, key, value) => compare(row[key], value) < 0,
     }
@@ -34,6 +35,7 @@ export function salesTestClient(tables: Record<string, Row[]>, cap = 500, errorT
       in: (...args) => filter("in", args),
       is: (...args) => filter("is", args),
       gte: (...args) => filter("gte", args),
+      gt: (...args) => filter("gt", args),
       lte: (...args) => filter("lte", args),
       lt: (...args) => filter("lt", args),
       select: (...args) => {
@@ -42,6 +44,7 @@ export function salesTestClient(tables: Record<string, Row[]>, cap = 500, errorT
       },
       order: (...args) => {
         calls.push({ table, method: "order", args })
+        rows.sort((a, b) => compare(a[String(args[0])], b[String(args[0])]))
         return query
       },
       range: async (start, end) => {

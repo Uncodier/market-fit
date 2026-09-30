@@ -1,110 +1,35 @@
 "use server"
 
+import { authorizeOutstandSite, resolveOutstandAccounts } from "./outstand-access"
+import { outstandFailure, parseOutstandPublish, UNCONFIRMED_PUBLISH, type OutstandPublishInput } from "./outstand-contract"
+import { requestOutstandPosts } from "./outstand-http"
+import { parseOutstandPosts, parseOutstandPublished } from "./outstand-response"
+
 export async function fetchOutstandPosts(siteId: string) {
   try {
-    const apiServerUrl = process.env.NEXT_PUBLIC_API_SERVER_URL || process.env.API_SERVER_URL || 'http://localhost:3001';
-    const res = await fetch(`${apiServerUrl}/api/integrations/outstand/posts?tenant_id=${siteId}&limit=50`, {
-      headers: {
-        'x-api-key': process.env.SERVICE_API_KEY || ""
-      },
-      cache: 'no-store'
-    });
-    if (!res.ok) {
-      console.error("fetchOutstandPosts error status:", res.status)
-      return { data: [] };
-    }
-    const result = await res.json();
-    return { data: result?.posts || result?.data || [] };
+    const access = await authorizeOutstandSite(siteId, "select")
+    const result = await requestOutstandPosts(access.siteId, access.token, "GET")
+    return { data: parseOutstandPosts(result, access.siteId) }
   } catch (error) {
-    console.error("Failed to fetch outstand posts:", error);
-    return { data: [] };
+    // Access failures must remain visible, never disguised as an empty post list.
+    return outstandFailure(error, "Unable to load social posts.")
   }
 }
 
-export async function publishOutstandPost(siteId: string, payload: {
-  tenant_id: string;
-  containers: {
-    content: string;
-    media: any[];
-  }[];
-  accounts: string[];
-  scheduledAt?: string;
-}) {
-  const apiServerUrl = process.env.NEXT_PUBLIC_API_SERVER_URL || process.env.API_SERVER_URL || 'http://localhost:3001';
-  const url = `${apiServerUrl}/api/integrations/outstand/posts?tenant_id=${siteId}`;
-
-  console.log("[publishOutstandPost] -> request", {
-    url,
-    siteId,
-    accounts: payload.accounts,
-    containersCount: payload.containers?.length,
-    contentLengths: payload.containers?.map(c => c?.content?.length ?? 0),
-    contentPreviews: payload.containers?.map(c => (c?.content || '').slice(0, 200)),
-    mediaCount: payload.containers?.map(c => Array.isArray(c?.media) ? c.media.length : 0),
-    scheduledAt: payload.scheduledAt,
-  });
-
+export async function publishOutstandPost(siteId: string, payload: OutstandPublishInput): Promise<
+  { success: true; data: ReturnType<typeof parseOutstandPublished>; error?: never } |
+  ReturnType<typeof outstandFailure>
+> {
   try {
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': process.env.SERVICE_API_KEY || ""
-      },
-      body: JSON.stringify(payload)
-    });
-
-    const text = await res.text();
-    console.log("[publishOutstandPost] <- response", {
-      status: res.status,
-      ok: res.ok,
-      statusText: res.statusText,
-      contentType: res.headers.get('content-type'),
-      bodyLength: text?.length ?? 0,
-      bodyPreview: text?.slice(0, 1000),
-    });
-
-    let data;
-    try {
-      data = text ? JSON.parse(text) : {};
-    } catch (e) {
-      console.error("[publishOutstandPost] JSON parse error:", e, "rawBody:", text);
-      throw new Error("Invalid response from server: " + text);
-    }
-
-    if (res.ok && data.success) {
-      console.log("[publishOutstandPost] success", {
-        postId: data?.post?.id || data?.data?.id || data?.id,
-        socialAccounts: (data?.post?.socialAccounts || data?.data?.socialAccounts || data?.socialAccounts || []).map((a: any) => ({
-          platform: a?.platform,
-          platformPostId: a?.platformPostId,
-          status: a?.status,
-          error: a?.error,
-        })),
-      });
-      return { success: true, data };
-    } else {
-      console.error("[publishOutstandPost] non-ok response", {
-        status: res.status,
-        success: data?.success,
-        error: data?.error,
-        message: data?.message,
-        details: data?.details,
-        data,
-      });
-      return {
-        success: false,
-        error: data?.error || data?.message || `Failed with status ${res.status} ${res.statusText || ''}`.trim(),
-        details: data?.details ?? data,
-        status: res.status,
-      };
-    }
+    const access = await authorizeOutstandSite(siteId, "insert")
+    const input = parseOutstandPublish(access.siteId, payload)
+    const accounts = await resolveOutstandAccounts(access, input.accounts)
+    const result = await requestOutstandPosts(access.siteId, access.token, "POST", {
+      ...input, tenant_id: access.siteId, accounts,
+    })
+    return { success: true as const, data: parseOutstandPublished(result, access.siteId) }
   } catch (error) {
-    console.error("[publishOutstandPost] fetch/throw error:", {
-      message: error instanceof Error ? error.message : String(error),
-      stack: error instanceof Error ? error.stack : undefined,
-      error,
-    });
-    return { success: false, error: error instanceof Error ? error.message : "Failed to publish content" };
+    // Never replay a publish: a timeout or lost response can follow a real post.
+    return outstandFailure(error, UNCONFIRMED_PUBLISH)
   }
 }

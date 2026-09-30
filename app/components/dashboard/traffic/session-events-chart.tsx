@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/card';
+import { ReportChartFrame } from '../report-chart-frame';
 import {
   ComposedChart,
   Bar,
@@ -173,7 +174,7 @@ export function SessionEventsChart({
         </div>
       </CardHeader>
       <CardContent className="flex flex-1 flex-col px-4 pb-4 sm:px-5 sm:pb-5">
-        <div className="h-[320px] min-w-0 w-full sm:h-[360px]">
+        <ReportChartFrame className="h-[320px] min-w-0 w-full sm:h-[360px]">
         {loading ? <div aria-hidden="true" className="flex h-full flex-col gap-4">
           <div className="flex justify-center gap-3">{[0, 1, 2].map(i => <Skeleton key={i} className="h-3 w-16 motion-reduce:animate-none" />)}</div>
           <div className="flex flex-1 items-end gap-3 border-b border-l px-4 pb-3 pt-4">
@@ -288,7 +289,7 @@ export function SessionEventsChart({
               </ComposedChart>
             </ResponsiveContainer>
         )}
-        </div>
+        </ReportChartFrame>
       </CardContent>
     </Card>
   );

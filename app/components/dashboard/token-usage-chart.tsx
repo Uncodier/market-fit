@@ -4,6 +4,7 @@ import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { useTheme } from "@/app/context/ThemeContext";
 import { Skeleton } from "@/app/components/ui/skeleton";
 import { usePerformanceSlice } from "@/app/hooks/use-dashboard-batches";
+import { ReportChartFrame } from "./report-chart-frame";
 
 interface TokenUsageChartProps {
   startDate: Date;
@@ -53,22 +54,22 @@ export function TokenUsageChart({
 
   if (isLoading) {
     return (
-      <div className="w-full h-[300px]">
+      <ReportChartFrame className="w-full h-[300px] sm:h-[360px]">
         <Skeleton className="w-full h-full" />
-      </div>
+      </ReportChartFrame>
     );
   }
 
   if (!data || !data.chartData || data.chartData.length === 0) {
     return (
-      <div className="w-full h-[300px] flex items-center justify-center">
+      <ReportChartFrame className="w-full h-[300px] flex items-center justify-center sm:h-[360px]">
         <p className="text-muted-foreground">No token usage data available</p>
-      </div>
+      </ReportChartFrame>
     );
   }
 
   return (
-    <div className="w-full h-[300px]">
+    <ReportChartFrame className="w-full h-[300px] sm:h-[360px]">
       <ResponsiveContainer width="100%" height="100%">
         <AreaChart
           data={data.chartData}
@@ -163,6 +164,6 @@ export function TokenUsageChart({
           />
         </AreaChart>
       </ResponsiveContainer>
-    </div>
+    </ReportChartFrame>
   );
 }

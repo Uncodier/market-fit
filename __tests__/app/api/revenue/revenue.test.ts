@@ -7,6 +7,9 @@ import { salesTestClient } from "./sales-test-client"
 
 jest.mock("@/lib/auth/api-analytics-access", () => ({ requireAnalyticsAccess: jest.fn() }))
 jest.mock("@/lib/supabase/server", () => ({ createClient: jest.fn() }))
+jest.mock("@/app/api/revenue/report-visibility", () => ({
+  ...jest.requireActual("@/app/api/revenue/report-visibility"), requireSalesReportVisibility: jest.fn(),
+}))
 
 const siteId = "00000000-0000-4000-8000-000000000001"
 const auth = requireAnalyticsAccess as jest.Mock
