@@ -16,7 +16,14 @@ export async function GET(request: Request) {
     // Explicit authorization plus user-scoped RLS; never use a service role for reports.
     const client = await createClient(true)
     const sales = await queryReportSales(client, access.siteId, filters.segmentId, period.previousStart, period.endExclusive)
-    const report = await buildSalesReport(client, sales, period, filters)
+    let siteCurrency: unknown
+    if (!filters.currency && sales.length === 0) {
+      const { data: settings, error } = await client.from("settings")
+        .select("currency").eq("site_id", access.siteId).maybeSingle()
+      if (error) throw new Error("Failed to load the site currency")
+      siteCurrency = settings?.currency
+    }
+    const report = await buildSalesReport(client, sales, period, { ...filters, siteCurrency })
     return NextResponse.json(report, { headers: { "Cache-Control": "private, no-store" } })
   } catch (error) {
     if (error instanceof SalesCurrencyRequiredError) {

@@ -148,6 +148,12 @@ creation-timestamp semantics for existing consumers.
 - Monetary totals never combine currencies. Multiple currencies require an
   explicit selection (HTTP 422 with validated currency choices). Sales and the
   overview summary provide selectors. No currency conversion is performed.
+- With no sales in either comparison period and no explicit currency selection,
+  revenue reads the authorized site's `settings.currency` through user-scoped RLS.
+  This labels the empty KPI and trend consistently without inventing transactions.
+  Recorded sales (including those missing a currency) retain their own currency
+  grouping. Missing or invalid site currency remains unspecified; settings read
+  failures return an error instead of a successful empty report.
 - Sales reads use explicit columns, tenant filters and paginated user-scoped RLS
   queries. A 50,000-row ceiling fails explicitly rather than returning partial
   totals; use a shorter range or segment when it is reached.

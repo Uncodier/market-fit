@@ -14,17 +14,12 @@ jest.mock("../../lib/supabase/client", () => ({
   }),
 }))
 
-function createChain(result: { data?: any; error?: any } = { data: null, error: null }) {
-  const chain: any = {}
-  chain.select = jest.fn().mockReturnValue(chain)
-  chain.eq = jest.fn().mockReturnValue(chain)
-  chain.gte = jest.fn().mockReturnValue(chain)
-  chain.order = jest.fn().mockReturnValue(chain)
-  chain.limit = jest.fn().mockResolvedValue(result)
-  chain.insert = jest.fn().mockReturnValue(chain)
-  chain.update = jest.fn().mockReturnValue(chain)
-  chain.single = jest.fn().mockResolvedValue(result)
-  chain.then = (resolve: any, reject: any) => Promise.resolve(result).then(resolve, reject)
+function createChain(result: { data?: unknown; error?: unknown } = { data: null, error: null }) {
+  const chain = {
+    select: jest.fn(), eq: jest.fn(), is: jest.fn(), insert: jest.fn(), update: jest.fn(),
+    single: jest.fn().mockResolvedValue(result),
+  }
+  for (const method of [chain.select, chain.eq, chain.is, chain.insert, chain.update]) method.mockReturnValue(chain)
   return chain
 }
 
@@ -33,40 +28,11 @@ describe("markInterventionMessageFailed", () => {
     jest.clearAllMocks()
   })
 
-  it("updates a matching recent row instead of inserting", async () => {
-    const lookup = createChain({
-      data: [{ id: "msg-existing", created_at: "2026-08-26T09:46:00.000Z", custom_data: { channel: "whatsapp" } }],
-      error: null,
-    })
-    const update = createChain({
-      data: {
-        id: "msg-existing",
-        created_at: "2026-08-26T09:46:00.000Z",
-        custom_data: { channel: "whatsapp", command_status: "failed" },
-      },
-      error: null,
-    })
-    fromMock.mockReturnValueOnce(lookup).mockReturnValueOnce(update)
-
-    const result = await markInterventionMessageFailed({
-      conversationId: "conv-1",
-      userId: "user-1",
-      content: "Fe de erratas",
-      errorMessage: "timeout",
-      userName: "Sergio Prado",
-    })
-
-    expect(lookup.insert).not.toHaveBeenCalled()
-    expect(update.insert).not.toHaveBeenCalled()
-    expect(update.update).toHaveBeenCalledWith({
-      custom_data: expect.objectContaining({
-        command_status: "failed",
-        error_message: "timeout",
-        user_name: "Sergio Prado",
-        channel: "whatsapp",
-      }),
-    })
-    expect(result?.id).toBe("msg-existing")
+  it("does not fabricate a failed message without an API-saved ID", async () => {
+    expect(await markInterventionMessageFailed({
+      conversationId: "conv-1", userId: "user-1", content: "Hello", errorMessage: "Network error",
+    })).toBeNull()
+    expect(fromMock).not.toHaveBeenCalled()
   })
 
   it("updates by message_id when the API already returned it", async () => {
@@ -91,37 +57,37 @@ describe("markInterventionMessageFailed", () => {
     expect(fromMock).toHaveBeenCalledTimes(2)
     expect(update.insert).not.toHaveBeenCalled()
     expect(result?.id).toBe("msg-from-api")
+    expect(update.eq).toHaveBeenCalledWith('custom_data', '{}')
   })
 
-  it("inserts once when no matching row exists", async () => {
-    const lookup = createChain({ data: [], error: null })
-    const insert = createChain({
-      data: { id: "msg-new", created_at: "2026-08-26T09:51:00.000Z", custom_data: { command_status: "failed" } },
-      error: null,
-    })
-    fromMock.mockReturnValueOnce(lookup).mockReturnValueOnce(insert)
-
-    const result = await markInterventionMessageFailed({
-      conversationId: "conv-1",
-      userId: "user-1",
-      content: "Hola",
-      errorMessage: "network",
-      userName: "Sergio Prado",
-    })
-
-    expect(insert.insert).toHaveBeenCalledWith({
-      conversation_id: "conv-1",
-      role: "team_member",
-      user_id: "user-1",
-      content: "Hola",
-      custom_data: expect.objectContaining({
-        command_status: "failed",
-        error_message: "network",
-        user_name: "Sergio Prado",
-      }),
-    })
-    expect(result?.id).toBe("msg-new")
+  it("does not mutate same-text messages or insert when the exact row is missing", async () => {
+    const missing = createChain()
+    fromMock.mockReturnValueOnce(missing)
+    expect(await markInterventionMessageFailed({
+      conversationId: "conv-1", userId: "user-1", content: "Hello", errorMessage: "Not started", messageId: "missing",
+    })).toBeNull()
+    expect(fromMock).toHaveBeenCalledTimes(1)
+    expect(missing.update).not.toHaveBeenCalled()
+    expect(missing.insert).not.toHaveBeenCalled()
   })
+
+  it.each([
+    { status: "sent" }, { status: "delivered" }, { command_status: "success" },
+    { provider_call_id: "call-1" }, { status: "placement_unknown" }, { call_status: "placement_unknown" },
+  ])("does not overwrite an authoritative delivery state: %j", async custom_data => {
+    const row = { id: "msg-1", created_at: "2026-09-29T09:46:00.000Z", custom_data }
+    const byId = createChain({ data: row, error: null })
+    fromMock.mockReturnValueOnce(byId)
+    expect(await markInterventionMessageFailed({
+      conversationId: "conv-1", userId: "user-1", content: "Hello", errorMessage: "Not started", messageId: "msg-1",
+    })).toEqual(row)
+    expect(byId.update).not.toHaveBeenCalled()
+    expect(fromMock).toHaveBeenCalledTimes(1)
+    expect(byId.eq).toHaveBeenCalledWith("conversation_id", "conv-1")
+    expect(byId.eq).toHaveBeenCalledWith("user_id", "user-1")
+    expect(byId.eq).toHaveBeenCalledWith("role", "team_member")
+  })
+
 })
 
 describe("retry intervention payload", () => {

@@ -89,33 +89,34 @@ export const ChatInput = memo(function ChatInput({
     if (e.key === 'Tab') {
       return
     }
+
+    // Enter must not become a newline or send through a channel still updating.
+    if (e.key === 'Enter' && !e.shiftKey && (isUpdatingChannel || isLoading)) {
+      e.preventDefault()
+      return
+    }
     
     // Delegate complex logic to parent
     handleKeyDown(e)
-  }, [handleKeyDown])
+  }, [handleKeyDown, isUpdatingChannel, isLoading])
   
   // Memoize form submit handler
   const handleSubmit = useCallback((e: FormEvent) => {
     e.preventDefault()
+    if (isUpdatingChannel || isLoading) return
     handleSendMessage(e)
-  }, [handleSendMessage])
+  }, [handleSendMessage, isUpdatingChannel, isLoading])
   
   // Memoize conversation validation
   const hasSelectedConversation = useMemo(() => {
     return conversationId && conversationId !== "" && !conversationId.startsWith("new-")
   }, [conversationId])
   
-  // Initialize hasInput when a controlled message value is provided
-  useEffect(() => {
-    if (typeof message === 'string') {
-      setHasInput(message.trim().length > 0)
-    }
-  }, [message])
-
   // Send button is enabled and filled only when there is input and not loading
   const canSend = useMemo(() => {
-    return hasInput && !isLoading && !isUpdatingChannel
-  }, [hasInput, isLoading, isUpdatingChannel])
+    const inputPresent = typeof message === 'string' ? message.trim().length > 0 : hasInput
+    return inputPresent && !isLoading && !isUpdatingChannel
+  }, [message, hasInput, isLoading, isUpdatingChannel])
   
   // If no conversation is selected, don't render the input
   if (!hasSelectedConversation) {
@@ -226,13 +227,16 @@ export const ChatInput = memo(function ChatInput({
   )
 }, (prevProps, nextProps) => {
   // Custom comparison function for React.memo
-  // For uncontrolled textarea, ignore message prop changes
   return (
+    prevProps.message === nextProps.message &&
     prevProps.isLoading === nextProps.isLoading &&
     prevProps.conversationId === nextProps.conversationId &&
     prevProps.isChatListCollapsed === nextProps.isChatListCollapsed &&
     prevProps.isAgentOnlyConversation === nextProps.isAgentOnlyConversation &&
     prevProps.handleMessageChange === nextProps.handleMessageChange &&
+    prevProps.setMessage === nextProps.setMessage &&
+    prevProps.handleSendMessage === nextProps.handleSendMessage &&
+    prevProps.handleKeyDown === nextProps.handleKeyDown &&
     prevProps.textareaRef === nextProps.textareaRef &&
     JSON.stringify(prevProps.leadData) === JSON.stringify(nextProps.leadData)
   )

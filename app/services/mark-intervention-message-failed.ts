@@ -1,18 +1,18 @@
 import { createClient } from "../../lib/supabase/client"
 
-export const INTERVENTION_FAILED_LOOKBACK_MS = 10 * 60 * 1000
-
 export class InterventionRequestError extends Error {
   messageId?: string
+  savedMessageId?: string
   conversationId?: string
 
   constructor(
     message: string,
-    extras?: { message_id?: string; conversation_id?: string }
+    extras?: { message_id?: string; saved_message_id?: string; conversation_id?: string }
   ) {
     super(message)
     this.name = "InterventionRequestError"
     this.messageId = extras?.message_id
+    this.savedMessageId = extras?.saved_message_id
     this.conversationId = extras?.conversation_id
   }
 }
@@ -22,7 +22,12 @@ export function interventionErrorMessageId(error: unknown): string | undefined {
   return undefined
 }
 
-/** True only when the API responded that Temporal never started (has message_id). */
+/** A persisted row whose voice placement is unconfirmed, not a failure to replay. */
+export function interventionSavedMessageId(error: unknown): string | undefined {
+  return error instanceof InterventionRequestError ? error.savedMessageId : undefined
+}
+
+/** True only when the API identified a saved row whose delivery never started. */
 export function shouldMarkInterventionFailedFromClient(error: unknown): boolean {
   return Boolean(interventionErrorMessageId(error))
 }
@@ -56,12 +61,22 @@ function failedCustomData(params: MarkInterventionFailedParams, existing?: Recor
 async function updateMessageCustomData(
   supabase: ReturnType<typeof createClient>,
   id: string,
-  customData: Record<string, unknown>
+  customData: Record<string, unknown>,
+  params: MarkInterventionFailedParams,
+  previousCustomData: Record<string, unknown> | null
 ): Promise<MarkedInterventionMessage | null> {
-  const { data, error } = await supabase
+  let update = supabase
     .from("messages")
     .update({ custom_data: customData })
     .eq("id", id)
+    .eq("conversation_id", params.conversationId)
+    .eq("user_id", params.userId)
+    .eq("role", "team_member")
+  // A webhook/worker may advance the row between the read and this write.
+  update = previousCustomData === null
+    ? update.is('custom_data', null)
+    : update.eq('custom_data', JSON.stringify(previousCustomData))
+  const { data, error } = await update
     .select("id, created_at, custom_data")
     .single()
 
@@ -76,6 +91,7 @@ async function updateMessageCustomData(
 export async function markInterventionMessageFailed(
   params: MarkInterventionFailedParams
 ): Promise<MarkedInterventionMessage | null> {
+  if (!params.messageId) return null
   const supabase = createClient()
 
   if (params.messageId) {
@@ -83,60 +99,35 @@ export async function markInterventionMessageFailed(
       .from("messages")
       .select("id, created_at, custom_data")
       .eq("id", params.messageId)
+      .eq("conversation_id", params.conversationId)
+      .eq("user_id", params.userId)
+      .eq("role", "team_member")
       .single()
 
     if (!error && existing?.id) {
+      const state = existing.custom_data as Record<string, unknown> | null
+      // The call/webhook may have advanced while the HTTP error was in flight.
+      if (state?.provider_call_id || state?.status === 'placement_unknown' ||
+        state?.call_status === 'placement_unknown' || state?.status === 'sent' ||
+        state?.status === 'delivered' || state?.command_status === 'success' ||
+        state?.workflow_id || state?.workflowId ||
+        ['sending', 'queued', 'running', 'in_progress'].includes(String(state?.status))) {
+        return existing as MarkedInterventionMessage
+      }
       return updateMessageCustomData(
         supabase,
         existing.id,
-        failedCustomData(params, existing.custom_data as Record<string, unknown> | null)
+        failedCustomData(params, existing.custom_data as Record<string, unknown> | null),
+        params,
+        existing.custom_data as Record<string, unknown> | null
       )
     }
-  }
-
-  const since = new Date(Date.now() - INTERVENTION_FAILED_LOOKBACK_MS).toISOString()
-  const { data: matches, error: lookupError } = await supabase
-    .from("messages")
-    .select("id, created_at, custom_data")
-    .eq("conversation_id", params.conversationId)
-    .eq("user_id", params.userId)
-    .eq("role", "team_member")
-    .eq("content", params.content)
-    .gte("created_at", since)
-    .order("created_at", { ascending: false })
-    .limit(1)
-
-  if (lookupError) {
-    console.error("Failed to look up intervention message for failed status:", lookupError)
-  }
-
-  const existing = Array.isArray(matches) ? matches[0] : matches
-  if (existing?.id) {
-    return updateMessageCustomData(
-      supabase,
-      existing.id,
-      failedCustomData(params, existing.custom_data as Record<string, unknown> | null)
-    )
-  }
-
-  const { data: inserted, error: insertError } = await supabase
-    .from("messages")
-    .insert({
-      conversation_id: params.conversationId,
-      role: "team_member",
-      user_id: params.userId,
-      content: params.content,
-      custom_data: failedCustomData(params),
-    })
-    .select("id, created_at, custom_data")
-    .single()
-
-  if (insertError || !inserted) {
-    console.error("Failed to persist failed intervention message:", insertError)
+    // A returned API ID is authoritative. Never mutate a different same-text
+    // message or fabricate a replacement if that row cannot be read.
     return null
   }
 
-  return inserted as MarkedInterventionMessage
+  return null
 }
 
 export async function clearInterventionMessageFailedStatus(messageId: string): Promise<boolean> {

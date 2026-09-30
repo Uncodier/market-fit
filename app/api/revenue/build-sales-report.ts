@@ -22,11 +22,12 @@ export async function buildSalesReport(
   client: SalesClient,
   sales: ReportSale[],
   period: SalesReportPeriod,
-  options: { currency: string | null; segmentId: string; includeCategories: boolean },
+  options: { currency: string | null; siteCurrency?: unknown; segmentId: string; includeCategories: boolean },
 ): Promise<SalesReportData> {
   const availableCurrencies = Array.from(new Set(sales.map((sale) => salesCurrency(sale.currency)))).sort()
   if (!options.currency && availableCurrencies.length > 1) throw new SalesCurrencyRequiredError(availableCurrencies)
-  const currency = options.currency || availableCurrencies[0] || "UNSPECIFIED"
+  // Site settings label empty reports only; never relabel recorded sale amounts.
+  const currency = options.currency || availableCurrencies[0] || salesCurrency(options.siteCurrency)
   const scoped = sales.filter((sale) => salesCurrency(sale.currency) === currency)
   const current = scoped.filter((sale) => saleCalendarDate(sale) >= period.start)
   const previous = scoped.filter((sale) => saleCalendarDate(sale) < period.start)

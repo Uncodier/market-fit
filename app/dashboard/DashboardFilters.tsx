@@ -33,7 +33,7 @@ export function DashboardFilters({
   dateOptionsLoading?: boolean
 }) {
   return (
-    <StickyHeader className="min-h-[64px]">
+    <StickyHeader>
       <div className="mx-auto w-full max-w-[1536px] min-w-0 py-2">
         <div className="flex w-full min-w-0 flex-wrap items-center justify-between gap-3">
           <div className="min-w-0 max-w-full flex-1 overflow-x-auto">

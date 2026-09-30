@@ -8,6 +8,7 @@ import { useCommandK } from "@/app/hooks/use-command-k"
 import { useIsMobile } from "@/app/hooks/use-mobile-view"
 import { Input } from "./input"
 import { Search } from "./icons"
+import { stickyHeaderSelectClassName } from "./sticky-header-styles"
 
 interface StickyHeaderProps {
   children: ReactNode
@@ -44,7 +45,7 @@ export function StickyHeader({
     return null;
   }
   
-  // Siempre usar el contexto si está disponible, de lo contrario usar la prop
+  // Prefer the layout context when available, otherwise use the prop.
   const isCollapsed = layoutContext?.isLayoutCollapsed ?? propIsLayoutCollapsed;
   
   // Use fixed positioning on robots/chat - parent has overflow-hidden which breaks sticky
@@ -60,6 +61,7 @@ export function StickyHeader({
         "border-b dark:border-white/5 border-black/5 z-[150]",
         useFixedPosition ? "fixed transition-all duration-300 ease-in-out" : "sticky",
         "top-[var(--topbar-height,64px)] min-h-[71px]",
+        stickyHeaderSelectClassName,
         className
       )}
       style={{

@@ -1,0 +1,17 @@
+/* DOM scoping keeps portaled forms unchanged and preserves each filter's width. */
+.filters :global(.select-trigger) {
+  @apply h-10 rounded-md border-0 bg-secondary text-secondary-foreground text-sm px-4 font-normal transition-colors duration-200;
+}
+
+@screen md {
+  .filters :global(.select-trigger) {
+    @apply h-9 rounded-full;
+  }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .filters :global(.select-trigger:not(:disabled):hover) {
+    /* Override legacy global rounded-button hover rules, only for these filters. */
+    @apply bg-secondary/80 !important;
+  }
+}

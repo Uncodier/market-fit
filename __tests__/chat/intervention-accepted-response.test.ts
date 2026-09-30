@@ -64,6 +64,18 @@ describe("shouldTreatInterventionAsFailed", () => {
 })
 
 describe("mapChatCommandStatus", () => {
+  it('does not leave completed voice interventions pending on older rows', () => {
+    expect(mapChatCommandStatus({ voice_mode: 'agent_call', call_status: 'completed', command_status: 'pending' })).toBe('success')
+  })
+
+  it('preserves unknown call placement instead of presenting a retryable failure', () => {
+    expect(mapChatCommandStatus({ voice_mode: 'agent_call', call_status: 'placement_unknown', command_status: 'failed' })).toBe('pending')
+  })
+
+  it('maps terminal voice failures without waiting for a command_status update', () => {
+    expect(mapChatCommandStatus({ voice_mode: 'agent_call', call_status: 'no_answer', command_status: 'pending' })).toBe('failed')
+  })
+
   it("maps Temporal status failed to command_status for retry UI", () => {
     expect(mapChatCommandStatus({ status: "failed" })).toBe("failed")
     expect(withMappedCommandStatus({ status: "failed" })?.command_status).toBe("failed")

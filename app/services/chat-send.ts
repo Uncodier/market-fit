@@ -1,10 +1,8 @@
-import type { InterventionRequestOptions } from "@/app/services/intervention-request"
+import type { InterventionAcceptedResponse, InterventionRequestOptions } from "@/app/services/intervention-request"
 import { FULL_API_SERVER_URL } from "./chat-runtime"
 import { buildInterventionRequestBody } from "@/app/services/intervention-request"
-import { supabase } from "./chat-runtime"
-import { createClient } from "@/lib/supabase/client"
 import { InterventionRequestError } from "@/app/services/mark-intervention-message-failed"
-import { shouldTreatInterventionAsFailed } from "@/app/services/intervention-request"
+import { isInterventionDeliveryUnconfirmed, shouldTreatInterventionAsFailed } from "@/app/services/intervention-request"
 
 /**
  * Sends a team member intervention message in a conversation
@@ -15,10 +13,9 @@ export async function sendTeamMemberIntervention(
   userId: string,
   agentId: string,
   options?: InterventionRequestOptions
-): Promise<any> {
-  // Log the API URL being used
-  const API_URL = `${FULL_API_SERVER_URL}/api/agents/chat/intervention`;
-  console.log("Sending intervention to API URL:", API_URL);
+): Promise<InterventionAcceptedResponse> {
+  // The server validates the session and conversation before forwarding to the API.
+  const API_URL = '/api/agents/chat/intervention';
   
   const requestBody = buildInterventionRequestBody(
     conversationId,
@@ -28,41 +25,46 @@ export async function sendTeamMemberIntervention(
     options
   );
   
-  console.log("Intervention request payload:", JSON.stringify(requestBody));
-  
   try {
-    const supabase = createClient()
-    const { data: { session } } = await supabase.auth.getSession()
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
       'Accept': 'application/json',
-    }
-    if (session?.access_token) {
-      headers.Authorization = `Bearer ${session.access_token}`
     }
 
     // Single fetch attempt
     const response = await fetch(API_URL, {
       method: 'POST',
       headers,
-      mode: 'cors',
+      credentials: 'same-origin',
       body: JSON.stringify(requestBody),
+      signal: AbortSignal.timeout(120_000),
     });
     
     if (!response.ok) {
       let errorMsg = `Error sending intervention: ${response.status} ${response.statusText}`;
       const errorData = await response.json().catch(() => null);
       if (errorData) {
-        errorMsg = errorData.error?.message || errorData.message || errorMsg;
+        errorMsg = errorData.error?.message || (typeof errorData.error === 'string' ? errorData.error : undefined) || errorData.message || errorMsg;
       }
+      const started = errorData?.data?.channel_send
+      const unconfirmed = started?.callId || started?.workflowId || started?.workflow_id || started?.workflowRunId || started?.run_id || started?.delivery_status === 'placement_unknown'
+      const definitelyNotStarted = errorData?.execution_started === false || errorData?.data?.execution_started === false
       throw new InterventionRequestError(errorMsg, {
-        message_id: errorData?.data?.message_id || errorData?.message_id,
+        message_id: unconfirmed || !definitelyNotStarted ? undefined : errorData?.data?.message_id || errorData?.message_id,
         conversation_id: errorData?.data?.conversation_id || errorData?.conversation_id,
       });
     }
     
-    const responseData = await response.json().catch(() => ({ success: true }));
-    console.log("Intervention API response:", responseData);
+    const responseData = await response.json().catch(() => null);
+    if (responseData?.success !== true || !responseData?.data?.message?.message_id) {
+      throw new InterventionRequestError('Delivery could not be confirmed. Check the conversation before retrying.');
+    }
+    if (isInterventionDeliveryUnconfirmed(responseData)) {
+      throw new InterventionRequestError('Call placement is unconfirmed. Check the conversation before retrying.', {
+        saved_message_id: responseData.data.message.message_id,
+        conversation_id: responseData.data.conversation_id,
+      });
+    }
 
     if (shouldTreatInterventionAsFailed(responseData)) {
       throw new InterventionRequestError(
@@ -76,8 +78,6 @@ export async function sendTeamMemberIntervention(
 
     return responseData;
   } catch (error) {
-    console.error('Error sending team member intervention:', error);
-    console.error('API server URL configured as:', FULL_API_SERVER_URL);
     throw error;
   }
 }
@@ -95,7 +95,10 @@ export async function sendAgentMessage(
     visitor_id?: string,
     team_member_id: string
   }
-): Promise<any> {
+): Promise<{
+  success?: boolean
+  data?: { messages?: { assistant?: { message_id?: string; content: string } } }
+}> {
   // Log the API URL being used
   const API_URL = `${FULL_API_SERVER_URL}/api/agents/chat/message`;
   console.log("Sending message to agent at:", API_URL);

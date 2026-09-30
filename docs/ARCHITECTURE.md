@@ -121,6 +121,12 @@ workflow.
 
 ## Assistant send lifecycle
 
+Team-member chat interventions use a separate authenticated same-origin proxy.
+The API owns their persisted message IDs. Voice interventions currently place
+tracked provider calls directly rather than starting Temporal; see
+[Chat intervention delivery](CHAT_INTERVENTION_DELIVERY.md) for lifecycle,
+retry, and uncertainty handling.
+
 Browser assistant sends use the authenticated same-origin
 `/api/robots/instance/assistant` proxy, not the configured external API URL
 directly. The API owns user-log persistence; a new send carries a fresh

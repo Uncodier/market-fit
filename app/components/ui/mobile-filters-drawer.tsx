@@ -13,6 +13,7 @@ import {
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { useIsMobile } from "@/app/hooks/use-mobile-view"
 import { cn } from "@/lib/utils"
+import { stickyHeaderSelectClassName } from "./sticky-header-styles"
 
 export function FilterContainer({ children, className }: { children: React.ReactNode, className?: string }) {
   // To provide standard spacing and separators on mobile, we automatically inject FilterSeparator 
@@ -101,11 +102,14 @@ export function MobileFiltersDrawer({ children, triggerText, results }: MobileFi
             </span>
           </Button>
         </SheetTrigger>
-        <SheetContent side="right" className="w-[85vw] sm:max-w-md p-0 flex flex-col bg-background">
+        <SheetContent side="right" aria-describedby={undefined} className="w-[85vw] sm:max-w-md p-0 flex flex-col bg-background">
           <SheetHeader className="px-4 py-4 border-b">
             <SheetTitle className="text-left font-semibold text-lg">{triggerText || t('common.search') || "Search"}</SheetTitle>
           </SheetHeader>
-          <div className="flex-1 overflow-y-auto px-4 py-6 flex flex-col gap-6 mobile-filters-drawer-content">
+          <div className={cn(
+            "flex-1 overflow-y-auto px-4 py-6 flex flex-col gap-6 mobile-filters-drawer-content",
+            stickyHeaderSelectClassName
+          )}>
             {children}
             {results && (
               <div className="mt-2 pt-6 border-t border-border flex flex-col gap-4">

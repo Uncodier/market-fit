@@ -1,6 +1,9 @@
 "use client"
 
-import { useState } from 'react'
+import { useRef, useState } from 'react'
+import { useChatConversationActions } from './useChatConversationActions'
+import { reconcileInterventionMessage } from './reconcile-intervention-message'
+import { withMappedCommandStatus } from '@/app/services/map-chat-command-status'
 import { useRouter } from 'next/navigation'
 import { useAuthContext } from '@/app/components/auth/auth-provider'
 import { useSite } from '@/app/context/SiteContext'
@@ -14,10 +17,11 @@ import {
 import {
   markInterventionMessageFailed,
   interventionErrorMessageId,
+  interventionSavedMessageId,
 } from '@/app/services/mark-intervention-message-failed'
 
 // Helper function to log detailed API errors
-const logApiError = (error: any, context: string) => {
+const logApiError = (error: unknown, context: string) => {
   if (error instanceof Error) {
     console.error(`API Error (${context}):`, {
       message: error.message,
@@ -38,7 +42,7 @@ interface UseChatOperationsProps {
   isAgentOnlyConversation: boolean
   setChatMessages: React.Dispatch<React.SetStateAction<ChatMessage[]>>
   setIsAgentResponding: React.Dispatch<React.SetStateAction<boolean>>
-  leadData: any
+  leadData: { id?: string; name?: string | null } | null
 }
 
 export function useChatOperations({
@@ -54,512 +58,156 @@ export function useChatOperations({
   const { user } = useAuthContext()
   const { currentSite } = useSite()
   const [isLoading, setIsLoading] = useState(false)
+  const sendInFlightRef = useRef(false)
+  const sendSequenceRef = useRef(0)
+  const conversationActions = useChatConversationActions({
+    agentId, agentName, setChatMessages, setIsAgentResponding, leadData,
+  })
   
-  const handleSendMessage = async (message: string) => {
-    if (!message.trim() || isLoading || !currentSite?.id || !user?.id) return
-    
-    // Obtain user name and avatar
+  // True consumes the draft: the API accepted it or its saved failure is visible.
+  // Rejected, skipped, and unconfirmed sends must leave the composer untouched.
+  const handleSendMessage = async (message: string): Promise<boolean> => {
+    if (!message.trim() || sendInFlightRef.current || !currentSite?.id || !user?.id) return false
+
     const userName = user.user_metadata?.name || (user.email ? user.email.split('@')[0] : 'Team Member')
     const userAvatar = user.user_metadata?.avatar_url || null
-    
-    // Create a temporary message for UI feedback with the correct role (always team_member for UI)
     const tempUserMessage: ChatMessage = {
-      id: `temp-${Date.now()}`,
-      role: "team_member", // Always team_member for UI display, regardless of conversation type
+      id: `temp-${Date.now()}-${++sendSequenceRef.current}`,
+      role: "team_member",
       text: message,
       timestamp: new Date(),
       sender_id: user.id,
       sender_name: userName,
-      sender_avatar: userAvatar || undefined
+      sender_avatar: userAvatar || undefined,
     }
-    
-    // Set loading state while we send the API request
+
+    sendInFlightRef.current = true
     setIsLoading(true)
-    
-    // Add temporary message to conversation immediately for UI feedback
-    // Use a function version to ensure we work with latest state
-    setChatMessages(prevMessages => {
-      // Check if this temp message is already in the array to avoid duplicates
-      const isDuplicate = prevMessages.some(msg => msg.id === tempUserMessage.id);
-      if (isDuplicate) {
-        return prevMessages;
-      }
-      return [...prevMessages, tempUserMessage];
-    });
-    
+    setChatMessages(previous => [...previous, tempUserMessage])
+    let actualConversationId = conversationId
+
     try {
-      // For new conversations, create a real conversation first
-      let actualConversationId = conversationId
-      
       if (conversationId.startsWith("new-")) {
-        // Create a new conversation
         const newConversation = await createConversation(
           currentSite.id,
           user.id,
           agentId,
           `Chat with ${agentName}`,
-          {
-            lead_id: leadData?.id
-          }
+          { lead_id: leadData?.id },
         )
-        
-        if (newConversation) {
-          actualConversationId = newConversation.id
-          
-          // Update the URL with the real conversation ID
-          router.replace(`/chat?agentId=${agentId}&agentName=${encodeURIComponent(agentName)}&conversationId=${actualConversationId}`)
-        } else {
-          throw new Error("Failed to create conversation")
-        }
+        if (!newConversation) throw new Error("Failed to create conversation")
+        actualConversationId = newConversation.id
+        router.replace(`/chat?agentId=${agentId}&agentName=${encodeURIComponent(agentName)}&conversationId=${actualConversationId}`)
       }
-      
-      console.log(`Sending message for conversation: ${actualConversationId}, agent: ${agentId}, isAgentOnly: ${isAgentOnlyConversation}`)
-      console.log(`Message type: ${isAgentOnlyConversation ? 'DIRECT AGENT MESSAGE' : 'TEAM INTERVENTION'}`)
-      
-      try {
-        if (isAgentOnlyConversation) {
-          // Use direct agent message API for agent-only conversations
-          console.log("★★★ SENDING DIRECT AGENT MESSAGE ★★★")
-          console.log("Message text:", tempUserMessage.text)
-          
-          try {
-            // Call the direct agent message API - let the API handle the message creation
-            console.log(`[${new Date().toISOString()}] 📞 Calling sendAgentMessage...`)
-            const result = await sendAgentMessage(
-              actualConversationId,
-              tempUserMessage.text,
-              agentId,
-              {
-                site_id: currentSite.id,
-                lead_id: leadData?.id,
-                visitor_id: undefined, // No visitor for direct agent conversations
-                team_member_id: user.id
-              }
-            )
-            console.log(`[${new Date().toISOString()}] ✅ RESPUESTA directa recibida:`, result?.success)
-            
-            // Process the response if we have the full expected structure
-            if (result?.success && result?.data?.messages?.assistant) {
-              console.log(`[${new Date().toISOString()}] 📝 Respuesta completa recibida con estructura correcta`)
-              
-              const agentResponse: ChatMessage = {
-                id: result.data.messages.assistant.message_id || `agent-${Date.now()}`,
+
+      if (isAgentOnlyConversation) {
+        const result = await sendAgentMessage(actualConversationId, message, agentId, {
+          site_id: currentSite.id,
+          lead_id: leadData?.id,
+          team_member_id: user.id,
+        })
+        if (result?.success !== true) throw new Error("Message acceptance could not be confirmed.")
+
+        const assistant = result.data?.messages?.assistant
+        if (assistant?.message_id) {
+          setChatMessages(previous => previous.some(row => row.id === assistant.message_id)
+            ? previous
+            : [...previous, {
+                id: assistant.message_id,
                 role: "assistant",
-                text: result.data.messages.assistant.content,
+                text: assistant.content,
                 timestamp: new Date(),
-              }
-              
-              // Add the agent response to the conversation
-              console.log(`[${new Date().toISOString()}] 📝 Agregando respuesta del agente al chat`)
-              setChatMessages(prev => [...prev, agentResponse])
-            } else {
-              console.log(`[${new Date().toISOString()}] ⚠️ Respuesta incompleta:`, result)
-            }
-          } catch (apiCallError) {
-            console.error(`[${new Date().toISOString()}] ❌ Error en la API de mensajes directos:`, apiCallError)
-            
-            throw apiCallError
-          }
-        } else {
-          // Use the intervention API for conversations with leads or visitors
-          console.log(`[${new Date().toISOString()}] 📞 Enviando team intervention`)
-          
-          await sendTeamMemberIntervention(
-            actualConversationId,
-            tempUserMessage.text,
-            user.id,
-            agentId,
-            {
-              site_id: currentSite?.id,
-              lead_id: leadData?.id || undefined,
-              visitor_id: undefined
-            }
-          )
-          console.log(`[${new Date().toISOString()}] ✅ Team intervention enviada correctamente`)
+              }])
         }
-      } catch (apiError) {
-        console.error(`[${new Date().toISOString()}] ❌ Error al enviar mensaje:`, apiError)
-        logApiError(apiError, isAgentOnlyConversation ? 'DirectAgentMessage' : 'TeamIntervention')
-        
-        // Show a toast notification with the error
-        toast.error(apiError instanceof Error 
-          ? `Error: ${apiError.message}` 
-          : "Failed to send message to the server."
-        )
-        
-        // Only persist failed when the API says Temporal never started (5xx after
-        // save, or 2xx with channel_send.success false). Do not mark failed on
-        // HTTP timeout of a started send — that would fight Temporal.
-        try {
-          setChatMessages(prev => prev.filter(msg => msg.id !== tempUserMessage.id))
+      } else {
+        const result = await sendTeamMemberIntervention(actualConversationId, message, user.id, agentId, {
+          site_id: currentSite.id,
+          lead_id: leadData?.id || undefined,
+        })
+        if (result?.success !== true) throw new Error("Message acceptance could not be confirmed.")
 
-          const savedMessageId = interventionErrorMessageId(apiError)
-          if (!savedMessageId) {
-            return
-          }
-
-          const errorMessage = apiError instanceof Error ? apiError.message : "API communication error"
-          const savedMessage = await markInterventionMessageFailed({
-            conversationId: actualConversationId,
-            userId: user.id,
-            content: tempUserMessage.text,
-            errorMessage,
-            userName,
-            avatarUrl: userAvatar,
-            messageId: savedMessageId,
-          })
-
-          if (savedMessage) {
-            setChatMessages(prev => {
-              const withoutExisting = prev.filter(msg => msg.id !== savedMessage.id)
-              return [...withoutExisting, {
-                id: savedMessage.id,
-                role: 'team_member',
-                text: tempUserMessage.text,
-                timestamp: new Date(savedMessage.created_at),
-                sender_id: user.id,
-                sender_name: userName,
-                sender_avatar: userAvatar || undefined,
-                metadata: {
-                  command_status: 'failed',
-                  error_message: errorMessage
-                }
-              }]
-            })
-
-            console.log(`[${new Date().toISOString()}] ⚠️ Mensaje marcado como 'failed'`, savedMessage.id)
-          }
-        } catch (dbError) {
-          console.error(`[${new Date().toISOString()}] 💥 Error al guardar mensaje de error en DB:`, dbError)
+        const savedMessage = result.data?.message
+        if (savedMessage?.message_id) {
+          setChatMessages(previous => reconcileInterventionMessage(previous, tempUserMessage, savedMessage))
         }
       }
+      return true
     } catch (error) {
-      console.error("Error sending message:", error)
-      
-      // Add error message to chat
-      setChatMessages(prev => [...prev, {
-        id: `error-${Date.now()}`,
-        role: "system",
-        text: error instanceof Error 
-          ? `Error: ${error.message}` 
-          : "There was an error sending your message. Please try again.",
-        timestamp: new Date()
-      }])
-      
-      // Remove temporary message since there was an error
-      setChatMessages(prev => prev.filter(msg => msg.id !== tempUserMessage.id))
+      logApiError(error, isAgentOnlyConversation ? 'DirectAgentMessage' : 'TeamIntervention')
+      toast.error(error instanceof Error ? `Error: ${error.message}` : "Failed to send message to the server.")
+      setChatMessages(previous => previous.filter(row => row.id !== tempUserMessage.id))
+
+      const unconfirmedMessageId = !isAgentOnlyConversation && interventionSavedMessageId(error)
+      if (unconfirmedMessageId) {
+        setChatMessages(previous => reconcileInterventionMessage(previous, tempUserMessage, {
+          message_id: unconfirmedMessageId,
+          custom_data: {
+            voice_mode: 'agent_call',
+            status: 'placement_unknown',
+            call_status: 'placement_unknown',
+            command_status: 'pending',
+          },
+        }))
+        return false
+      }
+
+      // Only a deterministic API failure with an existing row can consume a draft.
+      // Never persist a substitute message or replay an ambiguous network request.
+      const savedMessageId = !isAgentOnlyConversation && interventionErrorMessageId(error)
+      if (!savedMessageId) return false
+
+      try {
+        const errorMessage = error instanceof Error ? error.message : "API communication error"
+        const savedMessage = await markInterventionMessageFailed({
+          conversationId: actualConversationId,
+          userId: user.id,
+          content: message,
+          errorMessage,
+          userName,
+          avatarUrl: userAvatar,
+          messageId: savedMessageId,
+        })
+        if (!savedMessage) return false
+
+        setChatMessages(previous => reconcileInterventionMessage(previous, tempUserMessage, {
+          message_id: savedMessage.id,
+          created_at: savedMessage.created_at,
+          custom_data: savedMessage.custom_data,
+        }))
+        if (savedMessage.custom_data.status === 'placement_unknown' || savedMessage.custom_data.call_status === 'placement_unknown') {
+          return false
+        }
+        return true
+      } catch (statusError) {
+        logApiError(statusError, 'InterventionFailureStatus')
+        return false
+      }
     } finally {
-      // Only clear loading state for UI feedback
+      sendInFlightRef.current = false
       setIsLoading(false)
-    }
-  }
-
-  // Start a new conversation
-  const startNewConversation = async () => {
-    console.log("==== Starting: startNewConversation ====")
-    
-    // Debug essential values
-    console.log("currentSite:", currentSite)
-    console.log("user:", user)
-    console.log("agentId:", agentId)
-    console.log("agentName:", agentName)
-    
-    if (!agentId) {
-      console.error("ERROR: agentId is empty")
-      return
-    }
-    
-    if (!currentSite?.id) {
-      console.error("ERROR: currentSite or currentSite.id is null or undefined")
-      return
-    }
-    
-    if (!user?.id) {
-      console.error("ERROR: user or user.id is null or undefined")
-      return
-    }
-    
-    try {
-      // Reset any active agent response animations before creating a new conversation
-      setIsAgentResponding(false)
-      
-      // Debug parameters being passed to createConversation
-      console.log("Creating conversation with parameters:")
-      console.log("- siteId:", currentSite.id)
-      console.log("- userId:", user.id)
-      console.log("- agentId:", agentId)
-      console.log("- title:", `Chat with ${agentName}`)
-      console.log("- options: {}") // No additional options
-      
-      // Create a generic conversation
-      const conversation = await createConversation(
-        currentSite.id,
-        user.id,
-        agentId,
-        `Chat with ${agentName}`
-        // No additional options
-      )
-      
-      if (conversation) {
-        console.log("New conversation created successfully:", conversation)
-        
-        // Clear the chat messages to avoid any transitional issues
-        setChatMessages([])
-        
-        router.push(`/chat?agentId=${agentId}&agentName=${encodeURIComponent(agentName)}&conversationId=${conversation.id}`)
-      } else {
-        console.error("Failed to create conversation - returned null")
-        // Fallback to temporary ID if creation fails
-        const newConversationId = `new-${Date.now()}`
-        router.push(`/chat?agentId=${agentId}&agentName=${encodeURIComponent(agentName)}&conversationId=${newConversationId}`)
-      }
-    } catch (error) {
-      console.error("Error creating conversation:", error)
-      console.error("Error details:", error instanceof Error ? error.message : String(error))
-      // Fallback to temporary ID on error
-      const newConversationId = `new-${Date.now()}`
-      router.push(`/chat?agentId=${agentId}&agentName=${encodeURIComponent(agentName)}&conversationId=${newConversationId}`)
-    } finally {
-      console.log("==== Ending: startNewConversation ====")
-    }
-  }
-
-  // Create a new lead conversation
-  const handleNewLeadConversation = async () => {
-    console.log("==== Starting: handleNewLeadConversation ====")
-    
-    // Debug essential values
-    console.log("currentSite:", currentSite)
-    console.log("user:", user)
-    console.log("agentId:", agentId)
-    console.log("agentName:", agentName)
-    console.log("leadData:", leadData)
-    
-    if (!agentId) {
-      console.error("ERROR: agentId is empty")
-      return
-    }
-    
-    if (!currentSite?.id) {
-      console.error("ERROR: currentSite or currentSite.id is null or undefined")
-      return
-    }
-    
-    if (!user?.id) {
-      console.error("ERROR: user or user.id is null or undefined")
-      return
-    }
-    
-    if (!leadData?.id) {
-      console.error("ERROR: leadData or leadData.id is null or undefined")
-      return
-    }
-    
-    try {
-      // Reset any active agent response animations before creating a new conversation
-      setIsAgentResponding(false)
-      
-      // Debug parameters being passed to createConversation
-      console.log("Creating lead conversation with parameters:")
-      console.log("- siteId:", currentSite.id)
-      console.log("- userId:", user.id)
-      console.log("- agentId:", agentId)
-      console.log("- title:", `Chat with ${leadData.name}`)
-      console.log("- options:", { lead_id: leadData.id })
-      
-      // Create a conversation with lead_id
-      const conversation = await createConversation(
-        currentSite.id,
-        user.id,
-        agentId,
-        `Chat with ${leadData.name}`,
-        { lead_id: leadData.id }
-      )
-      
-      console.log("createConversation result:", conversation)
-      
-      if (conversation) {
-        console.log("New lead conversation created successfully:", conversation)
-        console.log("Redirecting to:", `/chat?agentId=${agentId}&agentName=${encodeURIComponent(agentName)}&conversationId=${conversation.id}`)
-        
-        // Clear the chat messages to avoid any transitional issues
-        setChatMessages([])
-        
-        router.push(`/chat?agentId=${agentId}&agentName=${encodeURIComponent(agentName)}&conversationId=${conversation.id}`)
-      } else {
-        console.error("Failed to create lead conversation - returned null")
-      }
-    } catch (error) {
-      console.error("Error creating lead conversation:", error)
-      console.error("Error details:", error instanceof Error ? error.message : String(error))
-      console.error("Error stack:", error instanceof Error ? error.stack : "No stack trace available")
-    } finally {
-      console.log("==== Ending: handleNewLeadConversation ====")
-    }
-  }
-  
-  // Create a new agent-only conversation
-  const handleNewAgentConversation = async () => {
-    console.log("==== Starting: handleNewAgentConversation ====")
-    
-    // Debug essential values
-    console.log("currentSite:", currentSite)
-    console.log("user:", user)
-    console.log("agentId:", agentId)
-    console.log("agentName:", agentName)
-    
-    if (!agentId) {
-      console.error("ERROR: agentId is empty")
-      toast?.error?.("Cannot create agent conversation: No agent selected")
-      return
-    }
-    
-    if (!currentSite?.id) {
-      console.error("ERROR: currentSite or currentSite.id is null or undefined")
-      toast?.error?.("Cannot create conversation: No site selected")
-      return
-    }
-    
-    if (!user?.id) {
-      console.error("ERROR: user or user.id is null or undefined")
-      toast?.error?.("Cannot create conversation: Not logged in")
-      return
-    }
-    
-    try {
-      // Reset any active agent response animations before creating a new conversation
-      setIsAgentResponding(false)
-      
-      // Debug parameters being passed to createConversation
-      console.log("Creating AGENT-ONLY conversation with parameters:")
-      console.log("- siteId:", currentSite.id)
-      console.log("- userId:", user.id)
-      console.log("- agentId:", agentId)
-      console.log("- title:", `Direct chat with ${agentName}`)
-      console.log("- options: { is_agent_conversation: true }")
-      
-      // Create a regular conversation with just the agent - explicitly specify this is an agent conversation
-      const conversation = await createConversation(
-        currentSite.id,
-        user.id,
-        agentId,
-        `Direct chat with ${agentName}`,
-        { is_agent_conversation: true } // This flag will tell the service not to create a visitor_id
-      )
-      
-      console.log("Agent-only conversation creation result:", conversation)
-      
-      if (conversation) {
-        console.log("★★★ NEW AGENT-ONLY CONVERSATION CREATED ★★★")
-        console.log("Conversation ID:", conversation.id)
-        
-        // Create URL with mode parameter for agent-only conversation
-        const newUrl = `/chat?agentId=${agentId}&agentName=${encodeURIComponent(agentName)}&conversationId=${conversation.id}&mode=agentOnly`
-        console.log("Redirecting to new agent conversation URL:", newUrl)
-        
-        // Clear the chat messages to avoid any transitional issues
-        setChatMessages([])
-        
-        // Navigate to the new conversation
-        router.push(newUrl) // Use router.push instead of window.history for proper routing
-      } else {
-        console.error("Failed to create agent conversation - returned null")
-        toast?.error?.("Failed to create conversation. Please try again.")
-      }
-    } catch (error) {
-      console.error("Error creating agent conversation:", error)
-      console.error("Error details:", error instanceof Error ? error.message : String(error))
-      console.error("Error stack:", error instanceof Error ? error.stack : "No stack trace available")
-      toast?.error?.("Error creating conversation: " + (error instanceof Error ? error.message : "Unknown error"))
-    } finally {
-      console.log("==== Ending: handleNewAgentConversation ====")
-    }
-  }
-  
-  // Create a new private discussion
-  const handlePrivateDiscussion = async () => {
-    console.log("==== Starting: handlePrivateDiscussion ====")
-    
-    // Debug essential values
-    console.log("currentSite:", currentSite)
-    console.log("user:", user)
-    console.log("agentId:", agentId)
-    console.log("agentName:", agentName)
-    
-    if (!agentId) {
-      console.error("ERROR: agentId is empty")
-      return
-    }
-    
-    if (!currentSite?.id) {
-      console.error("ERROR: currentSite or currentSite.id is null or undefined")
-      return
-    }
-    
-    if (!user?.id) {
-      console.error("ERROR: user or user.id is null or undefined")
-      return
-    }
-    
-    try {
-      // Reset any active agent response animations before creating a new conversation
-      setIsAgentResponding(false)
-      
-      // Debug parameters being passed to createConversation
-      console.log("Creating private conversation with parameters:")
-      console.log("- siteId:", currentSite.id)
-      console.log("- userId:", user.id)
-      console.log("- agentId:", agentId)
-      console.log("- title:", `Private discussion with ${agentName}`)
-      console.log("- options:", { is_private: true })
-      
-      // Create a private conversation
-      const conversation = await createConversation(
-        currentSite.id,
-        user.id,
-        agentId,
-        `Private discussion with ${agentName}`,
-        { 
-          is_private: true
-        }
-      )
-      
-      console.log("createConversation result:", conversation)
-      
-      if (conversation) {
-        console.log("New private conversation created successfully:", conversation)
-        console.log("Redirecting to:", `/chat?agentId=${agentId}&agentName=${encodeURIComponent(agentName)}&conversationId=${conversation.id}&mode=private`)
-        
-        // Clear the chat messages to avoid any transitional issues
-        setChatMessages([])
-        
-        router.push(`/chat?agentId=${agentId}&agentName=${encodeURIComponent(agentName)}&conversationId=${conversation.id}&mode=private`)
-      } else {
-        console.error("Failed to create private conversation - returned null")
-      }
-    } catch (error) {
-      console.error("Error creating private conversation:", error)
-      console.error("Error details:", error instanceof Error ? error.message : String(error))
-      console.error("Error stack:", error instanceof Error ? error.stack : "No stack trace available")
-    } finally {
-      console.log("==== Ending: handlePrivateDiscussion ====")
     }
   }
 
   // Retry a failed message using the same row
   const handleRetryMessage = async (failedMessage: ChatMessage) => {
-    if (!failedMessage.text || !failedMessage.id || isLoading || !currentSite?.id || !user?.id) return
+    if (!failedMessage.text || !failedMessage.id || sendInFlightRef.current || !currentSite?.id || !user?.id) return
     if (failedMessage.id.startsWith("temp-") || failedMessage.id.startsWith("error-")) return
 
     console.log(`[${new Date().toISOString()}] 🔄 Retrying failed message:`, failedMessage.id)
 
     const userName = user.user_metadata?.name || (user.email ? user.email.split('@')[0] : 'Team Member')
     const userAvatar = user.user_metadata?.avatar_url || null
+    const pendingMetadata = {
+      ...failedMessage.metadata,
+      command_status: 'pending' as const,
+      error_message: undefined,
+    }
 
+    sendInFlightRef.current = true
     setIsLoading(true)
     setChatMessages(prev => prev.map(msg =>
       msg.id === failedMessage.id
-        ? { ...msg, metadata: { ...msg.metadata, command_status: "pending", error_message: undefined } }
+        ? { ...msg, metadata: pendingMetadata }
         : msg
     ))
 
@@ -577,11 +225,7 @@ export function useChatOperations({
         }
       )
 
-      setChatMessages(prev => prev.map(msg =>
-        msg.id === failedMessage.id
-          ? { ...msg, metadata: { ...msg.metadata, command_status: "pending", error_message: undefined } }
-          : msg
-      ))
+      // Realtime may already have advanced this row while the request was pending.
       console.log(`[${new Date().toISOString()}] ✅ Retry queued for message`, failedMessage.id)
     } catch (apiError) {
       logApiError(apiError, "TeamInterventionRetry")
@@ -608,19 +252,16 @@ export function useChatOperations({
 
       if (savedMessage) {
         setChatMessages(prev => prev.map(msg =>
-          msg.id === savedMessage.id
+          msg.id === savedMessage.id && msg.metadata === pendingMetadata
             ? {
                 ...msg,
-                metadata: {
-                  ...msg.metadata,
-                  command_status: "failed",
-                  error_message: errorMessage,
-                }
+                metadata: withMappedCommandStatus(savedMessage.custom_data),
               }
             : msg
         ))
       }
     } finally {
+      sendInFlightRef.current = false
       setIsLoading(false)
     }
   }
@@ -629,9 +270,6 @@ export function useChatOperations({
     isLoading,
     handleSendMessage,
     handleRetryMessage,
-    startNewConversation,
-    handleNewLeadConversation,
-    handleNewAgentConversation,
-    handlePrivateDiscussion
+    ...conversationActions
   }
 } 

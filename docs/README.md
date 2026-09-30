@@ -24,6 +24,7 @@ Use the guides below before relying on older implementation notes.
 - [Accounting integrity and rollout](ACCOUNTING.md)
 - [Site archival](SITE_ARCHIVAL.md)
 - [Support chat identity](CHAT_IDENTITY.md)
+- [Chat intervention delivery and voice/Temporal boundaries](CHAT_INTERVENTION_DELIVERY.md)
 - [Report sections and data contracts](REPORTS.md)
 - [Automated outreach settings](OUTREACH_SETTINGS.md)
 - [Pending ICP mining list selection](ICP_MINING_LIST_SELECTION.md)

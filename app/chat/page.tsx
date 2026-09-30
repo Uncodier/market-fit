@@ -1,14 +1,12 @@
 
 "use client"
 
-import React, { useEffect, useRef, useState, Suspense, useCallback, useMemo } from "react"
+import React, { useEffect, useState, Suspense, useCallback, useMemo } from "react"
 import "@/app/styles/chat-optimizations.css"
 import { useSearchParams, useRouter } from "next/navigation"
-import { agents } from "@/app/data/mock-agents"
 import { Breadcrumb } from "@/app/components/navigation/Breadcrumb"
 import { useAuthContext } from "@/app/components/auth/auth-provider"
 import { markUINavigation } from "@/lib/navigation/navigation-helpers"
-import { useTheme } from "@/app/context/ThemeContext"
 import { useSite } from "@/app/context/SiteContext"
 import { cn } from "@/lib/utils"
 import { createClient } from "@/lib/supabase/client"
@@ -16,7 +14,6 @@ import { ChatList } from "@/app/components/chat/chat-list"
 import { useCommandK } from "@/app/hooks/use-command-k"
 // Chat service functions are imported dynamically where used to avoid client bundling issues
 import * as Icons from "@/app/components/ui/icons"
-import { Agent } from "@/app/types/agents"
 
 // New imports for refactored components
 import { ChatHeader } from "@/app/components/chat/ChatHeader"
@@ -25,6 +22,9 @@ import { ChatInput } from "@/app/components/chat/ChatInput"
 import { InvalidatedLeadModal } from "@/app/components/chat/InvalidatedLeadModal"
 import { useLeadData } from "@/app/hooks/useLeadData"
 import { useChatMessages } from "@/app/hooks/useChatMessages"
+import { useChatScroll } from "./useChatScroll"
+import { useChatDraftSubmit } from "./useChatDraftSubmit"
+import { useChatPageAgent } from "./useChatPageAgent"
 import { useChatOperations } from "@/app/hooks/useChatOperations"
 import { useApiRequestTracker } from "@/app/hooks/useApiRequestTracker"
 import { useOptimizedMessageState } from "@/app/hooks/useOptimizedMessageState"
@@ -44,31 +44,22 @@ export default function ChatPage() {
 function ChatPageContent() {
   const searchParams = useSearchParams()
   const router = useRouter()
-  const messagesEndRef = useRef<HTMLDivElement>(null)
-  const messagesContainerRef = useRef<HTMLDivElement>(null)
-  const isNearBottomRef = useRef(true)
-  const userJustSentRef = useRef(false)
-  const prevConversationIdRef = useRef<string>("")
-  const prevAgentRespondingRef = useRef(false)
   const agentId = searchParams.get("agentId") || ""
   const agentName = searchParams.get("agentName") || "Agent"
   const conversationId = searchParams.get("conversationId") || ""
-  const [currentAgent, setCurrentAgent] = useState<Agent | null>(null)
   
   // Optimized message state management - debounced re-renders
   const chatCacheKey = conversationId && !conversationId.startsWith("new-") ? `chat-${conversationId}` : 'chat-new'
-  const { message, setMessage, messageRef, clearMessage, handleMessageChange, textareaRef } = useOptimizedMessageState("", chatCacheKey)
+  const { setMessage, messageRef, clearMessage, handleMessageChange, textareaRef } = useOptimizedMessageState("", chatCacheKey)
   const { user } = useAuthContext()
   const { currentSite } = useSite()
-  const [userAvatarUrl, setUserAvatarUrl] = useState<string | null>(null)
+  const [, setUserAvatarUrl] = useState<string | null>(null)
   
   const [isChatListCollapsed, setIsChatListCollapsed] = useAutoCollapseSidebar()
   
-  // Estado para verificar la disponibilidad del API server
-  const [isApiServerAvailable, setIsApiServerAvailable] = useState<boolean | null>(null)
+  // Track API server availability.
+  const [, setIsApiServerAvailable] = useState<boolean | null>(null)
   
-  // Initialize the theme context
-  const { theme, isDarkMode } = useTheme()
   const { isLayoutCollapsed } = useLayout()
   
   // Initialize the useCommandK hook
@@ -120,71 +111,17 @@ function ChatPageContent() {
     leadData
   })
 
-  // Scroll to the bottom of the messages container
-  const scrollToBottom = useCallback((instant = false) => {
-    const container = messagesContainerRef.current
-    if (!container) return
+  const currentAgent = useChatPageAgent({
+    agentId, agentName, conversationId, clearMessagesForTransition, setIsAgentOnlyConversation,
+  })
 
-    container.scrollTo({
-      top: container.scrollHeight,
-      behavior: instant ? "auto" : "smooth",
-    })
-    isNearBottomRef.current = true
-  }, [])
+  const { messagesEndRef, messagesContainerRef, userJustSentRef } = useChatScroll(
+    conversationId, chatMessages, isAgentResponding,
+  )
 
-  // Track scroll position to know if user is near the bottom
-  useEffect(() => {
-    const container = messagesContainerRef.current
-    if (!container) return
-
-    const handleScroll = () => {
-      const distanceFromBottom = container.scrollHeight - container.scrollTop - container.clientHeight
-      isNearBottomRef.current = distanceFromBottom < 150
-    }
-
-    container.addEventListener("scroll", handleScroll, { passive: true })
-    handleScroll()
-    return () => container.removeEventListener("scroll", handleScroll)
-  }, [])
-
-  // Scroll to bottom: instant when switching conversations, smart when messages update
-  useEffect(() => {
-    const conversationChanged = prevConversationIdRef.current !== conversationId
-    prevConversationIdRef.current = conversationId
-
-    // Only react to isAgentResponding when it turns ON (false → true), not on every change
-    const agentJustStarted = isAgentResponding && !prevAgentRespondingRef.current
-    prevAgentRespondingRef.current = isAgentResponding
-
-    if (conversationChanged) {
-      userJustSentRef.current = false
-      scrollToBottom(true)
-      return
-    }
-
-    // For new messages or agent starting to respond: only scroll if near bottom or user just sent
-    const userJustSent = userJustSentRef.current
-    if (userJustSent) {
-      userJustSentRef.current = false
-    }
-
-    const shouldScroll = isNearBottomRef.current || userJustSent || agentJustStarted
-    if (shouldScroll) {
-      scrollToBottom()
-    }
-  }, [chatMessages, isAgentResponding, conversationId, scrollToBottom])
-
-  // Uncontrolled message submission using ref
-  const handleSendMessageSubmit = useCallback(async (e: React.FormEvent) => {
-    e.preventDefault()
-    const currentMessage = messageRef.current.trim()
-    
-    if (currentMessage) {
-      userJustSentRef.current = true
-      await handleSendMessage(currentMessage)
-      clearMessage()
-    }
-  }, [handleSendMessage, clearMessage, messageRef])
+  const handleSendMessageSubmit = useChatDraftSubmit({
+    conversationId, messageRef, clearMessage, handleSendMessage, userJustSentRef,
+  })
 
   // Use optimized keyboard handler
   const { handleKeyDown } = useOptimizedKeyboardHandler({
@@ -192,63 +129,6 @@ function ChatPageContent() {
     isLoading,
     onSendMessage: handleSendMessageSubmit
   })
-
-  // Load agent data when agentId changes
-  useEffect(() => {
-    const loadAgent = async () => {
-      // First try to find the agent in our mock list
-      const mockAgent = agents.find((a: Agent) => a.id === agentId)
-      
-      if (mockAgent) {
-        setCurrentAgent(mockAgent)
-      } else {
-        // Try to load from database
-        try {
-          const { getAgentForConversation } = await import("@/app/services/chat-service.client")
-          const dbAgent: Agent | null = await getAgentForConversation(agentId)
-          if (dbAgent) {
-            setCurrentAgent(dbAgent)
-          } else {
-            // Si no se pudo cargar el agente y tenemos un nombre, creamos uno temporal
-            if (agentName) {
-              setCurrentAgent({
-                id: agentId,
-                name: agentName,
-                description: "",
-                type: "support",
-                status: "active",
-                conversations: 0,
-                successRate: 0,
-                lastActive: new Date().toISOString(),
-                icon: "User"
-              });
-            }
-          }
-        } catch (error) {
-          console.error("Error fetching agent from database:", error)
-          // Si hubo error pero tenemos el nombre, al menos mostramos un agente temporal
-          if (agentName) {
-            setCurrentAgent({
-              id: agentId,
-              name: agentName,
-              description: "",
-              type: "support",
-              status: "active", 
-              conversations: 0,
-              successRate: 0,
-              lastActive: new Date().toISOString(),
-              icon: "User"
-            });
-          }
-        }
-      }
-    }
-    
-    if (agentId) {
-      console.log(`Loading agent data for agentId: ${agentId}, name: ${agentName}`);
-      loadAgent()
-    }
-  }, [agentId, agentName])
 
   // Fetch user avatar
   useEffect(() => {
@@ -294,34 +174,10 @@ function ChatPageContent() {
     fetchUserAvatar()
   }, [user])
 
-  // Update breadcrumb when page is loaded
-  useEffect(() => {
-    // Determinar el nombre a mostrar - preferir currentAgent.name sobre agentName
-    const displayName = currentAgent?.name || agentName;
-    
-    // Update page title
-    document.title = `Chat with ${displayName} | Market Fit`
-    
-    // Emit an event to update the breadcrumb
-    const event = new CustomEvent('breadcrumb:update', {
-      detail: {
-        agentId,
-        agentName: displayName
-      }
-    })
-    
-    window.dispatchEvent(event)
-    
-    // Clean up when unmounting
-    return () => {
-      document.title = 'Market Fit'
-    }
-  }, [agentId, agentName, currentAgent])
-
   // Function to toggle chat list visibility - memoized for performance
   const toggleChatList = useCallback(() => {
     setIsChatListCollapsed(!isChatListCollapsed)
-  }, [isChatListCollapsed])
+  }, [isChatListCollapsed, setIsChatListCollapsed])
 
   // Handle back to mobile list
   const handleBackToMobileList = useCallback(() => {
@@ -347,45 +203,6 @@ function ChatPageContent() {
     router.replace(newUrl);
   }, [conversationId, clearMessagesForTransition, router])
 
-  // Fetch agent details when conversationId changes
-  useEffect(() => {
-    async function fetchConversationAgent() {
-      if (!conversationId || conversationId.startsWith("new-")) return
-      
-      try {
-        // Get the conversation to find its agent ID
-        const { data: conversation, error } = await createClient()
-          .from("conversations")
-          .select("agent_id")
-          .eq("id", conversationId)
-          .single()
-          
-        if (error || !conversation) {
-          console.error("Error fetching conversation agent:", error)
-          return
-        }
-        
-        const conversationAgentId = conversation.agent_id
-        
-        // Only update if we have a valid agent ID and it's different from current agentId
-        if (conversationAgentId && conversationAgentId !== agentId) {
-          // Get agent details
-          const { getAgentForConversation } = await import("@/app/services/chat-service.client")
-          const agent: Agent | null = await getAgentForConversation(conversationAgentId)
-          if (agent) {
-            // Update the URL with the agent details
-            markUINavigation();
-            router.replace(`/chat?conversationId=${conversationId}&agentId=${agent.id}&agentName=${encodeURIComponent(agent.name)}`)
-          }
-        }
-      } catch (error) {
-        console.error("Error fetching agent details:", error)
-      }
-    }
-    
-    fetchConversationAgent()
-  }, [conversationId, router, agentId])
-
   // Check API server availability when the page loads
   useEffect(() => {
     const checkApiServer = async () => {
@@ -402,83 +219,6 @@ function ChatPageContent() {
     checkApiServer()
   }, [])
 
-  // Add a listener for popstate events (browser back/forward buttons)
-  useEffect(() => {
-    const handlePopState = () => {
-      const url = new URL(window.location.href)
-      const convId = url.searchParams.get('conversationId')
-      const agId = url.searchParams.get('agentId')
-      const agName = url.searchParams.get('agentName')
-      const mode = url.searchParams.get('mode')
-      
-      // Actualizar conversationId, agentId y agentName si han cambiado
-      if (convId && agId && agName) {
-        // Forzar recarga de mensajes si cambió la conversación
-        if (convId !== conversationId) {
-          clearMessagesForTransition();
-        }
-        
-        // Mode-specific handling
-        if (mode === 'agentOnly' || mode === 'private') {
-          setIsAgentOnlyConversation(true)
-        } else {
-          setIsAgentOnlyConversation(false)
-        }
-        
-        // Forzar la carga del agente si cambió el agentId
-        if (agId !== agentId) {
-          // Primero intentar cargar desde la lista mock
-          const mockAgent = agents.find((a: Agent) => a.id === agId)
-          if (mockAgent) {
-            setCurrentAgent(mockAgent)
-          } else {
-            // Intenta cargar desde la base de datos
-            import("@/app/services/chat-service.client").then(async (mod) => {
-              const dbAgent: Agent | null = await mod.getAgentForConversation(agId)
-              if (dbAgent) {
-                setCurrentAgent(dbAgent)
-              } else if (agName) {
-                // Fallback a un agente temporal con el nombre de la URL
-                setCurrentAgent({
-                  id: agId,
-                  name: agName,
-                  description: "",
-                  type: "support",
-                  status: "active",
-                  conversations: 0,
-                  successRate: 0,
-                  lastActive: new Date().toISOString(),
-                  icon: "User"
-                });
-              }
-            }).catch((error: unknown) => {
-              console.error("Error fetching agent during popstate:", error)
-              // Fallback a un agente temporal con el nombre de la URL
-              if (agName) {
-                setCurrentAgent({
-                  id: agId,
-                  name: agName,
-                  description: "",
-                  type: "support",
-                  status: "active",
-                  conversations: 0,
-                  successRate: 0,
-                  lastActive: new Date().toISOString(),
-                  icon: "User"
-                });
-              }
-            });
-          }
-        }
-      }
-    }
-    
-    window.addEventListener('popstate', handlePopState)
-    return () => {
-      window.removeEventListener('popstate', handlePopState)
-    }
-  }, [conversationId, agentId, clearMessagesForTransition, setIsAgentOnlyConversation])
-
   // Memoize conversation validation to avoid unnecessary calculations
   const hasSelectedConversation = useMemo(() => {
     return Boolean(conversationId && conversationId !== "" && !conversationId.startsWith("new-"))
@@ -486,12 +226,12 @@ function ChatPageContent() {
 
   // Sobrescribe el estado de isAgentResponding desde el tracker de API
   useEffect(() => {
-    // Sincronizar estado de animación de carga según peticiones activas para esta conversación específica
+    // Synchronize the loading animation with requests for this conversation.
     const hasActiveRequest = hasActiveChatRequest(conversationId)
     setIsAgentResponding(hasActiveRequest)
     
     if (hasActiveRequest) {
-      console.log(`[ChatPage] Animación activada por petición activa a /agents/chat/message para conversationId: ${conversationId}`)
+      console.log(`[ChatPage] Loading animation enabled for active chat request: ${conversationId}`)
     }
   }, [hasActiveChatRequest, conversationId, setIsAgentResponding])
 
@@ -659,7 +399,7 @@ function ChatPageContent() {
               agentId={agentId}
               agentName={agentName}
               isAgentOnlyConversation={isAgentOnlyConversation}
-              isLead={Boolean(leadData && (leadData.id || (leadData as any)?.lead_id))}
+              isLead={Boolean(leadData?.id)}
               leadData={leadData}
               conversationId={conversationId}
               onRetryMessage={handleRetryMessage}
