@@ -218,7 +218,7 @@ export const useMessageSending = ({
     }
   }, [])
 
-  const handleSendMessage = useCallback(async () => {
+  const handleSendMessage = useCallback(async (onAccepted?: () => void) => {
     const currentMessage = typeof messageRef.current === 'string' ? messageRef.current : ''
     if (!currentMessage.trim() || !currentSite?.id) return
 
@@ -295,9 +295,10 @@ export const useMessageSending = ({
       const success = await dispatchPreparedMessage(messageToSend, selectedActivity, () => {
         wasAccepted = true
         // Acceptance confirms the send, even though the assistant is still working.
-        // Do not discard a draft typed while the request was being admitted.
-        if (sendScopeRef.current === sendScope && messageRef.current === currentMessage) {
-          onClearMessage?.()
+        // Do not discard a draft replaced while the request was being admitted.
+        if (sendScopeRef.current === sendScope) {
+          if (messageRef.current === currentMessage) onClearMessage?.()
+          onAccepted?.()
         }
       })
       if (sendScopeRef.current !== sendScope) return

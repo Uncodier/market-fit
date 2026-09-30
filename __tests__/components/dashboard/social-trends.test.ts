@@ -1,4 +1,6 @@
-import { buildSocialTrends } from "@/app/components/dashboard/social-trends"
+import {
+  buildSocialTrends, getSocialPostDate, normalizeSocialEngagementRate, parseSocialEngagementRate,
+} from "@/app/components/dashboard/social-trends"
 import { performancePost, startDate, endDate } from "./social-fixtures"
 
 describe("buildSocialTrends", () => {
@@ -29,13 +31,16 @@ describe("buildSocialTrends", () => {
       performancePost({ engagement_rate: 8, views: 200 }),
     ], startDate, endDate)
 
-    expect(result.current).toEqual({ views: 300, reach: 160, likes: 20, comments: 4, shares: 2, engagement: 7, postCount: 2 })
+    expect(result.current).toMatchObject({
+      views: 300, reach: 160, likes: 20, comments: 4, shares: 2, engagement: 7, postCount: 2, engagementPostCount: 2,
+      missingMetricCounts: { views: 0, reach: 0, likes: 0, comments: 0, shares: 0, engagement_rate: 0 },
+    })
     expect(result.points[14].current.engagement).toBe(7)
     expect(result.points[0].current).toMatchObject({ views: 0, engagement: null, postCount: 0 })
     expect(result.previous.engagement).toBeNull()
   })
 
-  it("uses and reports sync-date fallbacks without fabricating publication dates", () => {
+  it("excludes every undated post instead of fabricating publication dates from synchronization", () => {
     const result = buildSocialTrends([
       performancePost({ content: null }),
       performancePost({ content: { published_at: "invalid" }, fetched_at: "2026-08-10T12:00:00" }),
@@ -43,9 +48,12 @@ describe("buildSocialTrends", () => {
       performancePost({ content: null, fetched_at: "2026-01-01T12:00:00" }),
     ], startDate, endDate)
 
-    expect(result.undatedPostCount).toBe(2)
-    expect(result.points[27].current.postCount).toBe(1)
-    expect(result.previous.postCount).toBe(1)
+    expect(result.undatedPostCount).toBe(4)
+    expect(result.current.postCount).toBe(0)
+    expect(result.previous.postCount).toBe(0)
+    expect(result.current.engagement).toBeNull()
+    expect(getSocialPostDate(performancePost({ content: null }))).toBeNull()
+    expect(getSocialPostDate(performancePost({ content: { published_at: "2026-02-30T12:00:00Z" } }))).toBeNull()
   })
 
   it("creates bounded equal-sized buckets and preserves a partial last bucket", () => {
@@ -74,7 +82,9 @@ describe("buildSocialTrends", () => {
     expect(buildSocialTrends([], endDate, startDate).points).toEqual([])
     expect(buildSocialTrends([], new Date("invalid"), endDate).points).toEqual([])
     const result = buildSocialTrends([performancePost({ views: NaN, likes: Infinity, shares: -1 })], startDate, endDate)
-    expect(result.current).toMatchObject({ views: 0, likes: 0, shares: 0 })
+    expect(result.current).toMatchObject({
+      views: 0, likes: 0, shares: 0, missingMetricCounts: { views: 1, likes: 1, shares: 1 },
+    })
   })
 
   it("buckets offset-bearing dates in the reporting timezone across daylight saving", () => {
@@ -84,5 +94,47 @@ describe("buildSocialTrends", () => {
     ], new Date("2026-03-08T00:00:00-05:00"), new Date("2026-03-08T23:59:59-04:00"), "America/New_York")
     expect(result.points).toHaveLength(1)
     expect(result.points[0]).toMatchObject({ date: "2026-03-08", previousDate: "2026-03-07", current: { postCount: 1 } })
+  })
+
+  it("averages observed rates only, with identical missing-metric rules in both cohorts", () => {
+    const result = buildSocialTrends([
+      { ...performancePost(), engagement_rate: "8", views: "250" },
+      { ...performancePost(), engagement_rate: null, views: null },
+      { ...performancePost(), engagement_rate: "", views: "invalid" },
+      { ...performancePost(), engagement_rate: 0, content: { published_at: "2026-08-31T12:00:00" } },
+      { ...performancePost(), engagement_rate: -1, content: { published_at: "2026-08-31T12:00:00" } },
+    ], startDate, endDate)
+    expect(result.current).toMatchObject({
+      postCount: 3, engagement: 8, engagementPostCount: 1, views: 250,
+      missingMetricCounts: { views: 2, engagement_rate: 2 },
+    })
+    expect(result.points[14].current).toMatchObject({ engagement: 8, engagementPostCount: 1 })
+    expect(result.previous).toMatchObject({
+      postCount: 2, engagement: 0, engagementPostCount: 1, missingMetricCounts: { engagement_rate: 1 },
+    })
+    const unknown = buildSocialTrends([{ ...performancePost(), engagement_rate: undefined }], startDate, endDate)
+    expect(unknown.current).toMatchObject({ engagement: null, engagementPostCount: 0, postCount: 1 })
+    expect(unknown.points[14].current.engagement).toBeNull()
+  })
+
+  it("uses the same latest snapshot for totals and buckets even when publication dates changed", () => {
+    const old = performancePost({
+      id: "old", outstand_post_id: "same-post", views: 500,
+      fetched_at: "2026-09-01T00:00:00Z", content: { published_at: "2026-09-15T12:00:00" },
+    })
+    const latest = { ...old, id: "latest", fetched_at: "2026-09-02T00:00:00Z", views: 80,
+      content: { published_at: "2026-08-20T12:00:00" } }
+    const result = buildSocialTrends([old, latest], startDate, endDate)
+    expect(result.current).toMatchObject({ postCount: 0, views: 0, engagement: null })
+    expect(result.previous).toMatchObject({ postCount: 1, views: 80 })
+    expect(result.points.reduce((sum, point) => sum + point.previous.views, 0)).toBe(80)
+  })
+
+  it("keeps a safe compatibility wrapper without using its synthetic zero in aggregates", () => {
+    expect(normalizeSocialEngagementRate(undefined)).toBe(0)
+    expect(parseSocialEngagementRate(undefined)).toBeNull()
+    expect(parseSocialEngagementRate("0")).toBe(0)
+    expect(parseSocialEngagementRate("0.5")).toBe(0.5)
+    expect(parseSocialEngagementRate("50")).toBe(0.5)
   })
 })

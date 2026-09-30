@@ -19,7 +19,8 @@ async function loadSitePromotions(siteId: string, forceService = false) {
 
   const { data: promos, error } = await supabase
     .from("promotions")
-    .select("*")
+    .select("*, site:sites!inner(id)")
+    .is("site.archived_at", null)
     .eq("site_id", siteId)
     .eq("status", "active");
 
@@ -118,7 +119,11 @@ async function loadMarketplaceMerchandisingUncached(params: {
   timezone?: string | null;
 }): Promise<MarketplaceMerchandisingPlacement> {
   const supabase = await createServiceClient(true);
-  let query = supabase.from("promotions").select("*").eq("status", "active");
+  let query = supabase
+    .from("promotions")
+    .select("*, site:sites!inner(id)")
+    .is("site.archived_at", null)
+    .eq("status", "active");
   if (params.siteIds?.length) {
     query = query.in("site_id", params.siteIds);
   }
@@ -185,7 +190,8 @@ export async function getStorefrontPromotionDetail(params: {
   const supabase = await createServiceClient(true);
   let query = supabase
     .from("promotions")
-    .select("*")
+    .select("*, site:sites!inner(id)")
+    .is("site.archived_at", null)
     .eq("id", params.promotionId)
     .eq("status", "active");
   if (params.siteId) query = query.eq("site_id", params.siteId);

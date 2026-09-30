@@ -7,6 +7,7 @@ import { Badge } from '@/app/components/ui/badge';
 import { EmptyCard } from '@/app/components/ui/empty-card';
 import { ExternalLink } from '@/app/components/ui/icons';
 import { useLocalization } from '@/app/context/LocalizationContext';
+import { ReportTableLoading } from '../report-visual-loading';
 
 interface ReferrerData {
   referrer: string;
@@ -83,66 +84,7 @@ export function SessionEventsReferrers({
     fetchData();
   }, [siteId, startDate, endDate, propData]);
 
-  if (loading) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle>{t('dashboard.traffic.topReferrers') || 'Top Referrers'}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {/* Header skeleton */}
-            <div className="grid grid-cols-3 gap-4 pb-2 border-b">
-              <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded animate-pulse w-20"></div>
-              <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded animate-pulse w-16 justify-self-end"></div>
-              <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded animate-pulse w-6 justify-self-end"></div>
-            </div>
-            
-            {/* Table rows skeleton */}
-            <div className="space-y-3">
-              {[...Array(8)].map((_, i) => {
-                const w1 = [150, 200, 180, 160, 190, 140, 170, 210][i];
-                const w2 = [50, 45, 55, 48, 52, 42, 58, 46][i];
-                const w3 = [30, 28, 32, 26, 35, 25, 38, 29][i];
-                return (
-                <div key={i} className="grid grid-cols-3 gap-4 items-center py-2">
-                  <div className="flex items-center space-x-2">
-                    <div 
-                      className="h-4 bg-slate-200 dark:bg-slate-700 rounded animate-pulse"
-                      style={{ 
-                        width: `${w1}px`,
-                        animationDelay: `${i * 0.1}s`
-                      }}
-                    />
-                  </div>
-                  <div className="justify-self-end">
-                    <div 
-                      className="h-6 bg-slate-200 dark:bg-slate-700 rounded-full font-inter animate-pulse"
-                      style={{ 
-                        width: `${w2}px`,
-                        animationDelay: `${i * 0.1 + 0.05}s`
-                      }}
-                    />
-                  </div>
-                  <div className="justify-self-end">
-                    <div 
-                      className="h-4 bg-slate-200 dark:bg-slate-700 rounded animate-pulse"
-                      style={{ 
-                        width: `${w3}px`,
-                        animationDelay: `${i * 0.1 + 0.1}s`
-                      }}
-                    />
-                  </div>
-                </div>
-              )})}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  if (error) {
+  if (error && !loading) {
     return (
       <Card>
         <CardHeader>
@@ -158,17 +100,18 @@ export function SessionEventsReferrers({
   }
 
   return (
-    <Card className="flex flex-col">
-      <CardHeader className="flex-shrink-0">
-        <CardTitle>{t('dashboard.traffic.topReferrers') || 'Top Referrers'}</CardTitle>
+    <Card data-report-panel="sessions-referrers" className="flex h-full min-w-0 flex-col" aria-busy={loading}>
+      <CardHeader className="flex-shrink-0 p-4 pb-3 sm:p-5 sm:pb-3">
+        <CardTitle className="text-base">{t('dashboard.traffic.topReferrers') || 'Top Referrers'}</CardTitle>
       </CardHeader>
-      <CardContent className="flex-1 flex flex-col">
-        {data.length === 0 ? (
-          <div className="flex-1 w-full h-full flex items-center justify-center">
+      <CardContent className="flex-1 min-w-0 flex flex-col px-4 pb-4 sm:px-5 sm:pb-5">
+        {loading ? <ReportTableLoading label="Loading referrers" /> : data.length === 0 ? (
+          <div className="flex-1 w-full flex items-center justify-center">
             <EmptyCard
               icon={<ExternalLink className="h-10 w-10 text-muted-foreground" />}
               title={t('dashboard.traffic.noReferrers') || 'No Referrers Found'}
               description={t('dashboard.traffic.noReferrersDesc') || 'No referrer data available for page visits in this time period'}
+              showShadow={false} variant="simple" contentClassName="min-h-0 py-8"
             />
           </div>
         ) : (

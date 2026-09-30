@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
 import type Stripe from "stripe"
+import { postSaleJournalWithClient } from "@/app/accounting/source-posting"
 import { fromStripeMinorAmount } from "@/app/api/stripe/checkout/checkout-payment-guard"
 import { processStripeSaleSettlementEffects } from "./sale-settlement-effects"
 import {
@@ -180,6 +181,10 @@ export async function handleStripeSaleCheckoutCompleted(params: {
       settlement,
     })
   }
+
+  // Effects can change order lines and invalidate accounting. Post the final source
+  // before acknowledging, including replays whose fulfillment claim is complete.
+  await postSaleJournalWithClient(params.supabase, settlement.saleId, settlement.siteId)
 
   return settlement
 }

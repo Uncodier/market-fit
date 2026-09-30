@@ -5,6 +5,8 @@ import { SocialReports } from "@/app/components/dashboard/social-reports"
 import { buildSocialTrends } from "@/app/components/dashboard/social-trends"
 import { getSocialPerformanceData, getTopCommentersData } from "@/app/components/dashboard/social-actions"
 import { performancePost, startDate, endDate } from "./social-fixtures"
+import { endOfDay } from "date-fns"
+import { socialReportFixture } from "./social-report-fixture"
 
 jest.mock("@/app/context/ThemeContext", () => ({ useTheme: () => ({ isDarkMode: false }) }))
 jest.mock("@/app/context/SiteContext", () => ({ useSite: () => ({ currentSite: { id: "site-1" } }) }))
@@ -58,6 +60,28 @@ describe("SocialTrendsChart", () => {
     expect(screen.getByText("0.0% vs. previous period")).toBeInTheDocument()
   })
 
+  it("keeps repeated selected dates in collapsed details when embedded without losing accessible comparison bounds", () => {
+    render(<><button>Sep 1, 2026 – Sep 30, 2026</button><SocialTrendsChart data={trends()} showPeriod={false} /></>)
+    const dates = screen.getAllByText(/Sep 1, 2026.*Sep 30, 2026/)
+    expect(dates.filter(element => !element.closest("details"))).toHaveLength(1)
+    expect(dates.find(element => element.closest("details"))).not.toBeVisible()
+    expect(screen.getByRole("heading", { name: "Performance trends" })).toBeVisible()
+    expect(screen.getByRole("img", { name: /Selected: Sep 1, 2026 – Sep 30, 2026/ })).toBeInTheDocument()
+    expect(screen.getByText(/Selected period · 1 posts/)).toBeVisible()
+    expect(screen.getByText(/Previous period · 1 posts/)).toBeVisible()
+  })
+
+  it("uses bounded responsive frames rather than nested empty-card minimum heights", () => {
+    const { rerender } = render(<SocialTrendsChart isLoading />)
+    expect(screen.getByRole("status", { name: "Loading performance trends" }).lastElementChild).toHaveClass("h-[300px]", "sm:h-[340px]")
+    rerender(<SocialTrendsChart />)
+    const title = screen.getByText("No post performance data")
+    expect(title.closest(".min-h-0")).toBeInTheDocument()
+    expect(title.closest(".h-\\[300px\\]")).toHaveClass("sm:h-[340px]")
+    rerender(<SocialTrendsChart data={trends()} />)
+    expect(screen.getByRole("img")).toHaveClass("h-[300px]", "sm:h-[340px]")
+  })
+
   it("distinguishes loading, error, and genuinely empty data", () => {
     const { rerender } = render(<SocialTrendsChart isLoading />)
     expect(screen.getByRole("status", { name: "Loading performance trends" })).toBeInTheDocument()
@@ -69,12 +93,12 @@ describe("SocialTrendsChart", () => {
     expect(screen.queryByRole("img")).not.toBeInTheDocument()
   })
 
-  it("shows zero-valued measured posts, omits an absent comparison line, and discloses fallback dates", () => {
-    const data = buildSocialTrends([performancePost({ views: 0, content: null })], startDate, endDate)
+  it("shows zero-valued measured posts and excludes missing publication dates", () => {
+    const data = buildSocialTrends([performancePost({ views: 0 }), performancePost({ content: null })], startDate, endDate)
     const { container } = render(<SocialTrendsChart data={data} />)
     expect(screen.getByRole("img", { name: /Views by publication period/ })).toBeInTheDocument()
     expect(screen.getByText("No posts to compare")).toBeInTheDocument()
-    expect(screen.getByText(/1 posts have no publication date/)).toBeInTheDocument()
+    expect(screen.getByText(/1 posts without a valid publication date were excluded/)).toBeInTheDocument()
     expect(container.querySelector(".recharts-line-curve")).not.toBeInTheDocument()
   })
 
@@ -83,6 +107,21 @@ describe("SocialTrendsChart", () => {
     data.previous.views = 0
     render(<SocialTrendsChart data={data} />)
     expect(screen.getByText("No previous baseline")).toBeInTheDocument()
+  })
+
+  it("does not claim growth when either publication cohort has missing metrics", () => {
+    const data = trends()
+    data.current.missingMetricCounts = { views: 1, reach: 0, comments: 0, likes: 0, shares: 0, engagement_rate: 0 }
+    render(<SocialTrendsChart data={data} />)
+    expect(screen.getByText("Incomplete metric coverage; comparison unavailable")).toBeInTheDocument()
+    expect(screen.getByText("—")).toBeInTheDocument()
+    expect(screen.queryByText("+200.0% vs. previous period")).not.toBeInTheDocument()
+  })
+
+  it("does not date an undated post using its sync timestamp", () => {
+    render(<SocialTrendsChart data={buildSocialTrends([performancePost({ content: null })], startDate, endDate)} />)
+    expect(screen.getByText("No post performance data")).toBeInTheDocument()
+    expect(screen.getByText(/posts without a valid publication date were excluded/)).toBeInTheDocument()
   })
 
   it("still renders a comparison when only the previous period has posts", () => {
@@ -100,18 +139,19 @@ describe("SocialReports trend integration", () => {
 
   it("places the chart directly after the KPIs and before the other reports", async () => {
     jest.mocked(getSocialPerformanceData).mockResolvedValue({
+      ...socialReportFixture(),
       data: [], networks: [], trends: trends(),
-      kpis: { totalViews: 300, totalReach: 80, totalComments: 2, avgEngagementRate: 0.05, totalLikes: 10, totalShares: 1, postCount: 1 },
+      kpis: { totalViews: 300, totalReach: 80, totalComments: 2, avgEngagementRate: 0.05, totalLikes: 10, totalShares: 1, totalImpressions: 120, postCount: 1 },
     })
     const { container } = render(<SocialReports startDate={startDate} endDate={endDate} />)
-    const loadingChart = screen.getByLabelText("Social performance trends")
-    expect(loadingChart.previousElementSibling).toHaveTextContent("Engagement Rate")
-    expect(loadingChart.nextElementSibling).toHaveTextContent("By Network")
+    expect(screen.getByRole("status", { name: "Loading report" })).toHaveAttribute("aria-busy", "true")
+    expect(screen.queryByLabelText("Social performance trends")).not.toBeInTheDocument()
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument()
     await waitFor(() => expect(container.querySelector(".recharts-area-curve")).toBeInTheDocument())
     const chart = screen.getByLabelText("Social performance trends")
     expect(chart.previousElementSibling).toHaveTextContent("Views300")
     expect(chart.nextElementSibling).toHaveTextContent("Top Commenters")
-    expect(getSocialPerformanceData).toHaveBeenCalledWith("site-1", startDate, endDate, Intl.DateTimeFormat().resolvedOptions().timeZone)
+    expect(getSocialPerformanceData).toHaveBeenCalledWith("site-1", startDate, endOfDay(endDate), Intl.DateTimeFormat().resolvedOptions().timeZone)
   })
 
   it("leaves the loading state when the request rejects", async () => {

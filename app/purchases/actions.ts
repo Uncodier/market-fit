@@ -9,133 +9,13 @@ import {
 } from "@/app/accounting/ensure"
 import {
   verifySiteMembership,
-  mapPurchase,
   lineSubtotal,
 } from "./purchase-mappers"
 
-export async function listPurchases(params: {
-  siteId: string
-  page?: number
-  pageSize?: number
-  status?: string
-  locationId?: string
-  q?: string
-  sort?: string
-}) {
-  try {
-    const supabase = await createClient()
-    const { data: { session } } = await supabase.auth.getSession()
-    if (!session?.user) return { data: null, count: 0, error: "Not authenticated" }
-
-    const isMember = await verifySiteMembership(supabase, session.user.id, params.siteId)
-    if (!isMember) return { data: null, count: 0, error: "Not authorized for this site" }
-
-    const page = params.page || 1
-    const pageSize = params.pageSize || 50
-    const from = (page - 1) * pageSize
-    const to = from + pageSize - 1
-
-    let query = supabase
-      .from("purchases")
-      .select("*, vendor:companies!vendor_company_id(id, name)", { count: "exact" })
-      .eq("site_id", params.siteId)
-      .range(from, to)
-
-    if (params.sort === 'oldest') {
-      query = query.order("created_at", { ascending: true })
-    } else if (params.sort === 'updated_at') {
-      query = query.order("updated_at", { ascending: false }).order("created_at", { ascending: false })
-    } else {
-      query = query.order("purchase_date", { ascending: false }).order("created_at", { ascending: false })
-    }
-
-    if (params.status && params.status !== "all") {
-      query = query.eq("status", params.status)
-    }
-
-    if (params.locationId && params.locationId !== "all") {
-      query = query.eq("location_id", params.locationId)
-    }
-
-    if (params.q) {
-      query = query.ilike("title", `%${params.q}%`)
-    }
-
-    const { data, count, error } = await query
-    if (error) throw new Error(error.message)
-
-    return {
-      data: (data || []).map(mapPurchase),
-      count: count || 0,
-      error: null,
-    }
-  } catch (error) {
-    console.error("Error in listPurchases:", error)
-    return {
-      data: null,
-      count: 0,
-      error: error instanceof Error ? error.message : "Unknown error",
-    }
-  }
-}
-
-export async function getPurchaseById(siteId: string, id: string) {
-  try {
-    const supabase = await createClient()
-    const { data: { session } } = await supabase.auth.getSession()
-    if (!session?.user) return { purchase: null, error: "Not authenticated" }
-
-    const isMember = await verifySiteMembership(supabase, session.user.id, siteId)
-    if (!isMember) return { purchase: null, error: "Not authorized for this site" }
-
-    const { data, error } = await supabase
-      .from("purchases")
-      .select(`
-        *,
-        vendor:companies!vendor_company_id(id, name, email),
-        purchase_items(*, catalog_items(id, name, kind))
-      `)
-      .eq("id", id)
-      .eq("site_id", siteId)
-      .single()
-
-    if (error) throw new Error(error.message)
-    return { purchase: mapPurchase(data), error: null }
-  } catch (error) {
-    console.error("Error in getPurchaseById:", error)
-    return {
-      purchase: null,
-      error: error instanceof Error ? error.message : "Unknown error",
-    }
-  }
-}
-
-export async function getPurchaseWithoutContext(id: string) {
-  try {
-    const supabase = await createClient()
-
-    const { data, error } = await supabase
-      .from("purchases")
-      .select(`
-        *,
-        vendor:companies!vendor_company_id(id, name, email),
-        purchase_items(*, catalog_items(id, name, kind)),
-        site:sites(id, name, url, logo_url, settings)
-      `)
-      .eq("id", id)
-      .single()
-
-    if (error) throw new Error(error.message)
-    return { purchase: mapPurchase(data), site: data.site, error: null }
-  } catch (error) {
-    console.error("Error in getPurchaseWithoutContext:", error)
-    return {
-      purchase: null,
-      site: null,
-      error: error instanceof Error ? error.message : "Unknown error",
-    }
-  }
-}
+export { listPurchases, getPurchaseById, getPurchaseWithoutContext } from "./purchase-queries"
+import { getPurchaseById } from "./purchase-queries"
+import { purchaseAmountDue } from "./purchase-payment-state"
+import { deleteAccountingSource, hasSourceJournal } from '@/app/accounting/source-lifecycle'
 
 export async function createPurchase(values: {
   siteId: string
@@ -236,8 +116,24 @@ export async function updatePurchase(values: {
     const isMember = await verifySiteMembership(supabase, session.user.id, values.siteId)
     if (!isMember) return { purchase: null, error: "Not authorized for this site" }
 
+    const { data: current, error: currentError } = await supabase.from("purchases")
+      .select("amount, amount_due, payments, accounting_state, updated_at")
+      .eq("id", values.id).eq("site_id", values.siteId).single()
+    if (currentError || !current) throw new Error("Purchase not found in this site")
+    if (!values.items && values.amountDue !== undefined &&
+      (!Number.isFinite(values.amountDue) || values.amountDue < 0 || values.amountDue > Number(current.amount))) {
+      throw new Error("Invalid amount due")
+    }
+    const hasJournal = current.accounting_state === 'posted' || (current.accounting_state !== 'unpublished'
+      && await hasSourceJournal(supabase, values.siteId, 'purchase', values.id))
+    if (values.status === 'draft' && (hasJournal || current.accounting_state === 'unpublished'
+      || Number(current.amount) > Number(current.amount_due) || current.payments?.length)) {
+      throw new Error('A paid or previously posted purchase cannot return to draft')
+    }
+    const wasPosted = hasJournal && current.accounting_state !== 'unpublished'
     const updateData: Record<string, unknown> = {
       updated_at: new Date().toISOString(),
+      ...(wasPosted ? { accounting_state: "pending" } : {}),
     }
     if (values.title !== undefined) updateData.title = values.title
     if (values.vendorCompanyId !== undefined) updateData.vendor_company_id = values.vendorCompanyId
@@ -248,52 +144,57 @@ export async function updatePurchase(values: {
     if (values.locationId !== undefined) updateData.location_id = values.locationId
     if (values.notes !== undefined) updateData.notes = values.notes
     if (values.payments !== undefined) updateData.payments = values.payments
+    if (values.payments !== undefined && !values.items) {
+      updateData.amount_due = purchaseAmountDue(current, Number(current.amount), {
+        payments: values.payments, amountDue: values.amountDue,
+      })
+    }
 
     if (values.items) {
+      if (values.payments !== undefined) {
+        throw new Error("Save purchase items and payment changes separately")
+      }
       const amount = Math.round(
         values.items.reduce((sum, line) => sum + lineSubtotal(line), 0) * 100
       ) / 100
+      if (!Number.isFinite(amount) || amount < 0) throw new Error("Invalid purchase amount")
       updateData.amount = amount
-      if (values.amountDue === undefined) {
-        // keep amount_due unless explicitly set; clamp to new amount
-        const { data: current } = await supabase
-          .from("purchases")
-          .select("amount_due")
-          .eq("id", values.id)
-          .single()
-        updateData.amount_due = Math.min(Number(current?.amount_due) || 0, amount)
-      }
+      updateData.amount_due = purchaseAmountDue(current, amount,
+        values.payments === undefined ? undefined : { payments: values.payments, amountDue: values.amountDue })
 
-      await supabase.from("purchase_items").delete().eq("purchase_id", values.id)
       const itemRows = values.items.map((line) => ({
-        purchase_id: values.id,
-        site_id: values.siteId,
         catalog_item_id: line.catalogItemId || null,
         name: line.name,
         quantity: line.quantity,
         unit_cost: line.unitCost,
         subtotal: lineSubtotal(line),
       }))
-      const { error: itemsError } = await supabase.from("purchase_items").insert(itemRows)
-      if (itemsError) throw new Error(itemsError.message)
+      const { updated_at: _version, accounting_state: _state, amount: _amount, amount_due: _due, ...header } = updateData
+      // The authenticated RPC checks capabilities, locks the source version, and
+      // saves header + items together. Failures leave the previous source intact.
+      const { error } = await supabase.rpc("accounting_update_purchase_items", {
+        p_site_id: values.siteId,
+        p_purchase_id: values.id,
+        p_expected_updated_at: current.updated_at,
+        p_items: itemRows,
+        p_update: header,
+      })
+      if (error?.code === "40001") throw new Error("Purchase changed while editing. Reload and retry.")
+      if (error) throw new Error("Unable to save purchase items. The previous purchase was preserved.")
+    } else {
+      const { error } = await supabase.from("purchases").update(updateData)
+        .eq("id", values.id).eq("site_id", values.siteId)
+      if (error) throw new Error(error.message)
     }
 
-    const { error } = await supabase
-      .from("purchases")
-      .update(updateData)
-      .eq("id", values.id)
-      .eq("site_id", values.siteId)
-
-    if (error) throw new Error(error.message)
-
-    const { data: updated } = await supabase
-      .from("purchases")
-      .select("accounting_state")
-      .eq("id", values.id)
-      .single()
-
-    if (updated?.accounting_state === "posted") {
-      await upsertPolizaForPurchase(values.id, values.siteId)
+    if (wasPosted) {
+      try {
+        await upsertPolizaForPurchase(values.id, values.siteId)
+      } catch {
+        revalidatePath("/bills")
+        revalidatePath(`/bills/${values.id}`)
+        throw new Error("Purchase saved, but accounting synchronization failed. It remains pending accounting review.")
+      }
     }
 
     revalidatePath("/bills")
@@ -321,7 +222,7 @@ export async function registerPurchasePayment(params: {
     if (error || !purchase) return { purchase: null, error: error || "Purchase not found" }
 
     const amount = Number(params.amount)
-    if (!amount || amount <= 0) return { purchase: null, error: "Invalid payment amount" }
+    if (!Number.isFinite(amount) || amount <= 0) return { purchase: null, error: "Invalid payment amount" }
     if (amount > purchase.amountDue) {
       return { purchase: null, error: "Payment amount cannot exceed amount due" }
     }
@@ -444,11 +345,12 @@ export async function publishPurchase(siteId: string, purchaseId: string) {
     if (error || !purchase) return { error: error || "Purchase not found" }
     if (purchase.amount <= 0) return { error: "Amount must be greater than zero to publish" }
     if (purchase.status === "draft") {
-      await updatePurchase({
+      const result = await updatePurchase({
         siteId,
         id: purchaseId,
         status: purchase.amountDue > 0 ? "pending" : "completed",
       })
+      if (result.error) return { error: result.error }
     }
     await upsertPolizaForPurchase(purchaseId, siteId)
     revalidatePath("/bills")
@@ -468,7 +370,7 @@ export async function unpublishPurchase(siteId: string, purchaseId: string) {
     const isMember = await verifySiteMembership(supabase, session.user.id, siteId)
     if (!isMember) return { error: "Not authorized for this site" }
 
-    await removePolizaForSource("purchase", purchaseId)
+    await removePolizaForSource("purchase", purchaseId, siteId)
     revalidatePath("/bills")
     revalidatePath(`/bills/${purchaseId}`)
     return { error: null }
@@ -486,15 +388,7 @@ export async function deletePurchase(siteId: string, purchaseId: string) {
     const isMember = await verifySiteMembership(supabase, session.user.id, siteId)
     if (!isMember) return { error: "Not authorized for this site" }
 
-    await removePolizaForSource("purchase", purchaseId).catch(() => undefined)
-
-    const { error } = await supabase
-      .from("purchases")
-      .delete()
-      .eq("id", purchaseId)
-      .eq("site_id", siteId)
-
-    if (error) throw new Error(error.message)
+    await deleteAccountingSource(siteId, 'purchase', purchaseId)
     revalidatePath("/bills")
     return { error: null }
   } catch (error) {

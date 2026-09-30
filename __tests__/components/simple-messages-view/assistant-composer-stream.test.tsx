@@ -91,16 +91,27 @@ it.each(['Enter', 'Send'])('clears the /robots composer on a real SSE acceptance
   if (method === 'Enter') fireEvent.keyDown(textarea, { key: 'Enter', code: 'Enter' })
   else fireEvent.click(screen.getByRole('button', { name: 'Send' }))
 
+  expect(textarea).toBeDisabled()
+  expect(screen.getByRole('button', { name: 'Send' })).toBeDisabled()
   await waitFor(() => expect(pendingReads).toHaveLength(1))
   expect(fetch).toHaveBeenCalledWith('/api/robots/instance/assistant', expect.objectContaining({
     method: 'POST', body: expect.stringContaining('Review this'),
   }))
+  expect(textarea.value).toBe('Review this')
+  expect(textarea).toBeDisabled()
+
+  await act(async () => {
+    pendingReads.shift()!({ value: Buffer.from(': keepalive\n\n'), done: false })
+  })
+  expect(textarea).toBeDisabled()
   expect(textarea.value).toBe('Review this')
 
   await act(async () => {
     pendingReads.shift()!({ value: Buffer.from('event: accepted\ndata: {"type":"accepted","success":true}\n\n'), done: false })
   })
   const valueAfterAcceptance = textarea.value
+  expect(textarea).toBeEnabled()
+  expect(textarea).toHaveFocus()
   expect(window.localStorage.getItem('input-cache-stream-composer-test')).toBeNull()
   await waitFor(() => expect(pendingReads).toHaveLength(1))
   await act(async () => {
@@ -110,18 +121,22 @@ it.each(['Enter', 'Send'])('clears the /robots composer on a real SSE acceptance
   expect(toast).not.toHaveBeenCalled()
 })
 
-it('preserves a new draft written while the assistant request is being admitted', async () => {
+it('preserves a new draft written after acceptance while the assistant is still working', async () => {
   const pendingReads = mockAssistantStream()
   render(<Composer />)
   const textarea = screen.getByPlaceholderText('Type a message') as HTMLTextAreaElement
   fireEvent.change(textarea, { target: { value: 'First request' } })
   fireEvent.keyDown(textarea, { key: 'Enter', code: 'Enter' })
   await waitFor(() => expect(pendingReads).toHaveLength(1))
-  fireEvent.change(textarea, { target: { value: 'New draft' } })
+  expect(textarea).toBeDisabled()
   await act(async () => {
     pendingReads.shift()!({ value: Buffer.from('event: accepted\ndata: {"type":"accepted","success":true}\n\n'), done: false })
   })
+  expect(textarea.value).toBe('')
+  expect(textarea).toBeEnabled()
+  fireEvent.change(textarea, { target: { value: 'New draft' } })
   expect(textarea.value).toBe('New draft')
+  expect(screen.getByRole('button', { name: 'Send' })).toBeEnabled()
   await waitFor(() => expect(pendingReads).toHaveLength(1))
   await act(async () => {
     pendingReads.shift()!({ value: Buffer.from('event: completed\ndata: {"type":"completed","success":true}\n\n'), done: false })
@@ -144,4 +159,6 @@ it('retains the /robots draft when the server rejects admission', async () => {
   await waitFor(() => expect(toast).toHaveBeenCalledWith(expect.objectContaining({ title: 'Assistant is busy' })))
   expect(fetch).toHaveBeenCalledTimes(1)
   expect(textarea.value).toBe('Retry this')
+  expect(textarea).toBeEnabled()
+  expect(screen.getByRole('button', { name: 'Send' })).toBeEnabled()
 })

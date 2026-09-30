@@ -295,46 +295,9 @@ export async function createSiteRecord(newSite: Omit<Site, 'id' | 'created_at' |
 }
 
 export async function deleteSiteRecord(id: string, deps: CrudDeps) {
-  const { supabase, currentSite, sites, setSites, setError, loadSites, selectSite } = deps
-
-    // Prevent deleting demo sites
-    if (id.startsWith('demo-')) {
-      console.log('Skipping delete for demo site');
-      setSites(prevSites => prevSites.filter(s => s.id !== id));
-      if (currentSite?.id === id && sites.length > 0) {
-        const newCurrentSite = sites.find(site => site.id !== id && !site.id.startsWith('demo-')) || sites[0];
-        if (newCurrentSite) selectSite(newCurrentSite).catch(err => {
-          console.error("Error setting new current site after delete demo:", err);
-        });
-      }
-      return;
-    }
-
-    if (!supabase) return Promise.reject(new Error("Supabase client not initialized"))
-    
-    try {
-      setError(null)
-      
-      // Usar la función SQL segura en lugar del DELETE directo
-      const { error } = await supabase.rpc('delete_site_safely', {
-        site_id_param: id
-      })
-      
-      if (error) throw error
-      
-      await loadSites() // Recargar los sitios
-      
-      // Si el sitio eliminado es el actual, cambiamos a otro
-      if (currentSite?.id === id && sites.length > 0) {
-        const newCurrentSite = sites.find(site => site.id !== id)
-        if (newCurrentSite) selectSite(newCurrentSite).catch(err => {
-          console.error("Error setting new current site after delete:", err);
-        });
-      }
-    } catch (err) {
-      console.error("Error deleting site:", err)
-      setError(err instanceof Error ? err : new Error(String(err)))
-      throw err
-    }
+  // Keep legacy callers safe; archival must go through the password dialog.
+  const error = new Error("Site deletion is disabled. Archive the site from Settings → General with your password.")
+  deps.setError(error)
+  throw error
 }
 

@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react"
 import { FormProvider, useForm } from "react-hook-form"
 import { ActivitiesSection } from "@/app/components/settings/ActivitiesSection"
-import { normalizeActivitySettings } from "@/app/components/settings/activity-settings"
+import { mergeActivitySettings, normalizeActivitySettings } from "@/app/components/settings/activity-settings"
 import { fetchOutreachSegments } from "@/app/components/settings/outreach-segments"
 import type { SiteFormValues } from "@/app/components/settings/form-schema"
 
@@ -13,6 +13,7 @@ jest.mock("@/app/context/SiteContext", () => ({ useSite: () => ({ currentSite: m
 jest.mock("@/app/context/LocalizationContext", () => ({ useLocalization: () => ({ t: () => "AI Activities" }) }))
 jest.mock("@/app/components/navigation/NavigationLink", () => ({ NavigationLink: ({ children }: any) => <span>{children}</span> }))
 jest.mock("@/app/components/settings/outreach-segments", () => ({ fetchOutreachSegments: jest.fn() }))
+jest.mock("@/app/components/settings/icp-mining-lists", () => ({ fetchIcpMiningLists: jest.fn().mockResolvedValue([]) }))
 
 function TestForm({ onSave, initial }: { onSave: jest.Mock; initial?: any }) {
   const form = useForm<SiteFormValues>({ defaultValues: {
@@ -65,7 +66,7 @@ describe("ActivitiesSection outreach controls", () => {
     expect(card().getByText(/Schedule timezone: America\/New_York/)).toBeInTheDocument()
     fireEvent.click(card().getByRole("button", { name: "Save" }))
     await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1))
-    expect(onSave.mock.calls[0][0].activities.leads_follow_up).toEqual({
+    expect(mergeActivitySettings(undefined, onSave.mock.calls[0][0].activities).leads_follow_up).toEqual({
       status: "active", channel_accounts: { email: [emailId, secondEmailId], whatsapp: [whatsappId] },
       segment_ids: ["segment-a", "segment-b"], all_segments: false, daily_message_limit: 90, max_unanswered_messages: 7, weekdays: [0],
     })
@@ -85,7 +86,7 @@ describe("ActivitiesSection outreach controls", () => {
     expect(card().getByRole("alert")).not.toHaveTextContent("Select at least one segment")
   })
 
-  it.each(["leads_initial_cold_outreach", "leads_follow_up"])("selects all connected channel types without email/WhatsApp and reloads %s", async key => {
+  it.each(["leads_initial_cold_outreach", "leads_follow_up"] as const)("selects all connected channel types without email/WhatsApp and reloads %s", async key => {
     const onSave = jest.fn().mockResolvedValue(true)
     const { unmount } = render(<TestForm onSave={onSave} />)
     await waitFor(() => expect(card(key).getByRole("checkbox", { name: "Enterprise" })).toBeInTheDocument())
@@ -100,7 +101,7 @@ describe("ActivitiesSection outreach controls", () => {
     expect(card(key).getByRole("radio", { name: /^Active/ })).toBeChecked()
     fireEvent.click(card(key).getByRole("button", { name: "Save" }))
     await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1))
-    const saved = onSave.mock.calls[0][0].activities
+    const saved = mergeActivitySettings(undefined, onSave.mock.calls[0][0].activities)
     expect(saved[key]).toEqual({
       status: "active", channel_accounts: { email: [], whatsapp: [], sms: ["sms-id"], telegram: ["telegram-id"], voice: ["voice-id"], "custom-chat_v2": ["custom-id"] },
       segment_ids: ["segment-a"], all_segments: false, daily_message_limit: 72, max_unanswered_messages: 6, weekdays: [2, 3, 4],

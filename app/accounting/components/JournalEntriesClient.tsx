@@ -1,11 +1,11 @@
 "use client"
 
-import React, { useState, useEffect } from "react"
+import React, { useState, useEffect, useRef } from "react"
 import { format, subMonths } from "date-fns"
 import { useSite } from "@/app/context/SiteContext"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { listJournalEntries, deleteManualJournalEntry } from "../entries"
-import { getAllAccounts, ensureChartOfAccounts } from "../chart"
+import { getAllAccounts } from "../chart"
 import { AccountingAccount } from "@/app/types"
 import { toast } from "sonner"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
@@ -20,12 +20,21 @@ import { useRouter } from "next/navigation"
 
 export function JournalEntriesClient() {
   const { currentSite } = useSite()
+  return <SiteJournalEntries key={currentSite?.id || "none"} />
+}
+
+function SiteJournalEntries() {
+  const { currentSite } = useSite()
   const { t } = useLocalization()
   const router = useRouter()
   
   const [entries, setEntries] = useState<any[]>([])
   const [accounts, setAccounts] = useState<AccountingAccount[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
+  const request = useRef(0)
+  const mounted = useRef(true)
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false } }, [])
 
   const [fromDate, setFromDate] = useState(() => format(subMonths(new Date(), 1), "yyyy-MM-dd"))
   const [toDate, setToDate] = useState(() => format(new Date(), "yyyy-MM-dd"))
@@ -38,7 +47,8 @@ export function JournalEntriesClient() {
   useEffect(() => {
     if (currentSite?.id) {
       loadData()
-    }
+    } else { setLoading(false) }
+    return () => { request.current++ }
   }, [currentSite?.id, fromDate, toDate, sourceType])
 
   useEffect(() => {
@@ -50,10 +60,12 @@ export function JournalEntriesClient() {
 
   useEffect(() => {
     const handleCreateEvent = () => {
+      if (loading || loadError || !currentSite?.id || accounts.length === 0) return
       setSelectedEntry(null)
       setIsDialogOpen(true)
     }
     const handleLoadEvent = () => {
+      if (!currentSite?.id) return
       setIsSyncModalOpen(true)
     }
     
@@ -64,22 +76,28 @@ export function JournalEntriesClient() {
       window.removeEventListener('journal:create', handleCreateEvent)
       window.removeEventListener('journal:load', handleLoadEvent)
     }
-  }, [])
+  }, [loading, loadError, currentSite?.id, accounts.length])
 
   async function loadData() {
     if (!currentSite?.id) return
+    const version = ++request.current
     setLoading(true)
+    setLoadError(null)
     try {
-      await ensureChartOfAccounts(currentSite.id)
-      const accs = await getAllAccounts(currentSite.id)
+      const [accs, data] = await Promise.all([
+        getAllAccounts(currentSite.id), listJournalEntries(currentSite.id, fromDate, toDate, sourceType),
+      ])
+      if (version !== request.current) return
       setAccounts(accs)
-
-      const data = await listJournalEntries(currentSite.id, fromDate, toDate, sourceType)
       setEntries(data)
     } catch (e: any) {
+      if (version !== request.current) return
+      setAccounts([])
+      setEntries([])
+      setLoadError(e.message || "Failed to load journal entries")
       toast.error(e.message || t('accounting.errorLoading') || "Failed to load journal entries")
     } finally {
-      setLoading(false)
+      if (version === request.current) setLoading(false)
     }
   }
 
@@ -89,10 +107,11 @@ export function JournalEntriesClient() {
     
     try {
       await deleteManualJournalEntry(currentSite.id, entryId)
+      if (!mounted.current) return
       toast.success(t('accounting.entryDeleted') || "Entry deleted")
       loadData()
     } catch (e: any) {
-      toast.error(e.message || t('accounting.errorDeleting') || "Failed to delete entry")
+      if (mounted.current) toast.error(e.message || t('accounting.errorDeleting') || "Failed to delete entry")
     }
   }
 
@@ -112,6 +131,7 @@ export function JournalEntriesClient() {
           </Tabs>
           <div className="flex items-center justify-end gap-2 shrink-0">
             <Button
+              type="button"
               variant="ghost"
               size="sm"
               className="flex items-center gap-1"
@@ -125,7 +145,7 @@ export function JournalEntriesClient() {
       </StickyHeader>
 
       <div className="flex-1 p-4 md:p-6 md:px-8 overflow-auto max-w-[1400px] mx-auto w-full">
-        {loading ? (
+        {loadError ? <div role="alert"><p>{loadError}</p><Button type="button" variant="outline" onClick={() => void loadData()}>Retry loading entries</Button></div> : loading ? (
           <JournalEntriesTableSkeleton />
         ) : (
           <JournalEntriesTable

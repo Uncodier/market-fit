@@ -172,40 +172,6 @@ export async function updateSite(
 }
 
 export async function deleteSite(id: string): Promise<void> {
-  try {
-    const supabase = createClient()
-    
-    // Usar la función SQL segura en lugar del DELETE directo
-    const { error } = await supabase.rpc('delete_site_safely', {
-      site_id_param: id
-    })
-    
-    if (error) {
-      console.error('Supabase RPC error:', error)
-      
-      // Provide more specific error messages based on error details
-      let errorMessage = error.message
-      
-      if (error.code === 'PGRST202') {
-        errorMessage = "Database function 'delete_site_safely' not found. Please contact support."
-      } else if (error.code === 'PGRST301') {
-        errorMessage = "Database function error. Please contact support."
-      } else if (error.message.includes('Permission denied')) {
-        errorMessage = "You don't have permission to delete this site"
-      } else if (error.message.includes('Authentication required')) {
-        errorMessage = "Please log in to delete this site"
-      } else if (error.message.includes('Site not found')) {
-        errorMessage = "Site not found or already deleted"
-      }
-      
-      throw new SiteServiceError(errorMessage)
-    }
-  } catch (error) {
-    if (error instanceof SiteServiceError) {
-      return Promise.reject(error)
-    }
-    
-    console.error('Unexpected error in deleteSite:', error)
-    return Promise.reject(new SiteServiceError(`Unexpected error deleting site with ID: ${id}`))
-  }
+  // Retained for older callers; no password-free mutation is permitted.
+  throw new SiteServiceError("Site deletion is disabled. Archive the site from Settings → General with your password.")
 } 

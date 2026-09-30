@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server"
 import { updateCampaignCosts } from "@/app/campaigns/actions/transactions/updateCampaignCosts"
+import { deleteAccountingSource, hasSourceJournal } from '@/app/accounting/source-lifecycle'
 
 async function verifySiteMembership(supabase: any, userId: string, siteId: string) {
   const { data, error } = await supabase
@@ -201,7 +202,7 @@ export async function updateExpense(
     // First get the transaction to know if we need to update campaign costs
     const { data: existingTransaction, error: fetchError } = await supabase
       .from("transactions")
-      .select("campaign_id")
+      .select("campaign_id, accounting_state")
       .eq("id", id)
       .eq("site_id", values.siteId)
       .single()
@@ -209,7 +210,12 @@ export async function updateExpense(
     if (fetchError) throw new Error(`Error fetching transaction: ${fetchError.message}`)
 
     // Update the transaction
-    const updateData: any = {}
+    const wasPosted = existingTransaction.accounting_state === 'posted' || (existingTransaction.accounting_state !== 'unpublished'
+      && await hasSourceJournal(supabase, values.siteId, 'expense', id))
+    const updateData: any = {
+      updated_at: new Date().toISOString(),
+      ...(wasPosted ? { accounting_state: "pending" } : {}),
+    }
     if (values.type !== undefined) updateData.type = values.type
     if (values.amount !== undefined) updateData.amount = values.amount
     if (values.currency !== undefined) updateData.currency = values.currency
@@ -243,6 +249,16 @@ export async function updateExpense(
       await updateCampaignCosts(newCampaignId)
     }
 
+    if (wasPosted) {
+      try {
+        const { upsertPolizaForExpense } = await import("@/app/accounting/ensure")
+        await upsertPolizaForExpense(id, values.siteId)
+        data.accounting_state = "posted"
+      } catch {
+        return { data, error: "Expense saved, but accounting synchronization failed. It remains pending accounting review." }
+      }
+    }
+
     return { data, error: null }
   } catch (error) {
     console.error("Error in updateExpense:", error)
@@ -270,14 +286,7 @@ export async function deleteExpense(id: string, siteId: string) {
 
     if (fetchError) throw new Error(`Error fetching transaction: ${fetchError.message}`)
 
-    // Delete the transaction
-    const { error } = await supabase
-      .from("transactions")
-      .delete()
-      .eq("id", id)
-      .eq("site_id", siteId)
-
-    if (error) throw new Error(`Error deleting expense: ${error.message}`)
+    await deleteAccountingSource(siteId, 'expense', id)
 
     // Update campaign costs after transaction deletion
     if (existingTransaction.campaign_id) {

@@ -1,208 +1,122 @@
 "use client"
 
-import dynamic from "next/dynamic"
-import { useLocalization } from "@/app/context/LocalizationContext"
 import { useState, useEffect, useCallback, useRef, Suspense } from "react"
 import useSWR from "swr"
 import { useRouter, useSearchParams } from "next/navigation"
-import { getSegments } from "@/app/segments/actions"
+import { endOfDay, startOfDay, subDays } from "date-fns"
+import { useLocalization } from "@/app/context/LocalizationContext"
 import { useSite } from "@/app/context/SiteContext"
-import { subMonths } from "date-fns"
-import { useProfile } from "@/app/hooks/use-profile"
+import { getSegments } from "@/app/segments/actions"
 import { usePageRefreshPrevention } from "@/app/hooks/use-prevent-refresh"
+import { Tabs, TabsContent } from "@/app/components/ui/tabs"
+import { Button } from "@/app/components/ui/button"
 import { DashboardFilters } from "./DashboardFilters"
-import { DashboardPerformanceTab } from "./DashboardPerformanceTab"
-import { DashboardOverviewTab } from "./DashboardOverviewTab"
-import { DashboardAnalyticsTab } from "./DashboardAnalyticsTab"
-import { determineRangeType, validateDates } from "./dashboard-dates"
-
-const CostReports = dynamic(
-  () => import("@/app/components/dashboard/cost-reports").then((m) => m.CostReports),
-  { ssr: false }
-)
-const SalesReports = dynamic(
-  () => import("@/app/components/dashboard/sales-reports").then((m) => m.SalesReports),
-  { ssr: false }
-)
-const TrafficReports = dynamic(
-  () => import("@/app/components/dashboard/traffic-reports").then((m) => m.TrafficReports),
-  { ssr: false }
-)
-const SocialReports = dynamic(
-  () => import("@/app/components/dashboard/social-reports").then((m) => m.SocialReports),
-  { ssr: false }
-)
-
-const VALID_TABS = ["performance", "overview", "analytics", "traffic", "costs", "sales", "social"] as const
+import { ReportContent } from "./ReportContent"
+import { ReportLoading } from "./ReportLoading"
+import { ReportSWRScope } from "./ReportSWRScope"
+import { REPORTS, getReportSection, isReportId, reportSectionUrl } from "./report-sections"
+import { defaultReportRange, reportRangeError } from "./report-range"
+import { useReportDateLimits } from "./use-report-date-limits"
 
 function DashboardPageContent() {
   const { t } = useLocalization()
-  const { currentSite } = useSite()
-  const [selectedSegment, setSelectedSegment] = useState("all")
+  const { currentSite, isLoading: siteLoading } = useSite()
+  const searchParams = useSearchParams()
+  const router = useRouter()
+  const { shouldPreventRefresh } = usePageRefreshPrevention()
+  const reportParam = searchParams.get("tab")
+  const report = isReportId(reportParam) ? reportParam : "performance"
+  const section = getReportSection(report, searchParams.get("section"))
+  const definition = REPORTS[report]
+  const selectedSection = definition.sections.find((item) => item.id === section)!
+  const previousReport = useRef(report)
+  const siteId = currentSite?.id
+  const [segment, setSegment] = useState({ siteId, value: "all" })
+  const selectedSegment = segment.siteId === siteId ? segment.value : "all"
+  const [dateRange, setDateRange] = useState(() => defaultReportRange())
+  const dateLimits = useReportDateLimits(siteId, report, section)
+  const rangeError = reportRangeError(dateRange.startDate, dateRange.endDate, dateLimits.maxRangeDays)
   const { data: segments = [], isLoading: isLoadingSegments } = useSWR(
-    currentSite && currentSite.id !== "default" ? ["segments", currentSite.id] : null,
-    async ([, siteId]) => {
-      const result = await getSegments(siteId)
+    siteId && siteId !== "default" && report !== "social" && report !== "traffic" ? ["segments", siteId] : null,
+    async ([, id]) => {
+      const result = await getSegments(id)
       if (result.error) throw new Error(result.error)
       return result.segments || []
-    }
+    },
+    { keepPreviousData: false }
   )
-  const searchParams = useSearchParams()
-  const tabFromUrlRef = useRef<string | null>(null)
-  const { shouldPreventRefresh } = usePageRefreshPrevention()
-  const [navigationBlocked, setNavigationBlocked] = useState(false)
-  const today = new Date()
-  const [selectedRangeType, setSelectedRangeType] = useState("This month")
-  const [dateRange, setDateRange] = useState({ startDate: subMonths(today, 1), endDate: today })
-  const [formattedTotal, setFormattedTotal] = useState("")
-  useProfile()
-  const [showConversations, setShowConversations] = useState(false)
-  const [activeTab, setActiveTab] = useState("performance")
-  const router = useRouter()
-  const [isInitialized, setIsInitialized] = useState(false)
 
   useEffect(() => {
-    const urlTab = searchParams.get("tab")
-    if (urlTab === "onboarding") {
-      router.replace("/onboarding")
-      return
+    if (reportParam === "onboarding") router.replace("/onboarding")
+    else if (reportParam && !isReportId(reportParam)) router.replace("/dashboard")
+    if (previousReport.current !== report) {
+      previousReport.current = report
+      window.dispatchEvent(new CustomEvent("dashboard:tabchange", { detail: { activeTab: report } }))
     }
-    if (urlTab && !VALID_TABS.includes(urlTab as (typeof VALID_TABS)[number])) {
-      router.replace("/dashboard")
-      return
-    }
-    const next = urlTab && VALID_TABS.includes(urlTab as (typeof VALID_TABS)[number]) ? urlTab : "performance"
-    if (tabFromUrlRef.current !== next) {
-      if (tabFromUrlRef.current !== null) {
-        setFormattedTotal("")
-        window.dispatchEvent(new CustomEvent("dashboard:tabchange", { detail: { activeTab: next } }))
-      }
-      tabFromUrlRef.current = next
-      setActiveTab(next)
-    }
-  }, [searchParams, router])
+  }, [report, reportParam, router])
 
   const handleDateRangeChange = useCallback((startDate: Date, endDate: Date) => {
-    const validated = validateDates(startDate, endDate)
-    setDateRange(validated)
-    setSelectedRangeType(determineRangeType(validated.startDate, validated.endDate))
+    if (!reportRangeError(startDate, endDate)) setDateRange({ startDate: startOfDay(startDate), endDate: endOfDay(endDate) })
   }, [])
 
-  useEffect(() => {
-    if (isInitialized) return
-    const validated = validateDates(subMonths(new Date(), 1), new Date())
-    setDateRange(validated)
-    setSelectedRangeType(determineRangeType(validated.startDate, validated.endDate))
-    setIsInitialized(true)
-  }, [isInitialized])
-
-  useEffect(() => {
-    if (!currentSite?.id) return
-    setSelectedSegment("all")
-    setFormattedTotal("")
-  }, [currentSite?.id])
-
-  useEffect(() => {
-    setNavigationBlocked(Boolean(shouldPreventRefresh))
-  }, [shouldPreventRefresh])
+  const handleSectionChange = (next: string) => {
+    if (next === section || shouldPreventRefresh) return
+    // Native history integrates with Next navigation without a server round trip.
+    window.history.pushState(null, "", reportSectionUrl(searchParams.toString(), report, next))
+  }
 
   return (
-    <div className="flex-1 min-w-0 w-full p-0 min-h-[calc(100dvh-var(--topbar-height,64px))] flex flex-col">
-      {navigationBlocked && (
-        <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-4">
-          <p className="text-sm text-yellow-700">
-            {t("dashboard.navigationBlocked") ||
-              "Navigation is temporarily blocked to protect your work. Please wait for the current operation to complete."}
-          </p>
+    <Tabs key={report} value={section} onValueChange={handleSectionChange}
+      className="flex-1 min-w-0 w-full min-h-[calc(100dvh-var(--topbar-height,64px))] flex flex-col">
+      {shouldPreventRefresh && (
+        <div role="status" className="bg-yellow-50 border-l-4 border-yellow-400 p-4">
+          <p className="text-sm text-yellow-700">Navigation is temporarily blocked to protect your work. Please wait for the current operation to complete.</p>
         </div>
       )}
-
       <DashboardFilters
+        report={report}
         t={t}
         selectedSegment={selectedSegment}
-        onSegmentChange={setSelectedSegment}
+        onSegmentChange={(value) => setSegment({ siteId, value })}
         isLoadingSegments={isLoadingSegments}
         segments={segments}
         dateRange={dateRange}
         onDateRangeChange={handleDateRangeChange}
+        maxRangeDays={dateLimits.maxRangeDays}
+        dateOptionsLoading={siteLoading || dateLimits.isLoading || !dateLimits.maxRangeDays}
       />
-
-      <div className="p-8 space-y-4 bg-muted/30 flex-1">
-
-        <div className="space-y-4">
-          {activeTab === "performance" && (
-            <DashboardPerformanceTab
-              t={t}
-              segmentId={selectedSegment}
-              startDate={dateRange.startDate}
-              endDate={dateRange.endDate}
-              showConversations={showConversations}
-              onShowConversationsChange={setShowConversations}
-            />
-          )}
-          {activeTab === "overview" && (
-            <DashboardOverviewTab
-              t={t}
-              segmentId={selectedSegment}
-              startDate={dateRange.startDate}
-              endDate={dateRange.endDate}
-            />
-          )}
-          {activeTab === "analytics" && (
-            <DashboardAnalyticsTab
-              t={t}
-              segmentId={selectedSegment}
-              startDate={dateRange.startDate}
-              endDate={dateRange.endDate}
-              formattedTotal={formattedTotal}
-              onTotalUpdate={setFormattedTotal}
-            />
-          )}
-          {activeTab === "traffic" && currentSite && (
-            <TrafficReports
-              startDate={dateRange.startDate}
-              endDate={dateRange.endDate}
-              segmentId={selectedSegment}
-              siteId={currentSite.id}
-            />
-          )}
-          {activeTab === "costs" && (
-            <CostReports
-              startDate={dateRange.startDate}
-              endDate={dateRange.endDate}
-              segmentId={selectedSegment}
-            />
-          )}
-          {activeTab === "sales" && (
-            <SalesReports
-              startDate={dateRange.startDate}
-              endDate={dateRange.endDate}
-              segmentId={selectedSegment}
-            />
-          )}
-          {activeTab === "social" && (
-            <SocialReports
-              startDate={dateRange.startDate}
-              endDate={dateRange.endDate}
-              segmentId={selectedSegment}
-            />
-          )}
+      <TabsContent value={section} className="m-0 bg-muted/20 flex-1 min-w-0">
+        <div className="mx-auto w-full max-w-[1600px] space-y-5 px-4 py-5 md:px-8 md:py-6">
+        <header className="space-y-1">
+            <h1 className="text-xl font-semibold tracking-tight md:text-2xl">{definition.title}</h1>
+            <p className="text-sm leading-relaxed text-muted-foreground max-w-3xl">{selectedSection.description}</p>
+        </header>
+        {siteLoading ? <ReportLoading report={report} section={section} /> : siteId && siteId !== "default" ? dateLimits.isLoading || dateLimits.isValidating ? (
+          <ReportLoading report={report} section={section} />
+        ) : dateLimits.error ? (
+          <div role="alert" className="rounded-lg border bg-background p-5 space-y-3">
+            <p className="text-sm">{dateLimits.error.message}</p>
+            <Button variant="outline" onClick={() => { void dateLimits.mutate() }}>Retry date options</Button>
+          </div>
+        ) : dateLimits.signedOut ? <p role="status" className="text-sm text-muted-foreground">Sign in to view reports.</p>
+        : !dateLimits.maxRangeDays ? <ReportLoading report={report} section={section} /> : rangeError ? (
+          <div role="alert" className="rounded-lg border bg-background p-5 space-y-3">
+            <p className="text-sm">{rangeError}</p>
+            <Button variant="outline" onClick={() => setDateRange({ startDate: startOfDay(subDays(dateRange.endDate, Math.min(30, dateLimits.maxRangeDays!) - 1)), endDate: dateRange.endDate })}>
+              Use last {Math.min(30, dateLimits.maxRangeDays)} days of this range
+            </Button>
+          </div>
+        ) : (
+            <ReportContent key={`${siteId}:${selectedSegment}:${dateRange.startDate.getTime()}:${dateRange.endDate.getTime()}`}
+              report={report} section={section} siteId={siteId} t={t}
+              segmentId={report === "social" || report === "traffic" ? "all" : selectedSegment} {...dateRange} />
+        ) : <p className="rounded-lg border bg-background p-6 text-sm text-muted-foreground">Select a site to view reports.</p>}
         </div>
-      </div>
-    </div>
+      </TabsContent>
+    </Tabs>
   )
 }
 
 export default function DashboardPage() {
-  return (
-    <Suspense
-      fallback={
-        <div className="flex flex-1 items-center justify-center p-8 text-sm text-muted-foreground">
-          Loading...
-        </div>
-      }
-    >
-      <DashboardPageContent />
-    </Suspense>
-  )
+  return <ReportSWRScope><Suspense fallback={<div className="p-4 md:p-8"><ReportLoading /></div>}><DashboardPageContent /></Suspense></ReportSWRScope>
 }

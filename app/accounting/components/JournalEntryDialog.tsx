@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useEffect } from "react"
+import React, { useState, useEffect, useRef } from "react"
 import { useSite } from "@/app/context/SiteContext"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { AccountingAccount } from "@/app/types"
@@ -17,6 +17,7 @@ import { Badge } from "@/app/components/ui/badge"
 import { ExternalLink, PlusCircle } from "@/app/components/ui/icons"
 import { journalSourceActionKey, journalSourceHref } from "../journal-source"
 import { useRouter } from "next/navigation"
+import { JournalDraftLine, journalTotals, nonzeroLines, validateJournalDraft } from "./journal-form"
 
 interface JournalEntryDialogProps {
   open: boolean
@@ -28,13 +29,24 @@ interface JournalEntryDialogProps {
 
 export function JournalEntryDialog({ open, onOpenChange, entry, accounts, onSaved }: JournalEntryDialogProps) {
   const { currentSite } = useSite()
+  return <JournalEntryForm key={`${currentSite?.id}:${entry?.id ?? "new"}:${open}`} {...{ open, onOpenChange, entry, accounts, onSaved }} />
+}
+
+function JournalEntryForm({ open, onOpenChange, entry, accounts, onSaved }: JournalEntryDialogProps) {
+  const { currentSite } = useSite()
   const { t } = useLocalization()
   const router = useRouter()
 
   const [date, setDate] = useState(new Date().toISOString().split('T')[0])
   const [memo, setMemo] = useState("")
-  const [lines, setLines] = useState<{ id: string; accountCode: string; debit: number; credit: number }[]>([])
+  const [lines, setLines] = useState<JournalDraftLine[]>([])
   const [saving, setSaving] = useState(false)
+  const mounted = useRef(true)
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false } }, [])
+  const currency = entry?.currency || currentSite?.settings?.currency || 'USD'
+  const existingLines: JournalDraftLine[] = (entry?.journal_lines || []).map((line: any, index: number) => ({
+    id: line.id || String(index), accountCode: line.account_code, debit: line.debit, credit: line.credit,
+  }))
 
   const isReadOnly = entry && entry.source_type !== 'manual'
   const sourceHref = entry ? journalSourceHref(entry) : null
@@ -64,11 +76,12 @@ export function JournalEntryDialog({ open, onOpenChange, entry, accounts, onSave
     }
   }, [open, entry])
 
-  const totalDebit = lines.reduce((sum, l) => sum + (Number(l.debit) || 0), 0)
-  const totalCredit = lines.reduce((sum, l) => sum + (Number(l.credit) || 0), 0)
-  
-  // Balance check requires difference < 0.01
-  const isBalanced = Math.abs(totalDebit - totalCredit) < 0.01
+  const nonemptyLines = nonzeroLines(lines)
+  const totals = journalTotals(nonemptyLines)
+  const totalDebit = totals.debit / 100
+  const totalCredit = totals.credit / 100
+  const isBalanced = totals.valid && totals.balanced
+  const validationError = validateJournalDraft(date, memo, currency, nonemptyLines, accounts, existingLines)
 
   const addLine = () => {
     setLines([...lines, { id: crypto.randomUUID(), accountCode: "", debit: 0, credit: 0 }])
@@ -95,22 +108,10 @@ export function JournalEntryDialog({ open, onOpenChange, entry, accounts, onSave
 
   async function handleSave(e?: React.FormEvent) {
     e?.preventDefault()
-    if (!currentSite?.id || isReadOnly) return
-    
-    // Validations
-    if (lines.length < 2) {
-      toast.error(t('accounting.errorMinLines') || "At least 2 lines are required")
-      return
-    }
-    
-    const hasEmptyAccount = lines.some(l => !l.accountCode)
-    if (hasEmptyAccount) {
-      toast.error(t('accounting.errorMissingAccount') || "All lines must have an account selected")
-      return
-    }
-
-    if (!isBalanced) {
-      toast.error(t('accounting.errorNotBalanced') || "Total Debits must equal Total Credits")
+    if (!currentSite?.id || isReadOnly || saving) return
+    if (entry?.site_id && entry.site_id !== currentSite.id) return
+    if (validationError) {
+      toast.error(validationError)
       return
     }
     
@@ -118,9 +119,10 @@ export function JournalEntryDialog({ open, onOpenChange, entry, accounts, onSave
     try {
       const payload = {
         entryDate: date,
-        memo,
-        currency: currentSite.settings?.currency || 'USD',
-        lines: lines.map(l => ({
+        memo: memo.trim(),
+        currency,
+        ...(entry ? { expectedHash: entry.source_hash ?? null } : {}),
+        lines: nonemptyLines.map(l => ({
           accountCode: l.accountCode,
           debit: Number(l.debit) || 0,
           credit: Number(l.credit) || 0
@@ -129,25 +131,27 @@ export function JournalEntryDialog({ open, onOpenChange, entry, accounts, onSave
 
       if (entry) {
         await updateManualJournalEntry(currentSite.id, entry.id, payload)
+        if (!mounted.current) return
         toast.success(t('accounting.entryUpdated') || "Journal entry updated")
       } else {
         await createManualJournalEntry(currentSite.id, payload)
+        if (!mounted.current) return
         toast.success(t('accounting.entryCreated') || "Journal entry created")
       }
       onSaved()
       onOpenChange(false)
     } catch (e: any) {
-      toast.error(e.message || t('accounting.errorSaving') || "Failed to save entry")
+      if (mounted.current) toast.error(e.message || t('accounting.errorSaving') || "Failed to save entry")
     } finally {
-      setSaving(false)
+      if (mounted.current) setSaving(false)
     }
   }
 
   const formatCurrency = (val: number) => 
-    new Intl.NumberFormat('en-US', { style: 'currency', currency: currentSite?.settings?.currency || 'USD' }).format(val)
+    new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(val)
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={(next) => { if (!saving) onOpenChange(next) }}>
       <DialogContent size="xl" busy={saving}>
         <DialogForm onSubmit={handleSave}>
           <DialogHeader>
@@ -173,25 +177,29 @@ export function JournalEntryDialog({ open, onOpenChange, entry, accounts, onSave
                 date={date ? new Date(`${date}T12:00:00`) : undefined}
                 setDate={(next) => setDate(format(next, "yyyy-MM-dd"))}
                 className="h-12 w-full"
-                disabled={isReadOnly}
+                disabled={isReadOnly || saving}
               />
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium">{t('accounting.memo') || "Memo"}</label>
+              <label htmlFor="journal-memo" className="text-sm font-medium">{t('accounting.memo') || "Memo"}</label>
               <Input 
+                id="journal-memo"
+                required
                 value={memo} 
                 onChange={e => setMemo(e.target.value)}
                 placeholder={t('accounting.memoPlaceholder') || "e.g. Monthly rent"}
-                disabled={isReadOnly}
+                disabled={isReadOnly || saving}
               />
             </div>
           </div>
+
+          <p className="text-sm text-muted-foreground">Currency: <span className="font-medium">{currency}</span></p>
 
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <h3 className="text-sm font-medium">{t('accounting.lines') || "Lines"}</h3>
               {!isReadOnly && (
-                <Button type="button" size="sm" variant="outline" onClick={addLine}>
+                <Button type="button" size="sm" variant="outline" onClick={addLine} disabled={saving}>
                   <PlusCircle className="mr-2 h-4 w-4" />
                   {t('accounting.addLine') || "Add Line"}
                 </Button>
@@ -207,7 +215,7 @@ export function JournalEntryDialog({ open, onOpenChange, entry, accounts, onSave
                 </TableRow>
               </TableHeader>
               <TableBody>
-              {lines.map((line) => (
+              {lines.map((line, index) => (
                 <TableRow key={line.id}>
                   <TableCell>
                     {isReadOnly ? (
@@ -221,15 +229,16 @@ export function JournalEntryDialog({ open, onOpenChange, entry, accounts, onSave
                       <Select 
                         value={line.accountCode} 
                         onValueChange={v => updateLine(line.id, 'accountCode', v)}
+                        disabled={saving}
                       >
-                        <SelectTrigger className="w-full">
+                        <SelectTrigger type="button" className="w-full" aria-label={`Account for line ${index + 1}`}>
                           <SelectValue placeholder={t('accounting.selectAccount') || "Select account..."} />
                         </SelectTrigger>
                         <SelectContent className="max-h-[300px]">
-                          {accounts.map(acc => (
-                            <SelectItem key={acc.id} value={acc.code}>
+                          {accounts.filter(acc => acc.active || acc.code === line.accountCode).map(acc => (
+                            <SelectItem key={acc.id} value={acc.code} disabled={!acc.active}>
                               <div className="flex items-center justify-between w-full gap-4">
-                                <span>{acc.label}</span>
+                                <span>{acc.label}{!acc.active ? " (Inactive)" : ""}</span>
                                 <span className="text-xs text-muted-foreground font-mono">{acc.code}</span>
                               </div>
                             </SelectItem>
@@ -241,11 +250,13 @@ export function JournalEntryDialog({ open, onOpenChange, entry, accounts, onSave
                   <TableCell className="text-right">
                     {isReadOnly ? (
                       <div className="font-mono">
-                        {line.debit > 0 ? formatCurrency(line.debit) : "-"}
+                        {Number(line.debit) > 0 ? formatCurrency(Number(line.debit)) : "-"}
                       </div>
                     ) : (
                       <Input
                         type="number"
+                        aria-label={`Debit for line ${index + 1}`}
+                        disabled={saving}
                         min="0"
                         step="0.01"
                         value={line.debit || ""}
@@ -258,11 +269,13 @@ export function JournalEntryDialog({ open, onOpenChange, entry, accounts, onSave
                   <TableCell className="text-right">
                     {isReadOnly ? (
                       <div className="font-mono">
-                        {line.credit > 0 ? formatCurrency(line.credit) : "-"}
+                        {Number(line.credit) > 0 ? formatCurrency(Number(line.credit)) : "-"}
                       </div>
                     ) : (
                       <Input
                         type="number"
+                        aria-label={`Credit for line ${index + 1}`}
+                        disabled={saving}
                         min="0"
                         step="0.01"
                         value={line.credit || ""}
@@ -275,11 +288,13 @@ export function JournalEntryDialog({ open, onOpenChange, entry, accounts, onSave
                   {!isReadOnly && (
                     <TableCell>
                       <Button
+                        type="button"
+                        aria-label={`Remove line ${index + 1}`}
                         variant="ghost"
                         size="icon"
                         className="text-muted-foreground hover:text-rose-600 h-8 w-8"
                         onClick={() => removeLine(line.id)}
-                        disabled={lines.length <= 2}
+                        disabled={saving || lines.length <= 2}
                       >
                         <span className="text-lg leading-none">&times;</span>
                       </Button>
@@ -310,9 +325,10 @@ export function JournalEntryDialog({ open, onOpenChange, entry, accounts, onSave
             </TableFooter>
             </Table>
           </div>
+          {!isReadOnly && validationError ? <p role="status" className="text-sm text-muted-foreground">{validationError}</p> : null}
           </DialogBody>
           <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+              <Button type="button" variant="outline" disabled={saving} onClick={() => onOpenChange(false)}>
                 {t('common.close') || "Close"}
               </Button>
               {sourceHref ? (
@@ -329,7 +345,7 @@ export function JournalEntryDialog({ open, onOpenChange, entry, accounts, onSave
               {!isReadOnly && (
                 <Button 
                   type="submit"
-                  disabled={saving || !isBalanced || lines.length < 2}
+                  disabled={saving || !currentSite?.id || Boolean(validationError)}
                 >
                   {saving ? (t('common.saving') || "Saving...") : (t('common.save') || "Save Entry")}
                 </Button>

@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
 
   return readThroughAnalyticsResponseCache({
     request,
-    namespace: "performance:meetings",
+    namespace: "performance:meetings:v2",
     siteId: access.siteId,
     load: async () => {
   try {
@@ -64,11 +64,7 @@ export async function GET(request: NextRequest) {
 
     if (currentError) {
       console.error("Error fetching current meetings:", currentError);
-      return NextResponse.json({
-        actual: 0,
-        percentChange: 0,
-        periodType: "monthly"
-      });
+      return NextResponse.json({ error: "Failed to load meetings" }, { status: 500 });
     }
 
     // Get meetings in previous period
@@ -103,6 +99,7 @@ export async function GET(request: NextRequest) {
 
     if (previousError) {
       console.error("Error fetching previous meetings:", previousError);
+      return NextResponse.json({ error: "Failed to load meetings" }, { status: 500 });
     }
 
     const currentCount = currentData?.length || 0;
@@ -120,11 +117,7 @@ export async function GET(request: NextRequest) {
 
   } catch (error) {
     console.error("Error in meetings API:", error);
-    return NextResponse.json({
-      actual: 0,
-      percentChange: 0,
-      periodType: "monthly"
-    });
+    return NextResponse.json({ error: "Failed to load meetings" }, { status: 500 });
   }
     },
   });

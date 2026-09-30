@@ -85,6 +85,7 @@ function AccountRow({
       <TableCell className="py-3.5 text-right" onClick={(event) => event.stopPropagation()}>
         <div className="flex items-center justify-end gap-1">
           <Button
+            type="button"
             variant="ghost"
             size="icon"
             className="h-8 w-8 text-muted-foreground opacity-100 md:opacity-0 transition-opacity group-hover:opacity-100 hover:text-foreground"
@@ -95,6 +96,7 @@ function AccountRow({
           </Button>
           {!account.system ? (
             <Button
+              type="button"
               variant="ghost"
               size="icon"
               className="h-8 w-8 text-muted-foreground opacity-100 md:opacity-0 transition-opacity group-hover:opacity-100 hover:text-foreground"

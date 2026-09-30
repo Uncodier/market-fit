@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect } from "react"
+import { SUPPORT_SITE_ID } from "@/lib/chat/identity-types"
 
 const PUBLIC_RECORD_SCREEN_OFF = [
   "/shop",
@@ -30,7 +31,7 @@ function loadTracking(recordScreen: boolean) {
 
   w.Makinari = w.Makinari || w.MarketFit || {}
   w.MarketFit = w.Makinari
-  w.Makinari.siteId = "9be0a6a2-5567-41bf-ad06-cb4014f0faf2"
+  w.Makinari.siteId = SUPPORT_SITE_ID
 
   const script = document.createElement("script")
   script.async = true
@@ -39,7 +40,7 @@ function loadTracking(recordScreen: boolean) {
     try {
       if (typeof w.Makinari?.init !== "function") return
       w.Makinari.init({
-        siteId: "9be0a6a2-5567-41bf-ad06-cb4014f0faf2",
+        siteId: SUPPORT_SITE_ID,
         trackVisitors: true,
         trackActions: true,
         recordScreen,
@@ -48,6 +49,7 @@ function loadTracking(recordScreen: boolean) {
           enabled: true,
           hidden: true,
           allowAnonymousMessages: false,
+          requireIdentityToken: true,
           position: "bottom-right",
           title: "Customer and Tech Support",
           welcomeMessage: "Welcome to Market Fit! How can we assist you today?",

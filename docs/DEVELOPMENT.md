@@ -20,6 +20,14 @@ API defaults to `http://localhost:3001` where a feature provides that fallback.
 See [Environment variables](ENVIRONMENT_VARIABLES.md) before exercising auth,
 database, payments, email, integrations, or authenticated E2E tests.
 
+Finder requests from the browser use the authenticated same-origin
+`/api/finder/**` route. The web server forwards only the signed-in user's token
+to the configured API server (`API_SERVER_URL`, falling back to
+`NEXT_PUBLIC_API_SERVER_URL`); both servers must be running to load saved
+lists or search. A `401`/`403` from the backend remains an access error, not an
+empty list. The saved-list sidebar itself reads from Supabase under the user's
+session.
+
 Both `package-lock.json` and `yarn.lock` are currently checked in, and no
 `packageManager` field selects one as authoritative. The documented commands use
 npm, but do not update dependencies or regenerate either lockfile until the

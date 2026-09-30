@@ -33,7 +33,7 @@ export async function listAccessibleSitesForUser(
 ): Promise<{ sites: SiteRow[]; error: string | null }> {
   const [owned, memberships, ownerships] = await Promise.all([
     runQuery<SiteRow>(
-      admin.from("sites").select(SITE_LIST_COLUMNS).eq("user_id", userId)
+      admin.from("sites").select(SITE_LIST_COLUMNS).eq("user_id", userId).is("archived_at", null)
     ),
     runQuery<{ site_id: string }>(
       admin.from("site_members").select("site_id").eq("user_id", userId).eq("status", "active")
@@ -57,7 +57,7 @@ export async function listAccessibleSitesForUser(
   }
 
   const extra = await runQuery<SiteRow>(
-    admin.from("sites").select(SITE_LIST_COLUMNS).in("id", uniqueExtraIds)
+    admin.from("sites").select(SITE_LIST_COLUMNS).in("id", uniqueExtraIds).is("archived_at", null)
   )
   if (extra.error) return { sites: owned.data, error: null }
 

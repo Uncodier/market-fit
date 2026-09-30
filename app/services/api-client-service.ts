@@ -96,9 +96,11 @@ export class ApiClientService {
     // Allow absolute URLs.
     if (endpoint && isValidUrl(endpoint)) return endpoint;
 
-    // Keep browser assistant traffic same-origin: localhost refers to the user's
-    // machine, not the API host. This route authenticates and forwards the stream.
-    if (typeof window !== 'undefined' && endpoint === '/api/robots/instance/assistant') {
+    // Browser Finder requests use the authenticated Next.js route. Sending the
+    // session bearer directly to the external API triggers a cross-origin
+    // preflight (which the Finder API does not allow in local development).
+    if (typeof window !== 'undefined' &&
+      (endpoint === '/api/robots/instance/assistant' || endpoint.startsWith('/api/finder/'))) {
       return endpoint;
     }
 

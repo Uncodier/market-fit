@@ -19,7 +19,13 @@ Use the guides below before relying on older implementation notes.
 
 ## Integration guides
 
+- [Accounting integrity and rollout](ACCOUNTING.md)
+- [Site archival](SITE_ARCHIVAL.md)
+- [Support chat identity](CHAT_IDENTITY.md)
+- [Report sections and data contracts](REPORTS.md)
 - [Automated outreach settings](OUTREACH_SETTINGS.md)
+- [Pending ICP mining list selection](ICP_MINING_LIST_SELECTION.md)
+- [Daily Standup settings](DAILY_STANDUP_SETTINGS.md)
 - [Stripe setup](STRIPE_SETUP.md)
 - [Stripe environment variables](STRIPE_ENVIRONMENT_VARIABLES.md)
 - [Stripe webhook security](STRIPE_WEBHOOK_SECURITY.md)

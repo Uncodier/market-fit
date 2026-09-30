@@ -3,6 +3,8 @@ import { createServiceClient } from "@/lib/supabase/server";
 import { requireAnalyticsAccess } from "@/lib/auth/api-analytics-access";
 import { readThroughAnalyticsResponseCache } from "@/lib/redis/analytics-response-cache";
 
+import { buildPerformanceSeries } from "@/lib/dashboard/performance-series"
+
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
   const siteId = searchParams.get("siteId");
@@ -19,22 +21,15 @@ export async function GET(request: NextRequest) {
 
   return readThroughAnalyticsResponseCache({
     request,
-    namespace: "performance:metrics-overview",
+    namespace: "performance:metrics-overview:v4",
     siteId: access.siteId,
     load: async () => {
   try {
     const supabase = await createServiceClient();
     
-    // Resolve site timezone (default to UTC)
-    let timeZone = "UTC";
-    const { data: siteRow } = await supabase
-      .from("sites")
-      .select("timezone")
-      .eq("id", siteId)
-      .maybeSingle();
-    if (siteRow && (siteRow as any).timezone) {
-      timeZone = (siteRow as any).timezone as string;
-    }
+    // Match the batch's UTC calendar boundaries. The sites table has no timezone
+    // column; business-hours settings are not a reporting timezone contract.
+    const timeZone = "UTC";
     
     // Calculate previous period for comparison
     const currentStart = new Date(startDate);
@@ -46,16 +41,14 @@ export async function GET(request: NextRequest) {
     // Get conversations data for current period
     let conversationsQuery = supabase
       .from("conversations")
-      .select("id, created_at")
+      .select(segmentId && segmentId !== "all" ? "id, created_at, leads!inner(segment_id)" : "id, created_at")
       .eq("site_id", siteId)
       .gte("created_at", startDate)
       .lte("created_at", endDate);
 
     if (segmentId && segmentId !== "all") {
-      conversationsQuery = conversationsQuery.eq("segment_id", segmentId);
+      conversationsQuery = conversationsQuery.eq("leads.segment_id", segmentId);
     }
-
-    const { data: conversationsData, error: conversationsError } = await conversationsQuery;
 
     // Get leads created for current period
     let leadsQuery = supabase
@@ -68,8 +61,6 @@ export async function GET(request: NextRequest) {
     if (segmentId && segmentId !== "all") {
       leadsQuery = leadsQuery.eq("segment_id", segmentId);
     }
-
-    const { data: leadsData, error: leadsError } = await leadsQuery;
 
     // Get leads in conversation (engagement) data for current period
     let engagementQuery = supabase
@@ -94,21 +85,17 @@ export async function GET(request: NextRequest) {
       engagementQuery = engagementQuery.eq("segment_id", segmentId);
     }
 
-    const { data: engagementData, error: engagementError } = await engagementQuery;
-
     // Get tasks data for current period
     let tasksQuery = supabase
       .from("tasks")
-      .select("id, created_at")
+      .select(segmentId && segmentId !== "all" ? "id, created_at, leads!inner(segment_id)" : "id, created_at")
       .eq("site_id", siteId)
       .gte("created_at", startDate)
       .lte("created_at", endDate);
 
     if (segmentId && segmentId !== "all") {
-      tasksQuery = tasksQuery.eq("segment_id", segmentId);
+      tasksQuery = tasksQuery.eq("leads.segment_id", segmentId);
     }
-
-    const { data: tasksData, error: tasksError } = await tasksQuery;
 
     // Get meetings data for current period
     // Include tasks with specific types (call, meeting, website_visit, demo, onboarding) OR stage='consideration'
@@ -139,8 +126,6 @@ export async function GET(request: NextRequest) {
         .lte("scheduled_date", endDate);
     }
 
-    const { data: meetingsData, error: meetingsError } = await meetingsQuery;
-
     // Get sales data for current period
     let salesQuery = supabase
       .from("sales")
@@ -153,7 +138,14 @@ export async function GET(request: NextRequest) {
       salesQuery = salesQuery.eq("segment_id", segmentId);
     }
 
-    const { data: salesData, error: salesError } = await salesQuery;
+    const [
+      { data: conversationsData, error: conversationsError },
+      { data: leadsData, error: leadsError },
+      { data: engagementData, error: engagementError },
+      { data: tasksData, error: tasksError },
+      { data: meetingsData, error: meetingsError },
+      { data: salesData, error: salesError },
+    ] = await Promise.all([conversationsQuery, leadsQuery, engagementQuery, tasksQuery, meetingsQuery, salesQuery]);
 
     // Handle errors
     if (conversationsError) {
@@ -174,89 +166,16 @@ export async function GET(request: NextRequest) {
     if (salesError) {
       console.error("Error fetching sales:", salesError);
     }
-
-    // Helpers to format date in site timezone as YYYY-MM-DD
-    const formatDateInTZ = (d: Date) => {
-      const parts = new Intl.DateTimeFormat("en-CA", {
-        timeZone,
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit"
-      }).formatToParts(d);
-      const y = parts.find(p => p.type === "year")?.value ?? "0000";
-      const m = parts.find(p => p.type === "month")?.value ?? "01";
-      const day = parts.find(p => p.type === "day")?.value ?? "01";
-      return `${y}-${m}-${day}`;
-    };
-
-    // Group data by day for chart
-    const chartData = [];
-    const currentDate = new Date(currentStart);
-    const endDateObj = new Date(currentEnd);
-
-    while (currentDate <= endDateObj) {
-      const dayStart = new Date(currentDate);
-      const dayEnd = new Date(currentDate);
-      dayEnd.setHours(23, 59, 59, 999);
-
-      // Use date string comparison in site timezone for reliable filtering
-      const dayStartStr = formatDateInTZ(dayStart);
-      const dayEndStr = formatDateInTZ(dayEnd);
-      const currentDateStr = formatDateInTZ(currentDate);
-
-      // Filter leads created for this day
-      const dayLeads = (leadsData || []).filter(l => {
-        const leadDateStr = formatDateInTZ(new Date(l.created_at));
-        return leadDateStr >= dayStartStr && leadDateStr <= dayEndStr;
-      });
-
-      // Filter conversations for this day
-      const dayConversations = conversationsData?.filter(conv => {
-        const convDateStr = formatDateInTZ(new Date(conv.created_at));
-        return convDateStr >= dayStartStr && convDateStr <= dayEndStr;
-      }) || [];
-
-      // Filter engagement (leads in conversation) for this day
-      const dayEngagement = engagementData?.filter(lead => {
-        // Check if any of the lead's conversations have messages from this day
-        return lead.conversations?.some(conv => 
-          conv.messages?.some(msg => {
-            const msgDateStr = formatDateInTZ(new Date(msg.created_at));
-            return msgDateStr >= dayStartStr && msgDateStr <= dayEndStr;
-          })
-        );
-      }) || [];
-
-      // Filter tasks for this day
-      const dayTasks = tasksData?.filter(task => {
-        const taskDateStr = formatDateInTZ(new Date(task.created_at));
-        return taskDateStr >= dayStartStr && taskDateStr <= dayEndStr;
-      }) || [];
-
-      // Filter meetings for this day (using scheduled_date)
-      const dayMeetings = meetingsData?.filter(meeting => {
-        const meetingDateStr = formatDateInTZ(new Date(meeting.scheduled_date));
-        return meetingDateStr >= dayStartStr && meetingDateStr <= dayEndStr;
-      }) || [];
-
-      // Filter sales for this day
-      const daySales = salesData?.filter(sale => {
-        const saleDateStr = formatDateInTZ(new Date(sale.created_at));
-        return saleDateStr >= dayStartStr && saleDateStr <= dayEndStr;
-      }) || [];
-
-      chartData.push({
-        date: currentDateStr,
-        leadsCreated: dayLeads.length,
-        conversations: dayConversations.length,
-        engagement: dayEngagement.length,
-        tasks: dayTasks.length,
-        meetings: dayMeetings.length,
-        sales: daySales.length
-      });
-
-      currentDate.setDate(currentDate.getDate() + 1);
+    if (conversationsError || leadsError || engagementError || tasksError || meetingsError || salesError) {
+      return NextResponse.json({ error: "Failed to load metrics overview" }, { status: 500 });
     }
+
+    const chartData = buildPerformanceSeries({
+      start: currentStart, end: currentEnd, timeZone,
+      leads: leadsData || [], conversations: conversationsData || [],
+      engagement: engagementData || [], tasks: tasksData || [],
+      meetings: meetingsData || [], sales: salesData || [],
+    });
 
     // Calculate totals for comparison
     const totalLeadsCreated = leadsData?.length || 0;
@@ -267,21 +186,23 @@ export async function GET(request: NextRequest) {
     const totalSales = salesData?.length || 0;
 
     // Get previous period data for comparison
-    const { data: prevLeadsData } = await supabase
+    let prevLeadsQuery = supabase
       .from("leads")
       .select("id")
       .eq("site_id", siteId)
       .gte("created_at", previousStart.toISOString())
       .lte("created_at", previousEnd.toISOString());
+    if (segmentId && segmentId !== "all") prevLeadsQuery = prevLeadsQuery.eq("segment_id", segmentId);
 
-    const { data: prevConversationsData } = await supabase
+    let prevConversationsQuery = supabase
       .from("conversations")
-      .select("id")
+      .select(segmentId && segmentId !== "all" ? "id, leads!inner(segment_id)" : "id")
       .eq("site_id", siteId)
       .gte("created_at", previousStart.toISOString())
       .lte("created_at", previousEnd.toISOString());
+    if (segmentId && segmentId !== "all") prevConversationsQuery = prevConversationsQuery.eq("leads.segment_id", segmentId);
 
-    const { data: prevEngagementData } = await supabase
+    let prevEngagementQuery = supabase
       .from("leads")
       .select(`
         id,
@@ -298,13 +219,15 @@ export async function GET(request: NextRequest) {
       .eq("conversations.messages.role", "user")
       .gte("conversations.messages.created_at", previousStart.toISOString())
       .lte("conversations.messages.created_at", previousEnd.toISOString());
+    if (segmentId && segmentId !== "all") prevEngagementQuery = prevEngagementQuery.eq("segment_id", segmentId);
 
-    const { data: prevTasksData } = await supabase
+    let prevTasksQuery = supabase
       .from("tasks")
-      .select("id")
+      .select(segmentId && segmentId !== "all" ? "id, leads!inner(segment_id)" : "id")
       .eq("site_id", siteId)
       .gte("created_at", previousStart.toISOString())
       .lte("created_at", previousEnd.toISOString());
+    if (segmentId && segmentId !== "all") prevTasksQuery = prevTasksQuery.eq("leads.segment_id", segmentId);
 
     // Get previous period meetings data
     // Include tasks with specific types (call, meeting, website_visit, demo, onboarding) OR stage='consideration'
@@ -334,14 +257,26 @@ export async function GET(request: NextRequest) {
         .lte("scheduled_date", previousEnd.toISOString());
     }
 
-    const { data: prevMeetingsData } = await prevMeetingsQuery;
 
-    const { data: prevSalesData } = await supabase
+    let prevSalesQuery = supabase
       .from("sales")
       .select("id")
       .eq("site_id", siteId)
       .gte("created_at", previousStart.toISOString())
       .lte("created_at", previousEnd.toISOString());
+    if (segmentId && segmentId !== "all") prevSalesQuery = prevSalesQuery.eq("segment_id", segmentId);
+    const [
+      { data: prevLeadsData, error: prevLeadsError },
+      { data: prevConversationsData, error: prevConversationsError },
+      { data: prevEngagementData, error: prevEngagementError },
+      { data: prevTasksData, error: prevTasksError },
+      { data: prevMeetingsData, error: prevMeetingsError },
+      { data: prevSalesData, error: prevSalesError },
+    ] = await Promise.all([prevLeadsQuery, prevConversationsQuery, prevEngagementQuery, prevTasksQuery, prevMeetingsQuery, prevSalesQuery]);
+
+    if (prevLeadsError || prevConversationsError || prevEngagementError || prevTasksError || prevMeetingsError || prevSalesError) {
+      return NextResponse.json({ error: "Failed to load metrics overview" }, { status: 500 });
+    }
 
     const prevTotalLeadsCreated = prevLeadsData?.length || 0;
     const prevTotalConversations = prevConversationsData?.length || 0;
@@ -375,20 +310,7 @@ export async function GET(request: NextRequest) {
 
   } catch (error) {
     console.error("Error in metrics overview API:", error);
-    return NextResponse.json({
-      actual: 0,
-      percentChange: 0,
-      periodType: "monthly",
-      chartData: [],
-      breakdown: {
-        leadsCreated: 0,
-        conversations: 0,
-        engagement: 0,
-        tasks: 0,
-        meetings: 0,
-        sales: 0
-      }
-    });
+    return NextResponse.json({ error: "Failed to load metrics overview" }, { status: 500 });
   }
     },
   });

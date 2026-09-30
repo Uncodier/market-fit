@@ -24,6 +24,7 @@ export async function GET(request: Request) {
       supabase
         .from('catalog_items')
         .select('*, site:sites!inner(id, name, logo_url), raw_specs:catalog_item_specs(sort_order, item_spec:item_specs(*, category:item_spec_categories(*)))', { count: 'exact' })
+        .is('site.archived_at', null)
         .eq('is_marketplace_listed', true)
         .eq('status', 'active')
         .is('parent_id', null)

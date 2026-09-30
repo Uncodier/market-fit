@@ -11,14 +11,15 @@ interface SalesBreakdownReportProps {
     name: string;
     amount: number;
     prevAmount: number;
-    percentChange: number;
+    percentChange: number | null;
   }>;
   isLoading: boolean;
   dataReady: boolean;
+  currency?: string;
 }
 
-export function SalesBreakdownReport({ data, isLoading, dataReady }: SalesBreakdownReportProps) {
-  const hasData = data && data.length > 0;
+export function SalesBreakdownReport({ data, isLoading, dataReady, currency }: SalesBreakdownReportProps) {
+  const hasData = dataReady && data && data.length > 0;
 
   // Loading state
   if (isLoading) {
@@ -56,5 +57,5 @@ export function SalesBreakdownReport({ data, isLoading, dataReady }: SalesBreakd
     );
   }
 
-  return <FinancialSalesBreakdown categories={data} />;
+  return <FinancialSalesBreakdown categories={data} currency={currency} />;
 } 

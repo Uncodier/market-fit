@@ -6,7 +6,6 @@ import {
   saleCalendarDate,
   salesInLocalRange,
 } from '@/app/api/revenue/revenue-aggregations'
-import { inclusiveEndWithUtcSlack } from '@/lib/costs/aggregate-costs'
 
 describe('isRecognizedRevenueSale', () => {
   it('counts completed sales as revenue', () => {
@@ -31,16 +30,16 @@ describe('isRecognizedRevenueSale', () => {
 
 describe('salesInLocalRange', () => {
   const start = '2026-08-01'
-  const end = inclusiveEndWithUtcSlack('2026-08-13')
+  const end = '2026-08-13'
 
-  it('keeps evening sales whose UTC sale_date slipped to the next day', () => {
+  it('does not include the next calendar day in an inclusive range', () => {
     const sales = [
       { id: '1', status: 'completed', amount: 144, sale_date: '2026-08-13' },
       { id: '2', status: 'completed', amount: 80, sale_date: '2026-08-14' },
       { id: '3', status: 'completed', amount: 60, sale_date: '2026-07-31' },
     ]
 
-    expect(salesInLocalRange(sales, start, end).map((sale) => sale.id)).toEqual(['1', '2'])
+    expect(salesInLocalRange(sales, start, end).map((sale) => sale.id)).toEqual(['1'])
   })
 
   it('falls back to created_at when sale_date is missing', () => {
@@ -82,12 +81,15 @@ describe('sale helpers', () => {
     ])
   })
 
-  it('parses currency-formatted amounts', () => {
-    expect(getSalesAmount({ amount: 'MX$144.00' })).toBe(144)
+  it('accepts numeric database amounts but rejects malformed monetary values', () => {
+    expect(getSalesAmount({ amount: '144.00' })).toBe(144)
+    expect(() => getSalesAmount({ amount: 'MX$144.00' })).toThrow('Invalid sale amount')
+    expect(() => getSalesAmount({ amount: Infinity })).toThrow('Invalid sale amount')
   })
 
-  it('treats a jump from zero as +100%', () => {
-    expect(percentChangeFrom(0, 140)).toBe(100)
+  it('marks a zero baseline as not comparable rather than inventing +100%', () => {
+    expect(percentChangeFrom(0, 140)).toBeNull()
+    expect(percentChangeFrom(0, 0)).toBe(0)
     expect(percentChangeFrom(140, 0)).toBe(-100)
   })
 })

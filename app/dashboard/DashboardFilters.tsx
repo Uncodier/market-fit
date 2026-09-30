@@ -1,11 +1,13 @@
 "use client"
 
-import { MobileFiltersDrawer, FilterContainer, FilterSection, FilterSeparator } from "@/app/components/ui/mobile-filters-drawer"
+import { MobileFiltersDrawer, FilterContainer, FilterSection } from "@/app/components/ui/mobile-filters-drawer"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
+import { TabsList, TabsTrigger } from "@/app/components/ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
 import { CalendarDateRangePicker } from "@/app/components/ui/date-range-picker"
 import { format } from "date-fns"
 import type { Segment } from "@/app/types/segments"
+import { REPORTS, type ReportId } from "./report-sections"
 
 export function DashboardFilters({
   t,
@@ -15,6 +17,9 @@ export function DashboardFilters({
   segments,
   dateRange,
   onDateRangeChange,
+  report,
+  maxRangeDays,
+  dateOptionsLoading = false,
 }: {
   t: (key: string) => string
   selectedSegment: string
@@ -23,14 +28,25 @@ export function DashboardFilters({
   segments: Segment[]
   dateRange: { startDate: Date; endDate: Date }
   onDateRangeChange: (start: Date, end: Date) => void
+  report: ReportId
+  maxRangeDays?: number
+  dateOptionsLoading?: boolean
 }) {
   return (
-    <StickyHeader>
-      <div className="w-full pt-0">
-        <div className="flex w-full items-center justify-end gap-8">
+    <StickyHeader className="min-h-[64px]">
+      <div className="mx-auto w-full max-w-[1536px] min-w-0 py-2">
+        <div className="flex w-full min-w-0 flex-wrap items-center justify-between gap-3">
+          <div className="min-w-0 max-w-full flex-1 overflow-x-auto">
+            <TabsList aria-label={`${REPORTS[report].title} sections`} className="justify-start bg-muted/50">
+              {REPORTS[report].sections.map((section) => (
+                <TabsTrigger key={section.id} value={section.id}>{section.label}</TabsTrigger>
+              ))}
+            </TabsList>
+          </div>
+          <div className="ml-auto shrink-0">
           <MobileFiltersDrawer triggerText={t("common.filters") || "Filters"}>
             <FilterContainer className="md:justify-end">
-              <FilterSection>
+              {report !== "social" && report !== "traffic" && <FilterSection>
                 <div className="flex flex-col md:flex-row items-stretch md:items-center gap-2">
                   <span className="text-sm text-muted-foreground">{t("dashboard.filters.segment") || "Segment:"}</span>
                   <Select
@@ -38,7 +54,7 @@ export function DashboardFilters({
                     onValueChange={onSegmentChange}
                     disabled={isLoadingSegments}
                   >
-                    <SelectTrigger className="w-full md:w-[180px]">
+                    <SelectTrigger aria-label="Segment" className="w-full md:w-[180px]">
                       <div className="flex-1 overflow-hidden">
                         <span style={{ pointerEvents: "none" }}>
                           <SelectValue placeholder={t("dashboard.filters.allSegments") || "All segments"} />
@@ -57,12 +73,13 @@ export function DashboardFilters({
                     </SelectContent>
                   </Select>
                 </div>
-              </FilterSection>
-                    
-                    <FilterSection>
+              </FilterSection>}
+              <FilterSection>
                 <div className="flex flex-col md:flex-row items-stretch md:items-center gap-2">
                   <CalendarDateRangePicker
                     onRangeChange={onDateRangeChange}
+                    maxRangeDays={maxRangeDays}
+                    disabled={dateOptionsLoading}
                     initialStartDate={dateRange.startDate}
                     initialEndDate={dateRange.endDate}
                     key={`date-range-${format(dateRange.startDate, "yyyy-MM-dd")}-${format(dateRange.endDate, "yyyy-MM-dd")}`}
@@ -72,6 +89,7 @@ export function DashboardFilters({
               </FilterSection>
             </FilterContainer>
           </MobileFiltersDrawer>
+          </div>
         </div>
       </div>
     </StickyHeader>

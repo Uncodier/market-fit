@@ -2,8 +2,10 @@
 
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
 import { useTheme } from "@/app/context/ThemeContext";
-import { Skeleton } from "@/app/components/ui/skeleton";
 import { usePerformanceSlice } from "@/app/hooks/use-dashboard-batches";
+import { ReportChartLoading } from "./report-visual-loading";
+import { ReportState } from "./report-state";
+import { activityDate, compactActivityCount } from "./activity-chart-format";
 
 interface PerformanceMetricsChartProps {
   startDate: Date;
@@ -48,7 +50,7 @@ export function PerformanceMetricsChart({
 
   // Colors for the chart
   const colors = {
-    text: isDarkMode ? "#CBD5E1" : "#9CA3AF",
+    text: isDarkMode ? "#CBD5E1" : "#6B7280",
     grid: isDarkMode ? "rgba(203, 213, 225, 0.2)" : "#f0f0f0",
     tooltipBackground: isDarkMode ? "#1E293B" : "white",
     tooltipBorder: isDarkMode ? "#475569" : "#e5e7eb",
@@ -60,27 +62,19 @@ export function PerformanceMetricsChart({
   };
 
   if (isLoading) {
-    return (
-      <div className="w-full h-[300px]">
-        <Skeleton className="w-full h-full" />
-      </div>
-    );
+    return <ReportChartLoading />;
   }
 
   if (!data || !data.chartData || data.chartData.length === 0) {
-    return (
-      <div className="w-full h-[300px] flex items-center justify-center">
-        <p className="text-muted-foreground">No performance metrics data available</p>
-      </div>
-    );
+    return <ReportState state="empty" message="No activity was recorded for these filters. Try another date range or segment." />;
   }
 
   return (
-    <div className="w-full h-[300px]">
+    <div role="img" aria-label="Daily engagement, meetings and sales counts" className="h-[300px] w-full min-w-0 sm:h-[360px]">
       <ResponsiveContainer width="100%" height="100%">
         <LineChart
           data={data.chartData}
-          margin={{ top: 10, right: 10, left: 10, bottom: 5 }}
+          margin={{ top: 12, right: 12, left: 0, bottom: 0 }}
         >
             <CartesianGrid 
               strokeDasharray="3 3" 
@@ -94,23 +88,23 @@ export function PerformanceMetricsChart({
               tickLine={false}
               tick={{ fontSize: 12, fill: colors.text }}
               tickMargin={10}
-              minTickGap={20}
-              tickFormatter={(value) => {
-                const date = new Date(value);
-                // Fix timezone offset for display by using UTC methods 
-                // since the date string is like "YYYY-MM-DD"
-                return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
-              }}
+              minTickGap={36}
+              interval="preserveStartEnd"
+              padding={{ left: 8, right: 8 }}
+              tickFormatter={(value) => activityDate(value)}
             />
             <YAxis 
               axisLine={false}
               tickLine={false} 
               tick={{ fontSize: 12, fill: colors.text }}
-              tickFormatter={(value) => value.toLocaleString()}
+              width={44}
+              allowDecimals={false}
+              domain={[0, 'auto']}
+              tickFormatter={compactActivityCount}
             />
             <Tooltip 
               formatter={(value: number, name: string) => [
-                value.toLocaleString(), 
+                value.toLocaleString("en-US"),
                 name === 'conversations' ? 'Conversations' :
                 name === 'engagement' ? 'Engagement' :
                 name === 'meetings' ? 'Meetings' :
@@ -124,67 +118,61 @@ export function PerformanceMetricsChart({
                 boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)'
               }}
               itemStyle={{ color: isDarkMode ? '#f3f4f6' : '#111827', fontWeight: 600 }}
-              labelFormatter={(value) => {
-                const date = new Date(value);
-                return date.toLocaleDateString('en-US', { 
-                  month: 'short', 
-                  day: 'numeric',
-                  year: 'numeric'
-                });
-              }}
+              labelFormatter={(value) => `${activityDate(String(value), true)} (UTC)`}
             />
             <Legend 
               wrapperStyle={{ 
-                paddingTop: '20px',
+                paddingTop: '16px',
+                fontSize: 12,
                 color: colors.text
               }}
               iconType="circle"
             />
             {showConversations && (
               <Line 
-                type="monotone"
+                type="linear"
                 dataKey="conversations" 
                 stroke={colors.conversations}
                 strokeWidth={2}
-                dot={false}
+                dot={data.chartData.length <= 14 ? { r: 3, strokeWidth: 0 } : false}
+                connectNulls={false}
                 activeDot={{ r: 6, strokeWidth: 0 }}
                 name="Conversations"
-                animationDuration={1500}
-                animationEasing="ease-out"
+                isAnimationActive={false}
               />
             )}
             <Line 
-              type="monotone"
+              type="linear"
               dataKey="engagement" 
               stroke={colors.engagement}
               strokeWidth={2}
-              dot={false}
+              dot={data.chartData.length <= 14 ? { r: 3, strokeWidth: 0 } : false}
+              connectNulls={false}
               activeDot={{ r: 6, strokeWidth: 0 }}
               name="Engagement"
-              animationDuration={1500}
-              animationEasing="ease-out"
+              isAnimationActive={false}
             />
             <Line 
-              type="monotone"
+              type="linear"
               dataKey="meetings" 
               stroke={colors.meetings}
               strokeWidth={2}
-              dot={false}
+              dot={data.chartData.length <= 14 ? { r: 3, strokeWidth: 0 } : false}
+              connectNulls={false}
               activeDot={{ r: 6, strokeWidth: 0 }}
               name="Meetings"
-              animationDuration={1500}
-              animationEasing="ease-out"
+              isAnimationActive={false}
             />
             <Line 
-              type="monotone"
+              type="linear"
               dataKey="sales" 
               stroke={colors.sales}
               strokeWidth={2}
-              dot={false}
+              dot={data.chartData.length <= 14 ? { r: 3, strokeWidth: 0 } : false}
+              connectNulls={false}
               activeDot={{ r: 6, strokeWidth: 0 }}
               name="Sales"
-              animationDuration={1500}
-              animationEasing="ease-out"
+              isAnimationActive={false}
             />
           </LineChart>
       </ResponsiveContainer>

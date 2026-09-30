@@ -40,10 +40,11 @@ async function loadPdpCatalogItem(itemId: string, options?: PdpLoadOptions) {
     .from("catalog_items")
     .select(`
       *,
-      site:sites(id, name, logo_url, description),
+      site:sites!inner(id, name, logo_url, description),
       category:catalog_categories(name),
       raw_specs:catalog_item_specs(sort_order, item_spec:item_specs(*, category:item_spec_categories(*)))
     `)
+    .is("site.archived_at", null)
     .eq("id", itemId)
     .eq("status", "active");
     
@@ -227,7 +228,8 @@ async function loadPdpShareItem(
   const supabase = await createServiceClient(true)
   let query = supabase
     .from("catalog_items")
-    .select("name, description, image_url, metadata, site:sites(name)")
+    .select("name, description, image_url, metadata, site:sites!inner(name)")
+    .is("site.archived_at", null)
     .eq("id", itemId)
     .eq("status", "active")
 

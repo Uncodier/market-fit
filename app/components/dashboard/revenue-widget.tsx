@@ -5,6 +5,7 @@ import { subDays } from "date-fns";
 import { BaseKpiWidget } from "./base-kpi-widget";
 import { useLocalization } from "@/app/context/LocalizationContext";
 import { useOverviewSlice } from "@/app/hooks/use-dashboard-batches";
+import { formatSalesChange, formatSalesMoney } from "@/lib/sales/report-format";
 
 interface RevenueWidgetProps {
   segmentId?: string;
@@ -14,8 +15,9 @@ interface RevenueWidgetProps {
 
 interface RevenueData {
   actual: number;
-  percentChange: number;
+  percentChange: number | null;
   periodType: string;
+  currency: string;
 }
 
 function formatPeriodType(periodType: string, t: (key: string) => string): string {
@@ -29,24 +31,13 @@ function formatPeriodType(periodType: string, t: (key: string) => string): strin
   }
 }
 
-const formatCurrency = (value: number): string => {
-  if (value == null || isNaN(value) || !isFinite(value)) {
-    return "$0";
-  }
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(value);
-};
-
 function mapRevenue(payload: any): RevenueData | null {
-  if (!payload || payload.error) return null;
+  if (!payload?.totalSales || payload.error) return null;
   return {
     actual: payload.totalSales?.actual || 0,
-    percentChange: payload.totalSales?.percentChange || 0,
-    periodType: payload.periodType || "monthly",
+    percentChange: payload.totalSales.percentChange ?? null,
+    periodType: payload.periodType || "custom",
+    currency: payload.currency || "UNSPECIFIED",
   };
 }
 
@@ -70,10 +61,9 @@ export function RevenueWidget({
   return (
     <BaseKpiWidget
       title={t('dashboard.widgets.revenue') || 'Revenue'}
-      tooltipText={t('dashboard.widgets.revenue.tooltip') || 'Total revenue for the selected period'}
-      value={revenue?.actual != null ? formatCurrency(revenue.actual) : "$0"}
-      changeText={`${revenue?.percentChange || 0}% from ${formatPeriodType(revenue?.periodType || "monthly", t)}`}
-      isPositiveChange={(revenue?.percentChange || 0) > 0}
+      value={revenue ? formatSalesMoney(revenue.actual, revenue.currency) : "Unavailable"}
+      changeText={revenue ? `${formatSalesChange(revenue.percentChange)} · ${formatPeriodType(revenue.periodType, t)}` : "Sales report unavailable"}
+      isPositiveChange={revenue?.percentChange == null || revenue.percentChange === 0 ? undefined : revenue.percentChange > 0}
       isLoading={isLoading}
       showDatePicker={!propStartDate && !propEndDate}
       startDate={startDate}

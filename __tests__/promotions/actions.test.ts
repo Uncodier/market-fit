@@ -2,7 +2,8 @@ import { applyPromotionToOrder } from "../../app/promotions/apply-promotion-to-o
 import { upsertPromotionDiscountExpense } from "../../app/promotions/promo-discount-expense";
 import { createClient, createServiceClient } from "../../lib/supabase/server";
 import { TextEncoder, TextDecoder } from 'util';
-global.TextEncoder = TextEncoder;
+jest.mock('server-only', () => ({}));
+global.TextEncoder = TextEncoder as typeof global.TextEncoder;
 global.TextDecoder = TextDecoder as any;
 
 const mockedUpsertExpense = upsertPromotionDiscountExpense as jest.MockedFunction<
@@ -18,8 +19,8 @@ jest.mock("../../app/promotions/promo-discount-expense", () => ({
   upsertPromotionDiscountExpense: jest.fn().mockResolvedValue({ skipped: false }),
 }));
 
-jest.mock("../../app/accounting/ensure", () => ({
-  upsertPolizaForExpense: jest.fn().mockResolvedValue(undefined),
+jest.mock("../../app/accounting/source-posting", () => ({
+  postSourceJournalWithClient: jest.fn().mockResolvedValue(undefined),
 }));
 
 // Mock Supabase Server
@@ -300,6 +301,8 @@ describe("applyPromotionToOrder", () => {
       amount: 95,
       amount_due: 95,
       campaign_id: "camp1",
+      accounting_state: 'pending',
+      updated_at: expect.any(String),
     });
     expect(leadsUpdate).toHaveBeenCalledWith({ campaign_id: "camp1" });
   });
@@ -385,6 +388,8 @@ describe("applyPromotionToOrder", () => {
     expect(salesUpdate).toHaveBeenCalledWith({
       amount: 128,
       amount_due: 0,
+      accounting_state: 'pending',
+      updated_at: expect.any(String),
     });
   });
 

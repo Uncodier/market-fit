@@ -3,6 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { Sale, SaleData } from "@/app/types";
+import { requireAccountingAccess } from '@/app/accounting/access';
+import { deleteAccountingSource } from '@/app/accounting/source-lifecycle';
 import {
   fulfillLinkedOrderAfterPayment,
   revokeOrderFulfillment,
@@ -115,7 +117,7 @@ export async function createSale(data: {
       buyerUserId = lead?.buyer_user_id || null
     }
 
-    const saleData: Partial<SaleData> = {
+    const saleData: Partial<SaleData> & { location_id: string | null } = {
       title: data.title,
       product_name: data.productName || null,
       product_type: data.productType || null,
@@ -161,7 +163,7 @@ export async function createSale(data: {
  */
 export async function updateSale(siteId: string, updatedSale: Sale) {
   try {
-    const supabase = await createClient();
+    const supabase = await requireAccountingAccess(siteId, 'update');
 
     const payments = updatedSale.payments || [];
     const latestPaymentMethod =
@@ -171,12 +173,13 @@ export async function updateSale(siteId: string, updatedSale: Sale) {
           )[0]?.method
         : undefined;
 
-    const { data: previousSale } = await supabase
+    const { data: previousSale, error: previousError } = await supabase
       .from("sales")
-      .select("status, user_id, lead_id")
+      .select("status, user_id, lead_id, accounting_state")
       .eq("id", updatedSale.id)
       .eq("site_id", siteId)
       .maybeSingle();
+    if (previousError || !previousSale) return { error: 'Sale not found in this site' };
 
     const amountDue = Number(updatedSale.amount_due) || 0;
     let status = updatedSale.status;
@@ -197,7 +200,9 @@ export async function updateSale(siteId: string, updatedSale: Sale) {
       payments,
       payment_method:
         latestPaymentMethod || updatedSale.paymentMethod || null,
+      updated_at: new Date().toISOString(),
     };
+    Object.assign(updateData, { accounting_state: previousSale.accounting_state === 'unpublished' ? 'unpublished' : 'pending' });
 
     const { data: sale, error } = await supabase
       .from("sales")
@@ -256,18 +261,7 @@ export async function updateSale(siteId: string, updatedSale: Sale) {
  */
 export async function deleteSale(siteId: string, id: string) {
   try {
-    const supabase = await createClient();
-    
-    const { error } = await supabase
-      .from("sales")
-      .delete()
-      .eq("id", id)
-      .eq("site_id", siteId);
-
-    if (error) {
-      console.error("Error deleting sale:", error);
-      return { error: error.message };
-    }
+    await deleteAccountingSource(siteId, 'sale', id);
 
     // Revalidate the sales page
     revalidatePath("/sales");
@@ -275,7 +269,7 @@ export async function deleteSale(siteId: string, id: string) {
     return { success: true };
   } catch (error) {
     console.error("Error in deleteSale:", error);
-    return { error: "Failed to delete sale" };
+    return { error: error instanceof Error ? error.message : "Failed to delete sale" };
   }
 }
 

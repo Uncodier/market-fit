@@ -35,7 +35,7 @@ interface MessageInputProps {
   handleMessageChange?: (e: React.ChangeEvent<HTMLTextAreaElement>) => void
   onActivityChange: (activity: string) => void
   onContextChange: (context: SelectedContextIds) => void
-  onSubmit: () => void
+  onSubmit: (onAccepted?: () => void) => void | Promise<void>
   disabled: boolean
   placeholder: string
   textareaRef: React.RefObject<HTMLTextAreaElement> | React.MutableRefObject<HTMLTextAreaElement | null>
@@ -64,7 +64,7 @@ const MessageInputComponent: React.FC<MessageInputProps> = ({
   onActivityChange,
   onContextChange,
   onSubmit,
-  disabled,
+  disabled: isDisabled,
   placeholder,
   textareaRef,
   imageParameters,
@@ -82,9 +82,13 @@ const MessageInputComponent: React.FC<MessageInputProps> = ({
 }) => {
   const [mentionState, setMentionState] = useState<{ query: string, start: number, end: number } | null>(null)
   const [hasInput, setHasInput] = useState(() => message.trim().length > 0)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const submissionRef = useRef<symbol | null>(null)
+  const shouldRefocusRef = useRef(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const { currentSite } = useSite()
   const { t } = useLocalization()
+  const disabled = isDisabled || isSubmitting
   const { uploadFile, isUploading } = useAttachmentUpload({ 
     siteId: currentSite?.id || '',
     instanceId: activeRobotInstance?.id
@@ -99,6 +103,42 @@ const MessageInputComponent: React.FC<MessageInputProps> = ({
   useEffect(() => {
     setHasInput(message.trim().length > 0)
   }, [message])
+
+  useEffect(() => {
+    setIsSubmitting(false)
+    shouldRefocusRef.current = false
+    return () => { submissionRef.current = null }
+  }, [currentSite?.id, activeRobotInstance?.id])
+
+  useEffect(() => {
+    if (!disabled && shouldRefocusRef.current) {
+      shouldRefocusRef.current = false
+      textareaRef.current?.focus()
+    }
+  }, [disabled, textareaRef])
+
+  const handleSubmit = async () => {
+    if (disabled || mentionState || submissionRef.current) return
+
+    const submission = Symbol('message-submission')
+    submissionRef.current = submission
+    setIsSubmitting(true)
+
+    const releaseInput = () => {
+      // A completed stream must not unlock a newer pending submission.
+      if (submissionRef.current !== submission) return
+      submissionRef.current = null
+      shouldRefocusRef.current = true
+      setIsSubmitting(false)
+    }
+
+    try {
+      // Acceptance releases the composer before the assistant finishes working.
+      await onSubmit(releaseInput)
+    } finally {
+      releaseInput()
+    }
+  }
 
   // Calculate dynamic placeholder based on context and requirements
   const contextCount = Object.values(selectedContext).reduce((acc: number, curr: any) => acc + (curr?.length || 0), 0) as number
@@ -197,7 +237,7 @@ const MessageInputComponent: React.FC<MessageInputProps> = ({
       <div className="mx-auto w-full max-w-[800px]">
         <form id="message-form" name="messageForm" className="relative w-full" onSubmit={(e) => {
           e.preventDefault()
-          if (!mentionState) onSubmit()
+          void handleSubmit()
         }}>
           <div className="relative w-full">
             {mentionState && (
@@ -228,9 +268,7 @@ const MessageInputComponent: React.FC<MessageInputProps> = ({
                 
                 if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault()
-                  if (!mentionState) {
-                    onSubmit()
-                  }
+                  void handleSubmit()
                 }
               }}
               placeholder={dynamicPlaceholder}
@@ -246,7 +284,6 @@ const MessageInputComponent: React.FC<MessageInputProps> = ({
                 height: isEmptyState ? '148px' : COMPOSER_TEXTAREA_STYLE.height,
                 paddingBottom: isEmptyState ? '64px' : COMPOSER_TEXTAREA_STYLE.paddingBottom,
                 paddingRight: activeRobotInstance?.id ? '114px' : undefined,
-                opacity: disabled ? 1 : undefined
               }}
             />
             

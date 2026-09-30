@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
 
   return readThroughAnalyticsResponseCache({
     request,
-    namespace: "performance:leads-contacted",
+    namespace: "performance:leads-contacted:v2",
     siteId: access.siteId,
     lockTtlMs: 30_000,
     load: async () => {
@@ -65,11 +65,7 @@ export async function GET(request: NextRequest) {
 
       if (currentError) {
         console.error("Error fetching current leads contacted:", currentError);
-        return NextResponse.json({
-          actual: 0,
-          percentChange: 0,
-          periodType: "monthly"
-        });
+        return NextResponse.json({ error: "Failed to load leads contacted" }, { status: 500 });
       }
 
       if (batchCurrent && batchCurrent.length > 0) {
@@ -115,7 +111,7 @@ export async function GET(request: NextRequest) {
 
       if (previousError) {
         console.error("Error fetching previous leads contacted:", previousError);
-        break;
+        return NextResponse.json({ error: "Failed to load leads contacted" }, { status: 500 });
       }
 
       if (batchPrevious && batchPrevious.length > 0) {
@@ -144,11 +140,7 @@ export async function GET(request: NextRequest) {
 
   } catch (error) {
     console.error("Error in leads contacted API:", error);
-    return NextResponse.json({
-      actual: 0,
-      percentChange: 0,
-      periodType: "monthly"
-    });
+    return NextResponse.json({ error: "Failed to load leads contacted" }, { status: 500 });
   }
     },
   });

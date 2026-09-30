@@ -57,21 +57,23 @@ export async function prepareCheckoutEnvironment(
   const queryClient = isAdmin ? supabaseAdmin : supabase
   let resolvedUserId = params.userId
 
+  const { data: site, error: siteError } = await supabaseAdmin
+    .from("sites")
+    .select("user_id, archived_at")
+    .eq("id", siteId)
+    .single()
+  if (siteError || !site) throw new Error("Site is unavailable for checkout.")
+  if (site.archived_at) {
+    throw new Error("This site is archived and cannot accept new checkouts.")
+  }
+  if (isAdmin) resolvedUserId = resolvedUserId || site.user_id
+
   const { data: settingsRow } = await supabaseAdmin
     .from("settings")
     .select("*")
     .eq("site_id", siteId)
     .maybeSingle()
   const siteSettings: any = settingsRow || {}
-
-  if (isAdmin) {
-    const { data: site } = await supabaseAdmin
-      .from("sites")
-      .select("user_id")
-      .eq("id", siteId)
-      .single()
-    if (site) resolvedUserId = resolvedUserId || site.user_id
-  }
 
   let resolvedScheduledFor = params.scheduledFor
   const { evaluateLocationRestrictions } = await import("./location-restrictions")

@@ -1,22 +1,12 @@
-"use client";
+"use client"
 
-import { useState, useEffect } from 'react';
-import { SessionEventsChart } from './session-events-chart';
-import { SessionEventsReferrers } from './session-events-referrers';
-
-interface SessionEventData {
-  date: string;
-  pageVisits: number;
-  uniqueVisitors: number;
-  label: string;
-}
-
-interface ReferrerData {
-  referrer: string;
-  count: number;
-  percentage: string;
-  fullUrl: string;
-}
+import { useAuth } from "@/app/hooks/use-auth"
+import { useReportResource } from "@/app/hooks/use-report-resource"
+import { Card } from "@/app/components/ui/card"
+import { ReportState } from "../report-state"
+import { fetchSessionEvents, sessionEventsUrl } from "./session-events-data"
+import { SessionEventsChart } from "./session-events-chart"
+import { SessionEventsReferrers } from "./session-events-referrers"
 
 interface SessionEventsContainerProps {
   siteId: string;
@@ -25,87 +15,45 @@ interface SessionEventsContainerProps {
   segmentId?: string;
 }
 
+const layout = "grid min-w-0 grid-cols-1 items-stretch gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] xl:grid-rows-[auto_1fr] xl:[&>*]:row-span-2 xl:[&>*]:grid xl:[&>*]:grid-rows-subgrid xl:[&>*]:gap-y-0 [&>*]:min-w-0 [&_h3]:text-base"
+
 export function SessionEventsContainer({ siteId, startDate, endDate, segmentId }: SessionEventsContainerProps) {
-  const [chartData, setChartData] = useState<SessionEventData[]>([]);
-  const [referrersData, setReferrersData] = useState<ReferrerData[]>([]);
-  const [totals, setTotals] = useState<{
-    pageVisits: number;
-    uniqueVisitors: number;
-    referralVisits?: number;
-  }>({
-    pageVisits: 0,
-    uniqueVisitors: 0,
-    referralVisits: 0,
-  });
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { user, isLoading: authLoading } = useAuth()
+  const hasSite = !!siteId && siteId !== "default"
+  const url = sessionEventsUrl(siteId, startDate, endDate, segmentId)
+  const { data, error, isLoading, mutate } = useReportResource(
+    hasSite && url && user?.id && !authLoading ? [url, user.id] : null,
+    fetchSessionEvents, authLoading,
+  )
 
-  useEffect(() => {
-    const fetchData = async () => {
-      if (!siteId || !startDate || !endDate) return;
-      
-      setLoading(true);
-      setError(null);
-      
-      try {
-        const start = startDate ? startDate.toISOString().split('T')[0] : null;
-        const end = endDate ? endDate.toISOString().split('T')[0] : null;
-        
-        const params = new URLSearchParams();
-        params.append('siteId', siteId);
-        if (start) params.append('startDate', start);
-        if (end) params.append('endDate', end);
-        if (segmentId && segmentId !== 'all') {
-          params.append('segmentId', segmentId);
-        }
-        params.append('referrersLimit', '10');
-        
-        console.log('Fetching combined page visits data with params:', params.toString());
-        console.log('[SessionEventsContainer] Date range:', { startDate, endDate, segmentId });
-        const response = await fetch(`/api/traffic/session-events-combined?${params.toString()}`);
-        
-        if (!response.ok) {
-          throw new Error('Failed to fetch page visits data');
-        }
-        
-        const result = await response.json();
-        console.log('Combined page visits response:', result);
-        console.log('[SessionEventsContainer] Totals received:', result.totals);
-        
-        setChartData(result.chartData || []);
-        setReferrersData(result.referrersData || []);
-        setTotals(
-          result.totals || { pageVisits: 0, uniqueVisitors: 0, referralVisits: 0 }
-        );
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'An error occurred');
-        console.error('Error fetching combined page visits:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchData();
-  }, [siteId, startDate, endDate, segmentId]);
+  if (isLoading) return <div className={layout} role="status" aria-label="Loading session events" aria-busy="true">
+    <SessionEventsChart siteId={siteId} startDate={startDate} endDate={endDate} data={[]} loading />
+    <SessionEventsReferrers siteId={siteId} startDate={startDate} endDate={endDate} data={[]} loading />
+  </div>
+  if (!user) return <ReportState state="error" message="Sign in to view session events." />
+  if (!hasSite) return <ReportState state="empty" message="Select a site to view session events." />
+  if (!url) return <ReportState state="error" message="Select a valid date range." />
+  if (error) return <Card><ReportState state="error" message={error.message} onRetry={() => { void mutate() }} /></Card>
+  if (!data) return null
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 h-[500px]">
+    <div className={layout}>
       <SessionEventsChart 
         siteId={siteId}
         startDate={startDate}
         endDate={endDate}
-        data={chartData}
-        loading={loading}
-        error={error}
-        totals={totals}
+        data={data.chartData}
+        loading={false}
+        error={null}
+        totals={data.totals}
       />
       <SessionEventsReferrers 
         siteId={siteId}
         startDate={startDate}
         endDate={endDate}
-        data={referrersData}
-        loading={loading}
-        error={error}
+        data={data.referrersData}
+        loading={false}
+        error={null}
       />
     </div>
   );

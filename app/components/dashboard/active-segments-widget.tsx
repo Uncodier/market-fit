@@ -10,6 +10,7 @@ import { useOverviewSlice } from "@/app/hooks/use-dashboard-batches";
 interface ActiveSegmentsWidgetProps {
   startDate?: Date;
   endDate?: Date;
+  segmentId?: string;
 }
 
 interface ActiveSegmentsData {
@@ -32,7 +33,8 @@ const formatPeriodType = (periodType: string): string => {
 
 export function ActiveSegmentsWidget({
   startDate: propStartDate,
-  endDate: propEndDate
+  endDate: propEndDate,
+  segmentId = "all"
 }: ActiveSegmentsWidgetProps) {
   const { t } = useLocalization();
   const { currentSite } = useSite();
@@ -47,7 +49,8 @@ export function ActiveSegmentsWidget({
   const { data: activeSegments, isLoading } = useOverviewSlice<ActiveSegmentsData>(
     "active-segments",
     startDate,
-    endDate
+    endDate,
+    segmentId
   );
 
   const hasError = Boolean(activeSegments?.error);

@@ -1,5 +1,39 @@
 # Automated outreach settings
 
+## Always-active ICP mining
+
+The Activities tab also configures `settings.activities.icp_lead_generation`:
+
+```json
+{ "status": "active", "target_leads": 150, "research_enabled": false, "all_lists": true, "list_ids": [] }
+```
+
+ICP mining is always active, independently of Leads Follow Up and channel
+health. There is no status toggle; missing and legacy inactive/default statuses
+normalize to `active`. Mining itself does not enable or send outreach.
+`target_leads` is an integer from 1 to 3,000 (default 150): a target of leads
+found and enriched per run, not scanned candidates or a guaranteed number of new
+leads. `research_enabled` controls additional deep research and defaults to false.
+Invalid targets and non-boolean research values block saves rather than being
+silently coerced. Backend workflows remain responsible for execution.
+
+The [pending mining list selector](ICP_MINING_LIST_SELECTION.md) defaults to all
+pending lists dynamically, including future lists and resumable running lists.
+Turn off **All pending lists** to use only explicit `list_ids`; an empty selection
+means no work, never a fallback to all lists. Saved unavailable IDs remain
+removable. Saves validate the selection's shape, not transient list availability.
+
+Hydration, form parsing, Activities saves and Save All preserve unknown ICP keys,
+neighboring activity parameters and future activity keys. Settings persistence
+merges activities with the latest readable row through the existing user-scoped
+Supabase client and RLS; it does not introduce a service-role write. The selector's
+separate read-only API authorizes site membership before listing pending requests,
+including requests without associated segments.
+Jest roundtrip tests use an in-memory authenticated-client/RLS double and do not
+verify a live project's policies.
+
+## Opt-in outreach
+
 The Activities tab configures `settings.activities.leads_initial_cold_outreach`
 and `settings.activities.leads_follow_up`. Both are opt-in: missing settings and
 legacy `default` status are normalized to `inactive`; explicit `active` survives

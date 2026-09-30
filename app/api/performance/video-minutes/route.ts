@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
 
   return readThroughAnalyticsResponseCache({
     request,
-    namespace: "performance:video-minutes",
+    namespace: "performance:video-minutes:v2",
     siteId: access.siteId,
     load: async () => {
   try {
@@ -45,11 +45,7 @@ export async function GET(request: NextRequest) {
 
     if (currentError) {
       console.error("Error fetching current video minutes:", currentError);
-      return NextResponse.json({
-        actual: 0,
-        percentChange: 0,
-        periodType: "monthly"
-      });
+      return NextResponse.json({ error: "Failed to load video minutes" }, { status: 500 });
     }
 
     // Get video instance_logs for previous period
@@ -65,11 +61,13 @@ export async function GET(request: NextRequest) {
 
     if (previousError) {
       console.error("Error fetching previous video minutes:", previousError);
+      return NextResponse.json({ error: "Failed to load video minutes" }, { status: 500 });
     }
 
     // Calculate totals in minutes
-    const currentTotalMs = currentData?.reduce((sum, log) => sum + (log.duration_ms || 0), 0) || 0;
-    const previousTotalMs = previousData?.reduce((sum, log) => sum + (log.duration_ms || 0), 0) || 0;
+    const sumDuration = (sum: number, log: { duration_ms: number | null }) => sum + (log.duration_ms || 0);
+    const currentTotalMs = currentData?.reduce(sumDuration, 0) || 0;
+    const previousTotalMs = previousData?.reduce(sumDuration, 0) || 0;
     
     const currentMinutes = Math.round((currentTotalMs / 60000) * 10) / 10; // Convert to minutes with 1 decimal
     const previousMinutes = Math.round((previousTotalMs / 60000) * 10) / 10;
@@ -86,11 +84,7 @@ export async function GET(request: NextRequest) {
 
   } catch (error) {
     console.error("Error in video minutes API:", error);
-    return NextResponse.json({
-      actual: 0,
-      percentChange: 0,
-      periodType: "monthly"
-    });
+    return NextResponse.json({ error: "Failed to load video minutes" }, { status: 500 });
   }
     },
   });

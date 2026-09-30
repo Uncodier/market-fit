@@ -1,279 +1,126 @@
 "use client"
 
-import { useMemo } from "react"
-import useSWR from "swr"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/app/components/ui/card"
 import { useSite } from "@/app/context/SiteContext"
-import { Skeleton } from "@/app/components/ui/skeleton"
-import { EmptyCard } from "@/app/components/ui/empty-card"
-import { BarChart } from "@/app/components/ui/icons"
+import { useState } from "react"
+import { format, isValid } from "date-fns"
 import { BaseKpiWidget } from "@/app/components/dashboard/base-kpi-widget"
-import { CostDistributionChart } from "@/app/components/dashboard/cost-distribution-chart"
-import { MonthlyCostEvolutionChart } from "@/app/components/dashboard/monthly-cost-evolution-chart"
-import { CostBreakdownReport } from "@/app/components/dashboard/cost-breakdown-report"
-import { format, subDays } from "date-fns"
-import {
-  efficiencyRatio,
-  marketingFromCategories,
-  overheadFromCategories,
-} from "@/lib/costs/aggregate-costs"
-
-interface CostData {
-  totalCosts: {
-    actual: number
-    previous: number
-    percentChange: number
-    formattedActual: string
-    formattedPrevious: string
-  }
-  costCategories: Array<{
-    name: string
-    amount: number
-    prevAmount: number
-    percentChange: number
-  }>
-  monthlyData: Array<{
-    month: string
-    fixedCosts: number
-    variableCosts: number
-  }>
-  costDistribution: Array<{
-    category: string
-    percentage: number
-    amount: number
-  }>
-  periodType?: string
-  noData?: boolean
-}
-
-interface RevenueData {
-  totalSales?: {
-    actual: number
-    previous: number
-  }
-  noData?: boolean
-}
-
-const emptyData: CostData = {
-  totalCosts: {
-    actual: 0,
-    previous: 0,
-    percentChange: 0,
-    formattedActual: "0",
-    formattedPrevious: "0",
-  },
-  costCategories: [],
-  monthlyData: [],
-  costDistribution: [],
-  noData: true,
-}
+import { CostReportCategories, CostReportDistribution, CostReportTrend } from "./cost-report-visuals"
+import { marketingFromCategories, overheadFromCategories } from "@/lib/costs/aggregate-costs"
+import { costCurrency, costEfficiency, formatCost, percentChange } from "./cost-report-data"
+import { ReportRequestError, SocialCostReportScope } from "./social-cost-report-state"
+import { useCostReport } from "./use-cost-report"
+import { ReportCurrencySelect } from "./report-currency-select"
+import { ReportLoading } from "@/app/dashboard/ReportLoading"
+import { ReportDetails, ReportKpiGrid, ReportSection } from "./report-layout"
 
 interface CostReportsProps {
   startDate?: Date
   endDate?: Date
   segmentId?: string
   campaignId?: string
+  section?: "summary" | "categories"
+  embedded?: boolean
 }
 
-function formatPeriodType(periodType?: string): string {
-  switch (periodType) {
-    case "daily":
-      return "yesterday"
-    case "weekly":
-      return "last week"
-    case "monthly":
-      return "last month"
-    case "quarterly":
-      return "last quarter"
-    case "yearly":
-      return "last year"
-    default:
-      return "previous period"
-  }
+function comparison(change: number | null) {
+  return change === null ? "No previous baseline" : `${change.toFixed(1)}% from previous period`
 }
 
-function formatCurrency(amount: number): string {
-  if (!Number.isFinite(amount)) return "$0"
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    maximumFractionDigits: 0,
-  }).format(amount)
+export function CostReports(props: CostReportsProps) {
+  return <SocialCostReportScope><CostReportContent {...props} /></SocialCostReportScope>
 }
 
-async function fetchJson(url: string) {
-  const response = await fetch(url)
-  if (!response.ok) {
-    throw new Error("Failed to fetch cost data")
-  }
-  return response.json()
-}
-
-export function CostReports({
-  startDate: propStartDate,
-  endDate: propEndDate,
-  segmentId = "all",
-  campaignId = "all",
-}: CostReportsProps) {
+function CostReportContent({ startDate: start, endDate: end, segmentId = "all", campaignId = "all", section, embedded = false }: CostReportsProps) {
   const { currentSite } = useSite()
-  const startDate = propStartDate || subDays(new Date(), 30)
-  const endDate = propEndDate || new Date()
-
-  const siteId = currentSite?.id === "default" ? null : currentSite?.id
-  const dateQuery = `startDate=${format(startDate, "yyyy-MM-dd")}&endDate=${format(endDate, "yyyy-MM-dd")}`
-  const filterQuery = `${segmentId !== "all" ? `&segmentId=${segmentId}` : ""}${
-    campaignId !== "all" ? `&campaignId=${campaignId}` : ""
-  }&useDemoData=true`
-  const costsUrl = siteId ? `/api/costs?siteId=${siteId}&${dateQuery}${filterQuery}` : null
-  const revenueUrl = siteId ? `/api/revenue?siteId=${siteId}&${dateQuery}${
-    segmentId !== "all" ? `&segmentId=${segmentId}` : ""
-  }` : null
-
-  const { data: fetchedCostData, isLoading: isLoadingCosts } = useSWR<CostData>(
-    costsUrl,
-    fetchJson
+  const showSummary = !section || section === "summary"
+  const showCategories = !section || section === "categories"
+  const day = (value?: Date) => value && isValid(value) ? format(value, "yyyy-MM-dd") : "default"
+  const scope = `${currentSite?.id}:${segmentId}:${campaignId}:${day(start)}:${day(end)}`
+  const [selection, setSelection] = useState<{ scope: string; currency: string }>()
+  const currency = selection?.scope === scope ? selection.currency : ""
+  const { costs, revenue, enabled, invalidDates, startDate, endDate } = useCostReport(
+    currentSite?.id, start, end, segmentId, campaignId, showSummary, currency,
   )
-  const { data: fetchedRevenueData, isLoading: isLoadingRevenue } = useSWR<RevenueData>(
-    revenueUrl,
-    fetchJson
+  const data = costs.error ? undefined : costs.data
+  const sales = revenue.error ? undefined : revenue.data
+  const categories = data?.costCategories ?? []
+  const marketing = marketingFromCategories(categories)
+  const overhead = overheadFromCategories(categories)
+  const efficiency = costEfficiency(data, sales, campaignId)
+  const totalChange = data ? percentChange(data.totalCosts.actual, data.totalCosts.previous) : null
+  const marketingChange = data ? percentChange(marketing.amount, marketing.prevAmount) : null
+  const overheadChange = data ? percentChange(overhead.amount, overhead.prevAmount) : null
+  const isLoading = costs.isLoading || costs.isValidating
+  const isEfficiencyLoading = isLoading || revenue.isLoading || revenue.isValidating
+  const dates = { startDate, endDate }
+  const currencies = costs.error?.availableCurrencies ?? data?.availableCurrencies ?? []
+  const currencyPicker = currencies.length > 1 || currency ? <ReportCurrencySelect label="Cost currency"
+    value={currency || data?.currency || ""} currencies={Array.from(new Set([...currencies, ...(currency ? [currency] : [])]))}
+    onChange={value => setSelection({ scope, currency: value })} /> : null
+
+  if (isLoading) return <ReportLoading report="costs" section={section} />
+  if (invalidDates) return <p role="alert">Select a valid date range to view cost reports.</p>
+  if (!enabled) return <p className="text-sm text-muted-foreground">Select a site to view cost reports.</p>
+  if (costs.error?.status === 422 && currencies.length) return (
+    <div role="status" className="rounded-lg border bg-background p-6 space-y-3">
+      <h2 className="font-semibold">Choose a cost currency</h2>
+      <p className="text-sm text-muted-foreground">Costs have different currency labels. Choose one to view totals and comparisons without mixing amounts.</p>
+      {currencyPicker}
+    </div>
   )
-
-  const isLoading = isLoadingCosts
-  const isEfficiencyLoading = isLoadingCosts || (!!revenueUrl && isLoadingRevenue && !fetchedRevenueData)
-  const dataReady = !!fetchedCostData || !siteId
-  const costData = fetchedCostData || emptyData
-  const hasData = fetchedCostData ? !fetchedCostData.noData : false
-  const hasDistributionData = hasData && costData.costDistribution.length > 0
-  const hasMonthlyData = costData.monthlyData.some(
-    (row) => row.fixedCosts > 0 || row.variableCosts > 0
+  if (costs.error) return (
+    <ReportRequestError title="Unable to load cost report"
+      description={costs.error.message || "Cost data could not be loaded. Missing costs are not zero costs."}
+      retry={() => { void costs.mutate() }} retryLabel="Retry cost report" retrying={costs.isValidating} />
   )
-  const hasCategoriesData = hasData && costData.costCategories.length > 0
-  const periodLabel = formatPeriodType(costData.periodType)
-
-  const kpis = useMemo(() => {
-    const marketing = marketingFromCategories(costData.costCategories)
-    const overhead = overheadFromCategories(costData.costCategories)
-    const currentRevenue = fetchedRevenueData?.totalSales?.actual || 0
-    const prevRevenue = fetchedRevenueData?.totalSales?.previous || 0
-    const currentRatio = efficiencyRatio(currentRevenue, costData.totalCosts?.actual || 0)
-    const prevRatio = efficiencyRatio(prevRevenue, costData.totalCosts?.previous || 0)
-    const ratioChange =
-      prevRatio > 0 ? ((currentRatio - prevRatio) / prevRatio) * 100 : currentRatio > 0 ? 100 : 0
-
-    return { marketing, overhead, currentRatio, ratioChange }
-  }, [costData, fetchedRevenueData])
+  if (!data) return <ReportLoading report="costs" section={section} />
 
   return (
-    <div className="space-y-6">
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <BaseKpiWidget
-          title="Total Costs"
-          value={hasData ? `$${costData.totalCosts.formattedActual}` : "$0"}
-          changeText={hasData ? `${costData.totalCosts.percentChange.toFixed(1)}% from ${periodLabel}` : "No data available"}
-          isPositiveChange={hasData ? costData.totalCosts.percentChange < 0 : undefined}
-          isLoading={isLoading}
-          startDate={startDate}
-          endDate={endDate}
-        />
-        <BaseKpiWidget
-          title="Marketing Costs"
-          value={formatCurrency(kpis.marketing.amount)}
-          changeText={hasData ? `${kpis.marketing.percentChange.toFixed(1)}% from ${periodLabel}` : "No data available"}
-          isPositiveChange={hasData ? kpis.marketing.percentChange < 0 : undefined}
-          isLoading={isLoading}
-          startDate={startDate}
-          endDate={endDate}
-        />
-        <BaseKpiWidget
-          title="Efficiency Ratio"
-          value={`${(kpis.currentRatio || 0).toFixed(1)}:1`}
-          changeText={hasData ? `${kpis.ratioChange.toFixed(1)}% from ${periodLabel}` : "No data available"}
-          isPositiveChange={hasData ? kpis.ratioChange > 0 : undefined}
-          isLoading={isEfficiencyLoading}
-          startDate={startDate}
-          endDate={endDate}
-        />
-        <BaseKpiWidget
-          title="Overhead Costs"
-          value={formatCurrency(kpis.overhead.amount)}
-          changeText={hasData ? `${kpis.overhead.percentChange.toFixed(1)}% from ${periodLabel}` : "No data available"}
-          isPositiveChange={hasData ? kpis.overhead.percentChange < 0 : undefined}
-          isLoading={isLoading}
-          startDate={startDate}
-          endDate={endDate}
-        />
-      </div>
-
-      <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
-        <CostDistributionChart
-          data={hasDistributionData ? costData.costDistribution : []}
-          isLoading={isLoading}
-          dataReady={dataReady}
-        />
-        <MonthlyCostEvolutionChart
-          data={hasMonthlyData ? costData.monthlyData : []}
-          isLoading={isLoading}
-          dataReady={dataReady}
-        />
-      </div>
-
-      {isLoading || !dataReady ? (
-        <Card>
-          <CardHeader>
-            <CardTitle>Cost Breakdown</CardTitle>
-            <CardDescription>Detailed analysis of costs by category.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="w-full space-y-6">
-              <div className="flex justify-between items-center mb-4">
-                <Skeleton className="h-8 w-48" />
-                <Skeleton className="h-8 w-24" />
-              </div>
-              <div className="space-y-4">
-                {Array(3).fill(0).map((_, i) => (
-                  <div key={`row-${i}`} className="grid grid-cols-7 gap-4 items-center py-3 border-b">
-                    <div className="col-span-3">
-                      <Skeleton className="h-5 w-32" />
-                    </div>
-                    <div className="col-span-1 text-right">
-                      <Skeleton className="h-5 w-20 ml-auto" />
-                    </div>
-                    <div className="col-span-1 text-right">
-                      <Skeleton className="h-5 w-20 ml-auto" />
-                    </div>
-                    <div className="col-span-1 text-center">
-                      <Skeleton className="h-5 w-16 mx-auto" />
-                    </div>
-                    <div className="col-span-1 text-right">
-                      <Skeleton className="h-8 w-8 ml-auto rounded-md" />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      ) : hasCategoriesData ? (
-        <CostBreakdownReport
-          data={costData.costCategories}
-          isLoading={isLoading}
-          dataReady={dataReady}
-        />
-      ) : (
-        <Card>
-          <CardHeader>
-            <CardTitle>Cost Breakdown</CardTitle>
-            <CardDescription>Detailed analysis of costs by category.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <EmptyCard
-              icon={<BarChart className="h-8 w-8 text-muted-foreground" />}
-              title="No cost categories data"
-              description="There is no cost breakdown data available for the selected period."
-            />
-          </CardContent>
-        </Card>
-      )}
-    </div>
+    <ReportSection embedded={embedded} title={section === "categories" ? "Cost categories" : "Cost summary"}
+      description={`${format(startDate, "MMM d, yyyy")} – ${format(endDate, "MMM d, yyyy")} · ${costCurrency(data.currency) ?? "Currency unspecified"} · Recorded costs`}
+      action={currencyPicker}>
+      {data.noData && <p role="status" className="rounded-lg border border-dashed px-4 py-3 text-sm text-muted-foreground">
+        No costs match the selected period and filters. Previous-period figures and the six-month context remain available.
+      </p>}
+      {showSummary && <>
+        <ReportKpiGrid>
+          <BaseKpiWidget title="Total Costs" value={data ? formatCost(data.totalCosts.actual, data.currency) : null}
+            changeText={comparison(totalChange)} isPositiveChange={totalChange === null ? undefined : totalChange < 0}
+            isLoading={isLoading} {...dates} />
+          <BaseKpiWidget title="Marketing Costs" value={data ? formatCost(marketing.amount, data.currency) : null}
+            changeText={comparison(marketingChange)} isPositiveChange={marketingChange === null ? undefined : marketingChange < 0}
+            isLoading={isLoading} {...dates} />
+          <BaseKpiWidget title="Efficiency Ratio" value={efficiency.ratio === null ? "Unavailable" : `${efficiency.ratio.toFixed(1)}:1`}
+            tooltipText="Confirmed sales (pending and completed), not cash received, divided by costs. Requires matching currency and filter scopes."
+            changeText={efficiency.ratio === null ? efficiency.reason : comparison(efficiency.change)}
+            isPositiveChange={efficiency.change === null ? undefined : efficiency.change > 0}
+            isLoading={isEfficiencyLoading} {...dates} />
+          <BaseKpiWidget title="Overhead Costs" value={data ? formatCost(overhead.amount, data.currency) : null}
+            changeText={comparison(overheadChange)} isPositiveChange={overheadChange === null ? undefined : overheadChange < 0}
+            isLoading={isLoading} {...dates} />
+        </ReportKpiGrid>
+        <div className="grid min-w-0 items-stretch gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] xl:grid-rows-[auto_1fr] xl:[&>*]:row-span-2 xl:[&>*]:grid xl:[&>*]:grid-rows-subgrid xl:[&>*]:gap-y-0 [&>*]:min-w-0">
+          <CostReportTrend data={data.monthlyData} currency={data.currency} isLoading={false} dataReady
+            startDate={startDate} endDate={endDate} />
+          <CostReportDistribution data={data.costDistribution} currency={data.currency} isLoading={false} dataReady />
+        </div>
+        {revenue.error && !isEfficiencyLoading && <ReportRequestError title="Unable to load sales for the efficiency ratio"
+          description={revenue.error.status === 422
+            ? "Sales use multiple currencies. The efficiency ratio is unavailable; cost data remains available."
+            : "Sales data could not be loaded. The efficiency ratio is unavailable; cost data remains available."}
+          retry={() => { void revenue.mutate() }} retryLabel="Retry sales data" retrying={revenue.isValidating} />}
+      </>}
+      {showCategories && <CostReportCategories data={categories} currency={data?.currency} isLoading={isLoading} dataReady={!!data} />}
+      <ReportDetails summary="Cost basis and comparisons">
+        {data.metadata?.prevStartDate && data.metadata.prevEndDate && <p>
+          Compared with {data.metadata.prevStartDate.slice(0, 10)} – {data.metadata.prevEndDate.slice(0, 10)}
+          {data.metadata.days ? ` (${data.metadata.days} calendar days)` : ""}. No currency conversion is applied.
+        </p>}
+        {!costCurrency(data.currency) ? <p>
+          Cost currency is not supplied by the source. Amounts are shown as recorded, without currency conversion; cross-currency comparisons are unavailable.
+        </p> : <p>Amounts are recorded in {data.currency}; no currency conversion is applied.</p>}
+        {showSummary && <p>Efficiency is confirmed sales (pending and completed), not cash received, divided by costs. It requires matching currency and filter scopes. Marketing includes grouped marketing categories; overhead includes Administration and Operations.</p>}
+      </ReportDetails>
+    </ReportSection>
   )
 }

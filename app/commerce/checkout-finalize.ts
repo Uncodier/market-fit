@@ -1,6 +1,6 @@
 import { createShipment } from "@/app/shipments/actions"
 import { applyPromotionToOrder } from "@/app/promotions/apply-promotion-to-order"
-import { tryUpsertPolizaForSale } from "@/app/accounting/ensure"
+import { tryPostSaleJournalWithClient } from "@/app/accounting/source-posting"
 import {
   completeQuotationCheckout,
   QuotationForCheckout,
@@ -255,7 +255,7 @@ export async function finalizeCheckout(params: FinalizeCheckoutParams) {
     .eq("id", params.order.id)
     .single()
   const order = latest ? { ...params.order, ...latest } : params.order
-  await tryUpsertPolizaForSale(params.sale.id, params.siteId)
+  await tryPostSaleJournalWithClient(params.supabaseAdmin, params.sale.id, params.siteId)
 
   if (
     params.finalLeadId &&

@@ -14,6 +14,7 @@ import {
 } from "./form-schema";
 import { GeneralSection } from "./GeneralSection";
 import { WebResourcesSection } from "./WebResourcesSection";
+import { SiteArchiveSection } from "./SiteArchiveSection";
 import { CompanySection } from "./CompanySection";
 import { BrandingSection } from "./BrandingSection";
 import { MarketingSection } from "./MarketingSection";
@@ -317,6 +318,8 @@ export function SiteForm({
             "general",
             <WebResourcesSection active={true} onSave={onSaveGeneral} />,
           )}
+
+          {renderCard("general", <SiteArchiveSection siteId={siteId} />)}
 
           {renderCard(
             "company",

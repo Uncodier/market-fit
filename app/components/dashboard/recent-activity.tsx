@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/app/components/ui/avatar";
-import { Skeleton } from "@/app/components/ui/skeleton";
+import { RecentActivityLoading } from "./recent-activity-loading";
 import { useSite } from "@/app/context/SiteContext";
 import { useLocalization } from "@/app/context/LocalizationContext";
 import { EmptyCard } from "@/app/components/ui/empty-card";
@@ -118,10 +118,6 @@ export function RecentActivity({
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const emptyActivities = Array(limit).fill(null).map((_, i) => ({
-    id: `placeholder-${i}`,
-  }));
-
   useEffect(() => {
     let isMounted = true;
 
@@ -189,22 +185,7 @@ export function RecentActivity({
   }, [currentSite?.id, limit, startDate, endDate]);
 
   if (isLoading) {
-    return (
-      <div className="space-y-4">
-        {emptyActivities.map((activity) => (
-          <div key={activity.id} className="flex items-center rounded-lg p-2 -m-2">
-            <Skeleton className="h-9 w-9 rounded-full" />
-            <div className="ml-4 space-y-1 flex-1 pr-4">
-              <Skeleton className="h-4 w-[250px]" />
-              <Skeleton className="h-3 w-[200px]" />
-            </div>
-            <div className="ml-auto">
-              <Skeleton className="h-3 w-[60px]" />
-            </div>
-          </div>
-        ))}
-      </div>
-    );
+    return <RecentActivityLoading limit={limit} />;
   }
 
   if (error) {
@@ -244,7 +225,7 @@ export function RecentActivity({
   };
 
   return (
-    <div className="space-y-4">
+    <div className="grid min-w-0 gap-2">
       {activities.map((activity) => {
         const isSale = activity.kind === "sale";
         const headline = isSale ? saleHeadline(activity, t) : taskHeadline(activity, t);
@@ -253,7 +234,7 @@ export function RecentActivity({
         return (
           <div
             key={activity.id}
-            className="flex items-center cursor-pointer hover:bg-muted/50 rounded-lg p-2 -m-2 transition-colors"
+            className="-mx-2 flex min-w-0 items-center gap-4 cursor-pointer hover:bg-muted/50 rounded-lg p-2 transition-colors"
             onClick={() => handleActivityClick(activity)}
           >
             <Avatar>
@@ -266,8 +247,8 @@ export function RecentActivity({
                 )}
               </AvatarFallback>
             </Avatar>
-            <div className="ml-4 space-y-1 flex-1 pr-4">
-              <p className="text-sm font-medium text-foreground leading-snug line-clamp-1 overflow-hidden">
+            <div className="min-w-0 flex-1 space-y-1">
+              <p className="text-sm font-medium text-foreground leading-5 line-clamp-1 overflow-hidden">
                 {headline}
               </p>
               {description && (
@@ -276,7 +257,7 @@ export function RecentActivity({
                 </p>
               )}
             </div>
-            <div className="ml-auto text-xs text-muted-foreground">
+            <div className="shrink-0 whitespace-nowrap text-xs text-muted-foreground">
               <span title={new Date(activity.date).toLocaleString()}>
                 {formatDate(activity.date, t)}
               </span>

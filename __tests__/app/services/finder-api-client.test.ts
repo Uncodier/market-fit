@@ -35,7 +35,7 @@ afterEach(() => {
   else process.env.NEXT_PUBLIC_API_SERVER_URL = previousApiUrl
 })
 
-it.each(finderRequests)('authenticates legacy $method $endpoint calls', async ({ method, endpoint }) => {
+it.each(finderRequests)('authenticates same-origin $method $endpoint calls', async ({ method, endpoint }) => {
   const { apiClient } = await import('@/app/services/api-client-service')
   const options = { includeAuth: false }
   const result = method === 'get'
@@ -43,7 +43,7 @@ it.each(finderRequests)('authenticates legacy $method $endpoint calls', async ({
     : await apiClient.post(endpoint, payload, options)
 
   expect(getSession).toHaveBeenCalledTimes(1)
-  expect(fetch).toHaveBeenCalledWith(`${apiUrl}${endpoint}`, expect.objectContaining({
+  expect(fetch).toHaveBeenCalledWith(endpoint, expect.objectContaining({
     method: method.toUpperCase(),
     headers: expect.objectContaining({ Authorization: 'Bearer user-session-token' }),
     ...(method === 'post' ? { body: JSON.stringify(payload) } : {}),
@@ -73,6 +73,15 @@ it('authenticates absolute Finder URLs on the configured API origin', async () =
 
   expect(fetch).toHaveBeenCalledWith(endpoint, expect.objectContaining({
     headers: expect.objectContaining({ Authorization: 'Bearer user-session-token' }),
+  }))
+})
+
+it('keeps saved-list deletion on the app origin with the current session', async () => {
+  const { apiClient } = await import('@/app/services/api-client-service')
+  const endpoint = '/api/finder/icp?icp_id=test-query&site_id=test-site'
+  await apiClient.delete(endpoint, { includeAuth: false })
+  expect(fetch).toHaveBeenCalledWith(endpoint, expect.objectContaining({
+    method: 'DELETE', headers: expect.objectContaining({ Authorization: 'Bearer user-session-token' }),
   }))
 })
 

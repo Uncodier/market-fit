@@ -70,10 +70,16 @@ Changing them requires tests and an operational review of retry behavior.
 - `invoice.payment_succeeded`
 - `invoice.payment_failed`
 - `charge.refunded`
+- `refund.created`
+- `refund.updated`
+- `refund.failed`
 - `charge.dispute.created`
 - `payment_intent.payment_failed`
 
 Keep the provider endpoint subscription synchronized with the handlers.
+The deprecated `charge.refund.updated` is supported for compatibility. Refund
+status notifications use the refund/dispute age window and re-fetch current
+provider state before accounting, rather than trusting stale event status.
 
 ## Local verification
 

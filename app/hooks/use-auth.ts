@@ -6,25 +6,7 @@ import { User, AuthChangeEvent, Session, OAuthResponse, Provider } from '@supaba
 import { useSupabaseClient } from './use-supabase-client'
 import { resolveAuthenticatedSignInRedirect } from '@/lib/auth/post-auth-redirect'
 import { AuthContext } from '@/app/components/auth/auth-context'
-
-// Declare the Makinari browser API and its legacy alias.
-declare global {
-  interface Window {
-    Makinari?: {
-      siteId?: string;
-      init?: (config: any) => void;
-      showWidget?: () => void;
-      hideWidget?: () => void;
-      widgetHide?: () => void;
-      openChatWithTask?: () => void;
-      setTheme?: (theme: string) => void;
-      chat?: {
-        identify: (userData: { name: string; email: string; phone?: string }) => Promise<void>
-      }
-    }
-    MarketFit?: Window['Makinari']
-  }
-}
+import { ChatIdentityCoordinator } from '@/lib/chat/browser-identity'
 
 // Definimos el tipo para las opciones de OAuth extendidas
 interface ExtendedOAuthOptions {
@@ -32,75 +14,6 @@ interface ExtendedOAuthOptions {
   queryParams?: Record<string, string>;
   scopes?: string;
   skipBrowserRedirect?: boolean;
-}
-
-let identifiedChatUserId: string | null = null
-const pendingChatIdentifications = new Map<string, Promise<void>>()
-
-const identifyUserInChat = async (user: User | null, supabaseClient: any) => {
-  if (!user || identifiedChatUserId === user.id) return
-  const pending = pendingChatIdentifications.get(user.id)
-  if (pending) return pending
-
-  const operation = (async () => {
-    for (let attempt = 0; attempt <= 10; attempt += 1) {
-      if (
-        typeof document !== 'undefined' &&
-        document.visibilityState === 'hidden'
-      ) {
-        await new Promise((resolve) => setTimeout(resolve, 2000))
-        continue
-      }
-
-      const makinari =
-        typeof window !== 'undefined'
-          ? window.Makinari ?? window.MarketFit
-          : undefined
-      if (!makinari?.chat?.identify) {
-        if (attempt < 10) {
-          await new Promise((resolve) =>
-            setTimeout(resolve, 750 + Math.random() * 500)
-          )
-        }
-        continue
-      }
-
-      try {
-        const { data: profile } = await supabaseClient
-          .from('profiles')
-          .select('name, email')
-          .eq('id', user.id)
-          .single()
-        await makinari.chat.identify({
-          name:
-            profile?.name ||
-            user.user_metadata?.name ||
-            user.user_metadata?.full_name ||
-            user.email?.split('@')[0] ||
-            'User',
-          email: profile?.email || user.email || '',
-          phone: user.user_metadata?.phone || ''
-        })
-        identifiedChatUserId = user.id
-        return
-      } catch (error) {
-        if (attempt === 10) {
-          console.error('[MarketFit Chat] Error identifying user:', error)
-          return
-        }
-        await new Promise((resolve) =>
-          setTimeout(resolve, 1500 + Math.random() * 1000)
-        )
-      }
-    }
-  })()
-
-  pendingChatIdentifications.set(user.id, operation)
-  try {
-    await operation
-  } finally {
-    pendingChatIdentifications.delete(user.id)
-  }
 }
 
 // Función para limpiar el modo demo
@@ -122,6 +35,21 @@ export function useAuthState() {
   const [isLoading, setIsLoading] = useState(true)
   const router = useRouter()
   const supabase = useSupabaseClient()
+  const [chatIdentity] = useState(() => new ChatIdentityCoordinator())
+
+  useEffect(() => {
+    if (isLoading) return
+    const sync = () => { void chatIdentity.sync(user?.id ?? null) }
+    sync()
+    // Recover from delayed SDK loading, renewed widget sessions and grant expiry.
+    const timer = window.setInterval(sync, 60_000)
+    document.addEventListener('visibilitychange', sync)
+    return () => {
+      window.clearInterval(timer)
+      document.removeEventListener('visibilitychange', sync)
+      chatIdentity.cancel()
+    }
+  }, [chatIdentity, isLoading, user?.id])
 
   // Verificar estado de autenticación inicial y suscribirse a cambios
   useEffect(() => {
@@ -135,11 +63,6 @@ export function useAuthState() {
         }
         
         setUser(session?.user ?? null)
-        
-        // Si hay una sesión activa, identificar al usuario en MarketFit chat
-        if (session?.user) {
-          identifyUserInChat(session.user, supabase)
-        }
         
         // Verificar redirección inicial si hay sesión activa y estamos en la página de autenticación
         // PERO no redirigir durante flujos de reset de contraseña o team invitation
@@ -181,7 +104,8 @@ export function useAuthState() {
     // Suscribirse a cambios en la autenticación
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event: AuthChangeEvent, session: Session | null) => {
-        
+        // Clear the previous account's chat immediately, not after a React render.
+        void chatIdentity.sync(session?.user?.id ?? null)
         
         // Actualizar el usuario en el estado
         setUser(session?.user ?? null)
@@ -195,9 +119,6 @@ export function useAuthState() {
         if (event === 'SIGNED_IN') {
           // Limpiar modo demo al iniciar sesión
           clearDemoMode()
-          
-          // Identificar usuario en MarketFit chat
-          identifyUserInChat(session?.user || null, supabase)
           
           // Excepciones: no redirigir durante flujos de reset de contraseña o team invitation
           const passwordResetPages = [
@@ -224,7 +145,7 @@ export function useAuthState() {
             console.log('[useAuth] SIGNED_IN event detected but ignoring redirect - user is in password reset flow:', currentPath)
           }
         } else if (event === 'SIGNED_OUT') {
-          identifiedChatUserId = null
+          await chatIdentity.clearForSignOut()
           // Limpiar modo demo al cerrar sesión
           clearDemoMode()
           
@@ -275,7 +196,7 @@ export function useAuthState() {
       
       subscription.unsubscribe()
     }
-  }, [router, supabase])
+  }, [router, supabase, chatIdentity])
 
   // Función para iniciar sesión con email/password
   const signInWithEmail = useCallback(async (email: string, password: string) => {
@@ -302,6 +223,7 @@ export function useAuthState() {
     clearDemoMode()
     
     try {
+      await chatIdentity.clearForSignOut()
       // Clear any existing auth state to prevent PKCE conflicts
       
       await supabase.auth.signOut({ scope: 'local' })
@@ -349,7 +271,7 @@ export function useAuthState() {
       console.error('[Auth Debug] OAuth error:', error)
       throw error
     }
-  }, [supabase])
+  }, [supabase, chatIdentity])
 
   // Función para registrar usuario con email/password
   const signUpWithEmail = useCallback(async (email: string, password: string) => {
@@ -376,6 +298,7 @@ export function useAuthState() {
   const signOut = useCallback(async () => {
     
     try {
+      await chatIdentity.clearForSignOut()
       // Primero intentamos cerrar sesión en Supabase
       const { error } = await supabase.auth.signOut()
       if (error) throw error
@@ -403,7 +326,7 @@ export function useAuthState() {
       window.location.href = '/api/auth/logout'
       throw error
     }
-  }, [supabase])
+  }, [supabase, chatIdentity])
 
   return {
     user,

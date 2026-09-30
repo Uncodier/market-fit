@@ -13,8 +13,8 @@ jest.mock("@/app/documents/public-token-store", () => ({
     token: "public-order-token",
   }),
 }))
-jest.mock("@/app/accounting/ensure", () => ({
-  tryUpsertPolizaForSale: jest.fn().mockResolvedValue(undefined),
+jest.mock("@/app/accounting/source-posting", () => ({
+  tryPostSaleJournalWithClient: jest.fn().mockResolvedValue(undefined),
 }))
 jest.mock("@/app/commerce/entitlements", () => ({
   grantFromOrder: jest.fn(),

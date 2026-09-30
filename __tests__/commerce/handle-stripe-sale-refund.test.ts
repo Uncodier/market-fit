@@ -77,21 +77,27 @@ describe("handleStripeSaleRefund", () => {
     const result = await handleStripeSaleRefund(supabase, "pi_123");
 
     expect(result).toEqual({ saleId: "sale-1" });
-    expect(sales.update).toHaveBeenCalledWith({ status: "refunded", amount_due: 0 });
+    expect(sales.update).toHaveBeenCalledWith({
+      status: "refunded", accounting_state: "pending", updated_at: expect.any(String),
+    });
+    expect(sales.eq).toHaveBeenCalledWith("site_id", "site-1");
     expect(revokeOrderFulfillment).toHaveBeenCalledWith(supabase, "order-1", { cancelOrder: true });
   });
 
-  it("skips sales that are already refunded", async () => {
+  it("retries fulfillment for sales that are already refunded", async () => {
     const sales = createChain();
     sales.maybeSingle.mockResolvedValue({
       data: { id: "sale-1", site_id: "site-1", status: "refunded" },
     });
-    const supabase = { from: jest.fn().mockReturnValue(sales) };
+    const orders = createChain();
+    orders.maybeSingle.mockResolvedValue({ data: { id: "order-1" } });
+    const supabase = { from: jest.fn((table) => table === "sales" ? sales : orders) };
 
     const result = await handleStripeSaleRefund(supabase, "pi_123");
 
-    expect(result.skipped).toBe("already_terminal");
-    expect(revokeOrderFulfillment).not.toHaveBeenCalled();
+    expect(result).toEqual({ saleId: "sale-1" });
+    expect(sales.update).not.toHaveBeenCalled();
+    expect(revokeOrderFulfillment).toHaveBeenCalledWith(supabase, "order-1", { cancelOrder: true });
   });
 
   it("skips unknown payment intents", async () => {
@@ -124,5 +130,29 @@ describe("handleStripeSaleRefund", () => {
     expect(revokeOrderFulfillment).toHaveBeenCalledWith(supabase, "order-2", {
       cancelOrder: true,
     });
+  });
+
+  it("does not change payment or accounting state for a dispute", async () => {
+    const sales = createChain();
+    sales.maybeSingle.mockResolvedValue({ data: { id: "sale-1", site_id: "site-1", status: "completed" } });
+    const orders = createChain();
+    orders.maybeSingle.mockResolvedValue({ data: { id: "order-1" } });
+    const supabase = { from: jest.fn((table) => table === "sales" ? sales : orders) };
+    await handleStripeSaleRefund(supabase, "pi_1", { revokeOnly: true });
+    expect(sales.update).not.toHaveBeenCalled();
+    expect(revokeOrderFulfillment).toHaveBeenCalledTimes(1);
+  });
+
+  it.each(["source", "update", "order"])("propagates %s database errors for webhook retries", async (stage) => {
+    const sales = createChain();
+    sales.maybeSingle.mockResolvedValue(stage === "source" ? { error: { message: "offline" } } : {
+      data: { id: "sale-1", site_id: "site-1", status: "completed" },
+    });
+    if (stage === "update") sales.error = { message: "write failed" };
+    const orders = createChain();
+    orders.maybeSingle.mockResolvedValue({ error: { message: "order unavailable" } });
+    const supabase = { from: jest.fn((table) => table === "sales" ? sales : orders) };
+    await expect(handleStripeSaleRefund(supabase, "pi_1")).rejects.toThrow("Unable to");
+    expect(revokeOrderFulfillment).not.toHaveBeenCalled();
   });
 });

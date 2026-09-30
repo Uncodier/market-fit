@@ -2,7 +2,9 @@
 
 import type { Site, SiteSettings } from "./site-types"
 import { requestVoiceAgentResync } from "@/app/agents/voice-sync"
-import { normalizeActivitySettings } from "@/app/components/settings/activity-settings"
+import { mergeActivitySettings } from "@/app/components/settings/activity-settings"
+import { icpLeadGenerationSettingsSchema } from "@/app/components/settings/icp-lead-generation-settings"
+import { dailyStandupSettingsSchema } from "@/app/components/settings/daily-standup-settings"
 
 type PersistArgs = {
   supabase: any
@@ -37,13 +39,10 @@ export async function persistSiteSettings({
       
       // Ensure we have valid settings data
       const formattedSettings: Partial<SiteSettings> = {
-        site_id: siteId,
         ...settings,
+        site_id: siteId,
         updated_at: now
       };
-      if (settings.activities !== undefined) {
-        formattedSettings.activities = normalizeActivitySettings(settings.activities)
-      }
       
       // Process JSON fields to make sure they are valid
       if (settings.products !== undefined) {
@@ -291,6 +290,15 @@ export async function persistSiteSettings({
           .select('*')
           .eq('site_id', siteId)
           .single();
+
+        // Do not overwrite extensions when the existing settings could not be read.
+        if (fetchError && fetchError.code !== 'PGRST116') throw fetchError;
+        if (settings.activities !== undefined) {
+          const activities = mergeActivitySettings(existingSettings?.activities, settings.activities);
+          activities.daily_resume_and_stand_up = dailyStandupSettingsSchema.parse(activities.daily_resume_and_stand_up);
+          activities.icp_lead_generation = icpLeadGenerationSettingsSchema.parse(activities.icp_lead_generation);
+          formattedSettings.activities = activities;
+        }
         
         // Merge with existing settings to preserve all fields
         // Deep merge channels to preserve all channel types (email, whatsapp, website)

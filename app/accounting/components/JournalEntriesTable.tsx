@@ -36,7 +36,8 @@ function lineTotals(entry: { journal_lines?: JournalLine[] }) {
 
 function formatEntryDate(value: string) {
   try {
-    return format(new Date(value), "MMM d, yyyy")
+    // entry_date is a UTC-backed accounting date, not a browser-local instant.
+    return format(new Date(`${value.slice(0, 10)}T12:00:00`), "MMM d, yyyy")
   } catch {
     return value
   }
@@ -103,8 +104,13 @@ export function JournalEntriesTable({
     () => new Map(accounts.map((account) => [account.code, account])),
     [accounts]
   )
-  const pageDebit = entries.reduce((sum, entry) => sum + lineTotals(entry).debit, 0)
-  const pageCredit = entries.reduce((sum, entry) => sum + lineTotals(entry).credit, 0)
+  const currencyTotals = new Map<string, { debit: number; credit: number }>()
+  for (const entry of entries) {
+    const entryCurrency = entry.currency || currency
+    const totals = currencyTotals.get(entryCurrency) || { debit: 0, credit: 0 }
+    const amounts = lineTotals(entry)
+    currencyTotals.set(entryCurrency, { debit: totals.debit + amounts.debit, credit: totals.credit + amounts.credit })
+  }
 
   function toggleExpanded(id: string) {
     setExpandedIds((current) => {
@@ -141,7 +147,8 @@ export function JournalEntriesTable({
           {entries.map((entry) => {
             const lines = sortedLines(entry.journal_lines || [])
             const { debit, credit } = lineTotals(entry)
-            const unbalanced = Math.abs(debit - credit) > 0.01
+            const entryCurrency = entry.currency || currency
+            const unbalanced = Math.round(debit * 100) !== Math.round(credit * 100)
             const source = entry.source_type || "manual"
             const sourceLabel = t(`accounting.filter.${source}`) || source
             const sourceHref = journalSourceHref(entry)
@@ -159,6 +166,7 @@ export function JournalEntriesTable({
                     <div className="flex min-w-0 items-center gap-1">
                       {lines.length > 0 ? (
                         <Button
+                          type="button"
                           variant="ghost"
                           size="icon"
                           className="h-7 w-7 shrink-0 text-muted-foreground"
@@ -187,14 +195,15 @@ export function JournalEntriesTable({
                     <StatusDot status={source} label={sourceLabel} />
                   </TableCell>
                   <TableCell className="py-3.5">
-                    <MoneyCell amountLabel={formatCurrency(debit, currency)} />
+                    <MoneyCell amountLabel={formatCurrency(debit, entryCurrency)} />
                   </TableCell>
                   <TableCell className="py-3.5">
-                    <MoneyCell amountLabel={formatCurrency(credit, currency)} />
+                    <MoneyCell amountLabel={formatCurrency(credit, entryCurrency)} />
                   </TableCell>
                   <TableCell className="py-3.5 text-right" onClick={(event) => event.stopPropagation()}>
                     <div className="flex items-center justify-end gap-1">
                       <Button
+                        type="button"
                         variant="ghost"
                         size="icon"
                         className="h-8 w-8 text-muted-foreground opacity-100 md:opacity-0 transition-opacity group-hover:opacity-100 hover:text-foreground"
@@ -209,6 +218,7 @@ export function JournalEntriesTable({
                       </Button>
                       {sourceHref ? (
                         <Button
+                          type="button"
                           variant="ghost"
                           size="icon"
                           className="h-8 w-8 text-muted-foreground opacity-100 md:opacity-0 transition-opacity group-hover:opacity-100 hover:text-foreground"
@@ -222,6 +232,7 @@ export function JournalEntriesTable({
                       ) : null}
                       {entry.source_type === "manual" ? (
                         <Button
+                          type="button"
                           variant="ghost"
                           size="icon"
                           className="h-8 w-8 text-rose-600 opacity-100 md:opacity-0 transition-opacity group-hover:opacity-100 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-500/10"
@@ -252,12 +263,12 @@ export function JournalEntriesTable({
                           <TableCell className="py-2.5" />
                           <TableCell className="py-2.5 text-right">
                             {lineDebit > 0 ? (
-                              <span className="text-sm tabular-nums text-foreground">{formatCurrency(lineDebit, currency)}</span>
+                              <span className="text-sm tabular-nums text-foreground">{formatCurrency(lineDebit, entryCurrency)}</span>
                             ) : null}
                           </TableCell>
                           <TableCell className="py-2.5 text-right">
                             {lineCredit > 0 ? (
-                              <span className="text-sm tabular-nums text-foreground">{formatCurrency(lineCredit, currency)}</span>
+                              <span className="text-sm tabular-nums text-foreground">{formatCurrency(lineCredit, entryCurrency)}</span>
                             ) : null}
                           </TableCell>
                           <TableCell className="py-2.5" />
@@ -278,16 +289,19 @@ export function JournalEntriesTable({
             ? (t("accounting.entry") || "entry")
             : (t("accounting.entries") || "entries")}
         </p>
-        <p className="flex items-center gap-4 text-xs text-muted-foreground">
-          <span>
-            {t("accounting.debit") || "Debit"}{" "}
-            <span className="font-medium tabular-nums text-foreground">{formatCurrency(pageDebit, currency)}</span>
-          </span>
-          <span>
-            {t("accounting.credit") || "Credit"}{" "}
-            <span className="font-medium tabular-nums text-foreground">{formatCurrency(pageCredit, currency)}</span>
-          </span>
-        </p>
+        <div className="flex flex-col gap-2 text-xs text-muted-foreground">
+          {Array.from(currencyTotals, ([code, totals]) => (
+            <p key={code} aria-label={`${code} totals`} className="flex items-center gap-4">
+              <span className="font-medium">{code}</span>
+              <span>{t("accounting.debit") || "Debit"}{" "}
+                <span className="font-medium tabular-nums text-foreground">{formatCurrency(totals.debit, code)}</span>
+              </span>
+              <span>{t("accounting.credit") || "Credit"}{" "}
+                <span className="font-medium tabular-nums text-foreground">{formatCurrency(totals.credit, code)}</span>
+              </span>
+            </p>
+          ))}
+        </div>
       </div>
     </div>
   )

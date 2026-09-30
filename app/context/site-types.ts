@@ -329,15 +329,16 @@ export interface SiteSettings {
     }
   } | null
   activities?: {
-    daily_resume_and_stand_up?: ActivityStatus
+    daily_resume_and_stand_up?: Partial<import("@/app/components/settings/daily-standup-settings").DailyStandupSettings> | ActivityStatus
     local_lead_generation?: ActivityStatus
-    icp_lead_generation?: ActivityStatus
+    icp_lead_generation?: Partial<import("@/app/components/settings/icp-lead-generation-settings").IcpLeadGenerationSettings> | ActivityStatus
     leads_initial_cold_outreach?: Partial<import("@/lib/outreach-settings").OutreachSettings> | ActivityStatus
     leads_follow_up?: Partial<import("@/lib/outreach-settings").OutreachSettings> | ActivityStatus
     email_sync?: ActivityStatus
     assign_leads_to_team?: ActivityStatus
     notify_team_on_inbound_conversations?: ActivityStatus
     supervise_conversations?: ActivityStatus
+    [key: string]: unknown
   } | null
   // allowed_domains is handled in a separate table, not in settings
   // allowed_domains?: Array<{

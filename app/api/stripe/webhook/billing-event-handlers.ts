@@ -1,9 +1,9 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
 import type Stripe from "stripe"
+import { handleStripeRefundStatusEvent, recordStripeAccountingRefunds } from "@/app/commerce/stripe-accounting-refunds"
 import { fromStripeMinorAmount } from "@/app/api/stripe/checkout/checkout-payment-guard"
 import {
   handleStripeSaleRefund,
-  isFullStripeChargeRefund,
   resolveStripeRefundPaymentIntent,
 } from "@/app/commerce/handle-stripe-sale-refund"
 
@@ -226,11 +226,12 @@ async function handleRefundOrDispute(
     object,
     async (chargeId) => stripe.charges.retrieve(chargeId),
   )
-  const isFullRefund =
-    event.type === "charge.dispute.created" ||
-    isFullStripeChargeRefund(object)
-  if (!isFullRefund) return
-  await handleStripeSaleRefund(supabase, paymentIntentId)
+  if (event.type === "charge.dispute.created") {
+    // A dispute blocks fulfillment, but is not evidence of a cash refund.
+    await handleStripeSaleRefund(supabase, paymentIntentId, { revokeOnly: true })
+    return
+  }
+  await recordStripeAccountingRefunds(supabase, stripe, object)
 }
 
 async function handleFailedPaymentIntent(
@@ -285,6 +286,12 @@ export async function handleBillingStripeEvent(params: {
     case "charge.refunded":
     case "charge.dispute.created":
       await handleRefundOrDispute(event, stripe, supabase)
+      return true
+    case 'refund.created':
+    case 'refund.updated':
+    case 'refund.failed':
+    case 'charge.refund.updated':
+      await handleStripeRefundStatusEvent(supabase, stripe, event.data.object as Stripe.Refund)
       return true
     case "payment_intent.payment_failed":
       await handleFailedPaymentIntent(event, supabase)

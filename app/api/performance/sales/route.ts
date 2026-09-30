@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
 
   return readThroughAnalyticsResponseCache({
     request,
-    namespace: "performance:sales",
+    namespace: "performance:sales:v2",
     siteId: access.siteId,
     load: async () => {
   try {
@@ -46,11 +46,7 @@ export async function GET(request: NextRequest) {
 
     if (currentError) {
       console.error("Error fetching current sales:", currentError);
-      return NextResponse.json({
-        actual: 0,
-        percentChange: 0,
-        periodType: "monthly",
-      });
+      return NextResponse.json({ error: "Failed to load sales" }, { status: 500 });
     }
 
     let previousQuery = supabase
@@ -68,11 +64,7 @@ export async function GET(request: NextRequest) {
 
     if (previousError) {
       console.error("Error fetching previous sales:", previousError);
-      return NextResponse.json({
-        actual: 0,
-        percentChange: 0,
-        periodType: "monthly",
-      });
+      return NextResponse.json({ error: "Failed to load sales" }, { status: 500 });
     }
 
     const actual = currentCount || 0;
@@ -87,11 +79,7 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     console.error("Error in performance sales API:", error);
-    return NextResponse.json({
-      actual: 0,
-      percentChange: 0,
-      periodType: "monthly",
-    });
+    return NextResponse.json({ error: "Failed to load sales" }, { status: 500 });
   }
     },
   });

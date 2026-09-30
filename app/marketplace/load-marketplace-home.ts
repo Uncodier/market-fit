@@ -19,6 +19,7 @@ export async function loadMarketplaceHome() {
         supabase
           .from("catalog_items")
           .select("*, site:sites!inner(id, name, logo_url)", { count: "exact" })
+          .is("site.archived_at", null)
           .eq("is_marketplace_listed", true)
           .eq("status", "active")
           .is("parent_id", null)

@@ -17,6 +17,10 @@ const MAX_EVENT_AGE_SECONDS = 3 * 24 * 60 * 60
 const MAX_REFUND_EVENT_AGE_SECONDS = 90 * 24 * 60 * 60
 const LATE_STRIPE_EVENTS = new Set([
   "charge.refunded",
+  'refund.created',
+  'refund.updated',
+  'refund.failed',
+  'charge.refund.updated',
   "charge.dispute.created",
 ])
 

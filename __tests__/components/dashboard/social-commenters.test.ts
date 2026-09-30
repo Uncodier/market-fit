@@ -131,4 +131,28 @@ describe("top commenter normalization", () => {
     }))).flat()
     expect(aggregateTopCommenters(rows).map(({ count }) => count)).toEqual([6, 5, 4, 3, 2])
   })
+
+  it("does not count the same synchronized message more than once", () => {
+    const comment = { id: "message-1", custom_data: { author_id: "ada", author_name: "Ada", network: "instagram" } }
+    expect(aggregateTopCommenters([comment, comment, { ...comment, id: "message-2" }]))
+      .toEqual([{ id: "author:instagram:ada", name: "Ada", avatar: null, count: 2 }])
+  })
+
+  it("deduplicates provider replays without merging comment IDs across networks or posts", () => {
+    const metadata = { author_id: "ada", author_name: "Ada", platform_comment_id: "comment-1", outstand_post_id: "post-1", network: "instagram" }
+    const rows = [
+      { id: "row-1", custom_data: metadata }, { id: "row-2", custom_data: metadata },
+      { id: "row-3", custom_data: { ...metadata, outstand_post_id: "post-2" } },
+      { id: "row-4", custom_data: { ...metadata, network: "facebook" } },
+    ]
+    expect(aggregateTopCommenters(rows).map(row => [row.id, row.count])).toEqual([
+      ["author:instagram:ada", 2], ["author:facebook:ada", 1],
+    ])
+  })
+
+  it.each(["javascript:alert(1)", "data:image/svg+xml,test", "https://user:secret@example.com/image.png", "/private/avatar"])(
+    "does not expose an unsafe synchronized avatar %s", avatar => {
+      expect(aggregateTopCommenters([{ custom_data: { author_id: "ada", author_name: "Ada", avatar } }])[0].avatar).toBeNull()
+    },
+  )
 })

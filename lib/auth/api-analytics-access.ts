@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { requireSiteAccess } from "@/lib/auth/api-site-access"
+import { analyticsMaxRangeDays } from "@/lib/dashboard/report-date-limits"
 import {
   checkRateLimit,
   hashRedisKeyPart,
@@ -7,7 +8,6 @@ import {
 } from "@/lib/redis/control-plane"
 
 const DAY_MS = 24 * 60 * 60 * 1000
-const DEFAULT_MAX_RANGE_DAYS = 93
 const internallyAuthorizedRequests = new WeakMap<Request, string>()
 
 export function markAnalyticsRequestAuthorized(
@@ -15,13 +15,6 @@ export function markAnalyticsRequestAuthorized(
   userId: string
 ): void {
   internallyAuthorizedRequests.set(request, userId)
-}
-
-function configuredMaxRangeDays(): number {
-  const value = Number(process.env.ANALYTICS_MAX_RANGE_DAYS)
-  return Number.isSafeInteger(value) && value > 0
-    ? value
-    : DEFAULT_MAX_RANGE_DAYS
 }
 
 type AnalyticsAccessResult =
@@ -68,11 +61,11 @@ export async function requireAnalyticsAccess(
     }
   }
 
-  if (rangeMs > configuredMaxRangeDays() * DAY_MS) {
+  if (rangeMs > analyticsMaxRangeDays() * DAY_MS) {
     return {
       error: NextResponse.json(
         {
-          error: `Date range cannot exceed ${configuredMaxRangeDays()} days`,
+          error: `Date range cannot exceed ${analyticsMaxRangeDays()} days`,
         },
         { status: 400 }
       ),

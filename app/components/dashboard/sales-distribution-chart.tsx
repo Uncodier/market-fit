@@ -1,12 +1,13 @@
 "use client"
 
 import React from "react"
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts'
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts'
 import { useTheme } from "@/app/context/ThemeContext"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/app/components/ui/card"
 import { EmptyCard } from "@/app/components/ui/empty-card"
 import { PieChart as PieChartIcon } from "@/app/components/ui/icons"
 import { Skeleton } from "@/app/components/ui/skeleton"
+import { formatSalesMoney } from "@/lib/sales/report-format"
 
 interface SalesDistribution {
   category: string;
@@ -18,24 +19,21 @@ interface SalesDistributionChartProps {
   data: SalesDistribution[];
   isLoading: boolean;
   dataReady: boolean;
+  currency?: string;
 }
 
-export function SalesDistributionChart({ data, isLoading, dataReady }: SalesDistributionChartProps) {
+export function SalesDistributionChart({ data, isLoading, dataReady, currency = "UNSPECIFIED" }: SalesDistributionChartProps) {
   const { isDarkMode } = useTheme()
   
   // Check if data is available
-  const hasData = data && data.length > 0 && dataReady;
+  const hasData = data && data.some((item) => item.amount > 0) && data.every((item) => item.amount >= 0) && dataReady;
   
   // Calculate total
   const total = data?.reduce((sum, item) => sum + item.amount, 0) || 0;
   
   // Format currency
   const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      maximumFractionDigits: 0
-    }).format(value);
+    return formatSalesMoney(value, currency);
   };
   
   // Theme-adaptive colors
@@ -48,77 +46,25 @@ export function SalesDistributionChart({ data, isLoading, dataReady }: SalesDist
     ? ['#A5B4FC', '#C7D2FE', '#DDD6FE', '#F5D0FE', '#FBCFE8', '#FDE68A']
     : ['#818CF8', '#A78BFA', '#F472B6', '#FB923C', '#2DD4BF', '#3B82F6'];
 
-  // Custom tooltip
-  const CustomTooltip = ({ active, payload }: any) => {
-    if (active && payload && payload.length) {
-      const data = payload[0].payload;
-      
-      return (
-        <div className={`p-3 rounded-lg border ${isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}`}>
-          <p className="font-medium">{data.category}</p>
-          <p className={`text-sm ${isDarkMode ? 'text-slate-300' : 'text-gray-600'}`}>
-            {formatCurrency(data.amount)}
-          </p>
-          <p className={`text-xs ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}>
-            {data.percentage}% of total
-          </p>
-        </div>
-      );
-    }
-    return null;
-  };
-
-  // Loading state
-  if (isLoading) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Sales Distribution</CardTitle>
-          <CardDescription>
-            Breakdown of sales across product categories
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-col space-y-2">
-            <Skeleton className="h-[300px] w-full" />
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  // No data state
-  if (!hasData) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Sales Distribution</CardTitle>
-          <CardDescription>
-            Breakdown of sales across product categories
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <EmptyCard 
-            icon={<PieChartIcon className="h-8 w-8 text-muted-foreground" />}
-            title="No sales distribution data"
-            description="There is no sales data available for the selected period."
-          />
-        </CardContent>
-      </Card>
-    );
-  }
-
+  const loading = isLoading || !dataReady
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Sales Distribution</CardTitle>
-        <CardDescription>
-          Breakdown of sales across product categories - {formatCurrency(total)}
+    <Card className="flex h-full min-w-0 flex-col" data-report-panel="sales-distribution">
+      <CardHeader className="space-y-2 p-4 pb-3 sm:p-5 sm:pb-3">
+        <CardTitle className="text-base">Sales Distribution</CardTitle>
+        <CardDescription className="text-xs">
+          Share of confirmed sales by channel{!loading && hasData ? ` - ${formatCurrency(total)}` : ""}
         </CardDescription>
       </CardHeader>
-      <CardContent>
-        <div className="w-full h-[300px] pie-chart-container">
-          <ResponsiveContainer width="100%" height="100%">
+      <CardContent className="min-w-0 flex-1 px-3 pb-4 sm:px-5">
+        <div className="h-[300px] min-w-0 w-full sm:h-[340px]" aria-busy={loading}
+          role={loading || !hasData ? "status" : "img"}
+          aria-label={loading ? "Loading sales distribution" : "Sales distribution by channel"}>
+          {loading ? <Skeleton className="h-full w-full" /> : !hasData ? <div className="flex h-full items-center justify-center">
+            <EmptyCard icon={<PieChartIcon className="h-8 w-8 text-muted-foreground" />}
+              title="No sales distribution data"
+              description="A channel share chart requires a positive total with no negative channel amounts. See channel totals above."
+              showShadow={false} variant="simple" contentClassName="min-h-0 py-6" />
+          </div> : <ResponsiveContainer width="100%" height="100%" minWidth={0}>
             <PieChart>
               {/* Gradient definitions */}
               <defs>
@@ -147,10 +93,7 @@ export function SalesDistributionChart({ data, isLoading, dataReady }: SalesDist
                 dataKey="amount"
                 nameKey="category"
                 labelLine={false}
-                isAnimationActive={true}
-                animationBegin={0}
-                animationDuration={400}
-                animationEasing="ease-out"
+                isAnimationActive={false}
               >
                 {data.map((entry, index) => (
                   <Cell 
@@ -161,38 +104,24 @@ export function SalesDistributionChart({ data, isLoading, dataReady }: SalesDist
                   />
                 ))}
               </Pie>
-              <Tooltip content={<CustomTooltip />} />
-              <Legend 
-                layout="horizontal" 
-                verticalAlign="bottom" 
-                align="center"
-                formatter={(value) => (
-                  <span className={isDarkMode ? 'text-slate-300' : 'text-gray-700'}>
-                    {value}
-                  </span>
-                )}
-              />
+              <Tooltip content={({ active, payload }) => {
+                const item = payload?.[0]?.payload as SalesDistribution | undefined
+                if (!active || !item) return null
+                return <div className="rounded-lg border bg-popover p-3 text-popover-foreground shadow-sm">
+                  <p className="font-medium">{item.category}</p>
+                  <p className="text-sm">{formatCurrency(item.amount)}</p>
+                  <p className="text-xs text-muted-foreground">{item.percentage.toFixed(1)}% of total</p>
+                </div>
+              }} />
             </PieChart>
-          </ResponsiveContainer>
+          </ResponsiveContainer>}
         </div>
-        
-        {/* CSS Animations */}
-        <style jsx>{`
-          @keyframes pie-chart-fade-in {
-            from {
-              opacity: 0;
-              transform: scale(0.9);
-            }
-            to {
-              opacity: 1;
-              transform: scale(1);
-            }
-          }
-          
-          .pie-chart-container {
-            animation: pie-chart-fade-in 0.3s ease-out forwards;
-          }
-        `}</style>
+        {!loading && hasData && <ul className="mt-3 flex flex-wrap justify-center gap-x-4 gap-y-2 text-xs text-muted-foreground" aria-label="Sales distribution legend">
+          {data.map((item, index) => <li key={item.category} className="inline-flex min-w-0 items-center gap-1.5">
+            <span aria-hidden="true" className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: COLORS[index % COLORS.length] }} />
+            <span className="break-words [overflow-wrap:anywhere]">{item.category}</span>
+          </li>)}
+        </ul>}
       </CardContent>
     </Card>
   );

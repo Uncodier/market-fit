@@ -1,4 +1,5 @@
 type CommentMessage = {
+  id?: string
   custom_data: unknown
   lead_id?: string | null
   visitor_id?: string | null
@@ -20,10 +21,25 @@ function providerId(value: unknown): string | null {
   return typeof value === "number" && Number.isFinite(value) ? String(value) : text(value)
 }
 
+function avatarUrl(value: string | null): string | null {
+  if (!value) return null
+  try {
+    const url = new URL(value)
+    return url.protocol === "https:" && !url.username && !url.password ? url.href : null
+  } catch { return null }
+}
+
 export function aggregateTopCommenters(rows: CommentMessage[]): Commenter[] {
   const commenters = new Map<string, Commenter>()
+  const seenMessages = new Set<string>()
+  const seenProviderComments = new Set<string>()
 
   for (const row of rows) {
+    // Repeated synchronization/page rows must not increase a commenter's activity.
+    if (row.id) {
+      if (seenMessages.has(row.id)) continue
+      seenMessages.add(row.id)
+    }
     const metadata = record(row.custom_data)
     const author = record(metadata.author)
     const from = record(metadata.from)
@@ -31,6 +47,13 @@ export function aggregateTopCommenters(rows: CommentMessage[]): Commenter[] {
     const rawNetwork = (text(metadata.network) || text(metadata.channel) || text(conversation?.channel)
       || text(metadata.origin) || "unknown").toLowerCase()
     const network = rawNetwork === "twitter" ? "x" : rawNetwork
+    const providerCommentId = providerId(metadata.platform_comment_id) || providerId(metadata.comment_id)
+    const postId = providerId(metadata.outstand_post_id) || providerId(metadata.post_id)
+    if (providerCommentId && postId) {
+      const commentKey = JSON.stringify([network, postId, providerCommentId])
+      if (seenProviderComments.has(commentKey)) continue
+      seenProviderComments.add(commentKey)
+    }
     // Top-level username belongs to the owned account, not the commenter.
     const handle = text(metadata.social_handle) || text(author.username) || text(from.username)
     const authorName = text(metadata.author_name) || text(author.name) || text(from.name)
@@ -49,8 +72,8 @@ export function aggregateTopCommenters(rows: CommentMessage[]): Commenter[] {
     else continue // A post/account reference alone does not identify a commenter.
 
     const name = authorName || handle || "Anonymous Visitor"
-    const avatar = text(author.avatar) || text(from.avatar) || text(metadata.avatar)
-      || text(metadata.profile_image_url)
+    const avatar = avatarUrl(text(author.avatar) || text(from.avatar) || text(metadata.avatar)
+      || text(metadata.profile_image_url))
     const existing = commenters.get(id)
     if (existing) {
       existing.count++

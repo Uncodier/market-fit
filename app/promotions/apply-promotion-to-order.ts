@@ -1,7 +1,7 @@
-"use server";
+import 'server-only';
 
 import { createClient, createServiceClient } from "@/lib/supabase/server";
-import { upsertPolizaForExpense } from "@/app/accounting/ensure";
+import { postSourceJournalWithClient } from "@/app/accounting/source-posting";
 import { resolvePromotionDiscount } from "./resolve-promotion";
 import { upsertPromotionDiscountExpense } from "./promo-discount-expense";
 import { saleAmountsAfterDiscount } from "./sale-amounts-after-discount";
@@ -98,9 +98,12 @@ export async function applyPromotionToOrder(
     if (order.sale_id) {
       const saleUpdate: Record<string, unknown> = {
         ...saleAmountsAfterDiscount(total, saleRel),
+        accounting_state: 'pending',
+        updated_at: new Date().toISOString(),
       };
       if (campaignId) saleUpdate.campaign_id = campaignId;
-      await supabase.from("sales").update(saleUpdate).eq("id", order.sale_id);
+      const { error: saleError } = await supabase.from("sales").update(saleUpdate).eq("id", order.sale_id);
+      if (saleError) throw new Error('Unable to update the discounted sale');
     }
     if (campaignId && saleLeadId) {
       await supabase
@@ -150,7 +153,8 @@ export async function applyPromotionToOrder(
           .eq("category", "promotions")
           .maybeSingle();
         if (promoExpense?.id) {
-          await upsertPolizaForExpense(promoExpense.id, order.site_id || siteId);
+          // Linked discounts are analytics-only: reconcile any legacy cash-expense journal away.
+          await postSourceJournalWithClient(expenseClient, 'expense', promoExpense.id, order.site_id || siteId);
         }
       } catch (error) {
         console.error("[accounting] Failed to post promotion expense:", error);

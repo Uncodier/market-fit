@@ -1,265 +1,104 @@
 'use server'
 
-import { createClient } from '@/lib/supabase/server'
+import { z } from 'zod'
+import { createServiceClient } from '@/lib/supabase/server'
+import type { AccountingAccount, AccountType } from '@/app/types'
+import { requireAccountingAccess } from './access'
+import { ensureChartWithClient, loadAccountsWithClient, mapAccount } from './chart-store'
 import { DEFAULT_CHART } from './default-chart'
-import { AccountingAccount } from '../types'
-
-function mapAccount(row: any): AccountingAccount {
-  return {
-    id: row.id,
-    siteId: row.site_id,
-    code: row.code,
-    key: row.key,
-    type: row.type,
-    label: row.label,
-    system: row.system,
-    active: row.active,
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
-  }
-}
+import { saveJournalWithClient } from './journal-store'
+import { accountCodeSchema, accountTypeSchema, amountSchema, currencySchema } from './validation'
+import { accountingDate } from './dates'
 
 export async function ensureChartOfAccounts(siteId: string): Promise<void> {
-  const supabase = await createClient()
-
-  const { data: existingAccounts, error: existingError } = await supabase
-    .from('accounting_accounts')
-    .select('id, code, key')
-    .eq('site_id', siteId)
-
-  if (existingError) {
-    console.error('Error fetching existing accounts:', existingError)
-    throw new Error(`Could not fetch existing accounts: ${existingError.message}`)
-  }
-
-  const existingByCode = new Map(
-    (existingAccounts || []).map((a: { id: string; code: string; key: string | null }) => [a.code, a])
-  )
-  const missingAccounts = DEFAULT_CHART.filter(a => !existingByCode.has(a.code))
-
-  if (missingAccounts.length > 0) {
-    const toInsert = missingAccounts.map(a => ({
-      site_id: siteId,
-      code: a.code,
-      key: a.key || null,
-      type: a.type,
-      label: a.label,
-      system: a.system,
-      active: true,
-    }))
-
-    const { error: insertError } = await supabase
-      .from('accounting_accounts')
-      .insert(toInsert)
-
-    if (insertError) {
-      console.error('Error seeding chart of accounts:', insertError)
-      throw new Error('Could not seed chart of accounts')
-    }
-  }
-
-  // Backfill keys for seeded system accounts that predate key support
-  for (const seed of DEFAULT_CHART) {
-    if (!seed.key) continue
-    const existing = existingByCode.get(seed.code)
-    if (existing && !existing.key) {
-      await supabase
-        .from('accounting_accounts')
-        .update({ key: seed.key })
-        .eq('id', existing.id)
-    }
-  }
+  const reader = await requireAccountingAccess(siteId)
+  if (reader._isDemo) return
+  const accounts = await loadAccountsWithClient(reader, siteId)
+  if (DEFAULT_CHART.every(seed => accounts.some(account => account.code === seed.code && (!seed.key || account.key)))) return
+  await requireAccountingAccess(siteId, 'insert')
+  await ensureChartWithClient(await createServiceClient(true), siteId)
 }
 
 export async function getAllAccounts(siteId: string): Promise<AccountingAccount[]> {
-  const supabase = await createClient()
-  const { data, error } = await supabase
-    .from('accounting_accounts')
-    .select('*')
-    .eq('site_id', siteId)
-    .order('code', { ascending: true })
-
-  if (error) {
-    console.error('Error fetching all accounts:', error)
-    return []
-  }
-
-  return (data || []).map(mapAccount)
+  return loadAccountsWithClient(await requireAccountingAccess(siteId), siteId)
 }
 
 export async function getActiveExpenseAccounts(siteId: string): Promise<AccountingAccount[]> {
   await ensureChartOfAccounts(siteId)
-
-  const supabase = await createClient()
-  const { data, error } = await supabase
-    .from('accounting_accounts')
-    .select('*')
-    .eq('site_id', siteId)
-    .eq('type', 'expense')
-    .eq('active', true)
-    .order('code', { ascending: true })
-
-  if (error) {
-    console.error('Error fetching active expense accounts:', error)
-    return []
-  }
-
-  return (data || []).map(mapAccount)
+  return (await getAllAccounts(siteId)).filter(account => account.type === 'expense' && account.active)
 }
 
-export async function addExpenseAccount(
-  siteId: string,
-  label: string,
-  key: string,
-  code: string
-): Promise<AccountingAccount | null> {
-  const supabase = await createClient()
-  const { data, error } = await supabase
-    .from('accounting_accounts')
-    .insert({
-      site_id: siteId,
-      code,
-      key,
-      type: 'expense',
-      label,
-      system: false,
-      active: true,
-    })
-    .select()
-    .single()
-
-  if (error) {
-    console.error('Error adding expense account:', error)
-    return null
-  }
-
+export async function addAccountingAccount(siteId: string, label: string, key: string, code: string, type: AccountType) {
+  const account = z.object({ label: z.string().trim().min(1).max(200), key: z.string().trim()
+    .regex(/^[A-Za-z][A-Za-z0-9_]{0,63}$/), code: accountCodeSchema, type: accountTypeSchema }).parse({ label, key, code, type })
+  const supabase = await requireAccountingAccess(siteId, 'insert')
+  await ensureChartWithClient(await createServiceClient(true), siteId)
+  const { data, error } = await supabase.from('accounting_accounts').insert({
+    site_id: siteId, ...account, system: false, active: true,
+  }).select('*').single()
+  if (error || !data) throw new Error(error?.code === '23505' ? 'Account code or key already exists' : 'Unable to create account')
   return mapAccount(data)
 }
 
-export async function updateAccountLabel(siteId: string, id: string, label: string): Promise<boolean> {
-  const supabase = await createClient()
-  const { error } = await supabase
-    .from('accounting_accounts')
-    .update({ label, updated_at: new Date().toISOString() })
-    .eq('id', id)
-    .eq('site_id', siteId)
+export async function addExpenseAccount(siteId: string, label: string, key: string, code: string) {
+  return addAccountingAccount(siteId, label, key, code, 'expense')
+}
 
-  if (error) {
-    console.error('Error updating account label:', error)
-    return false
-  }
+export async function updateAccountLabel(siteId: string, id: string, label: string): Promise<boolean> {
+  z.string().uuid().parse(id)
+  const name = z.string().trim().min(1).max(200).parse(label)
+  const supabase = await requireAccountingAccess(siteId, 'update')
+  const { data, error } = await supabase.from('accounting_accounts')
+    .update({ label: name, updated_at: new Date().toISOString() }).eq('id', id).eq('site_id', siteId).select('id').single()
+  if (error || !data) throw new Error('Unable to update account')
   return true
 }
 
 export async function toggleAccountActive(siteId: string, id: string, active: boolean): Promise<boolean> {
-  const supabase = await createClient()
-  const { error } = await supabase
-    .from('accounting_accounts')
-    .update({ active, updated_at: new Date().toISOString() })
-    .eq('id', id)
-    .eq('site_id', siteId)
-    .eq('system', false)
-
-  if (error) {
-    console.error('Error toggling account active state:', error)
-    return false
-  }
+  z.string().uuid().parse(id)
+  z.boolean().parse(active)
+  const supabase = await requireAccountingAccess(siteId, 'update')
+  const { data, error } = await supabase.from('accounting_accounts')
+    .update({ active, updated_at: new Date().toISOString() }).eq('id', id).eq('site_id', siteId)
+    .eq('system', false).select('id').single()
+  if (error || !data) throw new Error('Unable to change account status. System accounts must remain active.')
   return true
 }
 
 export async function getOpeningEntry(siteId: string) {
-  const supabase = await createClient()
-  const { data: entry } = await supabase
-    .from('journal_entries')
-    .select('*, journal_lines(*)')
-    .eq('site_id', siteId)
-    .eq('idempotency_key', `opening:${siteId}`)
-    .maybeSingle()
-
-  return entry
+  const supabase = await requireAccountingAccess(siteId)
+  const { data, error } = await supabase.from('journal_entries').select('*, journal_lines(*)')
+    .eq('site_id', siteId).eq('idempotency_key', `opening:${siteId}`).maybeSingle()
+  if (error) throw new Error('Unable to load opening balances')
+  return data
 }
 
 export async function saveOpeningEntry(
-  siteId: string,
-  asOfDate: string,
-  balances: Record<string, { debit: number; credit: number }>
+  siteId: string, asOfDate: string, balances: Record<string, { debit: number; credit: number }>,
+  currency?: string, expectedHash?: string | null,
 ) {
-  const supabase = await createClient()
-
-  let totalDebit = 0
-  let totalCredit = 0
-
-  for (const [code, amts] of Object.entries(balances)) {
-    if (code !== '3000') {
-      totalDebit += Number(amts.debit) || 0
-      totalCredit += Number(amts.credit) || 0
-    }
+  const entryDate = accountingDate(asOfDate)
+  if (expectedHash === undefined) throw new Error('Load opening balances before saving')
+  const parsed = z.record(accountCodeSchema, z.object({ debit: amountSchema, credit: amountSchema })).parse(balances)
+  const supabase = await requireAccountingAccess(siteId, 'update')
+  const { data: existing, error } = await supabase.from('journal_entries')
+    .select('id, currency, source_hash').eq('site_id', siteId).eq('idempotency_key', `opening:${siteId}`).maybeSingle()
+  if (error) throw new Error('Unable to load existing opening balances')
+  if ((existing?.source_hash ?? null) !== expectedHash) throw new Error('Opening balances changed. Reload before saving.')
+  let resolvedCurrency = existing?.currency || currency
+  if (existing?.currency && currency && existing.currency !== currency) throw new Error('Opening balance currency cannot be changed')
+  if (!resolvedCurrency) {
+    const { data: settings, error: settingsError } = await supabase.from('settings')
+      .select('currency').eq('site_id', siteId).maybeSingle()
+    if (settingsError || !settings?.currency) throw new Error('Configure an accounting currency first')
+    resolvedCurrency = settings.currency
   }
-
-  const plugCredit = Math.max(0, totalDebit - totalCredit)
-  const plugDebit = Math.max(0, totalCredit - totalDebit)
-
-  const finalBalances = { ...balances }
-  finalBalances['3000'] = { debit: plugDebit, credit: plugCredit }
-
-  const sourceHash = JSON.stringify(finalBalances) + asOfDate
-
-  const { data: existing } = await supabase
-    .from('journal_entries')
-    .select('id')
-    .eq('site_id', siteId)
-    .eq('idempotency_key', `opening:${siteId}`)
-    .maybeSingle()
-
-  const linesPayload = Object.entries(finalBalances)
-    .filter(([, amts]) => (amts.debit || 0) > 0 || (amts.credit || 0) > 0)
-    .map(([code, amts]) => ({
-      account_code: code,
-      debit: amts.debit || 0,
-      credit: amts.credit || 0,
-    }))
-
-  if (existing) {
-    await supabase.from('journal_lines').delete().eq('entry_id', existing.id)
-
-    const { error: updateError } = await supabase
-      .from('journal_entries')
-      .update({
-        entry_date: asOfDate,
-        source_hash: sourceHash,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', existing.id)
-
-    if (updateError) throw new Error('Failed to update opening entry')
-
-    if (linesPayload.length > 0) {
-      const { error: linesError } = await supabase.from('journal_lines').insert(
-        linesPayload.map(line => ({ ...line, entry_id: existing.id }))
-      )
-      if (linesError) throw new Error('Failed to save opening lines')
-    }
-  } else {
-    const { data: newEntry, error } = await supabase
-      .from('journal_entries')
-      .insert({
-        site_id: siteId,
-        entry_date: asOfDate,
-        memo: 'Opening balances',
-        source_type: 'opening',
-        idempotency_key: `opening:${siteId}`,
-        source_hash: sourceHash,
-      })
-      .select('id')
-      .single()
-
-    if (error || !newEntry) throw new Error('Failed to create opening entry')
-
-    if (linesPayload.length > 0) {
-      const { error: linesError } = await supabase.from('journal_lines').insert(
-        linesPayload.map(line => ({ ...line, entry_id: newEntry.id }))
-      )
-      if (linesError) throw new Error('Failed to save opening lines')
-    }
-  }
+  const lines = Object.entries(parsed).filter(([code, amount]) => code !== '3000' && (amount.debit > 0 || amount.credit > 0))
+    .map(([accountCode, amount]) => ({ accountCode, ...amount }))
+  const balance = lines.reduce((sum, line) => sum + Math.round(line.debit * 100) - Math.round(line.credit * 100), 0)
+  if (balance !== 0) lines.push({ accountCode: '3000', debit: Math.max(0, -balance) / 100, credit: Math.max(0, balance) / 100 })
+  return saveJournalWithClient(supabase, siteId, {
+    entry: { siteId, entryDate, currency: currencySchema.parse(resolvedCurrency), memo: 'Opening balances',
+      sourceType: 'opening', sourceId: null, idempotencyKey: `opening:${siteId}` }, lines,
+  }, { entryId: existing?.id, expectedHash, checkVersion: true })
 }

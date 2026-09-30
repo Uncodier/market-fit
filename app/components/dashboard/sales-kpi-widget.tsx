@@ -44,6 +44,7 @@ export function SalesKpiWidget({
   return (
     <BaseKpiWidget
       title={t('dashboard.widgets.sales') || 'Sales'}
+      tooltipText="Sales records created in this period, across all statuses. This is an activity count, not confirmed revenue or cash collected."
       value={displayValue}
       changeText={changeText}
       isPositiveChange={(data?.percentChange || 0) > 0}

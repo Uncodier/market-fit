@@ -6,12 +6,11 @@ import { readThroughAnalyticsResponseCache } from "@/lib/redis/analytics-respons
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
   const siteId = searchParams.get("siteId")
-  const userId = searchParams.get("userId")
   const startDate = searchParams.get("startDate")
   const endDate = searchParams.get("endDate")
   const segmentId = searchParams.get("segmentId")
 
-  if (!siteId || !userId || !startDate || !endDate) {
+  if (!siteId || !startDate || !endDate) {
     return NextResponse.json({ error: "Missing required parameters" }, { status: 400 })
   }
 

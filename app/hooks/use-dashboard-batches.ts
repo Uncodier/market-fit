@@ -1,55 +1,76 @@
 "use client"
 
-import useSWR from "swr"
+import { useReportResource } from "@/app/hooks/use-report-resource"
 import { format } from "date-fns"
 import { useAuth } from "@/app/hooks/use-auth"
 import { useSite } from "@/app/context/SiteContext"
 import { useWidgetContext } from "@/app/context/WidgetContext"
+import { useReportDataContext } from "@/app/dashboard/ReportDataContext"
+import { isReportBatch, reportCurrencyOptions, reportMetricKeys, type ReportBatch, type ReportBatchKind } from "@/lib/dashboard/report-groups"
 
-type BatchKind = "performance" | "overview"
-
-function buildParams(
-  siteId: string,
-  userId: string | undefined,
-  segmentId: string,
-  startDate: Date,
-  endDate: Date
-) {
-  const params = new URLSearchParams({
-    siteId,
-    segmentId,
-    startDate: startDate.toISOString(),
-    endDate: endDate.toISOString(),
-    useDemoData: "true",
-  })
-  if (userId) params.set("userId", userId)
-  return params
+export class DashboardBatchError extends Error {
+  constructor(message: string, readonly status?: number, readonly availableCurrencies?: string[]) {
+    super(message)
+    this.name = "DashboardBatchError"
+  }
 }
 
-function useDashboardBatch(kind: BatchKind, startDate: Date, endDate: Date, segmentId = "all") {
-  const { currentSite } = useSite()
-  const { user } = useAuth()
+function useDashboardBatch(kind: ReportBatchKind, startDate: Date, endDate: Date, segmentId = "all") {
+  const { currentSite, isLoading: siteLoading } = useSite()
+  const { user, isLoading: authLoading } = useAuth()
   const widgetContext = useWidgetContext()
-  const shouldExecute = widgetContext?.shouldExecuteWidgets !== false
+  const { performanceGroup, overviewGroup, currency } = useReportDataContext()
+  const group = kind === "performance" ? performanceGroup : overviewGroup
+  const enabled = !(kind === "overview" && group === "activity")
+  const widgetsReady = widgetContext?.shouldExecuteWidgets !== false
+  const params = new URLSearchParams({
+    siteId: currentSite?.id ?? "",
+    segmentId,
+    startDate: format(startDate, "yyyy-MM-dd"),
+    endDate: format(endDate, "yyyy-MM-dd"),
+  })
+  if (group) params.set("group", group)
+  if (kind === "overview" && currency) params.set("currency", currency)
+  const url = `/api/dashboard/${kind}?${params}`
+  const hasSite = Boolean(currentSite?.id && currentSite.id !== "default")
+  // Identity isolates browser caches across sessions; never send it as authority.
+  const key = enabled && widgetsReady && hasSite && !siteLoading && !authLoading && user?.id
+    ? [url, user.id] : null
 
-  return useSWR(
-    shouldExecute && currentSite?.id && currentSite.id !== "default"
-      ? [
-          `dashboard-${kind}`,
-          currentSite.id,
-          user?.id,
-          segmentId,
-          format(startDate, "yyyy-MM-dd"),
-          format(endDate, "yyyy-MM-dd"),
-        ]
-      : null,
-    async ([, siteId, userId, segId, ,]) => {
-      const params = buildParams(siteId, userId, segId, startDate, endDate)
-      const response = await fetch(`/api/dashboard/${kind}?${params}`)
-      if (!response.ok) throw new Error(`Failed to load ${kind} metrics`)
-      return response.json() as Promise<Record<string, any>>
+  const batch = useReportResource<ReportBatch, DashboardBatchError>(
+    key,
+    async ([requestUrl]: [string, string | undefined]) => {
+      const response = await fetch(requestUrl)
+      if (!response.ok) {
+        if (response.status === 422) {
+          const body = await response.json().catch(() => null)
+          const currencies = reportCurrencyOptions(body?.availableCurrencies)
+          if (currencies) throw new DashboardBatchError("Select a currency to view revenue metrics", 422, currencies)
+        }
+        throw new DashboardBatchError(`Failed to load ${kind} metrics`, response.status)
+      }
+      const data: unknown = await response.json()
+      const keys = reportMetricKeys(kind, group)
+      if (!keys || !isReportBatch(data, keys)) throw new DashboardBatchError(`Invalid ${kind} metrics response`)
+      return data
     }
   )
+
+  const status = !enabled ? "disabled"
+    : authLoading || siteLoading ? "loading"
+    : !user?.id ? "unauthenticated"
+    : !hasSite ? "no-site"
+    : !widgetsReady || batch.isLoading || batch.isValidating || (!batch.data && !batch.error) ? "loading"
+    : batch.error ? "error" : "ready"
+  const isLoading = status === "loading"
+  return {
+    ...batch,
+    status,
+    isLoading,
+    // Neither a prior error nor stale figures represent the active attempt.
+    error: status === "error" ? batch.error : undefined,
+    data: status === "ready" ? batch.data : undefined,
+  }
 }
 
 export function useDashboardPerformance(startDate: Date, endDate: Date, segmentId = "all") {
@@ -65,9 +86,9 @@ export function usePerformanceSlice<T>(
   startDate: Date,
   endDate: Date,
   segmentId = "all"
-): { data: T | null; isLoading: boolean } {
-  const { data, isLoading } = useDashboardPerformance(startDate, endDate, segmentId)
-  return { data: (data?.[key] as T) ?? null, isLoading }
+) {
+  const { data, isLoading, error, mutate } = useDashboardPerformance(startDate, endDate, segmentId)
+  return { data: error ? null : (data?.[key] as T) ?? null, isLoading, error, mutate }
 }
 
 export function useOverviewSlice<T>(
@@ -75,7 +96,7 @@ export function useOverviewSlice<T>(
   startDate: Date,
   endDate: Date,
   segmentId = "all"
-): { data: T | null; isLoading: boolean } {
-  const { data, isLoading } = useDashboardOverview(startDate, endDate, segmentId)
-  return { data: (data?.[key] as T) ?? null, isLoading }
+) {
+  const { data, isLoading, error, mutate } = useDashboardOverview(startDate, endDate, segmentId)
+  return { data: error ? null : (data?.[key] as T) ?? null, isLoading, error, mutate }
 }

@@ -9,6 +9,7 @@ import { useOverviewSlice } from "@/app/hooks/use-dashboard-batches";
 interface ActiveCampaignsWidgetProps {
   startDate?: Date;
   endDate?: Date;
+  segmentId?: string;
 }
 
 interface ActiveCampaignsData {
@@ -31,7 +32,8 @@ function formatPeriodType(periodType: string, t: (key: string) => string): strin
 
 export function ActiveCampaignsWidget({
   startDate: propStartDate,
-  endDate: propEndDate
+  endDate: propEndDate,
+  segmentId = "all"
 }: ActiveCampaignsWidgetProps) {
   const { t } = useLocalization();
   const [startDate, setStartDate] = useState<Date>(propStartDate || subDays(new Date(), 30));
@@ -45,7 +47,8 @@ export function ActiveCampaignsWidget({
   const { data: activeCampaigns, isLoading } = useOverviewSlice<ActiveCampaignsData>(
     "active-campaigns",
     startDate,
-    endDate
+    endDate,
+    segmentId
   );
 
   const hasError = Boolean(activeCampaigns?.error);

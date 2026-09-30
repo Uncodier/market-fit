@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
 
   return readThroughAnalyticsResponseCache({
     request,
-    namespace: "performance:images-generated",
+    namespace: "performance:images-generated:v2",
     siteId: access.siteId,
     load: async () => {
   try {
@@ -45,11 +45,7 @@ export async function GET(request: NextRequest) {
 
     if (currentError) {
       console.error("Error fetching current images generated:", currentError);
-      return NextResponse.json({
-        actual: 0,
-        percentChange: 0,
-        periodType: "monthly"
-      });
+      return NextResponse.json({ error: "Failed to load images generated" }, { status: 500 });
     }
 
     // Get image instance_logs for previous period
@@ -65,6 +61,7 @@ export async function GET(request: NextRequest) {
 
     if (previousError) {
       console.error("Error fetching previous images generated:", previousError);
+      return NextResponse.json({ error: "Failed to load images generated" }, { status: 500 });
     }
 
     const currentCount = currentData?.length || 0;
@@ -82,11 +79,7 @@ export async function GET(request: NextRequest) {
 
   } catch (error) {
     console.error("Error in images generated API:", error);
-    return NextResponse.json({
-      actual: 0,
-      percentChange: 0,
-      periodType: "monthly"
-    });
+    return NextResponse.json({ error: "Failed to load images generated" }, { status: 500 });
   }
     },
   });

@@ -5,6 +5,9 @@ import {
 } from "@/app/api/stripe/webhook/sale-checkout-settlement"
 import { compensateRejectedStripeSale } from "@/app/api/stripe/webhook/sale-settlement-compensation"
 import { processStripeSaleSettlementEffects } from "@/app/api/stripe/webhook/sale-settlement-effects"
+import { postSaleJournalWithClient } from "@/app/accounting/source-posting"
+
+jest.mock("@/app/accounting/source-posting", () => ({ postSaleJournalWithClient: jest.fn() }))
 
 jest.mock("@/app/api/stripe/webhook/sale-settlement-effects", () => ({
   processStripeSaleSettlementEffects: jest.fn(),
@@ -155,6 +158,8 @@ describe("Stripe sale checkout settlement", () => {
       session: saleOrderSession,
     })
     expect(processStripeSaleSettlementEffects).toHaveBeenCalledTimes(2)
+    expect(postSaleJournalWithClient).toHaveBeenCalledTimes(2)
+    expect(postSaleJournalWithClient).toHaveBeenLastCalledWith(expect.any(Object), saleId, siteId)
     expect(processStripeSaleSettlementEffects).toHaveBeenLastCalledWith(
       expect.objectContaining({
         settlement: expect.objectContaining({ outcome: "resumed" }),
@@ -188,6 +193,35 @@ describe("Stripe sale checkout settlement", () => {
       }),
     )
     expect(processStripeSaleSettlementEffects).not.toHaveBeenCalled()
+    expect(postSaleJournalWithClient).not.toHaveBeenCalled()
+  })
+
+  it("reconciles accounting when fulfillment was already completed", async () => {
+    const supabase = { rpc: jest.fn().mockResolvedValue({ data: {
+      status: "already_settled", resume_effects: false, sale_id: saleId, site_id: siteId,
+    } }) } as any
+    await handleStripeSaleCheckoutCompleted({ supabase, stripe: {} as any, session: session() })
+    expect(postSaleJournalWithClient).toHaveBeenCalledWith(supabase, saleId, siteId)
+    expect(processStripeSaleSettlementEffects).not.toHaveBeenCalled()
+  })
+
+  it("retries accounting failure without compensating or repeating completed fulfillment", async () => {
+    const supabase = { rpc: jest.fn().mockResolvedValue({ data: {
+      status: "settled", sale_id: saleId, site_id: siteId,
+    } }) } as any
+    ;(postSaleJournalWithClient as jest.Mock).mockRejectedValueOnce(new Error("Posting unavailable"))
+    const params = { supabase, stripe: {} as any, session: session() }
+    await expect(handleStripeSaleCheckoutCompleted(params)).rejects.toThrow("Posting unavailable")
+    expect(processStripeSaleSettlementEffects).toHaveBeenCalledTimes(1)
+    expect(jest.mocked(processStripeSaleSettlementEffects).mock.invocationCallOrder[0])
+      .toBeLessThan(jest.mocked(postSaleJournalWithClient).mock.invocationCallOrder[0])
+    expect(compensateRejectedStripeSale).not.toHaveBeenCalled()
+    supabase.rpc.mockResolvedValue({ data: {
+      status: "already_settled", resume_effects: false, sale_id: saleId, site_id: siteId,
+    } })
+    await handleStripeSaleCheckoutCompleted(params)
+    expect(postSaleJournalWithClient).toHaveBeenCalledTimes(2)
+    expect(processStripeSaleSettlementEffects).toHaveBeenCalledTimes(1)
   })
 
   it("fails closed when the settlement check fails", async () => {

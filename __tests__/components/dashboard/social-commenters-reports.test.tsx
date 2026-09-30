@@ -2,8 +2,9 @@ import React from "react"
 import { act, render, screen, waitFor } from "@testing-library/react"
 import { SocialReports } from "@/app/components/dashboard/social-reports"
 import { getSocialPerformanceData, getTopCommentersData } from "@/app/components/dashboard/social-actions"
-import { buildSocialTrends } from "@/app/components/dashboard/social-trends"
-import { performancePost, startDate, endDate } from "./social-fixtures"
+import { startDate, endDate } from "./social-fixtures"
+import { endOfDay } from "date-fns"
+import { socialReportFixture } from "./social-report-fixture"
 
 jest.mock("@/app/context/ThemeContext", () => ({ useTheme: () => ({ isDarkMode: false }) }))
 jest.mock("@/app/context/SiteContext", () => ({ useSite: () => ({ currentSite: { id: "site-1" } }) }))
@@ -18,12 +19,7 @@ jest.mock("recharts", () => ({
 }))
 
 function performance(totalComments = 2) {
-  const post = performancePost({ comments: totalComments, views: 300 })
-  return {
-    data: [post], networks: [{ network: "instagram", views: 300, likes: 10, comments: totalComments, reach: 80 }],
-    trends: buildSocialTrends([post], startDate, endDate),
-    kpis: { totalViews: 300, totalReach: 80, totalComments, avgEngagementRate: 0.05, totalLikes: 10, totalShares: 1, postCount: 1 },
-  }
+  return socialReportFixture(300, totalComments)
 }
 
 beforeEach(() => {
@@ -58,7 +54,7 @@ describe("SocialReports commenters", () => {
     expect(await screen.findByText("Ada Reader")).toBeInTheDocument()
     expect(screen.getByText("3")).toBeInTheDocument()
     expect(screen.queryByText("No commenters found")).not.toBeInTheDocument()
-    expect(getTopCommentersData).toHaveBeenCalledWith("site-1", startDate, endDate, Intl.DateTimeFormat().resolvedOptions().timeZone)
+    expect(getTopCommentersData).toHaveBeenCalledWith("site-1", startDate, endOfDay(endDate), Intl.DateTimeFormat().resolvedOptions().timeZone)
   })
 
   it.each(["returned", "rejected"])("keeps KPIs, trends, networks and posts on a %s commenter error", async (failure) => {

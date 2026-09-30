@@ -1,303 +1,90 @@
-"use client";
+"use client"
 
-import { ReactNode, useState, useEffect, useRef } from "react";
-import { Card, CardHeader, CardTitle, CardContent } from "@/app/components/ui/card";
-import { CalendarIcon } from "@/app/components/ui/icons";
-import { Skeleton } from "@/app/components/ui/skeleton";
-import { DatePicker } from "@/app/components/ui/date-picker";
-import { format } from "date-fns";
-import { Button } from "@/app/components/ui/button";
-import { Popover, PopoverContent, PopoverTrigger } from "@/app/components/ui/popover";
-import { Badge } from "@/app/components/ui/badge";
-import { useTheme } from "@/app/context/ThemeContext";
+import { type ReactNode, useState } from "react"
+import { format } from "date-fns"
+import { Card, CardHeader, CardTitle } from "@/app/components/ui/card"
+import { CalendarIcon, Info } from "@/app/components/ui/icons"
+import { Skeleton } from "@/app/components/ui/skeleton"
+import { DatePicker } from "@/app/components/ui/date-picker"
+import { Button } from "@/app/components/ui/button"
+import { Popover, PopoverContent, PopoverTrigger } from "@/app/components/ui/popover"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/app/components/ui/tooltip"
+import { cn } from "@/lib/utils"
 
 export interface BaseKpiWidgetProps {
-  title: string;
-  value: string | number | null;
-  changeText: string;
-  isPositiveChange?: boolean;
-  isLoading: boolean;
-  showDatePicker?: boolean;
-  startDate?: Date;
-  endDate?: Date;
-  onDateChange?: (start: Date, end: Date) => void;
-  segmentBadge?: boolean;
-  customStatus?: ReactNode;
-  className?: string;
-}
-
-// Custom hook for count-up animation
-function useCountUp(value: string | number | null, isLoading: boolean) {
-  const [displayValue, setDisplayValue] = useState<string>("0");
-  const [isAnimating, setIsAnimating] = useState(false);
-  const animationRef = useRef<number | undefined>(undefined);
-  const timeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
-
-  useEffect(() => {
-    // Clear any existing animation or timeout
-    if (animationRef.current) {
-      cancelAnimationFrame(animationRef.current);
-      animationRef.current = undefined;
-    }
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
-      timeoutRef.current = undefined;
-    }
-
-    if (isLoading) {
-      setDisplayValue("0");
-      setIsAnimating(false);
-      return;
-    }
-
-    if (value === null || value === undefined) {
-      setDisplayValue("0");
-      return;
-    }
-
-    const stringValue = String(value);
-    
-    // Check if the value is a number (for count-up effect), including currency prefixes like MX$
-    const numericMatch = stringValue.match(/^([^\d-]*)(-?[\d,]+\.?\d*)([%]?)$/);
-    
-    if (numericMatch) {
-      const prefix = numericMatch[1];
-      const suffix = numericMatch[3];
-      const numericValue = parseFloat(numericMatch[2].replace(/,/g, ''));
-      
-      if (!isNaN(numericValue) && numericValue > 0) {
-        setIsAnimating(true);
-        
-        const startValue = 0;
-        const endValue = numericValue;
-        const duration = 1000; // 1 second
-        const startTime = performance.now();
-        
-        const animate = (currentTime: number) => {
-          const elapsed = currentTime - startTime;
-          const progress = Math.min(elapsed / duration, 1);
-          
-          // Easing function (ease-out cubic)
-          const easeOut = 1 - Math.pow(1 - progress, 3);
-          const currentValue = startValue + (endValue - startValue) * easeOut;
-          
-          const decimals = (numericMatch[2].split(".")[1] || "").length;
-          let formattedValue = currentValue.toLocaleString(undefined, {
-            minimumFractionDigits: decimals,
-            maximumFractionDigits: decimals || (endValue < 100 ? 1 : 0)
-          });
-          
-          setDisplayValue(prefix + formattedValue + suffix);
-          
-          if (progress < 1) {
-            animationRef.current = requestAnimationFrame(animate);
-          } else {
-            setIsAnimating(false);
-            setDisplayValue(stringValue); // Ensure final value is exact
-          }
-        };
-        
-        animationRef.current = requestAnimationFrame(animate);
-      } else {
-        // For zero or negative values, just set directly
-        setDisplayValue(stringValue);
-      }
-    } else {
-      // For non-numeric values, just set directly with delay
-      timeoutRef.current = setTimeout(() => {
-        setDisplayValue(stringValue);
-      }, 200);
-    }
-
-    return () => {
-      if (animationRef.current) {
-        cancelAnimationFrame(animationRef.current);
-      }
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-      }
-    };
-  }, [value, isLoading]);
-
-  return { displayValue, isAnimating };
+  title: string
+  tooltipText?: string
+  value: ReactNode
+  icon?: ReactNode
+  changeText: string
+  isPositiveChange?: boolean
+  isLoading: boolean
+  showDatePicker?: boolean
+  startDate?: Date
+  endDate?: Date
+  onDateChange?: (start: Date, end: Date) => void
+  segmentBadge?: boolean
+  customStatus?: ReactNode
+  className?: string
 }
 
 export function BaseKpiWidget({
-  title,
-  value,
-  changeText,
-  isPositiveChange,
-  isLoading,
-  showDatePicker = false,
-  startDate,
-  endDate,
-  onDateChange,
-  segmentBadge = false,
-  customStatus,
-  className
+  title, tooltipText, value, icon, changeText, isPositiveChange, isLoading,
+  showDatePicker = false, startDate, endDate, onDateChange,
+  segmentBadge = false, customStatus, className,
 }: BaseKpiWidgetProps) {
-  const { isDarkMode } = useTheme();
-  const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
-  const [showContent, setShowContent] = useState(false);
-  const { displayValue, isAnimating } = useCountUp(value, isLoading);
-
-  // Add artificial delay to show loading animation
-  useEffect(() => {
-    if (!isLoading) {
-      const timer = setTimeout(() => {
-        setShowContent(true);
-      }, 300);
-      return () => clearTimeout(timer);
-    } else {
-      setShowContent(false);
-    }
-  }, [isLoading]);
-
-  // Handle date range selection
-  const handleRangeSelect = (start: Date, end: Date) => {
-    if (onDateChange) {
-      onDateChange(start, end);
-    }
-    setIsDatePickerOpen(false);
-  };
-
-  // Local date handlers for DatePicker
-  const setStartDate = (date: Date) => {
-    if (onDateChange && endDate) {
-      onDateChange(date, endDate);
-    }
-  };
-
-  const setEndDate = (date: Date) => {
-    if (onDateChange && startDate) {
-      onDateChange(startDate, date);
-    }
-  };
+  const [isDatePickerOpen, setIsDatePickerOpen] = useState(false)
+  const [firstWord, ...comparison] = changeText.split(" ")
+  const change = Number.parseFloat(firstWord.replace(/[^0-9.-]+/g, ""))
+  const hasDirection = isPositiveChange !== undefined && Number.isFinite(change) && change !== 0
+  const direction = hasDirection ? (change > 0 ? "↑" : "↓") : "→"
 
   return (
-    <Card className={`${className} h-[116.5px]`}>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pt-3 pb-0">
-        <CardTitle className="text-sm font-medium">
+    <Card data-report-kpi="" className={cn("grid grid-rows-[auto_auto_1fr] gap-y-0 min-h-[104px] min-w-0", className)}
+      aria-busy={isLoading} role={isLoading ? "status" : undefined} aria-label={isLoading ? `Loading ${title}` : undefined}>
+      <CardHeader data-kpi-slot="title" className="flex flex-row items-start justify-between gap-2 space-y-0 px-3 pt-3 pb-0 sm:px-4">
+        <CardTitle className="min-w-0 text-sm font-medium leading-5 break-words">
           {title}
-          {segmentBadge && (
-            <span className="ml-1 text-xs text-muted-foreground">(Segment)</span>
-          )}
+          {segmentBadge && <span className="ml-1 text-xs text-muted-foreground">(Segment)</span>}
         </CardTitle>
-        <div className="flex items-center space-x-2">
-          {customStatus && (
-            <div className="flex items-center">
-              {customStatus}
-            </div>
-          )}
+        <div className="flex min-h-5 min-w-4 shrink-0 items-center gap-2">
+          {icon && <span aria-hidden="true" className="inline-flex h-4 w-4 items-center justify-center text-muted-foreground">{icon}</span>}
+          {tooltipText && <TooltipProvider><Tooltip><TooltipTrigger asChild>
+            <button type="button" aria-label={`About ${title}`} className="inline-flex h-4 w-4 items-center justify-center rounded-sm text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+              <Info className="h-4 w-4" />
+            </button>
+          </TooltipTrigger><TooltipContent className="max-w-xs">{tooltipText}</TooltipContent></Tooltip></TooltipProvider>}
           {showDatePicker && startDate && endDate && (
             <Popover open={isDatePickerOpen} onOpenChange={setIsDatePickerOpen}>
               <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="text-xs px-2 py-1 h-auto"
-                >
+                <Button variant="outline" size="sm" className="text-xs px-2 py-1 h-auto">
                   <CalendarIcon className="h-3 w-3 mr-1" />
-                  {format(startDate, "MMM dd")} - {format(endDate, "MMM dd")}
+                  {format(startDate, "MMM dd")} – {format(endDate, "MMM dd")}
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0" align="end">
-                <DatePicker
-                  date={startDate}
-                  setDate={setStartDate}
-                  endDate={endDate}
-                  setEndDate={setEndDate}
-                  mode="range"
-                  onRangeSelect={handleRangeSelect}
-                />
+                <DatePicker date={startDate} endDate={endDate} mode="range"
+                  setDate={(date) => onDateChange?.(date, endDate)}
+                  setEndDate={(date) => onDateChange?.(startDate, date)}
+                  onRangeSelect={(start, end) => { onDateChange?.(start, end); setIsDatePickerOpen(false) }} />
               </PopoverContent>
             </Popover>
           )}
         </div>
       </CardHeader>
-
-      <CardContent className="pt-2 pb-3">
-        {isLoading || !showContent ? (
-          <div className="flex flex-col animate-pulse">
-            <div className="h-8 flex items-center pt-1">
-              <div className="relative w-full max-w-[120px] overflow-hidden">
-                <div className={`h-7 rounded-md ${isDarkMode ? 'bg-gray-700' : 'bg-gray-200'}`} />
-                <div className="absolute inset-0 -skew-x-12 bg-gradient-to-r from-transparent via-white/20 to-transparent kpi-shimmer" />
-              </div>
-            </div>
-            <div className="h-[18px] flex items-center mt-1">
-              <div className="relative w-full max-w-[100px] overflow-hidden">
-                <div className={`h-4 rounded-md ${isDarkMode ? 'bg-gray-700' : 'bg-gray-200'}`} />
-                <div className="absolute inset-0 -skew-x-12 bg-gradient-to-r from-transparent via-white/20 to-transparent kpi-shimmer" style={{animationDelay: '0.5s'}} />
-              </div>
-            </div>
-          </div>
-        ) : (
-          <div className="flex flex-col">
-            <div className="text-2xl font-bold pt-1 h-8 flex items-center kpi-fade-in tabular-nums whitespace-nowrap">
-              {displayValue}
-            </div>
-            {customStatus || (
-              <p className="text-xs text-muted-foreground mt-1 h-[18px] flex items-center gap-1 kpi-fade-in-delayed">
-                {isPositiveChange !== undefined ? (
-                  (() => {
-                    const firstWord = changeText.split(' ')[0];
-                    const numericValue = parseFloat(firstWord.replace(/[^0-9.-]+/g, ''));
-                    const isZero = isNaN(numericValue) || numericValue === 0;
-                    
-                    const textColor = isZero ? "text-foreground font-medium" : (isPositiveChange ? "text-green-500" : "text-red-500");
-                    const arrow = isZero ? '→' : (isPositiveChange ? '↑' : '↓');
-                    
-                    return (
-                      <>
-                        <span className={textColor}>
-                          {arrow} {firstWord.replace(/^-/, '').replace(/^\+/, '')}
-                        </span>
-                        {changeText.split(' ').length > 1 && (
-                          <span>{changeText.split(' ').slice(1).join(' ')}</span>
-                        )}
-                      </>
-                    );
-                  })()
-                ) : (
-                  changeText
-                )}
-              </p>
-            )}
-          </div>
-        )}
-      </CardContent>
-      
-      <style jsx global>{`
-        @keyframes kpi-shimmer {
-          0% { transform: translateX(-100%); }
-          100% { transform: translateX(100%); }
-        }
-        
-        @keyframes kpi-fade-in {
-          from { 
-            opacity: 0; 
-            transform: translateY(10px); 
-          }
-          to { 
-            opacity: 1; 
-            transform: translateY(0); 
-          }
-        }
-        
-        .kpi-shimmer {
-          animation: kpi-shimmer 1.5s infinite;
-        }
-        
-        .kpi-fade-in {
-          animation: kpi-fade-in 0.6s ease-out forwards;
-        }
-        
-        .kpi-fade-in-delayed {
-          animation: kpi-fade-in 0.6s ease-out 0.2s forwards;
-          opacity: 0;
-        }
-      `}</style>
+      <div data-kpi-slot="value" className="min-w-0 px-3 pt-2 text-xl font-bold leading-8 tabular-nums break-words sm:px-4 sm:text-2xl sm:leading-8">
+        {isLoading ? <Skeleton aria-hidden="true" className="h-8 w-32 max-w-full motion-reduce:animate-none" /> : value ?? "—"}
+      </div>
+      <div data-kpi-slot="status" className="min-h-[48px] min-w-0 px-3 pt-1 pb-3 text-xs leading-4 text-muted-foreground sm:min-h-8 sm:px-4">
+        {isLoading ? <Skeleton aria-hidden="true" className="h-4 w-24 max-w-full motion-reduce:animate-none" /> :
+            customStatus || <p className="min-h-4">
+              {isPositiveChange === undefined ? changeText : <>
+                <span className={cn("font-medium", hasDirection ? (isPositiveChange ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400") : "text-foreground")}>
+                  <span aria-hidden="true">{direction} </span>{firstWord}
+                </span>{comparison.length > 0 && ` ${comparison.join(" ")}`}
+              </>}
+            </p>}
+      </div>
     </Card>
-  );
+  )
 }

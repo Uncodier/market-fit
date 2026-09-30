@@ -2,8 +2,10 @@
 
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from "recharts";
 import { useTheme } from "@/app/context/ThemeContext";
-import { Skeleton } from "@/app/components/ui/skeleton";
 import { usePerformanceSlice } from "@/app/hooks/use-dashboard-batches";
+import { ReportChartLoading } from "./report-visual-loading";
+import { ReportState } from "./report-state";
+import { activityDate, compactActivityCount } from "./activity-chart-format";
 
 interface LeadsTasksChartProps {
   startDate: Date;
@@ -31,7 +33,7 @@ export function LeadsTasksChart({ startDate, endDate, segmentId = "all" }: Leads
   const { isDarkMode } = useTheme();
 
   const colors = {
-    text: isDarkMode ? "#CBD5E1" : "#9CA3AF",
+    text: isDarkMode ? "#CBD5E1" : "#6B7280",
     grid: isDarkMode ? "rgba(203, 213, 225, 0.2)" : "#f0f0f0",
     tooltipBackground: isDarkMode ? "#1E293B" : "white",
     tooltipBorder: isDarkMode ? "#475569" : "#e5e7eb",
@@ -41,25 +43,17 @@ export function LeadsTasksChart({ startDate, endDate, segmentId = "all" }: Leads
   };
 
   if (isLoading) {
-    return (
-      <div className="w-full h-[300px]">
-        <Skeleton className="w-full h-full" />
-      </div>
-    );
+    return <ReportChartLoading />;
   }
 
   if (!data || !data.chartData || data.chartData.length === 0) {
-    return (
-      <div className="w-full h-[300px] flex items-center justify-center">
-        <p className="text-muted-foreground">No leads/tasks data available</p>
-      </div>
-    );
+    return <ReportState state="empty" message="No lead or task activity was recorded for these filters. Try another date range or segment." />;
   }
 
   return (
-    <div className="w-full h-[300px]">
+    <div role="img" aria-label="Daily leads created and task counts" className="h-[300px] w-full min-w-0 sm:h-[360px]">
       <ResponsiveContainer width="100%" height="100%">
-        <AreaChart data={data.chartData} margin={{ top: 10, right: 10, left: 10, bottom: 5 }}>
+        <AreaChart data={data.chartData} margin={{ top: 12, right: 12, left: 0, bottom: 0 }}>
           <defs>
             <linearGradient id="colorLeads" x1="0" y1="0" x2="0" y2="1">
               <stop offset="5%" stopColor={colors.leads} stopOpacity={0.25} />
@@ -76,20 +70,23 @@ export function LeadsTasksChart({ startDate, endDate, segmentId = "all" }: Leads
             axisLine={false}
             tickLine={false}
             tick={{ fontSize: 12, fill: colors.text }}
-            tickFormatter={(value) => {
-              const date = new Date(value);
-              return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-            }}
+            minTickGap={36}
+            interval="preserveStartEnd"
+            padding={{ left: 8, right: 8 }}
+            tickFormatter={(value) => activityDate(value)}
           />
           <YAxis
             axisLine={false}
             tickLine={false}
             tick={{ fontSize: 12, fill: colors.text }}
-            tickFormatter={(value) => value.toLocaleString()}
+            width={44}
+            allowDecimals={false}
+            domain={[0, 'auto']}
+            tickFormatter={compactActivityCount}
           />
           <Tooltip
             formatter={(value: number, name: string) => [
-              value.toLocaleString(),
+              value.toLocaleString("en-US"),
               name === 'leadsCreated' ? 'Leads' : name === 'tasks' ? 'Tasks' : name
             ]}
             labelStyle={{ color: isDarkMode ? '#9ca3af' : '#6b7280', marginBottom: '4px' }}
@@ -100,14 +97,13 @@ export function LeadsTasksChart({ startDate, endDate, segmentId = "all" }: Leads
               boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)'
             }}
             itemStyle={{ color: isDarkMode ? '#f3f4f6' : '#111827', fontWeight: 600 }}
-            labelFormatter={(value) => {
-              const date = new Date(value);
-              return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-            }}
+            labelFormatter={(value) => `${activityDate(String(value), true)} (UTC)`}
           />
-          <Legend wrapperStyle={{ paddingTop: '20px', color: colors.text }} iconType="circle" />
-          <Area type="monotone" dataKey="leadsCreated" stroke={colors.leads} strokeWidth={3} fillOpacity={1} fill="url(#colorLeads)" dot={false} activeDot={{ r: 6, strokeWidth: 0 }} name="Leads" />
-          <Area type="monotone" dataKey="tasks" stroke={colors.tasks} strokeWidth={3} fillOpacity={1} fill="url(#colorTasks)" dot={false} activeDot={{ r: 6, strokeWidth: 0 }} name="Tasks" />
+          <Legend wrapperStyle={{ paddingTop: '16px', fontSize: 12, color: colors.text }} iconType="circle" />
+          <Area type="linear" dataKey="leadsCreated" stroke={colors.leads} strokeWidth={2} fillOpacity={1} fill="url(#colorLeads)"
+            dot={data.chartData.length <= 14 ? { r: 3, strokeWidth: 0 } : false} connectNulls={false} isAnimationActive={false} activeDot={{ r: 5, strokeWidth: 0 }} name="Leads" />
+          <Area type="linear" dataKey="tasks" stroke={colors.tasks} strokeWidth={2} fillOpacity={1} fill="url(#colorTasks)"
+            dot={data.chartData.length <= 14 ? { r: 3, strokeWidth: 0 } : false} connectNulls={false} isAnimationActive={false} activeDot={{ r: 5, strokeWidth: 0 }} name="Tasks" />
         </AreaChart>
       </ResponsiveContainer>
     </div>

@@ -47,7 +47,7 @@ describe('Finder screen API authentication', () => {
     expect(count.data).toEqual(totals)
     expect(fetch).toHaveBeenCalledTimes(2)
     for (const suffix of ['', '/totals']) {
-      expect(fetch).toHaveBeenCalledWith(`${apiUrl}/api/finder/person_role_search${suffix}`, expect.objectContaining({
+      expect(fetch).toHaveBeenCalledWith(`/api/finder/person_role_search${suffix}`, expect.objectContaining({
         method: 'POST',
         headers: expect.objectContaining({ Authorization: 'Bearer test-user-token' }),
         body: JSON.stringify(payload)
@@ -73,7 +73,7 @@ describe('Finder screen API authentication', () => {
       { id: 42, text: 'Sales & Marketing' }
     ])
     expect(fetch).toHaveBeenCalledWith(
-      `${apiUrl}/api/finder/autocomplete/${category}?q=Sales%20%26%20Marketing&page=0&site_id=site-a`,
+      `/api/finder/autocomplete/${category}?q=Sales%20%26%20Marketing&page=0&site_id=site-a`,
       expect.objectContaining({
         method: 'GET', headers: expect.objectContaining({ Authorization: 'Bearer test-user-token' })
       })
@@ -85,7 +85,7 @@ describe('Finder screen API authentication', () => {
     const payload = { site_id: 'site-a', segment_id: 'segment-a', campaign_name: 'Founders', total_targets: 10 }
     await createFinderQuery(payload)
 
-    expect(fetch).toHaveBeenCalledWith(`${apiUrl}/api/finder/person_role_search/createQuery`, expect.objectContaining({
+    expect(fetch).toHaveBeenCalledWith('/api/finder/person_role_search/createQuery', expect.objectContaining({
       method: 'POST',
       headers: expect.objectContaining({ Authorization: 'Bearer test-user-token' }),
       body: JSON.stringify(payload)

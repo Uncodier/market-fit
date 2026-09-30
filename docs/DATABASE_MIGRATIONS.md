@@ -87,3 +87,58 @@ document tokens, quotation claims, and record access.
 Document the exact deployment command only after the repository has a canonical,
 checked-in workflow. Until then, do not copy ad hoc dashboard or CLI commands
 into automation.
+
+## Sale order attribution recovery
+
+`20260917220000_sale_order_attribution.sql` backfills the creator before creating
+its immutability trigger. If that trigger is already installed, replay can fail
+with `P0001: created_by_user_id is immutable` when a POS creator is still null.
+This is an existing/partially installed schema or replay scenario, not the normal
+first installation. Do not weaken the trigger to allow arbitrary null-to-user
+changes, and do not edit the historical migration.
+
+The self-contained forward correction is
+`supabase/migrations/20260929224000_repair_sale_order_attribution.sql`. It:
+
+- completes missing attribution columns, indexes, and guards;
+- takes an exclusive order-table lock, removes only the two attribution triggers,
+  fills missing historical values, and restores the original guards in one
+  transaction;
+- preserves non-null attribution, restricts backfills to same-site sales/leads,
+  and never infers a storefront creator or seller from site ownership;
+- retains historical POS cashiers even if they are no longer active members;
+  runtime validation remains unchanged;
+- leaves RLS, foreign keys, unrelated triggers, and grants in place.
+
+### Operator recovery procedure
+
+1. Confirm the target project and obtain approval before executing remote SQL.
+   Inspect its attribution columns, foreign keys, indexes, trigger definitions,
+   and `supabase_migrations.schema_migrations` entry for `20260917220000`.
+   `IF NOT EXISTS` does not validate incompatible pre-existing definitions.
+2. Schedule a maintenance window and pause related writes, including sales/lead
+   tenant reassignment. The exclusive lock blocks order reads and writes until
+   commit. Lock acquisition times out after five seconds rather than waiting
+   indefinitely; review the backfill size before running it.
+3. Execute the **complete corrective file** using the approved database-owner
+   workflow. Do not run its trigger-removal statements separately. A failure
+   rolls back both the data changes and trigger changes.
+4. Verify all attribution objects exist, both guards are enabled, populated
+   creators remain immutable, and seller/requester validation still rejects
+   invalid writes. Audit skipped cross-site links and existing invalid non-null
+   attribution separately; this repair does not overwrite historical values.
+5. Reconcile migration history using the approved Supabase workflow only after
+   schema and data verification. A runner blocked at the original timestamp
+   **cannot reach this later correction automatically**. If recovery was applied
+   out of order, account for both timestamps before resuming chronological
+   migrations. History repair only changes tracking; it does not execute SQL.
+   Do not blindly rerun the original: its unconditional updates can still fail
+   runtime validation for historical inactive sellers.
+
+The PostgreSQL regression suite is
+`__tests__/commerce/sale-order-attribution-migration.test.ts`. It starts a new
+socket-only cluster and never uses a configured database URL. Run it with
+`npm test -- --runInBand __tests__/commerce/sale-order-attribution-migration.test.ts`.
+It uses `/opt/homebrew/opt/postgresql@17/bin` by default; set
+`ATTRIBUTION_TEST_PG_BIN` to another local PostgreSQL binary directory if needed.
+The live cases are explicitly skipped when those binaries are unavailable.

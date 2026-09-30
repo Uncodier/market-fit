@@ -14,7 +14,7 @@ import { RadioGroup, RadioGroupItem } from "../ui/radio-group"
 import { Badge } from "../ui/badge"
 import { type SiteFormValues } from "./form-schema"
 import { cn } from "../../lib/utils"
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { NavigationLink } from "../navigation/NavigationLink"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { useSite } from "@/app/context/SiteContext"
@@ -22,6 +22,13 @@ import { getOutreachTimezone, isValidOutreachTimezone, isOutreachActivity, OUTRE
 import { OutreachActivityFields } from "./OutreachActivityFields"
 import { getUsableOutreachAccounts } from "./outreach-accounts"
 import { useOutreachSegments } from "./use-outreach-segments"
+import { IcpLeadGenerationFields } from "./IcpLeadGenerationFields"
+import { icpLeadGenerationSettingsSchema } from "./icp-lead-generation-settings"
+import { normalizeActivitySettings } from "./activity-settings"
+import { DailyStandupFields } from "./DailyStandupFields"
+import { dailyStandupSettingsSchema, normalizeDailyStandupSettings } from "./daily-standup-settings"
+import { acknowledgeActivitySave, getActivityFormUpdates } from "./activity-form-state"
+import { validatedActivityUpdates } from "./activity-settings"
 
 interface ActivitiesSectionProps {
   active: boolean
@@ -29,13 +36,13 @@ interface ActivitiesSectionProps {
   siteId?: string
 }
 
-type ActivityKey = keyof SiteFormValues["activities"]
+type ActivityKey = keyof ReturnType<typeof normalizeActivitySettings>
 
 const ACTIVITIES: { key: ActivityKey; title: string; description: string }[] = [
   {
     key: "daily_resume_and_stand_up",
     title: "Daily Resume and Stand Up",
-    description: "Generate a daily summary and stand-up, highlighting progress, blockers and next steps. Runs Monday through Friday."
+    description: "Generate a summary and stand-up, highlighting progress, blockers and next steps. Choose the weekdays and report sections below."
   },
   {
     key: "local_lead_generation",
@@ -85,6 +92,13 @@ export function ActivitiesSection({ active, onSave, siteId }: ActivitiesSectionP
   const [savingCard, setSavingCard] = useState<string | null>(null)
   const [errors, setErrors] = useState<Record<string, string[]>>({})
   const { currentSite } = useSite()
+  const activeSiteId = siteId || currentSite?.id
+  const saveScope = useRef({ siteId: activeSiteId })
+  useEffect(() => {
+    saveScope.current = { siteId: activeSiteId }
+    setSavingCard(null)
+    return () => { saveScope.current = { siteId: undefined } }
+  }, [activeSiteId])
   const segments = useOutreachSegments(active ? siteId || currentSite?.id : undefined)
   const accounts = getUsableOutreachAccounts(currentSite?.settings?.channels)
   const businessHours = form.watch("business_hours")
@@ -109,19 +123,29 @@ export function ActivitiesSection({ active, onSave, siteId }: ActivitiesSectionP
   }
 
   const handleSave = async (id: string) => {
-    if (!onSave) return
+    if (!onSave || savingCard) return
+    const scope = saveScope.current
     const validation = Object.fromEntries(OUTREACH_ACTIVITY_KEYS.map(key => [key, validate(key)]))
+    const icp = icpLeadGenerationSettingsSchema.safeParse(form.getValues("activities.icp_lead_generation"))
+    const standup = dailyStandupSettingsSchema.safeParse(form.getValues("activities.daily_resume_and_stand_up"))
+    validation.daily_resume_and_stand_up = standup.success ? [] : standup.error.issues.map(issue => issue.message)
+    validation.icp_lead_generation = icp.success ? [] : icp.error.issues.map(issue => issue.message)
     setErrors(validation)
-    if (Object.values(validation).some(messages => messages.length)) return
+    if (!icp.success || !standup.success || Object.values(validation).some(messages => messages.length)) return
     setSavingCard(id)
     try {
       const formData = form.getValues()
+      const updates = validatedActivityUpdates(
+        { ...formData.activities, icp_lead_generation: icp.data, daily_resume_and_stand_up: standup.data },
+        getActivityFormUpdates(form),
+      )
+      formData.activities = updates as SiteFormValues["activities"]
       const saved = await onSave(formData)
-      if (saved !== false) form.reset(formData)
+      if (saved !== false && saveScope.current === scope) acknowledgeActivitySave(form, updates)
     } catch (error) {
       console.error("Error saving activities:", error)
     } finally {
-      setSavingCard(null)
+      if (saveScope.current === scope) setSavingCard(null)
     }
   }
 
@@ -145,7 +169,8 @@ export function ActivitiesSection({ active, onSave, siteId }: ActivitiesSectionP
       {ACTIVITIES.map(({ key, title, description }) => {
         const status = form.watch(`activities.${key}.status` as const) as 'default' | 'inactive' | 'active' | undefined
         const isOutreach = isOutreachActivity(key)
-        const isInactive = status === 'inactive' || (isOutreach && status !== 'active')
+        const isIcp = key === 'icp_lead_generation'
+        const isInactive = !isIcp && (status === 'inactive' || (isOutreach && status !== 'active'))
         
         // Check dependency for assign_leads_to_team
         const isAssignLeads = key === 'assign_leads_to_team'
@@ -169,6 +194,7 @@ export function ActivitiesSection({ active, onSave, siteId }: ActivitiesSectionP
                 <div>
                   <div className="flex items-center gap-2">
                     <SectionCardTitle>{title}</SectionCardTitle>
+                    {isIcp && <Badge variant="secondary" className="text-xs">Always active</Badge>}
                     {key === "supervise_conversations" && (
                       <Badge variant="secondary" className="text-xs">
                         Beta
@@ -185,7 +211,7 @@ export function ActivitiesSection({ active, onSave, siteId }: ActivitiesSectionP
               </div>
             </SectionCardHeader>
             <SectionCardContent>
-              <FormField
+              {isIcp ? <IcpLeadGenerationFields siteId={siteId || currentSite?.id} /> : <FormField
                 control={form.control}
                 name={`activities.${key}.status` as const}
                 render={({ field }) => {
@@ -230,6 +256,14 @@ export function ActivitiesSection({ active, onSave, siteId }: ActivitiesSectionP
                         <RadioGroup
                           value={currentValue}
                           onValueChange={next => {
+                            if (isDailyResumeAndStandUp && next === "active") {
+                              const result = dailyStandupSettingsSchema.safeParse({
+                                ...normalizeDailyStandupSettings(form.getValues("activities.daily_resume_and_stand_up")), status: "active",
+                              })
+                              const messages = result.success ? [] : result.error.issues.map(issue => issue.message)
+                              setErrors(previous => ({ ...previous, [key]: messages }))
+                              if (messages.length) return
+                            }
                             if (isOutreach && next === "active") {
                               const messages = validate(key, true)
                               setErrors(previous => ({ ...previous, [key]: messages }))
@@ -282,14 +316,15 @@ export function ActivitiesSection({ active, onSave, siteId }: ActivitiesSectionP
                     </FormItem>
                   )
                 }}
-              />
+              />}
               {isOutreach && <OutreachActivityFields activityKey={key} accounts={accounts} {...segments} timezone={timezone} />}
+              {isDailyResumeAndStandUp && <DailyStandupFields />}
               {!!errors[key]?.length && <ul role="alert" className="mt-4 space-y-1 text-sm text-destructive">{errors[key].map(message => <li key={message}>{message}</li>)}</ul>}
             </SectionCardContent>
             <SectionCardFooter>
               <Button type="button" variant="outline" size="sm"
                 onClick={() => handleSave(key)}
-                disabled={savingCard === key || !form.formState.isDirty}
+                disabled={savingCard !== null || !form.formState.isDirty}
               >
                 {savingCard === key ? "Saving..." : "Save"}
               </Button>

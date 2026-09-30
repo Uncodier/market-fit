@@ -1,5 +1,17 @@
 import { createServiceClient } from "@/lib/supabase/server";
 
+type SiteInfo = {
+  id: string
+  name: string
+  logo_url: string | null
+  description?: string | null
+}
+
+type SiteQueryResult<T> = {
+  data: T | null
+  error: { message?: string; details?: string; hint?: string; code?: string } | null
+}
+
 export function toSiteSlug(name: string): string {
   return name
     .toLowerCase()
@@ -28,12 +40,12 @@ function formatDbError(error: { message?: string; details?: string; hint?: strin
   return formatted;
 }
 
-async function withTransientRetry<T extends { error: any }>(
-  run: () => Promise<T>,
+async function withTransientRetry<T>(
+  run: () => PromiseLike<SiteQueryResult<T>>,
   label: string,
   attempts = 3,
-): Promise<T> {
-  let last: T | undefined;
+): Promise<SiteQueryResult<T>> {
+  let last: SiteQueryResult<T> | undefined;
   for (let attempt = 0; attempt < attempts; attempt++) {
     last = await run();
     if (!last.error) return last;
@@ -65,13 +77,7 @@ async function loadSiteSettings(supabase: Awaited<ReturnType<typeof createServic
 
 export async function resolveSiteInfoBySlug(
   siteSlug: string,
-): Promise<{
-  id: string
-  name: string
-  logo_url: string | null
-  description?: string | null
-  settings?: any
-} | null> {
+): Promise<(SiteInfo & { settings?: any }) | null> {
   const supabase = await createServiceClient(true);
 
   const isUUID =
@@ -80,12 +86,13 @@ export async function resolveSiteInfoBySlug(
     );
 
   if (isUUID) {
-    const { data: site } = await withTransientRetry(
+    const { data: site } = await withTransientRetry<SiteInfo>(
       () =>
         supabase
           .from("sites")
           .select("id, name, logo_url, description")
           .eq("id", siteSlug)
+          .is("archived_at", null)
           .maybeSingle(),
       "getSiteInfoBySlug/uuid",
     );
@@ -105,24 +112,26 @@ export async function resolveSiteInfoBySlug(
   const prefixPattern = `${safeSlug.replace(/-/g, "%")}%`;
 
   const siteSelect = "id, name, logo_url, description" as const;
-  const exact = await withTransientRetry(
+  const exact = await withTransientRetry<SiteInfo[]>(
     () =>
       supabase
         .from("sites")
         .select(siteSelect)
         .ilike("name", safeSlug)
+        .is("archived_at", null)
         .limit(50),
     "getSiteInfoBySlug/slug-exact",
   );
 
   let candidates = !exact.error && exact.data?.length ? exact.data : null;
   if (!candidates) {
-    const prefixed = await withTransientRetry(
+    const prefixed = await withTransientRetry<SiteInfo[]>(
       () =>
         supabase
           .from("sites")
           .select(siteSelect)
           .ilike("name", prefixPattern)
+          .is("archived_at", null)
           .limit(50),
       "getSiteInfoBySlug/slug-prefix",
     );

@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
 
   return readThroughAnalyticsResponseCache({
     request,
-    namespace: "performance:tokens",
+    namespace: "performance:tokens:v2",
     siteId: access.siteId,
     lockTtlMs: 30_000,
     load: async () => {
@@ -69,6 +69,7 @@ export async function GET(request: NextRequest) {
 
     if (commandsError) {
       console.error("Error fetching commands tokens:", commandsError);
+      return NextResponse.json({ error: "Failed to load tokens" }, { status: 500 });
     }
 
 
@@ -107,6 +108,7 @@ export async function GET(request: NextRequest) {
 
     if (instanceLogsError) {
       console.error("Error fetching instance_logs tokens:", instanceLogsError);
+      return NextResponse.json({ error: "Failed to load tokens" }, { status: 500 });
     }
 
     console.log(`[Token Usage API] Data counts: commands=${commandsData?.length || 0}, instance_logs=${instanceLogsData?.length || 0}`);
@@ -155,7 +157,7 @@ export async function GET(request: NextRequest) {
 
       if (error) {
         console.error("Error fetching previous commands:", error);
-        break;
+        return NextResponse.json({ error: "Failed to load tokens" }, { status: 500 });
       }
 
       if (!batch || batch.length === 0) {
@@ -185,7 +187,7 @@ export async function GET(request: NextRequest) {
 
       if (error) {
         console.error("Error fetching previous instance_logs:", error);
-        break;
+        return NextResponse.json({ error: "Failed to load tokens" }, { status: 500 });
       }
 
       if (!batch || batch.length === 0) {
@@ -302,18 +304,7 @@ export async function GET(request: NextRequest) {
 
   } catch (error) {
     console.error("Error in tokens API:", error);
-    return NextResponse.json({
-      actual: 0,
-      percentChange: 0,
-      periodType: "monthly",
-      chartData: [],
-      breakdown: {
-        commands: 0,
-        instanceLogs: 0,
-        inputTokens: 0,
-        outputTokens: 0
-      }
-    });
+    return NextResponse.json({ error: "Failed to load tokens" }, { status: 500 });
   }
     },
   });

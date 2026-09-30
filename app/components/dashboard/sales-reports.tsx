@@ -1,282 +1,120 @@
 "use client"
 
-import React, { useState, useEffect } from "react"
+import { useState } from "react"
+import { startOfDay, subDays } from "date-fns"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/app/components/ui/card"
-import { useSite } from "@/app/context/SiteContext"
-import { useWidgetContext } from "@/app/context/WidgetContext"
-import { Skeleton } from "@/app/components/ui/skeleton"
-import { EmptyCard } from "@/app/components/ui/empty-card"
-import { PieChart, BarChart } from "@/app/components/ui/icons"
-import { BaseKpiWidget } from "@/app/components/dashboard/base-kpi-widget"
-import { SalesDistributionChart } from "@/app/components/dashboard/sales-distribution-chart"
-import { MonthlySalesEvolutionChart } from "@/app/components/dashboard/monthly-sales-evolution-chart"
-import { SalesBreakdownReport } from "@/app/components/dashboard/sales-breakdown-report"
-import { fetchWithRetry } from "@/app/utils/fetch-with-retry"
-import { startOfMonth, format, subDays, startOfDay, endOfDay } from "date-fns"
+import { Button } from "@/app/components/ui/button"
+import { ReportLoading } from "@/app/dashboard/ReportLoading"
+import { ReportDetails, ReportKpiGrid, ReportSection } from "./report-layout"
+import { BaseKpiWidget } from "./base-kpi-widget"
+import { SalesDistributionChart } from "./sales-distribution-chart"
+import { MonthlySalesEvolutionChart } from "./monthly-sales-evolution-chart"
+import { SalesBreakdownReport } from "./sales-breakdown-report"
+import { useSalesReport } from "./sales/use-sales-report"
+import { formatSalesChange, formatSalesMoney } from "@/lib/sales/report-format"
+import type { SalesMetric, SalesReportSection } from "@/lib/sales/report-types"
 
-interface SalesData {
-  totalSales: {
-    actual: number;
-    previous: number;
-    percentChange: number;
-    formattedActual: string;
-    formattedPrevious: string;
-  };
-  channelSales: {
-    online: {
-      amount: number;
-      prevAmount: number;
-      percentChange: number;
-    };
-    retail: {
-      amount: number;
-      prevAmount: number;
-      percentChange: number;
-    };
-  };
-  averageOrderValue: {
-    actual: number;
-    previous: number;
-    percentChange: number;
-  };
-  salesCategories: Array<{
-    name: string;
-    amount: number;
-    prevAmount: number;
-    percentChange: number;
-  }>;
-  monthlyData: Array<{
-    month: string;
-    onlineSales: number;
-    retailSales: number;
-  }>;
-  salesDistribution: Array<{
-    category: string;
-    percentage: number;
-    amount: number;
-  }>;
-  periodType: string;
-  noData?: boolean;
-  isDemoData?: boolean;
+export interface SalesReportsProps {
+  startDate?: Date
+  endDate?: Date
+  segmentId?: string
+  section?: SalesReportSection
+  embedded?: boolean
 }
 
-// Format period type for display
-function formatPeriodType(periodType: string): string {
-  switch (periodType) {
-    case "daily": return "yesterday";
-    case "weekly": return "last week";
-    case "monthly": return "last month";
-    case "quarterly": return "last quarter";
-    case "yearly": return "last year";
-    default: return "previous period";
+export function SalesReports({ startDate, endDate, segmentId = "all", section, embedded = false }: SalesReportsProps) {
+  const [fallback] = useState(() => ({ start: startOfDay(subDays(new Date(), 30)), end: new Date() }))
+  const [currency, setCurrency] = useState("")
+  const { data, error, isLoading, isValidating, mutate, enabled, invalidDates } = useSalesReport(
+    startDate ?? fallback.start, endDate ?? fallback.end, segmentId, currency,
+    section === undefined || section === "categories",
+  )
+  const availableCurrencies = error?.availableCurrencies?.length ? error.availableCurrencies : data?.availableCurrencies || []
+  const currencyPicker = availableCurrencies.length > 1 || currency ? (
+    <label className="flex items-center gap-2 text-sm">
+      Currency
+      <select aria-label="Sales currency" className="rounded-md border bg-background px-3 py-2" value={currency || data?.currency || ""}
+        onChange={(event) => setCurrency(event.target.value)}>
+        <option value="">Choose currency</option>
+        {Array.from(new Set([...availableCurrencies, ...(currency ? [currency] : [])])).map((code) => (
+          <option key={code} value={code}>{code === "UNSPECIFIED" ? "Currency unspecified" : code}</option>
+        ))}
+      </select>
+    </label>
+  ) : null
+
+  // SWR retains the last error while a retry is in flight; pending takes precedence.
+  if (isLoading || isValidating) return <ReportLoading report="sales" section={section} />
+  if (invalidDates || !enabled) {
+    return <Card><CardHeader><CardTitle>Sales report unavailable</CardTitle>
+      <CardDescription>{invalidDates ? "Select a valid date range." : "Select a site and enable reports to view sales data."}</CardDescription>
+    </CardHeader></Card>
   }
+  // Never render a failed refresh as a successful empty report or silently show stale figures.
+  if (error) {
+    return <Card><CardHeader>
+      <CardTitle>{error.status === 422 ? "Choose a sales currency" : "Sales report could not be loaded"}</CardTitle>
+      <CardDescription role="alert">{error.message}</CardDescription>
+    </CardHeader><CardContent className="flex flex-wrap items-center gap-3">
+      {currencyPicker}
+      <Button variant="outline" onClick={() => void mutate()} disabled={isValidating}>Retry</Button>
+    </CardContent></Card>
+  }
+  if (!data) return <ReportLoading report="sales" section={section} />
+
+  const money = (value: number) => formatSalesMoney(value, data.currency)
+  const kpi = (title: string, value: SalesMetric, monetary = true) => (
+    <BaseKpiWidget key={title} title={title} value={monetary ? money(value.actual) : value.actual}
+      changeText={`${formatSalesChange(value.percentChange)} · previous period`}
+      isPositiveChange={value.percentChange == null || value.percentChange === 0 ? undefined : value.percentChange > 0}
+      isLoading={false} />
+  )
+  const showSummary = !section || section === "summary"
+  const showChannels = !section || section === "channels"
+  const showCategories = !section || section === "categories"
+
+  return <ReportSection
+    embedded={embedded}
+    title={section === "channels" ? "Sales channels" : section === "categories" ? "Sales categories" : "Sales summary"}
+    description={`${data.metadata.startDate} – ${data.metadata.endDate} · ${data.currency === "UNSPECIFIED" ? "Currency unspecified" : data.currency} · Confirmed sales, not cash received`}
+    action={currencyPicker}>
+    {data.noData && <div role="status" className="rounded-lg border border-dashed px-4 py-3 text-sm">
+      <p className="font-medium">No sales in this period</p>
+      <p className="mt-1 text-muted-foreground">No confirmed sales match this site, segment, date range and currency. Previous-period figures remain visible for comparison.</p>
+    </div>}
+
+    {showSummary && <ReportKpiGrid columns={3}>
+      {kpi("Confirmed sales", data.totalSales)}
+      {kpi("Transactions", data.transactions, false)}
+      {kpi("Average sale value", data.averageOrderValue)}
+    </ReportKpiGrid>}
+    {showChannels && <>
+      <ReportKpiGrid columns={3}>
+        {Object.entries(data.channelSales).map(([key, value]) => kpi(
+          key === "other" ? "Other / unassigned" : key === "online" ? "Online sales" : "Retail sales",
+          { actual: value.amount, previous: value.prevAmount, percentChange: value.percentChange },
+        ))}
+      </ReportKpiGrid>
+    </>}
+    {(showSummary || showChannels) && <div className={showChannels
+      ? "grid min-w-0 items-stretch gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] xl:grid-rows-[auto_1fr] xl:[&>*]:row-span-2 xl:[&>*]:grid xl:[&>*]:grid-rows-subgrid xl:[&>*]:gap-y-0 [&>*]:min-w-0"
+      : "min-w-0"}>
+      <MonthlySalesEvolutionChart data={data.monthlyData} dailyData={data.dailyData}
+        startDate={startDate ?? data.metadata.startDate} endDate={endDate ?? data.metadata.endDate}
+        coverage={data.metadata.trendCoverage} currency={data.currency} byChannel={showChannels}
+        showPeriod={!embedded} isLoading={false} dataReady />
+      {showChannels && <SalesDistributionChart data={data.salesDistribution} currency={data.currency} isLoading={false} dataReady />}
+    </div>}
+    {showCategories && <>
+      <p className="text-sm text-muted-foreground">{data.transactions.actual} transactions · {money(data.totalSales.actual)} this period · {money(data.totalSales.previous)} in the previous period.</p>
+      <SalesBreakdownReport data={data.salesCategories} currency={data.currency} isLoading={false} dataReady />
+    </>}
+    <ReportDetails summary="Sales basis and comparisons">
+      <p>{data.metadata.startDate} – {data.metadata.endDate}; compared with {data.metadata.prevStartDate} – {data.metadata.prevEndDate} (equal-length period).</p>
+      <p>{data.metadata.basis}</p>
+      <p>{data.metadata.dateBasis} Amounts: {data.currency === "UNSPECIFIED" ? "currency unspecified" : data.currency}; no currency conversion.</p>
+      {showChannels && <p>Online includes online, shop and marketplace sources. Retail includes retail and POS; all other sources remain unassigned. Total: {money(data.totalSales.actual)} across {data.transactions.actual} transactions.</p>}
+      {showCategories && <p>Category totals allocate sale amounts proportionally to top-level order item subtotals; sales without items use their product type or Uncategorized.</p>}
+    </ReportDetails>
+  </ReportSection>
 }
-
-// Format currency
-function formatCurrency(value: number): string {
-  return value.toLocaleString('en-US', {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0
-  });
-}
-
-// Default start and end dates for fallback
-const defaultStartDate = startOfMonth(new Date());
-const defaultEndDate = new Date();
-
-interface SalesReportsProps {
-  startDate?: Date;
-  endDate?: Date;
-  segmentId?: string;
-}
-
-export function SalesReports({ 
-  startDate: propStartDate, 
-  endDate: propEndDate,
-  segmentId = "all" 
-}: SalesReportsProps) {
-  const { currentSite } = useSite();
-  const { shouldExecuteWidgets } = useWidgetContext();
-  const [salesData, setSalesData] = useState<SalesData | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [dataReady, setDataReady] = useState(false);
-  
-  // Use state for dates with fallback values
-  const [startDate, setStartDate] = useState<Date>(propStartDate || startOfDay(subDays(new Date(), 30)));
-  const [endDate, setEndDate] = useState<Date>(propEndDate || endOfDay(new Date()));
-  
-  // Update local state when props change
-  useEffect(() => {
-    if (propStartDate) {
-      setStartDate(propStartDate);
-    }
-    if (propEndDate) {
-      setEndDate(propEndDate);
-    }
-  }, [propStartDate, propEndDate]);
-  
-  useEffect(() => {
-    let isMounted = true;
-    
-    const fetchSalesData = async () => {
-      // Global widget protection
-      if (!shouldExecuteWidgets) {
-        console.log("[SalesReports] Widget execution disabled by context");
-        return;
-      }
-
-      if (!currentSite || currentSite.id === "default") return;
-      
-      if (isMounted) {
-        setIsLoading(true);
-        setDataReady(false);
-      }
-      
-      try {
-        console.log(`[SalesReports] Fetching sales data with: startDate=${format(startDate, "yyyy-MM-dd")}, endDate=${format(endDate, "yyyy-MM-dd")}, segmentId=${segmentId}`);
-        
-        const params = new URLSearchParams();
-        params.append("siteId", currentSite.id);
-        params.append("startDate", format(startDate, "yyyy-MM-dd"));
-        params.append("endDate", format(endDate, "yyyy-MM-dd"));
-        params.append("useDemoData", "true");
-        if (segmentId !== "all") {
-          params.append("segmentId", segmentId);
-        }
-        
-        const response = await fetchWithRetry(
-          fetch,
-          `/api/revenue?${params.toString()}`,
-          { maxRetries: 3 }
-        );
-        
-        // Check if request was cancelled or component unmounted
-        if (!response || !isMounted) {
-          console.log("[SalesReports] Request was cancelled or component unmounted");
-          return; // Exit early, don't update state for cancelled requests
-        }
-        
-        const data = await response.json();
-        console.log("[SalesReports] Data received:", data);
-        
-        if (isMounted) {
-          setSalesData(data);
-          setDataReady(true);
-        }
-      } catch (error) {
-        // Ignore AbortError as it's handled in the 
-        if (error instanceof DOMException && error.name === 'AbortError') {
-          console.log("[SalesReports] Request was aborted");
-          return;
-        }
-        
-        console.error("Error fetching sales data:", error);
-        // Use default data structure when API fails
-        if (isMounted) {
-          setSalesData(null);
-        }
-      } finally {
-        if (isMounted) {
-          setIsLoading(false);
-        }
-      }
-    };
-
-    fetchSalesData();
-    
-    // Cleanup function
-    return () => {
-      isMounted = false;
-    };
-  }, [
-    shouldExecuteWidgets,
-    startDate, 
-    endDate, 
-    currentSite?.id,
-    segmentId
-  ]);
-  
-  // Check if categories data is empty
-  const hasCategoriesData = salesData?.salesCategories && salesData.salesCategories.length > 0;
-
-  // Format values for KPI widgets
-  const formatTotalSales = salesData?.totalSales?.formattedActual || "0";
-  const totalSalesChange = salesData?.totalSales?.percentChange || 0;
-  const totalSalesChangeText = `${totalSalesChange.toFixed(1)}% from ${formatPeriodType(salesData?.periodType || 'previous period')}`;
-  
-  // Online sales from channelSales
-  const onlineSalesAmount = salesData?.channelSales?.online?.amount || 0;
-  const onlineSalesChange = salesData?.channelSales?.online?.percentChange || 0;
-  const onlineSalesChangeText = `${onlineSalesChange.toFixed(1)}% from ${formatPeriodType(salesData?.periodType || 'previous period')}`;
-  
-  // Retail sales from channelSales
-  const retailSalesAmount = salesData?.channelSales?.retail?.amount || 0;
-  const retailSalesChange = salesData?.channelSales?.retail?.percentChange || 0;
-  const retailSalesChangeText = `${retailSalesChange.toFixed(1)}% from ${formatPeriodType(salesData?.periodType || 'previous period')}`;
-  
-  // Average order value
-  const aovValue = salesData?.averageOrderValue?.actual || 0;
-  const aovChange = salesData?.averageOrderValue?.percentChange || 0;
-  const aovChangeText = `${aovChange.toFixed(1)}% from ${formatPeriodType(salesData?.periodType || 'previous period')}`;
-
-  return (
-    <div className="space-y-6">
-      {/* KPI Widgets Row */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <BaseKpiWidget
-          title="Total Sales"
-          tooltipText="Sum of all sales revenue across all channels"
-          value={`$${formatTotalSales}`}
-          changeText={totalSalesChangeText}
-          isPositiveChange={totalSalesChange > 0}
-          isLoading={isLoading}
-        />
-        <BaseKpiWidget
-          title="Online Sales"
-          tooltipText="Revenue from online transactions and digital channels"
-          value={`$${formatCurrency(onlineSalesAmount)}`}
-          changeText={onlineSalesChangeText}
-          isPositiveChange={onlineSalesChange > 0}
-          isLoading={isLoading}
-        />
-        <BaseKpiWidget
-          title="Retail Sales"
-          tooltipText="Revenue from in-store and physical retail channels"
-          value={`$${formatCurrency(retailSalesAmount)}`}
-          changeText={retailSalesChangeText}
-          isPositiveChange={retailSalesChange > 0}
-          isLoading={isLoading}
-        />
-        <BaseKpiWidget
-          title="Average Order Value"
-          tooltipText="Average amount spent per order or transaction"
-          value={`$${formatCurrency(aovValue)}`}
-          changeText={aovChangeText}
-          isPositiveChange={aovChange > 0}
-          isLoading={isLoading}
-        />
-      </div>
-      
-      {/* Charts Section - Pie and Bar side by side */}
-      <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
-        <SalesDistributionChart 
-          data={salesData?.salesDistribution || []}
-          isLoading={isLoading}
-          dataReady={dataReady}
-        />
-        <MonthlySalesEvolutionChart
-          data={salesData?.monthlyData || []}
-          isLoading={isLoading}
-          dataReady={dataReady}
-        />
-      </div>
-      
-      {/* Sales Breakdown Report Section */}
-      <SalesBreakdownReport
-        data={salesData?.salesCategories || []}
-        isLoading={isLoading}
-        dataReady={dataReady}
-      />
-    </div>
-  );
-} 

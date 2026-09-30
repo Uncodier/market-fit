@@ -31,7 +31,7 @@ export async function GET(request: Request) {
         : Promise.resolve({ data: [], error: null }),
       
       detailId && siteIds.includes(detailId)
-        ? admin.from('sites').select('id, logo_url, tracking, resource_urls').eq('id', detailId).single()
+        ? admin.from('sites').select('id, logo_url, tracking, resource_urls').eq('id', detailId).is('archived_at', null).single()
         : Promise.resolve({ data: null, error: null })
     ])
     

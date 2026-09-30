@@ -52,11 +52,12 @@ describe('accounting builders', () => {
         amount: 128,
         amount_due: 128,
         sale_date: '2026-08-13',
-        payments: [{ amount: 160 }],
+          payments: [{ amount: 160, date: '2026-08-13' }],
       },
       null
     )
-    expect(draft!.lines.find(l => l.accountCode === '1000')?.debit).toBe(128)
+    expect(draft!.lines.find(l => l.accountCode === '1000')?.debit).toBe(160)
+    expect(draft!.lines.find(l => l.accountCode === '2300')?.credit).toBe(32)
     expect(draft!.lines.find(l => l.accountCode === '1100')).toBeUndefined()
   })
 

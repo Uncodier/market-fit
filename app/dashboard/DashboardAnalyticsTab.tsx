@@ -1,16 +1,19 @@
 "use client"
 
 import dynamic from "next/dynamic"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/app/components/ui/card"
+import { Card } from "@/app/components/ui/card"
 import { SegmentDonut } from "@/app/components/dashboard/segment-donut"
+import { ReportDetails, ReportSection as VisualSection } from "@/app/components/dashboard/report-layout"
+import { ReportTableLoading } from "@/app/components/dashboard/report-visual-loading"
+import type { ReportSection } from "./report-sections"
 
 const CohortTables = dynamic(
   () => import("@/app/components/dashboard/cohort-tables").then((m) => m.CohortTables),
-  { ssr: false }
+  { ssr: false, loading: () => <ReportTableLoading /> }
 )
 const LeadsCohortTables = dynamic(
   () => import("@/app/components/dashboard/leads-cohort-tables").then((m) => m.LeadsCohortTables),
-  { ssr: false }
+  { ssr: false, loading: () => <ReportTableLoading /> }
 )
 
 export function DashboardAnalyticsTab({
@@ -18,102 +21,60 @@ export function DashboardAnalyticsTab({
   segmentId,
   startDate,
   endDate,
-  formattedTotal,
-  onTotalUpdate,
+  section = "distribution",
+  embedded = false,
 }: {
   t: (key: string) => string
   segmentId: string
   startDate: Date
   endDate: Date
-  formattedTotal: string
-  onTotalUpdate: (total: string) => void
+  section?: ReportSection<"analytics">
+  embedded?: boolean
 }) {
+  const filters = { segmentId, startDate, endDate }
+  if (section === "customers") return (
+    <VisualSection embedded={embedded} title={t("dashboard.analytics.clientCohort.title") || "Client Cohort Analysis"}
+      description="Follow identified customers from their first confirmed sale observed in this date range.">
+      <CohortTables {...filters} />
+    </VisualSection>
+  )
+  if (section === "leads") return (
+    <VisualSection embedded={embedded} title={t("dashboard.analytics.leadCohort.title") || "Lead Cohort Analysis"}
+      description="Lead cohorts by creation date and recorded engagement, not estimated retention.">
+      <LeadsCohortTables {...filters} />
+    </VisualSection>
+  )
   return (
-    <>
-      <div className="grid gap-4 grid-cols-2 lg:grid-cols-4 xl:grid-cols-4 min-h-[160px]">
-        <Card className="col-span-1">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base">{t("dashboard.analytics.clientsBySegment.title") || "Clients by Segment"}</CardTitle>
-            <CardDescription className="text-xs">
-              {t("dashboard.analytics.clientsBySegment.desc") || "Distribution of clients across segments"}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="pt-0">
-            <SegmentDonut segmentId={segmentId} startDate={startDate} endDate={endDate} endpoint="clients-by-segment" />
-          </CardContent>
-        </Card>
-        <Card className="col-span-1">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base">{t("dashboard.analytics.revenueBySegment.title") || "Revenue by Segment"}</CardTitle>
-            <CardDescription className="text-xs">
-              {t("dashboard.analytics.revenueBySegment.desc") || "Distribution of revenue across segments"}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="pt-0">
-            <SegmentDonut
-              segmentId={segmentId}
-              startDate={startDate}
-              endDate={endDate}
-              endpoint="revenue-by-segment"
-              formatValues={true}
-            />
-          </CardContent>
-        </Card>
-        <Card className="col-span-1">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base">{t("dashboard.analytics.clientsByCampaign.title") || "Clients by Campaign"}</CardTitle>
-            <CardDescription className="text-xs">
-              {t("dashboard.analytics.clientsByCampaign.desc") || "Distribution of clients across campaigns"}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="pt-0">
-            <SegmentDonut segmentId={segmentId} startDate={startDate} endDate={endDate} endpoint="clients-by-campaign" />
-          </CardContent>
-        </Card>
-        <Card className="col-span-1">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base">{t("dashboard.analytics.revenueByCampaign.title") || "Revenue by Campaign"}</CardTitle>
-            <CardDescription className="text-xs">
-              {t("dashboard.analytics.revenueByCampaign.desc") || "Revenue across campaigns"}
-              {formattedTotal ? ` - ${formattedTotal}` : ""}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="pt-0">
-            <SegmentDonut
-              segmentId={segmentId}
-              startDate={startDate}
-              endDate={endDate}
-              endpoint="revenue-by-campaign"
-              formatValues={true}
-              onTotalUpdate={onTotalUpdate}
-            />
-          </CardContent>
-        </Card>
-      </div>
-      <div className="grid gap-4 grid-cols-1">
-        <Card>
-          <CardHeader>
-            <CardTitle>{t("dashboard.analytics.clientCohort.title") || "Client Cohort Analysis"}</CardTitle>
-            <CardDescription>
-              {t("dashboard.analytics.clientCohort.desc") || "Week-to-week retention metrics for users with at least 1 paid invoice (standardized)."}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <CohortTables segmentId={segmentId} startDate={startDate} endDate={endDate} />
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle>{t("dashboard.analytics.leadCohort.title") || "Lead Cohort Analysis"}</CardTitle>
-            <CardDescription>
-              {t("dashboard.analytics.leadCohort.desc") || "Week-to-week lead retention metrics - tracking lead engagement over time (standardized)."}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <LeadsCohortTables segmentId={segmentId} startDate={startDate} endDate={endDate} />
-          </CardContent>
-        </Card>
-      </div>
-    </>
+    <div className="min-w-0 space-y-6">
+      {(["segment", "campaign"] as const).map(dimension => {
+        const label = dimension === "segment" ? "Segment" : "Campaign"
+        return (
+          <VisualSection key={dimension} title={`${label} comparison`}
+            description={dimension === "segment" ? "Compare lead distribution with recorded sale amounts by segment." : "Compare attribution across active campaigns."}>
+            <Card className="grid min-w-0 grid-cols-1 divide-y shadow-none lg:grid-cols-2 lg:divide-x lg:divide-y-0">
+              <div className="min-w-0 space-y-4 p-4 sm:p-5">
+                <div className="space-y-1">
+                  <h3 className="text-sm font-semibold">Leads by {label}</h3>
+                  <p className="text-xs text-muted-foreground">Contact count · share of displayed results</p>
+                </div>
+                <SegmentDonut {...filters} showTotal variant="compact" endpoint={`clients-by-${dimension}`} />
+              </div>
+              <div className="min-w-0 space-y-4 p-4 sm:p-5">
+                <div className="space-y-1">
+                  <h3 className="text-sm font-semibold">Recorded Sales by {label}</h3>
+                  <p className="text-xs text-muted-foreground">Reported amounts · all statuses</p>
+                </div>
+                <SegmentDonut {...filters} showTotal variant="compact" endpoint={`revenue-by-${dimension}`} formatValues />
+              </div>
+            </Card>
+          </VisualSection>
+        )
+      })}
+      <ReportDetails summary="Attribution and source definitions">
+        <p>Lead counts include created leads and contacts linked to sales, grouped by segment or attributed to active campaigns.</p>
+        <p>Sale amounts use creation date across all statuses. Currency is not provided by this source. These distributions are not confirmed revenue or cash receipts; use Sales for currency-specific confirmed totals.</p>
+        <p>Each measure shows its own share of displayed results. Contact counts and sale amounts have different units and should not be added together.</p>
+      </ReportDetails>
+    </div>
   )
 }

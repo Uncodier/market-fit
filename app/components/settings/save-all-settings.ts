@@ -1,5 +1,5 @@
 import { saveEmailCredentials } from "./save-email-credentials"
-import { normalizeActivitySettings } from "./activity-settings"
+import { mergeActivitySettings, validatedActivityUpdates } from "./activity-settings"
 import { validateActivitiesForSave } from "./outreach-save-validation"
 import { toast } from "sonner"
 import { type SiteFormValues } from "./form-schema"
@@ -49,7 +49,8 @@ export const handleSave = async (data: SiteFormValues, options: SaveOptions) => 
       business_hours, goals: rawGoals, swot: rawSwot, marketing_budget, marketing_channels, 
       social_media, company, customer_journey, copywriting
     } = data;
-    const activities = await validateActivitiesForSave(data.activities, currentSite.settings?.channels, currentSite.id, currentSite.settings?.business_hours);
+    const validatedActivities = await validateActivitiesForSave(mergeActivitySettings(currentSite.settings?.activities, data.activities), currentSite.settings?.channels, currentSite.id, currentSite.settings?.business_hours);
+    const activities = validatedActivityUpdates(validatedActivities, data.activities);
     
     // Create settingsData object explicitly without any tracking fields
     const settingsData = {
@@ -316,7 +317,7 @@ export const handleSave = async (data: SiteFormValues, options: SaveOptions) => 
         retention: { metrics: [], actions: [], tactics: [] },
         referral: { metrics: [], actions: [], tactics: [] }
       },
-      activities: normalizeActivitySettings(settingsData.activities)
+      activities: settingsData.activities
     };
     
     await saveEmailCredentials(data, currentSite, settings)

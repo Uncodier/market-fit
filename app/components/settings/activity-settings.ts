@@ -1,24 +1,52 @@
 import { z } from "zod"
 import { isOutreachChannel, normalizeOutreachChannelAccounts, normalizeOutreachSettings, validateOutreachSettings, type OutreachActivityKey } from "@/lib/outreach-settings"
+import { icpLeadGenerationSettingsSchema, normalizeIcpLeadGenerationSettings } from "./icp-lead-generation-settings"
+import { dailyStandupSettingsSchema, normalizeDailyStandupSettings } from "./daily-standup-settings"
 
 const status = (value: any) => value?.status ?? value
-const standard = (value: any) => ({ status: status(value) === "inactive" ? "inactive" as const : "default" as const })
-const optIn = (value: any) => ({ status: ["active", "default"].includes(status(value)) ? "active" as const : "inactive" as const })
+const record = (value: unknown): Record<string, unknown> => value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {}
+const statusPatch = (value: unknown) => typeof value === "string" ? { status: value } : record(value)
+const standard = (value: any) => ({ ...record(value), status: status(value) === "inactive" ? "inactive" as const : "default" as const })
+const optIn = (value: any) => ({ ...record(value), status: ["active", "default"].includes(status(value)) ? "active" as const : "inactive" as const })
 
 /** Shared by hydration, form defaults and both save paths so activity parameters survive round trips. */
 export function normalizeActivitySettings(value: any = {}) {
-  const data = value || {}
+  const data = record(value)
   return {
-    daily_resume_and_stand_up: { status: status(data.daily_resume_and_stand_up) === "active" ? "active" as const : "inactive" as const },
+    ...data,
+    daily_resume_and_stand_up: normalizeDailyStandupSettings(data.daily_resume_and_stand_up),
     local_lead_generation: standard(data.local_lead_generation),
-    icp_lead_generation: standard(data.icp_lead_generation),
-    leads_initial_cold_outreach: normalizeOutreachSettings(data.leads_initial_cold_outreach),
-    leads_follow_up: normalizeOutreachSettings(data.leads_follow_up),
+    icp_lead_generation: normalizeIcpLeadGenerationSettings(data.icp_lead_generation),
+    leads_initial_cold_outreach: { ...record(data.leads_initial_cold_outreach), ...normalizeOutreachSettings(data.leads_initial_cold_outreach) },
+    leads_follow_up: { ...record(data.leads_follow_up), ...normalizeOutreachSettings(data.leads_follow_up) },
     email_sync: standard(data.email_sync),
     assign_leads_to_team: optIn(data.assign_leads_to_team),
     notify_team_on_inbound_conversations: standard(data.notify_team_on_inbound_conversations),
     supervise_conversations: optIn(data.supervise_conversations),
   }
+}
+
+/** Merge before applying defaults so partial updates cannot reset neighboring activities. */
+export function mergeActivitySettings(existing: unknown, updates: unknown) {
+  const previous = record(existing)
+  const incoming = record(updates)
+  return normalizeActivitySettings({
+    ...previous,
+    ...Object.fromEntries(Object.entries(incoming).map(([key, value]) => [
+      key,
+      typeof value === "string" || (value && typeof value === "object" && !Array.isArray(value))
+        ? { ...statusPatch(previous[key]), ...statusPatch(value) } : value,
+    ])),
+  })
+}
+
+/** Keep a validated update partial until the writer merges it with the latest readable row. */
+export function validatedActivityUpdates(validated: unknown, updates: unknown) {
+  const normalized = record(validated)
+  return Object.fromEntries(Object.entries(record(updates)).map(([key, value]) => [
+    key,
+    Object.fromEntries(Object.keys(statusPatch(value)).map(parameter => [parameter, record(normalized[key])[parameter]])),
+  ]))
 }
 
 function outreachSchema(key: OutreachActivityKey) {
@@ -33,23 +61,23 @@ function outreachSchema(key: OutreachActivityKey) {
     daily_message_limit: z.number().int().min(1).max(10000).default(30),
     max_unanswered_messages: z.number().int().min(1).max(100).default(3),
     weekdays: z.array(z.number().int().min(0).max(6)).default([2, 3, 4]),
-  }).default({}).superRefine((value, ctx) => {
+  }).passthrough().default({}).superRefine((value, ctx) => {
     for (const error of validateOutreachSettings(value, key)) {
       ctx.addIssue({ code: z.ZodIssueCode.custom, path: [error.field], message: error.message })
     }
   }))
 }
 
-const standardSchema = z.object({ status: z.enum(["default", "inactive"]).default("default") }).default({})
-const optInSchema = z.object({ status: z.enum(["inactive", "active"]).default("inactive") }).default({})
+const standardSchema = z.object({ status: z.enum(["default", "inactive"]).default("default") }).passthrough().default({})
+const optInSchema = z.object({ status: z.enum(["inactive", "active"]).default("inactive") }).passthrough().default({})
 export const activitiesSchema = z.object({
-  daily_resume_and_stand_up: optInSchema,
+  daily_resume_and_stand_up: dailyStandupSettingsSchema,
   local_lead_generation: standardSchema,
-  icp_lead_generation: standardSchema,
+  icp_lead_generation: icpLeadGenerationSettingsSchema,
   leads_initial_cold_outreach: outreachSchema("leads_initial_cold_outreach"),
   leads_follow_up: outreachSchema("leads_follow_up"),
   email_sync: standardSchema,
   assign_leads_to_team: optInSchema,
   notify_team_on_inbound_conversations: standardSchema,
   supervise_conversations: optInSchema,
-}).default({})
+}).passthrough().default({})

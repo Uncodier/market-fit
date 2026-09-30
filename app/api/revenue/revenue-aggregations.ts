@@ -1,219 +1,126 @@
-import { subMonths } from 'date-fns';
-import { isRecognizedRevenueSale } from '@/lib/sales/recognized-sale';
+import { isRecognizedRevenueSale } from "@/lib/sales/recognized-sale"
+import { salesPercentChange } from "@/lib/sales/report-format"
+import { shiftDay } from "@/lib/sales/report-period"
+import type { SalesChannelAmounts, SalesDailyTrendPoint, SalesTrendPoint } from "@/lib/sales/report-types"
+import { readSalesPages, type ReportSale, type SalesClient } from "@/app/api/sales/sales-query"
 
-export { isRecognizedRevenueSale };
-
-const ONLINE_SOURCES = new Set(['online', 'shop', 'marketplace']);
-const RETAIL_SOURCES = new Set(['retail', 'pos']);
+export { isRecognizedRevenueSale }
+export const percentChangeFrom = salesPercentChange
 
 export function isOnlineSource(source: string | null | undefined): boolean {
-  return !!source && ONLINE_SOURCES.has(source);
+  return ["online", "shop", "marketplace"].includes(source?.toLowerCase() || "")
 }
 
 export function isRetailSource(source: string | null | undefined): boolean {
-  return !!source && RETAIL_SOURCES.has(source);
+  return ["retail", "pos"].includes(source?.toLowerCase() || "")
 }
 
-export function getSalesAmount(sale: any): number {
-  if (!sale || sale.amount == null) return 0;
-  const amount =
-    typeof sale.amount === 'number'
-      ? sale.amount
-      : parseFloat(String(sale.amount).replace(/[^0-9.-]+/g, ''));
-  return isNaN(amount) ? 0 : amount;
+export function getSalesAmount(sale: { amount?: unknown } | null): number {
+  if (sale?.amount == null) return 0
+  const amount = Number(sale.amount)
+  if (!Number.isFinite(amount)) throw new Error("Invalid sale amount")
+  return amount
 }
 
-export function percentChangeFrom(previous: number, current: number): number {
-  let change = 0;
-  if (previous > 0) {
-    change = ((current - previous) / previous) * 100;
-  } else if (current > 0) {
-    change = 100;
-  }
-  return isNaN(change) ? 0 : change;
-}
-
-export function saleCalendarDate(sale: {
-  sale_date?: string | null;
-  created_at?: string | null;
-}): string {
-  if (sale?.sale_date && /^\d{4}-\d{2}-\d{2}/.test(sale.sale_date)) {
-    return sale.sale_date.slice(0, 10);
-  }
-  if (sale?.created_at) return String(sale.created_at).slice(0, 10);
-  return '';
+export function saleCalendarDate(sale: { sale_date?: string | null; created_at?: string | null }): string {
+  return (sale.sale_date || sale.created_at || "").slice(0, 10)
 }
 
 export function salesInLocalRange<T extends {
-  status?: string | null;
-  amount_due?: number | string | null;
-  sale_date?: string | null;
-  created_at?: string | null;
-}>(sales: T[], startDate: string, endInclusive: string): T[] {
-  return sales.filter((sale) => {
-    if (!isRecognizedRevenueSale(sale)) return false;
-    const date = saleCalendarDate(sale);
-    return date >= startDate && date <= endInclusive;
-  });
+  status?: string | null; sale_date?: string | null; created_at?: string | null
+}>(sales: T[], start: string, end: string): T[] {
+  return sales.filter((sale) => isRecognizedRevenueSale(sale) &&
+    saleCalendarDate(sale) >= start && saleCalendarDate(sale) <= end)
 }
 
 export function mergeSalesById<T extends { id?: string }>(...groups: Array<T[] | null | undefined>): T[] {
-  const byId = new Map<string, T>();
-  for (const group of groups) {
-    for (const sale of group || []) {
-      if (sale?.id) byId.set(sale.id, sale);
-    }
-  }
-  return Array.from(byId.values());
+  return Array.from(new Map(groups.flatMap((group) => group || [])
+    .filter((sale) => sale.id).map((sale) => [sale.id, sale])).values())
 }
 
-type SupabaseLike = {
-  from: (table: string) => any;
-};
+type Order = { id: string; sale_id: string }
+type CategoryRelation = { name: string }
+type CatalogRelation = { category: CategoryRelation | CategoryRelation[] | null }
+type OrderItem = {
+  id: string
+  sale_order_id: string
+  subtotal: number | string
+  parent_sale_order_item_id: string | null
+  catalog_item: CatalogRelation | CatalogRelation[] | null
+}
 
-/**
- * Aggregate sale amounts by catalog category (via order line items).
- * Falls back to product_type / product_category / Other for sales without items.
- */
-export async function aggregateSalesByCategory(
-  supabase: SupabaseLike,
-  sales: any[],
-): Promise<Map<string, number>> {
-  const categories = new Map<string, number>();
-  if (!sales.length) return categories;
-
-  const add = (name: string, amount: number) => {
-    if (amount === 0) return;
-    categories.set(name, (categories.get(name) || 0) + amount);
-  };
-
-  const saleIds = sales.map((s) => s.id).filter(Boolean);
-  const { data: orders } = await supabase
-    .from('sale_orders')
-    .select('id, sale_id')
-    .in('sale_id', saleIds);
-
-  const orderBySaleId = new Map<string, string>();
-  for (const order of orders || []) {
-    if (order.sale_id) orderBySaleId.set(order.sale_id, order.id);
+async function readRelatedRows<T>(client: SalesClient, table: string, fields: string, column: string, ids: string[]) {
+  const rows: T[] = []
+  for (let i = 0; i < ids.length; i += 100) {
+    rows.push(...await readSalesPages<T>(() => client.from(table).select(fields).in(column, ids.slice(i, i + 100))))
   }
+  return rows
+}
 
-  const orderIds = Array.from(orderBySaleId.values());
-  const categoryBySaleId = new Map<string, Map<string, number>>();
-
-  if (orderIds.length > 0) {
-    const { data: items } = await supabase
-      .from('sale_order_items')
-      .select(
-        'sale_order_id, catalog_item_id, subtotal, parent_sale_order_item_id, catalog_item:catalog_items(category_id, category:catalog_categories(name))',
-      )
-      .in('sale_order_id', orderIds);
-
-    const saleIdByOrderId = new Map<string, string>();
-    for (const [saleId, orderId] of orderBySaleId.entries()) {
-      saleIdByOrderId.set(orderId, saleId);
-    }
-
-    for (const item of items || []) {
-      if (item.parent_sale_order_item_id) continue;
-      const saleId = saleIdByOrderId.get(item.sale_order_id);
-      if (!saleId) continue;
-
-      const catalogItem = Array.isArray(item.catalog_item)
-        ? item.catalog_item[0]
-        : item.catalog_item;
-      const categoryRel = Array.isArray(catalogItem?.category)
-        ? catalogItem.category[0]
-        : catalogItem?.category;
-      const categoryName =
-        (categoryRel?.name as string | undefined)?.trim() || 'Uncategorized';
-      const lineAmount = Number(item.subtotal) || 0;
-
-      if (!categoryBySaleId.has(saleId)) {
-        categoryBySaleId.set(saleId, new Map());
-      }
-      const saleCats = categoryBySaleId.get(saleId)!;
-      saleCats.set(categoryName, (saleCats.get(categoryName) || 0) + lineAmount);
-    }
+/** Allocate each sale's confirmed amount by its top-level item subtotal weights. */
+export async function aggregateSalesByCategory(client: SalesClient, sales: ReportSale[]): Promise<Map<string, number>> {
+  const categories = new Map<string, number>()
+  if (!sales.length) return categories
+  const orders = await readRelatedRows<Order>(client, "sale_orders", "id, sale_id", "sale_id", sales.map((s) => s.id))
+  const saleByOrder = new Map(orders.map((order) => [order.id, order.sale_id]))
+  const items = await readRelatedRows<OrderItem>(client, "sale_order_items",
+    "id, sale_order_id, subtotal, parent_sale_order_item_id, catalog_item:catalog_items(category:catalog_categories(name))",
+    "sale_order_id", orders.map((order) => order.id))
+  const weights = new Map<string, Map<string, number>>()
+  for (const item of items) {
+    if (item.parent_sale_order_item_id) continue
+    const saleId = saleByOrder.get(item.sale_order_id)
+    if (!saleId) continue
+    const catalog = Array.isArray(item.catalog_item) ? item.catalog_item[0] : item.catalog_item
+    const category = Array.isArray(catalog?.category) ? catalog.category[0] : catalog?.category
+    const name = category?.name?.trim() || "Uncategorized"
+    const subtotal = getSalesAmount({ amount: item.subtotal })
+    if (subtotal <= 0) continue
+    const saleWeights = weights.get(saleId) || new Map<string, number>()
+    saleWeights.set(name, (saleWeights.get(name) || 0) + subtotal)
+    weights.set(saleId, saleWeights)
   }
-
+  const add = (name: string, amount: number) => categories.set(name, (categories.get(name) || 0) + amount)
   for (const sale of sales) {
-    const saleAmount = getSalesAmount(sale);
-    if (saleAmount === 0) continue;
-
-    const lineCats = categoryBySaleId.get(sale.id);
-    if (lineCats && lineCats.size > 0) {
-      const lineTotal = Array.from(lineCats.values()).reduce((s, v) => s + v, 0);
-      if (lineTotal > 0) {
-        for (const [name, lineAmount] of lineCats.entries()) {
-          add(name, saleAmount * (lineAmount / lineTotal));
-        }
-        continue;
-      }
+    const amount = getSalesAmount(sale)
+    const saleWeights = weights.get(sale.id)
+    const total = Array.from(saleWeights?.values() || []).reduce((sum, value) => sum + value, 0)
+    if (!saleWeights || total <= 0) {
+      add(sale.product_type?.trim() || sale.product_category?.trim() || "Uncategorized", amount)
+      continue
     }
-
-    const fallback =
-      sale.product_type || sale.product_category || 'Other';
-    add(fallback, saleAmount);
+    for (const [name, weight] of saleWeights) add(name, amount * weight / total)
   }
-
-  return categories;
+  return categories
 }
 
-export function buildMonthlyChannelData(currentSales: any[]) {
-  const monthlyData: {
-    month: string;
-    onlineSales: number;
-    retailSales: number;
-  }[] = [];
-  const today = new Date();
-
-  for (let i = 5; i >= 0; i--) {
-    const monthDate = subMonths(today, i);
-    const month = monthDate.toLocaleString('en-US', { month: 'short' });
-    const monthStart = new Date(monthDate.getFullYear(), monthDate.getMonth(), 1);
-    const monthEnd = new Date(
-      monthDate.getFullYear(),
-      monthDate.getMonth() + 1,
-      0,
-      23,
-      59,
-      59,
-      999,
-    );
-
-    const monthOnlineSales = currentSales
-      .filter((sale) => {
-        const saleDate = sale.sale_date
-          ? new Date(sale.sale_date)
-          : new Date(sale.created_at);
-        return (
-          isOnlineSource(sale.source) &&
-          saleDate >= monthStart &&
-          saleDate <= monthEnd
-        );
-      })
-      .reduce((sum, sale) => sum + getSalesAmount(sale), 0);
-
-    const monthRetailSales = currentSales
-      .filter((sale) => {
-        const saleDate = sale.sale_date
-          ? new Date(sale.sale_date)
-          : new Date(sale.created_at);
-        return (
-          isRetailSource(sale.source) &&
-          saleDate >= monthStart &&
-          saleDate <= monthEnd
-        );
-      })
-      .reduce((sum, sale) => sum + getSalesAmount(sale), 0);
-
-    monthlyData.push({
-      month,
-      onlineSales: monthOnlineSales,
-      retailSales: monthRetailSales,
-    });
+function buildChannelData(sales: ReportSale[], start: string, end: string, daily: boolean) {
+  const buckets = new Map<string, SalesChannelAmounts>()
+  for (let day = start; day <= end; day = shiftDay(day, 1)) {
+    const key = daily ? day : day.slice(0, 7)
+    if (!buckets.has(key)) buckets.set(key, {
+      onlineSales: 0, retailSales: 0, otherSales: 0, totalSales: 0,
+    })
   }
+  for (const sale of sales) {
+    const date = saleCalendarDate(sale)
+    if (!isRecognizedRevenueSale(sale) || date < start || date > end) continue
+    const bucket = buckets.get(daily ? date : date.slice(0, 7))
+    if (!bucket) continue
+    const amount = getSalesAmount(sale)
+    const key = isOnlineSource(sale.source) ? "onlineSales" : isRetailSource(sale.source) ? "retailSales" : "otherSales"
+    bucket[key] += amount
+    bucket.totalSales += amount
+  }
+  return buckets
+}
 
-  return monthlyData;
+/** Keep the legacy monthly contract, including only dates in the requested interval. */
+export function buildMonthlyChannelData(sales: ReportSale[], start: string, end: string): SalesTrendPoint[] {
+  return Array.from(buildChannelData(sales, start, end, false), ([month, amounts]) => ({ month, ...amounts }))
+}
+
+/** Reuse the complete, currency-scoped rows already queried by the report; no bucket queries. */
+export function buildDailyChannelData(sales: ReportSale[], start: string, end: string): SalesDailyTrendPoint[] {
+  return Array.from(buildChannelData(sales, start, end, true), ([date, amounts]) => ({ date, ...amounts }))
 }

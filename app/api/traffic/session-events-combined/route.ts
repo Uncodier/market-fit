@@ -4,14 +4,17 @@ import { isMakinariInternalReferrerHostname } from '@/lib/traffic/makinari-inter
 import { isExternalReferralPageview } from '@/lib/traffic/external-referral-pageview';
 import { requireAnalyticsAccess } from '@/lib/auth/api-analytics-access';
 import { readThroughAnalyticsResponseCache } from '@/lib/redis/analytics-response-cache';
+import { normalizeBatchDates } from '@/lib/dashboard/batch-dates';
 
-export async function GET(request: NextRequest) {
+export async function GET(input: NextRequest) {
+  const request = normalizeBatchDates(input);
   const { searchParams } = new URL(request.url);
   const siteId = searchParams.get('siteId');
   const startDate = searchParams.get('startDate');
   const endDate = searchParams.get('endDate');
   const segmentId = searchParams.get('segmentId');
-  const referrersLimit = parseInt(searchParams.get('referrersLimit') || '10');
+  const limitValue = searchParams.get('referrersLimit') ?? '10';
+  const referrersLimit = Number(limitValue);
 
   if (!siteId) {
     return NextResponse.json({ error: 'Site ID is required' }, { status: 400 });
@@ -24,16 +27,21 @@ export async function GET(request: NextRequest) {
 
   const access = await requireAnalyticsAccess(request);
   if (access.error) return access.error;
+  if (!/^\d+$/.test(limitValue) || !Number.isSafeInteger(referrersLimit) || referrersLimit < 1 || referrersLimit > 100) {
+    return NextResponse.json({ error: 'Referrer limit must be between 1 and 100' }, { status: 400 });
+  }
+  if (segmentId && segmentId !== 'all' && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(segmentId)) {
+    return NextResponse.json({ error: 'Invalid segment ID' }, { status: 400 });
+  }
 
   return readThroughAnalyticsResponseCache({
     request,
-    namespace: 'traffic:session-events-combined',
+    namespace: 'traffic:session-events-combined:v2',
     siteId: access.siteId,
     lockTtlMs: 30_000,
     load: async () => {
   try {
-    const supabase = await createServiceClient();
-    console.log('Fetching page visits combined data for site:', siteId, 'segment:', segmentId || 'all', 'from:', startDate, 'to:', endDate);
+    const supabase = await createServiceClient(true);
 
     // Fetch site information to get main domain
     const { data: siteData, error: siteError } = await supabase
@@ -43,7 +51,7 @@ export async function GET(request: NextRequest) {
       .single();
 
     if (siteError) {
-      console.error('Error fetching site data:', siteError);
+      return NextResponse.json({ error: 'Unable to load session report site' }, { status: 500 });
     }
 
     // Fetch allowed domains for this site
@@ -53,7 +61,7 @@ export async function GET(request: NextRequest) {
       .eq('site_id', siteId);
 
     if (domainsError) {
-      console.error('Error fetching allowed domains:', domainsError);
+      return NextResponse.json({ error: 'Unable to load referrer exclusions' }, { status: 500 });
     }
 
     // Build list of domains to filter out
@@ -74,14 +82,13 @@ export async function GET(request: NextRequest) {
         }
         domainsToFilter.add(siteDomain);
         domainsToFilter.add('www.' + siteDomain); // Also filter www variant
-      } catch (e) {
-        console.warn('Could not parse site URL:', siteData.url);
-      }
+      } catch { /* Invalid stored URLs cannot establish a referrer exclusion. */ }
     }
     
     // Add allowed domains
     if (allowedDomains) {
-      allowedDomains.forEach(domain => {
+      allowedDomains.forEach((domain: { domain: string | null }) => {
+        if (typeof domain.domain !== 'string') return;
         let normalizedDomain = domain.domain.toLowerCase();
         if (normalizedDomain.startsWith('www.')) {
           normalizedDomain = normalizedDomain.substring(4);
@@ -90,8 +97,6 @@ export async function GET(request: NextRequest) {
         domainsToFilter.add('www.' + normalizedDomain); // Also filter www variant
       });
     }
-
-    console.log('Domains to filter out from referrers:', Array.from(domainsToFilter));
 
     // Use ONLY session_events table to derive both metrics for consistency
     // CRITICAL: Filter by event_type to count only actual page views, not all events
@@ -106,11 +111,13 @@ export async function GET(request: NextRequest) {
     while (hasMore) {
       let query = supabase
         .from('session_events')
-        .select('created_at, referrer, visitor_id')
-        .eq('site_id', siteId)
+        .select('id, created_at, referrer, visitor_id')
+        .eq('site_id', access.siteId)
         .eq('event_type', 'pageview')  // Only count actual page views
-        .gte('created_at', startDate)
-        .lte('created_at', endDate)
+        .gte('created_at', access.startDate.toISOString())
+        .lte('created_at', access.endDate.toISOString())
+        .order('created_at', { ascending: true })
+        .order('id', { ascending: true })
         .range(from, from + step - 1);
 
       // Add segment filter if specified and not "all"
@@ -126,34 +133,27 @@ export async function GET(request: NextRequest) {
       }
 
       if (data && data.length > 0) {
-        allEvents = [...allEvents, ...data];
-        from += step;
-        
-        // If we got fewer records than the step, we've reached the end
-        if (data.length < step) {
-          hasMore = false;
+        if (allEvents.length + data.length > 50_000) {
+          return NextResponse.json({ error: 'Too many session events. Select a shorter date range.' }, { status: 422 });
         }
+        allEvents.push(...data);
+        // PostgREST can cap a page below our requested size. Probe until empty.
+        from += data.length;
       } else {
         hasMore = false;
       }
     }
 
-    console.log('Combined page visits query result:', {
-      eventsCount: allEvents?.length || 0,
-      eventsError: eventsError?.message || 'none'
-    });
-
     if (eventsError) {
-      console.error('Error fetching page visits:', eventsError);
       return NextResponse.json(
         { error: 'Failed to fetch events data' },
         { status: 500 }
       );
     }
 
-    const startDateObj = new Date(startDate);
-    const endDateObj = new Date(endDate);
-    const daysBack = Math.ceil((endDateObj.getTime() - startDateObj.getTime()) / (24 * 60 * 60 * 1000));
+    const startDateObj = new Date(access.startDate.toISOString().slice(0, 10));
+    const endDateObj = new Date(access.endDate.toISOString().slice(0, 10));
+    const daysBack = Math.round((endDateObj.getTime() - startDateObj.getTime()) / (24 * 60 * 60 * 1000)) + 1;
     
     // Initialize date buckets
     const eventsByDay = new Map<string, number>();
@@ -198,6 +198,7 @@ export async function GET(request: NextRequest) {
         label: new Date(date).toLocaleDateString('en-US', {
           month: 'short',
           day: 'numeric',
+          timeZone: 'UTC',
         }),
       };
     });
@@ -263,16 +264,6 @@ export async function GET(request: NextRequest) {
     const totalReferralVisits =
       allEvents?.filter((e) => isExternalReferralPageview(e.referrer, domainsToFilter)).length ?? 0;
     
-    console.log('Combined data processed from single source:', {
-      totalPageVisits,
-      totalUniqueVisitors,
-      chartDays: chartData.length,
-      uniqueReferrers: referrerCounts.size,
-      totalValidReferrerEvents,
-      filteredReferrers: (allEvents?.filter(e => e.referrer).length || 0) - totalValidReferrerEvents,
-      topReferrers: referrersArray.slice(0, 3)
-    });
-
     return NextResponse.json({
       chartData,
       referrersData: referrersArray,
@@ -284,7 +275,6 @@ export async function GET(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('Error in page visits combined API:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

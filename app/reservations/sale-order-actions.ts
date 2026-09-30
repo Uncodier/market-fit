@@ -208,8 +208,8 @@ export async function ensureReservationSaleOrder(params: {
       ...(existingPayments.length > 0 ? { payments: existingPayments } : {}),
     })
 
-    if (result.error || !result.orderId || !result.saleId) {
-      return { error: result.error || "Failed to upsert sales order" }
+    if ('error' in result || !result.orderId || !result.saleId) {
+      return { error: ('error' in result && result.error) || "Failed to upsert sales order" }
     }
 
     const nextStatus =
@@ -360,7 +360,7 @@ export async function recordReservationPayment(params: {
     const supabase = await createClient()
     const { data: sale, error: saleError } = await supabase
       .from("sales")
-      .select("id, amount, amount_due, payments, status, site_id")
+      .select("id, amount, amount_due, payments, status, site_id, accounting_state")
       .eq("id", ensured.data.saleId)
       .single()
     if (saleError || !sale) return { error: saleError?.message || "Sale not found" }
@@ -391,6 +391,7 @@ export async function recordReservationPayment(params: {
         amount_due: next.amountDue,
         status: next.saleStatus,
         payments: next.payments,
+        accounting_state: sale.accounting_state === 'unpublished' ? 'unpublished' : 'pending',
         ...(paymentMethod ? { payment_method: paymentMethod } : {}),
         updated_at: new Date().toISOString(),
       })
@@ -419,8 +420,9 @@ export async function recordReservationPayment(params: {
       } catch (error) {
         console.error("Failed to grant entitlements after reservation payment:", error)
       }
-      await tryUpsertPolizaForSale(sale.id, params.siteId)
     }
+    // Partial receipts also change the ledger, even before fulfillment is granted.
+    await tryUpsertPolizaForSale(sale.id, params.siteId)
 
     revalidatePath("/reservations")
     return {}

@@ -16,6 +16,7 @@ import {
 import { EmptyCard } from '@/app/components/ui/empty-card';
 import { BarChart as BarChartIcon } from '@/app/components/ui/icons';
 import { useTheme } from '@/app/context/ThemeContext';
+import { Skeleton } from '@/app/components/ui/skeleton';
 
 interface SessionEventData {
   date: string;
@@ -141,110 +142,14 @@ export function SessionEventsChart({
     referralVisits: row.referralVisits ?? 0,
   }));
 
-  if (loading) {
-    return (
-      <Card className="flex flex-col">
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-          <CardTitle>Visits & referral trend</CardTitle>
-          <div className="flex flex-wrap items-center gap-4 sm:gap-6">
-            <div className="flex items-center space-x-2">
-              <div className="h-8 w-16 bg-muted rounded animate-pulse"></div>
-              <div className="h-4 w-20 bg-muted rounded animate-pulse"></div>
-            </div>
-            <div className="flex items-center space-x-2">
-              <div className="h-8 w-16 bg-muted rounded animate-pulse"></div>
-              <div className="h-4 w-24 bg-muted rounded animate-pulse"></div>
-            </div>
-            <div className="flex items-center space-x-2">
-              <div className="h-8 w-14 bg-muted rounded animate-pulse"></div>
-              <div className="h-4 w-28 bg-muted rounded animate-pulse"></div>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent className="flex-1 flex flex-col">
-          <div className="flex-1">
-            {/* Simple skeleton that matches the actual chart structure */}
-            <div className="w-full h-full flex flex-col">
-              
-              {/* Legend skeleton - simple and clean */}
-              <div className="flex flex-wrap justify-center items-center gap-x-6 gap-y-2 pb-4 pt-2">
-                <div className="flex items-center space-x-2">
-                  <div className="h-3 w-3 bg-muted rounded-sm animate-pulse"></div>
-                  <div className="h-3 w-16 bg-muted rounded animate-pulse"></div>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <div className="h-3 w-3 bg-muted rounded-sm animate-pulse"></div>
-                  <div className="h-3 w-20 bg-muted rounded animate-pulse"></div>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <div className="h-3 w-3 bg-muted rounded-sm animate-pulse"></div>
-                  <div className="h-3 w-24 bg-muted rounded animate-pulse"></div>
-                </div>
-              </div>
-
-              {/* Chart skeleton - mimics ResponsiveContainer structure */}
-              <div className="flex-1 relative">
-                
-                {/* Y-axis skeleton */}
-                <div className="absolute left-0 top-4 bottom-12 w-8 flex flex-col justify-between">
-                  {[1, 2, 3, 4, 5].map((i) => (
-                    <div key={i} className="h-3 w-6 bg-muted rounded animate-pulse"></div>
-                  ))}
-                </div>
-
-                {/* Chart area skeleton */}
-                <div className="ml-10 mr-4 h-full flex items-end justify-center pb-12 pt-4">
-                  <div className="w-full h-full flex items-end justify-between">
-                    {Array.from({ length: 7 }, (_, index) => (
-                      <div key={index} className="flex space-x-1 items-end h-full" style={{ width: '12%' }}>
-                        {/* Two bars side by side - no colors, just muted */}
-                        <div 
-                          className="bg-muted animate-pulse"
-                          style={{ 
-                            height: `${40 + (index * 10)}%`,
-                            width: '6px'
-                          }}
-                        />
-                        <div 
-                          className="bg-muted animate-pulse"
-                          style={{ 
-                            height: `${30 + (index * 8)}%`,
-                            width: '6px'
-                          }}
-                        />
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* X-axis skeleton */}
-                <div className="absolute bottom-0 left-10 right-4 h-8 flex justify-between items-center">
-                  {Array.from({ length: 7 }, (_, index) => (
-                    <div key={index} className="h-3 w-8 bg-muted rounded animate-pulse"></div>
-                  ))}
-                </div>
-
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  if (error) {
+  if (error && !loading) {
     return (
       <Card className="flex flex-col">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3 flex-shrink-0">
           <CardTitle className="text-base">Visits & referral trend</CardTitle>
-          <div className="h-8 flex items-center">
-            <div className="text-2xl font-bold">
-              0
-            </div>
-          </div>
         </CardHeader>
         <CardContent className="flex-1 flex flex-col items-center justify-center">
-          <div className="text-red-500 text-center">
+          <div role="alert" className="text-red-500 text-center">
             Error: {error}
           </div>
         </CardContent>
@@ -253,36 +158,38 @@ export function SessionEventsChart({
   }
 
   return (
-    <Card className="flex flex-col">
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+    <Card data-report-panel="sessions-trend" className="flex h-full min-w-0 flex-col" aria-busy={loading}>
+      <CardHeader className="flex flex-col gap-3 space-y-0 p-4 pb-3 sm:p-5 sm:pb-3">
         <CardTitle className="text-base">Visits & referral trend</CardTitle>
-        <div className="flex flex-wrap items-center gap-4 sm:gap-6">
-          <div className="flex items-center space-x-2">
-            <div className="text-2xl font-bold">{totalPageVisits.toLocaleString()}</div>
-            <div className="text-sm text-muted-foreground">Page visits</div>
-          </div>
-          <div className="flex items-center space-x-2">
-            <div className="text-2xl font-bold">{totalUniqueVisitors.toLocaleString()}</div>
-            <div className="text-sm text-muted-foreground">Unique visitors</div>
-          </div>
-          <div className="flex items-center space-x-2">
-            <div className="text-2xl font-bold">{totalReferralVisits.toLocaleString()}</div>
-            <div className="text-sm text-muted-foreground">Referral visits</div>
-          </div>
+        <div className="grid grid-cols-3 items-start gap-3">
+          {([["Page visits", totalPageVisits], ["Unique visitors", totalUniqueVisitors], ["Referral visits", totalReferralVisits]] as const).map(([label, total]) => (
+            <div key={label} className="min-w-0">
+              <div className="text-xl font-bold leading-8 tabular-nums break-words sm:text-2xl sm:leading-8">
+                {loading ? <Skeleton aria-hidden="true" className="h-8 w-16 max-w-full motion-reduce:animate-none" /> : total.toLocaleString()}
+              </div>
+              <div className="text-xs leading-4 text-muted-foreground">{label}</div>
+            </div>
+          ))}
         </div>
       </CardHeader>
-      <CardContent className="flex-1 flex flex-col">
-        {data.length === 0 ||
+      <CardContent className="flex flex-1 flex-col px-4 pb-4 sm:px-5 sm:pb-5">
+        <div className="h-[320px] min-w-0 w-full sm:h-[360px]">
+        {loading ? <div aria-hidden="true" className="flex h-full flex-col gap-4">
+          <div className="flex justify-center gap-3">{[0, 1, 2].map(i => <Skeleton key={i} className="h-3 w-16 motion-reduce:animate-none" />)}</div>
+          <div className="flex flex-1 items-end gap-3 border-b border-l px-4 pb-3 pt-4">
+            {["h-1/3", "h-2/3", "h-1/2", "h-3/4", "h-1/3", "h-5/6"].map((height, i) => <Skeleton key={i} className={`min-w-0 flex-1 motion-reduce:animate-none ${height}`} />)}
+          </div>
+        </div> : data.length === 0 ||
         (totalPageVisits === 0 && totalUniqueVisitors === 0 && totalReferralVisits === 0) ? (
-          <div className="flex-1 w-full h-full flex items-center justify-center">
+          <div className="w-full h-full flex items-center justify-center">
             <EmptyCard
               icon={<BarChartIcon className="h-10 w-10 text-muted-foreground" />}
               title="No Events Found"
               description="No page visits recorded for this time period"
+              showShadow={false} variant="simple" contentClassName="min-h-0 py-6"
             />
           </div>
         ) : (
-          <div className="flex-1">
             <ResponsiveContainer width="100%" height="100%">
               <ComposedChart
                 data={chartSeries}
@@ -340,7 +247,7 @@ export function SessionEventsChart({
                     color: colors.text,
                   }}
                 />
-                {/* Definición de gradientes */}
+                {/* Theme-adaptive series gradients. */}
                 <defs>
                   <linearGradient id="pageVisitsGradient" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="0%" stopColor={colors.pageVisitsStart} />
@@ -357,8 +264,7 @@ export function SessionEventsChart({
                   radius={[4, 4, 0, 0]}
                   barSize={15}
                   name="Page visits"
-                  animationDuration={1500}
-                  animationEasing="ease-out"
+                  isAnimationActive={false}
                 />
                 <Bar
                   dataKey="uniqueVisitors"
@@ -366,8 +272,7 @@ export function SessionEventsChart({
                   radius={[4, 4, 0, 0]}
                   barSize={15}
                   name="Unique visitors"
-                  animationDuration={1500}
-                  animationEasing="ease-out"
+                  isAnimationActive={false}
                 />
                 <Line
                   type="monotone"
@@ -378,32 +283,13 @@ export function SessionEventsChart({
                   dot={false}
                   activeDot={{ r: 4 }}
                   legendType="line"
-                  animationDuration={1500}
-                  animationEasing="ease-out"
+                  isAnimationActive={false}
                 />
               </ComposedChart>
             </ResponsiveContainer>
-          </div>
         )}
+        </div>
       </CardContent>
-      
-      {/* Estilos para animaciones */}
-      <style jsx global>{`
-        @keyframes kip-fade-in {
-          from { 
-            opacity: 0; 
-            transform: translateY(10px); 
-          }
-          to { 
-            opacity: 1; 
-            transform: translateY(0); 
-          }
-        }
-        
-        .kip-fade-in {
-          animation: kip-fade-in 0.6s ease-out forwards;
-        }
-      `}</style>
     </Card>
   );
 } 

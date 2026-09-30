@@ -1,140 +1,69 @@
 "use client"
 
 import * as React from "react"
-import { CalendarIcon } from "@/app/components/ui/icons"
-import { Button } from "@/app/components/ui/button"
+import { endOfDay, startOfDay } from "date-fns"
 import { cn } from "@/lib/utils"
-import { useState, useEffect, useCallback } from "react"
-import { format, startOfMonth, startOfDay, endOfDay, isSameDay, subMonths, isValid } from "date-fns"
 import { DatePicker } from "@/app/components/ui/date-picker"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { getDateFnsLocale } from "@/app/lib/date-fns-locale"
+import { formatDateRange, getDateRangeError } from "./date-picker-range"
 
 export interface DateRangePickerProps {
-  className?: string;
-  onRangeChange?: (startDate: Date, endDate: Date) => void;
-  initialStartDate?: Date;
-  initialEndDate?: Date;
+  className?: string
+  onRangeChange?: (startDate: Date, endDate: Date) => void
+  initialStartDate?: Date
+  initialEndDate?: Date
+  /** Maximum inclusive calendar days, supplied by the report's server policy. */
+  maxRangeDays?: number
+  disabled?: boolean
 }
 
 export function CalendarDateRangePicker({
-  className,
-  onRangeChange,
-  initialStartDate,
-  initialEndDate,
+  className, onRangeChange, initialStartDate, initialEndDate, maxRangeDays, disabled = false,
 }: DateRangePickerProps) {
   const { t, locale } = useLocalization()
   const dateLocale = getDateFnsLocale(locale)
-  
-  // Validation function - moved outside of useEffect to prevent recreation
-  const validateDates = useCallback((startDate: Date, endDate: Date) => {
-    const now = new Date();
+  const hasInitialRange = initialStartDate !== undefined || initialEndDate !== undefined
+  const initialError = hasInitialRange ? getDateRangeError(initialStartDate, initialEndDate) : null
+  const [range, setRange] = React.useState<{ start?: Date; end?: Date }>(() => (
+    initialError ? {} : { start: initialStartDate, end: initialEndDate }
+  ))
+  const [error, setError] = React.useState<string | null>(initialError)
 
-    let validStartDate = startOfDay(startDate);
-    let validEndDate = endOfDay(endDate);
+  React.useEffect(() => {
+    if (initialStartDate === undefined && initialEndDate === undefined) {
+      setRange({})
+      setError(null)
+      return
+    }
+    const nextError = getDateRangeError(initialStartDate, initialEndDate)
+    setError(nextError)
+    // Keep the previous valid selection rather than inventing replacement dates.
+    if (!nextError) setRange({ start: initialStartDate, end: initialEndDate })
+  }, [initialStartDate, initialEndDate])
 
-    if (validStartDate > validEndDate) {
-      validStartDate = startOfDay(subMonths(validEndDate, 1));
-    }
-
-    const twoYearsAgo = startOfDay(subMonths(now, 24));
-    if (validStartDate < twoYearsAgo) {
-      validStartDate = twoYearsAgo;
-    }
-
-    return { validStartDate, validEndDate };
-  }, []);
-  
-  // Initialize state - use placeholder dates if not provided (but won't trigger callback)
-  const defaultStartDate = React.useMemo(() => startOfMonth(new Date()), []);
-  const defaultEndDate = React.useMemo(() => endOfDay(new Date()), []);
-  
-  const initialValidDates = React.useMemo(() => {
-    if (initialStartDate && initialEndDate) {
-      return validateDates(initialStartDate, initialEndDate);
-    }
-    return { validStartDate: defaultStartDate, validEndDate: defaultEndDate };
-  }, [initialStartDate, initialEndDate, validateDates, defaultStartDate, defaultEndDate]);
-  
-  const [startDate, setStartDate] = useState<Date | undefined>(initialStartDate ? initialValidDates.validStartDate : undefined);
-  const [endDate, setEndDate] = useState<Date | undefined>(initialEndDate ? initialValidDates.validEndDate : undefined);
-  
-  // Keep the picker controlled by the range owned by its parent.
-  useEffect(() => {
-    try {
-      if (initialStartDate === undefined && initialEndDate === undefined) {
-        setStartDate(undefined);
-        setEndDate(undefined);
-        return;
-      }
-      
-      if (initialStartDate && initialEndDate) {
-        const { validStartDate: newValidStartDate, validEndDate: newValidEndDate } = validateDates(initialStartDate, initialEndDate);
-        setStartDate((current) =>
-          current && isSameDay(current, newValidStartDate)
-            ? current
-            : newValidStartDate,
-        );
-        setEndDate((current) =>
-          current && isSameDay(current, newValidEndDate)
-            ? current
-            : newValidEndDate,
-        );
-      }
-    } catch (error) {
-      console.error("[DateRangePicker] Error updating dates:", error);
-    }
-  }, [initialStartDate, initialEndDate, validateDates]);
-  
-  // Handle date range selection with strict validation
-  const handleRangeSelect = useCallback((start: Date, end: Date) => {
-    try {
-      const { validStartDate, validEndDate } = validateDates(start, end);
-      setStartDate(validStartDate);
-      setEndDate(validEndDate);
-      
-      onRangeChange?.(validStartDate, validEndDate);
-    } catch (error) {
-      console.error("[DateRangePicker] Error handling range selection:", error);
-    }
-  }, [onRangeChange, validateDates]);
-
-  // Format the range display - show placeholder if dates are not set
-  const rangeDisplay = React.useMemo(() => {
-    if (!startDate || !endDate) {
-      return t("datePicker.selectDateRange")
-    }
-    const safeStartDate = startDate instanceof Date && isValid(startDate) ? startDate : undefined
-    const safeEndDate = endDate instanceof Date && isValid(endDate) ? endDate : undefined
-    if (!safeStartDate || !safeEndDate) {
-      return t("datePicker.selectDateRange")
-    }
-    return `${format(safeStartDate, "MMM d", { locale: dateLocale })} - ${format(safeEndDate, "MMM d", { locale: dateLocale })} ${format(safeEndDate, "yyyy")}`
-  }, [startDate, endDate, t, dateLocale])
-
-  // Use placeholder dates for DatePicker when dates are undefined
-  // These are only for display - callbacks only fire through handleRangeSelect (user interaction)
-  const displayStartDate = startDate || defaultStartDate;
-  const displayEndDate = endDate || defaultEndDate;
+  const handleRangeSelect = (start: Date, end: Date) => {
+    if (disabled) return
+    const nextError = getDateRangeError(start, end, maxRangeDays)
+    setError(nextError)
+    if (nextError) return
+    const next = { start: startOfDay(start), end: endOfDay(end) }
+    setRange(next)
+    onRangeChange?.(next.start, next.end)
+  }
+  const rangeDisplay = range.start && range.end
+    ? formatDateRange(range.start, range.end, dateLocale)
+    : t("datePicker.selectDateRange")
 
   return (
-    <div className={cn("flex items-center", className)}>
+    <div className={cn("flex flex-col items-start", className)}>
       <DatePicker
-        date={displayStartDate}
-        setDate={(date) => {
-          // Don't update state or call callback here - let handleRangeSelect handle it
-          // This is only called for single date mode, not range mode
-        }}
-        endDate={displayEndDate}
-        setEndDate={(date) => {
-          // Don't update state or call callback here - let handleRangeSelect handle it
-          // This is only called for single date mode, not range mode
-        }}
-        className="w-full"
-        mode="range"
-        onRangeSelect={handleRangeSelect}
-        rangeDisplay={rangeDisplay}
+        date={range.start} endDate={range.end}
+        setDate={() => {}} setEndDate={() => {}}
+        className="w-full" mode="range" onRangeSelect={handleRangeSelect}
+        rangeDisplay={rangeDisplay} maxRangeDays={maxRangeDays} disabled={disabled}
       />
+      {error && <p role="alert" className="mt-1 text-xs text-destructive">{error}</p>}
     </div>
   )
-} 
+}

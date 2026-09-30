@@ -44,6 +44,11 @@ The API server owns robot/workflow orchestration and selected external
 integrations. `SERVICE_API_KEY` authenticates server-to-server calls. Do not
 expose provider credentials through the public API URL.
 
+Support chat identity uses this trusted API URL and the signed-in user's
+server-validated Supabase session, not `SERVICE_API_KEY`. Its signing secret
+belongs only in the API deployment. See [Support chat identity](CHAT_IDENTITY.md)
+for rollout requirements and exact-origin validation.
+
 ## Stripe
 
 ```dotenv

@@ -1,12 +1,13 @@
 import { toast } from "sonner"
 import { type SiteFormValues } from "./form-schema"
 import { validateActivitiesForSave } from "./outreach-save-validation"
+import { mergeActivitySettings, validatedActivityUpdates } from "./activity-settings"
 
-import { type SaveOptions, shouldPreventRefresh, updateSiteLocally } from "./save-settings-shared"
+import { type SaveOptions, shouldPreventRefresh } from "./save-settings-shared"
 
 // Partial save handler for Activities section
 export const handleSaveActivities = async (data: SiteFormValues, options: SaveOptions) => {
-  const { currentSite, updateSite, updateSettings, refreshSites, setIsSaving } = options
+  const { currentSite, updateSettings, refreshSites, setIsSaving } = options
 
   if (!currentSite) return false
 
@@ -14,11 +15,11 @@ export const handleSaveActivities = async (data: SiteFormValues, options: SaveOp
     setIsSaving(true)
 
     // Activity-only saves must validate against persisted channels, not unsaved connection edits.
-    const activitiesData = await validateActivitiesForSave(data.activities, currentSite.settings?.channels, currentSite.id, currentSite.settings?.business_hours)
+    const activitiesData = await validateActivitiesForSave(mergeActivitySettings(currentSite.settings?.activities, data.activities), currentSite.settings?.channels, currentSite.id, currentSite.settings?.business_hours)
 
     const settingsUpdate: any = {
       site_id: currentSite.id,
-      activities: activitiesData
+      activities: validatedActivityUpdates(activitiesData, data.activities)
     }
 
     // Preserve existing settings ID if it exists
@@ -28,9 +29,9 @@ export const handleSaveActivities = async (data: SiteFormValues, options: SaveOp
 
     await updateSettings(currentSite.id, settingsUpdate)
 
-    if (shouldPreventRefresh()) {
-      updateSiteLocally(currentSite, {}, settingsUpdate, updateSite)
-    } else {
+    // The settings writer publishes the latest-row merge. Never replace it with
+    // the pre-hydration context or the partial request in an optimistic site update.
+    if (!shouldPreventRefresh()) {
       await refreshSites()
     }
 

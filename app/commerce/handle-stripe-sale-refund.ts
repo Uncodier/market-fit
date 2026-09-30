@@ -48,48 +48,59 @@ export async function resolveStripeRefundPaymentIntent(
   return stripePaymentIntentId(charge?.payment_intent)
 }
 
-async function findSaleByPaymentIntent(supabase: QueryClient, paymentIntentId: string) {
-  const { data: byColumn } = await supabase
+export async function findSaleByPaymentIntent(supabase: QueryClient, paymentIntentId: string) {
+  const { data: byColumn, error: columnError } = await supabase
     .from("sales")
-    .select("id, site_id, status")
+    .select("id, site_id, status, currency, accounting_state")
     .eq("stripe_payment_intent_id", paymentIntentId)
     .maybeSingle()
 
+  if (columnError) throw new Error("Unable to resolve the refunded sale")
   if (byColumn) return byColumn
 
-  const { data: byDetails } = await supabase
+  const { data: byDetails, error: detailsError } = await supabase
     .from("sales")
-    .select("id, site_id, status")
+    .select("id, site_id, status, currency, accounting_state")
     .eq("payment_details->>stripe_payment_intent_id", paymentIntentId)
     .maybeSingle()
 
+  if (detailsError) throw new Error("Unable to resolve the refunded sale")
   return byDetails
 }
 
 export async function handleStripeSaleRefund(
   supabase: QueryClient,
   paymentIntentId: string | null,
+  options: { revokeOnly?: boolean } = {},
 ): Promise<{ saleId?: string; skipped?: string }> {
   if (!paymentIntentId) return { skipped: "missing_payment_intent" }
 
   const sale = await findSaleByPaymentIntent(supabase, paymentIntentId)
 
   if (!sale) return { skipped: "sale_not_found" }
-  if (sale.status === "refunded" || sale.status === "cancelled") {
-    return { skipped: "already_terminal", saleId: sale.id }
+  if (!options.revokeOnly && sale.status !== "refunded" && sale.status !== "cancelled") {
+    const { error } = await supabase
+      .from("sales")
+      .update({
+        status: "refunded",
+        // A refund never invents a receipt by clearing the outstanding balance.
+        accounting_state: sale.accounting_state === "unpublished" ? "unpublished" : "pending",
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", sale.id)
+      .eq("site_id", sale.site_id)
+    if (error) throw new Error("Unable to mark the sale refunded")
   }
 
-  await supabase
-    .from("sales")
-    .update({ status: "refunded", amount_due: 0 })
-    .eq("id", sale.id)
-
-  const { data: order } = await supabase
+  // Replays must repair fulfillment even when a prior attempt saved the terminal status.
+  const { data: order, error: orderError } = await supabase
     .from("sale_orders")
     .select("id")
     .eq("sale_id", sale.id)
+    .eq("site_id", sale.site_id)
     .maybeSingle()
 
+  if (orderError) throw new Error("Unable to load the refunded order")
   if (order) {
     await revokeOrderFulfillment(supabase, order.id, { cancelOrder: true })
   }

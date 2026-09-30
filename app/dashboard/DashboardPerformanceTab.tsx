@@ -1,7 +1,12 @@
 "use client"
 
 import dynamic from "next/dynamic"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/app/components/ui/card"
+import { useState } from "react"
+import { PerformanceDataBoundary } from "./ReportBatchBoundary"
+import type { ReportSection } from "./report-sections"
+import { Card } from "@/app/components/ui/card"
+import { ReportDetails, ReportKpiGrid, ReportSection as VisualSection } from "@/app/components/dashboard/report-layout"
+import { ReportChartLoading } from "@/app/components/dashboard/report-visual-loading"
 import { Switch } from "@/app/components/ui/switch"
 import { Label } from "@/app/components/ui/label"
 import { TasksWidget } from "@/app/components/dashboard/tasks-widget"
@@ -19,15 +24,15 @@ import { ImagesGeneratedWidget } from "@/app/components/dashboard/images-generat
 
 const TokenUsageChart = dynamic(
   () => import("@/app/components/dashboard/token-usage-chart").then((m) => m.TokenUsageChart),
-  { ssr: false }
+  { ssr: false, loading: ReportChartLoading }
 )
 const PerformanceMetricsChart = dynamic(
   () => import("@/app/components/dashboard/performance-metrics-chart").then((m) => m.PerformanceMetricsChart),
-  { ssr: false }
+  { ssr: false, loading: ReportChartLoading }
 )
 const LeadsTasksChart = dynamic(
   () => import("@/app/components/dashboard/leads-tasks-chart").then((m) => m.LeadsTasksChart),
-  { ssr: false }
+  { ssr: false, loading: ReportChartLoading }
 )
 
 export function DashboardPerformanceTab({
@@ -35,80 +40,75 @@ export function DashboardPerformanceTab({
   segmentId,
   startDate,
   endDate,
-  showConversations,
-  onShowConversationsChange,
+  section = "outcomes",
 }: {
   t: (key: string) => string
   segmentId: string
   startDate: Date
   endDate: Date
-  showConversations: boolean
-  onShowConversationsChange: (value: boolean) => void
+  section?: ReportSection<"performance">
 }) {
+  const [showConversations, onShowConversationsChange] = useState(false)
+  const filters = { segmentId, startDate, endDate }
   return (
-    <>
-      <div className="grid gap-4 grid-cols-2 lg:grid-cols-4 min-h-[160px]">
-        <LeadsContactedWidget segmentId={segmentId} startDate={startDate} endDate={endDate} />
-        <LeadsInConversationWidget segmentId={segmentId} startDate={startDate} endDate={endDate} />
-        <MeetingsWidget segmentId={segmentId} startDate={startDate} endDate={endDate} />
-        <SalesKpiWidget segmentId={segmentId} startDate={startDate} endDate={endDate} />
-        <TasksWidget segmentId={segmentId} startDate={startDate} endDate={endDate} />
-        <ConversationsWidget segmentId={segmentId} startDate={startDate} endDate={endDate} />
-        <ContentsApprovedWidget segmentId={segmentId} startDate={startDate} endDate={endDate} />
-        <RequirementsCompletedWidget segmentId={segmentId} startDate={startDate} endDate={endDate} />
+    <PerformanceDataBoundary {...filters}>
+      <div className="min-w-0 space-y-4">
+        {section === "outcomes" && <>
+          <ReportKpiGrid>
+            <LeadsContactedWidget {...filters} />
+            <LeadsInConversationWidget {...filters} />
+            <MeetingsWidget {...filters} />
+            <SalesKpiWidget {...filters} />
+          </ReportKpiGrid>
+          <Card className="min-w-0 p-4 sm:p-5">
+            <VisualSection title={t("dashboard.metrics.performance.title") || "Performance Metrics"}
+              description="Engagement, meetings and recorded sales · daily counts"
+              action={<div className="flex items-center gap-2 rounded-md border px-3 py-2">
+                <Switch id="show-conversations" checked={showConversations} onCheckedChange={onShowConversationsChange} />
+                <Label htmlFor="show-conversations" className="cursor-pointer text-xs">
+                  {t("dashboard.metrics.performance.showConversations") || "Show Conversations"}
+                </Label>
+              </div>}>
+              <PerformanceMetricsChart {...filters} showConversations={showConversations} />
+              <ReportDetails summary="Activity definitions">
+                <p>Daily activity counts in UTC. Sales count created records across all statuses, not revenue. Use the Sales report for confirmed sale amounts.</p>
+                <p>Each series is an independent activity count, not a sequential conversion funnel.</p>
+              </ReportDetails>
+            </VisualSection>
+          </Card>
+        </>}
+        {section === "operations" && <>
+          <ReportKpiGrid>
+            <TasksWidget {...filters} />
+            <ConversationsWidget {...filters} />
+            <ContentsApprovedWidget {...filters} />
+            <RequirementsCompletedWidget {...filters} />
+          </ReportKpiGrid>
+          <Card className="min-w-0 p-4 sm:p-5">
+            <VisualSection title={t("dashboard.metrics.customerSuccess.title") || "Customer Success Metrics"}
+              description="Leads created and tasks · daily counts">
+              <LeadsTasksChart {...filters} />
+              <ReportDetails summary="Activity definitions">
+                <p>Lead and task creation is grouped by UTC day. These series describe incoming activity, not task completion or customer retention.</p>
+              </ReportDetails>
+            </VisualSection>
+          </Card>
+        </>}
+        {section === "usage" && <>
+          <ReportKpiGrid>
+            <InputTokensWidget {...filters} />
+            <OutputTokensWidget {...filters} />
+            <VideoMinutesWidget {...filters} />
+            <ImagesGeneratedWidget {...filters} />
+          </ReportKpiGrid>
+          <Card className="min-w-0 p-4 sm:p-5">
+            <VisualSection title={t("dashboard.metrics.tokenUsage.title") || "Token Usage"}
+              description="Input and output token consumption over time">
+              <TokenUsageChart {...filters} />
+            </VisualSection>
+          </Card>
+        </>}
       </div>
-      <div className="grid gap-4 grid-cols-1">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <div className="flex flex-col space-y-1.5">
-              <CardTitle>{t("dashboard.metrics.performance.title") || "Performance Metrics"}</CardTitle>
-              <CardDescription>{t("dashboard.metrics.performance.desc") || "Conversations, engagement, meetings, and sales over time"}</CardDescription>
-            </div>
-            <div className="flex items-center space-x-2">
-              <Switch id="show-conversations" checked={showConversations} onCheckedChange={onShowConversationsChange} />
-              <Label htmlFor="show-conversations" className="text-sm text-muted-foreground cursor-pointer">
-                {t("dashboard.metrics.performance.showConversations") || "Show Conversations"}
-              </Label>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <PerformanceMetricsChart
-              segmentId={segmentId}
-              startDate={startDate}
-              endDate={endDate}
-              showConversations={showConversations}
-            />
-          </CardContent>
-        </Card>
-      </div>
-      <div className="grid gap-4 grid-cols-1">
-        <Card>
-          <CardHeader>
-            <CardTitle>{t("dashboard.metrics.customerSuccess.title") || "Customer Success Metrics"}</CardTitle>
-            <CardDescription>{t("dashboard.metrics.customerSuccess.desc") || "Daily created leads and tasks over time"}</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <LeadsTasksChart segmentId={segmentId} startDate={startDate} endDate={endDate} />
-          </CardContent>
-        </Card>
-      </div>
-      <div className="grid gap-4 grid-cols-1">
-        <Card>
-          <CardHeader>
-            <CardTitle>{t("dashboard.metrics.tokenUsage.title") || "Token Usage"}</CardTitle>
-            <CardDescription>{t("dashboard.metrics.tokenUsage.desc") || "Input vs Output token consumption over time"}</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <TokenUsageChart segmentId={segmentId} startDate={startDate} endDate={endDate} />
-          </CardContent>
-        </Card>
-      </div>
-      <div className="grid gap-4 grid-cols-2 lg:grid-cols-4 min-h-[160px]">
-        <InputTokensWidget segmentId={segmentId} startDate={startDate} endDate={endDate} />
-        <OutputTokensWidget segmentId={segmentId} startDate={startDate} endDate={endDate} />
-        <VideoMinutesWidget segmentId={segmentId} startDate={startDate} endDate={endDate} />
-        <ImagesGeneratedWidget segmentId={segmentId} startDate={startDate} endDate={endDate} />
-      </div>
-    </>
+    </PerformanceDataBoundary>
   )
 }

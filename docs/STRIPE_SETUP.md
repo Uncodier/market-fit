@@ -71,11 +71,18 @@ Subscribe it to the event types handled by
 - `invoice.payment_succeeded`
 - `invoice.payment_failed`
 - `charge.refunded`
+- `refund.created`
+- `refund.updated`
+- `refund.failed`
 - `charge.dispute.created`
 - `payment_intent.payment_failed`
 
 If handlers change, update the Stripe endpoint configuration and this list in
 the same release.
+
+`charge.refund.updated` is also accepted for older webhook configurations; new
+configurations should use `refund.updated`. Pending refunds are not posted until
+a provider status update confirms success.
 
 Copy the endpoint's signing secret into `STRIPE_WEBHOOK_SECRET`. Test and
 production endpoints have different signing secrets.

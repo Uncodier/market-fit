@@ -1,4 +1,10 @@
-export interface DatabaseFunctions<TSite> {
+import type { AccountingDatabaseFunctions } from './database-accounting.types'
+
+export interface DatabaseFunctions<TSite> extends AccountingDatabaseFunctions {
+  archive_site: {
+    Args: { p_site_id: string; p_actor_id: string }
+    Returns: boolean
+  }
   get_my_accessible_sites: {
     Args: Record<PropertyKey, never>
     Returns: TSite[]

@@ -284,6 +284,21 @@ export function CreateKeyDialog({ onSuccess }: CreateKeyDialogProps) {
                     className="safari-switch"
                   />
                 </div>
+                <div className="flex items-center justify-between rounded-lg border dark:border-white/5 border-black/5 p-4">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="identity-issue" className="text-sm font-medium">Issue chat identities</Label>
+                    <p className="text-sm text-muted-foreground">
+                      Verify your signed-in users for this site's chat. Server-side only; this permission can grant access to their chat history.
+                    </p>
+                  </div>
+                  <Switch
+                    id="identity-issue"
+                    checked={scopes.includes('identity:issue')}
+                    onCheckedChange={() => toggleScope('identity:issue')}
+                    disabled={isSubmitting}
+                    className="safari-switch"
+                  />
+                </div>
               </div>
             </div>
 

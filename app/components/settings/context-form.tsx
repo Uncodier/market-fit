@@ -4,17 +4,9 @@ import { useForm, FormProvider } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useState, useEffect, useCallback } from "react"
 import { toast } from "sonner"
-import { Button } from "../ui/button"
-import {
-  SectionCard,
-  SectionCardHeader,
-  SectionCardTitle,
-  SectionCardDescription,
-  SectionCardContent,
-  SectionCardFooter,
-} from "@/app/components/ui/section-card"
 import { siteFormSchema, type SiteFormValues, getFocusModeConfig } from "./form-schema"
 import { GeneralSection } from "./GeneralSection"
+import { SiteArchiveSection } from "./SiteArchiveSection"
 import { CompanySection } from "./CompanySection"
 import { BrandingSection } from "./BrandingSection"
 import { MarketingSection } from "./MarketingSection"
@@ -56,7 +48,6 @@ import {
   Link,
   PlusCircle,
   Tag,
-  Trash2,
   UploadCloud,
   User
 } from "../ui/icons"
@@ -88,10 +79,8 @@ export function ContextForm({
   onSaveCustomerJourney,
   onSaveSocial,
   onSaveCopywriting,
-  onDeleteSite,
   activeSegment,
   siteId,
-  isSaving = false
 }: ContextFormProps) {
   
   const [lastSiteId, setLastSiteId] = useState<string | undefined>(siteId)
@@ -287,28 +276,7 @@ export function ContextForm({
           )}
 
           {renderCard("general",
-            <SectionCard className="border-destructive/30">
-              <SectionCardHeader>
-                <SectionCardTitle className="text-destructive">Danger Zone</SectionCardTitle>
-              </SectionCardHeader>
-              <SectionCardContent className="space-y-4">
-                <div className="space-y-4">
-                  <p className="text-sm text-muted-foreground">
-                    Once you delete a site, there is no going back. Please be certain.
-                  </p>
-                  <Button
-                    type="button"
-                    variant="destructive"
-                    className="w-full h-12"
-                    onClick={onDeleteSite}
-                    disabled={isSaving}
-                  >
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    Delete Site
-                  </Button>
-                </div>
-              </SectionCardContent>
-            </SectionCard>
+            <SiteArchiveSection siteId={siteId} />
           )}
         </div>
       </form>
