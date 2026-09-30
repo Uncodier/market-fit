@@ -1,5 +1,5 @@
-import { publicPromptImageUrl } from "@/app/lib/image-utils"
 import type { WorkspaceArea } from "./navigation-areas"
+import { MAKINARI_MODULE_IMAGE_OVERRIDES } from "./module-image-overrides"
 
 /** Short object noun so the model is not literal with screen names like "leads". */
 export const MODULE_IMAGE_HINTS: Record<string, string> = {
@@ -279,5 +279,12 @@ export function getModuleImageUrl(
   itemKey: string,
   title: string,
 ): string {
-  return publicPromptImageUrl(getModuleImagePrompt(area, itemKey, title), 256)
+  const approvedIcon = MAKINARI_MODULE_IMAGE_OVERRIDES[itemKey]
+  if (approvedIcon) return approvedIcon
+
+  // Makinari owns these shared icons. Preserve their original platform cache URLs
+  // instead of sending them through the current-site image generation proxy.
+  const apiServerUrl = process.env.NEXT_PUBLIC_API_SERVER_URL || "http://localhost:3001"
+  const prompt = getModuleImagePrompt(area, itemKey, title).trim()
+  return `${apiServerUrl}/api/public/image/prompt/${encodeURIComponent(prompt)}?width=256&height=256`
 }

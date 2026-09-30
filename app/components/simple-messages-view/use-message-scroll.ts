@@ -3,7 +3,6 @@ import type { SimpleMessagesViewProps, InstanceLog } from "./types"
 const SCROLL_BOTTOM_THRESHOLD_PX = 80
 
 export function useMessageScroll(activeRobotInstance: SimpleMessagesViewProps["activeRobotInstance"], setIsStepIndicatorExpanded: (value: boolean) => void) {
-  const shouldForceScrollRef = useRef(false)
   const scrollToBottomImmediateRef = useRef<(() => void) | null>(null)
   const [bottomPadding, setBottomPadding] = useState(150)
   const bottomContainerRef = useRef<HTMLDivElement>(null)
@@ -13,8 +12,7 @@ export function useMessageScroll(activeRobotInstance: SimpleMessagesViewProps["a
   /** When true, new logs follow the bottom (like a terminal). When false, we show "Latest" instead of auto-scrolling. */
   const stickToBottomRef = useRef(true)
   const [showJumpToLatest, setShowJumpToLatest] = useState(false)
-  const wasLoadingLogsRef = useRef(false)
-  const wasLoadingPlansRef = useRef(false)
+  const lastScrollTopRef = useRef(0)
 
   const updateStickToBottomFromScroll = useCallback(() => {
     const container = messagesContainerRef.current
@@ -26,40 +24,35 @@ export function useMessageScroll(activeRobotInstance: SimpleMessagesViewProps["a
   }, [])
 
   // Reset follow mode when switching instances (user expects to land on the latest for the new instance)
-  useEffect(() => {
+  useLayoutEffect(() => {
     stickToBottomRef.current = true
-    setShowJumpToLatest(false)
+    lastScrollTopRef.current = 0
   }, [activeRobotInstance?.id])
-
-  const scrollContainerToBottomImmediateRef = useRef<(() => void) | null>(null)
 
   const scrollContainerToBottomImmediate = useCallback(() => {
     const container = messagesContainerRef.current
     if (container) {
       container.scrollTop = container.scrollHeight
+      lastScrollTopRef.current = container.scrollTop
     }
   }, [])
-  scrollContainerToBottomImmediateRef.current = scrollContainerToBottomImmediate
 
   /** Used after fetching logs: only snap down if the user was already following the tail. */
   const scrollToBottomImmediateIfStuck = useCallback(() => {
     if (stickToBottomRef.current) {
       scrollContainerToBottomImmediate()
-      requestAnimationFrame(() => updateStickToBottomFromScroll())
     }
-  }, [scrollContainerToBottomImmediate, updateStickToBottomFromScroll])
-  scrollToBottomImmediateRef.current = scrollToBottomImmediateIfStuck
+  }, [scrollContainerToBottomImmediate])
+  useLayoutEffect(() => {
+    scrollToBottomImmediateRef.current = scrollToBottomImmediateIfStuck
+  }, [scrollToBottomImmediateIfStuck])
 
   const jumpToLatestLogs = useCallback(() => {
     stickToBottomRef.current = true
     setShowJumpToLatest(false)
     setIsStepIndicatorExpanded(false)
     scrollContainerToBottomImmediate()
-    requestAnimationFrame(() => {
-      scrollContainerToBottomImmediate()
-      updateStickToBottomFromScroll()
-    })
-  }, [scrollContainerToBottomImmediate, updateStickToBottomFromScroll])
+  }, [scrollContainerToBottomImmediate, setIsStepIndicatorExpanded])
 
   // Auto scroll to bottom when sending or other explicit follow actions
   const scrollToBottom = useCallback(() => {
@@ -71,20 +64,90 @@ export function useMessageScroll(activeRobotInstance: SimpleMessagesViewProps["a
     }
   }, [])
 
-return { bottomPadding, setBottomPadding, bottomContainerRef, shouldForceScrollRef, scrollToBottomImmediateRef, messagesEndRef, messagesContainerRef, stickToBottomRef, showJumpToLatest, setShowJumpToLatest, wasLoadingLogsRef, wasLoadingPlansRef, updateStickToBottomFromScroll, scrollContainerToBottomImmediateRef, scrollContainerToBottomImmediate, scrollToBottomImmediateIfStuck, jumpToLatestLogs, scrollToBottom }
+  return { bottomPadding, setBottomPadding, bottomContainerRef, scrollToBottomImmediateRef, messagesEndRef, messagesContainerRef, stickToBottomRef, showJumpToLatest, setShowJumpToLatest, lastScrollTopRef, updateStickToBottomFromScroll, scrollContainerToBottomImmediate, scrollToBottomImmediateIfStuck, jumpToLatestLogs, scrollToBottom }
 }
 
-export function useMessageScrollEffects({ bottomPadding, setBottomPadding, bottomContainerRef, shouldForceScrollRef, scrollToBottomImmediateRef, messagesEndRef, messagesContainerRef, stickToBottomRef, showJumpToLatest, setShowJumpToLatest, wasLoadingLogsRef, wasLoadingPlansRef, updateStickToBottomFromScroll, scrollContainerToBottomImmediateRef, scrollContainerToBottomImmediate, scrollToBottomImmediateIfStuck, jumpToLatestLogs, scrollToBottom, activeRobotInstance, isLoadingLogs, isLoadingPlans, logs, hasMoreLogs, loadMoreLogs }: ReturnType<typeof useMessageScroll> & { activeRobotInstance: SimpleMessagesViewProps["activeRobotInstance"]; isLoadingLogs: boolean; isLoadingPlans: boolean; logs: InstanceLog[]; hasMoreLogs: boolean; loadMoreLogs: () => Promise<void> }) {
+interface PendingHistoryScroll {
+  height: number
+  firstLogId?: string
+  anchor?: { id: string; offset: number }
+  settled: boolean
+}
+
+function timelineElements(container: HTMLDivElement) {
+  return Array.from(container.querySelectorAll<HTMLElement>('[data-timeline-item-id]'))
+}
+
+type MessageScrollEffectsOptions = ReturnType<typeof useMessageScroll> & {
+  activeRobotInstance: SimpleMessagesViewProps["activeRobotInstance"]
+  isLoadingLogs: boolean
+  isLoadingPlans: boolean
+  isLoadingMore: boolean
+  logs: InstanceLog[]
+  hasMoreLogs: boolean
+  loadMoreLogs: () => Promise<void>
+}
+
+export function useMessageScrollEffects({
+  setBottomPadding, bottomContainerRef, messagesContainerRef, stickToBottomRef,
+  setShowJumpToLatest, lastScrollTopRef, updateStickToBottomFromScroll,
+  scrollContainerToBottomImmediate, activeRobotInstance, isLoadingLogs,
+  isLoadingMore, logs, hasMoreLogs, loadMoreLogs,
+}: MessageScrollEffectsOptions) {
+  const instanceId = activeRobotInstance?.id
+  const initializedViewRef = useRef<{ instanceId?: string; container: HTMLDivElement } | null>(null)
+  const pendingHistoryRef = useRef<PendingHistoryScroll | null>(null)
+  const [, setHistoryRevision] = useState(0)
+
+  useLayoutEffect(() => {
+    return () => {
+      initializedViewRef.current = null
+      pendingHistoryRef.current = null
+    }
+  }, [instanceId])
+
+  // Run before every paint: cached conversations may never enter a loading state,
+  // and streamed text, collapsed tools, and plans can change height without new logs.
+  useLayoutEffect(() => {
+    const container = messagesContainerRef.current
+    if (isLoadingLogs || !container) return
+
+    const initialized = initializedViewRef.current
+    if (initialized?.instanceId !== instanceId || initialized?.container !== container) {
+      initializedViewRef.current = { instanceId, container }
+      pendingHistoryRef.current = null
+      stickToBottomRef.current = true
+      setShowJumpToLatest(false)
+    }
+
+    const pending = pendingHistoryRef.current
+    if (pending && !isLoadingMore) {
+      const prepended = logs[0]?.id !== pending.firstLogId
+      if (prepended && !stickToBottomRef.current) {
+        // Preserve any scrolling that occurred while the older page was in flight.
+        const anchor = pending.anchor
+        const element = anchor && timelineElements(container).find(item => item.dataset.timelineItemId === anchor.id)
+        const shift = element && anchor
+          ? element.getBoundingClientRect().top + container.scrollTop - anchor.offset
+          : container.scrollHeight - pending.height
+        container.scrollTop += shift
+        lastScrollTopRef.current = container.scrollTop
+        pending.height = container.scrollHeight
+        pending.firstLogId = logs[0]?.id
+        if (element && anchor) anchor.offset = element.getBoundingClientRect().top + container.scrollTop
+      }
+      if (pending.settled) pendingHistoryRef.current = null
+    }
+
+    if (stickToBottomRef.current) scrollContainerToBottomImmediate()
+  })
+
   useEffect(() => {
     if (!bottomContainerRef.current) return
     const observer = new ResizeObserver((entries) => {
       for (const entry of entries) {
         // Use bounding client rect for more accurate total height
         const rect = (entry.target as HTMLElement).getBoundingClientRect()
-        // If we are currently at the bottom, mark that we should force scroll after the padding updates
-        if (stickToBottomRef.current) {
-          shouldForceScrollRef.current = true
-        }
         // Add 24px as extra buffer to ensure the last message is just above the input area and floating elements
         setBottomPadding(Math.max(60, rect.height + 24))
       }
@@ -94,99 +157,56 @@ export function useMessageScrollEffects({ bottomPadding, setBottomPadding, botto
     observer.observe(target)
     
     return () => observer.disconnect()
-  }, [isLoadingLogs])
+  }, [isLoadingLogs, instanceId, bottomContainerRef, setBottomPadding])
 
+  // Images and other async content can grow without a React render.
   useEffect(() => {
-    // Re-scroll to bottom if the padding pushed content up and we were stuck to bottom before the change
-    if (messagesContainerRef.current && (stickToBottomRef.current || shouldForceScrollRef.current)) {
-      shouldForceScrollRef.current = false
-      scrollContainerToBottomImmediateRef.current?.()
-    }
-  }, [bottomPadding])
+    const container = messagesContainerRef.current
+    if (!container) return
+    const observer = new ResizeObserver(() => {
+      if (stickToBottomRef.current) scrollContainerToBottomImmediate()
+    })
+    observer.observe(container)
+    if (container.firstElementChild) observer.observe(container.firstElementChild)
+    return () => observer.disconnect()
+  }, [instanceId, isLoadingLogs, messagesContainerRef, stickToBottomRef, scrollContainerToBottomImmediate])
 
-  // When following the tail, keep pinned as new logs arrive (realtime). If the user scrolled up, do not move their view.
-  useEffect(() => {
-    const hasConversations = logs.length > 0
-    const isInstanceRunning = activeRobotInstance && ['running', 'active'].includes(activeRobotInstance.status)
-
-    if (!stickToBottomRef.current) return
-
-    if (hasConversations || isInstanceRunning) {
-      const timeoutId = setTimeout(() => {
-        scrollContainerToBottomImmediate()
-        updateStickToBottomFromScroll()
-      }, 50)
-
-      return () => clearTimeout(timeoutId)
-    }
-  }, [logs.length, activeRobotInstance?.id, activeRobotInstance?.status, scrollContainerToBottomImmediate, updateStickToBottomFromScroll])
-
-  // After useInstanceLogs, we can define the scroll handler that uses hasMoreLogs
   const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
-    updateStickToBottomFromScroll()
-    
-    // Load more logs if near top
     const container = e.currentTarget
-    if (container.scrollTop < 100 && hasMoreLogs) {
-      const oldScrollHeight = container.scrollHeight
-      const oldScrollTop = container.scrollTop
+    const previousTop = lastScrollTopRef.current
+    const currentTop = container.scrollTop
+    lastScrollTopRef.current = currentTop
+    if (currentTop === previousTop) return
 
-      loadMoreLogs().then(() => {
-        // After prepending logs, adjust scrollTop so the view doesn't jump
-        setTimeout(() => {
-          if (messagesContainerRef.current) {
-            const newScrollHeight = messagesContainerRef.current.scrollHeight
-            const heightDiff = newScrollHeight - oldScrollHeight
-            if (heightDiff > 0) {
-              messagesContainerRef.current.scrollTop = oldScrollTop + heightDiff
-            }
-          }
-        }, 50)
-      })
+    const scrollingUp = currentTop < previousTop
+    updateStickToBottomFromScroll()
+    if (scrollingUp) {
+      stickToBottomRef.current = false
+      setShowJumpToLatest(true)
     }
-  }, [updateStickToBottomFromScroll, hasMoreLogs, loadMoreLogs])
-  // After logs finish loading, snap to the bottom by default (container did not exist during skeleton).
-  useLayoutEffect(() => {
-    const finishedLoading = wasLoadingLogsRef.current && !isLoadingLogs
-    wasLoadingLogsRef.current = isLoadingLogs
-
-    if (!finishedLoading) return
-
-    stickToBottomRef.current = true
-    setShowJumpToLatest(false)
-
-    const snapToTail = () => {
-      scrollContainerToBottomImmediate()
-      updateStickToBottomFromScroll()
+    if (!scrollingUp || currentTop >= 100 || !hasMoreLogs || isLoadingLogs || isLoadingMore || pendingHistoryRef.current) {
+      return
     }
 
-    snapToTail()
-    const raf = requestAnimationFrame(snapToTail)
-    const t0 = window.setTimeout(snapToTail, 0)
-    const t1 = window.setTimeout(snapToTail, 120)
-
-    return () => {
-      cancelAnimationFrame(raf)
-      window.clearTimeout(t0)
-      window.clearTimeout(t1)
+    const anchor = timelineElements(container).find(item =>
+      item.getBoundingClientRect().bottom >= container.getBoundingClientRect().top
+    )
+    const pending: PendingHistoryScroll = {
+      height: container.scrollHeight, firstLogId: logs[0]?.id, settled: false,
+      anchor: anchor ? {
+        id: anchor.dataset.timelineItemId!,
+        offset: anchor.getBoundingClientRect().top + container.scrollTop,
+      } : undefined,
     }
-  }, [isLoadingLogs, scrollContainerToBottomImmediate, updateStickToBottomFromScroll])
+    pendingHistoryRef.current = pending
+    void loadMoreLogs().catch(() => {
+      // The data hook reports fetch failures; keep the current viewport on retry.
+    }).finally(() => {
+      if (pendingHistoryRef.current !== pending) return
+      pending.settled = true
+      setHistoryRevision(revision => revision + 1)
+    })
+  }, [lastScrollTopRef, updateStickToBottomFromScroll, stickToBottomRef, setShowJumpToLatest, hasMoreLogs, isLoadingLogs, isLoadingMore, loadMoreLogs, logs])
 
-  // Plans load after logs; if the user is still following the tail, keep them pinned once the timeline height settles.
-  useLayoutEffect(() => {
-    const finishedPlans = wasLoadingPlansRef.current && !isLoadingPlans
-    wasLoadingPlansRef.current = isLoadingPlans
-
-    if (!finishedPlans || !stickToBottomRef.current) return
-
-    const snapToTail = () => {
-      scrollContainerToBottomImmediate()
-      updateStickToBottomFromScroll()
-    }
-    snapToTail()
-    const raf = requestAnimationFrame(snapToTail)
-    return () => cancelAnimationFrame(raf)
-  }, [isLoadingPlans, scrollContainerToBottomImmediate, updateStickToBottomFromScroll])
-
-return { handleScroll }
+  return { handleScroll }
 }

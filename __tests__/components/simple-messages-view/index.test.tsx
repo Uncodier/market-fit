@@ -3,6 +3,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { SimpleMessagesView } from '@/app/components/simple-messages-view'
 import { useSimpleMessagesView } from '@/app/components/simple-messages-view/use-simple-messages-view'
 import { createMessagesViewModel } from './messages-view-fixture'
+import type { InstanceLog } from '@/app/components/simple-messages-view/types'
 
 // Exercise the view and real composer, not network-backed orchestration or ESM markdown parsing.
 jest.mock('@/app/components/simple-messages-view/use-simple-messages-view', () => ({
@@ -32,6 +33,9 @@ jest.mock('@/app/components/simple-messages-view/components/MediaParametersToolb
 jest.mock('@/app/components/simple-messages-view/components/InstanceContextUsage', () => ({ InstanceContextUsage: () => null }))
 jest.mock('@/app/components/ui/context-selector-modal', () => ({ ContextSelectorModal: () => null }))
 jest.mock('@/app/components/context/context-mention-picker', () => ({ ContextMentionPicker: () => null }))
+jest.mock('@/app/components/simple-messages-view/components/MessageItem', () => ({
+  MessageItem: ({ log }: { log: InstanceLog }) => <p>{log.message}</p>,
+}))
 
 describe('SimpleMessagesView', () => {
   let model: ReturnType<typeof createMessagesViewModel>
@@ -90,5 +94,25 @@ describe('SimpleMessagesView', () => {
     expect(screen.getByText('Review our product positioning')).toBeInTheDocument()
     expect(screen.getByText('Thinking')).toBeInTheDocument()
     expect(screen.getByPlaceholderText('How can I help you today?')).toBeEnabled()
+  })
+
+  it('keeps stable timeline anchors when older logs are prepended', () => {
+    const entry = (id: string) => ({
+      type: 'log' as const,
+      timestamp: '2026-09-30T10:00:00Z',
+      data: { id, log_type: 'agent_action', level: 'info', message: id, created_at: '2026-09-30T10:00:00Z' },
+    })
+    model.isEmpty = false
+    model.shouldShowNewMakina = false
+    model.processedTimeline = [entry('latest-log')]
+    const { rerender } = render(<SimpleMessagesView />)
+    const anchor = screen.getByText('latest-log').closest('[data-timeline-item-id]')
+    expect(anchor).toHaveAttribute('data-timeline-item-id', 'log-latest-log')
+
+    model.processedTimeline = [entry('older-log'), entry('latest-log')]
+    rerender(<SimpleMessagesView />)
+    expect(screen.getByText('latest-log').closest('[data-timeline-item-id]')).toBe(anchor)
+    expect(screen.getByText('older-log').closest('[data-timeline-item-id]'))
+      .toHaveAttribute('data-timeline-item-id', 'log-older-log')
   })
 })

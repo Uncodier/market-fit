@@ -121,6 +121,15 @@ workflow.
 
 ## Assistant send lifecycle
 
+The Robots conversation initially queries only the newest 100 logs, ordered by
+`created_at DESC, id DESC`, then displays that page chronologically. Both fresh
+and cached conversations land at the latest log before paint, with or without a
+requirement. Older pages use a stable `(created_at, id)` cursor and load only on
+an upward scroll near the top; layout changes and scrolling down must not fetch
+history. Prepending history preserves the reader's position. Realtime updates,
+plans, and asynchronous content follow the bottom only until the reader scrolls
+up; the **Latest** control resumes following.
+
 Team-member chat interventions use a separate authenticated same-origin proxy.
 The API owns their persisted message IDs. Voice interventions currently place
 tracked provider calls directly rather than starting Temporal; see

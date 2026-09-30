@@ -257,10 +257,11 @@ const { className, activeRobotInstance, isBrowserVisible, hasTopHeaderSpace, ski
 
                 if (!content) return null;
 
+                const timelineItemId = item.type === 'process_group' ? item.data.groupId : item.data.id
                 return (
-                  <React.Fragment key={`timeline-item-${index}`}>
+                  <React.Fragment key={`${item.type}-${timelineItemId}`}>
                     {dateHeader}
-                    {content}
+                    <div data-timeline-item-id={`${item.type}-${timelineItemId}`}>{content}</div>
                   </React.Fragment>
                 );
               })

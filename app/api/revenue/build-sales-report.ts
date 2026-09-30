@@ -6,6 +6,7 @@ import { cents, sumCents } from "@/app/accounting/posting-core"
 import { isRecognizedRevenueSale } from "@/lib/sales/recognized-sale"
 import { salePaymentLedger } from "./payment-ledger"
 import { buildFinancialSummary, ledgerInPeriod } from "./financial-summary"
+import { buildPendingTrend } from "./pending-trend"
 import {
   aggregateSalesByCategory, buildDailyChannelData, buildMonthlyChannelData, getSalesAmount,
   isOnlineSource, isRetailSource, saleCalendarDate,
@@ -53,6 +54,7 @@ export async function buildSalesReport(
   ]) : [new Map<string, number>(), new Map<string, number>()]
   const names = new Set([...categories.keys(), ...prevCategories.keys()])
   return {
+    ...buildPendingTrend(scopedLedgers, period.start, period.end),
     financialSummary: buildFinancialSummary(scopedLedgers, period),
     totalSales: { ...metric(actual, prev), formattedActual: String(actual), formattedPrevious: String(prev) },
     channelSales,

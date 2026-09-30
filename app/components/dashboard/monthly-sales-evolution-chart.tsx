@@ -8,7 +8,9 @@ import { EmptyCard } from "@/app/components/ui/empty-card"
 import { BarChart as BarChartIcon } from "@/app/components/ui/icons"
 import { Skeleton } from "@/app/components/ui/skeleton"
 import { formatSalesMoney } from "@/lib/sales/report-format"
-import { buildSalesTrend, salesTrendRange, type SalesTrendInput, type SalesTrendBucket } from "./sales-trend-data"
+import { buildPendingSalesTrend, buildSalesTrend, salesTrendRange, type SalesTrendInput } from "./sales-trend-data"
+import type { SalesPendingDailyTrendPoint, SalesPendingTrendPoint } from "@/lib/sales/report-types"
+import { buildSalesPaymentStack, type SalesPaymentStackPoint } from "./sales-payment-stack"
 import { ReportChartFrame } from "./report-chart-frame"
 
 interface MonthlySalesEvolutionChartProps extends SalesTrendInput {
@@ -17,6 +19,8 @@ interface MonthlySalesEvolutionChartProps extends SalesTrendInput {
   currency?: string
   byChannel?: boolean
   showPeriod?: boolean
+  pendingData?: SalesPendingTrendPoint[]
+  dailyPendingData?: SalesPendingDailyTrendPoint[]
 }
 
 const series = [
@@ -26,11 +30,16 @@ const series = [
 ] as const
 
 /** The legacy component name/`data` prop remains supported; daily rows enable adaptive periods. */
-export function MonthlySalesEvolutionChart({ data, dailyData, startDate, endDate, coverage,
+export function MonthlySalesEvolutionChart({ data, dailyData, pendingData, dailyPendingData, startDate, endDate, coverage,
   isLoading, dataReady, currency = "UNSPECIFIED", byChannel = true, showPeriod = true }: MonthlySalesEvolutionChartProps) {
   const { isDarkMode } = useTheme()
   const trend = useMemo(() => buildSalesTrend({ data, dailyData, startDate, endDate, coverage }),
     [data, dailyData, startDate, endDate, coverage])
+  const showPending = pendingData !== undefined || dailyPendingData !== undefined
+  const points = useMemo(() => buildSalesPaymentStack(trend,
+    buildPendingSalesTrend({ data, dailyData, pendingData, dailyPendingData, coverage }, trend)),
+  [trend, data, dailyData, pendingData, dailyPendingData, coverage])
+  const hasUnknownBalances = showPending && points.some(point => point.totalSales !== null && point.pendingTotal === null)
   const loading = isLoading || !dataReady
   const observed = trend.points.filter(point => point.totalSales !== null)
   const hasAmounts = observed.some(point => point.totalSales !== 0 || point.onlineSales !== 0 || point.retailSales !== 0 || point.otherSales !== 0)
@@ -43,7 +52,15 @@ export function MonthlySalesEvolutionChart({ data, dailyData, startDate, endDate
   const compactMoney = (value: number) => currency === "UNSPECIFIED"
     ? new Intl.NumberFormat("en-US", { notation: "compact", maximumFractionDigits: 1 }).format(value)
     : formatSalesMoney(value, currency, true)
-  const activeSeries = byChannel ? series : [{ key: "totalSales", name: "Active sales", color: "#10B981" }] as const
+  const activeSeries: Array<{ key: keyof SalesPaymentStackPoint; name: string; color: string }> = showPending
+    ? [...(byChannel ? [
+      { key: "settledOnline" as const, name: "Online — settled", color: "#10B981" },
+      { key: "settledRetail" as const, name: "Retail — settled", color: "#3B82F6" },
+      { key: "settledOther" as const, name: "Other / unassigned — settled", color: "#A78BFA" },
+    ] : [{ key: "settledTotal" as const, name: "Settled", color: "#10B981" }]),
+    ...(hasUnknownBalances ? [{ key: "unclassifiedTotal" as const, name: "Payment status unavailable", color: "#94A3B8" }] : []),
+    { key: "pendingTotal", name: "Pending", color: "#F59E0B" }]
+    : byChannel ? [...series] : [{ key: "totalSales", name: "Active sales", color: "#10B981" }]
   const title = byChannel ? "Sales trend by channel" : "Sales trend"
 
   return <Card className="min-w-0 overflow-hidden">
@@ -59,6 +76,7 @@ export function MonthlySalesEvolutionChart({ data, dailyData, startDate, endDate
       </div>
       <CardDescription className="text-xs">
         {loading ? "Loading active sales for the selected period." : `Active sale amounts by ${unit} (sale date), not cash collected.`}
+        {!loading && showPending && " Pending is stacked above the settled portion in the same bar; together they equal active sales. Balances are current, not historical closing balances."}
         {!loading && trend.legacy && " Monthly data only; daily detail is unavailable. Edge months may be partial."}
         {!loading && !trend.legacy && trend.granularity === "weekly" && " Weeks are seven-day groups from the selected start date; the last may be shorter."}
         {!loading && !trend.legacy && trend.granularity === "monthly" && " First and last months may be partial."}
@@ -80,7 +98,7 @@ export function MonthlySalesEvolutionChart({ data, dailyData, startDate, endDate
               ? "Active sales total zero for this period; this does not imply zero cash movement. Try another date range or segment."
               : "Dated sales amounts are not available for the full selected period. Missing data is not zero sales."} />
         </div> : <ResponsiveContainer width="100%" height="100%" minWidth={0}>
-            <BarChart data={trend.points} margin={{ top: 12, right: 8, left: 0, bottom: 8 }} barGap={1} maxBarSize={44}>
+            <BarChart data={points} margin={{ top: 12, right: 8, left: 0, bottom: 8 }} barGap={1} maxBarSize={44}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={isDarkMode ? "#334155" : "#e5e7eb"} />
               <XAxis dataKey="date" ticks={ticks} axisLine={false} tickLine={false} minTickGap={28} interval="preserveStartEnd"
                 tick={{ fontSize: 11, fill: isDarkMode ? "#CBD5E1" : "#6B7280" }} tickMargin={10}
@@ -89,22 +107,22 @@ export function MonthlySalesEvolutionChart({ data, dailyData, startDate, endDate
                 tick={{ fontSize: 11, fill: isDarkMode ? "#CBD5E1" : "#6B7280" }} tickFormatter={compactMoney} />
               <Tooltip cursor={{ fill: isDarkMode ? "#ffffff08" : "#00000004" }}
                 content={({ active, payload }) => {
-                  const point = payload?.[0]?.payload as SalesTrendBucket | undefined
+                  const point = payload?.[0]?.payload as SalesPaymentStackPoint | undefined
                   if (!active || !point) return null
                   const date = /^\d{4}-\d{2}-\d{2}$/.test(point.date)
                     ? salesTrendRange(point.date, point.endDate) : point.label
                   return <div className="max-w-[260px] rounded-lg border bg-popover p-3 text-xs text-popover-foreground shadow-md">
                     <p className="mb-2 font-medium">{date}</p>
-                    {activeSeries.map(item => <div key={item.key} className="flex justify-between gap-4 py-0.5">
-                      <span>{item.name}</span><span className="font-medium tabular-nums">{point[item.key] === null ? "Unavailable" : money(point[item.key]!)}</span>
+                    {activeSeries.filter(item => item.key !== "unclassifiedTotal" || point.unclassifiedTotal !== null).map(item => <div key={item.key} className="flex justify-between gap-4 py-0.5">
+                      <span>{item.name}</span><span className="font-medium tabular-nums">{typeof point[item.key] !== "number" ? "Unavailable" : money(point[item.key] as number)}</span>
                     </div>)}
-                    {byChannel && point.totalSales !== null && <div className="mt-2 flex justify-between gap-4 border-t pt-2 font-medium">
-                      <span>Total</span><span className="tabular-nums">{money(point.totalSales)}</span>
+                    {(byChannel || showPending) && point.totalSales !== null && <div className="mt-2 flex justify-between gap-4 border-t pt-2 font-medium">
+                      <span>Active sales total</span><span className="tabular-nums">{money(point.totalSales)}</span>
                     </div>}
                   </div>
                 }} />
               {activeSeries.map(item => <Bar key={item.key} dataKey={item.key} name={item.name} fill={item.color}
-                stackId={byChannel ? "channels" : undefined} radius={byChannel ? 0 : [3, 3, 0, 0]} isAnimationActive={false} />)}
+                stackId="sales" radius={showPending ? item.key === "pendingTotal" ? [3, 3, 0, 0] : 0 : byChannel ? 0 : [3, 3, 0, 0]} isAnimationActive={false} />)}
             </BarChart>
           </ResponsiveContainer>}
       </ReportChartFrame>
@@ -118,6 +136,8 @@ export function MonthlySalesEvolutionChart({ data, dailyData, startDate, endDate
       {!loading && <p className="mt-3 text-xs text-muted-foreground">
         {currency === "UNSPECIFIED" ? "Currency unspecified; amounts shown as recorded." : `Amounts in ${currency}.`}
         {trend.hasGaps && " Gaps are unavailable, not zero; incomplete buckets are not totaled."}
+        {hasUnknownBalances && " Grey bars retain the active sales total where the payment split is unavailable; missing balances are not zero pending."}
+        {!showPending && " Pending detail is unavailable in this response; active sales are not assumed paid."}
       </p>}
     </CardContent>
   </Card>

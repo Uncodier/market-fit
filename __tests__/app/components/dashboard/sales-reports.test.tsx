@@ -150,6 +150,8 @@ describe("sales report sections and scoped loading", () => {
   it("leads with the adaptive trend, forwards source coverage and collapses detailed caveats", async () => {
     const data = report()
     data.dailyData = [{ date: "2025-02-01", onlineSales: 20, retailSales: 0, otherSales: 0, totalSales: 20 }]
+    data.dailyPendingData = [{ date: "2025-02-01", onlineSales: 10, retailSales: 0, otherSales: 0, totalSales: 10 }]
+    data.monthlyPendingData = [{ month: "2025-02", onlineSales: 10, retailSales: 0, otherSales: 0, totalSales: 10 }]
     data.metadata.trendCoverage = { startDate: "2025-02-01", endDate: "2025-02-02", complete: true }
     fetchMock.mockResolvedValueOnce(ok(data))
     render(<SalesReports {...props} section="channels" />, { wrapper })
@@ -160,6 +162,7 @@ describe("sales report sections and scoped loading", () => {
     expect(trend.parentElement).toHaveClass("items-stretch", "xl:grid-rows-[auto_1fr]", "xl:[&>*]:grid-rows-subgrid")
     expect(mockTrendProps).toHaveBeenLastCalledWith(expect.objectContaining({
       dailyData: data.dailyData, data: data.monthlyData, startDate, endDate, coverage: data.metadata.trendCoverage,
+      dailyPendingData: data.dailyPendingData, pendingData: data.monthlyPendingData,
     }))
     expect(screen.getByText(/Online includes online, shop and marketplace/).closest("details")).not.toHaveAttribute("open")
     expect(screen.getByText(/Online includes online, shop and marketplace/)).toHaveTextContent("across 1 sale.")

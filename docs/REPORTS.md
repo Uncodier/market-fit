@@ -219,6 +219,17 @@ columns, completed-sale status filter and creation-timestamp semantics.
   Overview and Sales group by day through 45 inclusive days, by seven-day intervals
   through 180 days, and by calendar month for longer selections. Weekly groups
   begin at the requested start; the final group can be shorter.
+- `dailyPendingData` and `monthlyPendingData` reuse validated current balances for
+  those same active sales, currencies and sale-date buckets. In the chart, the amber
+  **Pending** segment is stacked **above** the settled portion in a single column.
+  Settled is active value minus current pending; it is not receipts by payment date.
+  The complete stack equals active sales, never active sales plus pending. Channel
+  views split the lower settled portion by channel, with pending at the very top.
+  Unknown/inconsistent balances make that bucket's payment split unavailable, shown
+  as an unclassified grey active-sales total. Missing legacy pending series are not
+  inferred from monthly values, treated as zero, or used to classify all sales paid.
+  The series reuse loaded rows without additional queries. The overview cache
+  namespace is `v5` to retire responses without this series.
 - Chart bounds come from the selection, coverage or observed dates, never the
   current year. Explicit complete coverage distinguishes observed zero days from
   missing data. Incomplete buckets remain unavailable. Legacy `monthlyData` is

@@ -1,14 +1,14 @@
 import { format } from "date-fns"
-import type { SalesChannelAmounts, SalesDailyTrendPoint, SalesTrendCoverage } from "@/lib/sales/report-types"
+import type { SalesChannelAmounts, SalesDailyTrendPoint, SalesPendingAmounts, SalesPendingDailyTrendPoint, SalesPendingTrendPoint, SalesTrendCoverage } from "@/lib/sales/report-types"
 
-export type LegacySalesTrendPoint = Pick<SalesChannelAmounts, "onlineSales" | "retailSales"> & {
+export type LegacySalesTrendPoint = Pick<SalesPendingAmounts, "onlineSales" | "retailSales"> & {
   month: string
-  otherSales?: number
-  totalSales?: number
+  otherSales?: number | null
+  totalSales?: number | null
 }
 export type SalesTrendInput = {
   data: LegacySalesTrendPoint[]
-  dailyData?: SalesDailyTrendPoint[]
+  dailyData?: Array<SalesDailyTrendPoint | SalesPendingDailyTrendPoint>
   startDate?: Date | string
   endDate?: Date | string
   coverage?: SalesTrendCoverage
@@ -53,10 +53,12 @@ const lastMonthDay = (day: string) => {
   return dayLabel(date.getTime() / DAY_MS - 1)
 }
 
-function amounts(point: LegacySalesTrendPoint | SalesDailyTrendPoint): SalesChannelAmounts | null {
-  const values = "date" in point ? point : { ...point, otherSales: point.otherSales ?? 0,
-    totalSales: point.totalSales ?? point.onlineSales + point.retailSales + (point.otherSales ?? 0) }
-  return keys.every(key => typeof values[key] === "number" && Number.isFinite(values[key])) ? values : null
+function amounts(point: LegacySalesTrendPoint | SalesDailyTrendPoint | SalesPendingDailyTrendPoint): SalesChannelAmounts | null {
+  const otherSales = point.otherSales === undefined ? 0 : point.otherSales
+  const values = "date" in point ? point : { ...point, otherSales,
+    totalSales: point.totalSales === undefined && point.onlineSales !== null && point.retailSales !== null && otherSales !== null
+      ? point.onlineSales + point.retailSales + otherSales : point.totalSales }
+  return keys.every(key => typeof values[key] === "number" && Number.isFinite(values[key])) ? values as SalesChannelAmounts : null
 }
 
 export function formatSalesTrendDate(day: string, withYear = true): string {
@@ -116,7 +118,7 @@ function monthlyTrend(data: LegacySalesTrendPoint[], start: string, end: string)
     hasGaps: points.some(point => point.totalSales === null) }
 }
 
-function dailyTrend(data: SalesDailyTrendPoint[], start: string, end: string, coverage?: SalesTrendCoverage): SalesTrend {
+function dailyTrend(data: Array<SalesDailyTrendPoint | SalesPendingDailyTrendPoint>, start: string, end: string, coverage?: SalesTrendCoverage): SalesTrend {
   const startDay = dayNumber(start)
   const endDay = dayNumber(end)
   const days = endDay - startDay + 1
@@ -158,4 +160,17 @@ function dailyTrend(data: SalesDailyTrendPoint[], start: string, end: string, co
   })
   return { points, startDate: start, endDate: end, granularity, legacy: false,
     hasGaps: points.some(point => point.totalSales === null) }
+}
+
+/** Match the active series' exact buckets; monthly pending data never invents daily detail. */
+export function buildPendingSalesTrend(input: SalesTrendInput & {
+  pendingData?: SalesPendingTrendPoint[]
+  dailyPendingData?: SalesPendingDailyTrendPoint[]
+}, activeTrend: SalesTrend): SalesTrend {
+  return buildSalesTrend({
+    data: input.pendingData ?? [],
+    dailyData: activeTrend.legacy ? undefined : input.dailyPendingData ?? [],
+    startDate: activeTrend.startDate, endDate: activeTrend.endDate,
+    coverage: input.dailyPendingData === undefined ? undefined : input.coverage,
+  })
 }

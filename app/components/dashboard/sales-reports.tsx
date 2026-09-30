@@ -101,6 +101,7 @@ export function SalesReports({ startDate, endDate, segmentId = "all", section, e
       ? "grid min-w-0 items-stretch gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] xl:grid-rows-[auto_1fr] xl:[&>*]:row-span-2 xl:[&>*]:grid xl:[&>*]:grid-rows-subgrid xl:[&>*]:gap-y-0 [&>*]:min-w-0"
       : "min-w-0"}>
       <MonthlySalesEvolutionChart data={data.monthlyData} dailyData={data.dailyData}
+        pendingData={data.monthlyPendingData} dailyPendingData={data.dailyPendingData}
         startDate={startDate ?? data.metadata.startDate} endDate={endDate ?? data.metadata.endDate}
         coverage={data.metadata.trendCoverage} currency={data.currency} byChannel={showChannels}
         showPeriod={!embedded} isLoading={false} dataReady />

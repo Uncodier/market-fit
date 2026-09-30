@@ -418,7 +418,7 @@ export function useSimpleMessagesView({ className = "", activeRobotInstance, isB
 
   useExternalMessageEvents(setMessage, handleSendMessage)
 
-  const { handleScroll } = useMessageScrollEffects({ ...scroll, activeRobotInstance, isLoadingLogs, isLoadingPlans, logs, hasMoreLogs, loadMoreLogs })
+  const { handleScroll } = useMessageScrollEffects({ ...scroll, activeRobotInstance, isLoadingLogs, isLoadingPlans, isLoadingMore, logs, hasMoreLogs, loadMoreLogs })
 
   // Calculate if chat is empty
   const shouldShowNewMakina = !activeRobotInstance || !activeRobotInstance.id || (activeRobotInstance.status === 'pending' && logs.length === 0)

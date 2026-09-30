@@ -18,9 +18,60 @@ const startDate = "2020-06-01"
 const endDate = "2020-06-30"
 const coverage = { startDate, endDate, complete: true }
 const dailyData = [{ date: "2020-06-07", onlineSales: 100, retailSales: 20, otherSales: 30, totalSales: 150 }]
+const dailyPendingData = [{ date: "2020-06-07", onlineSales: 80, retailSales: 10, otherSales: 0, totalSales: 90 }]
 const props = { data: [], dailyData, startDate, endDate, coverage, isLoading: false, dataReady: true, currency: "EUR" }
 
 describe("sales trend presentation", () => {
+  it.each([false, true])("stacks Pending above the settled segments at the same x position (channels=%s)", byChannel => {
+    const { container } = render(<MonthlySalesEvolutionChart {...props} startDate="2020-06-07" endDate="2020-06-07"
+      dailyPendingData={dailyPendingData} byChannel={byChannel} />)
+    const bars = Array.from(container.querySelectorAll(".recharts-bar"))
+    const pending = bars[bars.length - 1].querySelector(".recharts-bar-rectangle path")!
+    expect(pending).toHaveAttribute("fill", "#F59E0B")
+    const below = bars.slice(0, -1).map(bar => bar.querySelector(".recharts-bar-rectangle path")!)
+    for (const segment of below) {
+      expect(segment.getAttribute("x")).toBe(pending.getAttribute("x"))
+      expect(segment.getAttribute("width")).toBe(pending.getAttribute("width"))
+      expect(Number(segment.getAttribute("y"))).toBeGreaterThan(Number(pending.getAttribute("y")))
+    }
+    const lastSettled = below.at(-1)!
+    expect(Number(pending.getAttribute("y")) + Number(pending.getAttribute("height")))
+      .toBeCloseTo(Number(lastSettled.getAttribute("y")))
+    expect(screen.getByLabelText("Chart legend")).toHaveTextContent(byChannel ? "Online — settledRetail — settledOther / unassigned — settledPending" : "SettledPending")
+    expect(screen.getByText(/Pending is stacked above the settled portion in the same bar/)).toBeVisible()
+    expect(screen.queryByText(/separate column/)).not.toBeInTheDocument()
+  })
+
+  it("keeps unknown balances unclassified rather than rendering all sales as settled", () => {
+    const { container } = render(<MonthlySalesEvolutionChart {...props} byChannel={false}
+      dailyPendingData={[{ ...dailyPendingData[0], totalSales: null }]} />)
+    expect(screen.getByLabelText("Chart legend")).toHaveTextContent("Payment status unavailable")
+    expect(screen.getByText(/missing balances are not zero pending/)).toBeVisible()
+    const paths = container.querySelectorAll(".recharts-bar-rectangle path")
+    expect(Array.from(paths).filter(path => Number(path.getAttribute("height")) > 0).every(path => path.getAttribute("fill") === "#94A3B8")).toBe(true)
+  })
+  it("keeps all channel segments and Pending in one column", () => {
+    const single = [{ date: startDate, onlineSales: 100, retailSales: 50, otherSales: 25, totalSales: 175 }]
+    const pending = [{ date: startDate, onlineSales: 80, retailSales: 20, otherSales: 10, totalSales: 110 }]
+    const { container } = render(<MonthlySalesEvolutionChart {...props} endDate={startDate} dailyData={single} dailyPendingData={pending} />)
+    const bars = Array.from(container.querySelectorAll(".recharts-bar"))
+    expect(bars).toHaveLength(4)
+    const positions = bars.map(bar => bar.querySelector(".recharts-bar-rectangle path")!.getAttribute("x"))
+    expect(new Set(positions).size).toBe(1)
+    expect(screen.getByLabelText("Chart legend")).toHaveTextContent("Online — settledRetail — settledOther / unassigned — settledPending")
+    expect(screen.getByText(/together they equal active sales/)).toBeVisible()
+  })
+
+  it("adds a pending segment in the total view while leaving unknown balances unavailable", () => {
+    const { container, rerender } = render(<MonthlySalesEvolutionChart {...props} byChannel={false}
+      dailyPendingData={[{ date: "2020-06-07", onlineSales: 80, retailSales: 0, otherSales: 0, totalSales: 80 }]} />)
+    expect(container.querySelectorAll(".recharts-bar")).toHaveLength(2)
+    expect(screen.getByLabelText("Chart legend")).toHaveTextContent("SettledPending")
+    rerender(<MonthlySalesEvolutionChart {...props} byChannel={false}
+      dailyPendingData={[{ date: "2020-06-07", onlineSales: null, retailSales: null, otherSales: null, totalSales: null }]} />)
+    expect(screen.getByText(/missing balances are not zero pending/)).toBeVisible()
+  })
+
   it("renders a real adaptive daily chart with sparse mobile ticks and all channel amounts", () => {
     const { container } = render(<MonthlySalesEvolutionChart {...props} />)
     expect(screen.getByText("Jun 1, 2020 – Jun 30, 2020")).toBeInTheDocument()
@@ -95,6 +146,7 @@ describe("sales trend presentation", () => {
 
   it("shows the complete clipped range and currency amounts in a weekly tooltip", async () => {
     const { container } = render(<MonthlySalesEvolutionChart {...props} startDate="2020-06-01" endDate="2020-07-20"
+      dailyPendingData={[{ date: "2020-06-07", onlineSales: 80, retailSales: 10, otherSales: 0, totalSales: 90 }]}
       coverage={{ startDate: "2020-06-01", endDate: "2020-07-20", complete: true }} />)
     const chart = container.querySelector(".recharts-wrapper")!
     Object.defineProperty(chart, "offsetWidth", { value: 360 })
@@ -106,17 +158,22 @@ describe("sales trend presentation", () => {
     expect(screen.getByText("weekly totals")).toBeInTheDocument()
     await waitFor(() => expect(screen.getByText("Jun 1, 2020 – Jun 7, 2020")).toBeInTheDocument())
     expect(screen.getByText(/EUR.*150.00/)).toBeInTheDocument()
+    expect(screen.getAllByText("Pending").length).toBeGreaterThan(0)
+    expect(screen.getByText(/EUR.*90.00/)).toBeInTheDocument()
   })
 })
 
 describe("OverviewSalesTrend integration", () => {
   it("shares the revenue payload and passes selected bounds/daily coverage without a second fetch", () => {
-    jest.mocked(useOverviewSlice).mockReturnValue({ data: { dailyData, monthlyData: [], currency: "EUR", metadata: { trendCoverage: coverage } },
+    jest.mocked(useOverviewSlice).mockReturnValue({ data: { dailyData, dailyPendingData, monthlyData: [], currency: "EUR", metadata: { trendCoverage: coverage } },
       isLoading: false, error: undefined, mutate: jest.fn() } as ReturnType<typeof useOverviewSlice>)
     const start = new Date(2020, 5, 1)
     const end = new Date(2020, 5, 30)
     render(<OverviewSalesTrend startDate={start} endDate={end} segmentId="segment-a" />)
     expect(useOverviewSlice).toHaveBeenCalledWith("revenue", start, end, "segment-a")
     expect(screen.getByRole("img", { name: /Sales trend, daily totals. Jun 1, 2020 – Jun 30, 2020/ })).toBeInTheDocument()
+    expect(screen.getByLabelText("Chart legend")).toHaveTextContent("SettledPending")
+    expect(screen.getByLabelText("Chart legend")).toHaveTextContent("Pending")
+    expect(screen.queryByText(/Pending balances are unavailable/)).not.toBeInTheDocument()
   })
 })

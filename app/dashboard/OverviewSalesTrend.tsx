@@ -11,6 +11,7 @@ export function OverviewSalesTrend({ startDate, endDate, segmentId }: {
 }) {
   const { data, isLoading } = useOverviewSlice<SalesReportData>("revenue", startDate, endDate, segmentId)
   return <MonthlySalesEvolutionChart data={data?.monthlyData ?? []} currency={data?.currency}
+    pendingData={data?.monthlyPendingData} dailyPendingData={data?.dailyPendingData}
     dailyData={data?.dailyData} startDate={startDate} endDate={endDate} coverage={data?.metadata?.trendCoverage}
     isLoading={isLoading} dataReady={!!data} byChannel={false} showPeriod={false} />
 }

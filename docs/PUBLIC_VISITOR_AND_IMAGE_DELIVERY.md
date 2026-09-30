@@ -59,6 +59,32 @@ stored `/api/public/image/prompt/...` URLs are normalized without forwarding
 their origin, signature, identity overrides or credentials. Records Insights
 uses the same helper instead of hardcoded API hosts.
 
+### Makinari navigation icons
+
+Module icons belong to Makinari, not the selected site. Nineteen approved images
+from the Makinari site's existing public cache were captured on 2026-09-30 and
+promoted to static application assets in `public/images/modules/makinari-2026-09-30`.
+They are the existing renders, not newly generated images. The 1024px originals
+are resized without cropping to 512px WebP (quality 90), retaining 2x resolution
+for the 256px icon component. All 19 files together are approximately 239 KiB.
+
+`app/config/module-image-overrides.ts` selects exactly these shared overrides:
+Campaigns, Segments, Price Lists, Leads, Point of Sale, Conversations (`chat`),
+Order Lines, Tasks (`controlCenter`), Check In, Inventory, Assets, AI Goals
+(`requirements`), AI Activities (`activities`), Workflows, Performance, Cost
+Reports, Database, Code (`applicationsRepositories`), and Billing. These images
+load directly from static files for every site, without credentials, database
+lookups, generation requests, or site-credit charges.
+
+For every other module, `getModuleImageUrl` preserves the shared icon-set URLs
+from commit `8ce0124f`: the unchanged prompt and 256-by-256 dimensions go directly to the configured API's
+`/api/public/image/prompt/...` endpoint, without `site_id` or credentials. Requests
+from `app.makinari.com` therefore use the API's existing platform image cache.
+Do not route these icons through `/api/images/prompt`: that proxy selects the
+current site and can charge site credits for a new copy of a platform asset.
+Switching sites must not change the icon URL. Catalog, promotion and record
+images retain the site-scoped authorization and delivery behavior below.
+
 ### Public delivery
 
 The image route and Open Graph renderer read only already-public cached bytes

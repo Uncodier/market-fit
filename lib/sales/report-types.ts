@@ -18,6 +18,9 @@ export type SalesChannelAmounts = {
 }
 export type SalesTrendPoint = SalesChannelAmounts & { month: string }
 export type SalesDailyTrendPoint = SalesChannelAmounts & { date: string }
+export type SalesPendingAmounts = { [Key in keyof SalesChannelAmounts]: number | null }
+export type SalesPendingTrendPoint = SalesPendingAmounts & { month: string }
+export type SalesPendingDailyTrendPoint = SalesPendingAmounts & { date: string }
 export type SalesTrendCoverage = {
   startDate: string
   endDate: string
@@ -37,6 +40,9 @@ export interface SalesReportData {
   monthlyData: SalesTrendPoint[]
   /** Optional for compatibility with older revenue responses; never derived from monthly totals. */
   dailyData?: SalesDailyTrendPoint[]
+  /** Current balances grouped by sale date, not historical closing balances or receipts. */
+  monthlyPendingData?: SalesPendingTrendPoint[]
+  dailyPendingData?: SalesPendingDailyTrendPoint[]
   salesDistribution: Array<{ category: string; percentage: number; amount: number }>
   currency: string
   availableCurrencies: string[]
