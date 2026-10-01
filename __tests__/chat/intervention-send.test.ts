@@ -88,3 +88,23 @@ it('never automatically retries a network failure', async () => {
   expect(interventionErrorMessageId(await send().catch(error => error))).toBeUndefined()
   expect(fetch).toHaveBeenCalledTimes(1)
 })
+
+it('preserves a preflight rejection without claiming a saved message', async () => {
+  jest.mocked(fetch).mockResolvedValueOnce(Response.json({
+    success: false, execution_started: false,
+    error: { code: 'VOICE_CONSENT_REQUIRED', message: 'No call started. Explicit consent is required.' },
+  }, { status: 403 }))
+  const error = await send().catch(error => error)
+  expect(error.executionStarted).toBe(false)
+  expect(error.message).toContain('Explicit consent')
+  expect(interventionErrorMessageId(error)).toBeUndefined()
+  expect(fetch).toHaveBeenCalledTimes(1)
+})
+
+it('never claims non-start when a call ID contradicts the admission flag', async () => {
+  jest.mocked(fetch).mockResolvedValueOnce(Response.json({
+    success: false, execution_started: false, data: { channel_send: { callId: 'call-1' } },
+  }, { status: 500 }))
+  const error = await send().catch(error => error)
+  expect(error.executionStarted).toBeUndefined()
+})

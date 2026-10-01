@@ -1,10 +1,12 @@
 # Content and Outstand deletion
 
 The content editor's **Delete Content** modal deletes local content only by
-default. If the persisted content has explicit `outstand_id_...` tags, it offers
-an unchecked **Also delete linked posts from Outstand and social networks**
-option. Similar titles/text and `published_...` tags never identify deletion
-targets. All distinct linked post IDs are included, not just the most recent.
+default. On opening, it verifies the persisted content's explicit
+`outstand_id_...` links and shows the current per-network deletion options.
+Combined deletion is an unchecked opt-in, available only when all linked targets
+are eligible. Similar titles/text and `published_...` tags never identify deletion
+targets or prove publication status. All distinct linked post IDs are included,
+not just the most recent or the latest 50 posts.
 
 ## Provider behavior
 
@@ -25,27 +27,51 @@ before removing their Outstand records. A partial or uncertain result preserves
 the local content. Publications already removed cannot be restored. The modal
 stays open with an error; there are no automatic retries.
 
-### Instagram and TikTok recovery
+### Contextual preview and recovery
 
 Published Instagram and TikTok posts cannot be deleted through Outstand's API;
 an HTTP 409 in this flow can be an unsupported operation rather than a transient
-provider failure. The web error explains this limitation without exposing raw
-provider errors. Other conflicts can also return 409; the message is guidance,
-not a platform-specific diagnosis of every conflict.
+provider failure. The dialog explains the actual linked platforms before an
+attempt. HTTP conflicts use a platform-neutral error because status, permissions
+and support may change; raw provider errors are never exposed.
 
-To remove these publications, delete them directly in Instagram and TikTok.
-Then leave **Also delete linked posts from Outstand and social networks**
-unchecked and confirm **Delete local content**. After a remote deletion failure,
+The preview distinguishes:
+
+- **Published, supported:** remote deletion, subject to account permissions.
+  The Threads scope warning appears only for a published Threads target.
+- **Published Instagram/TikTok:** manual deletion in the named app; combined
+  deletion is unavailable rather than offering a known-to-fail action.
+- **Scheduled:** cancellation, including Instagram/TikTok. Pending schedules
+  due within the API's 75-second safety window are treated as uncertain.
+- **Unpublished or already remotely deleted:** Outstand record cleanup.
+- **Unknown, inconsistent or unavailable:** no promise of remote deletion;
+  local-only deletion remains available.
+
+Only relevant networks are shown. Repeated outcomes are grouped with counts;
+different states on the same network remain separate. Mixed eligible/manual
+targets explain that combined deletion is unavailable and that supported posts
+will not be automatically removed as a partial operation. This is not a new
+per-platform deletion endpoint.
+
+The option and confirmation labels distinguish remote publication deletion,
+schedule cancellation and record-only cleanup. Local-only copy names the
+affected networks and warns that scheduled posts can still publish; it does not
+claim that unpublished or already-deleted posts will remain online.
+
+To remove published Instagram/TikTok posts, delete them directly in those apps.
+Then leave combined deletion unchecked and confirm **Delete local content**.
+After a remote deletion failure,
 **Switch to local-only deletion** unchecks the option and clears the previous
 error but does not submit another deletion; a new confirmation is required.
 Local-only deletion does not contact Outstand or remove its records, which may
 still appear in the content list. Remove any unwanted provider records separately
 in Outstand after checking the social networks.
 
-The dialog shows this limitation before opting in. Unpublished scheduled posts
-can still be cancelled through Outstand; they are not the unsupported published
-case. Do not silently fall back to record-only deletion or mark a partial remote
-result as successful.
+The dialog refreshes its preview on each opening, ignores late results after
+closing, and disables combined deletion while verifying or after a verification
+failure. Preview eligibility is guidance, never authorization or proof of success.
+Deletion rechecks current provider state and permissions. Do not silently fall
+back to record-only deletion or mark a partial remote result as successful.
 
 ## Trust boundaries
 
@@ -56,7 +82,16 @@ capability. No service-role fallback is used. Local deletion includes the
 original `updated_at` to avoid erasing concurrent edits, and verifies that a row
 was actually deleted.
 
-The API is called only for an explicit opt-in:
+`app/content/get-content-deletion-preview.ts` authenticates, loads persisted links
+under RLS, and checks the site's delete capability before previewing. It uses the
+user's verified session and read authorization for exact
+`GET /api/integrations/outstand/posts/{id}?tenant_id={siteId}` requests. The API
+independently verifies provider-account ownership. The web validates IDs and
+tenant metadata, strips unrelated provider fields, bounds response sizes, and
+reads at most five posts concurrently within a 30-second provider-read budget.
+No provider or local mutations are performed during preview.
+
+The deletion API is called only for an explicit opt-in:
 
 ```text
 DELETE /api/integrations/outstand/posts/{id}/with-content?tenant_id={siteId}

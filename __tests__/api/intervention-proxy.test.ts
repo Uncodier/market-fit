@@ -89,6 +89,9 @@ it('does not start a voice call or invent a recipient when the inbound conversat
 it('forwards a linked voice intervention, not an internal assistant turn', async () => {
   from.mockReturnValueOnce(query({ id: conversationId, site_id: siteId, agent_id: agentId,
     channel: 'voice', lead_id: leadId, visitor_id: null,
+  })).mockReturnValueOnce(query({
+    id: leadId, phone: '+12025550123', do_not_call: false,
+    voice_call_consent_status: 'granted', voice_call_consent_at: '2026-01-01T00:00:00Z',
   }))
   expect((await POST(request())).status).toBe(200)
   expect(fetch).toHaveBeenCalledTimes(1)

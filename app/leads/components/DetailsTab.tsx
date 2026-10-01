@@ -13,6 +13,8 @@ import { PropertyRow, ShowEmptyFieldsToggle, hasPropertyValue } from "./Property
 import { useSite } from "@/app/context/SiteContext"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { resolveRelationId } from "@/app/commerce/resolve-relation"
+import { CallConsentFields } from "./CallConsentFields"
+import type { SavedCallConsent } from "../call-consent-schema"
 
 export const LEAD_LANGUAGES: Record<string, string> = {
   en: "English",
@@ -38,6 +40,7 @@ interface DetailsTabProps {
   showEmpty: boolean
   onToggleEmpty: () => void
   onUpdateLead: (id: string, data: Partial<Lead>) => Promise<void>
+  onCallConsentSaved: (lead: SavedCallConsent) => void
 }
 
 export function DetailsTab({
@@ -47,6 +50,7 @@ export function DetailsTab({
   showEmpty,
   onToggleEmpty,
   onUpdateLead,
+  onCallConsentSaved,
 }: DetailsTabProps) {
   const { currentSite } = useSite()
   const { t } = useLocalization()
@@ -131,6 +135,12 @@ export function DetailsTab({
           <Input value={draft} onChange={(event) => setDraft(event.target.value)} className="h-8 text-sm" />
         )}
       />
+      {currentSite?.id && <CallConsentFields
+        key={`${currentSite.id}:${lead.id}`}
+        lead={lead}
+        siteId={currentSite.id}
+        onSaved={onCallConsentSaved}
+      />}
       <PropertyRow
         icon={<CalendarDays size={14} />}
         label="Birthday"

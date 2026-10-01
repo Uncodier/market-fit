@@ -10,12 +10,14 @@ import { SocialNetworkTab } from "./SocialNetworkTab"
 import { AddressTab } from "./AddressTab"
 import { NotesTab } from "./NotesTab"
 import { hasPropertyValue } from "./PropertyRow"
+import type { SavedCallConsent } from "../call-consent-schema"
 
 interface LeadDetailProps {
   lead: Lead
   segments: Segment[]
   campaigns: Campaign[]
   onUpdateLead: (id: string, data: Partial<Lead>) => Promise<void>
+  onCallConsentSaved: (lead: SavedCallConsent) => void
   revealEmptyCount?: number
 }
 
@@ -24,6 +26,7 @@ export function LeadDetail({
   segments,
   campaigns,
   onUpdateLead,
+  onCallConsentSaved,
   revealEmptyCount = 0,
 }: LeadDetailProps) {
   const [showEmpty, setShowEmpty] = useState(revealEmptyCount > 0)
@@ -72,6 +75,7 @@ export function LeadDetail({
             showEmpty={showEmpty}
             onToggleEmpty={() => setShowEmpty((value) => !value)}
             onUpdateLead={onUpdateLead}
+            onCallConsentSaved={onCallConsentSaved}
           />
         </TabsContent>
         <TabsContent value="company" className="mt-0 min-w-0">

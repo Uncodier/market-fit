@@ -4,6 +4,7 @@ import { userCanOnSite } from '@/lib/permissions/site-access'
 import { decodeRequestBody, readLimitedRequestBody, RequestBodyTooLargeError } from '@/lib/http/read-limited-request-body'
 import { chatBackendUrl, isSameOriginChatRequest } from '../proxy-security'
 import { conversationChannel, VOICE_LEAD_REQUIRED } from '@/lib/chat/conversation-routing'
+import { getVoiceCallBlock } from '@/lib/chat/voice-call-eligibility'
 
 export const maxDuration = 120
 const PATH = '/api/agents/chat/intervention'
@@ -42,8 +43,11 @@ const responseSchema = z.object({
   error: z.object({ code: z.string().max(100).optional() }).optional(),
 })
 
-function failure(message: string, status: number) {
-  return Response.json({ success: false, error: { message } }, {
+function failure(message: string, status: number, preflightCode?: string) {
+  return Response.json({
+    success: false, error: { message, ...(preflightCode ? { code: preflightCode } : {}) },
+    ...(preflightCode ? { execution_started: false } : {}),
+  }, {
     status, headers: { 'Cache-Control': 'no-store, private' },
   })
 }
@@ -75,7 +79,7 @@ export async function POST(request: Request): Promise<Response> {
   if (conversationError) return failure('Unable to verify conversation access', 503)
   if (!conversation) return failure('Conversation not found', 404)
   if (conversationChannel(conversation) === 'voice' && !conversation.lead_id) {
-    return failure(VOICE_LEAD_REQUIRED, 409)
+    return failure(VOICE_LEAD_REQUIRED, 409, 'VOICE_LEAD_REQUIRED')
   }
 
   let message = input.message
@@ -95,6 +99,16 @@ export async function POST(request: Request): Promise<Response> {
       return failure('This message cannot be retried while delivery is active or unconfirmed', 409)
     }
     message = saved.content
+  }
+
+  if (conversationChannel(conversation) === 'voice') {
+    // Read current eligibility under RLS; never accept client-provided phone or consent.
+    const { data: lead, error } = await access.supabase.from('leads')
+      .select('id, phone, do_not_call, voice_call_consent_status, voice_call_consent_at')
+      .eq('id', conversation.lead_id).eq('site_id', conversation.site_id).maybeSingle()
+    if (error) return failure('Unable to verify call eligibility. No call started. Try again later.', 503, 'VOICE_ELIGIBILITY_UNAVAILABLE')
+    const blocked = getVoiceCallBlock(lead)
+    if (blocked) return failure(blocked.message, blocked.status, blocked.code)
   }
 
   const { data: { session }, error: sessionError } = await access.supabase.auth.getSession()

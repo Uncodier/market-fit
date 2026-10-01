@@ -26,15 +26,41 @@ it("renders both donuts with a full-session denominator and explicit missing att
   expect(within(segmentTable).getByRole("row", { name: /Unassigned segment 2 50.0%/ })).toBeInTheDocument()
   expect(within(campaignTable).getByRole("row", { name: /No campaign 1 25.0%/ })).toBeInTheDocument()
   expect(within(campaignTable).getByRole("row", { name: /Total sessions 4 100.0%/ })).toBeInTheDocument()
-  expect(container.querySelectorAll("svg circle")).toHaveLength(4)
+  expect(container.querySelectorAll('[data-distribution-layout="stacked"] svg circle')).toHaveLength(4)
   expect(container.querySelectorAll('[data-distribution-layout="stacked"]')).toHaveLength(2)
-  expect(screen.getByLabelText("Attribution coverage")).toHaveTextContent("Identifiable source75.0% (3)")
+  expect(screen.getByLabelText("Attribution coverage")).toHaveTextContent("Identifiable source75.0%3 of 4 sessions")
   expect(screen.getByText(/1 of 4 sessions have no identifiable external source/)).toBeInTheDocument()
   expect(screen.getByText(/not historical membership/)).toBeInTheDocument()
   expect(fetchMock).toHaveBeenCalledTimes(1)
   const url = new URL(fetchMock.mock.calls[0][0], "http://localhost")
   expect(url.searchParams.get("siteId")).toBe("site-a")
   expect(url.searchParams.has("userId")).toBe(false)
+})
+
+it("uses the shared responsive KPI cards for coverage values and session counts", async () => {
+  mount()
+  const coverage = await screen.findByLabelText("Attribution coverage")
+  expect(coverage).toHaveClass("grid-cols-2", "xl:grid-cols-4", "gap-3", "max-[359px]:grid-cols-1")
+  expect(coverage).not.toHaveClass("bg-muted/20", "border", "p-4")
+  const cards = coverage.querySelectorAll(":scope > [data-report-kpi]")
+  expect(cards).toHaveLength(4)
+
+  const metrics = [
+    ["Sessions analyzed", "4", "Selected period"],
+    ["Identifiable source", "75.0%", "3 of 4 sessions"],
+    ["Assigned segment", "50.0%", "2 of 4 sessions"],
+    ["Tagged campaign", "75.0%", "3 of 4 sessions"],
+  ]
+  metrics.forEach(([title, value, description], index) => {
+    const card = cards[index] as HTMLElement
+    expect(card).toHaveClass("rounded-lg", "border", "bg-card", "shadow-sm", "min-w-0")
+    expect(within(card).getByRole("heading", { name: title })).toHaveClass("text-sm", "font-medium")
+    expect(within(card).getByRole("button", { name: `About ${title}` })).toBeInTheDocument()
+    expect(card.querySelector('[data-kpi-slot="value"]')).toHaveTextContent(value)
+    expect(card.querySelector('[data-kpi-slot="value"]')).toHaveClass("text-xl", "sm:text-2xl", "font-bold", "tabular-nums")
+    expect(card.querySelector('[data-kpi-slot="status"]')).toHaveTextContent(description)
+  })
+  expect(within(coverage).queryByText(/from last|previous period|[↑↓→]/)).not.toBeInTheDocument()
 })
 
 it("keeps unassigned-only traffic visible rather than reporting an empty chart", async () => {
@@ -46,6 +72,9 @@ it("keeps unassigned-only traffic visible rather than reporting an empty chart",
   expect(await screen.findByText("Unassigned segment")).toBeInTheDocument()
   expect(screen.getByText("No campaign")).toBeInTheDocument()
   expect(screen.getAllByText("100.0%")).toHaveLength(4)
+  const coverage = screen.getByLabelText("Attribution coverage")
+  expect(within(coverage).getAllByText("0.0%")).toHaveLength(3)
+  expect(within(coverage).getAllByText("0 of 4 sessions")).toHaveLength(3)
 })
 
 it("shows a real empty state only when no sessions were recorded", async () => {
@@ -56,16 +85,19 @@ it("shows a real empty state only when no sessions were recorded", async () => {
   mount()
   expect(await screen.findByText("No sessions for the selected period.")).toBeInTheDocument()
   expect(screen.queryByRole("table")).not.toBeInTheDocument()
+  expect(screen.queryByLabelText("Attribution coverage")).not.toBeInTheDocument()
 })
 
 it("shows loading panels, sanitizes errors, and retries the one shared request", async () => {
   fetchMock.mockResolvedValue({ ok: false, status: 500, json: async () => ({ error: "private database detail" }) })
   mount()
+  expect(screen.queryByLabelText("Attribution coverage")).not.toBeInTheDocument()
   expect(screen.getAllByRole("status")).toHaveLength(2)
   for (const panel of screen.getAllByRole("status")) {
     expect(panel.querySelector('[data-distribution-layout="stacked"]')).toBeInTheDocument()
   }
   expect(await screen.findByRole("alert")).toHaveTextContent("Unable to load this report")
+  expect(screen.queryByLabelText("Attribution coverage")).not.toBeInTheDocument()
   expect(screen.queryByText(/private database/)).not.toBeInTheDocument()
   fetchMock.mockResolvedValue(attributionResponse())
   fireEvent.click(screen.getByRole("button", { name: "Retry" }))

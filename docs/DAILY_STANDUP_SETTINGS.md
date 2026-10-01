@@ -6,6 +6,7 @@ The AI Activities tab configures `settings.activities.daily_resume_and_stand_up`
 {
   "status": "active",
   "weekdays": [1, 5],
+  "start_time_mode": "custom",
   "start_time": "08:30",
   "report_sections": [
     "sales", "tasks", "requirements", "social", "channels",
@@ -18,14 +19,14 @@ The AI Activities tab configures `settings.activities.daily_resume_and_stand_up`
   inactive; legacy string statuses and status-only objects remain supported.
 - `weekdays` uses integers from 0 (Sunday) through 6 (Saturday). A missing array
   defaults to `[1, 5]`, preserving the existing Monday/Friday workflow schedule.
-  Selected days use the site's timezone, including days marked closed in business
-  hours.
-- `start_time` is optional, strict 24-hour `HH:mm` (`00:00`–`23:59`), interpreted
-  in the site's business-hours timezone (America/Mexico_City when missing).
-  Missing preserves the configured opening time, or 09:00 when unavailable.
-  It is not defaulted into legacy settings by hydration or unrelated saves.
-  Empty strings, null, non-strings, seconds and whitespace are invalid even while
-  inactive; they are never silently coerced into a different schedule.
+  Selected days use the site's timezone. Custom mode can run on selected closed
+  days; opening mode skips days explicitly disabled in business hours.
+- `start_time_mode`: `business_opening` or `custom`. Business opening uses each
+  execution day's opening, with a 09:00 fallback if unavailable.
+- `start_time`: required only for custom mode, strict 24-hour `HH:mm`
+  (`00:00`–`23:59`) in the business-hours timezone (America/Mexico_City fallback).
+  Custom mode rejects empty, null, malformed and non-string times even while inactive.
+  Opening mode ignores retained custom values. Unknown modes are invalid.
 - `report_sections` accepts only the nine IDs above. A missing array defaults to
   all nine. The `social` ID is labeled **Social media** in the UI.
 - Explicit empty arrays stay empty. An inactive activity may save them; enabling
@@ -41,15 +42,14 @@ so they do not reset saved selections. The existing user-scoped settings writer
 merges the latest readable row and validates before writing; no new API or
 service-role access is introduced.
 
-The time input shows the schedule timezone. A blank untouched legacy setting
-keeps its fallback. Once edited, a valid time is required. **Use 09:00** explicitly
-saves a fixed 09:00 start, including for standup; it does **not** restore the dynamic
-opening-time fallback. Clearing blocks saving rather than claiming to delete an
-override: the existing partial-update merge preserves omitted parameters and has
-no deletion contract. Unknown fields and other activity settings remain intact.
+The selector offers **Business opening time** and **Custom time**, showing a clock
+input only for custom. Saving opening mode resets a previous override even when
+the merge retains its old key. Legacy times display as custom; missing both fields
+displays opening and saves that mode when the card is saved. Hydration and unrelated
+saves do not rewrite legacy timing. Unknown fields and neighbors remain intact.
 
-[Follow Up](OUTREACH_SETTINGS.md) supports the same optional `start_time` format
-with a 09:00 legacy fallback. ICP has no fixed-time control: its daily runs are
+[Follow Up and Cold Outreach](OUTREACH_SETTINGS.md) support the same selector.
+ICP has no fixed-time control: its daily runs are
 distributed by site over 24 hours independently of business hours and weekends.
 
 Scheduling and report generation are implemented by the Workflows and API

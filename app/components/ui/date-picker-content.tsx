@@ -7,6 +7,7 @@ import { ChevronLeft, ChevronRight } from "@/app/components/ui/icons"
 import { Button } from "@/app/components/ui/button"
 import { Badge } from "@/app/components/ui/badge"
 import { TimeSelect } from "@/app/components/ui/time-select"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/app/components/ui/tooltip"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { getDateFnsLocale } from "@/app/lib/date-fns-locale"
 import { cn } from "@/lib/utils"
@@ -140,22 +141,23 @@ export function DatePickerContent({
           mode !== 'range' && "max-h-[300px] overflow-y-auto",
         )}>
           {mode !== 'range' && <div className="text-xs font-medium text-muted-foreground mb-3">{t(groupTitle)}</div>}
-          <div className="grid grid-cols-2 sm:grid-cols-1 gap-2">
-            {events.map((event, index) => {
-              const reasonId = `${descriptionId}-${index}`
-              const selected = !event.disabled && date && isSameDay(date, event.value)
-                && (mode !== 'range' || (endDate && isSameDay(endDate, getEventRange(event, dateLocale).end)))
-              return (
-                <div key={event.id || index}>
+          <TooltipProvider delayDuration={300}>
+            <div className="grid grid-cols-2 sm:grid-cols-1 gap-2">
+              {events.map((event, index) => {
+                const reasonId = `${descriptionId}-${index}`
+                const disabledReason = (disabled || event.disabled) ? event.disabledReason : undefined
+                const selected = !event.disabled && date && isSameDay(date, event.value)
+                  && (mode !== 'range' || (endDate && isSameDay(endDate, getEventRange(event, dateLocale).end)))
+                const button = (
                   <button
                     type="button" disabled={disabled || event.disabled}
-                    aria-describedby={event.disabledReason ? reasonId : undefined}
+                    aria-describedby={disabledReason ? reasonId : undefined}
                     aria-pressed={Boolean(selected)}
-                    title={event.disabledReason}
                     className={cn(
                       "text-xs py-1.5 px-2.5 rounded-md cursor-pointer transition-colors duration-200",
                       "hover:bg-muted w-full text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
                       "disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent",
+                      disabledReason && "disabled:pointer-events-none",
                       selected ? "bg-primary/15 font-medium text-primary" : "text-foreground",
                     )}
                     style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
@@ -163,11 +165,31 @@ export function DatePickerContent({
                   >
                     {event.label}
                   </button>
-                  {event.disabledReason && <p id={reasonId} className="px-2.5 text-xs text-muted-foreground">{event.disabledReason}</p>}
-                </div>
-              )
-            })}
-          </div>
+                )
+                return (
+                  <div key={event.id || index}>
+                    {disabledReason ? (
+                      <>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span
+                              tabIndex={0} role="group" aria-label={event.label}
+                              aria-disabled="true" aria-describedby={reasonId}
+                              className="block w-full rounded-md cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                            >
+                              {button}
+                            </span>
+                          </TooltipTrigger>
+                          <TooltipContent className="max-w-xs text-xs">{disabledReason}</TooltipContent>
+                        </Tooltip>
+                        <span id={reasonId} hidden>{disabledReason}</span>
+                      </>
+                    ) : button}
+                  </div>
+                )
+              })}
+            </div>
+          </TooltipProvider>
           {customEvents && (
             <div className="mt-2 pt-2 border-t">
               <div className="text-xs font-medium text-muted-foreground mb-1">{t("datePicker.customRange")}</div>

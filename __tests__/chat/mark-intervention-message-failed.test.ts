@@ -74,6 +74,9 @@ describe("markInterventionMessageFailed", () => {
   it.each([
     { status: "sent" }, { status: "delivered" }, { command_status: "success" },
     { provider_call_id: "call-1" }, { status: "placement_unknown" }, { call_status: "placement_unknown" },
+    { command_status: "failed", error_message: "Lead has not granted explicit Voice call consent" },
+    { status: "failed", error_message: "Lead is on the do-not-call list" },
+    { call_status: "failed", error_message: "Voice call recipient must use E.164 format" },
   ])("does not overwrite an authoritative delivery state: %j", async custom_data => {
     const row = { id: "msg-1", created_at: "2026-09-29T09:46:00.000Z", custom_data }
     const byId = createChain({ data: row, error: null })

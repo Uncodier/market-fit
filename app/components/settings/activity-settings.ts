@@ -2,14 +2,14 @@ import { z } from "zod"
 import { isOutreachChannel, normalizeOutreachChannelAccounts, normalizeOutreachSettings, validateOutreachSettings, type OutreachActivityKey, type OutreachSettings } from "@/lib/outreach-settings"
 import { icpLeadGenerationSettingsSchema, normalizeIcpLeadGenerationSettings } from "./icp-lead-generation-settings"
 import { dailyStandupSettingsSchema, normalizeDailyStandupSettings } from "./daily-standup-settings"
-import { optionalActivityStartTimeSchema } from "@/lib/activity-start-time"
+import { activityTimingFields, TIMED_ACTIVITY_KEYS, type ActivityStartTimeMode } from "@/lib/activity-start-time"
 
 const status = (value: any) => value?.status ?? value
 const record = (value: unknown): Record<string, unknown> => value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {}
 const statusPatch = (value: unknown) => typeof value === "string" ? { status: value } : record(value)
 // Optional form defaults are omission, not deletion, including before hydration.
 const activityPatch = (key: string, value: unknown) => Object.fromEntries(Object.entries(statusPatch(value)).filter(
-  ([parameter, entry]) => parameter !== "start_time" || entry !== undefined || !["daily_resume_and_stand_up", "leads_follow_up"].includes(key),
+  ([parameter, entry]) => !["start_time", "start_time_mode"].includes(parameter) || entry !== undefined || !(TIMED_ACTIVITY_KEYS as readonly string[]).includes(key),
 ))
 const standard = (value: any) => ({ ...record(value), status: status(value) === "inactive" ? "inactive" as const : "default" as const })
 const optIn = (value: any) => ({ ...record(value), status: ["active", "default"].includes(status(value)) ? "active" as const : "inactive" as const })
@@ -22,9 +22,9 @@ export function normalizeActivitySettings(value: any = {}) {
     daily_resume_and_stand_up: normalizeDailyStandupSettings(data.daily_resume_and_stand_up),
     local_lead_generation: standard(data.local_lead_generation),
     icp_lead_generation: normalizeIcpLeadGenerationSettings(data.icp_lead_generation),
-    leads_initial_cold_outreach: { ...record(data.leads_initial_cold_outreach), ...normalizeOutreachSettings(data.leads_initial_cold_outreach) },
+    leads_initial_cold_outreach: { start_time: undefined as string | undefined, start_time_mode: undefined as ActivityStartTimeMode | undefined, ...record(data.leads_initial_cold_outreach), ...normalizeOutreachSettings(data.leads_initial_cold_outreach) },
     // An undefined baseline lets the optional time controller reset across sites without persisting a default.
-    leads_follow_up: { start_time: undefined as string | undefined, ...record(data.leads_follow_up), ...normalizeOutreachSettings(data.leads_follow_up) },
+    leads_follow_up: { start_time: undefined as string | undefined, start_time_mode: undefined as ActivityStartTimeMode | undefined, ...record(data.leads_follow_up), ...normalizeOutreachSettings(data.leads_follow_up) },
     email_sync: standard(data.email_sync),
     assign_leads_to_team: optIn(data.assign_leads_to_team),
     notify_team_on_inbound_conversations: standard(data.notify_team_on_inbound_conversations),
@@ -81,8 +81,8 @@ export const activitiesSchema = z.object({
   daily_resume_and_stand_up: dailyStandupSettingsSchema,
   local_lead_generation: standardSchema,
   icp_lead_generation: icpLeadGenerationSettingsSchema,
-  leads_initial_cold_outreach: outreachSchema("leads_initial_cold_outreach", {}),
-  leads_follow_up: outreachSchema("leads_follow_up", { start_time: optionalActivityStartTimeSchema }),
+  leads_initial_cold_outreach: outreachSchema("leads_initial_cold_outreach", activityTimingFields),
+  leads_follow_up: outreachSchema("leads_follow_up", activityTimingFields),
   email_sync: standardSchema,
   assign_leads_to_team: optInSchema,
   notify_team_on_inbound_conversations: standardSchema,

@@ -9,6 +9,8 @@ import { useSearchParams } from "next/navigation"
 import { CostReports } from "@/app/components/dashboard/cost-reports"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
 import { CalendarDateRangePicker } from "@/app/components/ui/date-range-picker"
+import { ReportExportButton } from "@/app/components/navigation/ReportExportButton"
+import { useIsMobile } from "@/app/hooks/use-mobile-view"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { useSite } from "@/app/context/SiteContext"
@@ -21,6 +23,7 @@ import { createClient } from "@/lib/supabase/client"
 import { format, isValid, subMonths, startOfDay, endOfDay } from "date-fns"
 
 function CostsPageContent() {
+  const isMobile = useIsMobile()
   const searchParams = useSearchParams()
   const section = getReportSection("costs", searchParams.get("section"))
   const selectedSection = REPORTS.costs.sections.find(item => item.id === section)!
@@ -82,7 +85,7 @@ function CostsPageContent() {
                 {REPORTS.costs.sections.map(item => <TabsTrigger key={item.id} value={item.id}>{item.label}</TabsTrigger>)}
               </TabsList>
             </div>
-            <div className="ml-auto shrink-0">
+            <div className="ml-auto flex shrink-0 items-center justify-end gap-2">
             <MobileFiltersDrawer triggerText={t('common.filters') || "Filters"}>
               <FilterContainer className="md:justify-end">
                 <FilterSection title={t("dashboard.filters.campaign") || "Campaign"}>
@@ -129,16 +132,20 @@ function CostsPageContent() {
                   </Select>
                 </FilterSection>
                     
-                    <FilterSection title={t('common.dateRange') || 'Date Range'}> 
+                <FilterSection title={t('common.dateRange') || 'Date Range'}>
+                  <div className="flex flex-col md:flex-row items-stretch md:items-center gap-2">
+                    {!isMobile && <ReportExportButton />}
                     <CalendarDateRangePicker
-                    onRangeChange={handleDateRangeChange}
-                    initialStartDate={dateRange.startDate}
-                    initialEndDate={dateRange.endDate}
-                    key={`date-range-${format(dateRange.startDate, "yyyy-MM-dd")}-${format(dateRange.endDate, "yyyy-MM-dd")}`}
-                    className="flex items-center w-full md:w-auto" />
+                      onRangeChange={handleDateRangeChange}
+                      initialStartDate={dateRange.startDate}
+                      initialEndDate={dateRange.endDate}
+                      key={`date-range-${format(dateRange.startDate, "yyyy-MM-dd")}-${format(dateRange.endDate, "yyyy-MM-dd")}`}
+                      className="flex items-center w-full md:w-auto" />
+                  </div>
                 </FilterSection>
               </FilterContainer>
             </MobileFiltersDrawer>
+            {isMobile && <ReportExportButton />}
             </div>
           </div>
         </div>

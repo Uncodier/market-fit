@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils"
 import { useLayout } from "@/app/context/LayoutContext"
 import { ChannelSelector } from "./ChannelSelector"
 import { useChannelSelector } from "@/app/hooks/useChannelSelector"
-import { VOICE_LEAD_REQUIRED } from "@/lib/chat/conversation-routing"
+import { getVoiceCallBlock, type VoiceCallLead } from "@/lib/chat/voice-call-eligibility"
 // Removed dynamic width calc; align with messages container
 
 interface ChatInputProps {
@@ -22,7 +22,7 @@ interface ChatInputProps {
   handleKeyDown: (e: React.KeyboardEvent) => void
   conversationId?: string
   isChatListCollapsed?: boolean
-  leadData?: {
+  leadData?: VoiceCallLead & {
     id: string
     email?: string
     phone?: string
@@ -73,8 +73,8 @@ export const ChatInput = memo(function ChatInput({
     isAgentOnlyConversation
   })
   const isVoice = selectedChannel === 'voice'
-  const voiceMissingLead = isVoice && !leadData?.id
-  const sendingBlocked = isUpdatingChannel || isLoading || !isConversationReady || voiceMissingLead
+  const voiceBlock = isVoice ? getVoiceCallBlock(leadData) : null
+  const sendingBlocked = isUpdatingChannel || isLoading || !isConversationReady || Boolean(voiceBlock)
   
   // CRITICAL: Direct handler to prevent character loss
   const handleChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -158,7 +158,7 @@ export const ChatInput = memo(function ChatInput({
         <div className="w-full mx-auto relative pb-[20px] px-4 md:px-8 lg:px-12 xl:px-24">
           <p className="text-xs text-muted-foreground px-2 pb-2" role="status">
             {!isConversationReady ? 'Loading conversation delivery settings…'
-              : voiceMissingLead ? VOICE_LEAD_REQUIRED
+              : voiceBlock ? voiceBlock.message
                 : isVoice ? 'Start an outbound call. Your message is the opening greeting; consent and phone checks apply.'
                   : isAgentOnlyConversation ? 'Internal agent chat. Messages here do not contact the customer.'
                     : 'Send a team intervention through the selected channel.'}

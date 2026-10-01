@@ -29,6 +29,7 @@ const saved = normalizeActivitySettings({
 })
 const clone = <T,>(value: T): T => JSON.parse(JSON.stringify(value))
 let form: UseFormReturn<SiteFormValues>
+beforeAll(() => { Element.prototype.scrollIntoView = jest.fn() })
 
 function TestForm({ incoming, onSave, id = siteId }: {
   incoming?: unknown; id?: string; onSave: (data: SiteFormValues) => Promise<boolean | void>
@@ -83,11 +84,12 @@ afterEach(() => jest.restoreAllMocks())
 describe.each(["daily_resume_and_stand_up", "leads_follow_up"] as const)("%s time controls", key => {
   const input = () => card(key).getByLabelText(key === "leads_follow_up" ? "Follow-up start time" : "Standup start time")
 
-  it("offers exactly two time inputs and no ICP/cold-outreach fixed time", async () => {
+  it("offers three opening/custom selectors, hiding clocks until custom is chosen", async () => {
     render(<TestForm onSave={jest.fn()} />)
-    expect(document.querySelectorAll('input[type="time"]')).toHaveLength(2)
-    expect(input()).toHaveAttribute("step", "60")
-    expect(input()).toHaveValue("")
+    expect(document.querySelectorAll('input[type="time"]')).toHaveLength(0)
+    for (const timed of ["daily_resume_and_stand_up", "leads_follow_up", "leads_initial_cold_outreach"]) {
+      expect(card(timed).getByRole("combobox", { name: /execution time/ })).toHaveTextContent("Business opening time")
+    }
     expect(card(key).getByText(/Schedule timezone: America\/Mexico_City/)).toBeInTheDocument()
     expect(card("icp_lead_generation").getByText(/Daily runs are distributed by site over 24 hours, independent of business hours/)).toBeInTheDocument()
     expect(card("icp_lead_generation").queryByLabelText(/start time/i)).not.toBeInTheDocument()
@@ -113,13 +115,14 @@ describe.each(["daily_resume_and_stand_up", "leads_follow_up"] as const)("%s tim
     const view = render(<TestForm onSave={onSave} incoming={{ [key]: { start_time: "12:30" } }} />)
     expect(input()).toHaveValue("12:30")
     view.rerender(<TestForm onSave={onSave} incoming={{}} id={otherSiteId} />)
-    expect(input()).toHaveValue("")
+    expect(card(key).queryByLabelText(/start time/)).not.toBeInTheDocument()
+    expect(card(key).getByRole("combobox", { name: /execution time/ })).toHaveTextContent("Business opening time")
     expect(form.getValues(`activities.${key}.start_time`)).toBeUndefined()
     expect(form.formState.isDirty).toBe(false)
     await waitFor(() => expect(screen.queryByText("Loading segments...")).not.toBeInTheDocument())
   })
 
-  it("blocks clearing a saved time, then persists the explicit fixed reset across reload", async () => {
+  it("blocks clearing a custom time, then persists opening mode across reload", async () => {
     const initial = normalizeActivitySettings({ [key]: { start_time: "16:45", weekdays: [0, 6], extension: true } })
     const fixture = persistenceFixture(initial)
     const view = render(<TestForm onSave={fixture.onSave} incoming={initial} />)
@@ -128,16 +131,18 @@ describe.each(["daily_resume_and_stand_up", "leads_follow_up"] as const)("%s tim
     fireEvent.click(card(key).getByRole("button", { name: "Save" }))
     expect(fixture.onSave).not.toHaveBeenCalled()
     expect(fixture.writes).toEqual([])
-    fireEvent.click(card(key).getByRole("button", { name: "Use 09:00" }))
-    expect(input()).toHaveValue("09:00")
+    fireEvent.keyDown(card(key).getByRole("combobox", { name: /execution time/ }), { key: "Enter" })
+    fireEvent.click(await screen.findByRole("option", { name: "Business opening time" }))
+    expect(card(key).queryByLabelText(/start time/)).not.toBeInTheDocument()
     fireEvent.click(card(key).getByRole("button", { name: "Save" }))
     await waitFor(() => expect(fixture.writes).toHaveLength(1))
-    expect(fixture.options.updateSettings.mock.calls[0][1].activities).toEqual({ [key]: { start_time: "09:00" } })
-    expect(fixture.row().activities[key]).toEqual({ ...initial[key], start_time: "09:00" })
+    expect(fixture.options.updateSettings.mock.calls[0][1].activities).toEqual({ [key]: { start_time_mode: "business_opening", start_time: "" } })
+    expect(fixture.row().activities[key]).toEqual({ ...initial[key], start_time_mode: "business_opening", start_time: "" })
     await waitFor(() => expect(form.formState.isDirty).toBe(false))
     view.unmount()
     render(<TestForm onSave={fixture.onSave} incoming={fixture.row().activities} />)
-    expect(input()).toHaveValue("09:00")
+    expect(card(key).queryByLabelText(/start time/)).not.toBeInTheDocument()
+    expect(card(key).getByRole("combobox", { name: /execution time/ })).toHaveTextContent("Business opening time")
     expect(form.formState.isDirty).toBe(false)
     await waitFor(() => expect(screen.queryByText("Loading segments...")).not.toBeInTheDocument())
   })
@@ -170,6 +175,39 @@ describe.each(["daily_resume_and_stand_up", "leads_follow_up"] as const)("%s tim
     expect(onSave).not.toHaveBeenCalled()
     await waitFor(() => expect(screen.queryByText("Loading segments...")).not.toBeInTheDocument())
   })
+})
+
+it("asks for a cold-outreach custom time and saves/reloads it without modifying other activities", async () => {
+  const key = "leads_initial_cold_outreach"
+  const fixture = persistenceFixture()
+  const view = render(<TestForm onSave={fixture.onSave} incoming={saved} />)
+  fireEvent.keyDown(card(key).getByRole("combobox", { name: /execution time/ }), { key: "Enter" })
+  fireEvent.click(await screen.findByRole("option", { name: "Custom time" }))
+  const input = card(key).getByLabelText("Cold outreach start time")
+  expect(input).toHaveValue("")
+  fireEvent.click(card(key).getByRole("button", { name: "Save" }))
+  expect(fixture.onSave).not.toHaveBeenCalled()
+  fireEvent.change(input, { target: { value: "14:35" } })
+  fireEvent.click(card(key).getByRole("button", { name: "Save" }))
+  await waitFor(() => expect(fixture.writes).toHaveLength(1))
+  expect(fixture.options.updateSettings.mock.calls[0][1].activities).toEqual({ [key]: { start_time_mode: "custom", start_time: "14:35" } })
+  expect(fixture.row().activities[key]).toMatchObject({ start_time_mode: "custom", start_time: "14:35", status: "inactive" })
+  expect(fixture.row().activities.icp_lead_generation).toEqual(saved.icp_lead_generation)
+  view.unmount()
+  render(<TestForm onSave={fixture.onSave} incoming={fixture.row().activities} />)
+  expect(card(key).getByRole("combobox", { name: /execution time/ })).toHaveTextContent("Custom time")
+  expect(card(key).getByLabelText("Cold outreach start time")).toHaveValue("14:35")
+  await waitFor(() => expect(screen.queryByText("Loading segments...")).not.toBeInTheDocument())
+})
+
+it("saving an untouched timed card persists opening mode only for that card", async () => {
+  const fixture = persistenceFixture()
+  render(<TestForm onSave={fixture.onSave} incoming={saved} />)
+  fireEvent.click(card("leads_initial_cold_outreach").getByRole("button", { name: "Save" }))
+  await waitFor(() => expect(fixture.writes).toHaveLength(1))
+  expect(fixture.options.updateSettings.mock.calls[0][1].activities).toEqual({ leads_initial_cold_outreach: { start_time_mode: "business_opening" } })
+  expect(fixture.row().activities.leads_follow_up.start_time_mode).toBeUndefined()
+  expect(fixture.row().activities.daily_resume_and_stand_up.start_time_mode).toBeUndefined()
 })
 
 it("hydrates manual-empty defaults, then toggles all mode dirty and persists it", async () => {

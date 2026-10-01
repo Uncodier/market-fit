@@ -285,4 +285,48 @@ describe('useChatOperations send lifecycle', () => {
     await act(async () => { await result.current.handleRetryMessage(failed) })
     expect(result.current.messages[0].metadata).toEqual({ command_status: 'success', status: 'delivered' })
   })
+
+  it.each([false, true])('restores a preflight-rejected retry only without a newer realtime update: %s', async updated => {
+    let reject!: (error: Error) => void
+    jest.mocked(sendTeamMemberIntervention).mockReturnValue(new Promise((_, fail) => { reject = fail }))
+    const { result } = setup()
+    const failed: ChatMessage = {
+      id: 'message-1', role: 'team_member', text: 'Greeting', timestamp: new Date(),
+      metadata: { command_status: 'failed', error_message: 'Existing failure' },
+    }
+    const realtime = { ...failed, metadata: { command_status: 'success' as const, status: 'delivered' as const } }
+    act(() => { result.current.setMessages([failed]) })
+    let retry!: Promise<void>
+    act(() => { retry = result.current.handleRetryMessage(failed) })
+    if (updated) act(() => { result.current.setMessages([realtime]) })
+    await act(async () => {
+      reject(new InterventionRequestError('No call started. Explicit consent is required.', { execution_started: false }))
+      await retry
+    })
+    expect(result.current.messages).toEqual([updated ? realtime : failed])
+    expect(markInterventionMessageFailed).not.toHaveBeenCalled()
+    expect(toast.error).toHaveBeenCalledWith(expect.stringContaining('Explicit consent'))
+    expect(result.current.isLoading).toBe(false)
+    expect(sendTeamMemberIntervention).toHaveBeenCalledTimes(1)
+  })
+
+  it.each([
+    new Error('Network unavailable'),
+    new InterventionRequestError('Call placement is unconfirmed', { saved_message_id: 'message-1' }),
+    new InterventionRequestError('Delivery could not be confirmed'),
+  ])('keeps an ambiguous retry pending without failure marking or automatic replay: %s', async error => {
+    jest.mocked(sendTeamMemberIntervention).mockRejectedValue(error)
+    const { result } = setup()
+    const failed: ChatMessage = {
+      id: 'message-1', role: 'team_member', text: 'Greeting', timestamp: new Date(),
+      metadata: { command_status: 'failed', error_message: 'Previous failure' },
+    }
+    act(() => { result.current.setMessages([failed]) })
+    await act(async () => { await result.current.handleRetryMessage(failed) })
+    expect(result.current.messages[0].metadata?.command_status).toBe('pending')
+    expect(result.current.messages[0].metadata?.error_message).toBeUndefined()
+    expect(markInterventionMessageFailed).not.toHaveBeenCalled()
+    expect(sendTeamMemberIntervention).toHaveBeenCalledTimes(1)
+    expect(result.current.isLoading).toBe(false)
+  })
 })

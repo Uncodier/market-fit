@@ -10,14 +10,13 @@ import { Button } from "../ui/button";
 import { PlusCircle, Bot, Globe, LogOut } from "../ui/icons";
 import { CreateTaskDialog } from "../create-task-dialog";
 import { RobotPrimaryActions } from "./RobotPrimaryActions";
-import { ReportExportButton } from "./ReportExportButton";
 import { TopBarCreationActions } from "./TopBarCreationActions";
 import { TopBarCommerceActions } from "./TopBarCommerceActions";
 import { TopBarFinanceActions } from "./TopBarFinanceActions";
 import type { TopBarActionsProps } from "./topbar-action-types";
 
 export function TopBarActions(props: TopBarActionsProps) {
-  const { isDashboardPage, isControlCenterPage, isRobotsPage, requirementData, viewMode } = props;
+  const { isControlCenterPage, isRobotsPage, requirementData, viewMode } = props;
   const { t } = useLocalization();
   const { currentSite } = useSite();
   const pathname = usePathname();
@@ -75,8 +74,6 @@ export function TopBarActions(props: TopBarActionsProps) {
           }
         />
       ) : null}
-
-      {(isDashboardPage || pathname === "/costs") && currentSite && <ReportExportButton />}
 
       {/* Requirement Detail Page Build Button */}
       {requirementData && currentSite && (

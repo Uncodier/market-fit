@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { differenceInCalendarDays, endOfDay, format, startOfDay, subDays } from "date-fns";
 import { CalendarDateRangePicker } from "@/app/components/ui/date-range-picker";
 
@@ -87,7 +87,8 @@ describe("CalendarDateRangePicker", () => {
     const allTime = screen.getByRole("button", { name: "All time" });
     expect(allTime).toBeDisabled();
     expect(allTime).toHaveAccessibleDescription(`All time is not available for this report. Select up to ${maxRangeDays} days.`);
-    expect(screen.getByText(`All time is not available for this report. Select up to ${maxRangeDays} days.`)).toBeVisible();
+    expect(screen.getByText(`All time is not available for this report. Select up to ${maxRangeDays} days.`)).not.toBeVisible();
+    expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
     fireEvent.click(allTime);
     expect(onRangeChange).not.toHaveBeenCalled();
   });
@@ -97,8 +98,56 @@ describe("CalendarDateRangePicker", () => {
     render(<CalendarDateRangePicker onRangeChange={onRangeChange} />);
     fireEvent.click(screen.getByRole("button", { name: "Select date range" }));
     expect(screen.getByRole("button", { name: "All time" })).toBeDisabled();
-    expect(screen.getByText(/earliest available date is unknown/)).toBeVisible();
+    expect(screen.getByText(/earliest available date is unknown/)).not.toBeVisible();
     expect(onRangeChange).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["Year to date", "Select up to 93 days."],
+    ["Last year", "Select up to 93 days."],
+    ["All time", "All time is not available for this report. Select up to 93 days."],
+  ])("only shows the disabled reason for %s in a hover tooltip", async (preset, reason) => {
+    const onRangeChange = jest.fn();
+    render(<CalendarDateRangePicker maxRangeDays={93} onRangeChange={onRangeChange} />);
+    fireEvent.click(screen.getByRole("button", { name: "Select date range" }));
+    const button = screen.getByRole("button", { name: preset });
+    const trigger = screen.getByRole("group", { name: preset });
+    expect(button).toBeDisabled();
+    expect(button).toHaveClass("disabled:pointer-events-none");
+    expect(button).not.toHaveAttribute("title");
+    expect(button).toHaveAccessibleDescription(reason);
+    expect(trigger).toHaveTextContent(preset);
+    expect(trigger).not.toHaveTextContent(reason);
+    screen.getAllByText(reason).forEach((description) => expect(description).not.toBeVisible());
+    expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
+
+    fireEvent.pointerEnter(trigger);
+    fireEvent.pointerMove(trigger);
+    expect(await screen.findByRole("tooltip")).toHaveTextContent(reason);
+    fireEvent.click(button);
+    fireEvent.click(trigger);
+    expect(onRangeChange).not.toHaveBeenCalled();
+  });
+
+  it("explains disabled presets on keyboard focus without making them selectable", async () => {
+    const onRangeChange = jest.fn();
+    render(<CalendarDateRangePicker maxRangeDays={93} onRangeChange={onRangeChange} />);
+    fireEvent.click(screen.getByRole("button", { name: "Select date range" }));
+    const trigger = screen.getByRole("group", { name: "Last year" });
+    expect(trigger).toHaveAttribute("tabindex", "0");
+    expect(trigger).toHaveAttribute("aria-disabled", "true");
+    act(() => trigger.focus());
+    expect(trigger).toHaveFocus();
+    expect(await screen.findByRole("tooltip")).toHaveTextContent("Select up to 93 days.");
+    expect(trigger).toHaveAccessibleDescription("Select up to 93 days.");
+    for (const key of ["Enter", " "]) {
+      fireEvent.keyDown(trigger, { key });
+      fireEvent.keyUp(trigger, { key });
+    }
+    expect(onRangeChange).not.toHaveBeenCalled();
+    act(() => trigger.blur());
+    await waitFor(() => expect(screen.queryByRole("tooltip")).not.toBeInTheDocument());
+    expect(screen.getByRole("button", { name: "Last year" })).toBeDisabled();
   });
 
   it.each([
@@ -134,6 +183,8 @@ describe("CalendarDateRangePicker", () => {
     rerender(<CalendarDateRangePicker maxRangeDays={366} />);
     expect(screen.getByRole("button", { name: "Year to date" })).toBeEnabled();
     expect(screen.getByRole("button", { name: "Last year" })).toBeEnabled();
+    expect(screen.queryByRole("group", { name: "Year to date" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("group", { name: "Last year" })).not.toBeInTheDocument();
     rerender(<CalendarDateRangePicker maxRangeDays={7} />);
     expect(screen.getByRole("button", { name: "Last 7 days" })).toBeEnabled();
     expect(screen.getByRole("button", { name: "Last 30 days" })).toBeDisabled();

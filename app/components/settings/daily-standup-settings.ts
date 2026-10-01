@@ -1,5 +1,5 @@
 import { z } from "zod"
-import { optionalActivityStartTimeSchema } from "@/lib/activity-start-time"
+import { activityTimingFields, activityTimeErrors } from "@/lib/activity-start-time"
 
 export const DAILY_STANDUP_WEEKDAYS = [1, 5]
 export const DAILY_STANDUP_REPORT_SECTIONS = [
@@ -12,9 +12,10 @@ export const dailyStandupSettingsSchema = z.preprocess(
     status: z.enum(["active", "inactive", "default"]).default("inactive")
       .transform(value => value === "active" ? "active" as const : "inactive" as const),
     weekdays: z.array(z.number().int().min(0).max(6)).default(DAILY_STANDUP_WEEKDAYS),
-    start_time: optionalActivityStartTimeSchema,
+    ...activityTimingFields,
     report_sections: z.array(z.enum(DAILY_STANDUP_REPORT_SECTIONS)).default([...DAILY_STANDUP_REPORT_SECTIONS]),
   }).passthrough().superRefine((value, ctx) => {
+    for (const error of activityTimeErrors(value)) ctx.addIssue({ code: z.ZodIssueCode.custom, path: [error.field], message: error.message })
     if (value.status !== "active") return
     if (!value.weekdays.length) ctx.addIssue({
       code: z.ZodIssueCode.custom, path: ["weekdays"],
@@ -42,6 +43,7 @@ export function normalizeDailyStandupSettings(value: unknown): DailyStandupSetti
     status: data.status === "active" ? "active" : "inactive",
     // Keep an undefined form baseline for the optional controller; JSON omits it.
     start_time: data.start_time,
+    start_time_mode: data.start_time_mode,
     weekdays: data.weekdays === undefined ? [...DAILY_STANDUP_WEEKDAYS] : data.weekdays,
     report_sections: data.report_sections === undefined ? [...DAILY_STANDUP_REPORT_SECTIONS] : data.report_sections,
   }
@@ -49,6 +51,6 @@ export function normalizeDailyStandupSettings(value: unknown): DailyStandupSetti
 
 /** Legacy string and object status-only updates must not erase a configured selection. */
 export function mergeDailyStandupSettings(existing: unknown, updates: unknown) {
-  const patch = Object.fromEntries(Object.entries(asRecord(updates)).filter(([key, value]) => key !== "start_time" || value !== undefined))
+  const patch = Object.fromEntries(Object.entries(asRecord(updates)).filter(([key, value]) => !["start_time", "start_time_mode"].includes(key) || value !== undefined))
   return normalizeDailyStandupSettings({ ...asRecord(existing), ...patch })
 }

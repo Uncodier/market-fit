@@ -4,7 +4,7 @@ import { isValidActivityStartTime, optionalActivityStartTimeSchema } from "@/lib
 import { normalizeOutreachSettings, validateOutreachSettings } from "@/lib/outreach-settings"
 import type { SiteSettings } from "@/app/context/site-types"
 
-const keys = ["daily_resume_and_stand_up", "leads_follow_up"] as const
+const keys = ["daily_resume_and_stand_up", "leads_follow_up", "leads_initial_cold_outreach"] as const
 const invalidTimes = ["", "9:00", "09:0", "24:00", "23:60", "-1:00", "09:00:00", " 09:00", "09:00 ", "09:00\n", "09:00\r\n", "noon", null, 900, true, {}, []]
 
 describe.each(keys)("%s optional start time", key => {
@@ -62,5 +62,21 @@ it("types both site settings start times without adding defaults to other activi
   expect(normalized.daily_resume_and_stand_up.start_time).toBe("08:15")
   expect(normalized.leads_follow_up.start_time).toBe("17:45")
   expect(normalized.icp_lead_generation).not.toHaveProperty("start_time")
-  expect(normalized.leads_initial_cold_outreach).not.toHaveProperty("start_time")
+  expect(normalized.leads_initial_cold_outreach.start_time).toBeUndefined()
+})
+
+describe.each(keys)("%s execution time mode", key => {
+  it.each([null, "", "wrong"])("rejects invalid mode %j", start_time_mode => {
+    expect(activitiesSchema.safeParse(normalizeActivitySettings({ [key]: { start_time_mode } })).success).toBe(false)
+  })
+  it("requires a custom time and allows resetting even an invalid stale time", () => {
+    expect(activitiesSchema.safeParse(normalizeActivitySettings({ [key]: { start_time_mode: "custom" } })).success).toBe(false)
+    const existing = { [key]: { start_time_mode: "custom", start_time: "invalid", extension: true } }
+    const patch = { [key]: { start_time_mode: "business_opening" } }
+    const merged = mergeActivitySettings(existing, patch)
+    const parsed = activitiesSchema.parse(merged)
+    expect(parsed[key]).toMatchObject({ start_time_mode: "business_opening", start_time: "invalid", extension: true })
+    expect(validatedActivityUpdates(parsed, patch)).toEqual(patch)
+    expect(getSiteFormDefaults({ activities: merged }).activities?.[key]?.start_time_mode).toBe("business_opening")
+  })
 })

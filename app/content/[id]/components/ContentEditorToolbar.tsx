@@ -41,6 +41,7 @@ type Props = {
   isSaving: boolean
   onDelete: (options: DeleteContentOptions) => Promise<DeleteContentResult>
   linkedPostCount?: number
+  contentId?: string
   activeTab: Exclude<ContentActiveTab, "ai">
   hasChanges: boolean
   contentType?: string
@@ -56,6 +57,7 @@ export function ContentEditorToolbar({
   isSaving,
   onDelete,
   linkedPostCount = 0,
+  contentId,
   activeTab,
   hasChanges,
   contentType,
@@ -237,7 +239,7 @@ export function ContentEditorToolbar({
         {!showFormattingControls && (
           <>
             <div className="mx-1 h-6 w-px bg-border" />
-            <ContentDeleteDialog linkedPostCount={linkedPostCount} onDelete={onDelete} />
+            <ContentDeleteDialog key={contentId} contentId={contentId} linkedPostCount={linkedPostCount} onDelete={onDelete} />
           </>
         )}
       </div>

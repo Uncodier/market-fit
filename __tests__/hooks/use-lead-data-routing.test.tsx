@@ -56,6 +56,25 @@ it('preserves an explicitly private web discussion from persisted data', async (
   expect(result.current.isAgentOnlyConversation).toBe(true)
 })
 
+it('loads outbound-call eligibility and refreshes revoked consent without changing channels', async () => {
+  const leads = {
+    id: 'lead-1', name: 'Voice contact', site_id: 'site-1', phone: '+12025550123',
+    do_not_call: false, voice_call_consent_status: 'granted', voice_call_consent_at: '2026-01-01T00:00:00Z',
+  }
+  const conversation = { channel: 'voice', lead_id: leads.id, leads }
+  maybeSingle.mockResolvedValue({ data: conversation, error: null })
+  const { result } = renderHook(() => useLeadData('voice', 'site-1'), { wrapper })
+  await waitFor(() => expect(result.current.isConversationReady).toBe(true))
+  expect(select.mock.calls[0][0]).toContain('voice_call_consent_status')
+  expect(select.mock.calls[0][0]).toContain('voice_call_consent_at')
+  expect(select.mock.calls[0][0]).toContain('do_not_call')
+  expect(result.current.leadData).toMatchObject(leads)
+  maybeSingle.mockResolvedValue({ data: { ...conversation, leads: { ...leads, voice_call_consent_status: 'revoked' } }, error: null })
+  await act(async () => { await result.current.refreshLeadData() })
+  expect(result.current.leadData).toMatchObject({ voice_call_consent_status: 'revoked' })
+  expect(result.current.conversationChannel).toBe('voice')
+})
+
 it.each([
   { data: null, error: null },
   { data: null, error: { message: 'lookup failed' } },

@@ -26,6 +26,7 @@ Use the guides below before relying on older implementation notes.
 - [Support chat identity](CHAT_IDENTITY.md)
 - [Outstand Instagram DM display identity](OUTSTAND_DM_IDENTITY.md)
 - [Chat intervention delivery and voice/Temporal boundaries](CHAT_INTERVENTION_DELIVERY.md)
+- [Lead outbound-call consent editing](LEAD_CALL_CONSENT.md)
 - [Public visitor sessions and image delivery](PUBLIC_VISITOR_AND_IMAGE_DELIVERY.md)
 - [Report sections and data contracts](REPORTS.md)
 - [Report exports](REPORT_EXPORTS.md)

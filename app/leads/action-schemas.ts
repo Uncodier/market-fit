@@ -1,4 +1,5 @@
 import { z } from "zod"
+import { CallConsentFieldsSchema } from "./call-consent-schema"
 
 // Definir el schema de respuesta
 export const LeadSchema = z.object({
@@ -74,6 +75,7 @@ export type LeadResponse = z.infer<typeof LeadSchema>
 // Schema for single lead response
 export const SingleLeadSchema = z.object({
   lead: z.object({
+    ...CallConsentFieldsSchema.partial().shape,
     id: z.string(),
     buyer_user_id: z.string().nullable().optional(),
     name: z.string(),

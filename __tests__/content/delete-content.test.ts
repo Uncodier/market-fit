@@ -144,14 +144,14 @@ it.each([401, 403, 404, 409, 429, 500, 503])("preserves content after API HTTP %
   expect(fetch).toHaveBeenCalledTimes(1)
 })
 
-it("explains the Instagram/TikTok limitation on conflict and only deletes locally after an explicit new request", async () => {
+it("does not assume a platform-specific cause on conflict and only deletes locally after an explicit new request", async () => {
   load.mockResolvedValue({ data: record(["outstand_id_instagram-post", "outstand_id_tiktok-post"]), error: null })
   jest.mocked(fetch).mockResolvedValueOnce(Response.json({ success: false, error: "private-provider-detail" }, { status: 409 }))
 
   const result = await invoke()
   expect(result).toMatchObject({ success: false, status: 409 })
-  expect(result.error).toContain("Outstand cannot delete published Instagram or TikTok posts via API")
-  expect(result.error).toContain("Remove those posts directly in each app")
+  expect(result.error).toContain("post status, platform support or permissions may have changed")
+  expect(result.error).not.toMatch(/Instagram|TikTok/)
   expect(result.error).toContain("local-only deletion")
   expect(result.error).toContain("Local content was not deleted")
   expect(result.error).not.toContain("private-provider-detail")

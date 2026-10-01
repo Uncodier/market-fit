@@ -41,12 +41,25 @@ The direct agent-message proxy rejects external conversations before generating
 assistant text. Sends are blocked until the current conversation's routing data
 is loaded, so switching from an internal chat cannot reuse its mode.
 
-For voice, the composer labels the action **Start call**, describes the message
-as the opening greeting, and shows a blocking explanation when no lead is
-linked. The intervention proxy also rejects that condition before persistence
-or provider work. A number embedded in a title is not a trusted/consented
-recipient. The API still owns lead-phone, consent, do-not-call and sender checks.
-A returned call ID is reported as **requested**, never answered or completed.
+For voice, the composer labels the action **Start call** and describes the message
+as the opening greeting. It loads the linked lead's phone, do-not-call flag, and
+outbound consent status/timestamp. Missing lead, invalid international phone,
+do-not-call, or missing/revoked consent blocks button, Enter, and native submit
+with an actionable explanation, without discarding the draft. These checks apply
+only to Voice; they do not block a separately selected text channel.
+
+The intervention proxy independently reads current lead eligibility under the
+user's RLS session and conversation site, including on retries. Rejections happen
+before upstream persistence/provider work and return a fixed `VOICE_*` code with
+`execution_started: false`, without claiming a saved message. A rejected retry
+restores only its own optimistic state; newer Realtime updates win. Unknown
+execution outcomes remain pending and are never automatically replayed.
+
+A number embedded in a title is not a trusted/consented recipient. Neither an
+inbound call nor permission to store contact details grants outbound-call consent.
+No consent is automatically granted by the composer or proxy. The external API
+still rechecks lead-phone, consent, do-not-call and sender eligibility immediately
+before placement. A returned call ID is **requested**, never answered or completed.
 
 The external API currently handles the `voice` channel through
 `placeTrackedVoiceCall`, directly calling the voice provider after saving the
@@ -114,6 +127,20 @@ Determine whether a saved message ID, call ID, or workflow ID exists before
 retrying. Never log message content, phone numbers, authorization headers, or
 provider payloads while collecting evidence.
 
+A separate read-only inspection on 2026-10-01 found a failed outbound follow-up
+in a linked inbound Voice conversation. The lead had `unknown` outbound consent
+and no consent timestamp. The follow-up had no provider call ID; the only delivery
+was the earlier completed inbound call. This state is ineligible for a new call.
+The saved follow-up contained only the proxy's generic error, so it does not
+independently establish the exact original provider/API exception. Source and
+regression tests confirmed the client could overwrite a saved failure diagnosis
+with that generic error. Failure reconciliation now preserves an already-failed
+row with a recorded diagnosis instead of rewriting its metadata. Historical rows
+are not backfilled and outbound consent must be obtained and recorded separately.
+
+Email-identification callbacks during the inbound call are a separate API flow;
+this web change does not repair or activate provider tool schemas or prompts.
+
 During the earlier intervention-delivery repair, the inspected local
 configuration pointed to the external API on port 3001. Read-only schema
 inspection confirmed the intervention message columns and `team_member` role
@@ -123,7 +150,7 @@ the authentication diagnosis above is separate from that earlier investigation.
 Focused offline regression checks:
 
 ```bash
-npm test -- --runInBand __tests__/chat __tests__/api/intervention-proxy.test.ts __tests__/api/agent-message-proxy.test.ts __tests__/hooks/use-chat-operations.test.tsx __tests__/hooks/use-lead-data-routing.test.tsx __tests__/components/chat/chat-input.test.tsx
+npm test -- --runInBand __tests__/chat __tests__/api/intervention-proxy.test.ts __tests__/api/intervention-voice-preflight.test.ts __tests__/api/agent-message-proxy.test.ts __tests__/hooks/use-chat-operations.test.tsx __tests__/hooks/use-lead-data-routing.test.tsx __tests__/components/chat/chat-input.test.tsx
 npm run typecheck
 ```
 

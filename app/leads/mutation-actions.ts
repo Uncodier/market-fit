@@ -135,6 +135,11 @@ export async function createLead(data: CreateLeadInput): Promise<{ error?: strin
 
 export async function updateLead(data: Partial<UpdateLeadInput>): Promise<{ error?: string; success?: boolean }> {
   try {
+    if (["voice_call_consent_status", "voice_call_consent_at", "do_not_call"].some(
+      (field) => Object.prototype.hasOwnProperty.call(data, field)
+    )) {
+      return { error: "Use the call consent editor to confirm changes to outbound-call permissions." }
+    }
     const supabase = await createClient()
     
     // Get authenticated user

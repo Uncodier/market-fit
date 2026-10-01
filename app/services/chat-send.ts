@@ -51,6 +51,7 @@ export async function sendTeamMemberIntervention(
       throw new InterventionRequestError(errorMsg, {
         message_id: unconfirmed || !definitelyNotStarted ? undefined : errorData?.data?.message_id || errorData?.message_id,
         conversation_id: errorData?.data?.conversation_id || errorData?.conversation_id,
+        execution_started: !unconfirmed && definitelyNotStarted ? false : undefined,
       });
     }
     

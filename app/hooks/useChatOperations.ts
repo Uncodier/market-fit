@@ -18,6 +18,7 @@ import {
   markInterventionMessageFailed,
   interventionErrorMessageId,
   interventionSavedMessageId,
+  InterventionRequestError,
 } from '@/app/services/mark-intervention-message-failed'
 
 // Helper function to log detailed API errors
@@ -245,6 +246,16 @@ export function useChatOperations({
 
       const apiSavedId = interventionErrorMessageId(apiError)
       if (!apiSavedId) {
+        // Admission failed before this retry started. Restore only our optimistic
+        // state; a newer Realtime event remains authoritative. Ambiguous requests
+        // must stay pending rather than encouraging another call.
+        if (apiError instanceof InterventionRequestError && apiError.executionStarted === false) {
+          setChatMessages(previous => previous.map(row =>
+            row.id === failedMessage.id && row.metadata === pendingMetadata
+              ? { ...row, metadata: failedMessage.metadata }
+              : row
+          ))
+        }
         return
       }
 

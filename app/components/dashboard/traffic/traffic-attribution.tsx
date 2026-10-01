@@ -2,8 +2,9 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/app/components/ui/card"
 import { useReportResource } from "@/app/hooks/use-report-resource"
+import { BaseKpiWidget } from "../base-kpi-widget"
 import { DistributionChart } from "../distribution-chart"
-import { ReportSection } from "../report-layout"
+import { ReportKpiGrid, ReportSection } from "../report-layout"
 import { ReportState } from "../report-state"
 import { ReportDistributionLoading } from "../report-visual-loading"
 import { fetchReport, formatDistributionValue, reportQueryKey, type DistributionItem, type ReportPeriod, type ReportRequestError } from "../report-query"
@@ -54,17 +55,27 @@ export function TrafficAttribution({ siteId, userId, segmentId, period, embedded
       : !coverage ? panels
       : coverage.totalSessions === 0 ? <ReportState state="empty" message="No sessions for the selected period." />
       : <>
-        <dl aria-label="Attribution coverage" className="grid min-w-0 grid-cols-2 gap-3 rounded-lg border bg-muted/20 p-4 lg:grid-cols-4">
-          <div><dt className="text-xs text-muted-foreground">Sessions analyzed</dt><dd className="mt-1 text-lg font-semibold tabular-nums">{formatDistributionValue(coverage.totalSessions)}</dd></div>
+        <ReportKpiGrid aria-label="Attribution coverage">
+          <BaseKpiWidget
+            title="Sessions analyzed"
+            tooltipText="Total sessions included in the attribution report for the selected period. Coverage metrics can overlap; they are not sequential funnel steps."
+            value={formatDistributionValue(coverage.totalSessions)}
+            changeText="Selected period"
+            isLoading={false}
+          />
           {([
-            ["Identifiable source", coverage.attributedSessions],
-            ["Assigned segment", coverage.segmentedSessions],
-            ["Tagged campaign", coverage.campaignSessions],
-          ] as const).map(([label, count]) => <div key={label}>
-            <dt className="text-xs text-muted-foreground">{label}</dt>
-            <dd className="mt-1 text-lg font-semibold tabular-nums">{(count / coverage.totalSessions * 100).toFixed(1)}% <span className="text-xs font-normal text-muted-foreground">({formatDistributionValue(count)})</span></dd>
-          </div>)}
-        </dl>
+            ["Identifiable source", coverage.attributedSessions, "Share of all analyzed sessions with a recorded UTM source, recognized ad click ID, or external referrer."],
+            ["Assigned segment", coverage.segmentedSessions, "Share of all analyzed sessions linked to a lead or visitor with a current segment. This is not historical membership."],
+            ["Tagged campaign", coverage.campaignSessions, "Share of all analyzed sessions with a campaign UTM tag at session entry. A campaign tag alone does not identify an external source."],
+          ] as const).map(([title, count, tooltipText]) => <BaseKpiWidget
+            key={title}
+            title={title}
+            tooltipText={tooltipText}
+            value={`${(count / coverage.totalSessions * 100).toFixed(1)}%`}
+            changeText={`${formatDistributionValue(count)} of ${formatDistributionValue(coverage.totalSessions)} sessions`}
+            isLoading={false}
+          />)}
+        </ReportKpiGrid>
         {panels}
         <p className="text-xs leading-relaxed text-muted-foreground">
           {formatDistributionValue(coverage.unattributedSessions)} of {formatDistributionValue(coverage.totalSessions)} sessions have no identifiable external source.

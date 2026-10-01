@@ -21,6 +21,11 @@ function props() {
   }
 }
 
+const consentedLead = {
+  id: 'lead-1', phone: '+12025550123', do_not_call: false,
+  voice_call_consent_status: 'granted', voice_call_consent_at: '2026-01-01T00:00:00Z',
+}
+
 describe('ChatInput send guards', () => {
   beforeEach(() => { jest.mocked(useChannelSelector).mockReturnValue(channelState()) })
 
@@ -99,8 +104,36 @@ describe('ChatInput send guards', () => {
     const { rerender } = render(<ChatInput {...callbacks} leadData={{ id: 'lead-1' }} isConversationReady={false} />)
     fireEvent.change(screen.getByRole('textbox'), { target: { value: 'Greeting' } })
     expect(screen.getByRole('button', { name: 'Start call' })).toBeDisabled()
-    rerender(<ChatInput {...callbacks} leadData={{ id: 'lead-1' }} isConversationReady />)
+    rerender(<ChatInput {...callbacks} leadData={consentedLead} isConversationReady />)
     expect(screen.getByRole('status')).toHaveTextContent('Start an outbound call')
     expect(screen.getByRole('button', { name: 'Start call' })).toBeEnabled()
+  })
+
+  it.each([
+    [{ voice_call_consent_status: 'unknown', voice_call_consent_at: null }, 'explicit consent'],
+    [{ voice_call_consent_status: 'revoked' }, 'explicit consent'],
+    [{ do_not_call: true }, 'do-not-call'],
+    [{ phone: undefined }, 'international phone number'],
+  ])('blocks voice button, Enter and native submit with an actionable reason: %j', (overrides, reason) => {
+    jest.mocked(useChannelSelector).mockReturnValue({ ...channelState(), selectedChannel: 'voice' })
+    const callbacks = props()
+    render(<ChatInput {...callbacks} leadData={{ ...consentedLead, ...overrides }} />)
+    const textarea = screen.getByRole('textbox')
+    fireEvent.change(textarea, { target: { value: 'Keep this greeting' } })
+    fireEvent.keyDown(textarea, { key: 'Enter' })
+    fireEvent.submit(textarea.closest('form')!)
+    expect(screen.getByRole('status')).toHaveTextContent(reason)
+    expect(screen.getByRole('button', { name: 'Start call' })).toBeDisabled()
+    expect(callbacks.handleSendMessage).not.toHaveBeenCalled()
+    expect(callbacks.handleKeyDown).not.toHaveBeenCalled()
+    expect(textarea).toHaveValue('Keep this greeting')
+  })
+
+  it('does not block text-channel sends when outbound voice consent is missing', () => {
+    const callbacks = props()
+    render(<ChatInput {...callbacks} leadData={{ id: 'lead-1' }} />)
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: 'Text follow-up' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Send' }))
+    expect(callbacks.handleSendMessage).toHaveBeenCalledTimes(1)
   })
 })

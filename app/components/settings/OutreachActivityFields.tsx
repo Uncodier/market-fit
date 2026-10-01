@@ -110,7 +110,7 @@ export function OutreachActivityFields({ activityKey, accounts, segments, loadin
           </label>)}
         </div>
       </fieldset>}
-      {activityKey === "leads_follow_up" && <ActivityStartTimeField activityKey={activityKey} timezone={timezone} />}
+      <ActivityStartTimeField activityKey={activityKey} timezone={timezone} />
     </div>
   )
 }

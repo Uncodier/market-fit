@@ -76,6 +76,16 @@ export async function requestOutstandContentDeletion(siteId: string, token: stri
   return requestOutstand(url, token, "DELETE", UNCONFIRMED_DELETE, OUTSTAND_DELETE_TIMEOUT_MS)
 }
 
+export async function requestOutstandPost(
+  siteId: string, token: string, postId: string, timeoutMs = OUTSTAND_TIMEOUT_MS,
+): Promise<unknown> {
+  if (!accountIdSchema.safeParse(postId).success) throw new OutstandBoundaryError(400, "Invalid social post ID.")
+  const url = postsUrl(siteId, "POST")
+  url.pathname += `/${encodeURIComponent(postId)}`
+  return requestOutstand(url, token, "GET", "Unable to verify linked social posts.",
+    Math.max(1, Math.min(timeoutMs, OUTSTAND_TIMEOUT_MS)))
+}
+
 async function requestOutstand(
   url: URL, token: string, method: "GET" | "POST" | "DELETE", fallback: string,
   timeoutMs: number, payload?: unknown,
@@ -112,7 +122,7 @@ async function requestOutstand(
         throw new OutstandBoundaryError(status, status === 401 ? "Sign in again to access social posts."
           : status === 403 ? "Access to these social posts was denied."
           : method === "DELETE" && status === 409
-            ? "Social post deletion was not completed. Outstand cannot delete published Instagram or TikTok posts via API. Remove those posts directly in each app. Check Outstand and the other social networks before retrying, or switch to local-only deletion (remaining remote posts will be kept)."
+            ? "Social post deletion was not completed. The post status, platform support or permissions may have changed. Check the linked posts in Outstand and their social networks before retrying, or switch to local-only deletion (remaining remote posts will be kept)."
             : fallback)
       }
       return responseJson(response, controller.signal)

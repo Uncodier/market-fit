@@ -57,23 +57,13 @@ beforeEach(() => {
   jest.mocked(useRouter).mockReturnValue({ ...useRouter(), push: mockPush });
 });
 
-it("only mounts the report export on dashboards with a selected site, without duplicate auth lookup", () => {
-  const { rerender } = toolbar("/dashboard", { isDashboardPage: true });
-  expect(screen.getByRole("button", { name: "Section CSV" })).toBeInTheDocument();
+it.each(["/dashboard", "/costs"])("leaves report export in the page toolbar on %s", (pathname) => {
+  const isDashboardPage = pathname === "/dashboard";
+  const { rerender } = toolbar(pathname, { isDashboardPage });
+  expect(screen.queryByRole("button", { name: "Section CSV" })).not.toBeInTheDocument();
   expect(createClient).not.toHaveBeenCalled();
   mockSite = null;
-  rerender(<TopBarActions {...baseProps} isDashboardPage />);
-  expect(screen.queryByRole("button", { name: "Section CSV" })).not.toBeInTheDocument();
-  mockSite = { id: "site-one" };
-  rerender(<TopBarActions {...baseProps} />);
-  expect(screen.queryByRole("button", { name: "Section CSV" })).not.toBeInTheDocument();
-});
-
-it("mounts the export on the standalone Costs route with a selected site", () => {
-  const { rerender } = toolbar("/costs");
-  expect(screen.getByRole("button", { name: "Section CSV" })).toBeInTheDocument();
-  mockSite = null;
-  rerender(<TopBarActions {...baseProps} />);
+  rerender(<TopBarActions {...baseProps} isDashboardPage={isDashboardPage} />);
   expect(screen.queryByRole("button", { name: "Section CSV" })).not.toBeInTheDocument();
 });
 

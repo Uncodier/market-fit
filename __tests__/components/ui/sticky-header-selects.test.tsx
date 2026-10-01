@@ -1,5 +1,5 @@
 import { createPortal } from "react-dom"
-import { fireEvent, render, screen, waitFor } from "@testing-library/react"
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react"
 import { usePathname } from "next/navigation"
 import { useIsMobile } from "@/app/hooks/use-mobile-view"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
@@ -13,6 +13,8 @@ jest.mock("@/app/context/LayoutContext", () => ({
   useLayout: () => ({ isLayoutCollapsed: false }),
 }))
 jest.mock("@/app/hooks/use-command-k", () => ({ useCommandK: jest.fn() }))
+jest.mock("@/app/hooks/use-auth", () => ({ useAuth: () => ({ user: { id: "user-one" }, isLoading: false }) }))
+jest.mock("@/app/context/SiteContext", () => ({ useSite: () => ({ currentSite: { id: "site-one" }, isLoading: false }) }))
 jest.mock("@/app/hooks/use-mobile-view", () => ({ useIsMobile: jest.fn(() => false) }))
 jest.mock("@/app/context/LocalizationContext", () => ({
   useLocalization: () => ({ t: (key: string) => key, locale: "en" }),
@@ -71,7 +73,10 @@ describe("sticky header select styling", () => {
     expect(screen.getByRole("combobox", { name: "Segment" }).matches('[class*="select-trigger"]')).toBe(true)
   })
 
-  it.each(["overview", "analytics"] as const)("keeps %s aligned with the 71px site selector row", (report) => {
+  it.each([
+    ["overview", false], ["overview", true], ["analytics", false], ["analytics", true],
+  ] as const)("keeps %s export before the date picker on desktop and outside mobile filters (mobile=%s)", (report, mobile) => {
+    jest.mocked(useIsMobile).mockReturnValue(mobile)
     const { container } = render(
       <Tabs defaultValue="summary">
         <DashboardFilters
@@ -89,6 +94,23 @@ describe("sticky header select styling", () => {
     const header = container.querySelector("[data-toolbar-font]")!
     expect(header).toHaveClass("min-h-[71px]")
     expect(header).not.toHaveClass("min-h-[64px]")
+    const exportButton = screen.getByRole("button", { name: "Export current section (CSV)" })
+    expect(exportButton.closest("[data-toolbar-font]")).toBe(header)
+    expect(screen.getAllByRole("button", { name: "Export current section (CSV)" })).toHaveLength(1)
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
+    if (mobile) {
+      expect(exportButton.parentElement).toHaveClass("ml-auto", "flex", "shrink-0", "justify-end")
+      expect(exportButton.parentElement?.lastElementChild).toBe(exportButton)
+      fireEvent.click(screen.getByRole("button", { name: "Filters" }))
+      expect(within(screen.getByRole("dialog")).queryByRole("button", { name: "Export current section (CSV)" })).not.toBeInTheDocument()
+      expect(exportButton.closest("[data-toolbar-font]")).toBe(header)
+    } else {
+      expect(exportButton.parentElement).toHaveClass("flex", "md:flex-row", "md:items-center")
+      expect(exportButton.parentElement?.firstElementChild).toBe(exportButton)
+      const dateButton = within(exportButton.parentElement!).getAllByRole("button")[1]
+      expect(dateButton).toBeInTheDocument()
+      expect(exportButton.nextElementSibling).toContainElement(dateButton)
+    }
   })
 
   it("shares the secondary filter style without changing form selects or their widths", () => {

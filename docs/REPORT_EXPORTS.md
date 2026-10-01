@@ -1,8 +1,10 @@
 # Report exports
 
-The Reports top bar exports **the current section as CSV**, not every section of
-the report. Visit another section to export its datasets. The dedicated Costs
-page uses the same exporter, including its campaign filter.
+The Export action in the Reports toolbar, immediately to the left of the desktop
+date-range selector, exports **the current section as CSV**, not every section of
+the report. It uses the same compact button style as Leads and stays outside the
+mobile filters drawer. Visit another section to export its datasets. The dedicated
+Costs page uses the same toolbar action and exporter, including its campaign filter.
 
 Exports reuse the validated data already loaded by the frontend. Clicking Export
 does not call another reporting endpoint, repeat calculations on the server or
@@ -31,7 +33,7 @@ removed: it always exported Overview metrics using a separate filter state.
 
 `app/dashboard/export/ReportExportScope.tsx` registers resources through
 `app/hooks/use-report-resource.ts`. A per-scope registry publishes readiness and
-the download action to the top bar. Registrations disappear on unmount; exports
+the download action to the report toolbar. Registrations disappear on unmount; exports
 are never persisted in browser storage.
 
 Section-specific projections live in `app/dashboard/export/report-export-data.ts`

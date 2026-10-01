@@ -1,4 +1,5 @@
 import { Company } from "@/app/companies/types"
+import type { CallConsentFields } from "./call-consent-schema"
 
 export interface AttributionData {
   user_id: string
@@ -9,7 +10,7 @@ export interface AttributionData {
   notes?: string
 }
 
-export interface Lead {
+export interface Lead extends Partial<CallConsentFields> {
   id: string
   buyer_user_id?: string | null
   name: string

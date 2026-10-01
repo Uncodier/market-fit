@@ -50,6 +50,7 @@ export function ContentEditorPane({
         isSaving={isSaving}
         onDelete={onDelete}
         linkedPostCount={getLinkedOutstandPostIds(content?.tags).length}
+        contentId={content?.id}
         activeTab={editorTab}
         hasChanges={hasChanges}
         contentType={content?.type}

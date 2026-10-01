@@ -4,16 +4,18 @@ export class InterventionRequestError extends Error {
   messageId?: string
   savedMessageId?: string
   conversationId?: string
+  executionStarted?: false
 
   constructor(
     message: string,
-    extras?: { message_id?: string; saved_message_id?: string; conversation_id?: string }
+    extras?: { message_id?: string; saved_message_id?: string; conversation_id?: string; execution_started?: false }
   ) {
     super(message)
     this.name = "InterventionRequestError"
     this.messageId = extras?.message_id
     this.savedMessageId = extras?.saved_message_id
     this.conversationId = extras?.conversation_id
+    this.executionStarted = extras?.execution_started
   }
 }
 
@@ -106,6 +108,12 @@ export async function markInterventionMessageFailed(
 
     if (!error && existing?.id) {
       const state = existing.custom_data as Record<string, unknown> | null
+      // A saved failure is authoritative too. Do not replace its diagnostic with
+      // the proxy's generic delivery error or overwrite server-owned metadata.
+      if ((state?.command_status === 'failed' || state?.status === 'failed' || state?.call_status === 'failed') &&
+        typeof state.error_message === 'string' && state.error_message.trim()) {
+        return existing as MarkedInterventionMessage
+      }
       // The call/webhook may have advanced while the HTTP error was in flight.
       if (state?.provider_call_id || state?.status === 'placement_unknown' ||
         state?.call_status === 'placement_unknown' || state?.status === 'sent' ||

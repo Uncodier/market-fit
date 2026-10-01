@@ -29,6 +29,7 @@ import { DailyStandupFields } from "./DailyStandupFields"
 import { dailyStandupSettingsSchema, normalizeDailyStandupSettings } from "./daily-standup-settings"
 import { acknowledgeActivitySave, getActivityFormUpdates } from "./activity-form-state"
 import { validatedActivityUpdates } from "./activity-settings"
+import { TIMED_ACTIVITY_KEYS, displayedActivityTimeMode, type TimedActivityKey, type ActivityStartTimeMode } from "@/lib/activity-start-time"
 
 interface ActivitiesSectionProps {
   active: boolean
@@ -57,7 +58,7 @@ const ACTIVITIES: { key: ActivityKey; title: string; description: string }[] = [
   {
     key: "leads_initial_cold_outreach",
     title: "Leads Initial Cold Outreach",
-    description: "Reach contacts who have never written or replied, including repeat outreach after the reply-wait period. Runs according to your company's operating hours."
+    description: "Reach contacts who have never written or replied, including repeat outreach after the reply-wait period. Choose business opening time or a custom time below."
   },
   {
     key: "leads_follow_up",
@@ -124,6 +125,12 @@ export function ActivitiesSection({ active, onSave, siteId }: ActivitiesSectionP
 
   const handleSave = async (id: string) => {
     if (!onSave || savingCard) return
+    if ((TIMED_ACTIVITY_KEYS as readonly string[]).includes(id)) {
+      const key = id as TimedActivityKey
+      const timing = form.getValues(`activities.${key}`)
+      if (timing?.start_time_mode === undefined) form.setValue(`activities.${key}.start_time_mode`,
+        displayedActivityTimeMode(timing ?? {}) as ActivityStartTimeMode, { shouldDirty: true })
+    }
     const scope = saveScope.current
     const validation = Object.fromEntries(OUTREACH_ACTIVITY_KEYS.map(key => [key, validate(key)]))
     const icp = icpLeadGenerationSettingsSchema.safeParse(form.getValues("activities.icp_lead_generation"))
@@ -157,7 +164,7 @@ export function ActivitiesSection({ active, onSave, siteId }: ActivitiesSectionP
       <div>
         <h2 className="text-2xl font-semibold">{sectionTitle}</h2>
         <p className="text-xs text-muted-foreground mt-1">
-          Standup and Follow Up use the weekdays and optional start times below. ICP runs are distributed by site over 24 hours, independent of business hours. Configure the site&apos;s timezone and business hours in
+          Standup, Follow Up and Cold Outreach use business opening time or a custom time. Standup and Follow Up also use the selected weekdays. ICP runs are distributed by site over 24 hours, independent of business hours. Configure the site&apos;s timezone and business hours in
           {" "}
           <NavigationLink href="/context" className="text-primary underline underline-offset-4">Context</NavigationLink>
           {" "}
@@ -324,7 +331,8 @@ export function ActivitiesSection({ active, onSave, siteId }: ActivitiesSectionP
             <SectionCardFooter>
               <Button type="button" variant="outline" size="sm"
                 onClick={() => handleSave(key)}
-                disabled={savingCard !== null || !form.formState.isDirty}
+                disabled={savingCard !== null || (!form.formState.isDirty && !((TIMED_ACTIVITY_KEYS as readonly string[]).includes(key)
+                  && form.getValues(`activities.${key as TimedActivityKey}.start_time_mode`) === undefined))}
               >
                 {savingCard === key ? "Saving..." : "Save"}
               </Button>

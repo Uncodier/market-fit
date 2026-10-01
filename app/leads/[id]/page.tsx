@@ -340,6 +340,9 @@ export default function LeadDetailPage(props: { params: Promise<{ id: string }> 
                     segments={segments}
                     campaigns={campaigns}
                     onUpdateLead={handleUpdateLead}
+                    onCallConsentSaved={(saved) => setLead((previous) =>
+                      previous?.id === saved.id ? { ...previous, ...saved } : previous
+                    )}
                     revealEmptyCount={revealEmptyCount}
                   />
                 </div>

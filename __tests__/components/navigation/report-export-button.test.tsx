@@ -84,6 +84,13 @@ it("exports the default performance section from the frontend snapshot without f
   expect(toast.success).toHaveBeenCalledWith("Report exported successfully");
 });
 
+it("uses the compact ghost toolbar style with a responsive label like Leads", () => {
+  render(<ReportExportButton />);
+  expect(exportButton()).toHaveClass("gap-1", "px-3", "py-2", "hover:bg-accent");
+  expect(exportButton()).not.toHaveClass("btn-primary", "sm:!min-w-[155px]", "md:!min-w-[200px]");
+  expect(screen.getByText("Export")).toHaveClass("hidden", "sm:inline");
+});
+
 it.each(Object.entries(REPORTS).flatMap(([report, definition]) =>
   definition.sections.map(({ id }) => [report, id]),
 ))("uses the selected %s/%s report section", (report, section) => {

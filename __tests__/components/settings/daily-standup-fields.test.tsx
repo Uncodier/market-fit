@@ -30,7 +30,7 @@ describe("Daily Standup controls", () => {
     for (const day of ["Sunday", "Tuesday", "Wednesday", "Thursday", "Saturday"]) expect(checkbox(day)).not.toBeChecked()
     for (const section of sections) expect(checkbox(section)).toBeChecked()
     expect(card().queryByText(/Monday through Friday/)).not.toBeInTheDocument()
-    expect(card().getByText(/runs at the configured opening time, or 09:00/)).toBeInTheDocument()
+    expect(card().getByRole("combobox", { name: "Standup execution time" })).toHaveTextContent("Business opening time")
     expect(card().getByRole("group", { name: "Standup weekdays" })).toBeInTheDocument()
     expect(card().getByRole("group", { name: "Report sections" })).toBeInTheDocument()
     await waitFor(() => expect(screen.queryByText("Loading segments...")).not.toBeInTheDocument())
@@ -50,7 +50,7 @@ describe("Daily Standup controls", () => {
     fireEvent.click(card().getByRole("button", { name: "Save" }))
     await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1))
     const saved = mergeActivitySettings(initial, onSave.mock.calls[0][0].activities)
-    expect(saved).toEqual({ ...initial, [key]: { status: "active", weekdays: [0, 6], report_sections: ["social", "records", "orders", "reservations", "inventory"], extension: { version: 2 } } })
+    expect(saved).toEqual({ ...initial, [key]: { status: "active", weekdays: [0, 6], report_sections: ["social", "records", "orders", "reservations", "inventory"], extension: { version: 2 }, start_time_mode: "business_opening" } })
     await waitFor(() => expect(card().getByRole("button", { name: "Save" })).toBeDisabled())
     unmount()
     render(<TestForm onSave={onSave} initial={saved} />)
@@ -77,8 +77,8 @@ describe("Daily Standup controls", () => {
     expect(card().getAllByRole("checkbox").every(element => element.getAttribute("data-state") === "unchecked")).toBe(true)
     fireEvent.click(card().getByRole("button", { name: "Save" }))
     await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1))
-    expect(onSave.mock.calls[0][0].activities[key]).toEqual({ weekdays: [], report_sections: [] })
-    expect(mergeActivitySettings(undefined, onSave.mock.calls[0][0].activities)[key]).toEqual({ status: "inactive", weekdays: [], report_sections: [] })
+    expect(onSave.mock.calls[0][0].activities[key]).toEqual({ weekdays: [], report_sections: [], start_time_mode: "business_opening" })
+    expect(mergeActivitySettings(undefined, onSave.mock.calls[0][0].activities)[key]).toEqual({ status: "inactive", weekdays: [], report_sections: [], start_time_mode: "business_opening" })
   })
 
   it.each(["weekdays", "report_sections"])("blocks saving active standup with empty %s from any activity card", async field => {

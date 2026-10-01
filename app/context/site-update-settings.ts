@@ -5,7 +5,7 @@ import { requestVoiceAgentResync } from "@/app/agents/voice-sync"
 import { mergeActivitySettings } from "@/app/components/settings/activity-settings"
 import { icpLeadGenerationSettingsSchema } from "@/app/components/settings/icp-lead-generation-settings"
 import { dailyStandupSettingsSchema } from "@/app/components/settings/daily-standup-settings"
-import { optionalActivityStartTimeSchema } from "@/lib/activity-start-time"
+import { activityTimingSchema } from "@/lib/activity-start-time"
 
 type PersistArgs = {
   supabase: any
@@ -297,7 +297,8 @@ export async function persistSiteSettings({
         if (settings.activities !== undefined) {
           const activities = mergeActivitySettings(existingSettings?.activities, settings.activities);
           activities.daily_resume_and_stand_up = dailyStandupSettingsSchema.parse(activities.daily_resume_and_stand_up);
-          optionalActivityStartTimeSchema.parse(activities.leads_follow_up.start_time);
+          activityTimingSchema.parse(activities.leads_follow_up);
+          activityTimingSchema.parse(activities.leads_initial_cold_outreach);
           activities.icp_lead_generation = icpLeadGenerationSettingsSchema.parse(activities.icp_lead_generation);
           formattedSettings.activities = activities;
         }

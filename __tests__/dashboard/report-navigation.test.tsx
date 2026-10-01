@@ -1,7 +1,7 @@
 import React from "react"
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react"
 import { SWRConfig } from "swr"
-import { useSearchParams } from "next/navigation"
+import { usePathname, useSearchParams } from "next/navigation"
 import DashboardPage from "@/app/dashboard/page"
 import { REPORTS, type ReportId } from "@/app/dashboard/report-sections"
 
@@ -13,6 +13,7 @@ const mockLimits: { isLoading: boolean; isValidating: boolean; signedOut: boolea
 }
 const mockContent = jest.fn()
 jest.mock("@/app/context/SiteContext", () => ({ useSite: () => ({ currentSite: { id: mockSite }, isLoading: mockSiteLoading }) }))
+jest.mock("@/app/hooks/use-auth", () => ({ useAuth: () => ({ user: { id: "user-one" }, isLoading: false }) }))
 jest.mock("@/app/context/LocalizationContext", () => ({ useLocalization: () => ({ t: () => "" }) }))
 jest.mock("@/app/hooks/use-prevent-refresh", () => ({ usePageRefreshPrevention: () => ({ shouldPreventRefresh: false }) }))
 jest.mock("@/app/segments/actions", () => ({ getSegments: async () => ({ segments: [] }) }))
@@ -48,6 +49,7 @@ beforeEach(() => {
   mockContent.mockClear(); mockSite = "site-one"; mockSiteLoading = false; mockMaxRangeDays = 93
   mockLimits.isLoading = false; mockLimits.isValidating = false; mockLimits.signedOut = false; mockLimits.error = undefined
   mockLimits.mutate.mockReset()
+  jest.mocked(usePathname).mockReturnValue("/dashboard")
 })
 
 describe("sticky report navigation", () => {
@@ -64,6 +66,10 @@ describe("sticky report navigation", () => {
         expect(screen.getAllByRole("tab")).toHaveLength(REPORTS[report].sections.length)
         expect(screen.getByRole("tab", { name: section.label })).toHaveAttribute("aria-selected", "true")
         expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(REPORTS[report].title)
+        const exportButton = within(screen.getByTestId("sticky-header")).getByRole("button", { name: "Export current section (CSV)" })
+        expect(screen.getAllByRole("button", { name: "Export current section (CSV)" })).toHaveLength(1)
+        expect(exportButton.parentElement).toHaveClass("flex", "md:flex-row", "md:items-center")
+        expect(exportButton.nextElementSibling).toBe(screen.getByRole("button", { name: "Date range" }))
         expect(mockContent.mock.calls.every(([props]) => props.report === report && props.section === section.id)).toBe(true)
       }
     }

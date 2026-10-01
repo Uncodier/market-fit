@@ -79,6 +79,7 @@ describe("ActivitiesSection outreach controls", () => {
     expect(mergeActivitySettings(undefined, onSave.mock.calls[0][0].activities).leads_follow_up).toEqual({
       status: "active", channel_accounts: { email: [emailId, secondEmailId], whatsapp: [whatsappId] },
       segment_ids: ["segment-a", "segment-b"], all_segments: false, daily_message_limit: 90, max_unanswered_messages: 7, weekdays: [0],
+      start_time_mode: "business_opening",
     })
     await waitFor(() => expect(card().getByRole("button", { name: "Save" })).toBeDisabled())
   })
@@ -115,6 +116,7 @@ describe("ActivitiesSection outreach controls", () => {
     expect(saved[key]).toEqual({
       status: "active", channel_accounts: { email: [], whatsapp: [], sms: ["sms-id"], telegram: ["telegram-id"], voice: ["voice-id"], "custom-chat_v2": ["custom-id"] },
       segment_ids: ["segment-a"], all_segments: false, daily_message_limit: 72, max_unanswered_messages: 6, weekdays: [2, 3, 4],
+      start_time_mode: "business_opening",
     })
     unmount()
     render(<TestForm onSave={onSave} initial={saved} />)
