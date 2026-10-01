@@ -4,6 +4,7 @@ import { ReportContent } from "@/app/dashboard/ReportContent"
 import { BaseKpiWidget } from "@/app/components/dashboard/base-kpi-widget"
 import { ReportKpiGrid } from "@/app/components/dashboard/report-layout"
 import type { ReportId } from "@/app/dashboard/report-sections"
+import DashboardLoading from "@/app/dashboard/loading"
 
 jest.mock("next/dynamic", () => ({
   __esModule: true,
@@ -11,13 +12,19 @@ jest.mock("next/dynamic", () => ({
 }))
 
 describe("section-aware report loading", () => {
+  it("does not show Performance metrics in the route fallback for other reports", () => {
+    const { container } = render(<DashboardLoading />)
+    expect(screen.getByRole("status", { name: "Loading report" })).not.toHaveAttribute("data-loading-report")
+    expect(container.querySelectorAll("[data-report-kpi], [data-loading-panel]")).toHaveLength(0)
+    expect(screen.queryByText("Leads Contacted")).not.toBeInTheDocument()
+  })
   it.each<[ReportId, string, number, number, number]>([
     ["performance", "outcomes", 4, 1, 0], ["performance", "operations", 4, 1, 0], ["performance", "usage", 4, 1, 0],
     ["overview", "summary", 4, 1, 0], ["overview", "economics", 4, 2, 0], ["overview", "activity", 0, 2, 0],
     ["sales", "summary", 3, 1, 0], ["sales", "channels", 3, 2, 0], ["sales", "categories", 0, 1, 1],
     ["costs", "summary", 4, 2, 0], ["costs", "categories", 0, 1, 1],
     ["analytics", "distribution", 0, 4, 0], ["analytics", "customers", 0, 2, 2], ["analytics", "leads", 0, 1, 1],
-    ["traffic", "summary", 4, 2, 0], ["traffic", "audience", 0, 3, 0], ["traffic", "sessions", 0, 2, 1],
+    ["traffic", "summary", 4, 4, 0], ["traffic", "audience", 0, 3, 0], ["traffic", "sessions", 0, 2, 1],
     ["social", "summary", 4, 1, 0], ["social", "networks", 0, 2, 0], ["social", "posts", 0, 1, 1],
   ])("matches %s/%s with %i KPIs and %i panels", (report, section, kpis, panels, tables) => {
     const { container } = render(<ReportLoading report={report} section={section} />)
@@ -64,13 +71,17 @@ describe("section-aware report loading", () => {
     expect(titles()).toEqual(["Online sales", "Retail sales", "Other / unassigned"])
   })
 
-  it("keeps Traffic technology skeletons compact beside their tables", () => {
+  it("stacks Traffic technology skeletons above full-width rows without changing other report layouts", () => {
     const { container } = render(<ReportLoading report="traffic" section="audience" />)
     const distributions = container.querySelectorAll('[data-loading-panel="distribution"]')
     expect(distributions).toHaveLength(2)
     for (const panel of distributions) {
       expect(panel.querySelector('[data-loading-plot]')).toBeNull()
-      expect(panel.querySelector('.rounded-full')).toHaveClass("h-[100px]", "w-[100px]")
+      const layout = panel.querySelector('[data-distribution-layout="stacked"]')!
+      const plot = layout.querySelector('[data-distribution-plot]')!
+      expect(plot).toHaveClass("w-full", "justify-center")
+      expect(plot.nextElementSibling).toHaveAttribute("data-distribution-rows")
+      expect(plot.nextElementSibling).toHaveClass("flex-1", "w-full")
     }
   })
 
@@ -86,13 +97,20 @@ describe("section-aware report loading", () => {
     expect(container.querySelectorAll('[data-loading-panel="table"]')).toHaveLength(1)
   })
 
-  it("allows explicit selections to override context and keeps backward-compatible defaults", () => {
+  it("uses a neutral route fallback until the report is known and allows explicit selections", () => {
     const { container, rerender } = render(<ReportLoading />)
-    expect(screen.getByRole("status")).toHaveAttribute("data-loading-report", "performance")
-    expect(container.querySelectorAll('[data-report-kpi]')).toHaveLength(4)
+    expect(screen.getByRole("status")).not.toHaveAttribute("data-loading-report")
+    expect(container.querySelectorAll('[data-report-kpi]')).toHaveLength(0)
+    expect(container.querySelectorAll('[data-loading-panel]')).toHaveLength(0)
     rerender(<ReportLoadingScope report="sales" section="categories"><ReportLoading report="overview" section="economics" /></ReportLoadingScope>)
     expect(screen.getByRole("status")).toHaveAttribute("data-loading-section", "economics")
     expect(container.querySelectorAll('[data-loading-panel="chart"]')).toHaveLength(2)
+  })
+
+  it("does not inherit a same-named section from a different report", () => {
+    render(<ReportLoadingScope report="sales" section="categories"><ReportLoading report="costs" /></ReportLoadingScope>)
+    expect(screen.getByRole("status")).toHaveAttribute("data-loading-report", "costs")
+    expect(screen.getByRole("status")).toHaveAttribute("data-loading-section", "summary")
   })
 
   it("does not duplicate the activity side panel inside its nested chart boundary", () => {

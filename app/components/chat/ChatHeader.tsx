@@ -16,6 +16,8 @@ import { useSite } from "@/app/context/SiteContext"
 import { useLayout } from "@/app/context/LayoutContext"
 import { ChevronLeft } from "@/app/components/ui/icons"
 import { Button } from "@/app/components/ui/button"
+import type { ParticipantIdentity } from "@/lib/chat/participant-identity"
+import { getChannelLabel } from "@/lib/site-channels"
 
 interface ChatHeaderProps {
   agentId: string
@@ -24,6 +26,7 @@ interface ChatHeaderProps {
   isAgentOnlyConversation: boolean
   isLoadingLead: boolean
   leadData: any
+  participantIdentity?: ParticipantIdentity
   isLead: boolean
   isChatListCollapsed: boolean
   toggleChatList: () => void
@@ -43,6 +46,7 @@ export function ChatHeader({
   isAgentOnlyConversation,
   isLoadingLead,
   leadData,
+  participantIdentity,
   isLead,
   isChatListCollapsed,
   toggleChatList,
@@ -133,6 +137,9 @@ export function ChatHeader({
   const companyName = leadData?.company?.name || leadData?.companies?.name || leadData?.company_data?.name
   const leadEmail = leadData?.email
   const leadPhone = leadData?.phone
+  const participantName = leadData?.name || participantIdentity?.name || "Visitor"
+  const participantAvatar = leadData?.avatarUrl || participantIdentity?.avatarUrl
+  const participantInitials = participantName.split(/\s+/).map((part: string) => part[0]).join('').slice(0, 2).toUpperCase()
 
   const positionStyles = useMemo(() => {
     if (typeof window === "undefined" || windowWidth < 768) {
@@ -180,7 +187,7 @@ export function ChatHeader({
           isLead={isLead}
           agentName={leftSideDisplayName}
           agentId={agentId}
-          leadName={isLead ? truncateLeadName(leadData?.name || "Lead") : "Visitor"}
+          leadName={truncateLeadName(participantName)}
           leadId={isLead ? leadData?.id || "" : ""}
         />
       </div>
@@ -202,7 +209,7 @@ export function ChatHeader({
                         href={`/leads/${leadData.id}?name=${encodeURIComponent(leadData.name)}`}
                         className="hover:opacity-80 transition-opacity cursor-pointer min-w-0"
                       >
-                        <h2 className="font-medium text-lg truncate leading-tight">{truncateLeadName(leadData.name)}</h2>
+                        <h2 className="font-medium text-lg truncate leading-tight">{truncateLeadName(participantName)}</h2>
                       </NavigationLink>
                       <div className="flex-shrink-0">
                         <Select
@@ -255,9 +262,9 @@ export function ChatHeader({
                   </div>
                 ) : (
                   <div className="flex items-center gap-2 min-w-0">
-                    <h2 className="font-medium text-lg truncate leading-tight">Visitor</h2>
+                    <h2 className="font-medium text-lg truncate leading-tight">{truncateLeadName(participantName)}</h2>
                     <Badge variant="outline" className="text-xs px-2 py-0 h-5 transition-colors duration-300 flex-shrink-0">
-                      Visitor
+                      {participantIdentity?.channel && participantIdentity.channel !== "web" ? getChannelLabel(participantIdentity.channel) : "Visitor"}
                     </Badge>
                   </div>
                 )}
@@ -269,17 +276,17 @@ export function ChatHeader({
                 className="hover:opacity-80 transition-opacity flex-shrink-0"
               >
                 <Avatar className="h-12 w-12 border-2 border-amber-500/20 transition-transform duration-300 ease-in-out">
-                  <AvatarImage src={leadData.avatarUrl} alt={leadData.name} />
+                  <AvatarImage src={participantAvatar} alt={participantName} />
                   <AvatarFallback className="bg-amber-500/10 text-amber-600">
-                    {leadData.name.split(' ').map((name: string) => name[0]).join('').substring(0, 2)}
+                    {participantInitials}
                   </AvatarFallback>
                 </Avatar>
               </NavigationLink>
             ) : (
               <Avatar className="h-12 w-12 border-2 border-primary/10 transition-transform duration-300 ease-in-out flex-shrink-0">
-                <AvatarImage src={undefined} alt="Visitor" />
+                <AvatarImage src={participantAvatar} alt={participantName} />
                 <AvatarFallback className="bg-primary/10">
-                  V
+                  {participantInitials}
                 </AvatarFallback>
               </Avatar>
             )}

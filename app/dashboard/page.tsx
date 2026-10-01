@@ -109,6 +109,9 @@ function DashboardPageContent() {
         ) : (
             <ReportContent key={`${siteId}:${selectedSegment}:${dateRange.startDate.getTime()}:${dateRange.endDate.getTime()}`}
               report={report} section={section} siteId={siteId} t={t}
+              siteName={currentSite.name}
+              segmentName={report === "social" || report === "traffic" || selectedSegment === "all"
+                ? "All segments" : segments.find(item => item.id === selectedSegment)?.name ?? selectedSegment}
               segmentId={report === "social" || report === "traffic" ? "all" : selectedSegment} {...dateRange} />
         ) : <p className="rounded-lg border bg-background p-6 text-sm text-muted-foreground">Select a site to view reports.</p>}
         </div>

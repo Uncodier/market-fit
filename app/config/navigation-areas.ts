@@ -234,6 +234,7 @@ export function isNavItemActive(
   pathname: string,
   searchParams: URLSearchParams
 ): boolean {
+  if (item.key === "reportCosts" && pathname === "/dashboard" && searchParams.get("tab") === "costs") return true
   if (item.dashboardTab) {
     if (!pathname.startsWith("/dashboard")) return false
     const cur = searchParams.get("tab")

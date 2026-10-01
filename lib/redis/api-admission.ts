@@ -34,7 +34,6 @@ function routePolicy(pathname: string): RoutePolicy | null {
       "/api/campaign-revenue",
       "/api/recent-activity",
       "/api/sales",
-      "/api/dashboard/export",
     ].includes(pathname) ||
     pathname === "/api/dashboard/overview" ||
     pathname === "/api/dashboard/performance"

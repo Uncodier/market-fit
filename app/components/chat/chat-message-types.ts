@@ -1,5 +1,6 @@
 import { ChatMessage } from "@/app/types/chat"
 import { SenderProfile } from "./resolveTeamMemberSender"
+import type { ParticipantIdentity } from "@/lib/chat/participant-identity"
 
 export type ProcessedChatMessage = ChatMessage & {
   isCurrentUserMessage: boolean
@@ -18,6 +19,7 @@ export interface ChatMessagesProps {
   isAgentOnlyConversation: boolean
   isLead: boolean
   leadData: any
+  participantIdentity?: ParticipantIdentity
   conversationId?: string
   onRetryMessage?: (failedMessage: ChatMessage) => Promise<void>
   onMessagesUpdate?: (messages: ChatMessage[]) => void
@@ -36,6 +38,7 @@ export interface MessageRowActions {
 }
 
 export interface MessageIdentityContext {
+  participantIdentity?: ParticipantIdentity
   currentUserId?: string
   currentUserName?: string
   currentUserAvatar?: string

@@ -24,3 +24,21 @@ it("keeps absent currency visible in compact mode without fabricating a symbol",
   expect(screen.getByRole("columnheader", { name: "Reported amount" })).toBeInTheDocument()
   expect(screen.queryByText(/\$/)).not.toBeInTheDocument()
 })
+
+it("stacks a centered full-width plot above rows that fill the remaining card space", () => {
+  const { container } = render(<DistributionChart data={data} title="Sessions" variant="stacked" countLabel="Sessions" totalLabel="Total sessions" />)
+  const layout = container.querySelector('[data-distribution-layout="stacked"]')!
+  expect(layout).toHaveClass("flex", "flex-col", "flex-1", "w-full", "min-w-0")
+  const plot = layout.querySelector('[data-distribution-plot]')!
+  const rows = layout.querySelector('[data-distribution-rows]')!
+  expect(plot).toHaveClass("w-full", "justify-center", "shrink-0")
+  expect(plot.nextElementSibling).toBe(rows)
+  expect(plot.querySelector("svg")).toBeInTheDocument()
+  expect(rows).toHaveClass("w-full", "flex-1", "min-h-0", "overflow-auto")
+  expect(rows).not.toHaveClass("max-h-64")
+  const table = within(rows as HTMLElement).getByRole("table")
+  expect(table).toHaveClass("w-full", "h-full", "table-fixed")
+  expect(table.parentElement).toHaveClass("flex-1", "min-h-0")
+  expect(within(table).getByRole("row", { name: "Group A 3 75.0%" })).toBeInTheDocument()
+  expect(within(table).getByRole("row", { name: "Total sessions 4 100.0%" })).toBeInTheDocument()
+})

@@ -1,4 +1,4 @@
-import { distributionData, distributionTotal, reportPeriod, reportQueryKey } from "@/app/components/dashboard/report-query"
+import { distributionData, distributionTotal, fetchReport, reportPeriod, reportQueryKey } from "@/app/components/dashboard/report-query"
 
 it("uses stable inclusive calendar boundaries without mutating selected dates", () => {
   const start = new Date(2026, 8, 1, 14, 35)
@@ -28,4 +28,11 @@ it("sums numeric values rather than concatenating them", () => {
   for (const value of [null, -1, Infinity, "", "invalid"]) {
     expect(() => distributionData({ data: [{ name: "A", value }] })).toThrow("invalid response")
   }
+})
+
+it("distinguishes oversized traffic reports from unsupported segment filters without exposing server messages", async () => {
+  jest.mocked(fetch).mockResolvedValue({ ok: false, status: 422, json: async () => ({ code: "TRAFFIC_SESSION_LIMIT_EXCEEDED", error: "private detail" }) } as Response)
+  await expect(fetchReport(["/api/traffic/attribution", "user-a"])).rejects.toThrow("Select a shorter date range")
+  jest.mocked(fetch).mockResolvedValue({ ok: false, status: 422, json: async () => ({ error: "private detail" }) } as Response)
+  await expect(fetchReport(["/api/traffic/attribution", "user-a"])).rejects.toThrow("Select all segments")
 })

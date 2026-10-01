@@ -32,6 +32,7 @@ it("gives acquisition a compact KPI row and dominant pages panel without an empt
   expect(grid).toHaveClass("grid-cols-1", "min-w-0", splitClass)
   expect(grid.children).toHaveLength(2)
   expect(within(section).getAllByRole("table")).toHaveLength(2)
+  expect(section.querySelectorAll('[data-distribution-layout="stacked"]')).toHaveLength(1)
   expect(query.mock.calls.map(([args]) => args.endpoint)).toEqual(["traffic/pages", "traffic/referrals"])
   expect(screen.queryByTestId("session-chart")).not.toBeInTheDocument()
 })
@@ -44,6 +45,10 @@ it("aligns geography and technology panels without a tall stacked secondary colu
   expect(techGroup).toHaveClass("grid-cols-1", "xl:grid-cols-3", "min-w-0")
   expect(within(techGroup as HTMLElement).getByRole("heading", { name: "Browsers" })).toBeInTheDocument()
   expect(screen.getAllByRole("table")).toHaveLength(3)
+  expect(section.querySelectorAll('[data-distribution-layout="stacked"]')).toHaveLength(2)
+  for (const panel of section.querySelectorAll('[data-report-panel="traffic-devices"], [data-report-panel="traffic-browsers"]')) {
+    expect(panel.querySelector('[data-distribution-layout]')?.parentElement).toHaveClass("flex", "flex-col", "flex-1")
+  }
   expect(screen.queryByTestId("kpi")).not.toBeInTheDocument()
   expect(query.mock.calls.map(([args]) => args.endpoint)).toEqual(["traffic/regions", "traffic/devices", "traffic/browsers"])
 })
@@ -51,8 +56,9 @@ it("aligns geography and technology panels without a tall stacked secondary colu
 it("shows pending distribution skeletons before cached errors", () => {
   query.mockReturnValue({ data: undefined, isLoading: false, isValidating: true, error: new Error("Previous error") })
   render(<TrafficReports {...filters} section="summary" />)
-  expect(screen.getAllByRole("status")).toHaveLength(2)
+  expect(screen.getAllByRole("status")).toHaveLength(4)
   screen.getAllByRole("status").forEach(status => expect(status).toHaveAttribute("aria-busy", "true"))
+  expect(screen.getByRole("status", { name: "Loading referral sources" }).querySelector('[data-distribution-layout="stacked"]')).toBeInTheDocument()
   expect(screen.queryByRole("alert")).not.toBeInTheDocument()
 })
 

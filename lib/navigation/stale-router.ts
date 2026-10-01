@@ -23,6 +23,13 @@ export type NavigateOrAssignOptions = {
 
 let clientRouterStale = false
 let watchdogGeneration = 0
+let watchdogCleanup: (() => void) | undefined
+
+function cancelNavigationWatchdog(): void {
+  watchdogGeneration += 1
+  watchdogCleanup?.()
+  watchdogCleanup = undefined
+}
 
 export function markClientRouterStale(): void {
   clientRouterStale = true
@@ -34,7 +41,7 @@ export function isClientRouterStale(): boolean {
 
 export function clearClientRouterStale(): void {
   clientRouterStale = false
-  watchdogGeneration += 1
+  cancelNavigationWatchdog()
 }
 
 export function hrefToString(href: unknown): string {
@@ -92,23 +99,32 @@ function resolveHref(href: string): string {
 
 export function assignLocation(href: string): void {
   clientRouterStale = false
-  watchdogGeneration += 1
+  cancelNavigationWatchdog()
   if (typeof window === "undefined") return
   window.location.assign(resolveHref(appendArtifactIfNeeded(href)))
 }
 
 export function startNavigationWatchdog(href: string): void {
+  // Every new intent supersedes the previous one, including the current URL.
+  cancelNavigationWatchdog()
   if (typeof window === "undefined") return
   if (isSameDestination(href)) return
   const generation = ++watchdogGeneration
   const started = `${window.location.pathname}${window.location.search}`
-  window.setTimeout(() => {
+  const timeout = window.setTimeout(() => {
     if (generation !== watchdogGeneration) return
+    cancelNavigationWatchdog()
     const now = `${window.location.pathname}${window.location.search}`
     if (now !== started) return
     if (isSameDestination(href)) return
     assignLocation(href)
   }, WATCHDOG_MS)
+  // Back/forward is a newer navigation, not evidence that the original one stalled.
+  window.addEventListener("popstate", cancelNavigationWatchdog)
+  watchdogCleanup = () => {
+    window.clearTimeout(timeout)
+    window.removeEventListener("popstate", cancelNavigationWatchdog)
+  }
 }
 
 export function navigateOrAssign(
@@ -131,13 +147,7 @@ export function navigateOrAssign(
     return
   }
 
-  if (isSameDestination(targetHref)) {
-    if (options.replace) router.replace(targetHref)
-    else router.push(targetHref)
-    return
-  }
-
+  startNavigationWatchdog(targetHref)
   if (options.replace) router.replace(targetHref)
   else router.push(targetHref)
-  startNavigationWatchdog(targetHref)
 }

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react"
 import useSWR, { unstable_serialize, useSWRConfig, type BareFetcher } from "swr"
+import { useReportExportResource } from "@/app/dashboard/export/ReportExportScope"
 
 // Report resources do not present a cached error as the new attempt's result.
 export function useReportResource<Data, RequestError = Error>(
@@ -37,6 +38,7 @@ export function useReportResource<Data, RequestError = Error>(
     mountedKey !== serializedKey || result.isLoading || result.isValidating ||
     (result.data === undefined && !result.error)
   ))
+  useReportExportResource(key, result.data, Boolean(serializedKey && !isLoading && !result.error && result.data !== undefined))
   return {
     ...result,
     isLoading,

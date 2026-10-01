@@ -9,6 +9,8 @@ import { GET as browsers } from "@/app/api/traffic/browsers/route"
 import { createServiceClient } from "@/lib/supabase/server"
 import { requireAnalyticsAccess } from "@/lib/auth/api-analytics-access"
 import { readThroughAnalyticsResponseCache } from "@/lib/redis/analytics-response-cache"
+import { trafficDatabase, sessionId } from "./traffic-database-fixture"
+import type { TrafficSession } from "@/lib/traffic/types"
 
 jest.mock("@/lib/supabase/server", () => ({ createServiceClient: jest.fn() }))
 jest.mock("@/lib/auth/api-analytics-access", () => ({ requireAnalyticsAccess: jest.fn() }))
@@ -25,12 +27,10 @@ function request(segmentId = "all") {
   return new NextRequest(`http://localhost/api/traffic/pages?siteId=site-a&segmentId=${segmentId}&startDate=${startDate.toISOString()}&endDate=${endDate.toISOString()}`)
 }
 
-function database(data: unknown[] = [], error: unknown = null) {
-  const query: Record<string, jest.Mock> = {}
-  for (const method of ["select", "eq", "gte", "lte", "not"]) query[method] = jest.fn(() => query)
-  query.then = jest.fn(resolve => Promise.resolve({ data, error }).then(resolve))
-  service.mockResolvedValue({ from: jest.fn(() => query) })
-  return query
+function database(data: Partial<TrafficSession>[] = [], error: unknown = null) {
+  const db = trafficDatabase(data.map((row, i) => ({ ...row, id: sessionId(i + 1) })), { errorAt: error ? 0 : undefined })
+  service.mockResolvedValue(db.client)
+  return db
 }
 
 beforeEach(() => {
@@ -41,13 +41,14 @@ beforeEach(() => {
 
 describe.each(Object.entries(routes))("traffic %s report", (name, handler) => {
   it("accepts session auth without userId, uses authorized scope, and versions its cache", async () => {
-    const query = database()
+    const db = database()
     const response = await handler(request())
     expect(response.status).toBe(200)
     expect(await response.json()).toEqual({ data: [] })
-    expect(query.eq).toHaveBeenCalledWith("site_id", "authorized-site")
-    expect(query.lte).toHaveBeenCalledWith("created_at", endDate.toISOString())
-    expect(cache).toHaveBeenCalledWith(expect.objectContaining({ namespace: `traffic:${name}:v2` }))
+    expect(db.queries[0].eq).toHaveBeenCalledWith("site_id", "authorized-site")
+    expect(db.queries[0].lte).toHaveBeenCalledWith("created_at", endDate.toISOString())
+    expect(service).toHaveBeenCalledWith(true)
+    expect(cache).toHaveBeenCalledWith(expect.objectContaining({ namespace: `traffic:${name}:v3`, lockTtlMs: 30_000 }))
   })
 
   it.each([400, 401, 403])("stops before cache or elevated queries when access fails (%s)", async status => {
@@ -70,11 +71,39 @@ describe.each(Object.entries(routes))("traffic %s report", (name, handler) => {
     expect(response.status).toBe(500)
     expect(await response.json()).toEqual({ error: `Unable to load ${name} report` })
   })
+
+  it("counts past 1000 and preserves the complete denominator with a residual bucket", async () => {
+    const rows = Array.from({ length: 1234 }, (_, index) => ({
+      id: sessionId(index + 1), utm_source: `source-${index % 20}`,
+      landing_url: `https://example.test/page-${index % 20}`,
+      device: { type: `device-${index % 20}` }, browser: { name: `browser-${index % 20}` },
+      location: { country: `country-${index % 20}` },
+    }))
+    const db = trafficDatabase(rows, { cap: 317 })
+    service.mockResolvedValue(db.client)
+    const response = await handler(request())
+    expect(response.status).toBe(200)
+    const body = await response.json()
+    expect(body.data.reduce((sum: number, row: { value: number }) => sum + row.value, 0)).toBe(1234)
+    expect(body.data).toHaveLength(11)
+    expect(body.data[10].name).toBe("Other")
+    expect(db.queries).toHaveLength(5)
+  })
+
+  it("does not return a partial success when a later page fails", async () => {
+    const db = trafficDatabase([{ id: sessionId(1) }, { id: sessionId(2) }], { cap: 1, errorAt: 1 })
+    service.mockResolvedValue(db.client)
+    const response = await handler(request())
+    expect(response.status).toBe(500)
+    expect(await response.json()).toEqual({ error: `Unable to load ${name} report` })
+  })
 })
 
-it("keeps real referral totals and excludes internal cross-navigation", async () => {
+it("keeps unknown and internal cross-navigation in the referral denominator", async () => {
   database([{ referrer: "https://google.com/search" }, { referrer: null }, { referrer: "https://app.makinari.com/dashboard" }])
   const response = await referrals(request())
   const body = await response.json()
-  expect(body.data).toEqual([{ name: "Google", value: 1 }, { name: "Direct", value: 1 }])
+  expect(body.data).toEqual([
+    { name: "Direct / unknown", value: 1 }, { name: "Google", value: 1 }, { name: "Internal navigation", value: 1 },
+  ])
 })

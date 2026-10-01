@@ -49,14 +49,15 @@ export function ChatParticipantMessageRow({
         userDataCache: identity.userDataCache,
       })
     : null
-  const leadName = leadData?.name || "Visitor"
+  const participant = !isTeam ? identity.participantIdentity : undefined
+  const leadName = leadData?.name || participant?.name || "Visitor"
   const displayName = teamSender?.name || truncateLeadName(leadName)
   const avatarAlt = teamSender?.name || leadName
-  const avatar = teamSender?.avatar || leadData?.avatarUrl || undefined
+  const avatar = isTeam ? teamSender?.avatar : leadData?.avatarUrl || participant?.avatarUrl || undefined
   const initials =
     teamSender?.initials ||
-    (leadData?.name
-      ? leadData.name
+    (leadData?.name || participant?.name
+      ? leadName
           .split(" ")
           .map((part: string) => part[0])
           .join("")

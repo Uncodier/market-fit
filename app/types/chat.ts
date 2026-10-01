@@ -22,6 +22,8 @@ export interface ConversationListItem {
   unreadCount?: number
   messageCount?: number
   leadName?: string
+  /** Display-only external contact label; does not imply a linked lead. */
+  participantName?: string
   leadStatus?: string
   channel?: 'web' | 'email' | 'whatsapp' | 'instagram' | 'messenger' | 'sms' | 'telegram' | 'voice' | 'website_chat' | string
   status?: 'pending' | 'active' | 'closed' | 'archived'

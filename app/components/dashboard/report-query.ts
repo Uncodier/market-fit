@@ -43,6 +43,12 @@ export class ReportRequestError extends Error {
 export async function fetchReport([url]: [string, string]): Promise<unknown> {
   const response = await fetch(url)
   if (!response.ok) {
+    if (response.status === 422) {
+      const body = await response.json().catch(() => null)
+      if (body?.code === "TRAFFIC_SESSION_LIMIT_EXCEEDED") {
+        throw new ReportRequestError("This report exceeds 50,000 sessions. Select a shorter date range.", 422)
+      }
+    }
     const message = response.status === 401 ? "Sign in to view this report."
       : response.status === 403 ? "You do not have access to this report."
       : response.status === 429 ? "Too many report requests. Please try again shortly."

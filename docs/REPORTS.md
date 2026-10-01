@@ -1,5 +1,7 @@
 # Report sections and data contracts
 
+For current-section CSV downloads and completeness rules, see [Report exports](REPORT_EXPORTS.md).
+
 The Reports sidebar selects `/dashboard?tab=<report>`. Sticky-header tabs select
 sections within that report using `section=<section>`; they do not switch reports.
 Section changes use native browser history, preserve other URL parameters and
@@ -19,7 +21,19 @@ all segments; filter changes remount report-local controls to prevent stale scop
 | Costs | Summary, Categories |
 | Social | Engagement, Networks & audience, Top posts |
 
-Only the active section mounts its widgets and charts. Report modules are loaded
+Only the active section mounts its widgets and charts. Omitting a section selects
+the report's default section; it never renders all sections together. The dedicated
+`/costs` entry also separates Summary and Categories using `section`, retains its
+campaign filter and uses the same bounded report canvas. Dashboard cost deep links
+remain supported and highlight Costs in the sidebar.
+
+Route-level loading is neutral until the report is known; it must not display
+Performance KPIs while opening another report. Module and data loading then use
+the active report's section, without inheriting a section from a different report.
+Back/forward and subsequent navigation intents cancel pending navigation fallbacks
+so an earlier report cannot reopen after the user leaves it.
+
+Report modules are loaded
 on demand. Social metrics and traffic session attribution do not support segment
 filtering; their header omits that control and states the all-segment scope. Direct
 traffic distribution requests with a segment return 422 instead of silently
@@ -54,8 +68,8 @@ positions are excluded so scrolling cannot inflate a chart. Existing responsive
 heights remain a readability floor on smaller windows. Loading and empty chart
 frames use the same rule, nested Activity frames inherit their outer size, and
 charts embedded outside Reports retain their original sizing.
-Compact attribution/traffic donuts beside tables and table-only sections retain
-their natural layout rather than reserving a full-height time-series canvas.
+Attribution/traffic donuts and table-only sections retain their natural layout
+rather than reserving a full-height time-series canvas.
 
 - Overview Summary leads into the sales trend; Activity pairs its daily chart with
   the recent-record feed. The Activity pair shares its header and bottom tracks
@@ -68,8 +82,14 @@ their natural layout rather than reserving a full-height time-series canvas.
 - Analytics pairs lead and recorded-sale distributions by attribution dimension.
   Cohort sections mount their tables directly, without nested wrapper cards.
 - Traffic pairs page rankings with referral context and aligns geography, device
-  and browser panels without a tall secondary stack. Session detail no longer
-  requires a fixed tall grid; its chart has its own responsive height.
+  and browser panels without a tall secondary stack. Traffic donuts use an explicit
+  stacked variant: a centered plot in a full-width top track, followed by full-width
+  table rows that fill the remaining card height instead of a capped side legend.
+  Loading states share these tracks. Analytics keeps its compact side-by-side
+  distributions; Sales and Costs keep their own chart layouts. Acquisition includes
+  session-by-segment and session-by-campaign donuts above the page/referral panels.
+  Session detail no longer requires a fixed tall grid; its chart has its own
+  responsive height.
 - Sales and Costs lead with trends before secondary distributions. Social puts
   trends before source-quality details and keeps network and commenter panels in
   a responsive primary/secondary layout. Tables remain the detailed view.
@@ -146,6 +166,57 @@ querying it or silently replacing dates.
   `session_events` pageviews, not `visitor_sessions`, and uses stable ordered pages
   until empty, with an explicit 50,000-record ceiling. The `v2` cache namespace keeps
   old end-exclusive results out of the corrected report.
+
+## Traffic attribution and coverage
+
+Acquisition loads `/api/traffic/attribution` once for both donuts and their coverage
+summary. It uses the same authenticated identity, site and inclusive date range as
+the other traffic distributions. Responses include `model: "session_entry"`,
+`segmentMembership: "current"`, `segments`, `campaigns` and `coverage`. The browser
+validates nonnegative integer counts and requires each donut to reconcile with
+`coverage.totalSessions`; malformed or partial data is an error, not a new 100%.
+
+- Campaign attribution uses the session's recorded `utm_campaign`, falling back
+  to its **landing** URL. It never uses a later `current_url`, guesses from the
+  lead's CRM campaign, or carries another session's campaign forward.
+- Source attribution prefers recorded UTM evidence and landing-URL fallback.
+  Referrer host matching uses domain boundaries, not substring matches. Missing
+  or invalid referrers remain **Direct / unknown**; absence is not proof of a
+  direct visit. Internal navigation remains visible instead of being removed.
+- Segment attribution uses the linked lead's same-site segment, then the
+  visitor's same-site segment. This is **current membership**, not a historical
+  snapshot. Anonymous or unassigned sessions remain **Unassigned segment**.
+  Campaign-free sessions remain **No campaign**. Each session contributes once
+  to each donut, not once per visitor or once per lead.
+- The coverage summary reports total sessions, identifiable sources, assigned
+  segments and tagged campaigns. These measures overlap and must not be added.
+  A campaign tag alone does not identify an external source.
+- All six traffic distribution routes authorize site/date access before using
+  elevated reads. Segment/lead embeds are nullable and scoped to the authorized
+  site; missing or foreign relationships never remove a session from the total.
+  Non-`all` segment filters still return 422: adding a distribution is not support
+  for filtering every traffic KPI by that dimension.
+- Reads use stable ID cursor pagination until an empty page, including after
+  short server-limited pages. More than 50,000 sessions produces a typed 422
+  (`TRAFFIC_SESSION_LIMIT_EXCEEDED`) prompting a shorter range, never a partial
+  aggregate. Existing five distributions use cache version `v3`; attribution
+  starts at `v1`. These multi-page reads are not transactional snapshots.
+- Top-category truncation retains remaining counts in **Other**, so a long tail
+  cannot inflate the displayed shares. Unknown devices remain unknown instead
+  of defaulting to desktop. Device OS fields support both strings and objects.
+- **Top Visited Pages** retains its distinct legacy unit: recorded landing and
+  current URLs. It is not a full pageview count and can count a session more than
+  once. The Sessions tab reads pageview events instead. Do not compare these
+  denominators as though all three were the same metric.
+
+For better future coverage, consistently tag outbound campaign links with
+`utm_source`, `utm_medium` and `utm_campaign`, preserve them through redirects,
+and connect identified sessions to leads/segments. The companion API capture
+normalizes URL-only UTM values into session and first-visitor fields without
+overwriting first touch on heartbeats. Existing landing URLs can recover missing
+UTM columns at read time; missing historical evidence cannot be reconstructed.
+First-touch comparisons, last-non-direct attribution, cross-device identity and
+historical segment snapshots are not implemented by this report.
 
 ## Sales definitions
 

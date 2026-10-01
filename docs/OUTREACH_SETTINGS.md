@@ -17,6 +17,10 @@ leads. `research_enabled` controls additional deep research and defaults to fals
 Invalid targets and non-boolean research values block saves rather than being
 silently coerced. Backend workflows remain responsible for execution.
 
+Daily ICP runs are distributed by site over 24 hours, independent of business
+hours and weekends.
+ICP has no configurable fixed start time; its card does not offer a time input.
+
 The [pending mining list selector](ICP_MINING_LIST_SELECTION.md) defaults to all
 pending lists dynamically, including future lists and resumable running lists.
 Turn off **All pending lists** to use only explicit `list_ids`; an empty selection
@@ -63,6 +67,15 @@ Each activity stores:
   first business-hours entry's timezone (or the legacy object's timezone), falling
   back to America/Mexico_City. An explicit
   invalid timezone blocks enabling/saving rather than silently changing it.
+- `start_time` (Follow Up only): optional strict 24-hour `HH:mm` from `00:00` to
+  `23:59` in that same site timezone. Missing preserves 09:00; hydration and
+  unrelated saves do not insert a fixed override. Empty, null, non-string,
+  whitespace, seconds or out-of-range values block all save paths, including
+  direct settings persistence, even for an inactive activity. The UI shows the
+  schedule timezone and offers **Use 09:00** to save an explicit fixed reset.
+  Clearing an edited input is invalid, not a deletion: omission in the existing
+  partial-update writer preserves a saved value. [Daily Standup](DAILY_STANDUP_SETTINGS.md)
+  has its own optional time, with a different legacy opening-time/09:00 fallback.
 
 Cold outreach addresses contacts who have never written/replied; follow-up
 requires a previous authentic inbound message. Backend orchestration and delivery

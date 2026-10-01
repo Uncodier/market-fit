@@ -16,7 +16,7 @@ import {
   DropdownMenuItem, 
   DropdownMenuSeparator 
 } from "@/app/components/ui/dropdown-menu"
-import { formatDistanceToNow, format } from "date-fns"
+import { format } from "date-fns"
 import { STATUS_STYLES, LEAD_STATUSES } from "@/app/leads/types"
 import { coerceDate } from "@/app/utils/coerce-date"
 
@@ -172,11 +172,11 @@ export function ConversationItem({
             "text-[11px] flex items-center gap-1 truncate min-w-0 flex-1",
             isSelected ? "text-primary/70" : "text-muted-foreground/70"
           )}>
-            {getChannelIcon(conversation.channel, !conversation.leadName && !!conversation.agentId)}
+            {getChannelIcon(conversation.channel, !conversation.leadName && !conversation.participantName && !!conversation.agentId)}
             <span className="truncate">{conversation.agentName || "No Agent Name"}</span>
             {!conversation.agentName && <span className="text-red-500 flex-shrink-0">!</span>}
-            {conversation.leadName && <span className="flex-shrink-0"> · </span>}
-            {conversation.leadName && <span className="truncate">{conversation.leadName}</span>}
+            {(conversation.leadName || conversation.participantName) && <span className="flex-shrink-0"> · </span>}
+            {(conversation.leadName || conversation.participantName) && <span className="truncate">{conversation.leadName || conversation.participantName}</span>}
           </div>
           <span className={cn(
             "text-[11px] whitespace-nowrap flex-shrink-0",

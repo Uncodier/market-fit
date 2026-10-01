@@ -30,7 +30,7 @@ beforeEach(() => {
 
 describe("SocialReports commenters", () => {
   it("shows missing synchronized authors rather than claiming there are no comments", async () => {
-    render(<SocialReports startDate={startDate} endDate={endDate} />)
+    render(<SocialReports startDate={startDate} endDate={endDate} section="networks" />)
     expect(await screen.findByText("Comment authors not synchronized")).toBeInTheDocument()
     expect(screen.getByText(/Post metrics report comments, but no synchronized comment authors/)).toBeInTheDocument()
     expect(screen.queryByText("No commenters found")).not.toBeInTheDocument()
@@ -39,7 +39,7 @@ describe("SocialReports commenters", () => {
 
   it("shows the genuinely empty state when both comments and commenters are empty", async () => {
     jest.mocked(getSocialPerformanceData).mockResolvedValue(performance(0))
-    render(<SocialReports startDate={startDate} endDate={endDate} />)
+    render(<SocialReports startDate={startDate} endDate={endDate} section="networks" />)
     expect(await screen.findByText("No commenters found")).toBeInTheDocument()
     expect(screen.queryByText("Comment authors not synchronized")).not.toBeInTheDocument()
     expect(screen.queryByRole("alert")).not.toBeInTheDocument()
@@ -50,30 +50,27 @@ describe("SocialReports commenters", () => {
     jest.mocked(getTopCommentersData).mockResolvedValue({ data: [
       { id: "author:instagram:123", name: "Ada Reader", avatar: null, count: 3 },
     ] })
-    render(<SocialReports startDate={startDate} endDate={endDate} />)
+    render(<SocialReports startDate={startDate} endDate={endDate} section="networks" />)
     expect(await screen.findByText("Ada Reader")).toBeInTheDocument()
     expect(screen.getByText("3")).toBeInTheDocument()
     expect(screen.queryByText("No commenters found")).not.toBeInTheDocument()
     expect(getTopCommentersData).toHaveBeenCalledWith("site-1", startDate, endOfDay(endDate), Intl.DateTimeFormat().resolvedOptions().timeZone)
   })
 
-  it.each(["returned", "rejected"])("keeps KPIs, trends, networks and posts on a %s commenter error", async (failure) => {
+  it.each(["returned", "rejected"])("keeps networks on a %s commenter error without mounting other sections", async (failure) => {
     if (failure === "returned") {
       jest.mocked(getTopCommentersData).mockResolvedValue({ error: "Private database detail", data: [] })
     } else {
       jest.mocked(getTopCommentersData).mockRejectedValue(new Error("Private database detail"))
     }
-    const { container } = render(<SocialReports startDate={startDate} endDate={endDate} />)
+    render(<SocialReports startDate={startDate} endDate={endDate} section="networks" />)
     expect(await screen.findByRole("alert")).toHaveTextContent("Unable to load top commenters")
     expect(screen.queryByText(/Private database detail/)).not.toBeInTheDocument()
     expect(screen.queryByText("No commenters found")).not.toBeInTheDocument()
     expect(screen.queryByText("Comment authors not synchronized")).not.toBeInTheDocument()
-    const chart = screen.getByLabelText("Social performance trends")
-    expect(chart.previousElementSibling).toHaveTextContent("Views300")
-    expect(chart.previousElementSibling).toHaveTextContent("Comments2")
-    expect(container.querySelector(".recharts-area-curve")).toBeInTheDocument()
+    expect(screen.queryByLabelText("Social performance trends")).not.toBeInTheDocument()
     expect(screen.getByText("instagram")).toBeInTheDocument()
-    expect(screen.getByText("Example post")).toBeInTheDocument()
+    expect(screen.queryByText("Example post")).not.toBeInTheDocument()
   })
 
   it("keeps commenters when only performance rejects", async () => {
@@ -81,17 +78,17 @@ describe("SocialReports commenters", () => {
     jest.mocked(getTopCommentersData).mockResolvedValue({ data: [
       { id: "author:instagram:123", name: "Ada", avatar: null, count: 1 },
     ] })
-    render(<SocialReports startDate={startDate} endDate={endDate} />)
+    render(<SocialReports startDate={startDate} endDate={endDate} section="networks" />)
     expect(await screen.findByText("Ada")).toBeInTheDocument()
-    expect(screen.getByRole("alert")).toHaveTextContent("Unable to load performance trends")
+    expect(screen.getByRole("alert")).toHaveTextContent("Unable to load social performance")
     expect(screen.queryByText("Unable to load top commenters")).not.toBeInTheDocument()
   })
 
   it("clears a commenter error when a new date range loads successfully", async () => {
     jest.mocked(getTopCommentersData).mockRejectedValueOnce(new Error("Network unavailable"))
-    const { rerender } = render(<SocialReports startDate={startDate} endDate={endDate} />)
+    const { rerender } = render(<SocialReports startDate={startDate} endDate={endDate} section="networks" />)
     expect(await screen.findByRole("alert")).toHaveTextContent("Unable to load top commenters")
-    rerender(<SocialReports startDate={new Date("2026-09-02T00:00:00")} endDate={endDate} />)
+    rerender(<SocialReports startDate={new Date("2026-09-02T00:00:00")} endDate={endDate} section="networks" />)
     expect(await screen.findByText("Comment authors not synchronized")).toBeInTheDocument()
     expect(screen.queryByRole("alert")).not.toBeInTheDocument()
   })
@@ -99,8 +96,8 @@ describe("SocialReports commenters", () => {
   it("ignores a late rejection from the previous date range", async () => {
     let rejectPrevious!: (reason: Error) => void
     jest.mocked(getTopCommentersData).mockReturnValueOnce(new Promise((_, reject) => { rejectPrevious = reject }))
-    const { rerender } = render(<SocialReports startDate={startDate} endDate={endDate} />)
-    rerender(<SocialReports startDate={new Date("2026-09-02T00:00:00")} endDate={endDate} />)
+    const { rerender } = render(<SocialReports startDate={startDate} endDate={endDate} section="networks" />)
+    rerender(<SocialReports startDate={new Date("2026-09-02T00:00:00")} endDate={endDate} section="networks" />)
     await waitFor(() => expect(screen.getByText("Comment authors not synchronized")).toBeInTheDocument())
     await act(async () => { rejectPrevious(new Error("Stale request")) })
     expect(screen.queryByRole("alert")).not.toBeInTheDocument()

@@ -1,3 +1,5 @@
+import { ACTIVITY_START_TIME_ERROR, isValidActivityStartTime } from "./activity-start-time"
+
 export const OUTREACH_ACTIVITY_KEYS = ["leads_initial_cold_outreach", "leads_follow_up"] as const
 export type OutreachActivityKey = typeof OUTREACH_ACTIVITY_KEYS[number]
 export type OutreachChannel = string
@@ -9,6 +11,8 @@ export type OutreachSettings = {
   daily_message_limit: number
   max_unanswered_messages: number
   weekdays: number[]
+  /** Optional fixed local start time for Follow Up only, in strict HH:mm format. */
+  start_time?: string
 }
 
 export function isOutreachActivity(key: string): key is OutreachActivityKey {
@@ -47,6 +51,8 @@ export function normalizeOutreachSettings(value: unknown): OutreachSettings & { 
     daily_message_limit: data.daily_message_limit === undefined ? 30 : data.daily_message_limit,
     max_unanswered_messages: data.max_unanswered_messages === undefined ? 3 : data.max_unanswered_messages,
     weekdays: data.weekdays === undefined ? [2, 3, 4] : Array.isArray(data.weekdays) ? [...new Set(data.weekdays)] : [],
+    // Preserve malformed nonmissing times so all save paths can reject them.
+    ...(data.start_time === undefined ? {} : { start_time: data.start_time }),
   }
 }
 
@@ -71,6 +77,9 @@ export function validateOutreachSettings(
   segmentIds?: string[],
 ): OutreachValidationError[] {
   const errors: OutreachValidationError[] = []
+  if (key === "leads_follow_up" && value.start_time !== undefined && !isValidActivityStartTime(value.start_time)) {
+    errors.push({ field: "start_time", message: ACTIVITY_START_TIME_ERROR })
+  }
   if (!Number.isInteger(value.daily_message_limit) || value.daily_message_limit < 1 || value.daily_message_limit > 10000) {
     errors.push({ field: "daily_message_limit", message: "Enter a whole number from 1 to 10,000 messages per day." })
   }

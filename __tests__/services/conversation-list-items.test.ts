@@ -1,5 +1,6 @@
 import { buildConversationListItems } from "@/app/services/conversations/conversation-list-items"
 import { getUserData } from "@/app/services/user-service"
+import type { ConversationListRow } from "@/app/services/conversations/conversation-list-query"
 
 jest.mock("@/app/services/user-service", () => ({
   getUserData: jest.fn(),
@@ -125,5 +126,27 @@ describe("buildConversationListItems", () => {
     ).rejects.toBe(moderationError)
 
     consoleError.mockRestore()
+  })
+
+  it("uses DM metadata without creating a fake lead and preserves linked/manual names", async () => {
+    const supabase = { from: jest.fn((table: string) => resolvedQuery(table === 'leads'
+      ? [{ id: 'lead-1', name: 'CRM name' }] : [])) }
+    const base: ConversationListRow = {
+      id: 'dm-1', title: 'Instagram direct message', agent_id: 'agent-1', lead_id: null,
+      channel: 'instagram', status: 'active', created_at: '2026-09-30T00:00:00Z', last_message_at: null,
+      custom_data: { source: 'outstand_dm', participant_display_name: 'Taylor' },
+    }
+    const items = await buildConversationListItems(supabase, [
+      base,
+      { ...base, id: 'dm-2', custom_data: { source: 'outstand_dm', participant_username: 'taylor' } },
+      { ...base, id: 'dm-3', lead_id: 'lead-1' },
+      { ...base, id: 'dm-4', title: 'Manual subject', lead_id: 'lead-1' },
+      { ...base, id: 'dm-5', custom_data: { source: 'outstand_dm', outstand_participant_id: '123456', outstand_social_account_id: 'owned' } },
+    ])
+    expect(items.map(item => [item.title, item.participantName, item.leadName])).toEqual([
+      ['Taylor', 'Taylor', undefined], ['@taylor', '@taylor', undefined],
+      ['CRM name', 'CRM name', 'CRM name'], ['Manual subject', 'CRM name', 'CRM name'],
+      ['Instagram contact', 'Instagram contact', undefined],
+    ])
   })
 })

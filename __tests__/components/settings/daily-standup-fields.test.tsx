@@ -30,7 +30,7 @@ describe("Daily Standup controls", () => {
     for (const day of ["Sunday", "Tuesday", "Wednesday", "Thursday", "Saturday"]) expect(checkbox(day)).not.toBeChecked()
     for (const section of sections) expect(checkbox(section)).toBeChecked()
     expect(card().queryByText(/Monday through Friday/)).not.toBeInTheDocument()
-    expect(card().getByText(/site's timezone at the configured opening time, or 09:00/)).toBeInTheDocument()
+    expect(card().getByText(/runs at the configured opening time, or 09:00/)).toBeInTheDocument()
     expect(card().getByRole("group", { name: "Standup weekdays" })).toBeInTheDocument()
     expect(card().getByRole("group", { name: "Report sections" })).toBeInTheDocument()
     await waitFor(() => expect(screen.queryByText("Loading segments...")).not.toBeInTheDocument())

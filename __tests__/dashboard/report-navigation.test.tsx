@@ -3,6 +3,7 @@ import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { SWRConfig } from "swr"
 import { useSearchParams } from "next/navigation"
 import DashboardPage from "@/app/dashboard/page"
+import { REPORTS, type ReportId } from "@/app/dashboard/report-sections"
 
 let mockSite = "site-one"
 let mockSiteLoading = false
@@ -50,6 +51,24 @@ beforeEach(() => {
 })
 
 describe("sticky report navigation", () => {
+  it("keeps every report and section isolated while navigating the full report menu", () => {
+    const { navigate } = renderPage("tab=performance&section=outcomes")
+    for (const report of Object.keys(REPORTS) as ReportId[]) {
+      for (const section of REPORTS[report].sections) {
+        mockContent.mockClear()
+        navigate(`tab=${report}&section=${section.id}`)
+        expect(screen.getAllByRole("tabpanel")).toHaveLength(1)
+        expect(screen.getAllByTestId("report-content")).toHaveLength(1)
+        expect(screen.getByTestId("report-content")).toHaveTextContent(`${report}:${section.id}`)
+        expect(screen.getByRole("tablist", { name: `${REPORTS[report].title} sections` })).toBeInTheDocument()
+        expect(screen.getAllByRole("tab")).toHaveLength(REPORTS[report].sections.length)
+        expect(screen.getByRole("tab", { name: section.label })).toHaveAttribute("aria-selected", "true")
+        expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(REPORTS[report].title)
+        expect(mockContent.mock.calls.every(([props]) => props.report === report && props.section === section.id)).toBe(true)
+      }
+    }
+  })
+
   it("opens an analytics deep link without first mounting performance", () => {
     renderPage("tab=analytics&section=leads")
     expect(screen.getByRole("tablist", { name: "Analytics sections" })).toBeInTheDocument()

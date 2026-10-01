@@ -1,6 +1,29 @@
 import { Skeleton } from "@/app/components/ui/skeleton"
 import { ReportChartFrame } from "./report-chart-frame"
 import type { DynamicOptionsLoadingProps } from "next/dynamic"
+import { StackedDistributionLayout } from "./stacked-distribution-layout"
+
+export function ReportDistributionLoading({ label = "Loading distribution", rows = 5, decorative = false }: {
+  label?: string; rows?: number; decorative?: boolean
+}) {
+  return <div role={decorative ? undefined : "status"} aria-label={decorative ? undefined : label}
+    aria-busy={decorative ? undefined : true} aria-hidden={decorative || undefined} className="flex min-h-0 min-w-0 flex-1 flex-col">
+    {!decorative && <span className="sr-only">{label}…</span>}
+    <StackedDistributionLayout
+      plot={<div aria-hidden="true" className="aspect-square w-40 max-w-full rounded-full border-[24px] border-muted/50 sm:w-48" />}
+      rows={<div aria-hidden="true" className="flex h-full min-w-0 flex-col">
+        <Skeleton className="mb-2 h-3 w-64 max-w-full shrink-0 motion-reduce:animate-none" />
+        {Array.from({ length: rows + 2 }, (_, index) => (
+          <div key={index} className={index === 0 || index === rows + 1 ? "flex min-h-10 shrink-0 items-center gap-4 border-b py-3" : "flex min-h-10 flex-1 items-center gap-4 border-b py-3"}>
+            <Skeleton className="h-3 min-w-0 flex-1 motion-reduce:animate-none" />
+            <Skeleton className="h-3 w-12 max-w-[25%] motion-reduce:animate-none" />
+            <Skeleton className="h-3 w-10 max-w-[22%] motion-reduce:animate-none" />
+          </div>
+        ))}
+      </div>}
+    />
+  </div>
+}
 
 export function ReportChartLoading({ fitViewport = true }: DynamicOptionsLoadingProps & { fitViewport?: boolean } = {}) {
   return (

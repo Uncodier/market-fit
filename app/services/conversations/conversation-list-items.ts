@@ -1,6 +1,7 @@
 import type { ConversationListItem } from "@/app/types/chat"
 import { getUserData } from "@/app/services/user-service"
 import type { ConversationListRow } from "./conversation-list-query"
+import { conversationDisplayTitle, resolveParticipantIdentity } from "@/lib/chat/participant-identity"
 
 interface ConversationDataClient {
   from: (table: string) => any
@@ -139,8 +140,8 @@ async function loadLeadData(
           ? lead.company
           : ""
 
-    result.names[lead.id] =
-      lead.name + (companyName ? ` (${companyName})` : "")
+    const name = typeof lead.name === "string" ? lead.name.trim() : ""
+    result.names[lead.id] = name ? name + (companyName ? ` (${companyName})` : "") : ""
     if (lead.status) result.statuses[lead.id] = lead.status
     if (lead.assignee_id) result.assigneeIds[lead.id] = lead.assignee_id
   }
@@ -174,10 +175,8 @@ export async function buildConversationListItems(
       pending: false,
     }
 
-    let title = conversation.title || "Untitled Conversation"
-    if (leadName && (!conversation.title || conversation.title === "Untitled Conversation")) {
-      title = `Chat with ${leadName}`
-    }
+    const title = conversationDisplayTitle(conversation, leadName)
+    const participant = resolveParticipantIdentity(conversation, { name: leadName })
 
     let agentName =
       agentNames[agentId] || (agentId ? "Unknown Agent" : "Agent")
@@ -195,6 +194,7 @@ export async function buildConversationListItems(
       agentId,
       agentName,
       leadName: leadName || undefined,
+      participantName: participant.channel !== "web" ? participant.name : undefined,
       leadStatus: leadId ? leadData.statuses[leadId] : undefined,
       lastMessage: conversation.latest_message?.[0]?.content,
       timestamp: new Date(

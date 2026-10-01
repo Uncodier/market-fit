@@ -73,10 +73,10 @@ it("shows summary without breakdown and shares costs across sections", async () 
   expect(revenueCalls()).toHaveLength(1)
 })
 
-it("retains the legacy full layout when section is omitted", async () => {
+it("defaults to summary without mixing in category tables when section is omitted", async () => {
   render(report())
-  expect(await screen.findByText("Cost Breakdown 250")).toBeInTheDocument()
-  expect(screen.getByText("Cost Distribution")).toBeInTheDocument()
+  expect(await screen.findByText("Cost Distribution")).toBeInTheDocument()
+  expect(screen.queryByText("Cost Breakdown 250")).not.toBeInTheDocument()
   expect(screen.getByText("Cost Trend")).toBeInTheDocument()
   expect(screen.getByText("Total Costs")).toBeInTheDocument()
   expect(revenueCalls()).toHaveLength(1)
@@ -189,18 +189,18 @@ it("uses the selected cost currency for the efficiency numerator", async () => {
   expect(new URL(String(revenueCalls().at(-1)?.[0]), "http://localhost").searchParams.get("currency")).toBe("EUR")
 })
 
-it("puts the date-scoped trend before distribution and breakdown with details below", async () => {
+it("puts the date-scoped trend before distribution with details below and no category table", async () => {
   render(report())
   const trend = await screen.findByText("Cost Trend")
   const distribution = screen.getByText("Cost Distribution")
-  const breakdown = screen.getByText("Cost Breakdown 250")
+  expect(screen.queryByText("Cost Breakdown 250")).not.toBeInTheDocument()
   expect(trend.compareDocumentPosition(distribution) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
-  expect(distribution.compareDocumentPosition(breakdown) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   expect(trend.parentElement).toHaveClass("xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]")
   expect(trend.parentElement).toHaveClass("items-stretch", "xl:grid-rows-[auto_1fr]", "xl:[&>*]:grid-rows-subgrid")
   expect(trend).toHaveAttribute("data-start", start.toISOString())
   expect(trend).toHaveAttribute("data-end", end.toISOString())
   const caveat = screen.getByText(/Cost currency is not supplied/)
+  expect(distribution.compareDocumentPosition(caveat) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   expect(caveat.closest("details")).not.toHaveAttribute("open")
   expect(caveat).not.toBeVisible()
   expect(screen.getByText(/Efficiency is active sales/)).toHaveTextContent("not cash received")

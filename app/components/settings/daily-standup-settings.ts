@@ -1,4 +1,5 @@
 import { z } from "zod"
+import { optionalActivityStartTimeSchema } from "@/lib/activity-start-time"
 
 export const DAILY_STANDUP_WEEKDAYS = [1, 5]
 export const DAILY_STANDUP_REPORT_SECTIONS = [
@@ -11,6 +12,7 @@ export const dailyStandupSettingsSchema = z.preprocess(
     status: z.enum(["active", "inactive", "default"]).default("inactive")
       .transform(value => value === "active" ? "active" as const : "inactive" as const),
     weekdays: z.array(z.number().int().min(0).max(6)).default(DAILY_STANDUP_WEEKDAYS),
+    start_time: optionalActivityStartTimeSchema,
     report_sections: z.array(z.enum(DAILY_STANDUP_REPORT_SECTIONS)).default([...DAILY_STANDUP_REPORT_SECTIONS]),
   }).passthrough().superRefine((value, ctx) => {
     if (value.status !== "active") return
@@ -38,6 +40,8 @@ export function normalizeDailyStandupSettings(value: unknown): DailyStandupSetti
   return {
     ...data,
     status: data.status === "active" ? "active" : "inactive",
+    // Keep an undefined form baseline for the optional controller; JSON omits it.
+    start_time: data.start_time,
     weekdays: data.weekdays === undefined ? [...DAILY_STANDUP_WEEKDAYS] : data.weekdays,
     report_sections: data.report_sections === undefined ? [...DAILY_STANDUP_REPORT_SECTIONS] : data.report_sections,
   }
@@ -45,5 +49,6 @@ export function normalizeDailyStandupSettings(value: unknown): DailyStandupSetti
 
 /** Legacy string and object status-only updates must not erase a configured selection. */
 export function mergeDailyStandupSettings(existing: unknown, updates: unknown) {
-  return normalizeDailyStandupSettings({ ...asRecord(existing), ...asRecord(updates) })
+  const patch = Object.fromEntries(Object.entries(asRecord(updates)).filter(([key, value]) => key !== "start_time" || value !== undefined))
+  return normalizeDailyStandupSettings({ ...asRecord(existing), ...patch })
 }

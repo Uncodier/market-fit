@@ -16,7 +16,7 @@ jest.mock("sonner", () => ({ toast: { success: jest.fn(), error: jest.fn() } }))
 
 const siteId = "11111111-1111-4111-8111-111111111111"
 const key = "daily_resume_and_stand_up"
-const configured = { status: "active", weekdays: [0, 6], report_sections: ["social", "records", "orders", "reservations", "inventory"], extension: { keep: true } }
+const configured = { status: "active", weekdays: [0, 6], start_time: "08:15", report_sections: ["social", "records", "orders", "reservations", "inventory"], extension: { keep: true } }
 const clone = <T,>(value: T): T => JSON.parse(JSON.stringify(value))
 
 /** Local client double only; this suite does not contact Supabase or verify live RLS. */
@@ -26,7 +26,7 @@ function fixture(standup: unknown = configured) {
     activities: normalizeActivitySettings({
       [key]: standup,
       icp_lead_generation: { target_leads: 300, research_enabled: true, extension: { retained: true } },
-      leads_follow_up: { status: "inactive", policy: { untouched: true } },
+      leads_follow_up: { status: "inactive", start_time: "17:45", policy: { untouched: true } },
       local_lead_generation: { status: "inactive", radius: 10 }, future_activity: { payload: [1, 2] },
     }),
   }
@@ -138,5 +138,71 @@ describe("Daily Standup persistence", () => {
     expect(state.row().activities[key]).toEqual({ ...configured, weekdays: [2, 4] })
     await state.options.updateSettings(siteId, { activities: { [key]: { report_sections: ["sales", "tasks"] } } })
     expect(state.row().activities[key]).toEqual({ ...configured, weekdays: [2, 4], report_sections: ["sales", "tasks"] })
+  })
+
+  describe.each(["daily_resume_and_stand_up", "leads_follow_up"] as const)("%s start time persistence", activityKey => {
+    it.each(["activity", "all", "direct"])("saves a custom time then explicit fixed reset through %s and reloads it", async mode => {
+      const state = fixture()
+      state.row().activities[activityKey].server_extension = { latest: true }
+      const before = clone(state.row().activities)
+      for (const start_time of ["00:00", "23:59", "09:00"]) {
+        const data = { name: "Site A", url: "https://example.com", activities: { [activityKey]: { start_time } } } as unknown as SiteFormValues
+        await save(mode, data, state)
+        expect(state.row().activities).toEqual({ ...before, [activityKey]: { ...before[activityKey], start_time } })
+        const loaded = await fetchSiteSettings(state.deps.supabase, siteId)
+        expect(adaptSiteToForm({ ...state.options.currentSite, settings: loaded }).activities[activityKey].start_time).toBe(start_time)
+        expect(state.deps.setCurrentSite.mock.lastCall?.[0].settings.activities[activityKey].start_time).toBe(start_time)
+      }
+      expect(state.writes).toHaveLength(3)
+      expect(state.row().custom_settings).toEqual({ untouched: true })
+    })
+
+    it.each(["activity", "all", "direct"])("does not invent a fixed time when saving legacy missing settings via %s", async mode => {
+      const state = fixture({ status: "inactive" })
+      delete state.row().activities[activityKey].start_time
+      delete state.options.currentSite.settings.activities[activityKey].start_time
+      const data = { name: "Site A", url: "https://example.com", activities: { [activityKey]: { weekdays: [1, 5] } } } as unknown as SiteFormValues
+      await save(mode, data, state)
+      expect(state.writes).toHaveLength(1)
+      expect(state.row().activities[activityKey]).not.toHaveProperty("start_time")
+    })
+
+    it.each(["activity", "all", "direct"])("rejects nonmissing invalid times before %s writes", async mode => {
+      for (const start_time of ["", null, "9:00", "24:00", "10:60", "09:00:00", "09:00\n", 900]) {
+        const state = fixture()
+        const data = { name: "Site A", url: "https://example.com", activities: { [activityKey]: { status: "inactive", start_time } } } as unknown as SiteFormValues
+        if (mode === "all") await save(mode, data, state)
+        else await expect(save(mode, data, state)).rejects.toThrow()
+        expect(state.writes).toEqual([])
+        expect(state.options.updateSite).not.toHaveBeenCalled()
+        expect(state.deps.setCurrentSite).not.toHaveBeenCalled()
+      }
+    })
+
+    it.each(["activity", "all", "direct"])("keeps the latest time when a pre-hydration form sends undefined via %s", async mode => {
+      const state = fixture()
+      const expected = state.row().activities[activityKey].start_time
+      delete state.options.currentSite.settings.activities[activityKey].start_time
+      const data = { name: "Site A", url: "https://example.com", activities: { [activityKey]: { start_time: undefined, weekdays: [1, 5] } } } as unknown as SiteFormValues
+      await save(mode, data, state)
+      expect(state.writes).toHaveLength(1)
+      expect(state.row().activities[activityKey].start_time).toBe(expected)
+    })
+
+    it("rejects a malformed latest-row time during an unrelated partial activity write", async () => {
+      const state = fixture()
+      state.row().activities[activityKey].start_time = null
+      await expect(state.options.updateSettings(siteId, { activities: { email_sync: { status: "inactive" } } })).rejects.toThrow()
+      expect(state.writes).toEqual([])
+    })
+  })
+
+  it("does not introduce validation of unrelated inactive outreach caps during direct settings writes", async () => {
+    const state = fixture()
+    state.row().activities.leads_follow_up.daily_message_limit = -1
+    state.row().activities.leads_follow_up.max_unanswered_messages = null
+    await state.options.updateSettings(siteId, { activities: { email_sync: { status: "inactive" } } })
+    expect(state.writes).toHaveLength(1)
+    expect(state.row().activities.leads_follow_up).toMatchObject({ daily_message_limit: -1, max_unanswered_messages: null, start_time: "17:45" })
   })
 })

@@ -137,7 +137,7 @@ describe("SocialReports trend integration", () => {
     jest.mocked(getTopCommentersData).mockResolvedValue({ data: [] })
   })
 
-  it("places the chart directly after the KPIs and before the other reports", async () => {
+  it("places the chart directly after the KPIs without other report sections", async () => {
     jest.mocked(getSocialPerformanceData).mockResolvedValue({
       ...socialReportFixture(),
       data: [], networks: [], trends: trends(),
@@ -150,7 +150,8 @@ describe("SocialReports trend integration", () => {
     await waitFor(() => expect(container.querySelector(".recharts-area-curve")).toBeInTheDocument())
     const chart = screen.getByLabelText("Social performance trends")
     expect(chart.previousElementSibling).toHaveTextContent("Views300")
-    expect(chart.nextElementSibling).toHaveTextContent("Top Commenters")
+    expect(screen.queryByText("Top Commenters")).not.toBeInTheDocument()
+    expect(getTopCommentersData).not.toHaveBeenCalled()
     expect(getSocialPerformanceData).toHaveBeenCalledWith("site-1", startDate, endOfDay(endDate), Intl.DateTimeFormat().resolvedOptions().timeZone)
   })
 

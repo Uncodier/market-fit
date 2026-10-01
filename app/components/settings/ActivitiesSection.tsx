@@ -42,7 +42,7 @@ const ACTIVITIES: { key: ActivityKey; title: string; description: string }[] = [
   {
     key: "daily_resume_and_stand_up",
     title: "Daily Resume and Stand Up",
-    description: "Generate a summary and stand-up, highlighting progress, blockers and next steps. Choose the weekdays and report sections below."
+    description: "Generate a summary and stand-up, highlighting progress, blockers and next steps. Choose the weekdays, start time and report sections below."
   },
   {
     key: "local_lead_generation",
@@ -52,7 +52,7 @@ const ACTIVITIES: { key: ActivityKey; title: string; description: string }[] = [
   {
     key: "icp_lead_generation",
     title: "ICP Lead Generation",
-    description: "Discover leads that match your Ideal Customer Profile using defined ICP attributes. Runs according to your company's operating hours."
+    description: "Discover leads that match your Ideal Customer Profile using defined ICP attributes. Daily runs are distributed by site over 24 hours, independent of business hours and weekends. There is no configurable fixed start time."
   },
   {
     key: "leads_initial_cold_outreach",
@@ -62,7 +62,7 @@ const ACTIVITIES: { key: ActivityKey; title: string; description: string }[] = [
   {
     key: "leads_follow_up",
     title: "Leads Follow Up",
-    description: "Follow up only with contacts who have previously written or replied. Choose the weekdays below."
+    description: "Follow up only with contacts who have previously written or replied. Choose the weekdays and start time below."
   },
   {
     key: "email_sync",
@@ -102,7 +102,7 @@ export function ActivitiesSection({ active, onSave, siteId }: ActivitiesSectionP
   const segments = useOutreachSegments(active ? siteId || currentSite?.id : undefined)
   const accounts = getUsableOutreachAccounts(currentSite?.settings?.channels)
   const businessHours = form.watch("business_hours")
-  const timezone = getOutreachTimezone(businessHours)
+  const timezone = getOutreachTimezone(currentSite?.settings?.business_hours ?? businessHours)
   const coldOutreachStatus = form.watch("activities.leads_initial_cold_outreach.status")
   const assignStatus = form.watch("activities.assign_leads_to_team.status")
   useEffect(() => {
@@ -157,11 +157,11 @@ export function ActivitiesSection({ active, onSave, siteId }: ActivitiesSectionP
       <div>
         <h2 className="text-2xl font-semibold">{sectionTitle}</h2>
         <p className="text-xs text-muted-foreground mt-1">
-          Activity schedules and days adapt to your company working days and industry best practices. Configure company business hours in 
+          Standup and Follow Up use the weekdays and optional start times below. ICP runs are distributed by site over 24 hours, independent of business hours. Configure the site&apos;s timezone and business hours in
           {" "}
           <NavigationLink href="/context" className="text-primary underline underline-offset-4">Context</NavigationLink>
           {" "}
-          to fine-tune when activities run.
+          for the activities that use them.
         </p>
       </div>
 
@@ -318,7 +318,7 @@ export function ActivitiesSection({ active, onSave, siteId }: ActivitiesSectionP
                 }}
               />}
               {isOutreach && <OutreachActivityFields activityKey={key} accounts={accounts} {...segments} timezone={timezone} />}
-              {isDailyResumeAndStandUp && <DailyStandupFields />}
+              {isDailyResumeAndStandUp && <DailyStandupFields timezone={timezone} />}
               {!!errors[key]?.length && <ul role="alert" className="mt-4 space-y-1 text-sm text-destructive">{errors[key].map(message => <li key={message}>{message}</li>)}</ul>}
             </SectionCardContent>
             <SectionCardFooter>

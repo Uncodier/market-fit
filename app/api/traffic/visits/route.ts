@@ -6,21 +6,16 @@ import { readThroughAnalyticsResponseCache } from "@/lib/redis/analytics-respons
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
   const siteId = searchParams.get("siteId");
-  const userId = searchParams.get("userId");
   const segmentId = searchParams.get("segmentId");
   const startDate = searchParams.get("startDate");
   const endDate = searchParams.get("endDate");
-
-  if (!siteId || !userId) {
-    return NextResponse.json({ error: "Missing required parameters" }, { status: 400 });
-  }
 
   const access = await requireAnalyticsAccess(request);
   if (access.error) return access.error;
 
   return readThroughAnalyticsResponseCache({
     request,
-    namespace: "traffic:visits",
+    namespace: "traffic:visits:v2",
     siteId: access.siteId,
     load: async () => {
   try {
@@ -43,16 +38,11 @@ export async function GET(request: NextRequest) {
 
     console.log(`[Visits API] Current query result:`, { 
       count: currentVisits || 0, 
-      error: currentError?.message || 'none' 
+      hasError: Boolean(currentError)
     });
 
     if (currentError) {
-      console.log(`[Visits API] Database error:`, currentError);
-      return NextResponse.json({
-        actual: 0,
-        percentChange: 0,
-        periodType: "monthly"
-      });
+      throw new Error("Current visits query failed");
     }
 
     const actualVisits = currentVisits || 0;
@@ -82,8 +72,12 @@ export async function GET(request: NextRequest) {
 
     console.log(`[Visits API] Previous query result:`, { 
       count: previousVisits || 0, 
-      error: previousError?.message || 'none' 
+      hasError: Boolean(previousError)
     });
+
+    if (previousError) {
+      throw new Error("Previous visits query failed");
+    }
 
     const prevVisitsCount = previousVisits || 0;
     
@@ -101,15 +95,9 @@ export async function GET(request: NextRequest) {
     console.log(`[Visits API] Returning real data:`, response);
     return NextResponse.json(response);
 
-  } catch (error) {
-    console.error("Error fetching visits data:", error);
-    
-    // Return zero data instead of demo data
-    return NextResponse.json({
-      actual: 0,
-      percentChange: 0,
-      periodType: "monthly"
-    });
+  } catch {
+    console.error("[Visits API] Unable to load visits report");
+    return NextResponse.json({ error: "Unable to load visits report" }, { status: 500 });
   }
     },
   });

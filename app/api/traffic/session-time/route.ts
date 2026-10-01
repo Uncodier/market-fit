@@ -2,25 +2,22 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
 import { requireAnalyticsAccess } from "@/lib/auth/api-analytics-access";
 import { readThroughAnalyticsResponseCache } from "@/lib/redis/analytics-response-cache";
+import type { QueryResult } from "@/app/api/_shared/query-result";
+
+type SessionDuration = { duration: number | null; started_at: number | null; last_activity_at: number | null };
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
   const siteId = searchParams.get("siteId");
-  const userId = searchParams.get("userId");
-  const segmentId = searchParams.get("segmentId");
   const startDate = searchParams.get("startDate");
   const endDate = searchParams.get("endDate");
-
-  if (!siteId || !userId) {
-    return NextResponse.json({ error: "Missing required parameters" }, { status: 400 });
-  }
 
   const access = await requireAnalyticsAccess(request);
   if (access.error) return access.error;
 
   return readThroughAnalyticsResponseCache({
     request,
-    namespace: "traffic:session-time",
+    namespace: "traffic:session-time:v2",
     siteId: access.siteId,
     load: async () => {
   try {
@@ -28,7 +25,7 @@ export async function GET(request: NextRequest) {
     console.log(`[SessionTime API] Querying visitor_sessions for site_id: ${siteId}, dates: ${startDate} to ${endDate}`);
     
     // Get current period visitor sessions with duration data
-    const { data: currentData, error: currentError } = await supabase
+    const { data: currentData, error: currentError }: QueryResult<SessionDuration[]> = await supabase
       .from('visitor_sessions')
       .select('duration, started_at, last_activity_at')
       .eq('site_id', siteId)
@@ -38,20 +35,15 @@ export async function GET(request: NextRequest) {
 
     console.log(`[SessionTime API] Current query result:`, { 
       count: currentData?.length || 0, 
-      error: currentError?.message || 'none' 
+      hasError: Boolean(currentError)
     });
 
     if (currentError) {
-      console.log(`[SessionTime API] Database error:`, currentError);
-      return NextResponse.json({
-        actual: 0,
-        percentChange: 0,
-        periodType: "monthly"
-      });
+      throw new Error("Current session time query failed");
     }
 
     // Calculate average session time for current period
-    const calculateAverageSessionTime = (sessions: any[]) => {
+    const calculateAverageSessionTime = (sessions: SessionDuration[]) => {
       if (!sessions || sessions.length === 0) return 0;
       
       const totalTime = sessions.reduce((sum, session) => {
@@ -88,7 +80,7 @@ export async function GET(request: NextRequest) {
     console.log(`[SessionTime API] Previous period: ${previousStart.toISOString()} to ${previousEnd.toISOString()}`);
 
     // Get previous period sessions
-    const { data: previousData, error: previousError } = await supabase
+    const { data: previousData, error: previousError }: QueryResult<SessionDuration[]> = await supabase
       .from('visitor_sessions')
       .select('duration, started_at, last_activity_at')
       .eq('site_id', siteId)
@@ -98,8 +90,12 @@ export async function GET(request: NextRequest) {
 
     console.log(`[SessionTime API] Previous query result:`, { 
       count: previousData?.length || 0, 
-      error: previousError?.message || 'none' 
+      hasError: Boolean(previousError)
     });
+
+    if (previousError) {
+      throw new Error("Previous session time query failed");
+    }
 
     const previousAvgTime = calculateAverageSessionTime(previousData || []);
     
@@ -117,15 +113,9 @@ export async function GET(request: NextRequest) {
     console.log(`[SessionTime API] Returning real data:`, response);
     return NextResponse.json(response);
 
-  } catch (error) {
-    console.error("Error fetching session time data:", error);
-    
-    // Return zero data instead of demo data
-    return NextResponse.json({
-      actual: 0,
-      percentChange: 0,
-      periodType: "monthly"
-    });
+  } catch {
+    console.error("[SessionTime API] Unable to load session time report");
+    return NextResponse.json({ error: "Unable to load session time report" }, { status: 500 });
   }
     },
   });

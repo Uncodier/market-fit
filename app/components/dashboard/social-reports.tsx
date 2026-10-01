@@ -46,11 +46,11 @@ export function SocialReports(props: SocialReportsProps) {
   return <SocialCostReportScope><SocialReportContent {...props} /></SocialCostReportScope>
 }
 
-function SocialReportContent({ startDate, endDate, section, embedded = false }: SocialReportsProps) {
+function SocialReportContent({ startDate, endDate, section = "summary", embedded = false }: SocialReportsProps) {
   const { currentSite } = useSite()
-  const showSummary = !section || section === "summary"
-  const showNetworks = !section || section === "networks"
-  const showPosts = !section || section === "posts"
+  const showSummary = section === "summary"
+  const showNetworks = section === "networks"
+  const showPosts = section === "posts"
   const { performance, commenters, enabled, invalidDates, authLoading, signedOut } = useSocialReport(currentSite?.id, startDate, endDate, showNetworks)
   const data = performance.error ? undefined : performance.data
   const kpis = data?.kpis

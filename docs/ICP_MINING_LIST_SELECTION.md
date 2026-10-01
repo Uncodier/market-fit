@@ -30,6 +30,11 @@ The Activities tab's **ICP Lead Generation** card stores these additional keys i
   not send outreach. This selector does not start a workflow or change cadence,
   budgets or the existing one-request-per-run behavior.
 
+Daily runs are distributed by site over 24 hours, independently of business hours
+and weekends. There is no configurable fixed start time for ICP. The optional `start_time` controls
+in Activities apply only to Daily Standup and Follow Up; list selection does not
+change that scheduling contract.
+
 The shared [schema and normalizer](../app/components/settings/icp-lead-generation-settings.ts)
 feed activity normalization, form defaults/hydration, schema parsing, Activities
 saves, Save All, and direct settings persistence. Existing merges preserve unknown

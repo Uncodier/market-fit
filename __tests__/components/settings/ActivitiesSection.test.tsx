@@ -54,6 +54,16 @@ describe("ActivitiesSection outreach controls", () => {
     expect(onSave).not.toHaveBeenCalled()
   })
 
+  it("shows the persisted site timezone for both fixed-time controls rather than unsaved form hours", async () => {
+    mockCurrentSite.settings.business_hours = [{ timezone: "Europe/Madrid" }]
+    render(<TestForm onSave={jest.fn()} />)
+    for (const key of ["daily_resume_and_stand_up", "leads_follow_up"]) {
+      expect(card(key).getByText(/Schedule timezone: Europe\/Madrid/)).toBeInTheDocument()
+      expect(card(key).queryByText(/Schedule timezone: America\/New_York/)).not.toBeInTheDocument()
+    }
+    await waitFor(() => expect(card().getByRole("checkbox", { name: "Enterprise" })).toBeInTheDocument())
+  })
+
   it("multi-selects per channel, targets site segments, saves cap and Sunday with no fallback", async () => {
     const onSave = jest.fn().mockResolvedValue(true)
     render(<TestForm onSave={onSave} />)

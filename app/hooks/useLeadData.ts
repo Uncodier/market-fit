@@ -3,6 +3,7 @@ import useSWR from 'swr'
 import { createClient } from '@/lib/supabase/client'
 import { getUserData } from '@/app/services/user-service'
 import { conversationChannel, isInternalAgentConversation } from '@/lib/chat/conversation-routing'
+import { resolveParticipantIdentity } from '@/lib/chat/participant-identity'
 
 export function useLeadData(conversationId: string, siteId?: string) {
   const { data, error, isLoading: isSwrLoadingLead, mutate } = useSWR(
@@ -43,6 +44,7 @@ export function useLeadData(conversationId: string, siteId?: string) {
       const routing = {
         channel: conversationChannel(conversationWithLead),
         isAgentOnly: isInternalAgentConversation(conversationWithLead),
+        participantIdentity: resolveParticipantIdentity(conversationWithLead, conversationWithLead.leads),
       }
       
       // Check if this is an agent-only conversation
@@ -85,10 +87,10 @@ export function useLeadData(conversationId: string, siteId?: string) {
       return {
         leadData: {
           id: lead.id,
-          name: lead.name || "Unknown",
+          name: routing.participantIdentity.name,
           type: "Lead",
           status: lead.status || "new",
-          avatarUrl: null,
+          avatarUrl: routing.participantIdentity.avatarUrl || null,
           email: lead.email,
           phone: lead.phone,
           social_networks: lead.social_networks,
@@ -113,6 +115,7 @@ export function useLeadData(conversationId: string, siteId?: string) {
 
   return {
     leadData: data?.leadData || null,
+    participantIdentity: data?.isAgentOnly ? undefined : data?.participantIdentity,
     isLoadingLead,
     isAgentOnlyConversation: data?.isAgentOnly === true,
     conversationChannel: data?.channel,

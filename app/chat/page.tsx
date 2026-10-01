@@ -71,6 +71,7 @@ function ChatPageContent() {
   // Use our new hooks for better organization
   const {
     leadData,
+    participantIdentity,
     isLoadingLead,
     isAgentOnlyConversation,
     isConversationReady,
@@ -374,6 +375,7 @@ function ChatPageContent() {
             isAgentOnlyConversation={isAgentOnlyConversation}
             isLoadingLead={isLoadingLead}
             leadData={leadData}
+            participantIdentity={participantIdentity}
             isLead={isLead}
             isChatListCollapsed={isChatListCollapsed}
             toggleChatList={toggleChatList}
@@ -402,6 +404,7 @@ function ChatPageContent() {
               isAgentOnlyConversation={isAgentOnlyConversation}
               isLead={Boolean(leadData?.id)}
               leadData={leadData}
+              participantIdentity={participantIdentity}
               conversationId={conversationId}
               onRetryMessage={handleRetryMessage}
               onMessagesUpdate={setChatMessages}

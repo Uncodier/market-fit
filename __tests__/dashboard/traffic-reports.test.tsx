@@ -2,6 +2,7 @@ import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { SWRConfig } from "swr"
 import { TrafficReports, type TrafficSection } from "@/app/components/dashboard/traffic-reports"
 import { useAuth } from "@/app/hooks/use-auth"
+import { attributionResponse } from "./traffic-attribution-fixture"
 
 jest.mock("@/app/hooks/use-auth", () => ({ useAuth: jest.fn() }))
 jest.mock("@/app/context/WidgetContext", () => ({ useWidgetContext: () => ({ shouldExecuteWidgets: true }) }))
@@ -24,15 +25,15 @@ function mount(section?: TrafficSection) {
 }
 
 beforeEach(() => {
-  fetchMock.mockReset().mockResolvedValue(response())
+  fetchMock.mockReset().mockImplementation((url: string) => Promise.resolve(url.includes("/attribution?") ? attributionResponse() : response()))
   auth.mockReturnValue({ user: { id: "user-a" }, isLoading: false })
 })
 
 it.each([
-  ["summary", ["pages", "referrals"], true, false],
+  ["summary", ["attribution", "pages", "referrals"], true, false],
   ["audience", ["browsers", "regions", "devices"], false, false],
   ["sessions", [], false, true],
-  [undefined, ["pages", "referrals", "browsers", "regions", "devices"], true, true],
+  [undefined, ["attribution", "pages", "referrals"], true, false],
 ] as const)("loads only the visible %s queries without a waterfall", async (section, endpoints, kpis, sessions) => {
   fetchMock.mockImplementation(() => new Promise(() => {}))
   mount(section)
@@ -45,28 +46,28 @@ it.each([
 it("reuses results across sections and separates site, segment, date and account keys", async () => {
   const { rerender, view } = mount("summary")
   await screen.findAllByRole("table")
-  expect(fetchMock).toHaveBeenCalledTimes(2)
+  expect(fetchMock).toHaveBeenCalledTimes(3)
   const initial = new URL(fetchMock.mock.calls[0][0], "http://localhost")
   expect(initial.searchParams.has("userId")).toBe(false)
   expect(initial.searchParams.has("useDemoData")).toBe(false)
   expect(new Date(initial.searchParams.get("endDate")!).getHours()).toBe(23)
   rerender(view({ section: "audience" }))
-  await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(5))
+  await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(6))
   rerender(view({ section: "summary", startDate: new Date(2026, 8, 1, 16) }))
   await screen.findAllByRole("table")
-  expect(fetchMock).toHaveBeenCalledTimes(5)
+  expect(fetchMock).toHaveBeenCalledTimes(6)
   for (const props of [{ siteId: "site-b" }, { segmentId: "segment-b" }, { endDate: new Date(2026, 8, 28) }]) {
     const previous = fetchMock.mock.calls.length
     rerender(view(props))
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(previous + 2))
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(previous + 3))
   }
   auth.mockReturnValue({ user: { id: "user-b" }, isLoading: false })
   rerender(view())
-  await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(13))
+  await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(18))
 })
 
 it("shows independent errors with retry rather than empty data", async () => {
-  fetchMock.mockImplementation((url: string) => Promise.resolve(url.includes("/pages?")
+  fetchMock.mockImplementation((url: string) => Promise.resolve(url.includes("/attribution?") ? attributionResponse() : url.includes("/pages?")
     ? { ok: false, status: 500, json: async () => ({ error: "private database detail" }) }
     : response("Referrer", 7)))
   mount("summary")
@@ -77,7 +78,7 @@ it("shows independent errors with retry rather than empty data", async () => {
   fetchMock.mockResolvedValue(response("Recovered page"))
   fireEvent.click(screen.getByRole("button", { name: "Retry" }))
   expect(await screen.findByText("Recovered page")).toBeInTheDocument()
-  expect(fetchMock).toHaveBeenCalledTimes(3)
+  expect(fetchMock).toHaveBeenCalledTimes(4)
 })
 
 it("does not expose stale data while a new filter is loading or after sign-out", async () => {
@@ -90,7 +91,7 @@ it("does not expose stale data while a new filter is loading or after sign-out",
   rerender(view())
   expect(screen.getByRole("alert")).toHaveTextContent("Sign in")
   await act(async () => {})
-  expect(fetchMock).toHaveBeenCalledTimes(4)
+  expect(fetchMock).toHaveBeenCalledTimes(6)
 })
 
 it("waits for authentication before mounting any report queries", () => {

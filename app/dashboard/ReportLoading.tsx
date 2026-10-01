@@ -8,7 +8,7 @@ import { ReportKpiGrid } from "@/app/components/dashboard/report-layout"
 import { cn } from "@/lib/utils"
 import { getReportSection, type ReportId } from "./report-sections"
 import { OverviewActivityLayout } from "./OverviewActivityLayout"
-import { ReportChartLoading } from "@/app/components/dashboard/report-visual-loading"
+import { ReportChartLoading, ReportDistributionLoading } from "@/app/components/dashboard/report-visual-loading"
 import { RecentActivityLoading } from "@/app/components/dashboard/recent-activity-loading"
 import { ReportChartFrame } from "@/app/components/dashboard/report-chart-frame"
 
@@ -32,7 +32,7 @@ type Panel = {
   summary?: number
   footer?: boolean
   bare?: boolean
-  compact?: boolean
+  stacked?: boolean
   scopeNote?: boolean
   fitViewport?: boolean
 }
@@ -84,13 +84,15 @@ function loadingLayout(report: ReportId, section: string): LoadingLayout {
       })) }
     case "traffic":
       if (section === "audience") return { gap: "space-y-6", details: true, groups: [{ columns: "xl:grid-cols-3", panels: [
-        { kind: "list", rows: 5 }, { kind: "distribution", compact: true, rows: 3 }, { kind: "distribution", compact: true, rows: 3 },
+        { kind: "list", rows: 5 }, { kind: "distribution", stacked: true, rows: 3 }, { kind: "distribution", stacked: true, rows: 3 },
       ] }] }
       if (section === "sessions") return { groups: [{ columns: pair, panels: [
         { kind: "chart", summary: 3, height: "h-[320px] sm:h-[360px]" }, { kind: "table", columns: 3, rows: 6 },
       ] }] }
-      return { kpis: 4, gap: "space-y-6", details: true, groups: [{ columns: pair, panels: [
-        { kind: "list", rows: 5 }, { kind: "distribution", compact: true, rows: 3 },
+      return { kpis: 4, gap: "space-y-6", details: true, groups: [{ columns: "xl:grid-cols-2", panels: [
+        { kind: "distribution", stacked: true, rows: 3 }, { kind: "distribution", stacked: true, rows: 3 },
+      ] }, { columns: pair, panels: [
+        { kind: "list", rows: 5 }, { kind: "distribution", stacked: true, rows: 3 },
       ] }] }
     case "social":
       if (section === "posts") return { details: true, groups: [{ panels: [{ ...table, columns: 8, rows: 5 }] }] }
@@ -130,14 +132,14 @@ function LoadingRows({ rows = 5, columns = 2 }: { rows?: number; columns?: numbe
   </div>
 }
 
-function LoadingPanel({ kind, height, rows, columns, summary, footer, bare, compact, scopeNote, fitViewport = true }: Panel) {
-  return <div data-loading-panel={kind} className={cn("min-w-0 overflow-hidden", !bare && "h-full rounded-lg border bg-background")}>
+function LoadingPanel({ kind, height, rows, columns, summary, footer, bare, stacked, scopeNote, fitViewport = true }: Panel) {
+  return <div data-loading-panel={kind} className={cn("min-w-0 overflow-hidden", !bare && "h-full rounded-lg border bg-background", stacked && "flex flex-col")}>
     <div className={cn("space-y-2", bare ? "mb-3" : "p-4 pb-3 sm:p-5 sm:pb-3")}>
       <Line className="h-5 w-44" />
       {!bare && <Line className="h-3 w-64" />}
       {scopeNote && <Line className="h-4 w-80" />}
     </div>
-    <div className={cn("min-w-0", !bare && "p-4 pt-0 sm:p-5 sm:pt-0")}>
+    <div className={cn("min-w-0", !bare && "p-4 pt-0 sm:p-5 sm:pt-0", stacked && "flex min-h-0 flex-1 flex-col")}>
       {summary && <div className="mb-4 flex gap-5" data-loading-summary>
         {Array.from({ length: summary }, (_, index) => <div key={index} className="min-w-0 space-y-2"><Line className="h-3 w-24" /><Line className="h-7 w-20" /></div>)}
       </div>}
@@ -147,17 +149,15 @@ function LoadingPanel({ kind, height, rows, columns, summary, footer, bare, comp
         </div>
         <div className="mt-3 flex justify-center gap-5"><Line className="h-3 w-20" /><Line className="h-3 w-20" /></div>
       </ReportChartFrame>}
-      {kind === "distribution" && compact ? <div className="grid min-w-0 items-start gap-3 sm:grid-cols-[112px_minmax(0,1fr)]">
-        <div className="mx-auto mt-2 h-[100px] w-[100px] rounded-full border-[18px] border-muted/50" />
-        <LoadingRows rows={rows} />
-      </div> : kind === "distribution" && <ReportChartFrame enabled={fitViewport} data-loading-plot className={cn("flex items-center justify-center", height)}>
+      {kind === "distribution" && stacked ? <ReportDistributionLoading rows={rows} decorative />
+        : kind === "distribution" && <ReportChartFrame enabled={fitViewport} data-loading-plot className={cn("flex items-center justify-center", height)}>
         <div className="h-40 w-40 rounded-full border-[22px] border-muted/50" />
       </ReportChartFrame>}
       {kind === "table" && <div className={cn("min-w-0 overflow-hidden", bare && "rounded-md border px-4")}>
         <div className="border-b"><LoadingRows rows={1} columns={columns} /></div>
         <LoadingRows rows={rows} columns={columns} />
       </div>}
-      {(kind === "list" || (kind === "distribution" && !compact)) && <LoadingRows rows={rows} />}
+      {(kind === "list" || (kind === "distribution" && !stacked)) && <LoadingRows rows={rows} />}
       {footer && <div className="mt-3 space-y-3"><Line className="mx-auto h-4 w-36" /><Line className="h-3 w-52" /></div>}
     </div>
   </div>
@@ -166,8 +166,18 @@ function LoadingPanel({ kind, height, rows, columns, summary, footer, bare, comp
 /** Module, policy and data loading share the selected section's structure. */
 export function ReportLoading({ report, section, chartOnly = false }: LoadingSelection & DynamicOptionsLoadingProps & { chartOnly?: boolean } = {}) {
   const selection = useReportLoadingSelection()
-  const activeReport = report ?? selection.report ?? "performance"
-  const activeSection = getReportSection(activeReport, section ?? selection.section ?? null)
+  const activeReport = report ?? selection.report
+  // Route-level suspense has no selection yet. Never borrow another report's KPIs.
+  if (!activeReport) return <div role="status" aria-label="Loading report" aria-busy="true" className="min-w-0">
+    <span className="sr-only">Loading report…</span>
+    <div aria-hidden="true" className="space-y-4 rounded-lg border bg-background p-5">
+      <Line className="h-5 w-48" />
+      <Line className="h-3 w-80" />
+      <Line className="h-48 w-full" />
+    </div>
+  </div>
+  const scopedSection = !report || report === selection.report ? selection.section : undefined
+  const activeSection = getReportSection(activeReport, section ?? scopedSection ?? null)
   const layout: LoadingLayout = chartOnly
     ? { groups: [{ panels: [{ kind: "chart", height: "h-[300px] sm:h-[360px]" } as Panel] }] }
     : loadingLayout(activeReport, activeSection)

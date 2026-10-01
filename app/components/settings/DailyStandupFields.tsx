@@ -5,6 +5,7 @@ import { Checkbox } from "../ui/checkbox"
 import { FormField, FormItem, FormMessage } from "../ui/form"
 import type { SiteFormValues } from "./form-schema"
 import { DAILY_STANDUP_REPORT_SECTIONS, DAILY_STANDUP_WEEKDAYS, type DailyStandupReportSection } from "./daily-standup-settings"
+import { ActivityStartTimeField } from "./ActivityStartTimeField"
 
 const WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
 const SECTION_LABELS: Record<DailyStandupReportSection, string> = {
@@ -35,17 +36,18 @@ function SelectionGroup<T extends string | number>({ title, description, options
   </fieldset>
 }
 
-export function DailyStandupFields() {
+export function DailyStandupFields({ timezone }: { timezone?: string }) {
   const form = useFormContext<SiteFormValues>()
   return <div className="mt-6 space-y-6 border-t pt-6">
     <FormField control={form.control} name="activities.daily_resume_and_stand_up.weekdays" render={({ field }) => (
       <FormItem>
-        <SelectionGroup title="Standup weekdays" description="Default: Monday and Friday. Runs on selected days in the site's timezone at the configured opening time, or 09:00 if unavailable, including closed days. An active standup needs at least one day."
+        <SelectionGroup title="Standup weekdays" description="Default: Monday and Friday. Runs on selected days in the site's timezone, including closed days. Choose a start time below or keep the legacy opening-time schedule. An active standup needs at least one day."
           options={WEEKDAYS.map((label, value) => ({ label, value }))}
           selected={field.value === undefined ? DAILY_STANDUP_WEEKDAYS : Array.isArray(field.value) ? field.value : []}
           onChange={field.onChange} />
       </FormItem>
     )} />
+    <ActivityStartTimeField activityKey="daily_resume_and_stand_up" timezone={timezone} />
     <FormField control={form.control} name="activities.daily_resume_and_stand_up.report_sections" render={({ field }) => (
       <FormItem>
         <SelectionGroup title="Report sections" description="Choose what the report includes. All sections are selected by default. An active standup needs at least one section."

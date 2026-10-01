@@ -1,10 +1,11 @@
 "use client"
 
 import type { PostgrestSingleResponse } from "@supabase/supabase-js"
-import { MobileFiltersDrawer, FilterContainer, FilterSection, FilterSeparator } from "@/app/components/ui/mobile-filters-drawer"
+import { MobileFiltersDrawer, FilterContainer, FilterSection } from "@/app/components/ui/mobile-filters-drawer"
 
-import React, { Suspense, useCallback, useEffect, useState } from "react"
+import React, { Suspense, useCallback, useState } from "react"
 import useSWR from "swr"
+import { useSearchParams } from "next/navigation"
 import { CostReports } from "@/app/components/dashboard/cost-reports"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
 import { CalendarDateRangePicker } from "@/app/components/ui/date-range-picker"
@@ -12,19 +13,27 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { useSite } from "@/app/context/SiteContext"
 import { getSegments } from "@/app/segments/actions"
-import { cn } from "@/lib/utils"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
+import { REPORTS, getReportSection } from "@/app/dashboard/report-sections"
+import { ReportSWRScope } from "@/app/dashboard/ReportSWRScope"
+import { ReportExportScope } from "@/app/dashboard/export/ReportExportScope"
 import { createClient } from "@/lib/supabase/client"
-import { format, subMonths, startOfDay, endOfDay } from "date-fns"
+import { format, isValid, subMonths, startOfDay, endOfDay } from "date-fns"
 
 function CostsPageContent() {
+  const searchParams = useSearchParams()
+  const section = getReportSection("costs", searchParams.get("section"))
+  const selectedSection = REPORTS.costs.sections.find(item => item.id === section)!
   const { t } = useLocalization()
   const { currentSite } = useSite()
-  const today = new Date()
-  const [selectedCampaign, setSelectedCampaign] = useState("all")
-  const [selectedSegment, setSelectedSegment] = useState("all")
-  const [dateRange, setDateRange] = useState<{ startDate: Date; endDate: Date }>({
-    startDate: startOfDay(subMonths(today, 1)),
-    endDate: endOfDay(today),
+  const [selectedCampaign, setSelectedCampaign] = useState(() => searchParams.get("campaignId") || "all")
+  const [selectedSegment, setSelectedSegment] = useState(() => searchParams.get("segmentId") || "all")
+  const [dateRange, setDateRange] = useState(() => {
+    const start = new Date(searchParams.get("startDate") || "")
+    const end = new Date(searchParams.get("endDate") || "")
+    if (isValid(start) && isValid(end) && start <= end) return { startDate: start, endDate: end }
+    const today = new Date()
+    return { startDate: startOfDay(subMonths(today, 1)), endDate: endOfDay(today) }
   })
 
   const siteKey = currentSite && currentSite.id !== "default" ? currentSite.id : null
@@ -52,33 +61,28 @@ function CostsPageContent() {
     }
   )
 
-  useEffect(() => {
-    if (typeof window === "undefined") return
-    const url = new URL(window.location.href)
-    const startDateParam = url.searchParams.get("startDate")
-    const endDateParam = url.searchParams.get("endDate")
-    const segmentParam = url.searchParams.get("segmentId")
-    const campaignParam = url.searchParams.get("campaignId")
-
-    if (startDateParam && endDateParam) {
-      setDateRange({
-        startDate: new Date(startDateParam),
-        endDate: new Date(endDateParam),
-      })
-    }
-    if (segmentParam) setSelectedSegment(segmentParam)
-    if (campaignParam) setSelectedCampaign(campaignParam)
-  }, [])
-
   const handleDateRangeChange = useCallback((startDate: Date, endDate: Date) => {
     setDateRange({ startDate, endDate })
   }, [])
 
+  const handleSectionChange = (value: string) => {
+    if (value === section) return
+    const params = new URLSearchParams(searchParams.toString())
+    params.set("section", getReportSection("costs", value))
+    window.history.pushState(null, "", `/costs?${params.toString()}`)
+  }
+
   return (
-    <div className="flex-1 min-w-0 w-full p-0 min-h-[calc(100dvh-var(--topbar-height,64px))] flex flex-col">
+    <Tabs value={section} onValueChange={handleSectionChange} className="flex-1 min-w-0 w-full p-0 min-h-[calc(100dvh-var(--topbar-height,64px))] flex flex-col">
       <StickyHeader>
-        <div className="w-full pt-0">
-          <div className="flex w-full items-center justify-end gap-8">
+        <div className="mx-auto w-full max-w-[1536px] min-w-0 py-2">
+          <div className="flex w-full min-w-0 flex-wrap items-center justify-between gap-3">
+            <div className="min-w-0 max-w-full flex-1 overflow-x-auto">
+              <TabsList aria-label="Costs sections" className="justify-start bg-muted/50">
+                {REPORTS.costs.sections.map(item => <TabsTrigger key={item.id} value={item.id}>{item.label}</TabsTrigger>)}
+              </TabsList>
+            </div>
+            <div className="ml-auto shrink-0">
             <MobileFiltersDrawer triggerText={t('common.filters') || "Filters"}>
               <FilterContainer className="md:justify-end">
                 <FilterSection title={t("dashboard.filters.campaign") || "Campaign"}>
@@ -135,30 +139,40 @@ function CostsPageContent() {
                 </FilterSection>
               </FilterContainer>
             </MobileFiltersDrawer>
+            </div>
           </div>
         </div>
       </StickyHeader>
 
-      <div className="p-4 md:p-8 space-y-4 bg-muted/30 flex-1">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight">{t("costs.title") || "Costs"}</h2>
-          <p className="text-muted-foreground">
-            {t("costs.description") || "View and analyze your business costs in this report."}
-          </p>
-        </div>
-        <CostReports
+      <TabsContent value={section} className="m-0 bg-muted/20 flex-1 min-w-0">
+      <div data-report-viewport className="mx-auto w-full max-w-[1600px] space-y-5 px-4 py-5 md:px-8 md:py-6">
+        <header className="space-y-1">
+          <h1 className="text-xl font-semibold tracking-tight md:text-2xl">Costs</h1>
+          <p className="text-sm leading-relaxed text-muted-foreground max-w-3xl">{selectedSection.description}</p>
+        </header>
+        <ReportExportScope key={`${siteKey}:${selectedCampaign}`} report="costs" section={section}
+          siteId={siteKey ?? ""} siteName={currentSite?.name ?? ""}
+          segmentId={selectedSegment} segmentName={selectedSegment === "all"
+            ? "All segments" : segments.find(item => item.id === selectedSegment)?.name ?? selectedSegment}
+          startDate={format(dateRange.startDate, "yyyy-MM-dd")} endDate={format(dateRange.endDate, "yyyy-MM-dd")}>
+          <CostReports
+          key={`${siteKey}:${selectedSegment}:${selectedCampaign}:${dateRange.startDate.getTime()}:${dateRange.endDate.getTime()}`}
+          section={section}
+          embedded
           startDate={dateRange.startDate}
           endDate={dateRange.endDate}
           segmentId={selectedSegment}
           campaignId={selectedCampaign} />
+        </ReportExportScope>
       </div>
-    </div>
+      </TabsContent>
+    </Tabs>
   )
 }
 
 export default function CostsPage() {
   return (
-    <Suspense
+    <ReportSWRScope><Suspense
       fallback={
         <div className="flex flex-1 items-center justify-center p-8 text-sm text-muted-foreground">
           Loading...
@@ -166,6 +180,6 @@ export default function CostsPage() {
       }
     >
       <CostsPageContent />
-    </Suspense>
+    </Suspense></ReportSWRScope>
   )
 }

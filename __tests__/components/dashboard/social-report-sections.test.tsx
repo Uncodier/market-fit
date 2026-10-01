@@ -33,10 +33,10 @@ beforeEach(() => {
   jest.mocked(getTopCommentersData).mockResolvedValue({ data: [{ id: "ada", name: "Ada Reader", avatar: null, count: 2 }] })
 })
 
-it.each(["summary", "networks", "posts"] as const)("renders only the %s section and fetches only required sources", async (section) => {
+it.each(["summary", "networks", "posts", undefined] as const)("renders only the %s section and fetches only required sources", async (section) => {
   render(report(section))
   await waitFor(() => expect(getSocialPerformanceData).toHaveBeenCalledTimes(1))
-  if (section === "summary") {
+  if (section === undefined || section === "summary") {
     expect(await screen.findByText("321")).toBeInTheDocument()
     expect(screen.getByLabelText("Social performance trends")).toBeInTheDocument()
     expect(screen.queryByText("By Network")).not.toBeInTheDocument()
@@ -82,13 +82,14 @@ it.each(["returned", "rejected"])("shows a retryable %s error without fake metri
   expect(getSocialPerformanceData).toHaveBeenCalledTimes(2)
 })
 
-it("shows performance while commenters are pending, and retries commenters independently", async () => {
+it("shows network metrics while commenters are pending, and retries commenters independently", async () => {
   let reject!: (error: Error) => void
   jest.mocked(getTopCommentersData).mockReturnValueOnce(new Promise((_, fail) => { reject = fail }))
-  render(report())
-  await screen.findByText("Loaded trends")
-  expect(screen.getByLabelText("Social performance trends").previousElementSibling).toHaveTextContent("Views321")
-  expect(screen.getByText("Example post")).toBeInTheDocument()
+  render(report("networks"))
+  await screen.findByText("instagram")
+  expect(screen.getByRole("status", { name: "Loading top commenters" })).toBeInTheDocument()
+  expect(screen.queryByLabelText("Social performance trends")).not.toBeInTheDocument()
+  expect(screen.queryByText("Example post")).not.toBeInTheDocument()
   await act(async () => reject(new Error("Request failed")))
   expect(screen.getByRole("alert")).toHaveTextContent("Unable to load top commenters")
   fireEvent.click(screen.getByRole("button", { name: "Retry top commenters" }))
@@ -171,18 +172,26 @@ it("waits for authentication and drops cached metrics when the account changes",
   expect(screen.queryByText("321")).not.toBeInTheDocument()
 })
 
-it("leads with the trend and keeps source diagnostics after the network grid and posts", async () => {
-  render(report())
-  await screen.findByText("Example post")
+it("keeps each section's layout separate with source diagnostics below its content", async () => {
+  const { rerender } = render(report("summary"))
+  await screen.findByText("Loaded trends")
   const trend = screen.getByLabelText("Social performance trends")
+  expect(trend.compareDocumentPosition(screen.getByLabelText("Social data coverage")) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  expect(screen.queryByText("By Network")).not.toBeInTheDocument()
+  expect(screen.queryByText("Top Posts")).not.toBeInTheDocument()
+  rerender(report("networks"))
+  await screen.findByText("Ada Reader")
   const networks = screen.getByText("By Network").closest(".rounded-lg")!
-  const posts = screen.getByText("Top Posts")
-  const coverage = screen.getByLabelText("Social data coverage")
-  expect(trend.compareDocumentPosition(networks) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   expect(networks.parentElement).toHaveClass("xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]")
   expect(networks.parentElement).toHaveClass("items-stretch", "xl:grid-rows-[auto_1fr]", "xl:[&>*]:grid-rows-subgrid")
   expect(networks).toHaveClass("h-full", "flex", "flex-col")
   expect(screen.getByText("Top Commenters").closest("[data-report-panel]")).toHaveClass("h-full", "flex", "flex-col")
+  expect(screen.queryByLabelText("Social performance trends")).not.toBeInTheDocument()
+  rerender(report("posts"))
+  await screen.findByText("Example post")
+  const posts = screen.getByText("Top Posts")
+  const coverage = screen.getByLabelText("Social data coverage")
+  expect(screen.queryByText("By Network")).not.toBeInTheDocument()
   expect(posts.compareDocumentPosition(coverage) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   expect(coverage.querySelector("details")).not.toHaveAttribute("open")
   expect(screen.getByText(/Newest stored sync/)).not.toBeVisible()
@@ -210,11 +219,13 @@ it("preserves missing versus reported-zero social values in KPI and network summ
   data.networks[0].coverage.missingMetricCounts.views = data.networks[0].coverage.accountRowCount
   data.networks[0].coverage.missingMetricCounts.comments = 0
   jest.mocked(getSocialPerformanceData).mockResolvedValueOnce(data)
-  render(report())
-  await screen.findByText("Example post")
+  const { rerender } = render(report("summary"))
+  await screen.findByText("Loaded trends")
   const kpis = screen.getByLabelText("Social performance trends").previousElementSibling!
   expect(kpis).toHaveTextContent("Views—")
   expect(kpis).toHaveTextContent("Comments0")
+  rerender(report("networks"))
+  await screen.findByText("instagram")
   const network = screen.getByText("instagram").parentElement!.parentElement!
   expect(network).toHaveTextContent("views—")
   expect(network).toHaveTextContent("comments0")

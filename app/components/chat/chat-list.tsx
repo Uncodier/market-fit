@@ -1,17 +1,14 @@
 "use client"
 
-import React, { useState, useEffect, useRef, useCallback, useMemo } from "react"
+import React, { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/app/components/ui/button"
-import { ScrollArea } from "@/app/components/ui/scroll-area"
-import { Search, MessageSquare, Check, X } from "@/app/components/ui/icons"
-import { toast } from "sonner"
+import { MessageSquare, Check, X } from "@/app/components/ui/icons"
 import { cn } from "@/lib/utils"
 import { SearchInput } from "@/app/components/ui/search-input"
 import { useTheme } from "@/app/context/ThemeContext"
 import { useAuthContext } from "@/app/components/auth/auth-provider"
 import { ConversationListItem } from "@/app/types/chat"
-import { format } from "date-fns"
 import { Skeleton } from "@/app/components/ui/skeleton"
 import { createClient } from "@/lib/supabase/client"
 import { RenameConversationModal } from "./RenameConversationModal"
@@ -20,6 +17,8 @@ import { EmptyCard } from "@/app/components/ui/empty-card"
 import { ConversationItem } from "./ConversationItem"
 import { ChannelFilter } from "./ChannelFilter"
 import { useConversationsList } from "@/app/hooks/useConversationsList"
+import { useConversationRealtime } from "@/app/hooks/useConversationRealtime"
+import { useConversationListActions } from "@/app/hooks/useConversationListActions"
 import { useAutoSelectTopConversation } from "@/app/hooks/useAutoSelectTopConversation"
 
 // Componente para renderizar esqueletos de carga
@@ -59,29 +58,6 @@ interface ChatListProps {
   hasSelectedConversation?: boolean
 }
 
-// Función auxiliar para formatear la fecha
-function formatMessageDate(date: Date) {
-  const now = new Date();
-  const isToday = date.getDate() === now.getDate() && 
-                  date.getMonth() === now.getMonth() && 
-                  date.getFullYear() === now.getFullYear();
-  
-  // Si es hoy, mostrar la hora (ej: "14:30")
-  if (isToday) {
-    return format(date, "HH:mm");
-  }
-  
-  // Si es este año pero no hoy, mostrar el día y mes (ej: "24 Jun")
-  if (date.getFullYear() === now.getFullYear()) {
-    return format(date, "d MMM");
-  }
-  
-  // Si es de otro año, mostrar día, mes y año (ej: "24 Jun 2022")
-  return format(date, "d MMM yyyy");
-}
-
-
-
 export function ChatList({
   siteId,
   selectedConversationId,
@@ -89,8 +65,6 @@ export function ChatList({
   className,
   onLoadConversations,
   onDeleteConversation,
-  isCollapsed,
-  hasSelectedConversation
 }: ChatListProps) {
   const router = useRouter()
   const [searchQuery, setSearchQuery] = useState("")
@@ -162,7 +136,6 @@ export function ChatList({
     updateConversations,
     refreshConversations,
     loadMore,
-    refreshRef,
   } = useConversationsList({
     siteId,
     userId: user?.id,
@@ -178,363 +151,19 @@ export function ChatList({
     onSelectConversation,
   })
 
-  // Reference for the subscription
-  const subscriptionRef = useRef<any>(null);
-  // Reference to store the current selected conversation ID
-  const selectedConversationIdRef = useRef<string | undefined>(selectedConversationId);
-  const loadConversationsRef = refreshRef;
-  
-  // Estado para el modal de renombrar
-  const [renameModalOpen, setRenameModalOpen] = useState(false)
-  const [currentConversation, setCurrentConversation] = useState<ConversationListItem | null>(null)
-  
-  // Estado para el modal de confirmación de eliminación
-  const [deleteModalOpen, setDeleteModalOpen] = useState(false)
-  const [conversationToDelete, setConversationToDelete] = useState<ConversationListItem | null>(null)
-  
-
-  // State for bulk pending actions
-  const [isAcceptingAll, setIsAcceptingAll] = useState(false)
-  const [isRejectingAll, setIsRejectingAll] = useState(false)
-
-  // Update the ref when selectedConversationId changes
-  useEffect(() => {
-    selectedConversationIdRef.current = selectedConversationId;
-  }, [selectedConversationId]);
+  const {
+    renameModalOpen, setRenameModalOpen, currentConversation,
+    deleteModalOpen, setDeleteModalOpen, conversationToDelete,
+    isAcceptingAll, isRejectingAll, deleteConversation, archiveConversation,
+    openRenameModal, handleDirectTitleUpdate, openDeleteModal,
+    handleAcceptAllPending, handleRejectAllPending,
+  } = useConversationListActions({ siteId, selectedConversationId, onDeleteConversation, updateConversations, refreshConversations })
 
   const handleLoadMore = async () => {
     await loadMore()
   }
 
-  useEffect(() => {
-    if (onLoadConversations) {
-      onLoadConversations(refreshConversations)
-    }
-
-    // Set up real-time subscription for conversations
-    if (siteId && !subscriptionRef.current) {
-      try {
-        const supabase = createClient();
-        
-        console.log(`🔍 Setting up real-time subscription for site: ${siteId}`);
-        
-        // Limpieza de cualquier suscripción existente
-        if (subscriptionRef.current) {
-          supabase.removeChannel(subscriptionRef.current);
-          subscriptionRef.current = null;
-        }
-        
-        // Crear una suscripción simple y directa usando el enfoque clásico de Supabase
-        console.log('🔍 Setting up subscription using classic approach with enhanced conversation details');
-        
-        // Función auxiliar para obtener detalles completos de una conversación
-        const getConversationDetails = async (conversationData: any) => {
-          const supabase = createClient();
-          
-          // Obtener información del agente si existe agent_id
-          let agentName = "Unknown Agent";
-          if (conversationData.agent_id) {
-            const { data: agent, error: agentError } = await supabase
-              .from("agents")
-              .select("name")
-              .eq("id", conversationData.agent_id)
-              .single();
-            
-            if (!agentError && agent) {
-              agentName = agent.name;
-            }
-          }
-          
-          // Obtener información del lead si existe lead_id
-          let leadName = undefined;
-          let leadStatus = undefined;
-          let assigneeName = null;
-          if (conversationData.lead_id) {
-            const { data: lead, error: leadError } = await supabase
-              .from("leads")
-              .select("name, company, assignee_id, status")
-              .eq("id", conversationData.lead_id)
-              .single();
-            
-            if (!leadError && lead) {
-              const companyName = lead.company && typeof lead.company === 'object' && lead.company.name 
-                ? lead.company.name 
-                : (typeof lead.company === 'string' ? lead.company : '');
-              
-              leadName = lead.name + (companyName ? ` (${companyName})` : '');
-              leadStatus = lead.status;
-              
-              // Si el lead tiene assignee_id, obtener información del assignee
-              if (lead.assignee_id) {
-                try {
-                  // Import getUserData dynamically to avoid circular dependencies
-                  const { getUserData } = await import('@/app/services/user-service');
-                  const assigneeData = await getUserData(lead.assignee_id);
-                  if (assigneeData) {
-                    assigneeName = assigneeData.name;
-                  }
-                } catch (error) {
-                  console.error("Error fetching assignee data for conversation list:", error);
-                }
-              }
-            }
-          }
-          
-          // Extract channel from custom_data or default to 'web'
-          const customData = conversationData.custom_data || {};
-          const channel = conversationData.channel || customData.channel || 'web';
-          
-          // Use assignee name if available, otherwise use agent name
-          const finalAgentName = assigneeName || agentName;
-          
-          return { agentName: finalAgentName, leadName, leadStatus, channel };
-        };
-        
-        // Un canal por tipo de evento, enfoque más tradicional
-        const channel = supabase.channel(`conversations-${siteId}`, {
-          config: {
-            broadcast: { self: false }
-          }
-        })
-          .on('postgres_changes', {
-            event: 'UPDATE',
-            schema: 'public',
-            table: 'conversations',
-            filter: `site_id=eq.${siteId}`
-          }, async (payload: any) => {
-            console.log('🔍 UPDATE event received:', payload);
-            
-            if (payload.new) {
-              // Asegurar que isLoading sea false antes de actualizar
-              
-              try {
-                // Obtener detalles actualizados si es necesario
-                const details = await getConversationDetails(payload.new);
-                
-                // Compute resilient title using lead or agent name if needed
-                let title = payload.new.title as string | null;
-                if (!title || title.trim() === "") {
-                  if (details.leadName) {
-                    title = `Chat with ${details.leadName}`;
-                  } else if (details.agentName) {
-                    title = `Chat with ${details.agentName}`;
-                  } else {
-                    title = "Untitled Conversation";
-                  }
-                }
-                
-                // Actualizar sólo la conversación modificada en el estado
-                updateConversations(prevConversations => 
-                  prevConversations.map(conv => 
-                    conv.id === payload.new.id 
-                      ? { 
-                          ...conv, 
-                          title: title,
-                          timestamp: new Date(payload.new.updated_at || new Date()),
-                          lastMessage: payload.new.last_message || conv.lastMessage,
-                          agentId: payload.new.agent_id || conv.agentId,
-                          agentName: details.agentName,
-                          leadName: details.leadName,
-                          leadStatus: details.leadStatus,
-                          channel: details.channel || 'web',
-                          status: payload.new.status || conv.status || 'active'
-                        } 
-                      : conv
-                  )
-                );
-                
-                console.log(`🔍 Conversation ${payload.new.id} updated with agent: ${details.agentName}, channel: ${details.channel}`);
-              } catch (error) {
-                console.error('🔍 Error fetching conversation details for UPDATE:', error);
-                
-                // Fallback: actualizar solo con los datos disponibles
-                updateConversations(prevConversations => 
-                  prevConversations.map(conv => 
-                    conv.id === payload.new.id 
-                      ? { 
-                          ...conv, 
-                          title: (payload.new.title && String(payload.new.title).trim() !== "") ? payload.new.title : conv.title,
-                          timestamp: new Date(payload.new.updated_at || new Date()),
-                          lastMessage: payload.new.last_message || conv.lastMessage,
-                          status: payload.new.status || conv.status || 'active'
-                        } 
-                      : conv
-                  )
-                );
-                
-                console.log(`🔍 Conversation ${payload.new.id} updated with limited data due to error`);
-              }
-            }
-          })
-        
-        // Crear una suscripción para eventos de INSERT
-        channel.on('postgres_changes', {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'conversations',
-          filter: `site_id=eq.${siteId}`
-        }, async (payload: any) => {
-          console.log('🔍 INSERT event received:', payload);
-          
-          // Asegurar que isLoading sea false antes de actualizar
-          
-          // Obtener información completa de la nueva conversación
-          if (payload.new && payload.new.id) {
-            try {
-              // Usar la función auxiliar para obtener detalles
-              const details = await getConversationDetails(payload.new);
-              
-              // Compute resilient title using lead or agent name if needed
-              let title = payload.new.title as string | null;
-              if (!title || title.trim() === "") {
-                if (details.leadName) {
-                  title = `Chat with ${details.leadName}`;
-                } else if (details.agentName) {
-                  title = `Chat with ${details.agentName}`;
-                } else {
-                  title = "Untitled Conversation";
-                }
-              }
-              
-              const newConversation: ConversationListItem = {
-                id: payload.new.id,
-                title: title,
-                agentId: payload.new.agent_id || "",
-                agentName: details.agentName,
-                leadName: details.leadName,
-                leadStatus: details.leadStatus,
-                lastMessage: payload.new.last_message || "",
-                timestamp: new Date(payload.new.updated_at || payload.new.created_at || new Date()),
-                unreadCount: 0,
-                messageCount: 0,
-                channel: details.channel || 'web',
-                status: payload.new.status || 'active'
-              };
-              
-              // Añadir la nueva conversación al principio de la lista, evitando duplicados
-              updateConversations(prev => {
-                // Check if conversation already exists
-                const exists = prev.some(conv => conv.id === newConversation.id);
-                if (exists) {
-                  console.log(`🔍 Conversation ${newConversation.id} already exists, skipping duplicate`);
-                  return prev;
-                }
-                return [newConversation, ...prev];
-              });
-              console.log(`🔍 New conversation ${newConversation.id} added with agent: ${details.agentName}, channel: ${details.channel}`);
-              console.log(`🔍 DEBUG: Full conversation object:`, newConversation);
-
-              // If payload came without a title, fetch the latest row to correct it
-              if (!payload.new.title || String(payload.new.title).trim() === "") {
-                try {
-                  const supabase = createClient();
-                  const { data: convRow, error: convErr } = await supabase
-                    .from('conversations')
-                    .select('id, title')
-                    .eq('id', payload.new.id)
-                    .single();
-                  if (!convErr && convRow && convRow.title && String(convRow.title).trim() !== "" && convRow.title !== newConversation.title) {
-                    updateConversations(prev => prev.map(c => c.id === convRow.id ? { ...c, title: convRow.title } : c));
-                    console.log(`🔍 Title corrected from DB for conversation ${convRow.id}: ${convRow.title}`);
-                  }
-                } catch (fetchErr) {
-                  console.warn('⚠️ Failed to fetch conversation title after INSERT:', fetchErr);
-                }
-              }
-              
-            } catch (error) {
-              console.error('🔍 Error fetching conversation details:', error);
-              
-              // Fallback: recargar toda la lista si no podemos obtener los detalles
-              if (loadConversationsRef.current) {
-                loadConversationsRef.current().then(() => {
-                  console.log(`🔍 List reloaded for INSERT due to error fetching details`);
-                });
-                
-                console.log(`🔍 Error fetching conversation details, reloading without skeleton`);
-              }
-            }
-          } else {
-            // Solo si no tenemos información básica, recargamos la lista completa
-            if (loadConversationsRef.current) {
-              loadConversationsRef.current().then(() => {
-                console.log(`🔍 List reloaded for INSERT without conversation ID`);
-              });
-              
-              console.log(`🔍 No conversation ID in INSERT payload, reloading without skeleton`);
-            }
-          }
-        });
-        
-        // Crear una suscripción para eventos de DELETE
-        channel.on('postgres_changes', {
-          event: 'DELETE',
-          schema: 'public',
-          table: 'conversations',
-          filter: `site_id=eq.${siteId}`
-        }, (payload: any) => {
-          console.log('🔍 DELETE event received:', payload);
-          
-          // Asegurar que isLoading sea false antes de actualizar
-          
-          if (payload.old && payload.old.id) {
-            // Eliminar la conversación del estado directamente
-            updateConversations(prevConversations => 
-              prevConversations.filter(conv => conv.id !== payload.old.id)
-            );
-            
-            console.log(`🔍 Conversation ${payload.old.id} removed from state without reloading`);
-            
-            // Si la conversación eliminada era la seleccionada, redirigir a la lista de chat
-            if (selectedConversationIdRef.current === payload.old.id) {
-              router.push('/chat');
-            }
-          }
-        });
-        
-        // Suscribir al canal con mejor manejo de errores
-        channel.subscribe((status: string) => {
-          console.log(`🔍 Channel subscription status: ${status}`);
-          
-          switch (status) {
-            case 'SUBSCRIBED':
-              console.log('✅ Successfully subscribed to real-time updates');
-              break;
-            case 'CHANNEL_ERROR':
-              console.warn('⚠️ Real-time subscription error - continuing without live updates');
-              console.log('🔍 This may be due to network issues or server configuration');
-              console.log('🔍 The app will continue to work but may not show real-time updates');
-              break;
-            case 'TIMED_OUT':
-              console.warn('⚠️ Real-time subscription timed out - will retry automatically');
-              break;
-            case 'CLOSED':
-              console.log('🔍 Real-time subscription closed');
-              break;
-            default:
-              console.log(`🔍 Real-time status: ${status}`);
-          }
-        });
-        
-        // Guardar la referencia
-        subscriptionRef.current = channel;
-        
-      } catch (error) {
-        console.warn('⚠️ Failed to set up real-time subscription:', error);
-        console.log('🔍 The app will work normally but without real-time updates');
-      }
-    }
-    
-    return () => {
-      // Clean up subscription
-      if (subscriptionRef.current) {
-        console.log('Unsubscribing from conversations');
-        const supabase = createClient();
-        supabase.removeChannel(subscriptionRef.current);
-        subscriptionRef.current = null;
-      }
-    }
-  }, [siteId, onLoadConversations, refreshConversations, updateConversations])
+  useConversationRealtime({ siteId, selectedConversationId, updateConversations, refreshConversations, onLoadConversations })
 
   // Listen for custom conversation deleted event
   useEffect(() => {
@@ -558,7 +187,7 @@ export function ChatList({
     return () => {
       window.removeEventListener('conversation:deleted', handleConversationDeleted as EventListener)
     }
-  }, [selectedConversationId, router])
+  }, [selectedConversationId, router, updateConversations])
 
   // Listen for message accepted event to update conversation icon
   useEffect(() => {
@@ -581,7 +210,7 @@ export function ChatList({
     return () => {
       window.removeEventListener('conversation:message-accepted', handleMessageAccepted as EventListener)
     }
-  }, [])
+  }, [updateConversations])
 
   // Listen for lead status update event to refresh conversation list
   useEffect(() => {
@@ -604,11 +233,8 @@ export function ChatList({
     return () => {
       window.removeEventListener('lead:status-updated', handleLeadStatusUpdate as EventListener)
     }
-  }, [])
+  }, [updateConversations])
 
-
-  // Note: conversation:deleted event is already handled above (lines 617-638)
-  // which removes the conversation from state directly without reloading
 
   // No need for client-side filtering since search is done at database level
   const filteredConversations = conversations
@@ -633,236 +259,6 @@ export function ChatList({
     onSelectConversation(conversation.id, conversation.agentName, conversation.agentId, conversation.title);
   }
   
-  const deleteConversation = async (conversationId: string) => {
-    try {
-      // Asegurar que no se muestre el esqueleto
-      
-      // Call the Supabase client to delete the conversation
-      const supabase = createClient();
-      
-      // First delete related messages
-      const { error: messagesError } = await supabase
-        .from('messages')
-        .delete()
-        .eq('conversation_id', conversationId);
-        
-      if (messagesError) {
-        console.error("Error deleting messages:", messagesError);
-        return;
-      }
-      
-      // Then delete the conversation
-      const { error: conversationError } = await supabase
-        .from('conversations')
-        .delete()
-        .eq('id', conversationId);
-        
-      if (conversationError) {
-        console.error("Error deleting conversation:", conversationError);
-        return;
-      }
-      
-      // If the parent component provided a delete handler, call it
-      if (onDeleteConversation) {
-        await onDeleteConversation(conversationId);
-      }
-      
-      // Eliminar directamente del estado en lugar de recargar
-      updateConversations(prevConversations => 
-        prevConversations.filter(conv => conv.id !== conversationId)
-      );
-      console.log(`🔍 DEBUG: Conversation ${conversationId} removed from state directly`);
-      
-      // If the deleted conversation was selected, redirect to the chat list
-      if (selectedConversationIdRef.current === conversationId) {
-        router.push('/chat');
-      }
-    } catch (error) {
-      console.error("Error in deleteConversation:", error);
-    } finally {
-      // Asegurar que isLoading permanezca en false
-    }
-  };
-
-  // Función para archivar una conversación
-  const archiveConversation = async (conversationId: string) => {
-    try {
-      // Asegurar que no se muestre el esqueleto
-      
-      const supabase = createClient();
-      
-      // Actualizar is_archived a true
-      const { error } = await supabase
-        .from('conversations')
-        .update({ is_archived: true })
-        .eq('id', conversationId);
-        
-      if (error) {
-        console.error("Error archiving conversation:", error);
-        return;
-      }
-      
-      // Actualizar directamente en el estado en lugar de recargar
-      updateConversations(prevConversations => 
-        prevConversations.filter(conv => conv.id !== conversationId)
-      );
-      console.log(`🔍 DEBUG: Archived conversation ${conversationId} removed from state directly`);
-      
-      // If the archived conversation was selected, redirect to the chat list
-      if (selectedConversationIdRef.current === conversationId) {
-        router.push('/chat');
-      }
-    } catch (error) {
-      console.error("Error in archiveConversation:", error);
-    } finally {
-      // Asegurar que isLoading permanezca en false
-    }
-  };
-
-  // Función para abrir el modal de renombrar
-  const openRenameModal = (conversation: ConversationListItem) => {
-    setCurrentConversation(conversation);
-    setRenameModalOpen(true);
-  };
-  
-  // Función para actualizar directamente el título de una conversación en el estado
-  const handleDirectTitleUpdate = (conversationId: string, newTitle: string) => {
-    // Asegurar que no se muestre el esqueleto
-    
-    updateConversations(prevConversations => 
-      prevConversations.map(conv => 
-        conv.id === conversationId 
-          ? { ...conv, title: newTitle } 
-          : conv
-      )
-    );
-    console.log(`🔍 DEBUG: Conversation ${conversationId} title updated directly in state to "${newTitle}"`);
-  };
-  
-  // Función para abrir el modal de confirmación de eliminación
-  const openDeleteModal = (conversation: ConversationListItem) => {
-    setConversationToDelete(conversation);
-    setDeleteModalOpen(true);
-  };
-
-  // Accept all pending messages via a server-side API route.
-  // This avoids building a huge .in(...) URL with hundreds of UUIDs on the client.
-  const handleAcceptAllPending = async () => {
-    if (!siteId) return
-
-    setIsAcceptingAll(true)
-
-    try {
-      const response = await fetch("/api/conversations/accept-all-pending", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ siteId }),
-      })
-
-      const result = await response.json()
-
-      if (!response.ok || !result.success) {
-        console.error("Error accepting all pending:", result.error)
-        toast.error(result.error || "Failed to accept all pending messages")
-        return
-      }
-
-      if (result.updatedCount === 0) {
-        toast.info("No pending messages found")
-        return
-      }
-
-      const conversationIds: string[] = result.conversationIds ?? []
-
-      // Update local state — mark affected conversations as having accepted messages
-      updateConversations(prevConversations =>
-        prevConversations.map(conv =>
-          conversationIds.includes(conv.id)
-            ? { ...conv, hasAcceptedMessage: true }
-            : conv
-        )
-      )
-
-      // Notify other parts of the UI
-      conversationIds.forEach(convId => {
-        window.dispatchEvent(new CustomEvent("conversation:message-accepted", {
-          detail: { conversationId: convId },
-        }))
-      })
-
-      toast.success(`Accepted ${result.updatedCount} pending messages in ${conversationIds.length} conversations`)
-    } catch (error) {
-      console.error("Error accepting all pending:", error)
-      toast.error("Failed to accept all pending messages")
-    } finally {
-      setIsAcceptingAll(false)
-    }
-  }
-
-  // Reject all unsent messages (status pending or accepted) via server-side API route.
-  // Avoids huge .in(...) URLs and N+1 queries for empty-conversation checks.
-  const handleRejectAllPending = async () => {
-    if (!siteId) return
-
-    setIsRejectingAll(true)
-
-    try {
-      const response = await fetch("/api/conversations/reject-all-pending", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ siteId }),
-      })
-
-      const result = await response.json()
-
-      if (!response.ok || !result.success) {
-        console.error("Error rejecting all pending:", result.error)
-        toast.error(result.error || "Failed to reject pending messages")
-        return
-      }
-
-      if (result.deletedMessages === 0) {
-        toast.info("No pending messages to reject")
-        return
-      }
-
-      const conversationsToDelete: string[] = result.conversationsToDelete ?? []
-
-      // Remove deleted conversations from local state
-      updateConversations((prev) =>
-        prev.filter((conv) => !conversationsToDelete.includes(conv.id))
-      )
-
-      // If the currently selected conversation was deleted, go back to list
-      if (selectedConversationId && conversationsToDelete.includes(selectedConversationId)) {
-        router.push("/chat")
-      }
-
-      // Notify other parts of the UI
-      conversationsToDelete.forEach(convId => {
-        window.dispatchEvent(new CustomEvent("conversation:deleted", {
-          detail: { conversationId: convId },
-        }))
-      })
-
-      // Also dispatch a general event so that the current chat can reload its messages if needed
-      window.dispatchEvent(new CustomEvent("conversation:messages-rejected"))
-
-      // Reload list to reflect conversations that had messages removed but weren't deleted
-      if (loadConversationsRef.current) {
-        loadConversationsRef.current()
-      }
-
-      toast.success(
-        `Rejected ${result.deletedMessages} pending messages. Deleted ${result.deletedConversations} empty conversations.`
-      )
-    } catch (error) {
-      console.error("Error rejecting all pending:", error)
-      toast.error("Failed to reject pending messages")
-    } finally {
-      setIsRejectingAll(false)
-    }
-  }
 
   return (
     <div className={cn("flex flex-col h-full w-full bg-transparent", className)} style={{ overflow: 'hidden' }}>

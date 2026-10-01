@@ -33,6 +33,7 @@ export function ChatMessages({
   isAgentOnlyConversation,
   isLead,
   leadData,
+  participantIdentity,
   conversationId,
   onRetryMessage,
   onMessagesUpdate,
@@ -181,6 +182,7 @@ export function ChatMessages({
                         leadData={leadData}
                         isDarkMode={isDarkMode}
                         identity={{
+                          participantIdentity,
                           currentUserId,
                           currentUserName,
                           currentUserAvatar,

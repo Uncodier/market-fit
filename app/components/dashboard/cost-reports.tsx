@@ -30,10 +30,10 @@ export function CostReports(props: CostReportsProps) {
   return <SocialCostReportScope><CostReportContent {...props} /></SocialCostReportScope>
 }
 
-function CostReportContent({ startDate: start, endDate: end, segmentId = "all", campaignId = "all", section, embedded = false }: CostReportsProps) {
+function CostReportContent({ startDate: start, endDate: end, segmentId = "all", campaignId = "all", section = "summary", embedded = false }: CostReportsProps) {
   const { currentSite } = useSite()
-  const showSummary = !section || section === "summary"
-  const showCategories = !section || section === "categories"
+  const showSummary = section === "summary"
+  const showCategories = section === "categories"
   const day = (value?: Date) => value && isValid(value) ? format(value, "yyyy-MM-dd") : "default"
   const scope = `${currentSite?.id}:${segmentId}:${campaignId}:${day(start)}:${day(end)}`
   const [selection, setSelection] = useState<{ scope: string; currency: string }>()

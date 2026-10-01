@@ -35,7 +35,7 @@ describe("stale-router", () => {
   beforeEach(() => {
     jest.useFakeTimers()
     clearClientRouterStale()
-    delete (window as any)._isArtifactSession
+    delete (window as Window & { _isArtifactSession?: boolean })._isArtifactSession
     mockLocation({})
   })
 
@@ -113,6 +113,25 @@ describe("stale-router", () => {
     assignLocation("/profile")
     expect(assign).toHaveBeenCalledWith("http://localhost/profile")
     expect(isClientRouterStale()).toBe(false)
+  })
+
+  it("does not reopen a report after a quick Back to the starting report", () => {
+    const { assign, location } = mockLocation({ pathname: "/dashboard", search: "?tab=overview" })
+    startNavigationWatchdog("/dashboard?tab=traffic")
+    location.search = "?tab=traffic"
+    location.search = "?tab=overview"
+    window.dispatchEvent(new PopStateEvent("popstate"))
+    jest.advanceTimersByTime(1200)
+    expect(assign).not.toHaveBeenCalled()
+  })
+
+  it.each(["link", "router"])("cancels a pending report switch when a %s selects the current report", (method) => {
+    const { assign } = mockLocation({ pathname: "/dashboard", search: "?tab=overview" })
+    startNavigationWatchdog("/dashboard?tab=traffic")
+    if (method === "link") startNavigationWatchdog("/dashboard?tab=overview")
+    else navigateOrAssign({ push: jest.fn(), replace: jest.fn() }, "/dashboard?tab=overview")
+    jest.advanceTimersByTime(1200)
+    expect(assign).not.toHaveBeenCalled()
   })
 
   it("preserves artifact flag when navigating with navigateOrAssign", () => {

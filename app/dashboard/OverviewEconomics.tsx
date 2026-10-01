@@ -12,7 +12,7 @@ export function OverviewEconomics({ startDate, endDate, segmentId }: {
 }) {
   const { data, isLoading } = useDashboardOverview(startDate, endDate, segmentId)
   const model = buildOverviewEconomics(data)
-  if (isLoading || !data) return <ReportLoading />
+  if (isLoading || !data) return <ReportLoading report="overview" section="economics" />
 
   return <div className="space-y-5">
     <ReportKpiGrid aria-label="Unit economics summary">

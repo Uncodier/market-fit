@@ -9,21 +9,15 @@ type VisitorLead = { visitor_id: string; lead_id: string | null };
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
   const siteId = searchParams.get("siteId");
-  const userId = searchParams.get("userId");
-  const segmentId = searchParams.get("segmentId");
   const startDate = searchParams.get("startDate");
   const endDate = searchParams.get("endDate");
-
-  if (!siteId || !userId) {
-    return NextResponse.json({ error: "Missing required parameters" }, { status: 400 });
-  }
 
   const access = await requireAnalyticsAccess(request);
   if (access.error) return access.error;
 
   return readThroughAnalyticsResponseCache({
     request,
-    namespace: "traffic:lead-conversion",
+    namespace: "traffic:lead-conversion:v2",
     siteId: access.siteId,
     load: async () => {
   try {
@@ -40,16 +34,11 @@ export async function GET(request: NextRequest) {
 
     console.log(`[LeadConversion API] Current query result:`, { 
       count: currentData?.length || 0, 
-      error: currentError?.message || 'none' 
+      hasError: Boolean(currentError)
     });
 
     if (currentError) {
-      console.log(`[LeadConversion API] Database error:`, currentError);
-      return NextResponse.json({
-        actual: 0,
-        percentChange: 0,
-        periodType: "monthly"
-      });
+      throw new Error("Current lead conversion query failed");
     }
 
     // Count unique visitors and unique visitors who became leads
@@ -82,8 +71,12 @@ export async function GET(request: NextRequest) {
 
     console.log(`[LeadConversion API] Previous query result:`, { 
       count: previousData?.length || 0, 
-      error: previousError?.message || 'none' 
+      hasError: Boolean(previousError)
     });
+
+    if (previousError) {
+      throw new Error("Previous lead conversion query failed");
+    }
 
     const previousUniqueVisitors = new Set(previousData?.map(session => session.visitor_id) || []);
     const previousUniqueLeads = new Set(previousData?.filter(session => session.lead_id).map(session => session.visitor_id) || []);
@@ -113,15 +106,9 @@ export async function GET(request: NextRequest) {
     console.log(`[LeadConversion API] Returning real data:`, response);
     return NextResponse.json(response);
 
-  } catch (error) {
-    console.error("Error fetching lead conversion data:", error);
-    
-    // Return zero data instead of demo data
-    return NextResponse.json({
-      actual: 0,
-      percentChange: 0,
-      periodType: "monthly"
-    });
+  } catch {
+    console.error("[LeadConversion API] Unable to load lead conversion report");
+    return NextResponse.json({ error: "Unable to load lead conversion report" }, { status: 500 });
   }
     },
   });

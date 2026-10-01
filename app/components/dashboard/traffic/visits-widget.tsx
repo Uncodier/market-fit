@@ -1,140 +1,29 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { format, subDays } from "date-fns";
-import { useSite } from "@/app/context/SiteContext";
-import { useAuth } from "@/app/hooks/use-auth";
-import { useWidgetContext } from "@/app/context/WidgetContext";
 import { BaseKpiWidget } from "@/app/components/dashboard/base-kpi-widget";
-import { fetchWithRetry } from "@/app/utils/fetch-with-retry";
-const formatPeriodType = (periodType: string): string => {
-  switch (periodType) {
-    case "daily":
-      return "yesterday";
-    case "weekly":
-      return "last week";
-    case "monthly":
-      return "last month";
-    case "quarterly":
-      return "last quarter";
-    case "yearly":
-      return "last year";
-    default:
-      return "previous period";
-  }
-};
-
-interface SessionsData {
-  actual: number;
-  percentChange: number;
-  periodType: string;
-}
-
-interface SessionsWidgetProps {
-  segmentId?: string;
-  startDate?: Date;
-  endDate?: Date;
-}
+import { ReportState } from "../report-state";
+import { useTrafficMetric, type TrafficMetricFilters } from "./use-traffic-metric";
 
 export function SessionsWidget({ 
   segmentId = "all",
   startDate: propStartDate,
   endDate: propEndDate
-}: SessionsWidgetProps) {
-  const { currentSite } = useSite();
-  const { user, isLoading: isAuthLoading } = useAuth();
-  const { shouldExecuteWidgets } = useWidgetContext();
-  const [sessions, setSessions] = useState<SessionsData | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [startDate, setStartDate] = useState<Date>(propStartDate || subDays(new Date(), 30));
-  const [endDate, setEndDate] = useState<Date>(propEndDate || new Date());
-
-  // Update local state when props change
-  useEffect(() => {
-    if (propStartDate) {
-      setStartDate(propStartDate);
-    }
-    if (propEndDate) {
-      setEndDate(propEndDate);
-    }
-  }, [propStartDate, propEndDate]);
-
-  useEffect(() => {
-    const fetchSessions = async () => {
-      // Global widget protection
-      if (!shouldExecuteWidgets) {
-        console.log("[SessionsWidget] Widget execution disabled by context");
-        return;
-      }
-
-      if (isAuthLoading) return;
-
-      if (!user?.id) {
-        setIsLoading(false);
-        return;
-      }
-
-      if (!currentSite || currentSite.id === "default") return;
-      
-      setIsLoading(true);
-      try {
-        const start = startDate ? format(startDate, "yyyy-MM-dd") : null;
-        const end = endDate ? format(endDate, "yyyy-MM-dd") : null;
-        
-        const params = new URLSearchParams();
-        params.append("segmentId", segmentId);
-        params.append("siteId", currentSite.id);
-        params.append("userId", user.id);
-        if (start) params.append("startDate", start);
-        if (end) params.append("endDate", end);
-        
-        const response = await fetchWithRetry(
-          fetch,
-          `/api/traffic/visits?${params.toString()}`,
-          { maxRetries: 3 }
-        );
-        
-        // Handle null response (all retries failed or request was cancelled)
-        if (!response) {
-          return;
-        }
-        const data = await response.json();
-        setSessions(data);
-      } catch (error) {
-        // Only log non-abort errors
-        if (!(error instanceof DOMException && error.name === 'AbortError')) {
-          console.error("Error fetching sessions:", error);
-        }
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchSessions();
-  }, [shouldExecuteWidgets, segmentId, startDate, endDate, currentSite, user, isAuthLoading]);
-
-  const formattedValue = sessions?.actual != null ? sessions.actual.toLocaleString() : "0";
-  const changeText = `${sessions?.percentChange || 0}% from ${formatPeriodType(sessions?.periodType || "monthly")}`;
-  const isPositiveChange = (sessions?.percentChange || 0) > 0;
-
-  // Handle date range selection
-  const handleDateChange = (start: Date, end: Date) => {
-    setStartDate(start);
-    setEndDate(end);
-  };
+}: TrafficMetricFilters) {
+  const metric = useTrafficMetric("visits", { segmentId, startDate: propStartDate, endDate: propEndDate });
 
   return (
     <BaseKpiWidget
       title="Sessions"
       tooltipText="Total number of sessions to your site"
-      value={formattedValue}
-      changeText={changeText}
-      isPositiveChange={isPositiveChange}
-      isLoading={isLoading}
+      value={metric.data?.actual != null ? metric.data.actual.toLocaleString() : "—"}
+      changeText={metric.changeText}
+      isPositiveChange={metric.isPositiveChange}
+      isLoading={metric.isLoading}
+      customStatus={metric.error && <ReportState state="error" message={metric.error.message} onRetry={() => { void metric.mutate() }} />}
       showDatePicker={!propStartDate && !propEndDate}
-      startDate={startDate}
-      endDate={endDate}
-      onDateChange={handleDateChange}
+      startDate={metric.startDate}
+      endDate={metric.endDate}
+      onDateChange={metric.onDateChange}
       segmentBadge={segmentId !== "all"}
     />
   );

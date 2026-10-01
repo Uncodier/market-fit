@@ -1,11 +1,12 @@
 import React from "react"
+import { SWRConfig } from "swr"
+import { AuthContext, type AuthContextValue } from "@/app/components/auth/auth-context"
 import { fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { DashboardOverviewTab } from "@/app/dashboard/DashboardOverviewTab"
 import { OverviewActivityLayout } from "@/app/dashboard/OverviewActivityLayout"
 import { ReportLoading, ReportLoadingScope } from "@/app/dashboard/ReportLoading"
 import { RecentActivityLoading } from "@/app/components/dashboard/recent-activity-loading"
 import { useDashboardOverview, useDashboardPerformance } from "@/app/hooks/use-dashboard-batches"
-import { fetchWithRetry } from "@/app/utils/fetch-with-retry"
 
 jest.mock("next/dynamic", () => () => function Chart({ showConversations }: { showConversations?: boolean }) {
   return <div data-testid="activity-chart" data-conversations={String(showConversations)} />
@@ -14,7 +15,6 @@ jest.mock("@/app/dashboard/OverviewCurrencyScope", () => ({ OverviewCurrencyScop
 jest.mock("@/app/context/SiteContext", () => ({ useSite: () => ({ currentSite: { id: "fixture-site" } }) }))
 jest.mock("@/app/context/LocalizationContext", () => ({ useLocalization: () => ({ t: () => "" }) }))
 jest.mock("@/app/hooks/use-dashboard-batches", () => ({ useDashboardOverview: jest.fn(), useDashboardPerformance: jest.fn() }))
-jest.mock("@/app/utils/fetch-with-retry", () => ({ fetchWithRetry: jest.fn() }))
 
 const filters = { t: () => "", startDate: new Date(2026, 8, 1), endDate: new Date(2026, 8, 29), segmentId: "all" }
 const retry = jest.fn()
@@ -23,15 +23,20 @@ const activities = Array.from({ length: 6 }, (_, index) => ({
   id: `activity-${index}`, kind: "task", user: { name: `Customer ${index}` }, action: "payment task",
   description: "Completed a purchase.", date: "2026-09-29T12:00:00Z", href: "/sales",
 }))
+const auth = { user: { id: "fixture-user" }, isLoading: false } as AuthContextValue
+let cache = new Map()
 function overview() {
-  return <ReportLoadingScope report="overview" section="activity"><DashboardOverviewTab {...filters} section="activity" /></ReportLoadingScope>
+  return <AuthContext.Provider value={auth}><SWRConfig value={{ provider: () => cache }}>
+    <ReportLoadingScope report="overview" section="activity"><DashboardOverviewTab {...filters} section="activity" /></ReportLoadingScope>
+  </SWRConfig></AuthContext.Provider>
 }
 
 beforeEach(() => {
   jest.clearAllMocks()
+  cache = new Map()
   jest.mocked(useDashboardOverview).mockReturnValue(settled as ReturnType<typeof useDashboardOverview>)
   jest.mocked(useDashboardPerformance).mockReturnValue(settled as ReturnType<typeof useDashboardPerformance>)
-  jest.mocked(fetchWithRetry).mockResolvedValue({ json: async () => ({ activities }) } as Response)
+  jest.mocked(fetch).mockResolvedValue({ ok: true, json: async () => ({ activities }) } as Response)
 })
 
 it("shares intrinsic desktop tracks but leaves stacked mobile panel heights independent", () => {
@@ -79,7 +84,7 @@ it("keeps titles, the feed and panel shells mounted across pending, failure and 
   expect(screen.getByText("Customer 5 | payment task")).toBeInTheDocument()
   fireEvent.click(screen.getByRole("switch", { name: "Show Conversations" }))
   expect(screen.getByTestId("activity-chart")).toHaveAttribute("data-conversations", "true")
-  expect(fetchWithRetry).toHaveBeenCalledTimes(1)
+  expect(fetch).toHaveBeenCalledTimes(1)
 })
 
 it("matches recent-record skeleton row sizing, avatar dimensions and shrink-safe text", async () => {

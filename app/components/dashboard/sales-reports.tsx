@@ -23,12 +23,12 @@ export interface SalesReportsProps {
   embedded?: boolean
 }
 
-export function SalesReports({ startDate, endDate, segmentId = "all", section, embedded = false }: SalesReportsProps) {
+export function SalesReports({ startDate, endDate, segmentId = "all", section = "summary", embedded = false }: SalesReportsProps) {
   const [fallback] = useState(() => ({ start: startOfDay(subDays(new Date(), 30)), end: new Date() }))
   const [currency, setCurrency] = useState("")
   const { data, error, isLoading, isValidating, mutate, enabled, invalidDates } = useSalesReport(
     startDate ?? fallback.start, endDate ?? fallback.end, segmentId, currency,
-    section === undefined || section === "categories",
+    section === "categories",
   )
   const availableCurrencies = error?.availableCurrencies?.length ? error.availableCurrencies : data?.availableCurrencies || []
   const currencyPicker = availableCurrencies.length > 1 || currency ? (
@@ -70,9 +70,9 @@ export function SalesReports({ startDate, endDate, segmentId = "all", section, e
       isPositiveChange={value.percentChange == null || value.percentChange === 0 ? undefined : value.percentChange > 0}
       isLoading={false} />
   )
-  const showSummary = !section || section === "summary"
-  const showChannels = !section || section === "channels"
-  const showCategories = !section || section === "categories"
+  const showSummary = section === "summary"
+  const showChannels = section === "channels"
+  const showCategories = section === "categories"
 
   return <ReportSection
     embedded={embedded}

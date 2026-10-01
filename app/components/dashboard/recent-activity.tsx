@@ -1,14 +1,13 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/app/components/ui/avatar";
 import { RecentActivityLoading } from "./recent-activity-loading";
-import { useSite } from "@/app/context/SiteContext";
 import { useLocalization } from "@/app/context/LocalizationContext";
 import { EmptyCard } from "@/app/components/ui/empty-card";
 import { ClipboardList, ShoppingCart } from "@/app/components/ui/icons";
 import { format } from "date-fns";
-import { fetchWithRetry } from "@/app/utils/fetch-with-retry";
+import { useRecentActivityReport } from "./use-recent-activity-report";
+import { Button } from "@/app/components/ui/button";
 import { useRouter } from "next/navigation";
 import type { Activity } from "@/app/api/recent-activity/format";
 
@@ -112,77 +111,9 @@ export function RecentActivity({
   endDate,
 }: RecentActivityProps) {
   const { t } = useLocalization();
-  const { currentSite } = useSite();
   const router = useRouter();
-  const [activities, setActivities] = useState<Activity[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    let isMounted = true;
-
-    async function fetchActivities() {
-      if (!currentSite?.id || currentSite.id === "default") {
-        if (isMounted) {
-          setActivities([]);
-          setIsLoading(false);
-        }
-        return;
-      }
-
-      if (isMounted) {
-        setIsLoading(true);
-        setError(null);
-      }
-
-      try {
-        const validLimit = typeof limit === "number" && limit > 0 ? limit : 6;
-        const queryParams = new URLSearchParams();
-        queryParams.append("siteId", currentSite.id);
-        queryParams.append("limit", validLimit.toString());
-        queryParams.append("useDemoData", "true");
-
-        if (startDate) {
-          queryParams.append("startDate", format(startDate, "yyyy-MM-dd"));
-        }
-        if (endDate) {
-          queryParams.append("endDate", format(endDate, "yyyy-MM-dd"));
-        }
-
-        const response = await fetchWithRetry(
-          fetch,
-          `/api/recent-activity?${queryParams.toString()}`,
-          { maxRetries: 3 },
-        );
-
-        if (!response || !isMounted) return;
-
-        const data = await response.json();
-        if (isMounted) {
-          setActivities(data.activities || []);
-        }
-      } catch (err) {
-        if (err instanceof DOMException && err.name === "AbortError") return;
-
-        console.error("Error fetching activities:", err);
-
-        if (isMounted) {
-          setError(err instanceof Error ? err.message : "Unknown error occurred");
-          setActivities([]);
-        }
-      } finally {
-        if (isMounted) {
-          setIsLoading(false);
-        }
-      }
-    }
-
-    fetchActivities();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [currentSite?.id, limit, startDate, endDate]);
+  const { data, isLoading, error, mutate } = useRecentActivityReport(limit, startDate, endDate);
+  const activities = data?.activities ?? [];
 
   if (isLoading) {
     return <RecentActivityLoading limit={limit} />;
@@ -190,14 +121,15 @@ export function RecentActivity({
 
   if (error) {
     return (
-      <div className="h-full flex items-center justify-center py-8">
+      <div role="alert" className="h-full flex flex-col items-center justify-center py-8">
         <EmptyCard
           icon={<ClipboardList className="h-10 w-10 text-muted-foreground" />}
           title={t("dashboard.recent.errorLoading") || "Error loading activities"}
-          description={error}
+          description={error.message}
           showShadow={false}
           contentClassName="py-12"
         />
+        <Button variant="outline" onClick={() => { void mutate(); }}>Retry recent activity</Button>
       </div>
     );
   }

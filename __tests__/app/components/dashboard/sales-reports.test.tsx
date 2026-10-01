@@ -58,16 +58,16 @@ describe("sales report sections and scoped loading", () => {
     fetchMock.mockResolvedValue(ok(report()))
   })
 
-  it.each(["summary", "channels", "categories", undefined] as const)("renders only the requested %s section, with legacy all-section support", async (section) => {
+  it.each(["summary", "channels", "categories", undefined] as const)("renders only the requested %s section, defaulting to summary", async (section) => {
     render(<SalesReports {...props} section={section} />, { wrapper })
     await screen.findByText(/equal-length period/)
-    expect(Boolean(screen.queryByTestId("distribution"))).toBe(section === undefined || section === "channels")
+    expect(Boolean(screen.queryByTestId("distribution"))).toBe(section === "channels")
     expect(Boolean(screen.queryByTestId("trend"))).toBe(section !== "categories")
-    expect(Boolean(screen.queryByText("Sales breakdown"))).toBe(section === undefined || section === "categories")
-    expect(Boolean(screen.queryByText(/Allocated active sale amounts by category/))).toBe(section === undefined || section === "categories")
+    expect(Boolean(screen.queryByText("Sales breakdown"))).toBe(section === "categories")
+    expect(Boolean(screen.queryByText(/Allocated active sale amounts by category/))).toBe(section === "categories")
     expect(screen.queryByText(/Allocated confirmed/)).not.toBeInTheDocument()
     expect(screen.queryByText(/\+100\.0%/)).not.toBeInTheDocument()
-    expect(fetchMock.mock.calls[0][0]).toContain(`includeCategories=${section === undefined || section === "categories"}`)
+    expect(fetchMock.mock.calls[0][0]).toContain(`includeCategories=${section === "categories"}`)
     expect(fetchMock.mock.calls[0][0]).not.toContain("useDemoData")
   })
 

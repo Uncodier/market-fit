@@ -3,6 +3,9 @@ import { createServiceClient } from "@/lib/supabase/server";
 import { requireAnalyticsAccess } from "@/lib/auth/api-analytics-access";
 import { readThroughAnalyticsResponseCache } from "@/lib/redis/analytics-response-cache";
 
+type ConversionLead = { id: string; created_at: string };
+type LeadSale = { lead_id: string | null };
+
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
   const siteId = searchParams.get("siteId");
@@ -24,7 +27,7 @@ export async function GET(request: NextRequest) {
 
   return readThroughAnalyticsResponseCache({
     request,
-    namespace: "traffic:client-conversion",
+    namespace: "traffic:client-conversion:v2",
     siteId: access.siteId,
     lockTtlMs: 30_000,
     load: async () => {
@@ -32,7 +35,7 @@ export async function GET(request: NextRequest) {
       const supabase = await createServiceClient();
       console.log(`[ClientConversion API] Calculating conversion for site: ${siteId}, segment: ${segmentId || 'all'}, dates: ${startDate} to ${endDate}`);
       
-      let allLeads: any[] = [];
+      let allLeads: ConversionLead[] = [];
       let hasMoreLeads = true;
       let fromLeads = 0;
       const stepLeads = 1000;
@@ -53,12 +56,7 @@ export async function GET(request: NextRequest) {
         const { data: batchLeads, error: leadsError } = await leadsQuery;
   
         if (leadsError) {
-          console.error('[ClientConversion API] Error fetching leads:', leadsError);
-          return NextResponse.json({
-            actual: 0,
-            percentChange: 0,
-            periodType: "monthly"
-          });
+          throw new Error("Current leads query failed");
         }
   
         if (batchLeads && batchLeads.length > 0) {
@@ -88,7 +86,7 @@ export async function GET(request: NextRequest) {
     
     // Process sales in chunks of 500 to avoid overly large IN clauses
     const CHUNK_SIZE = 500;
-    let leadsWithSales: any[] = [];
+    let leadsWithSales: LeadSale[] = [];
     
     for (let i = 0; i < leadIds.length; i += CHUNK_SIZE) {
       const chunk = leadIds.slice(i, i + CHUNK_SIZE);
@@ -100,12 +98,7 @@ export async function GET(request: NextRequest) {
         .not('lead_id', 'is', null);
 
       if (salesError) {
-        console.error('[ClientConversion API] Error fetching sales:', salesError);
-        return NextResponse.json({
-          actual: 0,
-          percentChange: 0,
-          periodType: "monthly"
-        });
+        throw new Error("Current sales query failed");
       }
       
       if (chunkSales) {
@@ -131,7 +124,7 @@ export async function GET(request: NextRequest) {
     console.log(`[ClientConversion API] Previous period: ${previousStart.toISOString()} to ${previousEnd.toISOString()}`);
 
     // Get previous period leads
-    let prevLeads: any[] = [];
+    let prevLeads: ConversionLead[] = [];
     let hasMorePrevLeads = true;
     let fromPrevLeads = 0;
     const stepPrevLeads = 1000;
@@ -152,7 +145,7 @@ export async function GET(request: NextRequest) {
       const { data: batchPrevLeads, error: prevLeadsError } = await prevLeadsQuery;
       
       if (prevLeadsError) {
-        break;
+        throw new Error("Previous leads query failed");
       }
 
       if (batchPrevLeads && batchPrevLeads.length > 0) {
@@ -173,17 +166,21 @@ export async function GET(request: NextRequest) {
       const prevLeadIds = prevLeads.map(lead => lead.id) || [];
       
       const CHUNK_SIZE = 500;
-      let prevLeadsWithSales: any[] = [];
+      let prevLeadsWithSales: LeadSale[] = [];
       
       for (let i = 0; i < prevLeadIds.length; i += CHUNK_SIZE) {
         const chunk = prevLeadIds.slice(i, i + CHUNK_SIZE);
         
-        const { data: chunkSales } = await supabase
+        const { data: chunkSales, error: salesError } = await supabase
           .from('sales')
           .select('lead_id')
           .in('lead_id', chunk)
           .not('lead_id', 'is', null);
           
+        if (salesError) {
+          throw new Error("Previous sales query failed");
+        }
+
         if (chunkSales) {
           prevLeadsWithSales = [...prevLeadsWithSales, ...chunkSales];
         }
@@ -213,14 +210,9 @@ export async function GET(request: NextRequest) {
     console.log(`[ClientConversion API] Returning data:`, response);
     return NextResponse.json(response);
 
-  } catch (error) {
-    console.error("Error fetching client conversion data:", error);
-    
-    return NextResponse.json({
-      actual: 0,
-      percentChange: 0,
-      periodType: "monthly"
-    });
+  } catch {
+    console.error("[ClientConversion API] Unable to load client conversion report");
+    return NextResponse.json({ error: "Unable to load client conversion report" }, { status: 500 });
   }
     },
   });

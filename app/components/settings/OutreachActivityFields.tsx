@@ -9,6 +9,7 @@ import { isOutreachChannel, normalizeOutreachSettings, type OutreachActivityKey,
 import { getOutreachChannelLabel } from "./outreach-accounts"
 import type { SiteFormValues } from "./form-schema"
 import type { OutreachSegment } from "./outreach-segments"
+import { ActivityStartTimeField } from "./ActivityStartTimeField"
 
 const WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
 type Props = {
@@ -101,7 +102,7 @@ export function OutreachActivityFields({ activityKey, accounts, segments, loadin
       )} />
       {activityKey === "leads_follow_up" && <fieldset className="space-y-3">
         <legend className="text-sm font-semibold">Follow-up weekdays</legend>
-        <p className="text-sm text-muted-foreground">{timezone ? `Schedule timezone: ${timezone}.` : "Schedule uses the site's business-hours timezone, or the workflow default if none is configured."} Default: Tuesday, Wednesday and Thursday. No days selected means no follow-ups.</p>
+        <p className="text-sm text-muted-foreground">Default: Tuesday, Wednesday and Thursday. No days selected means no follow-ups.</p>
         <div className="flex flex-wrap gap-4">
           {WEEKDAYS.map((day, index) => <label key={day} className="flex items-center gap-2 text-sm">
             <Checkbox checked={value.weekdays.includes(index)} onCheckedChange={() => form.setValue(`${path}.weekdays`, toggle(value.weekdays, index).sort(), { shouldDirty: true })} />
@@ -109,6 +110,7 @@ export function OutreachActivityFields({ activityKey, accounts, segments, loadin
           </label>)}
         </div>
       </fieldset>}
+      {activityKey === "leads_follow_up" && <ActivityStartTimeField activityKey={activityKey} timezone={timezone} />}
     </div>
   )
 }

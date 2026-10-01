@@ -1,6 +1,8 @@
 "use client"
 
 import dynamic from "next/dynamic"
+import { format } from "date-fns"
+import { ReportExportScope } from "./export/ReportExportScope"
 import { ReportDataProvider } from "./ReportDataContext"
 import { ReportLoading, ReportLoadingScope } from "./ReportLoading"
 import { getReportSection, type ReportId } from "./report-sections"
@@ -39,6 +41,8 @@ type ReportContentProps = {
   report: ReportId
   section: string
   siteId: string
+  siteName?: string
+  segmentName?: string
   startDate: Date
   endDate: Date
   segmentId: string
@@ -46,12 +50,18 @@ type ReportContentProps = {
 }
 
 export function ReportContent(props: ReportContentProps) {
-  return <ReportLoadingScope report={props.report} section={props.section}>
-    <SelectedReport {...props} />
-  </ReportLoadingScope>
+  return <ReportExportScope report={props.report} section={props.section}
+    siteId={props.siteId} siteName={props.siteName ?? props.siteId}
+    segmentId={props.segmentId} segmentName={props.segmentName ?? props.segmentId}
+    startDate={format(props.startDate, "yyyy-MM-dd")} endDate={format(props.endDate, "yyyy-MM-dd")}>
+    <ReportLoadingScope report={props.report} section={props.section}>
+      <SelectedReport {...props} />
+    </ReportLoadingScope>
+  </ReportExportScope>
 }
 
-function SelectedReport({ report, section, siteId, ...filters }: ReportContentProps) {
+function SelectedReport({ report, section, siteId, startDate, endDate, segmentId, t }: ReportContentProps) {
+  const filters = { startDate, endDate, segmentId, t }
   switch (report) {
     case "performance": {
       const group = getReportSection(report, section)

@@ -21,6 +21,7 @@ const routes = {
     "video-minutes",
   ],
   traffic: [
+    "attribution",
     "browsers",
     "client-conversion",
     "devices",
