@@ -130,9 +130,10 @@ export function UserWorkflowMeta({
   const activity = log.details?.request_type || 'ask'
   const status = log.details?.status
   const isRunning = status === 'running'
+  const isSending = status === 'sending' && log.details?.temp_message
   const { label, icon: Icon, color } = getActivityMeta(activity)
 
-  if (!isRunning) return null
+  if (!isRunning && !isSending) return null
 
   return (
     <div className={`flex items-center gap-2 min-w-0 ${compact ? '' : 'mt-2 pt-2 border-t border-black/5 dark:border-white/5'}`}>
@@ -140,8 +141,10 @@ export function UserWorkflowMeta({
       <span className="text-xs font-medium text-foreground shrink-0">{label}</span>
       <ContextChips log={log} />
       <Loader className="h-3.5 w-3.5 shrink-0 text-muted-foreground animate-spin" />
-      <span className="text-xs text-muted-foreground truncate">Running</span>
-      {onCancel && (
+      <span className="text-xs text-muted-foreground truncate">{isSending ? 'Sending' : 'Running'}</span>
+      {onCancel && (isSending ? (
+        <span className="ml-auto h-6 w-6 shrink-0" aria-hidden="true" />
+      ) : (
         <Button
           type="button"
           variant="ghost"
@@ -153,7 +156,7 @@ export function UserWorkflowMeta({
         >
           {isCancelling ? <Loader className="h-3.5 w-3.5 animate-spin" /> : <X className="h-3.5 w-3.5" />}
         </Button>
-      )}
+      ))}
     </div>
   )
 }

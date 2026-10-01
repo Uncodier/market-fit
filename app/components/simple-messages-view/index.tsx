@@ -21,6 +21,7 @@ import { ProcessGroupItem } from './components/ProcessGroupItem'
 import { CompletedPlanCard } from './components/CompletedPlanCard'
 import { StepIndicator } from './components/StepIndicator'
 import { BacklogIndicator } from './components/BacklogIndicator'
+import { RequirementStatusCard } from './components/RequirementStatusCard'
 
 import { StepCompletedItem } from './components/StepCompletedItem'
 import { ArtifactShownItem } from './components/ArtifactShownItem'
@@ -28,6 +29,7 @@ import { UserWorkflowMeta } from './components/UserWorkflowMeta'
 import { CommandQueueBar } from './components/CommandQueueBar'
 
 import { isProcessGroupLive } from './group-timeline-process'
+import { getTimelineLogId } from './message-timeline'
 import { useSimpleMessagesView } from "./use-simple-messages-view"
 import { MessageEditDialogs } from "./MessageEditDialogs"
 export function SimpleMessagesView(props: SimpleMessagesViewProps) {
@@ -69,6 +71,9 @@ const { className, activeRobotInstance, isBrowserVisible, hasTopHeaderSpace, ski
           {/* Spacer for sticky header and topbar blur effect */}
           <div className={cn("h-[135px] shrink-0", !hasTopHeaderSpace && "hidden lg:block")} aria-hidden="true" />
           <div className="space-y-6 pt-6 pb-6">
+            {latestRequirementStatus?.stage === 'blocked' && (
+              <RequirementStatusCard status={latestRequirementStatus} />
+            )}
           
             {/* Loading indicator when fetching older logs */}
             {isLoadingMore && (
@@ -186,6 +191,8 @@ const { className, activeRobotInstance, isBrowserVisible, hasTopHeaderSpace, ski
                   );
                 }
 
+                const timelineItemId = item.type === 'process_group' ? item.data.groupId
+                  : item.type === 'log' ? getTimelineLogId(item.data) : item.data.id
                 let content = null;
 
                 if (item.type === 'process_group') {
@@ -234,7 +241,7 @@ const { className, activeRobotInstance, isBrowserVisible, hasTopHeaderSpace, ski
                   } else {
                     content = (
                       <MessageItem
-                        key={log.id}
+                        key={timelineItemId}
                         log={log}
                         isDarkMode={isDarkMode}
                         collapsedSystemMessages={collapsedSystemMessages}
@@ -257,7 +264,6 @@ const { className, activeRobotInstance, isBrowserVisible, hasTopHeaderSpace, ski
 
                 if (!content) return null;
 
-                const timelineItemId = item.type === 'process_group' ? item.data.groupId : item.data.id
                 return (
                   <React.Fragment key={`${item.type}-${timelineItemId}`}>
                     {dateHeader}

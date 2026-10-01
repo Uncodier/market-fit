@@ -8,6 +8,7 @@ import { type SkillSelection } from '../components/SkillSelector'
 import { findRunningUserLog } from './useRunningWorkflow'
 import { shouldQueueCommand } from './command-queue'
 import { buildPendingWorkPayload, enqueuePendingWork } from './pending-work'
+import { createRequestId } from './send-message-reliability'
 
 interface UseMessageSendingProps {
   activeRobotInstance?: any
@@ -21,7 +22,7 @@ interface UseMessageSendingProps {
   onScrollToBottom?: () => void
   onNewInstanceCreated?: (instanceId: string, shouldNavigate?: boolean) => void
   startInstancePolling?: (activityName: string, instanceId?: string, shouldAutoNavigate?: boolean) => Promise<void>
-  onAddOptimisticMessage?: (message: string, extraDetails?: Record<string, unknown>) => void
+  onAddOptimisticMessage?: (message: string, extraDetails?: Record<string, unknown>) => void | (() => void)
   onPendingEnqueued?: () => void
   imageParameters?: ImageParameters
   videoParameters?: VideoParameters
@@ -37,6 +38,7 @@ export const useMessageSending = ({
   logsRef,
   onMessageSent,
   onClearMessage,
+  onScrollToBottom,
   onNewInstanceCreated,
   startInstancePolling,
   onAddOptimisticMessage,
@@ -114,7 +116,7 @@ export const useMessageSending = ({
     }, 5 * 60 * 1000)
   }, [activeRobotInstance?.id, clearThinkingState, selectedActivity])
 
-  const handleAssistantMessage = useCallback(async (messageToSend: string, activity = selectedActivity, onAccepted?: () => void) => {
+  const handleAssistantMessage = useCallback(async (messageToSend: string, activity = selectedActivity, onAccepted?: () => void, requestId?: string) => {
     if (!currentSite?.id) return
     const success = await sendAssistantMessage({
       messageToSend,
@@ -128,6 +130,7 @@ export const useMessageSending = ({
       audioParameters,
       toast,
       onAccepted,
+      requestId,
     })
     // SSE completion is authoritative even if realtime log delivery was missed.
     clearThinkingState()
@@ -182,8 +185,7 @@ export const useMessageSending = ({
   handleRobotMessageRef.current = handleRobotMessage
   handleAssistantMessageRef.current = handleAssistantMessage
 
-  const dispatchPreparedMessage = useCallback(async (messageToSend: string, activity: string, onAccepted?: () => void) => {
-    const requestId = Date.now().toString()
+  const dispatchPreparedMessage = useCallback(async (messageToSend: string, activity: string, onAccepted?: () => void, requestId = createRequestId()) => {
     activeRequestIdRef.current = requestId
     sendingLockRef.current = true
     sendingMessageRef.current = messageToSend
@@ -205,7 +207,7 @@ export const useMessageSending = ({
         await handleRobotMessageRef.current(messageToSend)
         return true
       } else {
-        return await handleAssistantMessageRef.current(messageToSend, activity, onAccepted)
+        return await handleAssistantMessageRef.current(messageToSend, activity, onAccepted, requestId)
       }
     } finally {
       clearTimeout(safetyUnlockTimeout)
@@ -271,20 +273,24 @@ export const useMessageSending = ({
 
     if (sendingLockRef.current || isSendingMessage) return
 
+    // Follow the new turn in the same commit as its preview, not after admission.
+    onScrollToBottom?.()
+    const requestId = createRequestId()
+    // Display the message before context/session checks, without claiming that
+    // the server has admitted it or that a workflow is already running.
+    const removeOptimisticMessage = activeRobotInstance ? onAddOptimisticMessage?.(messageToSend, {
+      id: `optimistic-${requestId}`,
+      status: selectedActivity === 'robot' ? 'running' : 'sending',
+      request_type: selectedActivity,
+      context: selectedContext,
+      ...(selectedActivity !== 'robot' ? { request_id: requestId } : {}),
+    }) : undefined
+
     if (!activeRobotInstance) {
       setNewMakinaThinking()
       setHasMessageBeenSent(true)
       onMessageSent?.(true)
     } else {
-      if (selectedActivity === 'robot') {
-        onAddOptimisticMessage?.(messageToSend, {
-          status: 'running',
-          request_type: selectedActivity,
-          context: selectedContext,
-        })
-      }
-      // Assistant user logs come from the API after admission. A rejected send
-      // must not leave an optimistic row claiming that unsent work is running.
       setThinkingStateWithTimeout()
     }
 
@@ -300,21 +306,25 @@ export const useMessageSending = ({
           if (messageRef.current === currentMessage) onClearMessage?.()
           onAccepted?.()
         }
-      })
+      }, requestId)
+      if (!success && !wasAccepted) removeOptimisticMessage?.()
       if (sendScopeRef.current !== sendScope) return
       if (selectedActivity !== 'robot' && success && !wasAccepted && messageRef.current === currentMessage) {
         onClearMessage?.()
       }
-      if (!success && !activeRobotInstance) {
+      if (!success && !wasAccepted && !activeRobotInstance) {
         setHasMessageBeenSent(false)
         onMessageSent?.(false)
       }
     } catch (error) {
+      if (!wasAccepted) removeOptimisticMessage?.()
       console.error('Error sending message:', error)
       toast({ title: 'Error', description: 'The message could not be sent. Please try again.', variant: 'destructive' })
       if (!activeRobotInstance) {
-        setHasMessageBeenSent(false)
-        onMessageSent?.(false)
+        if (!wasAccepted) {
+          setHasMessageBeenSent(false)
+          onMessageSent?.(false)
+        }
         clearNewMakinaThinking()
       } else {
         clearThinkingState()
@@ -333,6 +343,7 @@ export const useMessageSending = ({
     logsRef,
     toast,
     onClearMessage,
+    onScrollToBottom,
     setNewMakinaThinking,
     onMessageSent,
     onAddOptimisticMessage,

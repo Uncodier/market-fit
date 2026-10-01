@@ -33,7 +33,8 @@ it.each([
   })
   const messageRef = { current: '  hello  ' }
   const onClearMessage = jest.fn(() => { messageRef.current = '' })
-  const onAddOptimisticMessage = jest.fn()
+  const removeOptimisticMessage = jest.fn()
+  const onAddOptimisticMessage = jest.fn(() => removeOptimisticMessage)
   const hook = renderHook(() => useMessageSending({
     activeRobotInstance: { id: 'instance' }, selectedActivity: 'ask', selectedContext: {} as any,
     skillSelection: { skill_mode: 'auto', skill_slugs: [] }, messageRef,
@@ -45,7 +46,8 @@ it.each([
   expect(from).not.toHaveBeenCalled() // No remote_instances mutation or frontend_retry_exhausted log.
   expect(enqueuePendingWork).not.toHaveBeenCalled()
   expect(onClearMessage).not.toHaveBeenCalled()
-  expect(onAddOptimisticMessage).not.toHaveBeenCalled()
+  expect(onAddOptimisticMessage).toHaveBeenCalledWith('hello', expect.objectContaining({ status: 'sending' }))
+  expect(removeOptimisticMessage).toHaveBeenCalledTimes(1)
   expect(messageRef.current).toBe('  hello  ')
   expect(toast).toHaveBeenCalledTimes(1)
   expect(toast).toHaveBeenCalledWith({ title, description: expect.stringContaining('This message was not sent.') })

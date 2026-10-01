@@ -1,6 +1,14 @@
 import { groupTimelineProcess, type ProcessGroupEntry } from "./group-timeline-process"
 import type { InstanceLog, InstancePlan, PlanStep } from "./types"
 
+// Persistence replaces the database ID, not the identity of the visible turn.
+export function getTimelineLogId(log: InstanceLog): string {
+  const requestId = log.details?.request_id
+  return log.log_type === 'user_action' && typeof requestId === 'string' && requestId
+    ? `request-${log.instance_id}-${requestId}`
+    : log.id
+}
+
 export function buildMessageTimeline(logs: InstanceLog[], completedPlans: InstancePlan[], instancePlans: InstancePlan[], steps: PlanStep[], areAllStepsCompleted: () => boolean) {
   // Calculate timeline for Explorer view
   const timelineItems: ProcessGroupEntry[] = []

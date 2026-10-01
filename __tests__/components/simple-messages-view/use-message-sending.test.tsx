@@ -18,6 +18,7 @@ function props() {
     activeRobotInstance: { id: 'instance' }, selectedActivity: 'ask', selectedContext: {} as any,
     skillSelection: { skill_mode: 'auto', skill_slugs: [] } as any,
     messageRef: { current: 'hello' }, logsRef: { current: [] as any[] }, onAddOptimisticMessage: jest.fn(),
+    onScrollToBottom: jest.fn(),
   }
 }
 
@@ -48,6 +49,7 @@ it('does not silently unlock while an accepted workflow is still streaming', asy
   await act(async () => { await hook.result.current.handleSendMessage() })
   expect(sendAssistantMessage).toHaveBeenCalledTimes(1)
   expect(enqueuePendingWork).toHaveBeenCalledTimes(1)
+  expect(options.onScrollToBottom).toHaveBeenCalledTimes(1)
   await act(async () => { complete(true); await pending })
   expect(hook.result.current.isWaitingForResponse).toBe(false)
   hook.unmount()
@@ -64,10 +66,56 @@ it('does not queue behind a stale optimistic row after a failed send', async () 
   hook.unmount()
 })
 
-it('shows a fallback error when an unexpected dispatch exception escapes', async () => {
-  ;(sendAssistantMessage as jest.Mock).mockRejectedValue(new Error('Unexpected failure'))
-  const hook = renderHook(() => useMessageSending(props()))
+it.each([false, true])('shows the assistant message before admission and rolls back only a failed send: %s', async success => {
+  let complete!: (result: boolean) => void
+  ;(sendAssistantMessage as jest.Mock).mockImplementation(() => new Promise(resolve => { complete = resolve }))
+  const options = props()
+  const removeOptimisticMessage = jest.fn()
+  options.onAddOptimisticMessage.mockReturnValue(removeOptimisticMessage)
+  const hook = renderHook(() => useMessageSending(options))
+  let pending!: Promise<void>
+  act(() => { pending = hook.result.current.handleSendMessage() })
+
+  expect(options.onAddOptimisticMessage).toHaveBeenCalledWith('hello', expect.objectContaining({
+    status: 'sending', request_type: 'ask', request_id: expect.any(String),
+  }))
+  const details = options.onAddOptimisticMessage.mock.calls[0][1]
+  expect(sendAssistantMessage).toHaveBeenCalledWith(expect.objectContaining({ requestId: details.request_id }))
+  expect(hook.result.current.isWaitingForResponse).toBe(true)
+  expect(removeOptimisticMessage).not.toHaveBeenCalled()
+  expect(options.onScrollToBottom).toHaveBeenCalledTimes(1)
+  expect(options.onScrollToBottom.mock.invocationCallOrder[0])
+    .toBeLessThan(options.onAddOptimisticMessage.mock.invocationCallOrder[0])
+
+  await act(async () => { complete(success); await pending })
+  expect(removeOptimisticMessage).toHaveBeenCalledTimes(success ? 0 : 1)
+  hook.unmount()
+})
+
+it('keeps an accepted message when the stream later fails without replaying it', async () => {
+  ;(sendAssistantMessage as jest.Mock).mockImplementation(async ({ onAccepted }) => {
+    onAccepted()
+    return false
+  })
+  const options = props()
+  const removeOptimisticMessage = jest.fn()
+  options.onAddOptimisticMessage.mockReturnValue(removeOptimisticMessage)
+  const hook = renderHook(() => useMessageSending(options))
   await act(async () => { await hook.result.current.handleSendMessage() })
+  expect(options.onAddOptimisticMessage).toHaveBeenCalledTimes(1)
+  expect(removeOptimisticMessage).not.toHaveBeenCalled()
+  expect(sendAssistantMessage).toHaveBeenCalledTimes(1)
+  hook.unmount()
+})
+
+it('shows a fallback error when an unexpected dispatch exception escapes', async () => {
+  ;(sendAssistantMessage as jest.Mock).mockRejectedValue(new Error('Unexpected transport failure'))
+  const options = props()
+  const removeOptimisticMessage = jest.fn()
+  options.onAddOptimisticMessage.mockReturnValue(removeOptimisticMessage)
+  const hook = renderHook(() => useMessageSending(options))
+  await act(async () => { await hook.result.current.handleSendMessage() })
+  expect(removeOptimisticMessage).toHaveBeenCalledTimes(1)
   expect(toast).toHaveBeenCalledWith(expect.objectContaining({ variant: 'destructive' }))
   expect(hook.result.current.isSendingMessage).toBe(false)
   expect(hook.result.current.isWaitingForResponse).toBe(false)
@@ -89,7 +137,7 @@ it('does not queue the retained in-flight assistant draft on a second click', as
   await act(async () => { complete(false); await pending })
   expect(options.messageRef.current).toBe('hello')
   expect(onClearMessage).not.toHaveBeenCalled()
-  expect(options.onAddOptimisticMessage).not.toHaveBeenCalled()
+  expect(options.onAddOptimisticMessage).toHaveBeenCalledTimes(1)
   hook.unmount()
 })
 

@@ -30,6 +30,12 @@ export function ContentDeleteDialog({ linkedPostCount, onDelete }: Props) {
     setError(null)
   }
 
+  const changeDeleteFromOutstand = (value: boolean) => {
+    if (inFlight.current) return
+    setDeleteFromOutstand(value)
+    setError(null)
+  }
+
   const confirm = () => {
     if (inFlight.current) return
     inFlight.current = true
@@ -66,26 +72,40 @@ export function ContentDeleteDialog({ linkedPostCount, onDelete }: Props) {
           <div className="space-y-3 text-sm">
             <div className="flex items-start gap-3">
               <Checkbox id={checkboxId} checked={deleteFromOutstand} disabled={isPending}
-                onCheckedChange={value => setDeleteFromOutstand(value === true)}
-                aria-describedby={`${checkboxId}-help`} className="mt-0.5" />
+                onCheckedChange={value => changeDeleteFromOutstand(value === true)}
+                aria-describedby={`${checkboxId}-help ${checkboxId}-limitations`} className="mt-0.5" />
               <label htmlFor={checkboxId} className="cursor-pointer font-medium leading-tight">
                 Also delete linked posts from Outstand and social networks
               </label>
             </div>
             <p id={`${checkboxId}-help`} className="text-muted-foreground">
               {deleteFromOutstand
-                ? `This will cancel scheduled posts and delete published posts where supported (${linkedPostCount} linked ${linkedPostCount === 1 ? "post" : "posts"}). Instagram and TikTok do not support deletion via API. If any deletion fails, local content will be kept; posts already removed cannot be restored.`
+                ? `This will cancel scheduled posts and delete published posts where supported (${linkedPostCount} linked ${linkedPostCount === 1 ? "post" : "posts"}). If any deletion fails or is unsupported, local content will be kept; posts already removed cannot be restored.`
                 : "Only the local content will be deleted. Published and scheduled posts will remain in Outstand and may still appear in the content list."}
+            </p>
+            <p id={`${checkboxId}-limitations`} className="text-muted-foreground">
+              Published Instagram and TikTok posts must be deleted directly in each app; Outstand cannot delete them via API.
+              To delete only this local content, leave the option unchecked. Scheduled posts that have not been published can still be cancelled through Outstand.
             </p>
           </div>
         )}
-        {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
+        {error && (
+          <div className="space-y-3">
+            <p role="alert" className="text-sm text-destructive">{error}</p>
+            {linkedPostCount > 0 && deleteFromOutstand && (
+              <Button type="button" variant="outline" size="sm" disabled={isPending}
+                onClick={() => changeDeleteFromOutstand(false)}>
+                Switch to local-only deletion
+              </Button>
+            )}
+          </div>
+        )}
         <AlertDialogFooter>
           <AlertDialogCancel disabled={isPending}>Cancel</AlertDialogCancel>
           <AlertDialogAction disabled={isPending} data-permission="delete"
             className="!bg-destructive !text-destructive-foreground hover:!bg-destructive/90"
             onClick={event => { event.preventDefault(); confirm() }}>
-            {isPending ? "Deleting..." : "Delete"}
+            {isPending ? "Deleting..." : linkedPostCount > 0 && !deleteFromOutstand ? "Delete local content" : "Delete"}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

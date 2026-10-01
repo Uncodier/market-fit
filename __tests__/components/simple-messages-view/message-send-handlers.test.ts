@@ -50,6 +50,13 @@ it.each(['throw', 'stall'])('shows the original failure even when error telemetr
   expect(params.toast).toHaveBeenCalledWith(expect.objectContaining({ description: 'Assistant capacity is full.', variant: 'destructive' }))
 })
 
+it('shares the optimistic turn ID with the API and response reconciliation', async () => {
+  await expect(sendAssistantMessage({ ...params, requestId: 'optimistic-request' })).resolves.toBe(true)
+  expect(postWithRetry).toHaveBeenCalledWith('/api/robots/instance/assistant', expect.objectContaining({
+    request_id: 'optimistic-request', client_persisted: false,
+  }), expect.objectContaining({ requestId: 'optimistic-request' }))
+})
+
 it('does not mark a possibly running workflow failed for interrupted SSE', async () => {
   ;(postWithRetry as jest.Mock).mockResolvedValue({ success: false, retryable: false, error: { message: 'Check the conversation before sending again.' } })
   await expect(sendAssistantMessage(params)).resolves.toBe(false)

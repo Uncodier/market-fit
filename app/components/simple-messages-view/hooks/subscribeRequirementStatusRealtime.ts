@@ -9,7 +9,7 @@ type Entry = {
   debounce: ReturnType<typeof setTimeout> | null
 }
 
-const byInstance = new Map<string, Entry>()
+const subscriptions = new Map<string, Entry>()
 const DEBOUNCE_MS = 200
 
 /**
@@ -20,35 +20,43 @@ const DEBOUNCE_MS = 200
 export function subscribeRequirementStatusRealtime(
   instanceId: string
 ): Unsubscribe {
-  let entry = byInstance.get(instanceId)
+  return subscribeStatusInvalidation(instanceId, `requirement_status_inst_${instanceId}`, "requirement_status", `instance_id=eq.${instanceId}`)
+}
+
+/** The workspace, composer and preview share this subscription, not competing channels. */
+export function subscribeRequirementExecutionRealtime(instanceId: string, requirementId: string): Unsubscribe {
+  return subscribeStatusInvalidation(instanceId, `requirement_execution_${instanceId}_${requirementId}`, "requirements", `id=eq.${requirementId}`)
+}
+
+function subscribeStatusInvalidation(instanceId: string, key: string, table: string, filter: string): Unsubscribe {
+  let entry = subscriptions.get(key)
   if (!entry) {
     entry = { refCount: 0, channel: null, debounce: null }
-    byInstance.set(instanceId, entry)
+    subscriptions.set(key, entry)
   }
 
   entry.refCount += 1
 
   if (!entry.channel) {
     const supabase = createClient()
-    const filter = `instance_id=eq.${instanceId}`
     const ch = supabase
-      .channel(`requirement_status_inst_${instanceId}`)
+      .channel(key)
       .on(
         "postgres_changes",
         {
           event: "*",
           schema: "public",
-          table: "requirement_status",
+          table,
           filter
         },
         () => {
-          const current = byInstance.get(instanceId)
+          const current = subscriptions.get(key)
           if (!current) return
           if (current.debounce) {
             clearTimeout(current.debounce)
           }
           current.debounce = setTimeout(() => {
-            const latest = byInstance.get(instanceId)
+            const latest = subscriptions.get(key)
             if (latest) {
               latest.debounce = null
             }
@@ -62,7 +70,7 @@ export function subscribeRequirementStatusRealtime(
   }
 
   return () => {
-    const e = byInstance.get(instanceId)
+    const e = subscriptions.get(key)
     if (!e) return
     e.refCount -= 1
     if (e.refCount <= 0 && e.channel) {
@@ -73,7 +81,7 @@ export function subscribeRequirementStatusRealtime(
       const supabase = createClient()
       supabase.removeChannel(e.channel as Parameters<typeof supabase.removeChannel>[0])
       e.channel = null
-      byInstance.delete(instanceId)
+      subscriptions.delete(key)
     }
   }
 }

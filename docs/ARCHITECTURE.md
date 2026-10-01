@@ -143,6 +143,21 @@ directly. The API owns user-log persistence; a new send carries a fresh
 may only recognize a final response associated with the current request's user
 log, never a historical answer or tool activity.
 
+The Robots timeline previews a submitted assistant message immediately, before
+context/session checks or admission. This local-only preview shares the send's
+`request_id`, stays visible across log refreshes, and is replaced by the matching
+persisted user action (not by text alone). It never claims a running workflow
+before persistence. A pre-admission failure removes only that preview and retains
+the draft; an accepted send remains visible even if its stream later fails.
+
+The user-action timeline key also uses `request_id` so persistence updates the
+existing message DOM instead of remounting it. A local `Sending` row reserves the
+same space as `Running`, without enabling cancellation before persistence. Sends
+resume tail following immediately, without smooth-scroll intermediate positions.
+The floating composer is measured before paint to reserve its full height; browser
+scroll clamping after content shrinks does not enable the `Latest`/pinned-request
+UI. Real upward scrolling still pauses following and preserves history pagination.
+
 The API client waits for SSE `completed` or `error` events; `accepted` and
 keepalives are not completion. Explicit stream failures, interrupted streams,
 and ambiguous gateway/start failures are shown without automatically replaying

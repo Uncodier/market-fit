@@ -112,7 +112,7 @@ async function requestOutstand(
         throw new OutstandBoundaryError(status, status === 401 ? "Sign in again to access social posts."
           : status === 403 ? "Access to these social posts was denied."
           : method === "DELETE" && status === 409
-            ? "Not all social posts could be deleted. Check Outstand and remove any remaining posts manually before deleting the local content."
+            ? "Social post deletion was not completed. Outstand cannot delete published Instagram or TikTok posts via API. Remove those posts directly in each app. Check Outstand and the other social networks before retrying, or switch to local-only deletion (remaining remote posts will be kept)."
             : fallback)
       }
       return responseJson(response, controller.signal)

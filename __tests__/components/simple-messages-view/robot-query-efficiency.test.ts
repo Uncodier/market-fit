@@ -28,7 +28,7 @@ describe("robot workspace query efficiency", () => {
     )
 
     expect(source).toContain('"requirements(id, title)"')
-    expect(source).toContain('.select("id, title, backlog")')
+    expect(source).toContain('.select("id, title, backlog, status, execution_hold:metadata->execution_hold")')
     expect(source).not.toContain("requirements(id, title, backlog)")
   })
 

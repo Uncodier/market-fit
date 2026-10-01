@@ -162,7 +162,9 @@ export function useSimpleMessagesView({ className = "", activeRobotInstance, isB
     if (sent) {
       const typed = messageRef.current
       if (typed) setLastUserMessage(typed)
-      window.setTimeout(() => scrollToBottom(), 80)
+      scrollToBottom()
+    } else {
+      setLastUserMessage('')
     }
     onMessageSent?.(sent)
   }, [onMessageSent, scrollToBottom])
@@ -214,7 +216,7 @@ export function useSimpleMessagesView({ className = "", activeRobotInstance, isB
   const addOptimisticUserMessageRef = useRef<((
     message: string,
     extraDetails?: Record<string, unknown>
-  ) => void) | null>(null)
+  ) => void | (() => void)) | null>(null)
   const instanceLogsRef = useRef<InstanceLog[]>([])
   const reloadPendingWorkRef = useRef<() => void>(() => {})
 

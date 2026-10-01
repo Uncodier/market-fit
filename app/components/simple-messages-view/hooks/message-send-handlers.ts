@@ -33,6 +33,7 @@ export async function sendAssistantMessage(params: {
   audioParameters?: AudioParameters
   toast: ToastFn
   onAccepted?: () => void
+  requestId?: string
 }): Promise<boolean> {
   const {
     messageToSend,
@@ -48,7 +49,7 @@ export async function sendAssistantMessage(params: {
     onAccepted,
   } = params
 
-  const requestId = createRequestId()
+  const requestId = params.requestId ?? createRequestId()
   try {
     const contextData = await withTimeout(
       contextService.getContextData(selectedContext, siteId), 15_000,

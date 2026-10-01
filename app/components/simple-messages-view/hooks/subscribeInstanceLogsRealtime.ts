@@ -3,6 +3,7 @@ import { InstanceLog } from '../types'
 import { markUserLogWorkflowStatus } from './send-message-reliability'
 import type { Dispatch, MutableRefObject, SetStateAction } from 'react'
 import { canAutoStopUserAction, isActionForWaitingTurn, isSettledUserAction, latestUserAction } from './instance-log-lifecycle'
+import { matchesOptimisticUserMessage } from './use-optimistic-user-messages'
 
 export { isTerminalAgentResponse } from './instance-log-lifecycle'
 
@@ -95,9 +96,7 @@ export function subscribeInstanceLogsRealtime(params: {
       updateLogs((prevLogs: InstanceLog[]) => {
         if (newLog.log_type === 'user_action') {
           const tempMessageIndex = prevLogs.findIndex((log: InstanceLog) =>
-            log.details?.temp_message &&
-            log.message === newLog.message &&
-            log.log_type === 'user_action'
+            matchesOptimisticUserMessage(log, newLog)
           )
 
           if (tempMessageIndex !== -1) {
@@ -128,7 +127,14 @@ export function subscribeInstanceLogsRealtime(params: {
       observeCompletion(newLog)
     } else if (payload.eventType === 'UPDATE') {
       const updatedLog = payload.new as InstanceLog
-      updateLogs((prevLogs: InstanceLog[]) => prevLogs.map((log: InstanceLog) => log.id === updatedLog.id ? updatedLog : log))
+      const confirmsPreview = logsRef.current.some(log => matchesOptimisticUserMessage(log, updatedLog))
+      updateLogs((prevLogs: InstanceLog[]) => {
+        const withoutPreview = prevLogs.filter(log => !matchesOptimisticUserMessage(log, updatedLog))
+        if (withoutPreview.some(log => log.id === updatedLog.id)) {
+          return withoutPreview.map(log => log.id === updatedLog.id ? updatedLog : log)
+        }
+        return confirmsPreview ? [...withoutPreview, updatedLog] : withoutPreview
+      })
       observeCompletion(updatedLog)
     } else if (payload.eventType === 'DELETE') {
       updateLogs((prevLogs: InstanceLog[]) => prevLogs.filter((log: InstanceLog) => log.id !== payload.old.id))

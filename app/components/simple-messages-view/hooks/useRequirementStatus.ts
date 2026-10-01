@@ -1,7 +1,8 @@
 import useSWR from "swr"
 import { useEffect, useCallback } from "react"
 import { createClient } from "@/lib/supabase/client"
-import { subscribeRequirementStatusRealtime } from "./subscribeRequirementStatusRealtime"
+import { subscribeRequirementStatusRealtime, subscribeRequirementExecutionRealtime } from "./subscribeRequirementStatusRealtime"
+import { currentRequirementPresentation } from "../requirement-execution-state"
 
 const REQUIREMENT_STATUS_FIELDS = [
   "id",
@@ -28,7 +29,7 @@ export const useRequirementStatus = (activeRobotInstance?: { id?: string } | nul
 
   const { data: requirementStatuses, mutate, isLoading, isValidating } = useSWR(
     instanceId ? ['requirement_status', instanceId] : null,
-    async ([_, id]) => {
+    async ([, id]) => {
       const supabase = createClient()
       const { data, error } = await supabase
         .from("requirement_status")
@@ -45,12 +46,12 @@ export const useRequirementStatus = (activeRobotInstance?: { id?: string } | nul
       const statuses = data || []
       const latestWithRequirement = [...statuses]
         .reverse()
-        .find((status: any) => status.requirement_id)
+        .find((status) => status.requirement_id)
       if (!latestWithRequirement?.requirement_id) return statuses
 
       const { data: requirement, error: requirementError } = await supabase
         .from("requirements")
-        .select("id, title, backlog")
+        .select("id, title, backlog, status, execution_hold:metadata->execution_hold")
         .eq("id", latestWithRequirement.requirement_id)
         .maybeSingle()
 
@@ -59,19 +60,25 @@ export const useRequirementStatus = (activeRobotInstance?: { id?: string } | nul
         return statuses
       }
 
-      return statuses.map((status: any) =>
+      return statuses.map((status: typeof latestWithRequirement) =>
         status.id === latestWithRequirement.id
-          ? { ...status, requirements: requirement }
+          ? { ...status, ...(requirement ? currentRequirementPresentation(status, requirement) : {}), requirements: requirement }
           : status
       )
     },
-    { keepPreviousData: true }
+    { keepPreviousData: false }
   )
 
   useEffect(() => {
     if (!instanceId) return
     return subscribeRequirementStatusRealtime(instanceId)
   }, [instanceId])
+
+  const requirementId = requirementStatuses?.at(-1)?.requirement_id
+  useEffect(() => {
+    if (!instanceId || !requirementId) return
+    return subscribeRequirementExecutionRealtime(instanceId, requirementId)
+  }, [instanceId, requirementId])
 
   const loadStatuses = useCallback(() => {
     if (instanceId) {

@@ -20,6 +20,7 @@ interface HarnessProps {
   loadMore?: () => Promise<void>
   onLayout?: (top: number) => void
   rowOffsets?: Record<string, number>
+  composerHeight?: number
 }
 
 const noOp = () => {}
@@ -28,7 +29,7 @@ const initialLogs = [log('latest')]
 
 function Harness({ instanceId = 'robot-a', logs = initialLogs, loading = false,
   loadingPlans = false, loadingMore = false, hasMore = true, height = 2000,
-  viewport = 500, loadMore = noLoad, onLayout = noOp, rowOffsets }: HarnessProps) {
+  viewport = 500, loadMore = noLoad, onLayout = noOp, rowOffsets, composerHeight = 200 }: HarnessProps) {
   const activeRobotInstance = { id: instanceId, status: 'completed' }
   const scroll = useMessageScroll(activeRobotInstance, noOp)
   const { messagesContainerRef, bottomContainerRef, showJumpToLatest, jumpToLatestLogs } = scroll
@@ -49,10 +50,15 @@ function Harness({ instanceId = 'robot-a', logs = initialLogs, loading = false,
         set: (value: number) => { top = Math.max(0, Math.min(value, node.scrollHeight - node.clientHeight)) },
       },
     })
-    node.scrollTo = (options?: ScrollToOptions | number, y?: number) => {
+    node.scrollTo = jest.fn((options?: ScrollToOptions | number, y?: number) => {
       node.scrollTop = typeof options === 'number' ? y ?? 0 : options?.top ?? 0
-    }
+    })
   }, [messagesContainerRef, height, viewport])
+
+  const attachComposer = useCallback((node: HTMLDivElement | null) => {
+    bottomContainerRef.current = node
+    if (node) node.getBoundingClientRect = () => ({ height: composerHeight } as DOMRect)
+  }, [bottomContainerRef, composerHeight])
 
   useLayoutEffect(() => {
     if (!loading) onLayout(scroll.messagesContainerRef.current?.scrollTop ?? -1)
@@ -71,7 +77,9 @@ function Harness({ instanceId = 'robot-a', logs = initialLogs, loading = false,
         }}
       >{entry.message}</p>)}</div>
     </div>}
-    {!loading && <div ref={bottomContainerRef} data-testid="composer" />}
+    {!loading && <div ref={attachComposer} data-testid="composer" />}
+    <output data-testid="bottom-padding">{scroll.bottomPadding}</output>
+    <button onClick={scroll.scrollToBottom}>Send</button>
     {showJumpToLatest && <button onClick={jumpToLatestLogs}>Latest</button>}
   </>
 }
@@ -276,5 +284,37 @@ describe('robot message scroll', () => {
     expect(observers.slice(2).every(item => item.targets.size > 0)).toBe(true)
     unmount()
     expect(observers.every(item => item.targets.size === 0)).toBe(true)
+  })
+
+  it('reserves the composer height before paint without waiting for ResizeObserver', () => {
+    const { rerender } = render(<Harness composerHeight={400} />)
+    expect(screen.getByTestId('bottom-padding')).toHaveTextContent('424')
+    rerender(<Harness composerHeight={250} />)
+    expect(screen.getByTestId('bottom-padding')).toHaveTextContent('274')
+  })
+
+  it('resumes following on send without an intermediate smooth scroll or a pinned duplicate', () => {
+    render(<Harness />)
+    const container = moveTo(600)
+    expect(screen.getByRole('button', { name: 'Latest' })).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Send' }))
+    expect(container.scrollTo).not.toHaveBeenCalledWith(expect.objectContaining({ behavior: 'smooth' }))
+    fireEvent.scroll(container)
+    expect(container.scrollTop).toBe(1500)
+    expect(screen.queryByRole('button', { name: 'Latest' })).not.toBeInTheDocument()
+  })
+
+  it.each([900, 400])('does not mistake a browser bottom clamp at height %s for reading history', height => {
+    render(<Harness />)
+    const container = screen.getByTestId('messages')
+    Object.defineProperty(container, 'scrollHeight', { configurable: true, value: height })
+    // The browser clamps scrollTop before delivering resize notifications.
+    container.scrollTop = container.scrollTop
+    fireEvent.scroll(container)
+    expect(container.scrollTop).toBe(Math.max(0, height - 500))
+    expect(screen.queryByRole('button', { name: 'Latest' })).not.toBeInTheDocument()
+    Object.defineProperty(container, 'scrollHeight', { configurable: true, value: 1200 })
+    resize(container.firstElementChild!)
+    expect(container.scrollTop).toBe(700)
   })
 })

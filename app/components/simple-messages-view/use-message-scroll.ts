@@ -13,6 +13,7 @@ export function useMessageScroll(activeRobotInstance: SimpleMessagesViewProps["a
   const stickToBottomRef = useRef(true)
   const [showJumpToLatest, setShowJumpToLatest] = useState(false)
   const lastScrollTopRef = useRef(0)
+  const lastScrollHeightRef = useRef(0)
 
   const updateStickToBottomFromScroll = useCallback(() => {
     const container = messagesContainerRef.current
@@ -27,6 +28,7 @@ export function useMessageScroll(activeRobotInstance: SimpleMessagesViewProps["a
   useLayoutEffect(() => {
     stickToBottomRef.current = true
     lastScrollTopRef.current = 0
+    lastScrollHeightRef.current = 0
   }, [activeRobotInstance?.id])
 
   const scrollContainerToBottomImmediate = useCallback(() => {
@@ -34,6 +36,7 @@ export function useMessageScroll(activeRobotInstance: SimpleMessagesViewProps["a
     if (container) {
       container.scrollTop = container.scrollHeight
       lastScrollTopRef.current = container.scrollTop
+      lastScrollHeightRef.current = container.scrollHeight
     }
   }, [])
 
@@ -58,13 +61,12 @@ export function useMessageScroll(activeRobotInstance: SimpleMessagesViewProps["a
   const scrollToBottom = useCallback(() => {
     stickToBottomRef.current = true
     setShowJumpToLatest(false)
-    const container = messagesContainerRef.current
-    if (container) {
-      container.scrollTo({ top: container.scrollHeight, behavior: "smooth" })
-    }
-  }, [])
+    // Smooth scrolling emits intermediate positions that look like leaving the
+    // tail and can briefly mount the pinned request above the composer.
+    scrollContainerToBottomImmediate()
+  }, [scrollContainerToBottomImmediate])
 
-  return { bottomPadding, setBottomPadding, bottomContainerRef, scrollToBottomImmediateRef, messagesEndRef, messagesContainerRef, stickToBottomRef, showJumpToLatest, setShowJumpToLatest, lastScrollTopRef, updateStickToBottomFromScroll, scrollContainerToBottomImmediate, scrollToBottomImmediateIfStuck, jumpToLatestLogs, scrollToBottom }
+  return { bottomPadding, setBottomPadding, bottomContainerRef, scrollToBottomImmediateRef, messagesEndRef, messagesContainerRef, stickToBottomRef, showJumpToLatest, setShowJumpToLatest, lastScrollTopRef, lastScrollHeightRef, updateStickToBottomFromScroll, scrollContainerToBottomImmediate, scrollToBottomImmediateIfStuck, jumpToLatestLogs, scrollToBottom }
 }
 
 interface PendingHistoryScroll {
@@ -89,8 +91,8 @@ type MessageScrollEffectsOptions = ReturnType<typeof useMessageScroll> & {
 }
 
 export function useMessageScrollEffects({
-  setBottomPadding, bottomContainerRef, messagesContainerRef, stickToBottomRef,
-  setShowJumpToLatest, lastScrollTopRef, updateStickToBottomFromScroll,
+  bottomPadding, setBottomPadding, bottomContainerRef, messagesContainerRef, stickToBottomRef,
+  setShowJumpToLatest, lastScrollTopRef, lastScrollHeightRef, updateStickToBottomFromScroll,
   scrollContainerToBottomImmediate, activeRobotInstance, isLoadingLogs,
   isLoadingMore, logs, hasMoreLogs, loadMoreLogs,
 }: MessageScrollEffectsOptions) {
@@ -111,6 +113,14 @@ export function useMessageScrollEffects({
   useLayoutEffect(() => {
     const container = messagesContainerRef.current
     if (isLoadingLogs || !container) return
+
+    // Reserve the actual overlay height in this commit. Waiting for the first
+    // ResizeObserver callback paints the latest turn underneath the composer.
+    const composer = bottomContainerRef.current
+    if (composer) {
+      const padding = Math.max(60, composer.getBoundingClientRect().height + 24)
+      if (padding !== bottomPadding) setBottomPadding(padding)
+    }
 
     const initialized = initializedViewRef.current
     if (initialized?.instanceId !== instanceId || initialized?.container !== container) {
@@ -175,10 +185,18 @@ export function useMessageScrollEffects({
     const container = e.currentTarget
     const previousTop = lastScrollTopRef.current
     const currentTop = container.scrollTop
+    const previousHeight = lastScrollHeightRef.current
     lastScrollTopRef.current = currentTop
+    lastScrollHeightRef.current = container.scrollHeight
     if (currentTop === previousTop) return
 
     const scrollingUp = currentTop < previousTop
+    // Removing a preview/status or shrinking the composer can clamp scrollTop
+    // before ResizeObserver runs. That is not the user leaving the latest turn.
+    const clampedToBottom = stickToBottomRef.current && scrollingUp
+      && container.scrollHeight < previousHeight
+      && Math.abs(Math.max(0, container.scrollHeight - container.clientHeight) - currentTop) <= 1
+    if (clampedToBottom) return
     updateStickToBottomFromScroll()
     if (scrollingUp) {
       stickToBottomRef.current = false
@@ -206,7 +224,7 @@ export function useMessageScrollEffects({
       pending.settled = true
       setHistoryRevision(revision => revision + 1)
     })
-  }, [lastScrollTopRef, updateStickToBottomFromScroll, stickToBottomRef, setShowJumpToLatest, hasMoreLogs, isLoadingLogs, isLoadingMore, loadMoreLogs, logs])
+  }, [lastScrollTopRef, lastScrollHeightRef, updateStickToBottomFromScroll, stickToBottomRef, setShowJumpToLatest, hasMoreLogs, isLoadingLogs, isLoadingMore, loadMoreLogs, logs])
 
   return { handleScroll }
 }

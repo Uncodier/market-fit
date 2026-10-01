@@ -7,6 +7,7 @@ import { excludeQueuedUserLogs } from './command-queue'
 import { subscribeInstanceLogsRealtime } from './subscribeInstanceLogsRealtime'
 import { hasFinishedLatestUserAction, isActionForWaitingTurn, latestUserAction } from './instance-log-lifecycle'
 import { useLiveInstanceLogs } from './use-live-instance-logs'
+import { useOptimisticUserMessages } from './use-optimistic-user-messages'
 
 const INSTANCE_LOG_FIELDS = [
   'id',
@@ -91,13 +92,14 @@ export const useInstanceLogs = ({
     { revalidateOnFocus: false }
   )
 
-  const logs = excludeQueuedUserLogs(
+  const persistedLogs = excludeQueuedUserLogs(
     collapseDuplicateUserActions(
       ((logsData || []) as InstanceLog[]).filter(
         (log) => !log.instance_id || log.instance_id === activeRobotInstance?.id
       )
     )
   )
+  const { logs, addOptimisticUserMessage } = useOptimisticUserMessages(persistedLogs, activeRobotInstance?.id, currentSiteId)
   const logsRef = useRef<InstanceLog[]>(logs)
   logsRef.current = logs
   
@@ -290,29 +292,6 @@ export const useInstanceLogs = ({
       isLoadingMoreRef.current = false
     }
   }, [activeRobotInstance?.id, hasMoreLogs, logs, setLogs])
-
-  const addOptimisticUserMessage = useCallback((
-    message: string,
-    extraDetails?: Record<string, unknown>
-  ) => {
-    if (!activeRobotInstance?.id) return
-
-    const newMessage: InstanceLog = {
-      id: typeof extraDetails?.id === 'string' ? extraDetails.id : `optimistic-${Date.now()}`,
-      instance_id: activeRobotInstance.id,
-      log_type: 'user_action',
-      message: message,
-      level: 'info',
-      created_at: new Date().toISOString(),
-      details: {
-        temp_message: true,
-        status: 'running',
-        ...extraDetails,
-      }
-    }
-
-    setLogs((prev: InstanceLog[]) => [...prev, newMessage])
-  }, [activeRobotInstance?.id, setLogs])
 
   const patchLogDetails = useCallback((logId: string, patch: Record<string, unknown>) => {
     setLogs((prevLogs: InstanceLog[]) =>
