@@ -11,6 +11,8 @@ export class OutstandBoundaryError extends Error {
 
 export const UNCONFIRMED_PUBLISH =
   "Publishing could not be confirmed. Check the post status before retrying."
+export const UNCONFIRMED_DELETE =
+  "Social post deletion could not be confirmed. Some posts may already have been removed. Check Outstand and the social networks before retrying."
 
 export function outstandFailure(error: unknown, fallback: string): {
   success: false; error: string; status: number; data?: never

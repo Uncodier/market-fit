@@ -73,7 +73,7 @@ function ChatPageContent() {
     leadData,
     isLoadingLead,
     isAgentOnlyConversation,
-    setIsAgentOnlyConversation,
+    isConversationReady,
     isLead,
     isLeadInvalidated,
     refreshLeadData
@@ -106,13 +106,14 @@ function ChatPageContent() {
     agentName,
     conversationId,
     isAgentOnlyConversation,
+    isConversationReady,
     setChatMessages,
     setIsAgentResponding,
     leadData
   })
 
   const currentAgent = useChatPageAgent({
-    agentId, agentName, conversationId, clearMessagesForTransition, setIsAgentOnlyConversation,
+    agentId, agentName, conversationId, clearMessagesForTransition,
   })
 
   const { messagesEndRef, messagesContainerRef, userJustSentRef } = useChatScroll(
@@ -423,6 +424,7 @@ function ChatPageContent() {
               isChatListCollapsed={isChatListCollapsed}
               leadData={leadData}
               isAgentOnlyConversation={isAgentOnlyConversation}
+              isConversationReady={isConversationReady}
             />
           </div>
         )}

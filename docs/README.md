@@ -34,6 +34,7 @@ Use the guides below before relying on older implementation notes.
 - [Stripe environment variables](STRIPE_ENVIRONMENT_VARIABLES.md)
 - [Stripe webhook security](STRIPE_WEBHOOK_SECURITY.md)
 - [Social network OAuth](SOCIAL_NETWORK_OAUTH_SETUP.md)
+- [Content and Outstand deletion](CONTENT_DELETION.md)
 - [Google authentication](GOOGLE_AUTH_SETUP.md)
 - [Magic links](MAGIC_LINKS_SETUP.md)
 - [Secure Tokens API](../app/api/secure-tokens/README.md)

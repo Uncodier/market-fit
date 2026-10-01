@@ -40,6 +40,7 @@ interface UseChatOperationsProps {
   agentName: string
   conversationId: string
   isAgentOnlyConversation: boolean
+  isConversationReady?: boolean
   setChatMessages: React.Dispatch<React.SetStateAction<ChatMessage[]>>
   setIsAgentResponding: React.Dispatch<React.SetStateAction<boolean>>
   leadData: { id?: string; name?: string | null } | null
@@ -50,6 +51,7 @@ export function useChatOperations({
   agentName,
   conversationId,
   isAgentOnlyConversation,
+  isConversationReady = true,
   setChatMessages,
   setIsAgentResponding,
   leadData
@@ -68,6 +70,10 @@ export function useChatOperations({
   // Rejected, skipped, and unconfirmed sends must leave the composer untouched.
   const handleSendMessage = async (message: string): Promise<boolean> => {
     if (!message.trim() || sendInFlightRef.current || !currentSite?.id || !user?.id) return false
+    if (!isConversationReady) {
+      toast.error('Wait for the conversation to load before sending.')
+      return false
+    }
 
     const userName = user.user_metadata?.name || (user.email ? user.email.split('@')[0] : 'Team Member')
     const userAvatar = user.user_metadata?.avatar_url || null
@@ -129,6 +135,9 @@ export function useChatOperations({
         const savedMessage = result.data?.message
         if (savedMessage?.message_id) {
           setChatMessages(previous => reconcileInterventionMessage(previous, tempUserMessage, savedMessage))
+        }
+        if (result.data?.channel_send?.callId) {
+          toast.success('Call requested. Waiting for the voice provider; this does not confirm the recipient answered.')
         }
       }
       return true

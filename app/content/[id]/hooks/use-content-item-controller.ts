@@ -4,6 +4,7 @@ import { useCallback, useState } from "react"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { deleteContent } from "../../actions"
+import type { DeleteContentOptions, DeleteContentResult } from "../../delete-content-types"
 import { haveTagsChanged } from "../../utils"
 import {
   EMPTY_CONTENT_EDIT_FORM,
@@ -66,16 +67,17 @@ export function useContentItemController(contentId: string) {
     setHasUserMadeChanges,
   })
 
-  const handleDeleteContent = async () => {
-    if (!data.content?.id) return
+  const handleDeleteContent = async (options: DeleteContentOptions): Promise<DeleteContentResult> => {
+    if (!data.content?.id) return { success: false, error: "Content not found." }
     try {
-      const result = await deleteContent(data.content.id)
-      if (result.error) throw new Error(result.error)
-      toast.success("Content deleted successfully")
+      const result = await deleteContent(data.content.id, options)
+      if (!result.success) return result
+      toast.success(options.deleteFromOutstand ? "Content and linked social posts deleted successfully" : "Content deleted successfully")
       router.push("/content")
-    } catch (error) {
-      console.error("Error deleting content:", error)
-      toast.error(error instanceof Error ? error.message : "Failed to delete content")
+      router.refresh()
+      return result
+    } catch {
+      return { success: false, error: "Content deletion could not be confirmed. Refresh and check the post status before retrying." }
     }
   }
 

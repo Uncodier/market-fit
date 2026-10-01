@@ -3,6 +3,7 @@ import { requireSiteAccess } from '@/lib/auth/api-site-access'
 import { userCanOnSite } from '@/lib/permissions/site-access'
 import { decodeRequestBody, readLimitedRequestBody, RequestBodyTooLargeError } from '@/lib/http/read-limited-request-body'
 import { chatBackendUrl, isSameOriginChatRequest } from '../proxy-security'
+import { isInternalAgentConversation } from '@/lib/chat/conversation-routing'
 
 export const maxDuration = 120
 const uuid = z.string().uuid()
@@ -49,10 +50,13 @@ export async function POST(request: Request): Promise<Response> {
     return failure('You do not have permission to send messages in this site.', 403)
   }
   const { data: conversation, error: conversationError } = await access.supabase
-    .from('conversations').select('id, site_id, agent_id, lead_id, visitor_id')
+    .from('conversations').select('id, site_id, agent_id, lead_id, visitor_id, channel, custom_data')
     .eq('id', input.conversationId).eq('site_id', input.site_id).maybeSingle()
   if (conversationError) return failure('Unable to verify conversation access', 503)
   if (!conversation) return failure('Conversation not found', 404)
+  if (!isInternalAgentConversation(conversation)) {
+    return failure('This conversation uses an external channel. Reload the conversation and send an intervention instead. No call or message was started.', 409)
+  }
   if (!conversation.agent_id) return failure('This conversation has no assigned agent.', 409)
 
   const { data: agent, error: agentError } = await access.supabase

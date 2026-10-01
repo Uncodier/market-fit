@@ -1,14 +1,13 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useCallback } from 'react'
 import useSWR from 'swr'
 import { createClient } from '@/lib/supabase/client'
 import { getUserData } from '@/app/services/user-service'
+import { conversationChannel, isInternalAgentConversation } from '@/lib/chat/conversation-routing'
 
 export function useLeadData(conversationId: string, siteId?: string) {
-  const [isAgentOnlyConversation, setIsAgentOnlyConversation] = useState(false)
-  
-  const { data, isLoading: isSwrLoadingLead, mutate } = useSWR(
+  const { data, error, isLoading: isSwrLoadingLead, mutate } = useSWR(
     conversationId && !conversationId.startsWith("new-") && siteId ? ['lead-data', conversationId, siteId] : null,
-    async ([_, convId, sId]) => {
+    async ([, convId, sId]) => {
       const supabase = createClient()
       
       const { data: conversationWithLead, error: conversationError } = await supabase
@@ -16,6 +15,8 @@ export function useLeadData(conversationId: string, siteId?: string) {
         .select(`
           lead_id,
           visitor_id,
+          channel,
+          custom_data,
           leads (
             id,
             name,
@@ -33,24 +34,29 @@ export function useLeadData(conversationId: string, siteId?: string) {
           )
         `)
         .eq("id", convId)
+        .eq("site_id", sId)
         .maybeSingle()
         
       if (conversationError) throw conversationError
       
-      if (!conversationWithLead) return { leadData: null, isInvalidated: false, isAgentOnly: false }
+      if (!conversationWithLead) throw new Error('Conversation not found')
+      const routing = {
+        channel: conversationChannel(conversationWithLead),
+        isAgentOnly: isInternalAgentConversation(conversationWithLead),
+      }
       
       // Check if this is an agent-only conversation
-      if (!conversationWithLead.lead_id && conversationWithLead.visitor_id === null) {
-        return { leadData: null, isInvalidated: false, isAgentOnly: true }
+      if (routing.isAgentOnly) {
+        return { leadData: null, isInvalidated: false, ...routing }
       }
       
       const lead = conversationWithLead.leads
       
       if (!lead && conversationWithLead.lead_id) {
-        return { leadData: null, isInvalidated: true, isAgentOnly: false }
+        return { leadData: null, isInvalidated: true, ...routing }
       }
       
-      if (!lead) return { leadData: null, isInvalidated: false, isAgentOnly: false }
+      if (!lead) return { leadData: null, isInvalidated: false, ...routing }
       
       let assigneeData = null
       if (lead.assignee_id) {
@@ -96,27 +102,10 @@ export function useLeadData(conversationId: string, siteId?: string) {
           site_id: lead.site_id
         },
         isInvalidated: false,
-        isAgentOnly: false
+        ...routing,
       }
     }
   )
-  
-  useEffect(() => {
-    if (data?.isAgentOnly !== undefined) {
-      setIsAgentOnlyConversation(data.isAgentOnly)
-    }
-  }, [data?.isAgentOnly])
-  
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const url = new URL(window.location.href)
-      const mode = url.searchParams.get("mode")
-      
-      if (mode === "agentOnly" || mode === "private") {
-        setIsAgentOnlyConversation(true)
-      }
-    }
-  }, [])
   
   const refreshLeadData = useCallback(() => mutate(), [mutate])
 
@@ -125,8 +114,9 @@ export function useLeadData(conversationId: string, siteId?: string) {
   return {
     leadData: data?.leadData || null,
     isLoadingLead,
-    isAgentOnlyConversation,
-    setIsAgentOnlyConversation,
+    isAgentOnlyConversation: data?.isAgentOnly === true,
+    conversationChannel: data?.channel,
+    isConversationReady: Boolean(data && !error),
     isLead: data?.leadData !== null && data?.leadData !== undefined,
     isLeadInvalidated: data?.isInvalidated || false,
     refreshLeadData

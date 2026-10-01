@@ -47,7 +47,7 @@ beforeEach(() => {
   rpc.mockResolvedValue({ data: true, error: null })
   auth.getSession.mockResolvedValue({ data: { session: { access_token: 'user-token', user: { id: userId } } }, error: null })
   from.mockReset().mockImplementation(table => query(table === 'conversations'
-    ? { id: conversationId, site_id: siteId, agent_id: agentId, lead_id: leadId, visitor_id: visitorId }
+    ? { id: conversationId, site_id: siteId, agent_id: agentId, lead_id: null, visitor_id: null, channel: 'web' }
     : { id: agentId }))
   jest.mocked(fetch).mockReset().mockResolvedValue(Response.json(accepted))
 })
@@ -75,7 +75,7 @@ it('forwards the verified user token and server-owned identities, never client c
   expect(options).toMatchObject({ redirect: 'error', cache: 'no-store', signal: expect.any(AbortSignal) })
   expect(options?.headers).toEqual({ Authorization: 'Bearer user-token', 'Content-Type': 'application/json', Accept: 'application/json' })
   expect(JSON.parse(String(options?.body))).toEqual({
-    conversationId, site_id: siteId, team_member_id: userId, agentId, lead_id: leadId, visitor_id: visitorId, message: 'Hello',
+    conversationId, site_id: siteId, team_member_id: userId, agentId, message: 'Hello',
   })
 })
 
@@ -86,6 +86,26 @@ it('uses server-only API configuration with the public URL as fallback', async (
   delete process.env.API_SERVER_URL
   await POST(request())
   expect(String(jest.mocked(fetch).mock.calls[1][0])).toBe('https://api.example.test/api/agents/chat/message')
+})
+
+it.each([
+  { channel: 'voice', lead_id: null, visitor_id: null },
+  { channel: 'email', lead_id: null, visitor_id: null },
+  { custom_data: { source: 'zavu_inbound_voice', channel_delivery: true } },
+  { lead_id: leadId, visitor_id: visitorId },
+])('rejects external conversations before creating assistant messages: %j', async routing => {
+  from.mockReturnValueOnce(query({ id: conversationId, site_id: siteId, agent_id: agentId, ...routing }))
+  const response = await POST(request())
+  expect(response.status).toBe(409)
+  expect(await response.json()).toMatchObject({ success: false, error: { message: expect.stringContaining('No call or message was started') } })
+  expect(fetch).not.toHaveBeenCalled()
+})
+
+it('allows an explicitly private web discussion with a legacy visitor ID', async () => {
+  from.mockReturnValueOnce(query({ id: conversationId, site_id: siteId, agent_id: agentId,
+    channel: 'web', custom_data: { is_private: true }, visitor_id: visitorId,
+  }))
+  expect((await POST(request())).status).toBe(200)
 })
 
 it.each([401, 403])('does not contact the API when site access is denied with %i', async status => {

@@ -40,7 +40,7 @@ describe("CreditsWidget", () => {
     render(<CreditsWidget />)
 
     expect(screen.getByText("8 / 20")).toBeInTheDocument()
-    expect(screen.getByText("8 withdrawable")).toBeInTheDocument()
+    expect(screen.queryByText("8 withdrawable")).not.toBeInTheDocument()
     expect(screen.getByRole("progressbar", { name: "Credits" })).toHaveAttribute("aria-valuenow", "40")
     expect(screen.getByTitle("Withdrawable credits")).toHaveStyle({ width: "40%" })
     expect(screen.getByTitle("Withdrawable credits")).toHaveClass("bg-emerald-500")
@@ -61,8 +61,38 @@ describe("CreditsWidget", () => {
     expect(regular).toHaveClass("bg-primary")
     expect(withdrawable).toHaveClass("bg-emerald-500")
     expect(bar).toHaveAttribute("aria-valuetext", "8 credits available: 5 regular, 3 withdrawable")
-    expect(screen.getByText("5 regular")).toBeInTheDocument()
-    expect(screen.getByText("3 withdrawable")).toBeInTheDocument()
+    expect(screen.queryByText("5 regular")).not.toBeInTheDocument()
+    expect(screen.queryByText("3 withdrawable")).not.toBeInTheDocument()
+  })
+
+  it.each([false, true])("only shows the breakdown in the hover tooltip with isCollapsed=%s", async (isCollapsed) => {
+    setBilling({ credits_available: 0.001, account_balance: 17.42, plan: "foundry" })
+    render(<CreditsWidget isCollapsed={isCollapsed} />)
+
+    const trigger = screen.getByRole("button", { name: "Manage credits" })
+    expect(screen.queryByText("0.001 regular")).not.toBeInTheDocument()
+    expect(screen.queryByText("17.42 withdrawable")).not.toBeInTheDocument()
+    expect(screen.queryByRole("tooltip")).not.toBeInTheDocument()
+
+    fireEvent.pointerEnter(trigger)
+    fireEvent.pointerMove(trigger)
+
+    const tooltip = await screen.findByRole("tooltip")
+    expect(tooltip).toHaveTextContent("0.001 regular")
+    expect(tooltip).toHaveTextContent("17.42 withdrawable")
+    expect(trigger).not.toHaveTextContent("regular")
+    expect(trigger).not.toHaveTextContent("withdrawable")
+  })
+
+  it("keeps the compact header and bar stacked despite global Safari button styles", () => {
+    setBilling({ credits_available: 0.001, account_balance: 17.42, plan: "foundry" })
+    render(<CreditsWidget />)
+
+    const trigger = screen.getByRole("button", { name: "Manage credits" })
+    expect(trigger).toHaveClass("!block", "p-3")
+    expect(trigger.children).toHaveLength(2)
+    expect(screen.getByText("17.421 / 100")).toHaveClass("whitespace-nowrap")
+    expect(trigger.lastElementChild).toBe(screen.getByRole("progressbar"))
   })
 
   it("keeps withdrawable funds visible and scales both segments above the plan limit", () => {
@@ -143,7 +173,9 @@ describe("CreditsWidget", () => {
     rerender(<CreditsWidget />)
 
     expect(screen.getByText("3.375 / 20")).toBeInTheDocument()
-    expect(screen.getByText("2.25 withdrawable")).toBeInTheDocument()
+    expect(screen.getByRole("progressbar")).toHaveAttribute(
+      "aria-valuetext", "3.375 credits available: 1.125 regular, 2.25 withdrawable"
+    )
   })
 
   it("uses the same proportions in the collapsed ring without overlapping or overflowing", () => {
@@ -157,6 +189,24 @@ describe("CreditsWidget", () => {
     expect(Number(regular.getAttribute("stroke-dasharray")?.split(" ")[0])).toBeCloseTo(circumference * 0.2)
     expect(Number(withdrawable.getAttribute("stroke-dasharray")?.split(" ")[0])).toBeCloseTo(circumference * 0.8)
     expect(Number(withdrawable.getAttribute("stroke-dashoffset"))).toBeCloseTo(-circumference * 0.2)
+  })
+
+  it("fits the entire collapsed ring inside an explicit SVG viewport", () => {
+    render(<CreditsWidget isCollapsed />)
+
+    const trigger = screen.getByRole("button", { name: "Manage credits" })
+    const chart = screen.getByRole("img")
+    expect(trigger).toHaveClass("w-[32px]", "h-[32px]", "shrink-0")
+    expect(chart).toHaveAttribute("viewBox", "0 0 24 24")
+    expect(chart).toHaveAttribute("width", "24")
+    expect(chart).toHaveAttribute("height", "24")
+    for (const circle of chart.querySelectorAll("circle")) {
+      const outerRadius = Number(circle.getAttribute("r")) + Number(circle.getAttribute("stroke-width")) / 2
+      expect(Number(circle.getAttribute("cx")) - outerRadius).toBeGreaterThanOrEqual(0)
+      expect(Number(circle.getAttribute("cy")) - outerRadius).toBeGreaterThanOrEqual(0)
+      expect(Number(circle.getAttribute("cx")) + outerRadius).toBeLessThanOrEqual(24)
+      expect(Number(circle.getAttribute("cy")) + outerRadius).toBeLessThanOrEqual(24)
+    }
   })
 
   it.each([false, true])("still opens billing with isCollapsed=%s", (isCollapsed) => {

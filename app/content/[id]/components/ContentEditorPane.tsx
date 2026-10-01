@@ -1,15 +1,17 @@
 "use client"
 
-import { EditorContent } from "@tiptap/react"
+import { EditorContent, type Editor } from "@tiptap/react"
 import { Tabs, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
 import { ContentAssetsGrid } from "./ContentAssetsGrid"
 import { ContentEditorToolbar } from "./ContentEditorToolbar"
 import type { ContentActiveTab } from "../content-item-types"
+import type { ContentItem } from "../../actions"
+import { getLinkedOutstandPostIds, type DeleteContentOptions, type DeleteContentResult } from "../../delete-content-types"
 
 type Props = {
-  content: any
-  editor: any
-  instructionsEditor: any
+  content: ContentItem | null
+  editor: Editor | null
+  instructionsEditor: Editor | null
   activeTab: ContentActiveTab
   setActiveTab: (tab: ContentActiveTab) => void
   isSaving: boolean
@@ -17,7 +19,7 @@ type Props = {
   isEditorFocused: boolean
   assetsRefreshTrigger: number
   onSave: () => void
-  onDelete: () => void
+  onDelete: (options: DeleteContentOptions) => Promise<DeleteContentResult>
   onTeleprompter: () => void
   onUploadAsset: () => void
 }
@@ -47,6 +49,7 @@ export function ContentEditorPane({
         onSave={onSave}
         isSaving={isSaving}
         onDelete={onDelete}
+        linkedPostCount={getLinkedOutstandPostIds(content?.tags).length}
         activeTab={editorTab}
         hasChanges={hasChanges}
         contentType={content?.type}

@@ -3,6 +3,7 @@ import { requireSiteAccess } from '@/lib/auth/api-site-access'
 import { userCanOnSite } from '@/lib/permissions/site-access'
 import { decodeRequestBody, readLimitedRequestBody, RequestBodyTooLargeError } from '@/lib/http/read-limited-request-body'
 import { chatBackendUrl, isSameOriginChatRequest } from '../proxy-security'
+import { conversationChannel, VOICE_LEAD_REQUIRED } from '@/lib/chat/conversation-routing'
 
 export const maxDuration = 120
 const PATH = '/api/agents/chat/intervention'
@@ -69,10 +70,13 @@ export async function POST(request: Request): Promise<Response> {
   }
   const conversationId = input.conversationId || input.conversation_id!
   const { data: conversation, error: conversationError } = await access.supabase
-    .from('conversations').select('id, site_id, agent_id, lead_id, visitor_id')
+    .from('conversations').select('id, site_id, agent_id, lead_id, visitor_id, channel, custom_data')
     .eq('id', conversationId).eq('site_id', input.site_id).maybeSingle()
   if (conversationError) return failure('Unable to verify conversation access', 503)
   if (!conversation) return failure('Conversation not found', 404)
+  if (conversationChannel(conversation) === 'voice' && !conversation.lead_id) {
+    return failure(VOICE_LEAD_REQUIRED, 409)
+  }
 
   let message = input.message
   if (input.message_id) {

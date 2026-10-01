@@ -1,9 +1,10 @@
 import "server-only"
 import { isIP } from "node:net"
-import { OutstandBoundaryError, UNCONFIRMED_PUBLISH } from "./outstand-contract"
+import { accountIdSchema, OutstandBoundaryError, UNCONFIRMED_DELETE, UNCONFIRMED_PUBLISH } from "./outstand-contract"
 
 export const OUTSTAND_TIMEOUT_MS = 30_000
 export const OUTSTAND_RESPONSE_LIMIT = 1_000_000
+export const OUTSTAND_DELETE_TIMEOUT_MS = 90_000
 
 function postsUrl(siteId: string, method: "GET" | "POST"): URL {
   const configured = process.env.API_SERVER_URL || process.env.NEXT_PUBLIC_API_SERVER_URL ||
@@ -62,14 +63,30 @@ export async function requestOutstandPosts(
   siteId: string, token: string, method: "GET" | "POST", payload?: unknown,
 ): Promise<unknown> {
   const url = postsUrl(siteId, method)
-  const controller = new AbortController()
   const fallback = method === "POST" ? UNCONFIRMED_PUBLISH : "Unable to load social posts."
+  return requestOutstand(url, token, method, fallback, OUTSTAND_TIMEOUT_MS, payload)
+}
+
+export async function requestOutstandContentDeletion(siteId: string, token: string, postId: string): Promise<unknown> {
+  if (!accountIdSchema.safeParse(postId).success) throw new OutstandBoundaryError(400, "Invalid social post ID.")
+  const url = postsUrl(siteId, "POST")
+  // A new endpoint fails safely on older API deployments. The legacy DELETE
+  // only removes the provider record and must never substitute for this flow.
+  url.pathname += `/${encodeURIComponent(postId)}/with-content`
+  return requestOutstand(url, token, "DELETE", UNCONFIRMED_DELETE, OUTSTAND_DELETE_TIMEOUT_MS)
+}
+
+async function requestOutstand(
+  url: URL, token: string, method: "GET" | "POST" | "DELETE", fallback: string,
+  timeoutMs: number, payload?: unknown,
+): Promise<unknown> {
+  const controller = new AbortController()
   let timer: ReturnType<typeof setTimeout> | undefined
   const timeout = new Promise<never>((_, reject) => {
     timer = setTimeout(() => {
       controller.abort()
       reject(new OutstandBoundaryError(504, fallback))
-    }, OUTSTAND_TIMEOUT_MS)
+    }, timeoutMs)
   })
   try {
     return await Promise.race([timeout, (async () => {
@@ -93,7 +110,10 @@ export async function requestOutstandPosts(
         cancelBody(response)
         const status = [400, 401, 403, 404, 409, 422, 429, 503].includes(response.status) ? response.status : 502
         throw new OutstandBoundaryError(status, status === 401 ? "Sign in again to access social posts."
-          : status === 403 ? "Access to these social posts was denied." : fallback)
+          : status === 403 ? "Access to these social posts was denied."
+          : method === "DELETE" && status === 409
+            ? "Not all social posts could be deleted. Check Outstand and remove any remaining posts manually before deleting the local content."
+            : fallback)
       }
       return responseJson(response, controller.signal)
     })()])

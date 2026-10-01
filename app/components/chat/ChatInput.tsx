@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils"
 import { useLayout } from "@/app/context/LayoutContext"
 import { ChannelSelector } from "./ChannelSelector"
 import { useChannelSelector } from "@/app/hooks/useChannelSelector"
+import { VOICE_LEAD_REQUIRED } from "@/lib/chat/conversation-routing"
 // Removed dynamic width calc; align with messages container
 
 interface ChatInputProps {
@@ -27,6 +28,7 @@ interface ChatInputProps {
     phone?: string
   } | null
   isAgentOnlyConversation?: boolean
+  isConversationReady?: boolean
 }
 
 // Memoize the ChatInput component to prevent unnecessary re-renders
@@ -41,7 +43,8 @@ export const ChatInput = memo(function ChatInput({
   conversationId,
   isChatListCollapsed = false,
   leadData,
-  isAgentOnlyConversation = false
+  isAgentOnlyConversation = false,
+  isConversationReady = true,
 }: ChatInputProps) {
   const { isLayoutCollapsed } = useLayout()
   const internalRef = useRef<HTMLTextAreaElement>(null)
@@ -69,6 +72,9 @@ export const ChatInput = memo(function ChatInput({
     leadData,
     isAgentOnlyConversation
   })
+  const isVoice = selectedChannel === 'voice'
+  const voiceMissingLead = isVoice && !leadData?.id
+  const sendingBlocked = isUpdatingChannel || isLoading || !isConversationReady || voiceMissingLead
   
   // CRITICAL: Direct handler to prevent character loss
   const handleChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -91,21 +97,21 @@ export const ChatInput = memo(function ChatInput({
     }
 
     // Enter must not become a newline or send through a channel still updating.
-    if (e.key === 'Enter' && !e.shiftKey && (isUpdatingChannel || isLoading)) {
+    if (e.key === 'Enter' && !e.shiftKey && sendingBlocked) {
       e.preventDefault()
       return
     }
     
     // Delegate complex logic to parent
     handleKeyDown(e)
-  }, [handleKeyDown, isUpdatingChannel, isLoading])
+  }, [handleKeyDown, sendingBlocked])
   
   // Memoize form submit handler
   const handleSubmit = useCallback((e: FormEvent) => {
     e.preventDefault()
-    if (isUpdatingChannel || isLoading) return
+    if (sendingBlocked) return
     handleSendMessage(e)
-  }, [handleSendMessage, isUpdatingChannel, isLoading])
+  }, [handleSendMessage, sendingBlocked])
   
   // Memoize conversation validation
   const hasSelectedConversation = useMemo(() => {
@@ -115,8 +121,8 @@ export const ChatInput = memo(function ChatInput({
   // Send button is enabled and filled only when there is input and not loading
   const canSend = useMemo(() => {
     const inputPresent = typeof message === 'string' ? message.trim().length > 0 : hasInput
-    return inputPresent && !isLoading && !isUpdatingChannel
-  }, [message, hasInput, isLoading, isUpdatingChannel])
+    return inputPresent && !sendingBlocked
+  }, [message, hasInput, sendingBlocked])
   
   // If no conversation is selected, don't render the input
   if (!hasSelectedConversation) {
@@ -150,13 +156,20 @@ export const ChatInput = memo(function ChatInput({
     >
       <div className="w-full">
         <div className="w-full mx-auto relative pb-[20px] px-4 md:px-8 lg:px-12 xl:px-24">
+          <p className="text-xs text-muted-foreground px-2 pb-2" role="status">
+            {!isConversationReady ? 'Loading conversation delivery settings…'
+              : voiceMissingLead ? VOICE_LEAD_REQUIRED
+                : isVoice ? 'Start an outbound call. Your message is the opening greeting; consent and phone checks apply.'
+                  : isAgentOnlyConversation ? 'Internal agent chat. Messages here do not contact the customer.'
+                    : 'Send a team intervention through the selected channel.'}
+          </p>
           <form onSubmit={handleSubmit} className="relative w-full">
             <div className="relative w-full" id="tour-chat-input">
         <OptimizedTextarea
                 ref={externalRef ?? internalRef}
                 onChange={handleChange}
                 onKeyDown={handleKeyDownInternal}
-                placeholder="Message..."
+                placeholder={isVoice ? "Opening greeting for the call..." : "Message..."}
                 className="resize-none w-full py-4 pl-8 pr-[54px] rounded-2xl border border-input bg-background focus-visible:outline-none text-base box-border pt-4 peer"
                 disabled={isLoading}
                 style={{
@@ -182,7 +195,7 @@ export const ChatInput = memo(function ChatInput({
                   ) : (
                     <Icons.ArrowUp className="h-4.5 w-4.5" />
                   )}
-                  <span className="sr-only">Send</span>
+                  <span className="sr-only">{isVoice ? 'Start call' : 'Send'}</span>
                 </Button>
               </div>
               
@@ -233,6 +246,7 @@ export const ChatInput = memo(function ChatInput({
     prevProps.conversationId === nextProps.conversationId &&
     prevProps.isChatListCollapsed === nextProps.isChatListCollapsed &&
     prevProps.isAgentOnlyConversation === nextProps.isAgentOnlyConversation &&
+    prevProps.isConversationReady === nextProps.isConversationReady &&
     prevProps.handleMessageChange === nextProps.handleMessageChange &&
     prevProps.setMessage === nextProps.setMessage &&
     prevProps.handleSendMessage === nextProps.handleSendMessage &&

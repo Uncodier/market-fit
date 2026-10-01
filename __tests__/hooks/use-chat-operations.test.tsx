@@ -5,6 +5,7 @@ import type { ChatMessage } from '@/app/types/chat'
 import type { InterventionAcceptedResponse } from '@/app/services/intervention-request'
 import { createConversation, sendAgentMessage, sendTeamMemberIntervention } from '@/app/services/chat-service'
 import { InterventionRequestError, markInterventionMessageFailed } from '@/app/services/mark-intervention-message-failed'
+import { toast } from 'react-hot-toast'
 
 jest.mock('@/app/components/auth/auth-provider', () => ({
   useAuthContext: () => ({ user: { id: 'user-1', email: 'member@example.test' } }),
@@ -40,13 +41,14 @@ function deferred<T>() {
   return { promise, resolve }
 }
 
-function setup(isAgentOnlyConversation = false, conversationId = 'conversation-1') {
+function setup(isAgentOnlyConversation = false, conversationId = 'conversation-1', isConversationReady = true) {
   return renderHook(() => {
     const [messages, setMessages] = useState<ChatMessage[]>([])
     const [, setIsAgentResponding] = useState(false)
     const operations = useChatOperations({
       agentId: 'agent-1', agentName: 'Agent', conversationId,
       isAgentOnlyConversation, setChatMessages: setMessages, setIsAgentResponding,
+      isConversationReady,
       leadData: { id: 'lead-1' },
     })
     return { ...operations, messages, setMessages }
@@ -61,6 +63,24 @@ describe('useChatOperations send lifecycle', () => {
   })
 
   afterEach(() => { jest.restoreAllMocks() })
+
+  it('does not send through a stale internal mode before the current conversation is ready', async () => {
+    const { result } = setup(true, 'loading-conversation', false)
+    await act(async () => { expect(await result.current.handleSendMessage('Follow up')).toBe(false) })
+    expect(sendAgentMessage).not.toHaveBeenCalled()
+    expect(sendTeamMemberIntervention).not.toHaveBeenCalled()
+    expect(result.current.messages).toEqual([])
+  })
+
+  it('reports a provider-accepted voice call as requested, not answered', async () => {
+    jest.mocked(sendTeamMemberIntervention).mockResolvedValue({ ...accepted, data: { ...accepted.data,
+      channel_send: { method: 'voice_agent_call', success: true, callId: 'call-1' },
+    } })
+    const { result } = setup()
+    await act(async () => { expect(await result.current.handleSendMessage('Greeting')).toBe(true) })
+    expect(sendAgentMessage).not.toHaveBeenCalled()
+    expect(toast.success).toHaveBeenCalledWith(expect.stringContaining('does not confirm the recipient answered'))
+  })
 
   it('reconciles an optimistic row with the accepted API ID without realtime', async () => {
     const response = deferred<InterventionAcceptedResponse>()

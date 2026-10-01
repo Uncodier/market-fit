@@ -1,18 +1,10 @@
 "use client"
 
 import { useState } from "react"
+import type { Editor } from "@tiptap/react"
 import { Button } from "@/app/components/ui/button"
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/app/components/ui/alert-dialog"
+import { ContentDeleteDialog } from "./ContentDeleteDialog"
+import type { DeleteContentOptions, DeleteContentResult } from "../../delete-content-types"
 import {
   AlignCenter,
   AlignJustify,
@@ -31,7 +23,6 @@ import {
   Quote,
   Redo,
   Save,
-  Trash2,
   Undo,
   UploadCloud,
 } from "@/app/components/ui/icons"
@@ -44,11 +35,12 @@ import {
 import type { ContentActiveTab } from "../content-item-types"
 
 type Props = {
-  editor: any
-  instructionsEditor: any
+  editor: Editor | null
+  instructionsEditor: Editor | null
   onSave: () => void
   isSaving: boolean
-  onDelete: () => void
+  onDelete: (options: DeleteContentOptions) => Promise<DeleteContentResult>
+  linkedPostCount?: number
   activeTab: Exclude<ContentActiveTab, "ai">
   hasChanges: boolean
   contentType?: string
@@ -63,6 +55,7 @@ export function ContentEditorToolbar({
   onSave,
   isSaving,
   onDelete,
+  linkedPostCount = 0,
   activeTab,
   hasChanges,
   contentType,
@@ -244,35 +237,7 @@ export function ContentEditorToolbar({
         {!showFormattingControls && (
           <>
             <div className="mx-1 h-6 w-px bg-border" />
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-destructive hover:bg-destructive/10 hover:text-destructive"
-                  aria-label="Delete content"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Delete Content</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Are you sure you want to delete this content? This action cannot be undone.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction
-                    className="!bg-destructive !text-destructive-foreground hover:!bg-destructive/90"
-                    onClick={onDelete}
-                  >
-                    Delete
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
+            <ContentDeleteDialog linkedPostCount={linkedPostCount} onDelete={onDelete} />
           </>
         )}
       </div>

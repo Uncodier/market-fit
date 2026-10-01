@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation"
 import { navigateOrAssign } from "@/lib/navigation/stale-router"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/app/components/ui/tooltip"
 import { useLocalization } from "@/app/context/LocalizationContext"
+import styles from "./credits-widget.module.css"
 
 interface CreditsWidgetProps {
   className?: string
@@ -104,14 +105,22 @@ export function CreditsWidget({ className, isCollapsed }: CreditsWidgetProps) {
               aria-label={manageCreditsLabel}
               className={cn(
                 "flex items-center justify-center cursor-pointer hover:bg-accent/50 transition-colors rounded-full", 
-                "w-[32px] h-[32px]",
+                "w-[32px] h-[32px] shrink-0",
+                styles.trigger,
                 className
               )}
               onClick={handleBuyCredits}
             >
-              <div className="relative w-[24px] h-[24px] flex items-center justify-center">
+              <div className={cn("relative w-[24px] h-[24px] shrink-0 flex items-center justify-center", styles.ringFrame)}>
                 {/* Background circle */}
-                <svg role="img" aria-label={balanceSummary} className="w-full h-full transform -rotate-90 absolute inset-0">
+                <svg
+                  role="img"
+                  aria-label={balanceSummary}
+                  viewBox="0 0 24 24"
+                  width={24}
+                  height={24}
+                  className={styles.ring}
+                >
                   <circle
                     cx="12"
                     cy="12"
@@ -168,7 +177,7 @@ export function CreditsWidget({ className, isCollapsed }: CreditsWidgetProps) {
               type="button"
               aria-label={manageCreditsLabel}
               onClick={handleBuyCredits}
-              className="w-full text-left bg-muted/30 rounded-lg p-3 border dark:border-white/5 border-black/5/50 cursor-pointer hover:bg-muted/50 transition-colors group font-inter"
+              className="!block w-full text-left bg-muted/30 rounded-lg p-3 border dark:border-white/5 border-black/5/50 cursor-pointer hover:bg-muted/50 transition-colors group font-inter"
             >
               <div className="flex items-center justify-between mb-2">
                 <span className="text-xs font-medium text-muted-foreground group-hover:text-foreground transition-colors flex items-center gap-1.5">
@@ -176,7 +185,7 @@ export function CreditsWidget({ className, isCollapsed }: CreditsWidgetProps) {
                   {t('layout.sidebar.credits') || 'Credits'}
                 </span>
                 <span className={cn(
-                  "text-xs font-bold",
+                  "text-xs font-bold whitespace-nowrap",
                   isOverLimit ? "text-destructive" : "text-foreground"
                 )}>
                   {displayAvailable} / {displayTotal}
@@ -193,11 +202,11 @@ export function CreditsWidget({ className, isCollapsed }: CreditsWidgetProps) {
                   { label: "Withdrawable credits", value: withdrawablePercentage, className: "bg-emerald-500" },
                 ]}
               />
-              {balanceBreakdown}
             </button>
           </TooltipTrigger>
           <TooltipContent side="right" className="z-[9999]">
             <p>{manageCreditsLabel}</p>
+            {balanceBreakdown}
           </TooltipContent>
         </Tooltip>
       </TooltipProvider>

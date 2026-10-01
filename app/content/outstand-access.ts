@@ -5,7 +5,7 @@ import {
   accountIdSchema, isRecord, matchesOutstandSite, OutstandBoundaryError, siteIdSchema,
 } from "./outstand-contract"
 
-export async function authorizeOutstandSite(input: unknown, command: "insert" | "select") {
+export async function authorizeOutstandSite(input: unknown, command: "insert" | "select" | "delete") {
   const parsedSite = siteIdSchema.safeParse(input)
   if (!parsedSite.success) throw new OutstandBoundaryError(400, "Invalid site ID.")
   const siteId = parsedSite.data

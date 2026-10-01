@@ -34,6 +34,20 @@ so after an ambiguous timeout without checking the conversation first.
 
 ## Voice and Temporal are different paths
 
+Conversation routing uses the persisted channel and delivery metadata, not the
+absence of a lead/visitor link or a URL `mode` parameter. Inbound voice calls
+can legitimately have neither link; they are still external conversations.
+The direct agent-message proxy rejects external conversations before generating
+assistant text. Sends are blocked until the current conversation's routing data
+is loaded, so switching from an internal chat cannot reuse its mode.
+
+For voice, the composer labels the action **Start call**, describes the message
+as the opening greeting, and shows a blocking explanation when no lead is
+linked. The intervention proxy also rejects that condition before persistence
+or provider work. A number embedded in a title is not a trusted/consented
+recipient. The API still owns lead-phone, consent, do-not-call and sender checks.
+A returned call ID is reported as **requested**, never answered or completed.
+
 The external API currently handles the `voice` channel through
 `placeTrackedVoiceCall`, directly calling the voice provider after saving the
 message. It returns `channel_send.method: voice_agent_call` and a `callId`,
@@ -83,6 +97,18 @@ the web application and does not restore the insecure `Origin` bypass.
 
 ### Delivery checks
 
+A read-only incident inspection on 2026-09-30 confirmed a contactless inbound
+voice conversation was misclassified as internal. Its later team follow-up and
+assistant reply shared a completed `create message` command and no call ID; the
+only voice delivery row was the earlier inbound call. The previous auth repair
+had made that incorrect route executable, but had not corrected classification.
+No incident IDs, phone numbers or customer message content are recorded here.
+
+That history also contained a separate `Voice tool callback authentication
+failed (HTTP 401)` event from the earlier inbound call. Fixing chat routing does
+not repair or validate the provider's tool callback credentials. Do not claim
+callback recovery without separately checking the API/provider configuration.
+
 Check the browser's same-origin request status and the API error code first.
 Determine whether a saved message ID, call ID, or workflow ID exists before
 retrying. Never log message content, phone numbers, authorization headers, or
@@ -97,7 +123,7 @@ the authentication diagnosis above is separate from that earlier investigation.
 Focused offline regression checks:
 
 ```bash
-npm test -- --runInBand __tests__/chat __tests__/api/intervention-proxy.test.ts __tests__/api/agent-message-proxy.test.ts __tests__/hooks/use-chat-operations.test.tsx __tests__/components/chat/chat-input.test.tsx
+npm test -- --runInBand __tests__/chat __tests__/api/intervention-proxy.test.ts __tests__/api/agent-message-proxy.test.ts __tests__/hooks/use-chat-operations.test.tsx __tests__/hooks/use-lead-data-routing.test.tsx __tests__/components/chat/chat-input.test.tsx
 npm run typecheck
 ```
 

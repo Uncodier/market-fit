@@ -1,8 +1,9 @@
 "use server"
 
 import { createClient, createServiceClient } from "@/lib/supabase/server"
-import { cookies } from "next/headers"
 import { revalidatePath } from "next/cache"
+import { deleteContentRecord } from "./delete-content"
+import type { DeleteContentOptions, DeleteContentResult } from "./delete-content-types"
 
 export type ContentAssetRow = {
   asset_id: string
@@ -199,7 +200,6 @@ export async function updateContent({
   segment_id,
   campaign_id,
   tags,
-  content,
   text,
   instructions,
   performance_rating,
@@ -278,24 +278,8 @@ export async function getContentById(contentId: string): Promise<{ content: Cont
   }
 }
 
-export async function deleteContent(contentId: string): Promise<{ success?: boolean; error?: string }> {
-  try {
-    const supabase = await createServiceClient()
-    
-    const { error } = await supabase
-      .from('content')
-      .delete()
-      .eq('id', contentId)
-    
-    if (error) {
-      console.error("Error deleting content:", error)
-      return { error: error.message }
-    }
-    
-    revalidatePath("/content")
-    return { success: true }
-  } catch (error) {
-    console.error("Error in deleteContent:", error)
-    return { error: "Failed to delete content" }
-  }
-} 
+export async function deleteContent(
+  contentId: string, options: DeleteContentOptions = {},
+): Promise<DeleteContentResult> {
+  return deleteContentRecord(contentId, options)
+}

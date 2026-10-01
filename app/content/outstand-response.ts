@@ -1,6 +1,6 @@
 import "server-only"
 import { z } from "zod"
-import { isRecord, matchesOutstandSite, OutstandBoundaryError, UNCONFIRMED_PUBLISH } from "./outstand-contract"
+import { isRecord, matchesOutstandSite, OutstandBoundaryError, UNCONFIRMED_DELETE, UNCONFIRMED_PUBLISH } from "./outstand-contract"
 import { isOutstandMediaUrl } from "./outstand-media"
 
 const text = z.string().max(100_000)
@@ -81,4 +81,13 @@ export function parseOutstandPosts(value: unknown, siteId: string): Post[] {
   const posts = "posts" in result ? result.posts : result.data
   if (!Array.isArray(posts) || posts.length > 50) invalidResponse()
   return posts.map(post => parsePost(post, siteId))
+}
+
+export function parseOutstandDeleted(value: unknown, siteId: string, postId: string): void {
+  const result = envelope(value, siteId)
+  if (result.post_id !== postId || result.delete_remote !== true || result.degraded === true ||
+    ("results" in result && (!Array.isArray(result.results) || result.results.some(row =>
+      !isRecord(row) || row.status !== "deleted" || row.error)))) {
+    invalidResponse(UNCONFIRMED_DELETE)
+  }
 }

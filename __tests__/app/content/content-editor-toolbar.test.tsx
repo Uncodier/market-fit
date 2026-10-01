@@ -1,5 +1,6 @@
 import React from "react"
 import { render, screen } from "@testing-library/react"
+import type { Editor } from "@tiptap/react"
 import { ContentEditorToolbar } from "@/app/content/[id]/components/ContentEditorToolbar"
 
 const editor = {
@@ -7,7 +8,7 @@ const editor = {
   getAttributes: jest.fn(() => ({})),
   can: jest.fn(() => ({ undo: () => false, redo: () => false })),
   chain: jest.fn(),
-}
+} as unknown as Editor
 
 describe("ContentEditorToolbar", () => {
   it("keeps an accessible name on the icon-only delete trigger", () => {

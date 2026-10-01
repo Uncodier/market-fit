@@ -76,6 +76,25 @@ it('forwards one authenticated intervention using server-owned identities and re
   expect(rpc).toHaveBeenCalledWith('user_can', { p_site_id: siteId, p_command: 'insert' })
 })
 
+it('does not start a voice call or invent a recipient when the inbound conversation has no linked lead', async () => {
+  from.mockReturnValueOnce(query({ id: conversationId, site_id: siteId, agent_id: agentId,
+    channel: 'voice', lead_id: null, visitor_id: null,
+  }))
+  const response = await POST(request({ lead_id: leadId, phone: '+15550000000', title: 'Inbound Voice call' }))
+  expect(response.status).toBe(409)
+  expect(await response.json()).toMatchObject({ success: false, error: { message: expect.stringContaining('No call started. Link this conversation') } })
+  expect(fetch).not.toHaveBeenCalled()
+})
+
+it('forwards a linked voice intervention, not an internal assistant turn', async () => {
+  from.mockReturnValueOnce(query({ id: conversationId, site_id: siteId, agent_id: agentId,
+    channel: 'voice', lead_id: leadId, visitor_id: null,
+  }))
+  expect((await POST(request())).status).toBe(200)
+  expect(fetch).toHaveBeenCalledTimes(1)
+  expect(String(jest.mocked(fetch).mock.calls[0][0])).toContain('/api/agents/chat/intervention')
+})
+
 it('uses server-only API configuration with the public URL as fallback', async () => {
   process.env.NEXT_PUBLIC_API_SERVER_URL = 'https://api.example.test'
   await POST(request())

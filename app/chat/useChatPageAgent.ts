@@ -12,11 +12,10 @@ interface ChatPageAgentProps {
   agentName: string
   conversationId: string
   clearMessagesForTransition: () => void
-  setIsAgentOnlyConversation: (value: boolean) => void
 }
 
 export function useChatPageAgent({
-  agentId, agentName, conversationId, clearMessagesForTransition, setIsAgentOnlyConversation,
+  agentId, agentName, conversationId, clearMessagesForTransition,
 }: ChatPageAgentProps) {
   const router = useRouter()
   const [currentAgent, setCurrentAgent] = useState<Agent | null>(null)
@@ -148,7 +147,6 @@ export function useChatPageAgent({
       const convId = url.searchParams.get('conversationId')
       const agId = url.searchParams.get('agentId')
       const agName = url.searchParams.get('agentName')
-      const mode = url.searchParams.get('mode')
       
       // Synchronize conversation mode and agent after browser navigation.
       if (convId && agId && agName) {
@@ -157,12 +155,7 @@ export function useChatPageAgent({
           clearMessagesForTransition();
         }
         
-        // Mode-specific handling
-        if (mode === 'agentOnly' || mode === 'private') {
-          setIsAgentOnlyConversation(true)
-        } else {
-          setIsAgentOnlyConversation(false)
-        }
+        // Routing is derived from the persisted conversation, never URL mode flags.
         
         // Load the agent when its ID changes.
         if (agId !== agentId) {
@@ -216,7 +209,7 @@ export function useChatPageAgent({
     return () => {
       window.removeEventListener('popstate', handlePopState)
     }
-  }, [conversationId, agentId, clearMessagesForTransition, setIsAgentOnlyConversation])
+  }, [conversationId, agentId, clearMessagesForTransition])
 
   return currentAgent
 }
