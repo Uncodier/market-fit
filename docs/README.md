@@ -21,6 +21,7 @@ Use the guides below before relying on older implementation notes.
 
 ## Integration guides
 
+- [Agent channel phone numbers](AGENT_CHANNEL_NUMBERS.md)
 - [Accounting integrity and rollout](ACCOUNTING.md)
 - [Site archival](SITE_ARCHIVAL.md)
 - [Support chat identity](CHAT_IDENTITY.md)

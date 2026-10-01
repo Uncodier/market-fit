@@ -4,7 +4,7 @@ import { useMemo } from "react"
 import { useSite } from "@/app/context/SiteContext"
 import { Button } from "@/app/components/ui/button"
 import { COMMUNICATION_CHANNELS, getChannelLabel, getEnabledSiteChannels, normalizeChannel } from "@/lib/site-channels"
-import { useZavuSenderPhoneNumbers } from "@/app/components/settings/use-zavu-sender-phone-numbers"
+import { getSenderPhoneNumberKey, useZavuSenderPhoneNumbers } from "@/app/components/settings/use-zavu-sender-phone-numbers"
 import { WF_FIELD_CLASS, type WorkflowTriggerConfig } from "./types"
 import { WorkflowSearchSelect } from "./workflow-search-select"
 import { getWorkflowConnectionLabel } from "./workflow-connection-label"
@@ -63,7 +63,7 @@ export function WorkflowChannelMessageFields({
               { value: "any", label: "Any connection" },
               ...connections.map((connection) => ({
                 value: connection.id!,
-                label: getWorkflowConnectionLabel(connection, senderPhoneNumbers[connection.zavu_sender_id || ""]),
+                label: getWorkflowConnectionLabel(connection, senderPhoneNumbers[getSenderPhoneNumberKey(connection)]),
               })),
             ]}
             value={trigger.connection_id || "any"}

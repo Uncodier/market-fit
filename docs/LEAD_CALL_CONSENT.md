@@ -1,8 +1,11 @@
 # Lead outbound-call consent
 
-The lead detail's **About → Info** contact fields display **Outbound calls**
-directly below **Phone**, including when empty fields are hidden. **Edit call
-consent** manages the existing database fields:
+The lead detail's **About → Info** displays **Outbound calls** at the bottom,
+after all contact fields and the empty-fields toggle. It stays visible when
+empty fields are hidden, including when no phone number is recorded. Click
+**Edit call consent** or any displayed consent value to open the same editor.
+All entry points require update access and preserve explicit confirmation
+before saving. The editor manages the existing database fields:
 
 - `voice_call_consent_status`: Unknown, Granted, or Revoked.
 - `voice_call_consent_at`: when explicit outbound-call consent was obtained.

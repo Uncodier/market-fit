@@ -6,7 +6,6 @@ import { TabsList, TabsTrigger } from "@/app/components/ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
 import { CalendarDateRangePicker } from "@/app/components/ui/date-range-picker"
 import { ReportExportButton } from "@/app/components/navigation/ReportExportButton"
-import { useIsMobile } from "@/app/hooks/use-mobile-view"
 import { format } from "date-fns"
 import type { Segment } from "@/app/types/segments"
 import { REPORTS, type ReportId } from "./report-sections"
@@ -34,8 +33,6 @@ export function DashboardFilters({
   maxRangeDays?: number
   dateOptionsLoading?: boolean
 }) {
-  const isMobile = useIsMobile()
-
   return (
     <StickyHeader>
       <div className="mx-auto w-full max-w-[1536px] min-w-0 py-2">
@@ -48,6 +45,7 @@ export function DashboardFilters({
             </TabsList>
           </div>
           <div className="ml-auto flex shrink-0 items-center justify-end gap-2">
+          <ReportExportButton />
           <MobileFiltersDrawer triggerText={t("common.filters") || "Filters"}>
             <FilterContainer className="md:justify-end">
               {report !== "social" && report !== "traffic" && <FilterSection>
@@ -80,7 +78,6 @@ export function DashboardFilters({
               </FilterSection>}
               <FilterSection>
                 <div className="flex flex-col md:flex-row items-stretch md:items-center gap-2">
-                  {!isMobile && <ReportExportButton />}
                   <CalendarDateRangePicker
                     onRangeChange={onDateRangeChange}
                     maxRangeDays={maxRangeDays}
@@ -94,7 +91,6 @@ export function DashboardFilters({
               </FilterSection>
             </FilterContainer>
           </MobileFiltersDrawer>
-          {isMobile && <ReportExportButton />}
           </div>
         </div>
       </div>

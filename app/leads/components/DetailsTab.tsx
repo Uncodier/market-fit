@@ -135,12 +135,6 @@ export function DetailsTab({
           <Input value={draft} onChange={(event) => setDraft(event.target.value)} className="h-8 text-sm" />
         )}
       />
-      {currentSite?.id && <CallConsentFields
-        key={`${currentSite.id}:${lead.id}`}
-        lead={lead}
-        siteId={currentSite.id}
-        onSaved={onCallConsentSaved}
-      />}
       <PropertyRow
         icon={<CalendarDays size={14} />}
         label="Birthday"
@@ -262,6 +256,12 @@ export function DetailsTab({
         )}
       />
       <ShowEmptyFieldsToggle showEmpty={showEmpty} onToggle={onToggleEmpty} hiddenCount={hiddenCount} />
+      {currentSite?.id && <CallConsentFields
+        key={`${currentSite.id}:${lead.id}`}
+        lead={lead}
+        siteId={currentSite.id}
+        onSaved={onCallConsentSaved}
+      />}
     </div>
   )
 }

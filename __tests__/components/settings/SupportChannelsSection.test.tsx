@@ -139,12 +139,13 @@ describe("SupportChannelsSection", () => {
   it("shows assigned numbers for connected WhatsApp, Voice, and SMS cards", async () => {
     const getSpy = jest.spyOn(apiClient, "get").mockResolvedValue({
       success: true,
-      data: [{ id: "phone-1", senderId: "sender-whatsapp", phoneNumber: "+14155550101" }],
+      data: { id: "sender-whatsapp", whatsapp: { displayPhoneNumber: "+14155550101" } },
     })
+    const onSave = jest.fn()
 
     render(
       <TestForm
-        onSave={jest.fn()}
+        onSave={onSave}
         initialConnections={[{
           id: "whatsapp-1",
           type: "whatsapp",
@@ -175,8 +176,39 @@ describe("SupportChannelsSection", () => {
       expect(screen.getByText("+1 (415) 555-0101")).toBeInTheDocument()
     })
     expect(getSpy).toHaveBeenCalledWith(
-      "/api/integrations/zavu/phone-numbers?siteId=site-1"
+      "/api/integrations/zavu/senders/sender-whatsapp?siteId=site-1",
+      { timeout: 10000 },
     )
+    expect(onSave).not.toHaveBeenCalled()
+  })
+
+  it("keeps the channel connected without inventing a number when lookup fails", async () => {
+    jest.spyOn(apiClient, "get").mockResolvedValue({ success: false, status: 503 })
+    const onSave = jest.fn()
+    render(<TestForm onSave={onSave} initialConnections={[{
+      id: "whatsapp-1", type: "whatsapp", name: "WhatsApp", status: "connected",
+      zavu_sender_id: "sender-whatsapp",
+    }]} />)
+
+    await waitFor(() => expect(apiClient.get).toHaveBeenCalled())
+    expect(screen.getByText("Connected")).toBeInTheDocument()
+    expect(screen.getAllByText("WhatsApp")).toHaveLength(2)
+    expect(onSave).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    { phoneNumber: "+14155550101" },
+    { whatsapp: { displayPhoneNumber: "+14155550101" } },
+    { whatsapp: { display_phone_number: "+14155550101" } },
+  ])("shows a stored WhatsApp account number without a lookup (%#)", (connectedAccount) => {
+    const get = jest.spyOn(apiClient, "get")
+    render(<TestForm onSave={jest.fn()} initialConnections={[{
+      id: "whatsapp-1", type: "whatsapp", name: "WhatsApp", status: "connected",
+      zavu_sender_id: "sender-whatsapp", connected_account: connectedAccount,
+    }]} />)
+    expect(screen.getByText("+1 (415) 555-0101")).toBeInTheDocument()
+    expect(screen.getByText("Connected")).toBeInTheDocument()
+    expect(get).not.toHaveBeenCalled()
   })
 
   it("persists a reconciled email domain status", async () => {

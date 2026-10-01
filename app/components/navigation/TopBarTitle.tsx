@@ -1,6 +1,6 @@
 "use client"
 
-import { usePathname } from "next/navigation"
+import { usePathname, useSearchParams } from "next/navigation"
 import { Button } from "../ui/button"
 import { NavigationLink } from "./NavigationLink"
 import { 
@@ -13,6 +13,7 @@ import { useEffect, useState, useCallback } from "react"
 import { cn } from "@/lib/utils"
 import { useNavigationHistory } from "@/app/hooks/use-breadcrumb-history"
 import { useLocalization } from "@/app/context/LocalizationContext"
+import { REPORTS, isReportId } from "@/app/dashboard/report-sections"
 
 interface TopBarTitleProps extends React.HTMLAttributes<HTMLDivElement> {
   title: string
@@ -41,7 +42,11 @@ export function TopBarTitle({
 }: TopBarTitleProps) {
   const { t } = useLocalization()
   const pathname = usePathname()
-  const [searchParams, setSearchParams] = useState<string>("")
+  const searchParams = useSearchParams()
+  const reportParam = searchParams.get("tab")
+  const reportTitle = pathname === "/dashboard" && reportParam !== "onboarding"
+    ? REPORTS[isReportId(reportParam) ? reportParam : "performance"].title
+    : null
   const [customTitle, setCustomTitle] = useState<string | null>(null)
   const [customAgentId, setCustomAgentId] = useState<string | null>(null)
   const [customAgentName, setCustomAgentName] = useState<string | null>(null)
@@ -150,23 +155,6 @@ export function TopBarTitle({
     };
   }, []);
 
-  // Actualizar los parámetros de búsqueda cuando cambie la URL
-  useEffect(() => {
-    const updateSearchParams = () => {
-      setSearchParams(window.location.search);
-    };
-    
-    // Actualizar inicialmente
-    updateSearchParams();
-    
-    // Escuchar cambios en la URL
-    window.addEventListener('popstate', updateSearchParams);
-    
-    return () => {
-      window.removeEventListener('popstate', updateSearchParams);
-    };
-  }, []);
-
   // Convert history items to breadcrumb format
   const breadcrumbItems = hasHistory ? historyItems.map((item, index, array) => {
     const [pathnameOnly, queryString] = item.path.split("?")
@@ -204,7 +192,23 @@ export function TopBarTitle({
         </Button>
       )}
       
-      {breadcrumbItems ? (
+      {reportTitle ? (
+        <nav className="flex items-center min-w-0" aria-label="Breadcrumb">
+          <ol className="flex items-center min-w-0">
+            <li className="flex items-center shrink-0">
+              <NavigationLink href="/dashboard" className="text-xl font-semibold text-muted-foreground hover:text-foreground transition-colors font-inter">
+                {getRouteTitle("dashboard")}
+              </NavigationLink>
+            </li>
+            <li className="flex items-center min-w-0">
+              <ChevronRight className="mx-1.5 h-5 w-5 shrink-0 text-muted-foreground/70" aria-hidden={true} />
+              <h1 aria-current="page" className="text-2xl font-semibold text-foreground font-inter truncate">
+                {reportTitle}
+              </h1>
+            </li>
+          </ol>
+        </nav>
+      ) : breadcrumbItems ? (
         <nav className="flex items-center min-w-0" aria-label="Breadcrumb">
           <ol className="flex items-center min-w-0">
               {breadcrumbItems.map((item, index) => {

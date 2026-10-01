@@ -45,6 +45,7 @@ export function CallConsentFields({ lead, siteId, onSaved }: Props) {
   const validDate = lead.voice_call_consent_at && !Number.isNaN(Date.parse(lead.voice_call_consent_at))
 
   const openEditor = () => {
+    if (!canEdit || inFlight.current) return
     setSnapshot(lead)
     setStatus(lead.voice_call_consent_status ?? "unknown")
     setConsentDate(validDate ? format(new Date(lead.voice_call_consent_at!), "yyyy-MM-dd'T'HH:mm:ss") : "")
@@ -105,18 +106,34 @@ export function CallConsentFields({ lead, siteId, onSaved }: Props) {
     }
   }
 
+  const fields = [
+    { label: "Consent", editLabel: "Edit consent status", value: loaded ? STATUS_LABELS[lead.voice_call_consent_status!] : "Unavailable" },
+    { label: "Consent date", editLabel: "Edit consent date", value: validDate ? new Date(lead.voice_call_consent_at!).toLocaleString() : "Not recorded" },
+    { label: "Do not call", editLabel: "Edit do not call", value: loaded ? (lead.do_not_call ? "On — calls blocked" : "Off") : "Unavailable" },
+  ]
+
   return (
     <section aria-label="Outbound call consent" className="my-3 rounded-lg border border-border/60 p-3 space-y-2">
       <div className="flex items-center justify-between gap-2">
         <h3 className="text-xs font-medium">Outbound calls</h3>
-        <Button type="button" variant="ghost" size="sm" className="h-7 text-xs" disabled={!canEdit} onClick={openEditor}>
+        <Button type="button" variant="outline" size="sm" className="h-7 text-xs" aria-haspopup="dialog" disabled={!canEdit || saving} onClick={openEditor}>
           Edit call consent
         </Button>
       </div>
       <dl className="text-xs space-y-1">
-        <div className="flex justify-between gap-2"><dt className="text-muted-foreground">Consent</dt><dd>{loaded ? STATUS_LABELS[lead.voice_call_consent_status!] : "Unavailable"}</dd></div>
-        <div className="flex justify-between gap-2"><dt className="text-muted-foreground">Consent date</dt><dd>{validDate ? new Date(lead.voice_call_consent_at!).toLocaleString() : "Not recorded"}</dd></div>
-        <div className="flex justify-between gap-2"><dt className="text-muted-foreground">Do not call</dt><dd>{loaded ? (lead.do_not_call ? "On — calls blocked" : "Off") : "Unavailable"}</dd></div>
+        {fields.map(({ label, editLabel, value }) => (
+          <div key={label} className="flex items-center justify-between gap-2">
+            <dt className="shrink-0 text-muted-foreground">{label}</dt>
+            <dd className="min-w-0 text-right">
+              <Button type="button" variant="ghost" size="sm"
+                className="min-h-6 h-auto rounded-md px-1 py-0 text-xs font-normal whitespace-normal text-right disabled:opacity-100"
+                aria-label={editLabel} aria-haspopup="dialog" title={editLabel}
+                disabled={!canEdit || saving} onClick={openEditor}>
+                {value}
+              </Button>
+            </dd>
+          </div>
+        ))}
       </dl>
       <p className="text-xs text-muted-foreground">{loaded ? (block?.message ?? "This lead has a valid phone number and no explicit call opt-out.") : "Reload the lead to load its call consent settings."}</p>
       {!canEdit && <p className="text-xs text-muted-foreground">Editing requires update access to this site.</p>}

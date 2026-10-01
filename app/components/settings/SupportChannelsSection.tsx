@@ -32,7 +32,7 @@ import {
   SupportChannelHeader,
   SupportChannelTypeSelector,
 } from "./support-channel-card-parts"
-import { useZavuSenderPhoneNumbers } from "./use-zavu-sender-phone-numbers"
+import { getSenderPhoneNumberKey, useZavuSenderPhoneNumbers } from "./use-zavu-sender-phone-numbers"
 import { countAgentChannels, getAgentChannelLimit, canConnectAgentChannel } from "@/lib/billing-limits"
 import { useSite } from "@/app/context/SiteContext"
 import { useBillingLimit } from "@/app/context/BillingLimitContext"
@@ -275,7 +275,7 @@ export function SupportChannelsSection({ active, siteId, onSave }: SupportChanne
           const accountLabel = getSupportChannelAccountLabel(
             channel,
             label,
-            senderPhoneNumbers[channel.zavu_sender_id || ""],
+            senderPhoneNumbers[getSenderPhoneNumberKey(channel)],
           )
 
           return (

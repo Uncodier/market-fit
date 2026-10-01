@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react"
+import { fireEvent, render, screen } from "@testing-library/react"
 import type { InstanceNode } from "@/app/types/instance-nodes"
 import { WorkflowTriggerBody } from "@/app/components/workflows/workflow-trigger-body"
 import type { WorkflowTriggerConfig } from "@/app/components/workflows/types"
@@ -29,6 +29,7 @@ jest.mock("@/app/components/workflows/workflow-cron-fields", () => ({
 }))
 
 jest.mock("@/app/components/settings/use-zavu-sender-phone-numbers", () => ({
+  ...jest.requireActual("@/app/components/settings/use-zavu-sender-phone-numbers"),
   useZavuSenderPhoneNumbers: () => ({}),
 }))
 

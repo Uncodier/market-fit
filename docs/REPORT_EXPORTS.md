@@ -1,10 +1,11 @@
 # Report exports
 
-The Export action in the Reports toolbar, immediately to the left of the desktop
-date-range selector, exports **the current section as CSV**, not every section of
-the report. It uses the same compact button style as Leads and stays outside the
+The Export action in the Reports toolbar, to the left of the segment and date
+filters, exports **the current section as CSV**, not every section of the report.
+It uses the same compact button style as Leads and stays outside and before the
 mobile filters drawer. Visit another section to export its datasets. The dedicated
-Costs page uses the same toolbar action and exporter, including its campaign filter.
+Costs page retains its action beside the date picker and uses the same exporter,
+including its campaign filter.
 
 Exports reuse the validated data already loaded by the frontend. Clicking Export
 does not call another reporting endpoint, repeat calculations on the server or

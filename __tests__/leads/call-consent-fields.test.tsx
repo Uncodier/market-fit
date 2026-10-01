@@ -2,6 +2,7 @@ import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { useState, type ReactNode } from "react"
 import { SWRConfig } from "swr"
 import { CallConsentFields } from "@/app/leads/components/CallConsentFields"
+import { DetailsTab } from "@/app/leads/components/DetailsTab"
 import { updateLeadCallConsent } from "@/app/leads/call-consent-actions"
 import { useOptionalPermissions } from "@/app/context/PermissionContext"
 import { useLeadData } from "@/app/hooks/useLeadData"
@@ -10,6 +11,11 @@ import type { Lead } from "@/app/leads/types"
 
 jest.mock("@/app/leads/call-consent-actions", () => ({ updateLeadCallConsent: jest.fn() }))
 jest.mock("@/app/context/PermissionContext", () => ({ useOptionalPermissions: jest.fn() }))
+jest.mock("@/app/context/SiteContext", () => ({
+  useSite: () => ({ currentSite: { id: "22222222-2222-4222-8222-222222222222" } }),
+}))
+jest.mock("@/app/context/LocalizationContext", () => ({ useLocalization: () => ({ t: (key: string) => key }) }))
+jest.mock("@/app/commerce/resolve-relation", () => ({ resolveRelationId: jest.fn() }))
 jest.mock("sonner", () => ({ toast: { success: jest.fn(), error: jest.fn() } }))
 jest.mock("@/app/services/user-service", () => ({ getUserData: jest.fn() }))
 const maybeSingle = jest.fn()
@@ -85,6 +91,41 @@ it("shows unknown consent but explains the missing phone rather than requiring c
   expect(updateLeadCallConsent).not.toHaveBeenCalled()
 })
 
+it.each(["Edit consent status", "Edit consent date", "Edit do not call"])(
+  "opens the editor from the displayed value: %s", (label) => {
+    mount({ phone: null })
+    fireEvent.click(screen.getByRole("button", { name: label }))
+    expect(screen.getByRole("dialog", { name: "Edit call consent" })).toBeInTheDocument()
+    expect(screen.getByRole("combobox")).toHaveValue("unknown")
+    expect(screen.getByRole("button", { name: "Save call consent" })).toBeDisabled()
+    expect(updateLeadCallConsent).not.toHaveBeenCalled()
+  }
+)
+
+it.each([false, true])("places editable consent last in Info with showEmpty=%s", async (showEmpty) => {
+  const onUpdateLead = jest.fn()
+  render(<SWRConfig value={{ provider: () => new Map() }}>
+    <DetailsTab lead={{ ...lead, phone: null, position: "Director", origin: "Website" }}
+      segments={[]} campaigns={[]} showEmpty={showEmpty} onToggleEmpty={jest.fn()}
+      onUpdateLead={onUpdateLead} onCallConsentSaved={onSaved} />
+  </SWRConfig>)
+
+  const consent = screen.getByRole("region", { name: "Outbound call consent" })
+  expect(consent.parentElement?.lastElementChild).toBe(consent)
+  expect(screen.getByText("Origin").compareDocumentPosition(consent) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  const emptyToggle = screen.getByRole("button", { name: /^(Show \d+ empty fields|Hide empty fields)$/ })
+  expect(emptyToggle.compareDocumentPosition(consent) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  if (showEmpty) expect(screen.getByText("Phone")).toBeInTheDocument()
+  else expect(screen.queryByText("Phone")).not.toBeInTheDocument()
+
+  fireEvent.click(screen.getByRole("button", { name: "Edit consent status" }))
+  chooseGrant()
+  confirmAndSave()
+  await waitFor(() => expect(onSaved).toHaveBeenCalledWith(expect.objectContaining({ voice_call_consent_status: "granted" })))
+  expect(updateLeadCallConsent).toHaveBeenCalledWith(expect.objectContaining({ expected: expect.objectContaining({ phone: null }) }))
+  expect(onUpdateLead).not.toHaveBeenCalled()
+})
+
 it.each([
   ["unknown", null, false, "valid phone number and no explicit call opt-out"],
   ["granted", at, false, "valid phone number and no explicit call opt-out"],
@@ -106,12 +147,19 @@ it.each(["read-only", "loading", "other-site", "no-provider"])("does not allow e
   })
   mount()
   expect(screen.getByRole("button", { name: "Edit call consent" })).toBeDisabled()
+  for (const label of ["Edit consent status", "Edit consent date", "Edit do not call"]) {
+    const button = screen.getByRole("button", { name: label })
+    expect(button).toBeDisabled()
+    fireEvent.click(button)
+  }
+  expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
   expect(updateLeadCallConsent).not.toHaveBeenCalled()
 })
 
 it("fails closed when consent fields were not loaded", () => {
   mount({ voice_call_consent_status: undefined })
   expect(screen.getByRole("button", { name: "Edit call consent" })).toBeDisabled()
+  expect(screen.getByRole("button", { name: "Edit consent status" })).toBeDisabled()
   expect(screen.getByText(/Reload the lead to load/)).toBeInTheDocument()
 })
 

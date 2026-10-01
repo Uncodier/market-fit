@@ -3,6 +3,7 @@ import { act, fireEvent, render, screen, waitFor, within } from "@testing-librar
 import { SWRConfig } from "swr"
 import { usePathname, useSearchParams } from "next/navigation"
 import DashboardPage from "@/app/dashboard/page"
+import { TopBarTitle } from "@/app/components/navigation/TopBarTitle"
 import { REPORTS, type ReportId } from "@/app/dashboard/report-sections"
 
 let mockSite = "site-one"
@@ -33,11 +34,15 @@ jest.mock("@/app/components/ui/mobile-filters-drawer", () => {
   return { MobileFiltersDrawer: Wrapper, FilterContainer: Wrapper, FilterSection: Wrapper }
 })
 jest.mock("@/app/components/ui/date-range-picker", () => ({ CalendarDateRangePicker: () => <button>Date range</button> }))
+jest.mock("@/app/components/ui/help-button", () => ({ HelpButton: () => null }))
 
 function renderPage(search: string) {
   jest.mocked(useSearchParams).mockReturnValue(new URLSearchParams(search) as ReturnType<typeof useSearchParams>)
   const cache = new Map()
-  const ui = () => <SWRConfig value={{ provider: () => cache }}><DashboardPage /></SWRConfig>
+  const ui = () => <SWRConfig value={{ provider: () => cache }}>
+    <TopBarTitle title="Dashboard" isCollapsed={false} onCollapse={() => {}} hideSidebarToggle />
+    <DashboardPage />
+  </SWRConfig>
   const result = render(ui())
   return { ...result, navigate: (next: string) => {
     jest.mocked(useSearchParams).mockReturnValue(new URLSearchParams(next) as ReturnType<typeof useSearchParams>)
@@ -45,7 +50,17 @@ function renderPage(search: string) {
   } }
 }
 
+const performanceEntriesDescriptor = Object.getOwnPropertyDescriptor(performance, "getEntriesByType")
+beforeAll(() => {
+  Object.defineProperty(performance, "getEntriesByType", { configurable: true, value: jest.fn(() => []) })
+})
+afterAll(() => {
+  if (performanceEntriesDescriptor) Object.defineProperty(performance, "getEntriesByType", performanceEntriesDescriptor)
+  else Reflect.deleteProperty(performance, "getEntriesByType")
+})
+
 beforeEach(() => {
+  localStorage.clear(); sessionStorage.clear()
   mockContent.mockClear(); mockSite = "site-one"; mockSiteLoading = false; mockMaxRangeDays = 93
   mockLimits.isLoading = false; mockLimits.isValidating = false; mockLimits.signedOut = false; mockLimits.error = undefined
   mockLimits.mutate.mockReset()
@@ -65,11 +80,18 @@ describe("sticky report navigation", () => {
         expect(screen.getByRole("tablist", { name: `${REPORTS[report].title} sections` })).toBeInTheDocument()
         expect(screen.getAllByRole("tab")).toHaveLength(REPORTS[report].sections.length)
         expect(screen.getByRole("tab", { name: section.label })).toHaveAttribute("aria-selected", "true")
-        expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(REPORTS[report].title)
+        const breadcrumb = within(screen.getByRole("navigation", { name: "Breadcrumb" }))
+        expect(breadcrumb.getByRole("link", { name: "Dashboard" })).toHaveAttribute("href", "/dashboard")
+        expect(breadcrumb.getByRole("heading", { level: 1 })).toHaveTextContent(REPORTS[report].title)
+        expect(within(screen.getByRole("tabpanel")).queryByRole("heading", { level: 1 })).not.toBeInTheDocument()
         const exportButton = within(screen.getByTestId("sticky-header")).getByRole("button", { name: "Export current section (CSV)" })
         expect(screen.getAllByRole("button", { name: "Export current section (CSV)" })).toHaveLength(1)
-        expect(exportButton.parentElement).toHaveClass("flex", "md:flex-row", "md:items-center")
-        expect(exportButton.nextElementSibling).toBe(screen.getByRole("button", { name: "Date range" }))
+        expect(exportButton.parentElement).toHaveClass("flex", "items-center")
+        expect(exportButton.parentElement?.firstElementChild).toBe(exportButton)
+        expect(exportButton.nextElementSibling).toContainElement(screen.getByRole("button", { name: "Date range" }))
+        if (report !== "social" && report !== "traffic") {
+          expect(exportButton.nextElementSibling).toContainElement(screen.getByRole("combobox", { name: "Segment" }))
+        }
         expect(mockContent.mock.calls.every(([props]) => props.report === report && props.section === section.id)).toBe(true)
       }
     }
@@ -141,13 +163,32 @@ describe("sticky report navigation", () => {
     expect(mockContent).not.toHaveBeenCalled()
   })
 
-  it("shows a single report title without repeating the section title or a second date badge", () => {
+  it("shows the report title only in the breadcrumb and keeps its section description in the content", () => {
     renderPage("tab=overview&section=economics")
-    expect(screen.getByRole("heading", { level: 1, name: "Business overview" })).toBeInTheDocument()
+    const breadcrumb = within(screen.getByRole("navigation", { name: "Breadcrumb" }))
+    expect(breadcrumb.getByRole("heading", { level: 1, name: "Business overview" })).toHaveAttribute("aria-current", "page")
+    expect(screen.getAllByText("Business overview")).toHaveLength(1)
     expect(screen.queryByRole("heading", { name: "Unit economics" })).not.toBeInTheDocument()
     expect(screen.getByRole("button", { name: "Date range" })).toBeInTheDocument()
-    expect(screen.getByRole("tabpanel").querySelector("header")).not.toHaveTextContent(/\d{4}/)
+    expect(screen.getByRole("tabpanel")).toHaveTextContent(REPORTS.overview.sections[1].description)
+    expect(screen.getByRole("tabpanel").querySelector("header")).toBeNull()
     expect(screen.getByRole("tabpanel").firstElementChild).toHaveClass("max-w-[1600px]", "mx-auto")
+  })
+
+  it.each(["", "tab=unknown", "tab="])("uses the default report in the breadcrumb for %s", (search) => {
+    renderPage(search)
+    expect(within(screen.getByRole("navigation", { name: "Breadcrumb" }))
+      .getByRole("heading", { level: 1 })).toHaveTextContent("Performance")
+  })
+
+  it("does not leave the report breadcrumb on another route", () => {
+    const { navigate } = renderPage("tab=overview&section=economics")
+    jest.mocked(usePathname).mockReturnValue("/leads")
+    navigate("")
+    const breadcrumb = within(screen.getByRole("navigation", { name: "Breadcrumb" }))
+    expect(breadcrumb.getByText("Leads")).toBeInTheDocument()
+    expect(breadcrumb.queryByText("Business overview")).not.toBeInTheDocument()
+    expect(breadcrumb.queryByRole("link", { name: "Dashboard" })).not.toBeInTheDocument()
   })
 
   it("retains the standard segmented tab appearance instead of underline navigation", () => {

@@ -425,11 +425,11 @@ export const Speaker = ({ className = "", size = 18, ...props }: IconProps) => (
   </IconWrapper>
 )
 
-// Play
+// Play triangles are optically centered rather than bounding-box centered.
 export const Play = ({ className = "", size = 18, ...props }: IconProps) => (
   <IconWrapper className={className} size={size} {...props}>
       <svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round">
-      <polygon points="5,3 19,12 5,21" />
+      <polygon points="7,3 21,12 7,21" />
     </svg>
   </IconWrapper>
 )
@@ -458,7 +458,7 @@ export const MicroPause = ({ className = "", size = 12, ...props }: IconProps) =
 export const MicroPlay = ({ className = "", size = 12, ...props }: IconProps) => (
   <IconWrapper className={className} size={size} {...props}>
     <svg viewBox="0 0 10 10" fill="currentColor">
-      <path d="M2,1 L8,5 L2,9 Z" />
+      <path d="M3,1 L9,5 L3,9 Z" />
     </svg>
   </IconWrapper>
 )

@@ -75,7 +75,8 @@ describe("sticky header select styling", () => {
 
   it.each([
     ["overview", false], ["overview", true], ["analytics", false], ["analytics", true],
-  ] as const)("keeps %s export before the date picker on desktop and outside mobile filters (mobile=%s)", (report, mobile) => {
+    ["social", false], ["social", true], ["traffic", false], ["traffic", true],
+  ] as const)("keeps %s export before the filters on desktop and outside mobile filters (mobile=%s)", (report, mobile) => {
     jest.mocked(useIsMobile).mockReturnValue(mobile)
     const { container } = render(
       <Tabs defaultValue="summary">
@@ -100,16 +101,22 @@ describe("sticky header select styling", () => {
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
     if (mobile) {
       expect(exportButton.parentElement).toHaveClass("ml-auto", "flex", "shrink-0", "justify-end")
-      expect(exportButton.parentElement?.lastElementChild).toBe(exportButton)
+      expect(exportButton.parentElement?.firstElementChild).toBe(exportButton)
       fireEvent.click(screen.getByRole("button", { name: "Filters" }))
       expect(within(screen.getByRole("dialog")).queryByRole("button", { name: "Export current section (CSV)" })).not.toBeInTheDocument()
       expect(exportButton.closest("[data-toolbar-font]")).toBe(header)
     } else {
-      expect(exportButton.parentElement).toHaveClass("flex", "md:flex-row", "md:items-center")
+      expect(exportButton.parentElement).toHaveClass("flex", "items-center")
       expect(exportButton.parentElement?.firstElementChild).toBe(exportButton)
-      const dateButton = within(exportButton.parentElement!).getAllByRole("button")[1]
+      const filters = exportButton.nextElementSibling as HTMLElement
+      const dateButton = within(filters).getByRole("button")
       expect(dateButton).toBeInTheDocument()
-      expect(exportButton.nextElementSibling).toContainElement(dateButton)
+      if (report !== "social" && report !== "traffic") {
+        const segment = within(filters).getByRole("combobox", { name: "Segment" })
+        expect(segment.compareDocumentPosition(dateButton) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+      } else {
+        expect(within(filters).queryByRole("combobox", { name: "Segment" })).not.toBeInTheDocument()
+      }
     }
   })
 

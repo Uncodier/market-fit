@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/app
 import { SearchInput } from "@/app/components/ui/search-input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/app/components/ui/table"
 import { Badge } from "@/app/components/ui/badge"
-import { ChevronLeft, ChevronRight, Search, User, Users, MessageSquare, Globe, FileText, Loader, Tag, X, CheckCircle2, ExternalLink, Phone, Pencil, Mail, Filter, LayoutGrid, PlusCircle, Plus, Star, TrendingDown, Ban, TrendingUp, XCircle, ListOrdered, Check, ChevronDown, Download, UploadCloud } from "@/app/components/ui/icons"
+import { ChevronLeft, ChevronRight, Search, User, Users, MessageSquare, Globe, FileText, X, CheckCircle2, ExternalLink, Phone, Pencil, Mail, Filter, LayoutGrid, PlusCircle, Plus, Star, TrendingDown, Ban, TrendingUp, XCircle, ListOrdered, Check, Download, UploadCloud } from "@/app/components/ui/icons"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/app/components/ui/tabs"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
 import { MobileFiltersDrawer, FilterContainer, FilterSection, FilterSeparator } from "@/app/components/ui/mobile-filters-drawer"
@@ -36,10 +36,7 @@ import { useCommandK } from "@/app/hooks/use-command-k"
 import { EmptyCard } from "@/app/components/ui/empty-card"
 import { assignLeadToUser } from "@/app/leads/actions"
 import { useAuth } from "@/app/hooks/use-auth"
-import { Sparkles, User as UserIcon } from "@/app/components/ui/icons"
 import { SortDropdown } from "@/app/components/ui/sort-dropdown"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/app/components/ui/dropdown-menu"
-import { MoreHorizontal, Eye, Trash2 } from "@/app/components/ui/icons"
 import { createClient } from "@/lib/supabase/client"
 import { AttributionModal } from "@/app/leads/components/AttributionModal"
 import { safeReload } from "@/app/utils/safe-reload"
@@ -47,6 +44,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/app/
 import { useUserData } from "@/app/hooks/use-user-data"
 import { GroupedLeadsTable } from "@/app/leads/components/grouped-leads-table"
 import { LeadsTableSkeleton } from "@/app/leads/components/LeadsTableSkeleton"
+import { LeadsBulkActions } from "@/app/leads/components/LeadsBulkActions"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { cn } from "@/lib/utils"
 
@@ -1354,45 +1352,13 @@ export default function LeadsPage() {
         <StickyHeader>
           <div className="w-full pt-0">
             {selectedLeads.size > 0 ? (
-              <div className="flex items-center justify-between w-full">
-                <div className="flex items-center gap-4 overflow-hidden">
-                  <Badge variant="outline" className="rounded-full px-2 py-0">
-                    {selectedLeads.size} selected
-                  </Badge>
-                  <span className="text-sm text-muted-foreground hidden sm:inline">
-                    Choose bulk action
-                  </span>
-                  <div className="flex items-center gap-2">
-                    <Button variant="ghost" size="sm" onClick={() => setSelectedLeads(new Set())} disabled={isBulkActionLoading}>
-                      Cancel
-                    </Button>
-                    <Button variant="secondary" size="sm" className="h-9 gap-2 rounded-full px-4" onClick={handleBulkAssign} disabled={isBulkActionLoading}>
-                      {isBulkActionLoading ? <Loader className="h-4 w-4 animate-spin" /> : <UserIcon className="h-4 w-4" />}
-                      Assign to me
-                    </Button>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="secondary" size="sm" className="h-9 gap-2 rounded-full px-4" disabled={isBulkActionLoading}>
-                          <Tag className="h-4 w-4" />
-                          Change Status
-                          <ChevronDown className="h-3 w-3 opacity-50" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="start">
-                        {["new", "contacted", "qualified", "cold", "converted", "lost", "not_qualified"].map(status => (
-                          <DropdownMenuItem key={status} onClick={() => handleBulkStatusChange(status)} className="capitalize">
-                            {status.replace('_', ' ')}
-                          </DropdownMenuItem>
-                        ))}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                    <Button variant="secondary" size="sm" className="h-9 gap-2 rounded-full px-4 text-destructive hover:text-destructive" onClick={handleBulkDelete} disabled={isBulkActionLoading}>
-                      <Trash2 className="h-4 w-4" />
-                      Delete
-                    </Button>
-                  </div>
-                </div>
-              </div>
+              <LeadsBulkActions
+                isLoading={isBulkActionLoading}
+                onCancel={() => setSelectedLeads(new Set())}
+                onAssign={handleBulkAssign}
+                onStatusChange={handleBulkStatusChange}
+                onDelete={handleBulkDelete}
+              />
             ) : (
               <div className="flex items-center justify-between w-full">
                 <MobileFiltersDrawer triggerText={t('common.search') || "Search"}>

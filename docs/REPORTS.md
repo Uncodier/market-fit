@@ -42,8 +42,11 @@ feed and active-segment count also have documented site-wide scope.
 
 ## Visual hierarchy
 
-Reports share a bounded content canvas and one report heading. Sticky tabs retain
-the application's standard segmented style, with filters separate from the analysis.
+Reports share a bounded content canvas and one report heading in the top-bar
+breadcrumb (`Dashboard > Report`), derived from the active report URL. The content
+keeps the section description without repeating the heading. Sticky tabs retain
+the application's standard segmented style, with Export before the segment and
+date filters, separate from the analysis.
 Embedded report panels suppress redundant section headings and repeated selected
 date lines. The range selector is the visible source of the selected dates; chart
 tooltips and disclosures retain exact bounds. The cost chart still labels its
