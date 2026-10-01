@@ -300,12 +300,12 @@ describe('useChatOperations send lifecycle', () => {
     act(() => { retry = result.current.handleRetryMessage(failed) })
     if (updated) act(() => { result.current.setMessages([realtime]) })
     await act(async () => {
-      reject(new InterventionRequestError('No call started. Explicit consent is required.', { execution_started: false }))
+      reject(new InterventionRequestError('No call started. This lead has explicitly opted out of outbound calls.', { execution_started: false }))
       await retry
     })
     expect(result.current.messages).toEqual([updated ? realtime : failed])
     expect(markInterventionMessageFailed).not.toHaveBeenCalled()
-    expect(toast.error).toHaveBeenCalledWith(expect.stringContaining('Explicit consent'))
+    expect(toast.error).toHaveBeenCalledWith(expect.stringContaining('explicitly opted out'))
     expect(result.current.isLoading).toBe(false)
     expect(sendTeamMemberIntervention).toHaveBeenCalledTimes(1)
   })

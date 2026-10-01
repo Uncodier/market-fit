@@ -39,7 +39,7 @@ function request(retry = false) {
     method: 'POST', headers: { 'content-type': 'application/json', origin: 'http://localhost:3000' },
     body: JSON.stringify({
       site_id: siteId, conversationId, message: 'Greeting', message_id: retry ? messageId : undefined,
-      // Client-provided consent, recipient and channel must never authorize a call.
+      // Client-provided call preferences, recipient and channel must never authorize a call.
       channel: 'web', phone: '+12025550123', lead_id: 'forged-lead',
       voice_call_consent_status: 'granted', voice_call_consent_at: '2026-01-01T00:00:00Z', do_not_call: false,
     }),
@@ -67,10 +67,8 @@ afterAll(() => {
 })
 
 it.each([
-  [{ voice_call_consent_status: 'unknown', voice_call_consent_at: null }, 'VOICE_CONSENT_REQUIRED', 403],
-  [{ voice_call_consent_status: 'revoked' }, 'VOICE_CONSENT_REQUIRED', 403],
-  [{ voice_call_consent_at: null }, 'VOICE_CONSENT_REQUIRED', 403],
-  [{ voice_call_consent_at: 'invalid' }, 'VOICE_CONSENT_REQUIRED', 403],
+  [{ voice_call_consent_status: 'revoked', voice_call_consent_at: null }, 'VOICE_DO_NOT_CALL', 403],
+  [{ voice_call_consent_status: 'denied' }, 'VOICE_DO_NOT_CALL', 403],
   [{ do_not_call: true }, 'VOICE_DO_NOT_CALL', 403],
   [{ phone: null }, 'VOICE_PHONE_REQUIRED', 409],
   [{ phone: '5550123' }, 'VOICE_PHONE_REQUIRED', 409],
@@ -92,7 +90,7 @@ it('fails closed when the linked lead is missing or belongs to another site', as
   expect(fetch).not.toHaveBeenCalled()
 })
 
-it('does not mistake a failed lookup for absent consent or expose database details', async () => {
+it('does not mistake a failed lookup for an eligible lead or expose database details', async () => {
   setup(null, { message: 'private database detail' })
   const response = await POST(request())
   expect(response.status).toBe(503)
@@ -102,15 +100,40 @@ it('does not mistake a failed lookup for absent consent or expose database detai
   expect(fetch).not.toHaveBeenCalled()
 })
 
-it('rechecks current consent before retrying a saved failed row', async () => {
-  setup({ ...eligibleLead, voice_call_consent_status: 'revoked' })
+it.each([
+  { voice_call_consent_status: 'revoked' },
+  { voice_call_consent_status: 'denied' },
+  { do_not_call: true },
+])('rechecks explicit opt-outs before retrying a saved failed row: %j', async overrides => {
+  setup({ ...eligibleLead, ...overrides })
   const response = await POST(request(true))
   expect(response.status).toBe(403)
   const body = await response.json()
   expect(body.execution_started).toBe(false)
+  expect(body.error.code).toBe('VOICE_DO_NOT_CALL')
   expect(body).not.toHaveProperty('message_id')
   expect(body).not.toHaveProperty('data')
   expect(fetch).not.toHaveBeenCalled()
+})
+
+describe.each([false, true])('voice preflight with retry=%s', retry => {
+  it.each([
+    { voice_call_consent_status: 'unknown', voice_call_consent_at: null },
+    { voice_call_consent_status: null, voice_call_consent_at: null },
+    { voice_call_consent_status: undefined, voice_call_consent_at: undefined },
+    { voice_call_consent_at: null },
+    { voice_call_consent_at: 'invalid' },
+  ])('forwards a call without requiring explicit consent: %j', async overrides => {
+    setup({ ...eligibleLead, ...overrides })
+    expect((await POST(request(retry))).status).toBe(200)
+    expect(fetch).toHaveBeenCalledTimes(1)
+    const body = JSON.parse(String(jest.mocked(fetch).mock.calls[0][1]?.body))
+    expect(body.lead_id).toBe(leadId)
+    expect(body.message).toBe(retry ? 'Original greeting' : 'Greeting')
+    expect(body).not.toHaveProperty('voice_call_consent_status')
+    expect(body).not.toHaveProperty('voice_call_consent_at')
+    expect(body).not.toHaveProperty('do_not_call')
+  })
 })
 
 it('forwards an eligible call once and keeps provider safety checks in the API', async () => {

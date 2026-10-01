@@ -69,7 +69,7 @@ describe("DatePicker shared behavior", () => {
     fireEvent.click(screen.getByRole("button", { name: "Archive" }))
     expect(setDate).toHaveBeenCalledWith(startOfDay(start))
     expect(setEndDate).toHaveBeenCalledWith(endOfDay(end))
-    expect(onRangeSelect).toHaveBeenCalledWith(startOfDay(start), endOfDay(end))
+    expect(onRangeSelect).toHaveBeenCalledWith(startOfDay(start), endOfDay(end), "custom")
   })
 
   it("validates explicit event endDate and respects disabled custom events", () => {
@@ -134,7 +134,7 @@ describe("DatePicker shared behavior", () => {
     render(<DatePicker mode="report" setDate={setDate} onRangeSelect={onRangeSelect} />)
     fireEvent.click(screen.getByRole("button", { name: "Select date" }))
     fireEvent.click(screen.getByRole("button", { name: "Last 30 days" }))
-    expect(onRangeSelect).toHaveBeenCalledWith(new Date(2026, 7, 31), endOfDay(new Date(2026, 8, 29)))
+    expect(onRangeSelect).toHaveBeenCalledWith(new Date(2026, 7, 31), endOfDay(new Date(2026, 8, 29)), "last30Days")
     expect(setDate).toHaveBeenCalledTimes(1)
   })
 

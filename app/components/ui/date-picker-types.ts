@@ -1,4 +1,5 @@
 import type { ReactNode } from "react"
+import type { DateRangeSelection } from "@/lib/dates/date-range-presets"
 
 export type DateEventType = 'day' | 'week' | 'month' | 'year' | 'custom'
 export type DateEventPeriod = 'past' | 'future' | 'current'
@@ -25,7 +26,8 @@ export interface DatePickerProps {
   events?: DateEvent[]
   customEvents?: boolean
   position?: "top" | "bottom" | "left" | "right"
-  onRangeSelect?: (start: Date, end: Date) => void
+  onRangeSelect?: (start: Date, end: Date, preset: DateRangeSelection) => void
+  rangePreset?: DateRangeSelection
   mode?: DatePickerMode
   endDate?: Date
   setEndDate?: (date: Date) => void

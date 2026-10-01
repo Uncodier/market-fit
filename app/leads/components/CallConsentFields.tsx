@@ -118,7 +118,7 @@ export function CallConsentFields({ lead, siteId, onSaved }: Props) {
         <div className="flex justify-between gap-2"><dt className="text-muted-foreground">Consent date</dt><dd>{validDate ? new Date(lead.voice_call_consent_at!).toLocaleString() : "Not recorded"}</dd></div>
         <div className="flex justify-between gap-2"><dt className="text-muted-foreground">Do not call</dt><dd>{loaded ? (lead.do_not_call ? "On — calls blocked" : "Off") : "Unavailable"}</dd></div>
       </dl>
-      <p className="text-xs text-muted-foreground">{loaded ? (block?.message ?? "This lead meets the phone and consent requirements for outbound calls.") : "Reload the lead to load its call consent settings."}</p>
+      <p className="text-xs text-muted-foreground">{loaded ? (block?.message ?? "This lead has a valid phone number and no explicit call opt-out.") : "Reload the lead to load its call consent settings."}</p>
       {!canEdit && <p className="text-xs text-muted-foreground">Editing requires update access to this site.</p>}
 
       <Dialog open={snapshot !== null} onOpenChange={(open) => { if (!open && !inFlight.current) setSnapshot(null) }}>
@@ -150,7 +150,7 @@ export function CallConsentFields({ lead, siteId, onSaved }: Props) {
                   onChange={(event) => { setConsentDate(event.target.value); setConfirmed(false) }} />
               </div>}
               {status !== "granted" && <p className="text-xs text-muted-foreground">
-                Unknown or revoked consent blocks calls and clears the recorded grant date.
+                Unknown consent does not block calls. Revoked consent blocks calls as an explicit opt-out. Both clear the recorded grant date.
               </p>}
               <div className="flex items-center justify-between gap-4">
                 <Label htmlFor="call-do-not-call">Do not call</Label>

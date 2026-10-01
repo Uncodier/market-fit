@@ -54,6 +54,7 @@ describe("CalendarDateRangePicker", () => {
     fireEvent.click(screen.getByText("Today"));
 
     expect(onRangeChange).toHaveBeenCalledTimes(1);
+    expect(onRangeChange).toHaveBeenCalledWith(startOfDay(new Date()), endOfDay(new Date()), "today");
   });
 
   it("does not block user selection after syncing a cached range", () => {
@@ -151,27 +152,28 @@ describe("CalendarDateRangePicker", () => {
   });
 
   it.each([
-    ["Today", 1], ["Last 7 days", 7], ["Last 30 days", 30], ["Last 90 days", 90],
-  ])("selects %s with inclusive days ending today", (preset, days) => {
+    ["Today", 1, "today"], ["Last 7 days", 7, "last7Days"],
+    ["Last 30 days", 30, "last30Days"], ["Last 90 days", 90, "last90Days"],
+  ])("selects %s with inclusive days ending today", (preset, days, id) => {
     const onRangeChange = jest.fn();
     render(<CalendarDateRangePicker maxRangeDays={93} onRangeChange={onRangeChange} />);
     fireEvent.click(screen.getByRole("button", { name: "Select date range" }));
     fireEvent.click(screen.getByRole("button", { name: preset }));
     const today = new Date();
-    expect(onRangeChange).toHaveBeenCalledWith(startOfDay(subDays(today, Number(days) - 1)), endOfDay(today));
+    expect(onRangeChange).toHaveBeenCalledWith(startOfDay(subDays(today, Number(days) - 1)), endOfDay(today), id);
     expect(onRangeChange).toHaveBeenCalledTimes(1);
   });
 
   it.each([
-    ["This month", new Date(2026, 8, 1), new Date(2026, 8, 29)],
-    ["This quarter", new Date(2026, 6, 1), new Date(2026, 8, 29)],
-    ["Last month", new Date(2026, 7, 1), new Date(2026, 7, 31)],
-  ])("uses the real bounds of %s, not a future month end or quarter's first month", (preset, start, end) => {
+    ["This month", new Date(2026, 8, 1), new Date(2026, 8, 29), "thisMonth"],
+    ["This quarter", new Date(2026, 6, 1), new Date(2026, 8, 29), "thisQuarter"],
+    ["Last month", new Date(2026, 7, 1), new Date(2026, 7, 31), "lastMonth"],
+  ])("uses the real bounds of %s, not a future month end or quarter's first month", (preset, start, end, id) => {
     const onRangeChange = jest.fn();
     render(<CalendarDateRangePicker maxRangeDays={93} onRangeChange={onRangeChange} />);
     fireEvent.click(screen.getByRole("button", { name: "Select date range" }));
     fireEvent.click(screen.getByRole("button", { name: String(preset) }));
-    expect(onRangeChange).toHaveBeenCalledWith(startOfDay(start as Date), endOfDay(end as Date));
+    expect(onRangeChange).toHaveBeenCalledWith(startOfDay(start as Date), endOfDay(end as Date), id);
   });
 
   it("disables presets outside the actual report limit and enables year ranges at 366 days", () => {
@@ -205,7 +207,7 @@ describe("CalendarDateRangePicker", () => {
     expect(trigger).toHaveTextContent("Dec 20, 1998 - Jan 10, 1999");
     expect(onRangeChange).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole("button", { name: format(new Date(1998, 11, 5), "PPPP") }));
-    expect(onRangeChange).toHaveBeenCalledWith(startOfDay(new Date(1998, 11, 3)), endOfDay(new Date(1998, 11, 5)));
+    expect(onRangeChange).toHaveBeenCalledWith(startOfDay(new Date(1998, 11, 3)), endOfDay(new Date(1998, 11, 5)), "custom");
     expect(trigger).toHaveTextContent("Dec 3 - Dec 5, 1998");
   });
 
@@ -222,7 +224,7 @@ describe("CalendarDateRangePicker", () => {
     const end = new Date(2026, 3, days - 90);
     fireEvent.click(screen.getByRole("button", { name: format(end, "PPPP") }));
     if (days === 93) {
-      expect(onRangeChange).toHaveBeenCalledWith(startOfDay(new Date(2026, 0, 1)), endOfDay(end));
+      expect(onRangeChange).toHaveBeenCalledWith(startOfDay(new Date(2026, 0, 1)), endOfDay(end), "custom");
       expect(differenceInCalendarDays(onRangeChange.mock.calls[0][1], onRangeChange.mock.calls[0][0]) + 1).toBe(93);
     } else {
       expect(screen.getByRole("alert")).toHaveTextContent("Select up to 93 days.");
@@ -230,7 +232,7 @@ describe("CalendarDateRangePicker", () => {
       expect(onRangeChange).not.toHaveBeenCalled();
       fireEvent.click(screen.getByRole("button", { name: format(new Date(2026, 3, 2), "PPPP") }));
       fireEvent.click(screen.getByRole("button", { name: format(new Date(2026, 3, 3), "PPPP") }));
-      expect(onRangeChange).toHaveBeenCalledWith(startOfDay(new Date(2026, 3, 2)), endOfDay(new Date(2026, 3, 3)));
+      expect(onRangeChange).toHaveBeenCalledWith(startOfDay(new Date(2026, 3, 2)), endOfDay(new Date(2026, 3, 3)), "custom");
     }
   });
 
@@ -294,5 +296,43 @@ describe("CalendarDateRangePicker", () => {
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
     expect(trigger).toHaveTextContent("Jan 1 - Sep 29, 2026");
     expect(onRangeChange).not.toHaveBeenCalled();
+  });
+
+  it("retains the chosen preset when multiple presets share today's dates", () => {
+    jest.setSystemTime(new Date(2026, 9, 1, 12));
+    const onRangeChange = jest.fn();
+    render(<CalendarDateRangePicker onRangeChange={onRangeChange} />);
+    fireEvent.click(screen.getByRole("button", { name: "Select date range" }));
+    fireEvent.click(screen.getByRole("button", { name: "Today" }));
+    fireEvent.click(screen.getByRole("button", { name: "Oct 1 - Oct 1, 2026" }));
+    expect(screen.getByRole("button", { name: "Today" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: "This month" })).toHaveAttribute("aria-pressed", "false");
+    fireEvent.click(screen.getByRole("button", { name: "This month" }));
+    expect(onRangeChange).toHaveBeenLastCalledWith(startOfDay(new Date()), endOfDay(new Date()), "thisMonth");
+    expect(onRangeChange).toHaveBeenCalledTimes(2);
+  });
+
+  it("changes a relative selection to custom even when the manual dates match", () => {
+    const onRangeChange = jest.fn();
+    render(<CalendarDateRangePicker initialStartDate={startOfDay(new Date())}
+      initialEndDate={endOfDay(new Date())} rangePreset="today" onRangeChange={onRangeChange} />);
+    fireEvent.click(screen.getByRole("button", { name: "Sep 29 - Sep 29, 2026" }));
+    const day = screen.getByRole("button", { name: format(new Date(), "PPPP") });
+    fireEvent.click(day);
+    expect(onRangeChange).not.toHaveBeenCalled();
+    fireEvent.click(day);
+    expect(onRangeChange).toHaveBeenCalledWith(startOfDay(new Date()), endOfDay(new Date()), "custom");
+    fireEvent.click(screen.getByRole("button", { name: "Sep 29 - Sep 29, 2026" }));
+    expect(screen.getByRole("button", { name: "Today" })).toHaveAttribute("aria-pressed", "false");
+  });
+
+  it("can select Today when a restored custom range has the same dates", () => {
+    const onRangeChange = jest.fn();
+    render(<CalendarDateRangePicker initialStartDate={startOfDay(new Date())}
+      initialEndDate={endOfDay(new Date())} rangePreset="custom" onRangeChange={onRangeChange} />);
+    fireEvent.click(screen.getByRole("button", { name: "Sep 29 - Sep 29, 2026" }));
+    expect(screen.getByRole("button", { name: "Today" })).toHaveAttribute("aria-pressed", "false");
+    fireEvent.click(screen.getByRole("button", { name: "Today" }));
+    expect(onRangeChange).toHaveBeenCalledWith(startOfDay(new Date()), endOfDay(new Date()), "today");
   });
 });

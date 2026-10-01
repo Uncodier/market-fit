@@ -38,9 +38,9 @@ it('does not fabricate acceptance for a non-JSON response', async () => {
 })
 
 it('exposes the saved row on a definite delivery rejection', async () => {
-  jest.mocked(fetch).mockResolvedValueOnce(Response.json(accepted({ success: false, method: 'voice_agent_call', error: 'Consent is required' })))
+  jest.mocked(fetch).mockResolvedValueOnce(Response.json(accepted({ success: false, method: 'voice_agent_call', error: 'Lead has opted out of Voice calls' })))
   const error = await send().catch(error => error)
-  expect(error.message).toBe('Consent is required')
+  expect(error.message).toBe('Lead has opted out of Voice calls')
   expect(interventionErrorMessageId(error)).toBe('message-1')
 })
 
@@ -92,11 +92,11 @@ it('never automatically retries a network failure', async () => {
 it('preserves a preflight rejection without claiming a saved message', async () => {
   jest.mocked(fetch).mockResolvedValueOnce(Response.json({
     success: false, execution_started: false,
-    error: { code: 'VOICE_CONSENT_REQUIRED', message: 'No call started. Explicit consent is required.' },
+    error: { code: 'VOICE_DO_NOT_CALL', message: 'No call started. This lead has explicitly opted out of outbound calls.' },
   }, { status: 403 }))
   const error = await send().catch(error => error)
   expect(error.executionStarted).toBe(false)
-  expect(error.message).toContain('Explicit consent')
+  expect(error.message).toContain('explicitly opted out')
   expect(interventionErrorMessageId(error)).toBeUndefined()
   expect(fetch).toHaveBeenCalledTimes(1)
 })

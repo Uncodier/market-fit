@@ -111,8 +111,10 @@ Telegram, Messenger, Instagram, voice, and custom channels use the same rules:
   selections never cause an implicit replacement.
 
 Labels reuse `lib/site-channels#getChannelLabel`; voice is displayed as **Voice
-calls**. Voice calls require the contact's **explicit consent** before outreach;
-selecting an account does not grant consent. Audio is a **message format**
+calls**. Voice calls are blocked by **explicit call opt-outs** (`do_not_call`,
+revoked consent, or legacy denied consent), not missing/unknown consent or a
+missing grant timestamp. Selecting an account does not change consent or opt-out
+preferences. Audio is a **message format**
 supported by applicable messaging channels, not a separate account or channel;
 `audio` is therefore not an outreach channel key. Channel expansion does not
 create per-channel daily or unanswered budgets: both limits remain shared across

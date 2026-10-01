@@ -149,6 +149,11 @@ context/session checks or admission. This local-only preview shares the send's
 persisted user action (not by text alone). It never claims a running workflow
 before persistence. A pre-admission failure removes only that preview and retains
 the draft; an accepted send remains visible even if its stream later fails.
+An empty, missing, or whitespace-only persisted user message does not erase the
+submitted or last displayed text. Reconciliation keeps only that text locally;
+the durable row still owns its ID and lifecycle metadata. Complete server text
+replaces the fallback. This applies to Realtime, refreshes, and live polling;
+retained text is scoped to the instance/site and cannot recreate an absent row.
 
 The user-action timeline key also uses `request_id` so persistence updates the
 existing message DOM instead of remounting it. A local `Sending` row reserves the

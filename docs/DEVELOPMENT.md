@@ -142,6 +142,22 @@ verification only against an explicitly approved disposable target. Generated
 - Do not replace real backend behavior with mock API responses. Test doubles
   belong in tests and must model the real contract.
 
+### Persisted date filters
+
+Orders stores `{ startDate, endDate, preset }` under its existing site-scoped
+`orders-date-range:<siteId>` key. The shared picker callbacks include the selected
+preset as their third argument; calendar selections emit `custom`, even when the
+dates happen to match a relative preset. Preserve this argument when caching a
+filter instead of inferring its meaning from date equality.
+
+`usePersistentDateRange` restores relative bounds using the current local day and
+locale, refreshes them at midnight and on tab focus/visibility, and gates data
+requests until restoration completes. The default is 30 inclusive days. Custom
+and legacy date-only ranges remain fixed; clearing stores `null`. An old saved
+range needs an explicit preset selection once to become relative. Reuse this
+hook and `lib/dates/date-range-presets.ts` when adding persistence to other screens;
+response caches such as SWR do not persist filter selection by themselves.
+
 ## Before handing off
 
 - Review the diff for unrelated edits and accidental secret exposure.

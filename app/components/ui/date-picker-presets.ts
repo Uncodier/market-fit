@@ -1,11 +1,11 @@
 import {
   addDays, addMonths, addWeeks, endOfDay, endOfMonth, endOfWeek, endOfYear,
-  isSameYear, startOfDay, startOfMonth, startOfQuarter, startOfWeek,
-  startOfYear, subDays, subMonths, subYears,
+  isSameYear, startOfDay, startOfMonth, startOfWeek, subDays,
 } from "date-fns"
 import type { Locale } from "date-fns"
 import type { DateEvent, DatePickerMode } from "./date-picker-types"
 import { getDateRangeError } from "./date-picker-range"
+import { resolveDateRangePreset, type DateRangePreset } from "@/lib/dates/date-range-presets"
 
 type Translate = (key: string) => string
 
@@ -48,19 +48,23 @@ export function getDefaultDateEvents(
   const tomorrow = event("tomorrow", addDays(today, 1), "day", "future")
 
   if (mode === 'range' || mode === 'report') {
+    const relativeEvent = (id: DateRangePreset, type: DateEvent['type'], period: DateEvent['period']) => {
+      const { startDate, endDate } = resolveDateRangePreset(id, now, locale)
+      return event(id, startDate, type, period, endDate)
+    }
     const presets = [
-      ...common,
-      ...(mode === 'report' ? [event("yesterday", subDays(today, 1), "day", "past")] : []),
-      event("last7Days", subDays(today, 6), "custom", "past", endToday),
-      event("last30Days", subDays(today, 29), "custom", "past", endToday),
-      { ...event("last90Days", subDays(today, 89), "custom", "past", endToday), label: "Last 90 days" },
-      ...(mode === 'range' ? [{ ...thisWeek, endDate: endToday }] : []),
-      { ...thisMonth, endDate: endToday },
-      event("lastMonth", startOfMonth(subMonths(today, 1)), "month", "past"),
-      event("thisQuarter", startOfQuarter(today), "custom", "current", endToday),
-      event("yearToDate", startOfYear(today), "year", "current", endToday),
+      relativeEvent("today", "day", "current"),
+      ...(mode === 'report' ? [relativeEvent("yesterday", "day", "past")] : []),
+      relativeEvent("last7Days", "custom", "past"),
+      relativeEvent("last30Days", "custom", "past"),
+      { ...relativeEvent("last90Days", "custom", "past"), label: "Last 90 days" },
+      ...(mode === 'range' ? [relativeEvent("thisWeek", "week", "current")] : []),
+      relativeEvent("thisMonth", "month", "current"),
+      relativeEvent("lastMonth", "month", "past"),
+      relativeEvent("thisQuarter", "custom", "current"),
+      relativeEvent("yearToDate", "year", "current"),
       ...(mode === 'range' ? [
-        event("lastYear", startOfYear(subYears(today, 1)), "year", "past"),
+        relativeEvent("lastYear", "year", "past"),
         {
           ...event("allTime", today, "custom", "past", endToday),
           disabled: true,

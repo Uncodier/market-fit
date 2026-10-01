@@ -14,13 +14,14 @@ import { DatePickerContent } from "./date-picker-content"
 import { boundDateEvents, getDefaultDateEvents, getEventRange } from "./date-picker-presets"
 import { formatDateRange, getDateRangeError } from "./date-picker-range"
 import type { DateEvent, DatePickerProps } from "./date-picker-types"
+import { isDateRangePreset, type DateRangeSelection } from "@/lib/dates/date-range-presets"
 
 export type { DateEvent, DateEventPeriod, DateEventType, DatePickerMode, DatePickerProps } from "./date-picker-types"
 
 export function DatePicker({
   date, setDate, className, placeholder, disabled = false, showEvents = true, events,
   customEvents = false, position = "bottom", onRangeSelect, mode = 'default', endDate,
-  setEndDate, rangeDisplay, maxRangeDays, showTimePicker = false, timeFormat = '24h', trigger,
+  setEndDate, rangeDisplay, rangePreset, maxRangeDays, showTimePicker = false, timeFormat = '24h', trigger,
 }: DatePickerProps) {
   const { t, locale } = useLocalization()
   const dateLocale = getDateFnsLocale(locale)
@@ -33,6 +34,7 @@ export function DatePicker({
   const [open, setOpen] = React.useState(false)
   const [tempStartDate, setTempStartDate] = React.useState<Date | null>(null)
   const [selectionError, setSelectionError] = React.useState<string | null>(null)
+  const [selectedPreset, setSelectedPreset] = React.useState<DateRangeSelection>(rangePreset ?? "custom")
   const [selectedTime, setSelectedTime] = React.useState(() => ({
     hours: (safeDate || new Date()).getHours(), minutes: (safeDate || new Date()).getMinutes(),
   }))
@@ -50,8 +52,9 @@ export function DatePicker({
     }
     setTempStartDate(null)
     setSelectionError(null)
+    setSelectedPreset(rangePreset ?? "custom")
     // Only synchronize when the selected value changes, not on calendar navigation.
-  }, [dateTimestamp, endTimestamp])
+  }, [dateTimestamp, endTimestamp, rangePreset])
 
   React.useEffect(() => {
     if (disabled) setOpen(false)
@@ -82,16 +85,18 @@ export function DatePicker({
         : format(safeDate, "PPP", { locale: dateLocale })
       : placeholder || t("datePicker.selectDate")
 
-  const commitRange = (start: Date, end: Date) => {
+  const commitRange = (start: Date, end: Date, preset: DateRangeSelection = "custom") => {
     const error = getDateRangeError(start, end, maxRangeDays)
     setTempStartDate(null)
     setSelectionError(error)
     if (error || disabled) return false
     const changed = !safeDate || !safeEndDate || !isSameDay(start, safeDate) || !isSameDay(end, safeEndDate)
+      || preset !== (rangePreset ?? selectedPreset)
+    setSelectedPreset(preset)
     if (changed) {
       setDate(start)
       setEndDate?.(end)
-      onRangeSelect?.(start, end)
+      onRangeSelect?.(start, end, preset)
     }
     setOpen(false)
     return true
@@ -115,7 +120,7 @@ export function DatePicker({
     if (onRangeSelect) {
       const range = getEventRange({ label: "", value: selectedDate, type: 'day', period: 'current' }, dateLocale)
       setEndDate?.(range.end)
-      onRangeSelect(range.start, range.end)
+      onRangeSelect(range.start, range.end, "custom")
     }
     changeOpen(false)
   }
@@ -124,7 +129,9 @@ export function DatePicker({
     if (disabled || event.disabled) return
     const { start, end } = getEventRange(event, dateLocale)
     if (mode === 'range' || onRangeSelect) {
-      commitRange(start, end)
+      const preset = !events && (mode === 'range' || mode === 'report') && isDateRangePreset(event.id)
+        ? event.id : "custom"
+      commitRange(start, end, preset)
       return
     }
     selectDate(event.value)
@@ -133,6 +140,7 @@ export function DatePicker({
   const pickerContent = (
     <DatePickerContent
       mode={mode} date={safeDate} endDate={safeEndDate} currentMonth={currentMonth}
+      rangePreset={mode === 'range' || onRangeSelect ? rangePreset ?? selectedPreset : undefined}
       tempStartDate={tempStartDate} error={selectionError || inputError} disabled={disabled}
       navigateMonth={(offset) => { if (!disabled) setCurrentMonth((current) => addMonths(current, offset)) }}
       selectDate={selectDate} events={displayEvents} showEvents={showEvents} customEvents={customEvents}

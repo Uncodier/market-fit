@@ -102,9 +102,9 @@ export async function POST(request: Request): Promise<Response> {
   }
 
   if (conversationChannel(conversation) === 'voice') {
-    // Read current eligibility under RLS; never accept client-provided phone or consent.
+    // Read current eligibility under RLS; never accept client-provided phone or call preferences.
     const { data: lead, error } = await access.supabase.from('leads')
-      .select('id, phone, do_not_call, voice_call_consent_status, voice_call_consent_at')
+      .select('id, phone, do_not_call, voice_call_consent_status')
       .eq('id', conversation.lead_id).eq('site_id', conversation.site_id).maybeSingle()
     if (error) return failure('Unable to verify call eligibility. No call started. Try again later.', 503, 'VOICE_ELIGIBILITY_UNAVAILABLE')
     const blocked = getVoiceCallBlock(lead)
@@ -151,7 +151,7 @@ export async function POST(request: Request): Promise<Response> {
           : channel.delivery_status === 'placement_unknown'
           ? 'Call placement is unconfirmed. Check the conversation before retrying.'
           : channel.method === 'voice_agent_call'
-            ? 'Voice delivery was not started. Check the lead phone, call consent, and connected Voice sender.'
+            ? 'Voice delivery was not started. Check the lead phone, call opt-out restrictions, and connected Voice sender.'
             : 'Delivery was not started. Check the conversation channel and recipient.',
       } } } : {}),
       ...(!upstream.ok || !result.success ? { error: {

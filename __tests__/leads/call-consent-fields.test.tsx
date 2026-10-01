@@ -77,18 +77,19 @@ function confirmAndSave() {
   fireEvent.click(screen.getByRole("button", { name: "Save call consent" }))
 }
 
-it("shows unknown consent and its explanation even with otherwise empty contact info", () => {
+it("shows unknown consent but explains the missing phone rather than requiring consent", () => {
   mount({ phone: null })
   expect(screen.getByText("Unknown")).toBeInTheDocument()
   expect(screen.getByText("Not recorded")).toBeInTheDocument()
-  expect(screen.getByText(/An inbound call does not grant this consent/)).toBeInTheDocument()
+  expect(screen.getByText(/Add a valid international phone number/)).toBeInTheDocument()
   expect(updateLeadCallConsent).not.toHaveBeenCalled()
 })
 
 it.each([
-  ["granted", at, false, "meets the phone and consent requirements"],
-  ["granted", "invalid", false, "Obtain and record explicit consent"],
-  ["revoked", null, false, "Obtain and record explicit consent"],
+  ["unknown", null, false, "valid phone number and no explicit call opt-out"],
+  ["granted", at, false, "valid phone number and no explicit call opt-out"],
+  ["granted", "invalid", false, "valid phone number and no explicit call opt-out"],
+  ["revoked", null, false, "explicitly opted out"],
   ["granted", at, true, "do-not-call list"],
 ] as const)("displays current %s consent and do-not-call precedence", (status, date, doNotCall, message) => {
   mount({ voice_call_consent_status: status, voice_call_consent_at: date, do_not_call: doNotCall })
@@ -120,6 +121,7 @@ it("requires confirmation and a real date; never auto-grants when opening or can
   expect(screen.getByRole("combobox")).toHaveValue("unknown")
   expect(screen.getByRole("button", { name: "Save call consent" })).toBeDisabled()
   expect(screen.getByText(/does not request consent or start a call/)).toBeInTheDocument()
+  expect(screen.getByText(/Unknown consent does not block calls/)).toBeInTheDocument()
   fireEvent.change(screen.getByRole("combobox"), { target: { value: "granted" } })
   expect(screen.getByLabelText("Consent obtained at (your local time)")).toHaveValue("")
   fireEvent.click(screen.getByRole("button", { name: "Cancel" }))
@@ -240,7 +242,8 @@ it("prevents duplicate submissions and dismissal while saving", async () => {
 })
 
 it.each(["grant", "revoke", "do-not-call"] as const)("refreshes mounted Conversations eligibility after %s", async (change) => {
-  const initialLead: Lead = change === "grant" ? lead : { ...lead, voice_call_consent_status: "granted", voice_call_consent_at: at }
+  const initialLead: Lead = change === "grant" ? { ...lead, voice_call_consent_status: "revoked" }
+    : { ...lead, voice_call_consent_status: "granted", voice_call_consent_at: at }
   let storedLead = { ...initialLead, site_id: siteId }
   maybeSingle.mockImplementation(async () => ({ data: { channel: "voice", lead_id: lead.id, leads: storedLead }, error: null }))
   jest.mocked(updateLeadCallConsent).mockImplementation(async () => {

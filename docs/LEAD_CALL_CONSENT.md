@@ -8,6 +8,13 @@ consent** manages the existing database fields:
 - `voice_call_consent_at`: when explicit outbound-call consent was obtained.
 - `do_not_call`: an independent restriction that overrides granted consent.
 
+Outbound calls do not require recorded consent. Unknown/missing consent and a
+missing/invalid grant timestamp do not block calling. Explicit call opt-outs do:
+`do_not_call: true`, `Revoked`, or legacy `denied` status. The composer, web proxy,
+and external API enforce this policy independently, alongside recipient and
+sender eligibility. Deploy the web and external API changes together; an older
+API still requires granted consent. No consent state is automatically changed.
+
 Granting consent requires entering the actual consent date/time and explicitly
 confirming the lead agreed to outbound calls to the displayed number. The date
 is entered in the operator's local timezone, persisted as UTC, and cannot be in
@@ -46,6 +53,10 @@ the identity of the person who recorded it. Those require a separately designed
 audit persistence model; do not treat this editor as evidence that consent was
 actually obtained. Existing database/Data API writers are not replaced by this
 Server Action.
+
+The historical migration's consent-required column comment describes the former
+admission policy. Its constraint validates a recorded grant, not call eligibility,
+and remains unchanged; no migration is needed to permit calls with unknown consent.
 
 ## Offline checks
 

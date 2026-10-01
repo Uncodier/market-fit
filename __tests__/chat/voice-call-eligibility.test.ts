@@ -9,12 +9,21 @@ it.each([undefined, null, {}])('requires a linked lead: %j', value => {
   expect(getVoiceCallBlock(value)?.code).toBe('VOICE_LEAD_REQUIRED')
 })
 
-it.each(['unknown', 'revoked', null, undefined, 'GRANTED'])('requires explicit granted consent: %s', status => {
-  expect(getVoiceCallBlock({ ...lead, voice_call_consent_status: status })?.code).toBe('VOICE_CONSENT_REQUIRED')
+it.each(['unknown', 'granted', null, undefined, 'GRANTED'])('allows calls without requiring granted consent: %s', status => {
+  expect(getVoiceCallBlock({ ...lead, voice_call_consent_status: status, voice_call_consent_at: null })).toBeNull()
 })
 
-it.each([null, undefined, '', 'not-a-date'])('requires a valid consent timestamp: %s', timestamp => {
-  expect(getVoiceCallBlock({ ...lead, voice_call_consent_at: timestamp })?.code).toBe('VOICE_CONSENT_REQUIRED')
+it.each([null, undefined, '', 'not-a-date'])('does not require a consent timestamp: %s', timestamp => {
+  expect(getVoiceCallBlock({ ...lead, voice_call_consent_at: timestamp })).toBeNull()
+})
+
+it('allows a valid linked recipient without consent fields', () => {
+  expect(getVoiceCallBlock({ id: lead.id, phone: lead.phone })).toBeNull()
+})
+
+it.each(['revoked', 'denied'])('blocks explicit opt-outs even without a grant timestamp: %s', status => {
+  expect(getVoiceCallBlock({ ...lead, voice_call_consent_status: status, voice_call_consent_at: null }))
+    .toMatchObject({ code: 'VOICE_DO_NOT_CALL', status: 403, message: expect.stringContaining('explicitly opted out') })
 })
 
 it('prioritizes do-not-call even when consent was previously granted', () => {

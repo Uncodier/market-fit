@@ -41,7 +41,7 @@ describe("voice call deliveries migration", () => {
     )
   })
 
-  it("requires explicit consent and enforces DNC at the lead level", () => {
+  it("stores lead call preferences and requires a timestamp only for a recorded grant", () => {
     expect(safetyMigration).toContain("do_not_call boolean NOT NULL DEFAULT false")
     expect(safetyMigration).toContain(
       "voice_call_consent_status text NOT NULL DEFAULT 'unknown'"

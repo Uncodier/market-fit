@@ -43,7 +43,7 @@ export function OutreachActivityFields({ activityKey, accounts, segments, loadin
           return (
             <fieldset key={channel} className="space-y-2 rounded-md border p-3">
               <legend className="px-1 text-sm font-medium">{getOutreachChannelLabel(channel)} accounts</legend>
-              {channel === "voice" && <p className="text-sm text-muted-foreground">Voice calls require the contact&apos;s explicit consent before outreach. Selecting a voice account does not grant consent.</p>}
+              {channel === "voice" && <p className="text-sm text-muted-foreground">Voice calls are blocked for contacts who explicitly opted out or are on the do-not-call list. Missing recorded consent does not block calls.</p>}
               {!options.length && <p className="text-sm text-muted-foreground">No usable connected accounts. Connect and save an account in Channels first.</p>}
               {options.map(account => (
                 <label key={account.id} className="flex items-center gap-2 text-sm">
@@ -69,7 +69,7 @@ export function OutreachActivityFields({ activityKey, accounts, segments, loadin
           </FormItem>
         )} />
         <p className="text-sm text-muted-foreground">No segments selected means no leads are targeted unless All segments is explicitly enabled.</p>
-        {loading && <p role="status" className="text-sm">Loading this site's segments…</p>}
+        {loading && <p role="status" className="text-sm">Loading this site&apos;s segments…</p>}
         {error && <div role="alert" className="text-sm text-destructive">{error} <Button type="button" variant="ghost" size="sm" onClick={retry}>Retry</Button></div>}
         {!loading && !error && !segments.length && <p className="text-sm text-muted-foreground">This site has no segments yet.</p>}
         <div className="max-h-56 overflow-y-auto space-y-2">
@@ -96,7 +96,7 @@ export function OutreachActivityFields({ activityKey, accounts, segments, loadin
         <FormItem>
           <FormLabel>Maximum unanswered messages</FormLabel>
           <FormControl><Input {...field} type="number" min={1} max={100} step={1} className="max-w-40" value={Number.isFinite(field.value) ? field.value : ""} onChange={event => field.onChange(event.target.value === "" ? NaN : Number(event.target.value))} /></FormControl>
-          <p className="text-sm text-muted-foreground">1–100 messages (default 3). Counts confirmed outreach messages across channels since the contact's last real reply; drafts, pending and failed messages do not count. After reaching this limit, the contact is marked cold on the next eligible check after the reply-wait period, not immediately after sending.</p>
+          <p className="text-sm text-muted-foreground">1–100 messages (default 3). Counts confirmed outreach messages across channels since the contact&apos;s last real reply; drafts, pending and failed messages do not count. After reaching this limit, the contact is marked cold on the next eligible check after the reply-wait period, not immediately after sending.</p>
           <FormMessage />
         </FormItem>
       )} />

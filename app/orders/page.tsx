@@ -7,12 +7,11 @@ import { useLocalization } from "@/app/context/LocalizationContext"
 import { listOrders, updateOrderStatus } from "./actions"
 import { OrderParams, type OrderWithRelations } from "./types"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
-import { MobileFiltersDrawer, FilterContainer, FilterSection, FilterSeparator } from "@/app/components/ui/mobile-filters-drawer"
+import { MobileFiltersDrawer, FilterContainer, FilterSection } from "@/app/components/ui/mobile-filters-drawer"
 import { SearchInput } from "@/app/components/ui/search-input"
 import { Tabs, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
 import { LayoutGrid, Clock, CheckCircle2, Ban, PlayCircle, X } from "@/app/components/ui/icons"
-import { subDays, startOfDay, endOfDay } from "date-fns"
 import { CalendarDateRangePicker } from "@/app/components/ui/date-range-picker"
 import { useRouter , useSearchParams} from "next/navigation"
 import { ViewSelector } from "@/app/components/view-selector"
@@ -28,25 +27,16 @@ import { toast } from "sonner"
 import { navigateToOrder } from "@/lib/navigation/navigation-helpers"
 import { Button } from "@/app/components/ui/button"
 import { PrinterSyncBadge } from "@/app/components/printer/PrinterSyncBadge"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "@/app/components/ui/dropdown-menu"
 import { cn } from "@/lib/utils"
 import { SortDropdown } from "@/app/components/ui/sort-dropdown"
-import {
-  cacheOrdersDateRange,
-  readOrdersDateRange,
-  type OrdersDateRange,
-} from "@/app/orders/date-range-cache"
+import { ordersDateRangeStorageKey } from "@/app/orders/date-range-cache"
+import { usePersistentDateRange } from "@/app/hooks/use-persistent-date-range"
+import { getDateFnsLocale } from "@/app/lib/date-fns-locale"
+import type { DateRangeSelection } from "@/lib/dates/date-range-presets"
 import { ConfirmDialog } from "@/app/components/ui/confirm-dialog"
 import { usePermissions } from "@/app/context/PermissionContext"
 import { useOrderPrinting } from "@/app/orders/hooks/use-order-printing"
 import { useDebounce } from "use-debounce"
-
-function defaultOrdersDateRange(): OrdersDateRange {
-  return {
-    startDate: startOfDay(subDays(new Date(), 30)),
-    endDate: endOfDay(new Date()),
-  }
-}
 
 export default function OrdersPage() {
   const searchParams = useSearchParams()
@@ -55,7 +45,7 @@ export default function OrdersPage() {
   const [sortBy, setSortBy] = useState(defaultSort)
 
   const { currentSite } = useSite()
-  const { t } = useLocalization()
+  const { t, locale } = useLocalization()
   const { can } = usePermissions()
   const router = useRouter()
   const { printingKey, printOrder } = useOrderPrinting({
@@ -63,7 +53,7 @@ export default function OrdersPage() {
     site: currentSite,
   })
   
-  const [page, setPage] = useState(1)
+  const [pagination, setPagination] = useState({ scope: "", page: 1 })
   const pageSize = 50
   const [searchQuery, setSearchQuery] = useState("")
   const [debouncedSearchQuery] = useDebounce(searchQuery, 300)
@@ -73,35 +63,23 @@ export default function OrdersPage() {
   const [orderToCancel, setOrderToCancel] =
     useState<OrderWithRelations | null>(null)
   
-  const [dateRange, setDateRange] = useState<OrdersDateRange | null>(
-    defaultOrdersDateRange,
+  const { dateRange, setDateRange, isDateRangeReady } = usePersistentDateRange(
+    currentSite?.id ? ordersDateRangeStorageKey(currentSite.id) : null,
+    getDateFnsLocale(locale),
   )
-  const [dateRangeSiteId, setDateRangeSiteId] = useState<string | null>(null)
 
-  useEffect(() => {
-    if (!currentSite?.id) {
-      setDateRangeSiteId(null)
-      return
-    }
+  const pageScope = `${currentSite?.id}:${dateRange?.startDate.getTime()}:${dateRange?.endDate.getTime()}:${dateRange?.preset}`
+  if (pagination.scope !== pageScope) setPagination({ scope: pageScope, page: 1 })
+  const page = pagination.scope === pageScope ? pagination.page : 1
+  const setPage = (nextPage: number) => setPagination({ scope: pageScope, page: nextPage })
 
-    const cachedRange = readOrdersDateRange(currentSite.id)
-    setDateRange(
-      cachedRange === undefined ? defaultOrdersDateRange() : cachedRange,
-    )
-    setDateRangeSiteId(currentSite.id)
-    setPage(1)
-  }, [currentSite?.id])
-
-  const handleDateRangeChange = (startDate: Date, endDate: Date) => {
-    const nextRange = { startDate, endDate }
-    setDateRange(nextRange)
-    if (currentSite?.id) cacheOrdersDateRange(currentSite.id, nextRange)
+  const handleDateRangeChange = (startDate: Date, endDate: Date, preset: DateRangeSelection) => {
+    setDateRange({ startDate, endDate, preset })
     setPage(1)
   }
 
   const handleDateRangeClear = () => {
     setDateRange(null)
-    if (currentSite?.id) cacheOrdersDateRange(currentSite.id, null)
     setPage(1)
   }
   const clearDateRangeLabel =
@@ -120,7 +98,7 @@ export default function OrdersPage() {
   }
 
   const { data, error, isLoading, mutate } = useSWR(
-    currentSite?.id && dateRangeSiteId === currentSite.id
+    currentSite?.id && isDateRangeReady
       ? {
           resource: "orders",
           siteId: currentSite.id,
@@ -134,7 +112,10 @@ export default function OrdersPage() {
           sort: sortBy
         }
       : null,
-    ({ resource: _resource, ...request }) => fetcher(request)
+    ({ resource, ...request }) => {
+      void resource
+      return fetcher(request)
+    }
   )
 
   useOrdersRealtime(currentSite?.id, () => {
@@ -151,7 +132,7 @@ export default function OrdersPage() {
       if (!data) return data;
       return {
         ...data,
-        data: data.data.map((order: any) => 
+        data: data.data.map((order) =>
           order.id === orderId ? { ...order, status: newStatus } : order
         )
       }
@@ -292,6 +273,8 @@ export default function OrdersPage() {
                       <CalendarDateRangePicker
                         className="w-full [&_button]:pr-10"
                         onRangeChange={handleDateRangeChange}
+                        rangePreset={dateRange?.preset}
+                        disabled={!isDateRangeReady}
                         initialStartDate={dateRange?.startDate}
                         initialEndDate={dateRange?.endDate} />
                       {dateRange && (
@@ -327,6 +310,8 @@ export default function OrdersPage() {
                   <CalendarDateRangePicker 
                     className="[&_button]:pr-10"
                     onRangeChange={handleDateRangeChange} 
+                    rangePreset={dateRange?.preset}
+                    disabled={!isDateRangeReady}
                     initialStartDate={dateRange?.startDate}
                     initialEndDate={dateRange?.endDate} />
                   {dateRange && (

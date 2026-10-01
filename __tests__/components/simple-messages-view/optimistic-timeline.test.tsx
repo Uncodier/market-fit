@@ -52,8 +52,15 @@ beforeEach(() => {
 })
 afterEach(() => { globalThis.ResizeObserver = originalResizeObserver })
 
-it.each(['confirmed', 'rejected'] as const)('renders the message and Thinking before the network settles, then handles %s', async outcome => {
-  let emit!: (payload: { eventType: 'INSERT'; new: InstanceLog }) => void
+it.each([
+  { outcome: 'confirmed', message: 'Show my message now' },
+  { outcome: 'confirmed', message: '' },
+  { outcome: 'confirmed', message: ' \n ' },
+  { outcome: 'confirmed', message: null },
+  { outcome: 'confirmed', message: undefined },
+  { outcome: 'rejected', message: '' },
+])('keeps the visible prompt through $outcome with persisted content $message', async ({ outcome, message }) => {
+  let emit!: (payload: { eventType: 'INSERT' | 'UPDATE'; new: InstanceLog }) => void
   const subscription: { on: jest.Mock; subscribe: jest.Mock } = {
     on: jest.fn((_event, _filter, callback) => { emit = callback; return subscription }),
     subscribe: jest.fn(callback => { callback('SUBSCRIBED'); return subscription }),
@@ -88,12 +95,13 @@ it.each(['confirmed', 'rejected'] as const)('renders the message and Thinking be
   const payload = JSON.parse(String(options?.body))
   expect(payload.request_id).toEqual(expect.any(String))
 
+  const saved = {
+    id: 'persisted-user-message', instance_id: 'instance', log_type: 'user_action', level: 'info',
+    message, created_at: new Date().toISOString(),
+    details: { request_id: payload.request_id, status: 'running', lifecycle_owner: 'api' },
+  } as InstanceLog
   if (outcome === 'confirmed') {
-    act(() => { emit({ eventType: 'INSERT', new: {
-      id: 'persisted-user-message', instance_id: 'instance', log_type: 'user_action', level: 'info',
-      message: 'Show my message now', created_at: new Date().toISOString(),
-      details: { request_id: payload.request_id, status: 'running', lifecycle_owner: 'api' },
-    } }) })
+    act(() => { emit({ eventType: 'INSERT', new: saved }) })
     expect(screen.getAllByText('Show my message now')).toHaveLength(1)
     expect(screen.getByText('Show my message now')).toBe(preview)
     expect(preview.closest('[data-timeline-item-id]')).toBe(previewRow)
@@ -112,6 +120,9 @@ it.each(['confirmed', 'rejected'] as const)('renders the message and Thinking be
   if (outcome === 'confirmed') {
     expect(composer).toHaveValue('')
     expect(screen.getAllByText('Show my message now')).toHaveLength(1)
+    act(() => { emit({ eventType: 'UPDATE', new: { ...saved, message: '' } }) })
+    expect(screen.getByText('Show my message now')).toBe(preview)
+    expect(preview.closest('[data-timeline-item-id]')).toBe(previewRow)
   } else {
     expect(composer).toHaveValue('Show my message now')
     expect(screen.queryByText('Show my message now')).not.toBeInTheDocument()

@@ -1,4 +1,5 @@
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react"
+import type { ReactNode } from "react"
 import { FormProvider, useForm } from "react-hook-form"
 import { ActivitiesSection } from "@/app/components/settings/ActivitiesSection"
 import { mergeActivitySettings, normalizeActivitySettings } from "@/app/components/settings/activity-settings"
@@ -8,16 +9,16 @@ import type { SiteFormValues } from "@/app/components/settings/form-schema"
 const emailId = "11111111-1111-4111-8111-111111111111"
 const secondEmailId = "22222222-2222-4222-8222-222222222222"
 const whatsappId = "33333333-3333-4333-8333-333333333333"
-let mockCurrentSite: any
+let mockCurrentSite: { id: string; settings: Record<string, unknown> }
 jest.mock("@/app/context/SiteContext", () => ({ useSite: () => ({ currentSite: mockCurrentSite }) }))
 jest.mock("@/app/context/LocalizationContext", () => ({ useLocalization: () => ({ t: () => "AI Activities" }) }))
-jest.mock("@/app/components/navigation/NavigationLink", () => ({ NavigationLink: ({ children }: any) => <span>{children}</span> }))
+jest.mock("@/app/components/navigation/NavigationLink", () => ({ NavigationLink: ({ children }: { children: ReactNode }) => <span>{children}</span> }))
 jest.mock("@/app/components/settings/outreach-segments", () => ({ fetchOutreachSegments: jest.fn() }))
 jest.mock("@/app/components/settings/icp-mining-lists", () => ({ fetchIcpMiningLists: jest.fn().mockResolvedValue([]) }))
 
-function TestForm({ onSave, initial }: { onSave: jest.Mock; initial?: any }) {
+function TestForm({ onSave, initial }: { onSave: jest.Mock; initial?: unknown }) {
   const form = useForm<SiteFormValues>({ defaultValues: {
-    activities: normalizeActivitySettings(initial), business_hours: [{ timezone: "America/New_York" } as any],
+    activities: normalizeActivitySettings(initial), business_hours: [{ timezone: "America/New_York" }],
   } })
   return <FormProvider {...form}><ActivitiesSection active siteId={mockCurrentSite.id} onSave={onSave} /></FormProvider>
 }
@@ -102,7 +103,7 @@ describe("ActivitiesSection outreach controls", () => {
     const { unmount } = render(<TestForm onSave={onSave} />)
     await waitFor(() => expect(card(key).getByRole("checkbox", { name: "Enterprise" })).toBeInTheDocument())
     for (const label of ["SMS accounts", "Telegram accounts", "Voice calls accounts", "Custom-chat_v2 accounts"]) expect(card(key).getByRole("group", { name: label })).toBeInTheDocument()
-    expect(card(key).getByText(/Voice calls require the contact's explicit consent/)).toBeInTheDocument()
+    expect(card(key).getByText(/Voice calls are blocked for contacts who explicitly opted out/)).toBeInTheDocument()
     expect(card(key).getByText(/Audio is a message format supported by applicable messaging channels/)).toBeInTheDocument()
     expect(card(key).queryByRole("group", { name: /Audio accounts/ })).not.toBeInTheDocument()
     for (const name of ["Sales SMS", "Sales Telegram", "Sales Voice", "Custom agent", "Enterprise"]) fireEvent.click(card(key).getByRole("checkbox", { name }))

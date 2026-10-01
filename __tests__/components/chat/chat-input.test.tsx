@@ -110,8 +110,8 @@ describe('ChatInput send guards', () => {
   })
 
   it.each([
-    [{ voice_call_consent_status: 'unknown', voice_call_consent_at: null }, 'explicit consent'],
-    [{ voice_call_consent_status: 'revoked' }, 'explicit consent'],
+    [{ voice_call_consent_status: 'revoked', voice_call_consent_at: null }, 'explicitly opted out'],
+    [{ voice_call_consent_status: 'denied' }, 'explicitly opted out'],
     [{ do_not_call: true }, 'do-not-call'],
     [{ phone: undefined }, 'international phone number'],
   ])('blocks voice button, Enter and native submit with an actionable reason: %j', (overrides, reason) => {
@@ -126,6 +126,44 @@ describe('ChatInput send guards', () => {
     expect(screen.getByRole('button', { name: 'Start call' })).toBeDisabled()
     expect(callbacks.handleSendMessage).not.toHaveBeenCalled()
     expect(callbacks.handleKeyDown).not.toHaveBeenCalled()
+    expect(textarea).toHaveValue('Keep this greeting')
+  })
+
+  it.each([
+    { voice_call_consent_status: 'unknown', voice_call_consent_at: null },
+    { voice_call_consent_status: undefined, voice_call_consent_at: undefined },
+    { voice_call_consent_status: 'granted', voice_call_consent_at: 'invalid' },
+  ])('allows voice button, Enter and native submit without recorded consent: %j', overrides => {
+    jest.mocked(useChannelSelector).mockReturnValue({ ...channelState(), selectedChannel: 'voice' })
+    const callbacks = props()
+    render(<ChatInput {...callbacks} leadData={{ ...consentedLead, ...overrides }} />)
+    const textarea = screen.getByRole('textbox')
+    fireEvent.change(textarea, { target: { value: 'Follow-up greeting' } })
+    expect(screen.getByRole('status')).toHaveTextContent('Start an outbound call')
+    expect(screen.getByRole('status')).not.toHaveTextContent('explicit consent')
+    expect(screen.getByRole('button', { name: 'Start call' })).toBeEnabled()
+    fireEvent.keyDown(textarea, { key: 'Enter' })
+    expect(callbacks.handleKeyDown).toHaveBeenCalledTimes(1)
+    fireEvent.submit(textarea.closest('form')!)
+    expect(callbacks.handleSendMessage).toHaveBeenCalledTimes(1)
+    fireEvent.click(screen.getByRole('button', { name: 'Start call' }))
+    expect(callbacks.handleSendMessage).toHaveBeenCalledTimes(2)
+  })
+
+  it('blocks new voice submissions when an explicit opt-out is loaded after an eligible lead', () => {
+    jest.mocked(useChannelSelector).mockReturnValue({ ...channelState(), selectedChannel: 'voice' })
+    const callbacks = props()
+    const lead = { ...consentedLead, voice_call_consent_status: 'unknown', voice_call_consent_at: null }
+    const { rerender } = render(<ChatInput {...callbacks} leadData={lead} />)
+    const textarea = screen.getByRole('textbox')
+    fireEvent.change(textarea, { target: { value: 'Keep this greeting' } })
+    expect(screen.getByRole('button', { name: 'Start call' })).toBeEnabled()
+    rerender(<ChatInput {...callbacks} leadData={{ ...lead, voice_call_consent_status: 'revoked' }} />)
+    fireEvent.keyDown(textarea, { key: 'Enter' })
+    fireEvent.submit(textarea.closest('form')!)
+    expect(screen.getByRole('button', { name: 'Start call' })).toBeDisabled()
+    expect(callbacks.handleKeyDown).not.toHaveBeenCalled()
+    expect(callbacks.handleSendMessage).not.toHaveBeenCalled()
     expect(textarea).toHaveValue('Keep this greeting')
   })
 

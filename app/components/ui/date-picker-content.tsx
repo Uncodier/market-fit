@@ -13,11 +13,13 @@ import { getDateFnsLocale } from "@/app/lib/date-fns-locale"
 import { cn } from "@/lib/utils"
 import type { DateEvent, DatePickerMode } from "./date-picker-types"
 import { getEventRange } from "./date-picker-presets"
+import type { DateRangeSelection } from "@/lib/dates/date-range-presets"
 
 interface DatePickerContentProps {
   mode: DatePickerMode
   date?: Date
   endDate?: Date
+  rangePreset?: DateRangeSelection
   currentMonth: Date
   tempStartDate: Date | null
   error: string | null
@@ -38,7 +40,7 @@ interface DatePickerContentProps {
 export function DatePickerContent({
   mode, date, endDate, currentMonth, tempStartDate, error, disabled, navigateMonth, selectDate,
   events, showEvents, customEvents, selectPreset, showTimePicker, selectedTime, timeFormat,
-  displayTime, onTimeChange,
+  displayTime, onTimeChange, rangePreset,
 }: DatePickerContentProps) {
   const { t, locale } = useLocalization()
   const dateLocale = getDateFnsLocale(locale)
@@ -146,7 +148,8 @@ export function DatePickerContent({
               {events.map((event, index) => {
                 const reasonId = `${descriptionId}-${index}`
                 const disabledReason = (disabled || event.disabled) ? event.disabledReason : undefined
-                const selected = !event.disabled && date && isSameDay(date, event.value)
+                const selected = !event.disabled && (rangePreset === undefined || rangePreset === event.id)
+                  && date && isSameDay(date, event.value)
                   && (mode !== 'range' || (endDate && isSameDay(endDate, getEventRange(event, dateLocale).end)))
                 const button = (
                   <button
