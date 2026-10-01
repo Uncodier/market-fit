@@ -149,6 +149,22 @@ and ambiguous gateway/start failures are shown without automatically replaying
 the request. Context/session checks and stream waits are bounded, and secondary
 error logging cannot delay the user-visible failure.
 
+Realtime log observation does not stop server-managed assistant actions. An
+`assistant_step` (even a final text chunk) is not a workflow terminal event: the
+workflow may still checkpoint, call tools or execute a plan. Its persisted user
+action status and the SSE result own completion. Polling follows the same rule,
+and the interactive process spinner respects the corresponding action status.
+
+Legacy frontend-owned actions retain automatic `stopped` on a final response or
+standalone terminal error. Intermediate/tool-bearing steps, placeholders, active
+streams, stream-final chunks without a tool count, and plan/step logs cannot
+trigger it. The write checks instance, chronology and available request/action
+IDs, rechecks ownership, and conditionally updates only the observed running
+state/details. A late event cannot overwrite a cancellation or a newer checkpoint.
+Explicit Stop still uses `/api/robots/instance/assistant/cancel`; queue dispatch
+continues to use the persisted running state. No new controller or queue is added.
+After deploying this change, reload open Robots tabs to retire old log listeners.
+
 Roll out the API lifecycle producer and web consumer together: the consumer
 requires an explicit terminal event and treats an older, silently closed stream
 as unconfirmed. The proxy requests an 800-second execution budget to allow the

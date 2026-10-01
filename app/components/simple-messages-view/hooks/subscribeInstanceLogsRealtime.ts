@@ -2,23 +2,18 @@ import { createClient } from '@/lib/supabase/client'
 import { InstanceLog } from '../types'
 import { markUserLogWorkflowStatus } from './send-message-reliability'
 import type { Dispatch, MutableRefObject, SetStateAction } from 'react'
+import { canAutoStopUserAction, isActionForWaitingTurn, isSettledUserAction, latestUserAction } from './instance-log-lifecycle'
+
+export { isTerminalAgentResponse } from './instance-log-lifecycle'
 
 type SetLogs = (updater: (prevLogs: InstanceLog[]) => InstanceLog[]) => void
-
-export function isTerminalAgentResponse(log: InstanceLog): boolean {
-  const hasMessage = (log.message?.trim().length || 0) > 0
-  return (
-    (
-      log.log_type === 'agent_action'
-      && log.details?.streaming !== true
-      && hasMessage
-    )
-    || log.log_type === 'error'
-  )
-}
+type LogPayload =
+  | { eventType: 'INSERT' | 'UPDATE'; new: InstanceLog; old?: Partial<InstanceLog> }
+  | { eventType: 'DELETE'; new?: Partial<InstanceLog>; old: Pick<InstanceLog, 'id'> & Partial<InstanceLog> }
 
 export function subscribeInstanceLogsRealtime(params: {
   instanceId: string
+  logsRef: MutableRefObject<InstanceLog[]>
   currentRobotInstanceIdRef: MutableRefObject<string | null>
   waitingForMessageIdRef: MutableRefObject<string | null | undefined>
   onResponseReceivedRef: MutableRefObject<(() => void) | undefined>
@@ -29,6 +24,7 @@ export function subscribeInstanceLogsRealtime(params: {
 }): () => void {
   const {
     instanceId,
+    logsRef,
     currentRobotInstanceIdRef,
     waitingForMessageIdRef,
     onResponseReceivedRef,
@@ -45,23 +41,50 @@ export function subscribeInstanceLogsRealtime(params: {
   let retryTimeout: NodeJS.Timeout | null = null
   let disposed = false
   let channelStatus = 'CLOSED'
+  const stoppingLogIds = new Set<string>()
+  const notifiedLogIds = new Set<string>()
 
-  const stopLatestRunningUserLog = () => {
-    setLogs((prevLogs: InstanceLog[]) => {
-      const running = [...prevLogs]
-        .reverse()
-        .find((log) => log.log_type === 'user_action' && log.details?.status === 'running')
-      if (!running) return prevLogs
-      void markUserLogWorkflowStatus({ logId: running.id, status: 'stopped' })
-      return prevLogs.map((log) =>
-        log.id === running.id
-          ? { ...log, details: { ...(log.details || {}), status: 'stopped' } }
-          : log
-      )
-    })
+  const updateLogs: SetLogs = (updater) => {
+    logsRef.current = updater(logsRef.current)
+    setLogs(updater)
   }
 
-  const onRealtimePayload = (payload: any) => {
+  const notifyCompletion = (action: InstanceLog) => {
+    if (notifiedLogIds.has(action.id) || latestUserAction(logsRef.current)?.id !== action.id
+      || !isActionForWaitingTurn(action, waitingForMessageIdRef.current)) return
+    notifiedLogIds.add(action.id)
+    onResponseReceivedRef.current?.()
+  }
+
+  const stopLegacyUserLog = (response: InstanceLog) => {
+    const action = latestUserAction(logsRef.current)
+    if (!action || !canAutoStopUserAction(action, response) || stoppingLogIds.has(action.id)) return
+    stoppingLogIds.add(action.id)
+    // Keep effects outside state updaters (React/SWR may evaluate them again).
+    void markUserLogWorkflowStatus({ logId: action.id, status: 'stopped', completionLog: response })
+      .then((saved) => {
+        if (!saved || disposed || currentRobotInstanceIdRef.current !== instanceId) return
+        updateLogs((logs) => logs.map((log) =>
+          log.id === action.id && canAutoStopUserAction(log, response)
+            ? { ...log, details: { ...log.details, status: 'stopped' } }
+            : log
+        ))
+        notifyCompletion(action)
+      })
+      .catch(() => { console.error('Failed to settle legacy assistant response') })
+      .finally(() => { stoppingLogIds.delete(action.id) })
+  }
+
+  const observeCompletion = (log: InstanceLog) => {
+    if (isSettledUserAction(log) && latestUserAction(logsRef.current)?.id === log.id) {
+      notifyCompletion(log)
+    } else {
+      stopLegacyUserLog(log)
+    }
+  }
+
+  const onRealtimePayload = (payload: LogPayload) => {
+    if (disposed || currentRobotInstanceIdRef.current !== instanceId) return
     if (payload?.new?.instance_id && payload.new.instance_id !== currentRobotInstanceIdRef.current) return
     if (payload?.old?.instance_id && payload.old.instance_id !== currentRobotInstanceIdRef.current) return
 
@@ -69,7 +92,7 @@ export function subscribeInstanceLogsRealtime(params: {
       const newLog = payload.new as InstanceLog
       if (newLog.log_type === 'user_action' && newLog.details?.status === 'queued') return
 
-      setLogs((prevLogs: InstanceLog[]) => {
+      updateLogs((prevLogs: InstanceLog[]) => {
         if (newLog.log_type === 'user_action') {
           const tempMessageIndex = prevLogs.findIndex((log: InstanceLog) =>
             log.details?.temp_message &&
@@ -88,14 +111,6 @@ export function subscribeInstanceLogsRealtime(params: {
         return [...prevLogs, newLog]
       })
 
-      const waitingId = waitingForMessageIdRef.current
-      if (waitingId) {
-        if (isTerminalAgentResponse(newLog)) {
-          const timeDiff = new Date(newLog.created_at).getTime() - new Date().getTime()
-          if (Math.abs(timeDiff) < 60000) onResponseReceivedRef.current?.()
-        }
-      }
-
       if (newLog.log_type === 'system' && (newLog.message?.length || 0) > 200) {
         setCollapsedSystemMessages((prev: Set<string>) => new Set(prev).add(newLog.id))
       }
@@ -110,22 +125,13 @@ export function subscribeInstanceLogsRealtime(params: {
         setCollapsedToolDetails((prev: Set<string>) => new Set(prev).add(newLog.id))
       }
 
-      const isPlaceholderResponse = (newLog.message || '').includes('placeholder response')
-      if (
-        isTerminalAgentResponse(newLog) &&
-        !isPlaceholderResponse
-      ) {
-        stopLatestRunningUserLog()
-      }
+      observeCompletion(newLog)
     } else if (payload.eventType === 'UPDATE') {
       const updatedLog = payload.new as InstanceLog
-      setLogs((prevLogs: InstanceLog[]) => prevLogs.map((log: InstanceLog) => log.id === updatedLog.id ? updatedLog : log))
-      if (isTerminalAgentResponse(updatedLog)) {
-        stopLatestRunningUserLog()
-        onResponseReceivedRef.current?.()
-      }
+      updateLogs((prevLogs: InstanceLog[]) => prevLogs.map((log: InstanceLog) => log.id === updatedLog.id ? updatedLog : log))
+      observeCompletion(updatedLog)
     } else if (payload.eventType === 'DELETE') {
-      setLogs((prevLogs: InstanceLog[]) => prevLogs.filter((log: InstanceLog) => log.id !== payload.old.id))
+      updateLogs((prevLogs: InstanceLog[]) => prevLogs.filter((log: InstanceLog) => log.id !== payload.old.id))
     }
   }
 

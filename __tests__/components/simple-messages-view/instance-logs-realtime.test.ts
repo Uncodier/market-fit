@@ -37,11 +37,12 @@ describe("instance logs Realtime lifecycle", () => {
       }),
       removeChannel: jest.fn(),
     }
-    jest.mocked(createClient).mockReturnValue(client as any)
+    jest.mocked(createClient).mockReturnValue(client as unknown as ReturnType<typeof createClient>)
 
     const loadInstanceLogs = jest.fn().mockResolvedValue(undefined)
     const dispose = subscribeInstanceLogsRealtime({
       instanceId: "instance-1",
+      logsRef: { current: [] },
       currentRobotInstanceIdRef: { current: "instance-1" },
       waitingForMessageIdRef: { current: null },
       onResponseReceivedRef: { current: undefined },

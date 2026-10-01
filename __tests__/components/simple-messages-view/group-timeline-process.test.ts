@@ -3,6 +3,7 @@ import {
   getProcessHeader,
   groupTimelineProcess,
   isProcessLog,
+  isProcessGroupLive,
   splitProcessAnswer,
 } from '@/app/components/simple-messages-view/group-timeline-process'
 import { InstanceLog } from '@/app/components/simple-messages-view/types'
@@ -174,6 +175,32 @@ describe('splitProcessAnswer', () => {
 })
 
 describe('groupTimelineProcess', () => {
+  it.each(['completed', 'failed', 'paused', 'cancelled', 'stopped'])('stops the tool spinner for the corresponding %s action', (status) => {
+    const timeline = [
+      { type: 'log', timestamp: '1', data: log({ id: 'u', log_type: 'user_action', details: { status, prompt_source: 'assistant_route' } }) },
+      { type: 'log', timestamp: '2', data: log({ id: 't', log_type: 'tool_call', tool_name: 'skill_lookup', details: { response_type: 'assistant_tool_call' } }) },
+    ]
+    const grouped = groupTimelineProcess(timeline)
+    expect(isProcessGroupLive(grouped[1].data)).toBe(false)
+  })
+
+  it('keeps a managed turn live after model text until its terminal checkpoint', () => {
+    const timeline = [
+      { type: 'log', timestamp: '1', data: log({ id: 'u', log_type: 'user_action', details: { status: 'running', prompt_source: 'assistant_route' } }) },
+      { type: 'log', timestamp: '2', data: log({ id: 'a', log_type: 'agent_action', message: 'I will continue', details: { response_type: 'assistant_step', total_tool_calls: 1 } }) },
+    ]
+    expect(isProcessGroupLive(groupTimelineProcess(timeline)[1].data)).toBe(true)
+  })
+
+  it.each([undefined, 'request-1'])('does not use an older stopped chat (%s) to stop unrelated background activity', (requestId) => {
+    const timeline = [
+      { type: 'log', timestamp: '1', data: log({ id: 'u', log_type: 'user_action', message: 'Continue', details: { status: 'stopped', prompt_source: 'assistant_route', request_id: requestId } }) },
+      { type: 'log', timestamp: '2', data: log({ id: 'a', log_type: 'agent_action', message: 'Done', details: { response_type: 'assistant_step', total_tool_calls: 0, request_id: requestId } }) },
+      { type: 'log', timestamp: '3', data: log({ id: 'i', log_type: 'infrastructure', details: { event: 'cron_infra_checkpoint' } }) },
+    ]
+    expect(isProcessGroupLive(groupTimelineProcess(timeline)[1].data)).toBe(true)
+  })
+
   it('groups consecutive thinking, tools, and agent actions', () => {
     const timeline = [
       { type: 'log', timestamp: '1', data: log({ id: 'u', log_type: 'user_action', message: 'hi' }) },

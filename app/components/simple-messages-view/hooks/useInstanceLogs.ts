@@ -4,10 +4,8 @@ import { createClient } from '@/lib/supabase/client'
 import { InstanceLog } from '../types'
 import { collapseDuplicateUserActions } from './send-message-reliability'
 import { excludeQueuedUserLogs } from './command-queue'
-import {
-  isTerminalAgentResponse,
-  subscribeInstanceLogsRealtime,
-} from './subscribeInstanceLogsRealtime'
+import { subscribeInstanceLogsRealtime } from './subscribeInstanceLogsRealtime'
+import { hasFinishedLatestUserAction, isActionForWaitingTurn, latestUserAction } from './instance-log-lifecycle'
 import { useLiveInstanceLogs } from './use-live-instance-logs'
 
 const INSTANCE_LOG_FIELDS = [
@@ -100,6 +98,8 @@ export const useInstanceLogs = ({
       )
     )
   )
+  const logsRef = useRef<InstanceLog[]>(logs)
+  logsRef.current = logs
   
   const setLogs = useCallback((updater: any) => {
     mutate((current = []) => {
@@ -126,6 +126,8 @@ export const useInstanceLogs = ({
   // Load instance logs and handle collapsing
   const loadInstanceLogs = useCallback(async () => {
     if (!activeRobotInstance?.id) return
+    const instanceId = activeRobotInstance.id
+    const waitingId = waitingForMessageIdRef.current
 
     if (activeRobotInstance.id !== currentRobotInstanceIdRef.current) {
       setHasMoreLogs(true)
@@ -139,14 +141,15 @@ export const useInstanceLogs = ({
 
     try {
       const fetchedLogs = await mutate()
-      if (!fetchedLogs) return
+      if (!fetchedLogs || instanceId !== currentRobotInstanceIdRef.current) return
 
-      // If we just fetched logs and the latest one is a response, clear thinking state
-      if (fetchedLogs.length > 0) {
-        const latestLog = fetchedLogs[fetchedLogs.length - 1] as InstanceLog
-        if (isTerminalAgentResponse(latestLog)) {
-          onResponseReceivedRef.current?.()
-        }
+      const action = latestUserAction(fetchedLogs)
+      const currentAction = latestUserAction(logsRef.current)
+      if (action && waitingId === waitingForMessageIdRef.current
+        && isActionForWaitingTurn(action, waitingId)
+        && (!currentAction || currentAction.id === action.id)
+        && hasFinishedLatestUserAction(fetchedLogs)) {
+        onResponseReceivedRef.current?.()
       }
 
       setHasMoreLogs(fetchedLogs.length === 100)
@@ -375,6 +378,7 @@ export const useInstanceLogs = ({
     loadInstanceLogsRef.current()
     return subscribeInstanceLogsRealtime({
       instanceId: activeRobotInstance.id,
+      logsRef,
       currentRobotInstanceIdRef,
       waitingForMessageIdRef,
       onResponseReceivedRef,

@@ -1,6 +1,7 @@
 import { InstanceLog, InstancePlan } from './types'
 import { formatToolDisplayName, getToolName } from './parse-tool-call'
 import type { ProcessedTimelineItem, TimelineItemType } from './utils'
+import { isServerManagedUserAction, isSettledUserAction } from './hooks/instance-log-lifecycle'
 
 export type ProcessActivityKind = 'thinking' | 'tool' | 'responding' | 'step' | 'infrastructure'
 
@@ -12,6 +13,7 @@ export interface ProcessGroup {
   groupId: string
   entries: ProcessGroupEntry[]
   userPrompt?: string
+  userAction?: InstanceLog
 }
 
 function requestIdFromLog(log: InstanceLog | null | undefined): string | null {
@@ -284,6 +286,10 @@ export function splitProcessAnswer(logs: InstanceLog[]): {
 }
 
 export function isProcessGroupLive(group: ProcessGroup): boolean {
+  if (group.userAction) {
+    if (isSettledUserAction(group.userAction)) return false
+    if (isServerManagedUserAction(group.userAction)) return group.userAction.details?.status === 'running'
+  }
   if (group.entries.length === 0) return true
   
   const logs = processGroupLogs(group)
@@ -320,7 +326,9 @@ export function groupTimelineProcess(
 ): ProcessedTimelineItem[] {
   const result: ProcessedTimelineItem[] = []
   const userPromptsByRequestId = new Map<string, string>()
+  const userActionsByRequestId = new Map<string, InstanceLog>()
   let latestUserPrompt = ''
+  let latestUserLog: InstanceLog | undefined
   let i = 0
 
   while (i < sortedTimeline.length) {
@@ -333,11 +341,15 @@ export function groupTimelineProcess(
       }
       if (item.type === 'log' && (item.data as InstanceLog).log_type === 'user_action') {
         const userLog = item.data as InstanceLog
+        latestUserLog = userLog
         const prompt = (userLog.message || '').trim()
         if (prompt) {
           latestUserPrompt = prompt
           const requestId = requestIdFromLog(userLog)
-          if (requestId) userPromptsByRequestId.set(requestId, prompt)
+          if (requestId) {
+            userPromptsByRequestId.set(requestId, prompt)
+            userActionsByRequestId.set(requestId, userLog)
+          }
         }
       }
       result.push({
@@ -383,11 +395,23 @@ export function groupTimelineProcess(
       requestIdFromLog(answer) ||
       [...logs].reverse().map(requestIdFromLog).find((value): value is string => Boolean(value))
     const userPrompt = (requestId ? userPromptsByRequestId.get(requestId) : null) || latestUserPrompt || undefined
+    // Background plan/cron activity must not inherit an earlier chat's status.
+    const hasBackgroundWork = entries.some((entry) => entry.type === 'completed_plan') || logs.some((log) =>
+      log.details?.plan_id || log.details?.step_id
+      || (typeof log.details?.event === 'string' && log.details.event.startsWith('cron_'))
+    )
+    const isInteractiveAssistant = !hasBackgroundWork && logs.some((log) =>
+      ['assistant_step', 'assistant_tool_call'].includes(log.details?.response_type)
+      && !log.details?.plan_id && !log.details?.step_id
+    )
+    const userAction = hasBackgroundWork ? undefined
+      : requestId ? userActionsByRequestId.get(requestId)
+        : isInteractiveAssistant ? latestUserLog : undefined
 
     result.push({
       type: 'process_group',
       timestamp: first.timestamp,
-      data: { groupId, entries, userPrompt } satisfies ProcessGroup,
+      data: { groupId, entries, userPrompt, userAction } satisfies ProcessGroup,
     })
   }
 

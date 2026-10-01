@@ -1,6 +1,8 @@
 import { createClient } from '@/lib/supabase/client'
 import { withTimeout } from '@/app/services/request-timeout'
 import { getAssistantAdmissionFailure } from './assistant-admission-error'
+import type { InstanceLog } from '../types'
+import { canAutoStopUserAction } from './instance-log-lifecycle'
 
 const RETRYABLE_STATUS = new Set([408, 429, 502, 503, 504])
 export const USER_ACTION_DEDUPE_WINDOW_MS = 2 * 60 * 1000
@@ -249,17 +251,34 @@ export async function persistUserActionLog(params: {
 export async function markUserLogWorkflowStatus(params: {
   logId: string
   status: 'running' | 'stopped' | 'cancelled'
+  completionLog?: InstanceLog
 }): Promise<boolean> {
   const supabase = createClient()
   const { data: userLog, error: lookupError } = await supabase
     .from('instance_logs')
-    .select('id, details')
+    .select('id, instance_id, site_id, log_type, created_at, details')
     .eq('id', params.logId)
     .single()
 
   if (lookupError || !userLog?.id) {
     console.error('Failed to look up workflow log:', lookupError)
     return false
+  }
+
+  if (params.completionLog) {
+    if (params.status !== 'stopped' || !canAutoStopUserAction(userLog as InstanceLog, params.completionLog)) return false
+    // Never overwrite a cancellation, terminal checkpoint or ownership change
+    // that arrived after this read. Legacy details are small (no recovery transcript).
+    const { data: saved, error } = await supabase.from('instance_logs')
+      .update({ details: { ...userLog.details, status: 'stopped' } })
+      .eq('id', params.logId)
+      .eq('instance_id', userLog.instance_id)
+      .eq('log_type', 'user_action')
+      .eq('details->>status', 'running')
+      .eq('details', JSON.stringify(userLog.details))
+      .select('id')
+      .maybeSingle()
+    return !error && saved?.id === params.logId
   }
 
   const { error } = await supabase
