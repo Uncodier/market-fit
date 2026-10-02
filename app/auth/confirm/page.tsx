@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, Suspense } from "react"
+import { useState, Suspense } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/card"
@@ -16,26 +16,15 @@ type ConfirmationState = 'needs_click' | 'loading' | 'success' | 'error' | 'redi
 function ConfirmContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const [state, setState] = useState<ConfirmationState>('needs_click')
-  const [message, setMessage] = useState('')
+  const [confirmationState, setState] = useState<ConfirmationState>('needs_click')
+  const [confirmationMessage, setMessage] = useState('')
   const [redirectUrl, setRedirectUrl] = useState<string | null>(null)
-
-  useEffect(() => {
-    const tokenHash = searchParams.get('token_hash')
-    const redirectTo = searchParams.get('redirect_to') || ''
-    const isOtpChannel =
-      searchParams.get('auth_channel') === 'otp' || redirectTo.includes('auth_channel=otp')
-
-    if (isOtpChannel) {
-      setState('otp_channel_block')
-      return
-    }
-
-    if (!tokenHash) {
-      setState('error')
-      setMessage('Missing confirmation token')
-    }
-  }, [searchParams])
+  const isRecovery = searchParams.get('type') === 'recovery'
+  const isOtpChannel = searchParams.get('auth_channel') === 'otp' ||
+    (searchParams.get('redirect_to') || '').includes('auth_channel=otp')
+  const hasToken = Boolean(searchParams.get('token_hash'))
+  const state = isOtpChannel ? 'otp_channel_block' : !hasToken ? 'error' : confirmationState
+  const message = !hasToken ? 'Missing confirmation token' : confirmationMessage
 
   const handleConfirmation = async () => {
     setState('loading')
@@ -79,7 +68,7 @@ function ConfirmContent() {
             return
           }
 
-          console.log('✅ Invitation confirmed successfully:', data)
+          console.log('✅ Invitation confirmed successfully')
           
           // Check if user needs to set password (invited users always need to set password)
           const user = data.user
@@ -126,7 +115,7 @@ function ConfirmContent() {
             return
           }
 
-          console.log('✅ Email confirmed successfully:', data)
+          console.log('✅ Email confirmed successfully')
           
           // Ensure we have a valid session after confirmation
           if (!data.session) {
@@ -139,6 +128,14 @@ function ConfirmContent() {
               return
             }
             console.log('✅ Session refreshed successfully after confirmation')
+          }
+
+          // Recovery must reset an existing password, not follow normal sign-in routing.
+          if (type === 'recovery') {
+            setState('redirect')
+            setMessage('Recovery link verified! Redirecting to reset your password...')
+            router.replace(setPasswordUrl)
+            return
           }
           
           // Process referral code if present in user metadata
@@ -210,7 +207,7 @@ function ConfirmContent() {
         <Card className="bg-card border-border">
           <CardHeader className="text-center">
             <CardTitle className="text-2xl font-bold text-foreground">
-              Email Confirmation
+              {isRecovery ? 'Reset Password' : 'Email Confirmation'}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
@@ -228,9 +225,13 @@ function ConfirmContent() {
               {state === 'needs_click' && (
                 <>
                   <CheckCircle2 className="h-12 w-12 text-primary mb-4" />
-                  <p className="text-muted-foreground mb-4">Click below to securely confirm your sign in.</p>
+                  <p className="text-muted-foreground mb-4">
+                    {isRecovery
+                      ? 'Click below to securely reset your password.'
+                      : 'Click below to securely confirm your sign in.'}
+                  </p>
                   <Button onClick={handleConfirmation} className="w-full">
-                    Confirm Sign In
+                    {isRecovery ? 'Reset Password' : 'Confirm Sign In'}
                   </Button>
                 </>
               )}
@@ -238,7 +239,9 @@ function ConfirmContent() {
               {state === 'loading' && (
                 <>
                   <div className="h-12 w-12 mb-4 animate-pulse bg-primary/20 rounded-full" />
-                  <p className="text-muted-foreground">Confirming your email...</p>
+                  <p className="text-muted-foreground">
+                    {isRecovery ? 'Verifying your recovery link...' : 'Confirming your email...'}
+                  </p>
                 </>
               )}
 

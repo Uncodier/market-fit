@@ -70,6 +70,15 @@ Prefer the client family under `lib/supabase/`. A second legacy family remains
 under `utils/supabase/`; do not introduce another client wrapper or mix cookie
 APIs without first consolidating the affected path.
 
+## Password recovery navigation
+
+`app/auth/confirm/page.tsx` verifies recovery tokens only after a user click,
+then routes the established session to `/auth/set-password`. Recovery must take
+precedence over the `password_set` metadata check used for normal sign-in:
+having an existing password is not a reason to skip resetting it. The validated
+post-auth destination is carried as `returnTo` for use after the password update.
+Invalid tokens and missing sessions must not navigate to the password form.
+
 ## Settings save lifecycle
 
 Settings writers persist through the user-scoped Supabase client and publish the
