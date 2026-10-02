@@ -98,7 +98,7 @@ describe("ICP settings persistence roundtrip", () => {
     const selected = jest.fn()
     await applyCurrentSite({ site: { ...fixture.options.currentSite, settings: loaded }, currentSite: null, supabase: null, setCurrentSite: selected, setSites: jest.fn() })
     expect(selected.mock.calls[0][0].settings.activities).toEqual(expected)
-    expect(fixture.deps.setCurrentSite.mock.calls[0][0].settings.activities).toEqual(expected)
+    expect(fixture.deps.setCurrentSite.mock.calls[0][0](fixture.options.currentSite).settings.activities).toEqual(expected)
     expect(fixture.filters.every(id => id === siteId)).toBe(true)
   })
 

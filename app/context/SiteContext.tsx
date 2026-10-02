@@ -9,7 +9,7 @@ import { getDemoSiteId, isDemoModeActive, isRealSiteId } from "@/lib/demo-utils"
 import { clearCurrentSiteCookie, persistCurrentSiteCookie } from "@/lib/auth/current-site-cookie"
 import { getWorkspaceSiteRedirect } from "@/lib/auth/workspace-site-redirect"
 import { navigateOrAssign } from "@/lib/navigation/stale-router"
-import type { Site, SiteSettings, SiteContextType } from "./site-types"
+import type { Site, SiteSettings, SiteContextType, UpdateSiteOptions } from "./site-types"
 import { cleanUUID } from "./site-storage"
 import { persistSiteSettings } from "./site-update-settings"
 import { applyCurrentSite, fetchSiteSettings } from "./site-set-current"
@@ -364,7 +364,7 @@ export function SiteProvider({ children }: SiteProviderProps) {
     isOnProtectedPage,
   }
 
-  const handleUpdateSite = async (site: Site) => updateSiteRecord(site, crudDeps)
+  const handleUpdateSite = async (site: Site, options?: UpdateSiteOptions) => updateSiteRecord(site, crudDeps, options)
   const handleCreateSite = async (newSite: Omit<Site, 'id' | 'created_at' | 'updated_at'>) =>
     createSiteRecord(newSite, crudDeps)
   const handleDeleteSite = async (id: string) => deleteSiteRecord(id, crudDeps)

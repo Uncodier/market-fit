@@ -70,6 +70,34 @@ Prefer the client family under `lib/supabase/`. A second legacy family remains
 under `utils/supabase/`; do not introduce another client wrapper or mix cookie
 APIs without first consolidating the affected path.
 
+## Settings save lifecycle
+
+Settings writers persist through the user-scoped Supabase client and publish the
+merged row to site context. Section handlers must not call `updateSite` to
+"refresh locally": it performs another database write. Combined site/settings
+saves omit settings from the first write and pass `{ syncVoiceAgent: false }`;
+the following settings write requests one resync after both writes succeed.
+If the site write succeeds but the settings write fails, the combined-save helper
+requests a resync for the already-persisted site changes and preserves the original
+save error. Demo saves remain local and never request provider synchronization.
+If that settings write fails, the shared paired-save helper requests a resync for
+the already-persisted site fields before propagating the original save error.
+Demo edits stay local and do not contact the database or Voice API.
+
+Browser-triggered resync uses `POST /api/settings/voice-sync`. The route validates
+the same-origin JSON request, authenticates the user, checks site membership and
+update permission, and captures the matching session token before returning
+`202 accepted`. Next.js `after()` performs the real authenticated backend PATCH
+after the response; Settings no longer waits for provider synchronization. The
+browser bounds acceptance to 10 seconds, and upstream work is bounded to 240
+seconds within a 300-second route budget (deployment-platform limits still apply).
+
+Acceptance is not provider completion or a durable queue guarantee. Background
+failures are logged without secrets and are not automatically replayed. An
+acceptance failure does not undo or misreport a successful database save. Explicit
+Voice preference/setup operations retain their existing synchronous backend
+contract; only the generic post-save resync uses this deferred route.
+
 ## Public surfaces
 
 Public pages and APIs must expose an explicit data-transfer object rather than

@@ -3,11 +3,11 @@ import { type SiteFormValues } from "./form-schema"
 import { type Site } from "../../context/SiteContext"
 import { secureTokensService } from "../../services/secure-tokens-service"
 
-import { type SaveOptions, shouldPreventRefresh, updateSiteLocally } from "./save-settings-shared"
+import { type SaveOptions, saveSiteWithSettings, shouldPreventRefresh } from "./save-settings-shared"
 
 // Partial save handler for Channels section
 export const handleSaveChannels = async (data: SiteFormValues, options: SaveOptions) => {
-  const { currentSite, updateSite, updateSettings, refreshSites, setIsSaving } = options
+  const { currentSite, refreshSites, setIsSaving } = options
 
   if (!currentSite) return false
 
@@ -135,22 +135,12 @@ export const handleSaveChannels = async (data: SiteFormValues, options: SaveOpti
       settingsUpdate.id = currentSite.settings.id
     }
 
-    await updateSite({
+    await saveSiteWithSettings({
       ...currentSite,
-      settings: undefined,
       tracking: siteTracking
-    } as Site)
+    } as Site, settingsUpdate, options)
 
-    await updateSettings(currentSite.id, settingsUpdate)
-
-    if (shouldPreventRefresh()) {
-      updateSiteLocally(
-        currentSite,
-        { tracking: siteTracking },
-        settingsUpdate,
-        updateSite,
-      )
-    } else {
+    if (!shouldPreventRefresh()) {
       await refreshSites()
     }
 

@@ -63,6 +63,11 @@ export interface Site {
   settings?: SiteSettings
 }
 
+export type UpdateSiteOptions = {
+  /** Defer resync when this site write is immediately followed by a settings write. */
+  syncVoiceAgent?: boolean
+}
+
 export interface RoundRobinCalendar {
   id: string
   name: string
@@ -407,7 +412,7 @@ export interface SiteContextType {
   isLoading: boolean
   error: Error | null
   setCurrentSite: (site: Site) => void
-  updateSite: (site: Site) => Promise<void>
+  updateSite: (site: Site, options?: UpdateSiteOptions) => Promise<void>
   createSite: (site: Omit<Site, 'id' | 'created_at' | 'updated_at'>) => Promise<Site>
   deleteSite: (id: string) => Promise<void>
   refreshSites: () => Promise<void>

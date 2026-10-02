@@ -35,7 +35,7 @@ function loadTracking(recordScreen: boolean) {
 
   const script = document.createElement("script")
   script.async = true
-  script.src = "https://files.uncodie.com/tracking.min.js"
+  script.src = "https://files.uncodie.com/tracking.min.js?v=1.964"
   script.onload = () => {
     try {
       if (typeof w.Makinari?.init !== "function") return

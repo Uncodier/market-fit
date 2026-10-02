@@ -1,15 +1,22 @@
-import { apiClient } from "@/app/services/api-client-service"
-
 export async function requestVoiceAgentResync(siteId: string): Promise<void> {
+  if (siteId.startsWith("demo-")) return
   try {
-    const response = await apiClient.patch("/api/integrations/zavu/voice", { siteId })
-    if (!response.success) {
+    // Await only authenticated server acceptance, never the external provider sync.
+    const response = await fetch("/api/settings/voice-sync", {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ siteId }),
+      redirect: "error",
+      signal: AbortSignal.timeout(10_000),
+    })
+    if (response.status !== 202) {
       console.error(
-        "Voice agent background synchronization failed:",
-        response.error?.message || "Unknown error"
+        "Voice agent background synchronization was not accepted:",
+        response.status
       )
     }
-  } catch (error) {
-    console.error("Voice agent background synchronization failed:", error)
+  } catch {
+    console.error("Voice agent background synchronization could not be requested")
   }
 }

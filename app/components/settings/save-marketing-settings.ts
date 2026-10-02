@@ -1,11 +1,11 @@
 import { toast } from "sonner"
 import { type SiteFormValues } from "./form-schema"
 
-import { type SaveOptions, shouldPreventRefresh, updateSiteLocally } from "./save-settings-shared"
+import { type SaveOptions, saveSiteWithSettings, shouldPreventRefresh } from "./save-settings-shared"
 
 // Partial save handler for Branding section
 export const handleSaveBranding = async (data: SiteFormValues, options: SaveOptions) => {
-  const { currentSite, updateSite, updateSettings, refreshSites, setIsSaving } = options
+  const { currentSite, updateSettings, refreshSites, setIsSaving } = options
 
   if (!currentSite) return
 
@@ -53,9 +53,7 @@ export const handleSaveBranding = async (data: SiteFormValues, options: SaveOpti
 
     await updateSettings(currentSite.id, settingsUpdate)
 
-    if (shouldPreventRefresh()) {
-      updateSiteLocally(currentSite, {}, settingsUpdate, updateSite)
-    } else {
+    if (!shouldPreventRefresh()) {
       await refreshSites()
     }
 
@@ -74,7 +72,7 @@ export const handleSaveBranding = async (data: SiteFormValues, options: SaveOpti
 
 // Partial save handler for Marketing section
 export const handleSaveMarketing = async (data: SiteFormValues, options: SaveOptions) => {
-  const { currentSite, updateSite, updateSettings, refreshSites, setIsSaving } = options
+  const { currentSite, updateSettings, refreshSites, setIsSaving } = options
 
   if (!currentSite) return
 
@@ -136,17 +134,15 @@ export const handleSaveMarketing = async (data: SiteFormValues, options: SaveOpt
 
     // Update site if resource_urls changed
     if (filteredResourceUrls.length > 0 || (currentSite.resource_urls && currentSite.resource_urls.length > 0)) {
-      await updateSite({
+      await saveSiteWithSettings({
         ...currentSite,
         ...siteUpdate
-      } as any)
+      } as any, settingsUpdate, options)
+    } else {
+      await updateSettings(currentSite.id, settingsUpdate)
     }
 
-    await updateSettings(currentSite.id, settingsUpdate)
-
-    if (shouldPreventRefresh()) {
-      updateSiteLocally(currentSite, siteUpdate, settingsUpdate, updateSite)
-    } else {
+    if (!shouldPreventRefresh()) {
       await refreshSites()
     }
 
@@ -165,7 +161,7 @@ export const handleSaveMarketing = async (data: SiteFormValues, options: SaveOpt
 
 // Partial save handler for Customer Journey section
 export const handleSaveCustomerJourney = async (data: SiteFormValues, options: SaveOptions) => {
-  const { currentSite, updateSite, updateSettings, refreshSites, setIsSaving } = options
+  const { currentSite, updateSettings, refreshSites, setIsSaving } = options
 
   if (!currentSite) return
 
@@ -193,9 +189,7 @@ export const handleSaveCustomerJourney = async (data: SiteFormValues, options: S
 
     await updateSettings(currentSite.id, settingsUpdate)
 
-    if (shouldPreventRefresh()) {
-      updateSiteLocally(currentSite, {}, settingsUpdate, updateSite)
-    } else {
+    if (!shouldPreventRefresh()) {
       await refreshSites()
     }
 
@@ -214,7 +208,7 @@ export const handleSaveCustomerJourney = async (data: SiteFormValues, options: S
 
 // Partial save handler for Social section
 export const handleSaveSocial = async (data: SiteFormValues, options: SaveOptions) => {
-  const { currentSite, updateSite, updateSettings, refreshSites, setIsSaving } = options
+  const { currentSite, updateSettings, refreshSites, setIsSaving } = options
 
   if (!currentSite) return
 
@@ -247,9 +241,7 @@ export const handleSaveSocial = async (data: SiteFormValues, options: SaveOption
 
     await updateSettings(currentSite.id, settingsUpdate)
 
-    if (shouldPreventRefresh()) {
-      updateSiteLocally(currentSite, {}, settingsUpdate, updateSite)
-    } else {
+    if (!shouldPreventRefresh()) {
       await refreshSites()
     }
 

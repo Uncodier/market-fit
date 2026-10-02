@@ -1,6 +1,7 @@
 "use client"
 
-import type { Site, SiteSettings } from "./site-types"
+import type { Site, SiteSettings, UpdateSiteOptions } from "./site-types"
+import type { Dispatch, SetStateAction } from "react"
 import { saveLogoToCache } from "@/lib/sites/logo-cache"
 import { requestVoiceAgentResync } from "@/app/agents/voice-sync"
 
@@ -8,7 +9,7 @@ type CrudDeps = {
   supabase: any
   currentSite: Site | null
   sites: Site[]
-  setCurrentSite: (site: Site) => void
+  setCurrentSite: Dispatch<SetStateAction<Site | null>>
   setSites: (updater: Site[] | ((prev: Site[]) => Site[])) => void
   setError: (error: Error | null) => void
   setIsLoading: (v: boolean) => void
@@ -19,15 +20,19 @@ type CrudDeps = {
   isOnProtectedPage: () => boolean
 }
 
-export async function updateSiteRecord(site: Site, deps: CrudDeps) {
-  const { supabase, currentSite, setCurrentSite, setSites, setError, loadSites, updateSettings, shouldPreventRefresh, isOnProtectedPage } = deps
+export async function updateSiteRecord(site: Site, deps: CrudDeps, options: UpdateSiteOptions = {}) {
+  const { supabase, setCurrentSite, setSites, setError, loadSites, updateSettings, shouldPreventRefresh, isOnProtectedPage } = deps
 
     // Prevent updating demo sites
     if (site.id.startsWith('demo-')) {
       console.log('Skipping site update for demo site');
-      // Update local state to simulate save success
-      setSites(prevSites => prevSites.map(s => s.id === site.id ? site : s));
-      if (currentSite?.id === site.id) setCurrentSite(site);
+      // Keep the existing demo-only local behavior without clearing settings
+      // when a combined save first writes only the site's basic fields.
+      const applyDemoSite = (previous: Site): Site => previous.id === site.id
+        ? { ...previous, ...site, settings: site.settings ?? previous.settings }
+        : previous;
+      setSites(prevSites => prevSites.map(applyDemoSite));
+      setCurrentSite(previous => previous ? applyDemoSite(previous) : previous);
       return;
     }
 
@@ -76,22 +81,19 @@ export async function updateSiteRecord(site: Site, deps: CrudDeps) {
       // If settings provided, update them as well
       if (site.settings) {
         await updateSettings(site.id, site.settings)
-      } else {
+      } else if (options.syncVoiceAgent !== false) {
         await requestVoiceAgentResync(site.id)
       }
       
       // Update local state without full reload when preventing refresh
       if (shouldPreventRefresh() || isOnProtectedPage()) {
-        
-        // Update the current site if it's the same site being updated
-        if (currentSite && currentSite.id === site.id) {
-          setCurrentSite(site);
-        }
-        
-        // Update the sites array
-        setSites(prevSites => 
-          prevSites.map(s => s.id === site.id ? site : s)
-        );
+        // A site-only write must not clear settings. A nested settings write has
+        // already published its merged values, which must not be replaced here.
+        const applySite = (previous: Site): Site => previous.id === site.id
+          ? { ...previous, ...site, settings: previous.settings ?? site.settings }
+          : previous;
+        setCurrentSite(previous => previous ? applySite(previous) : previous);
+        setSites(prevSites => prevSites.map(applySite));
       } else {
         // Only reload sites if not preventing refresh
         await loadSites();

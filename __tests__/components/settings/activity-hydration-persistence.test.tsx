@@ -337,6 +337,6 @@ it.each(["activity", "all", "activity without refresh", "all without refresh"])(
   const data = { name: "Site A", url: "https://example.com", activities: { email_sync: { status: "inactive" } } } as SiteFormValues
   if (mode.startsWith("activity")) await handleSaveActivities(data, fixture.options)
   else await handleSave(data, fixture.options)
-  await waitFor(() => expect(fixture.writes).toHaveLength(mode === "all without refresh" ? 2 : 1))
+  expect(fixture.writes).toHaveLength(1)
   expect(fixture.row().activities).toEqual({ ...saved, email_sync: { ...saved.email_sync, status: "inactive" } })
 })

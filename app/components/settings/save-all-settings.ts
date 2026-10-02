@@ -3,17 +3,14 @@ import { mergeActivitySettings, validatedActivityUpdates } from "./activity-sett
 import { validateActivitiesForSave } from "./outreach-save-validation"
 import { toast } from "sonner"
 import { type SiteFormValues } from "./form-schema"
-import { type Site } from "../../context/SiteContext"
 import { createClient } from "@/lib/supabase/client"
 import { copywritingService } from "../../context/copywriting-actions"
 
-import { type SaveOptions, shouldPreventRefresh } from "./save-settings-shared"
+import { type SaveOptions, saveSiteWithSettings, shouldPreventRefresh } from "./save-settings-shared"
 
 export const handleSave = async (data: SiteFormValues, options: SaveOptions) => {
   const { 
     currentSite, 
-    updateSite, 
-    updateSettings, 
     refreshSites, 
     setIsSaving
   } = options
@@ -222,8 +219,11 @@ export const handleSave = async (data: SiteFormValues, options: SaveOptions) => 
       },
       marketing_channels: settingsData.marketing_channels || [],
       social_media: filteredSocialMedia,
+      // These fields used to depend on the redundant post-save site write.
+      shop: { ...currentSite.settings?.shop, ...settingsData.shop },
       // Include channels configuration - preserve existing configuration and merge with new data
       channels: {
+        ...channels,
         email: {
           enabled: channels?.email?.enabled ?? currentSite.settings?.channels?.email?.enabled ?? false,
           email: channels?.email?.email ?? currentSite.settings?.channels?.email?.email ?? "",
@@ -333,28 +333,10 @@ export const handleSave = async (data: SiteFormValues, options: SaveOptions) => 
       goals: settings.goals
     });
     
-    // First update the site
-    console.log("SAVE 9: Llamando a updateSite...");
-    try {
-      await updateSite({
-        ...currentSite,
-        ...siteUpdate
-      } as any);
-      console.log("SAVE 10: updateSite completado con éxito");
-    } catch (siteError) {
-      console.error("SAVE ERROR en updateSite:", siteError);
-      throw siteError;
-    }
-    
-    // Then update the settings
-    console.log("SAVE 11: Llamando a updateSettings...");
-    try {
-      await updateSettings(currentSite.id, settings as any);
-      console.log("SAVE 12: updateSettings completado con éxito");
-    } catch (settingsError) {
-      console.error("SAVE ERROR en updateSettings:", settingsError);
-      throw settingsError;
-    }
+    await saveSiteWithSettings({
+      ...currentSite,
+      ...siteUpdate
+    } as any, settings as any, options);
 
     // Handle copywriting data separately
     console.log("SAVE 12.1: Processing copywriting data...");
@@ -413,56 +395,7 @@ export const handleSave = async (data: SiteFormValues, options: SaveOptions) => 
     
     console.log("SAVE 13: Todo el proceso completado con éxito");
     
-    // Check if we should prevent refresh based on current flags
-    const shouldPreventRefresh = () => {
-      if (typeof window === 'undefined') return false
-      const preventRefresh = sessionStorage.getItem('preventAutoRefresh')
-      const justBecameVisible = sessionStorage.getItem('JUST_BECAME_VISIBLE')
-      const justGainedFocus = sessionStorage.getItem('JUST_GAINED_FOCUS')
-      
-      return preventRefresh === 'true' || justBecameVisible === 'true' || justGainedFocus === 'true'
-    }
-    
-    if (shouldPreventRefresh()) {
-      console.log("SAVE 14: Settings saved successfully, skipping sites refresh to prevent reload");
-      
-      // Even though we skip full refresh, we need to update the currentSite state
-      // to reflect the saved changes in the UI, preserving nested objects like channels
-      const updatedSite = {
-        ...currentSite,
-        ...siteUpdate,
-        settings: {
-          ...currentSite.settings,
-          ...settingsData,
-          shop: {
-            ...currentSite.settings?.shop,
-            ...settingsData.shop
-          },
-          // Preserve nested objects that might get overwritten
-          channels: {
-            ...currentSite.settings?.channels,
-            ...channels,
-            // Deep merge for email, whatsapp, and website to preserve all fields
-            email: {
-              ...currentSite.settings?.channels?.email,
-              ...channels?.email
-            },
-            whatsapp: {
-              ...currentSite.settings?.channels?.whatsapp,
-              ...channels?.whatsapp
-            },
-            website: {
-              ...currentSite.settings?.channels?.website,
-              ...channels?.website
-            }
-          }
-        }
-      };
-      
-      // Update the current site state locally without triggering a full reload
-      console.log("SAVE 14.1: Updating current site state locally");
-      updateSite(updatedSite as any);
-    } else {
+    if (!shouldPreventRefresh()) {
       console.log("SAVE 14: Settings saved successfully, refreshing sites data");
       await refreshSites();
     }

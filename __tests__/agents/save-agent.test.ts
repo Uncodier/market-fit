@@ -1,14 +1,8 @@
-jest.mock("../../app/services/api-client-service", () => ({
-  apiClient: {
-    patch: jest.fn(),
-  },
-}))
+/** @jest-environment node */
 
 import { upsertAgentRecord, type AgentUpsertInput } from "../../app/agents/save-agent"
 import { getDefaultAgentTemplate, resolveTemplateRole } from "../../app/agents/agent-defaults"
-import { apiClient } from "../../app/services/api-client-service"
-
-const mockPatch = apiClient.patch as jest.Mock
+const mockFetch = jest.mocked(fetch)
 
 const UUID = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
 
@@ -54,8 +48,7 @@ describe("upsertAgentRecord", () => {
   }
 
   beforeEach(() => {
-    mockPatch.mockClear()
-    mockPatch.mockResolvedValue({ success: true, data: { synced: false } })
+    mockFetch.mockReset().mockResolvedValue(Response.json({ success: true, status: "accepted" }, { status: 202 }))
   })
 
   it("inserts a complete row when the template agent was never created", async () => {
@@ -72,9 +65,10 @@ describe("upsertAgentRecord", () => {
     expect(savedId).toBe(UUID)
     expect(insert.insert).toHaveBeenCalledWith([expect.objectContaining(requiredFields)])
     expect(insert.insert.mock.calls[0][0][0]).not.toHaveProperty("id")
-    expect(mockPatch).toHaveBeenCalledWith("/api/integrations/zavu/voice", {
-      siteId: "site-1",
-    })
+    expect(mockFetch).toHaveBeenCalledWith("/api/settings/voice-sync", expect.objectContaining({
+      method: "POST",
+      body: JSON.stringify({ siteId: "site-1" }),
+    }))
   })
 
   it("updates the existing row when one already exists for the same role and site", async () => {
@@ -140,7 +134,7 @@ describe("upsertAgentRecord", () => {
 
     await upsertAgentRecord({ from }, baseInput({ agentId: UUID }))
 
-    expect(mockPatch).not.toHaveBeenCalled()
+    expect(mockFetch).not.toHaveBeenCalled()
   })
 
   it("preserves provider synchronization metadata when editing configuration", async () => {
@@ -202,10 +196,7 @@ describe("upsertAgentRecord", () => {
       if (from.mock.calls.length === 1) return lookup
       return insert
     })
-    mockPatch.mockResolvedValue({
-      success: false,
-      error: { message: "Zavu is unavailable" },
-    })
+    mockFetch.mockResolvedValue(Response.json({ success: false }, { status: 503 }))
 
     await expect(upsertAgentRecord({ from }, baseInput())).resolves.toBe(UUID)
   })

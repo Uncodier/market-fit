@@ -1,6 +1,7 @@
 "use client"
 
 import type { Site, SiteSettings } from "./site-types"
+import type { Dispatch, SetStateAction } from "react"
 import { requestVoiceAgentResync } from "@/app/agents/voice-sync"
 import { mergeActivitySettings } from "@/app/components/settings/activity-settings"
 import { icpLeadGenerationSettingsSchema } from "@/app/components/settings/icp-lead-generation-settings"
@@ -12,7 +13,7 @@ type PersistArgs = {
   siteId: string
   settings: Partial<SiteSettings>
   currentSite: Site | null
-  setCurrentSite: (site: Site) => void
+  setCurrentSite: Dispatch<SetStateAction<Site | null>>
   setSites: (updater: (prev: Site[]) => Site[]) => void
   loadSites: () => Promise<void>
   setError: (error: Error) => void
@@ -24,7 +25,6 @@ export async function persistSiteSettings({
   supabase,
   siteId,
   settings,
-  currentSite,
   setCurrentSite,
   setSites,
   loadSites,
@@ -276,10 +276,34 @@ export async function persistSiteSettings({
       // Remove allowed_domains from settings as it belongs to a separate table
       // Since allowed_domains is no longer part of SiteSettings interface, we just use formattedSettings directly
       const settingsForDB = formattedSettings;
+      let savedSettings: SiteSettings;
       
-      // Prevent updating demo sites
+      // Preserve demo-only local saves without issuing database/provider writes.
       if (siteId.startsWith('demo-')) {
-        console.log('Skipping settings update for demo site');
+        const applyDemoSettings = (site: Site): Site => site.id === siteId ? {
+          ...site,
+          settings: {
+            ...site.settings,
+            ...formattedSettings,
+            ...(formattedSettings.activities !== undefined && {
+              activities: mergeActivitySettings(site.settings?.activities, formattedSettings.activities),
+            }),
+            ...(formattedSettings.shop !== undefined && {
+              shop: { ...site.settings?.shop, ...formattedSettings.shop },
+            }),
+            channels: {
+              ...site.settings?.channels,
+              ...formattedSettings.channels,
+              email: formattedSettings.channels?.email
+                ? { ...site.settings?.channels?.email, ...formattedSettings.channels.email }
+                : site.settings?.channels?.email,
+              whatsapp: { ...site.settings?.channels?.whatsapp, ...formattedSettings.channels?.whatsapp },
+              website: { ...site.settings?.channels?.website, ...formattedSettings.channels?.website },
+            },
+          },
+        } : site;
+        setCurrentSite(site => site ? applyDemoSettings(site) : site);
+        setSites(prevSites => prevSites.map(applyDemoSettings));
         return;
       }
 
@@ -356,20 +380,8 @@ export async function persistSiteSettings({
           console.error("UPDATE SETTINGS ERROR detalles:", error.code, error.message, error.details);
           throw error;
         }
+        savedSettings = mergedSettings as SiteSettings;
         await requestVoiceAgentResync(siteId);
-        
-        
-        // Verificar que se guardaron correctamente los datos
-        const { data: verifyData, error: verifyError } = await supabase
-          .from('settings')
-          .select('goals')
-          .eq('site_id', siteId)
-          .single();
-          
-        if (verifyError) {
-          console.error("UPDATE SETTINGS: Error al verificar guardado:", verifyError);
-        } else {
-        }
       } catch (upsertError) {
         console.error("UPDATE SETTINGS ERROR excepción en upsert:", upsertError);
         throw upsertError;
@@ -378,33 +390,13 @@ export async function persistSiteSettings({
       
       // Update local state without full reload when preventing refresh
       if (shouldPreventRefresh() || isOnProtectedPage()) {
-        
-        // Update the current site if it matches the siteId being updated
-        if (currentSite && currentSite.id === siteId) {
-          const updatedSite = {
-            ...currentSite,
-            settings: {
-              ...currentSite.settings,
-              ...formattedSettings
-            }
-          } as Site;
-          setCurrentSite(updatedSite);
-        }
-        
-        // Update the sites array 
-        setSites(prevSites => 
-          prevSites.map(site => 
-            site.id === siteId 
-              ? {
-                  ...site,
-                  settings: {
-                    ...site.settings,
-                    ...formattedSettings
-                  }
-                } as Site
-              : site
-          )
-        );
+        // Preserve basic fields saved earlier in this operation and site switches
+        // that happened while awaiting I/O. Publish the merge actually persisted.
+        const applySettings = (site: Site): Site => site.id === siteId
+          ? { ...site, settings: { ...site.settings, ...savedSettings } }
+          : site;
+        setCurrentSite(site => site ? applySettings(site) : site);
+        setSites(prevSites => prevSites.map(applySettings));
       } else {
         // Only reload sites if not preventing refresh
         await loadSites();

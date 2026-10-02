@@ -1,12 +1,11 @@
 import { toast } from "sonner"
 import { type SiteFormValues } from "./form-schema"
-import { type Site } from "../../context/SiteContext"
 
-import { type SaveOptions, shouldPreventRefresh, updateSiteLocally } from "./save-settings-shared"
+import { type SaveOptions, saveSiteWithSettings, shouldPreventRefresh } from "./save-settings-shared"
 
 // Partial save handler for General section (Site Information)
 export const handleSaveGeneral = async (data: SiteFormValues, options: SaveOptions) => {
-  const { currentSite, updateSite, updateSettings, refreshSites, setIsSaving } = options
+  const { currentSite, refreshSites, setIsSaving } = options
 
   if (!currentSite) return
 
@@ -97,16 +96,12 @@ export const handleSaveGeneral = async (data: SiteFormValues, options: SaveOptio
       settingsUpdate.id = currentSite.settings.id
     }
 
-    await updateSite({
+    await saveSiteWithSettings({
       ...currentSite,
       ...siteUpdate
-    } as any)
+    } as any, settingsUpdate, options)
 
-    await updateSettings(currentSite.id, settingsUpdate)
-
-    if (shouldPreventRefresh()) {
-      updateSiteLocally(currentSite, siteUpdate, settingsUpdate, updateSite)
-    } else {
+    if (!shouldPreventRefresh()) {
       await refreshSites()
     }
 
@@ -125,7 +120,7 @@ export const handleSaveGeneral = async (data: SiteFormValues, options: SaveOptio
 
 // Partial save handler for Company section
 export const handleSaveShop = async (data: SiteFormValues, options: SaveOptions) => {
-  const { currentSite, updateSite, updateSettings, refreshSites, setIsSaving } = options
+  const { currentSite, updateSettings, refreshSites, setIsSaving } = options
 
   if (!currentSite) return
 
@@ -162,9 +157,7 @@ export const handleSaveShop = async (data: SiteFormValues, options: SaveOptions)
 
     await updateSettings(currentSite.id, settingsUpdate)
 
-    if (shouldPreventRefresh()) {
-      updateSiteLocally(currentSite, {}, settingsUpdate, updateSite)
-    } else {
+    if (!shouldPreventRefresh()) {
       await refreshSites()
     }
 
@@ -182,7 +175,7 @@ export const handleSaveShop = async (data: SiteFormValues, options: SaveOptions)
 }
 
 export const handleSavePrinters = async (data: SiteFormValues, options: SaveOptions) => {
-  const { currentSite, updateSite, updateSettings, refreshSites, setIsSaving } = options
+  const { currentSite, updateSettings, refreshSites, setIsSaving } = options
   if (!currentSite) return
 
   try {
@@ -196,9 +189,7 @@ export const handleSavePrinters = async (data: SiteFormValues, options: SaveOpti
       settingsUpdate.id = currentSite.settings.id
     }
     await updateSettings(currentSite.id, settingsUpdate)
-    if (shouldPreventRefresh()) {
-      updateSiteLocally(currentSite, {}, settingsUpdate, updateSite)
-    } else {
+    if (!shouldPreventRefresh()) {
       await refreshSites()
     }
     toast.success("Printer settings saved")
@@ -211,7 +202,7 @@ export const handleSavePrinters = async (data: SiteFormValues, options: SaveOpti
 }
 
 export const handleSaveCompany = async (data: SiteFormValues, options: SaveOptions) => {
-  const { currentSite, updateSite, updateSettings, refreshSites, setIsSaving, t } = options
+  const { currentSite, updateSettings, refreshSites, setIsSaving, t } = options
 
   if (!currentSite) return
 
@@ -256,9 +247,7 @@ export const handleSaveCompany = async (data: SiteFormValues, options: SaveOptio
 
     await updateSettings(currentSite.id, settingsUpdate)
 
-    if (shouldPreventRefresh()) {
-      updateSiteLocally(currentSite, {}, settingsUpdate, updateSite)
-    } else {
+    if (!shouldPreventRefresh()) {
       await refreshSites()
     }
 

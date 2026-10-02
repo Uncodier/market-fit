@@ -79,7 +79,7 @@ describe("Daily Standup persistence", () => {
     const selected = jest.fn()
     await applyCurrentSite({ site: { ...state.options.currentSite, settings: loaded }, currentSite: null, supabase: null, setCurrentSite: selected, setSites: jest.fn() })
     expect(selected.mock.calls[0][0].settings.activities).toEqual(expected)
-    expect(state.deps.setCurrentSite.mock.calls[0][0].settings.activities).toEqual(expected)
+    expect(state.deps.setCurrentSite.mock.calls[0][0](state.options.currentSite).settings.activities).toEqual(expected)
   })
 
   it.each(["activity", "all", "direct"])("preserves status-only legacy defaults and explicitly empty inactive selections through %s save", async mode => {
@@ -151,7 +151,7 @@ describe("Daily Standup persistence", () => {
         expect(state.row().activities).toEqual({ ...before, [activityKey]: { ...before[activityKey], start_time } })
         const loaded = await fetchSiteSettings(state.deps.supabase, siteId)
         expect(adaptSiteToForm({ ...state.options.currentSite, settings: loaded }).activities[activityKey].start_time).toBe(start_time)
-        expect(state.deps.setCurrentSite.mock.lastCall?.[0].settings.activities[activityKey].start_time).toBe(start_time)
+        expect(state.deps.setCurrentSite.mock.lastCall?.[0](state.options.currentSite).settings.activities[activityKey].start_time).toBe(start_time)
       }
       expect(state.writes).toHaveLength(3)
       expect(state.row().custom_settings).toEqual({ untouched: true })
