@@ -38,6 +38,7 @@ Use the guides below before relying on older implementation notes.
 - [Stripe setup](STRIPE_SETUP.md)
 - [Stripe environment variables](STRIPE_ENVIRONMENT_VARIABLES.md)
 - [Stripe webhook security](STRIPE_WEBHOOK_SECURITY.md)
+- [Subscription invoice settlement and recovery](STRIPE_INVOICE_RECOVERY.md)
 - [Social network OAuth](SOCIAL_NETWORK_OAUTH_SETUP.md)
 - [Content and Outstand deletion](CONTENT_DELETION.md)
 - [Google authentication](GOOGLE_AUTH_SETUP.md)
