@@ -163,13 +163,14 @@ export const ChatInput = memo(function ChatInput({
         <div className="w-full mx-auto relative pb-[20px] px-4 md:px-8 lg:px-12 xl:px-24">
           <p className="text-xs text-muted-foreground px-2 pb-2" role="status">
             {!isConversationReady ? 'Loading conversation delivery settings…'
-              : commentReplySelection ? (commentReplySelection.target ? 'Public reply to the selected comment. This is not a direct message.' : 'Select the comment you want to reply to.')
+              : commentReplySelection ? (commentReplySelection.target ? 'Public reply to the selected comment. This is not a direct message.'
+                : commentReplySelection.options.length ? 'Select the comment you want to reply to.'
+                  : 'No replyable comment is available. Open the original post to reply.')
               : voiceBlock ? voiceBlock.message
                 : isVoice ? 'Start an outbound call. Your message is the opening greeting; consent and phone checks apply.'
                   : isAgentOnlyConversation ? 'Internal agent chat. Messages here do not contact the customer.'
                     : 'Send a team intervention through the selected channel.'}
           </p>
-          {commentReplySelection && <CommentReplyPicker selection={commentReplySelection} disabled={isLoading || !isConversationReady} />}
           <form onSubmit={handleSubmit} className="relative w-full">
             <div className="relative w-full" id="tour-chat-input">
         <OptimizedTextarea
@@ -183,11 +184,17 @@ export const ChatInput = memo(function ChatInput({
                   lineHeight: '1.5',
                   overflowY: 'hidden',
                   wordWrap: 'break-word',
-                  paddingBottom: '50px',
+                  paddingBottom: commentReplySelection ? '62px' : '50px',
                   height: '121.5px',
                   opacity: isLoading ? 1 : undefined
                 }}
               />
+
+              {commentReplySelection && (
+                <div className="absolute bottom-[15px] left-[15px] right-[64px] flex items-center" style={{ zIndex: 52 }}>
+                  <CommentReplyPicker selection={commentReplySelection} disabled={isLoading || !isConversationReady} />
+                </div>
+              )}
 
               {/* Send button on the right - moved after textarea */}
               <div className="absolute bottom-[15px] right-[15px]" style={{ zIndex: 51 }}>

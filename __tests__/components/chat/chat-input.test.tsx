@@ -1,6 +1,8 @@
-import { createEvent, fireEvent, render, screen } from '@testing-library/react'
+import { createEvent, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { ChatInput } from '@/app/components/chat/ChatInput'
 import { useChannelSelector } from '@/app/hooks/useChannelSelector'
+import { useCommentReplySelection } from '@/app/hooks/useCommentReplySelection'
+import type { ChatMessage } from '@/app/types/chat'
 
 jest.mock('@/app/context/LayoutContext', () => ({ useLayout: () => ({ isLayoutCollapsed: false }) }))
 jest.mock('@/app/hooks/useChannelSelector', () => ({ useChannelSelector: jest.fn() }))
@@ -26,7 +28,30 @@ const consentedLead = {
   voice_call_consent_status: 'granted', voice_call_consent_at: '2026-01-01T00:00:00Z',
 }
 
+const commentMetadata = {
+  source: 'comment', outstand_post_id: 'post-a', platform_comment_id: 'provider-comment',
+  network: 'instagram', publisher_account_id: 'account-a', post_title: 'Summer collection',
+  publisher_username: 'our-store',
+}
+const firstComment: ChatMessage = {
+  id: '10000000-0000-4000-8000-000000000001', role: 'user', text: 'Which size?',
+  timestamp: new Date('2026-10-01T10:00:00Z'), metadata: commentMetadata,
+}
+const latestComment: ChatMessage = {
+  ...firstComment, id: '10000000-0000-4000-8000-000000000002', text: 'Is it available?',
+  timestamp: new Date('2026-10-01T11:00:00Z'),
+}
+
+function CommentComposer({ callbacks }: { callbacks: ReturnType<typeof props> }) {
+  const selection = useCommentReplySelection(callbacks.conversationId, 'site', commentMetadata, [latestComment, firstComment])
+  return <ChatInput {...callbacks} commentReplySelection={selection} />
+}
+
 describe('ChatInput send guards', () => {
+  beforeAll(() => {
+    Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', { configurable: true, value: jest.fn() })
+  })
+  afterAll(() => { Reflect.deleteProperty(HTMLElement.prototype, 'scrollIntoView') })
   beforeEach(() => { jest.mocked(useChannelSelector).mockReturnValue(channelState()) })
 
   it('blocks Enter and native form submission during channel update without inserting a newline', () => {
@@ -175,7 +200,7 @@ describe('ChatInput send guards', () => {
     expect(callbacks.handleSendMessage).toHaveBeenCalledTimes(1)
   })
 
-  it('blocks all public reply submission paths until an explicit comment is selected', () => {
+  it('blocks all public reply submission paths when the comment selection is unavailable', () => {
     const callbacks = props()
     const target = { id: 'comment-a', role: 'user' as const, text: 'Which size?', timestamp: new Date(), metadata: {
       source: 'comment', outstand_post_id: 'post-a', platform_comment_id: 'provider-comment',
@@ -196,5 +221,61 @@ describe('ChatInput send guards', () => {
     expect(screen.getByRole('button', { name: 'Reply publicly' })).toBeEnabled()
     fireEvent.click(screen.getByRole('button', { name: 'Reply publicly' }))
     expect(callbacks.handleSendMessage).toHaveBeenCalledTimes(1)
+  })
+
+  it('renders a compact latest-comment selector inside the text composer without submitting on selection', async () => {
+    const callbacks = props()
+    const { container } = render(<CommentComposer callbacks={callbacks} />)
+    const textarea = screen.getByRole('textbox')
+    const picker = screen.getByRole('combobox', { name: 'Comment to reply to' })
+    const composer = container.querySelector('#tour-chat-input')
+
+    expect(composer).toContainElement(textarea)
+    expect(composer).toContainElement(picker)
+    expect(picker).toHaveClass('h-8', 'rounded-full', 'bg-secondary', 'border-0', 'max-w-full')
+    expect(picker).toHaveTextContent('Comment: Is it available?')
+    expect(picker).toHaveAttribute('type', 'button')
+    expect(textarea).toHaveStyle({ paddingBottom: '62px' })
+    expect(screen.getByRole('button', { name: 'Reply publicly' })).toBeDisabled()
+
+    fireEvent.change(textarea, { target: { value: 'Keep my draft' } })
+    expect(screen.getByRole('button', { name: 'Reply publicly' })).toBeEnabled()
+    fireEvent.keyDown(picker, { key: 'ArrowDown' })
+    const original = await screen.findByRole('option', { name: /Which size\?/ })
+    expect(original).toHaveTextContent('Summer collection · @our-store')
+    expect(screen.getByRole('option', { name: /Is it available\?/ })).toHaveAttribute('aria-selected', 'true')
+    expect(screen.getByRole('listbox')).toHaveAttribute('data-side', 'top')
+    fireEvent.keyDown(original, { key: 'Enter' })
+    await waitFor(() => expect(picker).toHaveTextContent('Comment: Which size?'))
+    expect(textarea).toHaveValue('Keep my draft')
+    expect(callbacks.handleSendMessage).not.toHaveBeenCalled()
+    expect(callbacks.handleKeyDown).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: 'Reply publicly' }))
+    expect(callbacks.handleSendMessage).toHaveBeenCalledTimes(1)
+  })
+
+  it.each([
+    { isLoading: true, isConversationReady: true },
+    { isLoading: false, isConversationReady: false },
+  ])('disables comment changes and sending while delivery is unavailable (%j)', availability => {
+    render(<ChatInput {...props()} {...availability} message="Draft" commentReplySelection={{
+      options: [firstComment], target: firstComment, select: jest.fn(),
+    }} />)
+    expect(screen.getByRole('combobox', { name: 'Comment to reply to' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Reply publicly' })).toBeDisabled()
+  })
+
+  it('explains the empty comment state and keeps all sending paths blocked', () => {
+    const callbacks = props()
+    render(<ChatInput {...callbacks} commentReplySelection={{ options: [], target: undefined, select: jest.fn() }} />)
+    const textarea = screen.getByRole('textbox')
+    fireEvent.change(textarea, { target: { value: 'Draft' } })
+    fireEvent.keyDown(textarea, { key: 'Enter' })
+    fireEvent.submit(textarea.closest('form')!)
+    expect(screen.getByRole('combobox', { name: 'Comment to reply to' })).toBeDisabled()
+    expect(screen.getByRole('status')).toHaveTextContent('No replyable comment is available. Open the original post to reply.')
+    expect(screen.getByRole('button', { name: 'Reply publicly' })).toBeDisabled()
+    expect(callbacks.handleSendMessage).not.toHaveBeenCalled()
+    expect(callbacks.handleKeyDown).not.toHaveBeenCalled()
   })
 })

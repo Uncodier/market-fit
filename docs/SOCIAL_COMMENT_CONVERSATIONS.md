@@ -40,8 +40,8 @@ provider member metadata; a real linked CRM lead can still supply a name.
 Inbound messages retain `platform_comment_id` and optional `parent_comment_id`.
 Proposals and manual replies retain **`reply_to_message_id`** (the persisted
 inbound message) and **`reply_to_comment_id`** (the exact provider destination),
-together with the post/account/network dimensions. Neither UI order nor the
-latest inbound message establishes a reply target.
+together with the post/account/network dimensions. Delivery uses these saved
+identifiers, never UI order or a latest-inbound fallback.
 
 ## Conversations UI
 
@@ -63,10 +63,15 @@ latest inbound message establishes a reply target.
 
 ## Sending and approval
 
-The composer requires an explicit comment selection and labels the action
+The composer shows a compact comment picker inside the message field, styled
+like the Ask, Context and Skills controls in Robots, and labels the action
 **Reply publicly**. It does not expose a channel switch for public threads.
-Selection is scoped to the current site/conversation and is invalidated when the
-selected message disappears. There is no automatic latest-comment fallback.
+The newest replyable inbound comment by timestamp is preselected once comments
+load for the current site/conversation. Users can choose another comment; new
+arrivals never replace the current selection while composing. Switching sites
+or conversations resets the default. If the selected message disappears, sending
+is blocked until another comment is selected. This UI default still submits the
+exact selected message UUID and does not change approval or retry destinations.
 
 The same-origin intervention proxy checks session, site capability and RLS access,
 then looks up the selected inbound message within the authorized conversation.
