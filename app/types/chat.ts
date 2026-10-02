@@ -1,4 +1,5 @@
 import { Database } from "@/types/supabase"
+import type { SocialCommentReplyContext } from "@/lib/chat/social-comment-context"
 
 export type Conversation = Database["public"]["Tables"]["conversations"]["Row"]
 export type Message = Database["public"]["Tables"]["messages"]["Row"]
@@ -24,6 +25,8 @@ export interface ConversationListItem {
   leadName?: string
   /** Display-only external contact label; does not imply a linked lead. */
   participantName?: string
+  /** Post reference for comment conversations; custom subjects remain in title. */
+  subtitle?: string
   leadStatus?: string
   channel?: 'web' | 'email' | 'whatsapp' | 'instagram' | 'messenger' | 'sms' | 'telegram' | 'voice' | 'website_chat' | string
   status?: 'pending' | 'active' | 'closed' | 'archived'
@@ -41,12 +44,14 @@ export interface ChatMessage {
     status?: "pending" | "sent" | "delivered" | "failed" | "accepted"
     [key: string]: any
   }
-  // Información del remitente (para retrocompatibilidad en la UI)
+  /** Read-only exact parent preview; never serialized into message custom_data. */
+  replyContext?: SocialCommentReplyContext
+  // Sender information retained for UI compatibility.
   sender_id?: string
   sender_name?: string
   sender_avatar?: string
-  // ID del comando asociado al mensaje (para feedback)
+  // Command associated with the message, used for feedback.
   command_id?: string
-  // ID del agente que envió el mensaje (para mensajes de tipo "assistant")
+  // Agent that sent an assistant message.
   agent_id?: string
 } 

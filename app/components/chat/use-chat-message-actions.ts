@@ -14,7 +14,7 @@ export function useChatMessageActions({
 }: {
   chatMessages: ChatMessage[]
   conversationId?: string
-  leadData: any
+  leadData: { id?: string; lead_id?: string } | null
   onMessagesUpdate?: (messages: ChatMessage[]) => void
 }) {
   const router = useRouter()
@@ -209,7 +209,7 @@ export function useChatMessageActions({
       toast.success("Message accepted")
     } catch (error) {
       console.error("Unexpected error accepting message:", error)
-      toast.error("An unexpected error occurred")
+      toast.error(error instanceof Error ? error.message : "Unable to accept this message")
     } finally {
       setAcceptingMessageId(null)
     }
@@ -232,16 +232,26 @@ export function useChatMessageActions({
         return
       }
 
+      if (currentMessage?.custom_data?.source === 'comment' &&
+        (currentMessage.custom_data.status !== 'accepted' || currentMessage.custom_data.comment_delivery_status)) {
+        toast.error('This public reply is no longer awaiting delivery. Refresh the conversation to check its status.')
+        return
+      }
+
       const updatedCustomData = {
-        ...((currentMessage?.custom_data as Record<string, any>) || {}),
+        ...((currentMessage?.custom_data as Record<string, unknown>) || {}),
         status: "pending",
       }
-      const { error: updateError } = await supabase
+      const update = supabase
         .from("messages")
         .update({ custom_data: updatedCustomData, updated_at: new Date().toISOString() })
         .eq("id", message.id)
+      if (currentMessage?.custom_data?.source === 'comment') {
+        update.eq('conversation_id', conversationId || '').eq('custom_data', JSON.stringify(currentMessage.custom_data))
+      }
+      const { data: updatedRow, error: updateError } = await update.select('id').maybeSingle()
 
-      if (updateError) {
+      if (updateError || !updatedRow) {
         console.error("Error updating message status:", updateError)
         toast.error("Failed to return message to pending")
         return

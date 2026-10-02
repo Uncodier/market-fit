@@ -34,6 +34,13 @@ so after an ambiguous timeout without checking the conversation first.
 
 ## Voice and Temporal are different paths
 
+Public social-comment threads require an explicit persisted `reply_to_message_id`.
+The composer labels the action **Reply publicly**; the proxy and API validate the
+same-conversation inbound target and preserve it on retry. Public replies cannot
+switch into DMs by selecting another channel. See
+[Social comment conversations](SOCIAL_COMMENT_CONVERSATIONS.md) for grouping,
+post context, moderation and coordinated API/worker rollout.
+
 Conversation routing uses the persisted channel and delivery metadata, not the
 absence of a lead/visitor link or a URL `mode` parameter. Inbound voice calls
 can legitimately have neither link; they are still external conversations.

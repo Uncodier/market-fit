@@ -4,6 +4,7 @@ export type InterventionRequestOptions = {
   visitor_id?: string
   site_id?: string
   message_id?: string
+  reply_to_message_id?: string
 }
 
 export type InterventionChannelSend = {
@@ -71,5 +72,6 @@ export function buildInterventionRequestBody(
     visitor_id: options?.visitor_id,
     site_id: options?.site_id,
     message_id: options?.message_id,
+    reply_to_message_id: options?.reply_to_message_id,
   }
 }

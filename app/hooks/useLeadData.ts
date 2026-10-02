@@ -46,6 +46,7 @@ export function useLeadData(conversationId: string, siteId?: string) {
       if (!conversationWithLead) throw new Error('Conversation not found')
       const routing = {
         channel: conversationChannel(conversationWithLead),
+        conversationCustomData: conversationWithLead.custom_data,
         isAgentOnly: isInternalAgentConversation(conversationWithLead),
         participantIdentity: resolveParticipantIdentity(conversationWithLead, conversationWithLead.leads),
       }
@@ -125,6 +126,7 @@ export function useLeadData(conversationId: string, siteId?: string) {
     isLoadingLead,
     isAgentOnlyConversation: data?.isAgentOnly === true,
     conversationChannel: data?.channel,
+    conversationCustomData: data?.conversationCustomData,
     isConversationReady: Boolean(data && !error),
     isLead: data?.leadData !== null && data?.leadData !== undefined,
     isLeadInvalidated: data?.isInvalidated || false,

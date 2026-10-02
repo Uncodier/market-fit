@@ -21,6 +21,9 @@ import {
   useProcessedMessages,
 } from "./use-chat-message-data"
 import { useChatMessageActions } from "./use-chat-message-actions"
+import { getConversationPostContext, isSocialCommentConversation, orderCommentMessages } from "@/lib/chat/social-comment-context"
+import { CommentDisplayProvider } from "./CommentReplyContext"
+import { PostContextCard } from "./PostContextCard"
 
 export function ChatMessages({
   chatMessages,
@@ -35,6 +38,7 @@ export function ChatMessages({
   leadData,
   participantIdentity,
   conversationId,
+  conversationCustomData,
   onRetryMessage,
   onMessagesUpdate,
   isChatListCollapsed = false,
@@ -54,15 +58,19 @@ export function ChatMessages({
   const currentUserAvatar =
     (user?.user_metadata?.avatar_url as string | undefined) ||
     (user?.user_metadata?.picture as string | undefined) ||
-    (user?.identities?.[0]?.identity_data as any)?.avatar_url
+    (typeof user?.identities?.[0]?.identity_data?.avatar_url === "string"
+      ? user.identities[0].identity_data.avatar_url : undefined)
 
-  const processedMessages = useProcessedMessages({
+  const unorderedMessages = useProcessedMessages({
     chatMessages,
     currentUserId,
     currentUserName,
     isAgentOnlyConversation,
     hasLead,
   })
+  const processedMessages = orderCommentMessages(unorderedMessages, conversationCustomData)
+  const postContext = getConversationPostContext(conversationCustomData, processedMessages)
+  const isCommentConversation = isSocialCommentConversation(conversationCustomData, processedMessages)
   const { userDataCache, agentDataCache } = useMessageSenderData(
     chatMessages,
     currentUserId,
@@ -130,12 +138,22 @@ export function ChatMessages({
         {isLoadingMessages || isTransitioningConversation ? (
           <ChatMessagesLoading />
         ) : (
+          <CommentDisplayProvider messages={processedMessages} isCommentConversation={isCommentConversation}
+            showMessagePostContext={!postContext}>
           <div
             className={cn(
               "space-y-6 relative flex flex-col",
               chatMessages.length === 0 ? "flex-1 justify-center" : "",
             )}
           >
+            {postContext && (
+              <div className="sticky top-0 z-10 bg-background pb-2">
+                <PostContextCard context={postContext} />
+              </div>
+            )}
+            {isCommentConversation && !postContext && (
+              <p className="text-xs text-muted-foreground">Post context is shown with each comment.</p>
+            )}
             {chatMessages.length === 0 ? (
               <EmptyConversation agentId={agentId} agentName={agentName} />
             ) : (
@@ -150,6 +168,7 @@ export function ChatMessages({
                 const responsePrompt = findPromptForChatResponse(
                   processedMessages,
                   index,
+                  conversationCustomData,
                 )
 
                 return (
@@ -218,6 +237,7 @@ export function ChatMessages({
 
             <div className="h-[250px]" />
           </div>
+          </CommentDisplayProvider>
         )}
         <div ref={messagesEndRef} className="h-[20px]" />
       </div>

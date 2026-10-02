@@ -5,6 +5,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/app/
 import { ChatMessage } from "@/app/types/chat"
 import * as Icons from "@/app/components/ui/icons"
 import { useTheme } from "@/app/context/ThemeContext"
+import { isSocialCommentMetadata } from '@/lib/chat/social-comment-context'
 
 interface MessageActionsProps {
   message: ChatMessage
@@ -31,9 +32,12 @@ export function MessageActions({
   
   const isAccepted = message.metadata?.status === "accepted" || isActionsAccepted
   const isPending = message.metadata?.status === "pending"
+  const publicReplyClaimed = isSocialCommentMetadata(message.metadata) && (
+    Boolean(message.metadata?.comment_delivery_status) || ['sent', 'delivered'].includes(String(message.metadata?.status))
+  )
 
   // Only show actions for pending or accepted messages
-  if (!isPending && !isAccepted) {
+  if (publicReplyClaimed || (!isPending && !isAccepted)) {
     return null
   }
 

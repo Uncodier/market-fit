@@ -1,19 +1,18 @@
-import ReactMarkdown from "react-markdown"
+import ReactMarkdown, { type Components } from "react-markdown"
 import remarkGfm from "remark-gfm"
 import { ChatMessage } from "@/app/types/chat"
 import { EmailViewer } from "@/app/components/email/EmailViewer"
 import { isMimeMultipartMessage } from "@/app/utils/email-formatter"
-import { CommentSourceLinks } from "./CommentSourceLinks"
+import { parseSocialCommentContext } from "@/lib/chat/social-comment-context"
+import { CommentReplyContext, useCommentDisplayContext } from "./CommentReplyContext"
+import { PostContextCard } from "./PostContextCard"
 
 const EMAIL_CONTENT_TOKEN = "email-content-token"
 
 function removeAllHtmlTags(text: string): string {
-  console.log("🔧 [removeAllHtmlTags] Input:", text.substring(0, 100) + "...")
-
   let cleaned = text.replace(/<[^>]*>/g, "")
 
   if (cleaned.includes("<")) {
-    console.log("🔧 [removeAllHtmlTags] First method failed, trying character approach...")
     let result = ""
     let inTag = false
 
@@ -30,40 +29,30 @@ function removeAllHtmlTags(text: string): string {
   }
 
   cleaned = cleaned.replace(/\s+/g, " ").trim()
-  console.log("🔧 [removeAllHtmlTags] Output:", cleaned.substring(0, 100) + "...")
   return cleaned
 }
 
-function formatMessageContent(text: string, metadata?: any): string {
-  console.log("🔍 [formatMessageContent] RAW MESSAGE:", text)
-  console.log("🔍 [formatMessageContent] METADATA:", metadata)
-  console.log("🔍 [formatMessageContent] Text type:", typeof text)
-  console.log("🔍 [formatMessageContent] Text length:", text?.length)
-
+function formatMessageContent(text: string): string {
   if (isMimeMultipartMessage(text)) {
-    console.log("✅ [formatMessageContent] Email content detected")
     return EMAIL_CONTENT_TOKEN
   }
 
   if (text && text.includes("<") && /<[^>]+>/.test(text) && !text.includes("**") && !text.includes("##")) {
-    console.log("🧽 [formatMessageContent] HTML cleanup for HTML content...")
     const cleaned = removeAllHtmlTags(text)
-    console.log("✨ [formatMessageContent] Cleaned HTML result:", cleaned.substring(0, 100) + "...")
     return cleaned
   }
 
-  console.log("⚠️ [formatMessageContent] Returning original text for markdown/plain text")
   return text
 }
 
-const markdownComponents = {
-  img: ({ node: _node, ...props }: any) => (
+const markdownComponents: Components = {
+  img: ({ src, alt, title }) => (
     <img
       style={{ maxWidth: "100%", height: "auto", borderRadius: "4px" }}
-      {...props}
+      src={src} alt={alt || ""} title={title}
     />
   ),
-  pre: ({ node: _node, ...props }: any) => (
+  pre: ({ children, className }) => (
     <pre
       style={{
         whiteSpace: "pre-wrap",
@@ -72,33 +61,35 @@ const markdownComponents = {
         overflowWrap: "break-word",
         maxWidth: "100%",
       }}
-      {...props}
-    />
+      className={className}
+    >{children}</pre>
   ),
-  code: ({ node: _node, ...props }: any) => (
+  code: ({ children, className }) => (
     <code
       style={{
         wordBreak: "break-word",
         overflowWrap: "break-word",
         whiteSpace: "pre-wrap",
       }}
-      {...props}
-    />
+      className={className}
+    >{children}</code>
   ),
-  table: ({ node: _node, ...props }: any) => (
+  table: ({ children, className }) => (
     <div style={{ overflowX: "auto", width: "100%" }}>
-      <table {...props} />
+      <table className={className}>{children}</table>
     </div>
   ),
 }
 
 export function ChatMessageContent({ message }: { message: ChatMessage }) {
-  const formattedContent = formatMessageContent(message.text, message.metadata)
-  const isComment =
-    message.metadata?.source === "comment" || message.metadata?.outstand_post_id
+  const formattedContent = formatMessageContent(message.text)
+  const postContext = parseSocialCommentContext(message.metadata)
+  const { showMessagePostContext } = useCommentDisplayContext()
 
   return (
     <div className="flex flex-col gap-2 w-full">
+      {postContext && showMessagePostContext && <PostContextCard context={postContext} compact />}
+      <CommentReplyContext message={message} />
       {formattedContent === EMAIL_CONTENT_TOKEN ? (
         <EmailViewer emailContent={message.text} className="w-full" />
       ) : (
@@ -116,25 +107,6 @@ export function ChatMessageContent({ message }: { message: ChatMessage }) {
         </div>
       )}
 
-      {isComment && (
-        <CommentSourceLinks
-          contentId={
-            typeof message.metadata?.content_id === "string"
-              ? message.metadata.content_id
-              : undefined
-          }
-          outstandPostId={
-            typeof message.metadata?.outstand_post_id === "string"
-              ? message.metadata.outstand_post_id
-              : undefined
-          }
-          platformPostUrl={
-            typeof message.metadata?.platform_post_url === "string"
-              ? message.metadata.platform_post_url
-              : undefined
-          }
-        />
-      )}
     </div>
   )
 }

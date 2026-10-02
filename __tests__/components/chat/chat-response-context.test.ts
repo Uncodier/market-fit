@@ -28,4 +28,25 @@ describe("findPromptForChatResponse", () => {
 
     expect(findPromptForChatResponse(messages, 1)).toBe("Actual ask")
   })
+
+  it("uses exact comment IDs, never the nearest question, for feedback context", () => {
+    const metadata = { source: "comment", outstand_post_id: "post", platform_comment_id: "comment-1" }
+    const messages = [
+      message({ id: "original", role: "user", text: "Original comment", metadata }),
+      message({ id: "nearby", role: "user", text: "Nearby comment", metadata: { ...metadata, platform_comment_id: "comment-2" } }),
+      message({ role: "assistant", text: "Answer", metadata: { ...metadata, reply_to_message_id: "original", reply_to_comment_id: "comment-1" } }),
+    ]
+    expect(findPromptForChatResponse(messages, 2)).toBe("Original comment")
+    messages[2].metadata = { source: "comment" }
+    expect(findPromptForChatResponse(messages, 2)).toBeUndefined()
+    messages[2].metadata = undefined
+    expect(findPromptForChatResponse(messages, 2)).toBeUndefined()
+  })
+
+  it("uses exact fetched parent previews absent from the visible page", () => {
+    const response = message({ role: "assistant", text: "Answer", metadata: {
+      source: "comment", reply_to_message_id: "outside-page", reply_to_comment_id: "comment-1",
+    }, replyContext: { availability: "available", messageId: "outside-page", commentId: "comment-1", text: "Original comment" } })
+    expect(findPromptForChatResponse([response], 0)).toBe("Original comment")
+  })
 })

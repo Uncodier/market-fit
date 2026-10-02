@@ -1,5 +1,6 @@
 import { conversationChannel } from './conversation-routing'
 import { getChannelLabel } from '@/lib/site-channels'
+import { parseSocialCommentContext } from './social-comment-context'
 
 type IdentityConversation = { channel?: unknown; custom_data?: unknown; title?: unknown }
 type IdentityLead = { name?: unknown; avatarUrl?: unknown }
@@ -51,8 +52,14 @@ export function resolveParticipantIdentity(
   const channel = conversationChannel(conversation)
   const participant = channel === 'instagram' && custom.source === 'outstand_dm' ? custom : {}
   const username = participantUsername(participant.participant_username)
+  const comment = parseSocialCommentContext(custom)
+  const isIdentifiedComment = comment?.groupingVersion === 1 && Boolean(comment.authorId) &&
+    channel !== 'linkedin' && comment.network === channel
+  const commentName = isIdentifiedComment ? participantName(comment?.authorName) : undefined
+  const commentUsername = isIdentifiedComment ? participantUsername(custom.author_username || custom.social_handle) : undefined
   return {
-    name: text(lead?.name) || participantName(participant.participant_display_name) ||
+    name: text(lead?.name) || commentName || (commentUsername ? `@${commentUsername}` : undefined) ||
+      participantName(participant.participant_display_name) ||
       (username ? `@${username}` : undefined) ||
       (channel === 'web' ? 'Visitor' : `${getChannelLabel(channel)} contact`),
     avatarUrl: profilePicture(lead?.avatarUrl) || profilePicture(participant.participant_profile_picture),
@@ -66,6 +73,8 @@ export function conversationDisplayTitle(conversation: IdentityConversation, lea
   const custom = metadata(conversation.custom_data)
   const participant = resolveParticipantIdentity(conversation, { name: leadName })
   const isOutstandDm = participant.channel === 'instagram' && custom.source === 'outstand_dm'
+  if (custom.source === 'comment' && custom.comment_grouping_version === 1 &&
+    (!title || title === 'Social post comments' || title === text(custom.comment_generated_title))) return participant.name
   if (isOutstandDm && (!title || title === text(custom.outstand_generated_title) || [
     'Untitled Conversation', 'Visitor', 'Chat with Visitor', 'Instagram direct message', 'Instagram contact',
   ].includes(title))) return participant.name

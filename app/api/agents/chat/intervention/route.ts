@@ -5,6 +5,8 @@ import { decodeRequestBody, readLimitedRequestBody, RequestBodyTooLargeError } f
 import { chatBackendUrl, isSameOriginChatRequest } from '../proxy-security'
 import { conversationChannel, VOICE_LEAD_REQUIRED } from '@/lib/chat/conversation-routing'
 import { getVoiceCallBlock } from '@/lib/chat/voice-call-eligibility'
+import { isSocialCommentMetadata } from '@/lib/chat/social-comment-context'
+import { validateCommentReplyTarget } from './comment-reply-preflight'
 
 export const maxDuration = 120
 const PATH = '/api/agents/chat/intervention'
@@ -15,6 +17,7 @@ const inputSchema = z.object({
   site_id: uuid,
   message: z.string().trim().min(1).max(20_000),
   message_id: uuid.optional(),
+  reply_to_message_id: uuid.optional(),
 }).refine(input => Boolean(input.conversationId || input.conversation_id))
   .refine(input => !input.conversationId || !input.conversation_id || input.conversationId === input.conversation_id)
 
@@ -83,6 +86,7 @@ export async function POST(request: Request): Promise<Response> {
   }
 
   let message = input.message
+  let replyToMessageId = input.reply_to_message_id
   if (input.message_id) {
     const { data: saved, error } = await access.supabase.from('messages')
       .select('content, custom_data').eq('id', input.message_id)
@@ -91,7 +95,7 @@ export async function POST(request: Request): Promise<Response> {
     if (error) return failure('Unable to verify the saved message', 503)
     if (!saved) return failure('Saved message not found', 404)
     const state = saved.custom_data as Record<string, unknown> | null
-    if (state?.provider_call_id || state?.call_status === 'placement_unknown' || state?.status === 'placement_unknown' ||
+    if (state?.comment_delivery_status || state?.provider_call_id || state?.call_status === 'placement_unknown' || state?.status === 'placement_unknown' ||
       ['sent', 'delivered', 'sending', 'queued', 'running', 'in_progress'].includes(String(state?.status)) ||
       ['placing', 'queued', 'ringing', 'in_progress', 'completed'].includes(String(state?.call_status)) ||
       state?.command_status === 'success' ||
@@ -99,6 +103,25 @@ export async function POST(request: Request): Promise<Response> {
       return failure('This message cannot be retried while delivery is active or unconfirmed', 409)
     }
     message = saved.content
+    // Retries cannot retarget a saved public reply to another comment.
+    replyToMessageId = typeof state?.reply_to_message_id === 'string' ? state.reply_to_message_id : undefined
+    if (input.reply_to_message_id && input.reply_to_message_id !== replyToMessageId) {
+      return failure('A retry must use the original comment.', 409, 'COMMENT_REPLY_TARGET_MISMATCH')
+    }
+  }
+
+  const isComment = isSocialCommentMetadata(conversation.custom_data)
+  if (isComment || replyToMessageId) {
+    if (!replyToMessageId || !uuid.safeParse(replyToMessageId).success) {
+      return failure('Select the comment you want to reply to.', 409, 'COMMENT_REPLY_TARGET_REQUIRED')
+    }
+    const { data: targetComment, error } = await access.supabase.from('messages')
+      .select('role, custom_data').eq('id', replyToMessageId)
+      .eq('conversation_id', conversation.id).maybeSingle()
+    if (error) return failure('Unable to verify the selected comment. No reply sent.', 503, 'COMMENT_REPLY_UNAVAILABLE')
+    if (!validateCommentReplyTarget(conversation, targetComment)) {
+      return failure('The selected comment is unavailable or does not belong to this thread.', 409, 'COMMENT_REPLY_TARGET_INVALID')
+    }
   }
 
   if (conversationChannel(conversation) === 'voice') {
@@ -128,6 +151,7 @@ export async function POST(request: Request): Promise<Response> {
         agentId: conversation.agent_id || undefined,
         lead_id: conversation.lead_id || undefined, visitor_id: conversation.visitor_id || undefined,
         message, message_id: input.message_id,
+        reply_to_message_id: replyToMessageId,
       }),
       cache: 'no-store', redirect: 'error',
       signal: AbortSignal.any([request.signal, AbortSignal.timeout(110_000)]),

@@ -42,6 +42,8 @@ interface UseChatOperationsProps {
   conversationId: string
   isAgentOnlyConversation: boolean
   isConversationReady?: boolean
+  isCommentConversation?: boolean
+  commentReplyTarget?: ChatMessage
   setChatMessages: React.Dispatch<React.SetStateAction<ChatMessage[]>>
   setIsAgentResponding: React.Dispatch<React.SetStateAction<boolean>>
   leadData: { id?: string; name?: string | null } | null
@@ -53,6 +55,8 @@ export function useChatOperations({
   conversationId,
   isAgentOnlyConversation,
   isConversationReady = true,
+  isCommentConversation = false,
+  commentReplyTarget,
   setChatMessages,
   setIsAgentResponding,
   leadData
@@ -75,6 +79,10 @@ export function useChatOperations({
       toast.error('Wait for the conversation to load before sending.')
       return false
     }
+    if (isCommentConversation && !commentReplyTarget?.id) {
+      toast.error('Select the comment you want to reply to.')
+      return false
+    }
 
     const userName = user.user_metadata?.name || (user.email ? user.email.split('@')[0] : 'Team Member')
     const userAvatar = user.user_metadata?.avatar_url || null
@@ -86,6 +94,19 @@ export function useChatOperations({
       sender_id: user.id,
       sender_name: userName,
       sender_avatar: userAvatar || undefined,
+      ...(isCommentConversation && commentReplyTarget ? { metadata: {
+        source: 'comment',
+        reply_to_message_id: commentReplyTarget.id,
+        reply_to_comment_id: commentReplyTarget.metadata?.platform_comment_id,
+        outstand_post_id: commentReplyTarget.metadata?.outstand_post_id,
+        publisher_account_id: commentReplyTarget.metadata?.publisher_account_id,
+        network: commentReplyTarget.metadata?.network,
+        content_id: commentReplyTarget.metadata?.content_id,
+        platform_post_url: commentReplyTarget.metadata?.platform_post_url,
+        post_title: commentReplyTarget.metadata?.post_title,
+        post_text: commentReplyTarget.metadata?.post_text,
+        status: 'pending',
+      } } : {}),
     }
 
     sendInFlightRef.current = true
@@ -130,6 +151,7 @@ export function useChatOperations({
         const result = await sendTeamMemberIntervention(actualConversationId, message, user.id, agentId, {
           site_id: currentSite.id,
           lead_id: leadData?.id || undefined,
+          reply_to_message_id: isCommentConversation ? commentReplyTarget?.id : undefined,
         })
         if (result?.success !== true) throw new Error("Message acceptance could not be confirmed.")
 

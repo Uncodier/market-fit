@@ -1,8 +1,16 @@
 import { ChatMessage } from "@/app/types/chat"
+import { isSocialCommentConversation, resolveCommentReplyContext } from "@/lib/chat/social-comment-context"
 
 const HUMAN_ROLES = new Set<ChatMessage["role"]>(["user", "visitor", "team_member"])
 
-export function findPromptForChatResponse(messages: ChatMessage[], responseIndex: number): string | undefined {
+export function findPromptForChatResponse(
+  messages: ChatMessage[], responseIndex: number, conversationCustomData?: unknown,
+): string | undefined {
+  const response = messages[responseIndex]
+  if (!response) return undefined
+  if (isSocialCommentConversation(conversationCustomData, messages)) {
+    return resolveCommentReplyContext(response, messages, true)?.text
+  }
   const responseTime = new Date(messages[responseIndex]?.timestamp).getTime()
   const indexed = messages
     .map((message, index) => ({ message, index }))

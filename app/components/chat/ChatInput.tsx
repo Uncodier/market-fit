@@ -10,6 +10,8 @@ import { useLayout } from "@/app/context/LayoutContext"
 import { ChannelSelector } from "./ChannelSelector"
 import { useChannelSelector } from "@/app/hooks/useChannelSelector"
 import { getVoiceCallBlock, type VoiceCallLead } from "@/lib/chat/voice-call-eligibility"
+import { CommentReplyPicker } from './CommentReplyPicker'
+import type { CommentReplySelection } from '@/app/hooks/useCommentReplySelection'
 // Removed dynamic width calc; align with messages container
 
 interface ChatInputProps {
@@ -29,6 +31,7 @@ interface ChatInputProps {
   } | null
   isAgentOnlyConversation?: boolean
   isConversationReady?: boolean
+  commentReplySelection?: CommentReplySelection
 }
 
 // Memoize the ChatInput component to prevent unnecessary re-renders
@@ -45,6 +48,7 @@ export const ChatInput = memo(function ChatInput({
   leadData,
   isAgentOnlyConversation = false,
   isConversationReady = true,
+  commentReplySelection,
 }: ChatInputProps) {
   const { isLayoutCollapsed } = useLayout()
   const internalRef = useRef<HTMLTextAreaElement>(null)
@@ -72,9 +76,10 @@ export const ChatInput = memo(function ChatInput({
     leadData,
     isAgentOnlyConversation
   })
-  const isVoice = selectedChannel === 'voice'
+  const isVoice = !commentReplySelection && selectedChannel === 'voice'
   const voiceBlock = isVoice ? getVoiceCallBlock(leadData) : null
-  const sendingBlocked = isUpdatingChannel || isLoading || !isConversationReady || Boolean(voiceBlock)
+  const sendingBlocked = isUpdatingChannel || isLoading || !isConversationReady || Boolean(voiceBlock) ||
+    Boolean(commentReplySelection && !commentReplySelection.target)
   
   // CRITICAL: Direct handler to prevent character loss
   const handleChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -158,11 +163,13 @@ export const ChatInput = memo(function ChatInput({
         <div className="w-full mx-auto relative pb-[20px] px-4 md:px-8 lg:px-12 xl:px-24">
           <p className="text-xs text-muted-foreground px-2 pb-2" role="status">
             {!isConversationReady ? 'Loading conversation delivery settings…'
+              : commentReplySelection ? (commentReplySelection.target ? 'Public reply to the selected comment. This is not a direct message.' : 'Select the comment you want to reply to.')
               : voiceBlock ? voiceBlock.message
                 : isVoice ? 'Start an outbound call. Your message is the opening greeting; consent and phone checks apply.'
                   : isAgentOnlyConversation ? 'Internal agent chat. Messages here do not contact the customer.'
                     : 'Send a team intervention through the selected channel.'}
           </p>
+          {commentReplySelection && <CommentReplyPicker selection={commentReplySelection} disabled={isLoading || !isConversationReady} />}
           <form onSubmit={handleSubmit} className="relative w-full">
             <div className="relative w-full" id="tour-chat-input">
         <OptimizedTextarea
@@ -195,18 +202,18 @@ export const ChatInput = memo(function ChatInput({
                   ) : (
                     <Icons.ArrowUp className="h-4.5 w-4.5" />
                   )}
-                  <span className="sr-only">{isVoice ? 'Start call' : 'Send'}</span>
+                  <span className="sr-only">{commentReplySelection ? 'Reply publicly' : isVoice ? 'Start call' : 'Send'}</span>
                 </Button>
               </div>
               
               {/* Channel selector centered */}
       <div className="absolute bottom-[15px] left-1/2 -translate-x-1/2 w-fit flex items-center justify-center" style={{ zIndex: 52 }}>
-        <ChannelSelector
+        {!commentReplySelection && <ChannelSelector
           selectedChannel={selectedChannel}
           onChannelChange={setSelectedChannel}
           availableChannels={availableChannels}
           isUpdating={isUpdatingChannel}
-        />
+        />}
       </div>
       
       {/* Action buttons on the left (currently hidden) */}
@@ -247,6 +254,7 @@ export const ChatInput = memo(function ChatInput({
     prevProps.isChatListCollapsed === nextProps.isChatListCollapsed &&
     prevProps.isAgentOnlyConversation === nextProps.isAgentOnlyConversation &&
     prevProps.isConversationReady === nextProps.isConversationReady &&
+    prevProps.commentReplySelection === nextProps.commentReplySelection &&
     prevProps.handleMessageChange === nextProps.handleMessageChange &&
     prevProps.setMessage === nextProps.setMessage &&
     prevProps.handleSendMessage === nextProps.handleSendMessage &&

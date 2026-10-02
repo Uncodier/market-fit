@@ -41,7 +41,8 @@ function deferred<T>() {
   return { promise, resolve }
 }
 
-function setup(isAgentOnlyConversation = false, conversationId = 'conversation-1', isConversationReady = true) {
+function setup(isAgentOnlyConversation = false, conversationId = 'conversation-1', isConversationReady = true,
+  commentOptions: { isCommentConversation?: boolean; commentReplyTarget?: ChatMessage } = {}) {
   return renderHook(() => {
     const [messages, setMessages] = useState<ChatMessage[]>([])
     const [, setIsAgentResponding] = useState(false)
@@ -50,6 +51,7 @@ function setup(isAgentOnlyConversation = false, conversationId = 'conversation-1
       isAgentOnlyConversation, setChatMessages: setMessages, setIsAgentResponding,
       isConversationReady,
       leadData: { id: 'lead-1' },
+      ...commentOptions,
     })
     return { ...operations, messages, setMessages }
   })
@@ -63,6 +65,25 @@ describe('useChatOperations send lifecycle', () => {
   })
 
   afterEach(() => { jest.restoreAllMocks() })
+
+  it('preserves the draft and does not insert an optimistic row without a selected comment', async () => {
+    const { result } = setup(false, 'conversation-1', true, { isCommentConversation: true })
+    await act(async () => { expect(await result.current.handleSendMessage('Public reply')).toBe(false) })
+    expect(sendTeamMemberIntervention).not.toHaveBeenCalled()
+    expect(result.current.messages).toEqual([])
+  })
+
+  it('keeps the selected comment on optimistic and accepted replies', async () => {
+    const comment: ChatMessage = { id: 'comment-1', role: 'user', text: 'Question', timestamp: new Date(),
+      metadata: { source: 'comment', platform_comment_id: 'provider-1', outstand_post_id: 'post-1' } }
+    jest.mocked(sendTeamMemberIntervention).mockResolvedValue({ success: true, data: { message: { message_id: 'reply-1' } } })
+    const { result } = setup(false, 'conversation-1', true, { isCommentConversation: true, commentReplyTarget: comment })
+    await act(async () => { expect(await result.current.handleSendMessage('Public reply')).toBe(true) })
+    expect(sendTeamMemberIntervention).toHaveBeenCalledWith('conversation-1', 'Public reply', 'user-1', 'agent-1',
+      expect.objectContaining({ reply_to_message_id: 'comment-1' }))
+    expect(result.current.messages[0].metadata).toMatchObject({ source: 'comment', reply_to_message_id: 'comment-1', reply_to_comment_id: 'provider-1' })
+    expect(result.current.messages[0].metadata).not.toHaveProperty('platform_comment_id')
+  })
 
   it('does not send through a stale internal mode before the current conversation is ready', async () => {
     const { result } = setup(true, 'loading-conversation', false)

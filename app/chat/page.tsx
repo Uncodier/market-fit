@@ -21,6 +21,7 @@ import { ChatMessages } from "@/app/components/chat/ChatMessages"
 import { ChatInput } from "@/app/components/chat/ChatInput"
 import { InvalidatedLeadModal } from "@/app/components/chat/InvalidatedLeadModal"
 import { useLeadData } from "@/app/hooks/useLeadData"
+import { useCommentReplySelection } from '@/app/hooks/useCommentReplySelection'
 import { useChatMessages } from "@/app/hooks/useChatMessages"
 import { useChatScroll } from "./useChatScroll"
 import { useChatDraftSubmit } from "./useChatDraftSubmit"
@@ -72,6 +73,7 @@ function ChatPageContent() {
   const {
     leadData,
     participantIdentity,
+    conversationCustomData,
     isLoadingLead,
     isAgentOnlyConversation,
     isConversationReady,
@@ -93,6 +95,7 @@ function ChatPageContent() {
     isTransitioningConversation,
     clearMessagesForTransition
   } = useChatMessages(conversationId, agentId, agentName, isAgentOnlyConversation)
+  const commentReply = useCommentReplySelection(conversationId, currentSite?.id, conversationCustomData, chatMessages)
   
   const {
     isLoading,
@@ -108,6 +111,8 @@ function ChatPageContent() {
     conversationId,
     isAgentOnlyConversation,
     isConversationReady,
+    isCommentConversation: commentReply.isCommentConversation,
+    commentReplyTarget: commentReply.target,
     setChatMessages,
     setIsAgentResponding,
     leadData
@@ -406,6 +411,7 @@ function ChatPageContent() {
               leadData={leadData}
               participantIdentity={participantIdentity}
               conversationId={conversationId}
+              conversationCustomData={conversationCustomData}
               onRetryMessage={handleRetryMessage}
               onMessagesUpdate={setChatMessages}
               isChatListCollapsed={isChatListCollapsed}
@@ -428,6 +434,7 @@ function ChatPageContent() {
               leadData={leadData}
               isAgentOnlyConversation={isAgentOnlyConversation}
               isConversationReady={isConversationReady}
+              commentReplySelection={commentReply.isCommentConversation ? commentReply : undefined}
             />
           </div>
         )}

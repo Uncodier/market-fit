@@ -8,6 +8,27 @@ const dm = {
   },
 }
 
+describe('canonical comment participant identity', () => {
+  const custom_data = { source: 'comment', comment_grouping_version: 1, network: 'instagram',
+    author_id: 'author-1', author_name: 'Ada Reader', author_username: 'ada',
+    publisher_username: 'owned.account', outstand_post_id: 'post-1', publisher_account_id: 'owned' }
+  it('uses author metadata rather than owned account data and respects CRM overrides', () => {
+    const conversation = { channel: 'instagram', title: 'Social post comments', custom_data }
+    expect(resolveParticipantIdentity(conversation).name).toBe('Ada Reader')
+    expect(resolveParticipantIdentity(conversation, { name: 'CRM name' }).name).toBe('CRM name')
+    expect(conversationDisplayTitle(conversation)).toBe('Ada Reader')
+    expect(conversationDisplayTitle({ ...conversation, title: 'Manual subject' })).toBe('Manual subject')
+  })
+  it('does not pretend legacy mixed comments belong to one stored author', () => {
+    expect(resolveParticipantIdentity({ channel: 'instagram', custom_data: { ...custom_data, comment_grouping_version: undefined } }).name)
+      .toBe('Instagram contact')
+  })
+  it('keeps LinkedIn identity resolve-on-read instead of rendering persisted member metadata', () => {
+    expect(resolveParticipantIdentity({ channel: 'linkedin', custom_data: { ...custom_data, network: 'linkedin' } }).name)
+      .toBe('LinkedIn contact')
+  })
+})
+
 describe('DM participant display identity', () => {
   it('prioritizes a linked/manual lead name and avatar over provider attributes', () => {
     expect(resolveParticipantIdentity(dm, { name: ' CRM name ', avatarUrl: 'https://example.com/manual.jpg' }))

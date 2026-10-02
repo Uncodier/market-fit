@@ -59,7 +59,7 @@ function formatMessageDate(timestamp: Date | string): string {
 
 // Function to get channel icon
 function getChannelIcon(channel: string | undefined, isAgentConversation?: boolean) {
-  // Si es una conversación de agente (team member <-> agent), mostrar ícono de IA
+  // Private team-member/agent conversations use the assistant icon.
   if (isAgentConversation) {
     return <Icons.User size={15} className="text-muted-foreground/60" />;
   }
@@ -161,6 +161,11 @@ export function ConversationItem({
             )}
           </div>
         </div>
+        {conversation.subtitle && (
+          <div className="text-xs text-muted-foreground truncate mb-1" title={conversation.subtitle}>
+            {conversation.subtitle}
+          </div>
+        )}
         <div className={cn(
           "text-xs truncate",
           isSelected ? "text-muted-foreground" : "text-muted-foreground/80"

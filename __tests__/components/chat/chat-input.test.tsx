@@ -174,4 +174,27 @@ describe('ChatInput send guards', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Send' }))
     expect(callbacks.handleSendMessage).toHaveBeenCalledTimes(1)
   })
+
+  it('blocks all public reply submission paths until an explicit comment is selected', () => {
+    const callbacks = props()
+    const target = { id: 'comment-a', role: 'user' as const, text: 'Which size?', timestamp: new Date(), metadata: {
+      source: 'comment', outstand_post_id: 'post-a', platform_comment_id: 'provider-comment',
+    } }
+    const selection = { options: [target], target: undefined, select: jest.fn() }
+    const { rerender } = render(<ChatInput {...callbacks} commentReplySelection={selection} />)
+    const textarea = screen.getByRole('textbox')
+    fireEvent.change(textarea, { target: { value: 'Size M' } })
+    fireEvent.keyDown(textarea, { key: 'Enter' })
+    fireEvent.submit(textarea.closest('form')!)
+    expect(screen.getByRole('button', { name: 'Reply publicly' })).toBeDisabled()
+    expect(callbacks.handleSendMessage).not.toHaveBeenCalled()
+    expect(callbacks.handleKeyDown).not.toHaveBeenCalled()
+    expect(screen.getByRole('combobox', { name: 'Comment to reply to' })).toBeInTheDocument()
+
+    rerender(<ChatInput {...callbacks} commentReplySelection={{ ...selection, target }} />)
+    expect(screen.getByRole('status')).toHaveTextContent('not a direct message')
+    expect(screen.getByRole('button', { name: 'Reply publicly' })).toBeEnabled()
+    fireEvent.click(screen.getByRole('button', { name: 'Reply publicly' }))
+    expect(callbacks.handleSendMessage).toHaveBeenCalledTimes(1)
+  })
 })

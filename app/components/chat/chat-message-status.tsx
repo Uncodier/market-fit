@@ -1,4 +1,5 @@
 import { ChatMessage } from "@/app/types/chat"
+import { isSocialCommentMetadata } from '@/lib/chat/social-comment-context'
 import * as Icons from "@/app/components/ui/icons"
 import {
   Tooltip,
@@ -98,6 +99,8 @@ export function MessageStatus({
   acceptedLabel?: "scheduled" | "accepted"
 }) {
   const estimatedSendTime = getEstimatedSendTime(message)
+  const isCommentProposal = isSocialCommentMetadata(message.metadata) &&
+    (message.role === 'assistant' || message.role === 'agent') && !message.metadata?.comment_delivery_status
 
   return (
     <div className="flex items-center gap-2">
@@ -107,11 +110,11 @@ export function MessageStatus({
             <TooltipTrigger asChild>
               <span className="inline-flex items-center text-xs text-amber-500">
                 <Icons.Clock className="h-3 w-3 mr-1" />
-                {estimatedSendTime ? `Sending at ${estimatedSendTime}` : "Sending..."}
+                {isCommentProposal ? 'Proposed public reply' : estimatedSendTime ? `Sending at ${estimatedSendTime}` : "Sending..."}
               </span>
             </TooltipTrigger>
             <TooltipContent>
-              <p>Message is being sent</p>
+              <p>{isCommentProposal ? 'Waiting for approval before replying to the original comment' : 'Message is being sent'}</p>
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>

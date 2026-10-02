@@ -26,6 +26,14 @@ it('sends through the same-origin authenticated proxy once and accepts a voice c
   }))
 })
 
+it('carries the explicit original comment ID without provider routing fields', async () => {
+  jest.mocked(fetch).mockResolvedValueOnce(Response.json(accepted({ success: true })))
+  await sendTeamMemberIntervention('conversation-1', 'Public reply', 'user-1', 'agent-1', {
+    site_id: 'site-1', reply_to_message_id: 'comment-1',
+  })
+  expect(JSON.parse(String(jest.mocked(fetch).mock.calls[0][1]?.body))).toMatchObject({ reply_to_message_id: 'comment-1' })
+})
+
 it.each([null, {}, { success: true }, { success: false }])('does not fabricate acceptance for malformed success: %j', async body => {
   jest.mocked(fetch).mockResolvedValueOnce(Response.json(body))
   await expect(send()).rejects.toThrow('could not be confirmed')

@@ -9,6 +9,8 @@ import {
   ProcessedChatMessage,
 } from "./chat-message-types"
 import { ChatMessageActionsBar } from "./ChatMessageActionsBar"
+import { useCommentDisplayContext } from './CommentReplyContext'
+import { parseSocialCommentContext } from '@/lib/chat/social-comment-context'
 
 type ParticipantVariant =
   | "team-left"
@@ -33,11 +35,12 @@ export function ChatParticipantMessageRow({
 }: {
   message: ProcessedChatMessage
   variant: ParticipantVariant
-  leadData: any
+  leadData: { name?: string; avatarUrl?: string | null } | null
   isDarkMode: boolean
   identity: MessageIdentityContext
   actions: MessageRowActions
 }) {
+  const { showMessagePostContext } = useCommentDisplayContext()
   const isTeam = variant.startsWith("team")
   const isLeft = variant === "team-left"
   const isOtherTeamMember = variant === "team-other"
@@ -50,13 +53,15 @@ export function ChatParticipantMessageRow({
       })
     : null
   const participant = !isTeam ? identity.participantIdentity : undefined
-  const leadName = leadData?.name || participant?.name || "Visitor"
+  const comment = !isTeam ? parseSocialCommentContext(message.metadata) : undefined
+  const legacyComment = Boolean(comment && showMessagePostContext)
+  const leadName = legacyComment ? comment?.authorName || 'Social contact' : leadData?.name || participant?.name || "Visitor"
   const displayName = teamSender?.name || truncateLeadName(leadName)
   const avatarAlt = teamSender?.name || leadName
-  const avatar = isTeam ? teamSender?.avatar : leadData?.avatarUrl || participant?.avatarUrl || undefined
+  const avatar = isTeam ? teamSender?.avatar : legacyComment ? undefined : leadData?.avatarUrl || participant?.avatarUrl || undefined
   const initials =
     teamSender?.initials ||
-    (leadData?.name || participant?.name
+    (legacyComment || leadData?.name || participant?.name
       ? leadName
           .split(" ")
           .map((part: string) => part[0])

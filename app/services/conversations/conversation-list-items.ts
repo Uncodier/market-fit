@@ -2,6 +2,7 @@ import type { ConversationListItem } from "@/app/types/chat"
 import { getUserData } from "@/app/services/user-service"
 import type { ConversationListRow } from "./conversation-list-query"
 import { conversationDisplayTitle, resolveParticipantIdentity } from "@/lib/chat/participant-identity"
+import { getCommentPostReference, getConversationPostContext, parseSocialCommentContext } from "@/lib/chat/social-comment-context"
 
 interface ConversationDataClient {
   from: (table: string) => any
@@ -175,8 +176,19 @@ export async function buildConversationListItems(
       pending: false,
     }
 
-    const title = conversationDisplayTitle(conversation, leadName)
+    let title = conversationDisplayTitle(conversation, leadName)
     const participant = resolveParticipantIdentity(conversation, { name: leadName })
+    const comment = parseSocialCommentContext(conversation.custom_data)
+    const canonicalPost = getConversationPostContext(conversation.custom_data, [])
+    const commentParticipant = comment
+      ? leadName || (canonicalPost ? comment.authorName : undefined) || participant.name
+      : undefined
+    const subtitle = comment
+      ? canonicalPost ? getCommentPostReference(canonicalPost) : "Comments · post context in messages"
+      : undefined
+    if (comment && (!conversation.title || /^(?:untitled conversation|conversation|visitor|chat with visitor|(?:social|instagram|facebook|threads|linkedin|x|youtube) comments?|comment thread)$/i.test(conversation.title))) {
+      title = commentParticipant || "Social contact"
+    }
 
     let agentName =
       agentNames[agentId] || (agentId ? "Unknown Agent" : "Agent")
@@ -191,10 +203,11 @@ export async function buildConversationListItems(
     return {
       id: conversation.id,
       title,
+      subtitle,
       agentId,
       agentName,
       leadName: leadName || undefined,
-      participantName: participant.channel !== "web" ? participant.name : undefined,
+      participantName: commentParticipant || (participant.channel !== "web" ? participant.name : undefined),
       leadStatus: leadId ? leadData.statuses[leadId] : undefined,
       lastMessage: conversation.latest_message?.[0]?.content,
       timestamp: new Date(

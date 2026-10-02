@@ -4,6 +4,7 @@ import { ChatHeader } from '@/app/components/chat/ChatHeader'
 import { ChatParticipantMessageRow } from '@/app/components/chat/ChatParticipantMessageRow'
 import { ConversationItem } from '@/app/components/chat/ConversationItem'
 import { resolveParticipantIdentity } from '@/lib/chat/participant-identity'
+import { CommentDisplayProvider } from '@/app/components/chat/CommentReplyContext'
 
 jest.mock('@/app/context/SiteContext', () => ({ useSite: () => ({ currentSite: { id: 'site-1' } }) }))
 jest.mock('@/app/context/LayoutContext', () => ({ useLayout: () => ({ isLayoutCollapsed: false }) }))
@@ -86,4 +87,18 @@ it.each(['user', 'visitor'] as const)('uses the same identity on incoming %s mes
   expect(screen.getByText('Team member')).toBeInTheDocument()
   expect(screen.queryByText('Instagram contact')).not.toBeInTheDocument()
   expect(screen.getByRole('img', { name: 'Team member' })).not.toHaveAttribute('data-src')
+})
+
+it('labels each legacy comment with its own author rather than the mixed conversation lead', () => {
+  const message = { id: 'comment-a', role: 'user' as const, text: 'Question', timestamp: new Date(),
+    isCurrentUserMessage: false, isRightAligned: true,
+    metadata: { source: 'comment', author_name: 'Another reader', network: 'instagram', outstand_post_id: 'post-a' } }
+  render(<CommentDisplayProvider messages={[message]} isCommentConversation showMessagePostContext>
+    <ChatParticipantMessageRow message={message} variant="lead" isDarkMode={false} actions={actions}
+      leadData={{ name: 'Conversation lead', avatarUrl: 'https://example.com/lead.jpg' }}
+      identity={{ userDataCache: {}, agentDataCache: {} }} />
+  </CommentDisplayProvider>)
+  expect(screen.getByText('Another reader')).toBeInTheDocument()
+  expect(screen.queryByText('Conversation lead')).not.toBeInTheDocument()
+  expect(screen.getByRole('img', { name: 'Another reader' })).not.toHaveAttribute('data-src')
 })

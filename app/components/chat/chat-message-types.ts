@@ -21,6 +21,7 @@ export interface ChatMessagesProps {
   leadData: any
   participantIdentity?: ParticipantIdentity
   conversationId?: string
+  conversationCustomData?: unknown
   onRetryMessage?: (failedMessage: ChatMessage) => Promise<void>
   onMessagesUpdate?: (messages: ChatMessage[]) => void
   isChatListCollapsed?: boolean

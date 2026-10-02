@@ -149,4 +149,26 @@ describe("buildConversationListItems", () => {
       ['Instagram contact', 'Instagram contact', undefined],
     ])
   })
+
+  it("shows the participant plus canonical post while preserving meaningful custom titles", async () => {
+    const supabase = { from: jest.fn(() => resolvedQuery([])) }
+    const base: ConversationListRow = {
+      id: "comment-1", title: "Instagram comments", agent_id: null, lead_id: null, channel: "instagram",
+      status: "active", created_at: "2026-10-01T00:00:00Z", last_message_at: null,
+      custom_data: { source: "comment", comment_grouping_version: 1, network: "instagram",
+        outstand_post_id: "post-1", publisher_account_id: "owned", publisher_username: "publisher",
+        author_id: "reader", author_name: "Reader", post_title: "Spring collection" },
+    }
+    const items = await buildConversationListItems(supabase, [base,
+      { ...base, id: "comment-2", title: "Urgent comments" },
+      { ...base, id: "comment-3", custom_data: { ...base.custom_data, outstand_post_id: "post-2", post_title: "Autumn collection" } },
+      { ...base, id: "legacy", custom_data: { ...base.custom_data, comment_grouping_version: undefined } },
+    ])
+    expect(items.map(item => [item.title, item.participantName, item.subtitle])).toEqual([
+      ["Reader", "Reader", "Spring collection"],
+      ["Urgent comments", "Reader", "Spring collection"],
+      ["Reader", "Reader", "Autumn collection"],
+      ["Instagram contact", "Instagram contact", "Comments · post context in messages"],
+    ])
+  })
 })
