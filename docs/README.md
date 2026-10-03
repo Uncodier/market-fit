@@ -23,6 +23,7 @@ Use the guides below before relying on older implementation notes.
 
 - [Agent channel phone numbers](AGENT_CHANNEL_NUMBERS.md)
 - [Accounting integrity and rollout](ACCOUNTING.md)
+- [POS inventory availability and backorder markers](POS_INVENTORY.md)
 - [Site archival](SITE_ARCHIVAL.md)
 - [Support chat identity](CHAT_IDENTITY.md)
 - [Outstand Instagram DM display identity](OUTSTAND_DM_IDENTITY.md)

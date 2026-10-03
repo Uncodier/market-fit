@@ -30,6 +30,7 @@ type Payment = {
 };
 
 type UsePosCheckoutArgs = {
+  validateInventory?: () => boolean;
   siteId?: string;
   userId?: string;
   sellerUserId?: string | null;
@@ -62,6 +63,7 @@ type UsePosCheckoutArgs = {
 };
 
 export function usePosCheckout({
+  validateInventory,
   siteId,
   userId,
   sellerUserId,
@@ -97,6 +99,7 @@ export function usePosCheckout({
     leadReason: "checkout" | "send",
     opts?: { customerConfirmed?: boolean; leadOverride?: RelationSelectValue },
   ) => {
+    if (validateInventory && !validateInventory()) return false;
     const gate = getPosCheckoutGate({
       cart,
       originLocationId,
@@ -433,6 +436,7 @@ export function usePosCheckout({
   }, [
     cart,
     originLocationId,
+    validateInventory,
     fulfillment,
     leadValue,
     siteId,
@@ -451,6 +455,7 @@ export function usePosCheckout({
     ordersToCreate: { title: string; items: PosCartItem[] }[]
   ) => {
     if (!siteId || !userId) return;
+    if (validateInventory && !validateInventory()) return;
     await enqueuePendingSplitOrders({
       orders: ordersToCreate,
       siteId,

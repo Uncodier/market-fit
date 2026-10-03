@@ -4,6 +4,7 @@ import type { PosCartItem } from "@/app/pos/components/CartPanel";
 import type { CheckoutFulfillmentMethod } from "@/app/commerce/delivery-options";
 import type { PosShippingAddress } from "@/app/pos/shipping-address";
 import type { SentLineQuantities } from "@/app/pos/send-delta";
+import type { PosInventorySnapshot } from "@/app/pos/inventory-availability";
 
 export type OutboxStatus = "pending" | "syncing" | "failed" | "synced";
 
@@ -92,6 +93,8 @@ export type PosMeta = {
   schemaVersion: number;
   /** host catalog_item_id → modifier groups with options (from last POS pull). */
   modifierGroupsByHostId?: Record<string, any[]>;
+  /** Missing on snapshots persisted before inventory availability was supported. */
+  inventorySnapshot?: PosInventorySnapshot | null;
 };
 
 export type LocalPriceList = {

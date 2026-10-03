@@ -58,6 +58,7 @@ export default function POSPage() {
     siteTimezone: currentSite?.settings?.business_hours?.[0]?.timezone || null,
     siteCurrency: currentSite?.settings?.currency,
     catalogItems: catalog.catalogItems,
+    inventorySnapshot: catalog.inventorySnapshot,
     locations: catalog.locations,
     priceLists: catalog.priceLists,
     priceListItems: catalog.priceListItems,
@@ -132,6 +133,7 @@ export default function POSPage() {
   }, [cartApi.sellerName, cartApi.sellerUserId]);
 
   const checkout = usePosCheckout({
+    validateInventory: cartApi.validateInventory,
     siteId,
     userId: user?.id,
     sellerUserId: cartApi.sellerUserId,
@@ -174,6 +176,7 @@ export default function POSPage() {
   });
 
   const addApi = usePosAddItem({
+    getItemAvailability: cartApi.getItemAvailability,
     siteId,
     userId: user?.id,
     leadValue: cartApi.leadValue,
@@ -440,6 +443,7 @@ export default function POSPage() {
           <PosCatalogGrid
             items={filteredItems}
             loading={catalogLoading}
+            getAvailability={cartApi.getItemAvailability}
             onAdd={addApi.addToCart}
             t={t} />
         )}

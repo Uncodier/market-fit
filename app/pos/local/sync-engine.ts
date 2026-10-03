@@ -240,6 +240,7 @@ export async function drainPosOutbox(siteId: string): Promise<void> {
   }
   running = true;
   emit(siteId);
+  let attemptedCheckout = false;
 
   try {
     // Prefer create_lead before checkout that depends on it
@@ -250,6 +251,7 @@ export async function drainPosOutbox(siteId: string): Promise<void> {
     ];
 
     for (const row of ordered) {
+      if (row.kind === "checkout") attemptedCheckout = true;
       await updateOutboxRow(row.id, {
         status: "syncing",
         attempts: row.attempts + 1,
@@ -273,6 +275,7 @@ export async function drainPosOutbox(siteId: string): Promise<void> {
   } finally {
     running = false;
     await refreshCounts(siteId);
+    if (attemptedCheckout) void pullPosCatalogInBackground(siteId, true);
     if (rerunFlag) {
       rerunFlag = false;
       void drainPosOutbox(siteId);

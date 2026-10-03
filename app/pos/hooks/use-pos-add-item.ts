@@ -21,6 +21,7 @@ import type { ModifierGroupWithItems } from "@/app/catalog/modifier-types";
 import type { PosCartItem, PosCartModifier } from "@/app/pos/components/CartPanel";
 import { getPosDb } from "@/app/pos/local/db";
 import { isStorefrontAvailable } from "@/app/catalog/storefront-availability";
+import type { PosItemAvailability } from "../cart-availability";
 
 type Args = {
   siteId?: string;
@@ -31,6 +32,7 @@ type Args = {
   router: { push: (href: string) => void };
   t: (key: string) => string;
   modifierGroupsByHostId?: Record<string, ModifierGroupWithItems[]>;
+  getItemAvailability?: (item: CatalogItem) => PosItemAvailability;
 };
 
 function groupsFromMap(
@@ -90,7 +92,16 @@ export function usePosAddItem({
   router,
   t,
   modifierGroupsByHostId,
+  getItemAvailability,
 }: Args) {
+  const canAdd = (item: CatalogItem) => {
+    const availability = getItemAvailability?.(item);
+    if (availability && !availability.sellable) {
+      toast.error(availability.reason || "Sold out");
+      return false;
+    }
+    return true;
+  };
   const [optionsParentItem, setOptionsParentItem] =
     useState<CatalogItem | null>(null);
   const [reservationItem, setReservationItem] = useState<CatalogItem | null>(
@@ -158,6 +169,7 @@ export function usePosAddItem({
     item: CatalogItem,
     modifiers: PosCartModifier[] = [],
   ) => {
+    if (!canAdd(item)) return;
     const isReservable = item.is_reservation || optionsParentItem?.is_reservation;
     if (isReservable && !isAccessOnlyItem(item)) {
       setReservationItem(item);
@@ -204,6 +216,7 @@ export function usePosAddItem({
 
   const addToCart = async (item: CatalogItem) => {
     if (!siteId || !userId) return;
+    if (!canAdd(item)) return;
 
     if (isDynamicPricedItem(item)) {
       if (!navigator.onLine) {

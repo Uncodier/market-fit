@@ -74,6 +74,10 @@ export function PosCartLines({
                 <h4 className="font-medium text-sm text-foreground truncate">
                   {item.name}
                 </h4>
+                {(item.backorderQty || 0) > 0 && (
+                  <p className="text-xs text-amber-600 dark:text-amber-400">Backorder: {item.backorderQty}</p>
+                )}
+                {item.inventoryMessage && <p className="text-xs text-destructive">{item.inventoryMessage}</p>}
                 <div className="text-muted-foreground text-xs mt-0.5">
                   {formatPrice(unitTotal, item.currency || "USD")}
                   {item.cartDiscountPercent
@@ -104,7 +108,7 @@ export function PosCartLines({
                   size="icon"
                   className="h-6 w-6 rounded-full"
                   onClick={() => updateQty(lineKey, 1)}
-                  disabled={Boolean(item.reservationStart) && item.cartQty >= (item.reservationAvailableQty || 1)}
+                  disabled={item.inventoryCanIncrease === false || (Boolean(item.reservationStart) && item.cartQty >= (item.reservationAvailableQty || 1))}
                 >
                   <Plus className="h-3 w-3" />
                 </Button>
@@ -136,6 +140,7 @@ export function PosCartLines({
                           <div className="flex gap-1.5 items-center truncate">
                             <span>+</span>
                             <span className="truncate">{m.name}</span>
+                            {(m.backorderQty || 0) > 0 && <span className="text-amber-600">Backorder: {m.backorderQty}</span>}
                           </div>
                           <div className="flex gap-3 items-center flex-shrink-0">
                             <span>{m.cartQty > 1 ? `${m.cartQty} × ` : ""}{formatPrice(m.cartPrice, item.currency || "USD")}</span>

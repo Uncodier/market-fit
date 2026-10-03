@@ -256,7 +256,7 @@ export async function checkoutCart(params: CheckoutCartParams) {
       finalPriceListId: environment.finalPriceListId,
       priceListChannel: environment.priceListChannel,
       finalLeadId: environment.finalLeadId,
-      originLocationId: params.originLocationId,
+      originLocationId: environment.finalOriginLocationId,
       existingReservationId: params.existingReservationId,
       effectiveExistingOrderId,
       fulfillment: params.fulfillment,

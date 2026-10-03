@@ -18,15 +18,17 @@ import {
   sortCatalogItemsAlphabetically,
 } from "@/app/pos/catalog-alphabet"
 import { PosAlphabetIndex } from "./PosAlphabetIndex"
+import type { PosItemAvailability } from "../cart-availability"
 
 interface PosCatalogGridProps {
   items: CatalogItem[]
   loading: boolean
   onAdd: (item: CatalogItem) => void
   t: (key: string) => string
+  getAvailability?: (item: CatalogItem) => PosItemAvailability
 }
 
-export function PosCatalogGrid({ items, loading, onAdd, t }: PosCatalogGridProps) {
+export function PosCatalogGrid({ items, loading, onAdd, t, getAvailability }: PosCatalogGridProps) {
   const { formatPrice } = useDisplayCurrency()
   const isMobile = useIsMobile()
   const gridRef = useRef<HTMLDivElement>(null)
@@ -91,7 +93,8 @@ export function PosCatalogGrid({ items, loading, onAdd, t }: PosCatalogGridProps
           </div>
         ) : (
           displayedItems.map((item) => {
-            const isAvailable = isStorefrontAvailable(item)
+            const availability = getAvailability?.(item)
+            const isAvailable = availability?.sellable ?? isStorefrontAvailable(item)
             const itemInitial = getCatalogItemInitial(item.name)
             const isLetterAnchor = letterAnchors.get(itemInitial) === item.id
             return (
@@ -99,8 +102,19 @@ export function PosCatalogGrid({ items, loading, onAdd, t }: PosCatalogGridProps
                 key={item.id}
                 data-catalog-item-id={item.id}
                 data-catalog-letter={isLetterAnchor ? itemInitial : undefined}
-                className={`relative cursor-pointer transition-shadow hover:shadow-md overflow-hidden flex flex-col h-40 ${isLetterAnchor ? "scroll-mt-[calc(var(--topbar-height,64px)+87px)]" : ""} ${!isAvailable ? "opacity-50 grayscale" : ""}`}
+                role="button"
+                tabIndex={isAvailable ? 0 : -1}
+                aria-disabled={!isAvailable}
+                aria-label={item.name}
+                title={availability?.reason}
+                className={`relative transition-shadow overflow-hidden flex flex-col h-40 ${isLetterAnchor ? "scroll-mt-[calc(var(--topbar-height,64px)+87px)]" : ""} ${!isAvailable ? "opacity-50 grayscale cursor-not-allowed" : "cursor-pointer hover:shadow-md"}`}
                 onClick={() => isAvailable && onAdd(item)}
+                onKeyDown={(event) => {
+                  if (isAvailable && (event.key === "Enter" || event.key === " ")) {
+                    event.preventDefault()
+                    onAdd(item)
+                  }
+                }}
               >
                 <img
                   src={resolveItemImage(item, "card")}
@@ -152,12 +166,14 @@ export function PosCatalogGrid({ items, loading, onAdd, t }: PosCatalogGridProps
                     <span className="font-bold text-white">
                       {formatPrice((item as any).cartPrice || item.target_sale_price || 0, item.currency || "USD")}
                     </span>
-                    {!isAvailable && (
+                    {(!isAvailable || availability?.status === "backorder") && (
                       <Badge
                         variant="outline"
                         className="text-[10px] text-red-400 border-red-400 bg-black/50"
                       >
-                        {t("pos.soldOut") || "Sold Out"}
+                        {availability?.status === "unknown" ? "Stock unknown"
+                          : availability?.status === "backorder" ? "Backorder"
+                          : (t("pos.soldOut") || "Sold Out")}
                       </Badge>
                     )}
                   </div>

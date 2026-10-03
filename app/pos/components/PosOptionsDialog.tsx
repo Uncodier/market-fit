@@ -10,6 +10,7 @@ import {
   Dialog,
   DialogBody,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -25,6 +26,7 @@ import type { CartModifier } from "@/app/commerce/cart-modifiers"
 import { createClient } from "@/lib/supabase/client"
 import { getPosDb } from "@/app/pos/local/db"
 import type { PosCartModifier } from "./CartPanel"
+import type { PosItemAvailability } from "../cart-availability"
 
 export type PosOptionsConfirm = {
   item: CatalogItem
@@ -40,6 +42,8 @@ type Props = {
   siteId?: string
   /** Dexie / snapshot cache: hostId → groups */
   modifierGroupsByHostId?: Record<string, ModifierGroupWithItems[]>
+  catalogItems?: CatalogItem[]
+  getAvailability?: (item: CatalogItem) => PosItemAvailability
 }
 
 function groupsFromCache(
@@ -82,7 +86,11 @@ async function loadModifierGroups(
   return []
 }
 
-export function PosOptionsDialog({
+export function PosOptionsDialog(props: Props) {
+  return <PosOptionsDialogContent key={`${props.item?.id || "none"}:${props.open}`} {...props} />
+}
+
+function PosOptionsDialogContent({
   item,
   open,
   onOpenChange,
@@ -90,14 +98,16 @@ export function PosOptionsDialog({
   resolvePrice,
   siteId,
   modifierGroupsByHostId,
+  catalogItems,
+  getAvailability,
 }: Props) {
   const { t } = useLocalization()
   const { formatPrice } = useDisplayCurrency()
 
   const [children, setChildren] = useState<CatalogItem[]>([])
   const [axes, setAxes] = useState<VariantAxis[]>([])
-  const [loadingVariants, setLoadingVariants] = useState(false)
-  const [loadingModifiers, setLoadingModifiers] = useState(false)
+  const [loadingVariants, setLoadingVariants] = useState(Boolean(open && item))
+  const [loadingModifiers, setLoadingModifiers] = useState(Boolean(open && item))
   const [selectedOptions, setSelectedOptions] = useState<Record<string, string>>(
     {},
   )
@@ -107,11 +117,15 @@ export function PosOptionsDialog({
   const [selectedModifiers, setSelectedModifiers] = useState<CartModifier[]>([])
 
   const itemRef = useRef(item)
+  const catalogItemsRef = useRef(catalogItems)
   const siteIdRef = useRef(siteId)
   const modifierGroupsByHostIdRef = useRef(modifierGroupsByHostId)
-  itemRef.current = item
-  siteIdRef.current = siteId
-  modifierGroupsByHostIdRef.current = modifierGroupsByHostId
+  useEffect(() => {
+    catalogItemsRef.current = catalogItems
+    itemRef.current = item
+    siteIdRef.current = siteId
+    modifierGroupsByHostIdRef.current = modifierGroupsByHostId
+  }, [catalogItems, item, siteId, modifierGroupsByHostId])
 
   const itemId = item?.id ?? null
 
@@ -121,33 +135,23 @@ export function PosOptionsDialog({
     if (!host) return
 
     let cancelled = false
-    setSelectedOptions({})
-    setSelectedModifiers([])
-    setChildren([])
-    setAxes([])
-    setModifierGroups([])
-    setLoadingVariants(true)
-    setLoadingModifiers(true)
-
-    const supabase = createClient()
-    void supabase
-      .from("catalog_items")
-      .select("*")
-      .eq("parent_id", itemId)
-      .eq("status", "active")
-      .eq("is_purchasable", true)
-      .then(({ data, error }: import("@supabase/supabase-js").PostgrestSingleResponse<CatalogItem[]>) => {
-        if (cancelled) return
-        if (data && !error) {
-          const resolved = resolveVariantAxesForDisplay(
-            host,
-            data as CatalogItem[],
-          )
-          setChildren(resolved.children)
-          setAxes(resolved.axes)
-        }
-        setLoadingVariants(false)
-      })
+    const loadVariants = async () => {
+      const cached = catalogItemsRef.current?.filter((child) =>
+        child.parent_id === itemId && child.status === "active" && child.is_purchasable !== false,
+      )
+      if (cached) return cached
+      const { data, error } = await createClient().from("catalog_items").select("*")
+        .eq("site_id", host.site_id).eq("parent_id", itemId)
+        .eq("status", "active").eq("is_purchasable", true)
+      return error ? [] : (data || []) as CatalogItem[]
+    }
+    void loadVariants().then((variants) => {
+      if (cancelled) return
+      const resolved = resolveVariantAxesForDisplay(host, variants)
+      setChildren(resolved.children)
+      setAxes(resolved.axes)
+      setLoadingVariants(false)
+    })
 
     void loadModifierGroups(
       host,
@@ -214,10 +218,11 @@ export function PosOptionsDialog({
   }, [item])
 
   const loading = loadingVariants || loadingModifiers
-  const canConfirm = !!sellableItem && modifiersValid && !loading
+  const availability = sellableItem ? getAvailability?.(sellableItem) : undefined
+  const canConfirm = !!sellableItem && modifiersValid && !loading && availability?.sellable !== false
 
   const handleConfirm = () => {
-    if (!sellableItem || !modifiersValid || !item) return
+    if (!sellableItem || !canConfirm || !item) return
     const confirmedItem = needsVariant ? { ...sellableItem, _parent: { name: item.name } } : sellableItem
     onConfirm({
       item: confirmedItem,
@@ -246,6 +251,7 @@ export function PosOptionsDialog({
           <DialogTitle>
             {item.name} - {t("pos.options.title") || "Options"}
           </DialogTitle>
+          <DialogDescription className="sr-only">Choose an available option and any extras before adding this item.</DialogDescription>
         </DialogHeader>
 
         <DialogBody className="space-y-6">
@@ -270,12 +276,18 @@ export function PosOptionsDialog({
                     axes={axes}
                     selectedOptions={selectedOptions}
                     onOptionSelect={(axisId, valueId) =>
-                      setSelectedOptions((prev) => ({
-                        ...prev,
-                        [axisId]: valueId,
-                      }))
+                      setSelectedOptions((prev) => {
+                        const next = { ...prev, [axisId]: valueId }
+                        const hasAvailableCombination = children.some((child) =>
+                          getAvailability?.(child).sellable !== false && Object.entries(next).every(
+                            ([axis, value]) => child.metadata?.option_values?.[axis] === value,
+                          ),
+                        )
+                        return hasAvailableCombination ? next : { [axisId]: valueId }
+                      })
                     }
                     childrenItems={children}
+                    isItemAvailable={(child) => getAvailability?.(child).sellable !== false}
                     presentation="pdp"
                     currency={currency}
                     fallbackImageUrl={item.image_url || null}
@@ -312,13 +324,19 @@ export function PosOptionsDialog({
         </DialogBody>
 
         <DialogFooter className="gap-2 sm:gap-2">
+          {availability && availability.status !== "available" && (
+            <p role="status" className="text-sm text-amber-600">
+              {availability.status === "backorder" ? "Backorder — insufficient stock"
+                : availability.status === "unknown" ? "Stock unknown — sync the catalog" : "Sold out"}
+            </p>
+          )}
           {showModifiers &&
             modifierGroups.every((g) => (g.min_select ?? 0) === 0) && (
               <Button
                 variant="ghost"
-                disabled={!sellableItem || loading}
+                disabled={!sellableItem || loading || availability?.sellable === false}
                 onClick={() => {
-                  if (!sellableItem) return
+                  if (!sellableItem || availability?.sellable === false) return
                   onConfirm({ item: sellableItem, modifiers: [] })
                   onOpenChange(false)
                 }}

@@ -7,10 +7,9 @@ import type { PosCartItem } from "@/app/pos/components/CartPanel";
 import {
   cartWithDiscountPercent,
   cartWithPrice,
-  cartWithQty,
-  cartWithQtyDelta,
-  mergeItemIntoCart,
 } from "@/app/pos/cart-line-utils";
+import { usePosInventoryCart } from "./use-pos-inventory-cart";
+import type { PosInventorySnapshot } from "../inventory-availability";
 import { clearLineDiscountFields } from "@/app/pos/line-discount";
 import {
   getItemDeliveryOptions,
@@ -54,6 +53,7 @@ type UsePosCartArgs = {
   siteTimezone?: string | null;
   siteCurrency?: string | null;
   catalogItems: CatalogItem[];
+  inventorySnapshot?: PosInventorySnapshot | null;
   locations: any[];
   priceLists: any[];
   priceListItems: any[];
@@ -67,6 +67,7 @@ export function usePosCart({
   shopSettings,
   siteTimezone = null,
   catalogItems,
+  inventorySnapshot,
   locations,
   priceLists,
   priceListItems,
@@ -281,31 +282,10 @@ export function usePosCart({
     [priceListId, priceLists, priceListItems],
   );
 
-  const addItemToCart = useCallback(
-    (item: CatalogItem, extras?: Partial<PosCartItem>) => {
-      let selectedKey = item.id;
-      setCart((prev) => {
-        const { next, lineKey } = mergeItemIntoCart(
-          prev,
-          item,
-          extras,
-          resolvePrice,
-        );
-        selectedKey = lineKey;
-        return next;
-      });
-      setSelectedCartItemId(selectedKey);
-    },
-    [resolvePrice],
-  );
-
-  const updateQty = (id: string, delta: number) => {
-    setCart((prev) => cartWithQtyDelta(prev, id, delta));
-  };
-
-  const setItemQty = (id: string, qty: number) => {
-    setCart((prev) => cartWithQty(prev, id, qty));
-  };
+  const inventoryCart = usePosInventoryCart({
+    cart, setCart, setSelectedCartItemId, resolvePrice,
+    catalogItems, inventorySnapshot, originLocationId,
+  });
 
   const setItemPrice = (id: string, price: number) => {
     setCart((prev) => cartWithPrice(prev, id, price));
@@ -446,7 +426,7 @@ export function usePosCart({
   };
 
   return {
-    cart,
+    cart: inventoryCart.displayCart,
     setCart,
     existingPaymentTotal,
     leadValue,
@@ -478,9 +458,11 @@ export function usePosCart({
     shippingAddress,
     setShippingAddress,
     allowedFulfillments,
-    addItemToCart,
-    updateQty,
-    setItemQty,
+    addItemToCart: inventoryCart.addItemToCart,
+    updateQty: inventoryCart.updateQty,
+    setItemQty: inventoryCart.setItemQty,
+    getItemAvailability: inventoryCart.getItemAvailability,
+    validateInventory: inventoryCart.validateInventory,
     setItemPrice,
     setItemDiscount,
     handlePriceListChange,

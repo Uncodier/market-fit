@@ -38,6 +38,7 @@ export async function readLocalCatalog(siteId: string) {
     leads,
     priceLists,
     modifierGroupsByHostId: meta?.modifierGroupsByHostId || {},
+    inventorySnapshot: meta?.inventorySnapshot ?? null,
     lastPulledAt: meta?.lastPulledAt ?? null,
     lastCatalogRevision: meta?.lastCatalogRevision ?? null,
     hasLocalData: catalogItems.length > 0,
@@ -195,6 +196,7 @@ export async function applyPosCatalogSnapshot(siteId: string, snapshot: PosCatal
         lastCatalogRevision: revision,
         schemaVersion: SCHEMA_VERSION,
         modifierGroupsByHostId: snapshot.modifierGroupsByHostId || {},
+        inventorySnapshot: snapshot.inventorySnapshot ?? null,
       });
     },
   );

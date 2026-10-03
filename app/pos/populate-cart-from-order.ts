@@ -32,6 +32,7 @@ export function buildCartFromSaleOrderItems(
         name: child.name,
         cartQty: perUnitQty,
         cartPrice: Number(child.unit_price) || 0,
+        backorderQty: Number(child.metadata?.backorder_quantity) || 0,
       }
     })
     const lineKey = oi.metadata?.client_line_key || oi.id || uuidv4()
@@ -41,6 +42,7 @@ export function buildCartFromSaleOrderItems(
       name: oi.name || catalogItem?.name,
       cartQty: hostQty,
       cartPrice: oi.unit_price,
+      backorderQty: Number(oi.metadata?.backorder_quantity) || 0,
       lineKey,
       modifiers,
     } as PosCartItem

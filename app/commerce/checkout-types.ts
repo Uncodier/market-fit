@@ -62,6 +62,8 @@ export type ProcessedCheckoutLine = {
   quantity: number
   unit_price: number
   subtotal: number
+  /** Server-calculated POS shortage snapshot; does not change fulfillment status. */
+  backorder_quantity?: number
   is_reservation_dropin: boolean
   reservationStart?: string
   reservationEnd?: string

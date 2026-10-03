@@ -88,6 +88,8 @@ export function PosPageDialogs({
       />
 
       <PosOptionsDialog
+        catalogItems={catalog.catalogItems}
+        getAvailability={cartApi.getItemAvailability}
         item={addApi.optionsParentItem}
         open={Boolean(addApi.optionsParentItem)}
         onOpenChange={(open) => {

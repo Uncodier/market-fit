@@ -1,6 +1,7 @@
 "use client";
 
-import { CatalogItem } from "@/app/types";
+import type { PosCartItem } from "@/app/pos/cart-types";
+export type { PosCartItem, PosCartModifier } from "@/app/pos/cart-types";
 import { Button } from "@/app/components/ui/button";
 import { Input } from "@/app/components/ui/input";
 import {
@@ -40,29 +41,6 @@ import { cn } from "@/lib/utils";
 import type { LocalPromoMatch } from "@/app/pos/local/resolve-promo-local";
 import type { PosShippingAddress } from "@/app/pos/shipping-address";
 import { useDisplayCurrency } from "@/app/context/DisplayCurrencyContext"
-
-export interface PosCartModifier {
-  groupId: string;
-  catalogItemId: string;
-  name: string;
-  cartQty: number;
-  cartPrice: number;
-}
-
-export interface PosCartItem extends CatalogItem {
-  cartQty: number;
-  cartPrice: number;
-  /** Unit price before a cashier line discount. */
-  cartListPrice?: number;
-  /** Percent off cartListPrice (0–100). */
-  cartDiscountPercent?: number;
-  /** Stable cart line identity (host + modifiers). */
-  lineKey?: string;
-  modifiers?: PosCartModifier[];
-  reservationStart?: string;
-  reservationEnd?: string;
-  reservationAvailableQty?: number;
-}
 
 interface CartPanelProps {
   cart: PosCartItem[];

@@ -161,6 +161,9 @@ export async function upsertSaleOrderItemsWithModifiers(params: {
         is_new: newStatus === "new",
         client_line_key: pl.client_line_key,
         parent_name: pl.parent_name,
+        ...(pl.backorder_quantity !== undefined
+          ? { backorder_quantity: pl.backorder_quantity }
+          : {}),
       },
       _is_reservation_dropin: pl.is_reservation_dropin,
       _reservationStart: pl.reservationStart,
@@ -207,6 +210,9 @@ export async function upsertSaleOrderItemsWithModifiers(params: {
         client_line_key: pl.client_line_key,
         modifier_group_id: pl.modifier_group_id,
         is_modifier: true,
+        ...(pl.backorder_quantity !== undefined
+          ? { backorder_quantity: pl.backorder_quantity }
+          : {}),
       },
       _is_reservation_dropin: false,
       _reservationStart: undefined,

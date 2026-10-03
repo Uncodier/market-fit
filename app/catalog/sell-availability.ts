@@ -17,28 +17,41 @@ export async function getCatalogAvailability(
   forceServiceRole: boolean = false,
   options?: CatalogSellOptions,
 ): Promise<CatalogAvailabilityResult> {
+  if (!Number.isFinite(quantity) || quantity <= 0) {
+    return { sellable: false, reason: "Quantity must be a positive finite number", policy: "block" }
+  }
   const supabase = forceServiceRole ? await createServiceClient(true) : await createClient()
 
   const [itemRes, settingsRes] = await Promise.all([
     supabase.from("catalog_items").select("*").eq("id", catalogItemId).eq("site_id", siteId).single(),
-    supabase.from("settings").select("commerce").eq("site_id", siteId).single(),
+    supabase.from("settings").select("commerce").eq("site_id", siteId).maybeSingle(),
   ])
 
-  if (itemRes.error) return { sellable: false, reason: "Item not found", policy: "block" }
+  if (itemRes.error || !itemRes.data) return { sellable: false, reason: "Item not found", policy: "block" }
+  if (settingsRes.error) {
+    return { sellable: false, reason: "Unable to verify stock policy", policy: "block" }
+  }
 
   const item = itemRes.data
-  const commerceSettings = (settingsRes.data?.commerce as any) || { stock_shortage_policy: "allow" }
-  const policy = commerceSettings.stock_shortage_policy || "allow"
+  const commerceSettings = settingsRes.data?.commerce as { stock_shortage_policy?: unknown } | null
+  const policy = commerceSettings?.stock_shortage_policy ?? "allow"
+  if (policy !== "allow" && policy !== "warn" && policy !== "block") {
+    return { sellable: false, reason: "Invalid stock shortage policy", policy: "block" }
+  }
 
   if (!options?.skipVariantSelection) {
     let purchasableChildCount = 0
     if (!item.parent_id) {
-      const { count: childCount } = await supabase
+      const { count: childCount, error: childError } = await supabase
         .from("catalog_items")
         .select("id", { count: "exact", head: true })
         .eq("parent_id", catalogItemId)
+        .eq("site_id", siteId)
         .eq("status", "active")
         .eq("is_purchasable", true)
+      if (childError) {
+        return { sellable: false, reason: "Unable to verify item variants", policy: "block" }
+      }
       purchasableChildCount = childCount || 0
     }
     const variantReason = variantSelectionBlockReason(item, purchasableChildCount)
@@ -73,8 +86,25 @@ export async function getCatalogAvailability(
       query = query.eq("location_id", locationId)
     }
 
-    const { data: levels } = await query
-    const availableQty = levels?.reduce((sum: number, level: any) => sum + Number(level.quantity), 0) || 0
+    const { data: levels, error: inventoryError } = await query
+    if (inventoryError || !levels) {
+      return { sellable: false, reason: "Unable to verify inventory", policy }
+    }
+    let availableQty = 0
+    for (const level of levels) {
+      const value: unknown = level.quantity
+      if (
+        (typeof value !== "number" && typeof value !== "string") ||
+        (typeof value === "string" && !value.trim()) ||
+        !Number.isFinite(Number(value))
+      ) {
+        return { sellable: false, reason: "Unable to verify inventory", policy }
+      }
+      availableQty += Number(value)
+    }
+    if (!Number.isFinite(availableQty)) {
+      return { sellable: false, reason: "Unable to verify inventory", policy }
+    }
 
     if (quantity <= availableQty) {
       return { sellable: true, availableQty, policy }

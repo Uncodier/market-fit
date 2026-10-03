@@ -63,6 +63,9 @@ function serializedItems(
       is_modifier: Boolean(line.parent_client_line_key),
       modifier_group_id: line.modifier_group_id,
       parent_name: line.parent_name,
+      ...(line.backorder_quantity !== undefined
+        ? { backorder_quantity: line.backorder_quantity }
+        : {}),
     },
   }))
 }

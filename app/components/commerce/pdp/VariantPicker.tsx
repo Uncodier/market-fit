@@ -15,6 +15,7 @@ interface VariantPickerProps {
   selectedOptions: Record<string, string>
   onOptionSelect: (axisId: string, valueId: string) => void
   childrenItems?: CatalogItem[]
+  isItemAvailable?: (item: CatalogItem) => boolean
   /** Prefer rich PDP tiles; cards use compact chips elsewhere. */
   presentation?: "pdp" | "compact"
   currency?: string
@@ -34,6 +35,7 @@ export function VariantPicker({
   selectedOptions,
   onOptionSelect,
   childrenItems = [],
+  isItemAvailable,
   presentation = "pdp",
   currency = "USD",
   fallbackImageUrl = null,
@@ -52,7 +54,8 @@ export function VariantPicker({
 
     const testSelection = { ...selectedOptions, [axisId]: valueId }
 
-    return childrenItems.some((child) => {
+    const matchingSelection = childrenItems.some((child) => {
+      if (isItemAvailable && !isItemAvailable(child)) return false
       if (!child.metadata?.option_values) return false
 
       return Object.entries(testSelection).every(([aId, vId]) => {
@@ -60,6 +63,11 @@ export function VariantPicker({
         return child.metadata!.option_values![aId] === vId
       })
     })
+    // Stock-aware pickers may reset conflicting axes on selection. Keep an
+    // independently available value reachable even if the current combination is out.
+    return matchingSelection || Boolean(isItemAvailable && childrenItems.some((child) =>
+      child.metadata?.option_values?.[axisId] === valueId && isItemAvailable(child),
+    ))
   }
 
   const priceForValue = (axisId: string, valueId: string): number | null => {

@@ -1,8 +1,5 @@
-import { assertCanSell } from "@/app/catalog/sell-availability"
-import {
-  isAccessOnlyItem,
-  shouldSkipVariantSelectionForCheckoutLine,
-} from "@/app/catalog/product-details"
+import { isAccessOnlyItem } from "@/app/catalog/product-details"
+import { allocateCheckoutBackorders, revalidateCheckoutAvailability } from "./checkout-availability"
 import { getTaxesByCatalogItemIds } from "@/app/catalog/tax-actions"
 import { assertCommerceReservationSlot } from "./pass-round-robin-server"
 import { isRoundRobinPass } from "./pass-round-robin"
@@ -51,12 +48,12 @@ export async function processCheckoutLines(params: ProcessCheckoutLinesParams) {
     finalPriceListId,
     priceListChannel,
     finalLeadId,
-    originLocationId,
     existingReservationId,
     effectiveExistingOrderId,
     fulfillment,
   } = params
   const queryClient = isAdmin ? supabaseAdmin : supabase
+  const checkoutStock = await revalidateCheckoutAvailability(params)
   let orderSubtotal = 0
   const processedLines: ProcessedCheckoutLine[] = []
   const catalogItemsForShipping: Partial<
@@ -79,20 +76,6 @@ export async function processCheckoutLines(params: ProcessCheckoutLinesParams) {
   }
 
   for (const line of lines) {
-    await assertCanSell(
-      siteId,
-      line.catalogItemId,
-      line.quantity,
-      originLocationId,
-      isAdmin,
-      {
-        skipVariantSelection: shouldSkipVariantSelectionForCheckoutLine({
-          existingReservationId,
-          reservationStart: line.reservationStart,
-        }),
-      }
-    )
-
     const { data: catalogItem } = await queryClient
       .from("catalog_items")
       .select(
@@ -193,16 +176,7 @@ export async function processCheckoutLines(params: ProcessCheckoutLinesParams) {
     })
 
     for (const modifier of line.modifiers || []) {
-      if (!modifier.catalogItemId || !(modifier.quantity > 0)) continue
       const modifierQuantity = modifier.quantity * line.quantity
-      await assertCanSell(
-        siteId,
-        modifier.catalogItemId,
-        modifierQuantity,
-        originLocationId,
-        isAdmin,
-        { skipVariantSelection: true }
-      )
       const { data: modifierItem } = await queryClient
         .from("catalog_items")
         .select("name, description, currency")
@@ -279,7 +253,7 @@ export async function processCheckoutLines(params: ProcessCheckoutLinesParams) {
   }
 
   return {
-    processedLines,
+    processedLines: allocateCheckoutBackorders(processedLines, checkoutStock),
     orderSubtotal,
     orderTaxTotal,
     orderShippingCost,
