@@ -207,7 +207,16 @@ export async function loadAccessibleSites(deps: LoadSitesDeps) {
             auto_renew: siteBilling.auto_renew ?? true,
             credits_available: siteBilling.credits_available || 0,
             credits_used: siteBilling.credits_used || 0,
-            account_balance: siteBilling.account_balance || 0
+            account_balance: siteBilling.account_balance || 0,
+            plan_credits_available: siteBilling.plan_credits_available,
+            purchased_credits_available: siteBilling.purchased_credits_available,
+            legacy_credits_available: siteBilling.legacy_credits_available,
+            plan_credit_period_start: siteBilling.plan_credit_period_start,
+            plan_credit_period_end: siteBilling.plan_credit_period_end,
+            plan_credit_allowance: siteBilling.plan_credit_allowance,
+            monthly_credits_used: siteBilling.monthly_credits_used,
+            plan_credits_used: siteBilling.plan_credits_used,
+            plan_credit_source: siteBilling.plan_credit_source,
           } : undefined)
         }
       })

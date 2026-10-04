@@ -8,6 +8,10 @@ export type SubscriptionStripeClient = {
   customers: Pick<Stripe["customers"], "retrieve">
 }
 
+export function isTerminalSubscriptionStatus(status: string): boolean {
+  return ["canceled", "cancelled", "incomplete_expired"].includes(status)
+}
+
 export function stripeObjectId(value: unknown): string | null {
   if (typeof value === "string") return value.trim() ? value : null
   if (value && typeof value === "object" && "id" in value) {
@@ -61,11 +65,12 @@ export function resolveStripeSubscriptionDetails(subscription: Stripe.Subscripti
     throw new Error("Subscription plan does not match configured price")
   }
   const plan = metadataPlan || pricePlan
-  if (!plan) throw new Error("Missing or unknown subscription plan")
+  const terminal = isTerminalSubscriptionStatus(subscription.status)
+  if (!plan && !terminal) throw new Error("Missing or unknown subscription plan")
 
   const addonItems = items.filter((item) => addonPrice && item.price.id === addonPrice)
   // A configured price and a complete item list supersede possibly stale metadata.
-  const addonsCount = addonPrice
+  const addonsCount = terminal ? 0 : addonPrice
     ? nonnegativeInteger(addonItems.reduce(
       (total, item) => total + nonnegativeInteger(item.quantity), 0,
     ))
@@ -76,7 +81,7 @@ export function resolveStripeSubscriptionDetails(subscription: Stripe.Subscripti
     current_period_end?: number | null
   }).current_period_end
   const currentPeriodEnd = stripeTimestampIso(legacyPeriodEnd ?? baseItem?.current_period_end)
-  return { plan, addonsCount, currentPeriodEnd }
+  return { plan: plan || null, addonsCount, currentPeriodEnd }
 }
 
 /** Stripe reads only; callers must supply an authenticated, trusted Stripe client. */
@@ -113,14 +118,13 @@ export async function syncStripeSubscription(params: {
   const { subscription, customerId, siteId, plan, addonsCount, currentPeriodEnd } = current
   const { data, error } = await params.supabase.rpc("upsert_billing", {
     p_site_id: siteId,
-    p_plan: plan,
+    p_plan: isTerminalSubscriptionStatus(subscription.status) ? "commission" : plan,
     p_stripe_customer_id: customerId,
     p_stripe_subscription_id: subscription.id,
     p_subscription_status: subscription.status,
     p_subscription_current_period_end: currentPeriodEnd,
     p_auto_renew: !subscription.cancel_at_period_end && !subscription.cancel_at &&
-      !subscription.ended_at && subscription.status !== "canceled" &&
-      subscription.status !== "incomplete_expired",
+      !subscription.ended_at && !isTerminalSubscriptionStatus(subscription.status),
   })
   if (error) throw new Error(`Failed to update subscription: ${error.message}`)
   if (data?.success !== true) {

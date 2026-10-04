@@ -1,4 +1,5 @@
 import type { DatabaseFunctions } from "./database-functions.types"
+import type { BillingCreditRow } from "./billing-credits.types"
 import type { SaleOrderItemUnitsTable } from "./database-order-line.types"
 import type { SitesTable } from "./database-site.types"
 export * from "./database-domain.types"
@@ -345,7 +346,7 @@ export interface Database {
         }
       }
       billing: {
-        Row: {
+        Row: BillingCreditRow & {
           id: string
           site_id: string
           plan: 'commission' | 'engine' | 'foundry' | 'enterprise'
@@ -370,7 +371,7 @@ export interface Database {
           created_at: string
           updated_at: string
         }
-        Insert: {
+        Insert: Partial<BillingCreditRow> & {
           id?: string
           site_id: string
           plan?: 'commission' | 'engine' | 'foundry' | 'enterprise'
@@ -395,7 +396,7 @@ export interface Database {
           created_at?: string
           updated_at?: string
         }
-        Update: {
+        Update: Partial<BillingCreditRow> & {
           id?: string
           site_id?: string
           plan?: 'commission' | 'engine' | 'foundry' | 'enterprise'

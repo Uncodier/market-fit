@@ -1,4 +1,6 @@
-export interface BillingData {
+import type { BillingCreditBalances } from "@/lib/types/billing-credits.types"
+
+export interface BillingData extends BillingCreditBalances {
   plan: "commission" | "engine" | "foundry" | "enterprise"
   addons_count?: number
   card_name?: string
@@ -17,4 +19,5 @@ export interface BillingData {
   auto_renew?: boolean
   credits_available?: number
   credits_used?: number
+  account_balance?: number
 }

@@ -5,6 +5,7 @@ import {
   retrieveStripeSubscription, stripeObjectId, stripeTimestampIso,
   type SubscriptionBillingClient, type SubscriptionStripeClient,
 } from "./subscription-billing"
+import { stripeInvoiceCreditPeriod } from "./subscription-invoice-period"
 
 type CompatibleInvoice = Stripe.Invoice & {
   subscription?: string | Stripe.Subscription | null
@@ -17,6 +18,7 @@ export type StripeSubscriptionInvoiceInput = {
   invoice_id: string
   customer_id: string
   subscription_id: string
+  current_subscription_status: string
   payment_intent_id: string | null
   status: "paid" | "failed"
   amount: number
@@ -27,6 +29,8 @@ export type StripeSubscriptionInvoiceInput = {
   paid_at: string | null
   invoice_url: string | null
   event_id: string | null
+  period_start: string | null
+  period_end: string | null
 }
 
 export type StripeSubscriptionInvoiceResult = {
@@ -53,12 +57,15 @@ function invoicePaymentIntentId(invoice: CompatibleInvoice): string | null {
   return stripeObjectId(payment?.payment.payment_intent)
 }
 
-function invoiceEntitlements(invoice: CompatibleInvoice, current: { plan: BillingPlan; addonsCount: number }) {
+function invoiceEntitlements(invoice: CompatibleInvoice, current: { plan: BillingPlan | null; addonsCount: number }) {
   // The live invoice's immutable subscription snapshot preserves historical renewals
   // across later plan changes. Never use metadata from the notification payload.
   const metadata = invoice.parent?.subscription_details?.metadata ?? invoice.subscription_details?.metadata
   const plan = normalizeBillingPlan(metadata?.plan)
-  if (!plan) return current
+  if (!plan) {
+    if (!current.plan) throw new Error("Invoice paid plan is unavailable")
+    return { plan: current.plan, addonsCount: current.addonsCount }
+  }
   const count = metadata?.addons_count
   if (count === undefined) return { ...current, plan }
   if (!/^\d+$/.test(count) || !Number.isSafeInteger(Number(count)) || Number(count) > 100) {
@@ -136,6 +143,7 @@ export async function settleStripeSubscriptionInvoice(params: {
     invoice_id: invoice.id,
     customer_id: customerId,
     subscription_id: subscriptionId,
+    current_subscription_status: current.subscription.status,
     payment_intent_id: invoicePaymentIntentId(invoice),
     status,
     amount: fromStripeMinorAmount(
@@ -148,6 +156,7 @@ export async function settleStripeSubscriptionInvoice(params: {
     paid_at: paidAt,
     invoice_url: invoice.hosted_invoice_url || invoice.invoice_pdf || null,
     event_id: params.eventId ?? null,
+    ...stripeInvoiceCreditPeriod(invoice, subscriptionId),
   }
   const { data, error } = await params.supabase.rpc("settle_stripe_subscription_invoice", {
     p_invoice: input,

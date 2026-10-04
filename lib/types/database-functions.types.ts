@@ -1,6 +1,7 @@
 import type { AccountingDatabaseFunctions } from './database-accounting.types'
+import type { BillingDatabaseFunctions } from './database-billing.types'
 
-export interface DatabaseFunctions<TSite> extends AccountingDatabaseFunctions {
+export interface DatabaseFunctions<TSite> extends AccountingDatabaseFunctions, BillingDatabaseFunctions {
   archive_site: {
     Args: { p_site_id: string; p_actor_id: string }
     Returns: boolean

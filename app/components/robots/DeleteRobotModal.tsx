@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation"
 import { ConfirmDialog } from "@/app/components/ui/confirm-dialog"
 import { useToast } from "@/app/components/ui/use-toast"
+import { deleteRobotInstance } from "@/app/robots/delete-robot-instance"
 
 interface DeleteRobotModalProps {
   open: boolean
@@ -28,25 +29,21 @@ export function DeleteRobotModal({
 
   const handleDelete = async () => {
     onDeleteStart?.(instanceId)
-    const { apiClient } = await import("@/app/services/api-client-service")
-    const response = await apiClient.post("/api/robots/instance/delete", {
-      instance_id: instanceId,
-    })
-
-    if (!response.success) {
+    try {
+      await deleteRobotInstance(instanceId)
+    } catch (error) {
       onDeleteError?.(instanceId)
       toast({
         title: "Error",
-        description:
-          response.error?.message || "Could not delete this agent instance",
+        description: error instanceof Error ? error.message : "Could not delete this agent instance",
         variant: "destructive",
       })
-      throw new Error(response.error?.message || "Failed to delete robot")
+      throw error
     }
 
     toast({
       title: "Agent deleted",
-      description: "The agent instance was permanently removed.",
+      description: "The agent instance and its associated requirements were permanently removed.",
     })
     onDeleteSuccess?.()
     router.refresh()
@@ -62,8 +59,8 @@ export function DeleteRobotModal({
           <span className="block font-medium text-foreground">
             {instanceName}-{instanceId.slice(-4)}
           </span>
-          This cannot be undone. Chat history, plans, and instance data will be
-          permanently deleted.
+          This cannot be undone. The instance, its associated requirements,
+          requirement history, chat history, and plans will be permanently deleted.
         </>
       }
       confirmLabel="Delete"

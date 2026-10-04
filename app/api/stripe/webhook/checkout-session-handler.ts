@@ -1,67 +1,11 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
 import type Stripe from "stripe"
-import { fromStripeMinorAmount } from "@/app/api/stripe/checkout/checkout-payment-guard"
 import { handleStripeSaleCheckoutCompleted } from "./sale-checkout-settlement"
 import { stripeObjectId, syncStripeSubscription } from "./subscription-billing"
 import { settleStripeSubscriptionInvoice } from "./subscription-invoice-settlement"
+import { handleCreditsPurchase } from "./credit-purchase-settlement"
 
 type CheckoutWebhookClient = Pick<SupabaseClient, "from" | "rpc">
-
-async function handleCreditsPurchase(
-  supabase: CheckoutWebhookClient,
-  session: Stripe.Checkout.Session,
-): Promise<void> {
-  const siteId = session.metadata?.site_id
-  const credits = Number.parseInt(session.metadata?.credits || "0", 10)
-  if (!siteId || !credits) {
-    console.error("Missing credits purchase metadata", session.metadata)
-    return
-  }
-
-  const transactionId = `stripe_${session.id}`
-  const { data: existingPayment, error: duplicateError } = await supabase
-    .from("payments")
-    .select("id, transaction_id")
-    .eq("transaction_id", transactionId)
-    .single()
-  if (duplicateError && duplicateError.code !== "PGRST116") {
-    throw new Error(`Failed to check credits payment: ${duplicateError.message}`)
-  }
-  if (existingPayment) return
-
-  const { error: creditsError } = await supabase.rpc("add_credits", {
-    p_site_id: siteId,
-    p_credits: credits,
-  })
-  if (creditsError) {
-    throw new Error(`Failed to add credits: ${creditsError.message}`)
-  }
-
-  const { error: paymentError } = await supabase
-    .from("payments")
-    .insert({
-      site_id: siteId,
-      transaction_id: transactionId,
-      transaction_type: "credits_purchase",
-      amount: fromStripeMinorAmount(
-        session.amount_total || 0,
-        session.currency || "usd",
-      ),
-      currency: session.currency?.toUpperCase() || "USD",
-      status: "completed",
-      payment_method: "stripe",
-      details: {
-        stripe_payment_intent_id: session.payment_intent,
-        stripe_session_id: session.id,
-        credits_purchased: credits,
-        stripe_customer_id: session.customer,
-      },
-      credits,
-    })
-  if (paymentError) {
-    throw new Error(`Failed to record credits payment: ${paymentError.message}`)
-  }
-}
 
 async function handleInitialSubscription(
   supabase: CheckoutWebhookClient,

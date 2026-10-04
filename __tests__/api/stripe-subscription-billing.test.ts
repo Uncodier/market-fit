@@ -55,6 +55,7 @@ function invoice(overrides: Partial<Invoice> = {}): Invoice {
   return { id: "in_billing", object: "invoice", customer: customer.id, subscription: "sub_billing",
     payment_intent: "pi_billing", status: "paid", amount_paid: 12_345, amount_due: 12_345,
     currency: "usd", billing_reason: "subscription_cycle", parent: null,
+    period_start: paidAt, period_end: periodEnd,
     status_transitions: { paid_at: paidAt, finalized_at: paidAt, marked_uncollectible_at: null, voided_at: null },
     hosted_invoice_url: "https://invoices.example.test/billing", invoice_pdf: null, ...overrides } as Invoice
 }
@@ -127,9 +128,10 @@ describe("subscription invoice atomic settlement delegation", () => {
     await expect(handleBillingStripeEvent({ ...h, event: notification })).resolves.toBe(true)
     expect(h.rpc).toHaveBeenCalledTimes(1)
     expect(h.inputs()).toEqual([{ site_id: siteId, invoice_id: "in_billing", customer_id: customer.id,
-      subscription_id: "sub_billing", payment_intent_id: "pi_billing", status: "paid", amount: 123.45,
+      subscription_id: "sub_billing", current_subscription_status: "active", payment_intent_id: "pi_billing", status: "paid", amount: 123.45,
       currency: "USD", billing_reason: "subscription_cycle", plan: "foundry", addons_count: 2,
-      paid_at: new Date(paidAt * 1000).toISOString(), invoice_url: "https://invoices.example.test/billing", event_id: notification.id }])
+      paid_at: new Date(paidAt * 1000).toISOString(), invoice_url: "https://invoices.example.test/billing", event_id: notification.id,
+      period_start: new Date(paidAt * 1000).toISOString(), period_end: new Date(periodEnd * 1000).toISOString() }])
     expect(h.invoices).toHaveBeenCalledWith("in_billing", { expand: ["payments"] })
     expect(h.subscriptions).toHaveBeenCalledWith("sub_billing")
     expect(h.customers).toHaveBeenCalledWith(customer.id)
@@ -201,6 +203,13 @@ describe("subscription invoice atomic settlement delegation", () => {
     h.invoices.mockResolvedValue(response(invoice({ amount_paid: 0, payment_intent: null })))
     await h.settle()
     expect(h.inputs()[0]).toMatchObject({ status: "paid", amount: 0, payment_intent_id: null })
+  })
+
+  it("passes the verified live terminal status so stale billing cannot grant a paid allowance", async () => {
+    const h = harness()
+    h.subscriptions.mockResolvedValue(response(subscription({ status: "canceled" })))
+    await h.settle()
+    expect(h.inputs()[0]).toMatchObject({ current_subscription_status: "canceled", status: "paid" })
   })
 
   it.each(["subscription_create", "subscription_cycle", "subscription_update"] as const)("leaves %s grant policy in SQL", async (billing_reason) => {
@@ -341,8 +350,9 @@ describe("current subscription sync and initial checkout", () => {
     const h = harness()
     h.subscriptions.mockResolvedValue(response(Object.assign(subscription({ status: "canceled" }), { current_period_end: paidAt })))
     await syncStripeSubscription({ ...h, subscriptionId: "sub_billing" })
-    expect(h.rpc.mock.calls[0][1]).toMatchObject({ p_auto_renew: false,
+    expect(h.rpc.mock.calls[0][1]).toMatchObject({ p_auto_renew: false, p_plan: "commission",
       p_subscription_current_period_end: new Date(paidAt * 1000).toISOString() })
+    expect(h.transport.mock.calls[1][1]?.body).toBe(JSON.stringify({ addons_count: 0 }))
   })
 
   it("resets removed add-ons to zero and preserves scheduled cancellation", async () => {

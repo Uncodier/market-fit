@@ -177,10 +177,9 @@ class BillingService {
         maskedCardNumber = `•••• •••• •••• ${last4}`;
       }
 
-      // Call the upsert_billing function
+      // Saving contact/payment details must not replay an entitlement or a stale balance.
       const { data, error } = await supabase.rpc('upsert_billing', {
         p_site_id: siteId,
-        p_plan: billingData.plan,
         p_card_name: billingData.card_name,
         p_masked_card_number: maskedCardNumber || null,
         p_card_expiry: billingData.card_expiry,
@@ -195,13 +194,16 @@ class BillingService {
         p_billing_city: billingData.billing_city,
         p_billing_postal_code: billingData.billing_postal_code,
         p_billing_country: billingData.billing_country,
-        p_auto_renew: billingData.auto_renew !== undefined ? billingData.auto_renew : true,
-        p_credits_available: billingData.credits_available ?? null
+        p_auto_renew: null,
       })
 
       if (error) {
         console.error('Error saving billing info:', error)
         return { success: false, error: error.message }
+      }
+
+      if (data?.success !== true) {
+        return { success: false, error: data?.error || 'Billing update was rejected' }
       }
 
       return { success: true }

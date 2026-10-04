@@ -1,41 +1,27 @@
 import { NextRequest, NextResponse } from "next/server"
-import { createClient, createServiceClient } from "@/lib/supabase/server"
+import { createServiceClient } from "@/lib/supabase/server"
+import { requireSiteAccess } from "@/lib/auth/api-site-access"
 
 export async function POST(req: NextRequest) {
   try {
     const { license_key, site_id } = await req.json()
 
-    if (!license_key || !site_id) {
+    if (typeof license_key !== 'string' || !license_key.trim() || typeof site_id !== 'string' ||
+      !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(site_id)) {
       return NextResponse.json({ success: false, error: "Missing required parameters" }, { status: 400 })
     }
 
-    const supabaseUser = await createClient()
-    const { data: { user } } = await supabaseUser.auth.getUser()
-
-    if (!user) {
-      return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 })
-    }
+    const access = await requireSiteAccess(req, site_id, { requireManager: true })
+    if (access.error) return access.error
 
     const supabaseAdmin = await createServiceClient()
-
-    // Verify user belongs to the site
-    const { data: memberData, error: memberError } = await supabaseAdmin
-      .from('site_members')
-      .select('role')
-      .eq('site_id', site_id)
-      .eq('user_id', user.id)
-      .single()
-
-    if (memberError || !memberData) {
-      return NextResponse.json({ success: false, error: "User is not a member of this site" }, { status: 403 })
-    }
 
     // Verify license exists and belongs to this user
     const { data: licenseDb, error: licenseError } = await supabaseAdmin
       .from('partner_licenses')
       .select('*')
       .eq('license_key', license_key)
-      .eq('user_id', user.id)
+      .eq('user_id', access.userId)
       .single()
 
     if (licenseError || !licenseDb) {
@@ -45,44 +31,39 @@ export async function POST(req: NextRequest) {
     if (licenseDb.status === 'deactivated') {
       return NextResponse.json({ success: false, error: "This license has been deactivated" }, { status: 400 })
     }
+    if (licenseDb.site_id && licenseDb.site_id !== site_id) {
+      return NextResponse.json({ success: false, error: "License is already linked to another site" }, { status: 409 })
+    }
 
     // Determine target plan
     let targetPlan: 'engine' | 'foundry' = 'engine' // Default
-    let baseCredits = 20
     
     const actualPlanName = licenseDb.plan_name?.toLowerCase() || ''
     if (actualPlanName.includes('foundry') || actualPlanName.includes('tier 2') || actualPlanName.includes('tier2')) {
       targetPlan = 'foundry'
-      baseCredits = 100
     }
-
-    // Get current billing to respect extra credits purchased
-    const { data: currentBilling } = await supabaseAdmin
-      .from('billing')
-      .select('credits_available')
-      .eq('site_id', site_id)
-      .single()
-      
-    const currentCredits = currentBilling?.credits_available || 0
-    const newCredits = Math.max(currentCredits, baseCredits)
 
     // Update the license with the selected site_id
     const { error: updateLicenseError } = await supabaseAdmin
       .from('partner_licenses')
       .update({ site_id: site_id })
       .eq('license_key', license_key)
+      .eq('user_id', access.userId)
+      .or(`site_id.is.null,site_id.eq.${site_id}`)
+      .select('id')
+      .single()
 
     if (updateLicenseError) {
       console.error("Error linking site to license:", updateLicenseError)
       return NextResponse.json({ success: false, error: "Failed to link license to site" }, { status: 500 })
     }
 
-    // Apply billing changes
+    // SQL owns the plan bucket transition; never overwrite purchased credits
+    // with an aggregate balance read before concurrent usage or purchases.
     const { error: billingError } = await supabaseAdmin
       .from('billing')
       .update({
         plan: targetPlan,
-        credits_available: newCredits,
         subscription_status: 'active',
         auto_renew: false,
         updated_at: new Date().toISOString()
@@ -96,8 +77,8 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ success: true, plan: targetPlan })
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error applying partner license:", error)
-    return NextResponse.json({ success: false, error: error.message || "Internal server error" }, { status: 500 })
+    return NextResponse.json({ success: false, error: "Internal server error" }, { status: 500 })
   }
 }

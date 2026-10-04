@@ -37,7 +37,7 @@ export interface Site {
     analytics_id?: string;
     tracking_code?: string;
   }
-  billing?: {
+  billing?: BillingData & {
     plan: 'commission' | 'engine' | 'foundry' | 'enterprise'
     addons_count?: number
     masked_card_number?: string
