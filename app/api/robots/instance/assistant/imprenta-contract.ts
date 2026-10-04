@@ -1,4 +1,15 @@
+import { SPEECH_LANGUAGE_VALUES, SPEECH_VOICE_VALUES } from "@/lib/ai/speech-options"
+
 type JsonRecord = Record<string, unknown>
+
+export class ImprentaContractValidationError extends Error {
+  readonly status = 400
+
+  constructor(field: "voice" | "language") {
+    super(`Speech ${field} must be auto or a supported ${field}`)
+    this.name = "ImprentaContractValidationError"
+  }
+}
 
 export interface ImprentaNodeSnapshot {
   id: string
@@ -42,6 +53,29 @@ function stringValue(value: unknown): string | undefined {
 
 function numberValue(value: unknown): number | undefined {
   return typeof value === "number" && Number.isFinite(value) ? value : undefined
+}
+
+function parameterRecord(value: unknown): JsonRecord | undefined {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? value as JsonRecord
+    : undefined
+}
+
+function speechSelection(
+  value: unknown,
+  values: readonly string[],
+  field: "voice" | "language",
+): string | undefined {
+  if (value === undefined) return undefined
+  const normalized = typeof value === "string" ? value.trim().toLowerCase() : ""
+  if (!values.includes(normalized)) throw new ImprentaContractValidationError(field)
+  return normalized === "auto" ? undefined : normalized
+}
+
+function audioSelections(parameters: JsonRecord): JsonRecord {
+  const voice = speechSelection(parameters.voice, SPEECH_VOICE_VALUES, "voice")
+  const language = speechSelection(parameters.language, SPEECH_LANGUAGE_VALUES, "language")
+  return { voice: voice ?? "auto", language: language ?? "auto" }
 }
 
 function normalizeParameters(value: unknown): JsonRecord {
@@ -103,13 +137,19 @@ function mediaOverrides(
     }
   }
   if (outputType === "audio") {
-    const rawFormat = stringValue(parameters.format)?.toLowerCase()
-    const format = rawFormat === "aac"
-      ? "mp3"
-      : ["mp3", "wav", "ogg"].includes(rawFormat ?? "") ? rawFormat : undefined
+    const rawFormat = stringValue(parameters.format)?.trim().toLowerCase()
+    const format = rawFormat === "ogg"
+      ? "opus"
+      : ["mp3", "pcm", "wav", "opus", "aac", "flac"].includes(rawFormat ?? "")
+        ? rawFormat : undefined
+    const selections = audioSelections(parameters)
     return {
       toolName: "generate_audio",
-      values: format ? { format } : {},
+      values: {
+        ...(format ? { format } : {}),
+        ...(selections.voice !== "auto" ? { voice: selections.voice } : {}),
+        ...(selections.language !== "auto" ? { language: selections.language } : {}),
+      },
     }
   }
   return null
@@ -133,9 +173,14 @@ export function strengthenImprentaAssistantPayload(
     ?? canonicalOutputType(settings.media_type)
   if (!outputType) return body
 
+  const audioParameters = parameterRecord(settings.parameters)
+    ?? parameterRecord(incomingContext.parameters)
   const parameters = normalizeParameters({
     ...record(incomingContext.parameters),
     ...record(settings.parameters),
+    ...(outputType === "audio" && audioParameters
+      ? audioSelections(audioParameters)
+      : {}),
   })
   const allowedMediaTool = outputType === "image"
     ? "generate_image"
@@ -152,7 +197,16 @@ export function strengthenImprentaAssistantPayload(
   const allowedOverride = allowedMediaTool
     ? record(incomingOverrides[allowedMediaTool])
     : {}
+  if (outputType === "audio") {
+    // Auto/default means the agent chooses; never keep a stale forced selection.
+    const remaining = { ...allowedOverride }
+    delete remaining.voice
+    delete remaining.language
+    delete remaining.format
+    incomingOverrides.generate_audio = remaining
+  }
   const override = mediaOverrides(outputType, {
+    ...(outputType === "audio" ? allowedOverride : {}),
     ...parameters,
     ...(parameters.quality === undefined && allowedOverride.quality !== undefined
       ? { quality: allowedOverride.quality }
@@ -188,7 +242,9 @@ export function strengthenImprentaAssistantPayload(
       mediaType: outputType,
       media_type: outputType,
       output_type: outputType,
-      parameters,
+      // Do not invent a parameter object for legacy audio overrides: the API
+      // distinguishes an absent object from a saved object with auto defaults.
+      parameters: outputType === "audio" && !audioParameters ? undefined : parameters,
       ui_contract: {
         version: 1,
         output_type: outputType,

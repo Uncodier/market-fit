@@ -131,7 +131,9 @@ export function useSimpleMessagesView({ className = "", activeRobotInstance, isB
     duration: 6
   })
   const [audioParameters, setAudioParameters] = useState<AudioParameters>({
-    format: 'MP3'
+    format: 'MP3',
+    voice: 'auto',
+    language: 'auto'
   })
   
   
@@ -149,7 +151,7 @@ export function useSimpleMessagesView({ className = "", activeRobotInstance, isB
     setVideoParameters(prev => applyVideoParameterChange(prev, key, value))
   }, [])
   
-  const handleAudioParameterChange = useCallback((key: keyof AudioParameters, value: any) => {
+  const handleAudioParameterChange = useCallback((key: keyof AudioParameters, value: AudioParameters[keyof AudioParameters]) => {
     setAudioParameters(prev => ({ ...prev, [key]: value }))
   }, [])
   

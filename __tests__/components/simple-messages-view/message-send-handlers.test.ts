@@ -39,6 +39,21 @@ it('sends without redundant browser identity/log persistence and trusts API pers
   }), { instanceId: 'instance', message: 'hello', requestId: 'current-request' })
 })
 
+it('transports user-selected speech preferences in context and text-preparation instructions', async () => {
+  await expect(sendAssistantMessage({
+    ...params,
+    selectedActivity: 'generate-audio',
+    audioParameters: { format: 'MP3', voice: 'nova', language: 'es', expectedResults: 1 },
+  })).resolves.toBe(true)
+  const payload = (postWithRetry as jest.Mock).mock.calls[0][1]
+  expect(JSON.parse(payload.context)).toMatchObject({
+    output_type: 'audio', parameters: { format: 'MP3', voice: 'nova', language: 'es' },
+  })
+  expect(JSON.parse(payload.context).parameters).not.toHaveProperty('expectedResults')
+  expect(payload.system_prompt).toContain('Use the user-selected voice: nova')
+  expect(payload.system_prompt).toContain('language code es BEFORE calling generate_audio')
+})
+
 it.each(['throw', 'stall'])('shows the original failure even when error telemetry %ss', async mode => {
   ;(postWithRetry as jest.Mock).mockResolvedValue({ success: false, status: 503, error: { message: 'Assistant capacity is full.' } })
   ;(markRobotInstanceErrorIfUnanswered as jest.Mock).mockImplementation(() => {

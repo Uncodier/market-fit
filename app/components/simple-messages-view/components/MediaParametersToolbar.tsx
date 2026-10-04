@@ -1,7 +1,8 @@
 import React, { useState } from 'react'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
-import { Image, FileVideo, LayoutGrid, BarChart, Clock, Speaker, Hash, Type, AlignLeft } from "@/app/components/ui/icons"
+import { Select, SelectContent, SelectItem, SelectTrigger } from "@/app/components/ui/select"
+import { FileVideo, LayoutGrid, BarChart, Clock, Hash, Type, AlignLeft } from "@/app/components/ui/icons"
 import { ImageParameters, VideoParameters, AudioParameters, TextParameters } from '../types'
+import { AudioParameterControls } from './AudioParameterControls'
 
 interface MediaParametersToolbarProps {
   selectedActivity: string
@@ -9,10 +10,10 @@ interface MediaParametersToolbarProps {
   videoParameters: VideoParameters
   audioParameters: AudioParameters
   textParameters?: TextParameters
-  onImageParameterChange: (key: keyof ImageParameters, value: any) => void
-  onVideoParameterChange: (key: keyof VideoParameters, value: any) => void
-  onAudioParameterChange: (key: keyof AudioParameters, value: any) => void
-  onTextParameterChange?: (key: keyof TextParameters, value: any) => void
+  onImageParameterChange: (key: keyof ImageParameters, value: ImageParameters[keyof ImageParameters]) => void
+  onVideoParameterChange: (key: keyof VideoParameters, value: VideoParameters[keyof VideoParameters]) => void
+  onAudioParameterChange: (key: keyof AudioParameters, value: AudioParameters[keyof AudioParameters]) => void
+  onTextParameterChange?: (key: keyof TextParameters, value: TextParameters[keyof TextParameters]) => void
   isBrowserVisible?: boolean
 }
 
@@ -26,13 +27,11 @@ export const MediaParametersToolbar: React.FC<MediaParametersToolbarProps> = ({
   onVideoParameterChange,
   onAudioParameterChange,
   onTextParameterChange,
-  isBrowserVisible = false
 }) => {
   const [aspectRatioOpen, setAspectRatioOpen] = useState(false)
   const [qualityOpen, setQualityOpen] = useState(false)
   const [resolutionOpen, setResolutionOpen] = useState(false)
   const [durationOpen, setDurationOpen] = useState(false)
-  const [formatOpen, setFormatOpen] = useState(false)
   const [expectedResultsOpen, setExpectedResultsOpen] = useState(false)
   const [textLengthOpen, setTextLengthOpen] = useState(false)
   const [textStyleOpen, setTextStyleOpen] = useState(false)
@@ -84,7 +83,7 @@ export const MediaParametersToolbar: React.FC<MediaParametersToolbarProps> = ({
           <div className="relative">
             <Select 
               value={textParameters?.length || 'medium'} 
-              onValueChange={(value) => onTextParameterChange?.('length', value)}
+              onValueChange={(value) => onTextParameterChange?.('length', value as TextParameters['length'])}
               open={textLengthOpen}
               onOpenChange={setTextLengthOpen}
             >
@@ -145,7 +144,7 @@ export const MediaParametersToolbar: React.FC<MediaParametersToolbarProps> = ({
           <div className="relative">
             <Select 
               value={imageParameters?.aspectRatio ?? '1:1'} 
-              onValueChange={(value) => onImageParameterChange('aspectRatio', value)}
+              onValueChange={(value) => onImageParameterChange('aspectRatio', value as ImageParameters['aspectRatio'])}
               open={aspectRatioOpen}
               onOpenChange={setAspectRatioOpen}
             >
@@ -176,7 +175,7 @@ export const MediaParametersToolbar: React.FC<MediaParametersToolbarProps> = ({
           <div className="relative">
             <Select 
               value={normalizedImageQuality}
-              onValueChange={(value) => onImageParameterChange('quality', value)}
+              onValueChange={(value) => onImageParameterChange('quality', value as ImageParameters['quality'])}
               open={qualityOpen}
               onOpenChange={setQualityOpen}
             >
@@ -207,7 +206,7 @@ export const MediaParametersToolbar: React.FC<MediaParametersToolbarProps> = ({
           <div className="relative">
             <Select 
               value={videoParameters?.aspectRatio ?? '16:9'} 
-              onValueChange={(value) => onVideoParameterChange('aspectRatio', value)}
+              onValueChange={(value) => onVideoParameterChange('aspectRatio', value as VideoParameters['aspectRatio'])}
               open={aspectRatioOpen}
               onOpenChange={setAspectRatioOpen}
             >
@@ -236,7 +235,7 @@ export const MediaParametersToolbar: React.FC<MediaParametersToolbarProps> = ({
           <div className="relative">
             <Select 
               value={videoParameters?.resolution ?? '1080p'} 
-              onValueChange={(value) => onVideoParameterChange('resolution', value)}
+              onValueChange={(value) => onVideoParameterChange('resolution', value as VideoParameters['resolution'])}
               open={resolutionOpen}
               onOpenChange={setResolutionOpen}
             >
@@ -290,31 +289,7 @@ export const MediaParametersToolbar: React.FC<MediaParametersToolbarProps> = ({
       {selectedActivity === 'generate-audio' && (
         <>
           {renderExpectedResultsSelector(audioParameters?.expectedResults, (val) => onAudioParameterChange('expectedResults', val))}
-          {/* Format Selector - Icon Button */}
-          <div className="relative">
-            <Select 
-              value={audioParameters?.format ?? 'MP3'} 
-              onValueChange={(value) => onAudioParameterChange('format', value)}
-              open={formatOpen}
-              onOpenChange={setFormatOpen}
-            >
-              <SelectTrigger 
-                hideIcon 
-                className="h-8 bg-secondary hover:bg-secondary/80 border-secondary text-xs w-auto min-w-fit"
-              >
-                <div className="flex items-center gap-2 w-full">
-                  <div className="flex items-center justify-center w-[16px] h-[16px] relative shrink-0 overflow-hidden">
-                    <Speaker className="w-[16px] h-[16px] absolute left-0 top-0 m-0" style={{ margin: 0, top: 0, left: 0, bottom: 0, right: 0 }} />
-                  </div>
-                  <span>{audioParameters?.format ?? 'MP3'}</span>
-                </div>
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="MP3" hideIndicator className="data-[state=checked]:bg-amber-50 data-[state=checked]:text-amber-700">MP3</SelectItem>
-                <SelectItem value="WAV" hideIndicator className="data-[state=checked]:bg-amber-50 data-[state=checked]:text-amber-700">WAV</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+          <AudioParameterControls parameters={audioParameters} onParameterChange={onAudioParameterChange} />
         </>
       )}
     </div>

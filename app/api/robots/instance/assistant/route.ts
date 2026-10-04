@@ -10,6 +10,7 @@ import {
 import { requireSiteAccess } from "@/lib/auth/api-site-access"
 import {
   strengthenImprentaAssistantPayload,
+  ImprentaContractValidationError,
   type ImprentaNodeSnapshot,
 } from "./imprenta-contract"
 import {
@@ -254,6 +255,13 @@ export async function POST(request: NextRequest) {
     detachDisconnect?.()
     upstreamController?.abort()
     await Promise.allSettled(leases.map((lease) => lease.release()))
+    if (error instanceof ImprentaContractValidationError) {
+      return NextResponse.json({
+        success: false,
+        execution_started: false,
+        error: { message: error.message },
+      }, { status: error.status })
+    }
     if (error instanceof RequestBodyTooLargeError) {
       return NextResponse.json(
         {

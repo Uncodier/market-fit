@@ -95,10 +95,16 @@ export const getSystemPromptForActivity = (
     return `Generate a video with aspect ratio: ${aspectRatio}, resolution: ${resolution}, duration: ${duration}s`
   }
   
-      if (activity === 'generate-audio' && mediaParams?.audioParameters) {
-        const { format } = mediaParams.audioParameters
-        return `Generate audio with format: ${format}`
-      }
+  if (activity === 'generate-audio') {
+    const { format = 'MP3', voice = 'auto', language = 'auto' } = mediaParams?.audioParameters ?? {}
+    const voiceRule = voice === 'auto'
+      ? 'Choose a suitable listed voice based on the request and context.'
+      : `Use the user-selected voice: ${voice}.`
+    const languageRule = language === 'auto'
+      ? 'Infer the spoken language from the user request and context.'
+      : `Write or translate the spoken text into language code ${language} BEFORE calling generate_audio.`
+    return `Generate speech audio with format: ${format}. ${voiceRule} ${languageRule} Azure detects language from the input text; synthesis does not translate it or force an accent. Only pass the intended spoken text, not these instructions, to generate_audio.`
+  }
   
   // Add attachments to system prompt if provided
   if (mediaParams?.attachments && mediaParams.attachments.length > 0) {

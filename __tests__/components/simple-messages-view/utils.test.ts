@@ -49,6 +49,26 @@ describe('SimpleMessagesView Utils', () => {
       expect(getSystemPromptForActivity('generate-image')).toBe('generate image')
       expect(getSystemPromptForActivity('unknown')).toBe('answer')
     })
+
+    it('lets the agent choose voice and language for legacy or auto audio parameters', () => {
+      for (const audioParameters of [undefined, { format: 'MP3' as const }, { format: 'MP3' as const, voice: 'auto' as const, language: 'auto' as const }]) {
+        const prompt = getSystemPromptForActivity('generate-audio', { audioParameters })
+        expect(prompt).toContain('Choose a suitable listed voice')
+        expect(prompt).toContain('Infer the spoken language')
+        expect(prompt).not.toContain('Use the user-selected voice: auto')
+      }
+    })
+
+    it('passes explicit speech preferences as agent instructions, not spoken text', () => {
+      const prompt = getSystemPromptForActivity('generate-audio', {
+        audioParameters: { format: 'WAV', voice: 'nova', language: 'fr' },
+      })
+      expect(prompt).toContain('format: WAV')
+      expect(prompt).toContain('Use the user-selected voice: nova')
+      expect(prompt).toContain('language code fr BEFORE calling generate_audio')
+      expect(prompt).toContain('synthesis does not translate')
+      expect(prompt).toContain('not these instructions')
+    })
   })
 
   describe('removeDuplicateSteps', () => {

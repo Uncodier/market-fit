@@ -1,5 +1,9 @@
 import { describe, expect, it } from "@jest/globals"
-import { strengthenImprentaAssistantPayload } from "@/app/api/robots/instance/assistant/imprenta-contract"
+import {
+  ImprentaContractValidationError,
+  strengthenImprentaAssistantPayload,
+} from "@/app/api/robots/instance/assistant/imprenta-contract"
+import { SPEECH_LANGUAGE_VALUES, SPEECH_VOICE_VALUES } from "@/lib/ai/speech-options"
 
 const node = {
   id: "22222222-2222-4222-8222-222222222222",
@@ -119,6 +123,153 @@ describe("strengthenImprentaAssistantPayload", () => {
     expect(result.tool_overrides).toEqual({
       generate_audio: { format: "wav" },
     })
+  })
+
+  it("binds explicit persisted speech selections over stale context and overrides", () => {
+    const result = strengthenImprentaAssistantPayload({
+      instance_node_id: node.id,
+      context: JSON.stringify({ parameters: { voice: "echo", language: "en" } }),
+      tool_overrides: {
+        generate_audio: { voice: "alloy", language: "fr", speed: 1.2 },
+        generate_video: { duration: 8 },
+        publish: { is_test: true },
+      },
+    }, {
+      ...node,
+      type: "generate-audio",
+      settings: { parameters: { voice: " NOVA ", language: " ES ", format: "aac" } },
+    })
+    expect(result.tool_overrides).toEqual({
+      generate_audio: { voice: "nova", language: "es", speed: 1.2, format: "aac" },
+      publish: { is_test: true },
+    })
+    expect(JSON.parse(String(result.context)).parameters).toEqual({
+      voice: "nova", language: "es", format: "aac",
+    })
+  })
+
+  it.each([{}, { voice: undefined, language: undefined }, { voice: "auto", language: "auto" }, { format: "mp3" }])(
+    "clears stale overrides and context for saved default/auto parameters %j", (parameters) => {
+      const result = strengthenImprentaAssistantPayload({
+        instance_node_id: node.id,
+        context: JSON.stringify({ parameters: { voice: "fable", language: "ru" } }),
+        tool_overrides: { generate_audio: { voice: "echo", language: "fr", speed: 1 } },
+      }, { ...node, type: "generate-audio", settings: { parameters } })
+      const override = (result.tool_overrides as Record<string, Record<string, unknown>>).generate_audio
+      expect(override).not.toHaveProperty("voice")
+      expect(override).not.toHaveProperty("language")
+      expect(override.speed).toBe(1)
+      expect(JSON.parse(String(result.context)).parameters).toMatchObject({ voice: "auto", language: "auto" })
+    },
+  )
+
+  it("resets only the auto field while enforcing the explicitly selected field", () => {
+    const result = strengthenImprentaAssistantPayload({
+      instance_node_id: node.id,
+      context: { nodeType: "generate-audio", parameters: { voice: "auto", language: "ja" } },
+      tool_overrides: { generate_audio: { voice: "echo", language: "en" } },
+    })
+    expect(result.tool_overrides).toEqual({ generate_audio: { language: "ja" } })
+  })
+
+  it("uses explicit context parameters only when persisted parameters are absent", () => {
+    const result = strengthenImprentaAssistantPayload({
+      instance_node_id: node.id,
+      context: { parameters: { voice: "shimmer", language: "uk" } },
+      tool_overrides: { generate_audio: { voice: "echo", language: "en" } },
+    }, { ...node, type: "generate-audio", settings: {} })
+    expect(result.tool_overrides).toEqual({ generate_audio: { voice: "shimmer", language: "uk" } })
+  })
+
+  it("resets fallback context defaults without forcing model speech choices", () => {
+    const result = strengthenImprentaAssistantPayload({
+      instance_node_id: node.id,
+      context: { nodeType: "generate-audio", parameters: {} },
+      tool_overrides: { generate_audio: { voice: "alloy", language: "en" } },
+    })
+    expect(result.tool_overrides).toEqual({ generate_audio: {} })
+    expect(JSON.parse(String(result.context)).parameters).toEqual({ voice: "auto", language: "auto" })
+  })
+
+  it("leaves default nodes with no selections unbound", () => {
+    const result = strengthenImprentaAssistantPayload({ instance_node_id: node.id }, {
+      ...node, type: "generate-audio", settings: {},
+    })
+    expect(result.tool_overrides).toEqual({ generate_audio: {} })
+    expect(JSON.parse(String(result.context))).not.toHaveProperty("parameters")
+  })
+
+  it("preserves valid explicit legacy overrides without inventing default parameters", () => {
+    const result = strengthenImprentaAssistantPayload({
+      instance_node_id: node.id,
+      tool_overrides: { generate_audio: { voice: " ONYX ", language: " DE ", format: "ogg" } },
+    }, { ...node, type: "generate-audio", settings: {} })
+    expect(result.tool_overrides).toEqual({ generate_audio: { voice: "onyx", language: "de", format: "opus" } })
+    expect(JSON.parse(String(result.context))).not.toHaveProperty("parameters")
+    expect(strengthenImprentaAssistantPayload(result, {
+      ...node, type: "generate-audio", settings: {},
+    }).tool_overrides).toEqual(result.tool_overrides)
+    const auto = strengthenImprentaAssistantPayload({
+      instance_node_id: node.id,
+      context: { nodeType: "generate-audio" },
+      tool_overrides: { generate_audio: { voice: "auto", language: "auto" } },
+    })
+    expect(auto.tool_overrides).toEqual({ generate_audio: {} })
+  })
+
+  it.each(SPEECH_VOICE_VALUES)("accepts supported voice %s", (voice) => {
+    const result = strengthenImprentaAssistantPayload({
+      instance_node_id: node.id,
+      context: { nodeType: "generate-audio", parameters: { voice } },
+    })
+    expect(result.tool_overrides).toEqual({ generate_audio: voice === "auto" ? {} : { voice } })
+  })
+
+  it.each(SPEECH_LANGUAGE_VALUES)("accepts supported language %s", (language) => {
+    const result = strengthenImprentaAssistantPayload({
+      instance_node_id: node.id,
+      context: { nodeType: "generate-audio", parameters: { language } },
+    })
+    expect(result.tool_overrides).toEqual({ generate_audio: language === "auto" ? {} : { language } })
+  })
+
+  it.each(["mp3", "pcm", "wav", "opus", "aac", "flac", "ogg"])(
+    "normalizes the actual audio format %s", (format) => {
+      const result = strengthenImprentaAssistantPayload({
+        instance_node_id: node.id,
+        context: { nodeType: "generate-audio", parameters: { format: format.toUpperCase() } },
+      })
+      expect(result.tool_overrides).toEqual({ generate_audio: { format: format === "ogg" ? "opus" : format } })
+    },
+  )
+
+  it.each(["unsupported", "", "   ", 42, false, null, {}, ["nova"]])(
+    "rejects invalid speech selections %j with a safe 400 error", (value) => {
+      for (const field of ["voice", "language"]) {
+        const build = () => strengthenImprentaAssistantPayload({
+          instance_node_id: node.id,
+          context: { nodeType: "generate-audio", parameters: { [field]: value } },
+        })
+        expect(build).toThrow(ImprentaContractValidationError)
+        try { build() } catch (error) {
+          expect((error as ImprentaContractValidationError).status).toBe(400)
+        }
+      }
+    },
+  )
+
+  it("rejects invalid legacy overrides but ignores stale invalid selections on reset", () => {
+    expect(() => strengthenImprentaAssistantPayload({
+      instance_node_id: node.id,
+      context: { nodeType: "generate-audio" },
+      tool_overrides: { generate_audio: { voice: 42 } },
+    })).toThrow(ImprentaContractValidationError)
+    const result = strengthenImprentaAssistantPayload({
+      instance_node_id: node.id,
+      context: { parameters: { voice: 42, language: false } },
+      tool_overrides: { generate_audio: { voice: {}, language: [] } },
+    }, { ...node, type: "generate-audio", settings: { parameters: {} } })
+    expect(result.tool_overrides).toEqual({ generate_audio: {} })
   })
 
   it("leaves non-node assistant requests untouched", () => {

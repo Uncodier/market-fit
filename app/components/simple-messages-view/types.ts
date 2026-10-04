@@ -1,3 +1,5 @@
+import type { SpeechLanguage, SpeechVoice } from "@/lib/ai/speech-options"
+
 export interface SimpleMessagesViewProps {
   className?: string
   activeRobotInstance?: any
@@ -25,6 +27,8 @@ export interface VideoParameters {
 export interface AudioParameters {
   format: 'MP3' | 'WAV'
   expectedResults?: number
+  voice?: SpeechVoice
+  language?: SpeechLanguage
 }
 
 export interface TextParameters {

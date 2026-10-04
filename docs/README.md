@@ -21,6 +21,7 @@ Use the guides below before relying on older implementation notes.
 
 ## Integration guides
 
+- [Content Creator speech voice/language options](CONTENT_CREATOR_AUDIO.md)
 - [Agent channel phone numbers](AGENT_CHANNEL_NUMBERS.md)
 - [Accounting integrity and rollout](ACCOUNTING.md)
 - [POS inventory availability and backorder markers](POS_INVENTORY.md)
