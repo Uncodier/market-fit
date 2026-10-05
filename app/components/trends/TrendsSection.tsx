@@ -29,6 +29,8 @@ export function TrendsSection({ className = "", segments, currentSiteId, context
   const { trends, isLoading, lastUpdated, platformErrors, error, status, contextKey, canRequest, refresh } = useTrendsResults({
     currentSiteId, segments, contextReady, sortBy, view: 'section'
   })
+  // Keep the original loading layout while context resolves, without starting a request early.
+  const showSkeleton = !canRequest || isLoading
   const [selection, setSelection] = useState<{ trend: TrendItem; key: string } | null>(null)
   if (selection && selection.key !== contextKey) setSelection(null)
   const selectedTrend = selection?.key === contextKey ? trends.find(trend => trend.id === selection.trend.id) ?? null : null
@@ -118,7 +120,7 @@ export function TrendsSection({ className = "", segments, currentSiteId, context
                 aria-label="Refresh trends"
                 className="h-8 w-8 p-0"
               >
-                {isLoading ? (
+                {showSkeleton ? (
                   <Loader className="h-4 w-4" />
                 ) : (
                   <RotateCcw className="h-4 w-4" />
@@ -136,10 +138,10 @@ export function TrendsSection({ className = "", segments, currentSiteId, context
         {displayMode === 'table' ? (
           <>
             {/* Retain pagination preferences on retry without displaying old results. */}
-            <div hidden={isLoading || trends.length === 0}>
+            <div hidden={showSkeleton || trends.length === 0}>
               <TrendsTable key={contextKey} trends={trends} onTrendClick={handleTrendClick} />
             </div>
-            {isLoading ? <TrendsTableSkeleton /> : trends.length === 0 && (
+            {showSkeleton ? <TrendsTableSkeleton /> : trends.length === 0 && (
               <CardContent className="pt-0">
                 <TrendsEmptyState canRequest={canRequest} failed={status === 'failed'} onRetry={handleRefresh} />
               </CardContent>
@@ -147,7 +149,7 @@ export function TrendsSection({ className = "", segments, currentSiteId, context
           </>
         ) : (
           <CardContent className="pt-0">
-            {isLoading ? (
+            {showSkeleton ? (
               <TrendsGridSkeleton />
             ) : trends.length > 0 ? (
               <ScrollArea className="w-full">

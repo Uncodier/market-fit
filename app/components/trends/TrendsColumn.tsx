@@ -107,6 +107,8 @@ export function TrendsColumn({ className = "", segments, currentSiteId, contextR
   const { trends, isLoading, platformErrors, error, status, contextKey, canRequest, refresh } = useTrendsResults({
     currentSiteId, segments, contextReady, sortBy: 'hotness', view: 'column'
   })
+  // Context preparation uses the same skeleton as loading, not a separate waiting message.
+  const showSkeleton = !canRequest || isLoading
   const [selection, setSelection] = useState<{ trend: TrendItem; key: string } | null>(null)
   if (selection && selection.key !== contextKey) setSelection(null)
   const selectedTrend = selection?.key === contextKey ? trends.find(trend => trend.id === selection.trend.id) ?? null : null
@@ -154,7 +156,7 @@ export function TrendsColumn({ className = "", segments, currentSiteId, contextR
                 aria-label="Refresh trends"
                 className="h-6 w-6 p-0"
               >
-                {isLoading ? (
+                {showSkeleton ? (
                   <LoadingSkeleton size="sm" />
                 ) : (
                   <RotateCcw className="h-3 w-3" />
@@ -168,7 +170,7 @@ export function TrendsColumn({ className = "", segments, currentSiteId, contextR
         </div>
         <div className="bg-muted/30 rounded-b-md p-2 border-b border-x overflow-y-auto min-h-0">
           {!isLoading && canRequest && <TrendsAvailability platformErrors={platformErrors} error={error} failed={status === 'failed'} />}
-          {isLoading ? (
+          {showSkeleton ? (
             renderTrendsSkeleton()
           ) : trends.length > 0 ? (
             <>

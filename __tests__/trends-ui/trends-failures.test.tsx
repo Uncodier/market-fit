@@ -38,8 +38,8 @@ function deferred() {
 
 const views = ['table', 'cards', 'column'] as const
 type View = typeof views[number]
-function ui(view: View, site: string | undefined = 'site-a', nextSegments: typeof segments | undefined = segments, contextReady = true) {
-  const props = { currentSiteId: site, segments: nextSegments, contextReady }
+function ui(view: View, site: string | null = 'site-a', nextSegments: typeof segments | undefined = segments, contextReady = true) {
+  const props = { currentSiteId: site ?? undefined, segments: nextSegments, contextReady }
   return view === 'column' ? <TrendsColumn {...props} /> : <TrendsSection {...props} displayMode={view} />
 }
 
@@ -154,10 +154,38 @@ describe.each(views)('%s trends failures', view => {
     expect(toast.error).not.toHaveBeenCalled()
   })
 
+  it('keeps the same skeleton while context resolves and the provider request loads', async () => {
+    const pending = deferred()
+    getAllTrends.mockReturnValue(pending.promise)
+    const { container, rerender } = render(ui(view, 'default'))
+    const skeletonMarkup = () => Array.from(container.querySelectorAll('.animate-pulse'))
+      .map(element => element.outerHTML)
+    const initialSkeleton = skeletonMarkup()
+    expect(initialSkeleton.length).toBeGreaterThan(0)
+    expect(screen.queryByText('Waiting for site context')).not.toBeInTheDocument()
+    expect(screen.queryByText(/Trends will load when/)).not.toBeInTheDocument()
+
+    rerender(ui(view, null))
+    expect(skeletonMarkup()).toEqual(initialSkeleton)
+    rerender(ui(view, 'site-a', segments, false))
+    expect(skeletonMarkup()).toEqual(initialSkeleton)
+    await act(async () => {})
+    expect(getAllTrends).not.toHaveBeenCalled()
+    expect(screen.getByRole('button', { name: 'Refresh trends' })).toBeDisabled()
+
+    rerender(ui(view))
+    await waitFor(() => expect(getAllTrends).toHaveBeenCalledTimes(1))
+    expect(skeletonMarkup()).toEqual(initialSkeleton)
+    expect(screen.queryByText('Waiting for site context')).not.toBeInTheDocument()
+    await act(async () => pending.resolve(success()))
+    expect(screen.getByText(trend.title)).toBeInTheDocument()
+    expect(skeletonMarkup()).toHaveLength(0)
+  })
+
   it('gates missing/default sites and pending context, with stable-value segments avoiding repeats', async () => {
     getAllTrends.mockResolvedValue(success())
     const { rerender } = render(ui(view, 'default'))
-    rerender(ui(view, undefined))
+    rerender(ui(view, null))
     rerender(ui(view, 'site-a', segments, false))
     await act(async () => {})
     expect(getAllTrends).not.toHaveBeenCalled()

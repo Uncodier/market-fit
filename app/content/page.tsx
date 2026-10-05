@@ -40,7 +40,7 @@ import { cn } from "@/lib/utils"
 
 export default function ContentPage() {
   const { t } = useLocalization()
-  const { currentSite, getSettings } = useSite()
+  const { currentSite, getSettings, isLoading: isSiteLoading } = useSite()
   const { isLayoutCollapsed } = useLayout()
   const isMobile = useIsMobile()
   const router = useRouter()
@@ -101,7 +101,7 @@ export default function ContentPage() {
   const contentItems = contentData?.content || [];
   const totalContent = contentData?.count || 0;
   const assetsByContentId = contentData?.assetsByContentId || {};
-  const isLoading = isContentLoading;
+  const isLoading = isSiteLoading || !currentSite?.id || isContentLoading;
 
   const [socialMedia, setSocialMedia] = useState<any[]>([])
   const [error, setError] = useState<string | null>(null)

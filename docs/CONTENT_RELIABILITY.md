@@ -14,6 +14,12 @@ crash; it does not prove the original dependency is healthy.
 
 ## Trends
 
+The Content list retains its existing table/Kanban skeleton while the site context
+resolves and the first content request is loading. A disabled SWR key during site
+initialization is not interpreted as a completed empty content list. Once data
+loads, confirmed empty columns use their normal empty state; cached content is
+not replaced by a skeleton for a background refresh.
+
 The public service entry point remains `app/services/trends-service.ts`;
 provider requests, normalization, caching and ranking live in
 `app/services/trends/`. The browser adapts stored segment data to the existing
@@ -35,6 +41,12 @@ The UI shows these errors inline rather than repeatedly emitting error toasts,
 and hides old-context results after navigation or refresh failure. Provider
 transformations do not invent posts or random engagement metrics.
 
+While site/segment context resolves, Trends retains the same existing table,
+cards or column skeleton used during the provider request. It does not replace
+that layout with a waiting/loading message. Requests and refresh remain gated
+until the context is ready; settled failures and empty results keep their distinct
+recoverable states.
+
 Only Google and Reddit are active trend providers. Twitter/X Trends has been
 removed from requests, provider badges, results and availability notices. Its
 service and `/api/trends/twitter` route are retired; even an explicit manager
@@ -44,7 +56,7 @@ required. Connected Twitter/X social publishing accounts are unaffected.
 ## Regression validation
 
 ```sh
-npm test -- --runInBand __tests__/content/use-content-data.test.tsx __tests__/content/content-item-load-error.test.tsx __tests__/trends __tests__/trends-ui __tests__/api/provider-response-cache.test.ts
+npm test -- --runInBand __tests__/content/content-page-loading.test.tsx __tests__/content/use-content-data.test.tsx __tests__/content/content-item-load-error.test.tsx __tests__/trends __tests__/trends-ui __tests__/api/provider-response-cache.test.ts
 npm run typecheck
 ```
 
