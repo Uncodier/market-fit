@@ -3,6 +3,7 @@
 import { createClient, createServiceClient } from "@/lib/supabase/server"
 import { revalidatePath } from "next/cache"
 import type { ModifierGroupWithItems } from "./modifier-types"
+import { requirePosSiteAccess } from "@/app/pos/actions/site-access"
 
 export async function listModifierGroups(siteId: string, q?: string) {
   const supabase = await createClient()
@@ -285,8 +286,12 @@ export async function listAllModifierGroupsForPos(siteId: string): Promise<{
   data: Record<string, ModifierGroupWithItems[]>
   error?: string
 }> {
-  // Service role: POS pull must include modifiers even when nested joins hit RLS edge cases
-  const supabase = await createServiceClient(true)
+  const access = await requirePosSiteAccess(siteId)
+  if (!("supabase" in access)) return { data: {}, error: access.error }
+  // Keep demo reads isolated. Real POS joins retain the authorized service-role path.
+  const supabase = access.supabase._isDemo === true
+    ? access.supabase
+    : await createServiceClient(true)
 
   const { data: links, error: linksError } = await supabase
     .from("catalog_item_modifier_groups")

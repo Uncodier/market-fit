@@ -54,6 +54,25 @@ payment, shipment and inventory-decrement behavior remains unchanged. Automatic
 replenishment/fulfillment, stock reservation across offline carts, and atomic
 protection against concurrent checkouts are not introduced by this change.
 
+## Demo POS data
+
+The three built-in demo sites load POS catalog snapshots through the existing
+demo client. Its `current_user_site_role` RPC resolves the seeded user's role
+only within the selected demo; other demo sites, real site IDs, unknown demos,
+and archived sites do not grant access. Real POS authorization is unchanged.
+POS modifier reads authorize the requested site before using a service client
+for real accounts; demos reuse the authorized in-memory client and never query
+real Supabase for modifiers.
+
+HabitUall includes four POS items and two locations; SaaS includes the onboarding
+service and one location. Both use explicit always-available items. Ecommerce
+includes six top-level products, two variants, and seven stock rows totaling
+152 units across two locations. Each demo has an active POS price list.
+
+The snapshot regression test uses the real demo query client and catalog,
+inventory, pricing, and tax actions, replacing only the Supabase client factory
+and Redis transport. Demo data is not evidence of a real authenticated sale.
+
 ## Verification
 
 ```bash

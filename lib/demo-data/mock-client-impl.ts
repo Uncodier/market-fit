@@ -1,5 +1,6 @@
 import { getDemoData } from "./index";
 import { applyNotFilter, applySelectEmbeds, getRowValue } from "./mock-query";
+import { getDemoSiteRole } from "./site-role";
 import {
   mutateDemoOrderLineUnits,
   cascadeDeleteDemoOrderItems,
@@ -63,7 +64,7 @@ const getMemoryCache = (siteId: string, demoData: any) => {
 };
 
 /**
- * Crea un cliente mock para el MODO DEMO, utilizando datos simulados
+ * Create an in-memory client for the selected demo.
  */
 export async function createDemoMockClientImpl(demoSiteId: string) {
   const baseDemoData = await getDemoData(demoSiteId);
@@ -452,6 +453,10 @@ export async function createDemoMockClientImpl(demoSiteId: string) {
     },
     rpc: (fn: string, params: any) => {
        console.log(`🤖 DEMO RPC INTERCEPT: ${fn}`, params);
+       if (fn === "current_user_site_role") {
+         const role = getDemoSiteRole(memoryData, demoSiteId, session?.user.id, params?.p_site_id);
+         return Promise.resolve({ data: role, error: null });
+       }
        if (fn === "get_my_accessible_sites") {
          return Promise.resolve({ data: memoryData.sites || [], error: null });
        }
