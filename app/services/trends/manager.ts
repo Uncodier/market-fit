@@ -2,6 +2,7 @@ import type {
   AggregatedTrendsResponse, TrendFetchOptions, TrendItem, TrendPlatform,
   TrendResponse, TrendSegment, TrendService, TrendSortBy,
 } from '@/app/types/trends'
+import { ACTIVE_TREND_PLATFORMS } from '@/app/types/trends'
 import { generateCommercialKeywords } from './commercial-keywords'
 import { GoogleTrendsService } from './google-service'
 import { failedTrendResponse } from './provider-request'
@@ -9,7 +10,6 @@ import { RedditTrendsService } from './reddit-service'
 import { enhanceRelevanceScoring } from './relevance'
 import { normalizeLimit, normalizeScoringSegments } from './request-normalization'
 import { calculateAdvancedScoring } from './scoring'
-import { TwitterTrendsService } from './twitter-service'
 
 export class TrendsManager {
   private services: Map<TrendPlatform, TrendService>
@@ -18,7 +18,6 @@ export class TrendsManager {
     this.services = new Map<TrendPlatform, TrendService>([
       ['google', new GoogleTrendsService({ limit: 15 })],
       ['reddit', new RedditTrendsService({ limit: 15 })],
-      ['twitter', new TwitterTrendsService({ limit: 15 })],
     ])
   }
 
@@ -103,7 +102,7 @@ export class TrendsManager {
   }
 
   getEnabledPlatforms(): TrendPlatform[] {
-    return Array.from(this.services.keys()).filter(platform => this.services.get(platform)?.isEnabled)
+    return ACTIVE_TREND_PLATFORMS.filter(platform => this.services.get(platform)?.isEnabled)
   }
 
   enablePlatform(platform: TrendPlatform, enabled = true) {

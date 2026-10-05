@@ -2,19 +2,15 @@ import type { TrendFetchOptions, TrendItem, TrendPlatform, TrendResponse } from 
 
 export const FAILURE_COOLDOWN_MS = 30_000
 export const SUCCESS_CACHE_MS = 5 * 60_000
-export const PROVIDER_TIMEOUT_MS = { google: 75_000, reddit: 25_000, twitter: 15_000 } as const
+export const PROVIDER_TIMEOUT_MS = { google: 75_000, reddit: 25_000 } as const
 
-const labels: Partial<Record<TrendPlatform, string>> = { google: 'Google', reddit: 'Reddit', twitter: 'Twitter' }
+const labels: Partial<Record<TrendPlatform, string>> = { google: 'Google', reddit: 'Reddit' }
 
 class TrendRequestError extends Error {}
 
-function safeProviderMessage(platform: TrendPlatform, status: number, body: unknown): string {
+function safeProviderMessage(platform: TrendPlatform, status: number): string {
   const label = labels[platform] ?? platform
-  const error = body && typeof body === 'object' && 'error' in body ? body.error : undefined
   // Never consume arbitrary error/details fields, including on otherwise successful responses.
-  if (platform === 'twitter' && status === 503 && (
-    error === 'Twitter integration is not configured' || error === 'Twitter trends are being refreshed'
-  )) return error
   if (status === 401) return `Authentication required to fetch ${label} trends`
   if (status === 403) return `Access denied to ${label} trends`
   if (status === 400) return `Invalid ${label} trends request`
@@ -48,10 +44,10 @@ async function postTrends(platform: keyof typeof PROVIDER_TIMEOUT_MS, payload: o
         })
         let body: unknown
         try { body = await response.json() } catch {
-          throw new TrendRequestError(safeProviderMessage(platform, response.status, undefined))
+          throw new TrendRequestError(safeProviderMessage(platform, response.status))
         }
         if (!response.ok || (body && typeof body === 'object' && 'success' in body && body.success === false)) {
-          throw new TrendRequestError(safeProviderMessage(platform, response.status, body))
+          throw new TrendRequestError(safeProviderMessage(platform, response.status))
         }
         if (!body || typeof body !== 'object' || !('trends' in body) || !Array.isArray(body.trends)) {
           throw new TrendRequestError(`Invalid ${labels[platform]} trends response`)

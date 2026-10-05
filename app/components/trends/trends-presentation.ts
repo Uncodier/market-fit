@@ -1,13 +1,16 @@
 import type { TrendItem, TrendPlatform } from "@/app/types/trends"
+import { ACTIVE_TREND_PLATFORMS } from "@/app/types/trends"
 
 export type TrendsSegments = Array<{ id: string; name: string; description?: string }>
 export type TrendsSort = 'relevance' | 'hotness' | 'viral' | 'impact' | 'cross-platform' | 'recent'
-export const TRENDS_PLATFORMS: TrendPlatform[] = ['google', 'reddit', 'twitter']
+export const TRENDS_PLATFORMS = ACTIVE_TREND_PLATFORMS
 
 // Preserve each view's existing selection and ordering of successful results.
 export function selectTrends(trends: TrendItem[], view: 'section' | 'column'): TrendItem[] {
   const grouped = trends.reduce((groups, trend) => {
-    (groups[trend.platform] ??= []).push(trend)
+    if (TRENDS_PLATFORMS.includes(trend.platform)) {
+      (groups[trend.platform] ??= []).push(trend)
+    }
     return groups
   }, {} as Partial<Record<TrendPlatform, TrendItem[]>>)
 

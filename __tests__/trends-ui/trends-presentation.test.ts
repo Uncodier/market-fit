@@ -9,19 +9,19 @@ function items(platform: TrendPlatform, count: number): TrendItem[] {
 }
 
 it('keeps section provider order and selects the first ten sorted items from each', () => {
-  const original = [...items('twitter', 12), ...items('google', 11), ...items('reddit', 2)]
+  const original = [...items('reddit', 12), ...items('google', 11), ...items('twitter', 2)]
   const selected = selectTrends(original, 'section')
   expect(selected.map(trend => trend.id)).toEqual([
-    ...items('twitter', 10), ...items('google', 10), ...items('reddit', 2)
+    ...items('reddit', 10), ...items('google', 10)
   ].map(trend => trend.id))
   expect(original).toHaveLength(25)
 })
 
 it('keeps column top-five per provider and relevance/score ordering', () => {
   const selected = selectTrends([...items('twitter', 8), ...items('reddit', 8), ...items('google', 8)], 'column')
-  expect(selected).toHaveLength(15)
+  expect(selected).toHaveLength(10)
   expect(selected.slice(0, 5).map(trend => trend.id)).toEqual(items('reddit', 5).map(trend => trend.id))
   expect(selected[5].id).toBe('google-0')
-  expect(selected[6].id).toBe('twitter-0')
+  expect(selected.every(trend => trend.platform !== 'twitter')).toBe(true)
   expect(selected.some(trend => trend.id.endsWith('-5'))).toBe(false)
 })

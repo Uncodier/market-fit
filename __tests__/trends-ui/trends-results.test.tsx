@@ -22,7 +22,7 @@ it('allows a ready standalone context with optional segments omitted', async () 
   getAllTrends.mockResolvedValue(success)
   const { result } = renderHook(() => useTrendsResults(options))
   await waitFor(() => expect(result.current.status).toBe('success'))
-  expect(getAllTrends).toHaveBeenCalledWith(['google', 'reddit', 'twitter'], [], {
+  expect(getAllTrends).toHaveBeenCalledWith(['google', 'reddit'], [], {
     limitPerPlatform: 15, sortBy: 'relevance', forceRefresh: false
   })
 })
@@ -90,7 +90,7 @@ it('ignores stale responses after unmount and cancels unstarted requests', async
 })
 
 it('does not treat success:true with all failed providers as healthy', async () => {
-  getAllTrends.mockResolvedValue({ ...success, platformErrors: { google: 'Timed out', reddit: 'Unavailable', twitter: 'Unavailable' } })
+  getAllTrends.mockResolvedValue({ ...success, platformErrors: { google: 'Timed out', reddit: 'Unavailable' } })
   const { result } = renderHook(() => useTrendsResults(options))
   await waitFor(() => expect(result.current.status).toBe('failed'))
   expect(result.current.trends).toEqual([])

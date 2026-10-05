@@ -9,7 +9,7 @@ import { LoadingSkeleton } from "@/app/components/ui/loading-skeleton"
 import { TrendDetailModal } from "./TrendDetailModal"
 import { TrendItem } from "@/app/types/trends"
 import { TrendingUp, TrendingDown, RotateCcw, ExternalLink } from "@/app/components/ui/icons"
-import { cleanHtmlContent, type TrendsSegments } from "./trends-presentation"
+import { cleanHtmlContent, TRENDS_PLATFORMS, type TrendsSegments } from "./trends-presentation"
 import { useTrendsResults } from "./use-trends-results"
 import { TrendsAvailability, TrendsEmptyState } from "./TrendsAvailability"
 
@@ -118,7 +118,7 @@ export function TrendsColumn({ className = "", segments, currentSiteId, contextR
 
   const renderTrendsSkeleton = () => (
     <>
-      {Array.from({ length: 9 }).map((_, i) => ( // 3 platforms × 3 trends each = 9 total
+      {Array.from({ length: TRENDS_PLATFORMS.length * 3 }).map((_, i) => (
         <Card key={i} className="mb-2">
           <CardContent className="p-3">
             <div className="flex items-start justify-between mb-2">

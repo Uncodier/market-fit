@@ -2,6 +2,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/app/components/ui/alert"
 import { Button } from "@/app/components/ui/button"
 import { RotateCcw, TrendingUp } from "@/app/components/ui/icons"
 import type { AggregatedTrendsResponse, TrendPlatform } from "@/app/types/trends"
+import { TRENDS_PLATFORMS } from "./trends-presentation"
 
 const PLATFORM_NAMES: Record<TrendPlatform, string> = {
   google: 'Google Trends', reddit: 'Reddit', twitter: 'Twitter', linkedin: 'LinkedIn',
@@ -13,7 +14,7 @@ export function TrendsAvailability({ platformErrors, error, failed }: {
   error?: string
   failed: boolean
 }) {
-  const failures = Object.entries(platformErrors)
+  const failures = Object.entries(platformErrors).filter(([platform]) => TRENDS_PLATFORMS.includes(platform as TrendPlatform))
   if (!failed && failures.length === 0) return null
   return (
     <Alert role="status" aria-live="polite" className="mb-3">

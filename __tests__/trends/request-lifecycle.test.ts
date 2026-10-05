@@ -1,6 +1,5 @@
 /** @jest-environment node */
 import { GoogleTrendsService, RedditTrendsService, TrendsManager } from '@/app/services/trends-service'
-import { TwitterTrendsService } from '@/app/services/trends/twitter-service'
 import { FAILURE_COOLDOWN_MS, PROVIDER_TIMEOUT_MS, SUCCESS_CACHE_MS } from '@/app/services/trends/provider-request'
 import type { TrendSegment } from '@/app/types/trends'
 
@@ -22,10 +21,10 @@ describe('trend request lifecycle and safe failures', () => {
     jest.restoreAllMocks()
   })
 
-  it('deduplicates failures in-flight and cools them down without permanently disabling Twitter', async () => {
+  it('deduplicates failures in-flight and cools them down without permanently disabling Reddit', async () => {
     jest.useFakeTimers()
-    fetchMock.mockResolvedValue(Response.json({ success: false, error: 'Twitter integration is not configured' }, { status: 503 }))
-    const service = new TwitterTrendsService()
+    fetchMock.mockResolvedValue(Response.json({ success: false, error: 'Provider unavailable' }, { status: 503 }))
+    const service = new RedditTrendsService()
     const results = await Promise.all([service.fetchTrends(), service.fetchTrends(), service.fetchTrends()])
     expect(results.every(result => !result.success)).toBe(true)
     expect(fetchMock).toHaveBeenCalledTimes(1)
@@ -34,42 +33,42 @@ describe('trend request lifecycle and safe failures', () => {
     await service.fetchTrends()
     expect(fetchMock).toHaveBeenCalledTimes(1)
     jest.advanceTimersByTime(1)
-    fetchMock.mockResolvedValue(Response.json({ success: true, trends: [{ name: '#Real', tweet_volume: 1200 }] }))
+    fetchMock.mockResolvedValue(Response.json(redditResult))
     expect((await service.fetchTrends()).success).toBe(true)
     expect(service.isEnabled).toBe(true)
     expect(fetchMock).toHaveBeenCalledTimes(2)
   })
 
   it('permits a manual retry during cooldown but still shares simultaneous manual retries', async () => {
-    fetchMock.mockImplementation(async () => Response.json({ success: false, error: 'Twitter trends are being refreshed' }, { status: 503 }))
+    fetchMock.mockImplementation(async () => Response.json({ success: false, error: 'Provider is being refreshed' }, { status: 503 }))
     const manager = new TrendsManager()
-    expect((await manager.getAllTrends(['twitter'])).success).toBe(false)
+    expect((await manager.getAllTrends(['reddit'])).success).toBe(false)
     const results = await Promise.all([
-      manager.getAllTrends(['twitter'], undefined, { forceRefresh: true }),
-      manager.getAllTrends(['twitter'], undefined, { forceRefresh: true }),
+      manager.getAllTrends(['reddit'], undefined, { forceRefresh: true }),
+      manager.getAllTrends(['reddit'], undefined, { forceRefresh: true }),
     ])
-    expect(results.every(result => result.platformErrors?.twitter === 'Twitter trends are being refreshed')).toBe(true)
+    expect(results.every(result => result.platformErrors?.reddit === 'Reddit trends are temporarily unavailable')).toBe(true)
     expect(fetchMock).toHaveBeenCalledTimes(2)
   })
 
   it.each([
-    [401, 'Authentication required to fetch Twitter trends'],
-    [403, 'Access denied to Twitter trends'],
-    [400, 'Invalid Twitter trends request'],
-    [413, 'Twitter trends request is too large'],
-    [429, 'Twitter trends rate limit reached. Please try again later'],
-    [502, 'Failed to fetch Twitter trends'],
-    [503, 'Twitter trends are temporarily unavailable'],
-    [500, 'Failed to fetch Twitter trends'],
+    [401, 'Authentication required to fetch Reddit trends'],
+    [403, 'Access denied to Reddit trends'],
+    [400, 'Invalid Reddit trends request'],
+    [413, 'Reddit trends request is too large'],
+    [429, 'Reddit trends rate limit reached. Please try again later'],
+    [502, 'Failed to fetch Reddit trends'],
+    [503, 'Reddit trends are temporarily unavailable'],
+    [500, 'Failed to fetch Reddit trends'],
   ])('uses fixed status errors, never raw body/details, for HTTP %i', async (status, error) => {
     fetchMock.mockResolvedValue(Response.json({ error: 'sensitive provider token/stack', details: 'private data' }, { status }))
-    expect(await new TwitterTrendsService().fetchTrends()).toMatchObject({ success: false, error })
+    expect(await new RedditTrendsService().fetchTrends()).toMatchObject({ success: false, error })
     expect(fetchMock).toHaveBeenCalledTimes(1)
   })
 
-  it('does not trust an allowlisted Twitter message on the wrong status', async () => {
-    fetchMock.mockResolvedValue(Response.json({ success: false, error: 'Twitter integration is not configured' }, { status: 500 }))
-    expect(await new TwitterTrendsService().fetchTrends()).toMatchObject({ error: 'Failed to fetch Twitter trends' })
+  it('does not trust a provider message on the wrong status', async () => {
+    fetchMock.mockResolvedValue(Response.json({ success: false, error: 'Reddit trends are temporarily unavailable' }, { status: 500 }))
+    expect(await new RedditTrendsService().fetchTrends()).toMatchObject({ error: 'Failed to fetch Reddit trends' })
   })
 
   it('does not treat success:false in a 200 body as success or pass through its raw error', async () => {
@@ -84,11 +83,11 @@ describe('trend request lifecycle and safe failures', () => {
     fetchMock.mockRejectedValueOnce(new Error('private network token'))
     expect(await new GoogleTrendsService().fetchTrends()).toMatchObject({ success: false, error: 'Invalid Google trends response' })
     expect(await new RedditTrendsService().fetchTrends()).toMatchObject({ success: false, error: 'Access denied to Reddit trends' })
-    expect(await new TwitterTrendsService().fetchTrends()).toMatchObject({ success: false, error: 'Failed to fetch Twitter trends' })
+    expect(await new RedditTrendsService().fetchTrends()).toMatchObject({ success: false, error: 'Failed to fetch Reddit trends' })
     expect(consoleError).not.toHaveBeenCalled()
   })
 
-  it.each(['google', 'reddit', 'twitter'] as const)('bounds %s fetch waits, aborts, and never retries automatically', async platform => {
+  it.each(['google', 'reddit'] as const)('bounds %s fetch waits, aborts, and never retries automatically', async platform => {
     jest.useFakeTimers()
     fetchMock.mockImplementation(() => new Promise<Response>(() => {}))
     const manager = new TrendsManager()
@@ -107,9 +106,9 @@ describe('trend request lifecycle and safe failures', () => {
   it('also bounds a stalled response body, releasing in-flight state for an explicit retry', async () => {
     jest.useFakeTimers()
     fetchMock.mockResolvedValue({ ok: true, status: 200, json: () => new Promise(() => {}) } as Response)
-    const service = new TwitterTrendsService()
+    const service = new RedditTrendsService()
     const pending = service.fetchTrends()
-    await jest.advanceTimersByTimeAsync(PROVIDER_TIMEOUT_MS.twitter)
+    await jest.advanceTimersByTimeAsync(PROVIDER_TIMEOUT_MS.reddit)
     expect((await pending).error).toContain('timed out')
     fetchMock.mockResolvedValue(Response.json({ success: true, trends: [] }))
     expect((await service.fetchTrends(undefined, { forceRefresh: true })).success).toBe(true)
@@ -186,7 +185,7 @@ describe('trend request lifecycle and safe failures', () => {
   it('reports all network failures via aggregation and allows successful empty results', async () => {
     fetchMock.mockRejectedValue(new Error('private error'))
     expect(await new TrendsManager().getAllTrends()).toMatchObject({ success: false, platformErrors: {
-      google: 'Failed to fetch Google trends', reddit: 'Failed to fetch Reddit trends', twitter: 'Failed to fetch Twitter trends',
+      google: 'Failed to fetch Google trends', reddit: 'Failed to fetch Reddit trends',
     } })
     fetchMock.mockResolvedValue(Response.json({ success: true, trends: [] }))
     expect(await new TrendsManager().getAllTrends(['google'])).toMatchObject({ success: true, data: { trends: [], platforms: ['google'] } })

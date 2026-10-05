@@ -1,10 +1,11 @@
 import { Card, CardContent } from "@/app/components/ui/card"
 import { Skeleton } from "@/app/components/ui/skeleton"
 import { Table, TableHeader, TableBody, TableCell, TableRow, TableHead } from "@/app/components/ui/table"
+import { TRENDS_PLATFORMS } from "./trends-presentation"
 
 export const TrendsGridSkeleton = () => (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-      {Array.from({ length: 18 }).map((_, i) => ( // 3 platforms × 6 trends each = 18 total
+      {Array.from({ length: TRENDS_PLATFORMS.length * 6 }).map((_, i) => (
         <Card key={i} className="h-[140px]">
           <CardContent className="p-4">
             <div className="flex items-start justify-between">

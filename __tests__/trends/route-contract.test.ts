@@ -2,9 +2,7 @@
 import { NextRequest } from 'next/server'
 import { POST as googlePOST } from '@/app/api/trends/google/route'
 import { POST as redditPOST } from '@/app/api/trends/reddit/route'
-import { POST as twitterPOST } from '@/app/api/trends/twitter/route'
 import { GoogleTrendsService, RedditTrendsService, TrendsManager } from '@/app/services/trends-service'
-import { TwitterTrendsService } from '@/app/services/trends/twitter-service'
 import { generateRedditKeywords } from '@/app/services/trends/reddit-keywords'
 import { normalizeSegments } from '@/app/services/trends/request-normalization'
 import type { TrendSegment } from '@/app/types/trends'
@@ -26,7 +24,6 @@ jest.mock('@/lib/redis/upstash-rest', () => ({
 const routes: Record<string, typeof googlePOST> = {
   '/api/trends/google': googlePOST,
   '/api/trends/reddit': redditPOST,
-  '/api/trends/twitter': twitterPOST,
 }
 const rss = `<rss><channel><item>
   <title><![CDATA[Software automation funding announced]]></title>
@@ -61,7 +58,6 @@ describe('real trend service payloads accepted by real route validators', () => 
   let fetchMock: jest.MockedFunction<typeof fetch>
 
   beforeEach(() => {
-    delete process.env.TWITTER_BEARER_TOKEN
     delete process.env.REDDIT_CLIENT_ID
     delete process.env.REDDIT_CLIENT_SECRET
     requests.length = 0
@@ -79,9 +75,6 @@ describe('real trend service payloads accepted by real route validators', () => 
       providerCalls.push(url)
       if (url.startsWith('https://news.google.com/rss/')) return new Response(rss)
       if (url.startsWith('https://www.reddit.com/r/')) return Response.json(redditProviderData)
-      if (url.startsWith('https://api.twitter.com/')) return Response.json([{
-        trends: [{ name: '#Automation', url: 'https://twitter.com/search?q=Automation', query: 'Automation', tweet_volume: null }],
-      }])
       throw new Error(`Unexpected test network request: ${url}`)
     })
     global.fetch = fetchMock
@@ -147,27 +140,26 @@ describe('real trend service payloads accepted by real route validators', () => 
     expect(keywords.slice(0, 2)).toEqual(['software', 'x'.repeat(80)])
   })
 
-  it('sends only woeid/limit, with huge unused segments, and reports real Twitter configuration unavailability quietly', async () => {
+  it('does not request retired Twitter trends even when explicitly enabled or refreshed', async () => {
     const consoleError = jest.spyOn(console, 'error').mockImplementation(() => {})
-    const result = await new TwitterTrendsService().fetchTrends([
-      { id: 'huge', name: 'x'.repeat(20_000), description: 'y'.repeat(20_000) },
-    ])
-    expect(requests).toEqual([{ path: '/api/trends/twitter', body: { woeid: 1, limit: 15 }, status: 503 }])
-    expect(result).toMatchObject({ success: false, error: 'Twitter integration is not configured', platform: 'twitter' })
+    const manager = new TrendsManager()
+    manager.enablePlatform('twitter')
+    const result = await manager.getTrends('twitter', undefined, 15, { forceRefresh: true })
+    expect(result).toMatchObject({ success: false, error: 'Platform twitter is not available', platform: 'twitter' })
     expect(result.data).toBeUndefined()
+    expect(requests).toHaveLength(0)
     expect(providerCalls).toHaveLength(0)
     expect(consoleError).not.toHaveBeenCalled()
   })
 
-  it('retains actual Twitter names/volume and does not invent posts or metrics for missing volume', async () => {
-    process.env.TWITTER_BEARER_TOKEN = 'test-only-token'
-    const result = await new TwitterTrendsService().fetchTrends()
-    expect(requests[0].status).toBe(200)
-    expect(result.data?.[0]).toMatchObject({ title: '#Automation', metadata: { tweet_volume: null, query: 'Automation' } })
-    expect(result.data?.[0].score).toBeUndefined()
-    expect(result.data?.[0].change).toBeUndefined()
-    expect(result.data?.[0].description).toBeUndefined()
-    expect(providerCalls).toHaveLength(1)
+  it('loads Google and Reddit by default with no retired-provider requests or errors', async () => {
+    const manager = new TrendsManager()
+    expect(manager.getEnabledPlatforms()).toEqual(['google', 'reddit'])
+    const result = await manager.getAllTrends()
+    expect(result).toMatchObject({ success: true, data: { platforms: ['google', 'reddit'], totalCount: 2 } })
+    expect(result.platformErrors).toBeUndefined()
+    expect(requests.map(request => request.path).sort()).toEqual(['/api/trends/google', '/api/trends/reddit'])
+    expect(providerCalls.every(url => !url.includes('twitter.com') && !url.includes('api.x.com'))).toBe(true)
   })
 
   it('deduplicates concurrent manager/service calls through the real Reddit route and provider', async () => {
@@ -185,14 +177,14 @@ describe('real trend service payloads accepted by real route validators', () => 
     const partial = await manager.getAllTrends(['reddit', 'twitter'])
     expect(partial).toMatchObject({
       success: true, data: { platforms: ['reddit'], totalCount: 1 },
-      platformErrors: { twitter: 'Twitter integration is not configured' },
+      platformErrors: { twitter: 'Platform twitter is not available' },
     })
     expect(partial.data?.trends.every(trend => trend.platform === 'reddit')).toBe(true)
     const allFailed = await manager.getAllTrends(['twitter', 'linkedin'])
     expect(allFailed).toMatchObject({ success: false, platformErrors: {
-      twitter: 'Twitter integration is not configured', linkedin: 'Platform linkedin is not available',
+      twitter: 'Platform twitter is not available', linkedin: 'Platform linkedin is not available',
     } })
-    expect(allFailed.error).toContain('Twitter integration is not configured')
+    expect(allFailed.error).toContain('Platform twitter is not available')
     expect(allFailed.data).toBeUndefined()
   })
 

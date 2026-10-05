@@ -1,6 +1,9 @@
 // Trend Platform Types
 export type TrendPlatform = 'google' | 'reddit' | 'twitter' | 'linkedin' | 'tiktok' | 'youtube' | 'instagram'
 
+// Retain platform types for historical items; only these providers can be requested.
+export const ACTIVE_TREND_PLATFORMS: TrendPlatform[] = ['google', 'reddit']
+
 export interface TrendSegment {
   id: string
   name: string
@@ -103,10 +106,6 @@ export interface RedditTrendsConfig extends TrendConfig {
   subreddit?: string
   sortBy?: 'hot' | 'new' | 'rising' | 'top'
   timeframe?: 'hour' | 'day' | 'week' | 'month' | 'year' | 'all'
-}
-
-export interface TwitterTrendsConfig extends TrendConfig {
-  woeid?: number // Where On Earth ID for location
 }
 
 // Trend Service Interface

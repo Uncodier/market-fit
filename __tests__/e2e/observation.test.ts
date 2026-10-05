@@ -3,7 +3,7 @@ import { hasApplicationError, isUnexpectedHttp, safeEndpoint } from '../../tests
 
 describe('read observations do not mistake UI visibility for dependency health', () => {
   it.each([503, 500, 403, 404, 429])('records unexpected API status %s', status => {
-    expect(isUnexpectedHttp(status, 'https://app.makinari.com/api/trends/twitter')).toBe(true);
+    expect(isUnexpectedHttp(status, 'https://app.makinari.com/api/trends/google')).toBe(true);
   });
   it('allows intentional public document 404s but not database read failures', () => {
     expect(isUnexpectedHttp(404, 'https://app.makinari.com/q/invalid')).toBe(false);

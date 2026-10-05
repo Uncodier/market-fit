@@ -22,7 +22,6 @@ route contracts without weakening server validation:
 - Google receives at most 5 non-empty segment names of at most 80 characters.
 - Reddit receives at most 8 segments and 12 keywords of at most 80 characters.
 - Both omit null descriptions and cap descriptions at 240 characters.
-- Twitter receives only location and limit, not unused segment data.
 
 Provider requests make a single bounded attempt. Identical in-flight requests
 are shared; successful responses are cached for five minutes and failures have
@@ -36,9 +35,11 @@ The UI shows these errors inline rather than repeatedly emitting error toasts,
 and hides old-context results after navigation or refresh failure. Provider
 transformations do not invent posts or random engagement metrics.
 
-Twitter's server-only `TWITTER_BEARER_TOKEN` is independent of connected social
-publishing accounts. Missing configuration remains an explicit HTTP 503, not a
-successful empty result. See [Environment variables](ENVIRONMENT_VARIABLES.md).
+Only Google and Reddit are active trend providers. Twitter/X Trends has been
+removed from requests, provider badges, results and availability notices. Its
+service and `/api/trends/twitter` route are retired; even an explicit manager
+request or refresh cannot contact X. No X Trends credentials or paid access are
+required. Connected Twitter/X social publishing accounts are unaffected.
 
 ## Regression validation
 

@@ -25,7 +25,7 @@ const trend: TrendItem = { id: 'real-trend', platform: 'reddit', title: 'Real pr
 const failures: AggregatedTrendsResponse = {
   success: false,
   error: 'All trend providers are unavailable',
-  platformErrors: { google: 'Google request failed (503)', reddit: 'Reddit request timed out', twitter: 'Twitter request failed (429)' }
+  platformErrors: { google: 'Google request failed (503)', reddit: 'Reddit request timed out' }
 }
 function success(trends: TrendItem[] = [trend]): AggregatedTrendsResponse {
   return { success: true, data: { trends, platforms: ['reddit'], totalCount: trends.length, lastUpdated: '2026-10-05T00:00:00Z' } }
@@ -64,15 +64,14 @@ describe.each(views)('%s trends failures', view => {
     expect(await screen.findByText('Trends are unavailable')).toBeInTheDocument()
     expect(screen.getByText('Google Trends unavailable:')).toBeInTheDocument()
     expect(screen.getByText('Reddit unavailable:')).toBeInTheDocument()
-    expect(screen.getByText('Twitter unavailable:')).toBeInTheDocument()
+    expect(screen.queryByText('Twitter unavailable:')).not.toBeInTheDocument()
     expect(screen.getByText(/Google request failed \(503\)/)).toBeInTheDocument()
     expect(screen.getByText(/Reddit request timed out/)).toBeInTheDocument()
-    expect(screen.getByText(/Twitter request failed \(429\)/)).toBeInTheDocument()
     expect(screen.queryByText('No trends available')).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Refresh trends' })).toBeEnabled()
     fireEvent.click(screen.getByRole('button', { name: 'Try Again' }))
     await waitFor(() => expect(getAllTrends).toHaveBeenCalledTimes(2))
-    expect(getAllTrends).toHaveBeenLastCalledWith(['google', 'reddit', 'twitter'], segments, expect.objectContaining({ forceRefresh: true }))
+    expect(getAllTrends).toHaveBeenLastCalledWith(['google', 'reddit'], segments, expect.objectContaining({ forceRefresh: true }))
     await screen.findByText('Trends are unavailable')
     expect(toast.error).not.toHaveBeenCalled()
     expect(toast.success).not.toHaveBeenCalled()
@@ -81,7 +80,7 @@ describe.each(views)('%s trends failures', view => {
   })
 
   it('preserves partial results and provider failures without claiming full success on refresh', async () => {
-    getAllTrends.mockResolvedValue({ ...success(), platformErrors: { google: 'Google request failed (503)', twitter: 'Twitter request failed (429)' } })
+    getAllTrends.mockResolvedValue({ ...success(), platformErrors: { google: 'Google request failed (503)' } })
     render(ui(view))
     expect(await screen.findByText(trend.title)).toBeInTheDocument()
     expect(screen.getByText('Some trend providers are unavailable')).toBeInTheDocument()
@@ -91,6 +90,24 @@ describe.each(views)('%s trends failures', view => {
     await screen.findByText(trend.title)
     expect(toast.success).not.toHaveBeenCalled()
     expect(toast.error).not.toHaveBeenCalled()
+  })
+
+  it('excludes retired Twitter results, badges, notices and requests on load and refresh', async () => {
+    const retired: TrendItem = { ...trend, id: 'retired', platform: 'twitter', title: 'Retired X result' }
+    getAllTrends.mockResolvedValue({ ...success([retired, trend]), platformErrors: { twitter: 'Retired X unavailable' } })
+    render(ui(view))
+    await screen.findByText(trend.title)
+    expect(getAllTrends).toHaveBeenCalledWith(['google', 'reddit'], segments, expect.objectContaining({ forceRefresh: false }))
+    expect(screen.queryByText(retired.title)).not.toBeInTheDocument()
+    expect(screen.queryByText(/twitter/i)).not.toBeInTheDocument()
+    expect(screen.queryByText('Retired X unavailable')).not.toBeInTheDocument()
+    expect(screen.queryByText('Some trend providers are unavailable')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Refresh trends' }))
+    await waitFor(() => expect(getAllTrends).toHaveBeenCalledTimes(2))
+    await screen.findByText(trend.title)
+    expect(getAllTrends).toHaveBeenLastCalledWith(['google', 'reddit'], segments, expect.objectContaining({ forceRefresh: true }))
+    expect(screen.queryByText(retired.title)).not.toBeInTheDocument()
+    expect(screen.queryByText(/twitter/i)).not.toBeInTheDocument()
   })
 
   it('clears prior site results, detail, and update time on a new-context failure', async () => {

@@ -5,7 +5,6 @@ import { NextRequest } from "next/server"
 import { GET as verifyMx } from "@/app/api/dns/verify-mx/route"
 import { POST as googleTrends } from "@/app/api/trends/google/route"
 import { POST as redditTrends } from "@/app/api/trends/reddit/route"
-import { POST as twitterTrends } from "@/app/api/trends/twitter/route"
 import {
   getCachedJson,
   hashRedisKeyPart,
@@ -63,7 +62,6 @@ function cacheMissesCompute() {
 }
 
 describe("provider response caching", () => {
-  const originalTwitterToken = process.env.TWITTER_BEARER_TOKEN
   const originalRedditClientId = process.env.REDDIT_CLIENT_ID
   const originalRedditClientSecret = process.env.REDDIT_CLIENT_SECRET
   let consoleLogSpy: jest.SpyInstance
@@ -78,7 +76,6 @@ describe("provider response caching", () => {
 
   beforeEach(() => {
     jest.clearAllMocks()
-    process.env.TWITTER_BEARER_TOKEN = "test-twitter-token"
     delete process.env.REDDIT_CLIENT_ID
     delete process.env.REDDIT_CLIENT_SECRET
     getCachedJsonMock.mockResolvedValue(null)
@@ -94,11 +91,6 @@ describe("provider response caching", () => {
     consoleLogSpy.mockRestore()
     consoleErrorSpy.mockRestore()
     consoleWarnSpy.mockRestore()
-    if (originalTwitterToken === undefined) {
-      delete process.env.TWITTER_BEARER_TOKEN
-    } else {
-      process.env.TWITTER_BEARER_TOKEN = originalTwitterToken
-    }
     if (originalRedditClientId === undefined) {
       delete process.env.REDDIT_CLIENT_ID
     } else {
@@ -114,7 +106,6 @@ describe("provider response caching", () => {
   it("does not read the cache for invalid provider inputs", async () => {
     const responses = await Promise.all([
       googleTrends(postRequest("/api/trends/google", { limit: 26 })),
-      twitterTrends(postRequest("/api/trends/twitter", { woeid: 0 })),
       redditTrends(postRequest("/api/trends/reddit", { limit: 26 })),
       verifyMx(
         new NextRequest("https://example.test/api/dns/verify-mx?domain=invalid")
@@ -122,7 +113,7 @@ describe("provider response caching", () => {
     ])
 
     expect(responses.map((response) => response.status)).toEqual([
-      400, 400, 400, 400,
+      400, 400, 400,
     ])
     expect(normalizedRequestCacheKeyMock).not.toHaveBeenCalled()
     expect(readThroughJsonCacheMock).not.toHaveBeenCalled()
@@ -200,62 +191,6 @@ describe("provider response caching", () => {
     } finally {
       jest.useRealTimers()
     }
-  })
-
-  it("checks Twitter credentials before reading the cache", async () => {
-    delete process.env.TWITTER_BEARER_TOKEN
-
-    const response = await twitterTrends(
-      postRequest("/api/trends/twitter", {})
-    )
-
-    expect(response.status).toBe(503)
-    expect(normalizedRequestCacheKeyMock).not.toHaveBeenCalled()
-    expect(readThroughJsonCacheMock).not.toHaveBeenCalled()
-    expect(global.fetch).not.toHaveBeenCalled()
-  })
-
-  it("does not include the Twitter token in its cache key", async () => {
-    const cachedValue = {
-      success: true,
-      trends: [],
-      timestamp: "2026-09-21T00:00:00.000Z",
-    }
-    readThroughJsonCacheMock.mockResolvedValue({
-      status: "hit",
-      value: cachedValue,
-    })
-
-    const response = await twitterTrends(
-      postRequest("/api/trends/twitter", { woeid: 1, limit: 5 })
-    )
-
-    await expect(response.json()).resolves.toEqual(cachedValue)
-    expect(global.fetch).not.toHaveBeenCalled()
-    expect(normalizedRequestCacheKeyMock.mock.calls[0][1].url).not.toContain(
-      "test-twitter-token"
-    )
-    expect(readThroughJsonCacheMock).toHaveBeenCalledWith(
-      expect.objectContaining({ ttlSeconds: 180, lockTtlMs: 12_000 })
-    )
-  })
-
-  it("keeps Twitter provider failures outside the cache", async () => {
-    cacheMissesCompute()
-    ;(global.fetch as jest.Mock).mockResolvedValue({
-      ok: false,
-      status: 429,
-    })
-
-    const response = await twitterTrends(
-      postRequest("/api/trends/twitter", {})
-    )
-
-    expect(response.status).toBe(502)
-    await expect(response.json()).resolves.toEqual({
-      success: false,
-      error: "Twitter provider request failed",
-    })
   })
 
   it("does not authenticate with Reddit on a response-cache hit", async () => {
