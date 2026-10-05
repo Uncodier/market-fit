@@ -11,6 +11,7 @@ import { useLayout } from "./context/LayoutContext"
 import { NotificationsProvider } from "./notifications/context/NotificationsContext"
 import { usePageRefreshPrevention } from "./hooks/use-prevent-refresh"
 import { useWakeSessionRefresh } from "./hooks/use-wake-session-refresh"
+import { useNavigationFeedback } from "./hooks/use-navigation-feedback"
 import { useArtifactRouterPatch } from "./hooks/use-artifact-router-patch"
 import { useIsMobile } from "./hooks/use-mobile-view"
 import { useLocalization } from "./context/LocalizationContext"
@@ -197,6 +198,7 @@ function LayoutClientInner({
   }, [pathname])
 
   useWakeSessionRefresh()
+  useNavigationFeedback()
   useArtifactRouterPatch()
 
   // Pages that need full-height layout (no scroll, fixed height container)

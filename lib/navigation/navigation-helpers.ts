@@ -1,3 +1,5 @@
+import { navigateOrAssign, type AppRouterLike } from "./stale-router"
+
 /**
  * Mark navigation as UI-initiated (call before programmatic navigation)
  * Uses timestamp for reliable detection across re-renders
@@ -5,7 +7,11 @@
 export function markUINavigation(): void {
   if (typeof window !== 'undefined') {
     const timestamp = Date.now().toString()
-    sessionStorage.setItem('uiNavTimestamp', timestamp)
+    try {
+      sessionStorage.setItem('uiNavTimestamp', timestamp)
+    } catch {
+      // Storage restrictions must not prevent navigation.
+    }
   }
 }
 
@@ -17,97 +23,97 @@ export {
 interface NavigateToTaskParams {
   taskId: string
   taskTitle: string
-  router: any
+  router: AppRouterLike
 }
 
 export function navigateToTask({ taskId, taskTitle, router }: NavigateToTaskParams): void {
   markUINavigation()
   const encodedTitle = encodeURIComponent(taskTitle)
-  router.push(`/control-center/${taskId}?title=${encodedTitle}`)
+  navigateOrAssign(router, `/control-center/${taskId}?title=${encodedTitle}`, { markUI: false })
 }
 
 interface NavigateToLeadParams {
   leadId: string
   leadName: string
-  router: any
+  router: AppRouterLike
 }
 
 export function navigateToLead({ leadId, leadName, router }: NavigateToLeadParams): void {
   markUINavigation()
   const encodedName = encodeURIComponent(leadName)
-  router.push(`/leads/${leadId}?name=${encodedName}`)
+  navigateOrAssign(router, `/leads/${leadId}?name=${encodedName}`, { markUI: false })
 }
 
 interface NavigateToContentParams {
   contentId: string
   contentTitle: string
-  router: any
+  router: AppRouterLike
 }
 
 export function navigateToContent({ contentId, contentTitle, router }: NavigateToContentParams): void {
   markUINavigation()
   const encodedTitle = encodeURIComponent(contentTitle)
-  router.push(`/content/${contentId}?title=${encodedTitle}`)
+  navigateOrAssign(router, `/content/${contentId}?title=${encodedTitle}`, { markUI: false })
 }
 
 interface NavigateToSegmentParams {
   segmentId: string
   segmentName: string
-  router: any
+  router: AppRouterLike
 }
 
 export function navigateToSegment({ segmentId, segmentName, router }: NavigateToSegmentParams): void {
   markUINavigation()
   const encodedName = encodeURIComponent(segmentName)
-  router.push(`/segments/${segmentId}?name=${encodedName}`)
+  navigateOrAssign(router, `/segments/${segmentId}?name=${encodedName}`, { markUI: false })
 }
 
 interface NavigateToCampaignParams {
   campaignId: string
   campaignName: string
-  router: any
+  router: AppRouterLike
 }
 
 export function navigateToCampaign({ campaignId, campaignName, router }: NavigateToCampaignParams): void {
   markUINavigation()
   const encodedName = encodeURIComponent(campaignName)
-  router.push(`/campaigns/${campaignId}?name=${encodedName}`)
+  navigateOrAssign(router, `/campaigns/${campaignId}?name=${encodedName}`, { markUI: false })
 }
 
 interface NavigateToAgentParams {
   agentId: string
   agentName: string
-  router: any
+  router: AppRouterLike
 }
 
 export function navigateToAgent({ agentId, agentName, router }: NavigateToAgentParams): void {
   markUINavigation()
   const encodedName = encodeURIComponent(agentName)
-  router.push(`/agents/${agentId}?name=${encodedName}`)
+  navigateOrAssign(router, `/agents/${agentId}?name=${encodedName}`, { markUI: false })
 }
 
 interface NavigateToRequirementParams {
   requirementId: string
   requirementTitle: string
-  router: any
+  router: AppRouterLike
 }
 
 export function navigateToRequirement({ requirementId, requirementTitle, router }: NavigateToRequirementParams): void {
   markUINavigation()
   const encodedTitle = encodeURIComponent(requirementTitle)
-  router.push(`/requirements/${requirementId}?title=${encodedTitle}`)
+  navigateOrAssign(router, `/requirements/${requirementId}?title=${encodedTitle}`, { markUI: false })
 }
 
 interface NavigateToExperimentParams {
   experimentId: string
   experimentName: string
-  router: any
+  router: AppRouterLike
 }
 
 export function navigateToExperiment({ experimentId, experimentName, router }: NavigateToExperimentParams): void {
   markUINavigation()
   const encodedName = encodeURIComponent(experimentName)
-  router.push(`/experiments/${experimentId}?name=${encodedName}`)
+  navigateOrAssign(router, `/experiments/${experimentId}?name=${encodedName}`, { markUI: false })
 }
 
 interface NavigateToChatParams {
@@ -115,7 +121,7 @@ interface NavigateToChatParams {
   agentId?: string
   conversationTitle?: string
   agentName?: string
-  router: any
+  router: AppRouterLike
 }
 
 export function navigateToChat({ conversationId, agentId, conversationTitle, agentName, router }: NavigateToChatParams): void {
@@ -128,34 +134,34 @@ export function navigateToChat({ conversationId, agentId, conversationTitle, age
   if (agentName) params.set('agentName', encodeURIComponent(agentName))
   
   const queryString = params.toString()
-  router.push(`/chat${queryString ? `?${queryString}` : ''}`)
+  navigateOrAssign(router, `/chat${queryString ? `?${queryString}` : ''}`, { markUI: false })
 }
 
 interface NavigateToControlCenterParams {
-  router: any
+  router: AppRouterLike
 }
 
 export function navigateToControlCenter({ router }: NavigateToControlCenterParams): void {
   markUINavigation()
-  router.push('/control-center')
+  navigateOrAssign(router, '/control-center', { markUI: false })
 }
 
 interface NavigateToDealParams {
   dealId: string
   dealName: string
-  router: any
+  router: AppRouterLike
 }
 
 export function navigateToDeal({ dealId, dealName, router }: NavigateToDealParams): void {
   markUINavigation()
   const encodedName = encodeURIComponent(dealName)
-  router.push(`/deals/${dealId}?name=${encodedName}`)
+  navigateOrAssign(router, `/deals/${dealId}?name=${encodedName}`, { markUI: false })
 }
 
 interface NavigateToOrderParams {
   orderId: string
   orderNumber?: string
-  router: any
+  router: AppRouterLike
 }
 
 export function navigateToOrder({ orderId, orderNumber, router }: NavigateToOrderParams): void {
@@ -165,24 +171,24 @@ export function navigateToOrder({ orderId, orderNumber, router }: NavigateToOrde
     params.set('title', encodeURIComponent(orderNumber))
   }
   const queryString = params.toString()
-  router.push(`/orders/${orderId}${queryString ? `?${queryString}` : ''}`)
+  navigateOrAssign(router, `/orders/${orderId}${queryString ? `?${queryString}` : ''}`, { markUI: false })
 }
 
 interface NavigateToShipmentParams {
   shipmentId: string
-  router: any
+  router: AppRouterLike
 }
 
 export function navigateToShipment({ shipmentId, router }: NavigateToShipmentParams): void {
   markUINavigation()
-  router.push(`/shipments/${shipmentId}`)
+  navigateOrAssign(router, `/shipments/${shipmentId}`, { markUI: false })
 }
 
 interface NavigateToPurchaseOrderParams {
   orderId: string
   orderNumber?: string
   basePath?: string
-  router: any
+  router: AppRouterLike
 }
 
 export function navigateToPurchaseOrder({ orderId, orderNumber, basePath = '/purchases', router }: NavigateToPurchaseOrderParams): void {
@@ -192,14 +198,14 @@ export function navigateToPurchaseOrder({ orderId, orderNumber, basePath = '/pur
     params.set('title', encodeURIComponent(orderNumber))
   }
   const queryString = params.toString()
-  router.push(`${basePath}/orders/${orderId}${queryString ? `?${queryString}` : ''}`)
+  navigateOrAssign(router, `${basePath}/orders/${orderId}${queryString ? `?${queryString}` : ''}`, { markUI: false })
 }
 
 interface NavigateToSaleParams {
   saleId: string
   saleName?: string
   action?: string
-  router: any
+  router: AppRouterLike
 }
 
 export function navigateToSale({ saleId, saleName, action, router }: NavigateToSaleParams): void {
@@ -212,5 +218,5 @@ export function navigateToSale({ saleId, saleName, action, router }: NavigateToS
     params.set('action', action)
   }
   const queryString = params.toString()
-  router.push(`/sales/${saleId}${queryString ? `?${queryString}` : ''}`)
+  navigateOrAssign(router, `/sales/${saleId}${queryString ? `?${queryString}` : ''}`, { markUI: false })
 }

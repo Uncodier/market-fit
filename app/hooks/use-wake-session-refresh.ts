@@ -1,31 +1,30 @@
 "use client"
 
-import { useEffect, useRef } from "react"
+import { useEffect } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { isInvalidRefreshTokenError } from "@/lib/supabase/auth-cookies"
-import { markClientRouterStale } from "@/lib/navigation/stale-router"
 
 const IDLE_THRESHOLD_MS = 2 * 60 * 1000
 const REFRESH_WINDOW_SECONDS = 120
 const WAKE_COALESCE_MS = 1500
+const SESSION_OBSERVATION_MS = 5000
 
-function clearStuckPointerEvents(): void {
-  document.body.style.pointerEvents = ""
-  document.documentElement.style.pointerEvents = ""
-}
+// A timeout cannot cancel SDK work. Retain the flight until it actually settles,
+// including across unmounts, so another wake cannot race a token refresh.
+let sessionOperation: Promise<void> | null = null
 
-async function ensureFreshSession(): Promise<boolean> {
+async function ensureFreshSession(canContinue: () => boolean): Promise<void> {
+  let supabase: ReturnType<typeof createClient> | undefined
   try {
-    const supabase = createClient()
-    const { data } = await supabase.auth.getSession()
+    supabase = createClient()
+    const { data, error } = await supabase.auth.getSession()
+    if (!canContinue()) return
+    if (error) throw error
     const session = data?.session
 
-    if (!session) {
-      // No local session at all. Don't force-navigate here — middleware
-      // will redirect the next request. Forcing window.location now would
-      // interrupt a user that is actively typing/clicking in-page.
-      return false
-    }
+    // Missing sessions are handled by existing auth boundaries, not navigation
+    // from a wake handler that could interrupt an in-page interaction.
+    if (!session) return
 
     const nowSeconds = Math.floor(Date.now() / 1000)
     const expiresAt = session.expires_at ?? 0
@@ -33,102 +32,89 @@ async function ensureFreshSession(): Promise<boolean> {
 
     if (secondsToExpiry <= REFRESH_WINDOW_SECONDS) {
       const { error } = await supabase.auth.refreshSession()
-      if (error) {
-        if (isInvalidRefreshTokenError(error)) {
-          await supabase.auth.signOut({ scope: "local" }).catch(() => {})
-        }
-        return false
-      }
-      return true
+      if (error) throw error
     }
-    return false
   } catch (err) {
-    console.warn("[wake-session] Session refresh on wake failed:", err)
-    if (isInvalidRefreshTokenError(err)) {
+    if (canContinue() && supabase && isInvalidRefreshTokenError(err)) {
       try {
-        await createClient().auth.signOut({ scope: "local" })
+        await supabase.auth.signOut({ scope: "local" })
       } catch {
-        // ignore
+        // Local cleanup is best effort; transient failures must not log out.
       }
     }
-    return false
   }
 }
 
 /**
- * After long idle, refresh auth cookies and mark the App Router stale so the
- * next menu click can hard-navigate. Do not call router.refresh() — a pending
- * RSC transition can deadlock subsequent router.push() calls.
+ * Refresh near-expiry auth after idle without touching routing or modal styles.
+ * Wake observation is bounded; normal navigation remains entirely SPA-driven.
  */
 export function useWakeSessionRefresh(): void {
-  const lastActiveAtRef = useRef(Date.now())
-  const isRefreshingAfterIdleRef = useRef(false)
-  const wakeHandledRef = useRef(false)
-
   useEffect(() => {
-    const touchActive = () => {
-      lastActiveAtRef.current = Date.now()
-    }
+    let lastActiveAt = Date.now()
+    let hiddenAt: number | null = document.visibilityState === "hidden" ? lastActiveAt : null
+    let nextWakeAt = 0
+    let stopObserving: (() => void) | undefined
 
-    const handleWake = async (forceIdle = false) => {
-      clearStuckPointerEvents()
+    const handleWake = (forceIdle = false) => {
+      if (document.visibilityState !== "visible") return
+      const now = Date.now()
+      const idleMs = now - Math.min(lastActiveAt, hiddenAt ?? lastActiveAt)
+      lastActiveAt = now
+      hiddenAt = null
 
-      const idleMs = Date.now() - lastActiveAtRef.current
-      const isIdle = forceIdle || idleMs > IDLE_THRESHOLD_MS
-      touchActive()
+      if (!forceIdle && idleMs <= IDLE_THRESHOLD_MS) return
+      if (!navigator.onLine || now < nextWakeAt) return
+      nextWakeAt = now + WAKE_COALESCE_MS
+      if (sessionOperation) return
 
-      if (!isIdle) return
-      if (wakeHandledRef.current) return
-      wakeHandledRef.current = true
-
-      try {
-        markClientRouterStale()
-        if (isRefreshingAfterIdleRef.current) return
-        isRefreshingAfterIdleRef.current = true
-        try {
-          await ensureFreshSession()
-        } finally {
-          isRefreshingAfterIdleRef.current = false
-        }
-      } finally {
-        window.setTimeout(() => {
-          wakeHandledRef.current = false
-        }, WAKE_COALESCE_MS)
+      let observing = true
+      const deadline = now + SESSION_OBSERVATION_MS
+      const canContinue = () => observing && Date.now() < deadline && navigator.onLine
+      const stop = () => {
+        observing = false
+        window.clearTimeout(timer)
       }
+      const timer = window.setTimeout(stop, SESSION_OBSERVATION_MS)
+      stopObserving = stop
+      sessionOperation = ensureFreshSession(canContinue).finally(() => {
+        sessionOperation = null
+        stop()
+        if (stopObserving === stop) stopObserving = undefined
+      })
     }
 
     const handleVisibilityChange = () => {
-      if (document.visibilityState === "visible") {
-        void handleWake()
+      if (document.visibilityState === "hidden") {
+        hiddenAt ??= Date.now()
+      } else {
+        handleWake()
       }
     }
 
-    const handleWindowFocus = () => {
-      if (document.visibilityState !== "visible") return
-      void handleWake()
-    }
-
     const handlePageShow = (event: PageTransitionEvent) => {
-      if (!event.persisted) return
-      void handleWake(true)
+      if (event.persisted) handleWake(true)
     }
 
-    const handleUserActivity = () => {
-      if (document.visibilityState !== "visible") return
-      touchActive()
-    }
+    // Check idle before recording activity: pointerdown can precede focus or
+    // visibilitychange when returning to a hidden tab.
+    const handleActivity = () => handleWake()
+    const handleOnline = () => handleWake(true)
 
     document.addEventListener("visibilitychange", handleVisibilityChange)
-    window.addEventListener("focus", handleWindowFocus)
+    window.addEventListener("focus", handleActivity)
     window.addEventListener("pageshow", handlePageShow)
-    window.addEventListener("pointerdown", handleUserActivity, { passive: true })
-    window.addEventListener("keydown", handleUserActivity, { passive: true })
+    window.addEventListener("online", handleOnline)
+    window.addEventListener("pointerdown", handleActivity, { passive: true })
+    window.addEventListener("keydown", handleActivity, { passive: true })
     return () => {
+      stopObserving?.()
       document.removeEventListener("visibilitychange", handleVisibilityChange)
-      window.removeEventListener("focus", handleWindowFocus)
+      window.removeEventListener("focus", handleActivity)
       window.removeEventListener("pageshow", handlePageShow)
-      window.removeEventListener("pointerdown", handleUserActivity)
-      window.removeEventListener("keydown", handleUserActivity)
+      window.removeEventListener("online", handleOnline)
+      window.removeEventListener("pointerdown", handleActivity)
+      window.removeEventListener("keydown", handleActivity)
     }
   }, [])
 }

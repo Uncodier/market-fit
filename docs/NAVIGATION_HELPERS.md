@@ -1,5 +1,9 @@
 # Navigation Helpers
 
+For idle recovery and slow-navigation behavior, see
+[SPA navigation reliability](NAVIGATION_RELIABILITY.md). Shared route helpers now
+use SPA-first navigation with progress feedback; a timer never reloads the page.
+
 > Implementation note: route coverage evolves with the application. Verify the
 > current helper exports and breadcrumb component; older examples in this file
 > may omit newer commerce routes or describe truncation behavior not enforced by

@@ -1,11 +1,12 @@
-import { createServerClient } from '@supabase/ssr'
+import { createServerClient, type SetAllCookies } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 import {
   EXPIRED_COOKIE_OPTIONS,
   isInvalidRefreshTokenError,
   isSupabaseAuthCookieName,
 } from '@/lib/supabase/auth-cookies'
-import { middlewareFetch } from '@/lib/supabase/middleware-fetch'
+import { createMiddlewareFetch } from '@/lib/supabase/middleware-fetch'
+import { createMiddlewareDeadline, type MiddlewareDeadline } from '@/lib/supabase/middleware-deadline'
 import { isAbortError } from '@/lib/supabase/postgrest-error'
 
 export type MiddlewareUserLookup = {
@@ -38,6 +39,7 @@ export function isTransientAuthLookupError(error: unknown): boolean {
   const status = Number((error as { status?: unknown }).status)
   if (status >= 500 || status === 408 || status === 429) return true
   const name = `${(error as { name?: unknown }).name || ''}`
+  if (name === 'AuthRetryableFetchError' && status === 0) return true
   const message = `${(error as { message?: unknown }).message || ''}`.toLowerCase()
   if (name === 'TypeError' && message.includes('fetch')) return true
   return (
@@ -48,7 +50,12 @@ export function isTransientAuthLookupError(error: unknown): boolean {
   )
 }
 
-export function createMiddlewareSupabase(request: NextRequest, response: NextResponse) {
+export function createMiddlewareSupabase(
+  request: NextRequest,
+  response: NextResponse,
+  deadline: MiddlewareDeadline
+) {
+  deadline.assertActive()
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -57,7 +64,9 @@ export function createMiddlewareSupabase(request: NextRequest, response: NextRes
         getAll() {
           return request.cookies.getAll()
         },
-        setAll(cookiesToSet: any[]) {
+        setAll(cookiesToSet: Parameters<SetAllCookies>[0]) {
+          // The SDK can finish refresh/storage callbacks after our deadline.
+          if (!deadline.active) return
           cookiesToSet.forEach(({ name, value }) => {
             request.cookies.set(name, value)
           })
@@ -67,7 +76,7 @@ export function createMiddlewareSupabase(request: NextRequest, response: NextRes
         },
       },
       global: {
-        fetch: middlewareFetch,
+        fetch: createMiddlewareFetch(deadline),
       },
     }
   )
@@ -81,10 +90,12 @@ export async function getMiddlewareUser(
     return { user: null, lookupFailed: false }
   }
 
-  const supabase = createMiddlewareSupabase(request, response)
-
+  const deadline = createMiddlewareDeadline(request)
   try {
-    const { data: { user }, error } = await supabase.auth.getUser()
+    const { data: { user }, error } = await deadline.wait(() => {
+      const supabase = createMiddlewareSupabase(request, response, deadline)
+      return supabase.auth.getUser()
+    })
 
     if (isInvalidRefreshTokenError(error)) {
       clearSupabaseCookies(request, response)
@@ -106,5 +117,7 @@ export async function getMiddlewareUser(
     }
     console.warn('middleware auth lookup timed out')
     return { user: null, lookupFailed: true }
+  } finally {
+    deadline.dispose()
   }
 }

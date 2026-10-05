@@ -4,52 +4,33 @@ import Link from 'next/link'
 import { forwardRef } from 'react'
 import { useRouter } from 'next/navigation'
 import {
-  assignLocation,
   hrefToString,
-  isClientRouterStale,
   navigateOrAssign,
   startNavigationWatchdog,
+  type RouterNavigationOptions,
 } from '@/lib/navigation/stale-router'
 import { markUINavigation } from '@/lib/navigation/navigation-helpers'
 
 import { appendArtifactIfNeeded } from '@/lib/navigation/artifact-url'
 
-function isModifiedClick(event: React.MouseEvent<HTMLAnchorElement>): boolean {
-  return event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0
-}
-
 /**
  * Enhanced Link component that marks navigation as UI-initiated
  */
 export const NavigationLink = forwardRef<HTMLAnchorElement, React.ComponentProps<typeof Link>>(
-  function NavigationLink({ href, children, onClick, prefetch = false, ...props }, ref) {
+  function NavigationLink({ href, as, children, onNavigate, prefetch = false, ...props }, ref) {
     const finalHref = typeof window !== 'undefined' ? appendArtifactIfNeeded(hrefToString(href)) : href
+    const finalAs = as === undefined ? undefined : typeof window !== 'undefined' ? appendArtifactIfNeeded(hrefToString(as)) : as
 
-    const handleClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
-      if (isModifiedClick(e)) {
-        markUINavigation()
-        onClick?.(e)
-        return
-      }
-
-      const hrefString = hrefToString(finalHref)
-
-      if (isClientRouterStale()) {
-        e.preventDefault()
-        onClick?.(e)
-        assignLocation(hrefString)
-        return
-      }
-
+    const handleNavigate: NonNullable<React.ComponentProps<typeof Link>["onNavigate"]> = (event) => {
+      let prevented = false
+      onNavigate?.({ preventDefault: () => { prevented = true; event.preventDefault() } })
+      if (prevented) return
       markUINavigation()
-      onClick?.(e)
-      if (!e.defaultPrevented) {
-        startNavigationWatchdog(hrefString)
-      }
+      startNavigationWatchdog(hrefToString(finalAs ?? finalHref))
     }
     
     return (
-      <Link ref={ref} href={finalHref} prefetch={prefetch} onClick={handleClick} {...props}>
+      <Link ref={ref} href={finalHref} as={finalAs} prefetch={prefetch} onNavigate={handleNavigate} {...props} data-navigation-managed="true">
         {children}
       </Link>
     )
@@ -64,11 +45,11 @@ export function useNavigationRouter() {
   
   return {
     ...router,
-    push: (href: string) => {
-      navigateOrAssign(router, href)
+    push: (href: string, options?: RouterNavigationOptions) => {
+      navigateOrAssign(router, href, options)
     },
-    replace: (href: string) => {
-      navigateOrAssign(router, href, { replace: true })
+    replace: (href: string, options?: RouterNavigationOptions) => {
+      navigateOrAssign(router, href, { ...options, replace: true })
     }
   }
 }

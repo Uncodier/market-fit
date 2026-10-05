@@ -95,6 +95,9 @@ export function useArtifactRouterPatch(): void {
       if (!target) return
 
       const anchor = target as HTMLAnchorElement
+      // NavigationLink already preserves artifacts and must retain its own
+      // cancellation handlers and replace/scroll semantics.
+      if (anchor.dataset.navigationManaged === "true") return
       if (anchor.hasAttribute("download")) return
       const linkTarget = anchor.getAttribute("target")
       if (linkTarget && linkTarget !== "_self") return

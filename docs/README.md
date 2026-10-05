@@ -14,6 +14,8 @@ Use the guides below before relying on older implementation notes.
   internal webhook visibility, task reordering, and deployment validation.
 - [Environment variables](ENVIRONMENT_VARIABLES.md) — configuration by subsystem.
 - [Maintenance](MAINTENANCE.md) — dependency, documentation, and release hygiene.
+- [SPA navigation reliability](NAVIGATION_RELIABILITY.md) — idle session recovery,
+  consent-only document reloads, and middleware lookup deadlines.
 - [`specs/context.md`](../specs/context.md) — browser-test routes, roles, targets,
   and data assumptions.
 - [E2E execution and evidence](E2E_TESTING.md) — safe suite selection, fixtures,

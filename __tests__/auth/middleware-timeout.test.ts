@@ -10,6 +10,7 @@ import {
   isTransientAuthLookupError,
 } from '@/lib/supabase/middleware-client'
 import { createMiddlewareFetch } from '@/lib/supabase/middleware-fetch'
+import { MiddlewareDeadline } from '@/lib/supabase/middleware-deadline'
 import type { NextRequest, NextResponse } from 'next/server'
 
 function hangingFetch(_input: RequestInfo | URL, init?: RequestInit) {
@@ -66,16 +67,25 @@ describe('isTransientAuthLookupError', () => {
     expect(isTransientAuthLookupError({ name: 'TimeoutError' })).toBe(true)
     expect(isTransientAuthLookupError({ status: 522, message: 'Connection timed out' })).toBe(true)
     expect(isTransientAuthLookupError({ name: 'TypeError', message: 'fetch failed' })).toBe(true)
+    expect(isTransientAuthLookupError({
+      name: 'AuthRetryableFetchError', status: 0, message: 'The operation was aborted',
+    })).toBe(true)
+    expect(isTransientAuthLookupError({ name: 'AuthApiError', status: 401 })).toBe(false)
     expect(isTransientAuthLookupError({ code: 'refresh_token_not_found' })).toBe(false)
   })
 })
 
 describe('createMiddlewareFetch', () => {
   it('aborts hung upstream requests before the edge timeout', async () => {
-    const fetchWithTimeout = createMiddlewareFetch(20, hangingFetch)
-    await expect(fetchWithTimeout('https://db.makinari.com/auth/v1/token')).rejects.toMatchObject({
-      name: 'AbortError',
-    })
+    const deadline = new MiddlewareDeadline(Date.now() + 20)
+    const fetchWithTimeout = createMiddlewareFetch(deadline, hangingFetch)
+    try {
+      await expect(fetchWithTimeout('https://supabase.test/auth/v1/token')).rejects.toMatchObject({
+        name: 'TimeoutError',
+      })
+    } finally {
+      deadline.dispose()
+    }
   })
 })
 

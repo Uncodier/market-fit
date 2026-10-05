@@ -1,5 +1,10 @@
 # Refresh Prevention Implementation
 
+> For current idle/session navigation behavior, see
+> [SPA navigation reliability](NAVIGATION_RELIABILITY.md). Returning to a tab no
+> longer schedules an automatic document reload. The historical route-based
+> prevention below is not the navigation recovery policy.
+
 > Historical implementation note. The route inventory and example logs below
 > are incomplete, the referenced `test-refresh-prevention.html` is absent, and
 > direct reload calls still exist. Verify `app/hooks/use-prevent-refresh.ts` and

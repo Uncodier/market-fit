@@ -1,8 +1,4 @@
-/**
- * Edge middleware must return within 25s (Vercel). Auth refresh through
- * Cloudflare can hang ~20s with a 522 and then blow that budget.
- */
-export const MIDDLEWARE_FETCH_TIMEOUT_MS = 8_000
+import type { MiddlewareDeadline } from '@/lib/supabase/middleware-deadline'
 
 type FetchImpl = (
   input: RequestInfo | URL,
@@ -10,41 +6,33 @@ type FetchImpl = (
 ) => Promise<Response>
 
 function combineAbortSignals(a: AbortSignal, b: AbortSignal): AbortSignal {
-  if (typeof AbortSignal.any === "function") {
-    return AbortSignal.any([a, b])
-  }
-
   const controller = new AbortController()
-  const abort = () => controller.abort()
-  if (a.aborted || b.aborted) {
-    abort()
-    return controller.signal
+  const abort = () => {
+    a.removeEventListener('abort', abort)
+    b.removeEventListener('abort', abort)
+    controller.abort(a.aborted ? a.reason : b.reason)
   }
-  a.addEventListener("abort", abort, { once: true })
-  b.addEventListener("abort", abort, { once: true })
-  return controller.signal
-}
-
-function timeoutSignal(timeoutMs: number): AbortSignal {
-  if (typeof AbortSignal.timeout === "function") {
-    return AbortSignal.timeout(timeoutMs)
+  if (a.aborted || b.aborted) abort()
+  else {
+    a.addEventListener('abort', abort, { once: true })
+    b.addEventListener('abort', abort, { once: true })
   }
-  const controller = new AbortController()
-  setTimeout(() => controller.abort(), timeoutMs)
+  // Keep the scope linked after headers arrive: response body reads also need
+  // cancellation. Disposing the operation removes both listeners.
   return controller.signal
 }
 
 export function createMiddlewareFetch(
-  timeoutMs: number,
+  deadline: MiddlewareDeadline,
   fetchImpl: FetchImpl = fetch
 ): FetchImpl {
   return (input, init) => {
-    const timeout = timeoutSignal(timeoutMs)
-    const signal = init?.signal
-      ? combineAbortSignals(init.signal, timeout)
-      : timeout
-    return fetchImpl(input, { ...init, signal })
+    const callerSignal = init?.signal ?? (input instanceof Request ? input.signal : undefined)
+    const signal = callerSignal && callerSignal !== deadline.signal
+      ? combineAbortSignals(deadline.signal, callerSignal)
+      : deadline.signal
+    // Auth-js retries even AbortError as AuthRetryableFetchError (status 0).
+    // Check before invoking the transport so disposed SDK retries cannot send.
+    return deadline.wait(() => fetchImpl(input, { ...init, signal }), signal)
   }
 }
-
-export const middlewareFetch = createMiddlewareFetch(MIDDLEWARE_FETCH_TIMEOUT_MS)
