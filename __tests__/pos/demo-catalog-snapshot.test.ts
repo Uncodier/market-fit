@@ -82,6 +82,20 @@ describe("POS snapshots using the real demo client and catalog actions", () => {
     expect(createServiceClient).not.toHaveBeenCalled()
   })
 
+  it("preserves authorized service-client reads for non-demo POS clients", async () => {
+    const client = createDemoMockClient("demo-habituall")
+    jest.mocked(createClient).mockResolvedValue({ ...client, _isDemo: false })
+    jest.mocked(createServiceClient).mockResolvedValue(client)
+    expect(await listAllModifierGroupsForPos("demo-habituall")).toEqual({ data: {} })
+    expect(createServiceClient).toHaveBeenCalledWith(true)
+  })
+
+  it("denies unauthenticated modifier reads without creating a service client", async () => {
+    jest.mocked(createClient).mockResolvedValue(createDemoMockClient("demo-missing"))
+    expect(await listAllModifierGroupsForPos("demo-missing")).toEqual({ data: {}, error: "Not authenticated" })
+    expect(createServiceClient).not.toHaveBeenCalled()
+  })
+
   it("keeps the demo fixture owner's identity consistent", async () => {
     const siteId = "demo-habituall"
     jest.mocked(createClient).mockResolvedValue(createDemoMockClient(siteId))

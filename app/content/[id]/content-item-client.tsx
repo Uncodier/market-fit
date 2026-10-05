@@ -10,6 +10,7 @@ import { ContentPublishDialog } from "./components/ContentPublishDialog"
 import { ContentRightPanel } from "./components/ContentRightPanel"
 import { ContentSkeleton } from "./content-detail-skeleton"
 import { useContentItemController } from "./hooks/use-content-item-controller"
+import { ContentLoadError } from "./components/ContentLoadError"
 import "../styles/editor.css"
 
 export default function ContentDetailPage({
@@ -23,17 +24,27 @@ export default function ContentDetailPage({
   const controller = useContentItemController(id)
 
   if (controller.isLoading) return <ContentSkeleton />
+  if (controller.loadError || !controller.content || controller.content.id !== id) {
+    return (
+      <ContentLoadError
+        message={controller.loadError ?? "Content not found or no longer available."}
+        onRetry={() => { void controller.loadContent() }}
+        onBack={() => router.push("/content")}
+      />
+    )
+  }
+  const content = controller.content
 
-  const outstandTag = controller.content?.tags?.find(
+  const outstandTag = content.tags?.find(
     (tag: string) => tag.startsWith("outstand_id_"),
   )
   const outstandPostId = outstandTag?.replace("outstand_id_", "")
 
   return (
     <div className="flex h-[calc(100vh-var(--topbar-height,64px))]">
-      {controller.content?.id && (
+      {content.id && (
         <UploadAssetDialog
-          contentId={controller.content.id}
+          contentId={content.id}
           onUploadAsset={async (data) => {
             const result = await createAsset(data)
             if (result.error) throw new Error(result.error)
@@ -46,7 +57,7 @@ export default function ContentDetailPage({
       )}
 
       <ContentEditorPane
-        content={controller.content}
+        content={content}
         editor={controller.editor}
         instructionsEditor={controller.instructionsEditor}
         activeTab={controller.activeTab}
@@ -57,12 +68,12 @@ export default function ContentDetailPage({
         assetsRefreshTrigger={controller.assetsRefreshTrigger}
         onSave={controller.saveContent}
         onDelete={controller.handleDeleteContent}
-        onTeleprompter={() => router.push(`/teleprompter/${controller.content.id}`)}
+        onTeleprompter={() => router.push(`/teleprompter/${content.id}`)}
         onUploadAsset={() => controller.setUploadDialogOpen(true)}
       />
 
       <ContentRightPanel
-        content={controller.content}
+        content={content}
         editForm={controller.editForm}
         setEditForm={controller.setEditForm}
         campaigns={controller.campaigns}

@@ -43,6 +43,27 @@ a lost HTTP response may follow a successful commit. The UI only reports success
 after receiving a matching deletion receipt and does not automatically retry;
 refresh the instance list before retrying an unconfirmed operation.
 
+## Failure diagnosis
+
+The proxy recognizes a small allowlist of upstream error code/status pairs and
+returns fixed English messages with the recognized `error.code`. It never forwards
+upstream messages, SQL details, or credentials. Unknown, malformed, oversized,
+status-mismatched, or lost responses remain unconfirmed; HTTP 500 from the API
+still maps to HTTP 502 at the web boundary.
+
+Server logs record only the upstream HTTP status and recognized code. API logs
+record the failing stage and validated SQLSTATE/PostgREST code, not raw errors.
+Use those logs to distinguish preflight, provider, transaction, and receipt
+failures. Better diagnostics do not repair the underlying failure or authorize
+retries, direct deletion, deployment, or database changes.
+
+A locally initiated, read-only preflight against Makinari reproduced SQLSTATE
+`57014` (statement timeout). The API's forward migration
+`20261005220000_bound_empty_instance_deletion_preflight.sql` avoids expanding
+unrelated log tags when the authorized requirement set is empty. It is verified
+in isolated PostgreSQL, not applied remotely. This is a database-side correction;
+deploying the proxy diagnostics alone does not install it.
+
 ## Local regression checks
 
 ```sh

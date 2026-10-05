@@ -1,6 +1,37 @@
 // Trend Platform Types
 export type TrendPlatform = 'google' | 'reddit' | 'twitter' | 'linkedin' | 'tiktok' | 'youtube' | 'instagram'
 
+export interface TrendSegment {
+  id: string
+  name: string
+  description?: string | null
+  audience?: string
+  icp?: {
+    pain_points?: string[]
+    goals?: string[]
+    industry?: string
+    profile?: {
+      professionalContext?: { tools?: { current?: string[]; desired?: string[] } }
+      psychographics?: { interests?: string[] }
+    }
+  }
+  topics?: { blog?: string[] }
+}
+
+export interface TrendFetchOptions {
+  limit?: number
+  /** Explicit user retry: bypass settled caches, but share any in-flight request. */
+  forceRefresh?: boolean
+}
+
+export type TrendSortBy = 'relevance' | 'hotness' | 'viral' | 'impact' | 'cross-platform' | 'recent'
+
+export interface TrendMetadata {
+  source?: string
+  news_type?: string
+  [key: string]: unknown
+}
+
 // Base Trend Item
 export interface TrendItem {
   id: string
@@ -15,7 +46,7 @@ export interface TrendItem {
   relatedKeywords?: string[]
   region?: string
   timestamp: string
-  metadata?: Record<string, any>
+  metadata?: TrendMetadata
   // Enhanced properties for segment relevance
   relevanceScore?: number
   matchedKeywords?: string[]
@@ -57,7 +88,7 @@ export interface TrendConfig {
   language?: string
   category?: string
   limit?: number
-  segments?: Array<{ id: string; name: string; description?: string }>
+  segments?: TrendSegment[]
   keywords?: string[]
 }
 
@@ -83,7 +114,7 @@ export interface TrendService {
   platform: TrendPlatform
   isEnabled: boolean
   config: TrendConfig
-  fetchTrends(segments?: Array<{ id: string; name: string; description?: string }>): Promise<TrendResponse>
+  fetchTrends(segments?: TrendSegment[], options?: TrendFetchOptions): Promise<TrendResponse>
 }
 
 // Aggregated Trends Response
@@ -94,7 +125,7 @@ export interface AggregatedTrendsResponse {
     platforms: TrendPlatform[]
     totalCount: number
     lastUpdated: string
-    sortBy?: 'relevance' | 'hotness' | 'viral' | 'impact' | 'cross-platform' | 'recent'
+    sortBy?: TrendSortBy
     analytics?: {
       hotTrends: number
       viralTrends: number
@@ -103,6 +134,7 @@ export interface AggregatedTrendsResponse {
     }
   }
   error?: string
+  platformErrors?: Partial<Record<TrendPlatform, string>>
 }
 
 // Trend Analytics

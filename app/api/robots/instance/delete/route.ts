@@ -2,6 +2,7 @@ import { z } from "zod"
 import { createClient } from "@/lib/supabase/server"
 import { getCurrentUserSiteRole, isSiteManagerRole } from "@/lib/auth/api-site-access"
 import { userCanOnSite } from "@/lib/permissions/site-access"
+import { readUpstreamFailure } from "./upstream-failure"
 import { configuredApiUrl, isSameOriginApiRequest } from "@/lib/http/api-proxy-security"
 import {
   decodeRequestBody,
@@ -23,8 +24,8 @@ const resultSchema = z.object({
 const headers = { "Cache-Control": "no-store, private" }
 const unconfirmed = "Deletion could not be confirmed. Refresh the instance list before trying again."
 
-function failure(message: string, status: number) {
-  return Response.json({ success: false, error: { message } }, { status, headers })
+function failure(message: string, status: number, code?: string) {
+  return Response.json({ success: false, error: { message, ...(code ? { code } : {}) } }, { status, headers })
 }
 
 export async function POST(request: Request): Promise<Response> {
@@ -77,14 +78,17 @@ export async function POST(request: Request): Promise<Response> {
       signal: AbortSignal.any([request.signal, AbortSignal.timeout(580_000)]),
     })
     if (!upstream.ok) {
-      await upstream.body?.cancel()
+      const known = await readUpstreamFailure(upstream)
+      console.error("[instance/delete proxy] Upstream failure", {
+        upstream_status: upstream.status, upstream_code: known?.code ?? null,
+      })
       const status = [400, 401, 403, 404, 409, 429, 503].includes(upstream.status) ? upstream.status : 502
       const message = status === 409
         ? "Deletion was blocked by linked requirements or active execution. No database cleanup was committed. Stop active work and check requirement ownership before retrying."
         : status === 503 ? "Instance deletion is unavailable. Check the API and required database migration."
           : status === 403 ? "You do not have permission to delete this instance and its requirements."
             : status === 401 ? "Please sign in again to delete this instance." : unconfirmed
-      return failure(message, status)
+      return failure(known?.message ?? message, status, known?.code)
     }
     if (!upstream.headers.get("content-type")?.includes("application/json")) {
       await upstream.body?.cancel()

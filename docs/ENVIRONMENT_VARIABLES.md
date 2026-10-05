@@ -172,7 +172,17 @@ ASSET_PROXY_MAX_BYTES=26214400
 REDDIT_CLIENT_ID=
 REDDIT_CLIENT_SECRET=
 REDDIT_USER_AGENT=
+
+# Twitter/X trends (server-only)
+TWITTER_BEARER_TOKEN=
+TWITTER_USER_AGENT=
 ```
+
+Twitter trends require a bearer token with access to the provider's trends
+endpoint. Connecting a social publishing account does not configure this token.
+When it is absent, `/api/trends/twitter` returns HTTP 503 and Content displays
+the unavailable provider while keeping other providers' results usable. Never
+add a public token or fabricated fallback data to bypass this configuration.
 
 Some legacy or narrow integrations reference additional variables. Before
 deploying one, search that integration's source for `process.env` and add only

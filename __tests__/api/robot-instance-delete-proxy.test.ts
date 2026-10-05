@@ -27,6 +27,7 @@ function request(body: unknown = { instance_id: instanceId, delete_requirements:
 
 beforeEach(() => {
   jest.clearAllMocks()
+  jest.spyOn(console, "error").mockImplementation(() => {})
   process.env.API_SERVER_URL = "http://localhost:3001"
   delete process.env.NEXT_PUBLIC_API_SERVER_URL
   jest.mocked(createClient).mockResolvedValue({ auth, from, rpc })
@@ -39,6 +40,8 @@ beforeEach(() => {
   from.mockReturnValue(query)
   jest.mocked(fetch).mockReset().mockResolvedValue(Response.json(result))
 })
+
+afterEach(() => jest.restoreAllMocks())
 
 afterAll(() => {
   if (originalApi === undefined) delete process.env.API_SERVER_URL
@@ -166,4 +169,53 @@ it("does not retry after lost connections or non-JSON responses", async () => {
   jest.mocked(fetch).mockResolvedValueOnce(new Response("<html>error</html>"))
   expect((await POST(request())).status).toBe(502)
   expect(fetch).toHaveBeenCalledTimes(2)
+})
+
+it.each([
+  [500, "deletion_failed", "database error"],
+  [500, "AUTH_ERROR", "authentication"],
+  [502, "provider_stop_failed", "No database deletion was attempted"],
+  [503, "RATE_LIMIT_UNAVAILABLE", "admission"],
+  [429, "RATE_LIMITED", "Too many requests"],
+])("recognizes upstream %s/%s without exposing its private message", async (status, code, message) => {
+  jest.mocked(fetch).mockResolvedValueOnce(Response.json({
+    success: false, error: { code, message: "private provider credential", details: "private SQL" },
+  }, { status: Number(status) }))
+  const response = await POST(request())
+  const body = await response.json()
+  expect(body.error.code).toBe(code)
+  expect(body.error.message).toContain(message)
+  expect(JSON.stringify(body)).not.toContain("private")
+  expect(console.error).toHaveBeenCalledWith("[instance/delete proxy] Upstream failure", {
+    upstream_status: status, upstream_code: code,
+  })
+  expect(fetch).toHaveBeenCalledTimes(1)
+})
+
+it.each([
+  { success: false, error: { code: "unknown-private-code", message: "private" } },
+  { success: true, error: { code: "deletion_failed", message: "private" } },
+  { success: false, error: { code: "provider_stop_failed", message: "private" } },
+])("keeps unknown, inconsistent or status-mismatched failures unconfirmed", async payload => {
+  jest.mocked(fetch).mockResolvedValueOnce(Response.json(payload, { status: 500 }))
+  const response = await POST(request())
+  expect(response.status).toBe(502)
+  expect(await response.json()).toEqual({ success: false, error: {
+    message: "Deletion could not be confirmed. Refresh the instance list before trying again.",
+  } })
+  expect(console.error).toHaveBeenCalledWith("[instance/delete proxy] Upstream failure", {
+    upstream_status: 500, upstream_code: null,
+  })
+  expect(fetch).toHaveBeenCalledTimes(1)
+})
+
+it.each([
+  new Response("{", { status: 500, headers: { "Content-Type": "application/json" } }),
+  Response.json({ padding: "x".repeat(4096) }, { status: 500 }),
+])("bounds and sanitizes malformed upstream error bodies", async upstream => {
+  jest.mocked(fetch).mockResolvedValueOnce(upstream)
+  const response = await POST(request())
+  expect(response.status).toBe(502)
+  expect((await response.json()).error.message).toContain("Deletion could not be confirmed")
+  expect(fetch).toHaveBeenCalledTimes(1)
 })

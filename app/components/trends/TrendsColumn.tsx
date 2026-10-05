@@ -1,58 +1,23 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { Card, CardContent } from "@/app/components/ui/card"
 import { Badge } from "@/app/components/ui/badge"
 import { Button } from "@/app/components/ui/button"
 import { Skeleton } from "@/app/components/ui/skeleton"
 import { LoadingSkeleton } from "@/app/components/ui/loading-skeleton"
 import { TrendDetailModal } from "./TrendDetailModal"
-import { TrendItem, TrendPlatform } from "@/app/types/trends"
-import { trendsManager } from "@/app/services/trends-service"
-import { Loader, TrendingUp, TrendingDown, RotateCcw, ExternalLink } from "@/app/components/ui/icons"
-import { toast } from "sonner"
+import { TrendItem } from "@/app/types/trends"
+import { TrendingUp, TrendingDown, RotateCcw, ExternalLink } from "@/app/components/ui/icons"
+import { cleanHtmlContent, type TrendsSegments } from "./trends-presentation"
+import { useTrendsResults } from "./use-trends-results"
+import { TrendsAvailability, TrendsEmptyState } from "./TrendsAvailability"
 
 interface TrendsColumnProps {
   className?: string
-  segments?: Array<{ id: string; name: string; description?: string }>
+  segments?: TrendsSegments
   currentSiteId?: string
-}
-
-// Simple HTML cleaning function for frontend
-function cleanHtmlContent(htmlString: string): string {
-  if (!htmlString || typeof htmlString !== 'string') return ''
-  
-  let cleaned = htmlString.trim()
-  
-  // Handle CDATA sections
-  cleaned = cleaned.replace(/<!\[CDATA\[(.*?)\]\]>/g, '$1')
-  
-  // Remove all HTML tags
-  cleaned = cleaned.replace(/<[^>]*>/g, '')
-  
-  // Clean basic HTML entities
-  cleaned = cleaned
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
-    .replace(/&apos;/g, "'")
-    .replace(/&nbsp;/g, ' ')
-    .replace(/&ndash;/g, '–')
-    .replace(/&mdash;/g, '—')
-    .replace(/&hellip;/g, '...')
-  
-  // Remove URLs
-  cleaned = cleaned.replace(/https?:\/\/[^\s]+/g, '')
-  
-  // Remove source attribution patterns
-  cleaned = cleaned.replace(/\s*[-–—]\s*[A-Za-z\s]+\s*$/g, '')
-  cleaned = cleaned.replace(/^\s*[-–—]\s*/g, '')
-  
-  // Normalize whitespace
-  cleaned = cleaned.replace(/\s+/g, ' ').trim()
-  
-  return cleaned
+  contextReady?: boolean
 }
 
 // Compact Trend Card for the column
@@ -91,7 +56,7 @@ function CompactTrendCard({ trend, onClick }: { trend: TrendItem, onClick: (tren
   }
 
   return (
-    <Card 
+    <Card
       className="mb-2 cursor-pointer transition-shadow duration-200 hover:shadow-md"
       onClick={() => onClick(trend)}
     >
@@ -104,7 +69,7 @@ function CompactTrendCard({ trend, onClick }: { trend: TrendItem, onClick: (tren
           </div>
           <ExternalLink className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
         </div>
-        
+
         {trend.description && (
           <div className="mt-2 mb-2">
             <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">{cleanHtmlContent(trend.description)}</p>
@@ -115,8 +80,8 @@ function CompactTrendCard({ trend, onClick }: { trend: TrendItem, onClick: (tren
         <div className="flex mt-2 border-t pt-2">
           <div className="flex items-center justify-between w-full">
             <div className="flex items-center gap-2">
-              <Badge 
-                variant="outline" 
+              <Badge
+                variant="outline"
                 className={`text-xs capitalize ${getPlatformColor(trend.platform)}`}
               >
                 {trend.platform}
@@ -138,79 +103,17 @@ function CompactTrendCard({ trend, onClick }: { trend: TrendItem, onClick: (tren
   )
 }
 
-export function TrendsColumn({ className = "", segments, currentSiteId }: TrendsColumnProps) {
-  const [trends, setTrends] = useState<TrendItem[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [selectedTrend, setSelectedTrend] = useState<TrendItem | null>(null)
-  const [isModalOpen, setIsModalOpen] = useState(false)
-  const [activePlatforms] = useState<TrendPlatform[]>(['google', 'reddit', 'twitter'])
-  const [sortBy] = useState<'relevance' | 'hotness' | 'viral' | 'impact' | 'cross-platform' | 'recent'>('hotness') // Default to hotness for column view
-
-  useEffect(() => {
-    if (currentSiteId) {
-      fetchTrends()
-    }
-  }, [currentSiteId, segments]) // Add segments as dependency to reload when site segments change
-
-  const fetchTrends = async (showSuccessToast = false) => {
-    setIsLoading(true)
-    try {
-      // Get enough trends for quality selection in kanban view
-      const result = await trendsManager.getAllTrends(activePlatforms, segments, { 
-        limitPerPlatform: 10, // Get 10 per platform to select best 5
-        sortBy: sortBy
-      })
-      
-      if (result.success && result.data) {
-        // Group trends by platform to ensure we get from all platforms
-        const trendsByPlatform = result.data.trends.reduce((acc, trend) => {
-          if (!acc[trend.platform]) {
-            acc[trend.platform] = []
-          }
-          acc[trend.platform].push(trend)
-          return acc
-        }, {} as Record<string, typeof result.data.trends>)
-        
-        // Take top 5 from each platform and then sort all by relevance/score
-        const allTopTrends: TrendItem[] = []
-        
-        activePlatforms.forEach(platform => {
-          const platformTrends = trendsByPlatform[platform] || []
-          const topTrends = platformTrends.slice(0, 5) // Take top 5 from each platform
-          allTopTrends.push(...topTrends)
-        })
-        
-        // Sort all trends by relevance score (highest first)
-        const sortedTrends = allTopTrends.sort((a, b) => {
-          const aScore = (a as any).relevanceScore || a.score || 0
-          const bScore = (b as any).relevanceScore || b.score || 0
-          return bScore - aScore
-        })
-        
-        setTrends(sortedTrends)
-        
-        // Only show success toast if explicitly requested (e.g., on manual refresh)
-        if (showSuccessToast) {
-          toast.success(`Loaded ${sortedTrends.length} trends successfully`)
-        }
-      } else {
-        toast.error("Failed to fetch trends: " + (result.error || "Unknown error"))
-      }
-    } catch (error) {
-      console.error("❌ [TrendsColumn] Error fetching trends:", error)
-      toast.error("An error occurred while fetching trends")
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  const handleTrendClick = (trend: TrendItem) => {
-    setSelectedTrend(trend)
-    setIsModalOpen(true)
-  }
-
+export function TrendsColumn({ className = "", segments, currentSiteId, contextReady }: TrendsColumnProps) {
+  const { trends, isLoading, platformErrors, error, status, contextKey, canRequest, refresh } = useTrendsResults({
+    currentSiteId, segments, contextReady, sortBy: 'hotness', view: 'column'
+  })
+  const [selection, setSelection] = useState<{ trend: TrendItem; key: string } | null>(null)
+  if (selection && selection.key !== contextKey) setSelection(null)
+  const selectedTrend = selection?.key === contextKey ? trends.find(trend => trend.id === selection.trend.id) ?? null : null
+  const handleTrendClick = (trend: TrendItem) => setSelection({ trend, key: contextKey })
   const handleRefresh = () => {
-    fetchTrends(true) // Show success toast on manual refresh
+    setSelection(null)
+    refresh()
   }
 
   const renderTrendsSkeleton = () => (
@@ -247,7 +150,8 @@ export function TrendsColumn({ className = "", segments, currentSiteId }: Trends
                 variant="ghost"
                 size="sm"
                 onClick={handleRefresh}
-                disabled={isLoading}
+                disabled={isLoading || !canRequest}
+                aria-label="Refresh trends"
                 className="h-6 w-6 p-0"
               >
                 {isLoading ? (
@@ -263,6 +167,7 @@ export function TrendsColumn({ className = "", segments, currentSiteId }: Trends
           </div>
         </div>
         <div className="bg-muted/30 rounded-b-md p-2 border-b border-x overflow-y-auto min-h-0">
+          {!isLoading && canRequest && <TrendsAvailability platformErrors={platformErrors} error={error} failed={status === 'failed'} />}
           {isLoading ? (
             renderTrendsSkeleton()
           ) : trends.length > 0 ? (
@@ -276,21 +181,16 @@ export function TrendsColumn({ className = "", segments, currentSiteId }: Trends
               ))}
             </>
           ) : (
-            <div className="flex items-center justify-center h-24 text-sm text-muted-foreground">
-              No trends available
-            </div>
+            <TrendsEmptyState canRequest={canRequest} failed={status === 'failed'} onRetry={handleRefresh} />
           )}
         </div>
       </div>
 
       <TrendDetailModal
         trend={selectedTrend}
-        isOpen={isModalOpen}
-        onClose={() => {
-          setIsModalOpen(false)
-          setSelectedTrend(null)
-        }}
+        isOpen={Boolean(selectedTrend)}
+        onClose={() => setSelection(null)}
       />
     </>
   )
-} 
+}

@@ -13,9 +13,10 @@ import type {
 } from "../content-item-types"
 import { ContentAiPanel } from "./ContentAiPanel"
 import { ContentDetailsPanel } from "./ContentDetailsPanel"
+import type { ContentItem } from "../../actions"
 
 type Props = {
-  content: any
+  content: ContentItem | null
   editForm: ContentEditForm
   setEditForm: EditFormSetter
   campaigns: CampaignOption[]
@@ -38,6 +39,7 @@ type Props = {
 }
 
 export function ContentRightPanel(props: Props) {
+  if (!props.content?.id) return null
   return (
     <div className="flex h-full w-80 flex-col border-l bg-muted/30">
       <Tabs defaultValue="ai" className="flex h-full flex-col">

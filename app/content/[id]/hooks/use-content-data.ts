@@ -1,9 +1,8 @@
 "use client"
 
-import { useCallback, useEffect, useState } from "react"
-import { toast } from "sonner"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { createClient } from "@/lib/supabase/client"
-import { getContentById } from "../../actions"
+import { getContentById, type ContentItem } from "../../actions"
 import { getContentTypeName } from "../../utils"
 import type {
   CampaignOption,
@@ -18,8 +17,10 @@ type Options = {
 }
 
 export function useContentData({ contentId, setEditForm }: Options) {
-  const [content, setContent] = useState<any>(null)
+  const [content, setContent] = useState<ContentItem | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
+  const requestVersion = useRef(0)
   const [campaigns, setCampaigns] = useState<CampaignOption[]>([])
   const [segments, setSegments] = useState<SegmentOption[]>([])
 
@@ -27,6 +28,7 @@ export function useContentData({ contentId, setEditForm }: Options) {
     siteId: string,
     campaignId?: string | null,
     segmentId?: string | null,
+    isCurrent: () => boolean = () => true,
   ) => {
     const supabase = createClient()
     try {
@@ -37,7 +39,7 @@ export function useContentData({ contentId, setEditForm }: Options) {
         .order("created_at", { ascending: false })
       if (error) {
         console.error("Failed to load campaigns:", error.message)
-      } else if (data) {
+      } else if (data && isCurrent()) {
         const campaignOptions: CampaignOption[] = (
           data as Array<{
             id: string
@@ -71,7 +73,7 @@ export function useContentData({ contentId, setEditForm }: Options) {
         .eq("site_id", siteId)
       if (error) {
         console.error("Failed to load segments:", error.message)
-      } else if (data) {
+      } else if (data && isCurrent()) {
         const segmentOptions: SegmentOption[] = (
           data as Array<{
             id: string
@@ -98,15 +100,22 @@ export function useContentData({ contentId, setEditForm }: Options) {
   }, [setEditForm])
 
   const loadContent = useCallback(async () => {
+    const version = ++requestVersion.current
+    const isCurrent = () => requestVersion.current === version
     setIsLoading(true)
+    setLoadError(null)
+    setContent(null)
+    setCampaigns([])
+    setSegments([])
     try {
       const { content: contentData, error } = await getContentById(contentId)
+      if (!isCurrent()) return
       if (error) {
-        toast.error(error)
+        setLoadError("Unable to load this content. Check your connection and try again.")
         return
       }
-      if (!contentData) {
-        toast.error("Content not found")
+      if (!contentData || contentData.id !== contentId) {
+        setLoadError("Content not found or no longer available.")
         return
       }
 
@@ -140,18 +149,22 @@ export function useContentData({ contentId, setEditForm }: Options) {
           contentData.site_id,
           contentData.campaign_id,
           contentData.segment_id,
+          isCurrent,
         )
       }
-    } catch (error) {
-      console.error("Unexpected error loading content:", error)
-      toast.error("Failed to load content")
+    } catch {
+      if (isCurrent()) {
+        setContent(null)
+        setLoadError("Unable to load this content. Check your connection and try again.")
+      }
     } finally {
-      setIsLoading(false)
+      if (isCurrent()) setIsLoading(false)
     }
   }, [contentId, loadRelations, setEditForm])
 
   useEffect(() => {
     void loadContent()
+    return () => { requestVersion.current += 1 }
   }, [loadContent])
 
   useEffect(() => {
@@ -176,6 +189,7 @@ export function useContentData({ contentId, setEditForm }: Options) {
     content,
     setContent,
     isLoading,
+    loadError,
     campaigns,
     segments,
     loadContent,
