@@ -39,7 +39,7 @@ export default function NavigationPage({ isOverlay, onClose }: NavigationPagePro
     return buildNavItemHref(item, searchParams)
   }
 
-  const getTitle = (item: AreaNavItem) => getNavItemTitle(item, t)
+  const getTitle = (item: AreaNavItem) => item.key === "leads" ? "Contacts" : getNavItemTitle(item, t)
 
   const sectionsOrder = NAVIGATION_MENU_AREA_ORDER
 

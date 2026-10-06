@@ -1,4 +1,5 @@
 "use client"
+import { DueDateSummary } from "@/app/components/finance/DueDateSummary"
 
 import React from "react"
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd"
@@ -243,6 +244,7 @@ export function KanbanView({
                                     </div>
                                     <span className="text-[10px] text-muted-foreground">
                                       {formatDate(sale.saleDate)}
+                                      <DueDateSummary value={sale.dueDate} />
                                     </span>
                                   </div>
                                 </div>

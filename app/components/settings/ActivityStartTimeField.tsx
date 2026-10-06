@@ -22,7 +22,7 @@ export function ActivityStartTimeField({ activityKey, timezone }: Props) {
   const savedMode = form.watch(modePath)
   const mode = displayedActivityTimeMode({ start_time_mode: savedMode, start_time: value })
   const modeError = activityTimeErrors({ start_time_mode: savedMode, start_time: value }).find(error => error.field === "start_time_mode")
-  const label = activityKey === "daily_resume_and_stand_up" ? "Standup" : activityKey === "leads_follow_up" ? "Follow-up" : "Cold outreach"
+  const label = activityKey === "daily_resume_and_stand_up" ? "Standup" : activityKey === "leads_follow_up" ? "Follow-up" : activityKey === "invoices_due" ? "Invoice reminder" : "Cold outreach"
   return <div className="space-y-3">
     <FormField control={form.control} name={modePath} render={({ field }) => <FormItem>
       <FormLabel>{label} execution time</FormLabel>

@@ -84,6 +84,7 @@ export function transformSaleData(data: SaleData): Sale {
     companyId: data.company_id,
     accountingState: data.accounting_state,
     saleDate: data.sale_date,
+    dueDate: data.due_date ?? null,
     paymentMethod: data.payment_method || "other",
     source: data.source || "online",
     siteId: data.site_id,

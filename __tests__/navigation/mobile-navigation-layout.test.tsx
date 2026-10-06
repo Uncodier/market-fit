@@ -30,6 +30,22 @@ jest.mock("@/lib/navigation/stale-router", () => ({
 }))
 
 describe("mobile navigation layout", () => {
+  it("shows and finds Contacts while keeping the leads destination", () => {
+    render(<NavigationPage />)
+
+    const contactsTile = screen.getByRole("button", { name: /Contacts/ })
+    expect(contactsTile).toHaveAttribute("id", "tour-app-leads")
+    expect(within(contactsTile).getByText("Contacts")).toBeInTheDocument()
+
+    fireEvent.change(screen.getByPlaceholderText("Search..."), {
+      target: { value: "contacts" },
+    })
+
+    expect(screen.getByRole("button", { name: /Contacts/ })).toBeInTheDocument()
+    fireEvent.click(contactsTile)
+    expect(navigateOrAssign).toHaveBeenCalledWith(expect.anything(), "/leads")
+  })
+
   it("gives search the available header width and shows three module columns", () => {
     render(<NavigationPage />)
 

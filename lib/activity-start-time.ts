@@ -2,7 +2,7 @@ import { z } from "zod"
 
 export const ACTIVITY_START_TIME_ERROR = "Enter a custom time in HH:mm (24-hour format)."
 export type ActivityStartTimeMode = "business_opening" | "custom"
-export const TIMED_ACTIVITY_KEYS = ["daily_resume_and_stand_up", "leads_follow_up", "leads_initial_cold_outreach"] as const
+export const TIMED_ACTIVITY_KEYS = ["daily_resume_and_stand_up", "leads_follow_up", "leads_initial_cold_outreach", "invoices_due"] as const
 export type TimedActivityKey = typeof TIMED_ACTIVITY_KEYS[number]
 const START_TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/
 

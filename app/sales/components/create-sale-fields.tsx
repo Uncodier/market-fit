@@ -1,6 +1,7 @@
 "use client"
 
 import { Input } from "@/app/components/ui/input"
+import { DueDateField } from "@/app/components/finance/DueDateField"
 import { Label } from "@/app/components/ui/label"
 import {
   Select,
@@ -25,6 +26,7 @@ export interface CreateSaleFormData {
   leadValue: RelationSelectValue
   segmentValue: RelationSelectValue
   saleDate: Date
+  dueDate?: string | null
   paymentMethod: string
   locationId: string | null
 }
@@ -262,6 +264,7 @@ export function CreateSaleFields({
           />
         </div>
       </div>
+      <DueDateField id="sale-due-date" value={formData.dueDate} onChange={(dueDate) => setFormData((prev) => ({ ...prev, dueDate }))} />
       {locations.length > 1 && (
         <div className="grid gap-2">
           <Label htmlFor="location">Location</Label>

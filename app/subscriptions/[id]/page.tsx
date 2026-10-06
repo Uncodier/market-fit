@@ -24,6 +24,7 @@ import { SubscriptionIdentityHeader } from "../components/SubscriptionIdentityHe
 import { SubscriptionInvoicesTable } from "../components/SubscriptionInvoicesTable"
 import { SubscriptionPaymentsTable } from "../components/SubscriptionPaymentsTable"
 import { SubscriptionStatusBar } from "../components/SubscriptionStatusBar"
+import { EditSubscriptionDueDateDialog } from "../components/EditSubscriptionDueDateDialog"
 
 const SUBSCRIPTION_TABS: TabItem[] = [
   { value: "invoices", label: "Invoices" },
@@ -40,6 +41,7 @@ export default function SubscriptionDetailPage(props: {
   const [invoices, setInvoices] = useState<SubscriptionInvoice[]>([])
   const [loading, setLoading] = useState(true)
   const [createInvoiceOpen, setCreateInvoiceOpen] = useState(false)
+  const [editDueDateOpen, setEditDueDateOpen] = useState(false)
   const [activeTab, setActiveTab] = useState("invoices")
   const [updatingStatus, setUpdatingStatus] = useState(false)
 
@@ -196,6 +198,7 @@ export default function SubscriptionDetailPage(props: {
                   subscription={subscription}
                   currency={currency}
                   invoices={invoices}
+                  onEditDueDate={() => setEditDueDateOpen(true)}
                 />
               </div>
             </aside>
@@ -210,9 +213,12 @@ export default function SubscriptionDetailPage(props: {
           siteId={currentSite.id}
           subscriptionId={subscription.id}
           defaultAmount={Number(subscription.amount) || 0}
+          defaultDueDate={subscription.due_date}
+          nextBillingDate={subscription.next_billing_date}
           onSuccess={loadSubscription}
         />
       ) : null}
+      <EditSubscriptionDueDateDialog subscription={subscription} open={editDueDateOpen} onOpenChange={setEditDueDateOpen} onSuccess={loadSubscription} />
     </div>
   )
 }

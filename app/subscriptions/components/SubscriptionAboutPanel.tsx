@@ -16,6 +16,7 @@ import {
 import { PropertyRow, hasPropertyValue } from "@/app/leads/components/PropertyRow"
 import { formatCurrency } from "@/app/lib/formatters"
 import type { SubscriptionDetail, SubscriptionInvoice } from "../actions"
+import { formatDueDate } from "@/lib/finance/due-date"
 
 function formatDate(value?: string | null) {
   if (!value) return ""
@@ -27,10 +28,12 @@ export function SubscriptionAboutPanel({
   subscription,
   currency,
   invoices,
+  onEditDueDate,
 }: {
   subscription: SubscriptionDetail
   currency: string
   invoices: SubscriptionInvoice[]
+  onEditDueDate?: () => void
 }) {
   const createdLabel = formatDate(subscription.created_at)
   const updatedLabel = formatDate(subscription.updated_at)
@@ -116,6 +119,8 @@ export function SubscriptionAboutPanel({
               showEmpty
               readOnly
             />
+            <PropertyRow icon={<Calendar />} label="Due date" value={formatDueDate(subscription.due_date)} readOnly />
+            {onEditDueDate ? <Button type="button" variant="outline" className="my-2" onClick={onEditDueDate}>Edit due date</Button> : null}
             <PropertyRow
               icon={<FileText />}
               label="Subscription ID"

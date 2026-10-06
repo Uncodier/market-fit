@@ -36,6 +36,8 @@ describe("subscription invoices", () => {
           site_id: SITE_ID,
           lead_id: "33333333-3333-4333-8333-333333333333",
           buyer_user_id: "44444444-4444-4444-8444-444444444444",
+          next_billing_date: "2026-09-01T00:00:00Z",
+          due_date: "2026-09-15",
           catalog_item: { name: "Growth plan", kind: "service" },
         },
         error: null,
@@ -83,6 +85,7 @@ describe("subscription invoices", () => {
         amount: 125,
         amount_due: 125,
         sale_date: "2026-09-22",
+        due_date: "2026-10-06",
         status: "pending",
       })
     )
@@ -123,6 +126,7 @@ describe("subscription invoices", () => {
       currency: "USD",
       status: "pending",
       sale_date: "2026-09-22",
+      due_date: "2026-10-06",
       payments: [{
         id: "payment-1",
         date: "2026-09-23T10:00:00",
@@ -162,6 +166,7 @@ describe("subscription invoices", () => {
         id: "invoice-1",
         amount: 125,
         amountDue: 25,
+        dueDate: "2026-10-06",
         payments: [{
           id: "payment-1",
           date: "2026-09-23T10:00:00",

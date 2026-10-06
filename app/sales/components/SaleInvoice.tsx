@@ -1,6 +1,7 @@
 "use client"
 
 import { Sale, SaleOrder, SaleOrderItem } from "@/app/types"
+import { DueDateSummary } from "@/app/components/finance/DueDateSummary"
 import { Button } from "@/app/components/ui/button"
 import { Badge } from "@/app/components/ui/badge"
 import { Plus } from "@/app/components/ui/icons"
@@ -151,6 +152,7 @@ export function SaleInvoice({
                 {t('sales.table.date') || "Date"}
               </div>
               <div className="text-base font-medium">{formatDate(sale.saleDate)}</div>
+              <DueDateSummary value={sale.dueDate} />
             </div>
           </div>
         </div>

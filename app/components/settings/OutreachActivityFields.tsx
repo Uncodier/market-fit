@@ -25,7 +25,8 @@ type Props = {
 export function OutreachActivityFields({ activityKey, accounts, segments, loading, error, retry, timezone }: Props) {
   const form = useFormContext<SiteFormValues>()
   const path = `activities.${activityKey}` as const
-  const value = normalizeOutreachSettings(form.watch(path))
+  const value = normalizeOutreachSettings(form.watch(path), activityKey)
+  const isInvoice = activityKey === "invoices_due"
   const toggle = <T,>(items: T[], item: T) => items.includes(item) ? items.filter(existing => existing !== item) : [...items, item]
   const unavailableSegments = value.segment_ids.filter(id => !segments.some(segment => segment.id === id))
   const channels = [...new Set([...Object.keys(value.channel_accounts), ...accounts.map(account => account.channel)])].filter(isOutreachChannel)
@@ -60,7 +61,7 @@ export function OutreachActivityFields({ activityKey, accounts, segments, loadin
           )
         })}
       </div>
-      <div className="space-y-3">
+      {!isInvoice && <div className="space-y-3">
         <h4 className="text-sm font-semibold">Target segments</h4>
         <FormField control={form.control} name={`${path}.all_segments`} render={({ field }) => (
           <FormItem className="flex items-center gap-2 space-y-0">
@@ -83,7 +84,15 @@ export function OutreachActivityFields({ activityKey, accounts, segments, loadin
           <span>Unavailable segment ({id})</span>
           <Button type="button" size="sm" variant="ghost" onClick={() => form.setValue(`${path}.segment_ids`, value.segment_ids.filter(item => item !== id), { shouldDirty: true })}>Remove segment</Button>
         </div>)}
-      </div>
+      </div>}
+      {isInvoice && <FormField control={form.control} name={`${path}.repeat_interval_days`} render={({ field }) => (
+        <FormItem>
+          <FormLabel>Repeat interval (days)</FormLabel>
+          <FormControl><Input {...field} type="number" min={1} max={365} step={1} className="max-w-40" value={typeof field.value === "number" && Number.isFinite(field.value) ? field.value : ""} onChange={event => field.onChange(event.target.value === "" ? NaN : Number(event.target.value))} /></FormControl>
+          <p className="text-sm text-muted-foreground">1–365 days between reminders for the same unpaid invoice (default 3). Paid invoices are not contacted.</p>
+          <FormMessage />
+        </FormItem>
+      )} />}
       <FormField control={form.control} name={`${path}.daily_message_limit`} render={({ field }) => (
         <FormItem>
           <FormLabel>Daily message limit</FormLabel>
@@ -92,17 +101,17 @@ export function OutreachActivityFields({ activityKey, accounts, segments, loadin
           <FormMessage />
         </FormItem>
       )} />
-      <FormField control={form.control} name={`${path}.max_unanswered_messages`} render={({ field }) => (
+      {!isInvoice && <FormField control={form.control} name={`${path}.max_unanswered_messages`} render={({ field }) => (
         <FormItem>
           <FormLabel>Maximum unanswered messages</FormLabel>
           <FormControl><Input {...field} type="number" min={1} max={100} step={1} className="max-w-40" value={Number.isFinite(field.value) ? field.value : ""} onChange={event => field.onChange(event.target.value === "" ? NaN : Number(event.target.value))} /></FormControl>
           <p className="text-sm text-muted-foreground">1–100 messages (default 3). Counts confirmed outreach messages across channels since the contact&apos;s last real reply; drafts, pending and failed messages do not count. After reaching this limit, the contact is marked cold on the next eligible check after the reply-wait period, not immediately after sending.</p>
           <FormMessage />
         </FormItem>
-      )} />
-      {activityKey === "leads_follow_up" && <fieldset className="space-y-3">
-        <legend className="text-sm font-semibold">Follow-up weekdays</legend>
-        <p className="text-sm text-muted-foreground">Default: Tuesday, Wednesday and Thursday. No days selected means no follow-ups.</p>
+      )} />}
+      {(activityKey === "leads_follow_up" || isInvoice) && <fieldset className="space-y-3">
+        <legend className="text-sm font-semibold">{isInvoice ? "Invoice reminder weekdays" : "Follow-up weekdays"}</legend>
+        <p className="text-sm text-muted-foreground">{isInvoice ? "Default: Monday–Friday. No days selected means no invoice reminders." : "Default: Tuesday, Wednesday and Thursday. No days selected means no follow-ups."}</p>
         <div className="flex flex-wrap gap-4">
           {WEEKDAYS.map((day, index) => <label key={day} className="flex items-center gap-2 text-sm">
             <Checkbox checked={value.weekdays.includes(index)} onCheckedChange={() => form.setValue(`${path}.weekdays`, toggle(value.weekdays, index).sort(), { shouldDirty: true })} />

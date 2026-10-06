@@ -18,6 +18,7 @@ import {
 } from "@/app/components/ui/dialog"
 import { Button } from "@/app/components/ui/button"
 import { Input } from "@/app/components/ui/input"
+import { DueDateField } from "@/app/components/finance/DueDateField"
 import { Label } from "@/app/components/ui/label"
 import { RelationSelect, RelationSelectValue, RelationSelectOption } from "@/app/components/ui/relation-select"
 import { resolveRelationId } from "@/app/commerce/resolve-relation"
@@ -75,6 +76,7 @@ export function EditSaleDialog({
   const [title, setTitle] = useState("")
   const [amount, setAmount] = useState("")
   const [amountDue, setAmountDue] = useState("")
+  const [dueDate, setDueDate] = useState("")
   const [status, setStatus] = useState<"pending" | "completed" | "cancelled" | "refunded">("pending")
   const [leadValue, setLeadValue] = useState<RelationSelectValue>(null)
   const [leads, setLeads] = useState<RelationSelectOption[]>([])
@@ -101,6 +103,7 @@ export function EditSaleDialog({
       setTitle(sale.title)
       setAmount(String(sale.amount || 0))
       setAmountDue((sale.amount_due || 0).toString())
+      setDueDate(sale.dueDate || "")
       setStatus(sale.status)
       setSource(sale.source)
       setProductName(sale.productName || "")
@@ -241,6 +244,7 @@ export function EditSaleDialog({
 
       const updatedSale: Sale = {
         ...sale,
+        dueDate: dueDate || null,
         title,
         amount: numericAmount,
         amount_due: numericAmountDue,
@@ -278,6 +282,7 @@ export function EditSaleDialog({
             <DialogTitle>Edit Sale</DialogTitle>
           </DialogHeader>
           <DialogBody className="grid gap-4">
+            <DueDateField id="edit-sale-due-date" value={dueDate} onChange={setDueDate} disabled={isSubmitting} />
             <div className="space-y-2">
               <Label htmlFor="title">Title</Label>
               <Input

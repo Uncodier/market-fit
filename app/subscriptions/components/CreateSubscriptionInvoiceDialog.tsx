@@ -18,6 +18,8 @@ import {
 import { Input } from "@/app/components/ui/input"
 import { Label } from "@/app/components/ui/label"
 import { createSubscriptionInvoice } from "../actions"
+import { DueDateField } from "@/app/components/finance/DueDateField"
+import { getSubscriptionInvoiceDueDate } from "@/lib/finance/due-date"
 
 interface CreateSubscriptionInvoiceDialogProps {
   open: boolean
@@ -25,6 +27,8 @@ interface CreateSubscriptionInvoiceDialogProps {
   siteId: string
   subscriptionId: string
   defaultAmount: number
+  defaultDueDate?: string | null
+  nextBillingDate?: string | null
   onSuccess: () => void | Promise<void>
 }
 
@@ -34,17 +38,24 @@ export function CreateSubscriptionInvoiceDialog({
   siteId,
   subscriptionId,
   defaultAmount,
+  defaultDueDate,
+  nextBillingDate,
   onSuccess,
 }: CreateSubscriptionInvoiceDialogProps) {
   const [amount, setAmount] = useState(String(defaultAmount || ""))
   const [invoiceDate, setInvoiceDate] = useState(new Date())
   const [submitting, setSubmitting] = useState(false)
+  const [dueDate, setDueDate] = useState("")
 
   useEffect(() => {
     if (!open) return
     setAmount(String(defaultAmount || ""))
     setInvoiceDate(new Date())
   }, [defaultAmount, open])
+
+  useEffect(() => {
+    if (open) setDueDate(getSubscriptionInvoiceDueDate(defaultDueDate, nextBillingDate, format(invoiceDate, "yyyy-MM-dd")) || "")
+  }, [defaultDueDate, nextBillingDate, invoiceDate, open])
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault()
@@ -62,6 +73,7 @@ export function CreateSubscriptionInvoiceDialog({
         subscriptionId,
         amount: numericAmount,
         invoiceDate: format(invoiceDate, "yyyy-MM-dd"),
+        dueDate: dueDate || null,
       })
 
       if (result.error) {
@@ -110,6 +122,7 @@ export function CreateSubscriptionInvoiceDialog({
                 showEvents={false}
               />
             </div>
+            <DueDateField id="subscription-invoice-due-date" value={dueDate} onChange={setDueDate} disabled={submitting} description="Defaults to the subscription billing-to-due offset. Changing the invoice date recalculates the default; you can override or clear it for this invoice." />
           </DialogBody>
           <DialogFooter>
             <Button

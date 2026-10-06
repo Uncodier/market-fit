@@ -33,6 +33,7 @@ export default function PublicBillPage(props: {
         status: purchase.status,
         currency: purchase.currency,
         createdAt: purchase.purchaseDate || purchase.createdAt,
+        dueDate: purchase.dueDate,
         subtotal: purchase.amount,
         taxTotal: 0,
         discountTotal: 0,

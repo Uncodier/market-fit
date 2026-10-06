@@ -55,6 +55,45 @@ describe("ActivitiesSection outreach controls", () => {
     expect(onSave).not.toHaveBeenCalled()
   })
 
+  it("configures opt-in Due Invoices without lead targeting or unanswered controls and reloads it", async () => {
+    const key = "invoices_due"
+    const onSave = jest.fn().mockResolvedValue(true)
+    jest.mocked(fetchOutreachSegments).mockRejectedValue(new Error("Segments unavailable"))
+    const { unmount } = render(<TestForm onSave={onSave} initial={{ invoices_due: "default" }} />)
+    await waitFor(() => expect(card().getByText(/Unable to load this site's segments/)).toBeInTheDocument())
+    expect(card(key).getByRole("radio", { name: /Inactive/ })).toBeChecked()
+    expect(card(key).getByRole("spinbutton", { name: "Repeat interval (days)" })).toHaveValue(3)
+    expect(card(key).queryByText("Target segments")).not.toBeInTheDocument()
+    expect(card(key).queryByLabelText("Maximum unanswered messages")).not.toBeInTheDocument()
+    expect(card(key).getByRole("combobox", { name: "Invoice reminder execution time" })).toHaveTextContent("Business opening time")
+    for (const day of ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]) expect(card(key).getByRole("checkbox", { name: day })).toBeChecked()
+    fireEvent.click(card(key).getByRole("radio", { name: /^Active/ }))
+    expect(card(key).getByRole("radio", { name: /Inactive/ })).toBeChecked()
+    fireEvent.click(card(key).getByRole("checkbox", { name: "Sales Voice" }))
+    fireEvent.change(card(key).getByRole("spinbutton", { name: "Repeat interval (days)" }), { target: { value: "5" } })
+    fireEvent.click(card(key).getByRole("radio", { name: /^Active/ }))
+    expect(card(key).getByRole("radio", { name: /^Active/ })).toBeChecked()
+    fireEvent.click(card(key).getByRole("button", { name: "Save" }))
+    await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1))
+    const saved = mergeActivitySettings(undefined, onSave.mock.calls[0][0].activities)
+    expect(saved[key]).toMatchObject({ status: "active", channel_accounts: { voice: ["voice-id"] }, repeat_interval_days: 5, start_time_mode: "business_opening" })
+    unmount()
+    render(<TestForm onSave={onSave} initial={saved} />)
+    await waitFor(() => expect(card().getByText(/Unable to load this site's segments/)).toBeInTheDocument())
+    expect(card(key).getByRole("checkbox", { name: "Sales Voice" })).toBeChecked()
+    expect(card(key).getByRole("spinbutton", { name: "Repeat interval (days)" })).toHaveValue(5)
+  })
+
+  it.each(["", "0", "-1", "1.5", "366"])("blocks saving invalid invoice interval %s even while inactive", async interval => {
+    const onSave = jest.fn()
+    render(<TestForm onSave={onSave} />)
+    await waitFor(() => expect(card().getByRole("checkbox", { name: "Enterprise" })).toBeInTheDocument())
+    fireEvent.change(card("invoices_due").getByRole("spinbutton", { name: "Repeat interval (days)" }), { target: { value: interval } })
+    fireEvent.click(card("invoices_due").getByRole("button", { name: "Save" }))
+    expect(onSave).not.toHaveBeenCalled()
+    expect(card("invoices_due").getByRole("alert")).toHaveTextContent("1 to 365 days")
+  })
+
   it("shows the persisted site timezone for both fixed-time controls rather than unsaved form hours", async () => {
     mockCurrentSite.settings.business_hours = [{ timezone: "Europe/Madrid" }]
     render(<TestForm onSave={jest.fn()} />)

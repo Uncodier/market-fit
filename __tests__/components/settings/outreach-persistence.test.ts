@@ -48,6 +48,23 @@ describe("outreach persistence", () => {
     expect(adaptSiteToForm({ ...opts.currentSite, settings: { ...opts.currentSite.settings, ...saved } }).activities.leads_follow_up).toEqual(configured)
   })
 
+  it.each(["activity", "all"])("roundtrips invoice opt-in and repeat timing through %s save without segments", async mode => {
+    jest.mocked(fetchOutreachSegments).mockClear()
+    const opts = options()
+    const invoice = { status: "active", channel_accounts: { email: [emailId] }, repeat_interval_days: 7, weekdays: [1, 5], start_time_mode: "custom", start_time: "14:35", extension: { version: 2 } }
+    opts.currentSite.settings.activities = { invoices_due: invoice, future_activity: { version: 3 } }
+    const adapted = adaptSiteToForm(opts.currentSite)
+    const data = siteFormSchema.parse({ ...adapted, channels: { ...adapted.channels, email: {} } })
+    if (mode === "activity") await handleSaveActivities(data, opts)
+    else await handleSave({ ...data, copywriting: undefined } as unknown as SiteFormValues, opts)
+    expect(fetchOutreachSegments).not.toHaveBeenCalled()
+    const saved = opts.updateSettings.mock.calls[0][1]
+    expect(saved.activities.invoices_due).toMatchObject(invoice)
+    expect(saved.activities.future_activity).toEqual({ version: 3 })
+    const reloaded = adaptSiteToForm({ ...opts.currentSite, settings: { ...opts.currentSite.settings, ...saved } })
+    expect(reloaded.activities.invoices_due).toMatchObject(invoice)
+  })
+
   it("validates the actual saved account list and site-scoped segments before saving", async () => {
     const opts = options()
     const data = { channels, activities: normalizeActivitySettings({ leads_follow_up: configured }) } as any

@@ -6,7 +6,7 @@ import { Skeleton } from "@/app/components/ui/skeleton"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/app/components/ui/tooltip"
 import { format } from "date-fns"
 import { toast } from "sonner"
-import { Sale } from "@/app/types"
+import { Sale, SaleData } from "@/app/types"
 import { formatCurrency } from "@/app/lib/formatters"
 import { useSite } from "@/app/context/SiteContext"
 import { useLocalization } from "@/app/context/LocalizationContext"
@@ -40,31 +40,47 @@ function formatDate(dateString: string) {
 export function SalesView({ leadId }: SalesViewProps) {
   const [sales, setSales] = useState<Sale[]>([])
   const [loading, setLoading] = useState(true)
+  const [paymentRevision, setPaymentRevision] = useState(0)
   const { currentSite } = useSite()
   const { t } = useLocalization()
   const router = useRouter()
 
   useEffect(() => {
+    const handlePaymentRecorded = (event: Event) => {
+      const detail = (event as CustomEvent<{ siteId: string; leadId: string }>).detail
+      if (detail?.siteId === currentSite?.id && detail?.leadId === leadId) {
+        setPaymentRevision(revision => revision + 1)
+      }
+    }
+    window.addEventListener("lead:invoice-payment-recorded", handlePaymentRecorded)
+    return () => window.removeEventListener("lead:invoice-payment-recorded", handlePaymentRecorded)
+  }, [leadId, currentSite?.id])
+
+  useEffect(() => {
+    let cancelled = false
     const loadSales = async () => {
       if (!currentSite?.id || !leadId) return
 
       setLoading(true)
       try {
         const result = await getSales(currentSite.id)
+        if (cancelled) return
 
         if (result.error || !result.sales) {
           const supabase = createClient()
           const { data, error } = await supabase
             .from("sales")
             .select("*")
+            .eq("site_id", currentSite.id)
             .eq("lead_id", leadId)
             .order("sale_date", { ascending: false })
+          if (cancelled) return
 
           if (error || !data || data.length === 0) {
             setSales([])
           } else {
             setSales(
-              data.map((item: any) => ({
+              data.map((item: SaleData & { channel?: string; tags?: string[] }) => ({
                 id: item.id,
                 title: item.title || "Unnamed Sale",
                 productName: item.product_name || "",
@@ -75,6 +91,7 @@ export function SalesView({ leadId }: SalesViewProps) {
                 status: item.status || "pending",
                 source: item.source || "online",
                 saleDate: item.sale_date,
+                dueDate: item.due_date ?? null,
                 leadId: item.lead_id,
                 leadName: item.lead_name || "Client",
                 campaignId: item.campaign_id,
@@ -95,16 +112,18 @@ export function SalesView({ leadId }: SalesViewProps) {
           setSales(result.sales.filter((sale) => sale.leadId === leadId))
         }
       } catch (error) {
+        if (cancelled) return
         console.error("Error loading sales:", error)
         toast.error("Failed to load sales")
         setSales([])
       } finally {
-        setLoading(false)
+        if (!cancelled) setLoading(false)
       }
     }
 
     loadSales()
-  }, [leadId, currentSite?.id])
+    return () => { cancelled = true }
+  }, [leadId, currentSite?.id, paymentRevision])
 
   const handleViewSale = (sale: Sale) => {
     navigateToSale({

@@ -66,6 +66,11 @@ const ACTIVITIES: { key: ActivityKey; title: string; description: string }[] = [
     description: "Follow up only with contacts who have previously written or replied. Choose the weekdays and start time below."
   },
   {
+    key: "invoices_due",
+    title: "Due Invoices",
+    description: "Remind customers about unpaid invoices that are due or overdue. Choose sending accounts, repeat interval, weekdays and start time below. This activity does not prospect leads or mark contacts cold."
+  },
+  {
     key: "email_sync",
     title: "Email Sync",
     description: "Keep email conversations synchronized for context-aware automations and tracking. Runs according to your company's operating hours."
@@ -115,11 +120,11 @@ export function ActivitiesSection({ active, onSave, siteId }: ActivitiesSectionP
   const sectionTitle = t("settings.nav.activities") || "AI Activities"
 
   const validate = (key: typeof OUTREACH_ACTIVITY_KEYS[number], enabling = false) => {
-    const value = normalizeOutreachSettings(form.getValues(`activities.${key}`))
+    const value = normalizeOutreachSettings(form.getValues(`activities.${key}`), key)
     if (enabling) value.status = "active"
     const messages = validateOutreachSettings(value, key, accounts, segments.segments.map(segment => segment.id)).map(error => error.message)
     if (value.status === "active" && !isValidOutreachTimezone(timezone)) messages.push("Set a valid business-hours timezone in Context before enabling this activity.")
-    if (value.status === "active" && !value.all_segments && (segments.loading || segments.error)) messages.push("Wait for this site's segments to load successfully before enabling or saving.")
+    if (key !== "invoices_due" && value.status === "active" && !value.all_segments && (segments.loading || segments.error)) messages.push("Wait for this site's segments to load successfully before enabling or saving.")
     return messages
   }
 
@@ -164,7 +169,7 @@ export function ActivitiesSection({ active, onSave, siteId }: ActivitiesSectionP
       <div>
         <h2 className="text-2xl font-semibold">{sectionTitle}</h2>
         <p className="text-xs text-muted-foreground mt-1">
-          Standup, Follow Up and Cold Outreach use business opening time or a custom time. Standup and Follow Up also use the selected weekdays. ICP runs are distributed by site over 24 hours, independent of business hours. Configure the site&apos;s timezone and business hours in
+          Standup, Follow Up, Cold Outreach and Due Invoices use business opening time or a custom time. Standup, Follow Up and Due Invoices also use the selected weekdays. ICP runs are distributed by site over 24 hours, independent of business hours. Configure the site&apos;s timezone and business hours in
           {" "}
           <NavigationLink href="/context" className="text-primary underline underline-offset-4">Context</NavigationLink>
           {" "}
@@ -211,7 +216,7 @@ export function ActivitiesSection({ active, onSave, siteId }: ActivitiesSectionP
                   <p className="text-sm text-muted-foreground mt-2">{description}</p>
                   {isDependencyInactive && (
                     <p className="text-sm text-amber-600 dark:text-amber-400 mt-2">
-                      ⚠️ Requires "Leads Initial Cold Outreach" to be active
+                      ⚠️ Requires &quot;Leads Initial Cold Outreach&quot; to be active
                     </p>
                   )}
                 </div>

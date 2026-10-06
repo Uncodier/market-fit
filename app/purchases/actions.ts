@@ -1,6 +1,7 @@
 "use server"
 
 import { revalidatePath } from "next/cache"
+import { normalizeDueDate } from "@/lib/finance/due-date"
 import { Purchase, Payment, PurchaseLineInput } from "@/app/types"
 import {
   upsertPolizaForPurchase,
@@ -38,6 +39,7 @@ export async function createPurchase(values: {
   amountDue?: number
   currency?: string
   purchaseDate: string
+  dueDate?: string | null
   locationId?: string | null
   notes?: string | null
   items: PurchaseLineInput[]
@@ -45,6 +47,7 @@ export async function createPurchase(values: {
   try {
     const { supabase, user } = await requirePurchaseAccess(values.siteId, "insert")
     await validatePurchaseReferences(supabase, values.siteId, values)
+    const dueDate = normalizeDueDate(values.dueDate)
 
     if (!values.items?.length) return { purchase: null, error: "At least one line is required" }
 
@@ -68,6 +71,7 @@ export async function createPurchase(values: {
         currency: values.currency || "USD",
         payments: [],
         purchase_date: values.purchaseDate,
+        due_date: dueDate,
         location_id: values.locationId || null,
         accounting_state: "pending",
         stock_received: false,
@@ -112,6 +116,7 @@ export async function updatePurchase(values: {
   amountDue?: number
   currency?: string
   purchaseDate?: string
+  dueDate?: string | null
   locationId?: string | null
   notes?: string | null
   payments?: Payment[]
@@ -146,6 +151,7 @@ export async function updatePurchase(values: {
     if (values.amountDue !== undefined) updateData.amount_due = values.amountDue
     if (values.currency !== undefined) updateData.currency = values.currency
     if (values.purchaseDate !== undefined) updateData.purchase_date = values.purchaseDate
+    if (values.dueDate !== undefined) updateData.due_date = normalizeDueDate(values.dueDate)
     if (values.locationId !== undefined) updateData.location_id = values.locationId
     if (values.notes !== undefined) updateData.notes = values.notes
     if (values.payments !== undefined) updateData.payments = values.payments

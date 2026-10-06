@@ -21,6 +21,7 @@ import { Plus, Trash2 } from "@/app/components/ui/icons"
 import { useSite } from "@/app/context/SiteContext"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { createPurchase, updatePurchase } from "@/app/purchases/actions"
+import { DueDateField } from "@/app/components/finance/DueDateField"
 import { getCompanies } from "@/app/companies/actions"
 import { listCatalogItems } from "@/app/catalog/actions"
 import { listLocations } from "@/app/inventory/actions"
@@ -54,6 +55,7 @@ export function CreatePurchaseDialog({
   const [vendorCompanyId, setVendorCompanyId] = useState<string>("")
   const [locationId, setLocationId] = useState<string>("")
   const [purchaseDate, setPurchaseDate] = useState<Date>(new Date())
+  const [dueDate, setDueDate] = useState("")
   const [amountDue, setAmountDue] = useState("")
   const [notes, setNotes] = useState("")
   const [lines, setLines] = useState<LineState[]>([
@@ -71,6 +73,7 @@ export function CreatePurchaseDialog({
         purchaseToEdit.purchaseDate ? new Date(purchaseToEdit.purchaseDate) : new Date()
       )
       setAmountDue(String(purchaseToEdit.amountDue ?? ""))
+      setDueDate(purchaseToEdit.dueDate || "")
       setNotes(purchaseToEdit.notes || "")
       const editLines = (purchaseToEdit.items || []).map((item, idx) => ({
         key: `line-${item.id || idx}`,
@@ -91,6 +94,7 @@ export function CreatePurchaseDialog({
       setNotes("")
       setVendorCompanyId("")
       setPurchaseDate(new Date())
+      setDueDate("")
       setLines([{ key: `line-${Date.now()}`, name: "", quantity: 1, unitCost: 0, catalogItemId: null }])
     }
 
@@ -167,6 +171,7 @@ export function CreatePurchaseDialog({
         ? await updatePurchase({
             siteId: currentSite.id,
             id: purchaseToEdit.id,
+            dueDate: dueDate || null,
             title: title || "Vendor bill",
             vendorCompanyId: vendorCompanyId || null,
             purchaseDate: purchaseDate.toISOString().split("T")[0],
@@ -180,6 +185,7 @@ export function CreatePurchaseDialog({
             items,
           })
         : await createPurchase({
+            dueDate: dueDate || null,
             siteId: currentSite.id,
             title: title || "Vendor bill",
             vendorCompanyId: vendorCompanyId || null,
@@ -227,6 +233,7 @@ export function CreatePurchaseDialog({
             </DialogTitle>
           </DialogHeader>
           <DialogBody className="grid gap-4">
+            <DueDateField id="bill-due-date" value={dueDate} onChange={setDueDate} disabled={loading} />
             <div className="grid gap-2">
               <Label htmlFor="bill-title">{t("bills.field.title") || "Title"}</Label>
               <Input id="bill-title" className="h-12" value={title} onChange={(e) => setTitle(e.target.value)} />

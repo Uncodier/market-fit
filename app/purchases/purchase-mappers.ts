@@ -52,6 +52,7 @@ export function mapPurchase(row: any): Purchase {
     currency: row.currency || "USD",
     payments: (row.payments || []) as Payment[],
     purchaseDate: row.purchase_date,
+    dueDate: row.due_date ?? null,
     locationId: row.location_id || null,
     accountingState: row.accounting_state || "pending",
     stockReceived: !!row.stock_received,

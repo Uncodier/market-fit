@@ -140,6 +140,7 @@ export function LeadIdentityHeader({
             onAssigned={(assigneeId) => onUpdateLead(lead.id, { assignee_id: assigneeId })}
           />
           <LeadActionsMenu
+            lead={lead}
             loading={actions.loading}
             onResearch={() => void actions.handleLeadResearch()}
             onFollowUp={() => void actions.handleLeadFollowUp()}

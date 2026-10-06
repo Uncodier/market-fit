@@ -15,6 +15,7 @@ import {
 } from "@/app/components/ui/dialog"
 import { Button } from "@/app/components/ui/button"
 import { Input } from "@/app/components/ui/input"
+import { DueDateField } from "@/app/components/finance/DueDateField"
 import { DatePicker } from "@/app/components/ui/date-picker"
 import { Label } from "@/app/components/ui/label"
 import { format } from "date-fns"
@@ -41,6 +42,7 @@ type FormData = {
   amount: string
   start_date: string
   end_date?: string
+  due_date?: string
 }
 
 export function CreateSubscriptionDialog({ open, onOpenChange, onSuccess }: CreateSubscriptionDialogProps) {
@@ -125,6 +127,7 @@ export function CreateSubscriptionDialog({ open, onOpenChange, onSuccess }: Crea
       buyer_user_id: finalBuyerUserId || undefined,
       start_date: new Date(data.start_date).toISOString(),
       next_billing_date: new Date(data.start_date).toISOString(),
+      due_date: data.due_date || null,
       end_date: data.end_date ? new Date(data.end_date).toISOString() : null,
       amount: parseFloat(data.amount),
       status: 'active'
@@ -221,6 +224,7 @@ export function CreateSubscriptionDialog({ open, onOpenChange, onSuccess }: Crea
               <Label htmlFor="amount">Billing amount</Label>
               <Input type="number" step="0.01" id="amount" className="h-12" {...register("amount", { required: true })} />
             </div>
+            <DueDateField id="subscription-due-date" value={watch("due_date")} onChange={(value) => setValue("due_date", value, { shouldDirty: true })} description="For the first billing cycle (start date). Future invoices keep the same number of days between billing and due dates." />
           </DialogBody>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting}>

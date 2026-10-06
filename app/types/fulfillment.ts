@@ -11,6 +11,7 @@ export interface Subscription {
   start_date: string;
   end_date?: string | null;
   next_billing_date?: string;
+  due_date?: string | null;
   amount: number;
   created_at: string;
   updated_at: string;

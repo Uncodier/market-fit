@@ -349,6 +349,7 @@ export interface SiteSettings {
     icp_lead_generation?: Partial<import("@/app/components/settings/icp-lead-generation-settings").IcpLeadGenerationSettings> | ActivityStatus
     leads_initial_cold_outreach?: Partial<import("@/lib/outreach-settings").OutreachSettings> | ActivityStatus
     leads_follow_up?: Partial<import("@/lib/outreach-settings").OutreachSettings> | ActivityStatus
+    invoices_due?: Partial<import("@/lib/outreach-settings").OutreachSettings> | ActivityStatus
     email_sync?: ActivityStatus
     assign_leads_to_team?: ActivityStatus
     notify_team_on_inbound_conversations?: ActivityStatus

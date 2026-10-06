@@ -41,6 +41,19 @@ describe('sale mutations maintain accounting state', () => {
     await updateSale('site', sale)
     expect(chain.update).toHaveBeenCalledWith(expect.objectContaining({ accounting_state: 'unpublished' }))
   })
+  it('saves and clears due dates without clearing omitted legacy values', async () => {
+    await updateSale('site', { ...sale, dueDate: '2026-10-15' })
+    expect(chain.update).toHaveBeenLastCalledWith(expect.objectContaining({ due_date: '2026-10-15' }))
+    await updateSale('site', { ...sale, dueDate: null })
+    expect(chain.update).toHaveBeenLastCalledWith(expect.objectContaining({ due_date: null }))
+    await updateSale('site', sale)
+    expect(chain.update.mock.calls.at(-1)[0]).not.toHaveProperty('due_date')
+  })
+  it('rejects malformed due dates before any access or write', async () => {
+    expect(await updateSale('site', { ...sale, dueDate: '2026-02-30' })).toHaveProperty('error')
+    expect(requireAccountingAccess).not.toHaveBeenCalled()
+    expect(chain.update).not.toHaveBeenCalled()
+  })
   it('cannot remove a source when journal cleanup fails', async () => {
     jest.mocked(deleteAccountingSource).mockRejectedValue(new Error('conflict'))
     const spy = jest.spyOn(console, 'error').mockImplementation(() => {})

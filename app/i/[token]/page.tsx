@@ -52,6 +52,7 @@ export default function PublicInvoicePage(props: {
         status: sale.status,
         currency: sale.currency,
         createdAt: sale.sale_date || sale.created_at,
+        dueDate: sale.due_date,
         subtotal: order?.subtotal ?? sale.amount,
         taxTotal: order?.tax_total ?? 0,
         discountTotal: order?.discount_total ?? 0,

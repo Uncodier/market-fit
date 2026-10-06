@@ -50,6 +50,7 @@ export interface Sale {
   campaignId: string | null;
   segmentId: string | null;
   saleDate: string;
+  dueDate?: string | null;
   paymentMethod: string;
   paymentDetails?: any;
   payments?: Payment[];
@@ -213,6 +214,7 @@ export interface Purchase {
   currency: string
   payments: Payment[]
   purchaseDate: string
+  dueDate?: string | null
   locationId?: string | null
   accountingState: 'pending' | 'posted' | 'unpublished'
   stockReceived: boolean
@@ -267,6 +269,7 @@ export interface SaleData {
   campaign_id: string | null;
   segment_id: string | null;
   sale_date: string;
+  due_date?: string | null;
   payment_method: string | null;
   payment_details?: any;
   stripe_checkout_session_id?: string | null;

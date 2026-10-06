@@ -12,6 +12,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/app/
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { formatCurrency } from "@/app/components/dashboard/campaign-revenue-donut"
 import { format } from "date-fns"
+import { DueDateSummary } from "@/app/components/finance/DueDateSummary"
 import { Sale } from "@/app/types"
 import { cn } from "@/lib/utils"
 import {
@@ -142,6 +143,7 @@ export function SalesTable({
                 </TableCell>
                 <TableCell className="py-3.5 text-sm text-muted-foreground whitespace-nowrap">
                   {formatSaleDate(sale.saleDate)}
+                  <DueDateSummary value={sale.dueDate} />
                 </TableCell>
                 <TableCell className="py-3.5">
                   <MoneyCell

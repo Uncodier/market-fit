@@ -1,6 +1,7 @@
 "use client"
 
 import { format } from "date-fns"
+import { DueDateSummary } from "@/app/components/finance/DueDateSummary"
 import { useRouter } from "next/navigation"
 import { EmptyCard } from "@/app/components/ui/empty-card"
 import { Receipt } from "@/app/components/ui/icons"
@@ -84,6 +85,7 @@ export function SubscriptionInvoicesTable({
                 </TableCell>
                 <TableCell className="py-3.5 text-sm text-muted-foreground">
                   {formatInvoiceDate(invoice.saleDate)}
+                  <DueDateSummary value={invoice.dueDate} />
                 </TableCell>
                 <TableCell className="py-3.5">
                   <MoneyCell

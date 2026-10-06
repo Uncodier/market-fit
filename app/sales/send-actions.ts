@@ -35,6 +35,7 @@ const PUBLIC_SALE_SELECT = `
   amount_due,
   currency,
   sale_date,
+  due_date,
   created_at,
   public_access_token_expires_at,
   public_access_token_revoked_at,
@@ -177,6 +178,7 @@ export async function getSaleByPublicToken(token: string) {
       amount_due: sale.amount_due,
       currency: sale.currency,
       sale_date: sale.sale_date,
+      due_date: sale.due_date ?? null,
       created_at: sale.created_at,
       leads: lead ? { name: lead.name ?? null, email: lead.email ?? null } : null,
       site: site

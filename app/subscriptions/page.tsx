@@ -9,11 +9,12 @@ import { SubscriptionsList, SubscriptionsListSkeleton } from "./components/Subsc
 import { Tabs, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
 import { CreateSubscriptionDialog } from "./components/CreateSubscriptionDialog"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
-import { MobileFiltersDrawer, FilterContainer, FilterSection, FilterSeparator } from "@/app/components/ui/mobile-filters-drawer"
+import { MobileFiltersDrawer, FilterContainer, FilterSection } from "@/app/components/ui/mobile-filters-drawer"
 import { SearchInput } from "@/app/components/ui/search-input"
 import { useSearchParams } from "next/navigation"
 import { SortDropdown } from "@/app/components/ui/sort-dropdown"
 import { cn } from "@/lib/utils"
+import { Button } from "@/app/components/ui/button"
 
 export default function SubscriptionsPage() {
   const searchParams = useSearchParams()
@@ -47,8 +48,8 @@ export default function SubscriptionsPage() {
     return () => window.removeEventListener("subscriptions:create", handleCreate)
   }, [t])
 
-  const subscriptions = data?.data || []
   const filteredSubscriptions = useMemo(() => {
+    const subscriptions = data?.data || []
     const query = searchQuery.trim().toLowerCase()
     return subscriptions.filter((sub) => {
       if (statusFilter !== "all" && sub.status !== statusFilter) return false
@@ -72,7 +73,7 @@ export default function SubscriptionsPage() {
       if (sortBy === 'updated_at') return updateB - updateA;
       return 0;
     })
-  }, [subscriptions, statusFilter, searchQuery, sortBy])
+  }, [data?.data, statusFilter, searchQuery, sortBy])
 
   return (
     <div className="flex-1 flex flex-col h-[calc(100vh-var(--topbar-height,64px))] bg-muted/30">
@@ -125,8 +126,14 @@ export default function SubscriptionsPage() {
       <div className="p-4 md:p-6 lg:p-8 flex-1 overflow-auto">
         {!currentSite || isLoading ? (
           <SubscriptionsListSkeleton />
+        ) : data?.error ? (
+          <div role="alert" className="rounded-lg border p-6 text-center">
+            <p className="text-sm text-destructive">{data.error}</p>
+            <Button variant="outline" className="mt-3" onClick={() => void mutate()}>Retry</Button>
+          </div>
         ) : (
           <SubscriptionsList
+            key={currentSite.id}
             subscriptions={filteredSubscriptions}
             siteId={currentSite.id}
             onUpdate={mutate} />

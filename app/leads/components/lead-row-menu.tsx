@@ -1,5 +1,7 @@
 "use client"
 
+import { useState } from "react"
+import { useOptionalPermissions } from "@/app/context/PermissionContext"
 import { Button } from "@/app/components/ui/button"
 import {
   DropdownMenu,
@@ -10,6 +12,7 @@ import {
 } from "@/app/components/ui/dropdown-menu"
 import {
   CheckCircle2,
+  CreditCard,
   Loader,
   Mail,
   MessageSquare,
@@ -21,6 +24,7 @@ import {
 } from "@/app/components/ui/icons"
 import { Lead } from "@/app/leads/types"
 import { LeadActionKind } from "./use-lead-table-actions"
+import { LeadPaymentDialog } from "./LeadPaymentDialog"
 
 export function LeadRowMenu({
   lead,
@@ -46,8 +50,11 @@ export function LeadRowMenu({
   onDelete?: () => void
 }) {
   const bulk = leadCount > 1
+  const [paymentOpen, setPaymentOpen] = useState(false)
+  const permissions = useOptionalPermissions()
 
   return (
+    <>
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button
@@ -77,6 +84,13 @@ export function LeadRowMenu({
           <Pencil className="mr-2 h-4 w-4" />
           Edit Lead
         </DropdownMenuItem>
+        {!bulk && <DropdownMenuItem
+          onClick={(event) => { event.stopPropagation(); if (permissions?.can("update") ?? true) setPaymentOpen(true) }}
+          disabled={!(permissions?.can("update") ?? true)}
+        >
+          <CreditCard className="mr-2 h-4 w-4" />
+          Settle balance / Add payment
+        </DropdownMenuItem>}
         <DropdownMenuItem onClick={(event) => { event.stopPropagation(); onConversation() }} disabled={loading === "newConversation"}>
           {loading === "newConversation" ? <Loader className="mr-2 h-4 w-4" /> : success === "newConversation" ? <CheckCircle2 className="mr-2 h-4 w-4 text-emerald-600" /> : <MessageSquare className="mr-2 h-4 w-4" />}
           New Conversation
@@ -95,5 +109,7 @@ export function LeadRowMenu({
         )}
       </DropdownMenuContent>
     </DropdownMenu>
+    {!bulk && <LeadPaymentDialog leadId={lead.id} leadName={lead.name} open={paymentOpen} onOpenChange={setPaymentOpen} />}
+    </>
   )
 }

@@ -3,7 +3,7 @@
 import type { Site, SiteSettings } from "./site-types"
 import type { Dispatch, SetStateAction } from "react"
 import { requestVoiceAgentResync } from "@/app/agents/voice-sync"
-import { mergeActivitySettings } from "@/app/components/settings/activity-settings"
+import { mergeActivitySettings, invoicesDueSettingsSchema } from "@/app/components/settings/activity-settings"
 import { icpLeadGenerationSettingsSchema } from "@/app/components/settings/icp-lead-generation-settings"
 import { dailyStandupSettingsSchema } from "@/app/components/settings/daily-standup-settings"
 import { activityTimingSchema } from "@/lib/activity-start-time"
@@ -323,6 +323,7 @@ export async function persistSiteSettings({
           activities.daily_resume_and_stand_up = dailyStandupSettingsSchema.parse(activities.daily_resume_and_stand_up);
           activityTimingSchema.parse(activities.leads_follow_up);
           activityTimingSchema.parse(activities.leads_initial_cold_outreach);
+          invoicesDueSettingsSchema.parse(activities.invoices_due);
           activities.icp_lead_generation = icpLeadGenerationSettingsSchema.parse(activities.icp_lead_generation);
           formattedSettings.activities = activities;
         }

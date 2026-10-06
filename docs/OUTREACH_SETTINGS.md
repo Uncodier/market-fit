@@ -90,6 +90,23 @@ UI validation is not an authorization boundary.
 
 ## Sending accounts and message formats
 
+### Due invoices
+
+`settings.activities.invoices_due` is a separate opt-in **Due Invoices** activity.
+Missing settings and legacy `default` status are inactive. Its default sending
+accounts are `{}` (no fallback). It reuses connected outreach accounts, including
+`voice` for calls, `daily_message_limit` (default 30), `weekdays` (Monday–Friday),
+and the `start_time_mode` / strict `start_time` contract above. Missing timing
+defaults to business opening time, preserving legacy custom time-only values.
+
+`repeat_interval_days` is an integer from 1 to 365, default 3, between reminders
+for the same unpaid invoice. Invalid values block saves even while inactive.
+Enabling requires a usable selected account and valid scheduling configuration.
+Invoice reminders target tenant-scoped unpaid invoices due today or earlier, not
+prospecting segments. There are no segment or maximum-unanswered controls, and
+collections must not mark contacts cold. Backend execution owns tenant checks,
+payment-state rechecks, repeat limits, call opt-outs and confirmed delivery.
+
 The selector groups accounts dynamically using the site's persisted
 `settings.channels.connections` and saved channel keys. Email, WhatsApp, SMS,
 Telegram, Messenger, Instagram, voice, and custom channels use the same rules:

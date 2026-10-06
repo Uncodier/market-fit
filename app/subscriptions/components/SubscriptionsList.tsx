@@ -6,11 +6,12 @@ import { Subscription } from "@/app/types"
 import { Button } from "@/app/components/ui/button"
 import { ConfirmDialog } from "@/app/components/ui/confirm-dialog"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/app/components/ui/dropdown-menu"
-import { MoreHorizontal, Play, Pause, Ban, Repeat, Trash2 } from "@/app/components/ui/icons"
+import { MoreHorizontal, Play, Pause, Ban, Repeat, Trash2, CreditCard } from "@/app/components/ui/icons"
 import { updateSubscriptionStatus } from "../actions"
 import { deleteSubscription } from "../delete-subscription"
 import { toast } from "sonner"
 import { format } from "date-fns"
+import { DueDateSummary } from "@/app/components/finance/DueDateSummary"
 import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/app/components/ui/table"
 import { EmptyCard } from "@/app/components/ui/empty-card"
 import { Skeleton } from "@/app/components/ui/skeleton"
@@ -18,6 +19,8 @@ import { useLocalization } from "@/app/context/LocalizationContext"
 import { useOptionalPermissions } from "@/app/context/PermissionContext"
 import { cn } from "@/lib/utils"
 import { formatCurrency } from "@/app/lib/formatters"
+import { invoiceBalances, type SubscriptionListItem } from "../invoice-summary"
+import { RegisterSubscriptionPaymentDialog } from "./RegisterSubscriptionPaymentDialog"
 import {
   DocumentListHead,
   DocumentListRow,
@@ -41,7 +44,7 @@ function formatDate(value?: string | null) {
 }
 
 interface SubscriptionsListProps {
-  subscriptions: Subscription[]
+  subscriptions: SubscriptionListItem[]
   siteId: string
   onUpdate: () => void
 }
@@ -52,7 +55,9 @@ export function SubscriptionsList({ subscriptions, siteId, onUpdate }: Subscript
   const router = useRouter()
   const [updating, setUpdating] = useState<string | null>(null)
   const [subscriptionToDelete, setSubscriptionToDelete] = useState<Subscription | null>(null)
+  const [subscriptionToPay, setSubscriptionToPay] = useState<SubscriptionListItem | null>(null)
   const pageTotal = subscriptions.reduce((sum, sub) => sum + (Number(sub.amount) || 0), 0)
+  const pendingInvoices = subscriptions.flatMap((sub) => sub.pendingInvoices || [])
 
   const handleStatusChange = async (id: string, status: Subscription["status"]) => {
     setUpdating(id)
@@ -99,14 +104,15 @@ export function SubscriptionsList({ subscriptions, siteId, onUpdate }: Subscript
 
   return (
     <div className={documentListShellClassName()}>
-      <Table className="min-w-[760px]">
+      <Table className="min-w-[920px]">
         <TableHeader className="sticky top-0 z-10 bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80">
           <TableRow className="hover:bg-transparent">
-            <DocumentListHead className="w-[34%]">{t("subscriptions.table.customer") || "Customer"}</DocumentListHead>
-            <DocumentListHead className="w-[14%]">{t("subscriptions.table.status") || "Status"}</DocumentListHead>
-            <DocumentListHead className="w-[18%]">{t("subscriptions.table.nextBilling") || "Next billing"}</DocumentListHead>
-            <DocumentListHead className="w-[22%]" align="right">{t("subscriptions.table.amount") || "Amount"}</DocumentListHead>
-            <DocumentListHead className="w-[12%]" align="right">{t("subscriptions.table.actions") || "Actions"}</DocumentListHead>
+            <DocumentListHead className="w-[28%]">{t("subscriptions.table.customer") || "Customer"}</DocumentListHead>
+            <DocumentListHead className="w-[12%]">{t("subscriptions.table.status") || "Status"}</DocumentListHead>
+            <DocumentListHead className="w-[17%]">{t("subscriptions.table.nextBilling") || "Next billing"}</DocumentListHead>
+            <DocumentListHead className="w-[17%]" align="right">Pending invoices</DocumentListHead>
+            <DocumentListHead className="w-[17%]" align="right">{t("subscriptions.table.amount") || "Amount"}</DocumentListHead>
+            <DocumentListHead className="w-[9%]" align="right">{t("subscriptions.table.actions") || "Actions"}</DocumentListHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -117,6 +123,7 @@ export function SubscriptionsList({ subscriptions, siteId, onUpdate }: Subscript
             const nextBilling = formatDate(sub.next_billing_date)
             const cancelled = sub.status === "cancelled" || sub.status === "expired"
             const amount = Number(sub.amount) || 0
+            const outstanding = sub.pendingInvoices || []
 
             return (
               <DocumentListRow
@@ -138,12 +145,23 @@ export function SubscriptionsList({ subscriptions, siteId, onUpdate }: Subscript
                 <TableCell className="py-3.5">
                   <div className="text-sm text-muted-foreground whitespace-nowrap">
                     {nextBilling || "—"}
+                    <DueDateSummary value={sub.due_date} />
                   </div>
                   {sub.end_date && formatDate(sub.end_date) ? (
                     <div className="text-[11px] text-muted-foreground/80">
                       {t("subscriptions.table.ends") || "Ends"} {formatDate(sub.end_date)}
                     </div>
                   ) : null}
+                </TableCell>
+                <TableCell className="py-3.5 text-right">
+                  <p className={cn("text-sm font-medium", outstanding.length > 0 ? "text-amber-700 dark:text-amber-400" : "text-muted-foreground")}>
+                    {outstanding.length} {outstanding.length === 1 ? "invoice" : "invoices"}
+                  </p>
+                  {invoiceBalances(outstanding).map(({ currency, amount: balance }) => (
+                    <p key={currency} className="whitespace-nowrap text-xs text-muted-foreground">
+                      {formatCurrency(balance, currency)} due
+                    </p>
+                  ))}
                 </TableCell>
                 <TableCell className="py-3.5">
                   <MoneyCell
@@ -171,6 +189,14 @@ export function SubscriptionsList({ subscriptions, siteId, onUpdate }: Subscript
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
+                      <DropdownMenuItem
+                        onSelect={() => setSubscriptionToPay(sub)}
+                        disabled={outstanding.length === 0 || permissions?.can("update") === false}
+                      >
+                        <CreditCard className="h-4 w-4 mr-2" />
+                        Register payment
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
                       {sub.status !== "active" && (
                         <DropdownMenuItem onClick={() => handleStatusChange(sub.id, "active")}>
                           <Play className="h-4 w-4 mr-2" />
@@ -218,6 +244,12 @@ export function SubscriptionsList({ subscriptions, siteId, onUpdate }: Subscript
               {t("subscriptions.table.total") || "Total"}
             </TableCell>
             <TableCell colSpan={2} />
+            <TableCell className="py-3 text-right">
+              <p className="text-sm font-medium">{pendingInvoices.length} {pendingInvoices.length === 1 ? "invoice" : "invoices"}</p>
+              {invoiceBalances(pendingInvoices).map(({ currency, amount }) => (
+                <p key={currency} className="whitespace-nowrap text-xs text-muted-foreground">{formatCurrency(amount, currency)} due</p>
+              ))}
+            </TableCell>
             <TableCell className="py-3">
               <MoneyCell amountLabel={formatCurrency(pageTotal)} />
             </TableCell>
@@ -243,6 +275,15 @@ export function SubscriptionsList({ subscriptions, siteId, onUpdate }: Subscript
         loading={subscriptionToDelete !== null && updating === subscriptionToDelete.id}
         onConfirm={handleDelete}
       />
+      {subscriptionToPay ? (
+        <RegisterSubscriptionPaymentDialog
+          key={`${siteId}:${subscriptionToPay.id}`}
+          subscription={subscriptionToPay}
+          siteId={siteId}
+          onClose={() => setSubscriptionToPay(null)}
+          onSuccess={onUpdate}
+        />
+      ) : null}
     </div>
   )
 }
@@ -253,7 +294,7 @@ export function SubscriptionsListSkeleton() {
       <Table>
         <TableHeader>
           <TableRow className="hover:bg-transparent">
-            {Array.from({ length: 5 }).map((_, index) => (
+            {Array.from({ length: 6 }).map((_, index) => (
               <DocumentListHead key={index} align={index >= 3 ? "right" : "left"}>
                 <Skeleton className={cn("h-3 w-16", index >= 3 && "ml-auto")} />
               </DocumentListHead>
@@ -274,6 +315,7 @@ export function SubscriptionsListSkeleton() {
               </TableCell>
               <TableCell className="py-3.5"><Skeleton className="h-4 w-16" /></TableCell>
               <TableCell className="py-3.5"><Skeleton className="h-4 w-24" /></TableCell>
+              <TableCell className="py-3.5"><Skeleton className="ml-auto h-4 w-20" /></TableCell>
               <TableCell className="py-3.5">
                 <div className="flex flex-col items-end gap-1.5">
                   <Skeleton className="h-5 w-16" />

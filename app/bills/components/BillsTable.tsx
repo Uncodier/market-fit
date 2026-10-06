@@ -15,6 +15,7 @@ import {
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { formatCurrency } from "@/app/components/dashboard/campaign-revenue-donut"
 import { format } from "date-fns"
+import { DueDateSummary } from "@/app/components/finance/DueDateSummary"
 import { Purchase } from "@/app/types"
 import {
   DocumentListHead,
@@ -107,6 +108,7 @@ export function BillsTable({
                     {purchase.purchaseDate
                       ? format(new Date(purchase.purchaseDate), "MMM d, yyyy")
                       : "—"}
+                    <DueDateSummary value={purchase.dueDate} />
                   </TableCell>
                   <TableCell className="py-3.5">
                     <MoneyCell

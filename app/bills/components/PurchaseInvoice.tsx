@@ -1,6 +1,7 @@
 "use client"
 
 import { Purchase } from "@/app/types"
+import { DueDateSummary } from "@/app/components/finance/DueDateSummary"
 import { Badge } from "@/app/components/ui/badge"
 import { formatCurrency } from "@/app/components/dashboard/campaign-revenue-donut"
 import { format } from "date-fns"
@@ -55,6 +56,7 @@ export function PurchaseInvoice({ purchase, siteName }: PurchaseInvoiceProps) {
             </Badge>
             <div className="text-sm text-muted-foreground">
               {t("bills.field.billDate") || "Bill date"}: {formatDate(purchase.purchaseDate)}
+              <DueDateSummary value={purchase.dueDate} />
             </div>
           </div>
         </div>

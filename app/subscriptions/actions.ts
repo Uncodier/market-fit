@@ -3,6 +3,9 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import type { Payment, Subscription } from "@/app/types";
+import { getSubscriptionInvoiceDueDate, isDateOnly, normalizeDueDate } from "@/lib/finance/due-date";
+import { requireAccountingAccess } from "@/app/accounting/access";
+import { isOutstandingInvoice, type SubscriptionListItem } from "./invoice-summary";
 
 export interface SubscriptionInvoice {
   id: string;
@@ -13,6 +16,7 @@ export interface SubscriptionInvoice {
   currency: string;
   status: "pending" | "completed" | "cancelled" | "refunded";
   saleDate: string;
+  dueDate?: string | null;
   payments: Payment[];
 }
 
@@ -35,33 +39,45 @@ export interface SubscriptionDetail extends Omit<Subscription, "lead" | "catalog
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
-function isValidDateOnly(value: string) {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
-  const parsed = new Date(`${value}T00:00:00.000Z`);
-  return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
-}
-
 export async function getSubscriptions(siteId: string) {
   try {
-    const supabase = await createClient();
+    const supabase = await requireAccountingAccess(siteId);
     const { data, error } = await supabase
       .from("subscriptions")
       .select(`
         *,
         catalog_item:catalog_items(id, name, description, kind),
-        lead:leads(id, name, email, phone)
+        lead:leads(id, name, email, phone),
+        invoices:sales!sales_subscription_id_fkey(id, site_id, title, invoice_number, amount_due, currency, status)
       `)
       .eq("site_id", siteId)
       .order("created_at", { ascending: false });
 
     if (error) {
       console.error("Error fetching subscriptions:", error);
-      return { data: [], error: error.message };
+      return { data: [], error: "Failed to load subscriptions" };
     }
     
-    return { data: data as Subscription[] };
-  } catch (error: any) {
-    return { data: [], error: error.message };
+    const subscriptions: SubscriptionListItem[] = (data || []).map((row: Subscription & {
+      invoices?: { id: string; site_id: string; title: string; invoice_number: string | null;
+        amount_due: number | string; currency: string | null; status: string }[];
+    }) => {
+      const { invoices, ...subscription } = row;
+      return {
+        ...subscription,
+        pendingInvoices: (invoices || [])
+          .filter((invoice) => invoice.site_id === siteId && isOutstandingInvoice({
+            status: invoice.status, amountDue: Number(invoice.amount_due),
+          }))
+          .map((invoice) => ({
+            id: invoice.id, title: invoice.title, invoiceNumber: invoice.invoice_number,
+            amountDue: Number(invoice.amount_due), currency: invoice.currency || "USD",
+          })),
+      };
+    });
+    return { data: subscriptions };
+  } catch {
+    return { data: [], error: "Unable to access subscriptions" };
   }
 }
 
@@ -102,7 +118,7 @@ export async function getSubscriptionDetail(siteId: string, subscriptionId: stri
 
     const { data: invoiceRows, error: invoicesError } = await supabase
       .from("sales")
-      .select("id, title, invoice_number, amount, amount_due, currency, status, sale_date, payments")
+      .select("id, title, invoice_number, amount, amount_due, currency, status, sale_date, due_date, payments")
       .eq("site_id", siteId)
       .eq("subscription_id", subscriptionId)
       .order("sale_date", { ascending: false })
@@ -112,7 +128,12 @@ export async function getSubscriptionDetail(siteId: string, subscriptionId: stri
       return { subscription: null, invoices: [], error: invoicesError.message };
     }
 
-    const invoices: SubscriptionInvoice[] = (invoiceRows || []).map((invoice: any) => ({
+    const invoices: SubscriptionInvoice[] = (invoiceRows || []).map((invoice: {
+      id: string; title: string; invoice_number: string | null; amount: number | string;
+      amount_due: number | string; currency: string | null; status: SubscriptionInvoice["status"];
+      sale_date: string; due_date?: string | null;
+      payments?: { id: unknown; date: unknown; amount: unknown; method?: unknown; notes?: unknown }[] | null;
+    }) => ({
       id: invoice.id,
       title: invoice.title,
       invoiceNumber: invoice.invoice_number || null,
@@ -121,8 +142,9 @@ export async function getSubscriptionDetail(siteId: string, subscriptionId: stri
       currency: invoice.currency || "USD",
       status: invoice.status,
       saleDate: invoice.sale_date,
+      dueDate: invoice.due_date ?? null,
       payments: Array.isArray(invoice.payments)
-        ? invoice.payments.map((payment: any) => ({
+        ? invoice.payments.map((payment) => ({
             id: String(payment.id),
             date: String(payment.date),
             amount: Number(payment.amount) || 0,
@@ -150,6 +172,7 @@ export async function createSubscriptionInvoice(input: {
   subscriptionId: string;
   amount: number;
   invoiceDate: string;
+  dueDate?: string | null;
 }) {
   if (!UUID_PATTERN.test(input.siteId) || !UUID_PATTERN.test(input.subscriptionId)) {
     return { error: "Invalid subscription request" };
@@ -159,9 +182,10 @@ export async function createSubscriptionInvoice(input: {
     return { error: "Enter a valid invoice amount" };
   }
 
-  if (!isValidDateOnly(input.invoiceDate)) {
+  if (!isDateOnly(input.invoiceDate)) {
     return { error: "Enter a valid invoice date" };
   }
+  try { normalizeDueDate(input.dueDate); } catch { return { error: "Enter a valid due date (YYYY-MM-DD)" }; }
 
   try {
     const supabase = await createClient();
@@ -181,6 +205,8 @@ export async function createSubscriptionInvoice(input: {
         site_id,
         lead_id,
         buyer_user_id,
+        due_date,
+        next_billing_date,
         catalog_item:catalog_items(name, kind)
       `)
       .eq("site_id", input.siteId)
@@ -208,6 +234,9 @@ export async function createSubscriptionInvoice(input: {
         lead_id: subscription.lead_id,
         buyer_user_id: subscription.buyer_user_id || null,
         sale_date: input.invoiceDate,
+        due_date: input.dueDate === undefined
+          ? getSubscriptionInvoiceDueDate(subscription.due_date, subscription.next_billing_date, input.invoiceDate)
+          : normalizeDueDate(input.dueDate),
         payment_method: null,
         source: "retail",
         channel: "manual",
@@ -235,6 +264,7 @@ export async function createSubscriptionInvoice(input: {
 }
 
 export async function upsertSubscription(subscription: Partial<Subscription>) {
+  try { normalizeDueDate(subscription.due_date); } catch { return { error: "Enter a valid due date (YYYY-MM-DD)" }; }
   try {
     const supabase = await createClient();
 
@@ -252,6 +282,7 @@ export async function upsertSubscription(subscription: Partial<Subscription>) {
       .from("subscriptions")
       .upsert({
         ...subscription,
+        ...(subscription.due_date !== undefined ? { due_date: normalizeDueDate(subscription.due_date) } : {}),
         buyer_user_id: buyerUserId,
         updated_at: new Date().toISOString(),
       })
@@ -272,8 +303,8 @@ export async function upsertSubscription(subscription: Partial<Subscription>) {
     
     revalidatePath("/subscriptions");
     return { data: data as Subscription };
-  } catch (error: any) {
-    return { error: error.message };
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : "Failed to create subscription" };
   }
 }
 
@@ -302,7 +333,30 @@ export async function updateSubscriptionStatus(siteId: string, subscriptionId: s
     revalidatePath("/subscriptions");
     revalidatePath(`/subscriptions/${subscriptionId}`);
     return { data: data as Subscription };
-  } catch (error: any) {
-    return { error: error.message };
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : "Failed to update subscription" };
+  }
+}
+
+export async function updateSubscriptionDueDate(siteId: string, subscriptionId: string, value: string | null) {
+  if (!UUID_PATTERN.test(siteId) || !UUID_PATTERN.test(subscriptionId)) return { error: "Invalid subscription request" };
+  try {
+    const dueDate = normalizeDueDate(value);
+    const supabase = await requireAccountingAccess(siteId, "update");
+    const { data: current, error: readError } = await supabase.from("subscriptions")
+      .select("next_billing_date, updated_at").eq("site_id", siteId).eq("id", subscriptionId).maybeSingle();
+    if (readError || !current) return { error: "Subscription not found" };
+    if (dueDate && !current.next_billing_date) return { error: "A next billing date is required to configure a due date" };
+    const { data, error } = await supabase.from("subscriptions")
+      .update({ due_date: dueDate, updated_at: new Date().toISOString() })
+      .eq("site_id", siteId).eq("id", subscriptionId).eq("updated_at", current.updated_at)
+      .select("id").maybeSingle();
+    if (error) return { error: "Unable to save subscription due date" };
+    if (!data) return { error: "Subscription changed while editing. Reload and retry." };
+    revalidatePath("/subscriptions");
+    revalidatePath(`/subscriptions/${subscriptionId}`);
+    return { success: true };
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : "Unable to save subscription due date" };
   }
 }

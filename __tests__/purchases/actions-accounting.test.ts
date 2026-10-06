@@ -172,6 +172,24 @@ describe("purchase amount edits", () => {
     errors.code = "40001"
     expect((await updatePurchase({ siteId, id, items: items(120) })).error).toBe("Purchase changed while editing. Reload and retry.")
   })
+  it("saves due date atomically with bill lines and maps it back to detail", async () => {
+    const { client } = setup()
+    const result = await updatePurchase({ siteId, id, items: items(120), dueDate: "2026-10-15" })
+    expect(client.rpc).toHaveBeenCalledWith("accounting_update_purchase_items", expect.objectContaining({ p_update: { due_date: "2026-10-15" } }))
+    expect(result.purchase?.dueDate).toBe("2026-10-15")
+  })
+  it("allows clearing a bill due date without inventing one on omitted updates", async () => {
+    const { writes } = setup({ due_date: "2026-10-15" })
+    expect((await updatePurchase({ siteId, id, dueDate: null })).purchase?.dueDate).toBeNull()
+    await updatePurchase({ siteId, id, notes: "Reviewed" })
+    expect(writes.at(-1)?.data).not.toHaveProperty("due_date")
+  })
+  it("rejects malformed bill due dates without source writes", async () => {
+    const { client, writes } = setup()
+    expect((await updatePurchase({ siteId, id, items: items(120), dueDate: "2026-02-30" })).error).toContain("valid due date")
+    expect(client.rpc).not.toHaveBeenCalled()
+    expect(writes).toEqual([])
+  })
 
   it("reports accounting failures without leaving a falsely posted purchase", async () => {
     const { row } = setup()

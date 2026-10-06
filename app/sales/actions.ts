@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { Sale, SaleData } from "@/app/types";
+import { normalizeDueDate } from "@/lib/finance/due-date";
 import { requireAccountingAccess } from '@/app/accounting/access';
 import { deleteAccountingSource } from '@/app/accounting/source-lifecycle';
 import {
@@ -50,6 +51,7 @@ export async function getSales(siteId: string) {
       campaignId: sale.campaign_id,
       segmentId: sale.segment_id,
       saleDate: sale.sale_date,
+      dueDate: sale.due_date ?? null,
       paymentMethod: sale.payment_method || "Unknown",
       paymentDetails: sale.payment_details || undefined,
       payments: sale.payments || [],
@@ -92,11 +94,14 @@ export async function createSale(data: {
   segmentId?: string;
   locationId?: string | null;
   saleDate: string;
+  dueDate?: string | null;
   paymentMethod?: string;
   source: 'retail' | 'online';
   notes?: string;
   siteId: string;
 }) {
+  let dueDate: string | null;
+  try { dueDate = normalizeDueDate(data.dueDate); } catch { return { error: "Enter a valid due date (YYYY-MM-DD)" }; }
   try {
     const supabase = await createClient();
     
@@ -130,6 +135,7 @@ export async function createSale(data: {
       campaign_id: data.campaignId || null,
       segment_id: data.segmentId || null,
       sale_date: data.saleDate,
+      due_date: dueDate,
       payment_method: data.paymentMethod || null,
       source: data.source,
       notes: data.notes || null,
@@ -162,6 +168,7 @@ export async function createSale(data: {
  * Update an existing sale
  */
 export async function updateSale(siteId: string, updatedSale: Sale) {
+  try { normalizeDueDate(updatedSale.dueDate); } catch { return { error: "Enter a valid due date (YYYY-MM-DD)" }; }
   try {
     const supabase = await requireAccountingAccess(siteId, 'update');
 
@@ -202,6 +209,7 @@ export async function updateSale(siteId: string, updatedSale: Sale) {
         latestPaymentMethod || updatedSale.paymentMethod || null,
       updated_at: new Date().toISOString(),
     };
+    if (updatedSale.dueDate !== undefined) updateData.due_date = normalizeDueDate(updatedSale.dueDate);
     Object.assign(updateData, { accounting_state: previousSale.accounting_state === 'unpublished' ? 'unpublished' : 'pending' });
 
     const { data: sale, error } = await supabase
@@ -316,6 +324,7 @@ export async function getSaleById(siteId: string, saleId: string) {
       companyId: saleData.company_id || null,
       accountingState: saleData.accounting_state || 'pending',
       saleDate: saleData.sale_date,
+      dueDate: saleData.due_date ?? null,
       paymentMethod: saleData.payment_method || "Unknown",
       paymentDetails: saleData.payment_details || undefined,
       payments: saleData.payments || [],

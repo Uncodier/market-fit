@@ -20,6 +20,8 @@ import {
   type DocumentShippingAddress,
 } from "@/app/documents/document-meta"
 
+import { DueDateSummary } from "@/app/components/finance/DueDateSummary"
+
 export type PublicDocumentViewProps = {
   kindLabel: string
   docRef: string
@@ -27,6 +29,7 @@ export type PublicDocumentViewProps = {
   status?: string | null
   currency?: string | null
   createdAt?: string | null
+  dueDate?: string | null
   subtotal?: number | null
   taxTotal?: number | null
   discountTotal?: number | null
@@ -110,6 +113,7 @@ export function PublicDocumentView(props: PublicDocumentViewProps) {
               <div className="text-lg font-semibold print:text-black">
                 {formatDocumentDate(props.createdAt, locale)}
               </div>
+              {props.dueDate !== undefined ? <DueDateSummary value={props.dueDate} /> : null}
               {props.status ? (
                 <div className="mt-3 text-sm uppercase text-gray-700 dark:text-gray-300 font-medium print:text-gray-700">
                   {translateDocumentStatus(

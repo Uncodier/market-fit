@@ -47,6 +47,7 @@
 - Order-linked promotion discount transactions are analytical costs only. Net
   sales already reflect those discounts, so these rows do not create another
   expense or cash outflow. Standalone promotion spending remains an expense.
+
 - Successful Stripe refunds are recorded by refund ID and original refund date,
   including partial refunds. Replays do not duplicate refunds. A refund does not
   delete the original sale or its receipts. A dispute is not proof of a cash
@@ -60,6 +61,23 @@
 - Source invalidation is limited to accounting-relevant fields. Sending an email,
   rotating a document token, or updating fulfillment-only metadata does not mark
   the journal pending. Existing pending journals are retried on subsequent edits.
+
+## Subscription invoice payments
+
+The subscriptions list shows linked unpaid invoice counts and balances, with
+separate totals per currency. Cancelled/refunded invoices and zero balances are
+excluded; cancelling a subscription does not erase existing receivables.
+`Register payment` records one partial or full manual receipt, not a Stripe charge.
+It is disabled without update permission or an outstanding invoice.
+
+`app/subscriptions/register-payment.ts` verifies identity, site role, and the
+subscription/invoice relationship with the user-scoped client. It computes the
+balance from persisted data and saves receipt, balance, and status in one
+conditional update. Stale requests cannot overwrite another payment. Identical
+request IDs can be retried without duplicating receipts; interrupted confirmations
+lock form details until retried. Retries also repeat existing accounting/linked-order
+recovery. Secondary errors are warnings, not failed payments. The flow uses the
+existing sales/subscription foreign key and adds no migration.
 
 ## Chart and opening balances
 
