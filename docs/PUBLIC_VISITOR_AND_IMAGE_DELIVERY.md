@@ -151,7 +151,7 @@ Browser callers now reuse `resolveAppApiUrl`: on www/apex, prompt-image URLs and
 anonymous session bootstrap target the canonical app deployment directly.
 Direct www/apex image URLs add `cache_only=1`, including normalized persisted links,
 so unrelated app cookies cannot authorize generation or cause same-site
-generation rejection. Local, app-host and server URL generation remain relative;
+generation rejection. Unscoped local, app-host and server URL generation remain relative;
 uploaded images and existing workspace-generation authorization are unchanged.
 Normalization still forwards only prompt, dimensions, site selector and the
 cache-only flag, never stored origins, signatures or identity overrides.
@@ -164,21 +164,41 @@ validation, public/non-archived site lookup, bounded bodies, fail-closed rate
 admission and server-only service credentials remain mandatory. Subsequent
 proof-bearing requests still use the configured external visitor API.
 
-**Deployment limitation:** the actual www/apex commerce deployment still needs exact rewrites
-for `/api/images/prompt` and `/api/commerce/visitor-session` to app, preserving
-query strings and request bodies. Server-rendered relative image URLs can be
-requested before client rendering (or with JavaScript disabled), and other
-non-commerce hosts retain the shared helper's existing same-origin convention. Do not
-add a broad `/api/:path*` proxy or relax authentication as a workaround. Updating
-this repository's config alone cannot repair the separate commercial deployment.
-The deployment owner can append these entries to the existing commercial-site
-rewrite array, using its already-configured trusted `app` origin (not a client
-parameter):
+### Initial-document image routing repair (2026-10-06)
 
-```js
-{ source: '/api/images/prompt', destination: `${app}/api/images/prompt` },
-{ source: '/api/commerce/visitor-session', destination: `${app}/api/commerce/visitor-session` },
-```
+The public `/shop`, `/marketplace`, `/cart` and `/book` layouts now use
+`PublicImageLayout` to resolve a delivery policy from asynchronous Next.js
+`headers()` and serialize it through `PublicImageDelivery`. Exact www/apex/app
+hosts select `https://app.makinari.com`; this also handles rewrites that retain
+the app host. The first forwarded host takes precedence over Host. Local,
+preview, demo, custom, missing and nonstandard-port hosts remain relative.
+Origin/Referer and arbitrary request values cannot supply a delivery origin.
+Using request headers makes these public layouts request-rendered; existing
+data-cache/revalidation policies are not changed.
+
+`ProgressiveImage` applies this explicit policy to every responsive candidate.
+The native `PromptImage` wrapper also covers public PDP galleries, variants,
+modifiers, promotions, booking and cart/order-summary images. Prompt requests
+in these layouts always carry `cache_only=1`, including on app/local/preview
+hosts with workspace cookies. SSR `src`/`srcset` and hydrated attributes agree;
+there is no effect-time repair or dependence on JavaScript to change the URL.
+Uploaded URLs remain unchanged. Unscoped workspace and authenticated buyer
+callers retain their existing routing and generation contracts.
+
+This in-repository image repair does not require a sibling www image rewrite.
+It must still be rolled out by the deployment owner before production changes.
+The visitor-session browser path continues using direct-app delivery and scoped
+CORS. Do not add a broad API proxy or relax authentication as a workaround.
+
+Regression tests in `public-image-ssr.test.tsx` render actual public layouts,
+listing images and PDP galleries without `window`, then use `hydrateRoot` on
+www/apex/local/preview documents to assert identical image requests and no
+hydration warnings. `public-image-delivery.test.ts` covers exact-host selection,
+public-only cache semantics, tenant selectors and legacy-query sanitization.
+Local validation passed 125 tests in 15 focused Jest suites and a no-emit
+TypeScript check. Core helpers/layouts/tests have no ESLint errors (one native
+image warning); direct callers retain 34 pre-existing errors, confirmed against
+HEAD without reverting files. No production build or deployment was run.
 
 After an authorized rollout, verify both initial document image requests and
 direct-app session preflight/POST on www/apex with strict smoke assertions. These

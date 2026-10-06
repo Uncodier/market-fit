@@ -1,5 +1,7 @@
 "use client"
 
+import { PromptImage } from "@/app/components/commerce/PromptImage"
+
 import { useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
@@ -91,7 +93,7 @@ export function PromoListingCard({
         )}
       >
         <Link href={href} className="absolute inset-0 z-0 block" aria-label={promo.name || "Promotion"}>
-          <img
+          <PromptImage
             src={imageSrc}
             alt=""
             onError={(e) => {

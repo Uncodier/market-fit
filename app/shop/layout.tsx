@@ -1,0 +1,1 @@
+export { PublicImageLayout as default } from '@/app/components/commerce/PublicImageLayout'

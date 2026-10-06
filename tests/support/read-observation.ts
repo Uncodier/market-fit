@@ -78,7 +78,11 @@ export function startReadObservation(page: Page): void {
         const expectedError = isAction ? expectedActionErrors.get(new URL(url).pathname) : undefined;
         if (hasApplicationError(body, contentType, expectedError)) issues.push({ kind: 'application', ...safeEndpoint(url) });
       }).catch(() => {
-        issues.push({ kind: 'network', ...safeEndpoint(url) });
+        // Chromium cannot supply a body for a fetch explicitly cancelled by the UI.
+        // Match requestfailed's cancellation policy; HTTP failures were recorded above.
+        if (!result.request().failure()?.errorText.includes('ERR_ABORTED')) {
+          issues.push({ kind: 'network', ...safeEndpoint(url) });
+        }
       });
       pending.add(check);
       void check.finally(() => pending.delete(check));

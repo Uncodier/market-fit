@@ -1,5 +1,7 @@
 "use client"
 
+import { PromptImage } from "@/app/components/commerce/PromptImage"
+
 import type { PdpGalleryEntry } from "@/app/lib/image-utils"
 
 export function PdpProductGallery({
@@ -19,7 +21,7 @@ export function PdpProductGallery({
     <div className="space-y-4">
       <div className="relative aspect-[4/5] bg-muted rounded-[2rem] overflow-hidden border shadow-sm">
         {mainSrc ? (
-          <img
+          <PromptImage
             src={mainSrc}
             alt={itemName}
             fetchPriority="high"
@@ -50,7 +52,7 @@ export function PdpProductGallery({
                 }`}
               >
                 <span className="relative block h-full w-full overflow-hidden rounded-[0.85rem] bg-muted">
-                  <img
+                  <PromptImage
                     src={entry.url}
                     alt=""
                     className="absolute inset-0 h-full w-full object-cover object-center"

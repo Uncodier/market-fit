@@ -35,6 +35,7 @@ Use the guides below before relying on older implementation notes.
 - [Chat intervention delivery and voice/Temporal boundaries](CHAT_INTERVENTION_DELIVERY.md)
 - [Lead outbound-call consent editing](LEAD_CALL_CONSENT.md)
 - [Public visitor sessions and image delivery](PUBLIC_VISITOR_AND_IMAGE_DELIVERY.md)
+- [Embedded application and external tracker diagnostics](EMBEDDED_APPLICATION_DIAGNOSTICS.md)
 - [Report sections and data contracts](REPORTS.md)
 - [Report exports](REPORT_EXPORTS.md)
 - [Automated outreach settings](OUTREACH_SETTINGS.md)

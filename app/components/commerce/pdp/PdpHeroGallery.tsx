@@ -1,5 +1,7 @@
 "use client"
 
+import { PromptImage } from "@/app/components/commerce/PromptImage"
+
 import { useState, useRef } from "react"
 import { PdpGalleryEntry } from "@/app/lib/image-utils"
 import { ChevronLeft, ChevronRight } from "@/app/components/ui/icons"
@@ -35,7 +37,7 @@ export function PdpHeroGallery({ entries, itemName }: PdpHeroGalleryProps) {
 
   if (entries.length === 1) {
     return (
-      <img
+      <PromptImage
         src={entries[0].url}
         alt={itemName}
         fetchPriority="high"
@@ -54,7 +56,7 @@ export function PdpHeroGallery({ entries, itemName }: PdpHeroGalleryProps) {
       >
         {entries.map((entry, index) => (
           <div key={index} className="relative w-full h-full shrink-0 snap-start">
-            <img
+            <PromptImage
               src={entry.url}
               alt={`${itemName} - Image ${index + 1}`}
               fetchPriority={index === 0 ? "high" : "auto"}
@@ -121,7 +123,7 @@ export function PdpHeroGallery({ entries, itemName }: PdpHeroGalleryProps) {
                   : "opacity-50 hover:opacity-100"
               }`}
             >
-              <img
+              <PromptImage
                 src={entry.url}
                 alt=""
                 className="absolute inset-0 w-full h-full object-cover"

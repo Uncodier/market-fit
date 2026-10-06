@@ -3,6 +3,7 @@
 import { useState, useCallback, useMemo } from "react"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { resolveItemImage } from "@/app/lib/image-utils"
+import { PromptImage } from "@/app/components/commerce/PromptImage"
 import { ShieldCheck, CalendarIcon, Clock } from "@/app/components/ui/icons"
 import { format } from "date-fns"
 import Link from "next/link"
@@ -85,7 +86,7 @@ export function OrderSummary({
           <div key={(item.lineKey || item.id) + idx} className="flex flex-col bg-muted/30 rounded-2xl border border-border/40 overflow-hidden">
             <div className="flex gap-4 p-3">
               <div className="relative w-16 h-16 rounded-xl bg-muted overflow-hidden shrink-0 shadow-sm border border-border/50">
-                <img src={resolveItemImage(item, "card")} alt={item.name} className="absolute inset-0 h-full w-full object-cover object-center" />
+                <PromptImage src={resolveItemImage(item, "card")} alt={item.name} className="absolute inset-0 h-full w-full object-cover object-center" />
               </div>
               <div className="flex-1 min-w-0 flex flex-col justify-center">
                 {((item._parent?.name && item._parent.name !== item.name) || item.parent?.name || item.parent_name || item.site?.name) && (

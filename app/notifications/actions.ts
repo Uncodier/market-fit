@@ -1,4 +1,3 @@
-import { createClient } from "@/lib/supabase/client"
 import { z } from "zod"
 import { Notification } from "./types"
 
@@ -24,7 +23,7 @@ const NotificationsSchema = z.object({
   error: z.string().optional()
 })
 
-export type NotificationsResponse = z.infer<typeof NotificationsSchema>
+export type NotificationsResponse = z.infer<typeof NotificationsSchema> & { cancelled?: boolean }
 
 // Schema for create notification
 const CreateNotificationSchema = z.object({
@@ -55,7 +54,7 @@ const UpdateNotificationSchema = z.object({
 
 export type UpdateNotificationInput = z.infer<typeof UpdateNotificationSchema>
 
-async function readJsonBody(response: Response): Promise<any | null> {
+async function readJsonBody(response: Response, signal?: AbortSignal): Promise<Record<string, unknown> | null> {
   const contentType = response.headers.get("content-type") || ""
   if (!contentType.includes("application/json")) {
     console.error("readJsonBody: Content-Type is not JSON", contentType)
@@ -66,30 +65,34 @@ async function readJsonBody(response: Response): Promise<any | null> {
     if (!text) return {} // Return empty object if body is empty
     return JSON.parse(text)
   } catch (error) {
+    if (signal?.aborted) throw error
     console.error("readJsonBody: JSON parse error", error)
     return null
   }
 }
 
-export async function getNotifications(site_id: string, user_id: string): Promise<NotificationsResponse> {
+export async function getNotifications(site_id: string, user_id: string, signal?: AbortSignal): Promise<NotificationsResponse> {
   try {
     const response = await fetch(`/api/notifications?site_id=${site_id}&user_id=${user_id}`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
       },
+      signal,
     })
 
-    const data = await readJsonBody(response)
+    const data = await readJsonBody(response, signal)
     if (!response.ok) {
-      throw new Error(data?.error || `Error fetching notifications (${response.status})`)
+      throw new Error(typeof data?.error === 'string' ? data.error : `Error fetching notifications (${response.status})`)
     }
     if (!data) {
       throw new Error("Error fetching notifications: invalid response")
     }
 
-    return { notifications: data.notifications || [] }
+    return { notifications: (data.notifications || []) as NotificationsResponse['notifications'] }
   } catch (error) {
+    // Only an explicitly cancelled caller lifecycle is not a failed data read.
+    if (signal?.aborted) return { notifications: null, cancelled: true }
     console.error("Error loading notifications detail:", error)
     return { error: error instanceof Error ? error.message : "Error loading notifications", notifications: [] }
   }

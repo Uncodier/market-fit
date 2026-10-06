@@ -1,5 +1,7 @@
 "use client"
 
+import { PromptImage } from "@/app/components/commerce/PromptImage"
+
 import React, { useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
@@ -156,7 +158,7 @@ export function BookingExperience({
   ) : session ? (
     <div className="flex items-center gap-2 shrink-0">
       {session.user.user_metadata?.avatar_url || session.user.user_metadata?.picture ? (
-        <img
+        <PromptImage
           src={session.user.user_metadata?.avatar_url || session.user.user_metadata?.picture}
           alt="Avatar"
           className="w-8 h-8 min-w-8 rounded-full object-cover border border-border shadow-sm shrink-0"
@@ -250,7 +252,7 @@ export function BookingExperience({
             <div className="space-y-4 flex flex-col items-center md:items-start w-full">
               {imageUrl ? (
                 <div className="h-16 w-16 sm:h-20 sm:w-20 rounded-full border border-primary/10 overflow-hidden shadow-sm shrink-0 mb-2">
-                  <img src={imageUrl} alt={item.name} className="w-full h-full object-cover object-center bg-muted" />
+                  <PromptImage src={imageUrl} alt={item.name} className="w-full h-full object-cover object-center bg-muted" />
                 </div>
               ) : (
                 <div className="h-16 w-16 sm:h-20 sm:w-20 rounded-full bg-primary/5 border border-primary/10 flex items-center justify-center shadow-sm mb-2">

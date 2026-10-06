@@ -1,5 +1,7 @@
 "use client"
 
+import { PromptImage } from "@/app/components/commerce/PromptImage"
+
 import { CatalogItem } from "@/app/types"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { resolveItemImage } from "@/app/lib/image-utils"
@@ -177,7 +179,7 @@ export function DigitalPdpLayout({ item, backUrl, experience, catalogSize = 0 }:
         
         <div className="order-1 lg:order-2">
           <div className="aspect-[4/5] bg-muted rounded-[2rem] sm:rounded-[3rem] overflow-hidden shadow-2xl relative max-sm:rotate-0 rotate-3 hover:rotate-0 transition-transform duration-500 mx-auto max-w-md">
-            <img src={resolveItemImage(item, "full")} alt={item.name} className="absolute inset-0 h-full w-full object-cover object-center" />
+            <PromptImage src={resolveItemImage(item, "full")} alt={item.name} className="absolute inset-0 h-full w-full object-cover object-center" />
             <div className="absolute inset-0 ring-1 ring-inset ring-black/10 rounded-[2rem] sm:rounded-[3rem]" />
           </div>
         </div>

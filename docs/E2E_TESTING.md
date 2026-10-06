@@ -202,6 +202,43 @@ application/dependency errors, including a lead response-body inspection error.
 Do not describe that run as healthy or merge its results with the passing narrow
 anonymous-login rerun. No production fixtures were edited by the repair work.
 
+### Follow-up cancellation and SSR repairs
+
+The post-push run `prod-smoke-after-push-20261006-ba603eb` passed anonymous auth
+and exact workspace selection but failed four other cases. A subsequent real
+browser reproduction established that unsuccessful `response.text()` reads on
+superseded content/lead requests carried `net::ERR_ABORTED`. The observer now
+uses the same explicit-cancellation policy for response inspection and
+`requestfailed`; unknown body failures, non-aborted network errors, HTTP errors
+and positive fixture requirements remain failures. It never ignores an API
+status just because the request was later cancelled.
+
+The filtered `prod-read-cancel-fix-20261006` run passed content, while leads
+failed only a console error from an aborted notification read. Notification
+loads now carry an AbortSignal, cancel on site changes, replacement reads,
+unmount and pagehide, and resume on a back-forward-cache restoration. Stale
+responses cannot replace the new site's notifications; actual failures still
+return errors. This app change needs deployment, unlike the local observer fix.
+
+Public shop/marketplace/cart/book images now receive serialized SSR delivery
+scope so the initial HTML and hydrated src/srcset agree on the canonical app
+cache-only route for official hosts. Local/preview/custom hosts remain relative
+and unscoped workspace generation is unchanged. See
+`PUBLIC_VISITOR_AND_IMAGE_DELIVERY.md` and the real SSR/hydration regression tests.
+
+The embedded preview's nurture route and external SDK segment error are
+separate ownership boundaries, not fixes established by these changes. See
+`EMBEDDED_APPLICATION_DIAGNOSTICS.md`. Their assertions remain enabled.
+
+Follow-up local validation passed 507 tests in 47 suites and `npm run typecheck`.
+The final `prod-followup-full-20261006` attempt against the existing deployment
+was incomplete: anonymous auth passed, two public cases failed on www image
+404s, and three admin cases were blocked by the password-login setup timing out.
+The run is not green. Auth capture remains disabled; the login timeout is not
+proof of invalid credentials or MFA. Do not bypass it or combine this incomplete
+attempt with earlier filtered passes. New SSR/notification application fixes
+must be deployed before a fresh complete live validation.
+
 ## Agent verification
 
 The reservation project is excluded from root discovery because its segments

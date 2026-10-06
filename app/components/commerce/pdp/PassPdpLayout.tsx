@@ -1,5 +1,7 @@
 "use client"
 
+import { PromptImage } from "@/app/components/commerce/PromptImage"
+
 import { useState, useEffect } from "react"
 import { CatalogItem } from "@/app/types"
 import { useLocalization } from "@/app/context/LocalizationContext"
@@ -103,7 +105,7 @@ export function PassPdpLayout({ item, backUrl, experience, catalogSize = 0 }: { 
         <div className="lg:col-span-2 space-y-8 lg:space-y-10">
           <div className="aspect-[16/10] sm:aspect-[21/9] rounded-[2rem] overflow-hidden shadow-sm bg-muted relative">
             {imageUrl ? (
-              <img src={imageUrl} alt={item.name} className="absolute inset-0 h-full w-full object-cover object-center" />
+              <PromptImage src={imageUrl} alt={item.name} className="absolute inset-0 h-full w-full object-cover object-center" />
             ) : (
               <div className="w-full h-full bg-secondary/50" />
             )}
@@ -168,7 +170,7 @@ export function PassPdpLayout({ item, backUrl, experience, catalogSize = 0 }: { 
                       compact
                       leading={
                         venueLocation.image_url ? (
-                          <img
+                          <PromptImage
                             src={venueLocation.image_url}
                             alt={venueLocation.name}
                             className="w-14 h-14 sm:w-16 sm:h-16 rounded-xl object-cover shrink-0"
@@ -185,7 +187,7 @@ export function PassPdpLayout({ item, backUrl, experience, catalogSize = 0 }: { 
                 {organizer && (
                   <div className="flex w-full gap-4 p-4 sm:p-5 rounded-2xl bg-muted/30 border">
                     {organizer.image_url ? (
-                      <img
+                      <PromptImage
                         src={organizer.image_url}
                         alt={organizer.name}
                         className="w-14 h-14 sm:w-16 sm:h-16 rounded-xl object-cover shrink-0"

@@ -1,5 +1,7 @@
 "use client"
 
+import { PromptImage } from "@/app/components/commerce/PromptImage"
+
 import { useMemo, useState, useEffect } from "react"
 import type {
   ModifierGroupWithItems,
@@ -174,7 +176,7 @@ export function ModifierPickerPanel({
                   <>
                     <div className="flex min-w-0 items-center gap-3">
                       <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-xl bg-muted">
-                        <img
+                        <PromptImage
                           src={imageUrl}
                           alt=""
                           className="absolute inset-0 h-full w-full object-cover object-center"

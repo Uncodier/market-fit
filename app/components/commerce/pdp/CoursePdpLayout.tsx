@@ -1,5 +1,7 @@
 "use client"
 
+import { PromptImage } from "@/app/components/commerce/PromptImage"
+
 import { useState, useEffect } from "react"
 import { CatalogItem } from "@/app/types"
 import { useLocalization } from "@/app/context/LocalizationContext"
@@ -132,7 +134,7 @@ export function CoursePdpLayout({ item, backUrl, experience, catalogSize = 0 }: 
       </div>
 
       <div className="aspect-[16/10] sm:aspect-[21/9] bg-muted rounded-[2rem] overflow-hidden shadow-xl mb-10 sm:mb-16 relative">
-        <img src={resolveItemImage(item, "full")} alt={item.name} className="absolute inset-0 h-full w-full object-cover object-center" />
+        <PromptImage src={resolveItemImage(item, "full")} alt={item.name} className="absolute inset-0 h-full w-full object-cover object-center" />
         <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
       </div>
 
@@ -146,7 +148,7 @@ export function CoursePdpLayout({ item, backUrl, experience, catalogSize = 0 }: 
                 <div className="pb-6 lg:pb-8 border-b">
                   <div className="relative w-16 h-16 sm:w-20 sm:h-20 bg-muted rounded-full mx-auto mb-4 overflow-hidden shadow-sm">
                     {primaryPerson.image_url ? (
-                      <img src={primaryPerson.image_url} alt={primaryPerson.name} className="absolute inset-0 h-full w-full object-cover object-center" />
+                      <PromptImage src={primaryPerson.image_url} alt={primaryPerson.name} className="absolute inset-0 h-full w-full object-cover object-center" />
                     ) : (
                       <div className="w-full h-full bg-primary/10 text-primary flex items-center justify-center text-xl sm:text-2xl font-black">
                         {primaryPerson.name.charAt(0)}

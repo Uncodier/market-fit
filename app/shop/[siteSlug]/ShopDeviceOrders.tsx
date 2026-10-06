@@ -1,5 +1,7 @@
 "use client"
 
+import { PromptImage } from "@/app/components/commerce/PromptImage"
+
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import { format } from "date-fns"
@@ -35,7 +37,7 @@ function OrderThumbMosaic({ items }: { items: DeviceOrderItem[] }) {
 
   if (count === 1) {
     return (
-      <img
+      <PromptImage
         src={resolveItemImage({ name: thumbs[0].name, image_url: thumbs[0].imageUrl }, "card")}
         alt=""
         onError={(e) => {
@@ -50,7 +52,7 @@ function OrderThumbMosaic({ items }: { items: DeviceOrderItem[] }) {
     return (
       <div className="absolute inset-0 grid grid-cols-2 gap-0.5">
         {thumbs.map((item, i) => (
-          <img
+          <PromptImage
             key={`${item.name}-${i}`}
             src={resolveItemImage({ name: item.name, image_url: item.imageUrl }, "card")}
             alt=""
@@ -67,7 +69,7 @@ function OrderThumbMosaic({ items }: { items: DeviceOrderItem[] }) {
   if (count === 3) {
     return (
       <div className="absolute inset-0 grid grid-cols-2 grid-rows-2 gap-0.5">
-        <img
+        <PromptImage
           src={resolveItemImage({ name: thumbs[0].name, image_url: thumbs[0].imageUrl }, "card")}
           alt=""
           onError={(e) => {
@@ -75,7 +77,7 @@ function OrderThumbMosaic({ items }: { items: DeviceOrderItem[] }) {
           }}
           className="row-span-2 h-full w-full object-cover object-center"
         />
-        <img
+        <PromptImage
           src={resolveItemImage({ name: thumbs[1].name, image_url: thumbs[1].imageUrl }, "card")}
           alt=""
           onError={(e) => {
@@ -83,7 +85,7 @@ function OrderThumbMosaic({ items }: { items: DeviceOrderItem[] }) {
           }}
           className="h-full w-full object-cover object-center"
         />
-        <img
+        <PromptImage
           src={resolveItemImage({ name: thumbs[2].name, image_url: thumbs[2].imageUrl }, "card")}
           alt=""
           onError={(e) => {
@@ -98,7 +100,7 @@ function OrderThumbMosaic({ items }: { items: DeviceOrderItem[] }) {
   return (
     <div className="absolute inset-0 grid grid-cols-2 grid-rows-2 gap-0.5">
       {thumbs.slice(0, 4).map((item, i) => (
-        <img
+        <PromptImage
           key={`${item.name}-${i}`}
           src={resolveItemImage({ name: item.name, image_url: item.imageUrl }, "card")}
           alt=""

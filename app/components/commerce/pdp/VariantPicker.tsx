@@ -1,5 +1,7 @@
 "use client"
 
+import { PromptImage } from "@/app/components/commerce/PromptImage"
+
 import React from "react"
 import { VariantAxis, CatalogItem } from "@/app/types"
 import { getVariantWidgetForKind } from "@/app/catalog/variant-axes"
@@ -279,7 +281,7 @@ export function VariantPicker({
                         }`}
                       >
                         {imageUrl ? (
-                          <img
+                          <PromptImage
                             src={imageUrl}
                             alt=""
                             className="absolute inset-0 h-full w-full object-cover object-center"

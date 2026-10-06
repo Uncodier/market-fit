@@ -1,5 +1,7 @@
 "use client"
 
+import { PromptImage } from "@/app/components/commerce/PromptImage"
+
 import { CatalogItem } from "@/app/types"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { buildPdpGalleryEntries, resolveItemImage } from "@/app/lib/image-utils"
@@ -322,7 +324,7 @@ export function ProductPdpLayout({ item, backUrl, experience: _experience, catal
               <div className="max-w-md">
                 <div className="relative h-36 sm:h-44 bg-muted rounded-2xl overflow-hidden border shadow-sm">
                   {mainGallerySrc ? (
-                    <img
+                    <PromptImage
                       src={mainGallerySrc}
                       alt={item.name}
                       className="absolute inset-0 h-full w-full object-cover object-center"

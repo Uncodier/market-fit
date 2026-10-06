@@ -1,6 +1,6 @@
 "use client"
 
-import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useMemo } from "react"
+import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useMemo, useRef } from "react"
 import { useSite } from "@/app/context/SiteContext"
 import { useAuth } from "@/app/hooks/use-auth"
 import { 
@@ -56,14 +56,18 @@ export function NotificationsProvider({ children }: NotificationsProviderProps) 
   const [searchQuery, setSearchQuery] = useState("")
   const { currentSite } = useSite()
   const { user } = useAuth()
+  const activeRead = useRef<AbortController | null>(null)
   
   // Function to load notifications from database - wrapped in useCallback
   const refreshNotifications = useCallback(async () => {
     if (!currentSite?.id || !user?.id) return
-    
+    activeRead.current?.abort()
+    const controller = new AbortController()
+    activeRead.current = controller
     setLoading(true)
     try {
-      const result = await getNotifications(currentSite.id, user.id)
+      const result = await getNotifications(currentSite.id, user.id, controller.signal)
+      if (controller.signal.aborted || result.cancelled) return
       
       if (result.error) {
         console.warn("Background notification fetch failed:", result.error)
@@ -72,15 +76,38 @@ export function NotificationsProvider({ children }: NotificationsProviderProps) 
       
       setNotifications(result.notifications || [])
     } catch (error) {
-      console.error("Error loading notifications:", error)
+      if (!controller.signal.aborted) console.error("Error loading notifications:", error)
     } finally {
-      setLoading(false)
+      if (activeRead.current === controller) {
+        activeRead.current = null
+        if (!controller.signal.aborted) setLoading(false)
+      }
     }
   }, [currentSite?.id, user?.id])
   
   // Load notifications when currentSite or user changes
   useEffect(() => {
     let isMounted = true;
+    // Discard the previous site's data immediately, not after a new request returns.
+    activeRead.current?.abort()
+    setNotifications([])
+    setLoading(Boolean(currentSite?.id && user?.id))
+    const cancel = () => {
+      isMounted = false
+      activeRead.current?.abort()
+    }
+    // Full-document navigation may cancel fetch before React unmount cleanup runs.
+    const suspend = () => { activeRead.current?.abort() }
+    const resume = (event: PageTransitionEvent) => {
+      if (event.persisted && isMounted) void refreshNotifications()
+    }
+    window.addEventListener('pagehide', suspend)
+    window.addEventListener('pageshow', resume)
+    const cleanup = () => {
+      cancel()
+      window.removeEventListener('pagehide', suspend)
+      window.removeEventListener('pageshow', resume)
+    }
     
     const fetchData = async () => {
       if (isMounted) {
@@ -95,21 +122,21 @@ export function NotificationsProvider({ children }: NotificationsProviderProps) 
       if (typeof idle === "function") {
         const id = idle(() => { void fetchData() }, { timeout: 2500 })
         return () => {
-          isMounted = false
+          cleanup()
           ;(window as Window & { cancelIdleCallback?: (id: number) => void }).cancelIdleCallback?.(id)
         }
       }
       const timer = window.setTimeout(() => { void fetchData() }, 1200)
       return () => {
-        isMounted = false
+        cleanup()
         window.clearTimeout(timer)
       }
     }
     
     return () => {
-      isMounted = false;
+      cleanup();
     };
-  }, [currentSite?.id, user?.id]); // Only depend on the IDs, not the function
+  }, [currentSite?.id, user?.id, refreshNotifications]);
   
   // Function to update filters - wrapped in useCallback
   const updateFilters = useCallback((newFilters: NotificationsFilters) => {

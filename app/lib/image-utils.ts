@@ -3,7 +3,7 @@ import {
   optimizeForPreset,
   type ImageSizePreset,
 } from "@/app/lib/optimize-storage-image"
-import { normalizePromptImageUrl, promptImageUrl } from "./prompt-image-url"
+import { normalizePromptImageUrl, promptImageUrl, type PromptImageDelivery } from "./prompt-image-url"
 
 export type { ImageSizePreset } from "@/app/lib/optimize-storage-image"
 export {
@@ -36,8 +36,9 @@ export type ItemImagePromptInput = {
   } | null
 }
 
-export function publicPromptImageUrl(prompt: string, size = 1024, siteId?: string | null): string {
-  return promptImageUrl(prompt, size, siteId)
+/** Legacy name: workspace callers retain generation unless an explicit public scope is supplied. */
+export function publicPromptImageUrl(prompt: string, size = 1024, siteId?: string | null, delivery?: PromptImageDelivery): string {
+  return promptImageUrl(prompt, size, siteId, delivery)
 }
 
 function cleanPromptPart(value?: string | null, max = 80): string {
@@ -126,20 +127,21 @@ export function buildItemImagePrompt(item: ItemImagePromptInput): string {
 export function resolveItemImage(
   item: ItemImagePromptInput,
   size?: ImageSizePreset,
+  delivery?: PromptImageDelivery,
 ): string {
-  const uploaded = realImageUrl(item.image_url)
+  const uploaded = realImageUrl(item.image_url, delivery)
   if (uploaded) {
-    const normalized = normalizePromptImageUrl(uploaded, item.site_id || item.site?.id)
+    const normalized = normalizePromptImageUrl(uploaded, item.site_id || item.site?.id, delivery)
     return size ? optimizeForPreset(normalized, size) : normalized
   }
   const px = size ? IMAGE_SIZE_PX[size] : 1024
-  return publicPromptImageUrl(buildItemImagePrompt(item), px, item.site_id || item.site?.id)
+  return publicPromptImageUrl(buildItemImagePrompt(item), px, item.site_id || item.site?.id, delivery)
 }
 
 /** Preserve uploaded media and route legacy prompt URLs through the local boundary. */
-export function realImageUrl(url?: string | null): string | null {
+export function realImageUrl(url?: string | null, delivery?: PromptImageDelivery): string | null {
   const trimmed = typeof url === "string" ? url.trim() : ""
-  return trimmed ? normalizePromptImageUrl(trimmed) : null
+  return trimmed ? normalizePromptImageUrl(trimmed, undefined, delivery) : null
 }
 
 export type PdpGalleryEntry = {
@@ -171,6 +173,7 @@ export function buildPdpGalleryEntries(params: {
   parent: GalleryParent
   children?: GalleryChild[]
   size?: ImageSizePreset
+  delivery?: PromptImageDelivery
 }): PdpGalleryEntry[] {
   const children = params.children || []
   const size = params.size
@@ -203,7 +206,7 @@ export function buildPdpGalleryEntries(params: {
 
   if (children.length > 0) {
     // Parent photo first when it has a real upload (distinct from child AI thumbs).
-    const parentReal = realImageUrl(params.parent.image_url)
+    const parentReal = realImageUrl(params.parent.image_url, params.delivery)
     if (parentReal) push(sizedUrl(parentReal), params.parent.id)
 
     for (const child of children) {
@@ -214,6 +217,7 @@ export function buildPdpGalleryEntries(params: {
           ...parentContext,
         },
         size,
+        params.delivery,
       )
       // Allow same URL for multiple variants (shared upload) — key by item, not URL.
       if (!url) continue
@@ -223,14 +227,14 @@ export function buildPdpGalleryEntries(params: {
       seen.add(url)
     }
   } else {
-    push(resolveItemImage(params.parent, size), params.parent.id)
+    push(resolveItemImage(params.parent, size, params.delivery), params.parent.id)
   }
 
   const gallery = params.parent.metadata?.gallery
   if (Array.isArray(gallery)) {
     for (const entry of gallery) {
       if (typeof entry !== "string") continue
-      const url = realImageUrl(entry)
+      const url = realImageUrl(entry, params.delivery)
       if (url) push(sizedUrl(url))
     }
   }
@@ -243,11 +247,13 @@ export function buildPdpGalleryUrls(params: {
   parent: GalleryParent
   children?: GalleryChild[]
   size?: ImageSizePreset
+  delivery?: PromptImageDelivery
 }): string[] {
   return buildPdpGalleryEntries({
     parent: params.parent,
     children: params.children,
     size: params.size,
+    delivery: params.delivery,
   }).map((e) => e.url)
 }
 
@@ -259,12 +265,13 @@ export function resolvePromotionImage(
     name?: string | null
   },
   size?: ImageSizePreset,
+  delivery?: PromptImageDelivery,
 ): string {
-  const uploaded = realImageUrl(promo.image_url)
+  const uploaded = realImageUrl(promo.image_url, delivery)
   if (uploaded) {
-    const normalized = normalizePromptImageUrl(uploaded, promo.site_id)
+    const normalized = normalizePromptImageUrl(uploaded, promo.site_id, delivery)
     return size ? optimizeForPreset(normalized, size) : normalized
   }
   const px = size ? IMAGE_SIZE_PX[size] : 1024
-  return publicPromptImageUrl(promo.name?.trim() || "Promotion", px, promo.site_id)
+  return publicPromptImageUrl(promo.name?.trim() || "Promotion", px, promo.site_id, delivery)
 }

@@ -101,4 +101,27 @@ describe('read observer lifecycle', () => {
     await Promise.resolve();
     await expect(assertReadObservation(p)).resolves.toBeUndefined();
   });
+  it.each(['net::ERR_ABORTED', 'net::ERR_FAILED', null])(
+    'classifies unavailable response bodies using explicit browser cancellation: %s', async failure => {
+      const p = page();
+      startReadObservation(p);
+      const r = { ...request('/api/data'), failure: () => failure ? { errorText: failure } : null };
+      p.emit('request', r);
+      p.emit('response', { url: r.url, status: () => 200, headers: () => ({ 'content-type': 'application/json' }),
+        request: () => r, ok: () => true, text: async () => { throw new Error('No data found for resource'); } });
+      p.emit('requestfailed', r);
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+      if (failure === 'net::ERR_ABORTED') await expect(assertReadObservation(p)).resolves.toBeUndefined();
+      else await expect(assertReadObservation(p)).rejects.toThrow();
+    },
+  );
+  it('never drops an HTTP failure just because its request was subsequently cancelled', async () => {
+    const p = page();
+    startReadObservation(p);
+    const r = { ...request('/api/data'), failure: () => ({ errorText: 'net::ERR_ABORTED' }) };
+    p.emit('response', { url: r.url, status: () => 500, headers: () => ({}), request: () => r, ok: () => false });
+    await expect(assertReadObservation(p)).rejects.toThrow();
+  });
 });
