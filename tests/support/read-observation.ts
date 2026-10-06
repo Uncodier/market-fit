@@ -1,4 +1,4 @@
-import { expect, type Page, type Response } from '@playwright/test';
+import { expect, type Page, type Request, type Response } from '@playwright/test';
 
 export type ReadIssue = { kind: 'http' | 'network' | 'pageerror' | 'application' | 'console'; origin?: string; path?: string; status?: number };
 type Observation = { issues: ReadIssue[]; pending: Set<Promise<void>>; inFlight: Set<import('@playwright/test').Request>; expectedActionErrors: Map<string, string>; stop: () => void };
@@ -15,6 +15,20 @@ export function safeEndpoint(value: string): { origin: string; path: string } {
 export function isUnexpectedHttp(status: number, url: string): boolean {
   const { pathname } = new URL(url);
   return status >= 500 || (status >= 400 && (pathname.startsWith('/api/') || pathname.startsWith('/rest/v1/')));
+}
+
+/** Speculative Next.js streams are not data reads needed by the current screen. */
+export function isSpeculativeRead(request: Pick<Request, 'headers'> & Partial<Pick<Request, 'redirectedFrom'>>): boolean {
+  // Playwright's synchronous headers can omit custom headers after a redirect.
+  // Follow the actual request chain, never infer prefetch from the URL alone.
+  let current: typeof request | null = request;
+  while (current) {
+    const headers = current.headers();
+    if (headers['next-router-prefetch'] === '1'
+      || /\bprefetch\b/i.test(headers.purpose || headers['sec-purpose'] || '')) return true;
+    current = current.redirectedFrom?.() || null;
+  }
+  return false;
 }
 
 export function hasApplicationError(body: string, contentType: string, expectedError?: string): boolean {
@@ -83,7 +97,8 @@ export function startReadObservation(page: Page): void {
   const started = (request: import('@playwright/test').Request) => {
     const url = new URL(request.url());
     if (origins.has(url.origin) && ['fetch', 'xhr'].includes(request.resourceType()) &&
-        !url.pathname.startsWith('/realtime/') && !url.pathname.includes('/assistant')) inFlight.add(request);
+        !isSpeculativeRead(request) && !url.pathname.startsWith('/realtime/') &&
+        !url.pathname.includes('/assistant')) inFlight.add(request);
   };
   const finished = (request: import('@playwright/test').Request) => { inFlight.delete(request); };
   page.on('request', started);
@@ -111,12 +126,21 @@ export function expectActionError(page: Page, pathname: string, message: string)
   observation.expectedActionErrors.set(pathname, message);
 }
 
+/** Drain actual data reads before document navigation can abort their response bodies. */
+export async function waitForObservedReads(page: Page): Promise<void> {
+  const observation = observations.get(page);
+  if (!observation) throw new Error('Read observation was not started before navigation');
+  await expect.poll(() => observation.inFlight.size + observation.pending.size, {
+    timeout: 45_000,
+    message: 'Critical reads must complete before navigation or a green result',
+  }).toBe(0);
+}
+
 export async function assertReadObservation(page: Page): Promise<void> {
   const observation = observations.get(page);
   if (!observation) throw new Error('Read observation was not started before navigation');
   try {
-    await expect.poll(() => observation.inFlight.size, { timeout: 15_000, message: 'Critical reads must complete before a green result' }).toBe(0);
-    await Promise.all(observation.pending);
+    await waitForObservedReads(page);
     expect(observation.issues, 'Unexpected application/dependency failures; a rendered page is not a healthy read').toEqual([]);
   } finally {
     observation.stop();

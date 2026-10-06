@@ -16,12 +16,13 @@ is checked against the API before writes, and renewal uses the API's PUT session
 contract before expiry. Changing site or API origin never reuses another site's
 proof. Tracking does not use a Supabase user token.
 
-The same-origin `POST /api/commerce/visitor-session` handles hosted storefront
+The app-issued `POST /api/commerce/visitor-session` handles hosted storefront
 bootstrap, where the commerce hostname may not match the tenant's external
 website URL. It:
 
-1. Requires a same-origin JSON request from a commerce page (including the exact
-   supported www-to-app rewrite), bounded input and fail-closed rate admission.
+1. Requires a JSON request from an authorized commerce-page origin (same-origin,
+   or the exact supported www-to-app platform pair), bounded input and
+   fail-closed rate admission.
 2. Resolves the requested site through the existing public, non-archived shop
    boundary. A nonexistent or archived site cannot receive a session.
 3. Calls only the fixed API session-creation endpoint with a server-only service
@@ -52,7 +53,8 @@ silently treated as success. Checkout itself is not blocked by analytics errors.
 
 ## Generated images
 
-`publicPromptImageUrl` now creates a same-origin `/api/images/prompt` URL.
+`publicPromptImageUrl` creates an app-delivered `/api/images/prompt` URL: relative
+on the app/local server, and absolute to app in a www/apex commerce browser.
 Items/promotions carry their site ID when available; workspace-only callers can
 use the current-site cookie as a **selector**, never as authorization. Legacy
 stored `/api/public/image/prompt/...` URLs are normalized without forwarding
@@ -130,8 +132,67 @@ cause automatic replay of a workflow that may already have started.
   project as the API; only the configured Supabase host or `db.makinari.com`
   public cache path is accepted. Missing cache configuration yields neutral
   artwork, never an unauthenticated generation request.
-- The www deployment forwards the exact image and visitor-session paths in
-  `next.config.js`. No new database migration or API code change is required.
+- This repository's `next.config.js` includes the exact image and visitor-session
+  rewrites when `MARKET_FIT_ORIGIN` is configured. That does not configure a
+  separate www deployment; see the production-smoke limitation below.
+
+### Production www routing limitation (2026-10-05 smoke)
+
+Saved traces in `test-results/prod-smoke-20261005-fixtures-verified` show 21
+`GET /api/images/prompt` 404s and one `POST /api/commerce/visitor-session` 404,
+all on `https://www.makinari.com`. The storefront rerun contains two completed
+image 404s. These are route-delivery failures, not proof that public cache reads
+or session authorization failed inside the app handlers. The locally inspected
+`commercial-site/next.config.js` in the sibling repository forwards commerce
+pages but lacks these two exact API rewrites. No remote deployment configuration
+was inspected or changed.
+
+Browser callers now reuse `resolveAppApiUrl`: on www/apex, prompt-image URLs and
+anonymous session bootstrap target the canonical app deployment directly.
+Direct www/apex image URLs add `cache_only=1`, including normalized persisted links,
+so unrelated app cookies cannot authorize generation or cause same-site
+generation rejection. Local, app-host and server URL generation remain relative;
+uploaded images and existing workspace-generation authorization are unchanged.
+Normalization still forwards only prompt, dimensions, site selector and the
+cache-only flag, never stored origins, signatures or identity overrides.
+
+The app visitor-session handler supports a narrowly scoped OPTIONS preflight and
+response CORS for the exact HTTPS www/apex commerce origins calling app. It
+allows only POST and Content-Type, never wildcard origins or credentialed CORS.
+The client still omits credentials and bootstrap proofs. Existing commerce-page
+validation, public/non-archived site lookup, bounded bodies, fail-closed rate
+admission and server-only service credentials remain mandatory. Subsequent
+proof-bearing requests still use the configured external visitor API.
+
+**Deployment limitation:** the actual www/apex commerce deployment still needs exact rewrites
+for `/api/images/prompt` and `/api/commerce/visitor-session` to app, preserving
+query strings and request bodies. Server-rendered relative image URLs can be
+requested before client rendering (or with JavaScript disabled), and other
+non-commerce hosts retain the shared helper's existing same-origin convention. Do not
+add a broad `/api/:path*` proxy or relax authentication as a workaround. Updating
+this repository's config alone cannot repair the separate commercial deployment.
+The deployment owner can append these entries to the existing commercial-site
+rewrite array, using its already-configured trusted `app` origin (not a client
+parameter):
+
+```js
+{ source: '/api/images/prompt', destination: `${app}/api/images/prompt` },
+{ source: '/api/commerce/visitor-session', destination: `${app}/api/commerce/visitor-session` },
+```
+
+After an authorized rollout, verify both initial document image requests and
+direct-app session preflight/POST on www/apex with strict smoke assertions. These
+local changes and tests do not establish that production is fixed. The repair
+session reran production smoke against the existing deployment; application
+fixes were not deployed, no build was run, and no fixtures were rewritten.
+Public session/tracking activity remains normal application behavior, not
+evidence of paid generation or checkout coverage.
+
+Local routing regression validation: 151 tests passed in 15 focused Jest suites,
+including exact apex/www routing, SSR/preview isolation and the CORS header types;
+ESLint passed for all touched routing/test files. Repository-wide `npm run lint`
+reported 3,571 errors and 2,233 warnings in unrelated existing code; no lint rules
+were disabled and no auto-fixes were applied.
 
 Focused Jest coverage lives in the visitor-tracking hook suites, commerce
 visitor-session route suite, prompt-image route/cache/URL suites, commerce

@@ -38,3 +38,8 @@ it('replaces legacy generated URLs, including persisted ones, without forwarding
 it('leaves ordinary uploaded images alone', () => {
   expect(normalizePromptImageUrl('https://cdn.example.test/image.png')).toBe('https://cdn.example.test/image.png')
 })
+
+it('keeps local/workspace normalization relative and never adds public-cache-only generation restrictions', () => {
+  expect(normalizePromptImageUrl('https://old-api.test/api/images/prompt?prompt=Coffee&width=400&height=256&signature=private&cache_only=0', siteId))
+    .toBe(`/api/images/prompt?prompt=Coffee&width=400&height=256&site_id=${siteId}`)
+})

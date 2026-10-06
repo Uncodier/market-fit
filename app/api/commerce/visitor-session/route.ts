@@ -1,8 +1,9 @@
 import { z } from 'zod'
 import { getShopSite } from '@/app/shop/[siteSlug]/actions'
-import { configuredApiUrl, isSameOriginApiRequest } from '@/lib/http/api-proxy-security'
+import { configuredApiUrl } from '@/lib/http/api-proxy-security'
 import { readLimitedRequestBody, decodeRequestBody, RequestBodyTooLargeError } from '@/lib/http/read-limited-request-body'
 import { checkRateLimit, hashRedisKeyPart, rateLimitError } from '@/lib/redis/control-plane'
+import { trustedVisitorBrowserOrigin, visitorSessionPreflight, withVisitorSessionCors } from './browser-origin'
 
 export const maxDuration = 30
 
@@ -18,7 +19,6 @@ const sessionSchema = z.object({
     session_token: z.string().min(1).max(8192), expires_at: z.number().int().positive(), ttl: z.number().int().positive(),
   }),
 })
-const platformOrigins = new Set(['https://app.makinari.com', 'https://www.makinari.com', 'https://makinari.com'])
 
 function failure(message: string, status: number) {
   return Response.json({ success: false, error: { message } }, {
@@ -26,17 +26,17 @@ function failure(message: string, status: number) {
   })
 }
 
-function trustedBrowserOrigin(request: Request): string | null {
-  const origin = request.headers.get('origin')
-  if (!origin || request.headers.get('sec-fetch-site') === 'cross-site') return null
-  if (isSameOriginApiRequest(request)) return origin
-  // The www deployment rewrites this exact endpoint to app; these are configured platform hosts.
-  return platformOrigins.has(origin) && platformOrigins.has(new URL(request.url).origin) ? origin : null
+export function OPTIONS(request: Request): Response {
+  return visitorSessionPreflight(request)
 }
 
 export async function POST(request: Request): Promise<Response> {
-  const origin = trustedBrowserOrigin(request)
+  const origin = trustedVisitorBrowserOrigin(request)
   if (!origin) return failure('Origin not allowed', 403)
+  return withVisitorSessionCors(request, await createVisitorSession(request, origin))
+}
+
+async function createVisitorSession(request: Request, origin: string): Promise<Response> {
   if (request.headers.get('content-type')?.split(';')[0].trim() !== 'application/json') return failure('JSON content type required', 415)
   let input: z.infer<typeof inputSchema>
   try {

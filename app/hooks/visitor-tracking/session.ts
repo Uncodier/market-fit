@@ -1,3 +1,4 @@
+import { resolveAppApiUrl } from '@/app/commerce/app-api-url';
 import {
   pageContext, sessionFromResponse, trackingUrl, validateSession, type VisitorScope, type VisitorSession,
 } from './contracts';
@@ -105,7 +106,9 @@ export class VisitorSessionStore {
     this.invalidate();
     // Hosted stores share a commerce origin, not the tenant's registered website.
     // The local issuer authorizes the public site and returns only a new visitor proof.
-    const response = await visitorRequest('/api/commerce/visitor-session', 'POST', { site_id: scope.siteId, ...pageContext() });
+    const response = await visitorRequest(resolveAppApiUrl('/api/commerce/visitor-session'), 'POST', {
+      site_id: scope.siteId, ...pageContext(),
+    });
     return this.accept(sessionFromResponse(response, scope));
   }
 }

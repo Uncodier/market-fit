@@ -64,6 +64,58 @@ Their names should be unique in the synthetic workspace. The storefront fixture
 must be active, published/listed and visible in the tested listing. Tests do not
 create fixtures in production or fabricate responses when data is missing.
 
+### Explicit production smoke provisioning
+
+`scripts/e2e/provision-smoke.cjs` is a separate operator provisioning tool, not
+part of the E2E runner. It authenticates with `TEST_ADMIN_EMAIL`/password and a
+public `TEST_SUPABASE_ANON_KEY`, verifies the explicit backend and exact site
+name/UUID, and requires owner or active admin access. Service-role access,
+updates, resets, deletes and automatic insert retries are not supported.
+
+```sh
+# Read-only database inspection; optionally prepare local env values.
+node scripts/e2e/provision-smoke.cjs --write-env
+
+# Run only after reviewing the site and its workflow configuration.
+node scripts/e2e/provision-smoke.cjs --apply --site-id "$TEST_SITE_ID" --ack-workflows --write-env
+```
+
+The script reads the root `.env` and `.env.local`. It requires `TEST_TARGET`, both
+production origins, `TEST_SITE_NAME`, `TEST_SUPABASE_URL`,
+`TEST_SUPABASE_PROJECT_REF`, `TEST_SUPABASE_ANON_KEY`, and the matching
+`NEXT_PUBLIC_SUPABASE_URL`. The shell example requires exporting `TEST_SITE_ID`
+or replacing it with the UUID printed by dry-run.
+
+It plans three deterministic site-scoped records: draft `QA Smoke Content`,
+contactless `QA Smoke Lead` with calls prohibited, and publicly listed
+`QA Smoke Product - NOT FOR SALE` with `is_purchasable=false`. Existing marked
+fixtures are verified, never overwritten. A name collision or altered fixture
+fails closed. This is not paid checkout coverage.
+
+**Production content/lead inserts trigger workflow database webhooks.** Metadata
+does not disable them. Review/approve downstream automation before applying;
+the acknowledgment flag records acceptance, not proof that workflows are safe.
+The product is visible publicly. Nothing changes site settings or existing
+customer records, but database-triggered external effects remain possible.
+Insertions are sequential, not transactional: a failed run may leave preceding
+fixtures. Inspect with dry-run before rerunning; never use a global reset.
+
+`--write-env` atomically replaces only smoke configuration keys in `.env.local`,
+keeping other secrets intact and mutation flags disabled. In dry-run, these are
+**planned values**, not proof records exist. Buyer credentials and deployed SHA
+are deliberately not fabricated. The shop segment uses the verified site UUID,
+which public routing supports and which avoids name-slug ambiguity.
+
+The equivalent `scripts/e2e/provision-smoke.sql` is an operator-only SQL Editor
+script, not a migration. It pins the verified site/owner, uses the same fixture
+IDs and payloads, inserts in one transaction and returns only the three synthetic
+record IDs/names. Run the complete file only in the reviewed Makinari production
+project. SQL Editor uses privileged database access; this is **not** proof of RLS
+or user login. It does not disable triggers, and the same webhook/public-listing
+warnings apply. SQL cannot update local dotenv files; the prepared env values
+already match these IDs. A rerun verifies existing fixtures instead of updating
+them. Any insertion or collision error rolls back all inserts in the transaction.
+
 Mutation cleanup uses a **test-specific public Supabase key and authenticated
 owner/admin**, with an exact site/run-owned entity journal. A service-role key is
 not a fixture credential. The fixture backend and browser session must match.
@@ -117,6 +169,38 @@ and console errors. They wait for relevant pending reads. They store only safe
 endpoint/status classifications, not response bodies, credentials or tokens.
 This may expose real pre-existing provider or application failures. Fix those
 failures; do not weaken assertions or accept empty fallback UI as success.
+
+## Production smoke repair findings (2026-10-05/06)
+
+The original content/lead failures were 15-second visibility races, not missing
+fixtures. Traces from `prod-smoke-repair-20261006` include successful content
+results (30 rows) and a successful lead search (one row). Fixture assertions
+completed in about 21 and 17 seconds. Smoke keeps the same positive assertions
+with a bounded 45-second read budget and drains actual data/body reads before
+navigation. The observer follows redirected prefetch request chains, but does not
+wait for speculative Next.js streams to finish. It still rejects API, application,
+console and real-read failures.
+
+Local API repairs distinguish a successfully absent optional requirement tenant
+from repository errors and return nullable tenant fields only after primary
+requirement authorization. A concrete missing tenant/requirement is still 404;
+access failures and provider errors are not converted to empty success.
+
+The narrow anonymous-login rerun passed its browser assertion after the observer
+repair. It is partial evidence, not a green suite: missing deployment provenance
+and an uncommitted test checkout still fail the runner health gate. Production
+traces also contain image/session routing 404s on www, tenant-probe 404s, external
+visitor tracking 403s and an embedded application 404. Local application changes
+require reviewed deployment; see `PUBLIC_VISITOR_AND_IMAGE_DELIVERY.md` for the
+separate commercial-host rewrite requirements. Do not suppress those errors or
+claim deployed fixes from local Jest results.
+
+The final full rerun `prod-smoke-final-repair-20261006` executed all six cases:
+one passed, five failed, and the separate admin authentication setup passed.
+Content/lead fixture assertions passed; remaining failures include unexpected
+application/dependency errors, including a lead response-body inspection error.
+Do not describe that run as healthy or merge its results with the passing narrow
+anonymous-login rerun. No production fixtures were edited by the repair work.
 
 ## Agent verification
 

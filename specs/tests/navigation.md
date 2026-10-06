@@ -10,7 +10,7 @@ Verify that all major workspace areas load successfully for an authenticated Adm
 
 ## User Roles
 
-- `admin` (Shared Playwright setup using `.auth/admin.json`)
+- `admin` (shared Playwright setup using `.auth/<target>/<run-id>/admin.json`)
 
 ## Tests in this Battery
 
@@ -37,6 +37,21 @@ Verify that all major workspace areas load successfully for an authenticated Adm
 ## Assertions
 
 - `VERIFY: The page has loaded successfully` on each route.
+
+## Production read-only smoke contract
+
+The separate `tests/smoke/` suite selects the exact configured workspace and
+requires pre-existing named content, lead and public catalog fixtures. A search
+control or shell alone cannot pass. Fixture visibility and completed response-body
+inspection use a bounded 45-second read budget; Server Actions dispatch serially
+on the client, so ancillary reads may precede the fixture read. Errors, failed
+API statuses, empty fallback shells and unresolved required reads still fail.
+
+Next.js speculative prefetch streams, including their redirected request chain,
+are not required current-screen reads. They are excluded only from the drain
+counter; their HTTP failures are still observed. Before full document navigation,
+the smoke drains actual requests and response inspection instead of aborting
+them and then reporting an artificial response-body failure at teardown.
 
 ## Implementation Plan
 
