@@ -97,6 +97,8 @@ export function ShopHeroTrust({
           <div className="absolute inset-0 z-0">
             <ProgressiveImage
               item={{
+                site_id: site.id,
+                imageResource: { type: 'hero', id: site.id },
                 name: shop?.hero_title || site.name,
                 description: shop?.hero_subtitle || site.description || "store hero",
                 siteDescription: site.description,

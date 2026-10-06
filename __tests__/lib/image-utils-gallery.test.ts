@@ -96,6 +96,7 @@ describe("buildPdpGalleryEntries", () => {
     })
     expect(entries[2]).toEqual({
       url: resolveItemImage({
+        id: "c2",
         name: "Helado",
         description: "Iced version",
         image_url: null,
@@ -108,6 +109,7 @@ describe("buildPdpGalleryEntries", () => {
     })
     expect(entries[3]).toEqual({
       url: resolveItemImage({
+        id: "c3",
         name: "Caliente",
         image_url: null,
         parent: { name: "Mocha", description: "Chocolate espresso" },
@@ -154,6 +156,7 @@ describe("buildPdpGalleryEntries", () => {
     expect(entries).toEqual([
       {
         url: resolveItemImage({
+        id: "c1",
           name: "Frappe",
           image_url: null,
           parent: { name: "Mocha", description: "Chocolate espresso" },
@@ -165,6 +168,7 @@ describe("buildPdpGalleryEntries", () => {
       },
       {
         url: resolveItemImage({
+        id: "c2",
           name: "Helado",
           image_url: null,
           parent: { name: "Mocha", description: "Chocolate espresso" },
@@ -199,6 +203,7 @@ describe("buildPdpGalleryUrls", () => {
     expect(urls[0]).toBe("https://cdn.example/mocha.jpg")
     expect(urls[1]).toBe(
       resolveItemImage({
+        id: "c1",
         name: "A",
         image_url: null,
         parent: { name: "Mocha", description: "Chocolate espresso" },
@@ -209,6 +214,7 @@ describe("buildPdpGalleryUrls", () => {
     )
     expect(urls[2]).toBe(
       resolveItemImage({
+        id: "c2",
         name: "B",
         image_url: null,
         parent: { name: "Mocha", description: "Chocolate espresso" },

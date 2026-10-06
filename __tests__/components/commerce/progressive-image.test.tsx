@@ -43,6 +43,6 @@ it('normalizes persisted responsive prompt candidates while preserving density d
     <PromptImage src="/api/images/prompt?prompt=Coffee" alt="Responsive" srcSet="https://old.test/api/public/image/prompt/Coffee?width=400&height=256&token=secret 1.5x, /api/images/prompt?prompt=Tea&width=800&height=512 2x" />
   </PublicImageDelivery>)
   expect(screen.getByAltText('Responsive').getAttribute('srcset')).toBe(
-    'https://app.makinari.com/api/images/prompt?prompt=Coffee&width=400&height=256&cache_only=1 1.5x, https://app.makinari.com/api/images/prompt?prompt=Tea&width=800&height=512&cache_only=1 2x',
+    'https://app.makinari.com/api/images/prompt?prompt=Coffee&width=400&height=256&public=1 1.5x, https://app.makinari.com/api/images/prompt?prompt=Tea&width=800&height=512&public=1 2x',
   )
 })

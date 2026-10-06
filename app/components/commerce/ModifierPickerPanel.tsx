@@ -69,6 +69,9 @@ function optionImageUrl(
 ): string {
   return resolveItemImage(
     {
+      id: opt.catalog_item_id,
+      imageResource: { type: 'catalog', id: opt.catalog_item_id, hostId: imageContext?.parentId },
+      site_id: imageContext?.siteId,
       name: opt.name,
       description: opt.description,
       image_url: opt.image_url,

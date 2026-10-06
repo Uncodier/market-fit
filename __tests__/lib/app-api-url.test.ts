@@ -35,9 +35,9 @@ it('keeps SSR API paths relative instead of assuming the public production deplo
   expect(resolveAppApiUrl('api/images/prompt')).toBe('/api/images/prompt')
 })
 
-it('delivers apex-host images with public-cache-only semantics and sanitized legacy queries', () => {
+it('delivers apex-host images with public-resource generation semantics and sanitized legacy queries', () => {
   browser('makinari.com')
-  expect(promptImageUrl('Coffee', 400)).toBe('https://app.makinari.com/api/images/prompt?prompt=Coffee&width=400&height=400&cache_only=1')
+  expect(promptImageUrl('Coffee', 400)).toBe('https://app.makinari.com/api/images/prompt?prompt=Coffee&width=400&height=400&public=1')
   expect(normalizePromptImageUrl('https://old.test/api/images/prompt?prompt=Coffee&width=400&height=256&signature=private&cache_only=0'))
-    .toBe('https://app.makinari.com/api/images/prompt?prompt=Coffee&width=400&height=256&cache_only=1')
+    .toBe('https://app.makinari.com/api/images/prompt?prompt=Coffee&width=400&height=256&public=1')
 })

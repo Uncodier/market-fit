@@ -59,7 +59,7 @@ import {
   normalizePromotionLocationIds,
 } from "../promotion-channels"
 import { formatBogoLabel } from "../bogo-discount"
-import { PromotionMerchandisingFields } from "../components/PromotionMerchandisingFields"
+import { PromotionDetailMerchandisingFields } from "../components/PromotionMerchandisingFields"
 import { PromotionCurrencyField } from "../components/PromotionCurrencyField"
 import { resolvePromotionCurrency } from "../promotion-currency"
 import { PromotionPerformanceTab } from "../components/PromotionPerformanceTab"
@@ -375,26 +375,7 @@ export default function PromotionDetail(props: { params: Promise<{ id: string }>
                 onChange={(currency) => setPromo({ ...promo, currency })}
               />
 
-              <div className="pt-4 border-t">
-                <PromotionMerchandisingFields
-                  value={{
-                    image_url: promo.image_url,
-                    show_on_shop: promo.show_on_shop,
-                    show_on_marketplace: promo.show_on_marketplace,
-                  }}
-                  onChange={(patch) =>
-                    setPromo((current) =>
-                      current ? { ...current, ...patch } : current,
-                    )
-                  }
-                  name={promo.name}
-                  discount_type={promo.discount_type}
-                  discount_value={promo.discount_value}
-                  bogo_buy_qty={promo.bogo_buy_qty}
-                  bogo_get_qty={promo.bogo_get_qty}
-                  siteName={currentSite?.name}
-                />
-              </div>
+              <PromotionDetailMerchandisingFields promo={promo} site={currentSite} setPromo={setPromo} />
             </SectionCardContent>
             <ActionFooter>
               <Button variant="outline" type="button" onClick={handleSave} disabled={saving} size="sm">

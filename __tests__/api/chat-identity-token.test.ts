@@ -51,6 +51,22 @@ describe("support chat identity issuance", () => {
     expect(createClient).not.toHaveBeenCalled()
   })
 
+  it("accepts the authenticated www same-origin proxy without trusting its forwarded host", async () => {
+    const response = await POST(request(undefined, {
+      origin: "https://www.makinari.com", "sec-fetch-site": "same-origin",
+      "x-forwarded-host": "www.makinari.com",
+    }))
+    expect(response.status).toBe(200)
+    expect(auth.getUser).toHaveBeenCalledTimes(1)
+    expect(global.fetch).toHaveBeenCalledWith("https://api.example.test/api/visitors/identity/token/current-user",
+      expect.objectContaining({ headers: {
+        "Content-Type": "application/json", Authorization: "Bearer supabase-proof", "x-visitor-session-token": "widget-proof",
+      } }))
+    expect((await POST(request(undefined, {
+      origin: "https://attacker.test", "x-forwarded-host": "www.makinari.com",
+    }))).status).toBe(403)
+  })
+
   it("rejects cross-site and missing cookie requests", async () => {
     expect((await POST(request(undefined, { "sec-fetch-site": "cross-site" }))).status).toBe(403)
     expect((await POST(request(undefined, { cookie: "" }))).status).toBe(401)

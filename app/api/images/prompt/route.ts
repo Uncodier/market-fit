@@ -5,8 +5,9 @@ import { userCanOnSite } from '@/lib/permissions/site-access'
 import { parsePromptImageInput } from '@/lib/images/prompt-image-contract'
 import { readImageResponse, readPromptImageCache, type ImageBytes } from '@/lib/images/prompt-image-cache'
 import { IMAGE_PLACEHOLDER_SVG } from '@/app/lib/image-placeholder'
+import { generatePublicImage } from '@/lib/images/public-image-generation'
 
-export const maxDuration = 120
+export const maxDuration = 300
 
 function placeholder() {
   return new Response(IMAGE_PLACEHOLDER_SVG, { headers: {
@@ -43,11 +44,15 @@ export async function GET(request: Request): Promise<Response> {
   try {
     const cookieSite = readCurrentSiteIdFromCookieHeader(request.headers.get('cookie'))
     const siteId = input.site_id || (cookieSite && !cookieSite.startsWith('demo-') ? cookieSite : null)
-    // Public delivery never starts a workflow. Reading this public bucket needs no credentials.
+    // Cache reads need no credentials; public generation requires a verified resource below.
     const cached = await readPromptImageCache(input, siteId)
     if (cached) return image(cached)
+    if (input.public && !input.cache_only && input.site_id && input.resource_id && input.resource_type) {
+      const result = await generatePublicImage(request, input)
+      return result instanceof Response ? result : image(result)
+    }
     const hasSession = Boolean(request.headers.get('cookie') || request.headers.get('authorization'))
-    if (!siteId || input.cache_only || !hasSession) return placeholder()
+    if (!siteId || input.public || input.cache_only || !hasSession) return placeholder()
     if (!mayGenerate(request)) {
       return failure('Origin not allowed', 403)
     }

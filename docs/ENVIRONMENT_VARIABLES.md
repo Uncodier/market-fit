@@ -52,8 +52,10 @@ for rollout requirements and exact-origin validation.
 The public storefront visitor-session bridge uses the existing server-only
 `SERVICE_API_KEY` after public-site validation and requires Redis admission.
 Visitor requests after bootstrap carry only the API-issued visitor proof.
-Generated-image cache delivery uses `NEXT_PUBLIC_SUPABASE_URL`; generation from
-the workspace uses the verified user bearer, never a browser API key. See
+Generated-image cache delivery uses `NEXT_PUBLIC_SUPABASE_URL`. Public storefront
+cache misses may generate using the server-only `SERVICE_API_KEY` after resource
+authorization and fail-closed Redis admission, charged to the resolved site.
+Workspace generation uses the verified user bearer, never a browser API key. See
 [Public visitor sessions and image delivery](PUBLIC_VISITOR_AND_IMAGE_DELIVERY.md).
 
 ## Stripe

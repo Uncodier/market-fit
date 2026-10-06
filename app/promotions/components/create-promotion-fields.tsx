@@ -326,6 +326,7 @@ export function CreatePromotionFields({
           </p>
         </div>
         <PromotionMerchandisingFields
+          siteId={currentSite?.id ?? null}
           value={merchandising}
           onChange={onMerchandisingChange}
           name={watch("name")}

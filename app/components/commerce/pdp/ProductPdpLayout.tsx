@@ -150,6 +150,8 @@ export function ProductPdpLayout({ item, backUrl, experience: _experience, catal
     [item, children]
   )
   const imageContext = {
+    siteId: item.site_id,
+    parentId: item.id,
     parentName: item.name,
     parentDescription: item.description,
     category:

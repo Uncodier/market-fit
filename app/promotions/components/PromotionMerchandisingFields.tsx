@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, type Dispatch, type SetStateAction } from "react"
 import { Button } from "@/app/components/ui/button"
 import { Label } from "@/app/components/ui/label"
 import { Switch } from "@/app/components/ui/switch"
@@ -9,6 +9,7 @@ import { generatePromotionImage } from "../generate-promotion-image"
 import { toast } from "sonner"
 import { Loader2, Sparkles } from "@/app/components/ui/icons"
 import { useLocalization } from "@/app/context/LocalizationContext"
+import type { PromotionWithCampaign } from "../types"
 
 export type PromotionMerchandisingValue = {
   image_url?: string | null
@@ -17,6 +18,7 @@ export type PromotionMerchandisingValue = {
 }
 
 type Props = {
+  siteId: string | null
   value: PromotionMerchandisingValue
   onChange: (patch: Partial<PromotionMerchandisingValue>) => void
   name: string
@@ -28,6 +30,7 @@ type Props = {
 }
 
 export function PromotionMerchandisingFields({
+  siteId,
   value,
   onChange,
   name,
@@ -40,11 +43,15 @@ export function PromotionMerchandisingFields({
   const { t } = useLocalization()
   const [generating, setGenerating] = useState(false)
 
-  const ensureImage = async (): Promise<string | null> => {
-    if (value.image_url) return value.image_url
+  const generateImage = async (): Promise<string | null> => {
+    if (!siteId) {
+      toast.error("Select a site to generate promotion images.")
+      return null
+    }
     setGenerating(true)
     try {
       const res = await generatePromotionImage({
+        siteId,
         name: name || "Promotion",
         discount_type,
         discount_value,
@@ -57,6 +64,9 @@ export function PromotionMerchandisingFields({
         return null
       }
       return res.imageUrl
+    } catch {
+      toast.error("Promotion image generation failed. Please try again later.")
+      return null
     } finally {
       setGenerating(false)
     }
@@ -67,7 +77,7 @@ export function PromotionMerchandisingFields({
     checked: boolean,
   ) => {
     if (checked && !value.image_url) {
-      const imageUrl = await ensureImage()
+      const imageUrl = await generateImage()
       if (!imageUrl) {
         toast.message(
           t("promotions.merchandising.needImage") ||
@@ -75,7 +85,7 @@ export function PromotionMerchandisingFields({
         )
         return
       }
-      // Single patch so image_url is not dropped by a follow-up toggle update
+      // Single patch so image_url is not dropped by a follow-up toggle update.
       onChange({ image_url: imageUrl, [key]: checked })
       return
     }
@@ -83,8 +93,9 @@ export function PromotionMerchandisingFields({
   }
 
   const handleGenerate = async () => {
-    const imageUrl = await ensureImage()
+    const imageUrl = await generateImage()
     if (imageUrl) {
+      onChange({ image_url: imageUrl })
       toast.success(
         t("promotions.merchandising.imageReady") || "Promotion image ready",
       )
@@ -102,7 +113,7 @@ export function PromotionMerchandisingFields({
             type="button"
             variant="outline"
             size="sm"
-            disabled={generating || !name?.trim()}
+            disabled={generating || !siteId || !name?.trim()}
             onClick={() => void handleGenerate()}
           >
             {generating ? (
@@ -170,6 +181,29 @@ export function PromotionMerchandisingFields({
           disabled={generating}
         />
       </div>
+    </div>
+  )
+}
+
+/** Keep detail-page field mapping and its functional update in one place. */
+export function PromotionDetailMerchandisingFields({ promo, site, setPromo }: {
+  promo: PromotionWithCampaign
+  site: { id: string; name?: string } | null
+  setPromo: Dispatch<SetStateAction<PromotionWithCampaign | null>>
+}) {
+  return (
+    <div className="pt-4 border-t">
+      <PromotionMerchandisingFields
+        siteId={promo.site_id}
+        value={{ image_url: promo.image_url, show_on_shop: promo.show_on_shop, show_on_marketplace: promo.show_on_marketplace }}
+        onChange={patch => setPromo(current => current ? { ...current, ...patch } : current)}
+        name={promo.name}
+        discount_type={promo.discount_type}
+        discount_value={promo.discount_value}
+        bogo_buy_qty={promo.bogo_buy_qty}
+        bogo_get_qty={promo.bogo_get_qty}
+        siteName={site?.id === promo.site_id ? site.name : null}
+      />
     </div>
   )
 }

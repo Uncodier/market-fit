@@ -99,6 +99,8 @@ export function VariantPicker({
       return resolveItemImage(
         {
           ...promptBase,
+          id: child.id,
+          site_id: child.site_id,
           name: child.name || label,
           description: child.description,
         },

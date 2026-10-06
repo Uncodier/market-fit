@@ -65,7 +65,7 @@ it.each(['www.makinari.com', 'makinari.com', 'app.makinari.com'])(
     for (const request of requests) {
       const url = new URL(request)
       expect(url.origin).toBe('https://app.makinari.com')
-      expect(url.searchParams.get('cache_only')).toBe('1')
+      expect(url.searchParams.get('public')).toBe('1')
       expect(url.searchParams.get('site_id')).toBe(siteId)
       expect(url.searchParams.has('token')).toBe(false)
     }
@@ -79,11 +79,11 @@ it.each(['www.makinari.com', 'makinari.com', 'app.makinari.com'])(
 )
 
 it.each(['localhost:3000', 'branch.preview.makinari.com', 'demo.makinari.com', 'shop.example.test'])(
-  'keeps public SSR relative/cache-only on %s and unscoped workspace images generation-capable', async host => {
+  'keeps public SSR relative/public on %s and unscoped workspace images generation-capable', async host => {
     const dom = new JSDOM(renderToStaticMarkup(await publicTree(host)))
     for (const request of imageRequests(dom.window.document)) {
       expect(request.startsWith('/api/images/prompt?')).toBe(true)
-      expect(request).toContain('cache_only=1')
+      expect(request).toContain('public=1')
     }
     const workspace = renderToStaticMarkup(<ProgressiveImage item={item} alt="Workspace" />)
     expect(workspace).toContain('src="/api/images/prompt?')
@@ -96,7 +96,7 @@ it.each([ShopLayout, MarketplaceLayout, CartLayout, BookLayout])('scopes each pu
   await publicTree('www.makinari.com')
   const html = renderToStaticMarkup(await Layout({ children: <ProgressiveImage item={item} alt="Photo" /> }))
   expect(html).toContain('src="https://app.makinari.com/api/images/prompt?')
-  expect(html).toContain('cache_only=1')
+  expect(html).toContain('public=1')
 })
 
 it.each(['www.makinari.com', 'makinari.com', 'branch.preview.makinari.com', 'localhost:3000'])(

@@ -3,7 +3,7 @@ import {
   optimizeForPreset,
   type ImageSizePreset,
 } from "@/app/lib/optimize-storage-image"
-import { normalizePromptImageUrl, promptImageUrl, type PromptImageDelivery } from "./prompt-image-url"
+import { isPromptImageUrl, normalizePromptImageUrl, promptImageUrl, type PromptImageDelivery, type PromptImageResource } from "./prompt-image-url"
 
 export type { ImageSizePreset } from "@/app/lib/optimize-storage-image"
 export {
@@ -18,6 +18,8 @@ export {
 const MAX_PROMPT_CHARS = 220
 
 export type ItemImagePromptInput = {
+  id?: string
+  imageResource?: PromptImageResource
   site_id?: string | null
   image_url?: string | null
   name: string
@@ -129,13 +131,15 @@ export function resolveItemImage(
   size?: ImageSizePreset,
   delivery?: PromptImageDelivery,
 ): string {
+  const resource: PromptImageResource | undefined = item.imageResource || (item.id ? { type: 'catalog', id: item.id } : undefined)
   const uploaded = realImageUrl(item.image_url, delivery)
   if (uploaded) {
-    const normalized = normalizePromptImageUrl(uploaded, item.site_id || item.site?.id, delivery)
+    const normalized = normalizePromptImageUrl(uploaded, item.site_id || item.site?.id, delivery, resource)
     return size ? optimizeForPreset(normalized, size) : normalized
   }
   const px = size ? IMAGE_SIZE_PX[size] : 1024
-  return publicPromptImageUrl(buildItemImagePrompt(item), px, item.site_id || item.site?.id, delivery)
+  return promptImageUrl(buildItemImagePrompt(item), px, item.site_id || item.site?.id, delivery,
+    resource)
 }
 
 /** Preserve uploaded media and route legacy prompt URLs through the local boundary. */
@@ -206,7 +210,9 @@ export function buildPdpGalleryEntries(params: {
 
   if (children.length > 0) {
     // Parent photo first when it has a real upload (distinct from child AI thumbs).
-    const parentReal = realImageUrl(params.parent.image_url, params.delivery)
+    const parentReal = params.parent.image_url && isPromptImageUrl(params.parent.image_url)
+      ? resolveItemImage(params.parent, size, params.delivery)
+      : realImageUrl(params.parent.image_url, params.delivery)
     if (parentReal) push(sizedUrl(parentReal), params.parent.id)
 
     for (const child of children) {
@@ -260,6 +266,7 @@ export function buildPdpGalleryUrls(params: {
 /** Same authenticated-generation/public-delivery boundary as catalog images. */
 export function resolvePromotionImage(
   promo: {
+    id?: string
     site_id?: string | null
     image_url?: string | null
     name?: string | null
@@ -267,11 +274,13 @@ export function resolvePromotionImage(
   size?: ImageSizePreset,
   delivery?: PromptImageDelivery,
 ): string {
+  const resource: PromptImageResource | undefined = promo.id ? { type: 'promotion', id: promo.id } : undefined
   const uploaded = realImageUrl(promo.image_url, delivery)
   if (uploaded) {
-    const normalized = normalizePromptImageUrl(uploaded, promo.site_id, delivery)
+    const normalized = normalizePromptImageUrl(uploaded, promo.site_id, delivery, resource)
     return size ? optimizeForPreset(normalized, size) : normalized
   }
   const px = size ? IMAGE_SIZE_PX[size] : 1024
-  return publicPromptImageUrl(promo.name?.trim() || "Promotion", px, promo.site_id, delivery)
+  return promptImageUrl(promo.name?.trim() || "Promotion", px, promo.site_id, delivery,
+    resource)
 }

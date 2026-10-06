@@ -53,6 +53,8 @@ export type ModifierGroupWithItems = ModifierGroup & {
 
 /** Context for AI placeholder images on modifier options (host / category / site). */
 export type ModifierImageContext = {
+  siteId?: string | null
+  parentId?: string
   parentName?: string | null
   parentDescription?: string | null
   category?: string | null

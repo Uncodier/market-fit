@@ -219,9 +219,33 @@ key. No CDN publication or deployment was performed; changing a query version
 does not publish the built files or reload an already running SDK. Publish the
 matching artifacts before deploying the embedding and reloading existing tabs.
 
-The preview route still requires identifying its source. Earlier market-fit
-image, notification and observer repairs remain uncommitted and need reviewed
-deployment; current app production still reports `ba603eb`. Strict console
-coverage remains intact. There is no dedicated E2E scenario for
+The preview route still requires identifying its source. The later deployment
+`deb0fec` and published SDK 1.965 passed the three public cases in the subsequent
+smoke run; protected cases still exposed preview/chat console errors. Strict
+console coverage remains intact. There is no dedicated E2E scenario for
 `/admin/nurture-sequences`: workspace selection renders a preview whose own link
 prefetch emits the error, detected by the generic console/dependency observer.
+
+## Support-history follow-up (SDK 1.965)
+
+`prod-smoke-1965-deb0fec-20261006` passed all public checks but exposed a related
+document-lifecycle cancellation in support history on Content and Leads. Both
+first conversations GETs have saved failure reason `net::ERR_ABORTED`; their
+later GETs share the same site/visitor/session/lead query values and return 200.
+Session-proof headers are present. This does not establish an HTTP backend error
+or missing identity. No conversation contents or token values were inspected.
+
+The SDK's ConversationManager now installs the same document lifecycle before
+identity exchange, cancels history/message reads and invalidates render work on
+pagehide, suspends new requests until persisted pageshow, and does not replay old
+work or revoke identity. Existing identity-generation checks discard cancelled
+responses without false console errors. Real failures remain observable.
+Focused local validation passed 34 tests across four chat/identity suites and
+`tsc --noEmit`. The full SDK run passed 331 tests and retained the same eight
+previously observed chat-history/experiments failures.
+
+The subsequent authorized SDK rebuild produced version 1.966, with syntax,
+compression, typecheck and 57 focused tests passing. No CDN publication or
+host reference change was made during compilation; production must publish
+the new files before loading that version. This repair is separate from the
+previously published 1.965.

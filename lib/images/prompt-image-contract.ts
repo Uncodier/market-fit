@@ -7,11 +7,15 @@ const schema = z.object({
   height: dimension,
   site_id: z.string().uuid().optional(),
   cache_only: z.literal('1').optional(),
+  public: z.literal('1').optional(),
+  resource_type: z.enum(['catalog', 'promotion', 'hero']).optional(),
+  resource_id: z.string().uuid().optional(),
+  host_id: z.string().uuid().optional(),
 })
 export type PromptImageInput = z.infer<typeof schema>
 
 export function parsePromptImageInput(params: URLSearchParams): PromptImageInput | null {
-  const keys = ['prompt', 'width', 'height', 'site_id', 'cache_only']
+  const keys = ['prompt', 'width', 'height', 'site_id', 'cache_only', 'public', 'resource_type', 'resource_id', 'host_id']
   if (Array.from(params.keys()).some(key => !keys.includes(key) || params.getAll(key).length !== 1)) return null
   const result = schema.safeParse(Object.fromEntries(params))
   return result.success ? result.data : null

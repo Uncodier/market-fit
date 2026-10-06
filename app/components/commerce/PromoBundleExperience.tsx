@@ -1,6 +1,7 @@
 "use client"
 
 import { useMemo, useState, useEffect } from "react"
+import { PromptImage } from './PromptImage'
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { Button } from "@/app/components/ui/button"
@@ -301,7 +302,7 @@ export function PromoBundleExperience({
         <div className="max-w-7xl mx-auto px-4 md:px-8 py-8 md:py-16 pb-32 lg:pb-16">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 sm:gap-12 lg:gap-20">
             <div className="relative aspect-[4/5] bg-muted rounded-[2rem] overflow-hidden border shadow-sm">
-              <img
+              <PromptImage
                 src={imageSrc}
                 alt={promo.name}
                 onError={(e) => {
@@ -355,8 +356,8 @@ export function PromoBundleExperience({
                         >
                           <div className="h-12 w-12 rounded-xl overflow-hidden bg-muted flex-shrink-0">
                             {row.item && (
-                              <img
-                                src={resolveItemImage(row.item as any, "hero")}
+                              <PromptImage
+                                src={resolveItemImage({ ...row.item, name: row.item.name || "Product", site_id: promo.site_id }, "hero")}
                                 alt=""
                                 className="h-full w-full object-cover"
                               />
@@ -396,8 +397,8 @@ export function PromoBundleExperience({
                           className="flex items-center gap-3 rounded-2xl border bg-card p-3"
                         >
                           <div className="h-12 w-12 rounded-xl overflow-hidden bg-muted flex-shrink-0">
-                            <img
-                              src={resolveItemImage(item as any, "thumb")}
+                            <PromptImage
+                              src={resolveItemImage({ ...item, name: item.name || "Product", site_id: promo.site_id }, "thumb")}
                               alt=""
                               className="h-full w-full object-cover"
                             />

@@ -4,9 +4,11 @@ import { NextResponse } from 'next/server'
 import { GET } from '@/app/api/images/prompt/route'
 import { requireSiteAccess } from '@/lib/auth/api-site-access'
 import { readPromptImageCache } from '@/lib/images/prompt-image-cache'
+import { generatePublicImage } from '@/lib/images/public-image-generation'
 
 jest.mock('server-only', () => ({}))
 jest.mock('@/lib/auth/api-site-access', () => ({ requireSiteAccess: jest.fn() }))
+jest.mock('@/lib/images/public-image-generation', () => ({ generatePublicImage: jest.fn() }))
 jest.mock('@/lib/images/prompt-image-cache', () => ({
   ...jest.requireActual('@/lib/images/prompt-image-cache'), readPromptImageCache: jest.fn(),
 }))
@@ -91,6 +93,35 @@ it('does not generate for an anonymous shopper with unrelated cookies', async ()
   expect(fetch).not.toHaveBeenCalled()
 })
 
+it('generates public resource misses without using unrelated workspace credentials', async () => {
+  jest.mocked(generatePublicImage).mockResolvedValueOnce({ bytes, contentType: 'image/png' })
+  const params = { site_id: siteId, public: '1', resource_type: 'promotion', resource_id: otherSite }
+  const response = await GET(request(params, { cookie: 'cart=1', 'sec-fetch-site': 'same-site', referer: 'https://www.makinari.com/' }))
+  expect(response.status).toBe(200)
+  expect(new Uint8Array(await response.arrayBuffer())).toEqual(bytes)
+  expect(generatePublicImage).toHaveBeenCalledWith(expect.any(Request), expect.objectContaining(params))
+  expect(requireSiteAccess).not.toHaveBeenCalled()
+  expect(fetch).not.toHaveBeenCalled()
+})
+
+it('preserves public generation denials and never falls through to workspace generation', async () => {
+  jest.mocked(generatePublicImage).mockResolvedValueOnce(Response.json({ error: 'Public image resource not found' }, { status: 404 }))
+  const response = await GET(request({ site_id: siteId, public: '1', resource_type: 'catalog', resource_id: otherSite }))
+  expect(response.status).toBe(404)
+  expect(requireSiteAccess).not.toHaveBeenCalled()
+})
+
+it.each([
+  { public: '1' },
+  { public: '1', site_id: siteId },
+  { public: '1', site_id: siteId, resource_type: 'catalog', resource_id: otherSite, cache_only: '1' },
+])('never authorizes paid public generation without a complete resource or for explicit cache-only: %j', async params => {
+  const response = await GET(request(params))
+  expect(response.headers.get('x-image-delivery')).toBe('placeholder')
+  expect(generatePublicImage).not.toHaveBeenCalled()
+  expect(requireSiteAccess).not.toHaveBeenCalled()
+})
+
 it.each([
   { 'sec-fetch-site': 'cross-site' }, { 'sec-fetch-site': 'same-site' },
   { origin: 'https://evil.test' }, { 'sec-fetch-site': 'none' },
@@ -113,7 +144,8 @@ it('denies read-only capability and invalid sessions', async () => {
 it('rejects malformed inputs before accessing the cache or auth', async () => {
   for (const params of [{ prompt: '' }, { prompt: '..' }, { prompt: '\n' }, { prompt: 'x'.repeat(2001) },
     { width: '2000' }, { height: '-1' }, { site_id: 'demo-site' }, { target: 'https://evil.test' },
-    { signature: 'untrusted' }]) {
+    { signature: 'untrusted' }, { public: '0' }, { host_id: 'untrusted' },
+    { resource_type: 'private' }, { resource_id: 'untrusted' }]) {
     expect((await GET(request(params))).status).toBe(400)
   }
   expect(readPromptImageCache).not.toHaveBeenCalled()

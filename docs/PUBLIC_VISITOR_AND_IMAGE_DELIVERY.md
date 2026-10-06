@@ -3,8 +3,8 @@
 ## Boundaries
 
 Anonymous storefront visitors must not need a workspace login or receive a
-service credential. Public asset delivery must not silently authorize paid
-generation. These flows are separate from the authenticated workspace API
+service credential. Public generation is deliberately limited to verified
+storefront resources, never arbitrary visitor prompts. These flows are separate from the authenticated workspace API
 client and preserve the API's visitor proof and site-access checks.
 
 ## Storefront visitor tracking
@@ -89,23 +89,42 @@ images retain the site-scoped authorization and delivery behavior below.
 
 ### Public delivery
 
-The image route and Open Graph renderer read only already-public cached bytes
+The image route and Open Graph renderer first read already-public cached bytes
 from the configured Supabase `generative_images/prompt_cache` bucket. The cache
 key matches the API's current `sha256(lowercase(trim(v2:site:prompt))|WxH)`
 contract. No API key, user bearer, fabricated Origin or arbitrary fetch target
 is needed for this read. The API's versioned hash/path is an integration
 contract: update the helper and regression test together if it changes.
 
-If no site-scoped cached image exists, anonymous visitors see neutral artwork.
+Explicit cache-only or unscoped requests return neutral artwork on a miss.
 The response identifies it as `X-Image-Delivery: placeholder` and is not cached
 as a successful generated image. Uploaded photos remain unchanged. Open Graph
 converts cached bytes or inline neutral artwork to PNG locally, without a
 recursive request to the app, and never triggers generation.
 
-**Intentional behavior change:** browsing the public shop/marketplace no longer
-starts a paid AI image workflow on a cache miss. To show a real generated photo
-publicly, generate it from an authorized workspace context or persist/upload the
-image. A neutral placeholder is not a claim that generation succeeded.
+**Public generation enabled (2026-10-06):** storefront image URLs carry `public=1`,
+the site ID and a catalog/promotion/hero resource selector. On a cache miss, the
+server verifies the public non-archived site and the active, listed and available
+resource (including a variant's parent), or promotion visibility/channel/schedule.
+Modifier options use `host_id` and must belong to a modifier group attached to
+the verified public host product; unlisted options are not authorized by ID alone.
+Promotion weekday checks use `settings.business_hours[0].timezone`, matching the shop.
+Hero selectors must match the site. It derives the prompt from server-owned data;
+visitor text, prices, credentials and tenant selectors are not authorization.
+
+After this authorization, the fixed API image endpoint receives only the
+server-only `SERVICE_API_KEY` and the resolved site ID, without Origin/Referer or
+browser credentials. Generation consumes that site's credits. A canonical
+1024-by-1024 source is reused across responsive sizes. In-process requests are
+coalesced and the API's distributed generation lock remains authoritative.
+Admission fails closed: 300 client requests/minute, 60 new images/site/hour and
+200 globally/hour, in addition to the API's own budgets. Errors are not replayed.
+The image route allows 300 seconds with a bounded 240-second upstream wait.
+
+Public generation requires a commerce Referer from the same origin or the exact
+official platform pair. Native www/apex-to-app image requests may send only the
+referrer origin; foreign origins are rejected. Cookies never authorize this path.
+Legacy explicit `cache_only=1` requests and Open Graph remain read-only.
 
 ### Authenticated generation
 
@@ -122,16 +141,22 @@ by cookie to prevent a site switch from reusing an unscoped browser cache.
 The API's existing generation lock/rate admission still applies. Errors do not
 cause automatic replay of a workflow that may already have started.
 
+The promotion editor uses the same authorized API, validates site membership,
+insert capability and a matching user session, and verifies cached raster bytes
+before returning a persistent Storage URL. Its button updates `image_url` in the
+form before reporting success; the usual form Save persists the promotion record.
+Provider or persistence failure is an error, never a synthetic dynamic URL.
+
 ## Deployment requirements and validation
 
 - Web server: `API_SERVER_URL` (or public URL fallback), `SERVICE_API_KEY` for
-  narrowly authorized anonymous session issuance, and existing Upstash Redis
+  resource-authorized public generation and anonymous session issuance, and existing Upstash Redis
   configuration. Missing service credentials/admission fail closed.
 - Browser: `NEXT_PUBLIC_API_SERVER_URL` for proof-bearing visitor requests.
 - Public image cache: `NEXT_PUBLIC_SUPABASE_URL` must point to the same storage
   project as the API; only the configured Supabase host or `db.makinari.com`
-  public cache path is accepted. Missing cache configuration yields neutral
-  artwork, never an unauthenticated generation request.
+  public cache path is accepted. Public generation additionally requires the
+  server credential and functioning Redis admission; missing prerequisites fail closed.
 - This repository's `next.config.js` includes the exact image and visitor-session
   rewrites when `MARKET_FIT_ORIGIN` is configured. That does not configure a
   separate www deployment; see the production-smoke limitation below.
@@ -149,12 +174,16 @@ was inspected or changed.
 
 Browser callers now reuse `resolveAppApiUrl`: on www/apex, prompt-image URLs and
 anonymous session bootstrap target the canonical app deployment directly.
-Direct www/apex image URLs add `cache_only=1`, including normalized persisted links,
+The initial repair added `cache_only=1` to direct www/apex image URLs; the
+2026-10-06 public-resource generation policy above supersedes that default.
+Explicit cache-only links remain read-only,
 so unrelated app cookies cannot authorize generation or cause same-site
 generation rejection. Unscoped local, app-host and server URL generation remain relative;
 uploaded images and existing workspace-generation authorization are unchanged.
-Normalization still forwards only prompt, dimensions, site selector and the
-cache-only flag, never stored origins, signatures or identity overrides.
+Normalization forwards only prompt, dimensions, site/resource selectors,
+optional modifier `host_id`, and public/cache-only flags. Call-site resource and
+site context take precedence over persisted selectors; all selectors are
+validated server-side. Stored origins, signatures and credentials are discarded.
 
 The app visitor-session handler supports a narrowly scoped OPTIONS preflight and
 response CORS for the exact HTTPS www/apex commerce origins calling app. It
@@ -179,7 +208,7 @@ data-cache/revalidation policies are not changed.
 `ProgressiveImage` applies this explicit policy to every responsive candidate.
 The native `PromptImage` wrapper also covers public PDP galleries, variants,
 modifiers, promotions, booking and cart/order-summary images. Prompt requests
-in these layouts always carry `cache_only=1`, including on app/local/preview
+in these layouts carry `public=1` with resource selectors, including on app/local/preview
 hosts with workspace cookies. SSR `src`/`srcset` and hydrated attributes agree;
 there is no effect-time repair or dependence on JavaScript to change the URL.
 Uploaded URLs remain unchanged. Unscoped workspace and authenticated buyer
@@ -228,3 +257,13 @@ was run.
 
 This resolves topic 1 of the external API auth audit. The separate privileged
 action authorization findings in that audit remain out of scope.
+
+Final validation for the 2026-10-06 public-generation/button repair, including
+the modifier and promotion-image isolation follow-up: the full Jest run passed
+8,346 tests in 754 suites. The focused run also passed 375 tests in 27 suites,
+including actual promotion SSR media and addon-host authorization. Type checking,
+targeted helper/action/test lint and `git diff --check` passed; touched legacy
+callers retain pre-existing lint debt without increased finding counts. No
+production build, deployment or live paid generation was run. The server
+credential, Redis admission and API/storage alignment still need deployment-owner
+verification before rollout.

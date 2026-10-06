@@ -39,6 +39,22 @@ it('leaves ordinary uploaded images alone', () => {
   expect(normalizePromptImageUrl('https://cdn.example.test/image.png')).toBe('https://cdn.example.test/image.png')
 })
 
+it('carries resource selectors for products, variants and promotions without authorizing client prompts', () => {
+  const itemId = '00000000-0000-4000-8000-000000000002'
+  const image = resolveItemImage({ id: itemId, name: 'Coffee', site_id: siteId }, 'card')
+  expect(Object.fromEntries(new URL(image, 'https://app.test').searchParams)).toMatchObject({
+    site_id: siteId, resource_type: 'catalog', resource_id: itemId,
+  })
+  const promo = resolvePromotionImage({ id: itemId, name: 'Deal', site_id: siteId })
+  expect(Object.fromEntries(new URL(promo, 'https://app.test').searchParams)).toMatchObject({ resource_type: 'promotion', resource_id: itemId })
+  const normalized = normalizePromptImageUrl(`${image}&token=secret&user_id=forged`)
+  expect(normalized).toBe(image)
+  const addon = resolveItemImage({ name: 'Milk', site_id: siteId,
+    imageResource: { type: 'catalog', id: itemId, hostId: siteId } }, 'thumb')
+  expect(new URL(addon, 'https://app.test').searchParams.get('host_id')).toBe(siteId)
+  expect(normalizePromptImageUrl(addon)).toBe(addon)
+})
+
 it('keeps local/workspace normalization relative and never adds public-cache-only generation restrictions', () => {
   expect(normalizePromptImageUrl('https://old-api.test/api/images/prompt?prompt=Coffee&width=400&height=256&signature=private&cache_only=0', siteId))
     .toBe(`/api/images/prompt?prompt=Coffee&width=400&height=256&site_id=${siteId}`)
