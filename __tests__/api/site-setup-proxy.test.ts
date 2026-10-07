@@ -1,6 +1,6 @@
 /** @jest-environment node */
 
-import { POST } from '@/app/api/site/setup/route'
+import { GET, POST } from '@/app/api/site/setup/route'
 import { requireSiteAccess } from '@/lib/auth/api-site-access'
 
 jest.mock('@/lib/auth/api-site-access', () => ({ requireSiteAccess: jest.fn() }))
@@ -10,7 +10,9 @@ const rpc = jest.fn()
 const getSession = jest.fn()
 const originalApi = process.env.API_SERVER_URL
 const originalPublicApi = process.env.NEXT_PUBLIC_API_SERVER_URL
-const accepted = { success: true, data: { workflow_id: 'site-setup-1', site_id: siteId } }
+const workflowId = `site-setup-${siteId}-1791331200000`
+const accepted = { success: true, data: { workflow_id: workflowId, site_id: siteId,
+  status: 'accepted', setup_status: 'pending', cause: 'WORKFLOW_ACCEPTED' } }
 
 function request(body: unknown = { site_id: siteId }, headers = {}) {
   return new Request('http://localhost:3000/api/site/setup', {
@@ -49,7 +51,7 @@ it('requires manager access and forwards only the authenticated actor and author
   expect(String(url)).toBe('http://localhost:3001/api/site/setup')
   expect(options).toMatchObject({ redirect: 'error', cache: 'no-store', signal: expect.any(AbortSignal) })
   expect(options?.headers).toEqual({ Authorization: 'Bearer user-token', 'Content-Type': 'application/json', Accept: 'application/json' })
-  expect(JSON.parse(String(options?.body))).toEqual({ site_id: siteId, user_id: userId })
+  expect(JSON.parse(String(options?.body))).toEqual({ site_id: siteId })
 })
 
 it.each([401, 403])('denies missing authentication or foreign/non-manager access (%i)', async status => {
@@ -95,4 +97,51 @@ it('rejects ambiguous success, network failure and missing configuration', async
   process.env.API_SERVER_URL = ''
   expect((await POST(request())).status).toBe(503)
   expect(fetch).toHaveBeenCalledTimes(3)
+})
+
+it('preserves safe billing and ambiguous start feedback, never backend secrets', async () => {
+  jest.mocked(fetch).mockResolvedValueOnce(Response.json({ success: false,
+    error: { code: 'BILLING_INITIALIZATION_FAILED', message: 'private' } }, { status: 503 }))
+  const billing = await POST(request())
+  expect((await billing.json()).error).toEqual({ code: 'BILLING_INITIALIZATION_FAILED',
+    message: 'Background setup was not started because billing could not be confirmed.' })
+  jest.mocked(fetch).mockResolvedValueOnce(Response.json({ success: false,
+    error: { code: 'SETUP_UNCONFIRMED', message: 'private' }, data: { workflow_id: workflowId, setup_status: 'unconfirmed' } }, { status: 503 }))
+  expect((await (await POST(request())).json()).data.workflow_id).toBe(workflowId)
+  expect(fetch).toHaveBeenCalledTimes(2)
+})
+
+it('reads status only for an authorized embedded site with bearer session and no writes', async () => {
+  jest.mocked(fetch).mockResolvedValueOnce(Response.json({ success: true, data: {
+    ...accepted.data, status: 'completed', setup_status: 'partial', cause: 'SETUP_PARTIAL',
+    steps: { agents: 'completed', segments: 'skipped', private: 'secret' }, private: 'secret',
+  } }))
+  const response = await GET(new Request(`http://localhost:3000/api/site/setup?workflow_id=${workflowId}&site_id=${userId}`, {
+    headers: { cookie: 'session' },
+  }))
+  expect(response.status).toBe(200)
+  expect(requireSiteAccess).toHaveBeenCalledWith(expect.any(Request), siteId, { requireManager: true })
+  expect(jest.mocked(fetch).mock.calls[0][1]).toMatchObject({ method: 'GET' })
+  expect(jest.mocked(fetch).mock.calls[0][1]?.body).toBeUndefined()
+  expect(await response.text()).not.toContain('secret')
+})
+
+it('rejects unrelated or duplicated status workflow identifiers', async () => {
+  for (const query of ['workflow_id=other', `workflow_id=${workflowId}&workflow_id=${workflowId}`]) {
+    expect((await GET(new Request(`http://localhost:3000/api/site/setup?${query}`))).status).toBe(400)
+  }
+  expect(requireSiteAccess).not.toHaveBeenCalled()
+  expect(fetch).not.toHaveBeenCalled()
+})
+
+it('fails safely when authorization or session lookup unexpectedly throws', async () => {
+  jest.mocked(requireSiteAccess).mockRejectedValueOnce(new Error('private auth detail'))
+  const access = await POST(request())
+  expect(access.status).toBe(503)
+  expect(await access.text()).not.toContain('private auth detail')
+  getSession.mockRejectedValueOnce(new Error('private session detail'))
+  const session = await POST(request())
+  expect(session.status).toBe(503)
+  expect(await session.text()).not.toContain('private session detail')
+  expect(fetch).not.toHaveBeenCalled()
 })

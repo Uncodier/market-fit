@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useSite } from '@/app/context/SiteContext'
 import { createClient } from '@/lib/supabase/client'
 
 export function useBilling() {
-  const { currentSite, refreshSites } = useSite()
+  const { currentSite, refreshSiteBilling } = useSite()
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -14,8 +14,7 @@ export function useBilling() {
     setError(null)
     
     try {
-      // Force refresh of site data to get latest billing info
-      await refreshSites()
+      await refreshSiteBilling(currentSite.id)
     } catch (err) {
       console.error('Error refreshing credits:', err)
       setError(err instanceof Error ? err.message : 'Failed to refresh credits')

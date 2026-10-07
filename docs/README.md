@@ -48,6 +48,7 @@ Use the guides below before relying on older implementation notes.
 - [Stripe webhook security](STRIPE_WEBHOOK_SECURITY.md)
 - [Subscription invoice settlement and recovery](STRIPE_INVOICE_RECOVERY.md)
 - [Monthly credit reset and protected balances](BILLING_CREDIT_RESET.md)
+- [Site setup launch and safe status feedback](SITE_SETUP_LAUNCH.md)
 - [Social network OAuth](SOCIAL_NETWORK_OAUTH_SETUP.md)
 - [Content and Outstand deletion](CONTENT_DELETION.md)
 - [Content loading and trend-provider availability](CONTENT_RELIABILITY.md)

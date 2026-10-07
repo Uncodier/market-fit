@@ -78,7 +78,7 @@ describe("Daily Standup persistence", () => {
     expect(adaptSiteToForm({ ...state.options.currentSite, settings: loaded }).activities).toEqual(expected)
     const selected = jest.fn()
     await applyCurrentSite({ site: { ...state.options.currentSite, settings: loaded }, currentSite: null, supabase: null, setCurrentSite: selected, setSites: jest.fn() })
-    expect(selected.mock.calls[0][0].settings.activities).toEqual(expected)
+    expect(selected.mock.calls[0][0](null).settings.activities).toEqual(expected)
     expect(state.deps.setCurrentSite.mock.calls[0][0](state.options.currentSite).settings.activities).toEqual(expected)
   })
 

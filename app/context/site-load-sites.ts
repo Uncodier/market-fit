@@ -1,6 +1,8 @@
 "use client"
 
 import type { Site } from "./site-types"
+import type { Dispatch, SetStateAction } from "react"
+import { captureBillingRevision, mergeLoadedSiteBilling } from "./site-billing-freshness"
 import { getLocalStorage } from "./site-storage"
 import { isDemoModeActive, getDemoSiteId, resolvePreferredSiteId } from "@/lib/demo-utils"
 import { unauthorizedSitesLoadAction } from "@/lib/auth/workspace-site-redirect"
@@ -19,12 +21,13 @@ export type LoadSitesDeps = {
   setError: (e: Error | null) => void
   setHasValidSession: (v: boolean) => void
   setIsInitialized: (v: boolean | ((prev: boolean) => boolean)) => void
-  setSites: (sites: Site[]) => void
+  setSites: Dispatch<SetStateAction<Site[]>>
   selectSite: (site: Site) => Promise<void>
   reload: () => void
 }
 
 export async function loadAccessibleSites(deps: LoadSitesDeps) {
+  const billingRevision = captureBillingRevision()
   const {
     supabase,
     isMounted,
@@ -226,7 +229,7 @@ export async function loadAccessibleSites(deps: LoadSitesDeps) {
         new Map(sitesWithData.map((site: any) => [site.id, site])).values()
       );
       
-      setSites(uniqueSites as Site[])
+      setSites(previous => mergeLoadedSiteBilling(previous, uniqueSites as Site[], billingRevision))
       setSitesLoaded(true)
       
       // Si hay sitios, intentamos restaurar el sitio guardado (no auto-seleccionar el primero)

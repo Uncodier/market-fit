@@ -11,6 +11,8 @@ import { useRouter } from "next/navigation"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
 import { QuickNav, type QuickNavSection } from "@/app/components/ui/quick-nav"
 import { useLocalization } from "@/app/context/LocalizationContext"
+import { BillingInitialization } from "./billing-initialization"
+import { SiteSetupTracking } from "../create-site/site-setup-tracking"
 
   // Section configurations for quick navigation
   const getBillingInfoSections = (t: (key: string) => string): QuickNavSection[] => [
@@ -112,6 +114,8 @@ export default function BillingPage() {
       <div className="py-8 pb-16">
         <div className="flex gap-8 justify-center max-w-[1200px] mx-auto">
           <div className="flex-1 max-w-[880px] px-4 md:px-16">
+            <BillingInitialization key={currentSite.id} siteId={currentSite.id} hasBilling={!!currentSite.billing} />
+            <SiteSetupTracking siteId={currentSite.id} />
             <Tabs value={activeTab} onValueChange={handleTabChange}>
               <TabsContent value="billing_info" className="mt-0 p-0">
                 <BillingForm 

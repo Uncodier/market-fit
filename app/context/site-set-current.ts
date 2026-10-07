@@ -3,6 +3,7 @@
 import type { Site } from "./site-types"
 import { setLocalStorage } from "./site-storage"
 import { normalizeActivitySettings } from "@/app/components/settings/activity-settings"
+import { preserveHydratedBilling } from "./site-billing-freshness"
 
 export function parseJsonField(field: any, defaultValue: any) {
   if (!field) return defaultValue
@@ -52,7 +53,8 @@ export async function applyCurrentSite({
     if (site && site.id) {
       // ACTUALIZACIÓN OPTIMISTA: Cambiar el UI inmediatamente sin bloquear
       setLocalStorage("currentSiteId", site.id)
-      setCurrentSite({ ...site, settings: site.settings ? { ...site.settings, activities: normalizeActivitySettings(site.settings.activities) } : site.settings })
+      const optimisticSite = { ...site, settings: site.settings ? { ...site.settings, activities: normalizeActivitySettings(site.settings.activities) } : site.settings }
+      setCurrentSite(current => current ? preserveHydratedBilling(current, optimisticSite) : optimisticSite)
       
       try {
         // Cargar los settings y detalles de sitio en background
@@ -97,8 +99,8 @@ export async function applyCurrentSite({
             };
             
             // Actualizar también en la lista de sitios y el sitio actual
-            setSites(prev => prev.map(s => s.id === site.id ? mergedSite : s));
-            setCurrentSite(current => current?.id === mergedSite.id ? mergedSite : current);
+            setSites(prev => prev.map(s => s.id === site.id ? preserveHydratedBilling(s, mergedSite) : s));
+            setCurrentSite(current => current?.id === mergedSite.id ? preserveHydratedBilling(current, mergedSite) : current);
           }
           
           // Si tenemos settings, los agregamos al sitio
@@ -259,7 +261,7 @@ export async function applyCurrentSite({
             };
             
             // Actualizar solo si sigue siendo el mismo sitio actual (por si el usuario cambió rápido)
-            setCurrentSite(current => current?.id === enrichedSite.id ? enrichedSite : current);
+            setCurrentSite(current => current?.id === enrichedSite.id ? preserveHydratedBilling(current, enrichedSite) : current);
           }
         } else {
         }

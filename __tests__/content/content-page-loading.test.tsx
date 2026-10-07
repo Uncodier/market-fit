@@ -84,7 +84,7 @@ function setSite(id: string | null, isLoading = false, error: Error | null = nul
   site.mockReturnValue({
     currentSite, sites: currentSite ? [currentSite] : [], isLoading, error, getSettings,
     setCurrentSite: jest.fn(), updateSite: jest.fn(), createSite: jest.fn(), deleteSite: jest.fn(),
-    refreshSites: jest.fn(), updateSettings: jest.fn(), updateBilling: jest.fn(),
+    refreshSites: jest.fn(), refreshSiteBilling: jest.fn(), updateSettings: jest.fn(), updateBilling: jest.fn(),
     getBillingInfo: jest.fn(), purchaseCredits: jest.fn(),
   })
 }

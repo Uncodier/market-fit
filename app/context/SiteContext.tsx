@@ -16,6 +16,7 @@ import { applyCurrentSite, fetchSiteSettings } from "./site-set-current"
 import { loadAccessibleSites } from "./site-load-sites"
 import { updateSiteRecord, createSiteRecord, deleteSiteRecord } from "./site-crud"
 import { syncSiteLogosInBackground } from "@/lib/sites/logo-background-sync"
+import { refreshSiteBillingRecord } from "./site-refresh-billing"
 
 export type {
   Site,
@@ -468,6 +469,7 @@ export function SiteProvider({ children }: SiteProviderProps) {
     createSite: handleCreateSite,
     deleteSite: handleDeleteSite,
     refreshSites: loadSitesWithPrevention,
+    refreshSiteBilling: (siteId: string) => refreshSiteBillingRecord(siteId, { setSites, setCurrentSite }),
     updateSettings: handleUpdateSettings,
     getSettings: handleGetSettings,
     updateBilling,

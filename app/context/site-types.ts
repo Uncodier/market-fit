@@ -417,6 +417,7 @@ export interface SiteContextType {
   createSite: (site: Omit<Site, 'id' | 'created_at' | 'updated_at'>) => Promise<Site>
   deleteSite: (id: string) => Promise<void>
   refreshSites: () => Promise<void>
+  refreshSiteBilling: (siteId: string) => Promise<void>
   updateSettings: (siteId: string, settings: Partial<SiteSettings>) => Promise<void>
   getSettings: (siteId: string) => Promise<SiteSettings | null>
   updateBilling: (siteId: string, billingData: Partial<BillingData>) => Promise<{ success: boolean; error?: string }>

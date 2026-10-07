@@ -138,7 +138,7 @@ describe("outreach persistence", () => {
     const setSites = jest.fn()
     const site = { id: "site-b", name: "B", logo_url: "logo", description: "B", settings: { activities: { leads_follow_up: configured, leads_initial_cold_outreach: "default" } } } as any
     await applyCurrentSite({ site, currentSite: { id: "site-a" } as any, supabase: {}, setCurrentSite, setSites })
-    const hydrated = setCurrentSite.mock.calls[0][0]
+    const hydrated = setCurrentSite.mock.calls[0][0](null)
     expect(hydrated.settings.activities.leads_follow_up).toEqual(configured)
     expect(hydrated.settings.activities.leads_initial_cold_outreach.status).toBe("inactive")
   })
