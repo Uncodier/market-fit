@@ -26,6 +26,20 @@ remain unchanged: changing prefetch traffic is a separate optimization.
 Explicit logout, external redirects, demo transitions, and site-archival document
 reloads retain their existing behavior. These are not idle-recovery mechanisms.
 
+## Version checks from public storefronts
+
+Storefronts on www query the app's public `/api/version` endpoint directly to
+detect a new deployment and offer an explicit reload. The endpoint owns CORS for
+the exact HTTPS origins `www.makinari.com`, `makinari.com`, `app.makinari.com` and
+`demo.makinari.com`; it does not enable wildcard origins or credentialed access.
+Both 200 and 304 responses include the same CORS policy and expose `ETag`.
+All responses vary on `Origin`, including requests without an Origin header.
+Browser caching remains limited to 60 seconds with stale revalidation, while
+`private` prevents shared CDN entries from mixing origin-specific responses.
+Preflight permits only GET/HEAD with `If-None-Match` and `Cache-Control` headers.
+Middleware leaves this endpoint's CORS and OPTIONS handling to the route without
+changing API admission or the policies of other endpoints.
+
 ## Middleware budget
 
 Auth and screen-access lookups share an **8-second total wall-clock budget per

@@ -261,6 +261,9 @@ const getCorsHeaders = (
   request?: NextRequest,
   isPublicBooking = false
 ) => {
+  // The public version endpoint owns its CORS and cache variants, including 304s.
+  if (request?.nextUrl.pathname === '/api/version') return response
+
   const origin = request?.headers.get('origin') ?? null
 
   // Never combine Access-Control-Allow-Origin: * with Allow-Credentials: true (Safari rejects it).
@@ -353,7 +356,7 @@ export async function middleware(request: NextRequest) {
   }
   
   // Handle OPTIONS request for preflight checks (CORS)
-  if (request.method === 'OPTIONS') {
+  if (request.method === 'OPTIONS' && pathname !== '/api/version') {
     return getCorsHeaders(new NextResponse(null, { status: 204 }), request, isPublicBooking);
   }
   
