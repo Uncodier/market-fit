@@ -60,7 +60,7 @@ describe("monthly entitlement invoice periods", () => {
 describe("canceled subscriptions without surviving paid metadata", () => {
   it.each(["canceled", "cancelled", "incomplete_expired"])("allows %s fallback without paid metadata or add-ons", (status) => {
     const value = { status, metadata: {}, items: { data: [], has_more: false } } as unknown as Stripe.Subscription
-    expect(resolveStripeSubscriptionDetails(value)).toEqual({ plan: null, addonsCount: 0, currentPeriodEnd: null })
+    expect(resolveStripeSubscriptionDetails(value)).toEqual({ plan: null, addonsCount: 0, billingInterval: null, currentPeriodEnd: null })
   })
   it("active subscriptions still fail closed on a missing paid plan", () => {
     const value = { status: "active", metadata: {}, items: { data: [] } } as unknown as Stripe.Subscription

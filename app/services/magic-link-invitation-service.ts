@@ -1,3 +1,5 @@
+import { parseBillingLimitError, type BillingLimitPayload } from '@/lib/billing-limit-errors'
+
 export interface MagicLinkInvitationParams {
   email: string
   siteId: string
@@ -13,6 +15,7 @@ export interface MagicLinkInvitationResponse {
   error?: string
   code?: string
   retryAfter?: number
+  upgradeRequired?: BillingLimitPayload
 }
 
 /**
@@ -42,6 +45,10 @@ export async function sendMagicLinkInvitation(
     const result = await response.json()
 
     if (!response.ok) {
+      const upgradeRequired = response.status === 402 ? parseBillingLimitError(result) : null
+      if (upgradeRequired?.kind === 'members' && upgradeRequired.siteId === params.siteId) {
+        return { success: false, code: 'MEMBER_LIMIT', upgradeRequired }
+      }
       const code =
         result.code ||
         (response.status === 429 ? 'RATE_LIMIT_EXCEEDED' : undefined)
@@ -85,7 +92,7 @@ export async function processTeamInvitation(invitationData: {
   name?: string
   position?: string
   userEmail: string
-}): Promise<{ success: boolean; error?: string; redirectTo?: string }> {
+}): Promise<{ success: boolean; error?: string; redirectTo?: string; upgradeRequired?: BillingLimitPayload }> {
   try {
     const response = await fetch('/api/team/accept-invitation', {
       method: 'POST',
@@ -95,6 +102,10 @@ export async function processTeamInvitation(invitationData: {
     const result = await response.json().catch(() => ({}))
 
     if (!response.ok || !result.success) {
+      const upgradeRequired = response.status === 402 ? parseBillingLimitError(result) : null
+      if (upgradeRequired?.kind === 'members' && upgradeRequired.siteId === invitationData.siteId) {
+        return { success: false, upgradeRequired }
+      }
       return {
         success: false,
         error: result.error || 'Failed to accept the invitation',

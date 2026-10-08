@@ -1,6 +1,7 @@
 "use client"
 
 import type { Site } from "./site-types"
+import { hydrateSiteBilling } from "./site-billing-data"
 import type { Dispatch, SetStateAction } from "react"
 import { captureBillingRevision, mergeLoadedSiteBilling } from "./site-billing-freshness"
 import { getLocalStorage } from "./site-storage"
@@ -22,6 +23,7 @@ export type LoadSitesDeps = {
   setHasValidSession: (v: boolean) => void
   setIsInitialized: (v: boolean | ((prev: boolean) => boolean)) => void
   setSites: Dispatch<SetStateAction<Site[]>>
+  setCurrentSite: Dispatch<SetStateAction<Site | null>>
   selectSite: (site: Site) => Promise<void>
   reload: () => void
 }
@@ -41,6 +43,7 @@ export async function loadAccessibleSites(deps: LoadSitesDeps) {
     setHasValidSession,
     setIsInitialized,
     setSites,
+    setCurrentSite,
     selectSite,
     reload,
   } = deps
@@ -190,37 +193,7 @@ export async function loadAccessibleSites(deps: LoadSitesDeps) {
           // No incluimos settings aquí, se cargarán específicamente para el sitio actual
           settings: undefined,
           // Add billing data if available
-          billing: isDemoSite ? demoBilling : (siteBilling ? {
-            plan: siteBilling.plan || 'commission',
-            addons_count: siteBilling.addons_count || 0,
-            masked_card_number: siteBilling.masked_card_number,
-            card_name: siteBilling.card_name,
-            card_expiry: siteBilling.card_expiry,
-            stripe_customer_id: siteBilling.stripe_customer_id,
-            stripe_payment_method_id: siteBilling.stripe_payment_method_id,
-            card_address: siteBilling.card_address,
-            card_city: siteBilling.card_city,
-            card_postal_code: siteBilling.card_postal_code,
-            card_country: siteBilling.card_country,
-            tax_id: siteBilling.tax_id,
-            billing_address: siteBilling.billing_address,
-            billing_city: siteBilling.billing_city,
-            billing_postal_code: siteBilling.billing_postal_code,
-            billing_country: siteBilling.billing_country,
-            auto_renew: siteBilling.auto_renew ?? true,
-            credits_available: siteBilling.credits_available || 0,
-            credits_used: siteBilling.credits_used || 0,
-            account_balance: siteBilling.account_balance || 0,
-            plan_credits_available: siteBilling.plan_credits_available,
-            purchased_credits_available: siteBilling.purchased_credits_available,
-            legacy_credits_available: siteBilling.legacy_credits_available,
-            plan_credit_period_start: siteBilling.plan_credit_period_start,
-            plan_credit_period_end: siteBilling.plan_credit_period_end,
-            plan_credit_allowance: siteBilling.plan_credit_allowance,
-            monthly_credits_used: siteBilling.monthly_credits_used,
-            plan_credits_used: siteBilling.plan_credits_used,
-            plan_credit_source: siteBilling.plan_credit_source,
-          } : undefined)
+          billing: isDemoSite ? demoBilling : (siteBilling ? hydrateSiteBilling(siteBilling) : undefined)
         }
       })
       
@@ -230,6 +203,15 @@ export async function loadAccessibleSites(deps: LoadSitesDeps) {
       );
       
       setSites(previous => mergeLoadedSiteBilling(previous, uniqueSites as Site[], billingRevision))
+      // Same-site selection deliberately skips settings reloads, so publish the
+      // financial read independently using current state, never a captured closure.
+      setCurrentSite(previous => {
+        if (!previous) return previous
+        const loaded = (uniqueSites as Site[]).find(site => site.id === previous.id)
+        if (!loaded) return previous
+        const merged = mergeLoadedSiteBilling([previous], [loaded], billingRevision)[0]
+        return { ...previous, billing: merged.billing, billing_read_status: merged.billing_read_status }
+      })
       setSitesLoaded(true)
       
       // Si hay sitios, intentamos restaurar el sitio guardado (no auto-seleccionar el primero)

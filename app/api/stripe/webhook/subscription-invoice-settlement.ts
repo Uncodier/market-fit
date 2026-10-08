@@ -1,11 +1,12 @@
 import type Stripe from "stripe"
 import { fromStripeMinorAmount } from "@/app/api/stripe/checkout/checkout-payment-guard"
-import { normalizeBillingPlan, type BillingPlan } from "@/lib/billing-plans"
+import type { BillingPlan } from "@/lib/billing-plans"
+import type { BillingInterval } from "@/lib/subscription-pricing.server"
 import {
-  retrieveStripeSubscription, stripeObjectId, stripeTimestampIso,
+  retrieveStripeSubscription, syncRetrievedStripeSubscription, stripeObjectId, stripeTimestampIso,
   type SubscriptionBillingClient, type SubscriptionStripeClient,
 } from "./subscription-billing"
-import { stripeInvoiceCreditPeriod } from "./subscription-invoice-period"
+import { verifiedInvoiceEntitlements } from "./subscription-invoice-entitlements"
 
 type CompatibleInvoice = Stripe.Invoice & {
   subscription?: string | Stripe.Subscription | null
@@ -19,6 +20,11 @@ export type StripeSubscriptionInvoiceInput = {
   customer_id: string
   subscription_id: string
   current_subscription_status: string
+  current_service: {
+    plan: BillingPlan | null
+    addons_count: number
+    billing_interval: BillingInterval | null
+  }
   payment_intent_id: string | null
   status: "paid" | "failed"
   amount: number
@@ -26,6 +32,8 @@ export type StripeSubscriptionInvoiceInput = {
   billing_reason: string | null
   plan: BillingPlan
   addons_count: number
+  billing_interval: BillingInterval
+  coverage_verified: boolean
   paid_at: string | null
   invoice_url: string | null
   event_id: string | null
@@ -37,7 +45,10 @@ export type StripeSubscriptionInvoiceResult = {
   outcome: "settled" | "duplicate" | "failed_recorded" | "ignored_failure"
   payment_id: string
   credits_granted: number
+  coverage_recovered?: boolean
 }
+
+export type ObsoleteSubscriptionInvoiceResult = { outcome: "obsolete_subscription"; credits_granted: 0 }
 
 export function stripeInvoiceSubscriptionId(invoice: Stripe.Invoice): string | null {
   const legacy = stripeObjectId((invoice as CompatibleInvoice).subscription)
@@ -55,23 +66,6 @@ function invoicePaymentIntentId(invoice: CompatibleInvoice): string | null {
   const payment = payments.find((item) => item.is_default) ||
     (payments.length === 1 ? payments[0] : undefined)
   return stripeObjectId(payment?.payment.payment_intent)
-}
-
-function invoiceEntitlements(invoice: CompatibleInvoice, current: { plan: BillingPlan | null; addonsCount: number }) {
-  // The live invoice's immutable subscription snapshot preserves historical renewals
-  // across later plan changes. Never use metadata from the notification payload.
-  const metadata = invoice.parent?.subscription_details?.metadata ?? invoice.subscription_details?.metadata
-  const plan = normalizeBillingPlan(metadata?.plan)
-  if (!plan) {
-    if (!current.plan) throw new Error("Invoice paid plan is unavailable")
-    return { plan: current.plan, addonsCount: current.addonsCount }
-  }
-  const count = metadata?.addons_count
-  if (count === undefined) return { ...current, plan }
-  if (!/^\d+$/.test(count) || !Number.isSafeInteger(Number(count)) || Number(count) > 100) {
-    throw new Error("Invalid invoice subscription add-on count")
-  }
-  return { plan, addonsCount: Number(count) }
 }
 
 function settlementResult(value: unknown): StripeSubscriptionInvoiceResult {
@@ -95,13 +89,16 @@ function settlementResult(value: unknown): StripeSubscriptionInvoiceResult {
  */
 export async function settleStripeSubscriptionInvoice(params: {
   invoiceId: string
-  stripe: SubscriptionStripeClient & { invoices: Pick<Stripe["invoices"], "retrieve"> }
-  supabase: Pick<SubscriptionBillingClient, "rpc">
+  stripe: SubscriptionStripeClient & {
+    invoices: Pick<Stripe["invoices"], "retrieve">
+    prices: Pick<Stripe["prices"], "retrieve">
+  }
+  supabase: SubscriptionBillingClient
   eventId?: string | null
   requirePaid?: boolean
   expectedCustomerId?: string
   expectedSubscriptionId?: string
-}): Promise<StripeSubscriptionInvoiceResult | null> {
+}): Promise<StripeSubscriptionInvoiceResult | ObsoleteSubscriptionInvoiceResult | null> {
   if (!stripeObjectId(params.invoiceId)) throw new Error("Missing invoice ID")
   // Never merge event fields into this snapshot, even when a live field is absent.
   const invoice = await params.stripe.invoices.retrieve(params.invoiceId, { expand: ["payments"] })
@@ -128,10 +125,13 @@ export async function settleStripeSubscriptionInvoice(params: {
     throw new Error("Stripe invoice has no settleable payment status")
   }
   const current = await retrieveStripeSubscription({
-    subscriptionId, stripe: params.stripe, expectedCustomerId: customerId,
+    subscriptionId, stripe: params.stripe, supabase: params.supabase, expectedCustomerId: customerId,
   })
   const { siteId } = current
-  const { plan, addonsCount } = invoiceEntitlements(invoice, current)
+  const { plan, addonsCount, ...coverage } = await verifiedInvoiceEntitlements(invoice, subscriptionId, params.stripe)
+  // Immutable invoice proof and current-service eligibility are distinct.
+  // SQL compares this fresh tuple to STORED update coverage on duplicate recovery;
+  // replacing coverage_verified with false is insufficient (stored proof wins).
   const status = invoice.status === "paid" ? "paid" : "failed"
   if (!invoice.currency || !/^[a-z]{3}$/i.test(invoice.currency)) {
     throw new Error("Invalid invoice currency")
@@ -144,6 +144,7 @@ export async function settleStripeSubscriptionInvoice(params: {
     customer_id: customerId,
     subscription_id: subscriptionId,
     current_subscription_status: current.subscription.status,
+    current_service: { plan: current.plan, addons_count: current.addonsCount, billing_interval: current.billingInterval },
     payment_intent_id: invoicePaymentIntentId(invoice),
     status,
     amount: fromStripeMinorAmount(
@@ -156,7 +157,13 @@ export async function settleStripeSubscriptionInvoice(params: {
     paid_at: paidAt,
     invoice_url: invoice.hosted_invoice_url || invoice.invoice_pdf || null,
     event_id: params.eventId ?? null,
-    ...stripeInvoiceCreditPeriod(invoice, subscriptionId),
+    ...coverage,
+  }
+  // SQL checks this invoice's immutable marker under the billing lock: already
+  // applied duplicates must not synchronize even a delayed same-ID snapshot.
+  const synced = await syncRetrievedStripeSubscription(current, params.supabase, invoice.id)
+  if (synced.outcome === "obsolete_subscription") {
+    return { outcome: "obsolete_subscription", credits_granted: 0 }
   }
   const { data, error } = await params.supabase.rpc("settle_stripe_subscription_invoice", {
     p_invoice: input,

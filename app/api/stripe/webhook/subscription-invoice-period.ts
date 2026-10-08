@@ -1,5 +1,6 @@
 import type Stripe from "stripe"
 import { stripeObjectId, stripeTimestampIso } from "./subscription-billing"
+import { configuredSubscriptionPrice } from '@/lib/subscription-pricing.server'
 
 type LegacyLine = Stripe.InvoiceLineItem & {
   type?: string
@@ -21,7 +22,7 @@ export function stripeInvoiceCreditPeriod(invoice: Stripe.Invoice, subscriptionI
     const price = stripeObjectId(line.pricing?.price_details?.price ?? line.price)
     return isSubscription && (!lineSubscription || lineSubscription === subscriptionId) &&
       !(details?.proration ?? line.proration) &&
-      (!process.env.STRIPE_ACCOUNT_ADDON_PRICE_ID || price !== process.env.STRIPE_ACCOUNT_ADDON_PRICE_ID)
+       (!price || configuredSubscriptionPrice(price)?.plan !== 'addon')
   })
   if (candidates.length > 1) throw new Error("Ambiguous invoice subscription period")
   // Invoice.period_start/end is the interval for collected invoice items. It is

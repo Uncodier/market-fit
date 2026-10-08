@@ -9,7 +9,7 @@ jest.mock("@/app/context/PermissionContext", () => ({ useOptionalPermissions: je
 
 const siteId = "11111111-1111-4111-8111-111111111111"
 const refreshSiteBilling = jest.fn()
-const fetchMock = jest.mocked(fetch)
+const fetchMock = jest.fn() as jest.MockedFunction<typeof fetch>
 const response = (body: unknown, ok = true) => ({ ok, json: async () => body }) as Response
 
 function permission(role: string, update = true) {
@@ -20,6 +20,7 @@ function permission(role: string, update = true) {
 
 beforeEach(() => {
   jest.clearAllMocks()
+  global.fetch = fetchMock
   refreshSiteBilling.mockResolvedValue(undefined)
   jest.mocked(useSite).mockReturnValue({ refreshSiteBilling } as never)
   permission("owner")
@@ -81,4 +82,39 @@ it("does not offer initialization for a demo or a site with loaded billing", () 
   view.rerender(<BillingInitialization siteId={siteId} hasBilling />)
   expect(screen.queryByRole("alert")).not.toBeInTheDocument()
   expect(fetchMock).not.toHaveBeenCalled()
+})
+
+it("offers only read recovery, not credit initialization, when billing could not be loaded", async () => {
+  permission('collaborator')
+  const view = render(<BillingInitialization siteId={siteId} hasBilling={false} billingReadFailed />)
+  expect(screen.getByRole('alert')).toHaveTextContent('does not mean your subscription is unpaid')
+  expect(screen.queryByRole('button', { name: 'Retry billing setup' })).not.toBeInTheDocument()
+  fireEvent.click(screen.getByRole('button', { name: 'Retry loading billing' }))
+  await waitFor(() => expect(refreshSiteBilling).toHaveBeenCalledWith(siteId))
+  view.rerender(<BillingInitialization siteId={siteId} hasBilling />)
+  expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  expect(refreshSiteBilling).toHaveBeenCalledWith(siteId)
+  expect(fetchMock).not.toHaveBeenCalled()
+})
+
+it("keeps a failed billing read retryable without exposing diagnostics or granting credits", async () => {
+  refreshSiteBilling.mockRejectedValueOnce(new Error('Private read diagnostic'))
+  const view = render(<BillingInitialization siteId={siteId} hasBilling={false} billingReadFailed />)
+  fireEvent.click(screen.getByRole('button', { name: 'Retry loading billing' }))
+  expect(await screen.findByRole('alert')).toHaveTextContent('payment status has not changed')
+  expect(screen.queryByText('Private read diagnostic')).not.toBeInTheDocument()
+  fireEvent.click(screen.getByRole('button', { name: 'Retry loading billing' }))
+  await waitFor(() => expect(refreshSiteBilling).toHaveBeenCalledTimes(2))
+  view.rerender(<BillingInitialization siteId={siteId} hasBilling />)
+  expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  expect(fetchMock).not.toHaveBeenCalled()
+})
+
+it("clears a stale initialization failure once existing paid billing is loaded", async () => {
+  fetchMock.mockResolvedValueOnce(response({ success: false }, false))
+  const view = render(<BillingInitialization siteId={siteId} hasBilling={false} />)
+  fireEvent.click(screen.getByRole('button', { name: 'Retry billing setup' }))
+  expect(await screen.findByRole('alert')).toHaveTextContent(BILLING_INITIALIZATION_WARNING)
+  view.rerender(<BillingInitialization siteId={siteId} hasBilling />)
+  expect(screen.queryByRole('alert')).not.toBeInTheDocument()
 })

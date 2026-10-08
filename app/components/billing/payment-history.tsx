@@ -282,7 +282,7 @@ export function PaymentHistory({ className }: PaymentHistoryProps) {
                         </td>
                         <td className="px-4 py-3">
                           {transaction.details?.description || getDefaultDescription(transaction, t)}
-                          {transaction.credits && ` (${transaction.credits} ${t('billing.credits.credits').toLowerCase() || 'credits'})`}
+                           {typeof transaction.credits === 'number' && transaction.credits > 0 && ` (${transaction.credits} ${(t('billing.credits.credits') || 'credits').toLowerCase()})`}
                         </td>
                         <td className="px-4 py-3 text-right">
                           <Button 

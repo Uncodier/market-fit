@@ -7,12 +7,13 @@ import { CreditUsageHistory } from "../components/billing/credit-usage-history"
 import { BillingPageSkeleton } from "../components/billing/billing-skeleton"
 import { useSite } from "../context/SiteContext"
 import { StickyHeader } from "../components/ui/sticky-header"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
 import { QuickNav, type QuickNavSection } from "@/app/components/ui/quick-nav"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { BillingInitialization } from "./billing-initialization"
 import { SiteSetupTracking } from "../create-site/site-setup-tracking"
+import { useBillingTarget } from "./use-billing-target"
 
   // Section configurations for quick navigation
   const getBillingInfoSections = (t: (key: string) => string): QuickNavSection[] => [
@@ -36,21 +37,11 @@ export default function BillingPage() {
   const { t } = useLocalization()
   const { currentSite, isLoading } = useSite()
   const router = useRouter()
-  const [activeTab, setActiveTab] = useState<string>("billing_info")
-  
-  // Get active tab from URL if present
-  useEffect(() => {
-    // Check if browser
-    if (typeof window !== 'undefined') {
-      const params = new URLSearchParams(window.location.search)
-      const tab = params.get('tab')
-      if (tab === 'payment_history') {
-        setActiveTab('payment_history')
-      } else if (tab === 'credit_history') {
-        setActiveTab('credit_history')
-      }
-    }
-  }, [])
+  const target = useBillingTarget()
+  const searchParams = useSearchParams()
+  const [selectedTab, setActiveTab] = useState<string | null>(null)
+  const requestedTab = searchParams?.get("tab")
+  const activeTab = selectedTab ?? (requestedTab === "payment_history" || requestedTab === "credit_history" ? requestedTab : "billing_info")
 
   // Update URL when tab changes
   const handleTabChange = (value: string) => {
@@ -81,12 +72,16 @@ export default function BillingPage() {
 
   // Redirect to dashboard if no site is selected
   useEffect(() => {
-    if (!isLoading && !currentSite) {
+    if (!isLoading && !currentSite && !target.requestedId && !target.pending) {
       router.push('/dashboard')
     }
-  }, [currentSite, isLoading, router])
+  }, [currentSite, isLoading, router, target.requestedId, target.pending])
 
-  if (isLoading) {
+  if (target.error) {
+    return <div className="p-8" role="alert">{target.error}</div>
+  }
+
+  if (isLoading || target.pending) {
     return <BillingPageSkeleton />
   }
 
@@ -114,11 +109,12 @@ export default function BillingPage() {
       <div className="py-8 pb-16">
         <div className="flex gap-8 justify-center max-w-[1200px] mx-auto">
           <div className="flex-1 max-w-[880px] px-4 md:px-16">
-            <BillingInitialization key={currentSite.id} siteId={currentSite.id} hasBilling={!!currentSite.billing} />
+            <BillingInitialization key={currentSite.id} siteId={currentSite.id} hasBilling={!!currentSite.billing}
+              billingReadFailed={currentSite.billing_read_status === 'unavailable'} />
             <SiteSetupTracking siteId={currentSite.id} />
             <Tabs value={activeTab} onValueChange={handleTabChange}>
               <TabsContent value="billing_info" className="mt-0 p-0">
-                <BillingForm 
+                {currentSite.billing_read_status !== 'unavailable' ? <BillingForm
                   initialData={{
                     plan: currentSite.billing?.plan || "commission",
                     addons_count: currentSite.billing?.addons_count || 0,
@@ -135,7 +131,7 @@ export default function BillingPage() {
                     billing_country: currentSite.billing?.billing_country,
                     auto_renew: currentSite.billing?.auto_renew === false ? false : true
                   }}
-                />
+                /> : <p className="my-4 text-sm text-muted-foreground">Subscription changes are unavailable until billing information is loaded.</p>}
               </TabsContent>
               
               <TabsContent value="payment_history" className="mt-0 p-0">

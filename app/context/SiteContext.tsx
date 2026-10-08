@@ -125,6 +125,7 @@ export function SiteProvider({ children }: SiteProviderProps) {
       setHasValidSession,
       setIsInitialized,
       setSites,
+      setCurrentSite,
       selectSite: handleSetCurrentSite,
       reload: () => { void loadSites() },
     })

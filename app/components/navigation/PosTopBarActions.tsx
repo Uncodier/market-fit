@@ -73,7 +73,7 @@ export function PosTopBarActions() {
       />
       <div
         ref={sendButtonContainerRef}
-        className="relative hidden overflow-visible sm:block"
+        className="relative shrink-0 overflow-visible"
       >
         <Button
           variant="default"
@@ -83,6 +83,7 @@ export function PosTopBarActions() {
             window.dispatchEvent(new CustomEvent("pos:send-order"))
           }
           title={t("layout.topbar.sendOrder") || "Send Order"}
+          aria-label={t("layout.topbar.sendOrder") || "Send Order"}
         >
           <span
             ref={sendIconRef}
@@ -90,7 +91,7 @@ export function PosTopBarActions() {
           >
             <ShoppingCart className="h-4 w-4 shrink-0" />
           </span>
-          <span className="text-sm font-medium">
+          <span className="hidden text-sm font-medium sm:inline">
             {t("layout.topbar.sendOrder") || "Send Order"}
           </span>
         </Button>

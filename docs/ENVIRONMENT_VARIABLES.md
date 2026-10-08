@@ -68,12 +68,24 @@ STRIPE_STARTER_PRICE_ID=
 STRIPE_STARTUP_PRICE_ID=
 STRIPE_ENTERPRISE_PRICE_ID=
 STRIPE_ACCOUNT_ADDON_PRICE_ID=
+STRIPE_STARTER_ANNUAL_PRICE_ID=
+STRIPE_STARTUP_ANNUAL_PRICE_ID=
+STRIPE_ENTERPRISE_ANNUAL_PRICE_ID=
+STRIPE_ACCOUNT_ADDON_ANNUAL_PRICE_ID=
 CHECKOUT_RETURN_ORIGINS=
 ```
 
 `CHECKOUT_RETURN_ORIGINS` is a comma-separated list of additional exact origins.
 Wildcard subdomains are not accepted. Keep test and live Stripe keys, price IDs,
 and webhook secrets in matching environments.
+
+Subscription prices are server-only configuration and validated against Stripe:
+USD licensed recurring prices, interval count one, monthly $23/$99/$500 and
+annual $248.40/$1069.20/$5400 for Engine/Foundry/Enterprise. Connected-account
+addons cost $10/month or $108/year each (10% annual discount). All subscription
+checkout selections need configured real prices; missing annual configuration
+returns `503`, never a monthly or dummy-price fallback. See
+[Stripe setup](STRIPE_SETUP.md) for hosted update confirmation prerequisites.
 
 See [Stripe setup](STRIPE_SETUP.md) and
 [Stripe webhook security](STRIPE_WEBHOOK_SECURITY.md).

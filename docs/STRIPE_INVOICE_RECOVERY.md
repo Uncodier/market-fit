@@ -1,9 +1,12 @@
 # Subscription invoice settlement and recovery
 
 Subscription invoices use `settle_stripe_subscription_invoice` from
-`20261002210954_atomic_stripe_subscription_invoices.sql`. Deploy this migration
-before deploying the invoice handlers. It does not charge Stripe or create a
-subscription.
+`20261002210954_atomic_stripe_subscription_invoices.sql`, followed by the shared
+credit-bucket prerequisites in [Monthly credit reset](BILLING_CREDIT_RESET.md),
+`20261007180000_annual_subscription_credit_periods.sql`, and
+`20261007180001_subscription_checkout_leases.sql` (in the API workspace). The database owner must verify
+and apply those forward migrations before enabling annual handlers. Creating the
+migrations does not charge Stripe or create subscriptions.
 
 ## Invariants
 
@@ -16,39 +19,138 @@ subscription.
 - The service-role-only RPC checks the billing customer/subscription binding,
   serializes invoice processing, and changes payment, credit balance, credit
   ledger, and settlement marker in one transaction. It preserves consumed
-  credits and adds to the current balance rather than assigning a stale balance.
+  plan consumption and recomputes a non-accumulating monthly plan quota rather
+  than assigning a stale aggregate balance. Purchased and protected balances remain intact.
 - Initial and renewal invoices grant 20/100/500 base credits for
-  engine/foundry/enterprise plus 5 per add-on. Prorations do not grant another
-  monthly allowance.
+  engine/foundry/enterprise plus 5 per add-on per monthly credit period, including
+  annual subscriptions. Buying a year never grants twelve months of credits at once.
 - A failed payment row can become completed. Repeated failures update the same
   row. Completed payments never become failed because of a delayed event.
 - Historical completed payments without a settlement marker are ambiguous:
   older credit functions did not always write a ledger. They fail closed for
   operator review instead of automatically receiving a second allowance.
-- Legacy monthly renewal jobs must skip Stripe-backed subscriptions at selection
-  and execution. Their queued arguments alone are not a reliable ownership check.
+- Legacy additive renewal jobs must not reset Stripe-backed subscriptions from
+  queued plan arguments. Daily renewal through the verified coverage-aware
+  `renew_site_plan_credits` RPC is required for annual subscriptions; it permits
+  only monthly windows within immutable paid annual coverage.
+
+## Annual paid coverage and update verification
+
+The annual forward migration adds `billing_interval`, immutable verified
+`paid_subscription_period_start/end`, `paid_subscription_invoice_id`,
+`paid_subscription_plan`, and `paid_subscription_addons_count`. Deploy the
+database-owner migration before enabling annual checkout. Monthly credit windows
+are anchored to paid-start anniversaries, clamped at month-end; verified annual
+coverage permits covered monthly renewals without charging another invoice.
+
+`settleStripeSubscriptionInvoice` retrieves the live invoice and resolves its
+actual service lines through both monthly and annual server-configured prices.
+The RPC receives `p_invoice.billing_interval` and `coverage_verified` along with
+the actual invoice plan, addons, line period and paid timestamp. It never infers
+historical paid entitlements from current subscription metadata or generic invoice
+creation bounds. Invoice lines must be complete, identify one configured base
+service, have the full configured gross price and full clamped interval, and have
+addons with the same covered interval. Discounts may reduce actual paid amount to
+zero; the verified gross service remains the entitlement proof.
+
+Stripe's [proration semantics](https://docs.stripe.com/billing/subscriptions/prorations)
+are important: the classification depends on the operation, not only duration.
+A full-period debit can be `proration: true`. Proration lines have
+`discountable: false`; their `amount` already reflects subscription discounts,
+and those embedded discounts are not listed in `discount_amounts`. Adding that
+array back or requiring `amount === configured_price * quantity` rejects genuine
+20% and 100% discounted updates. Regular service lines expose gross `amount`
+with separately listed discounts; newer versions also expose the explicit
+pre-discount [line subtotal](https://docs.stripe.com/api/invoice-line-item/object).
+The producer validates the retrieved recurring Price's currency, gross unit
+amount, interval and quantity, then independently verifies the **entire** service
+interval and matching addons. It never reconstructs a historical discount from
+the current coupon. Negative credits and `proration_details.credited_items` are
+not new service, including zero-dollar credits. Zero-dollar new debits remain
+eligible; partial-duration debits remain ineligible even with a 100% discount.
+
+A full verified `subscription_update` service charge may establish coverage, even
+if Stripe labels it a proration, but partial positive prorations, absent service
+lines, and unverified periods fail closed pending authorized billing recovery.
+Old negative proration credits do not prove new service. Paid update settlement
+preserves consumed plan credits while aligning the window to newly paid service;
+repeated switches must not refill consumed allowance. A historical update whose configured tier,
+interval or addons differ from the current subscription still retains its immutable
+verified service proof, but cannot overwrite newer service. The producer supplies
+`p_invoice.current_service: { plan, addons_count, billing_interval }` independently
+from the freshly retrieved configured Stripe subscription. For both first application
+and duplicate recovery of a stored `subscription_update`, SQL requires that tuple
+to exactly match the **stored** immutable coverage and requires fresh verified
+invoice proof. Missing/mismatched current service returns
+`credit_outcome: current_service_mismatch` without grants, tier/coverage overwrite
+or recovery-marker changes. It never rewrites stored proof from retry fields.
+Changing a retry's billing reason cannot bypass the stored-reason gate. A later
+matching active retry can recover the original immutable coverage once. Immutable
+paid timestamps also support database stale-update protection.
+
+`sync_stripe_subscription_state` is service-role only. It accepts `p_site_id`,
+`p_customer_id`, `p_subscription_id`, `p_expected_subscription_id`, `p_status`,
+and optional `p_current_period_end`, `p_start_date`, `p_end_date`, `p_auto_renew`.
+Invoice-origin synchronization also supplies optional `p_invoice_id` (default
+null). Under the same billing lock, a matching invoice whose immutable coverage
+is already applied skips **all** status/metadata writes and returns `synced` with
+`invoice_sync_skipped: true`. This closes the race where another delivery applies
+coverage after a JavaScript read but before a delayed duplicate's sync. The
+producer always passes the invoice ID, including initial checkout; do not add a
+separate lifecycle sync ahead of checkout settlement. Genuine lifecycle events
+omit this parameter. An identity mismatch still returns `obsolete_subscription`.
+The expected ID comes from the billing row read **before** retrieving the
+authoritative Stripe status. The RPC locks billing, validates the customer, and
+returns `{ outcome: 'synced' | 'obsolete_subscription', subscription_id }`.
+Obsolete events are successful no-ops, not retryable errors. A terminal event for
+an old ID cannot rebind it or erase a replacement's annual coverage; replacement
+requires an unbound or terminal prior subscription and never revives retired IDs.
+Do not write subscription identity/status through `upsert_billing` or direct
+updates. The producer uses fresh Stripe status, never stale notification fields.
+
+Nonterminal `customer.subscription.*` events synchronize identity, cancellation,
+status and period-end only. They cannot grant a new plan/addons/interval before
+payment. Actual terminal cancellation removes paid addons and falls back to
+commission atomically in SQL; no separate unfenced addons update is permitted.
+Terminal synchronization does not require a still-configured historical Price.
+Invoice settlement does **not** write status. Synchronize verified status before
+first settlement/recovery; obsolete invoices return `obsolete_subscription` with
+zero credits and never reach financial settlement.
+
+A paid invoice while paused or otherwise inactive may be financially settled
+without applying entitlement. A later verified paid duplicate can recover its
+**stored immutable** coverage once, provided both locked billing and fresh Stripe
+status are active. `duplicate` may therefore include `coverage_recovered: true`
+and positive `credits_granted`; the application must not add credits itself.
+An active `customer.subscription.updated` event retrieves the authoritative
+`latest_invoice` and replays it only if paid, so recovery does not depend on an
+invoice webhook being redelivered. A failed/unpaid latest invoice is not payment
+proof. Site reactivation without a subscription event still requires an explicitly
+authorized verified paid-invoice replay; monthly renewal cannot invent coverage.
 
 ## Authorized incident recovery
 
 1. Verify the target project and obtain approval for the migration, deployment,
    and specific invoice recovery. Never accept invoice state or amounts from a
    browser request.
-2. Run the handler and disposable PostgreSQL tests. Apply only this migration;
+2. Run the handler and disposable PostgreSQL tests. Apply only verified prerequisites
+   and the coordinated forward migrations;
    this repository is not a complete bootstrap history, so do not blindly push
    all historical migrations.
-3. Deploy the new handlers and the monthly renewal ownership guard before
+3. Deploy the new handlers and the annual coverage-aware monthly renewal RPC before
    replaying financial side effects.
 4. Retrieve the invoice and customer using the production Stripe SDK. Confirm
    paid status, site, customer, subscription, amount, currency, billing reason,
    and the already-existing payment row. Review historical credits and renewals.
-5. Invoke `syncStripeSubscription`, followed by
-   `settleStripeSubscriptionInvoice` with `requirePaid: true` and the expected
+5. Invoke `settleStripeSubscriptionInvoice` with `requirePaid: true` and the expected
    customer/subscription. These are the same server-side helpers used by the
-   webhook. Supply the original event ID only as audit context; do not forge a
+   webhook, including invoice-aware status synchronization before first settlement
+   or coverage recovery. Do not separately synchronize a completed invoice's
+   status snapshot. Supply the original event ID only as audit context; do not forge a
    provider event or erase the webhook delivery history.
 6. Verify one completed payment, one settlement, one credit ledger entry, the
    canonical active plan and unchanged consumed credits. Repeating settlement
-   must return `duplicate` with zero additional credits.
+   after coverage is applied must return `duplicate` with zero additional credits.
 
 Do not create a replacement subscription or retry charging a paid invoice.
 Do not reset the entire credit balance or indiscriminately reprocess historical
@@ -56,6 +158,25 @@ completed invoices. Keep customer identifiers and credentials out of committed
 scripts, fixtures and documentation.
 
 ## Validation
+
+Run all isolated Stripe producer and webhook regressions without dotenv or remote
+credentials:
+
+```sh
+node node_modules/jest/bin/jest.js --config jest.stripe-offline.config.cjs --runInBand
+```
+
+Discounted service fixtures mirror Stripe's documented gross regular lines and
+embedded-discount proration lines, including zero-dollar old credits/new debits.
+Ordering regressions cover delayed deletion/failure, subscription replacement
+during retrieval, latest paid-invoice active recovery, and obsolete no-ops.
+The permanent `stripe-subscription-recovery-integration.test.ts` runs the actual
+TypeScript producer against the canonical API migrations in disposable PGlite.
+It verifies tier, interval and addons mismatch blocks recovery without mutating
+payment, stored proof or credits, followed by matching once-only recovery.
+It defaults to a sibling `../API` checkout, or `BILLING_TEST_API_WORKSPACE` selects
+another local API checkout; if that checkout/PGlite is absent, the suite skips and
+must be rerun in a coordinated checkout before rollout. No database URL is used.
 
 `npm test -- --runInBand __tests__/api/stripe-invoice-settlement-sql.test.ts`
 starts a disposable socket-only PostgreSQL cluster. It never uses a configured

@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/client'
 import { isDemoModeActive } from '@/app/services/api-client-service'
 import type { BillingData } from './billing-types'
+import type { BillingInterval } from '@/lib/billing-pricing'
 
 export type { BillingData } from './billing-types'
 
@@ -288,12 +289,13 @@ class BillingService {
     siteId: string,
     plan: 'engine' | 'foundry' | 'enterprise',
     userEmail: string,
-    addonsCount: number = 0
-  ): Promise<{ success: boolean; url?: string; error?: string }> {
+    addonsCount: number = 0,
+    billingInterval: BillingInterval = 'month'
+  ): Promise<{ success: boolean; url?: string; sessionId?: string; error?: string }> {
     try {
       if (await isDemoModeActive()) {
         console.log('🤖 DEMO MODE: Simulated checkout subscription session');
-        return { success: true, url: `${window.location.origin}/billing/success?plan=${plan}` };
+        return { success: true, url: `${window.location.origin}/billing/success?plan=${plan}&billingInterval=${billingInterval}` };
       }
 
       const response = await fetch('/api/stripe/checkout/subscription', {
@@ -306,18 +308,19 @@ class BillingService {
           siteId,
           userEmail,
           addonsCount,
+          billingInterval,
           successUrl: `${window.location.origin}/billing/success?plan=${plan}`,
           cancelUrl: `${window.location.origin}/checkout`,
         }),
       })
 
-      const { url, error } = await response.json()
+      const { url, sessionId, error } = await response.json()
 
-      if (error) {
-        return { success: false, error }
+      if (!response.ok || error || typeof url !== 'string' || !url) {
+        return { success: false, error: error || 'Failed to create subscription checkout session' }
       }
 
-      return { success: true, url }
+      return { success: true, url, sessionId }
     } catch (error) {
       console.error('Error creating subscription checkout:', error)
       return { 

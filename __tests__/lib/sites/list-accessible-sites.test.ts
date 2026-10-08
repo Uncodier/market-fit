@@ -11,7 +11,7 @@ function fakeAdmin(tables: Record<string, any[]>, trackSelects: string[] = []) {
           return builder
         },
         eq: (column: string, value: unknown) => {
-          filters.push((row) => row[column] === value)
+          filters.push((row) => (column === "license_suspended" ? row[column] ?? false : row[column]) === value)
           return builder
         },
         in: (column: string, values: unknown[]) => {
@@ -47,6 +47,15 @@ describe("mergeAccessibleSites", () => {
 })
 
 describe("listAccessibleSitesForUser", () => {
+  it("excludes suspended shared access even when an ownership record remains", async () => {
+    const result = await listAccessibleSitesForUser(fakeAdmin({
+      sites: [{ id: "shared", user_id: "other", archived_at: null }],
+      site_members: [{ site_id: "shared", user_id: "user-1", status: "active", license_suspended: true }],
+      site_ownership: [{ site_id: "shared", user_id: "user-1" }],
+    }), "user-1")
+    expect(result.sites).toEqual([])
+  })
+
   it("returns owned sites plus active memberships and ownership rows", async () => {
     const admin = fakeAdmin({
       sites: [
@@ -57,6 +66,7 @@ describe("listAccessibleSitesForUser", () => {
       ],
       site_members: [
         { site_id: "member", user_id: "user-1", status: "active" },
+        { site_id: "co-owned", user_id: "user-1", status: "active" },
         { site_id: "pending", user_id: "user-1", status: "pending" },
       ],
       site_ownership: [{ site_id: "co-owned", user_id: "user-1" }],

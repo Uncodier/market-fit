@@ -2,6 +2,7 @@
 
 import { Button } from "../ui/button"
 import { SectionCard, SectionCardHeader, SectionCardContent } from "../ui/section-card"
+import { type BillingInterval, formatPrice, subscriptionPrice } from "@/lib/billing-pricing"
 
 interface ConnectedAccountsAddonsProps {
   totalSocialAccounts: number
@@ -9,6 +10,7 @@ interface ConnectedAccountsAddonsProps {
   socialLimit: number
   agentLimit: number
   addonsCount: number
+  billingInterval?: BillingInterval
   requiredAddons: number
   missingAddons: number
   socialUsagePercentage: number
@@ -24,6 +26,7 @@ export function ConnectedAccountsAddons({
   socialLimit,
   agentLimit,
   addonsCount,
+  billingInterval = 'month',
   requiredAddons,
   missingAddons,
   socialUsagePercentage,
@@ -32,11 +35,12 @@ export function ConnectedAccountsAddons({
   isSaving,
   onManageAddons,
 }: ConnectedAccountsAddonsProps) {
+  const price = subscriptionPrice(10, billingInterval)
   return (
     <SectionCard id="addons">
       <SectionCardHeader
         title="Connected Accounts & Add-ons"
-        description="Manage your account connection limits. Each add-on costs $10/month and grants you 1 extra account connection (either Social or Agent channel) and +5 credits/month."
+        description={`Manage your account connection limits. Each add-on costs ${formatPrice(price.total)}/${billingInterval === 'year' ? 'year' : 'month'}${billingInterval === 'year' ? ` (${formatPrice(price.monthlyEquivalent)}/month equivalent, billed annually; save 10%)` : ''} and grants you 1 extra account connection (either Social or Agent channel) and +5 credits/month.`}
       />
       <SectionCardContent className="space-y-6">
         <div className="flex items-center justify-between">
@@ -83,6 +87,7 @@ export function ConnectedAccountsAddons({
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 border rounded-lg">
             <div>
               <div className="font-medium">Current add-ons: {addonsCount}</div>
+              {addonsCount > 0 && <p className="text-sm text-muted-foreground">{formatPrice(price.total * addonsCount)}/{billingInterval === 'year' ? 'year' : 'month'} total{billingInterval === 'year' ? ` · ${formatPrice(price.monthlyEquivalent * addonsCount)}/month equivalent` : ''}</p>}
               <div className="text-sm text-muted-foreground">
                 {requiredAddons > 0
                   ? `Current configuration requires ${requiredAddons} add-on${requiredAddons === 1 ? "" : "s"}.`

@@ -4,6 +4,7 @@ import type { Site } from "@/app/context/site-types"
 import { renderHook, act } from "@testing-library/react"
 import { useBilling } from "@/app/hooks/use-billing"
 import { useSite } from "@/app/context/SiteContext"
+import { hydrateSiteBilling, SITE_BILLING_FIELDS } from "@/app/context/site-billing-data"
 
 jest.mock("@/lib/supabase/client", () => ({ createClient: jest.fn() }))
 jest.mock("@/app/context/SiteContext", () => ({ useSite: jest.fn() }))
@@ -37,8 +38,38 @@ it("reads RLS billing and refreshes both visible active credits and the site lis
   expect(query.eq).toHaveBeenCalledWith("site_id", siteId)
   expect(query.select.mock.calls[0][0].split(", ")).not.toContain("card_number")
   expect(query.select.mock.calls[0][0].split(", ")).not.toContain("card_cvc")
-  expect(current).toEqual({ ...site, billing })
-  expect(sites).toEqual([{ ...site, billing }, otherSite])
+  expect(current).toEqual({ ...site, billing: hydrateSiteBilling(billing as never), billing_read_status: 'loaded' })
+  expect(sites).toEqual([{ ...site, billing: hydrateSiteBilling(billing as never), billing_read_status: 'loaded' }, otherSite])
+})
+
+it("refreshes annual interval and paid coverage without reducing monthly credits or dropping settings", async () => {
+  const annualBilling: NonNullable<Site['billing']> = {
+    plan: 'engine', billing_interval: 'year', addons_count: 2, auto_renew: false,
+    credits_available: 20, plan_credit_allowance: 20, plan_credit_anchor: '2026-01-01T00:00:00Z',
+    paid_subscription_period_start: '2026-01-01T00:00:00Z',
+    paid_subscription_period_end: '2027-01-01T00:00:00Z',
+    paid_subscription_invoice_id: 'invoice-example',
+    paid_subscription_paid_at: '2026-01-01T00:00:00Z',
+    paid_subscription_plan: 'engine', paid_subscription_addons_count: 2,
+  }
+  // Model a real projection: unselected columns must not accidentally pass the test.
+  query.single.mockImplementation(async () => ({
+    data: Object.fromEntries(query.select.mock.calls[query.select.mock.calls.length - 1][0].split(', ')
+      .filter((field: string) => field in annualBilling)
+      .map((field: keyof typeof annualBilling) => [field, annualBilling[field]])),
+    error: null,
+  }))
+  let current: Site | null = { ...site, billing: { plan: 'engine', billing_interval: 'month', auto_renew: true } }
+  let sites: Site[] = [current, otherSite]
+  await refreshSiteBillingRecord(siteId, {
+    setSites: updater => { sites = typeof updater === 'function' ? updater(sites) : updater },
+    setCurrentSite: updater => { current = typeof updater === 'function' ? updater(current) : updater },
+  })
+  expect((current as Site | null)?.billing).toMatchObject(annualBilling)
+  expect(sites[0].billing).toMatchObject(annualBilling)
+  expect((current as Site | null)?.settings).toEqual(site.settings)
+  expect(SITE_BILLING_FIELDS).toContain('billing_interval')
+  expect(SITE_BILLING_FIELDS).toContain('plan_credit_anchor')
 })
 
 it("cannot switch the active site if the user switches while the billing read is pending", async () => {
@@ -55,6 +86,19 @@ it("does not replace persisted credits on missing/failed read", async () => {
   await expect(refreshSiteBillingRecord(siteId, deps)).rejects.toThrow("could not be loaded")
   expect(deps.setCurrentSite).not.toHaveBeenCalled()
   expect(deps.setSites).not.toHaveBeenCalled()
+})
+
+it("refreshes legacy monthly billing without granting credits when annual schema is pending", async () => {
+  query.single.mockResolvedValueOnce({ data: null, error: { code: '42703', message: 'column billing.plan_credit_anchor does not exist' } })
+    .mockResolvedValueOnce({ data: { ...billing, plan: 'foundry', credits_available: 42 }, error: null })
+  let current: Site | null = { ...site, billing_read_status: 'unavailable' }
+  await refreshSiteBillingRecord(siteId, {
+    setSites: jest.fn(), setCurrentSite: updater => { current = typeof updater === 'function' ? updater(current) : updater },
+  })
+  expect((current as Site | null)?.billing).toMatchObject({ plan: 'foundry', billing_interval: 'month', credits_available: 42 })
+  expect((current as Site | null)?.billing_read_status).toBe('loaded')
+  expect(query.single).toHaveBeenCalledTimes(2)
+  expect(query.select.mock.calls[1][0].split(', ')).not.toContain('plan_credit_anchor')
 })
 
 it("does not call a real billing read for demos", async () => {

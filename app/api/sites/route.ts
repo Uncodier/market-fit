@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { createServiceSupabase, createUserSupabase } from "@/lib/auth/site-member-request"
 import { listAccessibleSitesForUser } from "@/lib/sites/list-accessible-sites"
+import { readSiteBilling } from "@/app/context/read-site-billing"
 
 export async function GET(request: Request) {
   try {
@@ -27,7 +28,9 @@ export async function GET(request: Request) {
     
     const [billingResponse, detailResponse] = await Promise.all([
       siteIds.length > 0 
-        ? admin.from('billing').select('site_id, plan, addons_count, credits_available, credits_used, auto_renew, masked_card_number, card_name, card_expiry, stripe_customer_id, account_balance, plan_credits_available, purchased_credits_available, legacy_credits_available, plan_credit_period_start, plan_credit_period_end, plan_credit_allowance, monthly_credits_used, plan_credits_used, plan_credit_source').in('site_id', siteIds)
+        ? readSiteBilling<Record<string, unknown>[]>(fields =>
+          admin.from('billing').select(`site_id, ${fields}`).in('site_id', siteIds)
+            .returns<Record<string, unknown>[]>())
         : Promise.resolve({ data: [], error: null }),
       
       detailId && siteIds.includes(detailId)
@@ -35,11 +38,10 @@ export async function GET(request: Request) {
         : Promise.resolve({ data: null, error: null })
     ])
     
-    if (billingResponse.data) {
-      const billingMap = new Map(billingResponse.data.map((b: any) => [b.site_id, b]))
-      for (const site of sites) {
-        site.billing = billingMap.get(site.id)
-      }
+    const billingMap = new Map((billingResponse.error ? [] : billingResponse.data ?? []).map(b => [b.site_id, b]))
+    for (const site of sites) {
+      site.billing = billingMap.get(site.id)
+      site.billing_read_status = billingResponse.error ? 'unavailable' : site.billing ? 'loaded' : 'missing'
     }
 
     return NextResponse.json({ 

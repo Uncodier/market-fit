@@ -2,14 +2,12 @@
 
 import { Button } from "../ui/button"
 import { SectionCard, SectionCardHeader, SectionCardContent, SectionCardFooter } from "../ui/section-card"
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "../ui/form"
-import { Input } from "../ui/input"
+import { Form } from "../ui/form"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
-import { Globe, Tag } from "../ui/icons"
 import { useSite } from "@/app/context/SiteContext"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { BillingData, billingService } from "@/app/services/billing-service"
 import { toast } from "sonner"
 import { useAuth } from "@/app/hooks/use-auth"
@@ -17,12 +15,16 @@ import { useLocalization } from "@/app/context/LocalizationContext"
 import { PurchaseCreditsDialog } from "./purchase-credits-dialog"
 import { CreditPackages, type CreditPackage } from "./credit-packages"
 import { SubscriptionPlans, type BillingPlan } from "./subscription-plans"
+import { BillingDetailsFields } from "./billing-details-fields"
+import { BillingIntervalSelector } from "./billing-interval-selector"
+import { type BillingInterval, parseBillingInterval } from "@/lib/billing-pricing"
+import { preferredBillingInterval, rememberBillingInterval } from "@/lib/billing-interval-preference"
 import { StripePaymentMethod } from "./stripe-payment-method"
 import { ConnectedAccountsAddons } from "./connected-accounts-addons"
 import { countSocialAccounts, countAgentChannels, getSocialAccountLimit, getAgentChannelLimit, getRequiredAddons } from "@/lib/billing-limits"
-import { accountsToDisconnect, settingsAfterKeepingAccounts } from "./downgrade-accounts"
-import { DowngradeChannelsModal } from "./downgrade-channels-modal"
-import { disconnectOutstandSocial, disconnectZavuChannel } from "@/app/components/settings/disconnect-remote-accounts"
+import { LicenseDowngradeDialog } from "./license-downgrade-dialog"
+import { useRequiredLicense } from "./use-required-license"
+import { requiresSubscriptionManagement } from './subscription-transitions'
 
 const billingFormSchema = z.object({
   plan: z.enum(["commission", "engine", "foundry", "enterprise"]).default("commission"),
@@ -43,7 +45,7 @@ const billingFormSchema = z.object({
   auto_renew: z.boolean().default(true)
 })
 
-type BillingFormValues = z.infer<typeof billingFormSchema>
+export type BillingFormValues = z.infer<typeof billingFormSchema>
 
 interface BillingFormProps {
   id?: string
@@ -60,9 +62,10 @@ const PLAN_ORDER: Record<BillingPlan, number> = {
   enterprise: 3,
 }
 
-export function BillingForm({ id, initialData, onSuccess, onSubmitStart, onSubmitEnd }: BillingFormProps) {
+export function BillingForm({ initialData }: BillingFormProps) {
   const { t } = useLocalization()
-  const { currentSite, updateBilling, refreshSites, updateSettings } = useSite()
+  const { currentSite, updateBilling, refreshSites } = useSite()
+  const { requiredPlan } = useRequiredLicense(currentSite)
   const { user } = useAuth()
   const [isSavingPlan, setIsSavingPlan] = useState(false)
   const [isSavingTaxId, setIsSavingTaxId] = useState(false)
@@ -72,9 +75,6 @@ export function BillingForm({ id, initialData, onSuccess, onSubmitStart, onSubmi
   // Downgrade modal state
   const [downgradeModalOpen, setDowngradeModalOpen] = useState(false)
   const [pendingDowngradePlan, setPendingDowngradePlan] = useState<BillingPlan | null>(null)
-  const [downgradeTargetSocialLimit, setDowngradeTargetSocialLimit] = useState(0)
-  const [downgradeTargetAgentLimit, setDowngradeTargetAgentLimit] = useState(0)
-  const [downgradeTargetAddonsCount, setDowngradeTargetAddonsCount] = useState(0)
 
   const form = useForm<BillingFormValues>({
     resolver: zodResolver(billingFormSchema),
@@ -99,6 +99,15 @@ export function BillingForm({ id, initialData, onSuccess, onSubmitStart, onSubmi
   })
 
   const currentPlan = (currentSite?.billing?.plan || "commission") as BillingPlan
+  const currentInterval = parseBillingInterval(currentSite?.billing?.billing_interval) ?? 'month'
+  const [billingInterval, setBillingInterval] = useState<BillingInterval>(currentInterval)
+  useEffect(() => {
+    setBillingInterval(preferredBillingInterval(currentInterval))
+  }, [currentSite?.id, currentInterval])
+  const changeBillingInterval = (interval: BillingInterval) => {
+    setBillingInterval(interval)
+    rememberBillingInterval(interval)
+  }
   const isPaidPlan = currentPlan !== "commission"
 
   const addonsCount = currentSite?.billing?.addons_count || 0
@@ -135,83 +144,48 @@ export function BillingForm({ id, initialData, onSuccess, onSubmitStart, onSubmi
         toast.error(result.error || "Failed to create portal session")
         setIsSavingPlan(false)
       }
-    } catch (error) {
+    } catch {
       toast.error("An error occurred")
       setIsSavingPlan(false)
     }
   }
 
-  const handleChangePlan = async (plan: BillingPlan, skipLimitCheck = false) => {
+  const handleChangePlan = async (plan: BillingPlan, skipReview = false) => {
     if (!currentSite || !user) {
       toast.error("No site selected or user not authenticated")
       return
     }
 
-    if (plan === currentPlan) return
-    
-    // Check for downgrade limits if not explicitly skipped
-    if (!skipLimitCheck) {
-      const isDowngrade = PLAN_ORDER[plan] < PLAN_ORDER[currentPlan]
-      if (isDowngrade) {
-        const targetSocialLimit = getSocialAccountLimit(plan)
-        const targetAgentLimit = getAgentChannelLimit(plan)
-        
-        const totalSocialAccounts = countSocialAccounts(currentSite)
-        const totalAgentChannels = countAgentChannels(currentSite)
-        
-        const missingSocial = Math.max(0, totalSocialAccounts - targetSocialLimit)
-        const missingAgent = Math.max(0, totalAgentChannels - targetAgentLimit)
-        const requiredForTarget = missingSocial + missingAgent
+    if (plan === currentPlan && (plan === 'commission' || billingInterval === currentInterval)) return
 
-        if (requiredForTarget > addonsCount) {
-          setPendingDowngradePlan(plan)
-          setDowngradeTargetSocialLimit(targetSocialLimit)
-          setDowngradeTargetAgentLimit(targetAgentLimit)
-          setDowngradeTargetAddonsCount(addonsCount)
-          setDowngradeModalOpen(true)
-          return
-        }
-      }
+    // Stripe controls cancellation and unsupported tier changes; keep paid allowances until settlement/expiry.
+    if (requiresSubscriptionManagement(currentPlan, plan, currentInterval, billingInterval)) {
+      await handleManageSubscription()
+      return
+    }
+    // Suspension is a server-owned consequence of an effective plan change.
+    // Never disconnect provider accounts before Stripe confirms the downgrade.
+    if (!skipReview && PLAN_ORDER[plan] < PLAN_ORDER[currentPlan]) {
+      setPendingDowngradePlan(plan)
+      setDowngradeModalOpen(true)
+      return
     }
 
-    form.setValue("plan", plan)
-
+    if (plan === 'commission') return
     try {
       setIsSavingPlan(true)
-
-      if (plan === "commission" && isPaidPlan) {
-        await handleManageSubscription()
-        return
-      }
-
-      if (plan === "engine" || plan === "foundry" || plan === "enterprise") {
-        const result = await billingService.createSubscriptionCheckoutSession(
-          currentSite.id,
-          plan,
-          user.email!,
-          addonsCount
-        )
-
-        if (result.success && result.url) {
-          window.location.href = result.url
-          return
-        }
-
-        toast.error(result.error || "Failed to create checkout session")
-        return
-      }
-
-      const result = await updateBilling(currentSite.id, {
+      const result = await billingService.createSubscriptionCheckoutSession(
+        currentSite.id,
         plan,
-        auto_renew: form.getValues().auto_renew,
-      })
-
-      if (result.success) {
-        toast.success("Plan updated successfully")
-        await refreshSites()
-      } else {
-        toast.error(result.error || "Failed to update plan")
+        user.email!,
+        addonsCount,
+        billingInterval
+      )
+      if (result.success && result.url) {
+        window.location.href = result.url
+        return
       }
+      toast.error(result.error || "Failed to create checkout session")
     } catch (error) {
       console.error("Error saving plan:", error)
       toast.error("An unexpected error occurred while updating plan")
@@ -220,50 +194,12 @@ export function BillingForm({ id, initialData, onSuccess, onSubmitStart, onSubmi
     }
   }
   
-  const handleDowngradeConfirm = async (keepKeys: string[]) => {
-    if (!currentSite || !pendingDowngradePlan) return
-
-    const planToApply = pendingDowngradePlan
-    setIsSavingPlan(true)
-
-    const removed = accountsToDisconnect(currentSite, keepKeys)
-    const failedKeys: string[] = []
-
-    try {
-      for (const item of removed.channels) {
-        try {
-          await disconnectZavuChannel(item.channel)
-        } catch (error) {
-          console.error("Error disconnecting channel from Zavu:", error)
-          failedKeys.push(item.key)
-        }
-      }
-      for (const item of removed.socials) {
-        try {
-          await disconnectOutstandSocial(item.social, currentSite.id)
-        } catch (error) {
-          console.error("Error disconnecting social account from Outstand:", error)
-          failedKeys.push(item.key)
-        }
-      }
-
-      const nextKeepKeys = [...keepKeys, ...failedKeys]
-      await updateSettings(currentSite.id, settingsAfterKeepingAccounts(currentSite.settings, nextKeepKeys))
-
-      if (failedKeys.length > 0) {
-        toast.error("Some accounts could not be disconnected. The plan was not changed.")
-        return
-      }
-
-      setDowngradeModalOpen(false)
-      setPendingDowngradePlan(null)
-      await handleChangePlan(planToApply, true)
-    } catch (error) {
-      console.error("Error updating settings for downgrade:", error)
-      toast.error("Failed to remove accounts before downgrading")
-    } finally {
-      setIsSavingPlan(false)
-    }
+  const handleDowngradeConfirm = async () => {
+    if (!pendingDowngradePlan) return
+    const target = pendingDowngradePlan
+    setDowngradeModalOpen(false)
+    setPendingDowngradePlan(null)
+    await handleChangePlan(target, true)
   }
 
   const handleSaveTaxId = async () => {
@@ -358,14 +294,22 @@ export function BillingForm({ id, initialData, onSuccess, onSubmitStart, onSubmi
         <SectionCard id="subscription-plan">
           <SectionCardHeader
             title={t('billing.plan.title') || 'Subscription Plan'}
-            description={t('billing.plan.changeHint') || 'Upgrade or downgrade instantly from the plan you want.'}
+            description="Review and confirm changes in Stripe. Annual plans are billed once per year; credits and connection allowances remain monthly."
           />
           <SectionCardContent className="space-y-6">
+              <p className="text-sm text-muted-foreground">Current billing: {isPaidPlan ? (currentInterval === 'year' ? 'Annual' : 'Monthly') : 'Free plan'}</p>
+              <BillingIntervalSelector value={billingInterval} onChange={changeBillingInterval} disabled={isSavingPlan || downgradeModalOpen} />
               <SubscriptionPlans
                 currentPlan={currentPlan}
+                requiredPlan={requiredPlan}
+                currentInterval={currentInterval}
+                billingInterval={billingInterval}
                 isSaving={isSavingPlan}
+                blockedPaidChanges={isPaidPlan && addonsCount > 0}
                 onChangePlan={handleChangePlan}
               />
+              {isPaidPlan && addonsCount > 0 && <p className="text-sm text-muted-foreground">Subscriptions with add-ons cannot switch plans or intervals here. Use Manage Add-ons or contact billing support to review your subscription.</p>}
+              {isPaidPlan && <p className="text-sm text-muted-foreground">Same-interval tier changes are managed in Stripe, not new checkout. Available changes depend on your portal configuration; contact billing support if unavailable. Existing discounts require support review to preserve their terms. No accounts are disconnected before a confirmed change.</p>}
             </SectionCardContent>
         </SectionCard>
           
@@ -375,6 +319,7 @@ export function BillingForm({ id, initialData, onSuccess, onSubmitStart, onSubmi
           socialLimit={socialLimit}
           agentLimit={agentLimit}
           addonsCount={addonsCount}
+          billingInterval={currentInterval}
           requiredAddons={requiredAddons}
           missingAddons={missingAddons}
           socialUsagePercentage={socialUsagePercentage}
@@ -408,142 +353,12 @@ export function BillingForm({ id, initialData, onSuccess, onSubmitStart, onSubmi
         </SectionCard>
         )}
 
-        <SectionCard id="tax-id">
-          <SectionCardHeader title={t('billing.tax.title') || 'Tax ID'} />
-          <SectionCardContent className="space-y-6">
-              <FormField
-                control={form.control}
-                name="tax_id"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-sm font-medium text-foreground">{t('billing.tax.label') || 'Tax ID'}</FormLabel>
-                    <FormControl>
-                      <div className="relative">
-                        <Tag className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input 
-                          className="pl-12 h-12 text-base" 
-                          placeholder={t('billing.tax.placeholder') || "Tax ID / VAT Number"}
-                          {...field} 
-                        />
-                      </div>
-                    </FormControl>
-                    <FormMessage className="text-xs mt-2" />
-                  </FormItem>
-                )}
-              />
-            </SectionCardContent>
-          <SectionCardFooter>
-            <Button 
-              variant="outline"
-              onClick={handleSaveTaxId}
-              disabled={isSavingTaxId}
-              size="sm"
-            >
-              {isSavingTaxId ? (t('common.saving') || "Saving...") : (t('common.save') || "Save")}
-            </Button>
-          </SectionCardFooter>
-        </SectionCard>
-        
-        <SectionCard id="billing-address">
-          <SectionCardHeader title={t('billing.address.title') || 'Billing Address'} />
-          <SectionCardContent className="space-y-6">
-              <FormField
-                control={form.control}
-                name="billing_address"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-sm font-medium text-foreground">{t('billing.address.street') || 'Street Address'}</FormLabel>
-                    <FormControl>
-                      <div className="relative">
-                        <Tag className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input 
-                          className="pl-12 h-12 text-base" 
-                          placeholder="123 Main St"
-                          {...field} 
-                        />
-                      </div>
-                    </FormControl>
-                    <FormMessage className="text-xs mt-2" />
-                  </FormItem>
-                )}
-              />
-              
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <FormField
-                  control={form.control}
-                  name="billing_city"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-sm font-medium text-foreground">{t('billing.address.city') || 'City'}</FormLabel>
-                      <FormControl>
-                        <div className="relative">
-                          <Tag className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                          <Input 
-                            className="pl-12 h-12 text-base" 
-                            placeholder="New York"
-                            {...field} 
-                          />
-                        </div>
-                      </FormControl>
-                      <FormMessage className="text-xs mt-2" />
-                    </FormItem>
-                  )}
-                />
-                
-                <FormField
-                  control={form.control}
-                  name="billing_postal_code"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-sm font-medium text-foreground">{t('billing.address.postal') || 'Postal Code'}</FormLabel>
-                      <FormControl>
-                        <div className="relative">
-                          <Tag className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                          <Input 
-                            className="pl-12 h-12 text-base" 
-                            placeholder="10001"
-                            {...field} 
-                          />
-                        </div>
-                      </FormControl>
-                      <FormMessage className="text-xs mt-2" />
-                    </FormItem>
-                  )}
-                />
-                
-                <FormField
-                  control={form.control}
-                  name="billing_country"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-sm font-medium text-foreground">{t('billing.address.country') || 'Country'}</FormLabel>
-                      <FormControl>
-                        <div className="relative">
-                          <Globe className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                          <Input 
-                            className="pl-12 h-12 text-base" 
-                            placeholder="United States"
-                            {...field} 
-                          />
-                        </div>
-                      </FormControl>
-                      <FormMessage className="text-xs mt-2" />
-                    </FormItem>
-                  )}
-                />
-              </div>
-            </SectionCardContent>
-          <SectionCardFooter>
-            <Button 
-              variant="outline"
-              onClick={handleSaveBillingAddress}
-              disabled={isSavingBillingAddress}
-              size="sm"
-            >
-              {isSavingBillingAddress ? (t('common.saving') || "Saving...") : (t('common.save') || "Save")}
-            </Button>
-          </SectionCardFooter>
-        </SectionCard>
+        <BillingDetailsFields
+          handleSaveTaxId={handleSaveTaxId}
+          handleSaveBillingAddress={handleSaveBillingAddress}
+          isSavingTaxId={isSavingTaxId}
+          isSavingBillingAddress={isSavingBillingAddress}
+        />
       </div>
     </Form>
     
@@ -557,13 +372,9 @@ export function BillingForm({ id, initialData, onSuccess, onSubmitStart, onSubmi
       />
     )}
     
-    <DowngradeChannelsModal
-      open={downgradeModalOpen}
-      onOpenChange={setDowngradeModalOpen}
-      site={currentSite}
-      targetSocialLimit={downgradeTargetSocialLimit}
-      targetAgentLimit={downgradeTargetAgentLimit}
-      targetAddonsCount={downgradeTargetAddonsCount}
+    <LicenseDowngradeDialog
+      plan={downgradeModalOpen ? pendingDowngradePlan : null}
+      onClose={() => { setDowngradeModalOpen(false); setPendingDowngradePlan(null) }}
       busy={isSavingPlan}
       onConfirm={handleDowngradeConfirm}
     />

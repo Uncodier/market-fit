@@ -29,6 +29,7 @@ export type SiteChannelSource = {
         id?: string | null
         type?: string | null
         status?: string | null
+        license_suspended?: boolean
         zavu_sender_id?: string | null
         metadata?: {
           phone_number?: string
@@ -45,6 +46,7 @@ export type SiteChannelSource = {
       platform?: string | null
       network?: string | null
       isActive?: boolean | number
+      license_suspended?: boolean
     }> | null
   } | null
 }
@@ -139,7 +141,7 @@ export function getEnabledSiteChannels(site?: SiteChannelSource | null): Communi
 
   for (const connection of settings?.connections || []) {
     const type = normalizeChannel(connection.type)
-    if (!isConnectedStatus(connection.status)) continue
+    if (connection.license_suspended || !isConnectedStatus(connection.status)) continue
     if ((COMMUNICATION_CHANNELS as readonly string[]).includes(type)) {
       addChannel(enabled, type as CommunicationChannel)
     }
@@ -147,7 +149,7 @@ export function getEnabledSiteChannels(site?: SiteChannelSource | null): Communi
 
   const SUPPORTED_SOCIAL_NETWORKS = new Set(["facebook", "instagram", "threads", "linkedin", "x", "youtube"])
   for (const account of site?.settings?.social_media || []) {
-    if (!account.isActive) continue
+    if (account.license_suspended || !account.isActive) continue
     const type = normalizeChannel(account.network || account.platform)
     if (SUPPORTED_SOCIAL_NETWORKS.has(type as string) && (COMMUNICATION_CHANNELS as readonly string[]).includes(type)) {
       addChannel(enabled, type as CommunicationChannel)
@@ -163,7 +165,7 @@ export function getChannelRoutingMetadata(
 ): Record<string, unknown> | undefined {
   const normalized = normalizeChannel(channel)
   const connection = site?.settings?.channels?.connections?.find(
-    (item) => normalizeChannel(item.type) === normalized && isConnectedStatus(item.status)
+    (item) => !item.license_suspended && normalizeChannel(item.type) === normalized && isConnectedStatus(item.status)
   )
   if (!connection) return undefined
 
@@ -178,7 +180,7 @@ export function getChannelRoutingMetadata(
   }
 }
 
-export function leadHasChannel(lead: any, channel: string): boolean {
+export function leadHasChannel(lead: { email?: unknown; phone?: unknown; social_networks?: Record<string, unknown> | null } | null | undefined, channel: string): boolean {
   if (!lead) return false
   const c = normalizeChannel(channel)
   

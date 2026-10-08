@@ -35,7 +35,7 @@ function fixture(standup: unknown = configured) {
     select: jest.fn(() => query),
     eq: jest.fn((column, id) => { expect(column).toBe("site_id"); expect(id).toBe(siteId); return query }),
     single: jest.fn(async () => ({ data: clone(row), error: null })),
-    upsert: jest.fn(async value => { row = clone(value); writes.push(row); return { error: null } }),
+    upsert: jest.fn(value => { row = clone(value); writes.push(row); return query }),
   }
   const supabase = { from: jest.fn((table: string) => { expect(table).toBe("settings"); return query }) }
   const currentSite: any = { id: siteId, name: "Site A", url: "https://example.com", settings: clone(row) }

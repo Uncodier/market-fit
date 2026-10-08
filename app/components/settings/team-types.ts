@@ -10,6 +10,7 @@ export interface FormTeamMember {
   position?: string
   id?: string
   status?: "pending" | "active" | "rejected"
+  license_suspended?: boolean
   originalRole?: "owner" | "admin" | "marketing" | "collaborator"
   emailConfirmed?: boolean
   lastSignIn?: string
@@ -66,6 +67,7 @@ export function siteMemberToFormMember(member: SiteMember): FormTeamMember {
     role: formRole,
     position: member.position || undefined,
     status: member.status,
+    license_suspended: member.license_suspended ?? false,
     originalRole: member.role,
     emailConfirmed: member.emailConfirmed,
     lastSignIn: member.lastSignIn,

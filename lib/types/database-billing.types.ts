@@ -1,6 +1,14 @@
 import type { StripeSubscriptionInvoiceInput, StripeSubscriptionInvoiceResult } from "@/app/api/stripe/webhook/subscription-invoice-settlement"
 
 export interface BillingDatabaseFunctions {
+  claim_site_subscription_checkout: {
+    Args: { p_site_id: string }
+    Returns: { state: 'claimed' | 'busy'; token: string | null }
+  }
+  finish_site_subscription_checkout: {
+    Args: { p_site_id: string; p_token: string }
+    Returns: boolean
+  }
   initialize_site_billing: {
     Args: { p_site_id: string }
     Returns: {

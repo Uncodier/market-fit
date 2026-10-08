@@ -6,6 +6,8 @@ import { EmptyCard } from "../ui/empty-card"
 import { TeamMemberCard } from "./TeamMemberCard"
 import { useTeamMembers } from "./use-team-members"
 import { useLocalization } from "@/app/context/LocalizationContext"
+import { Badge } from "../ui/badge"
+import { licensePlanLabel } from "@/lib/license-entitlements"
 
 interface TeamSectionProps {
   active: boolean
@@ -16,6 +18,9 @@ export function TeamSection({ active, siteId }: TeamSectionProps) {
   const { t } = useLocalization()
   const {
     teamList,
+    license,
+    licenseError,
+    refreshLicense,
     isLoading,
     isSaving,
     isResending,
@@ -43,13 +48,24 @@ export function TeamSection({ active, siteId }: TeamSectionProps) {
           <p className="text-xs text-muted-foreground mt-1">
             {t("settings.team.description") || "Invite team members to collaborate on your site"}
           </p>
+          {license && license.siteId === siteId && (
+            <p className="text-xs text-muted-foreground mt-2" aria-label="Member license usage">
+              {license.current} / {license.limit ?? ">10"} members · {licensePlanLabel(license.plan)} · per site<br />
+              Includes the owner, active members, and pending invitations.
+              {typeof license.total === "number" && license.total > license.current && <><br />{license.total} total members, including license-suspended members.</>}
+            </p>
+          )}
+          {licenseError && <p className="text-xs text-destructive mt-2" role="status">Member license could not be loaded. Refresh before inviting members.</p>}
+          <Button type="button" variant="ghost" size="sm" onClick={refreshLicense} disabled={isLoading || isSaving}>
+            Refresh member license
+          </Button>
         </div>
         <Button
           type="button"
           variant="outline"
           size="sm"
           onClick={addTeamMember}
-          disabled={isLoading || !canManageTeam}
+          disabled={isLoading || isSaving || !canManageTeam || !license || license.siteId !== siteId}
           data-permission="allow"
         >
           <PlusCircle className="mr-2 h-4 w-4" />
@@ -72,25 +88,31 @@ export function TeamSection({ active, siteId }: TeamSectionProps) {
         />
       ) : (
         teamList.map((member, index) => (
-          <TeamMemberCard
-            key={member.id || `new-${index}`}
-            member={member}
-            index={index}
-            canEditBlockedScreens={canEditBlockedScreens}
-            canManageTeam={canManageTeam}
-            isLoading={isLoading}
-            isSaving={isSaving}
-            isSavingThis={isSavingMember === member.id}
-            isResendingThis={isResending === member.id}
-            hasChanges={hasMemberChanges(member)}
-            canSave={canSaveMember(member)}
-            validation={validation}
-            onUpdate={(field, value) => updateLocalTeamMember(index, field, value)}
-            onSave={() => handleSaveMember(member)}
-            onSaveInvite={handleSaveTeamMembers}
-            onRemove={() => removeTeamMember(index)}
-            onResend={() => handleResendInvitation(member)}
-          />
+          <div key={member.id || `new-${index}`} className="space-y-2">
+            {member.license_suspended && (
+              <Badge variant="outline" className="border-amber-500 text-amber-700">
+                License suspended · {member.name || member.email} · access resumes when the site license has capacity
+              </Badge>
+            )}
+            <TeamMemberCard
+              member={member}
+              index={index}
+              canEditBlockedScreens={canEditBlockedScreens}
+              canManageTeam={canManageTeam}
+              isLoading={isLoading}
+              isSaving={isSaving}
+              isSavingThis={isSavingMember === member.id}
+              isResendingThis={isResending === member.id}
+              hasChanges={hasMemberChanges(member)}
+              canSave={canSaveMember(member)}
+              validation={validation}
+              onUpdate={(field, value) => updateLocalTeamMember(index, field, value)}
+              onSave={() => handleSaveMember(member)}
+              onSaveInvite={handleSaveTeamMembers}
+              onRemove={() => removeTeamMember(index)}
+              onResend={() => handleResendInvitation(member)}
+            />
+          </div>
         ))
       )}
     </div>

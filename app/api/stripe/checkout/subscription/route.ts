@@ -1,179 +1,116 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
 import Stripe from 'stripe'
 import { createHash } from 'node:crypto'
 import { requireStripeSiteAccess } from '@/lib/auth/api-stripe-access'
 import { resolveCheckoutUrls } from '@/app/api/stripe/checkout/checkout-url-security'
-
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2025-05-28.basil',
-})
+import { SubscriptionRequestError, parseBillingInterval, parseAddonsCount, resolveSubscriptionCheckoutPrices } from '@/lib/subscription-pricing.server'
+import { existingSubscriptionFlow } from './subscription-update'
+import { prepareSubscriptionCheckout } from './checkout-session'
+import { createServiceApiClient } from '@/lib/supabase/server-client'
 
 export async function POST(request: NextRequest) {
+  let lease: { siteId: string; token: string; client: ReturnType<typeof createServiceApiClient> } | undefined
+  let safeRelease = true
+  let writeDeadline = 0
+  const beforeProviderWrite = () => {
+    // Leave a full SDK timeout inside the lease even after a delayed DB response.
+    if (Date.now() >= writeDeadline) throw new SubscriptionRequestError('Subscription checkout expired; retry shortly', 503)
+    safeRelease = false
+  }
   try {
-    const { plan, siteId, addonsCount, successUrl, cancelUrl } = await request.json()
-
-    if (!plan || !siteId) {
-      return NextResponse.json(
-        { error: 'Missing required fields' },
-        { status: 400 }
-      )
+    let body: Record<string, unknown>
+    try {
+      const value = await request.json()
+      if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error()
+      body = value
+    } catch { throw new SubscriptionRequestError('Invalid JSON request') }
+    const { plan, siteId, successUrl, cancelUrl } = body
+    if (typeof siteId !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(siteId)) {
+      throw new SubscriptionRequestError('Invalid site ID')
     }
-
     const access = await requireStripeSiteAccess(request, siteId)
     if (access.error) return access.error
-
-    const checkoutUrls = resolveCheckoutUrls(
-      request,
-      cancelUrl,
-      successUrl,
-      {}
-    )
-    if (checkoutUrls.error) {
-      return NextResponse.json({ error: checkoutUrls.error }, { status: 400 })
+    if (plan !== 'engine' && plan !== 'foundry' && plan !== 'enterprise') {
+      throw new SubscriptionRequestError('Invalid subscription plan')
     }
-
-    // Validate subscription plans
-    const planPrices: Record<string, { priceId: string; amount: number }> = {
-      engine: {
-        priceId: process.env.STRIPE_STARTER_PRICE_ID || 'price_engine',
-        amount: 23
-      },
-      foundry: { 
-        priceId: process.env.STRIPE_STARTUP_PRICE_ID || 'price_foundry',
-        amount: 99 
-      },
-      enterprise: { 
-        priceId: process.env.STRIPE_ENTERPRISE_PRICE_ID || 'price_enterprise',
-        amount: 500 
-      }
-    }
-    
-    const planConfig = planPrices[plan]
-    if (!planConfig) {
-      return NextResponse.json(
-        { error: 'Invalid subscription plan' },
-        { status: 400 }
-      )
-    }
-
-    // Get or create Stripe customer
-    const supabase = await createClient()
-    
-    // Check if site has existing billing info with Stripe customer
-    const { data: billing } = await supabase
-      .from('billing')
-      .select('stripe_customer_id')
-      .eq('site_id', siteId)
-      .single()
-
-    let customerId = billing?.stripe_customer_id
-
-    if (!customerId) {
-      // Create new Stripe customer
-      const customer = await stripe.customers.create({
-        email: access.userEmail || undefined,
-        metadata: {
-          site_id: siteId
-        }
-      }, {
-        idempotencyKey: `subscription-customer-${siteId}`,
-      })
-      customerId = customer.id
-
-      // Update billing record with customer ID
-      console.log('Attempting to create/update billing record for siteId:', siteId)
-      console.log('Customer ID:', customerId)
-      console.log('Plan:', plan)
-      
-      // Persist only the Stripe customer. Do not change plan or credits until
-      // checkout.session.completed confirms payment — passing 0 credits here
-      // wipes the welcome grant via COALESCE(0, credits_available).
-      const { data: billingResult, error: billingError } = await supabase.rpc('upsert_billing', {
-        p_site_id: siteId,
-        p_stripe_customer_id: customerId,
-        p_auto_renew: true
-      })
-
-      console.log('Billing upsert result:', billingResult)
-      
-      if (billingError) {
-        console.error('Error creating billing record:', billingError)
-        return NextResponse.json(
-          { error: `Failed to create billing record: ${billingError.message}` },
-          { status: 500 }
-        )
-      }
-
-      // Verify the billing record was created/updated
-      const { data: verifyBilling, error: verifyError } = await supabase
-        .from('billing')
-        .select('*')
-        .eq('site_id', siteId)
-        .single()
-
-      if (verifyError) {
-        console.error('Error verifying billing record:', verifyError)
-      } else {
-        console.log('Billing record verified:', verifyBilling)
-      }
-    }
-
-    // Create checkout session for subscription
-    const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = [
-      {
-        price: planConfig.priceId,
-        quantity: 1
-      }
-    ]
-
-    const parsedAddons = Number.parseInt(addonsCount || '0', 10)
-    if (!Number.isSafeInteger(parsedAddons) || parsedAddons < 0 || parsedAddons > 100) {
-      return NextResponse.json({ error: 'Invalid add-on count' }, { status: 400 })
-    }
-    if (parsedAddons > 0) {
-      lineItems.push({
-        price: process.env.STRIPE_ACCOUNT_ADDON_PRICE_ID || 'price_addon',
-        quantity: parsedAddons
-      })
-    }
-
-    const requestWindow = Math.floor(Date.now() / (10 * 60 * 1000))
-    const idempotencyKey = createHash('sha256')
-      .update(`${access.userId}:${siteId}:${plan}:${parsedAddons}:${requestWindow}`)
-      .digest('hex')
-    const session = await stripe.checkout.sessions.create({
-      customer: customerId,
-      payment_method_types: ['card'],
-      line_items: lineItems,
-      mode: 'subscription',
-      success_url: checkoutUrls.successUrl,
-      cancel_url: checkoutUrls.cancelUrl,
-      metadata: {
-        site_id: siteId,
-        plan: plan,
-        addons_count: parsedAddons.toString(),
-        type: 'subscription'
-      },
-      subscription_data: {
-        metadata: {
-          site_id: siteId,
-          plan: plan,
-          addons_count: parsedAddons.toString()
-        }
-      }
-    }, { idempotencyKey })
-
-    return NextResponse.json({ 
-      url: session.url,
-      sessionId: session.id 
+    const interval = parseBillingInterval(body.billingInterval)
+    const addonsCount = parseAddonsCount(body.addonsCount)
+    const urls = resolveCheckoutUrls(request, cancelUrl, successUrl, {})
+    if (urls.error !== undefined) throw new SubscriptionRequestError(urls.error)
+    if (!process.env.STRIPE_SECRET_KEY) throw new SubscriptionRequestError('Subscription billing is unavailable', 503)
+    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
+      apiVersion: '2025-05-28.basil', timeout: 20_000, maxNetworkRetries: 0,
     })
-
-  } catch (error: any) {
-    console.error('Stripe subscription checkout error:', error)
-    return NextResponse.json(
-      { error: error.message || 'Failed to create subscription checkout session' },
-      { status: 500 }
-    )
+    const pricing = await resolveSubscriptionCheckoutPrices(stripe, plan, interval, addonsCount)
+    // Elevated access is only for the site-wide checkout lease, after manager authorization.
+    const service = createServiceApiClient()
+    writeDeadline = Date.now() + 4 * 60 * 1000
+    const { data: claimed, error: claimError } = await service.rpc('claim_site_subscription_checkout', { p_site_id: siteId })
+    if (claimError || claimed?.state !== 'claimed' || typeof claimed.token !== 'string') {
+      return NextResponse.json({ error: 'Subscription checkout is busy; retry shortly' },
+        { status: 503, headers: { 'Retry-After': '300' } })
+    }
+    lease = { siteId, token: claimed.token, client: service }
+    const supabase = access.supabase
+    const { data: billing, error: billingReadError } = await supabase.from('billing')
+      .select('stripe_customer_id,stripe_subscription_id').eq('site_id', siteId).maybeSingle()
+    if (billingReadError) throw new Error('Billing lookup failed')
+    let customerId = billing?.stripe_customer_id
+    if (!customerId && billing?.stripe_subscription_id) {
+      throw new SubscriptionRequestError('Existing subscription customer is unavailable', 409)
+    }
+    if (!customerId) {
+      beforeProviderWrite()
+      const customer = await stripe.customers.create({ email: access.userEmail || undefined,
+        metadata: { site_id: siteId } }, { idempotencyKey: `subscription-customer-${siteId}` })
+      safeRelease = true
+      customerId = customer.id
+      const { data, error } = await service.rpc('upsert_billing', {
+        p_site_id: siteId, p_stripe_customer_id: customerId,
+      })
+      if (error || data?.success !== true) throw new Error('Billing customer persistence failed')
+    }
+    const requestWindow = Math.floor(Date.now() / (10 * 60 * 1000))
+    const idempotencyKey = createHash('sha256').update(JSON.stringify({ user: access.userId, siteId,
+      plan, interval, addonsCount, requestWindow, price: pricing.base.priceId, addon: pricing.addon?.priceId,
+      success: urls.successUrl, cancel: urls.cancelUrl })).digest('hex')
+    const existing = await existingSubscriptionFlow({ stripe, customerId, siteId,
+      subscriptionId: billing?.stripe_subscription_id, price: pricing.basePrice, interval, addonsCount,
+      returnUrl: urls.cancelUrl, successUrl: urls.successUrl, idempotencyKey,
+      beforeProviderWrite })
+    safeRelease = true
+    if (existing) return NextResponse.json(existing)
+    const metadata = { site_id: siteId, plan, billing_interval: interval,
+      addons_count: String(addonsCount), type: 'subscription', price_id: pricing.base.priceId,
+      addon_price_id: addonsCount > 0 ? pricing.addon!.priceId : '' }
+    const pending = await prepareSubscriptionCheckout({ stripe, customerId, siteId, metadata,
+      successUrl: urls.successUrl, cancelUrl: urls.cancelUrl, beforeProviderWrite,
+      afterProviderWrite: () => { safeRelease = true } })
+    if (pending.existing) return NextResponse.json(pending.existing)
+    const checkoutKey = createHash('sha256').update(`${idempotencyKey}:${pending.generation}`).digest('hex')
+    beforeProviderWrite()
+    const session = await stripe.checkout.sessions.create({
+      customer: customerId, payment_method_types: ['card'], mode: 'subscription', allow_promotion_codes: true,
+      line_items: [{ price: pricing.base.priceId, quantity: 1 },
+        ...(addonsCount > 0 ? [{ price: pricing.addon!.priceId, quantity: addonsCount }] : [])],
+      success_url: urls.successUrl, cancel_url: urls.cancelUrl, metadata, subscription_data: { metadata },
+    }, { idempotencyKey: checkoutKey })
+    safeRelease = true
+    if (session.status !== 'open' || !session.url) {
+      throw new SubscriptionRequestError('Subscription checkout is no longer open; refresh billing before retrying', 409)
+    }
+    return NextResponse.json({ url: session.url, sessionId: session.id })
+  } catch (error) {
+    if (error instanceof SubscriptionRequestError) {
+      return NextResponse.json({ error: error.message }, { status: error.status })
+    }
+    return NextResponse.json({ error: 'Failed to prepare subscription payment; contact billing support' },
+      { status: 503, ...(!safeRelease ? { headers: { 'Retry-After': '300' } } : {}) })
+  } finally {
+    if (lease && safeRelease) {
+      try {
+        await lease.client.rpc('finish_site_subscription_checkout', { p_site_id: lease.siteId, p_token: lease.token })
+      } catch { /* A failed release remains fenced until the short lease expires. */ }
+    }
   }
-} 
+}

@@ -1,8 +1,10 @@
+import 'server-only'
 import { NextResponse } from "next/server"
 import { createClient } from "@supabase/supabase-js"
 import { createServerClient, type CookieOptions } from "@supabase/ssr"
 import { cookies } from "next/headers"
 import { isAdminScreenRole } from "@/lib/auth/screen-access"
+import { z } from "zod"
 
 export async function createUserSupabase() {
   const cookieStore = await cookies()
@@ -51,11 +53,18 @@ export type SiteMemberAccess =
     }
 
 export async function getSiteMemberAccess(siteId: string): Promise<SiteMemberAccess> {
-  const supabase = await createUserSupabase()
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser()
+  if (!z.string().uuid().safeParse(siteId).success) {
+    return { error: NextResponse.json({ success: false, error: "Invalid site" }, { status: 400 }) }
+  }
+  let supabase: Awaited<ReturnType<typeof createUserSupabase>>
+  let authResult: Awaited<ReturnType<typeof supabase.auth.getUser>>
+  try {
+    supabase = await createUserSupabase()
+    authResult = await supabase.auth.getUser()
+  } catch {
+    return { error: NextResponse.json({ success: false, error: "Not authenticated" }, { status: 401 }) }
+  }
+  const { data: { user }, error: userError } = authResult
   if (userError || !user) {
     return { error: NextResponse.json({ success: false, error: "Not authenticated" }, { status: 401 }) }
   }
@@ -65,20 +74,26 @@ export async function getSiteMemberAccess(siteId: string): Promise<SiteMemberAcc
     .from("sites")
     .select("name, user_id")
     .eq("id", siteId)
+    .is("archived_at", null)
     .single()
 
   if (siteError || !siteData) {
     return { error: NextResponse.json({ success: false, error: "Site not found or access denied" }, { status: 404 }) }
   }
 
-  const { data: membershipCheck } = await admin
+  const { data: membershipCheck, error: membershipError } = await admin
     .from("site_members")
     .select("role")
     .eq("site_id", siteId)
     .eq("user_id", user.id)
+    .eq("status", "active")
+    .eq("license_suspended", false)
     .maybeSingle()
 
   const isOwner = siteData.user_id === user.id
+  if (membershipError && !isOwner) {
+    return { error: NextResponse.json({ success: false, error: "Member access is temporarily unavailable" }, { status: 503 }) }
+  }
   const isAdmin = isAdminScreenRole(membershipCheck?.role)
   return {
     supabase,

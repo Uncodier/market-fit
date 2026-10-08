@@ -11,6 +11,7 @@ import {
 } from "@/app/components/ui/icons"
 import { LoadingSkeleton } from "@/app/components/ui/loading-skeleton"
 import { useSite } from "@/app/context/SiteContext"
+import { formatPrice, parseBillingInterval, subscriptionPrice } from "@/lib/billing-pricing"
 
 function SuccessContent() {
   const router = useRouter()
@@ -26,12 +27,16 @@ function SuccessContent() {
   
   // Get plan details
   const planDetails = {
-    engine: { name: 'Engine Plan', price: '$23/month', features: ['20 credits / mo', '1 connected account', 'Standard support'] },
-    foundry: { name: 'Foundry Plan', price: '$99/month', features: ['100 credits / mo', '3 connected accounts', 'Priority support'] },
-    enterprise: { name: 'Enterprise Plan', price: '$500/month', features: ['500 credits / mo', 'Unlimited connected accounts', 'Custom development'] }
+    engine: { name: 'Engine Plan', monthlyPrice: 23 },
+    foundry: { name: 'Foundry Plan', monthlyPrice: 99 },
+    enterprise: { name: 'Enterprise Plan', monthlyPrice: 500 }
   }
   
   const currentPlan = plan ? planDetails[plan as keyof typeof planDetails] : null
+  // A return URL is not proof of settlement. Display only the persisted subscription.
+  const interval = parseBillingInterval(currentSite?.billing?.billing_interval) ?? 'month'
+  const confirmedPlan = !isRefreshing && currentSite?.billing?.plan === plan
+  const price = currentPlan ? subscriptionPrice(currentPlan.monthlyPrice, interval) : null
   
   useEffect(() => {
     // Set formatted date
@@ -65,11 +70,11 @@ function SuccessContent() {
           </div>
           
           <h1 className="text-3xl font-bold tracking-tight mb-3">
-            {isSubscription ? 'Welcome to Premium!' : 'Payment Successful!'}
+            {isSubscription ? 'Subscription checkout returned' : 'Payment Successful!'}
           </h1>
           <p className="text-muted-foreground text-lg mb-6">
             {isSubscription 
-              ? `Your ${currentPlan?.name || 'subscription'} is now active` 
+              ? 'Your billing details update after payment confirmation. Review the current subscription below or on the billing page.'
               : 'Your credits have been added to your account'
             }
           </p>
@@ -84,8 +89,12 @@ function SuccessContent() {
               </div>
               
               <div className="flex justify-between items-center py-1">
-                <span className="text-muted-foreground">Cost</span>
-                <span className="font-medium">{currentPlan.price}</span>
+                <span className="text-muted-foreground">Current plan price</span>
+                <div className="text-right">
+                  <span className="font-medium">{confirmedPlan && price ? `${formatPrice(price.total)}/${interval === 'year' ? 'year' : 'month'}` : 'Awaiting billing confirmation'}</span>
+                  {confirmedPlan && price && interval === 'year' && <p className="text-xs text-muted-foreground">{formatPrice(price.monthlyEquivalent)}/month equivalent · billed annually</p>}
+                  {confirmedPlan && <p className="text-xs text-muted-foreground">Credits remain monthly. Add-ons billed separately.</p>}
+                </div>
               </div>
               
               <div className="flex justify-between items-center py-1">

@@ -4,11 +4,13 @@ import { useFormContext } from "react-hook-form"
 import { useState, useEffect, useCallback, useRef } from "react"
 import { toast } from "sonner"
 import { type SiteFormValues } from "./form-schema"
-import { isInviteEmailError, siteMembersService } from "@/app/services/site-members-service"
+import { isInviteEmailError, siteMembersService, type SiteMember } from "@/app/services/site-members-service"
 import { useTeamMemberValidation } from "@/app/hooks/useTeamMemberValidation"
 import { resendMagicLinkInvitation } from "@/app/services/magic-link-invitation-service"
 import { useOptionalPermissions } from "@/app/context/PermissionContext"
 import { canManageTeamMembers } from "@/lib/auth/screen-access"
+import { emitBillingLimit, isBillingUpgradeRequired } from "@/lib/billing-limit-errors"
+import { memberUpgradePayload } from "@/lib/license-entitlements"
 import {
   screensEqual,
   siteMemberToFormMember,
@@ -45,6 +47,8 @@ export function useTeamMembers({ active, siteId }: UseTeamMembersOptions) {
     form.getValues("team_members") || []
   )
   const [isLoading, setIsLoading] = useState(false)
+  const [license, setLicense] = useState<Awaited<ReturnType<typeof siteMembersService.getLicense>> | null>(null)
+  const [licenseError, setLicenseError] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
   const [isResending, setIsResending] = useState<string | null>(null)
@@ -69,6 +73,37 @@ export function useTeamMembers({ active, siteId }: UseTeamMembersOptions) {
 
   const applyMembersRef = useRef(applyMembers)
   applyMembersRef.current = applyMembers
+
+  const refreshMembers = async (remainingDrafts = teamList.filter(member => !member.id)) => {
+    if (!siteId) return
+    const [memberResult, licenseResult] = await Promise.allSettled([
+      siteMembersService.getMembers(siteId), siteMembersService.getLicense(siteId),
+    ])
+    setLicense(licenseResult.status === "fulfilled" ? licenseResult.value : null)
+    setLicenseError(licenseResult.status === "rejected")
+    if (memberResult.status === "rejected") throw memberResult.reason
+    const persisted = memberResult.value.map(siteMemberToFormMember)
+    const drafts = remainingDrafts.filter(draft => !persisted.some(member => member.email.toLowerCase() === draft.email.toLowerCase()))
+    applyMembers([...drafts, ...persisted])
+    setHasUnsavedChanges(drafts.length > 0)
+  }
+
+  const refreshLicense = useCallback(async () => {
+    if (!siteId || !active) return
+    try {
+      setLicense(await siteMembersService.getLicense(siteId))
+      setLicenseError(false)
+    } catch {
+      setLicense(null)
+      setLicenseError(true)
+    }
+  }, [siteId, active])
+
+  useEffect(() => {
+    if (!active || !siteId) return
+    window.addEventListener("focus", refreshLicense)
+    return () => window.removeEventListener("focus", refreshLicense)
+  }, [active, siteId, refreshLicense])
 
   useEffect(() => {
     debouncedUpdateRef.current = debounce((newTeamList: FormTeamMember[]) => {
@@ -109,16 +144,21 @@ export function useTeamMembers({ active, siteId }: UseTeamMembersOptions) {
     const fetchSiteMembers = async () => {
       try {
         setIsLoading(true)
-        const members = await siteMembersService.getMembers(siteId)
+        setLicense(null)
+        setLicenseError(false)
+        const [memberResult, licenseResult] = await Promise.allSettled([
+          siteMembersService.getMembers(siteId), siteMembersService.getLicense(siteId),
+        ])
         if (!isMounted) return
-        const formattedMembers = members.map(siteMemberToFormMember)
-        if (formattedMembers.length > 0) {
-          applyMembersRef.current(formattedMembers)
-          return
-        }
-        applyMembersRef.current([])
+        if (memberResult.status === "fulfilled") applyMembersRef.current(memberResult.value.map(siteMemberToFormMember))
+        setLicense(licenseResult.status === "fulfilled" ? licenseResult.value : null)
+        setLicenseError(licenseResult.status === "rejected")
+        if (memberResult.status === "rejected") throw memberResult.reason
+        if (licenseResult.status === "rejected") throw licenseResult.reason
       } catch (error) {
         if (!isMounted) return
+        setLicense(null)
+        setLicenseError(true)
         console.error("Error fetching site members:", error)
         const errorMessage = error instanceof Error ? error.message : "Failed to load team members"
         toast.error(errorMessage)
@@ -134,7 +174,12 @@ export function useTeamMembers({ active, siteId }: UseTeamMembersOptions) {
   }, [active, siteId, hasUnsavedChanges])
 
   const addTeamMember = useCallback(() => {
-    if (isLoading) return
+    if (isLoading || isSaving || !canManageTeam || !siteId || !license || license.siteId !== siteId) return
+    const current = license.current + teamList.filter(member => !member.id).length
+    if (license.limit !== null && current >= license.limit) {
+      emitBillingLimit({ ...memberUpgradePayload(siteId, license.plan, current), canUpgrade: license.canUpgrade })
+      return
+    }
     const newTeamList = [{
       email: "",
       role: "view" as TeamRole,
@@ -146,7 +191,7 @@ export function useTeamMembers({ active, siteId }: UseTeamMembersOptions) {
     setTeamList(newTeamList)
     setHasUnsavedChanges(true)
     debouncedUpdateRef.current?.(newTeamList)
-  }, [isLoading, teamList])
+  }, [isLoading, isSaving, canManageTeam, siteId, license, teamList])
 
   const removeTeamMember = async (index: number) => {
     if (isLoading) return
@@ -157,9 +202,7 @@ export function useTeamMembers({ active, siteId }: UseTeamMembersOptions) {
         setIsLoading(true)
         await siteMembersService.removeMember(siteId, memberToRemove.id)
         toast.success(`${memberToRemove.name || memberToRemove.email} removed from team`)
-        const members = await siteMembersService.getMembers(siteId)
-        applyMembers(members.map(siteMemberToFormMember))
-        setHasUnsavedChanges(false)
+        await refreshMembers()
         return
       } catch (error) {
         console.error("Error removing team member:", error)
@@ -177,7 +220,7 @@ export function useTeamMembers({ active, siteId }: UseTeamMembersOptions) {
 
     const newTeamList = teamList.filter((_, i) => i !== index)
     setTeamList(newTeamList)
-    setHasUnsavedChanges(newTeamList.some((member) => !member.id && member.email.trim() !== ""))
+    setHasUnsavedChanges(newTeamList.some((member) => !member.id))
     debouncedUpdateRef.current?.(newTeamList)
   }
 
@@ -231,9 +274,12 @@ export function useTeamMembers({ active, siteId }: UseTeamMembersOptions) {
         restrict_to_assigned_only: member.restrict_to_assigned_only || false,
       })
       toast.success(`${member.name || member.email} updated successfully`)
-      const members = await siteMembersService.getMembers(siteId)
-      applyMembers(members.map(siteMemberToFormMember))
+      await refreshMembers()
     } catch (error) {
+      if (isBillingUpgradeRequired(error)) {
+        emitBillingLimit(error.payload)
+        return
+      }
       console.error("Error saving team member:", error)
       const errorMessage = error instanceof Error ? error.message : "Unknown error"
       if (errorMessage.includes("Cannot change role of the last admin")) {
@@ -251,6 +297,7 @@ export function useTeamMembers({ active, siteId }: UseTeamMembersOptions) {
       toast.error("Site ID is required")
       return
     }
+    if (!canManageTeam || !license || license.siteId !== siteId) return
 
     try {
       setIsSaving(true)
@@ -265,12 +312,19 @@ export function useTeamMembers({ active, siteId }: UseTeamMembersOptions) {
       }
       if (newMembers.length === 0) {
         if (invalidEmails.length === 0) toast.info("No new members to save")
-        setHasUnsavedChanges(false)
+        setHasUnsavedChanges(teamList.some(member => !member.id))
         return
       }
 
-      const savedMembers = []
+      const savedMembers: SiteMember[] = []
+      let blocked = false
       for (const member of newMembers) {
+        const current = license.current + savedMembers.length
+        if (license.limit !== null && current >= license.limit) {
+          emitBillingLimit({ ...memberUpgradePayload(siteId, license.plan, current), canUpgrade: license.canUpgrade })
+          blocked = true
+          break
+        }
         try {
           savedMembers.push(await siteMembersService.addMember(
             siteId,
@@ -285,6 +339,11 @@ export function useTeamMembers({ active, siteId }: UseTeamMembersOptions) {
             form.getValues().name || "Your Site"
           ))
         } catch (memberError) {
+          if (isBillingUpgradeRequired(memberError)) {
+            emitBillingLimit(memberError.payload)
+            blocked = true
+            break
+          }
           if (isInviteEmailError(memberError)) {
             savedMembers.push(memberError.member)
             toast.error(`Member added but invitation failed for ${member.email}: ${memberError.message}`)
@@ -298,11 +357,16 @@ export function useTeamMembers({ active, siteId }: UseTeamMembersOptions) {
 
       if (savedMembers.length > 0) {
         toast.success(`Successfully added ${savedMembers.length} team member(s)!`)
-        const members = await siteMembersService.getMembers(siteId)
-        applyMembers(members.map(siteMemberToFormMember))
-        setHasUnsavedChanges(false)
+        const remainingDrafts = teamList.filter(member => !member.id && !savedMembers.some(saved => saved.email.toLowerCase() === member.email.toLowerCase()))
+        await refreshMembers(remainingDrafts)
+      } else if (blocked) {
+        setHasUnsavedChanges(true)
       }
     } catch (error) {
+      if (isBillingUpgradeRequired(error)) {
+        emitBillingLimit(error.payload)
+        return
+      }
       console.error("Error saving team members:", error)
       toast.error("Failed to save team members")
     } finally {
@@ -326,6 +390,10 @@ export function useTeamMembers({ active, siteId }: UseTeamMembersOptions) {
         name: member.name,
         position: member.position,
       })
+      if (result.upgradeRequired) {
+        emitBillingLimit(result.upgradeRequired)
+        return
+      }
       if (result.success) {
         toast.success(`Magic link invitation resent to ${member.name || member.email}`)
         return
@@ -338,6 +406,10 @@ export function useTeamMembers({ active, siteId }: UseTeamMembersOptions) {
         toast.error(result.error || "Failed to resend invitation")
       }
     } catch (error) {
+      if (isBillingUpgradeRequired(error)) {
+        emitBillingLimit(error.payload)
+        return
+      }
       console.error("Error resending invitation:", error)
       toast.error("Failed to resend invitation")
     } finally {
@@ -347,6 +419,9 @@ export function useTeamMembers({ active, siteId }: UseTeamMembersOptions) {
 
   return {
     teamList,
+    license,
+    licenseError,
+    refreshLicense,
     isLoading,
     isSaving,
     isResending,

@@ -1,249 +1,80 @@
-import { createClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
-import { denyUnlessTeamManager, getSiteMemberAccess } from '@/lib/auth/site-member-request'
+import { z } from 'zod'
+import { createServiceSupabase, denyUnlessTeamManager, getSiteMemberAccess } from '@/lib/auth/site-member-request'
+import { siteMemberRoleToInvitationRole } from '@/lib/auth/screen-access'
+import { readMemberLicense, memberAdmissionResponse, memberLicenseUpgradeResponse } from '@/lib/licenses/member-license.server'
 
-export const dynamic = 'force-dynamic'
-
-interface InvitationRequest {
-  email: string
-  siteId: string
-  siteName: string
-  role: string
-  name?: string
-  position?: string
-}
+const invitationSchema = z.object({ email: z.string().trim().email().max(254), siteId: z.string().uuid() })
 
 export async function POST(request: Request) {
   try {
-    const body: InvitationRequest = await request.json()
-    const email = body.email.trim().toLowerCase()
-    const { siteId, siteName, role, name, position } = body
-
-    if (!email || !siteId || !siteName || !role) {
-      return NextResponse.json(
-        { success: false, error: 'Missing required fields' },
-        { status: 400 }
-      )
-    }
-
+    const parsed = invitationSchema.safeParse(await request.json().catch(() => null))
+    if (!parsed.success) return NextResponse.json({ success: false, error: 'A valid email and site are required' }, { status: 400 })
+    const email = parsed.data.email.toLowerCase()
+    const { siteId } = parsed.data
     const access = await getSiteMemberAccess(siteId)
     const denied = denyUnlessTeamManager(access)
     if (denied) return denied
     if (access.error) return access.error
 
-    const supabase = access.supabase
-    const adminSupabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    )
-    const [{ data: inviterProfile }, { data: inviterAuth }] = await Promise.all([
-      adminSupabase
-        .from('profiles')
-        .select('name, email')
-        .eq('id', access.userId)
-        .maybeSingle(),
-      adminSupabase.auth.admin.getUserById(access.userId),
-    ])
-    const inviterName =
-      inviterProfile?.name ||
-      inviterAuth?.user?.user_metadata?.name ||
-      inviterProfile?.email ||
-      inviterAuth?.user?.email ||
-      'A team administrator'
-
-    // Check if user already exists in profiles
-    const { data: profile, error: profileError } = await adminSupabase
-      .from('profiles')
-      .select('id')
-      .eq('email', email)
-      .maybeSingle()
-
-    if (profileError) {
-      console.error('Error checking profile:', profileError)
-      return NextResponse.json(
-        { success: false, error: 'Failed to check existing users' },
-        { status: 500 }
-      )
+    const admin = createServiceSupabase()
+    const { data: membership, error: memberError } = await admin.from('site_members')
+      .select('id, user_id, status, license_suspended, role, name, position')
+      .eq('site_id', siteId).eq('email', email).maybeSingle()
+    if (memberError) return NextResponse.json({ success: false, error: 'Failed to verify reserved membership' }, { status: 503 })
+    const reserved = membership && ['pending', 'active'].includes(membership.status) && membership.license_suspended === false
+    const licenseResult = await readMemberLicense(admin, siteId, access.isOwner || access.isAdmin, reserved ? membership.id : undefined)
+    if (licenseResult.response) return licenseResult.response
+    if (membership && membership.status !== 'rejected' && membership.license_suspended !== false) {
+      return memberLicenseUpgradeResponse(licenseResult.license)
+    }
+    const upgrade = memberAdmissionResponse(licenseResult.license)
+    if (upgrade) return upgrade
+    if (!reserved) {
+      return NextResponse.json({ success: false, error: 'Reserve a site membership before sending an invitation' }, { status: 400 })
     }
 
-    let existingUser = null
-    let userHasConfirmedEmail = false
-
-    if (profile) {
-      // Get the full user object to check email confirmation
-      const { data: userData, error: userError } = await adminSupabase.auth.admin.getUserById(profile.id)
-      
-      if (!userError && userData?.user) {
-        existingUser = userData.user
-        userHasConfirmedEmail = !!userData.user.email_confirmed_at
-      }
-    } else {
-      // Fallback: check auth.users directly via listUsers with filter, in case they don't have a profile yet
-      // We search with a high limit to ensure we don't miss them if there are more than 50 users
-      try {
-        // In Supabase v2, listUsers can take an options object for pagination
-        const { data: existingUsers } = await adminSupabase.auth.admin.listUsers({
-          page: 1,
-          perPage: 1000
-        })
-        
-        const foundUser = existingUsers?.users?.find((u: any) => u.email?.toLowerCase() === email)
-        if (foundUser) {
-          existingUser = foundUser
-          userHasConfirmedEmail = !!foundUser.email_confirmed_at
-        }
-      } catch (err) {
-        console.warn('Error checking existing users:', err)
-      }
-    }
-
-    // Create the redirect URL for the magic link
-    // Determine base URL: use localhost only in development, production URL otherwise
-    const baseUrl = process.env.NODE_ENV === 'development' 
-      ? 'http://localhost:3000' 
-      : (process.env.NEXT_PUBLIC_APP_URL || 'https://app.uncodie.com')
-    
-    console.log(`🚀 Detected environment: ${process.env.NODE_ENV}`)
-    console.log(`📝 NEXT_PUBLIC_APP_URL: ${process.env.NEXT_PUBLIC_APP_URL || 'NOT SET'}`)
-    console.log(`🎯 Using base URL: ${baseUrl}`)
-    
+    const { data: site, error: siteError } = await admin.from('sites').select('name').eq('id', siteId).is('archived_at', null).maybeSingle()
+    if (siteError || !site) return NextResponse.json({ success: false, error: 'Site not found or access denied' }, { status: 404 })
+    const { data: inviterProfile } = await admin.from('profiles').select('name').eq('id', access.userId).maybeSingle()
+    const inviterName = inviterProfile?.name || 'A team administrator'
+    // Invitation metadata is display-only, but still derived from the trusted reservation.
+    const siteName = site.name || 'Your Site'
+    const role = siteMemberRoleToInvitationRole(membership.role)
+    const name = membership.name || undefined
+    const position = membership.position || undefined
+    const baseUrl = process.env.NODE_ENV === 'development' ? 'http://localhost:3000' : (process.env.NEXT_PUBLIC_APP_URL || 'https://app.uncodie.com')
     const invitationParams = new URLSearchParams({
-      invitationType: 'team_invitation',
-      siteId,
-      siteName,
-      role,
-      email, // Include email so we can verify it on the callback
-      inviterName,
-      ...(name && { name }),
-      ...(position && { position })
+      invitationType: 'team_invitation', siteId, siteName, role, email, inviterName,
+      ...(name && { name }), ...(position && { position }),
     })
-    
-    // Use the API auth callback which should be configured as wildcard in Supabase
     const redirectTo = `${baseUrl}/api/auth/callback?${invitationParams.toString()}`
-    
-    console.log(`🔗 Redirect URL: ${redirectTo}`)
-    console.log(`🌍 Environment: ${process.env.NODE_ENV}`)
-    console.log(`🏠 Base URL: ${baseUrl}`)
-
-    let invitationResult
-
-    console.log(`🔍 Processing invitation for ${email}`)
-    console.log(`📧 User exists: ${!!existingUser}`)
-    console.log(`✅ Email confirmed: ${userHasConfirmedEmail}`)
-
-    if (userHasConfirmedEmail) {
-      // For users who have confirmed their email, use magic link without creation
-      // This avoids any potential last_sign_in_at issues
-      console.log(`🔗 Sending magic link to confirmed user ${email}`)
-      
-      invitationResult = await supabase.auth.signInWithOtp({
-        email,
-        options: {
-          shouldCreateUser: false, // User already exists and is confirmed
-          emailRedirectTo: redirectTo,
-          data: {
-            invitationType: 'team_invitation',
-            invitation_type: 'team_invitation',
-            siteId,
-            site_id: siteId,
-            siteName,
-            site_name: siteName,
-            role,
-            email,
-            inviterName,
-            inviter_name: inviterName,
-            // For existing users, check if they have password set, if not mark as false
-            password_set: existingUser?.user_metadata?.password_set ?? false,
-            ...(name && { name }),
-            ...(position && { position }),
-            redirectUrl: redirectTo
-          }
-        }
-      })
-    } else {
-      // For new users or users who haven't confirmed email, use admin invite
-      // This ensures NO last_sign_in_at is set until they actually confirm and sign in
-      console.log(`📧 Sending admin invite to ${existingUser ? 'unconfirmed' : 'new'} user ${email}`)
-      
-      invitationResult = await adminSupabase.auth.admin.inviteUserByEmail(email, {
-        redirectTo: redirectTo,
-        data: {
-          invitationType: 'team_invitation',
-          invitation_type: 'team_invitation',
-          siteId,
-          site_id: siteId,
-          siteName,
-          site_name: siteName,
-          role,
-          email,
-          inviterName,
-          inviter_name: inviterName,
-          password_set: false, // Explicitly mark that password is not set
-          ...(name && { name }),
-          ...(position && { position }),
-          redirectUrl: redirectTo
-        }
-      })
+    const metadata = {
+      invitationType: 'team_invitation', invitation_type: 'team_invitation',
+      siteId, site_id: siteId, siteName, site_name: siteName, role, email,
+      inviterName, inviter_name: inviterName, ...(name && { name }), ...(position && { position }), redirectUrl: redirectTo,
     }
-
-    console.log(`📤 Invitation response:`, { 
-      success: !invitationResult.error, 
-      error: invitationResult.error?.message,
-      code: invitationResult.error?.code,
-      userExists: !!existingUser,
-      emailConfirmed: userHasConfirmedEmail,
-      method: userHasConfirmedEmail ? 'magic_link' : 'admin_invite'
-    })
-
+    let userId = membership.user_id
+    if (!userId) {
+      const { data: profile } = await admin.from('profiles').select('id').eq('email', email).maybeSingle()
+      userId = profile?.id
+    }
+    const existingUser = userId ? (await admin.auth.admin.getUserById(userId)).data?.user : null
+    const confirmed = !!existingUser?.email_confirmed_at
+    const invitationResult = confirmed
+      ? await access.supabase.auth.signInWithOtp({ email, options: { shouldCreateUser: false, emailRedirectTo: redirectTo, data: { ...metadata, password_set: existingUser?.user_metadata?.password_set ?? false } } })
+      : await admin.auth.admin.inviteUserByEmail(email, { redirectTo, data: { ...metadata, password_set: false } })
     if (invitationResult.error) {
-      console.error('Invitation error:', invitationResult.error)
-      
-      // Handle rate limiting gracefully
       if (invitationResult.error.code === 'over_email_send_rate_limit') {
-        return NextResponse.json(
-          {
-            success: false,
-            error: 'Too many emails sent. Please try again later.',
-            code: 'RATE_LIMIT_EXCEEDED',
-            retryAfter: 60,
-          },
-          { status: 429 }
-        )
+        return NextResponse.json({ success: false, error: 'Too many emails sent. Please try again later.', code: 'RATE_LIMIT_EXCEEDED', retryAfter: 60 }, { status: 429 })
       }
-
-      const signupDisabled =
-        invitationResult.error.code === 'signup_disabled' ||
-        /sign.?up.*(disabled|not allowed)/i.test(invitationResult.error.message || '')
-      if (signupDisabled) {
-        return NextResponse.json(
-          {
-            success: false,
-            error: 'User registration is currently disabled. Please contact support.',
-            code: 'SIGNUP_DISABLED',
-          },
-          { status: 403 }
-        )
+      if (invitationResult.error.code === 'signup_disabled' || /sign.?up.*(disabled|not allowed)/i.test(invitationResult.error.message || '')) {
+        return NextResponse.json({ success: false, error: 'User registration is currently disabled. Please contact support.', code: 'SIGNUP_DISABLED' }, { status: 403 })
       }
-      
-      return NextResponse.json(
-        { success: false, error: invitationResult.error.message },
-        { status: 500 }
-      )
+      return NextResponse.json({ success: false, error: 'Failed to send invitation' }, { status: 500 })
     }
-
-    console.log(`Invitation sent successfully to ${email} using ${userHasConfirmedEmail ? 'magic link' : 'admin invite'}`)
-
-    return NextResponse.json({
-      success: true,
-      message: 'Invitation sent successfully',
-      userExists: !!existingUser
-    })
-
-  } catch (error) {
-    console.error('Error sending invitation:', error)
-    return NextResponse.json(
-      { success: false, error: 'Internal server error' },
-      { status: 500 }
-    )
+    return NextResponse.json({ success: true, message: 'Invitation sent successfully', userExists: !!existingUser })
+  } catch {
+    return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 })
   }
 }

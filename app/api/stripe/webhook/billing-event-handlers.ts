@@ -69,13 +69,28 @@ export async function handleBillingStripeEvent(params: {
   switch (event.type) {
     case "customer.subscription.created":
     case "customer.subscription.updated":
-    case "customer.subscription.deleted":
-      await syncStripeSubscription({
+    case "customer.subscription.deleted": {
+      const current = await syncStripeSubscription({
         subscriptionId: (event.data.object as Stripe.Subscription).id,
         stripe,
         supabase,
       })
+      // A financial-only settlement while paused/inactive must recover without
+      // requiring Stripe to redeliver invoice.paid. Never use the event invoice.
+      if (event.type === "customer.subscription.updated" && current.outcome === "synced" &&
+          current.subscription.status === "active") {
+        const invoiceId = stripeObjectId(current.subscription.latest_invoice)
+        if (invoiceId) {
+          const invoice = await stripe.invoices.retrieve(invoiceId)
+          if (invoice.id !== invoiceId) throw new Error("Invoice ID mismatch")
+          if (invoice.status === "paid") await settleStripeSubscriptionInvoice({
+            invoiceId, eventId: event.id, stripe, supabase, requirePaid: true,
+            expectedCustomerId: current.customerId, expectedSubscriptionId: current.subscription.id,
+          })
+        }
+      }
       return true
+    }
     case "invoice.paid":
     case "invoice.payment_succeeded":
     case "invoice.payment_failed":

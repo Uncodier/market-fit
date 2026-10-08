@@ -9,6 +9,7 @@ import { Button } from "../components/ui/button"
 import { Skeleton } from "../components/ui/skeleton"
 import { Badge } from "../components/ui/badge"
 import Image from "next/image"
+import { rememberBillingInterval } from "@/lib/billing-interval-preference"
 
 function getCookieValue(name: string): string | null {
   if (typeof document === "undefined") return null
@@ -46,6 +47,11 @@ export default function ProjectsPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const isManageMode = searchParams?.get('manage') === '1' || searchParams?.get('from') === 'buyer'
+  const requestedBillingInterval = searchParams?.get('billingInterval')
+
+  useEffect(() => {
+    rememberBillingInterval(requestedBillingInterval)
+  }, [requestedBillingInterval])
 
   const realSites = (sites || []).filter((site) => !isDemoSiteId(site.id))
   const hasSites = (isManageMode ? realSites : sites)?.length > 0

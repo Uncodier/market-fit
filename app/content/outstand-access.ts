@@ -37,7 +37,7 @@ function storedAccount(row: Record<string, unknown>, active: boolean, page = fal
     id: id.data,
     aliases: [page ? row.name : row.accountName, row.username].filter((value): value is string =>
       typeof value === "string" && value.length > 0),
-    active: active && row.isActive !== false && row.isActive !== 0,
+    active: active && row.license_suspended !== true && row.isActive !== false && row.isActive !== 0,
   }
 }
 
@@ -57,8 +57,8 @@ export async function resolveOutstandAccounts(
   for (const entry of data.social_media) {
     if (!isRecord(entry) || !matchesOutstandSite(entry, access.siteId)) continue
     const pages = Array.isArray(entry.connectedPages) ? entry.connectedPages : []
-    const active = entry.isActive === true || entry.isActive === 1 ||
-      (entry.isActive === undefined && pages.length > 0)
+    const active = entry.license_suspended !== true && (entry.isActive === true || entry.isActive === 1 ||
+      (entry.isActive === undefined && pages.length > 0))
     if (pages.length) {
       for (const page of pages) {
         if (!isRecord(page) || !matchesOutstandSite(page, access.siteId)) continue

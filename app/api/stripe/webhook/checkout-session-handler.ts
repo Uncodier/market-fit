@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
 import type Stripe from "stripe"
 import { handleStripeSaleCheckoutCompleted } from "./sale-checkout-settlement"
-import { stripeObjectId, syncStripeSubscription } from "./subscription-billing"
+import { stripeObjectId } from "./subscription-billing"
 import { settleStripeSubscriptionInvoice } from "./subscription-invoice-settlement"
 import { handleCreditsPurchase } from "./credit-purchase-settlement"
 
@@ -19,9 +19,8 @@ async function handleInitialSubscription(
   if (!subscriptionId || !invoiceId || !customerId) {
     throw new Error("Subscription checkout is missing invoice, subscription, or customer")
   }
-  await syncStripeSubscription({
-    subscriptionId, stripe, supabase, expectedCustomerId: customerId,
-  })
+  // Settlement owns invoice-aware status sync. A separate lifecycle sync here
+  // would allow a delayed checkout duplicate to write stale same-ID status.
   // Checkout and invoice webhooks share one invoice-keyed payment/credit transaction.
   await settleStripeSubscriptionInvoice({
     invoiceId, stripe, supabase, eventId, requirePaid: true,

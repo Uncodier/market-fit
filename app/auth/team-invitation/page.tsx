@@ -1,22 +1,28 @@
 'use client'
 
-import { useEffect, useState, Suspense } from 'react'
+import { useCallback, useEffect, useRef, useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { processTeamInvitation } from '@/app/services/magic-link-invitation-service'
 import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/card'
 import { Button } from '@/app/components/ui/button'
-import { Loader, CheckCircle2, AlertCircle, Users } from '@/app/components/ui/icons'
+import { CheckCircle2, AlertCircle, Users } from '@/app/components/ui/icons'
 import { toast } from 'sonner'
-import { safeReload } from '@/app/utils/safe-reload'
+import { BillingLimitDialog } from '@/app/components/billing/billing-limit-dialog'
+import { isBillingUpgradeRequired, type BillingLimitPayload } from '@/lib/billing-limit-errors'
+import { licensePlanLabel } from '@/lib/license-entitlements'
 
 function TeamInvitationContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [isProcessing, setIsProcessing] = useState(false)
+  const [upgradeOpen, setUpgradeOpen] = useState(false)
+  const attemptedInvitation = useRef<string | null>(null)
+  const processing = useRef(false)
   const [processingResult, setProcessingResult] = useState<{
     success: boolean
     error?: string
     redirectTo?: string
+    upgradeRequired?: BillingLimitPayload
   } | null>(null)
 
   // Extract invitation parameters from URL
@@ -27,11 +33,8 @@ function TeamInvitationContent() {
   const position = searchParams.get('position')
   const userEmail = searchParams.get('email') // This should come from the auth session
   
-  console.log('🎯 Team invitation page params:', { siteId, siteName, role, name, position, userEmail })
-
-  useEffect(() => {
-    // Auto-process the invitation when the page loads
-    const processInvitation = async () => {
+  const processInvitation = useCallback(async () => {
+      if (processing.current) return
       if (!siteId || !siteName || !role) {
         setProcessingResult({
           success: false,
@@ -40,7 +43,10 @@ function TeamInvitationContent() {
         return
       }
 
+      processing.current = true
       setIsProcessing(true)
+      setProcessingResult(null)
+      setUpgradeOpen(false)
 
       try {
         // The service will get the email from the authenticated user session
@@ -56,7 +62,9 @@ function TeamInvitationContent() {
 
         setProcessingResult(result)
 
-        if (result.success && result.redirectTo) {
+        if (result.upgradeRequired) {
+          setUpgradeOpen(true)
+        } else if (result.success && result.redirectTo) {
           toast.success(`Welcome to ${siteName}! You've been added to the team.`)
           // Redirect after a short delay to show the success message
           setTimeout(() => {
@@ -67,6 +75,11 @@ function TeamInvitationContent() {
         }
 
       } catch (error) {
+        if (isBillingUpgradeRequired(error)) {
+          setProcessingResult({ success: false, upgradeRequired: error.payload })
+          setUpgradeOpen(true)
+          return
+        }
         console.error('Error processing invitation:', error)
         setProcessingResult({
           success: false,
@@ -74,16 +87,20 @@ function TeamInvitationContent() {
         })
         toast.error('Failed to process invitation')
       } finally {
+        processing.current = false
         setIsProcessing(false)
       }
-    }
-
-    processInvitation()
   }, [siteId, siteName, role, name, position, userEmail, router])
 
+  useEffect(() => {
+    const invitationKey = JSON.stringify([siteId, siteName, role, name, position, userEmail])
+    if (attemptedInvitation.current === invitationKey) return
+    attemptedInvitation.current = invitationKey
+    void processInvitation()
+  }, [siteId, siteName, role, name, position, userEmail, processInvitation])
+
   const handleRetry = () => {
-    setProcessingResult(null)
-    safeReload(false, "Team invitation retry")
+    void processInvitation()
   }
 
   const handleGoToDashboard = () => {
@@ -100,7 +117,7 @@ function TeamInvitationContent() {
           <CardTitle className="text-xl">Team Invitation</CardTitle>
           {siteName && (
             <p className="text-sm text-muted-foreground">
-              You've been invited to join <span className="font-medium">{siteName}</span>
+              You&apos;ve been invited to join <span className="font-medium">{siteName}</span>
             </p>
           )}
         </CardHeader>
@@ -127,7 +144,7 @@ function TeamInvitationContent() {
                   <div className="space-y-2">
                     <h3 className="font-medium text-foreground">Welcome to the team!</h3>
                     <p className="text-sm text-muted-foreground">
-                      You've been successfully added to {siteName}.
+                      You&apos;ve been successfully added to {siteName}.
                     </p>
                     {processingResult.redirectTo && (
                       <p className="text-xs text-muted-foreground">
@@ -140,6 +157,20 @@ function TeamInvitationContent() {
                       Go to Dashboard
                     </Button>
                   )}
+                </>
+              ) : processingResult.upgradeRequired ? (
+                <>
+                  <div className="space-y-2">
+                    <h3 className="font-medium text-foreground">More member seats needed</h3>
+                    <p className="text-sm text-muted-foreground">
+                      {processingResult.upgradeRequired.canUpgrade
+                        ? 'Upgrade this site’s license, then retry this invitation.'
+                        : `Ask the site owner to upgrade${processingResult.upgradeRequired.requiredPlan ? ` to ${licensePlanLabel(processingResult.upgradeRequired.requiredPlan)}` : ''}, then retry this invitation.`}
+                      {' '}Your invitation has not been accepted yet.
+                    </p>
+                  </div>
+                  <Button onClick={() => setUpgradeOpen(true)} variant="outline" className="w-full">View member license</Button>
+                  <Button onClick={handleRetry} className="w-full">Retry after upgrade</Button>
                 </>
               ) : (
                 <>
@@ -192,6 +223,7 @@ function TeamInvitationContent() {
           )}
         </CardContent>
       </Card>
+      <BillingLimitDialog open={upgradeOpen} onOpenChange={setUpgradeOpen} payload={processingResult?.upgradeRequired ?? null} />
     </div>
   )
 }

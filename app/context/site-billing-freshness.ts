@@ -14,8 +14,8 @@ export function markBillingRefreshed(billing: NonNullable<Site["billing"]>): voi
 
 /** A site/details hydration does not fetch billing and cannot replace its newer value. */
 export function preserveHydratedBilling(previous: Site, incoming: Site): Site {
-  if (previous.id !== incoming.id || !previous.billing) return incoming
-  return { ...incoming, billing: previous.billing }
+  if (previous.id !== incoming.id) return incoming
+  return { ...incoming, billing: previous.billing, billing_read_status: previous.billing_read_status }
 }
 
 /** Full loads may replace billing unless a targeted read completed after they began. */
@@ -23,7 +23,9 @@ export function mergeLoadedSiteBilling(previous: Site[], incoming: Site[], start
   const existing = new Map(previous.map(site => [site.id, site]))
   return incoming.map(site => {
     const current = existing.get(site.id)
-    return current?.billing && (billingRevisions.get(current.billing) ?? 0) > startedAt
-      ? preserveHydratedBilling(current, site) : site
+    if (!current?.billing) return site
+    if ((billingRevisions.get(current.billing) ?? 0) > startedAt) return preserveHydratedBilling(current, site)
+    // A newer failed read preserves balances, but must still disable financial controls.
+    return site.billing_read_status === 'unavailable' ? { ...site, billing: current.billing } : site
   })
 }

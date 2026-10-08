@@ -2,6 +2,10 @@ import { createClient } from '@/lib/supabase/client'
 import { siteMemberRoleToInvitationRole } from '@/lib/auth/screen-access'
 import { assignableSiteMembers } from '@/lib/auth/assignable-site-members'
 import { sendMagicLinkInvitation } from './magic-link-invitation-service'
+import { BillingUpgradeRequired, isBillingUpgradeRequired, parseBillingLimitError } from '@/lib/billing-limit-errors'
+import { publicMemberLicenseSchema } from '@/lib/licenses/member-license-schema'
+import type { SiteMemberLicense } from '@/lib/license-entitlements'
+import { syncSiteMembersFromSettings } from './site-members-settings-sync'
 
 export interface SiteMember {
   id: string
@@ -15,6 +19,7 @@ export interface SiteMember {
   name: string | null
   position: string | null
   status: 'pending' | 'active' | 'rejected'
+  license_suspended?: boolean
   blocked_screens?: string[]
   restrict_to_assigned_only?: boolean
   emailConfirmed?: boolean // Track if user has confirmed their email
@@ -28,15 +33,6 @@ export interface SiteMemberInput {
   position?: string
   blocked_screens?: string[]
   restrict_to_assigned_only?: boolean
-}
-
-// For existing members fetched from the database
-interface ExistingSiteMember {
-  id: string
-  email: string
-  role: string
-  name?: string | null
-  position?: string | null
 }
 
 export class InviteEmailError extends Error {
@@ -57,18 +53,15 @@ export function isInviteEmailError(error: unknown): error is InviteEmailError {
   )
 }
 
-const mapTeamRoleToSiteMemberRole = (role: 'view' | 'create' | 'delete' | 'admin'): 'collaborator' | 'marketing' | 'admin' => {
-  switch(role) {
-    case 'view': return 'marketing';  // Viewer role -> SELECT only
-    case 'create': 
-    case 'delete': 
-      return 'collaborator';         // Editor role -> SELECT, INSERT, UPDATE
-    case 'admin': return 'admin';    // Admin role -> SELECT, INSERT, UPDATE
-    default: return 'marketing';     // Default to viewer
-  }
-}
-
 export const siteMembersService = {
+  async getLicense(siteId: string): Promise<SiteMemberLicense> {
+    const response = await fetch(`/api/site-members/${encodeURIComponent(siteId)}/license`, { cache: 'no-store' })
+    const result = await response.json().catch(() => ({}))
+    if (!response.ok || !result.success) throw new Error(typeof result.error === 'string' ? result.error : 'Failed to fetch member licensing')
+    const parsed = publicMemberLicenseSchema.safeParse(result.license)
+    if (!parsed.success || parsed.data.siteId !== siteId) throw new Error('Invalid member license response')
+    return parsed.data
+  },
   // Get all members for a site
   async getMembers(siteId: string): Promise<SiteMember[]> {
     try {
@@ -117,6 +110,8 @@ export const siteMembersService = {
 
     const result = await response.json().catch(() => ({}))
     if (!response.ok || !result.success) {
+      const upgradeRequired = response.status === 402 ? parseBillingLimitError(result) : null
+      if (upgradeRequired?.kind === 'members' && upgradeRequired.siteId === siteId) throw new BillingUpgradeRequired(upgradeRequired)
       throw new Error(result.error || 'Failed to add site member')
     }
 
@@ -135,6 +130,7 @@ export const siteMembersService = {
       if (invitationResult.success) {
         return data
       }
+      if (invitationResult.upgradeRequired) throw new BillingUpgradeRequired(invitationResult.upgradeRequired)
 
       if (invitationResult.code === 'RATE_LIMIT_EXCEEDED') {
         throw new InviteEmailError(
@@ -155,6 +151,7 @@ export const siteMembersService = {
         data
       )
     } catch (invitationError) {
+      if (isBillingUpgradeRequired(invitationError)) throw invitationError
       if (isInviteEmailError(invitationError)) throw invitationError
       const message =
         invitationError instanceof Error
@@ -269,220 +266,12 @@ export const siteMembersService = {
     return data || []
   },
   
-  // Sync team members from settings to site_members
   async syncFromSettings(siteId: string, teamMembers: Array<{
-    email: string,
-    role: 'view' | 'create' | 'delete' | 'admin',
-    name?: string,
+    email: string
+    role: 'view' | 'create' | 'delete' | 'admin'
+    name?: string
     position?: string
   }>): Promise<void> {
-    console.log('🔄 SYNC: Starting syncFromSettings for siteId:', siteId);
-    console.log('🔄 SYNC: Team members to sync:', teamMembers);
-    
-    const supabase = createClient()
-    const { data: userData } = await supabase.auth.getUser()
-    
-    if (!userData.user) {
-      console.error('❌ SYNC: Not authenticated');
-      throw new Error('Not authenticated')
-    }
-    
-    console.log('✅ SYNC: User authenticated:', userData.user.id);
-    
-    // First get current site members to check for removals
-    const { data: currentMembers, error: membersError } = await supabase
-      .from('site_members')
-      .select('id, email, role')
-      .eq('site_id', siteId)
-      .not('role', 'eq', 'owner') // Don't touch the owner
-    
-    if (membersError) {
-      console.error('❌ SYNC: Error fetching current site members:', membersError)
-      throw new Error(`Failed to sync members: ${membersError.message}`)
-    }
-    
-    console.log('📋 SYNC: Current site members:', currentMembers);
-    
-    // 1. Create new members
-    for (const member of teamMembers) {
-      if (!member.email) {
-        console.log('⚠️ SYNC: Skipping member with empty email');
-        continue;
-      }
-      
-      const email = member.email.trim().toLowerCase()
-      
-      console.log(`🔍 SYNC: Processing member: ${email}`);
-      
-      const existingMember = currentMembers?.find((m: ExistingSiteMember) => m.email.toLowerCase() === email)
-      
-      const siteMemberRole = mapTeamRoleToSiteMemberRole(member.role)
-      console.log(`🔄 SYNC: Role mapping ${member.role} -> ${siteMemberRole}`);
-      
-      if (!existingMember) {
-        console.log(`➕ SYNC: Member ${email} not found in site_members, creating new record`);
-        
-        // Check if the user exists in auth.users
-        const { data: existingUser, error: userError } = await supabase
-          .from('profiles')
-          .select('id')
-          .eq('email', email)
-          .single();
-        
-        if (userError && userError.code !== 'PGRST116') {
-          console.error(`❌ SYNC: Error checking if user exists for ${email}:`, userError);
-        }
-        
-        console.log(`👤 SYNC: User ${email} exists in auth: ${!!existingUser} (user_id: ${existingUser?.id || 'null'})`);
-        
-        // It's a new member, insert it
-        const insertData = {
-          site_id: siteId,
-          user_id: existingUser?.id || null, // Explicitly NULL for pending users
-          email: email,
-          role: siteMemberRole,
-          name: member.name || null,
-          position: member.position || null,
-          added_by: userData.user.id,
-          status: existingUser?.id ? 'active' : 'pending', // Active if user exists, pending otherwise
-          restrict_to_assigned_only: false
-        };
-        
-        console.log(`📝 SYNC: Inserting site_member with data:`, insertData);
-        console.log(`🔐 SYNC: Current user auth.uid(): ${userData.user.id}`);
-        console.log(`🏢 SYNC: Site ID: ${siteId}`);
-        
-        // First, let's check if the user has permission to insert into this site
-        const { data: permissionCheck, error: permissionError } = await supabase
-          .from('sites')
-          .select('id, user_id')
-          .eq('id', siteId)
-          .single();
-        
-        if (permissionError) {
-          console.error(`❌ SYNC: Error checking site ownership:`, permissionError);
-        } else {
-          console.log(`🔍 SYNC: Site ownership check:`, permissionCheck);
-          console.log(`🔍 SYNC: User is site owner: ${permissionCheck?.user_id === userData.user.id}`);
-        }
-        
-        // Check if there's already a site_member with this email
-        const { data: existingByEmail, error: emailCheckError } = await supabase
-          .from('site_members')
-          .select('id, email, status')
-          .eq('site_id', siteId)
-          .eq('email', email)
-          .maybeSingle();
-        
-        if (emailCheckError) {
-          console.error(`❌ SYNC: Error checking existing email:`, emailCheckError);
-        } else if (existingByEmail) {
-          console.log(`⚠️ SYNC: Member with email ${email} already exists:`, existingByEmail);
-          continue; // Skip this member as it already exists
-        } else {
-          console.log(`✅ SYNC: No existing member found with email ${email}`);
-        }
-        
-        const { data: insertResult, error } = await supabase
-          .from('site_members')
-          .insert(insertData)
-          .select()
-        
-        if (error) {
-          console.error(`❌ SYNC: Error adding new site member during sync for ${email}:`, error)
-          console.error(`❌ SYNC: Error code: ${error.code}`);
-          console.error(`❌ SYNC: Error message: ${error.message}`);
-          console.error(`❌ SYNC: Error details:`, error.details);
-          console.error(`❌ SYNC: Error hint:`, error.hint);
-          console.error(`❌ SYNC: Full error object:`, JSON.stringify(error, null, 2));
-          
-          // Also log the current auth context
-          console.error(`❌ SYNC: Current auth context:`, {
-            userId: userData.user.id,
-            userEmail: userData.user.email,
-            siteId: siteId,
-            insertData: insertData
-          });
-          
-          // Log more details about the error
-          if (error.code === '23505') {
-            console.log('🔄 SYNC: Duplicate entry detected - this is normal if member already exists');
-          } else if (error.code === '23503') {
-            console.log('🔗 SYNC: Foreign key constraint violation - check user_id');
-          } else if (error.code === '42501') {
-            console.log('🔐 SYNC: Insufficient privileges - RLS policy rejection');
-          } else if (error.code === 'PGRST301') {
-            console.log('🔐 SYNC: RLS policy violation - INSERT operation not allowed');
-          } else {
-            console.error('💥 SYNC: Unexpected error:', error.message);
-          }
-          
-          // Don't throw here, continue with other members
-          continue;
-        } else {
-          console.log(`✅ SYNC: Successfully created site_member for ${email}:`, insertResult);
-        }
-      } else {
-        console.log(`🔄 SYNC: Member ${email} already exists in site_members, checking if update is needed`);
-        
-        // Update existing member if needed
-        if (existingMember.role !== siteMemberRole || 
-            (member.name && existingMember.name !== member.name) ||
-            (member.position && existingMember.position !== member.position)) {
-          
-          console.log(`📝 SYNC: Updating existing member ${email}`);
-          
-          const { error } = await supabase
-            .from('site_members')
-            .update({
-              role: siteMemberRole,
-              name: member.name || null,
-              position: member.position || null
-            })
-            .eq('id', existingMember.id)
-          
-          if (error) {
-            console.error(`❌ SYNC: Error updating site member during sync for ${email}:`, error)
-          } else {
-            console.log(`✅ SYNC: Successfully updated member ${email}`);
-          }
-        } else {
-          console.log(`⏭️ SYNC: No changes needed for member ${email}`);
-        }
-      }
-    }
-    
-    // 2. Remove members that are not in the new list
-    if (currentMembers) {
-      const currentEmails = currentMembers.map((m: ExistingSiteMember) => m.email.toLowerCase())
-      const newEmails = teamMembers.map(m => m.email.toLowerCase())
-      
-      const emailsToRemove = currentEmails.filter((email: string) => !newEmails.includes(email))
-      
-      if (emailsToRemove.length > 0) {
-        console.log(`🗑️ SYNC: Removing members no longer in team_members:`, emailsToRemove);
-        
-        // Let's get the exact original emails to remove, since the DB query might be case sensitive
-        const exactEmailsToRemove = currentMembers
-          .filter((m: ExistingSiteMember) => emailsToRemove.includes(m.email.toLowerCase()))
-          .map((m: ExistingSiteMember) => m.email);
-
-        const { error } = await supabase
-          .from('site_members')
-          .delete()
-          .eq('site_id', siteId)
-          .in('email', exactEmailsToRemove)
-        
-        if (error) {
-          console.error('❌ SYNC: Error removing site members during sync:', error)
-        } else {
-          console.log(`✅ SYNC: Successfully removed ${emailsToRemove.length} members`);
-        }
-      } else {
-        console.log('📝 SYNC: No members to remove');
-      }
-    }
-    
-    console.log('🎉 SYNC: syncFromSettings completed successfully');
-  }
-} 
+    return syncSiteMembersFromSettings(this, siteId, teamMembers)
+  },
+}

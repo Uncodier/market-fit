@@ -36,7 +36,7 @@ export async function listAccessibleSitesForUser(
       admin.from("sites").select(SITE_LIST_COLUMNS).eq("user_id", userId).is("archived_at", null)
     ),
     runQuery<{ site_id: string }>(
-      admin.from("site_members").select("site_id").eq("user_id", userId).eq("status", "active")
+      admin.from("site_members").select("site_id").eq("user_id", userId).eq("status", "active").eq("license_suspended", false)
     ),
     runQuery<{ site_id: string }>(
       admin.from("site_ownership").select("site_id").eq("user_id", userId)
@@ -46,9 +46,10 @@ export async function listAccessibleSitesForUser(
   if (owned.error) return { sites: [], error: owned.error }
 
   const ownedIds = new Set(owned.data.map((site) => site.id))
+  const licensedMemberIds = new Set(memberships.data.map(row => row.site_id))
   const extraIds = [
     ...(memberships.error ? [] : memberships.data.map((row) => row.site_id)),
-    ...(ownerships.error ? [] : ownerships.data.map((row) => row.site_id)),
+    ...(ownerships.error ? [] : ownerships.data.filter(row => ownedIds.has(row.site_id) || licensedMemberIds.has(row.site_id)).map((row) => row.site_id)),
   ].filter((id) => id && !ownedIds.has(id))
   const uniqueExtraIds = [...new Set(extraIds)]
 

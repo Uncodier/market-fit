@@ -1,7 +1,9 @@
 import type { BillingCreditBalances } from "@/lib/types/billing-credits.types"
+import type { BillingInterval } from "@/lib/billing-pricing"
 
 export interface BillingData extends BillingCreditBalances {
   plan: "commission" | "engine" | "foundry" | "enterprise"
+  billing_interval?: BillingInterval
   addons_count?: number
   card_name?: string
   card_number?: string

@@ -1,4 +1,7 @@
 import { NextResponse } from "next/server"
+import { z } from "zod"
+import type { SiteMember } from "@/app/services/site-members-service"
+import { readMemberLicense, memberAdmissionResponse, memberLimitRaceResponse } from "@/lib/licenses/member-license.server"
 import { isAdminScreenRole, parseWritableSiteMemberRole, sanitizeBlockedScreens } from "@/lib/auth/screen-access"
 import {
   createServiceSupabase,
@@ -14,8 +17,8 @@ async function withSiteOwner(
   admin: ReturnType<typeof createServiceSupabase>,
   siteId: string,
   ownerUserId: string,
-  members: any[]
-) {
+  members: SiteMember[]
+): Promise<SiteMember[]> {
   if (members.some((member) => member.user_id === ownerUserId)) return members
 
   const { data: authResult } = await admin.auth.admin.getUserById(ownerUserId)
@@ -47,9 +50,9 @@ async function withSiteOwner(
 
   if (error || !inserted) {
     const { data: refreshed } = await admin.from("site_members").select("*").eq("site_id", siteId)
-    return refreshed || members
+    return (refreshed as SiteMember[] | null) || members
   }
-  return [inserted, ...members]
+  return [inserted as SiteMember, ...members]
 }
 
 export async function GET(
@@ -59,9 +62,7 @@ export async function GET(
   try {
     const { siteId } = await params
 
-    if (siteId && siteId.startsWith("demo-")) {
-      return NextResponse.json({ success: true, members: [] })
-    }
+    if (!z.string().uuid().safeParse(siteId).success) return invalidSiteResponse()
 
     const access = await getSiteMemberAccess(siteId)
     if (access.error) return access.error
@@ -96,12 +97,12 @@ export async function GET(
       listedMembers || []
     )
 
-    const membersWithStatus: any[] = []
+    const membersWithStatus: unknown[] = []
     const memberBatches = siteMembers || []
     for (let offset = 0; offset < memberBatches.length; offset += 10) {
       const batch = memberBatches.slice(offset, offset + 10)
       const resolved = await Promise.all(
-        batch.map(async (member: any) => {
+        batch.map(async (member) => {
         if (!member.user_id) {
           return {
             ...member,
@@ -172,14 +173,15 @@ export async function POST(
 ) {
   try {
     const { siteId } = await params
-    if (!siteId || siteId.startsWith("demo-")) return invalidSiteResponse()
+    if (!z.string().uuid().safeParse(siteId).success) return invalidSiteResponse()
 
     const access = await getSiteMemberAccess(siteId)
     const denied = denyUnlessTeamManager(access)
     if (denied) return denied
     if (access.error) return access.error
 
-    const body = await request.json().catch(() => ({}))
+    const body = await request.json().catch(() => null)
+    if (!body || typeof body !== "object" || Array.isArray(body)) return invalidSiteResponse()
     const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : ""
     const role = parseWritableSiteMemberRole(body.role)
     if (!email) {
@@ -193,13 +195,18 @@ export async function POST(
     }
 
     const adminSupabase = createServiceSupabase()
-    const { data: existing } = await adminSupabase
+    const licenseResult = await readMemberLicense(adminSupabase, siteId, access.isOwner || access.isAdmin)
+    if (licenseResult.response) return licenseResult.response
+    const upgradeResponse = memberAdmissionResponse(licenseResult.license)
+    if (upgradeResponse) return upgradeResponse
+    const { data: existing, error: existingError } = await adminSupabase
       .from("site_members")
       .select("id")
       .eq("site_id", siteId)
       .eq("email", email)
       .maybeSingle()
 
+    if (existingError) return NextResponse.json({ success: false, error: "Failed to verify site membership" }, { status: 503 })
     if (existing) {
       return NextResponse.json(
         { success: false, error: "This email is already a member of this site" },
@@ -234,6 +241,8 @@ export async function POST(
       .single()
 
     if (insertError || !inserted) {
+      const raceResponse = memberLimitRaceResponse(insertError, siteId, access.isOwner || access.isAdmin)
+      if (raceResponse) return raceResponse
       if (insertError?.code === "23505") {
         return NextResponse.json(
           { success: false, error: "This email is already a member of this site" },
@@ -241,7 +250,7 @@ export async function POST(
         )
       }
       return NextResponse.json(
-        { success: false, error: insertError?.message || "Failed to add site member" },
+        { success: false, error: "Failed to add site member" },
         { status: 500 }
       )
     }
@@ -262,7 +271,7 @@ export async function PATCH(
 ) {
   try {
     const { siteId } = await params
-    if (!siteId || siteId.startsWith("demo-")) return invalidSiteResponse()
+    if (!z.string().uuid().safeParse(siteId).success) return invalidSiteResponse()
 
     const access = await getSiteMemberAccess(siteId)
     const denied = denyUnlessTeamManager(access)
@@ -270,7 +279,7 @@ export async function PATCH(
 
     const body = await request.json().catch(() => ({}))
     const memberId = typeof body.memberId === "string" ? body.memberId : ""
-    if (!memberId) {
+    if (!z.string().uuid().safeParse(memberId).success) {
       return NextResponse.json({ success: false, error: "memberId is required" }, { status: 400 })
     }
 
@@ -330,7 +339,7 @@ export async function PATCH(
 
     if (updateError || !updated) {
       return NextResponse.json(
-        { success: false, error: updateError?.message || "Failed to update member" },
+        { success: false, error: "Failed to update member" },
         { status: 500 }
       )
     }
@@ -351,14 +360,14 @@ export async function DELETE(
 ) {
   try {
     const { siteId } = await params
-    if (!siteId || siteId.startsWith("demo-")) return invalidSiteResponse()
+    if (!z.string().uuid().safeParse(siteId).success) return invalidSiteResponse()
 
     const access = await getSiteMemberAccess(siteId)
     const denied = denyUnlessTeamManager(access)
     if (denied) return denied
 
     const memberId = new URL(request.url).searchParams.get("memberId") || ""
-    if (!memberId) {
+    if (!z.string().uuid().safeParse(memberId).success) {
       return NextResponse.json({ success: false, error: "memberId is required" }, { status: 400 })
     }
 
@@ -388,7 +397,7 @@ export async function DELETE(
 
     if (deleteError) {
       return NextResponse.json(
-        { success: false, error: deleteError.message || "Failed to remove member" },
+        { success: false, error: "Failed to remove member" },
         { status: 500 }
       )
     }

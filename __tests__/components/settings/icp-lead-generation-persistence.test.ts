@@ -43,12 +43,13 @@ function persistenceFixture() {
           data: authenticated && requestedSite === siteId && !readFailure ? clone(row) : null,
           error: readFailure || (authenticated && requestedSite === siteId ? null : { code: "PGRST116" }),
         })),
-        upsert: jest.fn(async (value: any, options: any) => {
+        upsert: jest.fn((value: any, options: any) => {
           expect(options).toEqual({ onConflict: "site_id", ignoreDuplicates: false })
-          if (!authenticated || value.site_id !== siteId) return { error: new Error("RLS denied settings write") }
+          if (!authenticated || value.site_id !== siteId) return Promise.resolve({ error: new Error("RLS denied settings write") })
           row = clone(value)
+          requestedSite = value.site_id
           writes.push(row)
-          return { error: null }
+          return { select: () => query, then: (resolve: (value: { error: null }) => unknown) => Promise.resolve({ error: null }).then(resolve) }
         }),
       }
       return query

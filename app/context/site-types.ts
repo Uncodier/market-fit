@@ -37,6 +37,8 @@ export interface Site {
     analytics_id?: string;
     tracking_code?: string;
   }
+  /** A failed financial read is not evidence of a missing billing record. */
+  billing_read_status?: 'loaded' | 'missing' | 'unavailable'
   billing?: BillingData & {
     plan: 'commission' | 'engine' | 'foundry' | 'enterprise'
     addons_count?: number

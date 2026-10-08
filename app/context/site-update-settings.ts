@@ -369,19 +369,24 @@ export async function persistSiteSettings({
         
         
         
-        const { error } = await supabase
+        const write = supabase
           .from('settings')
           .upsert(mergedSettings, { 
             onConflict: 'site_id',
             ignoreDuplicates: false
           });
+        // Resource triggers may suspend excess connections. Publish the actual
+        // saved row, never an optimistic pre-enforcement connection state.
+        const hasResourceChanges = settings.social_media !== undefined || settings.channels !== undefined;
+        const { error, data } = hasResourceChanges ? await write.select().single() : await write;
         
         if (error) {
           console.error("UPDATE SETTINGS ERROR en upsert:", error);
           console.error("UPDATE SETTINGS ERROR detalles:", error.code, error.message, error.details);
           throw error;
         }
-        savedSettings = mergedSettings as SiteSettings;
+        if (hasResourceChanges && !data) throw new Error("Saved connection settings could not be verified");
+        savedSettings = (hasResourceChanges ? data : mergedSettings) as SiteSettings;
         await requestVoiceAgentResync(siteId);
       } catch (upsertError) {
         console.error("UPDATE SETTINGS ERROR excepción en upsert:", upsertError);

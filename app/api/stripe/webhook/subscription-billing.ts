@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
 import type Stripe from "stripe"
-import { normalizeBillingPlan, type BillingPlan } from "@/lib/billing-plans"
+import { configuredSubscriptionPrice, validateSubscriptionPrice } from "@/lib/subscription-pricing.server"
 
 export type SubscriptionBillingClient = Pick<SupabaseClient, "from" | "rpc">
 export type SubscriptionStripeClient = {
@@ -44,67 +44,106 @@ function nonnegativeInteger(value: unknown): number {
 
 export function resolveStripeSubscriptionDetails(subscription: Stripe.Subscription) {
   const items = subscription.items?.data || []
-  if (subscription.items?.has_more) {
-    throw new Error("Subscription items are incomplete")
-  }
-  const prices: [BillingPlan, string | undefined][] = [
-    ["engine", process.env.STRIPE_STARTER_PRICE_ID],
-    ["foundry", process.env.STRIPE_STARTUP_PRICE_ID],
-    ["enterprise", process.env.STRIPE_ENTERPRISE_PRICE_ID],
-  ]
-  const addonPrice = process.env.STRIPE_ACCOUNT_ADDON_PRICE_ID
-  const matches = items.flatMap((item) => prices
-    .filter(([, price]) => price && price === item.price.id)
-    .map(([plan]) => ({ plan, item })))
-  if (matches.length > 1 || matches.some(({ item }) => item.price.id === addonPrice)) {
-    throw new Error("Ambiguous subscription price configuration")
-  }
-  const metadataPlan = normalizeBillingPlan(subscription.metadata?.plan)
-  const pricePlan = matches[0]?.plan
-  if (metadataPlan && pricePlan && metadataPlan !== pricePlan) {
-    throw new Error("Subscription plan does not match configured price")
-  }
-  const plan = metadataPlan || pricePlan
-  const terminal = isTerminalSubscriptionStatus(subscription.status)
-  if (!plan && !terminal) throw new Error("Missing or unknown subscription plan")
-
-  const addonItems = items.filter((item) => addonPrice && item.price.id === addonPrice)
-  // A configured price and a complete item list supersede possibly stale metadata.
-  const addonsCount = terminal ? 0 : addonPrice
-    ? nonnegativeInteger(addonItems.reduce(
-      (total, item) => total + nonnegativeInteger(item.quantity), 0,
-    ))
-    : nonnegativeInteger(subscription.metadata?.addons_count ?? "0")
-  const baseItems = items.filter((item) => !addonPrice || item.price.id !== addonPrice)
-  const baseItem = matches[0]?.item || (baseItems.length === 1 ? baseItems[0] : undefined)
   const legacyPeriodEnd = (subscription as Stripe.Subscription & {
     current_period_end?: number | null
   }).current_period_end
+  // Cancellation is not an entitlement claim. Retired/unconfigured prices must
+  // not prevent an authoritative terminal state from clearing existing coverage.
+  if (isTerminalSubscriptionStatus(subscription.status)) {
+    return { plan: null, addonsCount: 0, billingInterval: null,
+      currentPeriodEnd: stripeTimestampIso(legacyPeriodEnd ?? items[0]?.current_period_end) }
+  }
+  if (subscription.items?.has_more) {
+    throw new Error("Subscription items are incomplete")
+  }
+  const mapped = items.map((item) => {
+    const config = configuredSubscriptionPrice(item.price.id)
+    if (!config) throw new Error("Missing or unknown subscription plan price")
+    validateSubscriptionPrice(item.price, config)
+    return { item, config }
+  })
+  const baseItems = mapped.filter(({ config }) => config.plan !== 'addon')
+  if (baseItems.length > 1) throw new Error("Ambiguous subscription price configuration")
+  const base = baseItems[0]
+  if (!base) throw new Error("Missing or unknown subscription plan")
+  if (base && nonnegativeInteger(base.item.quantity) !== 1) throw new Error("Invalid base subscription quantity")
+  const addonItems = mapped.filter(({ config }) => config.plan === 'addon')
+  if (addonItems.some(({ config }) => config.interval !== base?.config.interval)) {
+    throw new Error("Subscription add-on interval does not match base price")
+  }
+  const addonsCount = nonnegativeInteger(addonItems.reduce(
+    (total, { item }) => total + nonnegativeInteger(item.quantity), 0,
+  ))
+  const baseItem = base?.item
+  const plan = base && base.config.plan !== 'addon' ? base.config.plan : null
+  const billingInterval = base?.config.interval ?? null
   const currentPeriodEnd = stripeTimestampIso(legacyPeriodEnd ?? baseItem?.current_period_end)
-  return { plan: plan || null, addonsCount, currentPeriodEnd }
+  return { plan, addonsCount, billingInterval, currentPeriodEnd }
 }
 
-/** Stripe reads only; callers must supply an authenticated, trusted Stripe client. */
+/** Read-only Stripe/billing snapshots; callers supply trusted server clients. */
 export async function retrieveStripeSubscription(params: {
   subscriptionId: string
   stripe: SubscriptionStripeClient
+  supabase: SubscriptionBillingClient
   expectedCustomerId?: string
 }) {
   if (!stripeObjectId(params.subscriptionId)) throw new Error("Missing subscription ID")
-  const subscription = await params.stripe.subscriptions.retrieve(params.subscriptionId)
-  if (subscription.id !== params.subscriptionId) throw new Error("Subscription ID mismatch")
-  const customerId = stripeObjectId(subscription.customer)
+  // Without a routing hint, the first read establishes customer identity only.
+  // Status is always retrieved AFTER the billing identity used by the SQL CAS.
+  const routing = params.expectedCustomerId ? null : await params.stripe.subscriptions.retrieve(params.subscriptionId)
+  if (routing && routing.id !== params.subscriptionId) throw new Error("Subscription ID mismatch")
+  const customerId = params.expectedCustomerId ?? stripeObjectId(routing?.customer)
   if (!customerId) throw new Error("Subscription customer is missing")
-  if (params.expectedCustomerId && params.expectedCustomerId !== customerId) {
-    throw new Error("Subscription customer does not match")
-  }
   const customer = await params.stripe.customers.retrieve(customerId)
   if (customer.id !== customerId || customer.deleted) {
     throw new Error("Subscription customer is unavailable")
   }
   const siteId = customer.metadata?.site_id?.trim()
   if (!siteId) throw new Error("Subscription customer has no site_id")
-  return { subscription, customerId, siteId, ...resolveStripeSubscriptionDetails(subscription) }
+  const { data: billing, error } = await params.supabase.from("billing")
+    .select("stripe_customer_id,stripe_subscription_id").eq("site_id", siteId).single()
+  if (error) throw new Error(`Failed to read subscription billing: ${error.message}`)
+  if (!billing) throw new Error("Subscription billing row is missing")
+  if (billing.stripe_customer_id !== customerId) throw new Error("Subscription billing customer does not match")
+  if (billing.stripe_subscription_id !== null && !stripeObjectId(billing.stripe_subscription_id)) {
+    throw new Error("Invalid subscription billing identity")
+  }
+  const expectedSubscriptionId = billing.stripe_subscription_id as string | null
+  const subscription = await params.stripe.subscriptions.retrieve(params.subscriptionId)
+  if (subscription.id !== params.subscriptionId) throw new Error("Subscription ID mismatch")
+  if (stripeObjectId(subscription.customer) !== customerId) throw new Error("Subscription customer does not match")
+  return { subscription, customerId, siteId, expectedSubscriptionId, ...resolveStripeSubscriptionDetails(subscription) }
+}
+
+/** Persist only snapshots retrieved with the billing CAS fence above. Service role only. */
+export async function syncRetrievedStripeSubscription(
+  current: Awaited<ReturnType<typeof retrieveStripeSubscription>>,
+  supabase: SubscriptionBillingClient,
+  invoiceId?: string,
+) {
+  const { subscription, customerId, siteId, currentPeriodEnd } = current
+  const { data, error } = await supabase.rpc("sync_stripe_subscription_state", {
+    p_site_id: siteId,
+    p_customer_id: customerId,
+    p_subscription_id: subscription.id,
+    p_expected_subscription_id: current.expectedSubscriptionId,
+    p_status: subscription.status,
+    p_current_period_end: currentPeriodEnd,
+    p_start_date: stripeTimestampIso(subscription.start_date),
+    p_end_date: stripeTimestampIso(subscription.ended_at),
+    p_auto_renew: !subscription.cancel_at_period_end && !subscription.cancel_at &&
+      !subscription.ended_at && !isTerminalSubscriptionStatus(subscription.status),
+    ...(invoiceId ? { p_invoice_id: invoiceId } : {}),
+  })
+  if (error) throw new Error(`Failed to update subscription: ${error.message}`)
+  if (!data || !["synced", "obsolete_subscription"].includes(data.outcome) ||
+      (data.subscription_id !== null && !stripeObjectId(data.subscription_id)) ||
+      (data.outcome === "synced" && data.subscription_id !== subscription.id)) {
+    throw new Error("Invalid sync_stripe_subscription_state response")
+  }
+  // SQL owns terminal fallback/coverage clearing atomically. No unfenced writes.
+  return { ...current, outcome: data.outcome as "synced" | "obsolete_subscription" }
 }
 
 /** Service client only, after webhook verification or explicit operator authorization. */
@@ -114,27 +153,5 @@ export async function syncStripeSubscription(params: {
   supabase: SubscriptionBillingClient
   expectedCustomerId?: string
 }) {
-  const current = await retrieveStripeSubscription(params)
-  const { subscription, customerId, siteId, plan, addonsCount, currentPeriodEnd } = current
-  const { data, error } = await params.supabase.rpc("upsert_billing", {
-    p_site_id: siteId,
-    p_plan: isTerminalSubscriptionStatus(subscription.status) ? "commission" : plan,
-    p_stripe_customer_id: customerId,
-    p_stripe_subscription_id: subscription.id,
-    p_subscription_status: subscription.status,
-    p_subscription_current_period_end: currentPeriodEnd,
-    p_auto_renew: !subscription.cancel_at_period_end && !subscription.cancel_at &&
-      !subscription.ended_at && !isTerminalSubscriptionStatus(subscription.status),
-  })
-  if (error) throw new Error(`Failed to update subscription: ${error.message}`)
-  if (data?.success !== true) {
-    throw new Error("Failed to update subscription: upsert_billing rejected the update")
-  }
-  const { data: billing, error: addonsError } = await params.supabase.from("billing")
-    .update({ addons_count: addonsCount }).eq("site_id", siteId).select("id").single()
-  if (addonsError) {
-    throw new Error(`Failed to update subscription add-ons: ${addonsError.message}`)
-  }
-  if (!billing?.id) throw new Error("Subscription billing row is missing")
-  return current
+  return syncRetrievedStripeSubscription(await retrieveStripeSubscription(params), params.supabase)
 }
