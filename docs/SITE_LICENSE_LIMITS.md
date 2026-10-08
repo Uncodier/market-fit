@@ -38,6 +38,41 @@ members are marked `license_suspended`, not removed. An upgrade or a freed seat
 restores eligible license-suspended members in that order. Role, invitation status,
 assignment history and business records remain intact.
 
+### Manual member activation
+
+Team settings uses an **Active / Inactive** switch for persisted non-owner members.
+The primary owner remains enabled with an **Owner** badge and no activation switch. Only team managers
+can change activation; server authorization and the database also protect owners.
+Changes save immediately, independently of unsaved name, role or invitation edits.
+Switches are vertically centered in the member header. Inactive members collapse
+to their header and move below enabled members and invitation drafts. The switch
+remains visible to reactivate them; reactivation expands the card and restores its
+enabled-group position. This is presentation-only ordering: form indices, unsaved
+edits, membership identity and database license priority remain unchanged.
+Pending invitations retain their Pending badge and can release their reserved seat
+without being accepted or deleted. Draft and rejected invitations cannot be toggled.
+
+`20261007223500_manual_member_deactivation.sql` adds `manually_disabled` and a
+service-only `set_site_member_enabled` RPC. Manual deactivation sets
+`license_suspended` too, preserving the original status, role, membership ID and
+all historical records. It removes the member from seat usage and automatic
+restoration. Upgrading or freeing another seat does **not** reactivate manually
+disabled members; a manager must turn the switch back on. Freed capacity may
+restore another automatically license-suspended member under the existing policy.
+
+Reactivation checks capacity atomically under the same site lock as invitations
+and billing changes. A full plan returns the existing upgrade dialog and leaves
+the switch off. The client refreshes seat usage and suspension flags without
+discarding unsaved team edits. A failed write retains the previous switch state.
+
+The authenticated `POST /api/site-members/[siteId]/enabled` boundary validates
+the request and manager permissions before calling the service-only RPC. Browser
+writes cannot set either suspension flag directly. The new migration must follow
+both existing license migrations and requires explicit target approval; this
+feature change does not apply migrations or resolve the prior license rollout
+review blockers (settings upserts, suspended-channel validation, legacy membership
+RPC authorization, and invitation delivery/resume behavior).
+
 Connected social accounts retain limits 1/3/6/10; custom agent connections retain
 0/1/3/10. The web channel is not a paid custom connection. Social and custom-channel
 excesses share one `addons_count` pool. Resource JSON receives protected
@@ -134,6 +169,8 @@ socket-only PostgreSQL clusters and never use an environment database URL:
 ```sh
 npm test -- --runInBand __tests__/security/site-member-license-migration.test.ts __tests__/security/site-resource-license-migration.test.ts
 npm test -- --runInBand __tests__/components/settings/member-license.test.tsx __tests__/components/billing/team-invitation-license.test.tsx __tests__/components/billing/member-license-ui.test.tsx __tests__/lib/license-entitlements.test.ts
+npm test -- --runInBand __tests__/components/settings/member-activation.test.tsx __tests__/components/settings/team-section-license.test.tsx
+npm test -- --runInBand __tests__/api/site-member-enabled.test.ts __tests__/api/site-member-owner-display.test.ts __tests__/services/site-member-enabled-service.test.ts __tests__/security/manual-member-deactivation-migration.test.ts
 ```
 
 `LICENSE_TEST_PG_BIN` selects local PostgreSQL binaries; the default is the

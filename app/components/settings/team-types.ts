@@ -11,6 +11,8 @@ export interface FormTeamMember {
   id?: string
   status?: "pending" | "active" | "rejected"
   license_suspended?: boolean
+  manually_disabled?: boolean
+  is_primary_owner?: boolean
   originalRole?: "owner" | "admin" | "marketing" | "collaborator"
   emailConfirmed?: boolean
   lastSignIn?: string
@@ -68,6 +70,8 @@ export function siteMemberToFormMember(member: SiteMember): FormTeamMember {
     position: member.position || undefined,
     status: member.status,
     license_suspended: member.license_suspended ?? false,
+    manually_disabled: member.manually_disabled ?? false,
+    is_primary_owner: member.is_primary_owner ?? member.role === "owner",
     originalRole: member.role,
     emailConfirmed: member.emailConfirmed,
     lastSignIn: member.lastSignIn,
@@ -107,4 +111,17 @@ export function isPendingInvitation(member: FormTeamMember): boolean {
 export function isValidTeamEmail(email: string | undefined): boolean {
   if (!email) return false
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())
+}
+
+export function isInactiveTeamMember(member: FormTeamMember): boolean {
+  return !!member.id && member.originalRole !== "owner" && !member.is_primary_owner &&
+    (member.status === "active" || member.status === "pending") &&
+    !!(member.manually_disabled || member.license_suspended)
+}
+
+/** Reorder presentation only: form field paths and mutations keep their original index. */
+export function teamMembersInDisplayOrder(members: FormTeamMember[]) {
+  return members.map((member, index) => ({ member, index })).sort((a, b) =>
+    Number(isInactiveTeamMember(a.member)) - Number(isInactiveTeamMember(b.member)) || a.index - b.index
+  )
 }

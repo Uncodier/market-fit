@@ -6,8 +6,14 @@ import { AuthContext } from "@/app/components/auth/auth-context"
 import { useReportResource } from "@/app/hooks/use-report-resource"
 import { useSite } from "@/app/context/SiteContext"
 import type { Activity } from "@/app/api/recent-activity/format"
+import { isKnownDemoSite } from "@/lib/demo-data"
 
 async function fetchActivities([url]: readonly [string, string]) {
+  const params = new URL(url, "http://demo.local").searchParams
+  if (isKnownDemoSite(params.get("siteId"))) {
+    const { loadDemoRecentActivity } = await import("@/lib/demo-data/activity-report")
+    return loadDemoRecentActivity(params)
+  }
   const response = await fetch(url)
   if (!response.ok) throw new Error("Unable to load recent activity. Please try again.")
   const body: unknown = await response.json()
@@ -25,7 +31,9 @@ export function useRecentActivityReport(limit: number, startDate?: Date, endDate
   const params = new URLSearchParams({ siteId: currentSite?.id ?? "", limit: String(limit > 0 ? limit : 6) })
   if (startDate) params.set("startDate", format(startDate, "yyyy-MM-dd"))
   if (endDate) params.set("endDate", format(endDate, "yyyy-MM-dd"))
-  const enabled = currentSite?.id && currentSite.id !== "default" && auth?.user?.id && !auth.isLoading && !siteLoading
-  return useReportResource(enabled ? [`/api/recent-activity?${params}`, auth.user!.id] as const : null,
-    fetchActivities, Boolean(auth?.isLoading || siteLoading))
+  const localDemo = isKnownDemoSite(currentSite?.id)
+  const identity = auth?.user?.id || (localDemo ? currentSite?.id : undefined)
+  const enabled = currentSite?.id && currentSite.id !== "default" && identity && (localDemo || !auth?.isLoading) && !siteLoading
+  return useReportResource(enabled ? [`/api/recent-activity?${params}`, identity] as const : null,
+    fetchActivities, Boolean((!localDemo && auth?.isLoading) || siteLoading))
 }

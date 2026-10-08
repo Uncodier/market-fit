@@ -95,7 +95,7 @@ export function ConnectedAccountsAddons({
               </div>
             </div>
             <Button variant="outline" onClick={onManageAddons} disabled={isSaving}>
-              {isSaving ? "Processing..." : "Manage Add-ons"}
+              {isSaving ? "Processing..." : "Add-on support"}
             </Button>
           </div>
         ) : (

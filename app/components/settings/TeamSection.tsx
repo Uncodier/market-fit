@@ -8,6 +8,7 @@ import { useTeamMembers } from "./use-team-members"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { Badge } from "../ui/badge"
 import { licensePlanLabel } from "@/lib/license-entitlements"
+import { teamMembersInDisplayOrder } from "./team-types"
 
 interface TeamSectionProps {
   active: boolean
@@ -25,6 +26,8 @@ export function TeamSection({ active, siteId }: TeamSectionProps) {
     isSaving,
     isResending,
     isSavingMember,
+    isUpdatingMember,
+    handleSetMemberEnabled,
     canEditBlockedScreens,
     canManageTeam,
     validation,
@@ -56,7 +59,7 @@ export function TeamSection({ active, siteId }: TeamSectionProps) {
             </p>
           )}
           {licenseError && <p className="text-xs text-destructive mt-2" role="status">Member license could not be loaded. Refresh before inviting members.</p>}
-          <Button type="button" variant="ghost" size="sm" onClick={refreshLicense} disabled={isLoading || isSaving}>
+          <Button type="button" variant="ghost" size="sm" onClick={refreshLicense} disabled={isLoading || isSaving || !!isUpdatingMember}>
             Refresh member license
           </Button>
         </div>
@@ -65,7 +68,7 @@ export function TeamSection({ active, siteId }: TeamSectionProps) {
           variant="outline"
           size="sm"
           onClick={addTeamMember}
-          disabled={isLoading || isSaving || !canManageTeam || !license || license.siteId !== siteId}
+          disabled={isLoading || isSaving || !!isUpdatingMember || !canManageTeam || !license || license.siteId !== siteId}
           data-permission="allow"
         >
           <PlusCircle className="mr-2 h-4 w-4" />
@@ -87,9 +90,13 @@ export function TeamSection({ active, siteId }: TeamSectionProps) {
           variant="fancy"
         />
       ) : (
-        teamList.map((member, index) => (
+        teamMembersInDisplayOrder(teamList).map(({ member, index }) => (
           <div key={member.id || `new-${index}`} className="space-y-2">
-            {member.license_suspended && (
+            {member.manually_disabled ? (
+              <Badge variant="outline">
+                Deactivated · no member license used · records preserved · reactivate manually
+              </Badge>
+            ) : member.license_suspended && (
               <Badge variant="outline" className="border-amber-500 text-amber-700">
                 License suspended · {member.name || member.email} · access resumes when the site license has capacity
               </Badge>
@@ -100,9 +107,10 @@ export function TeamSection({ active, siteId }: TeamSectionProps) {
               canEditBlockedScreens={canEditBlockedScreens}
               canManageTeam={canManageTeam}
               isLoading={isLoading}
-              isSaving={isSaving}
+              isSaving={isSaving || !!isUpdatingMember}
               isSavingThis={isSavingMember === member.id}
               isResendingThis={isResending === member.id}
+              isUpdatingStatus={isUpdatingMember === member.id}
               hasChanges={hasMemberChanges(member)}
               canSave={canSaveMember(member)}
               validation={validation}
@@ -111,6 +119,7 @@ export function TeamSection({ active, siteId }: TeamSectionProps) {
               onSaveInvite={handleSaveTeamMembers}
               onRemove={() => removeTeamMember(index)}
               onResend={() => handleResendInvitation(member)}
+              onEnabledChange={(enabled) => handleSetMemberEnabled(member, enabled)}
             />
           </div>
         ))

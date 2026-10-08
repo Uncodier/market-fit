@@ -40,8 +40,12 @@ surface displays the **stored subscription interval**, not the selector's pendin
 choice. Its current total multiplies the per-add-on charge by the stored count.
 
 Current-plan comparison requires both the same plan and interval. A monthly
-engine subscription can select annual engine, and vice versa. Selecting a radio
+engine subscription can select annual engine, and vice versa. Selecting an interval tab
 only changes the display preference; checkout requires an explicit plan action.
+
+Annual Stripe Prices can be provisioned with the [operator script](STRIPE_ANNUAL_PRICE_SCRIPT.md).
+It previews by default and requires explicit approval flags for Price creation;
+it does not create subscriptions or automatically configure the portal.
 
 ## Frontend/backend contract
 
@@ -63,21 +67,77 @@ payment confirmation. Missing annual configuration and unsafe existing
 multi-item/add-on changes are errors, not monthly fallbacks or duplicate checkout.
 The hosted update path currently supports a single base item with no add-ons;
 for known add-on subscriptions, paid switch buttons are disabled and UI directs
-users to Manage Add-ons/billing support
-and surfaces the server's explicit error.
+users to billing support. The server also surfaces an explicit error.
 
-Paid same-interval tier changes are labeled **Manage** and open the existing Stripe
-portal instead of submitting the checkout transition the backend rejects. Portal
-availability/configuration still determines permitted changes; unavailable ones
-require billing support. Interval changes on a single base item still use explicit
-hosted confirmation. Existing subscription/item/customer discounts require support
-review to retain their terms, rather than silently removing or resetting a coupon.
+Paid-to-paid downgrades **within the same billing interval** schedule the new tier at the end of the current Stripe
+billing period (monthly or annual); the old plan and access remain until the
+next paid invoice confirms the new tier. Same-interval upgrades reset the billing
+anchor and invoice immediately with Stripe's unused-time proration credit; the
+update is pending if payment fails. Only the verified paid full-period invoice
+settlement activates the new plan. No client-side price, prorated amount, or
+entitlement is trusted. Pending upgrade payments return a verified hosted Stripe
+invoice URL so customers can complete authentication/payment. A retry of a
+partially configured downgrade checks and finishes its attached schedule; a
+retry after an upgrade payment verifies the paid invoice before acknowledging it.
+Unknown schedules, invoices or tax configurations require billing support.
+Downgrades that also change the billing interval require support review.
+Add-on changes still require billing support. Scheduled cancellation and payment
+details may still use the safe generic portal. Interval switches at the same tier
+still use explicit hosted confirmation. Existing subscription/item/customer
+discounts require support review to retain their terms, rather than silently
+removing or resetting a coupon.
 New subscriptions may still enter promotion codes in Checkout.
 
 Downgrade review uses `LicenseDowngradeDialog`; it never selects accounts for
 provider disconnection. Canceling review, failed portal/checkout requests and
 unconfirmed Stripe transitions leave accounts and entitlements unchanged. Only
 the effective server-confirmed license determines non-destructive suspension.
+
+## Separate billing portal configurations
+
+Both portal entry points select an explicit server-side configuration ID and
+retrieve its current settings before creating a session. They never edit a
+Stripe configuration, discover a default as a fallback, or accept a configuration
+ID/customer ID from the browser. Missing, inactive, unavailable, or unsafe portal
+configuration returns **409** and requires billing support; initial subscription
+Checkout does not require either portal configuration.
+
+- `STRIPE_BILLING_PORTAL_CONFIGURATION_ID` selects the generic `/api/stripe/portal`
+  configuration. `subscription_update.enabled` must be `false`, so the generic
+  portal cannot bypass plan, interval, quantity/add-on, discount or proration
+  checks. If cancellation is enabled, it must use `at_period_end` and `none`
+  proration. Payment-method management and invoice history remain available when
+  enabled by that configuration. This ID may explicitly select a safe existing
+  default, but there is no implicit default fallback.
+- `STRIPE_SUBSCRIPTION_UPDATE_PORTAL_CONFIGURATION_ID` selects a **different,
+  non-default** configuration for `subscription_update_confirm` only. It must be
+  active, allow exactly `price` updates (not quantity or promotion-code changes),
+  use `always_invoice`, contain no end-of-period scheduling conditions, and list
+  the selected target product **and** Price. Both IDs use Stripe's `bpc_...`
+  configuration-ID format; they are server-only settings, never `NEXT_PUBLIC_*`.
+
+Manager authorization and trusted return-URL checks precede billing access. The
+generic route uses the authenticated/RLS client and verifies the retrieved
+customer ID and `metadata.site_id` against that site's stored billing customer.
+The dedicated flow also verifies the current subscription's customer, stored
+subscription identity and single base-item quantity of one. Existing discounts,
+add-ons, pending updates and scheduled/canceling
+subscriptions still require support review. A portal URL or return redirect is
+not proof of payment and does not itself grant coverage or credits.
+
+Configure a new dedicated configuration only through a separately approved
+operator procedure; do **not** enable subscription updates on the shared generic
+portal in place. Changing application environment settings, any live Stripe
+configuration or Vercel/deployment settings is a separate approved operation, not
+part of the offline implementation or tests. Generic billing remains deliberately
+blocked until its explicit configuration is safe; the update flow remains
+blocked until its separately configured portal is safe.
+
+Offline regressions are in `__tests__/api/stripe-portal-safety.test.ts` and
+`__tests__/api/stripe-subscription-update-portal.test.ts`, selected by
+`jest.stripe-offline.config.cjs`. They mock Stripe/Supabase, exercise authentication,
+cross-site customer/subscription denial and unsafe/missing configuration, and
+assert no configuration/subscription mutations or default discovery occur.
 
 ## Public signup preference
 

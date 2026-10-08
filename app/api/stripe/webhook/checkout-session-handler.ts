@@ -37,11 +37,16 @@ export async function handleCheckoutSessionCompleted(params: {
   const session = await params.stripe.checkout.sessions.retrieve(
     payloadSession.id,
   )
-  if (session.payment_status !== "paid") {
+  const type = session.metadata?.type
+  // Only subscription invoices can authoritatively prove a fully discounted
+  // service. The initial handler still retrieves and verifies a PAID invoice;
+  // no_payment_required alone never authorizes credits, sales, or entitlements.
+  const zeroSubscription = type === "subscription" && session.mode === "subscription" &&
+    session.payment_status === "no_payment_required" && session.amount_total === 0
+  if (session.payment_status !== "paid" && !zeroSubscription) {
     throw new Error(`Stripe session ${session.id} is not paid`)
   }
 
-  const type = session.metadata?.type
   if (type === "sale" || type === "sale_order") {
     const settlement = await handleStripeSaleCheckoutCompleted({
       supabase: params.supabase,

@@ -1,8 +1,11 @@
 import type Stripe from 'stripe'
-import { SubscriptionRequestError, type BillingInterval } from '@/lib/subscription-pricing.server'
+import { SubscriptionRequestError, configuredSubscriptionPrice, type BillingInterval } from '@/lib/subscription-pricing.server'
 import { stripeObjectId, resolveStripeSubscriptionDetails } from '@/app/api/stripe/webhook/subscription-billing'
+import { pendingUpgrade, recoveredPaidUpgrade, scheduleDowngrade } from './tier-change-recovery'
 
-/** No subscription mutation: Stripe hosts customer confirmation and payment. */
+const PLAN_RANK = { engine: 1, foundry: 2, enterprise: 3 } as const
+
+/** Changes are fenced by the site's checkout lease and a verified Stripe subscription. */
 export async function existingSubscriptionFlow(params: {
   stripe: Stripe; customerId: string; subscriptionId?: string | null; siteId: string
   price: Stripe.Price; interval: BillingInterval; addonsCount: number
@@ -11,7 +14,7 @@ export async function existingSubscriptionFlow(params: {
 }) {
   const { stripe, customerId } = params
   const customer = await stripe.customers.retrieve(customerId)
-  if (customer.deleted || customer.metadata.site_id !== params.siteId) {
+  if (customer.deleted || customer.id !== customerId || customer.metadata?.site_id !== params.siteId) {
     throw new SubscriptionRequestError('Billing customer does not match this site', 409)
   }
   const listed = await stripe.subscriptions.list({ customer: customerId, status: 'all', limit: 100 })
@@ -22,9 +25,10 @@ export async function existingSubscriptionFlow(params: {
   }
   if (!current.length) return null
   const sub = current[0]
-  if (current.length !== 1 || sub.status !== 'active' || stripeObjectId(sub.customer) !== customerId ||
-      sub.items.has_more || sub.items.data.length !== 1 || params.addonsCount !== 0 ||
-      sub.pending_update || sub.schedule || sub.cancel_at_period_end || sub.cancel_at) {
+  if (current.length !== 1 || sub.status !== 'active' || !params.subscriptionId || sub.id !== params.subscriptionId ||
+      stripeObjectId(sub.customer) !== customerId ||
+      sub.items.has_more || sub.items.data.length !== 1 || sub.items.data[0].quantity !== 1 || params.addonsCount !== 0 ||
+      sub.cancel_at_period_end || sub.cancel_at) {
     throw new SubscriptionRequestError('This subscription requires a billing support update; no new subscription was created', 409)
   }
   // This portal flow cannot pass an existing discount ID. Reapplying its coupon/code can
@@ -34,21 +38,116 @@ export async function existingSubscriptionFlow(params: {
   }
   const details = resolveStripeSubscriptionDetails(sub)
   if (details.addonsCount !== 0) throw new SubscriptionRequestError('Subscription add-ons require billing support', 409)
+  const target = params.price.id
+  const targetPlan = configuredSubscriptionPrice(target)?.plan
+  if (!details.plan || !(details.plan in PLAN_RANK) || !targetPlan || targetPlan === 'addon' ||
+      params.price.recurring?.interval !== params.interval) {
+    throw new SubscriptionRequestError('Subscription plan requires billing support', 409)
+  }
+  if (sub.items.data[0].price.id === target) {
+    if (sub.schedule) throw new SubscriptionRequestError('Scheduled subscription requires billing support', 409)
+    return recoveredPaidUpgrade(stripe, sub, customerId, target)
+  }
+  if (sub.pending_update) {
+    const invoiceId = stripeObjectId(sub.latest_invoice)
+    if (!invoiceId) throw new SubscriptionRequestError('Pending payment requires billing support', 409)
+    return pendingUpgrade(await stripe.invoices.retrieve(invoiceId), sub, customerId, target)
+  }
+  // A scheduled transition must be no more expensive than the current service
+  // in its own currency/interval; the ordinal alone cannot compare annual to
+  // monthly charges. Restrict scheduling to the current billing interval.
+  if (PLAN_RANK[targetPlan] < PLAN_RANK[details.plan as keyof typeof PLAN_RANK] &&
+      details.billingInterval !== params.interval) {
+    throw new SubscriptionRequestError('Choose the current billing interval to schedule a downgrade', 409)
+  }
+  if (PLAN_RANK[targetPlan] < PLAN_RANK[details.plan as keyof typeof PLAN_RANK]) {
+    const item = sub.items.data[0]
+    const periodEnd = item.current_period_end
+    if (sub.collection_method !== 'charge_automatically' || !Number.isSafeInteger(periodEnd) ||
+        periodEnd <= Math.floor(Date.now() / 1000) || !Number.isSafeInteger(item.current_period_start) ||
+        item.current_period_start >= periodEnd) {
+      throw new SubscriptionRequestError('Subscription period requires billing support', 409)
+    }
+    if (sub.automatic_tax?.enabled || sub.default_tax_rates?.length || item.tax_rates?.length ||
+        sub.billing_thresholds || item.billing_thresholds || sub.pending_invoice_item_interval ||
+        sub.trial_end || sub.application_fee_percent || sub.transfer_data ||
+        sub.default_payment_method || sub.default_source || sub.on_behalf_of ||
+        sub.payment_settings?.payment_method_types?.some(method => method !== 'card') ||
+        sub.invoice_settings?.account_tax_ids?.length) {
+      throw new SubscriptionRequestError('Subscription billing settings require support to preserve; no change was made', 409)
+    }
+    return scheduleDowngrade({ stripe, sub, customer: customerId, target, periodEnd,
+      beforeProviderWrite: params.beforeProviderWrite, idempotencyKey: params.idempotencyKey })
+  }
+  if (sub.schedule) throw new SubscriptionRequestError('Scheduled subscription requires billing support', 409)
+  if (PLAN_RANK[targetPlan] > PLAN_RANK[details.plan as keyof typeof PLAN_RANK] &&
+      details.billingInterval === params.interval) {
+    if (sub.collection_method !== 'charge_automatically' ||
+        !Number.isSafeInteger(sub.items.data[0].current_period_end) ||
+        sub.items.data[0].current_period_end <= Math.floor(Date.now() / 1000)) {
+      throw new SubscriptionRequestError('Subscription payment requires billing support', 409)
+    }
+    // Stripe calculates unused-time credit even if a prior invoice was unpaid.
+    // Never credit service for which we cannot prove payment.
+    const previousInvoiceId = stripeObjectId(sub.latest_invoice)
+    if (!previousInvoiceId) throw new SubscriptionRequestError('Previous subscription payment requires billing support', 409)
+    const previousInvoice = await stripe.invoices.retrieve(previousInvoiceId)
+    const previousInvoiceSubscription = stripeObjectId(previousInvoice.parent?.subscription_details?.subscription)
+    const legacyPreviousInvoiceSubscription = stripeObjectId(
+      (previousInvoice as Stripe.Invoice & { subscription?: string }).subscription)
+    if (previousInvoice.id !== previousInvoiceId || previousInvoice.status !== 'paid' ||
+        stripeObjectId(previousInvoice.customer) !== customerId ||
+        (previousInvoiceSubscription && legacyPreviousInvoiceSubscription &&
+          previousInvoiceSubscription !== legacyPreviousInvoiceSubscription) ||
+        (previousInvoiceSubscription || legacyPreviousInvoiceSubscription) !== sub.id) {
+      throw new SubscriptionRequestError('Previous subscription payment requires billing support', 409)
+    }
+    // Resetting the anchor makes a FULL new service period on the paid invoice.
+    // The invoice settlement verifier rejects partial-period debits; Stripe
+    // applies the unused old service as a negative proration on this invoice.
+    params.beforeProviderWrite()
+    const updated = await stripe.subscriptions.update(sub.id, {
+      items: [{ id: sub.items.data[0].id, price: target, quantity: 1 }],
+      billing_cycle_anchor: 'now', proration_behavior: 'always_invoice',
+      payment_behavior: 'pending_if_incomplete', expand: ['latest_invoice'],
+    }, { idempotencyKey: `upgrade-${params.idempotencyKey}` })
+    const invoice = updated.latest_invoice
+    if (updated.id !== sub.id || stripeObjectId(updated.customer) !== customerId) {
+      throw new SubscriptionRequestError('Upgrade payment requires billing support to verify', 409)
+    }
+    if (updated.pending_update) {
+      const invoiceId = stripeObjectId(invoice)
+      if (!invoiceId) throw new SubscriptionRequestError('Pending payment requires billing support', 409)
+      return pendingUpgrade(await stripe.invoices.retrieve(invoiceId), updated, customerId, target)
+    }
+    if (typeof invoice === 'string' || !invoice || invoice.status !== 'paid') {
+      throw new SubscriptionRequestError('Upgrade payment requires billing support to verify', 409)
+    }
+    return { flow: 'prorated_upgrade', status: 'paid' }
+  }
   if (details.billingInterval === params.interval) {
-    throw new SubscriptionRequestError('Same-interval plan changes require billing support to verify paid coverage', 409)
+    throw new SubscriptionRequestError('Same-interval plan change requires billing support', 409)
   }
-  if (sub.items.data[0].price.id === params.price.id) {
-    throw new SubscriptionRequestError('This subscription already uses the selected plan and interval', 409)
+  // Never discover or reuse the shared/default portal: its general entry point
+  // must not expose subscription updates that bypass these eligibility checks.
+  const configurationId = process.env.STRIPE_SUBSCRIPTION_UPDATE_PORTAL_CONFIGURATION_ID?.trim()
+  const genericConfigurationId = process.env.STRIPE_BILLING_PORTAL_CONFIGURATION_ID?.trim()
+  const configurationError = () => new SubscriptionRequestError(
+    'Hosted subscription confirmation is not safely configured; contact billing support', 409)
+  if (!configurationId || !/^bpc_[A-Za-z0-9]+$/.test(configurationId) || configurationId === genericConfigurationId) {
+    throw configurationError()
   }
-  const configurations = await stripe.billingPortal.configurations.list({ active: true, is_default: true, limit: 2 })
-  const config = configurations.data[0]
-  const update = config?.features.subscription_update
+  let config: Stripe.BillingPortal.Configuration
+  try { config = await stripe.billingPortal.configurations.retrieve(configurationId) }
+  catch { throw configurationError() }
+  const update = config?.features?.subscription_update
   const targetProduct = stripeObjectId(params.price.product)
-  if (configurations.has_more || configurations.data.length !== 1 || !update?.enabled ||
-      !update.default_allowed_updates.includes('price') || update.proration_behavior !== 'always_invoice' ||
-      update.schedule_at_period_end?.conditions.length ||
-      !update.products?.some((product) => product.product === targetProduct && product.prices.includes(params.price.id))) {
-    throw new SubscriptionRequestError('Hosted subscription confirmation is not safely configured; contact billing support', 409)
+  if (config?.id !== configurationId || config.active !== true || config.is_default !== false || !update?.enabled ||
+      update.default_allowed_updates?.length !== 1 || update.default_allowed_updates[0] !== 'price' ||
+      update.proration_behavior !== 'always_invoice' ||
+      update.schedule_at_period_end?.conditions?.length !== 0 ||
+      !targetProduct || !update.products?.some((product) => product.product === targetProduct && product.prices.includes(params.price.id))) {
+    throw configurationError()
   }
   params.beforeProviderWrite()
   const session = await stripe.billingPortal.sessions.create({

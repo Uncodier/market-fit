@@ -11,6 +11,7 @@ import { useOptionalPermissions } from "@/app/context/PermissionContext"
 import { canManageTeamMembers } from "@/lib/auth/screen-access"
 import { emitBillingLimit, isBillingUpgradeRequired } from "@/lib/billing-limit-errors"
 import { memberUpgradePayload } from "@/lib/license-entitlements"
+import { useMemberActivation } from "./use-member-activation"
 import {
   screensEqual,
   siteMemberToFormMember,
@@ -18,6 +19,7 @@ import {
   formRoleToInvitationRole,
   membersToOriginalMap,
   isValidTeamEmail,
+  teamMembersInDisplayOrder,
   type FormTeamMember,
   type TeamRole,
 } from "./team-types"
@@ -56,6 +58,10 @@ export function useTeamMembers({ active, siteId }: UseTeamMembersOptions) {
   const [originalMembers, setOriginalMembers] = useState<Map<string, FormTeamMember>>(new Map())
   const debouncedUpdateRef = useRef<((newTeamList: FormTeamMember[]) => void) | null>(null)
   const validation = useTeamMemberValidation(teamList)
+  const teamListRef = useRef(teamList)
+  teamListRef.current = teamList
+  const siteIdRef = useRef(siteId)
+  siteIdRef.current = siteId
 
   const updateFormValues = useCallback((newTeamList: FormTeamMember[]) => {
     form.setValue("team_members", newTeamList.map(member => ({ ...member, blocked_screens: member.blocked_screens ?? [] })), {
@@ -91,13 +97,34 @@ export function useTeamMembers({ active, siteId }: UseTeamMembersOptions) {
   const refreshLicense = useCallback(async () => {
     if (!siteId || !active) return
     try {
-      setLicense(await siteMembersService.getLicense(siteId))
+      const nextLicense = await siteMembersService.getLicense(siteId)
+      if (siteIdRef.current !== siteId) return
+      setLicense(nextLicense)
       setLicenseError(false)
     } catch {
+      if (siteIdRef.current !== siteId) return
       setLicense(null)
       setLicenseError(true)
     }
   }, [siteId, active])
+
+  const onActivationUpdated = (members: SiteMember[]) => {
+    const merge = (member: FormTeamMember) => {
+      const saved = members.find(candidate => candidate.id === member.id)
+      return saved ? { ...member, status: saved.status, license_suspended: saved.license_suspended,
+        manually_disabled: saved.manually_disabled } : member
+    }
+    // Merge only activation state: toggling must not discard unsaved member edits or invitations.
+    const next = teamListRef.current.map(merge)
+    teamListRef.current = next
+    setTeamList(next)
+    debouncedUpdateRef.current?.(next)
+    setOriginalMembers(previous => new Map([...previous].map(([id, member]) => [id, merge(member)])))
+  }
+  const { isUpdatingMember, handleSetMemberEnabled } = useMemberActivation({
+    siteId, canManageTeam, busy: isLoading || isSaving || !!isSavingMember || !!isResending,
+    onMembersUpdated: onActivationUpdated, refreshLicense,
+  })
 
   useEffect(() => {
     if (!active || !siteId) return
@@ -114,7 +141,7 @@ export function useTeamMembers({ active, siteId }: UseTeamMembersOptions) {
   useEffect(() => {
     if (active && teamList.length > 0) {
       window.dispatchEvent(new CustomEvent("teamMembersUpdated", {
-        detail: teamList.map((member, index) => ({
+        detail: teamMembersInDisplayOrder(teamList).map(({ member, index }) => ({
           id: `team-member-${index}`,
           title: member.name || member.email || `Member ${index + 1}`,
         })),
@@ -426,6 +453,8 @@ export function useTeamMembers({ active, siteId }: UseTeamMembersOptions) {
     isSaving,
     isResending,
     isSavingMember,
+    isUpdatingMember,
+    handleSetMemberEnabled,
     canEditBlockedScreens,
     canManageTeam,
     validation,

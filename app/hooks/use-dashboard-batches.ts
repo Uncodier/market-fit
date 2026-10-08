@@ -7,6 +7,7 @@ import { useSite } from "@/app/context/SiteContext"
 import { useWidgetContext } from "@/app/context/WidgetContext"
 import { useReportDataContext } from "@/app/dashboard/ReportDataContext"
 import { isReportBatch, reportCurrencyOptions, reportMetricKeys, type ReportBatch, type ReportBatchKind } from "@/lib/dashboard/report-groups"
+import { isKnownDemoSite } from "@/lib/demo-data"
 
 export class DashboardBatchError extends Error {
   constructor(message: string, readonly status?: number, readonly availableCurrencies?: string[]) {
@@ -22,6 +23,7 @@ function useDashboardBatch(kind: ReportBatchKind, startDate: Date, endDate: Date
   const { performanceGroup, overviewGroup, currency } = useReportDataContext()
   const group = kind === "performance" ? performanceGroup : overviewGroup
   const enabled = !(kind === "overview" && group === "activity")
+  const localDemo = isKnownDemoSite(currentSite?.id) && (kind === "overview" || group === "outcomes")
   const widgetsReady = widgetContext?.shouldExecuteWidgets !== false
   const params = new URLSearchParams({
     siteId: currentSite?.id ?? "",
@@ -34,12 +36,20 @@ function useDashboardBatch(kind: ReportBatchKind, startDate: Date, endDate: Date
   const url = `/api/dashboard/${kind}?${params}`
   const hasSite = Boolean(currentSite?.id && currentSite.id !== "default")
   // Identity isolates browser caches across sessions; never send it as authority.
-  const key = enabled && widgetsReady && hasSite && !siteLoading && !authLoading && user?.id
-    ? [url, user.id] : null
+  const identity = user?.id || (localDemo ? currentSite?.id : undefined)
+  const key = enabled && widgetsReady && hasSite && !siteLoading && (localDemo || !authLoading) && identity
+    ? [url, identity] : null
 
   const batch = useReportResource<ReportBatch, DashboardBatchError>(
     key,
     async ([requestUrl]: [string, string | undefined]) => {
+      if (localDemo) {
+        const { loadDemoDashboardBatch } = await import("@/lib/demo-data/overview-report")
+        const data = await loadDemoDashboardBatch(kind, new URL(requestUrl, "http://demo.local").searchParams)
+        const keys = reportMetricKeys(kind, group)
+        if (!keys || !isReportBatch(data, keys)) throw new DashboardBatchError(`Invalid ${kind} demo metrics`)
+        return data
+      }
       const response = await fetch(requestUrl)
       if (!response.ok) {
         if (response.status === 422) {
@@ -57,8 +67,8 @@ function useDashboardBatch(kind: ReportBatchKind, startDate: Date, endDate: Date
   )
 
   const status = !enabled ? "disabled"
-    : authLoading || siteLoading ? "loading"
-    : !user?.id ? "unauthenticated"
+    : (!localDemo && authLoading) || siteLoading ? "loading"
+    : !identity ? "unauthenticated"
     : !hasSite ? "no-site"
     : !widgetsReady || batch.isLoading || batch.isValidating || (!batch.data && !batch.error) ? "loading"
     : batch.error ? "error" : "ready"

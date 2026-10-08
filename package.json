@@ -15,6 +15,7 @@
     "typecheck": "next typegen && tsc --noEmit",
     "test": "jest",
     "test:watch": "jest --watch",
+    "stripe:annual-prices": "node scripts/stripe-annual-prices.cjs",
     "test:e2e": "node scripts/e2e/run.cjs",
     "test:e2e:headed": "node scripts/e2e/run.cjs --headed",
     "test:e2e:validate": "node scripts/e2e/run.cjs --suite regression --validate",

@@ -21,7 +21,7 @@ jest.mock('@/app/hooks/use-auth', () => ({ useAuth: () => ({ user: { email: 'use
 jest.mock('@/app/context/LocalizationContext', () => ({ useLocalization: () => ({ t: () => '' }) }))
 jest.mock('@/app/services/billing-service', () => ({ billingService: { createSubscriptionCheckoutSession: jest.fn(), createPortalSession: jest.fn() } }))
 jest.mock('@/app/services/site-members-service', () => ({ siteMembersService: { getLicense: jest.fn().mockResolvedValue({ current: 1, total: 1 }) } }))
-jest.mock('sonner', () => ({ toast: { error: jest.fn(), success: jest.fn() } }))
+jest.mock('sonner', () => ({ toast: { error: jest.fn(), success: jest.fn(), info: jest.fn() } }))
 jest.mock('@/lib/billing-limits', () => ({ countSocialAccounts: jest.fn(() => 0), countAgentChannels: () => 0, getSocialAccountLimit: () => 3, getAgentChannelLimit: () => 1, getRequiredAddons: () => 0 }))
 jest.mock('@/app/components/billing/stripe-payment-method', () => ({ StripePaymentMethod: () => null }))
 jest.mock('@/app/components/billing/purchase-credits-dialog', () => ({ PurchaseCreditsDialog: () => null }))
@@ -31,21 +31,17 @@ jest.mock('@/app/components/settings/disconnect-remote-accounts', () => ({ disco
 describe('billing form interval contract', () => {
   beforeEach(() => { localStorage.clear(); jest.clearAllMocks(); window.history.replaceState({}, '', '/billing'); mockSite.billing.plan = 'engine'; mockSite.billing.billing_interval = 'month'; jest.mocked(countSocialAccounts).mockReturnValue(0) })
 
-  it('reviews paid downgrades without disconnecting providers before Stripe confirmation', async () => {
+  it('does not schedule downgrades across intervals or disconnect providers', async () => {
     mockSite.billing.plan = 'foundry'
     jest.mocked(countSocialAccounts).mockReturnValue(6)
-    jest.mocked(billingService.createSubscriptionCheckoutSession).mockResolvedValue({ success: false, error: 'Confirmation unavailable' })
     render(<BillingForm />)
     fireEvent.mouseDown(screen.getByRole('tab', { name: /Annual/ }), { button: 0, ctrlKey: false })
     fireEvent.click(screen.getByRole('button', { name: 'Downgrade to Starter annual' }))
-    expect(screen.getByRole('alertdialog')).toHaveTextContent('suspended, not deleted')
+    expect(toast.error).toHaveBeenCalledWith('Choose your current billing interval to schedule a downgrade, or contact billing support.')
     expect(billingService.createSubscriptionCheckoutSession).not.toHaveBeenCalled()
-    fireEvent.click(screen.getByRole('button', { name: 'Review in Stripe' }))
-    await waitFor(() => expect(billingService.createSubscriptionCheckoutSession).toHaveBeenCalledWith('site-example', 'engine', 'user@example.test', 0, 'year'))
     expect(disconnectOutstandSocial).not.toHaveBeenCalled()
     expect(disconnectZavuChannel).not.toHaveBeenCalled()
     expect(mockUpdateBilling).not.toHaveBeenCalled()
-    expect(toast.error).toHaveBeenCalledWith('Confirmation unavailable')
   })
 
   it('submits same-plan annual change as fifth arg, shows server error and never changes billing optimistically', async () => {
@@ -99,34 +95,58 @@ describe('billing form interval contract', () => {
     expect(screen.getByText('Current billing: Annual')).toBeInTheDocument()
     await waitFor(() => expect(screen.getByText('Minimum required plan')).toBeInTheDocument())
   })
-
-  it('routes same-interval tier changes to management and surfaces portal rejection without checkout', async () => {
-    jest.mocked(billingService.createPortalSession).mockResolvedValue({ success: false, error: 'Portal transition unavailable' })
+  it('submits same-interval upgrades without opening the general portal or writing entitlements', async () => {
+    jest.mocked(billingService.createSubscriptionCheckoutSession).mockResolvedValue({ success: false, error: 'Payment unavailable' })
     render(<BillingForm />)
-    fireEvent.click(screen.getByRole('button', { name: 'Manage Pro monthly in Stripe' }))
-    await waitFor(() => expect(billingService.createPortalSession).toHaveBeenCalledWith('site-example', window.location.href))
+    fireEvent.click(screen.getByRole('button', { name: 'Upgrade to Pro monthly' }))
+    expect(screen.getByRole('alertdialog')).toHaveTextContent('proportional credit')
     expect(billingService.createSubscriptionCheckoutSession).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm and pay' }))
+    await waitFor(() => expect(billingService.createSubscriptionCheckoutSession).toHaveBeenCalledWith('site-example', 'foundry', 'user@example.test', 0, 'month'))
+    expect(billingService.createPortalSession).not.toHaveBeenCalled()
+    expect(toast.error).toHaveBeenCalledWith('Payment unavailable')
     expect(mockUpdateBilling).not.toHaveBeenCalled()
-    expect(toast.error).toHaveBeenCalledWith('Portal transition unavailable')
   })
-
-  it('failed same-interval paid downgrade does not disconnect accounts or write entitlements', async () => {
+  it('cancels same-interval upgrades without charging', () => {
+    render(<BillingForm />)
+    fireEvent.click(screen.getByRole('button', { name: 'Upgrade to Pro monthly' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Keep current plan' }))
+    expect(billingService.createSubscriptionCheckoutSession).not.toHaveBeenCalled()
+  })
+  it('directs pending upgrade payments to Stripe without granting access optimistically', async () => {
+    jest.mocked(billingService.createSubscriptionCheckoutSession).mockResolvedValue({ success: true,
+      flow: 'prorated_upgrade', status: 'pending_payment', url: 'https://invoice.stripe.com/i/pay' })
+    render(<BillingForm />)
+    fireEvent.click(screen.getByRole('button', { name: 'Upgrade to Pro monthly' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm and pay' }))
+    await waitFor(() => expect(toast.info).toHaveBeenCalledWith(expect.stringContaining('Complete your upgrade payment')))
+    expect(mockUpdateBilling).not.toHaveBeenCalled()
+  })
+  it('reviews same-interval paid downgrade and never disconnects accounts or writes entitlements', async () => {
     mockSite.billing.plan = 'foundry'
     jest.mocked(countSocialAccounts).mockReturnValue(10)
-    jest.mocked(billingService.createPortalSession).mockRejectedValue(new Error('Portal rejected'))
     render(<BillingForm />)
-    fireEvent.click(screen.getByRole('button', { name: 'Manage Starter monthly in Stripe' }))
-    await waitFor(() => expect(toast.error).toHaveBeenCalledWith('An error occurred'))
+    fireEvent.click(screen.getByRole('button', { name: 'Downgrade to Starter monthly' }))
+    expect(screen.getByRole('alertdialog')).toHaveTextContent('end of your current billing period')
+    expect(billingService.createPortalSession).not.toHaveBeenCalled()
     expect(disconnectOutstandSocial).not.toHaveBeenCalled(); expect(disconnectZavuChannel).not.toHaveBeenCalled()
     expect(mockUpdateBilling).not.toHaveBeenCalled()
+    expect(billingService.createSubscriptionCheckoutSession).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: 'Keep current plan' }))
+  })
+
+  it('does not send add-on changes to the portal that cannot safely change subscriptions', () => {
+    render(<BillingForm />)
+    fireEvent.click(screen.getByRole('button', { name: 'Add-on support' }))
+    expect(toast.error).toHaveBeenCalledWith('Add-on changes require billing support. No subscription change was made.')
+    expect(billingService.createPortalSession).not.toHaveBeenCalled()
     expect(billingService.createSubscriptionCheckoutSession).not.toHaveBeenCalled()
   })
 
   it('canceling paid downgrade review neither starts checkout nor disconnects connections', async () => {
     mockSite.billing.plan = 'foundry'
     render(<BillingForm />)
-    fireEvent.mouseDown(screen.getByRole('tab', { name: /Annual/ }), { button: 0, ctrlKey: false })
-    fireEvent.click(screen.getByRole('button', { name: 'Downgrade to Starter annual' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Downgrade to Starter monthly' }))
     expect(screen.getByRole('alertdialog')).toHaveTextContent('Nothing is disconnected')
     fireEvent.click(screen.getByRole('button', { name: 'Keep current plan' }))
     expect(billingService.createSubscriptionCheckoutSession).not.toHaveBeenCalled()

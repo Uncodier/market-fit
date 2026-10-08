@@ -23,6 +23,7 @@ import { StripePaymentMethod } from "./stripe-payment-method"
 import { ConnectedAccountsAddons } from "./connected-accounts-addons"
 import { countSocialAccounts, countAgentChannels, getSocialAccountLimit, getAgentChannelLimit, getRequiredAddons } from "@/lib/billing-limits"
 import { LicenseDowngradeDialog } from "./license-downgrade-dialog"
+import { UpgradeConfirmationDialog } from "./upgrade-confirmation-dialog"
 import { useRequiredLicense } from "./use-required-license"
 import { requiresSubscriptionManagement } from './subscription-transitions'
 
@@ -75,6 +76,7 @@ export function BillingForm({ initialData }: BillingFormProps) {
   // Downgrade modal state
   const [downgradeModalOpen, setDowngradeModalOpen] = useState(false)
   const [pendingDowngradePlan, setPendingDowngradePlan] = useState<BillingPlan | null>(null)
+  const [pendingUpgradePlan, setPendingUpgradePlan] = useState<BillingPlan | null>(null)
 
   const form = useForm<BillingFormValues>({
     resolver: zodResolver(billingFormSchema),
@@ -158,16 +160,27 @@ export function BillingForm({ initialData }: BillingFormProps) {
 
     if (plan === currentPlan && (plan === 'commission' || billingInterval === currentInterval)) return
 
-    // Stripe controls cancellation and unsupported tier changes; keep paid allowances until settlement/expiry.
+    // Free-plan cancellation stays in the restricted general portal. Paid
+    // changes go through the server's verified subscription update flow.
     if (requiresSubscriptionManagement(currentPlan, plan, currentInterval, billingInterval)) {
-      await handleManageSubscription()
-      return
+      if (plan === 'commission') {
+        await handleManageSubscription()
+        return
+      }
     }
     // Suspension is a server-owned consequence of an effective plan change.
     // Never disconnect provider accounts before Stripe confirms the downgrade.
-    if (!skipReview && PLAN_ORDER[plan] < PLAN_ORDER[currentPlan]) {
+    if (isPaidPlan && !skipReview && PLAN_ORDER[plan] < PLAN_ORDER[currentPlan]) {
+      if (billingInterval !== currentInterval) {
+        toast.error('Choose your current billing interval to schedule a downgrade, or contact billing support.')
+        return
+      }
       setPendingDowngradePlan(plan)
       setDowngradeModalOpen(true)
+      return
+    }
+    if (!skipReview && isPaidPlan && billingInterval === currentInterval && PLAN_ORDER[plan] > PLAN_ORDER[currentPlan]) {
+      setPendingUpgradePlan(plan)
       return
     }
 
@@ -181,8 +194,23 @@ export function BillingForm({ initialData }: BillingFormProps) {
         addonsCount,
         billingInterval
       )
+      if (result.success && result.flow === 'prorated_upgrade' && result.status === 'pending_payment' && result.url) {
+        toast.info('Complete your upgrade payment on Stripe. Your current plan remains active until payment is confirmed.')
+        window.location.href = result.url
+        return
+      }
       if (result.success && result.url) {
         window.location.href = result.url
+        return
+      }
+      if (result.success && result.flow === 'scheduled_downgrade') {
+        toast.success(`Downgrade scheduled for ${new Date(result.effectiveAt!).toLocaleDateString()}. Your current plan remains active until then.`)
+        await refreshSites()
+        return
+      }
+      if (result.success && result.flow === 'prorated_upgrade') {
+        if (result.status === 'paid') toast.success('Payment confirmed. Refresh billing to view your updated plan.')
+        await refreshSites()
         return
       }
       toast.error(result.error || "Failed to create checkout session")
@@ -199,6 +227,12 @@ export function BillingForm({ initialData }: BillingFormProps) {
     const target = pendingDowngradePlan
     setDowngradeModalOpen(false)
     setPendingDowngradePlan(null)
+    await handleChangePlan(target, true)
+  }
+  const handleUpgradeConfirm = async () => {
+    if (!pendingUpgradePlan) return
+    const target = pendingUpgradePlan
+    setPendingUpgradePlan(null)
     await handleChangePlan(target, true)
   }
 
@@ -298,7 +332,7 @@ export function BillingForm({ initialData }: BillingFormProps) {
           />
           <SectionCardContent className="space-y-6">
               <p className="text-sm text-muted-foreground">Current billing: {isPaidPlan ? (currentInterval === 'year' ? 'Annual' : 'Monthly') : 'Free plan'}</p>
-              <BillingIntervalSelector value={billingInterval} onChange={changeBillingInterval} disabled={isSavingPlan || downgradeModalOpen} />
+              <BillingIntervalSelector value={billingInterval} onChange={changeBillingInterval} disabled={isSavingPlan || downgradeModalOpen || !!pendingUpgradePlan} />
               <SubscriptionPlans
                 currentPlan={currentPlan}
                 requiredPlan={requiredPlan}
@@ -308,8 +342,8 @@ export function BillingForm({ initialData }: BillingFormProps) {
                 blockedPaidChanges={isPaidPlan && addonsCount > 0}
                 onChangePlan={handleChangePlan}
               />
-              {isPaidPlan && addonsCount > 0 && <p className="text-sm text-muted-foreground">Subscriptions with add-ons cannot switch plans or intervals here. Use Manage Add-ons or contact billing support to review your subscription.</p>}
-              {isPaidPlan && <p className="text-sm text-muted-foreground">Same-interval tier changes are managed in Stripe, not new checkout. Available changes depend on your portal configuration; contact billing support if unavailable. Existing discounts require support review to preserve their terms. No accounts are disconnected before a confirmed change.</p>}
+              {isPaidPlan && addonsCount > 0 && <p className="text-sm text-muted-foreground">Subscriptions with add-ons cannot switch plans or intervals here. Contact billing support to review changes to your subscription.</p>}
+              {isPaidPlan && <p className="text-sm text-muted-foreground">Same-interval paid downgrades take effect at the next renewal. Same-interval upgrades bill now with a prorated credit for unused time on your current plan; access changes only after payment is confirmed. Downgrades across billing intervals, add-ons and existing discounts require billing support. No accounts are disconnected before a confirmed change.</p>}
             </SectionCardContent>
         </SectionCard>
           
@@ -326,7 +360,7 @@ export function BillingForm({ initialData }: BillingFormProps) {
           agentUsagePercentage={agentUsagePercentage}
           isPaidPlan={isPaidPlan}
           isSaving={isSavingPlan}
-          onManageAddons={handleManageSubscription}
+          onManageAddons={() => toast.error('Add-on changes require billing support. No subscription change was made.')}
         />
 
         {isPaidPlan && (
@@ -377,6 +411,12 @@ export function BillingForm({ initialData }: BillingFormProps) {
       onClose={() => { setDowngradeModalOpen(false); setPendingDowngradePlan(null) }}
       busy={isSavingPlan}
       onConfirm={handleDowngradeConfirm}
+    />
+    <UpgradeConfirmationDialog
+      open={!!pendingUpgradePlan}
+      onClose={() => setPendingUpgradePlan(null)}
+      onConfirm={handleUpgradeConfirm}
+      busy={isSavingPlan}
     />
     </>
   )

@@ -7,5 +7,5 @@ module.exports = {
     '^server-only$': '<rootDir>/node_modules/next/dist/compiled/server-only/empty.js',
   },
   transform: { '^.+\\.[jt]sx?$': ['next/dist/build/swc/jest-transformer', {}] },
-  testMatch: ['<rootDir>/__tests__/api/*stripe*.test.ts', '<rootDir>/__tests__/api/webhooks/stripe*.test.ts'],
+  testMatch: ['<rootDir>/__tests__/api/*stripe*.test.ts', '<rootDir>/__tests__/api/webhooks/stripe*.test.ts', '<rootDir>/__tests__/scripts/stripe-annual-prices.test.js'],
 }

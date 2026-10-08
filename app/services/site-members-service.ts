@@ -20,6 +20,8 @@ export interface SiteMember {
   position: string | null
   status: 'pending' | 'active' | 'rejected'
   license_suspended?: boolean
+  manually_disabled?: boolean
+  is_primary_owner?: boolean
   blocked_screens?: string[]
   restrict_to_assigned_only?: boolean
   emailConfirmed?: boolean // Track if user has confirmed their email
@@ -161,6 +163,27 @@ export const siteMembersService = {
     }
   },
   
+  async setMemberEnabled(siteId: string, memberId: string, enabled: boolean): Promise<SiteMember> {
+    const response = await fetch(`/api/site-members/${encodeURIComponent(siteId)}/enabled`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ memberId, enabled }),
+    })
+    const result = await response.json().catch(() => null)
+    if (!response.ok || result?.success !== true) {
+      const upgradeRequired = response.status === 402 ? parseBillingLimitError(result) : null
+      if (upgradeRequired?.kind === 'members' && upgradeRequired.siteId === siteId) {
+        throw new BillingUpgradeRequired(upgradeRequired)
+      }
+      throw new Error(typeof result?.error === 'string' ? result.error : 'Failed to update member access')
+    }
+    const member = result.member
+    if (!member || Array.isArray(member) || member.id !== memberId || member.site_id !== siteId) {
+      throw new Error('Invalid member enabled response')
+    }
+    return member
+  },
+
   // Update a member's details
   async updateMember(siteId: string, memberId: string, updates: Partial<SiteMemberInput>): Promise<SiteMember> {
     const response = await fetch(`/api/site-members/${siteId}`, {

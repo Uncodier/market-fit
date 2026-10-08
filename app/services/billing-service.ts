@@ -291,7 +291,9 @@ class BillingService {
     userEmail: string,
     addonsCount: number = 0,
     billingInterval: BillingInterval = 'month'
-  ): Promise<{ success: boolean; url?: string; sessionId?: string; error?: string }> {
+  ): Promise<{ success: boolean; url?: string; sessionId?: string; error?: string;
+    flow?: 'scheduled_downgrade' | 'prorated_upgrade' | 'subscription_update_confirm';
+    effectiveAt?: string; status?: 'paid' | 'pending_payment' }> {
     try {
       if (await isDemoModeActive()) {
         console.log('🤖 DEMO MODE: Simulated checkout subscription session');
@@ -314,13 +316,21 @@ class BillingService {
         }),
       })
 
-      const { url, sessionId, error } = await response.json()
+      const { url, sessionId, error, flow, effectiveAt, status } = await response.json()
 
-      if (!response.ok || error || typeof url !== 'string' || !url) {
+      const scheduled = flow === 'scheduled_downgrade' && typeof effectiveAt === 'string' &&
+        Number.isFinite(Date.parse(effectiveAt))
+      const upgraded = flow === 'prorated_upgrade' && (status === 'paid' ||
+        (status === 'pending_payment' && typeof url === 'string' && (() => {
+          try { const invoice = new URL(url); return invoice.protocol === 'https:' &&
+            invoice.hostname === 'invoice.stripe.com' && !invoice.username && !invoice.password }
+          catch { return false }
+        })()))
+      if (!response.ok || error || (!scheduled && !upgraded && (typeof url !== 'string' || !url))) {
         return { success: false, error: error || 'Failed to create subscription checkout session' }
       }
 
-      return { success: true, url, sessionId }
+      return { success: true, url, sessionId, flow, effectiveAt, status }
     } catch (error) {
       console.error('Error creating subscription checkout:', error)
       return { 

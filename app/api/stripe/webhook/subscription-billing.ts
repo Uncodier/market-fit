@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
 import type Stripe from "stripe"
-import { configuredSubscriptionPrice, validateSubscriptionPrice } from "@/lib/subscription-pricing.server"
+import { validateSubscriptionPrice } from "@/lib/subscription-pricing.server"
+import { configuredHistoricalSubscriptionPrice } from "@/lib/subscription-history-pricing.server"
 
 export type SubscriptionBillingClient = Pick<SupabaseClient, "from" | "rpc">
 export type SubscriptionStripeClient = {
@@ -57,7 +58,7 @@ export function resolveStripeSubscriptionDetails(subscription: Stripe.Subscripti
     throw new Error("Subscription items are incomplete")
   }
   const mapped = items.map((item) => {
-    const config = configuredSubscriptionPrice(item.price.id)
+    const config = configuredHistoricalSubscriptionPrice(item.price.id)
     if (!config) throw new Error("Missing or unknown subscription plan price")
     validateSubscriptionPrice(item.price, config)
     return { item, config }

@@ -13,8 +13,7 @@ import {
   SectionCardFooter,
 } from "@/app/components/ui/section-card"
 import { Button } from "../ui/button"
-import { Trash2, Mail, CheckCircle2, Clock, Save, Loader } from "../ui/icons"
-import { Badge } from "../ui/badge"
+import { Trash2, Mail, Save, Loader } from "../ui/icons"
 import { Tabs, TabsList, TabsTrigger } from "../ui/tabs"
 import {
   AlertDialog,
@@ -28,6 +27,7 @@ import {
   AlertDialogTrigger,
 } from "../ui/alert-dialog"
 import { MemberBlockedScreens } from "./MemberBlockedScreens"
+import { MemberStatusControl } from "./MemberStatusControl"
 import { Switch } from "../ui/switch"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import {
@@ -35,6 +35,7 @@ import {
   getMemberInitials,
   isPendingInvitation,
   isValidTeamEmail,
+  isInactiveTeamMember,
   type FormTeamMember,
   type TeamRole,
 } from "./team-types"
@@ -56,6 +57,7 @@ interface TeamMemberCardProps {
   isSaving: boolean
   isSavingThis: boolean
   isResendingThis: boolean
+  isUpdatingStatus: boolean
   hasChanges: boolean
   canSave: boolean
   validation: MemberValidation
@@ -64,25 +66,7 @@ interface TeamMemberCardProps {
   onSaveInvite: () => void
   onRemove: () => void
   onResend: () => void
-}
-
-function MemberStatusBadge({ member }: { member: FormTeamMember }) {
-  const { t } = useLocalization()
-  if (member.status === "active") {
-    return (
-      <Badge className="bg-green-50 text-green-700 hover:bg-green-100 border-green-200">
-        <CheckCircle2 className="h-3 w-3 mr-1" /> {t("settings.team.active") || "Active"}
-      </Badge>
-    )
-  }
-  if (member.status === "pending") {
-    return (
-      <Badge className="bg-yellow-50 text-yellow-700 hover:bg-yellow-100 border-yellow-200">
-        <Clock className="h-3 w-3 mr-1" /> {t("settings.team.pending") || "Pending"}
-      </Badge>
-    )
-  }
-  return null
+  onEnabledChange: (enabled: boolean) => void
 }
 
 export function TeamMemberCard({
@@ -94,6 +78,7 @@ export function TeamMemberCard({
   isSaving,
   isSavingThis,
   isResendingThis,
+  isUpdatingStatus,
   hasChanges,
   canSave,
   validation,
@@ -102,6 +87,7 @@ export function TeamMemberCard({
   onSaveInvite,
   onRemove,
   onResend,
+  onEnabledChange,
 }: TeamMemberCardProps) {
   const { t } = useLocalization()
   const form = useFormContext<SiteFormValues>()
@@ -111,16 +97,16 @@ export function TeamMemberCard({
     member.originalRole === "owner" ||
     member.originalRole === "admin"
   const canChangeRole = canManageTeam && validation.canChangeRole(member)
-  const selectedRole = TEAM_ROLES.find((role) => role.value === member.role)
   const displayName = member.name || member.email || (t("settings.team.newMember") || "New Member")
-  const showResend = isPendingInvitation(member)
-  const showEmailField = !isExisting || showResend
+  const showResend = isPendingInvitation(member) && !member.manually_disabled
+  const showEmailField = !isExisting || isPendingInvitation(member)
   const hasInvalidEmail = !!member.email && !isValidTeamEmail(member.email)
+  const isCollapsed = isInactiveTeamMember(member)
 
   return (
     <SectionCard id={`team-member-${index}`}>
-      <SectionCardHeader className="border-b border-border/70">
-        <div className="flex items-start justify-between gap-3">
+      <SectionCardHeader className={isCollapsed ? "" : "border-b border-border/70"}>
+        <div className="flex items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-3">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary">
               {getMemberInitials(member.name, member.email)}
@@ -144,10 +130,16 @@ export function TeamMemberCard({
               </p>
             </div>
           </div>
-          <MemberStatusBadge member={member} />
+          <MemberStatusControl
+            member={member}
+            disabled={!canManageTeam || isLoading || isSaving || isSavingThis || isResendingThis}
+            isUpdating={isUpdatingStatus}
+            onEnabledChange={onEnabledChange}
+          />
         </div>
       </SectionCardHeader>
 
+      {!isCollapsed && <>
       <SectionCardContent className="pt-4">
         <div className="space-y-4">
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
@@ -187,7 +179,6 @@ export function TeamMemberCard({
                   member={member}
                   field={field}
                   canChangeRole={canChangeRole}
-                  selectedLabel={selectedRole?.label}
                   onUpdate={onUpdate}
                   getRoleChangeMessage={validation.getRoleChangeMessage}
                 />
@@ -237,7 +228,7 @@ export function TeamMemberCard({
                 variant="ghost"
                 size="sm"
                 type="button"
-                disabled={isLoading || !canManageTeam || !validation.canDelete(member)}
+                disabled={isLoading || isSaving || isSavingThis || !canManageTeam || !validation.canDelete(member)}
                 title={validation.getDeleteTooltip(member)}
                 className="text-destructive hover:bg-destructive/10 hover:text-destructive"
                 data-permission="allow"
@@ -274,7 +265,7 @@ export function TeamMemberCard({
                 variant="outline"
                 size="sm"
                 onClick={onResend}
-                disabled={isLoading || isResendingThis || !isValidTeamEmail(member.email)}
+                disabled={isLoading || isSaving || isResendingThis || !isValidTeamEmail(member.email)}
               >
                 {isResendingThis ? (
                   <Loader className="mr-1.5 h-4 w-4 animate-spin" />
@@ -290,7 +281,7 @@ export function TeamMemberCard({
                 variant="outline"
                 size="sm"
                 onClick={onSave}
-                disabled={isLoading || isSavingThis || !hasChanges || !canSave || !canManageTeam}
+                disabled={isLoading || isSaving || isSavingThis || !hasChanges || !canSave || !canManageTeam}
                 data-permission="allow"
               >
                 {isSavingThis ? (
@@ -319,6 +310,7 @@ export function TeamMemberCard({
           </div>
         </div>
       </SectionCardFooter>
+      </>}
     </SectionCard>
   )
 }
@@ -371,14 +363,12 @@ function RoleSelect({
   member,
   field,
   canChangeRole,
-  selectedLabel,
   onUpdate,
   getRoleChangeMessage,
 }: {
   member: FormTeamMember
   field: { onChange: (value: string) => void }
   canChangeRole: boolean
-  selectedLabel?: string
   onUpdate: (field: keyof FormTeamMember, value: unknown) => void
   getRoleChangeMessage: (member: FormTeamMember) => string
 }) {

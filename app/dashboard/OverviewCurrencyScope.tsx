@@ -19,11 +19,12 @@ function CurrencySelector({ filters, currency, onChange }: {
   const errorCurrencies = (error as Error & { availableCurrencies?: string[] } | undefined)?.availableCurrencies
   const available = data?.revenue?.availableCurrencies ?? errorCurrencies
   const currencies = Array.isArray(available) ? available.filter((value): value is string => typeof value === "string") : []
+  const reportedCurrency = typeof data?.revenue?.currency === "string" ? data.revenue.currency : undefined
   if (currencies.length < 2) return null
   return (
     <div className="flex flex-wrap items-center gap-3 rounded-lg border bg-background p-4">
       <label htmlFor="overview-currency" className="text-sm font-medium">Reporting currency</label>
-      <Select value={currency ?? ""} onValueChange={onChange}>
+      <Select value={currency ?? reportedCurrency ?? ""} onValueChange={onChange}>
         <SelectTrigger id="overview-currency" className="w-48"><SelectValue placeholder="Select a currency" /></SelectTrigger>
         <SelectContent>
           {currencies.map(value => <SelectItem key={value} value={value}>{value === "UNSPECIFIED" ? "Unspecified currency" : value}</SelectItem>)}

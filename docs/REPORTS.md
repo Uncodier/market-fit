@@ -2,6 +2,25 @@
 
 For current-section CSV downloads and completeness rules, see [Report exports](REPORT_EXPORTS.md).
 
+## Demo Overview
+
+The three registered demos (HabitUall, SaaS B2B, and Ecommerce) load Overview
+Summary, Unit economics, and Activity from local fixture records. Date options
+and Activity's performance batch/feed also resolve locally without requiring a
+real session. Real sites retain the authenticated API path; demo IDs never grant
+API access, and unknown IDs do not select fixtures.
+
+`lib/demo-data/overview-seed.ts` adds linked sample sales, customers, campaigns,
+costs, meetings, and conversations for every demo segment. Sample dates refresh
+relative to today, with both current and previous 30-day coverage. Revenue reuses
+the sales report calculations; demo economics uses currency-scoped active sales,
+completed-sale customer value, and recorded sample costs. No remote rows are
+inserted and no API responses are intercepted. Empty dates/segments stay empty.
+
+Coverage: `__tests__/lib/demo-data/overview-report.test.ts` and
+`__tests__/hooks/use-demo-overview.test.tsx` check all demos, section loading,
+date/segment filtering, linked records, and isolation from real-site requests.
+
 The Reports sidebar selects `/dashboard?tab=<report>`. Sticky-header tabs select
 sections within that report using `section=<section>`; they do not switch reports.
 Section changes use native browser history, preserve other URL parameters and

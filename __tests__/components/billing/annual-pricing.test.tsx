@@ -1,5 +1,5 @@
 import React from 'react'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { SubscriptionPlans } from '@/app/components/billing/subscription-plans'
 import { ConnectedAccountsAddons } from '@/app/components/billing/connected-accounts-addons'
 import { BillingIntervalSelector } from '@/app/components/billing/billing-interval-selector'
@@ -13,14 +13,19 @@ describe('billing interval selection', () => {
 
   it('allows the same plan on another interval and keeps only exact plan+interval current', () => {
     const onChange = jest.fn()
-    const { rerender } = render(<SubscriptionPlans currentPlan="engine" currentInterval="month" billingInterval="year" isSaving={false} onChangePlan={onChange} />)
+    const { container, rerender } = render(<SubscriptionPlans currentPlan="engine" currentInterval="month" billingInterval="year" isSaving={false} onChangePlan={onChange} />)
     fireEvent.click(screen.getByRole('button', { name: 'Switch Starter annual' }))
     expect(onChange).toHaveBeenCalledWith('engine')
+    expect(within(container.querySelector('[data-plan="engine"]') as HTMLElement).queryByRole('img', { name: 'Selected plan' })).not.toBeInTheDocument()
     for (const price of ['$248.40', '$1,069.20', '$5,400.00']) expect(screen.getByText(price)).toBeInTheDocument()
     expect(screen.getByText(/20 credits\/month/)).toBeInTheDocument()
     rerender(<SubscriptionPlans currentPlan="engine" currentInterval="year" billingInterval="year" isSaving={false} onChangePlan={onChange} />)
     expect(screen.queryByRole('button', { name: 'Switch Starter annual' })).not.toBeInTheDocument()
     expect(screen.getByText('Current')).toBeInTheDocument()
+    const currentRow = container.querySelector('[data-plan="engine"]') as HTMLElement
+    expect(within(currentRow).getByRole('img', { name: 'Selected plan' }).querySelector('svg polyline')).toHaveAttribute('points', '20 6 9 17 4 12')
+    expect(currentRow).toHaveClass('bg-muted/40')
+    expect(within(container.querySelector('[data-plan="foundry"]') as HTMLElement).queryByRole('img', { name: 'Selected plan' })).not.toBeInTheDocument()
   })
 
   it('defaults to monthly and disables actions while saving', () => {
@@ -40,7 +45,8 @@ describe('billing interval selection', () => {
 
   it('renders controlled interval tabs and reports the selected interval without submitting', () => {
     const onChange = jest.fn()
-    const { rerender } = render(<BillingIntervalSelector value="month" onChange={onChange} disabled={false} />)
+    const { container, rerender } = render(<BillingIntervalSelector value="month" onChange={onChange} disabled={false} />)
+    expect(container.firstElementChild).toHaveClass('items-center')
     expect(screen.getByRole('tablist', { name: 'Billing interval' })).toBeInTheDocument()
     expect(screen.queryByRole('radio')).not.toBeInTheDocument()
     const monthly = screen.getByRole('tab', { name: 'Monthly' })
@@ -85,13 +91,12 @@ describe('billing interval selection', () => {
     expect(screen.getByRole('button', { name: 'Downgrade to Toolbox monthly' })).toBeEnabled()
   })
 
-  it('labels unsupported same-interval tier changes as management, not checkout upgrades', () => {
+  it('labels same-interval tier changes as upgrades and downgrades', () => {
     const onChange = jest.fn()
     render(<SubscriptionPlans currentPlan="engine" currentInterval="month" billingInterval="month" isSaving={false} onChangePlan={onChange} />)
-    expect(screen.queryByRole('button', { name: 'Upgrade to Pro monthly' })).not.toBeInTheDocument()
-    const manage = screen.getByRole('button', { name: 'Manage Pro monthly in Stripe' })
-    expect(manage).toHaveTextContent('Manage')
-    fireEvent.click(manage)
+    const upgrade = screen.getByRole('button', { name: 'Upgrade to Pro monthly' })
+    expect(upgrade).toHaveTextContent('Upgrade')
+    fireEvent.click(upgrade)
     expect(onChange).toHaveBeenCalledWith('foundry')
   })
 

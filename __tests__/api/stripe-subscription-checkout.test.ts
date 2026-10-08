@@ -23,10 +23,11 @@ const auth = { getUser: jest.fn() }
 const leaseRpc = jest.fn()
 const sdk = {
   prices: { retrieve: jest.fn() },
+  invoices: { retrieve: jest.fn() },
   customers: { create: jest.fn(), retrieve: jest.fn() },
   subscriptions: { list: jest.fn(), retrieve: jest.fn(), update: jest.fn() },
   checkout: { sessions: { list: jest.fn(), retrieve: jest.fn(), expire: jest.fn(), create: jest.fn() } },
-  billingPortal: { configurations: { list: jest.fn() }, sessions: { create: jest.fn() } },
+  billingPortal: { configurations: { retrieve: jest.fn() }, sessions: { create: jest.fn() } },
 }
 const keys = ['STRIPE_STARTER_PRICE_ID', 'STRIPE_STARTUP_PRICE_ID', 'STRIPE_ENTERPRISE_PRICE_ID',
   'STRIPE_ACCOUNT_ADDON_PRICE_ID', 'STRIPE_STARTER_ANNUAL_PRICE_ID', 'STRIPE_STARTUP_ANNUAL_PRICE_ID',
@@ -49,12 +50,16 @@ function existing(overrides = {}) {
   const sub = { id: 'sub_existing', customer: 'cus_site', status: 'active', metadata: { plan: 'engine' },
     items: { has_more: false, data: [{ id: 'si_base', price: price('price_0'), quantity: 1 }] }, ...overrides }
   sdk.subscriptions.list.mockResolvedValue({ has_more: false, data: [sub] })
+  from.mockImplementation(() => ({ select: jest.fn().mockReturnThis(), eq: jest.fn().mockReturnThis(),
+    maybeSingle: jest.fn(async () => ({ data: { stripe_customer_id: 'cus_site', stripe_subscription_id: 'sub_existing' }, error: null })) }))
 }
 beforeEach(() => {
   jest.clearAllMocks()
   keys.forEach((key, index) => { process.env[key] = `price_${index}` })
   process.env.STRIPE_SECRET_KEY = randomBytes(24).toString('hex')
   process.env.CHECKOUT_RETURN_ORIGINS = origin
+  process.env.STRIPE_SUBSCRIPTION_UPDATE_PORTAL_CONFIGURATION_ID = 'bpc_safe'
+  process.env.STRIPE_BILLING_PORTAL_CONFIGURATION_ID = 'bpc_generic'
   jest.mocked(Stripe).mockImplementation(() => sdk as unknown as Stripe)
   jest.mocked(createClient).mockResolvedValue({ auth, from, rpc } as unknown as Awaited<ReturnType<typeof createClient>>)
   jest.mocked(createServiceApiClient).mockReturnValue({ rpc: leaseRpc } as unknown as ReturnType<typeof createServiceApiClient>)
@@ -66,17 +71,19 @@ beforeEach(() => {
     maybeSingle: jest.fn(async () => ({ data: { stripe_customer_id: 'cus_site' }, error: null })) }
   from.mockReturnValue(query)
   sdk.prices.retrieve.mockImplementation(async (id) => price(id))
+  sdk.invoices.retrieve.mockResolvedValue({ id: 'in_previous', customer: 'cus_site', subscription: 'sub_existing', status: 'paid' })
   sdk.customers.retrieve.mockResolvedValue({ id: 'cus_site', metadata: { site_id: siteId } })
   sdk.customers.create.mockResolvedValue({ id: 'cus_site' })
   sdk.subscriptions.list.mockResolvedValue({ has_more: false, data: [] })
   sdk.checkout.sessions.list.mockResolvedValue({ has_more: false, data: [] })
   sdk.checkout.sessions.create.mockResolvedValue({ id: 'cs_payment', status: 'open', url: 'https://pay.example.test/checkout' })
-  sdk.billingPortal.configurations.list.mockResolvedValue({ has_more: false, data: [{ id: 'bpc_safe', features: {
+  sdk.billingPortal.configurations.retrieve.mockResolvedValue({ id: 'bpc_safe', active: true, is_default: false, features: {
     subscription_update: { enabled: true, default_allowed_updates: ['price'], proration_behavior: 'always_invoice',
-      schedule_at_period_end: { conditions: [] }, products: [{ product: 'prod_platform', prices: ['price_4'] }] } } }] })
+      schedule_at_period_end: { conditions: [] }, products: [{ product: 'prod_platform', prices: ['price_4'] }] } } })
   sdk.billingPortal.sessions.create.mockResolvedValue({ id: 'bps_confirm', url: 'https://portal.example.test/confirm' })
 })
-afterAll(() => { keys.forEach((key) => delete process.env[key]); delete process.env.STRIPE_SECRET_KEY; delete process.env.CHECKOUT_RETURN_ORIGINS })
+afterAll(() => { keys.forEach((key) => delete process.env[key]); delete process.env.STRIPE_SECRET_KEY; delete process.env.CHECKOUT_RETURN_ORIGINS
+  delete process.env.STRIPE_SUBSCRIPTION_UPDATE_PORTAL_CONFIGURATION_ID; delete process.env.STRIPE_BILLING_PORTAL_CONFIGURATION_ID })
 
 describe('subscription auth, input, and server pricing', () => {
   it('rejects unauthenticated before SDK or billing access', async () => {
@@ -194,16 +201,17 @@ describe('existing subscriptions and checkout retries', () => {
     const response = await POST(request({ billingInterval: 'year' }))
     expect(response.status).toBe(200)
     expect(await response.json()).toMatchObject({ url: 'https://portal.example.test/confirm', flow: 'subscription_update_confirm' })
-    expect(sdk.billingPortal.sessions.create.mock.calls[0][0]).toMatchObject({ customer: 'cus_site',
+    expect(sdk.billingPortal.configurations.retrieve).toHaveBeenCalledWith('bpc_safe')
+    expect(sdk.billingPortal.sessions.create.mock.calls[0][0]).toMatchObject({ customer: 'cus_site', configuration: 'bpc_safe',
       flow_data: { type: 'subscription_update_confirm', subscription_update_confirm: {
         subscription: 'sub_existing', items: [{ id: 'si_base', price: 'price_4', quantity: 1 }] } } })
     expect(sdk.subscriptions.update).not.toHaveBeenCalled(); expect(sdk.checkout.sessions.create).not.toHaveBeenCalled()
   })
   it('supports year-to-month through the same hosted confirmation contract', async () => {
     existing({ items: { has_more: false, data: [{ id: 'si_base', price: price('price_4'), quantity: 1 }] } })
-    sdk.billingPortal.configurations.list.mockResolvedValue({ has_more: false, data: [{ id: 'bpc_safe', features: {
+    sdk.billingPortal.configurations.retrieve.mockResolvedValue({ id: 'bpc_safe', active: true, is_default: false, features: {
       subscription_update: { enabled: true, default_allowed_updates: ['price'], proration_behavior: 'always_invoice',
-        schedule_at_period_end: { conditions: [] }, products: [{ product: 'prod_platform', prices: ['price_0'] }] } } }] })
+        schedule_at_period_end: { conditions: [] }, products: [{ product: 'prod_platform', prices: ['price_0'] }] } } })
     expect((await POST(request({ billingInterval: 'month' }))).status).toBe(200)
     expect(sdk.billingPortal.sessions.create.mock.calls[0][0].flow_data.subscription_update_confirm.items[0].price).toBe('price_0')
     expect(sdk.checkout.sessions.create).not.toHaveBeenCalled()
@@ -226,7 +234,7 @@ describe('existing subscriptions and checkout retries', () => {
     expect(sdk.checkout.sessions.create).not.toHaveBeenCalled(); expect(sdk.billingPortal.sessions.create).not.toHaveBeenCalled()
   })
   it('requires safe live portal config, never changes it', async () => {
-    existing(); sdk.billingPortal.configurations.list.mockResolvedValue({ data: [], has_more: false })
+    existing(); sdk.billingPortal.configurations.retrieve.mockResolvedValue({ id: 'bpc_safe', active: false })
     expect((await POST(request({ billingInterval: 'year' }))).status).toBe(409)
     expect(sdk.checkout.sessions.create).not.toHaveBeenCalled()
   })

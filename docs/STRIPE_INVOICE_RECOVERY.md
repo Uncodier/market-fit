@@ -8,6 +8,13 @@ credit-bucket prerequisites in [Monthly credit reset](BILLING_CREDIT_RESET.md),
 and apply those forward migrations before enabling annual handlers. Creating the
 migrations does not charge Stripe or create subscriptions.
 
+If the `20261007180000`/`20261007180001` schema or functions were applied through
+the database dashboard but migration history is missing their versions, reconcile
+that history with the database owner first. Do not blindly replay already-applied
+SQL. The coordinated API forward fix `20261008210000` for canceled annual credit
+refill also requires owner review and prerequisite verification before rollout.
+This guide does not authorize a remote migration or configuration change.
+
 ## Invariants
 
 - Verify the signed webhook, then retrieve the current invoice, subscription,
@@ -52,6 +59,62 @@ creation bounds. Invoice lines must be complete, identify one configured base
 service, have the full configured gross price and full clamped interval, and have
 addons with the same covered interval. Discounts may reduce actual paid amount to
 zero; the verified gross service remains the entitlement proof.
+
+### Historical Enterprise $499 monthly compatibility
+
+The server-only [historical read catalog](../lib/subscription-history-pricing.server.ts)
+adds explicitly allowlisted retired Enterprise monthly Prices to invoice proof
+and retrieved subscription-state verification only. New checkout and hosted
+update target selection still use the strict current $500/month catalog. No
+Price IDs are embedded in source, and no provider Prices are created or changed
+by this compatibility path.
+
+Operators must configure both `STRIPE_ENTERPRISE_LEGACY_MONTHLY_PRICE_IDS`
+(comma-separated exact retired IDs) and
+`STRIPE_ENTERPRISE_LEGACY_MONTHLY_AMOUNT=49900` (USD cents). Neither variable is
+public. An unknown ID is rejected, even if its amount is $499 or subscription
+metadata says Enterprise. A known ID is accepted only after the actual provider
+Price verifies as USD $499, licensed monthly/count-one recurring, per-unit,
+without transformed quantities, and invoice service verifies full gross $499,
+quantity one and the full monthly period. Archived Prices are acceptable for
+historical proof; new checkout still requires an active current Price. Discounts
+may reduce paid amount but cannot replace gross-service verification.
+
+Rollout (operator approval required; this code change does not perform it):
+
+1. Inventory all existing $499/month Enterprise Price IDs across subscriptions
+   and recoverable invoices, including active and past-due subscriptions using
+   IDs other than the currently configured one. Verify intended Enterprise
+   product, correct Stripe account/mode, amount, recurrence, and tenant binding.
+   Store the verified list only in deployment configuration, never in Git.
+2. Set the explicit read-only allowlist and exact `49900` amount together, while
+   setting `STRIPE_ENTERPRISE_PRICE_ID` to the independently verified active
+   $500/month new-purchase Price. Avoid other catalog collisions. During a
+   staged rollout, an allowlisted legacy ID still in the checkout variable is
+   recognized only for read proof; checkout fails closed until $500 is configured.
+3. Run the offline suites below and deploy the handlers after verifying the
+   existing database prerequisites and reconciling dashboard-applied migration
+   history. Review the coordinated API canceled-annual-credit forward fix above;
+   do not replay older SQL to repair history. No migration is added for historical pricing.
+4. Only then replay specifically authorized paid invoice deliveries using the
+   existing invoice-keyed recovery process. Do not create a replacement
+   subscription, recharge invoices, remove settlement markers, or migrate old
+   subscriptions to $500 merely to make verification pass. Keep legacy IDs
+   allowlisted while their lifecycle events or old invoices may need verification.
+
+### Zero-dollar subscription checkout
+
+Only a retrieved subscription-mode session with metadata type `subscription`,
+`payment_status=no_payment_required`, and `amount_total=0` may enter the initial
+invoice settlement path without a paid Checkout Session. That path still
+retrieves the authoritative invoice and requires its status to be `paid` with a
+verified paid timestamp, customer/subscription binding, configured gross service
+and full coverage. `no_payment_required` alone is never evidence of payment.
+`invoice.paid`, `invoice.payment_succeeded`, and checkout deliveries converge on
+the same invoice-keyed transaction, including fully discounted service with no
+PaymentIntent. Open/unpaid/missing or unverifiable invoices cannot grant credits.
+Sale, order, and credit-purchase sessions retain their existing `paid` checks;
+the zero-dollar exception does not apply to them.
 
 Stripe's [proration semantics](https://docs.stripe.com/billing/subscriptions/prorations)
 are important: the classification depends on the operation, not only duration.

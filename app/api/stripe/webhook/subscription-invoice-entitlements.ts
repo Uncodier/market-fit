@@ -1,5 +1,6 @@
 import type Stripe from 'stripe'
-import { configuredSubscriptionPrice, validateSubscriptionPrice, parseAddonsCount } from '@/lib/subscription-pricing.server'
+import { validateSubscriptionPrice, parseAddonsCount } from '@/lib/subscription-pricing.server'
+import { configuredHistoricalSubscriptionPrice } from '@/lib/subscription-history-pricing.server'
 import { stripeObjectId, stripeTimestampIso } from './subscription-billing'
 
 type ServiceLine = Stripe.InvoiceLineItem & {
@@ -54,7 +55,7 @@ export async function verifiedInvoiceEntitlements(invoice: Stripe.Invoice, subsc
   })
   const mapped = await Promise.all(service.map(async (line) => {
     const priceId = stripeObjectId(line.pricing?.price_details?.price ?? line.price)
-    const config = priceId ? configuredSubscriptionPrice(priceId) : undefined
+    const config = priceId ? configuredHistoricalSubscriptionPrice(priceId) : undefined
     if (!config) throw new Error('Invoice subscription price is not configured')
     const price = await stripe.prices.retrieve(config.priceId)
     validateSubscriptionPrice(price, config)

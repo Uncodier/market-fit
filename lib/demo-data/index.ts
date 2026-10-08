@@ -2,10 +2,11 @@ import { attachDemoAccounting } from "./accounting"
 import { mergeDemoData } from "./merge"
 import { attachDemoOrderLineUnits } from "./order-line-units"
 import { applyDemoTimeline } from "./timeline"
+import { attachDemoOverview } from "./overview-seed"
 
-function finalizeDemoData(data: Record<string, any>) {
+function finalizeDemoData(data: Record<string, unknown>) {
   return attachDemoOrderLineUnits(
-    attachDemoAccounting(applyDemoTimeline(data)),
+    attachDemoAccounting(attachDemoOverview(applyDemoTimeline(data))),
   )
 }
 
@@ -29,6 +30,11 @@ export const availableDemos = [
     url: 'https://moda-rapida.demo'
   }
 ];
+
+/** Fixture selection only; this never authorizes access to a real workspace. */
+export function isKnownDemoSite(id: string | null | undefined): id is string {
+  return availableDemos.some(demo => demo.id === id)
+}
 
 export const getDemoData = async (siteId: string | null) => {
   if (!siteId) return null;

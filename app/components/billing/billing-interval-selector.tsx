@@ -11,7 +11,7 @@ export function BillingIntervalSelector({ value, onChange, disabled }: {
 }) {
   const labelId = useId()
   return (
-    <div className="space-y-2">
+    <div className="flex flex-col items-center gap-2">
       <p id={labelId} className="text-sm font-medium">Billing interval</p>
       <Tabs value={value} onValueChange={(interval) => {
         if (!disabled && (interval === 'month' || interval === 'year')) onChange(interval)

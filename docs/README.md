@@ -45,6 +45,7 @@ Use the guides below before relying on older implementation notes.
 - [Pending ICP mining list selection](ICP_MINING_LIST_SELECTION.md)
 - [Daily Standup settings](DAILY_STANDUP_SETTINGS.md)
 - [Stripe setup](STRIPE_SETUP.md)
+- [Annual Stripe Price provisioning script](STRIPE_ANNUAL_PRICE_SCRIPT.md)
 - [Stripe environment variables](STRIPE_ENVIRONMENT_VARIABLES.md)
 - [Stripe webhook security](STRIPE_WEBHOOK_SECURITY.md)
 - [Subscription invoice settlement and recovery](STRIPE_INVOICE_RECOVERY.md)

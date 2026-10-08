@@ -72,6 +72,8 @@ STRIPE_STARTER_ANNUAL_PRICE_ID=
 STRIPE_STARTUP_ANNUAL_PRICE_ID=
 STRIPE_ENTERPRISE_ANNUAL_PRICE_ID=
 STRIPE_ACCOUNT_ADDON_ANNUAL_PRICE_ID=
+STRIPE_ENTERPRISE_LEGACY_MONTHLY_PRICE_IDS=
+STRIPE_ENTERPRISE_LEGACY_MONTHLY_AMOUNT=
 CHECKOUT_RETURN_ORIGINS=
 ```
 
@@ -86,6 +88,28 @@ addons cost $10/month or $108/year each (10% annual discount). All subscription
 checkout selections need configured real prices; missing annual configuration
 returns `503`, never a monthly or dummy-price fallback. See
 [Stripe setup](STRIPE_SETUP.md) for hosted update confirmation prerequisites.
+
+Historical Enterprise invoice/lifecycle verification has a separate read-only
+allowlist: `STRIPE_ENTERPRISE_LEGACY_MONTHLY_PRICE_IDS` is a comma-separated list
+of explicitly operator-verified retired Enterprise Price IDs, and
+`STRIPE_ENTERPRISE_LEGACY_MONTHLY_AMOUNT` must be exactly `49900` (USD cents,
+$499/month). Set both or neither; missing/malformed values, duplicate IDs,
+collisions with another plan or annual/addon price, and unknown historical IDs
+fail closed. Verify every allowlisted Price's intended Enterprise product,
+Stripe account/mode, USD amount, and licensed monthly interval before rollout.
+This is not automatic discovery based on a $499 amount or metadata. The handler
+also verifies the provider Price and full gross invoice lines before settlement.
+
+Inventory **all** preexisting $499 Enterprise monthly IDs used by active,
+past-due, and historical subscriptions/invoices, not only the currently configured
+checkout ID. Keep those IDs in this server-only allowlist and configure
+`STRIPE_ENTERPRISE_PRICE_ID` separately with the validated active $500/month
+Price for new purchases. If the old ID still occupies that variable during
+rollout, the allowlist admits it only for read proof; checkout continues to
+reject its $499 amount. Historical configuration is never used to create or
+update checkout prices. Do not commit actual IDs/credentials or change live
+configuration without approval. See [invoice recovery](STRIPE_INVOICE_RECOVERY.md)
+for rollout and paid-invoice recovery order.
 
 See [Stripe setup](STRIPE_SETUP.md) and
 [Stripe webhook security](STRIPE_WEBHOOK_SECURITY.md).

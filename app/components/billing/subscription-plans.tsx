@@ -1,11 +1,11 @@
 "use client"
 
 import { Button } from "../ui/button"
+import { Check } from "../ui/icons"
 import { cn } from "@/lib/utils"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { type BillingInterval, formatPrice, subscriptionPrice } from "@/lib/billing-pricing"
 import { getMemberLimit, type LicensePlan } from "@/lib/license-entitlements"
-import { requiresSubscriptionManagement } from './subscription-transitions'
 
 export type BillingPlan = "commission" | "engine" | "foundry" | "enterprise"
 
@@ -74,7 +74,6 @@ export function SubscriptionPlans({ currentPlan, currentInterval = 'month', bill
         const isCurrent = plan.id === currentPlan && (plan.id === 'commission' || interval === currentInterval)
         const isRequired = plan.id === requiredPlan
         const memberLimit = getMemberLimit(plan.id)
-        const managed = plan.id !== 'commission' && requiresSubscriptionManagement(currentPlan, plan.id, currentInterval, interval)
         const action =
           PLAN_ORDER[plan.id] > PLAN_ORDER[currentPlan]
             ? "upgrade"
@@ -90,7 +89,7 @@ export function SubscriptionPlans({ currentPlan, currentInterval = 'month', bill
             className={cn(
               "flex flex-wrap items-center justify-between gap-4 px-4 py-3",
               isCurrent && "bg-muted/40",
-              isRequired && "bg-primary/5 ring-1 ring-inset ring-primary"
+              isRequired && "bg-primary/5"
             )}
           >
             <div className="min-w-0">
@@ -115,7 +114,9 @@ export function SubscriptionPlans({ currentPlan, currentInterval = 'month', bill
                 {interval === 'year' && <p className="text-xs text-muted-foreground">{formatPrice(price.monthlyEquivalent)}/month equivalent<br />Billed annually · save 10%</p>}
               </div>
               {isCurrent ? (
-                <span className="w-[88px]" />
+                <span className="flex w-[88px] items-center justify-center text-primary" role="img" aria-label="Selected plan">
+                  <Check size={20} strokeWidth={2.5} />
+                </span>
               ) : (
                 <Button
                   type="button"
@@ -123,12 +124,12 @@ export function SubscriptionPlans({ currentPlan, currentInterval = 'month', bill
                   size="sm"
                   className="w-[88px]"
                   disabled={isSaving || (blockedPaidChanges && plan.id !== 'commission')}
-                  aria-label={`${managed ? 'Manage' : action === 'switch' ? 'Switch' : action === 'upgrade' ? 'Upgrade to' : 'Downgrade to'} ${plan.titleFallback} ${interval === 'year' ? 'annual' : 'monthly'}${managed ? ' in Stripe' : ''}`}
+                  aria-label={`${action === 'switch' ? 'Switch' : action === 'upgrade' ? 'Upgrade to' : 'Downgrade to'} ${plan.titleFallback} ${interval === 'year' ? 'annual' : 'monthly'}`}
                   onClick={() => onChangePlan(plan.id)}
                 >
                   {isSaving
                     ? t("billing.form.processing") || "..."
-                    : managed ? "Manage" : action === "upgrade"
+                    : action === "upgrade"
                       ? t("billing.form.upgrade") || "Upgrade"
                       : action === "switch" ? "Switch" : t("billing.form.downgrade") || "Downgrade"}
                 </Button>

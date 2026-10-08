@@ -154,7 +154,7 @@ export async function GET(
         }
         })
       )
-      membersWithStatus.push(...resolved)
+      membersWithStatus.push(...resolved.map(member => ({ ...member, is_primary_owner: member.user_id === ownerUserId })))
     }
 
     return NextResponse.json({

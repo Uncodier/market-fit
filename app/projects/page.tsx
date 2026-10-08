@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useSite } from "../context/SiteContext"
 import { isDemoSiteId } from "@/lib/demo-utils"
@@ -56,16 +56,9 @@ export default function ProjectsPage() {
   const realSites = (sites || []).filter((site) => !isDemoSiteId(site.id))
   const hasSites = (isManageMode ? realSites : sites)?.length > 0
 
-  const [demoSiteIdFromCookie, setDemoSiteIdFromCookie] = useState<string | null>(null)
-  const [manualDemoEnabled, setManualDemoEnabled] = useState(false)
-
-  useEffect(() => {
-    // Keep demo state in sync with cookie/localStorage (tab can stay open for days).
-    const id = getCookieValue("market_fit_demo_site_id")
-    const manual = typeof window !== "undefined" && localStorage.getItem("market_fit_manual_demo") === "true"
-    setDemoSiteIdFromCookie(id)
-    setManualDemoEnabled(!!manual)
-  }, [])
+  const [demoSiteIdFromCookie] = useState<string | null>(() => getCookieValue("market_fit_demo_site_id"))
+  const [manualDemoEnabled] = useState(() =>
+    typeof window !== "undefined" && localStorage.getItem("market_fit_manual_demo") === "true")
 
   const isDemoMode =
     !!demoSiteIdFromCookie || manualDemoEnabled || (currentSite?.id?.startsWith("demo-") ?? false)
@@ -103,7 +96,7 @@ export default function ProjectsPage() {
     router.push("/robots")
   }
 
-  const Content = useMemo(() => {
+  const Content = (() => {
     if (isLoading) {
       return (
         <div className="w-full max-w-2xl mx-auto space-y-3">
@@ -256,7 +249,7 @@ export default function ProjectsPage() {
         )}
       </div>
     )
-  }, [isLoading, hasSites, sites, realSites, currentSite?.id, isDemoMode, isManageMode, router])
+  })()
 
   return (
     <div className="min-h-[calc(100vh-var(--topbar-height,64px))] w-full flex items-center justify-center p-6">

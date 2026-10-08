@@ -38,6 +38,9 @@ describe('member license upgrade UI', () => {
     }
     const required = container.querySelector('[data-required-plan="true"]') as HTMLElement
     expect(required).toHaveAttribute('data-plan', 'foundry')
+    expect(required).toHaveClass('bg-primary/5')
+    expect(required).not.toHaveClass('ring-1', 'ring-primary')
+    expect(within(required).queryByRole('img', { name: 'Selected plan' })).not.toBeInTheDocument()
     expect(within(required).getByText('Minimum required plan')).toBeInTheDocument()
     expect(screen.getAllByText('Minimum required plan')).toHaveLength(1)
     for (const price of ['$248.40', '$1,069.20', '$5,400.00']) expect(screen.getByText(price)).toBeInTheDocument()

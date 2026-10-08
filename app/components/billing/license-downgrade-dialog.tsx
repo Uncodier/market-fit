@@ -19,12 +19,13 @@ export function LicenseDowngradeDialog({ plan, onClose, onConfirm, busy }: {
           {licensePlanLabel(plan)} includes {limit ?? ">10"} team members. After the plan change takes effect,
           the earliest added members and connections remain available within the new allowances.
           Later additions are suspended, not deleted. Upgrading restores license-suspended resources.
-          Nothing is disconnected while you review or cancel the change in Stripe.
+          Paid downgrades are scheduled at the end of your current billing period;
+          your current plan stays active until then. Nothing is disconnected during review.
         </AlertDialogDescription>
       </AlertDialogHeader>
       <AlertDialogFooter>
         <AlertDialogCancel disabled={busy}>Keep current plan</AlertDialogCancel>
-        <Button type="button" disabled={busy} onClick={onConfirm}>Review in Stripe</Button>
+        <Button type="button" disabled={busy} onClick={onConfirm}>Confirm downgrade</Button>
       </AlertDialogFooter>
     </AlertDialogContent>
   </AlertDialog>
