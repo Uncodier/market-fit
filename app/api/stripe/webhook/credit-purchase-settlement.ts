@@ -2,8 +2,9 @@ import type { SupabaseClient } from "@supabase/supabase-js"
 import type Stripe from "stripe"
 import { fromStripeMinorAmount } from "@/app/api/stripe/checkout/checkout-payment-guard"
 import { stripeObjectId } from "./subscription-billing"
+import { isFullyDiscountedCreditsCheckout } from "./credit-purchase-discount"
 
-/** Verified webhook + live paid Checkout session only. SQL serializes the grant key. */
+/** Verified webhook + live paid or fully discounted Checkout session. SQL serializes the grant key. */
 export async function handleCreditsPurchase(
   supabase: Pick<SupabaseClient, "from" | "rpc">,
   session: Stripe.Checkout.Session,
@@ -12,7 +13,8 @@ export async function handleCreditsPurchase(
   const rawCredits = session.metadata?.credits
   const credits = Number(rawCredits)
   if (!siteId || !rawCredits || !/^\d+$/.test(rawCredits) ||
-      !Number.isSafeInteger(credits) || credits <= 0 || session.payment_status !== "paid") {
+      !Number.isSafeInteger(credits) || credits <= 0 ||
+      (session.payment_status !== "paid" && !isFullyDiscountedCreditsCheckout(session))) {
     throw new Error("Invalid paid credits purchase")
   }
   const transactionId = `stripe_${session.id}`

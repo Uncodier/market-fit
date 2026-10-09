@@ -38,8 +38,19 @@ async function main() {
   for (const name of ['20261003230000_credit_buckets_and_monthly_reset.sql',
     '20261003230001_stripe_plan_credit_reset.sql', '20261003230002_classified_credit_operations.sql',
     '20261005230000_exact_credit_accounting_precision.sql', '20261007003000_remove_signup_credit_bonus.sql',
-    '20261007180000_annual_subscription_credit_periods.sql']) {
+    '20261007180000_annual_subscription_credit_periods.sql',
+    '20261009040000_one_monthly_credit_per_addon.sql',
+    '20261009070000_preserve_paid_addon_credit_windows.sql']) {
     await db.exec(readFileSync(path.join(api, 'supabase/migrations', name), 'utf8'))
+  }
+  for (const [plan, addons, expected] of [['engine', 0, 20], ['engine', 2, 22],
+    ['foundry', 2, 102], ['enterprise', 1, 501], ['commission', 2, 1], ['unlisted', 3, 0]]) {
+    const result = await one('SELECT site_plan_credit_allowance($1,$2) value', [plan, addons])
+    assert.equal(Number(result.value), expected)
+  }
+  for (const role of ['anon', 'authenticated']) {
+    const access = await one("SELECT has_function_privilege($1,'public.site_plan_credit_allowance(text,integer)','EXECUTE') ok", [role])
+    assert.equal(access.ok, false)
   }
   const times = await one(`SELECT floor(extract(epoch from now()-interval '1 day'))::int start,
     floor(extract(epoch from now()-interval '1 day'+interval '1 year'))::int finish`)
@@ -127,7 +138,7 @@ async function main() {
     })
     currentBase = invoiceBase; currentAddons = invoiceAddons
     const recovered = await settle()
-    const expectedCredits = (mismatch === 'tier' ? 100 : 20) + invoiceAddons * 5
+    const expectedCredits = (mismatch === 'tier' ? 100 : 20) + invoiceAddons
     assert.equal(recovered.outcome, 'duplicate'); assert.equal(recovered.coverage_recovered, true)
     assert.equal(recovered.credits_granted, expectedCredits)
     const final = await state()

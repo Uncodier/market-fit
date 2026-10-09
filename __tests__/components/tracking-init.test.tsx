@@ -33,6 +33,7 @@ describe('tracking script head reference', () => {
     act(() => { script!.dispatchEvent(new Event('load')) })
     expect(init).toHaveBeenCalledWith(expect.objectContaining({
       trackVisitors: true, trackActions: true,
+      consentRequired: false,
       chat: expect.objectContaining({ requireIdentityToken: true, allowAnonymousMessages: false }),
     }))
   })

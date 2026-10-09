@@ -6,7 +6,7 @@ export interface BillingCreditBalances {
   paid_subscription_invoice_id?: string | null
   paid_subscription_paid_at?: string | null
   plan_credit_anchor?: string | null
-  paid_subscription_plan?: 'engine' | 'foundry' | 'enterprise' | null
+  paid_subscription_plan?: 'commission' | 'engine' | 'foundry' | 'enterprise' | null
   paid_subscription_addons_count?: number | null
   plan_credits_available?: number
   purchased_credits_available?: number
@@ -26,7 +26,7 @@ export interface BillingCreditRow {
   paid_subscription_invoice_id: string | null
   paid_subscription_paid_at: string | null
   plan_credit_anchor: string | null
-  paid_subscription_plan: 'engine' | 'foundry' | 'enterprise' | null
+  paid_subscription_plan: 'commission' | 'engine' | 'foundry' | 'enterprise' | null
   paid_subscription_addons_count: number | null
   plan_credits_available: number
   purchased_credits_available: number

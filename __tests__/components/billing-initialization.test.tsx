@@ -6,6 +6,7 @@ import { BILLING_INITIALIZATION_WARNING, BILLING_REFRESH_WARNING } from "@/app/s
 
 jest.mock("@/app/context/SiteContext", () => ({ useSite: jest.fn() }))
 jest.mock("@/app/context/PermissionContext", () => ({ useOptionalPermissions: jest.fn() }))
+jest.mock("@/app/context/LocalizationContext", () => ({ useLocalization: () => ({ t: () => '' }) }))
 
 const siteId = "11111111-1111-4111-8111-111111111111"
 const refreshSiteBilling = jest.fn()

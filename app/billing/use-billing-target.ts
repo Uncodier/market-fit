@@ -3,9 +3,11 @@
 import { useEffect, useState } from "react"
 import { useSite } from "@/app/context/SiteContext"
 import { useSearchParams } from "next/navigation"
+import { useLocalization } from "@/app/context/LocalizationContext"
 
 /** Never render another site's checkout while resolving an upgrade deep link. */
 export function useBillingTarget() {
+  const { t } = useLocalization()
   const { sites, currentSite, setCurrentSite, isLoading } = useSite()
   const searchParams = useSearchParams()
   const requestedId = searchParams?.get("siteId") ?? null
@@ -17,12 +19,13 @@ export function useBillingTarget() {
     if (!target) return
     let active = true
     void Promise.resolve(setCurrentSite(target)).catch(() => {
-      if (active) setError("The billing project could not be selected. Please try again.")
+      if (active) setError('billing.errors.selectProject')
     })
     return () => { active = false }
   }, [isLoading, requestedId, currentSite?.id, sites, setCurrentSite])
 
   const missing = !isLoading && requestedId && !sites.some(site => site.id === requestedId)
-  const targetError = missing ? "This project's billing is not available to your account." : error
+  const targetError = missing ? (t('billing.errors.projectAccess') || "This project's billing is not available to your account.")
+    : error ? (t(error) || "The billing project could not be selected. Please try again.") : null
   return { pending: !!requestedId && currentSite?.id !== requestedId && !targetError, error: targetError, requestedId }
 }

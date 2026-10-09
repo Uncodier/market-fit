@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation"
 import { navigateOrAssign } from "@/lib/navigation/stale-router"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/app/components/ui/tooltip"
 import { useLocalization } from "@/app/context/LocalizationContext"
+import { useCreditPeriodActive } from "@/app/hooks/use-credit-period-active"
 import styles from "./credits-widget.module.css"
 
 interface CreditsWidgetProps {
@@ -25,6 +26,9 @@ export function CreditsWidget({ className, isCollapsed }: CreditsWidgetProps) {
   const usableCredits = creditsAvailable + withdrawableCredits
   const plan = currentSite?.billing?.plan || 'commission'
   const addonsCount = currentSite?.billing?.addons_count || 0
+  const isCurrentPeriod = useCreditPeriodActive(
+    currentSite?.billing?.plan_credit_period_start, currentSite?.billing?.plan_credit_period_end,
+  )
   
   // Determine base limit based on plan
   let baseLimit = 1; // default/commission/free
@@ -36,11 +40,16 @@ export function CreditsWidget({ className, isCollapsed }: CreditsWidgetProps) {
     baseLimit = 500;
   }
   
-  baseLimit += addonsCount * 5;
+  baseLimit += addonsCount;
   
   // Keep the plan allowance as the displayed reference, but fit both balances
   // proportionally within one track when the available total exceeds it.
-  const totalCredits = baseLimit
+  // A forward-only allowance change does not rewrite an already-paid window.
+  const recordedAllowance = currentSite?.billing?.plan_credit_allowance
+  // Expired, future or undated stored quotas are not the current plan reference.
+  const totalCredits = isCurrentPeriod && typeof recordedAllowance === 'number' && Number.isFinite(recordedAllowance) &&
+    recordedAllowance > 0
+    ? recordedAllowance : baseLimit
   const percentage = Math.max(0, (usableCredits / totalCredits) * 100)
   const barTotal = Math.max(totalCredits, usableCredits)
   // A negative balance offsets usable funds without creating a negative segment.

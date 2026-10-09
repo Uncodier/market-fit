@@ -72,9 +72,12 @@ export async function verifiedInvoiceEntitlements(invoice: Stripe.Invoice, subsc
     return { line, config, quantity }
   }))
   const bases = mapped.filter(({ config }) => config.plan !== 'addon')
-  if (bases.length !== 1 || bases[0].quantity !== 1) throw new Error('Invoice paid base service is missing or ambiguous')
-  const base = bases[0]
-  if (base.config.plan === 'addon') throw new Error('Invoice paid plan is unavailable')
+  const addons = mapped.filter(({ config }) => config.plan === 'addon')
+  if (bases.length > 1 || (bases.length === 1 && bases[0].quantity !== 1) ||
+      (!bases.length && addons.length !== 1) || addons.length > 1) {
+    throw new Error('Invoice paid service is missing or ambiguous')
+  }
+  const base = bases[0] ?? addons[0]
   const { start, end } = base.line.period
   const period_start = stripeTimestampIso(start)
   const period_end = stripeTimestampIso(end)
@@ -91,11 +94,11 @@ export async function verifiedInvoiceEntitlements(invoice: Stripe.Invoice, subsc
     anniversary.setUTCDate(Math.min(anchor, lastDay))
     return anniversary.getTime() === end * 1000
   })) throw new Error('Invoice service does not cover the full billing interval')
-  const addons = mapped.filter(({ config }) => config.plan === 'addon')
   if (addons.some(({ line, config }) => config.interval !== base.config.interval ||
       line.period.start !== start || line.period.end !== end)) {
     throw new Error('Invoice add-on service coverage does not match base service')
   }
-  return { plan: base.config.plan, addonsCount: parseAddonsCount(addons.reduce((sum, item) => sum + item.quantity, 0)),
+  return { plan: base.config.plan === 'addon' ? 'commission' as const : base.config.plan,
+    addonsCount: parseAddonsCount(addons.reduce((sum, item) => sum + item.quantity, 0)),
     billing_interval: base.config.interval, coverage_verified: true, period_start, period_end }
 }

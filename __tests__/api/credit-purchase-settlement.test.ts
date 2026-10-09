@@ -28,6 +28,13 @@ describe("non-expiring purchased credit settlement", () => {
     expect(h.upsert).toHaveBeenCalledWith(expect.objectContaining({ transaction_type: "credits_purchase", credits: 20 }),
       { onConflict: "transaction_id", ignoreDuplicates: true })
   })
+  it("records the reduced Stripe total while granting the purchased package", async () => {
+    const h = harness()
+    await handleCreditsPurchase(h.client, { ...h.session, amount_total: 1500 } as Stripe.Checkout.Session)
+    expect(h.rpc).toHaveBeenCalledWith("grant_purchased_site_credits", expect.objectContaining({ p_amount: 20 }))
+    expect(h.upsert).toHaveBeenCalledWith(expect.objectContaining({ amount: 15, credits: 20 }),
+      { onConflict: "transaction_id", ignoreDuplicates: true })
+  })
   it("a failed payment write retries the same grant key without granting twice", async () => {
     const h = harness()
     h.upsert.mockResolvedValueOnce({ error: { message: "Synthetic payment failure" } })
@@ -48,6 +55,36 @@ describe("non-expiring purchased credit settlement", () => {
     await expect(handleCreditsPurchase(h.client, { ...h.session, payment_status: status } as Stripe.Checkout.Session)).rejects.toThrow("Invalid paid credits purchase")
     expect(h.rpc).not.toHaveBeenCalled()
   })
+  it.each([["20", 2000], ["52", 4925], ["515", 50000]])(
+    "grants %s credits for a verified fully discounted Checkout", async (credits, price) => {
+      const h = harness()
+      const freeSession = { ...h.session, mode: "payment", status: "complete",
+        payment_status: "no_payment_required", payment_intent: null,
+        amount_subtotal: price, amount_total: 0,
+        total_details: { amount_discount: price, amount_tax: 0, amount_shipping: 0 },
+        metadata: { site_id: h.site, type: "credits_purchase", credits },
+      } as Stripe.Checkout.Session
+      await handleCreditsPurchase(h.client, freeSession)
+      expect(h.rpc).toHaveBeenCalledWith("grant_purchased_site_credits", expect.objectContaining({
+        p_amount: Number(credits), p_idempotency_key: `stripe_${h.session.id}`,
+      }))
+      expect(h.upsert).toHaveBeenCalledWith(expect.objectContaining({ amount: 0, credits: Number(credits) }),
+        { onConflict: "transaction_id", ignoreDuplicates: true })
+    })
+  it.each([{ status: "open" }, { mode: "subscription" }, { amount_subtotal: 1 },
+    { total_details: { amount_discount: 0, amount_tax: 0, amount_shipping: 0 } },
+    { payment_intent: "pi_unexpected" }, { currency: "eur" },
+    { metadata: { type: "credits_purchase", credits: "515" } }])(
+    "rejects a zero-cost credit purchase without full proof %#", async override => {
+      const h = harness()
+      const session = { ...h.session, mode: "payment", status: "complete",
+        payment_status: "no_payment_required", payment_intent: null, amount_subtotal: 2000, amount_total: 0,
+        total_details: { amount_discount: 2000, amount_tax: 0, amount_shipping: 0 },
+        metadata: { site_id: h.site, type: "credits_purchase", credits: "20" },
+        ...override } as Stripe.Checkout.Session
+      await expect(handleCreditsPurchase(h.client, session)).rejects.toThrow("Invalid paid credits purchase")
+      expect(h.rpc).not.toHaveBeenCalled()
+    })
   it("fails closed on an invalid grant response without recording a successful payment", async () => {
     const h = harness()
     h.rpc.mockResolvedValueOnce({ data: { success: false }, error: null })

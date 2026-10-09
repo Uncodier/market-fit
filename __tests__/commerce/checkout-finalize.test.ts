@@ -1,6 +1,12 @@
 import { finalizeCheckout } from "@/app/commerce/checkout-finalize"
 import { ensurePublicAccessTokenForRecord } from "@/app/documents/public-token-store"
 import { createShipment } from "@/app/shipments/actions"
+import { revalidatePath } from "next/cache"
+import { bumpCacheEpoch } from "@/lib/redis/json-cache"
+import { upsertSaleOrderItemsWithModifiers } from "@/app/commerce/checkout-order-items"
+
+jest.mock("next/cache", () => ({ revalidatePath: jest.fn() }))
+jest.mock("@/lib/redis/json-cache", () => ({ bumpCacheEpoch: jest.fn().mockResolvedValue(true) }))
 
 jest.mock("@/app/commerce/checkout-order-items", () => ({
   upsertSaleOrderItemsWithModifiers: jest.fn().mockResolvedValue([]),
@@ -38,6 +44,47 @@ jest.mock("@/app/commerce/ensure-commerce-lead-converted", () => ({
 }))
 
 describe("finalizeCheckout", () => {
+  beforeEach(() => jest.clearAllMocks())
+
+  function posUpdateParams(): Parameters<typeof finalizeCheckout>[0] {
+    type Query = { select: jest.Mock; in: jest.Mock; eq: jest.Mock; single: jest.Mock }
+    const query: Query = {
+      select: jest.fn((): Query => query),
+      in: jest.fn().mockResolvedValue({ data: [], error: null }),
+      eq: jest.fn((): Query => query),
+      single: jest.fn().mockResolvedValue({ data: null, error: null }),
+    }
+    const client = { from: jest.fn(() => query) }
+    return {
+      supabase: client as never, supabaseAdmin: client as never,
+      isAdmin: false, isStaffCheckout: true, source: "pos", siteId: "site-1",
+      sale: { id: "sale-1" }, order: { id: "order-1" },
+      effectiveExistingOrderId: "order-1",
+      existingItems: [{ id: "removed-line", status: "new" }],
+      lines: [], processedLines: [], intent: "send", isFullyPaid: false,
+      orderInitialStatus: "pending", fulfillment: "dine_in", orderTotal: 0,
+      quoteForAccept: null, activeQuotationClaim: null,
+    }
+  }
+
+  it("invalidates lists and detail after a POS order's removed lines are persisted", async () => {
+    const params = posUpdateParams()
+    await finalizeCheckout(params)
+    expect(upsertSaleOrderItemsWithModifiers).toHaveBeenCalledWith(expect.objectContaining({
+      orderId: "order-1", existingOrderId: "order-1",
+      existingItems: params.existingItems, processedLines: [], intent: "send",
+    }))
+    expect(bumpCacheEpoch).toHaveBeenCalledWith("order-data", "site-1")
+    expect(revalidatePath).toHaveBeenCalledWith("/orders/order-1")
+  })
+
+  it("does not treat failed line removal as a successful cache refresh", async () => {
+    jest.mocked(upsertSaleOrderItemsWithModifiers).mockRejectedValueOnce(new Error("Removal failed"))
+    await expect(finalizeCheckout(posUpdateParams())).rejects.toThrow("Removal failed")
+    expect(bumpCacheEpoch).not.toHaveBeenCalled()
+    expect(revalidatePath).not.toHaveBeenCalled()
+  })
+
   it("uses authorized server paths for public checkout finalization", async () => {
     const userClient = {
       from: jest.fn((table: string) => {
@@ -119,5 +166,12 @@ describe("finalizeCheckout", () => {
       success: true,
       publicAccessToken: "public-order-token",
     }))
+    expect(bumpCacheEpoch).toHaveBeenCalledWith("order-data", "site-1")
+    expect(revalidatePath).toHaveBeenCalledWith("/orders")
+    expect(revalidatePath).toHaveBeenCalledWith("/orders/order-1")
+    expect(revalidatePath).toHaveBeenCalledWith("/order-lines")
+    expect(jest.mocked(bumpCacheEpoch).mock.invocationCallOrder[0]).toBeGreaterThan(
+      jest.mocked(upsertSaleOrderItemsWithModifiers).mock.invocationCallOrder[0],
+    )
   })
 })

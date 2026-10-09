@@ -1,11 +1,10 @@
 "use client"
 
-import { useState } from "react"
 import { Button } from "@/app/components/ui/button"
-import { useAuth } from "@/app/hooks/use-auth"
 import { useSite } from "@/app/context/SiteContext"
 import { useRouter } from "next/navigation"
 import { TrendingUp } from "@/app/components/ui/icons"
+import { useLocalization } from "@/app/context/LocalizationContext"
 
 interface UpgradeToFoundryButtonProps {
   className?: string
@@ -20,6 +19,7 @@ export function UpgradeToFoundryButton({
   size = "default",
   children
 }: UpgradeToFoundryButtonProps) {
+  const { t } = useLocalization()
   const router = useRouter()
   const { currentSite } = useSite()
 
@@ -44,7 +44,7 @@ export function UpgradeToFoundryButton({
       ) : (
         <>
           <TrendingUp className="mr-2 h-4 w-4" />
-          Upgrade to Foundry
+          {t('billing.upgrade.toFoundry', { plan: t('billing.plan.foundry.title') || "Foundry" }) || `Upgrade to ${t('billing.plan.foundry.title') || "Foundry"}`}
         </>
       )}
     </Button>

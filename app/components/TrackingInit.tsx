@@ -44,6 +44,7 @@ function loadTracking(recordScreen: boolean) {
         trackVisitors: true,
         trackActions: true,
         recordScreen,
+        consentRequired: false,
         debug: false,
         chat: {
           enabled: true,

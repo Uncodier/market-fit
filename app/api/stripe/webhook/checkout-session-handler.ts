@@ -4,6 +4,8 @@ import { handleStripeSaleCheckoutCompleted } from "./sale-checkout-settlement"
 import { stripeObjectId } from "./subscription-billing"
 import { settleStripeSubscriptionInvoice } from "./subscription-invoice-settlement"
 import { handleCreditsPurchase } from "./credit-purchase-settlement"
+import { settleAutoTopUpSetup } from "../auto-top-up/setup/settlement"
+import { isFullyDiscountedCreditsCheckout } from "./credit-purchase-discount"
 
 type CheckoutWebhookClient = Pick<SupabaseClient, "from" | "rpc">
 
@@ -38,12 +40,18 @@ export async function handleCheckoutSessionCompleted(params: {
     payloadSession.id,
   )
   const type = session.metadata?.type
+  if (type === "credit_auto_top_up_setup" && session.mode === "setup") {
+    await settleAutoTopUpSetup(params.stripe, session)
+    return
+  }
   // Only subscription invoices can authoritatively prove a fully discounted
   // service. The initial handler still retrieves and verifies a PAID invoice;
-  // no_payment_required alone never authorizes credits, sales, or entitlements.
+  // A zero-cost credit purchase needs a complete, verified 100% discounted
+  // Checkout session; the payment mode doesn't create a PaymentIntent for it.
   const zeroSubscription = type === "subscription" && session.mode === "subscription" &&
     session.payment_status === "no_payment_required" && session.amount_total === 0
-  if (session.payment_status !== "paid" && !zeroSubscription) {
+  const zeroCredits = type === "credits_purchase" && isFullyDiscountedCreditsCheckout(session)
+  if (session.payment_status !== "paid" && !zeroSubscription && !zeroCredits) {
     throw new Error(`Stripe session ${session.id} is not paid`)
   }
 

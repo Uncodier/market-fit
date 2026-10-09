@@ -62,6 +62,9 @@ Each activity stores:
   messages across channels since the last authentic inbound message, excluding
   drafts, pending and failed messages. The workflow allows its reply-wait period
   before marking a contact cold on the next eligible check.
+- `cooldown_mode`: `progressive` (default: 1, 1, 3, 7, then 14 days between confirmed contacts) or `fixed`.
+  Fixed mode requires `cooldown_period_days`, an integer from 1 to 365. The first
+  contact retains its existing initial wait; an inbound reply resets the sequence.
 - `weekdays`: JavaScript weekday numbers, Sunday = 0. Follow-up only; default
   `[2, 3, 4]`. Empty days prevent enabling follow-up. The displayed timezone is
   first business-hours entry's timezone (or the legacy object's timezone), falling
@@ -99,8 +102,15 @@ accounts are `{}` (no fallback). It reuses connected outreach accounts, includin
 and the `start_time_mode` / strict `start_time` contract above. Missing timing
 defaults to business opening time, preserving legacy custom time-only values.
 
-`repeat_interval_days` is an integer from 1 to 365, default 3, between reminders
-for the same unpaid invoice. Invalid values block saves even while inactive.
+`cooldown_mode` is `progressive` by default for new invoice settings: 1, 1, 3,
+7, then 14 days between confirmed reminders of the same invoice. Choose `fixed`
+to use `repeat_interval_days` (integer 1–365, default 3). Previously saved
+interval-only configurations remain fixed. The first reminder can be sent once due.
+Deploy the shared `20261008230000_invoice_reminder_cooldown.sql` migration before
+the new API; do not apply the mirrored migration twice.
+`repeat_interval_days` remains validated from 1 to 365 even in progressive mode,
+so previously saved fixed intervals can be selected again. Invalid values block
+saves even while inactive.
 Enabling requires a usable selected account and valid scheduling configuration.
 Invoice reminders target tenant-scoped unpaid invoices due today or earlier, not
 prospecting segments. There are no segment or maximum-unanswered controls, and

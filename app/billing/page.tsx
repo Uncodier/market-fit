@@ -18,6 +18,7 @@ import { useBillingTarget } from "./use-billing-target"
   // Section configurations for quick navigation
   const getBillingInfoSections = (t: (key: string) => string): QuickNavSection[] => [
     { id: "credits", title: t('billing.nav.credits') || "Credits" },
+    { id: "auto-top-up", title: t('billing.topUp.title') || "Automatic credit top-up" },
     { id: "subscription-plan", title: t('billing.nav.plan') || "Subscription Plan" },
     { id: "addons", title: t('billing.nav.addons') || "Connected Accounts" },
     { id: "payment-method", title: t('billing.nav.payment') || "Payment Method" },
@@ -94,10 +95,10 @@ export default function BillingPage() {
   }
 
   return (
-    <div className="flex-1">
-      <StickyHeader>
-          <div className="flex items-center justify-between px-4 md:px-16 w-full">
-          <Tabs value={activeTab} onValueChange={handleTabChange} className="w-auto">
+    <div className="min-w-0 flex-1 [&_[id]]:scroll-mt-[calc(var(--topbar-height,64px)+87px)]">
+      <StickyHeader className="[&>div]:px-0">
+          <div className="mx-auto flex w-full max-w-[1200px] items-center overflow-x-auto px-4 md:px-8">
+          <Tabs value={activeTab} onValueChange={handleTabChange} className="w-auto shrink-0">
             <TabsList className="h-8 p-0.5 bg-muted/30 rounded-full">
               <TabsTrigger value="billing_info" className="text-xs rounded-full px-4 whitespace-nowrap">{t('billing.tabs.info') || 'Billing Info'}</TabsTrigger>
               <TabsTrigger value="payment_history" className="text-xs rounded-full px-4 whitespace-nowrap">{t('billing.tabs.history') || 'Payment History'}</TabsTrigger>
@@ -107,8 +108,8 @@ export default function BillingPage() {
         </div>
       </StickyHeader>
       <div className="py-8 pb-16">
-        <div className="flex gap-8 justify-center max-w-[1200px] mx-auto">
-          <div className="flex-1 max-w-[880px] px-4 md:px-16">
+        <div className="mx-auto flex max-w-[1200px] justify-center gap-8 px-4 md:px-8">
+          <div className="min-w-0 flex-1 max-w-[880px]">
             <BillingInitialization key={currentSite.id} siteId={currentSite.id} hasBilling={!!currentSite.billing}
               billingReadFailed={currentSite.billing_read_status === 'unavailable'} />
             <SiteSetupTracking siteId={currentSite.id} />
@@ -131,7 +132,7 @@ export default function BillingPage() {
                     billing_country: currentSite.billing?.billing_country,
                     auto_renew: currentSite.billing?.auto_renew === false ? false : true
                   }}
-                /> : <p className="my-4 text-sm text-muted-foreground">Subscription changes are unavailable until billing information is loaded.</p>}
+                /> : <p className="my-4 text-sm text-muted-foreground">{t('billing.errors.changesUnavailable') || 'Subscription changes are unavailable until billing information is loaded.'}</p>}
               </TabsContent>
               
               <TabsContent value="payment_history" className="mt-0 p-0">

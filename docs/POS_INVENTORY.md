@@ -42,6 +42,21 @@ reservation. Checkout re-reads backend stock and policy using the resolved origi
 and validates combined SKU demand before persisting records. A server rejection
 remains visible in the existing POS sync issues workflow.
 
+## Existing order line changes
+
+Removing a product from an existing POS cart is persisted when the updated order
+is sent or checked out and the outbox synchronizes successfully. Draft lines are
+deleted; already sent lines remain as cancelled history. Their units follow the
+existing database lifecycle. Failed line removal is reported as a sync failure,
+not a successful update.
+
+Checkout invalidates the shared `order-data` list cache after persisting its lines
+and revalidates Orders, the order detail, and Order Lines. The detail also reloads
+on realtime changes and tab focus/reconnection. An empty relational item list is
+authoritative; it must not fall back to stale serialized products. Orders product
+summaries exclude cancelled lines, while detail status controls and product
+search retain the cancellation history.
+
 ## Backorder scope
 
 The server persists its calculated `metadata.backorder_quantity` in

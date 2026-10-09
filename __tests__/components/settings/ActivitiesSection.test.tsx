@@ -41,6 +41,20 @@ describe("ActivitiesSection outreach controls", () => {
     ] } } }
     jest.mocked(fetchOutreachSegments).mockResolvedValue([{ id: "segment-a", name: "Enterprise" }, { id: "segment-b", name: "Local" }])
   })
+  it.each(["leads_initial_cold_outreach", "leads_follow_up"])("selects and saves fixed cooldown for %s", async key => {
+    const onSave = jest.fn().mockResolvedValue(true)
+    render(<TestForm onSave={onSave} />)
+    await waitFor(() => expect(card(key).getByRole("checkbox", { name: "Enterprise" })).toBeInTheDocument())
+    expect(card(key).getByRole("radio", { name: /Progressive \(default\)/ })).toBeChecked()
+    fireEvent.click(card(key).getByRole("radio", { name: /Fixed number of days/ }))
+    fireEvent.click(card(key).getByRole("checkbox", { name: "Enterprise" }))
+    fireEvent.click(card(key).getByRole("checkbox", { name: "Sales email" }))
+    fireEvent.change(card(key).getByRole("spinbutton", { name: "Days between contacts" }), { target: { value: "5" } })
+    fireEvent.click(card(key).getByRole("radio", { name: /^Active/ }))
+    fireEvent.click(card(key).getByRole("button", { name: "Save" }))
+    await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1))
+    expect(mergeActivitySettings(undefined, onSave.mock.calls[0][0].activities)[key as "leads_follow_up"]).toMatchObject({ cooldown_mode: "fixed", cooldown_period_days: 5 })
+  })
 
   it("starts inactive and blocks enabling without explicit targeting/accounts", async () => {
     const onSave = jest.fn()
@@ -62,7 +76,8 @@ describe("ActivitiesSection outreach controls", () => {
     const { unmount } = render(<TestForm onSave={onSave} initial={{ invoices_due: "default" }} />)
     await waitFor(() => expect(card().getByText(/Unable to load this site's segments/)).toBeInTheDocument())
     expect(card(key).getByRole("radio", { name: /Inactive/ })).toBeChecked()
-    expect(card(key).getByRole("spinbutton", { name: "Repeat interval (days)" })).toHaveValue(3)
+    expect(card(key).getByRole("radio", { name: /Progressive \(default\)/ })).toBeChecked()
+    expect(card(key).queryByRole("spinbutton", { name: "Repeat interval (days)" })).not.toBeInTheDocument()
     expect(card(key).queryByText("Target segments")).not.toBeInTheDocument()
     expect(card(key).queryByLabelText("Maximum unanswered messages")).not.toBeInTheDocument()
     expect(card(key).getByRole("combobox", { name: "Invoice reminder execution time" })).toHaveTextContent("Business opening time")
@@ -70,6 +85,7 @@ describe("ActivitiesSection outreach controls", () => {
     fireEvent.click(card(key).getByRole("radio", { name: /^Active/ }))
     expect(card(key).getByRole("radio", { name: /Inactive/ })).toBeChecked()
     fireEvent.click(card(key).getByRole("checkbox", { name: "Sales Voice" }))
+    fireEvent.click(card(key).getByRole("radio", { name: /Fixed number of days/ }))
     fireEvent.change(card(key).getByRole("spinbutton", { name: "Repeat interval (days)" }), { target: { value: "5" } })
     fireEvent.click(card(key).getByRole("radio", { name: /^Active/ }))
     expect(card(key).getByRole("radio", { name: /^Active/ })).toBeChecked()
@@ -88,10 +104,22 @@ describe("ActivitiesSection outreach controls", () => {
     const onSave = jest.fn()
     render(<TestForm onSave={onSave} />)
     await waitFor(() => expect(card().getByRole("checkbox", { name: "Enterprise" })).toBeInTheDocument())
+    fireEvent.click(card("invoices_due").getByRole("radio", { name: /Fixed number of days/ }))
     fireEvent.change(card("invoices_due").getByRole("spinbutton", { name: "Repeat interval (days)" }), { target: { value: interval } })
     fireEvent.click(card("invoices_due").getByRole("button", { name: "Save" }))
     expect(onSave).not.toHaveBeenCalled()
     expect(card("invoices_due").getByRole("alert")).toHaveTextContent("1 to 365 days")
+  })
+  it("selects progressive invoice cooldown and saves it separately from existing fixed intervals", async () => {
+    const onSave = jest.fn().mockResolvedValue(true)
+    render(<TestForm onSave={onSave} initial={{ invoices_due: { cooldown_mode: "fixed", repeat_interval_days: 5 } }} />)
+    await waitFor(() => expect(card("invoices_due").getByRole("radio", { name: /Fixed number of days/ })).toBeChecked())
+    expect(card("invoices_due").getByRole("spinbutton", { name: "Repeat interval (days)" })).toHaveValue(5)
+    fireEvent.click(card("invoices_due").getByRole("radio", { name: /Progressive \(default\)/ }))
+    expect(card("invoices_due").queryByRole("spinbutton", { name: "Repeat interval (days)" })).not.toBeInTheDocument()
+    fireEvent.click(card("invoices_due").getByRole("button", { name: "Save" }))
+    await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1))
+    expect(mergeActivitySettings(undefined, onSave.mock.calls[0][0].activities).invoices_due).toMatchObject({ cooldown_mode: "progressive", repeat_interval_days: 3 })
   })
 
   it("shows the persisted site timezone for both fixed-time controls rather than unsaved form hours", async () => {
@@ -118,7 +146,7 @@ describe("ActivitiesSection outreach controls", () => {
     await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1))
     expect(mergeActivitySettings(undefined, onSave.mock.calls[0][0].activities).leads_follow_up).toEqual({
       status: "active", channel_accounts: { email: [emailId, secondEmailId], whatsapp: [whatsappId] },
-      segment_ids: ["segment-a", "segment-b"], all_segments: false, daily_message_limit: 90, max_unanswered_messages: 7, weekdays: [0],
+      segment_ids: ["segment-a", "segment-b"], all_segments: false, daily_message_limit: 90, max_unanswered_messages: 7, cooldown_mode: "progressive", weekdays: [0],
       start_time_mode: "business_opening",
     })
     await waitFor(() => expect(card().getByRole("button", { name: "Save" })).toBeDisabled())
@@ -155,8 +183,8 @@ describe("ActivitiesSection outreach controls", () => {
     const saved = mergeActivitySettings(undefined, onSave.mock.calls[0][0].activities)
     expect(saved[key]).toEqual({
       status: "active", channel_accounts: { email: [], whatsapp: [], sms: ["sms-id"], telegram: ["telegram-id"], voice: ["voice-id"], "custom-chat_v2": ["custom-id"] },
-      segment_ids: ["segment-a"], all_segments: false, daily_message_limit: 72, max_unanswered_messages: 6, weekdays: [2, 3, 4],
-      start_time_mode: "business_opening",
+      segment_ids: ["segment-a"], all_segments: false, daily_message_limit: 72, max_unanswered_messages: 6, cooldown_mode: "progressive", weekdays: [2, 3, 4],
+      start_time_mode: "business_opening", start_time: undefined,
     })
     unmount()
     render(<TestForm onSave={onSave} initial={saved} />)

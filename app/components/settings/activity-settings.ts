@@ -58,10 +58,16 @@ export function validatedActivityUpdates(validated: unknown, updates: unknown) {
 
 function outreachSchema<T extends z.ZodRawShape>(key: OutreachActivityKey, fields: T) {
   return z.preprocess(value => {
-    const data = value === undefined ? {} : typeof value === "string" ? { status: value } : value
-    return key === "invoices_due" && data && typeof data === "object" && !Array.isArray(data)
-      && record(data).start_time === undefined && record(data).start_time_mode === undefined
-      ? { ...data, start_time_mode: "business_opening" } : data
+    let data = value === undefined ? {} : typeof value === "string" ? { status: value } : value
+    if (data && typeof data === "object" && !Array.isArray(data)) {
+      if (key === "invoices_due" && record(data).cooldown_mode === undefined) {
+        data = { ...data, cooldown_mode: record(data).repeat_interval_days === undefined ? "progressive" : "fixed" }
+      }
+      if (key === "invoices_due" && record(data).start_time === undefined && record(data).start_time_mode === undefined) {
+        data = { ...data, start_time_mode: "business_opening" }
+      }
+    }
+    return data
   }, z.object({
     status: z.enum(["active", "inactive", "default"]).default("inactive").transform(value => value === "active" ? "active" as const : "inactive" as const),
     channel_accounts: z.record(
@@ -72,6 +78,8 @@ function outreachSchema<T extends z.ZodRawShape>(key: OutreachActivityKey, field
     all_segments: z.boolean().default(false),
     daily_message_limit: z.number().int().min(1).max(10000).default(30),
     max_unanswered_messages: key === "invoices_due" ? z.custom<number>(() => true).default(3) : z.number().int().min(1).max(100).default(3),
+    cooldown_mode: key === "invoices_due" ? z.enum(["progressive", "fixed"]).optional() : z.enum(["progressive", "fixed"]).default("progressive"),
+    ...(key === "invoices_due" ? {} : { cooldown_period_days: z.number().optional() }),
     weekdays: z.array(z.number().int().min(0).max(6)).default(key === "invoices_due" ? [1, 2, 3, 4, 5] : [2, 3, 4]),
     ...fields,
   }).passthrough().superRefine((value, ctx) => {

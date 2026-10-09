@@ -46,7 +46,9 @@ describe('billing interval selection', () => {
   it('renders controlled interval tabs and reports the selected interval without submitting', () => {
     const onChange = jest.fn()
     const { container, rerender } = render(<BillingIntervalSelector value="month" onChange={onChange} disabled={false} />)
-    expect(container.firstElementChild).toHaveClass('items-center')
+    expect(container.firstElementChild).toHaveClass('flex-row', 'flex-wrap', 'items-center', 'justify-center')
+    expect(container.firstElementChild).not.toHaveClass('flex-col')
+    expect(screen.getByText('Billing interval')).toHaveClass('whitespace-nowrap')
     expect(screen.getByRole('tablist', { name: 'Billing interval' })).toBeInTheDocument()
     expect(screen.queryByRole('radio')).not.toBeInTheDocument()
     const monthly = screen.getByRole('tab', { name: 'Monthly' })
@@ -78,9 +80,11 @@ describe('billing interval selection', () => {
     await waitFor(() => expect(monthly).toHaveFocus())
   })
 
-  it('shows current annual addon total and keeps monthly credits', () => {
-    render(<ConnectedAccountsAddons totalSocialAccounts={4} totalAgentChannels={1} socialLimit={3} agentLimit={1} addonsCount={2} billingInterval="year" requiredAddons={1} missingAddons={0} socialUsagePercentage={80} agentUsagePercentage={100} isPaidPlan isSaving={false} onManageAddons={jest.fn()} />)
-    expect(screen.getByText(/Each add-on costs \$108.00\/year.*\$9.00\/month equivalent.*\+5 credits\/month/)).toBeInTheDocument()
+  it('shows current annual addon total and keeps monthly credits available in help', () => {
+    render(<ConnectedAccountsAddons totalSocialAccounts={4} totalAgentChannels={1} socialLimit={3} agentLimit={1} addonsCount={2} billingInterval="year" requiredAddons={1} missingAddons={0} socialUsagePercentage={80} agentUsagePercentage={100} isSaving={false} onManageAddons={jest.fn()} />)
+    expect(screen.getByText('$108.00/year')).toBeVisible()
+    fireEvent.click(screen.getByRole('button', { name: 'Help: Connected Accounts & Add-ons' }))
+    expect(screen.getByRole('tooltip')).toHaveTextContent(/Each add-on costs \$108.00\/year.*\$9.00\/month equivalent.*\+1 credit\/month/)
     expect(screen.getByText('$216.00/year total · $18.00/month equivalent')).toBeInTheDocument()
   })
 

@@ -1,5 +1,5 @@
 import React from "react"
-import { fireEvent, render, screen } from "@testing-library/react"
+import { act, fireEvent, render, screen } from "@testing-library/react"
 import { CreditsWidget } from "@/app/components/navigation/CreditsWidget"
 import type { Site } from "@/app/context/site-types"
 import { navigateOrAssign } from "@/lib/navigation/stale-router"
@@ -44,6 +44,67 @@ describe("CreditsWidget", () => {
     expect(screen.getByRole("progressbar", { name: "Credits" })).toHaveAttribute("aria-valuenow", "40")
     expect(screen.getByTitle("Withdrawable credits")).toHaveStyle({ width: "40%" })
     expect(screen.getByTitle("Withdrawable credits")).toHaveClass("bg-emerald-500")
+  })
+
+  it("uses one monthly credit per add-on in the displayed allowance", () => {
+    setBilling({ addons_count: 2, credits_available: 3 })
+    render(<CreditsWidget />)
+    expect(screen.getByText("3 / 22")).toBeInTheDocument()
+    expect(screen.getByRole("progressbar", { name: "Credits" })).toHaveAttribute("aria-valuenow", String((3 / 22) * 100))
+  })
+
+  it("shows the old window's stored quota until billing refreshes the new allowance", () => {
+    const period = { plan_credit_period_start: "2000-01-01T00:00:00Z", plan_credit_period_end: "2099-01-01T00:00:00Z" }
+    setBilling({ ...period, addons_count: 2, plan_credit_allowance: 30 })
+    const { rerender } = render(<CreditsWidget />)
+    expect(screen.getByText("0 / 30")).toBeInTheDocument()
+    setBilling({ ...period, addons_count: 2, plan_credit_allowance: 22 })
+    rerender(<CreditsWidget />)
+    expect(screen.getByText("0 / 22")).toBeInTheDocument()
+  })
+
+  it.each([
+    ["expired", "2000-01-01T00:00:00Z", "2000-02-01T00:00:00Z"],
+    ["future", "2099-01-01T00:00:00Z", "2099-02-01T00:00:00Z"],
+    ["invalid", "2000-01-01T00:00:00Z", "invalid-date"],
+    ["reversed", "2099-01-01T00:00:00Z", "2000-01-01T00:00:00Z"],
+    ["missing", null, null],
+  ])("ignores the stored allowance for an %s period", (_label, start, end) => {
+    setBilling({ plan: "commission", addons_count: 0, plan_credit_allowance: 23,
+      plan_credit_period_start: start, plan_credit_period_end: end })
+    render(<CreditsWidget />)
+    expect(screen.getByText("0 / 1")).toBeInTheDocument()
+  })
+
+  it("stops displaying the stored quota at expiry without a billing refresh", () => {
+    jest.useFakeTimers().setSystemTime(new Date("2026-10-08T12:00:00Z"))
+    try {
+      setBilling({ addons_count: 2, plan_credit_allowance: 30,
+        plan_credit_period_start: "2026-09-08T12:00:01Z", plan_credit_period_end: "2026-10-08T12:00:01Z" })
+      render(<CreditsWidget />)
+      expect(screen.getByText("0 / 30")).toBeInTheDocument()
+      act(() => { jest.advanceTimersByTime(1000) })
+      expect(screen.getByText("0 / 22")).toBeInTheDocument()
+    } finally {
+      jest.useRealTimers()
+    }
+  })
+
+  it("rechecks a background tab's expired quota on focus", () => {
+    jest.useFakeTimers().setSystemTime(new Date("2026-10-08T12:00:00Z"))
+    try {
+      setBilling({ plan: "commission", plan_credit_allowance: 23,
+        plan_credit_period_start: "2026-09-08T12:00:00Z", plan_credit_period_end: "2026-10-08T12:01:00Z" })
+      const { unmount } = render(<CreditsWidget />)
+      expect(screen.getByText("0 / 23")).toBeInTheDocument()
+      jest.setSystemTime(new Date("2026-10-08T12:02:00Z"))
+      fireEvent.focus(window)
+      expect(screen.getByText("0 / 1")).toBeInTheDocument()
+      unmount()
+      expect(jest.getTimerCount()).toBe(0)
+    } finally {
+      jest.useRealTimers()
+    }
   })
 
   it("stacks regular and withdrawable credits on the same horizontal bar", () => {
@@ -116,9 +177,9 @@ describe("CreditsWidget", () => {
 
   it.each([
     ["commission", 0, 1],
-    ["engine", 2, 30],
+    ["engine", 2, 22],
     ["foundry", 0, 100],
-    ["enterprise", 1, 505],
+    ["enterprise", 1, 501],
   ] as const)("preserves the %s plan limit with %s add-ons", (plan, addons_count, limit) => {
     setBilling({ plan, addons_count, account_balance: 0.25 })
     render(<CreditsWidget />)

@@ -21,35 +21,35 @@ const PLANS: Array<{
   titleKey: string
   titleFallback: string
   monthlyPrice: number
-  detail: (t: (key: string) => string) => string
+  detail: (t: (key: string, params?: Record<string, string | number>) => string) => string
 }> = [
   {
     id: "commission",
     titleKey: "billing.plan.erp.title",
     titleFallback: "Toolbox",
     monthlyPrice: 0,
-    detail: (t) => `1 ${t("billing.plan.creditsPerMonth") || "credit/month"} + 1 social account`,
+    detail: (t) => t("billing.plan.erp.allowances", { credits: 1, socialAccounts: 1 }) || "1 credit/month + 1 social account",
   },
   {
     id: "engine",
     titleKey: "billing.plan.engine.title",
     titleFallback: "Starter",
     monthlyPrice: 23,
-    detail: (t) => `20 ${t("billing.plan.creditsPerMonth") || "credits/month"} + 1 agent channel, 3 social accounts`,
+    detail: (t) => t("billing.plan.engine.allowances", { credits: 20, agentChannels: 1, socialAccounts: 3 }) || "20 credits/month + 1 agent channel, 3 social accounts",
   },
   {
     id: "foundry",
     titleKey: "billing.plan.foundry.title",
     titleFallback: "Pro",
     monthlyPrice: 99,
-    detail: (t) => `100 ${t("billing.plan.creditsPerMonth") || "credits/month"} + 3 agent channels, 6 social accounts`,
+    detail: (t) => t("billing.plan.foundry.allowances", { credits: 100, agentChannels: 3, socialAccounts: 6 }) || "100 credits/month + 3 agent channels, 6 social accounts",
   },
   {
     id: "enterprise",
     titleKey: "billing.plan.enterprise.title",
     titleFallback: "Enterprise",
     monthlyPrice: 500,
-    detail: (t) => `500 ${t("billing.plan.creditsPerMonth") || "credits/month"} + 10 agent channels, 10 social accounts`,
+    detail: (t) => t("billing.plan.enterprise.allowances", { credits: 500, agentChannels: 10, socialAccounts: 10 }) || "500 credits/month + 10 agent channels, 10 social accounts",
   },
 ]
 
@@ -74,12 +74,29 @@ export function SubscriptionPlans({ currentPlan, currentInterval = 'month', bill
         const isCurrent = plan.id === currentPlan && (plan.id === 'commission' || interval === currentInterval)
         const isRequired = plan.id === requiredPlan
         const memberLimit = getMemberLimit(plan.id)
+        const planTitle = t(plan.titleKey) || plan.titleFallback
+        const intervalLabel = interval === 'year'
+          ? t("billing.interval.year") || "year"
+          : t("billing.interval.month") || "month"
+        const intervalAdjective = interval === 'year'
+          ? t("billing.interval.annual") || "annual"
+          : t("billing.interval.monthly") || "monthly"
+        const memberSummary = memberLimit === null
+          ? t("billing.plan.membersUnlimited", { count: 10 }) || "More than 10 members per site · includes owner and pending invitations"
+          : memberLimit === 1
+            ? t("billing.plan.memberSingle", { count: memberLimit }) || `${memberLimit} member per site · includes owner and pending invitations`
+            : t("billing.plan.members", { count: memberLimit }) || `${memberLimit} members per site · includes owner and pending invitations`
         const action =
           PLAN_ORDER[plan.id] > PLAN_ORDER[currentPlan]
             ? "upgrade"
             : PLAN_ORDER[plan.id] < PLAN_ORDER[currentPlan]
               ? "downgrade"
               : "switch"
+        const actionLabel = action === "switch"
+          ? t("billing.plan.switchLabel", { plan: planTitle, interval: intervalAdjective }) || `Switch ${planTitle} ${intervalAdjective}`
+          : action === "upgrade"
+            ? t("billing.plan.upgradeLabel", { plan: planTitle, interval: intervalAdjective }) || `Upgrade to ${planTitle} ${intervalAdjective}`
+            : t("billing.plan.downgradeLabel", { plan: planTitle, interval: intervalAdjective }) || `Downgrade to ${planTitle} ${intervalAdjective}`
 
         return (
           <div
@@ -94,27 +111,30 @@ export function SubscriptionPlans({ currentPlan, currentInterval = 'month', bill
           >
             <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <p className="text-sm font-medium">{t(plan.titleKey) || plan.titleFallback}</p>
+                <p className="text-sm font-medium">{planTitle}</p>
                 {isCurrent && (
                   <span className="text-xs text-muted-foreground">
                     {t("billing.plan.currentBadge") || "Current"}
                   </span>
                 )}
-                {isRequired && <span className="text-xs font-medium text-primary">Minimum required plan</span>}
+                {isRequired && <span className="text-xs font-medium text-primary">{t("billing.plan.minimumRequired") || "Minimum required plan"}</span>}
               </div>
               <p className="text-xs text-muted-foreground">{plan.detail(t)}</p>
               <p className="text-xs text-muted-foreground">
-                {memberLimit === null ? "More than 10 members" : `${memberLimit} ${memberLimit === 1 ? "member" : "members"}`} per site · includes owner and pending invitations
+                {memberSummary}
               </p>
             </div>
             <div className="flex shrink-0 items-center gap-3">
               <div className="text-right text-sm tabular-nums">
                 <span className="font-medium">{formatPrice(price.total)}</span>
-                <span className="text-muted-foreground">/{interval === 'year' ? 'year' : 'month'}</span>
-                {interval === 'year' && <p className="text-xs text-muted-foreground">{formatPrice(price.monthlyEquivalent)}/month equivalent<br />Billed annually · save 10%</p>}
+                <span className="text-muted-foreground">/{intervalLabel}</span>
+                {interval === 'year' && <p className="text-xs text-muted-foreground">
+                  {t("billing.interval.monthlyEquivalent", { price: formatPrice(price.monthlyEquivalent) }) || `${formatPrice(price.monthlyEquivalent)}/month equivalent`}
+                  <br />{t("billing.interval.annualSavings", { percent: 10 }) || "Billed annually · save 10%"}
+                </p>}
               </div>
               {isCurrent ? (
-                <span className="flex w-[88px] items-center justify-center text-primary" role="img" aria-label="Selected plan">
+                <span className="flex w-[88px] items-center justify-center text-primary" role="img" aria-label={t("billing.plan.selected") || "Selected plan"}>
                   <Check size={20} strokeWidth={2.5} />
                 </span>
               ) : (
@@ -124,14 +144,14 @@ export function SubscriptionPlans({ currentPlan, currentInterval = 'month', bill
                   size="sm"
                   className="w-[88px]"
                   disabled={isSaving || (blockedPaidChanges && plan.id !== 'commission')}
-                  aria-label={`${action === 'switch' ? 'Switch' : action === 'upgrade' ? 'Upgrade to' : 'Downgrade to'} ${plan.titleFallback} ${interval === 'year' ? 'annual' : 'monthly'}`}
+                  aria-label={actionLabel}
                   onClick={() => onChangePlan(plan.id)}
                 >
                   {isSaving
                     ? t("billing.form.processing") || "..."
                     : action === "upgrade"
                       ? t("billing.form.upgrade") || "Upgrade"
-                      : action === "switch" ? "Switch" : t("billing.form.downgrade") || "Downgrade"}
+                      : action === "switch" ? t("billing.actions.switch") || "Switch" : t("billing.form.downgrade") || "Downgrade"}
                 </Button>
               )}
             </div>

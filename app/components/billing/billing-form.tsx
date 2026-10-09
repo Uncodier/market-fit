@@ -14,6 +14,8 @@ import { useAuth } from "@/app/hooks/use-auth"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { PurchaseCreditsDialog } from "./purchase-credits-dialog"
 import { CreditPackages, type CreditPackage } from "./credit-packages"
+import { AutoTopUpCard } from "./auto-top-up-card"
+import { SubscriptionPromotionCard } from "./subscription-promotion-card"
 import { SubscriptionPlans, type BillingPlan } from "./subscription-plans"
 import { BillingDetailsFields } from "./billing-details-fields"
 import { BillingIntervalSelector } from "./billing-interval-selector"
@@ -26,6 +28,7 @@ import { LicenseDowngradeDialog } from "./license-downgrade-dialog"
 import { UpgradeConfirmationDialog } from "./upgrade-confirmation-dialog"
 import { useRequiredLicense } from "./use-required-license"
 import { requiresSubscriptionManagement } from './subscription-transitions'
+import { BillingHelpTooltip } from "./billing-help-tooltip"
 
 const billingFormSchema = z.object({
   plan: z.enum(["commission", "engine", "foundry", "enterprise"]).default("commission"),
@@ -64,7 +67,9 @@ const PLAN_ORDER: Record<BillingPlan, number> = {
 }
 
 export function BillingForm({ initialData }: BillingFormProps) {
-  const { t } = useLocalization()
+  const { t, locale } = useLocalization()
+  const localizedError = (key: string, fallback: string, serverError?: string) =>
+    locale && locale !== 'en' ? (t(key) || fallback) : (serverError || t(key) || fallback)
   const { currentSite, updateBilling, refreshSites } = useSite()
   const { requiredPlan } = useRequiredLicense(currentSite)
   const { user } = useAuth()
@@ -113,6 +118,8 @@ export function BillingForm({ initialData }: BillingFormProps) {
   const isPaidPlan = currentPlan !== "commission"
 
   const addonsCount = currentSite?.billing?.addons_count || 0
+  const hasRecurringBilling = isPaidPlan || addonsCount > 0
+  const addonInterval = hasRecurringBilling ? currentInterval : billingInterval
   const totalSocialAccounts = countSocialAccounts(currentSite)
   const totalAgentChannels = countAgentChannels(currentSite)
   
@@ -143,18 +150,18 @@ export function BillingForm({ initialData }: BillingFormProps) {
       if (result.success && result.url) {
         window.location.href = result.url
       } else {
-        toast.error(result.error || "Failed to create portal session")
+        toast.error(localizedError('billing.errors.portal', "Failed to create portal session", result.error))
         setIsSavingPlan(false)
       }
     } catch {
-      toast.error("An error occurred")
+      toast.error(t('billing.errors.unexpected') || "An error occurred")
       setIsSavingPlan(false)
     }
   }
 
   const handleChangePlan = async (plan: BillingPlan, skipReview = false) => {
     if (!currentSite || !user) {
-      toast.error("No site selected or user not authenticated")
+      toast.error(t('billing.errors.authentication') || "No site selected or user not authenticated")
       return
     }
 
@@ -172,7 +179,7 @@ export function BillingForm({ initialData }: BillingFormProps) {
     // Never disconnect provider accounts before Stripe confirms the downgrade.
     if (isPaidPlan && !skipReview && PLAN_ORDER[plan] < PLAN_ORDER[currentPlan]) {
       if (billingInterval !== currentInterval) {
-        toast.error('Choose your current billing interval to schedule a downgrade, or contact billing support.')
+        toast.error(t('billing.plan.downgradeInterval') || 'Choose your current billing interval to schedule a downgrade, or contact billing support.')
         return
       }
       setPendingDowngradePlan(plan)
@@ -195,7 +202,7 @@ export function BillingForm({ initialData }: BillingFormProps) {
         billingInterval
       )
       if (result.success && result.flow === 'prorated_upgrade' && result.status === 'pending_payment' && result.url) {
-        toast.info('Complete your upgrade payment on Stripe. Your current plan remains active until payment is confirmed.')
+        toast.info(t('billing.plan.upgradePending') || 'Complete your upgrade payment on Stripe. Your current plan remains active until payment is confirmed.')
         window.location.href = result.url
         return
       }
@@ -204,19 +211,20 @@ export function BillingForm({ initialData }: BillingFormProps) {
         return
       }
       if (result.success && result.flow === 'scheduled_downgrade') {
-        toast.success(`Downgrade scheduled for ${new Date(result.effectiveAt!).toLocaleDateString()}. Your current plan remains active until then.`)
+        const date = new Date(result.effectiveAt!).toLocaleDateString(locale === 'en' ? 'en-US' : locale)
+        toast.success(t('billing.plan.downgradeScheduled', { date }) || `Downgrade scheduled for ${date}. Your current plan remains active until then.`)
         await refreshSites()
         return
       }
       if (result.success && result.flow === 'prorated_upgrade') {
-        if (result.status === 'paid') toast.success('Payment confirmed. Refresh billing to view your updated plan.')
+        if (result.status === 'paid') toast.success(t('billing.plan.paymentConfirmed') || 'Payment confirmed. Refresh billing to view your updated plan.')
         await refreshSites()
         return
       }
-      toast.error(result.error || "Failed to create checkout session")
+      toast.error(localizedError('billing.errors.checkout', "Failed to create checkout session", result.error))
     } catch (error) {
       console.error("Error saving plan:", error)
-      toast.error("An unexpected error occurred while updating plan")
+      toast.error(t('billing.errors.updatePlan') || "An unexpected error occurred while updating plan")
     } finally {
       setIsSavingPlan(false)
     }
@@ -236,9 +244,33 @@ export function BillingForm({ initialData }: BillingFormProps) {
     await handleChangePlan(target, true)
   }
 
+  const handleManageAddons = async (target: number) => {
+    if (!currentSite || !user?.email || !Number.isSafeInteger(target) || target < requiredAddons || target < 0 || target > 100 || target === addonsCount) return
+    try {
+      setIsSavingPlan(true)
+      const result = await billingService.createSubscriptionCheckoutSession(
+        currentSite.id, currentPlan, user.email, target, addonInterval)
+      if (!result.success) { toast.error(localizedError('billing.errors.changeAddons', 'Failed to change add-ons', result.error)); return }
+      if (result.flow === 'prorated_addon' && result.status === 'pending_payment' && result.url) {
+        toast.info(t('billing.addons.pending'))
+        window.location.href = result.url
+      } else if (result.flow === 'scheduled_addon_reduction' && result.effectiveAt) {
+        toast.success(t('billing.addons.scheduled', { date: new Date(result.effectiveAt).toLocaleDateString(locale === 'en' ? 'en-US' : locale) }))
+        await refreshSites()
+      } else if (result.flow === 'prorated_addon' && result.status === 'paid') {
+        toast.success(t('billing.addons.paid'))
+        await refreshSites()
+      } else if (!result.flow && result.url) {
+        window.location.href = result.url
+      } else { toast.error(t('billing.errors.verifyAddons') || 'Unable to verify add-on change') }
+    } catch {
+      toast.error(t('billing.errors.verifyAddons') || 'Unable to verify add-on change')
+    } finally { setIsSavingPlan(false) }
+  }
+
   const handleSaveTaxId = async () => {
     if (!currentSite) {
-      toast.error("No site selected")
+      toast.error(t('billing.noSite') || "No site selected")
       return
     }
 
@@ -253,14 +285,14 @@ export function BillingForm({ initialData }: BillingFormProps) {
       const result = await updateBilling(currentSite.id, billingData)
       
       if (result.success) {
-        toast.success("Tax ID updated successfully")
+        toast.success(t('billing.tax.saved') || "Tax ID updated successfully")
         await refreshSites()
       } else {
-        toast.error(result.error || "Failed to update tax ID")
+        toast.error(localizedError('billing.tax.saveError', "Failed to update tax ID", result.error))
       }
     } catch (error) {
       console.error("Error saving tax ID:", error)
-      toast.error("An unexpected error occurred while updating tax ID")
+      toast.error(t('billing.tax.unexpectedError') || "An unexpected error occurred while updating tax ID")
     } finally {
       setIsSavingTaxId(false)
     }
@@ -268,7 +300,7 @@ export function BillingForm({ initialData }: BillingFormProps) {
 
   const handleSaveBillingAddress = async () => {
     if (!currentSite) {
-      toast.error("No site selected")
+      toast.error(t('billing.noSite') || "No site selected")
       return
     }
 
@@ -286,14 +318,14 @@ export function BillingForm({ initialData }: BillingFormProps) {
       const result = await updateBilling(currentSite.id, billingData)
       
       if (result.success) {
-        toast.success("Billing address updated successfully")
+        toast.success(t('billing.address.saved') || "Billing address updated successfully")
         await refreshSites()
       } else {
-        toast.error(result.error || "Failed to update billing address")
+        toast.error(localizedError('billing.address.saveError', "Failed to update billing address", result.error))
       }
     } catch (error) {
       console.error("Error saving billing address:", error)
-      toast.error("An unexpected error occurred while updating billing address")
+      toast.error(t('billing.address.unexpectedError') || "An unexpected error occurred while updating billing address")
     } finally {
       setIsSavingBillingAddress(false)
     }
@@ -306,32 +338,34 @@ export function BillingForm({ initialData }: BillingFormProps) {
         <SectionCard id="credits">
           <SectionCardHeader
             title={t('billing.credits.title') || 'Credits'}
-            description={t('billing.credits.buyHint') || 'Choose a package to add credits to your balance.'}
-            actions={
-              <Button variant="outline" size="sm" type="button" onClick={() => window.location.href = "/billing?tab=credit_history"}>
-                {t('billing.credits.viewHistory') || 'View usage history'}
-              </Button>
-            }
+            actions={<BillingHelpTooltip label={`${t('common.help') || 'Help'}: ${t('billing.credits.title') || 'Credits'}`}>
+              <p>{t('billing.credits.buyHint') || 'Choose a package to add credits to your balance.'}</p>
+              <p>{t('billing.credits.usage') || 'Credits are used for inference tokens, ads, and third-party services'}</p>
+            </BillingHelpTooltip>}
           />
           <SectionCardContent className="space-y-6">
               <div>
-                <div className="text-3xl font-bold">
+                <div className="text-3xl font-semibold tracking-tight tabular-nums">
                   {currentSite?.billing?.credits_available !== undefined ? currentSite.billing.credits_available : 0} <span className="text-sm font-medium text-muted-foreground">{t('billing.credits.available') || 'credits available'}</span>
                 </div>
                 <div className="text-sm text-muted-foreground mt-1">{t('billing.credits.reset') || 'Your credits will reset on the first day of each month'}</div>
-                <div className="text-sm text-muted-foreground mt-1">{t('billing.credits.usage') || 'Credits are used for inference tokens, ads, and third-party services'}</div>
               </div>
               <CreditPackages onBuy={setSelectedPackage} />
             </SectionCardContent>
         </SectionCard>
         
+        {currentSite && <AutoTopUpCard key={currentSite.id} siteId={currentSite.id} />}
+
         <SectionCard id="subscription-plan">
           <SectionCardHeader
             title={t('billing.plan.title') || 'Subscription Plan'}
-            description="Review and confirm changes in Stripe. Annual plans are billed once per year; credits and connection allowances remain monthly."
+            actions={<BillingHelpTooltip label={`${t('common.help') || 'Help'}: ${t('billing.plan.title') || 'Subscription Plan'}`}>
+              <p>{t('billing.plan.reviewDescription') || 'Review and confirm changes in Stripe. Annual plans are billed once per year; credits and connection allowances remain monthly.'}</p>
+              {isPaidPlan && <p>{t('billing.plan.changePolicy') || 'Same-interval paid downgrades take effect at the next renewal. Same-interval upgrades bill now with a prorated credit for unused time on your current plan; access changes only after payment is confirmed. Add-on increases bill now after confirmation; reductions take effect at renewal. Apply a promotion code before requesting a change to discount eligible future invoices. Existing discount terms are preserved. Plan changes with add-ons and downgrades across billing intervals require billing support. No accounts are disconnected before a confirmed change.'}</p>}
+            </BillingHelpTooltip>}
           />
           <SectionCardContent className="space-y-6">
-              <p className="text-sm text-muted-foreground">Current billing: {isPaidPlan ? (currentInterval === 'year' ? 'Annual' : 'Monthly') : 'Free plan'}</p>
+              <p className="text-sm text-muted-foreground">{t('billing.plan.currentBilling') || 'Current billing:'} {isPaidPlan ? (currentInterval === 'year' ? (t('billing.plan.annual') || 'Annual') : (t('billing.plan.monthly') || 'Monthly')) : (t('billing.plan.free') || 'Free plan')}</p>
               <BillingIntervalSelector value={billingInterval} onChange={changeBillingInterval} disabled={isSavingPlan || downgradeModalOpen || !!pendingUpgradePlan} />
               <SubscriptionPlans
                 currentPlan={currentPlan}
@@ -339,35 +373,41 @@ export function BillingForm({ initialData }: BillingFormProps) {
                 currentInterval={currentInterval}
                 billingInterval={billingInterval}
                 isSaving={isSavingPlan}
-                blockedPaidChanges={isPaidPlan && addonsCount > 0}
+                blockedPaidChanges={addonsCount > 0}
                 onChangePlan={handleChangePlan}
               />
-              {isPaidPlan && addonsCount > 0 && <p className="text-sm text-muted-foreground">Subscriptions with add-ons cannot switch plans or intervals here. Contact billing support to review changes to your subscription.</p>}
-              {isPaidPlan && <p className="text-sm text-muted-foreground">Same-interval paid downgrades take effect at the next renewal. Same-interval upgrades bill now with a prorated credit for unused time on your current plan; access changes only after payment is confirmed. Downgrades across billing intervals, add-ons and existing discounts require billing support. No accounts are disconnected before a confirmed change.</p>}
+              {addonsCount > 0 && <p className="text-sm text-muted-foreground">{t('billing.plan.addonsSupport') || 'Subscriptions with add-ons cannot switch plans or intervals here. Contact billing support to review changes to your subscription.'}</p>}
             </SectionCardContent>
         </SectionCard>
           
+        {hasRecurringBilling && currentSite && <SubscriptionPromotionCard
+          siteId={currentSite.id}
+          disabled={isSavingPlan}
+          onApplied={refreshSites}
+        />}
+
         <ConnectedAccountsAddons
           totalSocialAccounts={totalSocialAccounts}
           totalAgentChannels={totalAgentChannels}
           socialLimit={socialLimit}
           agentLimit={agentLimit}
           addonsCount={addonsCount}
-          billingInterval={currentInterval}
+          billingInterval={addonInterval}
           requiredAddons={requiredAddons}
           missingAddons={missingAddons}
           socialUsagePercentage={socialUsagePercentage}
           agentUsagePercentage={agentUsagePercentage}
-          isPaidPlan={isPaidPlan}
           isSaving={isSavingPlan}
-          onManageAddons={() => toast.error('Add-on changes require billing support. No subscription change was made.')}
+          onManageAddons={handleManageAddons}
         />
 
-        {isPaidPlan && (
+        {hasRecurringBilling && (
         <SectionCard id="payment-method">
           <SectionCardHeader 
             title={t('billing.payment.title') || 'Payment Method'} 
-            description={t('billing.payment.description') || 'Manage how you pay for your subscription.'}
+            actions={<BillingHelpTooltip label={`${t('common.help') || 'Help'}: ${t('billing.payment.title') || 'Payment Method'}`}>
+              {t('billing.payment.description') || 'Manage how you pay for your subscription.'}
+            </BillingHelpTooltip>}
           />
           <SectionCardContent>
             <StripePaymentMethod siteId={currentSite?.id} />

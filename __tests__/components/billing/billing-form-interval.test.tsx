@@ -7,6 +7,8 @@ import { disconnectOutstandSocial, disconnectZavuChannel } from '@/app/component
 import { countSocialAccounts } from '@/lib/billing-limits'
 
 const mockUpdateBilling = jest.fn()
+const mockNavigate = jest.fn()
+const originalLocation = window.location
 const mockSite = { id: 'site-example', billing: { plan: 'engine', billing_interval: 'month', addons_count: 0 } }
 
 beforeAll(() => {
@@ -29,7 +31,24 @@ jest.mock('@/app/components/billing/downgrade-channels-modal', () => ({ Downgrad
 jest.mock('@/app/components/settings/disconnect-remote-accounts', () => ({ disconnectOutstandSocial: jest.fn(), disconnectZavuChannel: jest.fn() }))
 
 describe('billing form interval contract', () => {
-  beforeEach(() => { localStorage.clear(); jest.clearAllMocks(); window.history.replaceState({}, '', '/billing'); mockSite.billing.plan = 'engine'; mockSite.billing.billing_interval = 'month'; jest.mocked(countSocialAccounts).mockReturnValue(0) })
+  beforeEach(() => {
+    localStorage.clear(); jest.clearAllMocks(); window.history.replaceState({}, '', '/billing')
+    Object.defineProperty(window, 'location', { configurable: true, value: {
+      get href() { return originalLocation.href }, set href(value: string) { mockNavigate(value) },
+      get search() { return originalLocation.search }, origin: originalLocation.origin,
+    } })
+    mockSite.billing.plan = 'engine'; mockSite.billing.billing_interval = 'month'; mockSite.billing.addons_count = 0
+    jest.mocked(countSocialAccounts).mockReturnValue(0)
+  })
+  afterEach(() => Object.defineProperty(window, 'location', { configurable: true, value: originalLocation }))
+
+  it('keeps credit information and purchase options without the usage history button', async () => {
+    render(<BillingForm />)
+    await waitFor(() => expect(screen.getByText('Minimum required plan')).toBeInTheDocument())
+    expect(screen.queryByRole('button', { name: /view usage history/i })).not.toBeInTheDocument()
+    expect(screen.getByText('credits available')).toBeInTheDocument()
+    expect(screen.getAllByRole('button', { name: 'Buy' })).toHaveLength(3)
+  })
 
   it('does not schedule downgrades across intervals or disconnect providers', async () => {
     mockSite.billing.plan = 'foundry'
@@ -135,12 +154,69 @@ describe('billing form interval contract', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Keep current plan' }))
   })
 
-  it('does not send add-on changes to the portal that cannot safely change subscriptions', () => {
+  it('confirms an add-on increase through verified subscription checkout, not the portal', async () => {
+    jest.mocked(billingService.createSubscriptionCheckoutSession).mockResolvedValue({ success: true,
+      flow: 'prorated_addon', status: 'paid' })
     render(<BillingForm />)
-    fireEvent.click(screen.getByRole('button', { name: 'Add-on support' }))
-    expect(toast.error).toHaveBeenCalledWith('Add-on changes require billing support. No subscription change was made.')
-    expect(billingService.createPortalSession).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: 'Add one add-on' }))
     expect(billingService.createSubscriptionCheckoutSession).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm change' }))
+    await waitFor(() => expect(billingService.createSubscriptionCheckoutSession).toHaveBeenCalledWith(
+      'site-example', 'engine', 'user@example.test', 1, 'month'))
+    expect(billingService.createPortalSession).not.toHaveBeenCalled()
+    expect(mockUpdateBilling).not.toHaveBeenCalled()
+  })
+
+  it.each(['month', 'year'])('starts add-on-only checkout on free with the selected %s interval', async interval => {
+    mockSite.billing.plan = 'commission'
+    jest.mocked(billingService.createSubscriptionCheckoutSession).mockResolvedValue({
+      success: true, url: 'https://checkout.stripe.com/c/pay/addons', sessionId: 'cs_addons',
+    })
+    render(<BillingForm />)
+    if (interval === 'year') fireEvent.mouseDown(screen.getByRole('tab', { name: /Annual/ }), { button: 0, ctrlKey: false })
+    expect(screen.getByText(interval === 'year' ? '$108.00/year' : '$10.00/month')).toBeVisible()
+    fireEvent.click(screen.getByRole('button', { name: 'Add one add-on' }))
+    expect(billingService.createSubscriptionCheckoutSession).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm change' }))
+    await waitFor(() => expect(billingService.createSubscriptionCheckoutSession).toHaveBeenCalledWith(
+      'site-example', 'commission', 'user@example.test', 1, interval))
+    expect(mockNavigate).toHaveBeenCalledWith('https://checkout.stripe.com/c/pay/addons')
+    expect(billingService.createPortalSession).not.toHaveBeenCalled()
+    expect(toast.error).not.toHaveBeenCalled()
+    expect(mockUpdateBilling).not.toHaveBeenCalled()
+  })
+
+  it('manages existing free add-ons on their stored interval and blocks unsafe plan changes', async () => {
+    mockSite.billing.plan = 'commission'
+    mockSite.billing.addons_count = 1
+    mockSite.billing.billing_interval = 'year'
+    jest.mocked(billingService.createSubscriptionCheckoutSession).mockResolvedValue({ success: true,
+      flow: 'prorated_addon', status: 'paid' })
+    render(<BillingForm />)
+    fireEvent.mouseDown(screen.getByRole('tab', { name: 'Monthly' }), { button: 0, ctrlKey: false })
+    expect(screen.getByRole('button', { name: 'Upgrade to Starter monthly' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Manage billing' })).toBeEnabled()
+    expect(screen.getByText('$108.00/year')).toBeVisible()
+    fireEvent.click(screen.getByRole('button', { name: 'Add one add-on' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm change' }))
+    await waitFor(() => expect(billingService.createSubscriptionCheckoutSession).toHaveBeenCalledWith(
+      'site-example', 'commission', 'user@example.test', 2, 'year'))
+    expect(mockUpdateBilling).not.toHaveBeenCalled()
+  })
+
+  it('allows free add-on reductions through the scheduled renewal flow', async () => {
+    mockSite.billing.plan = 'commission'
+    mockSite.billing.addons_count = 1
+    jest.mocked(billingService.createSubscriptionCheckoutSession).mockResolvedValue({ success: true,
+      flow: 'scheduled_addon_reduction', effectiveAt: '2026-11-08T00:00:00Z' })
+    render(<BillingForm />)
+    fireEvent.click(screen.getByRole('button', { name: 'Remove one add-on' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm change' }))
+    await waitFor(() => expect(billingService.createSubscriptionCheckoutSession).toHaveBeenCalledWith(
+      'site-example', 'commission', 'user@example.test', 0, 'month'))
+    expect(mockUpdateBilling).not.toHaveBeenCalled()
+    expect(disconnectOutstandSocial).not.toHaveBeenCalled()
+    expect(disconnectZavuChannel).not.toHaveBeenCalled()
   })
 
   it('canceling paid downgrade review neither starts checkout nor disconnects connections', async () => {

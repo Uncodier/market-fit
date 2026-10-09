@@ -17,6 +17,64 @@ This guide does not authorize a remote migration or configuration change.
 
 ## Invariants
 
+### Paid add-ons on Free
+
+`20261009080000_free_plan_paid_addons.sql` is a forward correction in this
+workspace. It requires the coordinated API bucket, annual coverage, checkout
+lease, canceled-window preservation, one-credit-per-add-on, and paid-window
+preservation migrations named above. It fails closed when the relevant functions
+are absent or still have the older allowance/chronology contracts. The database
+owner must review those prerequisites and apply the correction before enabling
+Free add-on checkout; this document does not authorize remote SQL execution.
+
+- Free remains `commission`. Stripe has **only** the existing configured account
+  add-on Price: $10/month or $108/year per extra. No zero-dollar base Price,
+  Product, or environment variable is needed. Checkout has one quantity-bearing
+  line item, not an empty or synthetic base item.
+- The checkout request is unchanged except that `plan: "commission"` is accepted.
+  First purchase requires `addonsCount >= 1`. Metadata uses `plan=commission`,
+  `price_id=""`, and the verified `addon_price_id`, plus existing site, type,
+  interval and count fields. These fields route/audit checkout; they never prove
+  an entitlement. Paid add-on-only service is inferred from verified Stripe
+  item and immutable invoice prices, quantities and full service periods.
+- The server pricing helper returns an optional `base`/`basePrice`, a verified
+  `addonPrice`, and explicit `lineItems`. Callers must not assume a paid base
+  exists. Missing/inactive/wrong-currency/wrong-amount/wrong-interval add-on prices
+  fail closed; no monthly or zero-dollar fallback is allowed.
+- First checkout returns `{url, sessionId}`. Increases retain `prorated_addon`
+  with paid/pending-payment status. Positive reductions retain
+  `scheduled_addon_reduction` with `effectiveAt` at the current renewal boundary.
+  An explicit subscription card is retained and verified in schedule phases.
+- Reducing Free extras to zero schedules `cancel_at_period_end=true`, never an
+  empty renewal phase. Existing paid extras remain until authoritative Stripe
+  cancellation. An equal zero retry recovers without another write. Changes
+  during an incompatible schedule/pending update/cancellation fail closed;
+  canceling or replacing somebody else's schedule is not automated. Disconnect
+  excess connections before requesting a reduction. Plan or interval changes
+  for an add-on-only subscription require billing support, as do paid-base to
+  Free conversions; checkout must never silently remove a paid base.
+- Monthly allowance is the existing one Free credit **plus one per paid extra**.
+  The first paid extras preserve already-consumed Free monthly credits, subsequent
+  changes preserve consumption, and annual purchases grant only monthly windows
+  within immutable paid annual coverage. Purchased/protected balances and account
+  balance remain untouched. Terminal handling removes extras/coverage and keeps
+  the existing canceled-window/retired-subscription identity fences.
+- Free invoice coverage, including duplicate recovery, must match the fresh
+  server-verified `commission`/quantity/interval service tuple. Failed invoices,
+  partial-period lines, stale invoices, retired subscriptions and metadata alone
+  cannot grant extras. Full-period discounted new-service prorations are accepted
+  consistently by invoice settlement and paid-increase recovery.
+
+Offline regressions are `stripe-free-addons.test.ts`, checkout/promotion route
+tests, and `stripe-free-addons-sql.test.ts`. The latter executes the actual
+TypeScript invoice producer and current coordinated migrations in disposable
+PGlite using the same local API checkout gate described below, with no configured
+database URL or remote service. It covers consumed/protected credits, monthly and
+annual renewal, failure-to-paid settlement, immutable recovery, terminal and
+replacement chronology, permissions and transactional failure rollback.
+
+### Shared settlement invariants
+
 - Verify the signed webhook, then retrieve the current invoice, subscription,
   and customer from Stripe. A delayed failure must not undo a paid invoice.
 - Normalize `starter` to `engine` and `startup` to `foundry`. A database trigger
@@ -29,8 +87,13 @@ This guide does not authorize a remote migration or configuration change.
   plan consumption and recomputes a non-accumulating monthly plan quota rather
   than assigning a stale aggregate balance. Purchased and protected balances remain intact.
 - Initial and renewal invoices grant 20/100/500 base credits for
-  engine/foundry/enterprise plus 5 per add-on per monthly credit period, including
-  annual subscriptions. Buying a year never grants twelve months of credits at once.
+  engine/foundry/enterprise plus 1 per add-on per monthly credit period, including
+  annual subscriptions, after the API-owned forward one-credit-per-add-on migration.
+  Apply its forward correction `20261009070000_preserve_paid_addon_credit_windows.sql`
+  before resuming invoice processing. Existing paid windows retain previously
+  granted add-on excess through paid updates; each new add-on grants one, and the
+  next window uses only the new quota. Buying a year never grants twelve months
+  of credits at once.
 - A failed payment row can become completed. Repeated failures update the same
   row. Completed payments never become failed because of a delayed event.
 - Historical completed payments without a settlement marker are ambiguous:

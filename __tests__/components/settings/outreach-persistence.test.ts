@@ -15,7 +15,7 @@ jest.mock("sonner", () => ({ toast: { success: jest.fn(), error: jest.fn() } }))
 
 const emailId = "11111111-1111-4111-8111-111111111111"
 const channels = { connections: [{ id: emailId, type: "email", status: "connected", zavu_sender_id: "sender" }] }
-const configured = { status: "active", channel_accounts: { email: [emailId], whatsapp: [] }, segment_ids: ["site-segment"], all_segments: false, daily_message_limit: 51, max_unanswered_messages: 8, weekdays: [0, 6] }
+const configured = { status: "active", channel_accounts: { email: [emailId], whatsapp: [] }, segment_ids: ["site-segment"], all_segments: false, daily_message_limit: 51, max_unanswered_messages: 8, cooldown_mode: "fixed", cooldown_period_days: 5, weekdays: [0, 6] }
 const dynamicChannels = ["sms", "telegram", "voice", "messenger", "instagram", "custom-chat_v2"]
 const multichannel = {
   ...configured,

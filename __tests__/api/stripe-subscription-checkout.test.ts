@@ -86,6 +86,35 @@ afterAll(() => { keys.forEach((key) => delete process.env[key]); delete process.
   delete process.env.STRIPE_SUBSCRIPTION_UPDATE_PORTAL_CONFIGURATION_ID; delete process.env.STRIPE_BILLING_PORTAL_CONFIGURATION_ID })
 
 describe('subscription auth, input, and server pricing', () => {
+  it.each(['month', 'year'])('creates Free add-ons using only the configured %s extra price', async billingInterval => {
+    expect((await POST(request({ plan: 'commission', addonsCount: 2, billingInterval }))).status).toBe(200)
+    const addonId = billingInterval === 'year' ? 'price_7' : 'price_3'
+    expect(sdk.checkout.sessions.create).toHaveBeenCalledWith(expect.objectContaining({
+      line_items: [{ price: addonId, quantity: 2 }],
+      metadata: { site_id: siteId, plan: 'commission', billing_interval: billingInterval,
+        addons_count: '2', type: 'subscription', price_id: '', addon_price_id: addonId },
+    }), expect.objectContaining({ idempotencyKey: expect.any(String) }))
+    expect(sdk.prices.retrieve).toHaveBeenCalledTimes(1)
+    expect(sdk.prices.retrieve).toHaveBeenCalledWith(addonId)
+  })
+  it('does not start an empty Free subscription or create a customer at zero', async () => {
+    expect((await POST(request({ plan: 'commission', addonsCount: 0 }))).status).toBe(400)
+    expect(sdk.customers.create).not.toHaveBeenCalled()
+    expect(sdk.checkout.sessions.create).not.toHaveBeenCalled()
+  })
+  it('rejects Free checkout that would drop an active paid base', async () => {
+    existing()
+    expect((await POST(request({ plan: 'commission', addonsCount: 1 }))).status).toBe(409)
+    expect(sdk.subscriptions.update).not.toHaveBeenCalled()
+    expect(sdk.checkout.sessions.create).not.toHaveBeenCalled()
+  })
+  it('requires the configured active Free extra price, even without any base configuration', async () => {
+    keys.filter(key => !key.includes('ADDON')).forEach(key => delete process.env[key])
+    expect((await POST(request({ plan: 'commission', addonsCount: 1 }))).status).toBe(200)
+    sdk.prices.retrieve.mockResolvedValue({ ...price('price_3'), unit_amount: 0 })
+    expect((await POST(request({ plan: 'commission', addonsCount: 1 }))).status).toBe(503)
+    expect(sdk.checkout.sessions.create).toHaveBeenCalledTimes(1)
+  })
   it('rejects unauthenticated before SDK or billing access', async () => {
     expect((await POST(request({}, false))).status).toBe(401)
     expect(Stripe).not.toHaveBeenCalled(); expect(from).not.toHaveBeenCalled()
@@ -338,8 +367,8 @@ describe('existing subscriptions and checkout retries', () => {
     expect((await POST(request())).status).toBe(409)
     expect(sdk.checkout.sessions.create).not.toHaveBeenCalled()
   })
-  it.each([{ discounts: ['di_unresolved'] }, { discounts: [{ coupon: { id: 'coupon_existing' } }] },
-    { items: { has_more: false, data: [{ id: 'si_base', price: { id: 'price_0' }, quantity: 1, discounts: ['di_item'] }] } }])
+  it.each([{ discounts: ['coupon_wrong_object'] }, { discounts: [{ coupon: { id: 'coupon_existing' } }] },
+    { items: { has_more: false, data: [{ id: 'si_base', price: { id: 'price_0' }, quantity: 1, discounts: ['coupon_wrong_item'] }] } }])
   ('never removes or reapplies an existing unresolved/item/coupon discount %#', async (overrides) => {
     existing(overrides)
     const response = await POST(request({ billingInterval: 'year' }))
@@ -348,10 +377,14 @@ describe('existing subscriptions and checkout retries', () => {
     expect(sdk.billingPortal.sessions.create).not.toHaveBeenCalled()
     expect(sdk.checkout.sessions.create).not.toHaveBeenCalled(); expect(sdk.subscriptions.update).not.toHaveBeenCalled()
   })
-  it('preserves inherited customer discount by requiring support review', async () => {
-    existing()
+  it('preserves inherited customer discount during a verified interval change without reapplying it', async () => {
+    existing({ collection_method: 'charge_automatically', latest_invoice: 'in_previous',
+      items: { has_more: false, data: [{ id: 'si_base', price: price('price_0'), quantity: 1,
+        current_period_end: Math.floor(Date.now() / 1000) + 86400 }] } })
     sdk.customers.retrieve.mockResolvedValue({ id: 'cus_site', metadata: { site_id: siteId }, discount: { id: 'di_customer' } })
-    expect((await POST(request({ billingInterval: 'year' }))).status).toBe(409)
+    sdk.subscriptions.update.mockResolvedValue({ id: 'sub_existing', customer: 'cus_site', latest_invoice: { status: 'paid' } })
+    expect((await POST(request({ billingInterval: 'year' }))).status).toBe(200)
+    expect(sdk.subscriptions.update.mock.calls[0][1]).not.toHaveProperty('discounts')
     expect(sdk.billingPortal.sessions.create).not.toHaveBeenCalled()
   })
   it('serializes simultaneous replacements with the existing durable lease', async () => {

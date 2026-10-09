@@ -1,6 +1,7 @@
 import type Stripe from 'stripe'
 import { SubscriptionRequestError } from '@/lib/subscription-pricing.server'
 import { stripeObjectId } from '@/app/api/stripe/webhook/subscription-billing'
+import { retainedDiscounts, verifyPhaseDiscounts, phaseDiscountFields } from './discount-preservation'
 
 const review = () => new SubscriptionRequestError('Subscription change requires billing support to verify', 409)
 
@@ -73,6 +74,12 @@ export async function scheduleDowngrade(params: { stripe: Stripe; sub: Stripe.Su
       !Number.isSafeInteger(schedule.current_phase.start_date) ||
       schedule.current_phase.start_date > item.current_period_start) throw review()
   const phases = schedule.phases
+  const discounts = retainedDiscounts(sub.discounts)
+  const itemDiscounts = retainedDiscounts(item.discounts)
+  const verifyDiscounts = (phase: Stripe.SubscriptionSchedule.Phase) => {
+    verifyPhaseDiscounts(phase.discounts, discounts)
+    phase.items.forEach(value => verifyPhaseDiscounts(value.discounts, itemDiscounts))
+  }
   if (!phases || ![1, 2].includes(phases.length) ||
       phases[0].start_date !== schedule.current_phase.start_date || phases[0].end_date !== periodEnd ||
       phases[0].items?.length !== 1 || stripeObjectId(phases[0].items[0].price) !== item.price.id ||
@@ -80,13 +87,14 @@ export async function scheduleDowngrade(params: { stripe: Stripe; sub: Stripe.Su
   if (phases.length === 2 && (schedule.end_behavior !== 'release' || phases[1].start_date !== periodEnd ||
       phases[1].items?.length !== 1 || stripeObjectId(phases[1].items[0].price) !== target ||
       phases[1].items[0].quantity !== 1)) throw review()
+  phases.forEach(verifyDiscounts)
   if (schedule.metadata?.downgrade_target &&
       (schedule.metadata.downgrade_target !== target || schedule.metadata.downgrade_period_end !== String(periodEnd))) throw review()
   // The phase writer below only copies price/quantity. Reject tax, invoice,
   // payment and metadata settings that would be reset on phase replacement.
   if (sub.automatic_tax?.enabled || sub.default_tax_rates?.length || item.tax_rates?.length ||
       phases[0].automatic_tax?.enabled || phases[0].default_tax_rates?.length ||
-      phases[0].items[0].tax_rates?.length || phases[0].discounts?.length ||
+      phases[0].items[0].tax_rates?.length ||
       phases[0].add_invoice_items?.length || phases[0].billing_thresholds ||
       phases[0].application_fee_percent || phases[0].transfer_data ||
       schedule.default_settings?.automatic_tax?.enabled ||
@@ -96,7 +104,7 @@ export async function scheduleDowngrade(params: { stripe: Stripe; sub: Stripe.Su
       phases[0].invoice_settings?.account_tax_ids?.length ||
       phases[0].invoice_settings?.issuer?.type === 'account' ||
       sub.invoice_settings?.issuer?.type === 'account' ||
-      phases[0].items[0].discounts?.length || phases[0].items[0].billing_thresholds ||
+      phases[0].items[0].billing_thresholds ||
       phases[0].items[0].metadata && Object.keys(phases[0].items[0].metadata).length ||
       phases[0].metadata && Object.keys(phases[0].metadata).length ||
       schedule.default_settings?.default_payment_method || phases[0].default_payment_method ||
@@ -109,10 +117,10 @@ export async function scheduleDowngrade(params: { stripe: Stripe; sub: Stripe.Su
     if (schedule.metadata?.downgrade_target !== target ||
         schedule.metadata?.downgrade_period_end !== String(periodEnd) ||
         phases[1].automatic_tax?.enabled || phases[1].default_tax_rates?.length ||
-        phases[1].items[0].tax_rates?.length || phases[1].discounts?.length ||
+        phases[1].items[0].tax_rates?.length ||
         phases[1].add_invoice_items?.length || phases[1].billing_thresholds ||
         phases[1].application_fee_percent || phases[1].transfer_data || phases[1].trial_end ||
-        phases[1].items[0].discounts?.length || phases[1].items[0].billing_thresholds ||
+        phases[1].items[0].billing_thresholds ||
         phases[1].default_payment_method || phases[1].on_behalf_of ||
         phases[1].invoice_settings?.account_tax_ids?.length) throw review()
     return { flow: 'scheduled_downgrade' as const, effectiveAt: new Date(periodEnd * 1000).toISOString() }
@@ -122,9 +130,10 @@ export async function scheduleDowngrade(params: { stripe: Stripe; sub: Stripe.Su
     end_behavior: 'release', proration_behavior: 'none',
     metadata: { downgrade_target: target, downgrade_period_end: String(periodEnd) }, phases: [
       { start_date: schedule.current_phase.start_date, end_date: periodEnd,
-        items: [{ price: item.price.id, quantity: 1 }], proration_behavior: 'none' },
-      { start_date: periodEnd, items: [{ price: target, quantity: 1 }],
-        iterations: 1, proration_behavior: 'none' },
+        items: [{ price: item.price.id, quantity: 1, ...phaseDiscountFields(itemDiscounts) }],
+        proration_behavior: 'none', ...phaseDiscountFields(discounts) },
+      { start_date: periodEnd, items: [{ price: target, quantity: 1, ...phaseDiscountFields(itemDiscounts) }],
+        iterations: 1, proration_behavior: 'none', ...phaseDiscountFields(discounts) },
     ],
   }, { idempotencyKey: `downgrade-phases-${key}` })
   if (updated.id !== schedule.id || stripeObjectId(updated.subscription) !== sub.id ||
@@ -134,5 +143,6 @@ export async function scheduleDowngrade(params: { stripe: Stripe; sub: Stripe.Su
       updated.phases[0].end_date !== periodEnd || updated.phases[1].start_date !== periodEnd ||
       stripeObjectId(updated.phases[0].items?.[0]?.price) !== item.price.id ||
       stripeObjectId(updated.phases[1].items?.[0]?.price) !== target) throw review()
+  updated.phases.forEach(verifyDiscounts)
   return { flow: 'scheduled_downgrade' as const, effectiveAt: new Date(periodEnd * 1000).toISOString() }
 }

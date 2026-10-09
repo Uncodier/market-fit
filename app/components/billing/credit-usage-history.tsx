@@ -28,7 +28,8 @@ interface CreditUsageHistoryProps {
 }
 
 export function CreditUsageHistory({ className }: CreditUsageHistoryProps) {
-  const { t } = useLocalization()
+  const { t, locale } = useLocalization()
+  const dateLocale = (locale ?? 'en') === 'en' ? 'en-US' : (locale ?? 'en')
   const { currentSite } = useSite()
   const { isDarkMode } = useTheme()
   const [isDownloading, setIsDownloading] = useState(false)
@@ -73,7 +74,7 @@ export function CreditUsageHistory({ className }: CreditUsageHistoryProps) {
       setLastLoadedSiteId(currentSite.id)
     } catch (error) {
       console.error("Error loading credit transactions:", error)
-      toast.error("Failed to load credit history")
+      toast.error(t('billing.credits.history.loadError') || 'Failed to load credit history')
       if (page === 1) setTransactions([])
     } finally {
       setIsLoading(false)
@@ -130,7 +131,7 @@ export function CreditUsageHistory({ className }: CreditUsageHistoryProps) {
 
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr)
-    return new Intl.DateTimeFormat('en-US', {
+    return new Intl.DateTimeFormat(dateLocale, {
       year: 'numeric',
       month: 'short',
       day: 'numeric',
@@ -138,44 +139,73 @@ export function CreditUsageHistory({ className }: CreditUsageHistoryProps) {
       minute: '2-digit'
     }).format(date)
   }
+
+  const getTypeLabel = (type?: string) => {
+    switch (type) {
+      case 'credit_purchase':
+      case 'credits_purchase': return t('billing.payment.type.credits') || 'Credit Purchase'
+      case 'subscription': return t('billing.payment.type.subscription') || 'Subscription'
+      case 'refund': return t('billing.payment.type.refund') || 'Refund'
+      case 'usage': return t('billing.credits.type.usage') || 'Usage'
+      case 'purchase': return t('billing.credits.purchase') || 'Purchase'
+      case 'credit': return t('billing.payment.type.credit') || 'Credit'
+      case 'bonus': return t('billing.credits.type.bonus') || 'Bonus'
+      case 'adjustment': return t('billing.credits.type.adjustment') || 'Adjustment'
+      case 'initial_allocation': return t('billing.credits.type.initialAllocation') || 'Initial allocation'
+      case 'monthly_reset': return t('billing.credits.type.monthlyReset') || 'Monthly reset'
+      case 'plan_credit_reset': return t('billing.credits.type.planReset') || 'Plan credit reset'
+      case 'plan_credit_expiry': return t('billing.credits.type.planExpiry') || 'Plan credit expiry'
+      case 'plan_credit_adjustment': return t('billing.credits.type.planAdjustment') || 'Plan credit adjustment'
+      case 'stripe_subscription_invoice': return t('billing.credits.type.subscriptionInvoice') || 'Stripe subscription invoice'
+      case 'subscription_renewal_recovery': return t('billing.credits.type.renewalRecovery') || 'Subscription renewal recovery'
+      default: return type?.replace(/_/g, ' ') || t('billing.credits.table.unknown') || 'Unknown'
+    }
+  }
   
   const handleDownloadCSV = () => {
     setIsDownloading(true)
     try {
       if (allTransactions.length === 0) {
-        toast.error("No data to download")
+        toast.error(t('billing.credits.history.noDownloadData') || 'No data to download')
         return
       }
 
       // Create CSV header
-      const headers = ['Date', 'Type', 'Amount', 'Description']
+      const headers = [
+        t('billing.credits.table.date') || 'Date',
+        t('billing.credits.table.type') || 'Type',
+        t('billing.credits.table.amount') || 'Amount',
+        t('billing.credits.table.desc') || 'Description'
+      ]
+      const escapeCSV = (value: string) => /[",\r\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value
       
       // Create CSV rows
-      const rows = allTransactions.map(t => {
-        const date = new Date(t.created_at).toISOString()
-        const type = t.transaction_type || ''
-        const amount = t.amount || 0
-        const description = t.description ? `"${t.description.replace(/"/g, '""')}"` : ''
+      const rows = allTransactions.map(transaction => {
+        const date = escapeCSV(formatDate(transaction.created_at))
+        const type = escapeCSV(getTypeLabel(transaction.transaction_type))
+        const amount = transaction.amount || 0
+        const description = transaction.description ? `"${transaction.description.replace(/"/g, '""')}"` : ''
         return `${date},${type},${amount},${description}`
       })
 
-      const csvContent = [headers.join(','), ...rows].join('\n')
+      const csvContent = [headers.map(escapeCSV).join(','), ...rows].join('\n')
       
       // Create and trigger download
       const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
       const url = URL.createObjectURL(blob)
       const link = document.createElement('a')
       link.setAttribute('href', url)
-      link.setAttribute('download', `credit_usage_${currentSite?.id}_${new Date().toISOString().split('T')[0]}.csv`)
+      const filename = t('billing.credits.history.filename') || 'credit_usage'
+      link.setAttribute('download', `${filename}_${currentSite?.id}_${new Date().toISOString().split('T')[0]}.csv`)
       link.style.visibility = 'hidden'
       document.body.appendChild(link)
       link.click()
       document.body.removeChild(link)
       
-      toast.success('CSV downloaded successfully')
+      toast.success(t('billing.credits.history.downloaded') || 'CSV downloaded successfully')
     } catch (error) {
       console.error('Error downloading CSV:', error)
-      toast.error('Failed to download CSV')
+      toast.error(t('billing.credits.history.downloadError') || 'Failed to download CSV')
     } finally {
       setIsDownloading(false)
     }
@@ -195,7 +225,7 @@ export function CreditUsageHistory({ className }: CreditUsageHistoryProps) {
   // Process data for the chart using all transactions
   // Group by day and sum amounts
   const chartData = [...allTransactions].reverse().reduce((acc: any[], curr) => {
-    const dateStr = new Date(curr.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+    const dateStr = new Date(curr.created_at).toLocaleDateString(dateLocale, { month: 'short', day: 'numeric' })
     const existing = acc.find(item => item.date === dateStr)
     
     if (existing) {
@@ -348,7 +378,7 @@ export function CreditUsageHistory({ className }: CreditUsageHistoryProps) {
                     {transactions.map((transaction) => (
                       <tr key={transaction.id} className="hover:bg-muted/50 transition-colors">
                         <td className="px-4 py-3">{formatDate(transaction.created_at)}</td>
-                        <td className="px-4 py-3 capitalize">{transaction.transaction_type?.replace(/_/g, ' ') || (t('billing.credits.table.unknown') || 'Unknown')}</td>
+                        <td className="px-4 py-3 capitalize">{getTypeLabel(transaction.transaction_type)}</td>
                         <td className="px-4 py-3">{transaction.description || '-'}</td>
                         <td className="px-4 py-3 text-right">
                           <Badge className={`${getTransactionColor(transaction.amount)}`}>

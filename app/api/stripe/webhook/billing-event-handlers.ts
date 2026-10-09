@@ -7,6 +7,7 @@ import {
   resolveStripeRefundPaymentIntent,
 } from "@/app/commerce/handle-stripe-sale-refund"
 import { stripeObjectId, syncStripeSubscription } from "./subscription-billing"
+import { settleAutoTopUpIntent } from "../auto-top-up/settlement"
 import { settleStripeSubscriptionInvoice } from "./subscription-invoice-settlement"
 
 type BillingWebhookClient = Pick<SupabaseClient, "from" | "rpc">
@@ -66,6 +67,12 @@ export async function handleBillingStripeEvent(params: {
   supabase: BillingWebhookClient
 }): Promise<boolean> {
   const { event, stripe, supabase } = params
+  if ((event.type === "payment_intent.succeeded" || event.type === "payment_intent.payment_failed" ||
+       event.type === "payment_intent.canceled") &&
+      (event.data.object as Stripe.PaymentIntent).metadata?.type === "credit_auto_top_up") {
+    await settleAutoTopUpIntent(stripe, event.data.object as Stripe.PaymentIntent)
+    return true
+  }
   switch (event.type) {
     case "customer.subscription.created":
     case "customer.subscription.updated":

@@ -16,6 +16,7 @@ import { ScrollArea } from "@/app/components/ui/scroll-area"
 import { ChannelIcon } from "@/app/components/channels/channel-icon"
 import type { Site } from "@/app/context/site-types"
 import { listConnectedAccounts, type ConnectedAccount } from "./downgrade-accounts"
+import { useLocalization } from "@/app/context/LocalizationContext"
 
 interface DowngradeChannelsModalProps {
   open: boolean
@@ -38,6 +39,7 @@ export function DowngradeChannelsModal({
   busy = false,
   onConfirm,
 }: DowngradeChannelsModalProps) {
+  const { t } = useLocalization()
   const [accounts, setAccounts] = useState<ConnectedAccount[]>([])
   const [selected, setSelected] = useState<Set<string>>(new Set())
 
@@ -131,19 +133,20 @@ export function DowngradeChannelsModal({
     >
       <AlertDialogContent className="sm:max-w-[500px]" busy={busy}>
         <AlertDialogHeader>
-          <AlertDialogTitle>Choose accounts to keep</AlertDialogTitle>
+          <AlertDialogTitle>{t('billing.downgrade.accountsTitle') || "Choose accounts to keep"}</AlertDialogTitle>
           <AlertDialogDescription>
-            Your new plan includes {targetSocialLimit} social accounts and {targetAgentLimit} agent channels, plus {targetAddonsCount} add-on slots.
-            You currently have {accounts.length} connected. Select the ones you want to keep.
-            Unselected accounts will be removed.
+            {t('billing.downgrade.accountsDescription', {
+              socialLimit: targetSocialLimit, agentLimit: targetAgentLimit,
+              addons: targetAddonsCount, connected: accounts.length,
+            }) || `Your new plan includes ${targetSocialLimit} social accounts and ${targetAgentLimit} agent channels, plus ${targetAddonsCount} add-on slots. You currently have ${accounts.length} connected. Select the ones you want to keep. Unselected accounts will be removed.`}
           </AlertDialogDescription>
         </AlertDialogHeader>
 
         <div className="py-2">
           <div className="mb-2 flex items-center justify-between px-1 text-sm">
-            <span className="font-medium text-muted-foreground">Accounts to keep</span>
+            <span className="font-medium text-muted-foreground">{t('billing.downgrade.accountsToKeep') || "Accounts to keep"}</span>
             <span className={isOverLimit ? "font-semibold text-destructive" : "font-semibold"}>
-              {usedAddons} / {targetAddonsCount} add-ons used
+              {t('billing.downgrade.addonsUsed', { used: usedAddons, total: targetAddonsCount }) || `${usedAddons} / ${targetAddonsCount} add-ons used`}
             </span>
           </div>
 
@@ -151,7 +154,7 @@ export function DowngradeChannelsModal({
             <div className="space-y-4">
               {channels.length > 0 && (
                 <AccountGroup
-                  title={`Agent Channels (${selectedAgentCount} / ${targetAgentLimit} base)`}
+                  title={t('billing.downgrade.agentGroup', { selected: selectedAgentCount, limit: targetAgentLimit }) || `Agent Channels (${selectedAgentCount} / ${targetAgentLimit} base)`}
                   accounts={channels}
                   selected={selected}
                   canSelectMore={canSelectMore || selectedAgentCount < targetAgentLimit}
@@ -160,7 +163,7 @@ export function DowngradeChannelsModal({
               )}
               {socials.length > 0 && (
                 <AccountGroup
-                  title={`Social Networks (${selectedSocialCount} / ${targetSocialLimit} base)`}
+                  title={t('billing.downgrade.socialGroup', { selected: selectedSocialCount, limit: targetSocialLimit }) || `Social Networks (${selectedSocialCount} / ${targetSocialLimit} base)`}
                   accounts={socials}
                   selected={selected}
                   canSelectMore={canSelectMore || selectedSocialCount < targetSocialLimit}
@@ -172,14 +175,16 @@ export function DowngradeChannelsModal({
         </div>
 
         <AlertDialogFooter>
-          <AlertDialogCancel disabled={busy}>Cancel</AlertDialogCancel>
+          <AlertDialogCancel disabled={busy}>{t('billing.actions.cancel') || "Cancel"}</AlertDialogCancel>
           <Button
             type="button"
             variant="destructive"
             disabled={isOverLimit || busy}
             onClick={() => onConfirm(Array.from(selected))}
           >
-            {busy ? "Disconnecting..." : "Confirm Downgrade"}
+            {busy
+              ? t('billing.downgrade.disconnecting') || "Disconnecting..."
+              : t('billing.downgrade.confirmAccounts') || "Confirm Downgrade"}
           </Button>
         </AlertDialogFooter>
       </AlertDialogContent>

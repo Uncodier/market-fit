@@ -20,13 +20,32 @@ workflow. The new migration is forward-only.
 
 Included plan credits reset rather than accumulate. Toolbox (`commission`, with
 legacy `free`/`toolbox` aliases) includes one monthly credit; Engine includes 20,
-Foundry 100, Enterprise 500 and paid addons five each.
+Foundry 100, Enterprise 500 and paid add-ons one each. The API-owned forward
+migration `20261009040000_one_monthly_credit_per_addon.sql` and its forward
+correction `20261009070000_preserve_paid_addon_credit_windows.sql` change future
+eligible periods and paid adjustments. Active paid windows retain the excess
+already granted at the old add-on rate; new add-ons grant one each, without
+refilling consumed credits. The next credit window uses only the new quota.
+Bought, protected and withdrawable funds are not reduced. Apply both migrations
+in order through the approved database-owner workflow, keeping subscription
+writers paused between them, before advertising the new allowance in production.
+The widget uses a stored quota only within its recorded start/end boundaries,
+then falls back to the current plan reference without changing any balance.
 New Toolbox/free projects receive one initial monthly plan credit, not a
 separate signup bonus. Initialization is atomic and idempotent: repeated calls
 must not refill spent credits within the same period. Existing purchased,
 withdrawable and protected legacy balances must not be reduced by this change.
 Canceled subscriptions fall back to Toolbox once, not once per repeated webhook.
 Scheduled cancellations retain the paid period until the actual terminal state.
+
+Paid add-ons are also supported on Free (`commission`) after the market-fit
+forward migration `20261009080000_free_plan_paid_addons.sql` and the coordinated
+API annual coverage/cancellation prerequisites. The allowance is one Free credit
+plus one per paid extra per month, not twelve monthly grants on annual purchase.
+Initial Free extras retain the already-consumed Free window; zero extras cancels
+the Stripe add-on-only subscription at renewal without creating a zero-dollar
+base. See [Subscription invoice recovery](STRIPE_INVOICE_RECOVERY.md#paid-add-ons-on-free)
+for migration gates and verified-service, replay and replacement guarantees.
 
 `credits_available` remains regular usable credits, now composed of plan,
 purchased and protected legacy buckets. `account_balance` remains separate and

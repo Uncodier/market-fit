@@ -50,6 +50,7 @@ Use the guides below before relying on older implementation notes.
 - [Stripe webhook security](STRIPE_WEBHOOK_SECURITY.md)
 - [Subscription invoice settlement and recovery](STRIPE_INVOICE_RECOVERY.md)
 - [Monthly credit reset and protected balances](BILLING_CREDIT_RESET.md)
+- [Automatic credit top-up rollout](AUTO_TOP_UP.md)
 - [Monthly/annual pricing UI and signup preference](ANNUAL_PRICING_UI.md)
 - [Site setup launch and safe status feedback](SITE_SETUP_LAUNCH.md)
 - [Social network OAuth](SOCIAL_NETWORK_OAUTH_SETUP.md)

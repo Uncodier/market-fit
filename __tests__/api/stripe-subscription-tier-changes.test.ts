@@ -83,6 +83,11 @@ it('bills a same-interval upgrade now with Stripe unused-time credit and pending
   expect(sdk.subscriptionSchedules.create).not.toHaveBeenCalled()
   expect(beforeProviderWrite).toHaveBeenCalledTimes(1)
 })
+it('preserves redeemed discounts on a same-interval upgrade instead of replaying coupons', async () => {
+  sdk.subscriptions.list.mockResolvedValueOnce({ data: [{ ...subscription(), discounts: ['di_previous'] }], has_more: false })
+  await expect(existingSubscriptionFlow(input('enterprise'))).resolves.toMatchObject({ flow: 'prorated_upgrade', status: 'paid' })
+  expect(sdk.subscriptions.update.mock.calls[0][1]).not.toHaveProperty('discounts')
+})
 it('does not claim an unpaid upgrade is active', async () => {
   sdk.subscriptions.update.mockResolvedValue({ id: 'sub_site', customer: 'cus_site', latest_invoice: 'in_upgrade',
     pending_update: { expires_at: end, subscription_items: [{ price: price('enterprise'), quantity: 1 }] } })
@@ -153,6 +158,17 @@ it('rejects a foreign or changed attached schedule without overwriting it', asyn
   await expect(existingSubscriptionFlow(input('engine'))).rejects.toMatchObject({ status: 409 })
   expect(sdk.subscriptionSchedules.update).not.toHaveBeenCalled()
 })
+
+it('copies redeemed discounts by ID rather than reapplying coupons on a downgrade', async () => {
+  sdk.subscriptions.list.mockResolvedValue({ data: [{ ...subscription(), discounts: ['di_original'] }], has_more: false })
+  const kept = { ...schedule(), phases: schedule().phases.map(phase => ({ ...phase, discounts: [{ discount: 'di_original' }] })) }
+  sdk.subscriptionSchedules.create.mockResolvedValue(kept)
+  sdk.subscriptionSchedules.update.mockImplementation(async (_id, update) => ({ ...kept, ...update, status: 'active' }))
+  await expect(existingSubscriptionFlow(input('engine'))).resolves.toMatchObject({ flow: 'scheduled_downgrade' })
+  for (const phase of sdk.subscriptionSchedules.update.mock.calls[0][1].phases) {
+    expect(phase.discounts).toEqual([{ discount: 'di_original' }])
+  }
+})
 it('recovers a lost upgrade response only with a matching paid full-period update invoice', async () => {
   sdk.subscriptions.list.mockResolvedValue({ has_more: false, data: [{ ...subscription('enterprise'),
     latest_invoice: 'in_upgrade' }] })
@@ -188,7 +204,7 @@ it('does not credit an invoice with conflicting subscription identities', async 
   expect(sdk.subscriptions.update).not.toHaveBeenCalled()
 })
 it.each([ { pending_update: {} }, { cancel_at_period_end: true },
-  { discounts: [{ id: 'di_existing' }] }, { collection_method: 'send_invoice' },
+  { discounts: [{ id: 'coupon_wrong_object' }] }, { collection_method: 'send_invoice' },
   { items: { has_more: false, data: [{ ...subscription().items.data[0], quantity: 2 }] } },
 ])('rejects unsafe downgrade state without touching Stripe %#', async (override) => {
   sdk.subscriptions.list.mockResolvedValue({ has_more: false, data: [{ ...subscription(), ...override }] })

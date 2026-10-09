@@ -68,7 +68,7 @@ const ACTIVITIES: { key: ActivityKey; title: string; description: string }[] = [
   {
     key: "invoices_due",
     title: "Due Invoices",
-    description: "Remind customers about unpaid invoices that are due or overdue. Choose sending accounts, repeat interval, weekdays and start time below. This activity does not prospect leads or mark contacts cold."
+    description: "Remind customers about unpaid invoices that are due or overdue. Choose sending accounts, cooldown period, weekdays and start time below. The first reminder can be sent when the invoice is due."
   },
   {
     key: "email_sync",

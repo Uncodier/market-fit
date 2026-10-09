@@ -43,7 +43,7 @@ URLs. Do not accept a browser-supplied amount as authoritative.
 ### Platform subscription contract
 
 `POST /api/stripe/checkout/subscription` accepts `siteId` (UUID), `plan`
-(`engine`, `foundry`, `enterprise`), optional `addonsCount` (integer 0–100),
+(`commission`, `engine`, `foundry`, `enterprise`), optional `addonsCount` (integer 0–100),
 `successUrl`, `cancelUrl`, and optional `billingInterval` (`month` or `year`).
 Omitting the interval preserves monthly callers. Manager authorization,
 rate-limiting, and exact trusted-origin URL checks run on the server. Prices and
@@ -58,9 +58,61 @@ prices must have interval count one and the configured amounts:
 | Connected-account addon (each) | $10 | $108 |
 
 All selected prices must be configured; annual never falls back to monthly.
+Free (`commission`) purchases contain only the configured add-on Price, with no
+zero-dollar base configuration. First purchase requires at least one extra;
+existing Free extras can reduce to zero by cancellation at renewal. The forward
+`20261009080000_free_plan_paid_addons.sql` migration and coordinated API credit
+prerequisites must be reviewed/applied before rollout. See the exact metadata,
+entitlement, renewal and cancellation contract in
+[Subscription invoice recovery](STRIPE_INVOICE_RECOVERY.md#paid-add-ons-on-free).
 Subscription checkout enables `allow_promotion_codes: true`. Both checkout and
 subscription metadata include `billing_interval`; the interval is also included
 in Stripe request idempotency. Responses retain `{ url, sessionId }`.
+
+Credit-purchase Checkout also enables `allow_promotion_codes: true`. Create a
+Stripe coupon and a customer-facing promotion code in the same test/live mode as
+the Checkout key. Credit grants use the configured package size, while payments
+record Stripe's discounted total. A completely free credit purchase must be a
+live, completed, USD payment-mode Checkout with the exact configured package
+subtotal, a matching full discount, zero tax/shipping, and no PaymentIntent;
+unpaid or incomplete sessions must not grant credits.
+
+Credit packages reuse stable Products (`prod_makinari_credits_20`,
+`prod_makinari_credits_52`, and `prod_makinari_credits_515`), created on the first
+authorized checkout if absent. To reuse Dashboard-managed Products instead, set
+`STRIPE_CREDITS_20_PRODUCT_ID`, `STRIPE_CREDITS_52_PRODUCT_ID`, and
+`STRIPE_CREDITS_515_PRODUCT_ID`. Configured missing, deleted, or inactive Products
+fail closed and are not recreated. Restrict credit-only coupons to these Product
+IDs; Checkout no longer creates a different Product on each purchase. Credit
+idempotency is versioned and includes all changing session parameters, including
+the resolved return URLs and promotion-code setting.
+
+### Existing subscription promotion codes
+
+Billing includes **Apply a promotion code** for existing paid subscriptions and
+eligible add-ons. `POST /api/stripe/subscription/promotion` accepts only `siteId`
+and a customer-facing `code`; it validates same-origin bounded JSON, manager
+authorization, the live site/customer/subscription binding, configured prices,
+and Stripe's code, coupon, customer, currency, expiry, redemption, and Product
+restrictions. Existing redeemed Discount IDs are retained in order; coupons are
+never replayed to reset their duration. Discount updates use the same site lease
+as checkout. Retries recognize an already-redeemed one-use code even when inactive.
+
+The code applies to the next invoice (including eligible add-ons), not a finalized
+invoice, and never grants access or credits by itself. First-purchase and
+minimum-transaction codes must be used in eligible Checkout purchases. Pending,
+scheduled, canceled, or ambiguous subscription state requires billing support
+instead of rewriting a pending invoice or schedule.
+If the latest invoice is available, it must be verified paid and bound to the
+same customer/subscription. Confirming a code also verifies the order, start,
+and end of retained discounts; a provider response that resets duration is not
+reported as successful.
+
+Order and sale Checkouts do not accept Stripe promotion codes: sale settlement
+requires the exact outstanding balance and compensates mismatched charges. Store
+promotions, when applicable, are resolved before creating that balance. Existing
+subscription plan/add-on changes are not new Checkouts; their codes are applied
+through the authorized Billing promotion operation above, before confirming a change.
 
 ### Existing subscriptions and hosted confirmation
 
@@ -69,22 +121,40 @@ creating checkout. Existing active single-base subscriptions with no addons,
 pending update, schedule, or cancellation use the hosted
 `subscription_update_confirm` flow for an interval change. The same response URL
 contract is returned, optionally with `flow: subscription_update_confirm`.
-The server does not directly update subscription items or optimistically change
-paid plan/addons/interval. Entitlements change only in paid-invoice settlement.
+The server never optimistically changes paid plan/addons/interval. Entitlements
+change only in paid-invoice settlement.
 
 The live default portal configuration must enable price updates, list the target
 product/price, use `always_invoice`, and have no scheduled downgrade conditions.
-Configuration is read, never created or changed by this endpoint. Stripe's SDK
-supports only one item for this flow: multi-item subscriptions, addon changes,
-same-interval tier changes, and unsafe/unavailable portal configuration return an
-explicit `409` requiring billing support, not a second subscription checkout.
-Existing subscription, item, or customer discounts also require support review.
+Configuration is read, never created or changed by this endpoint.
+Stripe's SDK supports only one item for this hosted flow: multi-item subscriptions
+and unsafe/unavailable portal configuration return an explicit `409` requiring
+billing support, not a second subscription checkout.
+The hosted portal cannot preserve existing redeemed Discount IDs. Discounted
+interval changes use the verified direct subscription update instead of this portal.
 The installed hosted-confirmation API can apply only a coupon/promotion code, not
 retain an existing discount ID; replaying a coupon may reset its duration. The
 endpoint neither omits an existing discount silently nor reapplies it with new terms.
 Partial proration invoices require deliberate recovery rather than guessed paid
 coverage. Stripe confirmation handles payment failures and authentication; a
 return redirect is not payment proof.
+
+### Changing connected-account add-ons
+
+For an active, site-bound paid subscription at the same interval and base price,
+the billing page confirms add-on quantity changes via the authenticated subscription
+route. The server verifies the configured add-on Price, item quantities, customer,
+previous paid invoice, and current connection requirements. Increases reset the
+billing anchor and invoice the full new service period with a prorated unused-time
+credit, using `pending_if_incomplete`; a verified Stripe invoice link completes an
+unpaid attempt. Reductions retain the existing items until renewal and install a
+verified two-phase Stripe schedule with no proration. Retries recognize only matching
+pending invoices, paid full-period update invoices, or owned schedules. Direct
+increases omit discount fields to preserve current terms. Scheduled reductions
+reuse exact redeemed subscription/item Discount IDs across phases and verify
+their identities and order. Unusual tax/payment settings, other schedules, and plan changes that
+would discard add-ons require support. A reduction cannot be below the number of
+add-ons needed for active connections. Do not disconnect accounts before settlement.
 
 A service-only five-minute site lease serializes customer/session creation across
 concurrent requests. SDK calls have a 20-second timeout and no automatic network

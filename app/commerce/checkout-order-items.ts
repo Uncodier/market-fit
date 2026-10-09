@@ -223,19 +223,59 @@ export async function upsertSaleOrderItemsWithModifiers(params: {
   }
 
   if (existingOrderId && existingItems.length > 0) {
-    for (const ei of existingItems) {
-      if (matchedExistingIds.has(ei.id)) continue
-      if (ei.status === "draft") {
-        await client.from("sale_order_items").delete().eq("id", ei.id)
-        await supabaseAdmin
+    const unmatchedItems = existingItems.filter(
+      (ei) => !matchedExistingIds.has(ei.id),
+    )
+    // Retained modifiers must not be lost to a draft parent's FK cascade.
+    const retainedParentIds = new Set(
+      existingItems
+        .filter((ei) => ei.parent_sale_order_item_id && ei.status !== "draft")
+        .map((ei) => ei.parent_sale_order_item_id),
+    )
+    const removalItems = [
+      ...unmatchedItems.filter((ei) => ei.parent_sale_order_item_id),
+      ...unmatchedItems.filter((ei) => !ei.parent_sale_order_item_id),
+    ]
+    for (const ei of removalItems) {
+      if (ei.status === "draft" && !retainedParentIds.has(ei.id)) {
+        const { data, error } = await client
+          .from("sale_order_items")
+          .delete()
+          .eq("id", ei.id)
+          .eq("sale_order_id", orderId)
+          .eq("site_id", siteId)
+          .eq("status", "draft")
+          .select("id")
+          .single()
+        if (error) {
+          throw new Error(`Sale order item delete error: ${error.message}`)
+        }
+        if (data?.id !== ei.id) {
+          throw new Error("Sale order item delete did not remove the requested item")
+        }
+        const { error: reservationError } = await supabaseAdmin
           .from("reservations")
           .delete()
           .eq("sale_order_item_id", ei.id)
+          .eq("site_id", siteId)
+        if (reservationError) {
+          throw new Error(`Reservation cleanup error: ${reservationError.message}`)
+        }
       } else {
-        await client
+        const { data, error } = await client
           .from("sale_order_items")
           .update({ status: "cancelled" })
           .eq("id", ei.id)
+          .eq("sale_order_id", orderId)
+          .eq("site_id", siteId)
+          .select("id, status")
+          .single()
+        if (error) {
+          throw new Error(`Sale order item cancellation error: ${error.message}`)
+        }
+        if (data?.id !== ei.id || data.status !== "cancelled") {
+          throw new Error("Sale order item cancellation did not persist")
+        }
       }
     }
   }

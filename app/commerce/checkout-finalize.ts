@@ -1,3 +1,5 @@
+import { revalidatePath } from "next/cache"
+import { bumpCacheEpoch } from "@/lib/redis/json-cache"
 import { createShipment } from "@/app/shipments/actions"
 import { applyPromotionToOrder } from "@/app/promotions/apply-promotion-to-order"
 import { tryPostSaleJournalWithClient } from "@/app/accounting/source-posting"
@@ -72,6 +74,12 @@ export async function finalizeCheckout(params: FinalizeCheckoutParams) {
     intent: params.intent,
     isFullyPaid: params.isFullyPaid,
   })
+
+  // Realtime readers must not reuse a list cached before the item changes.
+  await bumpCacheEpoch("order-data", params.siteId)
+  revalidatePath("/orders")
+  revalidatePath(`/orders/${params.order.id}`)
+  revalidatePath("/order-lines")
 
   await syncCheckoutDropinReservations({
     supabaseAdmin: params.supabaseAdmin,

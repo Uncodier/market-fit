@@ -35,7 +35,7 @@ exactly 10% below twelve $23, $99, or $500 monthly payments. Base plan IDs never
 change when switching intervals. Credits remain 20, 100, or 500 **per month**.
 
 Annual add-ons cost $108.00/year ($9.00/month equivalent) each, versus $10/month,
-and still grant +5 credits/month and one extra connection. The add-on management
+and still grant +1 credit/month and one extra connection. The add-on management
 surface displays the **stored subscription interval**, not the selector's pending
 choice. Its current total multiplies the per-add-on charge by the stored count.
 
@@ -81,12 +81,14 @@ partially configured downgrade checks and finishes its attached schedule; a
 retry after an upgrade payment verifies the paid invoice before acknowledging it.
 Unknown schedules, invoices or tax configurations require billing support.
 Downgrades that also change the billing interval require support review.
-Add-on changes still require billing support. Scheduled cancellation and payment
-details may still use the safe generic portal. Interval switches at the same tier
-still use explicit hosted confirmation. Existing subscription/item/customer
-discounts require support review to retain their terms, rather than silently
-removing or resetting a coupon.
-New subscriptions may still enter promotion codes in Checkout.
+Eligible add-on increases bill after confirmation; reductions are scheduled for
+renewal. Scheduled cancellation and payment details still use the safe generic
+portal. Undiscounted interval switches use hosted confirmation; discounted
+switches use verified direct updates so redeemed discount durations are retained.
+Billing's promotion field applies codes to an existing subscription and eligible
+add-ons before confirming a change. It affects future invoices, never rewrites an
+issued invoice, and preserves existing Discount IDs. Scheduled reductions copy
+these IDs instead of reapplying coupons. New subscriptions enter codes in Checkout.
 
 Downgrade review uses `LicenseDowngradeDialog`; it never selects accounts for
 provider disconnection. Canceling review, failed portal/checkout requests and

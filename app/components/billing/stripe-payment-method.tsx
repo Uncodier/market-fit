@@ -46,7 +46,6 @@ export function useStripePaymentMethod(siteId?: string) {
 }
 
 function formatBrand(brand: string) {
-  if (!brand) return "Card"
   if (brand.toLowerCase() === "amex") return "American Express"
   return brand.charAt(0).toUpperCase() + brand.slice(1)
 }
@@ -95,6 +94,9 @@ interface StripePaymentMethodProps {
 export function StripePaymentMethod({ siteId, compact }: StripePaymentMethodProps) {
   const { t } = useLocalization()
   const { paymentMethod, loading } = useStripePaymentMethod(siteId)
+  const brand = paymentMethod?.brand
+    ? formatBrand(paymentMethod.brand)
+    : t("billing.payment.card") || "Card"
 
   if (loading) {
     return (
@@ -124,6 +126,11 @@ export function StripePaymentMethod({ siteId, compact }: StripePaymentMethodProp
     )
   }
 
+  const methodLabel = compact
+    ? t("billing.checkout.savedCard") || "Saved card"
+    : t("billing.payment.primary") || "Primary payment method"
+  const expiryMonth = String(paymentMethod.expMonth).padStart(2, "0")
+
   return (
     <div className="flex items-center gap-4 rounded-lg border px-4 py-3">
       <div className="flex h-10 w-14 items-center justify-center rounded border bg-muted/20">
@@ -131,13 +138,14 @@ export function StripePaymentMethod({ siteId, compact }: StripePaymentMethodProp
       </div>
       <div>
         <p className="font-medium">
-          {formatBrand(paymentMethod.brand)} •••• {paymentMethod.last4}
+          {t("billing.payment.cardSummary", { brand, last4: paymentMethod.last4 }) || `${brand} •••• ${paymentMethod.last4}`}
         </p>
         <p className="text-sm text-muted-foreground">
-          {compact
-            ? t("billing.checkout.savedCard") || "Saved card"
-            : t("billing.payment.primary") || "Primary payment method"}
-          {` · ${String(paymentMethod.expMonth).padStart(2, "0")}/${paymentMethod.expYear}`}
+          {t("billing.payment.methodExpiry", {
+            method: methodLabel,
+            month: expiryMonth,
+            year: paymentMethod.expYear,
+          }) || `${methodLabel} · ${expiryMonth}/${paymentMethod.expYear}`}
         </p>
       </div>
     </div>

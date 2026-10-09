@@ -66,18 +66,22 @@ export function resolveStripeSubscriptionDetails(subscription: Stripe.Subscripti
   const baseItems = mapped.filter(({ config }) => config.plan !== 'addon')
   if (baseItems.length > 1) throw new Error("Ambiguous subscription price configuration")
   const base = baseItems[0]
-  if (!base) throw new Error("Missing or unknown subscription plan")
   if (base && nonnegativeInteger(base.item.quantity) !== 1) throw new Error("Invalid base subscription quantity")
   const addonItems = mapped.filter(({ config }) => config.plan === 'addon')
-  if (addonItems.some(({ config }) => config.interval !== base?.config.interval)) {
+  if ((!base && addonItems.length !== 1) || addonItems.length > 1) {
+    throw new Error("Missing or unknown subscription plan; ambiguous service")
+  }
+  const service = base ?? addonItems[0]
+  if (addonItems.some(({ item, config }) => config.interval !== service.config.interval ||
+      nonnegativeInteger(item.quantity) < 1)) {
     throw new Error("Subscription add-on interval does not match base price")
   }
   const addonsCount = nonnegativeInteger(addonItems.reduce(
     (total, { item }) => total + nonnegativeInteger(item.quantity), 0,
   ))
-  const baseItem = base?.item
-  const plan = base && base.config.plan !== 'addon' ? base.config.plan : null
-  const billingInterval = base?.config.interval ?? null
+  const baseItem = service.item
+  const plan = base && base.config.plan !== 'addon' ? base.config.plan : 'commission' as const
+  const billingInterval = service.config.interval
   const currentPeriodEnd = stripeTimestampIso(legacyPeriodEnd ?? baseItem?.current_period_end)
   return { plan, addonsCount, billingInterval, currentPeriodEnd }
 }

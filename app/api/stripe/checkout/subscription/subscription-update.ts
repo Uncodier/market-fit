@@ -1,14 +1,16 @@
 import type Stripe from 'stripe'
-import { SubscriptionRequestError, configuredSubscriptionPrice, type BillingInterval } from '@/lib/subscription-pricing.server'
+import { SubscriptionRequestError, configuredSubscriptionPrice, validateSubscriptionPrice, type BillingInterval, type SubscriptionPlan } from '@/lib/subscription-pricing.server'
 import { stripeObjectId, resolveStripeSubscriptionDetails } from '@/app/api/stripe/webhook/subscription-billing'
 import { pendingUpgrade, recoveredPaidUpgrade, scheduleDowngrade } from './tier-change-recovery'
+import { changeAddonQuantity } from './addon-change'
+import { retainedDiscounts } from './discount-preservation'
 
 const PLAN_RANK = { engine: 1, foundry: 2, enterprise: 3 } as const
 
 /** Changes are fenced by the site's checkout lease and a verified Stripe subscription. */
 export async function existingSubscriptionFlow(params: {
   stripe: Stripe; customerId: string; subscriptionId?: string | null; siteId: string
-  price: Stripe.Price; interval: BillingInterval; addonsCount: number
+  price?: Stripe.Price; plan?: SubscriptionPlan; addonPrice?: Stripe.Price; interval: BillingInterval; addonsCount: number; requiredAddons?: number
   returnUrl: string; successUrl: string; idempotencyKey: string
   beforeProviderWrite: () => void
 }) {
@@ -27,24 +29,69 @@ export async function existingSubscriptionFlow(params: {
   const sub = current[0]
   if (current.length !== 1 || sub.status !== 'active' || !params.subscriptionId || sub.id !== params.subscriptionId ||
       stripeObjectId(sub.customer) !== customerId ||
-      sub.items.has_more || sub.items.data.length !== 1 || sub.items.data[0].quantity !== 1 || params.addonsCount !== 0 ||
-      sub.cancel_at_period_end || sub.cancel_at) {
+      sub.items.has_more || sub.items.data.length < 1 || sub.items.data.length > 2 ||
+      ((sub.cancel_at_period_end || sub.cancel_at) && !(params.plan === 'commission' && params.addonsCount === 0))) {
     throw new SubscriptionRequestError('This subscription requires a billing support update; no new subscription was created', 409)
   }
-  // This portal flow cannot pass an existing discount ID. Reapplying its coupon/code can
-  // reset duration or remove other discounts; require an explicit support review instead.
-  if (sub.discounts?.length || sub.items.data.some(item => item.discounts?.length) || customer.discount) {
-    throw new SubscriptionRequestError('Existing subscription discounts require billing support to preserve their terms; no change was made', 409)
+  // Direct item updates omit discounts, preserving their redeemed IDs and duration.
+  // Schedule writers below reuse redeemed Discount IDs rather than coupons.
+  const hasDiscounts = Boolean(sub.discounts?.length || sub.items.data.some(item => item.discounts?.length) || customer.discount)
+  retainedDiscounts(sub.discounts)
+  sub.items.data.forEach(item => retainedDiscounts(item.discounts))
+  if (customer.discount) retainedDiscounts([customer.discount])
+  if (sub.items.data.some(item => !Number.isSafeInteger(item.quantity) || item.quantity! < 1 ||
+      (configuredSubscriptionPrice(item.price.id)?.plan !== 'addon' && item.quantity !== 1)) ||
+      sub.items.data.filter(item => configuredSubscriptionPrice(item.price.id)?.plan !== 'addon').length > 1) {
+    throw new SubscriptionRequestError('Subscription items require billing support', 409)
   }
   const details = resolveStripeSubscriptionDetails(sub)
-  if (details.addonsCount !== 0) throw new SubscriptionRequestError('Subscription add-ons require billing support', 409)
-  const target = params.price.id
+  const baseItem = sub.items.data.find(item => configuredSubscriptionPrice(item.price.id)?.plan !== 'addon')
+  const addonItem = sub.items.data.find(item => configuredSubscriptionPrice(item.price.id)?.plan === 'addon')
+  if (details.plan === 'commission' || params.plan === 'commission') {
+    if (details.plan !== 'commission' || params.plan !== 'commission' || baseItem || !addonItem ||
+        sub.items.data.length !== 1 || addonItem.quantity !== details.addonsCount ||
+        details.billingInterval !== params.interval || params.price) {
+      throw new SubscriptionRequestError('Free add-on subscription plan or interval changes require billing support', 409)
+    }
+    const addonPrice = await stripe.prices.retrieve(addonItem.price.id)
+    const config = configuredSubscriptionPrice(addonPrice.id)
+    if (!config || config.plan !== 'addon' || config.interval !== params.interval ||
+        addonPrice.id !== params.addonPrice?.id) {
+      throw new SubscriptionRequestError('Add-on price requires billing support', 409)
+    }
+    validateSubscriptionPrice(addonPrice, config, true)
+    return changeAddonQuantity({ ...params, addonPrice, sub, addonItem, customerId })
+  }
+  if (!params.price) throw new SubscriptionRequestError('Subscription price requires billing support', 409)
+  const targetPrice = params.price
+  const target = targetPrice.id
   const targetPlan = configuredSubscriptionPrice(target)?.plan
   if (!details.plan || !(details.plan in PLAN_RANK) || !targetPlan || targetPlan === 'addon' ||
       params.price.recurring?.interval !== params.interval) {
     throw new SubscriptionRequestError('Subscription plan requires billing support', 409)
   }
-  if (sub.items.data[0].price.id === target) {
+  if (!baseItem || baseItem.quantity !== 1 || (addonItem && addonItem.quantity !== details.addonsCount) ||
+      (details.addonsCount > 0 && !addonItem)) {
+    throw new SubscriptionRequestError('Subscription items require billing support', 409)
+  }
+  if (baseItem.price.id === target && (params.addonsCount !== details.addonsCount ||
+      (sub.pending_update && (details.addonsCount > 0 || params.addonsCount > 0)) ||
+      details.addonsCount > 0)) {
+    if (details.billingInterval !== params.interval) throw new SubscriptionRequestError('Add-on interval requires billing support', 409)
+    const addonPrice = addonItem ? await stripe.prices.retrieve(addonItem.price.id) : params.addonPrice
+    const addonConfig = addonPrice && configuredSubscriptionPrice(addonPrice.id)
+    if (!addonConfig || addonConfig.plan !== 'addon' || addonConfig.interval !== params.interval ||
+        (addonItem && addonItem.price.id !== addonPrice?.id) ||
+        (params.addonPrice && params.addonPrice.id !== addonPrice?.id)) {
+      throw new SubscriptionRequestError('Add-on price requires billing support', 409)
+    }
+    validateSubscriptionPrice(addonPrice!, addonConfig, true)
+    return changeAddonQuantity({ ...params, addonPrice, sub, baseItem, addonItem, customerId })
+  }
+  if (details.addonsCount !== 0 || params.addonsCount !== 0 || sub.items.data.length !== 1) {
+    throw new SubscriptionRequestError('Subscription add-ons require billing support', 409)
+  }
+  if (baseItem.price.id === target) {
     if (sub.schedule) throw new SubscriptionRequestError('Scheduled subscription requires billing support', 409)
     return recoveredPaidUpgrade(stripe, sub, customerId, target)
   }
@@ -80,8 +127,9 @@ export async function existingSubscriptionFlow(params: {
       beforeProviderWrite: params.beforeProviderWrite, idempotencyKey: params.idempotencyKey })
   }
   if (sub.schedule) throw new SubscriptionRequestError('Scheduled subscription requires billing support', 409)
-  if (PLAN_RANK[targetPlan] > PLAN_RANK[details.plan as keyof typeof PLAN_RANK] &&
-      details.billingInterval === params.interval) {
+  if ((PLAN_RANK[targetPlan] > PLAN_RANK[details.plan as keyof typeof PLAN_RANK] &&
+      details.billingInterval === params.interval) ||
+      (hasDiscounts && details.billingInterval !== params.interval)) {
     if (sub.collection_method !== 'charge_automatically' ||
         !Number.isSafeInteger(sub.items.data[0].current_period_end) ||
         sub.items.data[0].current_period_end <= Math.floor(Date.now() / 1000)) {
@@ -102,6 +150,8 @@ export async function existingSubscriptionFlow(params: {
         (previousInvoiceSubscription || legacyPreviousInvoiceSubscription) !== sub.id) {
       throw new SubscriptionRequestError('Previous subscription payment requires billing support', 409)
     }
+    // Discounted interval changes use this API, not the portal which cannot
+    // retain a Discount ID. Omit discounts to preserve redemption duration.
     // Resetting the anchor makes a FULL new service period on the paid invoice.
     // The invoice settlement verifier rejects partial-period debits; Stripe
     // applies the unused old service as a negative proration on this invoice.
@@ -146,7 +196,7 @@ export async function existingSubscriptionFlow(params: {
       update.default_allowed_updates?.length !== 1 || update.default_allowed_updates[0] !== 'price' ||
       update.proration_behavior !== 'always_invoice' ||
       update.schedule_at_period_end?.conditions?.length !== 0 ||
-      !targetProduct || !update.products?.some((product) => product.product === targetProduct && product.prices.includes(params.price.id))) {
+      !targetProduct || !update.products?.some((product) => product.product === targetProduct && product.prices.includes(targetPrice.id))) {
     throw configurationError()
   }
   params.beforeProviderWrite()

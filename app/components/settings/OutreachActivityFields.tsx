@@ -3,6 +3,7 @@
 import { useFormContext } from "react-hook-form"
 import { Checkbox } from "../ui/checkbox"
 import { Input } from "../ui/input"
+import { RadioGroup, RadioGroupItem } from "../ui/radio-group"
 import { Button } from "../ui/button"
 import { FormControl, FormField, FormItem, FormLabel, FormMessage } from "../ui/form"
 import { isOutreachChannel, normalizeOutreachSettings, type OutreachActivityKey, type OutreachAccount } from "@/lib/outreach-settings"
@@ -85,14 +86,6 @@ export function OutreachActivityFields({ activityKey, accounts, segments, loadin
           <Button type="button" size="sm" variant="ghost" onClick={() => form.setValue(`${path}.segment_ids`, value.segment_ids.filter(item => item !== id), { shouldDirty: true })}>Remove segment</Button>
         </div>)}
       </div>}
-      {isInvoice && <FormField control={form.control} name={`${path}.repeat_interval_days`} render={({ field }) => (
-        <FormItem>
-          <FormLabel>Repeat interval (days)</FormLabel>
-          <FormControl><Input {...field} type="number" min={1} max={365} step={1} className="max-w-40" value={typeof field.value === "number" && Number.isFinite(field.value) ? field.value : ""} onChange={event => field.onChange(event.target.value === "" ? NaN : Number(event.target.value))} /></FormControl>
-          <p className="text-sm text-muted-foreground">1–365 days between reminders for the same unpaid invoice (default 3). Paid invoices are not contacted.</p>
-          <FormMessage />
-        </FormItem>
-      )} />}
       <FormField control={form.control} name={`${path}.daily_message_limit`} render={({ field }) => (
         <FormItem>
           <FormLabel>Daily message limit</FormLabel>
@@ -109,6 +102,34 @@ export function OutreachActivityFields({ activityKey, accounts, segments, loadin
           <FormMessage />
         </FormItem>
       )} />}
+      <fieldset className="space-y-3">
+        <legend className="text-sm font-semibold">Cooldown period (days)</legend>
+        <p className="text-sm text-muted-foreground">{isInvoice ? "Time between confirmed reminders for the same unpaid invoice. The first reminder can be sent when due; paid invoices are not contacted." : "Time between confirmed contacts with the same lead. The first contact keeps its existing initial wait."}</p>
+        <RadioGroup value={value.cooldown_mode ?? "progressive"} onValueChange={mode => {
+          form.setValue(`${path}.cooldown_mode`, mode as "progressive" | "fixed", { shouldDirty: true })
+          if (mode === "progressive" && !isInvoice && !Number.isFinite(value.cooldown_period_days)) {
+            form.setValue(`${path}.cooldown_period_days`, undefined, { shouldDirty: true })
+          }
+        }}>
+          <label className="flex items-center gap-2 text-sm"><RadioGroupItem value="progressive" /> Progressive (default): 1, 1, 3, 7, then 14 days</label>
+          <label className="flex items-center gap-2 text-sm"><RadioGroupItem value="fixed" /> Fixed number of days</label>
+        </RadioGroup>
+        {isInvoice && value.cooldown_mode === "fixed" && <FormField control={form.control} name={`${path}.repeat_interval_days`} render={({ field }) => (
+          <FormItem>
+            <FormLabel>Repeat interval (days)</FormLabel>
+            <FormControl><Input {...field} type="number" min={1} max={365} step={1} className="max-w-40" value={typeof field.value === "number" && Number.isFinite(field.value) ? field.value : ""} onChange={event => field.onChange(event.target.value === "" ? NaN : Number(event.target.value))} /></FormControl>
+            <p className="text-sm text-muted-foreground">1–365 days between reminders for the same invoice. Existing fixed settings retain their interval.</p>
+            <FormMessage />
+          </FormItem>
+        )} />}
+        {!isInvoice && value.cooldown_mode === "fixed" && <FormField control={form.control} name={`${path}.cooldown_period_days`} render={({ field }) => (
+          <FormItem>
+            <FormLabel>Days between contacts</FormLabel>
+            <FormControl><Input {...field} type="number" min={1} max={365} step={1} className="max-w-40" value={typeof field.value === "number" && Number.isFinite(field.value) ? field.value : ""} onChange={event => field.onChange(event.target.value === "" ? NaN : Number(event.target.value))} /></FormControl>
+            <FormMessage />
+          </FormItem>
+        )} />}
+      </fieldset>
       {(activityKey === "leads_follow_up" || isInvoice) && <fieldset className="space-y-3">
         <legend className="text-sm font-semibold">{isInvoice ? "Invoice reminder weekdays" : "Follow-up weekdays"}</legend>
         <p className="text-sm text-muted-foreground">{isInvoice ? "Default: Monday–Friday. No days selected means no invoice reminders." : "Default: Tuesday, Wednesday and Thursday. No days selected means no follow-ups."}</p>

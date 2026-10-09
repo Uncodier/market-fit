@@ -1,7 +1,6 @@
 import type Stripe from "stripe"
 import { fromStripeMinorAmount } from "@/app/api/stripe/checkout/checkout-payment-guard"
-import type { BillingPlan } from "@/lib/billing-plans"
-import type { BillingInterval } from "@/lib/subscription-pricing.server"
+import type { BillingInterval, SubscriptionPlan } from "@/lib/subscription-pricing.server"
 import {
   retrieveStripeSubscription, syncRetrievedStripeSubscription, stripeObjectId, stripeTimestampIso,
   type SubscriptionBillingClient, type SubscriptionStripeClient,
@@ -21,7 +20,7 @@ export type StripeSubscriptionInvoiceInput = {
   subscription_id: string
   current_subscription_status: string
   current_service: {
-    plan: BillingPlan | null
+    plan: SubscriptionPlan | null
     addons_count: number
     billing_interval: BillingInterval | null
   }
@@ -30,7 +29,7 @@ export type StripeSubscriptionInvoiceInput = {
   amount: number
   currency: string
   billing_reason: string | null
-  plan: BillingPlan
+  plan: SubscriptionPlan
   addons_count: number
   billing_interval: BillingInterval
   coverage_verified: boolean

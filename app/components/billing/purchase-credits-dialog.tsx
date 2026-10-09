@@ -34,7 +34,7 @@ export function PurchaseCreditsDialog({
   pricePerCredit,
   discount
 }: PurchaseCreditsDialogProps) {
-  const { t } = useLocalization()
+  const { t, locale } = useLocalization()
   const { user } = useAuth()
   const { currentSite } = useSite()
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -96,16 +96,17 @@ export function PurchaseCreditsDialog({
       } else {
         throw new Error('No checkout URL received from server')
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error('Checkout error:', error)
+      const message = error instanceof Error ? error.message : ''
       let errorMessage = t('billing.errors.checkoutFailed') || "Failed to start checkout. Please try again."
       
-      if (error.message?.includes('STRIPE_SECRET_KEY') || error.message?.includes('Stripe')) {
+      if (message.includes('STRIPE_SECRET_KEY') || message.includes('Stripe')) {
         errorMessage = t('billing.errors.paymentServiceConfig') || "Payment service configuration error. Please contact support."
-      } else if (error.message?.includes('network') || error.message?.includes('fetch')) {
+      } else if (message.includes('network') || message.includes('fetch')) {
         errorMessage = t('billing.errors.networkError') || "Network error. Please check your connection and try again."
-      } else if (error.message) {
-        errorMessage = error.message
+      } else if ((!locale || locale === 'en') && message) {
+        errorMessage = message
       }
       
       toast.error(errorMessage)

@@ -132,3 +132,16 @@ it.each(['sale', 'sale_order', 'credits_purchase', 'unknown'])('never relaxes %s
   expect(h.sdk.invoices.retrieve).not.toHaveBeenCalled()
   expect(h.rpc).not.toHaveBeenCalled()
 })
+
+it('accepts a verified complete free credit purchase but not an open one', async () => {
+  const h = harness()
+  Object.assign(h.session, { mode: 'payment', status: 'complete', payment_intent: null,
+    currency: 'usd', amount_subtotal: 2000,
+    total_details: { amount_discount: 2000, amount_tax: 0, amount_shipping: 0 },
+    metadata: { type: 'credits_purchase', credits: '20' } })
+  await h.checkout()
+  expect(handleCreditsPurchase).toHaveBeenCalledWith(expect.anything(), h.session)
+  h.session.status = 'open'
+  await expect(h.checkout()).rejects.toThrow('not paid')
+  expect(handleCreditsPurchase).toHaveBeenCalledTimes(1)
+})

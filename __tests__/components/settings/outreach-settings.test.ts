@@ -22,7 +22,7 @@ describe("outreach settings contract", () => {
   it.each([undefined, null, "default", "inactive", {}, { status: "default" }])("defaults legacy %p to inactive without targeting or channels", value => {
     expect(normalizeOutreachSettings(value)).toEqual({
       status: "inactive", channel_accounts: { email: [], whatsapp: [] },
-      segment_ids: [], all_segments: false, daily_message_limit: 30, max_unanswered_messages: 3, weekdays: [2, 3, 4],
+      segment_ids: [], all_segments: false, daily_message_limit: 30, max_unanswered_messages: 3, cooldown_mode: "progressive", weekdays: [2, 3, 4],
     })
   })
 
@@ -35,7 +35,7 @@ describe("outreach settings contract", () => {
     const defaults = activitiesSchema.parse(undefined)
     expect(defaults.leads_initial_cold_outreach).toEqual(normalizeOutreachSettings(undefined))
     expect(defaults.leads_follow_up).toEqual(normalizeOutreachSettings(undefined))
-    expect(activitiesSchema.parse({ leads_follow_up: configured }).leads_follow_up).toEqual(configured)
+    expect(activitiesSchema.parse({ leads_follow_up: configured }).leads_follow_up).toEqual({ ...configured, cooldown_mode: "progressive" })
     expect(activitiesSchema.parse({ leads_follow_up: "default" }).leads_follow_up.status).toBe("inactive")
   })
 
@@ -91,6 +91,16 @@ describe("outreach settings contract", () => {
     expect(activitiesSchema.safeParse({ leads_follow_up: value }).success).toBe(false)
     expect(validateOutreachSettings(value, "leads_follow_up").map(error => error.field)).toContain("max_unanswered_messages")
   })
+  it.each(["leads_initial_cold_outreach", "leads_follow_up"] as const)("validates fixed cooldown and defaults to progressive for %s", key => {
+    expect(normalizeOutreachSettings(undefined, key).cooldown_mode).toBe("progressive")
+    expect(activitiesSchema.parse({ [key]: { ...configured, cooldown_mode: "fixed", cooldown_period_days: 5 } })[key]).toMatchObject({ cooldown_mode: "fixed", cooldown_period_days: 5 })
+    for (const days of [undefined, null, 0, 1.5, 366, "5"]) {
+      const value = { ...configured, cooldown_mode: "fixed" as const, cooldown_period_days: days }
+      expect(validateOutreachSettings(value as any, key).map(error => error.field)).toContain("cooldown_period_days")
+      expect(activitiesSchema.safeParse({ [key]: value }).success).toBe(false)
+    }
+    expect(activitiesSchema.safeParse({ [key]: { ...configured, cooldown_mode: "unknown" } }).success).toBe(false)
+  })
 
   it("requires weekdays only for follow-up, treats Sunday as zero, and never restores empty weekdays", () => {
     expect(validateOutreachSettings({ ...configured, weekdays: [0] }, "leads_follow_up")).toEqual([])
@@ -111,11 +121,11 @@ describe("outreach settings contract", () => {
   it("round-trips activity parameters through adapters, form defaults, site changes and normalization", () => {
     const site = { id: "site-a", name: "A", settings: { activities: { leads_follow_up: configured } } } as any
     const adapted = adaptSiteToForm(site)
-    expect(adapted.activities.leads_follow_up).toEqual(configured)
-    expect(getSiteFormDefaults(adapted).activities?.leads_follow_up).toEqual(configured)
+    expect(adapted.activities.leads_follow_up).toEqual({ ...configured, cooldown_mode: "progressive" })
+    expect(getSiteFormDefaults(adapted).activities?.leads_follow_up).toEqual({ ...configured, cooldown_mode: "progressive" })
     const otherSite = adaptSiteToForm({ ...site, id: "site-b", settings: {} })
     expect(getSiteFormDefaults(otherSite).activities?.leads_follow_up).toEqual(normalizeOutreachSettings(undefined))
-    expect(normalizeActivitySettings(adapted.activities).leads_follow_up).toEqual(configured)
+    expect(normalizeActivitySettings(adapted.activities).leads_follow_up).toEqual({ ...configured, cooldown_mode: "progressive" })
   })
 })
 

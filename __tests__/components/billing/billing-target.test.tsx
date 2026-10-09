@@ -8,6 +8,7 @@ let currentSite = { id: "other" }
 let sites = [target]
 jest.mock("@/app/context/SiteContext", () => ({ useSite: () => ({ sites, currentSite, setCurrentSite: selectSite, isLoading: false }) }))
 jest.mock("next/navigation", () => ({ useSearchParams: () => ({ get: () => requestedId }) }))
+jest.mock("@/app/context/LocalizationContext", () => ({ useLocalization: () => ({ t: () => '' }) }))
 
 beforeEach(() => { selectSite.mockReset(); requestedId = "target"; currentSite = { id: "other" }; sites = [target] })
 

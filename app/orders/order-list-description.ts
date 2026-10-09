@@ -1,6 +1,7 @@
 export type OrderListItem = {
   name?: string | null;
   quantity?: number | string | null;
+  status?: string | null;
   parent_sale_order_item_id?: string | null;
   metadata?: {
     is_modifier?: boolean;
@@ -21,7 +22,7 @@ function namedItems(items: OrderListItem[] | null | undefined) {
 }
 
 function primaryItems(items: OrderListItem[] | null | undefined) {
-  const named = namedItems(items);
+  const named = namedItems(items).filter((item) => item.status !== "cancelled");
   const parents = named.filter(
     (item) =>
       !item.parent_sale_order_item_id && !item.metadata?.is_modifier,

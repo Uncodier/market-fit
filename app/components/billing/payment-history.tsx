@@ -14,7 +14,7 @@ import { useLocalization } from "@/app/context/LocalizationContext"
 export interface PaymentTransaction {
   id: string
   transaction_id: string
-  transaction_type: 'subscription' | 'credit_purchase' | 'refund'
+  transaction_type: 'subscription' | 'credit_purchase' | 'credits_purchase' | 'credit' | 'refund'
   amount: number
   status: 'success' | 'pending' | 'failed'
   details?: any
@@ -28,7 +28,8 @@ interface PaymentHistoryProps {
 }
 
 export function PaymentHistory({ className }: PaymentHistoryProps) {
-  const { t } = useLocalization()
+  const { t, locale } = useLocalization()
+  const dateLocale = (locale ?? 'en') === 'en' ? 'en-US' : (locale ?? 'en')
   const { currentSite } = useSite()
   const [isDownloading, setIsDownloading] = useState(false)
   const [paymentHistory, setPaymentHistory] = useState<PaymentTransaction[]>([])
@@ -36,7 +37,7 @@ export function PaymentHistory({ className }: PaymentHistoryProps) {
   const [isGeneratingTestData, setIsGeneratingTestData] = useState(false)
   const [lastLoadedSiteId, setLastLoadedSiteId] = useState<string | null>(null)
   
-  // Función para cargar el historial de pagos
+  // Load payment history for the selected site.
   const loadPaymentHistory = async () => {
     if (!currentSite) return
     
@@ -50,7 +51,7 @@ export function PaymentHistory({ className }: PaymentHistoryProps) {
       setIsLoading(true)
       const supabase = createClient()
       
-      // Consultamos directamente la tabla
+      // Query the payments table directly.
       const { data, error } = await supabase
         .from('payments')
         .select('*')
@@ -59,21 +60,21 @@ export function PaymentHistory({ className }: PaymentHistoryProps) {
       
       if (error) {
         console.error("Error fetching payments:", error)
-        // Si hay error, mostrar lista vacía
+        // Show an empty list on error.
         setPaymentHistory([])
       } else if (!data || data.length === 0) {
-        // Si no hay datos, mostrar lista vacía
+        // Show an empty list when there are no payments.
         console.log("No payment history found")
         setPaymentHistory([])
       } else {
-        // Mapear los datos de la base de datos al formato esperado
+        // Map database rows without translating stored descriptions.
         const formattedData: PaymentTransaction[] = data.map((payment: any) => ({
           id: payment.id,
           transaction_id: payment.transaction_id || `tx_${payment.id.substring(0, 8)}`,
           transaction_type: payment.transaction_type,
           amount: payment.amount,
           status: payment.status,
-          details: payment.details || { description: getDefaultDescription({ transaction_type: payment.transaction_type } as PaymentTransaction, t) },
+          details: payment.details,
           credits: payment.credits,
           invoice_url: payment.invoice_url,
           created_at: payment.created_at
@@ -87,7 +88,7 @@ export function PaymentHistory({ className }: PaymentHistoryProps) {
       setLastLoadedSiteId(currentSite.id)
     } catch (error) {
       console.error("Error loading payment history:", error)
-      toast.error("Failed to load payment history")
+      toast.error(t('billing.payment.history.loadError') || 'Failed to load payment history')
       // On error, show empty list
       setPaymentHistory([])
     } finally {
@@ -110,10 +111,10 @@ export function PaymentHistory({ className }: PaymentHistoryProps) {
     }
   }, [currentSite?.id]) // Only depend on the site ID, not the entire currentSite object
   
-  // Format date as "Month Day, Year"
+  // Preserve US English date formatting while following the selected locale.
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr)
-    return new Intl.DateTimeFormat('en-US', {
+    return new Intl.DateTimeFormat(dateLocale, {
       year: 'numeric',
       month: 'long',
       day: 'numeric'
@@ -127,14 +128,14 @@ export function PaymentHistory({ className }: PaymentHistoryProps) {
       // Check if there's an actual invoice URL
       if (transaction.invoice_url) {
         window.open(transaction.invoice_url, '_blank')
-        toast.success('Invoice opened in new tab')
+        toast.success(t('billing.payment.invoice.opened') || 'Invoice opened in new tab')
       } else {
         // Try to resolve URL from Stripe using stored details
         const stripeInvoiceId = transaction.details?.stripe_invoice_id
         const stripePaymentIntentId = transaction.details?.stripe_payment_intent_id
 
         if (!stripeInvoiceId && !stripePaymentIntentId) {
-          toast.error('No Stripe reference to fetch invoice')
+          toast.error(t('billing.payment.invoice.noReference') || 'No Stripe reference to fetch invoice')
           return
         }
 
@@ -150,17 +151,43 @@ export function PaymentHistory({ className }: PaymentHistoryProps) {
 
         const data = await response.json()
         if (!response.ok || !data?.url) {
-          toast.error(data?.error || 'Invoice not available yet')
+          toast.error(getInvoiceError(data?.error))
           return
         }
 
         window.open(data.url, '_blank')
-        toast.success('Invoice opened in new tab')
+        toast.success(t('billing.payment.invoice.opened') || 'Invoice opened in new tab')
       }
     } catch (error) {
-      toast.error('Failed to download invoice')
+      toast.error(t('billing.payment.invoice.downloadError') || 'Failed to download invoice')
     } finally {
       setIsDownloading(false)
+    }
+  }
+
+  const getInvoiceError = (error?: string) => {
+    // Translate only exact errors generated by the invoice endpoint.
+    switch (error) {
+      case 'Stripe not configured': return t('billing.payment.invoice.notConfigured') || 'Stripe not configured'
+      case 'Invalid request': return t('billing.payment.invoice.invalidRequest') || 'Invalid request'
+      case 'Payment not found': return t('billing.payment.invoice.paymentNotFound') || 'Payment not found'
+      case 'Invoice URL not available yet': return t('billing.payment.invoice.urlUnavailable') || 'Invoice URL not available yet'
+      case 'Receipt URL not available': return t('billing.payment.invoice.receiptUnavailable') || 'Receipt URL not available'
+      case 'Unable to resolve URL': return t('billing.payment.invoice.unresolved') || 'Unable to resolve URL'
+      case 'Failed to resolve invoice URL': return t('billing.payment.invoice.resolveError') || 'Failed to resolve invoice URL'
+      default: return error || t('billing.payment.invoice.unavailable') || 'Invoice not available yet'
+    }
+  }
+
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case 'success': return t('billing.payment.status.success') || 'Success'
+      case 'completed': return t('billing.payment.status.completed') || 'Completed'
+      case 'pending': return t('billing.payment.status.pending') || 'Pending'
+      case 'failed': return t('billing.payment.status.failed') || 'Failed'
+      case 'refunded': return t('billing.payment.status.refunded') || 'Refunded'
+      case 'canceled': return t('billing.payment.status.canceled') || 'Canceled'
+      default: return status.charAt(0).toUpperCase() + status.slice(1)
     }
   }
   
@@ -176,7 +203,9 @@ export function PaymentHistory({ className }: PaymentHistoryProps) {
   const getTypeLabel = (type: string) => {
     switch (type) {
       case 'subscription': return t('billing.payment.type.subscription') || 'Subscription'
-      case 'credit_purchase': return t('billing.payment.type.credits') || 'Credit Purchase'
+      case 'credit_purchase':
+      case 'credits_purchase': return t('billing.payment.type.credits') || 'Credit Purchase'
+      case 'credit': return t('billing.payment.type.credit') || 'Credit'
       case 'refund': return t('billing.payment.type.refund') || 'Refund'
       default: return type
     }
@@ -191,7 +220,7 @@ export function PaymentHistory({ className }: PaymentHistoryProps) {
     await loadPaymentHistory()
   }
 
-  // Función para generar datos de prueba
+  // Generate test payment data.
   const generateTestData = async () => {
     if (!currentSite) return
     
@@ -199,24 +228,24 @@ export function PaymentHistory({ className }: PaymentHistoryProps) {
       setIsGeneratingTestData(true)
       const supabase = createClient()
       
-      // Llamar a la función RPC para generar datos de prueba
+      // Call the RPC to generate test payment data.
       const { data, error } = await supabase.rpc('generate_test_payment_history', {
         site_id: currentSite.id
       })
       
       if (error) {
         console.error("Error generating test data:", error)
-        toast.error("Could not generate test data")
+        toast.error(t('billing.payment.history.testDataUnavailable') || 'Could not generate test data')
         return
       }
       
-      toast.success("Test payment history generated successfully")
+      toast.success(t('billing.payment.history.testDataGenerated') || 'Test payment history generated successfully')
       
-      // Recargar los datos forzando un refresh
+      // Force a refresh of the payment history.
       await refreshPaymentHistory()
     } catch (error) {
       console.error("Error generating test data:", error)
-      toast.error("Failed to generate test data")
+      toast.error(t('billing.payment.history.testDataError') || 'Failed to generate test data')
     } finally {
       setIsGeneratingTestData(false)
     }
@@ -277,7 +306,7 @@ export function PaymentHistory({ className }: PaymentHistoryProps) {
                         <td className="px-4 py-3">${transaction.amount.toFixed(2)}</td>
                         <td className="px-4 py-3">
                           <Badge className={`${getStatusColor(transaction.status)}`}>
-                            {transaction.status.charAt(0).toUpperCase() + transaction.status.slice(1)}
+                            {getStatusLabel(transaction.status)}
                           </Badge>
                         </td>
                         <td className="px-4 py-3">
@@ -312,7 +341,8 @@ export function PaymentHistory({ className }: PaymentHistoryProps) {
 function getDefaultDescription(transaction: PaymentTransaction, t?: (key: string) => string) {
   switch (transaction.transaction_type) {
     case 'subscription': return t?.('billing.payment.desc.sub') || 'Subscription Payment'
-    case 'credit_purchase': return t?.('billing.payment.desc.credits') || 'Credit Purchase'
+    case 'credit_purchase':
+    case 'credits_purchase': return t?.('billing.payment.desc.credits') || 'Credit Purchase'
     case 'refund': return t?.('billing.payment.desc.refund') || 'Refund'
     default: return t?.('billing.payment.desc.trans') || 'Transaction'
   }

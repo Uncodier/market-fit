@@ -5,7 +5,6 @@ import { useLocalization } from "@/app/context/LocalizationContext"
 import { getOrder, updateOrderStatus, updateOrderNotes, updateOrderItemStatus, updateOrderItemsStatus } from "../actions"
 import { createShipment } from "@/app/shipments/actions"
 import { listLocations } from "@/app/inventory/actions"
-import { OrderWithRelations } from "../types"
 import { toast } from "sonner"
 import {
   ensureOrderPublicAccessToken,
@@ -19,6 +18,7 @@ import { navigateToShipment } from "@/lib/navigation/navigation-helpers"
 import { getSaleById } from "@/app/sales/actions"
 import { Sale } from "@/app/types"
 import { OrderDetailView } from "./components/OrderDetailView"
+import { useOrderDetailData } from "../hooks/use-order-detail-data"
 
 export default function OrderDetail(props: { params: Promise<{ id: string }> }) {
   const params = React.use(props.params)
@@ -26,10 +26,10 @@ export default function OrderDetail(props: { params: Promise<{ id: string }> }) 
   const { t } = useLocalization()
   const router = useRouter()
   
-  const [order, setOrder] = useState<OrderWithRelations | null>(null)
-  const [loading, setLoading] = useState(true)
+  const { order, setOrder, loading, error: loadError } = useOrderDetailData(params.id)
   
-  const [notes, setNotes] = useState("")
+  const [notesDraft, setNotesDraft] = useState<{ orderId: string; value: string } | null>(null)
+  const notes = notesDraft?.orderId === params.id ? notesDraft.value : order?.notes || ""
   const [savingNotes, setSavingNotes] = useState(false)
   const [updatingStatus, setUpdatingStatus] = useState(false)
   const [savingLines, setSavingLines] = useState(false)
@@ -43,18 +43,8 @@ export default function OrderDetail(props: { params: Promise<{ id: string }> }) 
   const [isLoadingSale, setIsLoadingSale] = useState(false)
 
   useEffect(() => {
-    async function load() {
-      const { data, error } = await getOrder(params.id)
-      if (error) {
-        toast.error(t('orders.error.loadFailed') || "Failed to load order")
-      } else if (data) {
-        setOrder(data)
-        setNotes(data.notes || "")
-      }
-      setLoading(false)
-    }
-    load()
-  }, [params.id])
+    if (loadError) toast.error(t('orders.error.loadFailed') || "Failed to load order")
+  }, [loadError, t])
 
   const handleStatusChange = async (newStatus: string) => {
     if (!currentSite || !order) return
@@ -165,6 +155,7 @@ export default function OrderDetail(props: { params: Promise<{ id: string }> }) 
     } else if (data) {
       toast.success(t('orders.success.notesUpdated') || "Notes updated")
       setOrder(prev => prev ? { ...prev, notes: data.notes } : null)
+      setNotesDraft(null)
     }
     setSavingNotes(false)
   }
@@ -229,7 +220,7 @@ export default function OrderDetail(props: { params: Promise<{ id: string }> }) 
 
   if (!order) return <div className="p-8">{t('orders.detail.notFound') || "Order not found"}</div>
 
-  const items = order.sale_order_items && order.sale_order_items.length > 0 ? order.sale_order_items : (order.items || []);
+  const items = order.sale_order_items ?? order.items ?? [];
   const lastEmailedAt = (order as any).last_emailed_at as string | null | undefined
 
   const handlePrint = () => {
@@ -353,7 +344,7 @@ export default function OrderDetail(props: { params: Promise<{ id: string }> }) 
       currentSale={currentSale}
       lastEmailedAt={lastEmailedAt}
       t={t}
-      onNotesChange={setNotes}
+      onNotesChange={(value) => setNotesDraft({ orderId: params.id, value })}
       onLineStatusChange={handleLineStatusChange}
       onSaveLineItems={handleSaveLineItems}
       onAllLineStatusesChange={handleAllLineStatusesChange}

@@ -30,6 +30,13 @@ describe("order list descriptions", () => {
     );
   });
 
+  it("excludes removed sent products from the active summary but retains searchable history", () => {
+    const cancelled = items.map((item) => ({ ...item, status: "cancelled" }));
+    expect(formatOrderProductSummary([...cancelled, { name: "Coffee", quantity: 1, status: "new" }])).toBe("Coffee");
+    expect(formatOrderProductSummary(cancelled)).toBe("");
+    expect(orderProductSearchText(cancelled)).toContain("Cheeseburger");
+  });
+
   it("keeps every line searchable, including modifiers", () => {
     expect(orderProductSearchText(items)).toBe(
       "Cheeseburger Extra cheese Iced tea",

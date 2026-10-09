@@ -3,6 +3,7 @@ import type Stripe from 'stripe'
 import type { BillingPlan } from './billing-plans'
 
 export type BillingInterval = 'month' | 'year'
+export type SubscriptionPlan = BillingPlan | 'commission'
 export class SubscriptionRequestError extends Error {
   constructor(message: string, public readonly status = 400) { super(message) }
 }
@@ -57,18 +58,24 @@ export function validateSubscriptionPrice(price: Stripe.Price, config: NonNullab
   }
 }
 
-export async function resolveSubscriptionCheckoutPrices(stripe: Pick<Stripe, 'prices'>, plan: BillingPlan, interval: BillingInterval, addonsCount: number) {
+export async function resolveSubscriptionCheckoutPrices(stripe: Pick<Stripe, 'prices'>, plan: SubscriptionPlan, interval: BillingInterval, addonsCount: number) {
   const prices = configuredSubscriptionPrices()
   const base = prices.find((price) => price.plan === plan && price.interval === interval)
   const addon = prices.find((price) => price.plan === 'addon' && price.interval === interval)
-  if (!base || (addonsCount > 0 && !addon)) {
+  if ((plan !== 'commission' && !base) || ((addonsCount > 0 || plan === 'commission') && !addon)) {
     throw new SubscriptionRequestError(`Subscription ${interval === 'year' ? 'annual' : 'monthly'} pricing is not configured`, 503)
   }
-  const selected = addonsCount > 0 && addon ? [base, addon] : [base]
+  // Free has no Stripe base item. Resolve the add-on even at zero for verified
+  // cancellation of an existing subscription; never create an empty Checkout.
+  const selected = [...(base ? [base] : []),
+    ...((addonsCount > 0 || plan === 'commission') && addon ? [addon] : [])]
   const live = await Promise.all(selected.map(async (config) => {
     const price = await stripe.prices.retrieve(config.priceId)
     validateSubscriptionPrice(price, config, true)
     return price
   }))
-  return { base, addon, basePrice: live[0] }
+  return { base, addon, basePrice: base ? live[0] : undefined,
+    addonPrice: live.find(price => price.id === addon?.priceId),
+    lineItems: [...(base ? [{ price: base.priceId, quantity: 1 }] : []),
+      ...(addonsCount > 0 && addon ? [{ price: addon.priceId, quantity: addonsCount }] : [])] }
 }

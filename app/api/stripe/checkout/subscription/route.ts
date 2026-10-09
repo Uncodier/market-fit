@@ -7,6 +7,13 @@ import { SubscriptionRequestError, parseBillingInterval, parseAddonsCount, resol
 import { existingSubscriptionFlow } from './subscription-update'
 import { prepareSubscriptionCheckout } from './checkout-session'
 import { createServiceApiClient } from '@/lib/supabase/server-client'
+import { getRequiredAddons } from '@/lib/billing-limits'
+import type { Site, SiteSettings } from '@/app/context/site-types'
+
+function settingsField(value: unknown): unknown {
+  if (typeof value !== 'string') return value
+  try { return JSON.parse(value) } catch { throw new SubscriptionRequestError('Account connections require billing support', 409) }
+}
 
 export async function POST(request: NextRequest) {
   let lease: { siteId: string; token: string; client: ReturnType<typeof createServiceApiClient> } | undefined
@@ -30,7 +37,7 @@ export async function POST(request: NextRequest) {
     }
     const access = await requireStripeSiteAccess(request, siteId)
     if (access.error) return access.error
-    if (plan !== 'engine' && plan !== 'foundry' && plan !== 'enterprise') {
+    if (plan !== 'commission' && plan !== 'engine' && plan !== 'foundry' && plan !== 'enterprise') {
       throw new SubscriptionRequestError('Invalid subscription plan')
     }
     const interval = parseBillingInterval(body.billingInterval)
@@ -53,8 +60,31 @@ export async function POST(request: NextRequest) {
     lease = { siteId, token: claimed.token, client: service }
     const supabase = access.supabase
     const { data: billing, error: billingReadError } = await supabase.from('billing')
-      .select('stripe_customer_id,stripe_subscription_id').eq('site_id', siteId).maybeSingle()
+      .select('plan,stripe_customer_id,stripe_subscription_id').eq('site_id', siteId).maybeSingle()
     if (billingReadError) throw new Error('Billing lookup failed')
+    if (plan === 'commission' && billing?.plan && billing.plan !== 'commission') {
+      throw new SubscriptionRequestError('Paid base plan changes require billing support', 409)
+    }
+    if (plan === 'commission' && addonsCount === 0 && !billing?.stripe_subscription_id) {
+      throw new SubscriptionRequestError('Choose at least one add-on to start a subscription')
+    }
+    let requiredAddons: number | undefined
+    if (billing?.stripe_subscription_id) {
+      const { data: settings, error: settingsError } = await supabase.from('settings')
+        .select('social_media,channels').eq('site_id', siteId).maybeSingle()
+      if (settingsError) throw new SubscriptionRequestError('Account connections require billing support', 409)
+      const social = settingsField(settings?.social_media ?? [])
+      const channels = settingsField(settings?.channels ?? {})
+      if (!Array.isArray(social) || !channels || typeof channels !== 'object' || Array.isArray(channels) ||
+          !Array.isArray((channels as { connections?: unknown }).connections ?? [])) {
+        throw new SubscriptionRequestError('Account connections require billing support', 409)
+      }
+      requiredAddons = getRequiredAddons({
+        billing: { plan } as Site['billing'],
+        settings: { social_media: social, channels } as SiteSettings,
+      } as Partial<Site>)
+      if (addonsCount < requiredAddons) throw new SubscriptionRequestError('Disconnect excess accounts before reducing add-ons', 409)
+    }
     let customerId = billing?.stripe_customer_id
     if (!customerId && billing?.stripe_subscription_id) {
       throw new SubscriptionRequestError('Existing subscription customer is unavailable', 409)
@@ -72,16 +102,21 @@ export async function POST(request: NextRequest) {
     }
     const requestWindow = Math.floor(Date.now() / (10 * 60 * 1000))
     const idempotencyKey = createHash('sha256').update(JSON.stringify({ user: access.userId, siteId,
-      plan, interval, addonsCount, requestWindow, price: pricing.base.priceId, addon: pricing.addon?.priceId,
+      plan, interval, addonsCount, requestWindow, price: pricing.base?.priceId, addon: pricing.addon?.priceId,
       success: urls.successUrl, cancel: urls.cancelUrl })).digest('hex')
     const existing = await existingSubscriptionFlow({ stripe, customerId, siteId,
-      subscriptionId: billing?.stripe_subscription_id, price: pricing.basePrice, interval, addonsCount,
+      subscriptionId: billing?.stripe_subscription_id, price: pricing.basePrice, plan,
+      addonPrice: pricing.addonPrice,
+      interval, addonsCount, requiredAddons,
       returnUrl: urls.cancelUrl, successUrl: urls.successUrl, idempotencyKey,
       beforeProviderWrite })
     safeRelease = true
     if (existing) return NextResponse.json(existing)
+    if (plan === 'commission' && addonsCount === 0) {
+      throw new SubscriptionRequestError('Choose at least one add-on to start a subscription')
+    }
     const metadata = { site_id: siteId, plan, billing_interval: interval,
-      addons_count: String(addonsCount), type: 'subscription', price_id: pricing.base.priceId,
+      addons_count: String(addonsCount), type: 'subscription', price_id: pricing.base?.priceId ?? '',
       addon_price_id: addonsCount > 0 ? pricing.addon!.priceId : '' }
     const pending = await prepareSubscriptionCheckout({ stripe, customerId, siteId, metadata,
       successUrl: urls.successUrl, cancelUrl: urls.cancelUrl, beforeProviderWrite,
@@ -91,8 +126,7 @@ export async function POST(request: NextRequest) {
     beforeProviderWrite()
     const session = await stripe.checkout.sessions.create({
       customer: customerId, payment_method_types: ['card'], mode: 'subscription', allow_promotion_codes: true,
-      line_items: [{ price: pricing.base.priceId, quantity: 1 },
-        ...(addonsCount > 0 ? [{ price: pricing.addon!.priceId, quantity: addonsCount }] : [])],
+      line_items: pricing.lineItems,
       success_url: urls.successUrl, cancel_url: urls.cancelUrl, metadata, subscription_data: { metadata },
     }, { idempotencyKey: checkoutKey })
     safeRelease = true

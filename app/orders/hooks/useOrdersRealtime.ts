@@ -11,12 +11,14 @@ import {
 export function useOrdersRealtime(
   siteId: string | undefined,
   onInvalidate: () => void,
-  options: { includeUnits?: boolean } = {},
+  options: { includeUnits?: boolean; orderId?: string; playAlarm?: boolean } = {},
 ) {
-  const { includeUnits = false } = options
+  const { includeUnits = false, orderId, playAlarm = true } = options
   const refreshTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const onInvalidateRef = useRef(onInvalidate)
-  onInvalidateRef.current = onInvalidate
+  useEffect(() => {
+    onInvalidateRef.current = onInvalidate
+  }, [onInvalidate])
 
   // Unlock Web Audio on the first user gesture so realtime INSERT can play later.
   useEffect(() => {
@@ -35,11 +37,16 @@ export function useOrdersRealtime(
       eventType?: string
       table?: string
       new?: { id?: string; sale_order_id?: string; status?: string }
+      old?: { id?: string; sale_order_id?: string }
     }) => {
+      const eventOrderId = payload.table === "sale_orders"
+        ? payload.new?.id || payload.old?.id
+        : payload.new?.sale_order_id || payload.old?.sale_order_id
+      if (orderId && eventOrderId && eventOrderId !== orderId) return
       if (refreshTimeoutRef.current) clearTimeout(refreshTimeoutRef.current)
 
       // Play alarm on new sale orders
-      if (payload.eventType === "INSERT" && payload.table === "sale_orders") {
+      if (playAlarm && payload.eventType === "INSERT" && payload.table === "sale_orders") {
         playNewOrderAlarm()
       }
 
@@ -54,7 +61,7 @@ export function useOrdersRealtime(
     }
 
     let channel = supabase
-      .channel(`sale_orders_${siteId}`)
+      .channel(`sale_orders_${siteId}${orderId ? `_${orderId}` : ""}`)
       .on(
         "postgres_changes",
         {
@@ -108,5 +115,5 @@ export function useOrdersRealtime(
         console.warn("[useOrdersRealtime] Failed to unsubscribe from realtime channel:", e)
       }
     }
-  }, [includeUnits, siteId])
+  }, [includeUnits, orderId, playAlarm, siteId])
 }

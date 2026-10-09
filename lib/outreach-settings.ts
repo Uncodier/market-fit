@@ -10,6 +10,8 @@ export type OutreachSettings = {
   all_segments: boolean
   daily_message_limit: number
   max_unanswered_messages: number
+  cooldown_mode?: "progressive" | "fixed"
+  cooldown_period_days?: number
   weekdays: number[]
   repeat_interval_days?: number
   start_time_mode?: ActivityStartTimeMode
@@ -56,6 +58,9 @@ export function normalizeOutreachSettings(value: unknown, key?: OutreachActivity
     // Do not silently repair invalid saved caps; let validation ask the user to fix them.
     daily_message_limit: data.daily_message_limit === undefined ? 30 : data.daily_message_limit,
     max_unanswered_messages: data.max_unanswered_messages === undefined ? 3 : data.max_unanswered_messages,
+    cooldown_mode: data.cooldown_mode === undefined
+      ? (key === "invoices_due" && data.repeat_interval_days !== undefined ? "fixed" as const : "progressive" as const) : data.cooldown_mode,
+    ...(key !== "invoices_due" && data.cooldown_mode === "fixed" ? { cooldown_period_days: data.cooldown_period_days } : {}),
     weekdays: data.weekdays === undefined ? key === "invoices_due" ? [1, 2, 3, 4, 5] : [2, 3, 4] : Array.isArray(data.weekdays) ? [...new Set(data.weekdays)] : [],
     ...(key === "invoices_due" ? { repeat_interval_days: data.repeat_interval_days === undefined ? 3 : data.repeat_interval_days } : {}),
     ...(key === "invoices_due" && data.start_time === undefined && data.start_time_mode === undefined ? { start_time_mode: "business_opening" as const } : {}),
@@ -92,6 +97,12 @@ export function validateOutreachSettings(
   }
   if (key !== "invoices_due" && (!Number.isInteger(value.max_unanswered_messages) || value.max_unanswered_messages < 1 || value.max_unanswered_messages > 100)) {
     errors.push({ field: "max_unanswered_messages", message: "Enter a whole number from 1 to 100 unanswered messages." })
+  }
+  if (value.cooldown_mode !== undefined && value.cooldown_mode !== "progressive" && value.cooldown_mode !== "fixed") {
+    errors.push({ field: "cooldown_mode", message: "Choose progressive or fixed cooldown." })
+  }
+  if (key !== "invoices_due" && value.cooldown_mode === "fixed" && (!Number.isInteger(value.cooldown_period_days) || (value.cooldown_period_days ?? 0) < 1 || (value.cooldown_period_days ?? 0) > 365)) {
+    errors.push({ field: "cooldown_period_days", message: "Enter a whole number from 1 to 365 days between contacts." })
   }
   if (key === "invoices_due" && (!Number.isInteger(value.repeat_interval_days) || (value.repeat_interval_days ?? 0) < 1 || (value.repeat_interval_days ?? 0) > 365)) {
     errors.push({ field: "repeat_interval_days", message: "Enter a whole number from 1 to 365 days between invoice reminders." })

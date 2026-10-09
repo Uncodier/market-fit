@@ -287,12 +287,12 @@ class BillingService {
    */
   async createSubscriptionCheckoutSession(
     siteId: string,
-    plan: 'engine' | 'foundry' | 'enterprise',
+    plan: 'commission' | 'engine' | 'foundry' | 'enterprise',
     userEmail: string,
     addonsCount: number = 0,
     billingInterval: BillingInterval = 'month'
   ): Promise<{ success: boolean; url?: string; sessionId?: string; error?: string;
-    flow?: 'scheduled_downgrade' | 'prorated_upgrade' | 'subscription_update_confirm';
+    flow?: 'scheduled_downgrade' | 'prorated_upgrade' | 'subscription_update_confirm' | 'prorated_addon' | 'scheduled_addon_reduction';
     effectiveAt?: string; status?: 'paid' | 'pending_payment' }> {
     try {
       if (await isDemoModeActive()) {
@@ -312,15 +312,15 @@ class BillingService {
           addonsCount,
           billingInterval,
           successUrl: `${window.location.origin}/billing/success?plan=${plan}`,
-          cancelUrl: `${window.location.origin}/checkout`,
+          cancelUrl: `${window.location.origin}${plan === 'commission' ? '/billing#addons' : '/checkout'}`,
         }),
       })
 
       const { url, sessionId, error, flow, effectiveAt, status } = await response.json()
 
-      const scheduled = flow === 'scheduled_downgrade' && typeof effectiveAt === 'string' &&
+      const scheduled = (flow === 'scheduled_downgrade' || flow === 'scheduled_addon_reduction') && typeof effectiveAt === 'string' &&
         Number.isFinite(Date.parse(effectiveAt))
-      const upgraded = flow === 'prorated_upgrade' && (status === 'paid' ||
+      const upgraded = (flow === 'prorated_upgrade' || flow === 'prorated_addon') && (status === 'paid' ||
         (status === 'pending_payment' && typeof url === 'string' && (() => {
           try { const invoice = new URL(url); return invoice.protocol === 'https:' &&
             invoice.hostname === 'invoice.stripe.com' && !invoice.username && !invoice.password }

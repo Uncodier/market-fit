@@ -12,8 +12,16 @@ beforeEach(() => jest.clearAllMocks())
 
 it.each([undefined, "default", "inactive", {}, { status: "default" }])("defaults invoice reminders to inactive for %j", value => {
   const normalized = normalizeActivitySettings({ [key]: value })
-  expect(normalized[key]).toMatchObject({ status: "inactive", channel_accounts: {}, repeat_interval_days: 3, daily_message_limit: 30, weekdays: [1, 2, 3, 4, 5], start_time_mode: "business_opening" })
+  expect(normalized[key]).toMatchObject({ status: "inactive", channel_accounts: {}, cooldown_mode: "progressive", repeat_interval_days: 3, daily_message_limit: 30, weekdays: [1, 2, 3, 4, 5], start_time_mode: "business_opening" })
   expect(activitiesSchema.parse(normalized)[key].status).toBe("inactive")
+})
+
+it("keeps old saved interval fixed and allows explicit progressive cadence", () => {
+  expect(normalizeOutreachSettings({ repeat_interval_days: 6 }, key)).toMatchObject({ cooldown_mode: "fixed", repeat_interval_days: 6 })
+  expect(activitiesSchema.parse({ [key]: { repeat_interval_days: 6 } })[key]).toMatchObject({ cooldown_mode: "fixed", repeat_interval_days: 6 })
+  expect(normalizeOutreachSettings({}, key).cooldown_mode).toBe("progressive")
+  expect(activitiesSchema.parse({ [key]: { cooldown_mode: "progressive" } })[key].cooldown_mode).toBe("progressive")
+  expect(activitiesSchema.safeParse({ [key]: { ...configured, cooldown_mode: "unknown" } }).success).toBe(false)
 })
 
 it.each([null, "3", 0, -1, 1.5, 366, NaN, Infinity])("rejects invalid saved interval %j without repairing it", repeat_interval_days => {

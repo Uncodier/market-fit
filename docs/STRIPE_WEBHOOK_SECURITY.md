@@ -21,6 +21,10 @@ The event payload is a notification, not final proof of payment. Current
 checkout handling re-fetches the Checkout Session and requires
 `payment_status === "paid"`. Invoice handling re-fetches the invoice and
 requires a paid state.
+An exception exists for completely discounted credit packages: the retrieved
+Checkout must be complete, payment-mode, USD, have the exact configured package
+subtotal fully discounted to zero, no tax/shipping, and no PaymentIntent. A
+`no_payment_required` state by itself never grants credits or settles a sale.
 
 Preserve those checks when extracting handlers or upgrading Stripe.
 
