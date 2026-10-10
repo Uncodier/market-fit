@@ -105,6 +105,25 @@ does not delete provider accounts as part of a downgrade. Independently running
 provider/Temporal jobs must honor the same persisted flags; stopping work already
 dispatched by external services is not implemented by this repository.
 
+### Onboarding progress writes
+
+The onboarding checklist updates only `settings.onboarding`, scoped by `site_id`
+under the user's session and existing RLS. It does not upsert the full settings
+row: PostgreSQL runs INSERT triggers before resolving an upsert conflict, so
+replaying stored `_license` metadata can reject even an owner's progress save.
+Missing settings are initialized with only `site_id` and `onboarding`; an insert
+conflict reloads the existing progress before updating it. Failed writes do not
+mark tasks complete, and automatic validation writes only newly completed tasks.
+This application fix does not weaken license protection or require a migration;
+other full-settings upsert callers remain outside its scope.
+
+Regression coverage includes the React hook and the existing license triggers in
+an isolated, socket-only PostgreSQL cluster:
+
+```bash
+npm test -- --runInBand __tests__/dashboard
+```
+
 ## Upgrade and billing safety
 
 The billing selector displays seat allowances and highlights the minimum plan for

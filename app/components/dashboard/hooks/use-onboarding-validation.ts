@@ -3,6 +3,10 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import { useSite } from "@/app/context/SiteContext"
 import { createClient } from "@/lib/supabase/client"
+import { toast } from "sonner"
+import { isRlsError } from "@/lib/permissions/error-map"
+import { notifyPermissionDenied } from "@/lib/permissions/notify"
+import { saveOnboardingProgress } from "../onboarding-progress"
 import {
   ALL_TASK_IDS,
   type OnboardingTaskId,
@@ -11,6 +15,15 @@ import {
 
 export type { OnboardingTaskId, OnboardingTasksState }
 export { ALL_TASK_IDS }
+
+function reportSaveError(error: unknown) {
+  if (isRlsError(error)) {
+    // Also covers read failures; the notifier deduplicates write-guard errors.
+    notifyPermissionDenied("update")
+  } else {
+    toast.error("Could not save onboarding progress. Please try again.")
+  }
+}
 
 export function useOnboardingValidation() {
   const { currentSite } = useSite()
@@ -55,6 +68,8 @@ export function useOnboardingValidation() {
         const allCompleted = ALL_TASK_IDS.every((id) => loaded[id] === true)
         if (allCompleted) {
           localStorage.setItem(`onboarding_completed_${currentSite.id}`, "true")
+        } else {
+          localStorage.removeItem(`onboarding_completed_${currentSite.id}`)
         }
       }
     } catch {
@@ -96,11 +111,14 @@ export function useOnboardingValidation() {
           .from("settings")
           .select("onboarding")
           .eq("site_id", currentSite.id)
-          .single()
-        if (!error || error.code === "PGRST116") {
-          freshData = ((data?.onboarding || {}) as OnboardingTasksState)
-        }
-      } catch { /* ignore */ }
+          .maybeSingle()
+        if (error) throw error
+        freshData = ((data?.onboarding || {}) as OnboardingTasksState)
+      } catch {
+        setIsValidating(false)
+        setIsValidationRunning(false)
+        return
+      }
 
       const validated: OnboardingTasksState = { ...freshData }
       let hasChanges = false
@@ -194,9 +212,9 @@ export function useOnboardingValidation() {
       }, true)
 
       await check("configure_store", async () => {
-        const commerce = currentSite.settings?.commerce as any
+        const commerce = currentSite.settings?.commerce
         // Check if there are specific non-default commerce settings
-        if (commerce && (commerce.stripe_account_id || commerce.currency !== 'USD' || commerce.shipping_methods?.length > 0)) {
+        if (commerce && (commerce.stripe_account_id || commerce.currency !== 'USD' || (commerce.shipping_methods?.length ?? 0) > 0)) {
           return true
         }
         
@@ -241,15 +259,14 @@ export function useOnboardingValidation() {
         })
       })
 
-      if (hasChanges || Object.keys(validated).length > 0) {
+      if (hasChanges) {
         try {
-          const { data: existing } = await supabase.from("settings").select("*").eq("site_id", currentSite.id).single()
-          await supabase.from("settings").upsert(
-            { ...existing, site_id: currentSite.id, onboarding: validated },
-            { onConflict: "site_id", ignoreDuplicates: false }
+          const changes = Object.fromEntries(
+            ALL_TASK_IDS.filter((id) => validated[id] && !freshData[id]).map((id) => [id, true])
           )
+          await saveOnboardingProgress(currentSite.id, changes)
           await loadTasks()
-        } catch { /* ignore */ }
+        } catch (error) { reportSaveError(error) }
       }
 
       setIsValidating(false)
@@ -260,35 +277,22 @@ export function useOnboardingValidation() {
     return () => { if (updateTimeoutRef.current) clearTimeout(updateTimeoutRef.current) }
   }, [currentSite?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const toggleTask = useCallback(async (taskId: OnboardingTaskId, done: boolean) => {
+  const saveTasks = useCallback(async (changes: Partial<OnboardingTasksState>) => {
     setSkipNextValidation(true)
-    if (!currentSite?.id) return
+    if (!currentSite?.id || isDemoMode) return
     try {
-      const supabase = createClient()
-      const { data: existing } = await supabase.from("settings").select("*").eq("site_id", currentSite.id).single()
-      const updated = { ...(existing?.onboarding || {}), [taskId]: done }
-      await supabase.from("settings").upsert(
-        { ...existing, site_id: currentSite.id, onboarding: updated },
-        { onConflict: "site_id", ignoreDuplicates: false }
-      )
+      await saveOnboardingProgress(currentSite.id, changes)
       await loadTasks()
-    } catch { /* ignore */ }
-  }, [currentSite?.id, loadTasks])
+    } catch (error) { reportSaveError(error) }
+  }, [currentSite?.id, isDemoMode, loadTasks])
+
+  const toggleTask = useCallback(async (taskId: OnboardingTaskId, done: boolean) => {
+    await saveTasks({ [taskId]: done })
+  }, [saveTasks])
 
   const markAllDone = useCallback(async (taskIds: OnboardingTaskId[]) => {
-    setSkipNextValidation(true)
-    if (!currentSite?.id) return
-    try {
-      const supabase = createClient()
-      const { data: existing } = await supabase.from("settings").select("*").eq("site_id", currentSite.id).single()
-      const allDone = taskIds.reduce((acc, id) => ({ ...acc, [id]: true }), existing?.onboarding || {})
-      await supabase.from("settings").upsert(
-        { ...existing, site_id: currentSite.id, onboarding: allDone },
-        { onConflict: "site_id", ignoreDuplicates: false }
-      )
-      await loadTasks()
-    } catch { /* ignore */ }
-  }, [currentSite?.id, loadTasks])
+    await saveTasks(Object.fromEntries(taskIds.map((id) => [id, true])))
+  }, [saveTasks])
 
   return { tasks, isLoading, isValidating, toggleTask, markAllDone, loadTasks }
 }
