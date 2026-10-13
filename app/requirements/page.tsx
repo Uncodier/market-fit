@@ -176,7 +176,7 @@ export default function RequirementsPage() {
                     </TabsList>
                   </FilterSection>
 
-                  <FilterSection desktopOnly className="flex-row items-center gap-2">
+                  <FilterSection desktopOnly className="flex-row items-center gap-2 md:gap-2">
                     <SearchInput  placeholder={t("requirements.search") || "Search requirements..."} value={list.searchQuery} onSearch={list.setSearchQuery} ref={searchInputRef}    className="w-full border-border bg-background focus:border-muted-foreground/20 focus:ring-muted-foreground/20"  containerClassName="w-64" />
                     <Button variant="secondary" size="icon" className="h-9 w-9 rounded-full flex-shrink-0" onClick={() => setIsFilterModalOpen(true)}>
                       <Filter className="h-4 w-4" />

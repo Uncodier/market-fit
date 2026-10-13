@@ -2,13 +2,13 @@
 
 import { revalidatePath, revalidateTag } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { CatalogItem } from "@/app/types";
+import { CatalogCategory, CatalogItem } from "@/app/types";
 import { CatalogListParams, CatalogListResponse } from "./types";
 import { attachCatalogRelationSummaries } from "./relation-summaries";
 import { shopCacheTag } from "@/app/shop/[siteSlug]/shop-catalog-shared";
 import { pdpCacheTag } from "@/app/commerce/pdp-actions";
 
-export async function listCatalogCategories(siteId: string) {
+export async function listCatalogCategories(siteId: string, status: 'active' | 'archived' | 'all' = 'active') {
   try {
     const supabase = await createClient();
     const { data, error } = await supabase
@@ -23,7 +23,8 @@ export async function listCatalogCategories(siteId: string) {
       return { data: [], error: error.message };
     }
     
-    return { data };
+    const categories = (data || []) as CatalogCategory[];
+    return { data: status === 'all' ? categories : categories.filter(category => (category.status || 'active') === status) };
   } catch (error: any) {
     return { data: [], error: error.message };
   }
@@ -429,6 +430,9 @@ export async function findOrCreateCatalogCategory(site_id: string, name: string)
       .limit(1)
       .single()
 
+    if (existing?.status === "archived") {
+      return { category: null, error: "This category is archived. Choose an active category or a different name." }
+    }
     if (existing) return { category: existing, error: null }
     if (searchError && searchError.code !== "PGRST116") {
       return { category: null, error: searchError.message }

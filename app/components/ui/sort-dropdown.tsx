@@ -4,36 +4,35 @@ import { Button } from "@/app/components/ui/button"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/app/components/ui/dropdown-menu"
 import { ListOrdered, Check, ChevronDown } from "@/app/components/ui/icons"
 import { cn } from "@/lib/utils"
-import { useLocalization } from "@/app/context/LocalizationContext"
 
-export function SortDropdown({ 
+export function SortDropdown<SortValue extends string>({
   sortBy, 
   setSortBy,
+  className,
   options = [
-    { value: "newest", label: "Newest" },
-    { value: "oldest", label: "Oldest" },
-    { value: "updated_at", label: "Updated" }
+    { value: "newest" as SortValue, label: "Newest" },
+    { value: "oldest" as SortValue, label: "Oldest" },
+    { value: "updated_at" as SortValue, label: "Updated" }
   ]
 }: { 
-  sortBy: string, 
-  setSortBy: (v: any) => void,
-  options?: { value: string, label: string }[]
+  sortBy: SortValue,
+  setSortBy: (value: SortValue) => void,
+  className?: string,
+  options?: { value: SortValue, label: string }[]
 }) {
-  const { t } = useLocalization()
-  
   const currentOption = options.find(o => o.value === sortBy) || options[0]
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="secondary" size="sm" className="w-full md:w-auto h-10 md:h-9 gap-2 rounded-md md:rounded-full px-4 justify-between md:justify-center" title="Sort by">
-          <div className="flex items-center gap-2">
-            <ListOrdered className="h-4 w-4" />
-            <span className="font-normal">
+        <Button variant="secondary" size="sm" className={cn("w-full md:w-auto h-10 md:h-9 gap-2 rounded-md md:rounded-full px-4 justify-between md:justify-center", className)} title="Sort by">
+          <div className="flex min-w-0 items-center gap-2">
+            <ListOrdered className="h-4 w-4 shrink-0" />
+            <span className="truncate font-normal">
               {currentOption.label}
             </span>
           </div>
-          <ChevronDown className="h-3 w-3 opacity-50" />
+          <ChevronDown className="h-3 w-3 shrink-0 opacity-50" />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-40">

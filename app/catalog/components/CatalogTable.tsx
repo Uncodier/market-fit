@@ -167,7 +167,7 @@ export function CatalogTable({
     onDragEnd(result)
   }
 
-  if (items.length === 0 && !searchQuery) {
+  if (items.length === 0 && categories.length === 0 && !searchQuery) {
     return (
       <div className="p-8">
         <EmptyCard

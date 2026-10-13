@@ -1,3 +1,4 @@
+/** @jest-environment node */
 import { updateRequirement } from "@/app/requirements/actions"
 import { createClient } from "@/lib/supabase/server"
 

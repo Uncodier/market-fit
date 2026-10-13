@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server"
 import { cookies } from "next/headers"
 import { requirementFormSchema, type RequirementFormValues } from "./schema"
 import type { RequirementType } from "./types"
+import { deleteRequirementRecord } from "./delete-requirement"
 
 export type { RequirementFormValues } from "./schema"
 
@@ -356,51 +357,5 @@ export async function updateRequirement(data: UpdateRequirementData) {
 }
 
 export async function deleteRequirement(id: string) {
-  const cookieStore = cookies()
-  const supabase = await createClient()
-
-  try {
-    // First delete related records from requirement_segments
-    const { error: segmentsError } = await supabase
-      .from("requirement_segments")
-      .delete()
-      .eq("requirement_id", id)
-
-    if (segmentsError) {
-      return {
-        error: segmentsError.message
-      }
-    }
-
-    // Delete related records from campaign_requirements
-    const { error: campaignsError } = await supabase
-      .from("campaign_requirements")
-      .delete()
-      .eq("requirement_id", id)
-
-    if (campaignsError) {
-      return {
-        error: campaignsError.message
-      }
-    }
-
-    // Finally delete the requirement itself
-    const { error: requirementError } = await supabase
-      .from("requirements")
-      .delete()
-      .eq("id", id)
-
-    if (requirementError) {
-      return {
-        error: requirementError.message
-      }
-    }
-
-    revalidatePath("/requirements")
-    return { success: true }
-  } catch (error) {
-    return {
-      error: error instanceof Error ? error.message : "Unexpected error deleting requirement"
-    }
-  }
+  return deleteRequirementRecord(id)
 } 

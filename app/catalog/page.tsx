@@ -51,13 +51,16 @@ export default function CatalogPage() {
   const fetcher = async (params: CatalogListParams) => {
     const [itemsRes, categoriesRes] = await Promise.all([
       listCatalogItems(params),
-      listCatalogCategories(params.siteId)
+      listCatalogCategories(params.siteId, params.status === 'archived' ? 'all' : 'active')
     ])
     if (itemsRes.error) throw new Error(itemsRes.error)
     if (categoriesRes.error) throw new Error(categoriesRes.error)
     return {
       items: itemsRes,
-      categories: categoriesRes.data || []
+      categories: (categoriesRes.data || []).filter(category =>
+        params.status !== 'archived' || category.status === 'archived' ||
+        itemsRes.data.some(item => item.category_id === category.id)
+      )
     }
   }
 

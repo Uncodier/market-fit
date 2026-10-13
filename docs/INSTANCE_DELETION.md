@@ -1,7 +1,8 @@
 # Instance and requirement deletion
 
 Deleting an agent instance also deletes its exclusively associated requirements
-and their requirement history. The confirmation dialog states this explicitly;
+and their requirement history, except retained immutable retirement audit receipts.
+The confirmation dialog states this explicitly;
 the request must include `delete_requirements: true`. Archival remains a separate,
 non-destructive operation and does not stop execution.
 
@@ -26,7 +27,7 @@ authorized scope before provider shutdown, then
 instance in one database transaction. It must not fall back to separately
 committed log/plan cleanup or direct parent deletion.
 
-The API repository owns the forward migrations and database regression tests.
+The API repository owns the instance-deletion migrations and database regression tests.
 Apply the instance-deletion migrations to **Makinari**, not the separate Apps
 database, before deploying the API and web changes. Missing migration/configuration
 fails closed. Remote migration application requires explicit operator approval.
@@ -64,11 +65,58 @@ unrelated log tags when the authorized requirement set is empty. It is verified
 in isolated PostgreSQL, not applied remotely. This is a database-side correction;
 deploying the proxy diagnostics alone does not install it.
 
+## Individual requirement deletion and retirement audit
+
+The Requirements Server Action authenticates the real user, derives the site from
+the RLS-visible requirement, and requires owner/admin plus delete capability. It
+deletes only the parent, scoped to the verified site, and requires a matching
+returned ID before reporting success. Existing database cascades and the deletion
+authority trigger remain authoritative. Do not pre-delete segment/campaign links:
+separate requests can lose those associations even when the parent delete fails.
+
+The web repository's forward correction is
+`supabase/migrations/20261012200000_preserve_retirement_audit_on_requirement_delete.sql`.
+It requires the API's `20261005010000_retire_legacy_migration_holds.sql` and the
+existing instance-deletion schema in **Makinari**, never Apps. It:
+
+- removes only the retirement receipt's requirement and composite lifecycle FKs;
+- retains its historical IDs, snapshots, uniqueness, private ACL/RLS and
+  unconditional append-only trigger;
+- restores the lifecycle guard's root-delete exception lost by the retirement
+  migration, while preserving direct live-lifecycle mutation checks and both
+  receipt-matching paths;
+- leaves the retirement RPC unchanged: it locks and validates live parents before
+  inserting, so receipts cannot be created by browser-facing roles. Replaying the
+  RPC after requirement deletion fails with `Retirement requirement missing`;
+  the retained receipt is historical evidence, not execution authority.
+
+Do not reuse deleted requirement UUIDs. The receipt's instance FK is intentionally
+unchanged and can still block deletion of that instance; this correction does not
+authorize deleting its audit. It does not repair associations already removed by
+earlier failed requests.
+
+Remote application requires explicit target approval. Verify the prerequisite
+functions and FKs, pause related writes, and apply the complete corrective file
+through the approved workflow. Its DDL lock wait is bounded to five seconds. No
+rows are deleted or rewritten by the migration. A web deployment alone cannot
+install this database correction. For rollback, prefer a forward correction;
+the old FKs cannot be restored once receipts outlive their parents without first
+resolving that historical data, and the audit must not be silently removed.
+
 ## Local regression checks
 
 ```sh
 npm test -- --runInBand __tests__/api/robot-instance-delete-proxy.test.ts __tests__/robots/delete-robot-instance.test.ts __tests__/app/components/robots/DeleteRobotModal.test.tsx
+npm test -- --runInBand __tests__/requirements/delete-requirement.test.ts __tests__/requirements/retirement-deletion-migration.test.ts
 ```
 
 These tests exercise the web boundary without deleting real instances. API and
 SQL tests in the orchestration repository cover the actual deletion contract.
+
+The requirement migration suite starts a disposable socket-only PostgreSQL cluster,
+loads a checked-in copy of the original retirement migration against a minimal
+prerequisite schema, and exercises the real retirement RPC and correction. It
+never uses a configured database URL. Binaries default to
+`/opt/homebrew/opt/postgresql@17/bin`; override with `REQUIREMENT_TEST_PG_BIN`.
+Live cases explicitly skip when binaries are unavailable. This is not a full
+production-schema or browser verification.

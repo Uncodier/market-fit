@@ -18,6 +18,7 @@ export interface CatalogItemFile {
 export interface CatalogCategory {
   id: string;
   site_id: string;
+  status?: 'active' | 'archived';
   name: string;
   description?: string;
   sort_order: number;
