@@ -35,6 +35,15 @@ import { MessageEditDialogs } from "./MessageEditDialogs"
 export function SimpleMessagesView(props: SimpleMessagesViewProps) {
 const model = useSimpleMessagesView(props)
 const { className, activeRobotInstance, isBrowserVisible, hasTopHeaderSpace, skillSelection, setSkillSelection, isDarkMode, message, setMessage, handleMessageChange, textareaRef, userProfile, selectedContext, setSelectedContext, selectedActivity, setSelectedActivity, isStepIndicatorExpanded, setIsStepIndicatorExpanded, isBacklogIndicatorExpanded, setIsBacklogIndicatorExpanded, setIsEditPendingModalOpen, setEditPendingId, setEditPendingMessage, lastUserMessage, imageParameters, videoParameters, audioParameters, handleImageParameterChange, handleVideoParameterChange, handleAudioParameterChange, messagesEndRef, messagesContainerRef, bottomContainerRef, bottomPadding, jumpToLatestLogs, showJumpToLatest, isStartingRobot, isWaitingForResponse, isNewMakinaThinking, hasMessageBeenSent, handleSendMessage, isLoadingLogs, isLoadingMore, collapsedSystemMessages, collapsedToolDetails, expandedToolGroups, toggleSystemMessageCollapse, toggleToolDetails, toggleToolGroup, steps, instancePlans, getCurrentStep, latestRequirementStatus, requirementBacklog, openEditBacklogModal, openEditModal, deleteStep, toggleStepStatus, pausePlan, resumePlan, cancelPlan, canEditOrDeleteStep, openEditPlanModal, assets, deleteAsset, isInstanceStarting, isInstanceRunning, runningUserLog, cancelWorkflow, isCancelling, pendingWork, removePending, sendNow, sendingId, handleScroll, shouldShowNewMakina, processedTimeline, lastProcessGroupId, isEmpty, allStepsCompleted, showFloatingPlanAppendix, showPinnedRunningBubble, showFloatingBacklog } = model
+  // A newer send must not inherit the activity indicator of an earlier turn.
+  const latestUserActionIndex = processedTimeline.reduce((latest, item, index) =>
+    item.type === 'log' && item.data.log_type === 'user_action' && item.data.details?.status !== 'queued'
+      ? index : latest, -1)
+  const liveProcessGroupId = (isInstanceRunning || isInstanceStarting)
+    ? processedTimeline.find((item, index) =>
+      item.type === 'process_group' && item.data.groupId === lastProcessGroupId
+      && index > latestUserActionIndex && isProcessGroupLive(item.data))?.data.groupId
+    : undefined
   // Show loading skeleton when loading logs
   if (isLoadingLogs) {
     return (
@@ -203,7 +212,7 @@ const { className, activeRobotInstance, isBrowserVisible, hasTopHeaderSpace, ski
                       group={group}
                       isDarkMode={isDarkMode}
                       isExpanded={expandedToolGroups.has(group.groupId)}
-                      isLive={group.groupId === lastProcessGroupId && isProcessGroupLive(group) && (isInstanceRunning || isInstanceStarting)}
+                      isLive={group.groupId === liveProcessGroupId}
                       onToggleExpand={toggleToolGroup}
                       collapsedToolDetails={collapsedToolDetails}
                       onToggleToolDetails={toggleToolDetails}
@@ -273,8 +282,8 @@ const { className, activeRobotInstance, isBrowserVisible, hasTopHeaderSpace, ski
               })
             })()}
             
-            {/* Loading indicator when waiting for response using minimalist process group style */}
-            {(isWaitingForResponse || isNewMakinaThinking) && (
+            {/* Use the fallback only until the current process owns its activity indicator. */}
+            {(isWaitingForResponse || isNewMakinaThinking) && !liveProcessGroupId && (
               <div className="w-full min-w-0 overflow-hidden">
                 <div className="w-full min-w-[min(100%,450px)] overflow-hidden max-w-[calc(100%-80px)] lg:max-w-3xl">
                   <div className="flex items-center gap-2 py-1 text-left text-xs text-muted-foreground">

@@ -4,6 +4,7 @@ import { SimpleMessagesView } from '@/app/components/simple-messages-view'
 import { useSimpleMessagesView } from '@/app/components/simple-messages-view/use-simple-messages-view'
 import { createMessagesViewModel } from './messages-view-fixture'
 import type { InstanceLog } from '@/app/components/simple-messages-view/types'
+import { groupTimelineProcess } from '@/app/components/simple-messages-view/group-timeline-process'
 
 // Exercise the view and real composer, not network-backed orchestration or ESM markdown parsing.
 jest.mock('@/app/components/simple-messages-view/use-simple-messages-view', () => ({
@@ -94,6 +95,77 @@ describe('SimpleMessagesView', () => {
     expect(screen.getByText('Review our product positioning')).toBeInTheDocument()
     expect(screen.getByText('Thinking')).toBeInTheDocument()
     expect(screen.getByPlaceholderText('How can I help you today?')).toBeEnabled()
+  })
+
+  it.each(['thinking', 'streaming', 'tool'])('uses only the current process indicator during %s', (activity) => {
+    model.isEmpty = false
+    model.shouldShowNewMakina = false
+    model.isWaitingForResponse = true
+    model.isNewMakinaThinking = true
+    model.isInstanceRunning = true
+    const userAction: InstanceLog = {
+      id: 'user-current', log_type: 'user_action', level: 'info', message: 'Hello',
+      created_at: '2026-10-14T12:00:00Z',
+      details: { status: 'running', prompt_source: 'assistant_route', request_id: 'current' },
+    }
+    const processLogs: InstanceLog[] = [
+      { id: 'thinking-current', log_type: 'thinking', level: 'info', message: '', created_at: '2026-10-14T12:00:01Z', details: { request_id: 'current' } },
+    ]
+    if (activity !== 'thinking') {
+      processLogs.push({
+        id: 'activity-current', log_type: activity === 'tool' ? 'tool_call' : 'agent_action',
+        level: 'info', message: activity === 'tool' ? '' : 'Hello back!',
+        tool_name: activity === 'tool' ? 'webSearch' : undefined,
+        created_at: '2026-10-14T12:00:02Z',
+        details: { request_id: 'current', response_type: activity === 'tool' ? 'assistant_tool_call' : 'assistant_step', streaming: activity === 'streaming' },
+      })
+    }
+    model.processedTimeline = groupTimelineProcess([userAction, ...processLogs].map(data => ({ type: 'log', timestamp: data.created_at, data })))
+    model.lastProcessGroupId = 'process-thinking-current'
+    const { container, rerender } = render(<SimpleMessagesView />)
+
+    expect(container.querySelectorAll('.animate-spin')).toHaveLength(1)
+    const activityButton = screen.getByTitle('Show thought process')
+    expect(activityButton.querySelector('.animate-spin')).toBeInTheDocument()
+    if (activity === 'thinking') {
+      expect(screen.getAllByText('Thinking')).toHaveLength(1)
+    } else {
+      expect(screen.queryByText('Thinking')).not.toBeInTheDocument()
+    }
+
+    const nextUserAction: InstanceLog = {
+      ...userAction, id: 'user-next', message: 'Next question', created_at: '2026-10-14T12:00:03Z',
+      details: { status: 'sending', request_id: 'next', optimistic: true },
+    }
+    model.processedTimeline = [...model.processedTimeline, { type: 'log', timestamp: nextUserAction.created_at, data: nextUserAction }]
+    rerender(<SimpleMessagesView />)
+    expect(screen.getAllByText('Thinking')).toHaveLength(1)
+    expect(activityButton.querySelector('.animate-spin')).not.toBeInTheDocument()
+    expect(container.querySelectorAll('.animate-spin')).toHaveLength(1)
+  })
+
+  it('keeps the fallback indicator while waiting after a settled historical process', () => {
+    model.isEmpty = false
+    model.shouldShowNewMakina = false
+    model.isWaitingForResponse = true
+    model.isInstanceRunning = true
+    const logs: InstanceLog[] = [
+      { id: 'user-old', log_type: 'user_action', level: 'info', message: 'Earlier question', created_at: '2026-10-14T12:00:00Z', details: { request_id: 'old', status: 'completed', prompt_source: 'assistant_route' } },
+      { id: 'thinking-old', log_type: 'thinking', level: 'info', message: '', created_at: '2026-10-14T12:00:01Z', details: { request_id: 'old' } },
+      { id: 'answer-old', log_type: 'agent_action', level: 'info', message: 'Earlier answer', created_at: '2026-10-14T12:00:02Z', details: { request_id: 'old', response_type: 'assistant_step' } },
+    ]
+    model.processedTimeline = groupTimelineProcess(logs.map(data => ({ type: 'log', timestamp: data.created_at, data })))
+    model.lastProcessGroupId = 'process-thinking-old'
+    const { container, rerender } = render(<SimpleMessagesView />)
+    expect(screen.getAllByText('Thinking')).toHaveLength(1)
+    expect(screen.getByTitle('Show thought process').querySelector('.animate-spin')).not.toBeInTheDocument()
+    expect(container.querySelectorAll('.animate-spin')).toHaveLength(1)
+
+    model.isWaitingForResponse = false
+    model.isInstanceRunning = false
+    rerender(<SimpleMessagesView />)
+    expect(screen.queryByText('Thinking')).not.toBeInTheDocument()
+    expect(container.querySelectorAll('.animate-spin')).toHaveLength(0)
   })
 
   it('keeps stable timeline anchors when older logs are prepended', () => {
