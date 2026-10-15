@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { ShipmentParams, ShipmentWithRelations } from "./types";
 import { Shipment } from "@/app/types";
+import { assertInternalShipment } from "@/lib/marketplace/mutation-guards";
 import {
   buildTrackingNumber,
   canRecordShipmentLocation,
@@ -116,6 +117,7 @@ export async function getShipment(id: string) {
 export async function setShipmentLineItems(siteId: string, shipmentId: string, itemIds: string[]) {
   try {
     const supabase = await createClient();
+    await assertInternalShipment(supabase, siteId, shipmentId);
 
     let clearQuery = supabase
       .from("sale_order_items")
@@ -204,10 +206,14 @@ export async function updateShipmentStatus(siteId: string, shipmentId: string, n
 
     const { data: current } = await supabase
       .from("shipments")
-      .select("status, stock_decremented, sale_order_id, origin_location_id")
+      .select("status, stock_decremented, sale_order_id, origin_location_id, metadata")
       .eq("id", shipmentId)
+      .eq("site_id", siteId)
       .single();
     if (!current) throw new Error("Shipment not found");
+    if (current.metadata?.marketplace) {
+      return { error: "This shipment is managed by the marketplace provider" };
+    }
 
     if (
       !VALID_STATUS_TRANSITIONS[current.status]?.includes(newStatus) &&
@@ -295,6 +301,7 @@ export async function updateShipmentTracking(
 ) {
   try {
     const supabase = await createClient();
+    await assertInternalShipment(supabase, siteId, shipmentId);
     const { data, error } = await supabase
       .from("shipments")
       .update({ ...updates, updated_at: new Date().toISOString() })
@@ -323,6 +330,7 @@ export async function assignShipmentCourier(
 ) {
   try {
     const supabase = await createClient();
+    await assertInternalShipment(supabase, siteId, shipmentId);
 
     if (assignedTo) {
       const { data: member } = await supabase
@@ -369,12 +377,15 @@ export async function recordShipmentLocation(
 
     const { data: shipment, error: getError } = await supabase
       .from("shipments")
-      .select("status, assigned_to")
+      .select("status, assigned_to, metadata")
       .eq("id", shipmentId)
       .eq("site_id", siteId)
       .single();
 
     if (getError || !shipment) throw new Error("Shipment not found");
+    if (shipment.metadata?.marketplace) {
+      throw new Error("Location updates are managed by the marketplace provider");
+    }
 
     const guard = canRecordShipmentLocation({
       assignedTo: shipment.assigned_to,

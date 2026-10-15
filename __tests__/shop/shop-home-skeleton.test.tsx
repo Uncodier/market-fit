@@ -66,6 +66,19 @@ describe("resolveShopHomeSkeletonLayout", () => {
 })
 
 describe("ShopHomeSkeleton", () => {
+  it("matches the compact primary sign-in button without making it interactive", () => {
+    const { container } = render(
+      <LocalizationProvider>
+        <ShopHomeSkeleton site={clementeLike} />
+      </LocalizationProvider>
+    )
+    const signIn = container.querySelector(".btn-primary")
+    expect(signIn?.tagName).toBe("SPAN")
+    expect(signIn).toHaveClass("h-9", "!min-w-0", "px-[15px]", "py-[7px]", "font-bold")
+    expect(signIn?.parentElement).toHaveClass("btn-primary-well")
+    expect(signIn?.parentElement?.parentElement).toHaveClass("hidden", "md:inline-flex", "ml-1")
+  })
+
   it("does not paint fulfillment or trust chrome for a Clemente-like shop", () => {
     const { getByTestId, queryByTestId } = render(
       <LocalizationProvider>

@@ -70,6 +70,26 @@ Prefer the client family under `lib/supabase/`. A second legacy family remains
 under `utils/supabase/`; do not introduce another client wrapper or mix cookie
 APIs without first consolidating the affected path.
 
+## Display language preferences
+
+`app/providers/AccountLocalizationProvider.tsx` loads the signed-in workspace
+user's `profiles.language` through the session-scoped browser client and RLS.
+Its SWR cache key includes the account identity and never retains the previous
+account's data while switching users. Profile reads have a ten-second deadline.
+
+Workspace priority is the saved profile language, the account-scoped browser
+selection (`makinari-locale:user:<userId>`), the site's `settings.default_locale`,
+and then the browser language. An explicit selection applies immediately; a
+successful profile preference save updates both the active UI and the profile
+cache. Failed saves do not alter the active language. Other tabs revalidate the
+profile when the account's locale storage key changes.
+
+Public storefronts retain the visitor's legacy `makinari-locale` storage/cookie
+preference before the site/browser fallback. Workspace preferences neither read
+nor overwrite that public cookie. Regional codes such as `es-MX` are normalized
+to supported languages. Locale and messages are derived together so there is no
+render with a newly selected language and the previous language's translations.
+
 ## Password recovery navigation
 
 `app/auth/confirm/page.tsx` verifies recovery tokens only after a user click,

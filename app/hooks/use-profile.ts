@@ -1,16 +1,26 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useLayoutEffect, useCallback, useRef } from 'react'
 import { useAuth } from './use-auth'
 import { profileService, ProfileData, ProfileUpdateData } from '@/app/services/profile.service'
 import { requestEmailChange, getEmailChangeStatus, EmailChangeStatus } from '@/lib/services/email-change.service'
 import { toast } from 'sonner'
+import { useSWRConfig } from 'swr'
+import { useLocalization, normalizeLocale } from '@/app/context/LocalizationContext'
+import { profileLocaleKey } from '@/app/context/locale-preferences'
 
 const DEFAULT_NOTIFICATIONS = { email: true, push: true }
 const DEFAULT_SETTINGS = {}
 
 export function useProfile() {
   const { user, isAuthenticated } = useAuth()
+  const { setLocale } = useLocalization()
+  const { mutate } = useSWRConfig()
+  const activeUserId = useRef(user?.id)
+  useLayoutEffect(() => {
+    activeUserId.current = user?.id
+    return () => { activeUserId.current = undefined }
+  }, [user?.id])
   const [profile, setProfile] = useState<ProfileData | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isUpdating, setIsUpdating] = useState(false)
@@ -27,12 +37,12 @@ export function useProfile() {
     try {
       setIsLoading(true)
       const profileData = await profileService.getProfile(user.id)
-      setProfile(profileData)
+      if (activeUserId.current === user.id) setProfile(profileData)
     } catch (error) {
       console.error('Error loading profile:', error)
       toast.error('Error loading profile')
     } finally {
-      setIsLoading(false)
+      if (activeUserId.current === user.id) setIsLoading(false)
     }
   }, [user?.id])
 
@@ -43,12 +53,13 @@ export function useProfile() {
       return false
     }
 
+    let timeout: ReturnType<typeof setTimeout> | undefined
     try {
       console.log("Setting isUpdating to true");
       setIsUpdating(true)
       
       const timeoutPromise = new Promise<null>((_, reject) => {
-        setTimeout(() => reject(new Error("Timeout updating profile")), 15000);
+        timeout = setTimeout(() => reject(new Error("Timeout updating profile")), 15000);
       });
       
       const updatedProfile = await Promise.race([
@@ -60,22 +71,32 @@ export function useProfile() {
       ]);
       
       if (updatedProfile) {
-        setProfile(updatedProfile)
+        const isCurrentAccount = activeUserId.current === user.id
+        if (isCurrentAccount) setProfile(updatedProfile)
+        if (data.language !== undefined) {
+          const language = normalizeLocale(updatedProfile.language)
+          if (language) {
+            if (isCurrentAccount) setLocale(language)
+            // Update the account bootstrap only after persistence succeeds.
+            void mutate(profileLocaleKey(user.id), language, { revalidate: false })
+          }
+        }
         if (!silent) toast.success('Profile updated successfully')
         return true
       } else {
         if (!silent) toast.error('Failed to update profile')
         return false
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error updating profile:', error)
-      const errorMsg = error?.message || 'Error updating profile'
+      const errorMsg = error instanceof Error ? error.message : 'Error updating profile'
       if (!silent) toast.error(errorMsg)
       return errorMsg
     } finally {
-      setIsUpdating(false)
+      clearTimeout(timeout)
+      if (activeUserId.current === user.id) setIsUpdating(false)
     }
-  }, [user?.id])
+  }, [user?.id, setLocale, mutate])
 
   // Actualizar solo notificaciones
   const updateNotifications = useCallback(async (notifications: { email: boolean; push: boolean }, silent = false): Promise<boolean> => {
@@ -103,7 +124,7 @@ export function useProfile() {
   }, [user?.id, profile])
 
   // Actualizar configuración del perfil
-  const updateSettings = useCallback(async (settings: Record<string, any>, silent = false): Promise<boolean> => {
+  const updateSettings = useCallback(async (settings: NonNullable<ProfileData['settings']>, silent = false): Promise<boolean> => {
     if (!user?.id) {
       if (!silent) toast.error('User not authenticated')
       return false

@@ -1,7 +1,7 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import type { CatalogItem } from "@/app/types";
 import { usePosCatalog } from "@/app/pos/hooks/use-pos-catalog";
-import { readLocalCatalog, readLocalPendingOrders, readLocalPromotions } from "@/app/pos/local/snapshot-pull";
+import { readLocalCatalog, readLocalPendingOrders, readLocalPromotions, readTaxesByItemIds } from "@/app/pos/local/snapshot-pull";
 import { getPosDb } from "@/app/pos/local/db";
 import { subscribePosSync } from "@/app/pos/local/sync-engine";
 import type { PosInventorySnapshot } from "@/app/pos/inventory-availability";
@@ -36,6 +36,7 @@ describe("usePosCatalog inventory", () => {
     jest.mocked(readLocalCatalog).mockImplementation(async (siteId) => local(siteId));
     jest.mocked(readLocalPendingOrders).mockResolvedValue([]);
     jest.mocked(readLocalPromotions).mockResolvedValue([]);
+    jest.mocked(readTaxesByItemIds).mockResolvedValue({});
     jest.mocked(getPosDb).mockReturnValue({ priceListItems: { toArray: jest.fn(async () => []) } } as never);
     jest.mocked(subscribePosSync).mockReturnValue(jest.fn());
   });
@@ -67,6 +68,18 @@ describe("usePosCatalog inventory", () => {
     expect(result.current.catalogItems).toHaveLength(2);
     expect(result.current.availableItems).toHaveLength(1);
     expect(result.current.unavailableItems).toHaveLength(0);
+    expect(readTaxesByItemIds).toHaveBeenCalledWith(["item-site-1", "hidden-modifier"]);
+  });
+
+  it("preloads taxes with the catalog and refreshes them on sync", async () => {
+    const taxes = { "item-site-1": [{ id: "tax", rate: 10 }] };
+    jest.mocked(readTaxesByItemIds).mockResolvedValue(taxes);
+    const { result } = renderHook(() => usePosCatalog("site-1"));
+    await waitFor(() => expect(result.current.hydrated).toBe(true));
+    expect(result.current.taxesByItem).toEqual(taxes);
+    jest.mocked(readTaxesByItemIds).mockResolvedValue({});
+    await act(async () => result.current.reload());
+    expect(result.current.taxesByItem).toEqual({});
   });
 
   it("hides the previous site's snapshot immediately and rejects a late cross-site reload", async () => {
@@ -81,6 +94,7 @@ describe("usePosCatalog inventory", () => {
     rerender({ siteId: "site-2" });
     expect(result.current.inventorySnapshot).toBeNull();
     expect(result.current.catalogItems).toEqual([]);
+    expect(result.current.taxesByItem).toEqual({});
     expect(result.current.hydrated).toBe(false);
     const newInventory: PosInventorySnapshot = { levels: [], policy: "allow" };
     await act(async () => next.resolve(local("site-2", newInventory)));

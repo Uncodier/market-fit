@@ -1,7 +1,8 @@
 import type { AccountingDatabaseFunctions } from './database-accounting.types'
 import type { BillingDatabaseFunctions } from './database-billing.types'
+import type { MarketplaceDatabaseFunctions } from './database-marketplace.types'
 
-export interface DatabaseFunctions<TSite> extends AccountingDatabaseFunctions, BillingDatabaseFunctions {
+export interface DatabaseFunctions<TSite> extends AccountingDatabaseFunctions, BillingDatabaseFunctions, MarketplaceDatabaseFunctions {
   archive_site: {
     Args: { p_site_id: string; p_actor_id: string }
     Returns: boolean

@@ -56,6 +56,23 @@ tracks durable effect state and compensation in:
 Do not add a side effect without defining how duplicate delivery, timeout,
 partial failure, and retry behave.
 
+### USD sale wallet amounts
+
+`billing.account_balance` is a USD balance, not a multi-currency ledger.
+`sale-wallet-amount.ts` resolves gross USD revenue from the retrieved Checkout
+integration amount, legacy Adaptive Pricing USD source amount, or a matching
+captured charge's USD balance transaction. Modern `presentment_details` never
+replaces the integration amount; Stripe fees (`net`) are not gross revenue.
+Unexpanded references are retrieved explicitly. Missing conversion information
+or non-USD settlement fails without crediting the wallet and remains retryable.
+There is no guessed exchange rate or local-currency fallback.
+
+Deploy `20261014220000_stripe_sale_wallet_usd_guard.sql` before the application
+change. The RPC independently rejects non-USD, non-finite and sub-cent amounts.
+The forward guard does not rewrite completed historical transactions. Use the
+scoped preview/repair procedure in [sale currency recovery](STRIPE_SALE_CURRENCY_RECOVERY.md)
+for existing overcredits; never reset the full balance or replay fulfillment.
+
 ### Event age
 
 The route currently accepts ordinary supported events up to three days old and

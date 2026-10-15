@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto"
 import type { SupabaseClient } from "@supabase/supabase-js"
 import type Stripe from "stripe"
-import { fromStripeMinorAmount } from "@/app/api/stripe/checkout/checkout-payment-guard"
+import { resolveStripeSaleWalletAmount } from "./sale-wallet-amount"
 import { processPostPaymentFulfillment } from "@/app/commerce/post-payment"
 import { syncSubscriptionEntitlements } from "@/app/commerce/entitlements"
 import type {
@@ -88,46 +88,13 @@ async function activateOrderSubscriptions(
   })
 }
 
-async function stripeSettlementAmount(
-  stripe: Stripe,
-  checkout: ValidatedSaleCheckoutSession,
-): Promise<{ amount: number; currency: string }> {
-  if (checkout.paymentIntentId) {
-    const paymentIntent = await stripe.paymentIntents.retrieve(
-      checkout.paymentIntentId,
-      { expand: ["latest_charge.balance_transaction"] },
-    )
-    const charge = paymentIntent.latest_charge
-    if (charge && typeof charge !== "string") {
-      const balanceTransaction = charge.balance_transaction
-      if (
-        balanceTransaction &&
-        typeof balanceTransaction !== "string"
-      ) {
-        return {
-          amount: fromStripeMinorAmount(
-            balanceTransaction.amount,
-            balanceTransaction.currency,
-          ),
-          currency: balanceTransaction.currency.toUpperCase(),
-        }
-      }
-    }
-  }
-
-  return {
-    amount: checkout.amount,
-    currency: checkout.currency.toUpperCase(),
-  }
-}
-
 async function applyFinancialEffects(
   supabase: SettlementEffectsClient,
   stripe: Stripe,
   checkout: ValidatedSaleCheckoutSession,
   settlement: AcceptedSettlement,
 ): Promise<void> {
-  const stripeSettlement = await stripeSettlementAmount(stripe, checkout)
+  const stripeSettlement = await resolveStripeSaleWalletAmount(stripe, checkout.session)
   const { data, error } = await supabase.rpc(
     "apply_stripe_sale_financial_effects",
     {

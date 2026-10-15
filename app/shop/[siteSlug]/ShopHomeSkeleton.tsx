@@ -1,6 +1,7 @@
 "use client"
 
 import { Skeleton } from "@/app/components/ui/skeleton"
+import { Button } from "@/app/components/ui/button"
 import {
   Search,
   ShoppingCart,
@@ -96,9 +97,11 @@ function ShopSkeletonHeader({
               >
                 <User className="h-4 w-4" />
               </button>
-              <span className={`hidden md:inline-flex ${shellClasses.primaryCta} ml-1`}>
-                {t("shop.signIn") || "Sign In"}
-              </span>
+              <div className="hidden md:inline-flex ml-1">
+                <Button asChild className="h-9 !min-w-0 px-[15px] py-[7px] font-bold">
+                  <span>{t("shop.signIn") || "Sign In"}</span>
+                </Button>
+              </div>
             </div>
           </div>
         }

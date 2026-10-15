@@ -1,4 +1,8 @@
 {
+  "billing.salePaymentFee.label": "Kartenzahlungsgebühr: {{percent}}% · Zahlungsabwicklung enthalten",
+  "billing.salePaymentFee.defaultLabel": "Standard-Kartenzahlungsgebühr: {{percent}}% · Zahlungsabwicklung enthalten · aktueller Tarif nicht verfügbar",
+  "billing.salePaymentFee.planUnavailable": "Aktueller Tarif nicht verfügbar",
+  "billing.salePaymentFee.notice": "Die Sätze gelten für Standard-Kartenzahlungen. Es ist nicht garantiert, dass {{percent}}% die Abwicklungskosten für internationale Zahlungen, Währungsumrechnungen oder Zahlungen kleiner Beträge deckt.",
   "auth.signInBtn": "Anmelden",
   "auth.signInDesc": "Melde dich an, um deine Bestellungen anzusehen und weiter einzukaufen.",
   "auth.signInLink": "Anmelden",

@@ -14,6 +14,8 @@ import { OrderWithRelations } from "@/app/orders/types"
 import { formatScheduledFor, scheduledForClassName } from "@/app/orders/format-scheduled-for"
 import { formatOrderListDescription } from "@/app/orders/order-list-description"
 import { OrderActionsMenu } from "@/app/orders/components/OrderActionsMenu"
+import { MarketplaceOrderControls } from "./MarketplaceOrderControls"
+import { marketplaceCustomer, marketplaceMetadata } from "@/lib/marketplace/presentation"
 import {
   DocumentListHead,
   DocumentListRow,
@@ -94,7 +96,9 @@ export function OrdersTable({
           </TableHeader>
           <TableBody>
             {orders.map((order) => {
-              const customer = order.leads?.name || t("orders.kanban.unknownCustomer") || "Unknown Customer"
+              const external = Boolean(marketplaceMetadata(order.metadata))
+              const providerCustomer = marketplaceCustomer(order.metadata)
+              const customer = order.leads?.name || providerCustomer.name || t("orders.kanban.unknownCustomer") || "Unknown Customer"
               const sourceKey = normalizeSource(order.sales?.source)
               const sourceLabel =
                 sourceKey === "pos"
@@ -112,7 +116,7 @@ export function OrdersTable({
               const description = formatOrderListDescription(order)
               const meta = [
                 order.order_number ? `#${order.order_number}` : null,
-                order.leads?.email,
+                order.leads?.email || providerCustomer.email,
                 fulfillment,
                 hasNewItems ? (t("orders.kanban.newItems") || "New items") : null,
               ]
@@ -139,6 +143,7 @@ export function OrdersTable({
                   </TableCell>
                   <TableCell className="py-3.5">
                     <StatusDot status={order.status} label={statusLabel} />
+                    <MarketplaceOrderControls order={order} />
                   </TableCell>
                   <TableCell className="py-3.5">
                     <SourceLabel source={sourceKey} label={sourceLabel} />
@@ -165,7 +170,7 @@ export function OrdersTable({
                           ? `${formatCurrency(due, currency)} ${t("orders.table.due") || "due"}`
                           : null
                       }
-                      paidLabel={!unpaid && !cancelled && order.sales ? t("orders.kanban.paid") || "Paid" : null}
+                      paidLabel={external ? "Payment handled externally" : !unpaid && !cancelled && order.sales ? t("orders.kanban.paid") || "Paid" : null}
                       cancelled={cancelled}
                       paidRatio={amount > 0 ? Math.max(0, (amount - due) / amount) : 1}
                     />

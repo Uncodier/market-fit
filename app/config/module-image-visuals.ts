@@ -54,6 +54,7 @@ export const MODULE_IMAGE_HINTS: Record<string, string> = {
   applicationsSecrets: "key",
 
   financeReports: "stack of books",
+  accountsReceivable: "invoice receipt",
   journalEntries: "ledger",
   chartOfAccounts: "ledger book",
   payments: "wallet",
@@ -152,6 +153,8 @@ const MODULE_IMAGE_CLARIFIERS: Partial<Record<string, string>> = {
     "Show one welcoming detached house with a broad roof, centered front door, and two simple windows; no dashboard, chart, sales board, storefront, office building, garden, street, text, or extra objects",
   financeReports:
     "Show exactly three substantial hardcover accounting books in one neat stack with clearly separated covers and visible page edges; no chart, graph, spreadsheet, loose paper, currency symbol, text, labels, or extra objects",
+  accountsReceivable:
+    "Show one upright invoice receipt with a folded upper corner, three broad embossed line items and one large raised coin emblem integrated into the lower half; no payment card, wallet, calculator, chart, numbers, text, labels, or extra objects",
   content:
     "Show one large triangular play symbol by itself; no screen, media player controls, file, document, or surrounding button container",
   contentCreator:

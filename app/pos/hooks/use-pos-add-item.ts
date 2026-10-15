@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import type { CatalogItem } from "@/app/types";
 import type { RelationSelectValue } from "@/app/components/ui/relation-select";
@@ -15,13 +15,11 @@ import {
   needsBuyerAccount,
   requiresVariantSelection,
 } from "@/app/catalog/product-details";
-import { createClient } from "@/lib/supabase/client";
-import { getModifierGroupsForCatalogItem } from "@/app/catalog/modifier-actions";
 import type { ModifierGroupWithItems } from "@/app/catalog/modifier-types";
 import type { PosCartItem, PosCartModifier } from "@/app/pos/components/CartPanel";
-import { getPosDb } from "@/app/pos/local/db";
 import { isStorefrontAvailable } from "@/app/catalog/storefront-availability";
 import type { PosItemAvailability } from "../cart-availability";
+import { getPosItemModifierGroups } from "../item-options";
 
 type Args = {
   siteId?: string;
@@ -31,57 +29,10 @@ type Args = {
   addItemToCart: (item: CatalogItem, extras?: Partial<PosCartItem>) => void;
   router: { push: (href: string) => void };
   t: (key: string) => string;
-  modifierGroupsByHostId?: Record<string, ModifierGroupWithItems[]>;
+  catalogItems: CatalogItem[];
+  modifierGroupsByHostId: Record<string, ModifierGroupWithItems[]>;
   getItemAvailability?: (item: CatalogItem) => PosItemAvailability;
 };
-
-function groupsFromMap(
-  hostIds: string[],
-  map?: Record<string, ModifierGroupWithItems[]>,
-): ModifierGroupWithItems[] {
-  if (!map) return [];
-  for (const hostId of hostIds) {
-    if (map[hostId]?.length) return map[hostId];
-  }
-  return [];
-}
-
-async function hasModifierGroups(
-  item: CatalogItem,
-  siteId: string | undefined,
-  modifierGroupsByHostId?: Record<string, ModifierGroupWithItems[]>,
-): Promise<boolean> {
-  const hostIds = [item.id, item.parent_id].filter(Boolean) as string[];
-
-  if (groupsFromMap(hostIds, modifierGroupsByHostId).length > 0) return true;
-
-  if (typeof window !== "undefined" && siteId) {
-    try {
-      const meta = await getPosDb().meta.get(siteId);
-      if (
-        groupsFromMap(
-          hostIds,
-          (meta as any)?.modifierGroupsByHostId,
-        ).length > 0
-      ) {
-        return true;
-      }
-    } catch {
-      // ignore
-    }
-  }
-
-  if (typeof navigator !== "undefined" && navigator.onLine) {
-    try {
-      const { data } = await getModifierGroupsForCatalogItem(item.id);
-      if (data?.length) return true;
-    } catch {
-      // ignore
-    }
-  }
-
-  return false;
-}
 
 export function usePosAddItem({
   siteId,
@@ -91,9 +42,14 @@ export function usePosAddItem({
   addItemToCart,
   router,
   t,
+  catalogItems,
   modifierGroupsByHostId,
   getItemAvailability,
 }: Args) {
+  const variantParentIds = useMemo(() => new Set(
+    catalogItems.filter((child) => child.parent_id && child.status === "active"
+      && child.is_purchasable !== false).map((child) => child.parent_id),
+  ), [catalogItems]);
   const canAdd = (item: CatalogItem) => {
     const availability = getItemAvailability?.(item);
     if (availability && !availability.sellable) {
@@ -121,7 +77,7 @@ export function usePosAddItem({
 
   const requestQuote = async (
     item: CatalogItem,
-    fieldValues: Record<string, any>,
+    fieldValues: Record<string, unknown>,
     quantity: number,
   ) => {
     if (!siteId) return;
@@ -158,8 +114,8 @@ export function usePosAddItem({
       if (res.data?.quotationId) {
         router.push(`/quotations/${res.data.quotationId}`);
       }
-    } catch (err: any) {
-      toast.error(err?.message || "Failed to request quote");
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Failed to request quote");
     } finally {
       setDynamicQuoteLoading(false);
     }
@@ -241,24 +197,11 @@ export function usePosAddItem({
       return;
     }
 
-    if (requiresVariantSelection(item)) {
+    // All choices are already in the site-scoped snapshot. Keep the click path
+    // synchronous, including legacy parents without variant_axes metadata.
+    if (requiresVariantSelection(item) || variantParentIds.has(item.id)) {
       openOptions(item);
       return;
-    }
-
-    // Legacy parents with purchasable children but no variant_axes metadata
-    if (navigator.onLine && !item.parent_id) {
-      const supabase = createClient();
-      const { count } = await supabase
-        .from("catalog_items")
-        .select("id", { count: "exact", head: true })
-        .eq("parent_id", item.id)
-        .eq("status", "active")
-        .eq("is_purchasable", true);
-      if ((count || 0) > 0) {
-        openOptions(item);
-        return;
-      }
     }
 
     if (!isStorefrontAvailable(item)) {
@@ -272,7 +215,7 @@ export function usePosAddItem({
     }
 
     if (needsBuyerAccount(item)) {
-      if (await hasModifierGroups(item, siteId, modifierGroupsByHostId)) {
+      if (getPosItemModifierGroups(item, modifierGroupsByHostId).length) {
         openOptions(item);
         return;
       }
@@ -282,7 +225,7 @@ export function usePosAddItem({
     }
 
     // Simple SKU with modifier groups → options dialog (extras only)
-    if (await hasModifierGroups(item, siteId, modifierGroupsByHostId)) {
+    if (getPosItemModifierGroups(item, modifierGroupsByHostId).length) {
       openOptions(item);
       return;
     }

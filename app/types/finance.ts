@@ -107,6 +107,7 @@ export interface SaleOrder {
 }
 
 export interface SaleOrderData {
+  metadata?: Record<string, unknown> | null;
   id: string;
   sale_id: string;
   order_number: string;

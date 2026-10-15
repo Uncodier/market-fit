@@ -12,6 +12,7 @@ import { Save, ExternalLink, Calendar, Send, Clock } from "@/app/components/ui/i
 import { cn } from "@/lib/utils"
 import { navigateToLead, navigateToSale, navigateToShipment } from "@/lib/navigation/navigation-helpers"
 import { formatScheduledFor, scheduledForClassName } from "@/app/orders/format-scheduled-for"
+import { marketplaceMetadata, marketplaceCustomer } from "@/lib/marketplace/presentation"
 import {
   ORDER_ROW_STATUS_STYLES,
   ORDER_LINE_STATUS_STYLES,
@@ -49,6 +50,8 @@ export function OrderInvoiceDocument({
 }: OrderInvoiceDocumentProps) {
   const { t } = useLocalization()
   const router = useRouter()
+  const external = Boolean(marketplaceMetadata(order.metadata))
+  const providerCustomer = marketplaceCustomer(order.metadata)
   const isPaid = !!order.sales && Number(order.sales.amount_due || 0) === 0 && order.sales.status !== 'cancelled'
   const scheduledLabel = formatScheduledFor(order.scheduled_for)
   const formatMoney = (amount: number) =>
@@ -92,7 +95,7 @@ export function OrderInvoiceDocument({
                             : "bg-yellow-50 text-yellow-700 border-yellow-200"
                         )}
                       >
-                        {isPaid
+                        {external ? "Payment handled externally" : isPaid
                           ? (t('orders.kanban.paid') || 'Paid')
                           : (t('orders.kanban.unpaid') || 'Unpaid')}
                       </Badge>
@@ -123,6 +126,12 @@ export function OrderInvoiceDocument({
                           {t('orders.detail.viewCustomer') || 'View Customer'} <ExternalLink className="h-3 w-3" />
                         </button>
                       </>
+                    ) : providerCustomer.name ? (
+                      <div className="space-y-1">
+                        <div className="text-base font-medium">{providerCustomer.name}</div>
+                        {providerCustomer.phone && <div className="text-sm text-muted-foreground">{providerCustomer.phone}</div>}
+                        {providerCustomer.email && <div className="text-sm text-muted-foreground">{providerCustomer.email}</div>}
+                      </div>
                     ) : (
                       <div className="text-sm text-muted-foreground">
                         {t('orders.kanban.unknownCustomer') || 'Unknown Customer'}
@@ -142,7 +151,7 @@ export function OrderInvoiceDocument({
                               {t('orders.detail.paymentStatus') || 'Payment Status'}
                             </td>
                             <td className="py-2 px-3">
-                              {order.sales
+                              {external ? "Payment handled externally; settlement not confirmed" : order.sales
                                 ? (isPaid
                                   ? (t('orders.kanban.paid') || 'Paid')
                                   : (t('orders.kanban.unpaid') || 'Unpaid'))
@@ -269,7 +278,7 @@ export function OrderInvoiceDocument({
                       {t('orders.detail.lineItems') || 'Line Items'}
                     </h3>
                     <OrderItemsBulkStatusMenu
-                      disabled={items.length === 0}
+                      disabled={external || items.length === 0}
                       loading={updatingAllLines}
                       onValueChange={onAllLineStatusesChange}
                     />
@@ -331,7 +340,7 @@ export function OrderInvoiceDocument({
                                         <OrderItemStatusSelect
                                           value={item.status || 'draft'}
                                           onValueChange={(val) => onLineStatusChange(item.id, val)}
-                                          disabled={!item.id}
+                                          disabled={external || !item.id}
                                           className="w-full"
                                         />
                                       </div>
@@ -362,7 +371,7 @@ export function OrderInvoiceDocument({
                                     <OrderItemStatusSelect
                                       value={item.status || 'draft'}
                                       onValueChange={(val) => onLineStatusChange(item.id, val)}
-                                      disabled={!item.id}
+                                      disabled={external || !item.id}
                                       className="flex-1"
                                     />
                                     
@@ -457,7 +466,7 @@ export function OrderInvoiceDocument({
                   <Button
                     variant="outline"
                     onClick={onSaveLineItems}
-                    disabled={savingLines || !hasModifiedLines}
+                    disabled={external || savingLines || !hasModifiedLines}
                   >
                     <Save className="h-4 w-4 mr-2" /> {t('orders.detail.saveItemsStatus') || 'Save Items Status'}
                   </Button>

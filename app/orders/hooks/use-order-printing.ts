@@ -10,6 +10,8 @@ import {
 import type { OrderWithRelations } from "@/app/orders/types"
 import { markKitchenItemsPrinted } from "@/app/printer/actions"
 import { usePrinter } from "@/lib/printer/hooks/use-printer"
+import { providerAccepted, providerCancellationConfirmed } from "@/lib/marketplace/presentation"
+import { cancellationOnlyDelta } from "@/lib/printer/core/marketplace-printing"
 import {
   bluetoothErrorMessage,
   kitchenDeltaHasWork,
@@ -42,11 +44,23 @@ export function useOrderPrinting({ siteId, site }: UseOrderPrintingArgs) {
       if (result.data.site_id !== siteId) {
         throw new Error("Order does not belong to the current site")
       }
+      const cancellation = mode === "delta" && providerCancellationConfirmed(result.data.metadata)
+      if (!providerAccepted(result.data.metadata) && !cancellation) {
+        throw new Error("Wait for provider acceptance before printing this order")
+      }
 
       const ticket = buildOrderPrintTicket(
-        result.data.sale_order_items || [],
+        cancellation
+          ? (result.data.sale_order_items || []).map(item => ({ ...item, status: "cancelled" }))
+          : result.data.sale_order_items || [],
         mode,
       )
+      if (cancellation) {
+        ticket.delta = cancellationOnlyDelta(ticket.delta)
+        ticket.lines = []
+        const voidIds = new Set(ticket.delta.voids.map(line => line.itemId))
+        ticket.printedItems = ticket.printedItems.filter(item => voidIds.has(item.id) && item.quantity === 0)
+      }
       if (!kitchenDeltaHasWork(ticket.delta)) {
         toast.message(
           mode === "delta"

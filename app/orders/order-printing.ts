@@ -4,6 +4,7 @@ import {
   type KitchenDelta,
   type KitchenLine,
 } from "@/lib/printer"
+import { kitchenModifiersFor } from "@/lib/printer/core/order-delta"
 
 type PrintableOrderItem = {
   id?: string
@@ -52,9 +53,7 @@ function lineForItem(
     quantity: Number(item.quantity) || 0,
     itemId: item.id,
     catalogItemId: mapped?.catalogItemId,
-    modifiers: lines
-      .filter((line) => line.parentKey === key)
-      .map((line) => ({ name: line.name, quantity: line.quantity })),
+    modifiers: mapped ? kitchenModifiersFor(mapped, lines) : [],
   }
 }
 

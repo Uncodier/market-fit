@@ -20,6 +20,7 @@ import { Button } from "@/app/components/ui/button"
 import { toast } from "sonner"
 import { Clock, Building as Building2, RotateCcw as History, ArrowUpRight } from "@/app/components/ui/icons"
 import { buildPaymentBalanceHistory } from "./payment-balance-history"
+import { paymentOperationDescription } from "./payment-operation-description"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription, DialogForm, DialogBody } from "@/app/components/ui/dialog"
 import { Label } from "@/app/components/ui/label"
 import { Input } from "@/app/components/ui/input"
@@ -267,12 +268,7 @@ function PaymentsContent() {
                               </td>
                               <td className="px-4 py-3 font-medium flex items-center gap-2">
                                 <ArrowUpRight className={`h-4 w-4 ${op.transaction_type === 'commission' ? 'text-red-500' : 'text-emerald-500'}`} />
-                                {op.transaction_type === 'commission' 
-                                  ? 'Platform Commission'
-                                  : (op.details?.original_currency && op.details?.original_currency !== 'usd' 
-                                      ? `Sale Revenue (Paid in ${op.details.original_currency.toUpperCase()})` 
-                                      : 'Sale Revenue')
-                                }
+                                {paymentOperationDescription(op)}
                               </td>
                               <td className={`px-4 py-3 text-right font-medium ${op.transaction_type === 'commission' ? 'text-red-600 dark:text-red-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
                                 {op.transaction_type === 'commission' ? '-' : '+'}${Number(op.amount).toFixed(2)}

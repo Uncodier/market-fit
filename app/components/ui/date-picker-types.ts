@@ -19,6 +19,8 @@ export interface DateEvent {
 export interface DatePickerProps {
   date?: Date
   setDate: (date: Date) => void
+  id?: string
+  "aria-describedby"?: string
   className?: string
   placeholder?: string
   disabled?: boolean

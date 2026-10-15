@@ -64,6 +64,7 @@ export default function POSPage() {
     priceListItems: catalog.priceListItems,
     promotions: catalog.promotions,
     getTaxesForCart: catalog.getTaxesForCart,
+    preloadedTaxesByItem: catalog.taxesByItem,
     onRequireLead: () => setLeadGate("promo"),
     t,
   });
@@ -184,6 +185,7 @@ export default function POSPage() {
     addItemToCart: cartApi.addItemToCart,
     router,
     t,
+    catalogItems: catalog.catalogItems,
     modifierGroupsByHostId: catalog.modifierGroupsByHostId,
   });
 

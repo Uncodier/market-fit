@@ -1,4 +1,4 @@
-import { SaleOrderData, SaleOrder } from "@/app/types"
+import type { SaleOrderData } from "@/app/types"
 import type { OrderListItem } from "@/app/orders/order-list-description"
 
 export interface OrderParams {
@@ -24,7 +24,7 @@ export interface OrderWithRelations extends SaleOrderData {
     payments?: Array<{ id?: string; date: string; amount: number; method: string; notes?: string }>;
   };
   leads?: { id: string; name: string; email?: string; phone?: string };
-  shipments?: { id: string; status: string; tracking_number?: string; carrier?: string }[];
+  shipments?: { id: string; status: string; tracking_number?: string; carrier?: string; metadata?: unknown }[];
   price_lists?: { name: string };
   promotions?: { name: string; code: string };
   sale_order_items?: Array<

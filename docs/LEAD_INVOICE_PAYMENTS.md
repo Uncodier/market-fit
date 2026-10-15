@@ -4,6 +4,51 @@ The individual lead's three-dot menu, in both the list and detail header, expose
 **Settle balance / Add payment**. Company-wide menus deliberately do not apply a
 payment across different leads.
 
+## Accounts receivable
+
+**Sales → Accounts Receivable** (`/accounts-receivable`), immediately after
+Subscriptions in navigation, reuses the Subscriptions
+list layout, mobile filter drawer, document table components, and loading skeleton.
+It consolidates accessible open sales invoices into one row per lead,
+including subscription invoices. By default, invoices linked to cancelled orders
+are excluded. They appear only under **Cancelled orders**, with their own invoice
+counts, balances and dates, even when a customer also has invoices from active orders.
+Invoices without a linked order remain in the default view. Balances and filtered
+totals remain separate by
+currency; missing currency is labeled unknown rather than assumed to be USD.
+Each balance uses the shared currency formatter without an extra currency-code
+prefix (for example, `MX$715.00`, not `MXN MX$715.00`), including filtered totals.
+Anonymous invoices without a visible lead are not part of this lead-based view.
+
+The Navigation launcher includes the Sales tile and uses the shared image-prompt
+pipeline: a front-facing invoice receipt with an integrated coin emblem, glossy
+plastic and frosted glass materials, and the standard small-icon composition.
+Sidebar shortcuts use the shared receipt icon and preserve the emerald/sage visual.
+The Apps firewall lists it once under Sales with the unchanged `accountsReceivable`
+key, so existing per-app blocks remain valid without a migration.
+
+The server validates the site ID and requires authenticated accounting read access.
+Queries use the user's Supabase session and RLS, constrain both invoices and leads
+to the authorized site, and use keyset pagination to include all visible invoices.
+No new table or migration is required.
+
+Clicking a row or its keyboard-accessible customer link opens `/leads/[id]`.
+The options menu offers **View lead** and the existing **Settle balance / Add payment**
+dialog; it does not provide subscription status actions. The latter remains disabled
+for view-only and demo users. Recorded-payment events refresh the site-scoped list.
+
+Filters are **All**, **Overdue**, **Not overdue**, **No due date**, and **Cancelled orders**.
+The first four filters never include invoices linked to cancelled orders; **All**
+is the default selection. Order status is read through the user's RLS-scoped session
+and constrained to the authorized site, then filtered before grouping by customer.
+Both views still require a pending/completed sale and a positive stored balance;
+cancelled/refunded sales and fully settled invoices remain excluded. This is a
+display filter only: it does not change stored balances, order/sale statuses or the
+existing lead-wide payment allocation. A lead is
+overdue when at least one open invoice has a due date before the local calendar day.
+Due-today invoices are not overdue. The earliest configured due date is shown;
+invoices without due dates do not acquire an invented due date.
+
 - **Full balance** settles every accessible open invoice in the selected currency.
 - **Partial payment** settles invoices newest-first (`sale_date`, `created_at`,
   then ID, descending). The remainder is applied to the next invoice, even if it
@@ -56,6 +101,7 @@ production as part of this feature's validation.
 ## Validation
 
 ```bash
+npm test -- --runInBand __tests__/accounts-receivable
 npm test -- --runInBand __tests__/leads
 ```
 

@@ -1,7 +1,7 @@
 "use client"
 
 import { useMemo } from "react"
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts"
+import { ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts"
 import { useTheme } from "@/app/context/ThemeContext"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/app/components/ui/card"
 import { EmptyCard } from "@/app/components/ui/empty-card"
@@ -9,8 +9,9 @@ import { BarChart as BarChartIcon } from "@/app/components/ui/icons"
 import { Skeleton } from "@/app/components/ui/skeleton"
 import { formatSalesMoney } from "@/lib/sales/report-format"
 import { buildPendingSalesTrend, buildSalesTrend, salesTrendRange, type SalesTrendInput } from "./sales-trend-data"
-import type { SalesPendingDailyTrendPoint, SalesPendingTrendPoint } from "@/lib/sales/report-types"
+import type { OverviewPeriodCosts, SalesPendingDailyTrendPoint, SalesPendingTrendPoint } from "@/lib/sales/report-types"
 import { buildSalesPaymentStack, type SalesPaymentStackPoint } from "./sales-payment-stack"
+import { buildSalesCostOverlay, type SalesCostOverlayPoint } from "./sales-cost-overlay"
 import { ReportChartFrame } from "./report-chart-frame"
 
 interface MonthlySalesEvolutionChartProps extends SalesTrendInput {
@@ -21,6 +22,7 @@ interface MonthlySalesEvolutionChartProps extends SalesTrendInput {
   showPeriod?: boolean
   pendingData?: SalesPendingTrendPoint[]
   dailyPendingData?: SalesPendingDailyTrendPoint[]
+  periodCosts?: OverviewPeriodCosts
 }
 
 const series = [
@@ -29,22 +31,29 @@ const series = [
   { key: "otherSales", name: "Other / unassigned", color: "#A78BFA" },
 ] as const
 
+const costSeries = [
+  { key: "expenses", name: "Expenses", color: "#F87171" },
+  { key: "purchases", name: "Purchases", color: "#818CF8" },
+] as const
+
 /** The legacy component name/`data` prop remains supported; daily rows enable adaptive periods. */
-export function MonthlySalesEvolutionChart({ data, dailyData, pendingData, dailyPendingData, startDate, endDate, coverage,
+export function MonthlySalesEvolutionChart({ data, dailyData, pendingData, dailyPendingData, periodCosts, startDate, endDate, coverage,
   isLoading, dataReady, currency = "UNSPECIFIED", byChannel = true, showPeriod = true }: MonthlySalesEvolutionChartProps) {
   const { isDarkMode } = useTheme()
   const trend = useMemo(() => buildSalesTrend({ data, dailyData, startDate, endDate, coverage }),
     [data, dailyData, startDate, endDate, coverage])
   const showPending = pendingData !== undefined || dailyPendingData !== undefined
-  const points = useMemo(() => buildSalesPaymentStack(trend,
-    buildPendingSalesTrend({ data, dailyData, pendingData, dailyPendingData, coverage }, trend)),
-  [trend, data, dailyData, pendingData, dailyPendingData, coverage])
+  const points = useMemo(() => buildSalesCostOverlay(buildSalesPaymentStack(trend,
+    buildPendingSalesTrend({ data, dailyData, pendingData, dailyPendingData, coverage }, trend)), periodCosts, currency),
+  [trend, data, dailyData, pendingData, dailyPendingData, coverage, periodCosts, currency])
+  const showCosts = periodCosts !== undefined
+  const hasCostGaps = showCosts && points.some(point => point.expenses === null || point.purchases === null)
   const hasUnknownBalances = showPending && points.some(point => point.totalSales !== null && point.pendingTotal === null)
   const loading = isLoading || !dataReady
   const observed = trend.points.filter(point => point.totalSales !== null)
   const hasAmounts = observed.some(point => point.totalSales !== 0 || point.onlineSales !== 0 || point.retailSales !== 0 || point.otherSales !== 0)
+    || points.some(point => (point.expenses !== null && point.expenses !== 0) || (point.purchases !== null && point.purchases !== 0))
   const period = salesTrendRange(trend.startDate, trend.endDate)
-  const unit = { daily: "day", weekly: "week", monthly: "month" }[trend.granularity]
   const tickCount = Math.min(6, trend.points.length)
   const ticks = Array.from({ length: tickCount }, (_, index) =>
     trend.points[Math.round(index * (trend.points.length - 1) / Math.max(1, tickCount - 1))].date)
@@ -74,18 +83,18 @@ export function MonthlySalesEvolutionChart({ data, dailyData, pendingData, daily
           {trend.granularity} totals
         </span>}
       </div>
-      <CardDescription className="text-xs">
-        {loading ? "Loading active sales for the selected period." : `Active sale amounts by ${unit} (sale date), not cash collected.`}
-        {!loading && showPending && " Pending is stacked above the settled portion in the same bar; together they equal active sales. Balances are current, not historical closing balances."}
+      {(loading || (showCosts && periodCosts.expensesScope === "segment") || trend.legacy || trend.granularity !== "daily") && <CardDescription className="text-xs">
+        {loading && "Loading active sales for the selected period."}
+        {!loading && showCosts && periodCosts.expensesScope === "segment" && " Expenses follow the selected segment; purchases are site-wide and have no segment attribution."}
         {!loading && trend.legacy && " Monthly data only; daily detail is unavailable. Edge months may be partial."}
         {!loading && !trend.legacy && trend.granularity === "weekly" && " Weeks are seven-day groups from the selected start date; the last may be shorter."}
         {!loading && !trend.legacy && trend.granularity === "monthly" && " First and last months may be partial."}
-      </CardDescription>
+      </CardDescription>}
     </CardHeader>
     <CardContent className="px-3 pb-4 sm:px-5">
       <ReportChartFrame className="h-[300px] min-w-0 w-full sm:h-[340px]"
         role={loading || !hasAmounts ? "status" : "img"} aria-busy={loading}
-        aria-label={loading ? "Loading sales trend" : `${title}, ${trend.granularity} totals. ${period}${trend.hasGaps ? ". Incomplete data; gaps are unavailable." : ""}`}>
+        aria-label={loading ? "Loading sales trend" : `${title}, ${trend.granularity} totals. ${period}${showCosts ? ". Expenses and purchases lines." : ""}${trend.hasGaps || hasCostGaps ? ". Incomplete data; gaps are unavailable." : ""}`}>
         {loading ? <div className="flex h-full items-end gap-3 border-b border-l px-4 pb-2 pt-6" aria-hidden="true">
           {["h-1/3", "h-2/3", "h-1/2", "h-3/4", "h-2/3", "h-5/6", "h-1/2"].map((height, index) => (
             <Skeleton key={index} className={`min-w-0 flex-1 ${height}`} />
@@ -93,12 +102,13 @@ export function MonthlySalesEvolutionChart({ data, dailyData, pendingData, daily
         </div> : !hasAmounts ? <div className="flex h-full items-center justify-center">
           <EmptyCard icon={<BarChartIcon className="h-8 w-8 text-muted-foreground" />}
             showShadow={false} variant="simple" contentClassName="min-h-0 py-6"
-            title={observed.length && !trend.hasGaps ? "No active sales amount in this period" : "Sales trend unavailable"}
+            title={observed.length && !trend.hasGaps ? showCosts ? "No sales, expenses or purchases in this period" : "No active sales amount in this period" : "Sales trend unavailable"}
             description={observed.length && !trend.hasGaps
-              ? "Active sales total zero for this period; this does not imply zero cash movement. Try another date range or segment."
+              ? showCosts ? "Recorded amounts total zero for this period; this is not a cash-flow or net-profit calculation. Try another date range."
+                : "Active sales total zero for this period; this does not imply zero cash movement. Try another date range or segment."
               : "Dated sales amounts are not available for the full selected period. Missing data is not zero sales."} />
         </div> : <ResponsiveContainer width="100%" height="100%" minWidth={0}>
-            <BarChart data={points} margin={{ top: 12, right: 8, left: 0, bottom: 8 }} barGap={1} maxBarSize={44}>
+            <ComposedChart data={points} margin={{ top: 12, right: 8, left: 0, bottom: 8 }} barGap={1} maxBarSize={44}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={isDarkMode ? "#334155" : "#e5e7eb"} />
               <XAxis dataKey="date" ticks={ticks} axisLine={false} tickLine={false} minTickGap={28} interval="preserveStartEnd"
                 tick={{ fontSize: 11, fill: isDarkMode ? "#CBD5E1" : "#6B7280" }} tickMargin={10}
@@ -107,7 +117,7 @@ export function MonthlySalesEvolutionChart({ data, dailyData, pendingData, daily
                 tick={{ fontSize: 11, fill: isDarkMode ? "#CBD5E1" : "#6B7280" }} tickFormatter={compactMoney} />
               <Tooltip cursor={{ fill: isDarkMode ? "#ffffff08" : "#00000004" }}
                 content={({ active, payload }) => {
-                  const point = payload?.[0]?.payload as SalesPaymentStackPoint | undefined
+                  const point = payload?.[0]?.payload as SalesCostOverlayPoint | undefined
                   if (!active || !point) return null
                   const date = /^\d{4}-\d{2}-\d{2}$/.test(point.date)
                     ? salesTrendRange(point.date, point.endDate) : point.label
@@ -119,17 +129,32 @@ export function MonthlySalesEvolutionChart({ data, dailyData, pendingData, daily
                     {(byChannel || showPending) && point.totalSales !== null && <div className="mt-2 flex justify-between gap-4 border-t pt-2 font-medium">
                       <span>Active sales total</span><span className="tabular-nums">{money(point.totalSales)}</span>
                     </div>}
+                    {showCosts && <div className="mt-2 border-t pt-2">
+                      {costSeries.map(item => {
+                        const amount = point[item.key]
+                        return <div key={item.key} className="flex justify-between gap-4 py-0.5">
+                          <span>{item.name}{item.key === "purchases" && periodCosts.expensesScope === "segment" ? " (site-wide)" : ""}</span>
+                          <span className="font-medium tabular-nums">{amount === null ? "Unavailable" : money(amount)}</span>
+                        </div>
+                      })}
+                    </div>}
                   </div>
                 }} />
               {activeSeries.map(item => <Bar key={item.key} dataKey={item.key} name={item.name} fill={item.color}
                 stackId="sales" radius={showPending ? item.key === "pendingTotal" ? [3, 3, 0, 0] : 0 : byChannel ? 0 : [3, 3, 0, 0]} isAnimationActive={false} />)}
-            </BarChart>
+              {showCosts && costSeries.map(item => <Line key={item.key} dataKey={item.key} name={item.name}
+                type="monotone" stroke={item.color} strokeWidth={2} dot={points.length === 1}
+                activeDot={{ r: 4 }} connectNulls={false} isAnimationActive={false} />)}
+            </ComposedChart>
           </ResponsiveContainer>}
       </ReportChartFrame>
       {loading ? <Skeleton className="mx-auto mt-3 h-4 w-36" /> : hasAmounts && (
         <div className="mt-3 flex flex-wrap justify-center gap-x-4 gap-y-2 text-xs text-muted-foreground" aria-label="Chart legend">
           {activeSeries.map(item => <span key={item.key} className="inline-flex items-center gap-1.5">
             <span className="h-2 w-2 rounded-sm" style={{ backgroundColor: item.color }} aria-hidden="true" />{item.name}
+          </span>)}
+          {showCosts && costSeries.map(item => <span key={item.key} className="inline-flex items-center gap-1.5">
+            <span className="h-0.5 w-4 rounded-full" style={{ backgroundColor: item.color }} aria-hidden="true" />{item.name}
           </span>)}
         </div>
       )}
@@ -138,6 +163,7 @@ export function MonthlySalesEvolutionChart({ data, dailyData, pendingData, daily
         {trend.hasGaps && " Gaps are unavailable, not zero; incomplete buckets are not totaled."}
         {hasUnknownBalances && " Grey bars retain the active sales total where the payment split is unavailable; missing balances are not zero pending."}
         {!showPending && " Pending detail is unavailable in this response; active sales are not assumed paid."}
+        {hasCostGaps && " Expense or purchase gaps are unavailable, not zero; incomplete buckets are not connected."}
       </p>}
     </CardContent>
   </Card>

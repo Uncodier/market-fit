@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import { Button } from "@/app/components/ui/button"
 import { Search, User } from "@/app/components/ui/icons"
 import { CartButton } from "@/app/components/commerce/CartButton"
 import { CommerceShareControl } from "@/app/components/commerce/CommerceShareControl"
@@ -299,13 +300,13 @@ export function ShopHeader({
                   >
                     <User className="h-4 w-4" />
                   </Link>
-                  <Link
-                    href={signInHref}
-                    onClick={onSignInClick}
-                    className={`hidden md:inline-flex ${shellClasses.primaryCta} ml-1`}
-                  >
-                    {signInLabel}
-                  </Link>
+                  <div className="hidden md:inline-flex ml-1">
+                    <Button asChild className="h-9 !min-w-0 px-[15px] py-[7px] font-bold">
+                      <Link href={signInHref} onClick={onSignInClick}>
+                        {signInLabel}
+                      </Link>
+                    </Button>
+                  </div>
                 </>
               )}
             </div>

@@ -117,6 +117,10 @@ Checkout does not require either portal configuration.
   use `always_invoice`, contain no end-of-period scheduling conditions, and list
   the selected target product **and** Price. Both IDs use Stripe's `bpc_...`
   configuration-ID format; they are server-only settings, never `NEXT_PUBLIC_*`.
+  Stripe requires payment-method updates to be enabled on this dedicated
+  configuration as well. Retrieve it with
+  `expand: ['features.subscription_update.products']`; an unexpanded response
+  omits the catalog even when products and Prices were configured correctly.
 
 Manager authorization and trusted return-URL checks precede billing access. The
 generic route uses the authenticated/RLS client and verifies the retrieved

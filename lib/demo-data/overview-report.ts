@@ -1,4 +1,5 @@
 import { buildSalesReport } from "@/app/api/revenue/build-sales-report"
+import { buildOverviewPeriodCosts } from "@/app/api/dashboard/overview/period-costs"
 import type { ReportSale } from "@/app/api/sales/sales-query"
 import { isRecognizedRevenueSale } from "@/lib/sales/recognized-sale"
 import { selectLiveCampaigns } from "@/lib/dashboard/active-campaigns"
@@ -31,8 +32,16 @@ async function summary(context: DemoReportContext): Promise<ReportBatch> {
     .map(sale => sale.lead_id).filter(Boolean)).size
   const segments = rows("segments").filter(row => row.is_active)
   const campaigns = scoped("campaigns")
+  const periodCosts = buildOverviewPeriodCosts(scoped("transactions").map(row => ({
+    amount: row.amount ?? null, currency: row.currency, type: row.type,
+    category: typeof row.category === "string" ? row.category : null,
+    sale_order_id: row.sale_order_id, date: typeof row.date === "string" ? row.date : "",
+  })), rows("purchases").map(row => ({
+    amount: row.amount ?? null, currency: row.currency, status: row.status || "",
+    purchase_date: typeof row.purchase_date === "string" ? row.purchase_date : "",
+  })), period, revenue.currency, segmentId)
   return {
-    revenue: { ...revenue },
+    revenue: { ...revenue, periodCosts },
     "active-users": demoMetric(customers(), customers(true)),
     "active-segments": demoMetric(segments.length, segments.filter(row => row.created_at < period.start).length),
     "active-campaigns": demoMetric(selectLiveCampaigns(campaigns).length,

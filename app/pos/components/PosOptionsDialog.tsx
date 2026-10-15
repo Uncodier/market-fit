@@ -1,9 +1,8 @@
 "use client"
 
-import { useEffect, useMemo, useRef, useState } from "react"
-import type { CatalogItem, VariantAxis } from "@/app/types"
+import { useMemo, useState } from "react"
+import type { CatalogItem } from "@/app/types"
 import type { ModifierGroupWithItems } from "@/app/catalog/modifier-types"
-import { resolveVariantAxesForDisplay } from "@/app/catalog/variant-resolve"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { useDisplayCurrency } from "@/app/context/DisplayCurrencyContext"
 import {
@@ -23,8 +22,7 @@ import {
   isModifierSelectionValid,
 } from "@/app/components/commerce/ModifierPickerPanel"
 import type { CartModifier } from "@/app/commerce/cart-modifiers"
-import { createClient } from "@/lib/supabase/client"
-import { getPosDb } from "@/app/pos/local/db"
+import { usePosOptionsData } from "./pos-options-data"
 import type { PosCartModifier } from "./CartPanel"
 import type { PosItemAvailability } from "../cart-availability"
 
@@ -46,46 +44,6 @@ type Props = {
   getAvailability?: (item: CatalogItem) => PosItemAvailability
 }
 
-function groupsFromCache(
-  hostIds: string[],
-  map?: Record<string, ModifierGroupWithItems[]>,
-): ModifierGroupWithItems[] {
-  if (!map) return []
-  for (const id of hostIds) {
-    if (map[id]?.length) return map[id]
-  }
-  return []
-}
-
-async function loadModifierGroups(
-  host: CatalogItem,
-  siteId: string | undefined,
-  modifierGroupsByHostId?: Record<string, ModifierGroupWithItems[]>,
-): Promise<ModifierGroupWithItems[]> {
-  const hostIds = [host.id, host.parent_id].filter(Boolean) as string[]
-
-  // Prefer snapshot/cache first so POS works even when server actions flake
-  const fromProp = groupsFromCache(hostIds, modifierGroupsByHostId)
-  if (fromProp.length) return fromProp
-
-  const metaSiteId = siteId || host.site_id
-  if (typeof window !== "undefined" && metaSiteId) {
-    try {
-      const meta = await getPosDb().meta.get(metaSiteId)
-      const cached = groupsFromCache(
-        hostIds,
-        (meta as any)?.modifierGroupsByHostId,
-      )
-      if (cached.length) return cached
-    } catch {
-      // ignore
-    }
-  }
-
-  // Snapshot/Dexie only — a server action here remounts the dialog in a loop.
-  return []
-}
-
 export function PosOptionsDialog(props: Props) {
   return <PosOptionsDialogContent key={`${props.item?.id || "none"}:${props.open}`} {...props} />
 }
@@ -104,73 +62,28 @@ function PosOptionsDialogContent({
   const { t } = useLocalization()
   const { formatPrice } = useDisplayCurrency()
 
-  const [children, setChildren] = useState<CatalogItem[]>([])
-  const [axes, setAxes] = useState<VariantAxis[]>([])
-  const [loadingVariants, setLoadingVariants] = useState(Boolean(open && item))
-  const [loadingModifiers, setLoadingModifiers] = useState(Boolean(open && item))
+  const { children, axes, modifierGroups, loading, error } = usePosOptionsData({
+    item, open, siteId, catalogItems, modifierGroupsByHostId,
+  })
   const [selectedOptions, setSelectedOptions] = useState<Record<string, string>>(
     {},
   )
-  const [modifierGroups, setModifierGroups] = useState<ModifierGroupWithItems[]>(
-    [],
-  )
-  const [selectedModifiers, setSelectedModifiers] = useState<CartModifier[]>([])
-
-  const itemRef = useRef(item)
-  const catalogItemsRef = useRef(catalogItems)
-  const siteIdRef = useRef(siteId)
-  const modifierGroupsByHostIdRef = useRef(modifierGroupsByHostId)
-  useEffect(() => {
-    catalogItemsRef.current = catalogItems
-    itemRef.current = item
-    siteIdRef.current = siteId
-    modifierGroupsByHostIdRef.current = modifierGroupsByHostId
-  }, [catalogItems, item, siteId, modifierGroupsByHostId])
-
-  const itemId = item?.id ?? null
-
-  useEffect(() => {
-    if (!open || !itemId) return
-    const host = itemRef.current
-    if (!host) return
-
-    let cancelled = false
-    const loadVariants = async () => {
-      const cached = catalogItemsRef.current?.filter((child) =>
-        child.parent_id === itemId && child.status === "active" && child.is_purchasable !== false,
-      )
-      if (cached) return cached
-      const { data, error } = await createClient().from("catalog_items").select("*")
-        .eq("site_id", host.site_id).eq("parent_id", itemId)
-        .eq("status", "active").eq("is_purchasable", true)
-      return error ? [] : (data || []) as CatalogItem[]
-    }
-    void loadVariants().then((variants) => {
-      if (cancelled) return
-      const resolved = resolveVariantAxesForDisplay(host, variants)
-      setChildren(resolved.children)
-      setAxes(resolved.axes)
-      setLoadingVariants(false)
-    })
-
-    void loadModifierGroups(
-      host,
-      siteIdRef.current,
-      modifierGroupsByHostIdRef.current,
-    ).then((groups) => {
-      if (cancelled) return
-      setModifierGroups(groups)
-      setLoadingModifiers(false)
-    })
-
-    return () => {
-      cancelled = true
-    }
-  }, [open, itemId])
+  const [modifierSelections, setSelectedModifiers] = useState<CartModifier[]>([])
+  const selectedModifiers = useMemo(() => modifierSelections.flatMap((selection) => {
+    const option = modifierGroups.find((group) => group.id === selection.groupId)?.items
+      .find((candidate) => candidate.catalog_item_id === selection.catalogItemId)
+    if (!option) return []
+    return [{
+      ...selection,
+      name: option.name,
+      cartPrice: resolvePrice(option.catalog_item_id, option.price),
+    }]
+  }), [modifierSelections, modifierGroups, resolvePrice])
 
   const resolvedChild = useMemo(() => {
     if (!axes.length) return null
     if (Object.keys(selectedOptions).length !== axes.length) return null
+    if (!axes.every((axis) => selectedOptions[axis.id])) return null
     return (
       children.find((c) => {
         const childOpts = c.metadata?.option_values
@@ -180,14 +93,12 @@ function PosOptionsDialogContent({
         )
       }) || null
     )
-  }, [selectedOptions, axes.length, children])
+  }, [selectedOptions, axes, children])
 
   const needsVariant = axes.length > 0
   const sellableItem = needsVariant ? resolvedChild : item
 
-  const modifiersValid =
-    modifierGroups.length === 0 ||
-    isModifierSelectionValid(modifierGroups, selectedModifiers).ok
+  const modifiersValid = isModifierSelectionValid(modifierGroups, selectedModifiers).ok
 
   const extrasTotal = useMemo(
     () =>
@@ -204,22 +115,21 @@ function PosOptionsDialogContent({
       parentName: item.name,
       parentDescription: item.description,
       category:
-        (item as any)._shop?.categoryName ||
-        (typeof (item as any).category === "object"
-          ? (item as any).category?.name
+        item._shop?.categoryName ||
+        (typeof item.category === "object"
+          ? item.category?.name
           : null) ||
         null,
       siteDescription:
-        (item as any)._shop?.siteDescription ||
-        (item as any).site?.description ||
+        item._shop?.siteDescription ||
+        item.site?.description ||
         null,
-      siteName: (item as any).site?.name || null,
+      siteName: item.site?.name || null,
     }
   }, [item])
 
-  const loading = loadingVariants || loadingModifiers
   const availability = sellableItem ? getAvailability?.(sellableItem) : undefined
-  const canConfirm = !!sellableItem && modifiersValid && !loading && availability?.sellable !== false
+  const canConfirm = !!sellableItem && modifiersValid && !loading && !error && availability?.sellable !== false
 
   const handleConfirm = () => {
     if (!sellableItem || !canConfirm || !item) return
@@ -240,7 +150,7 @@ function PosOptionsDialogContent({
   if (!item) return null
 
   const currency = item.currency || "USD"
-  const showModifiers = !loadingModifiers && modifierGroups.length > 0
+  const showModifiers = !loading && !error && modifierGroups.length > 0
 
   const isReservable = item?.is_reservation || sellableItem?.is_reservation
   
@@ -255,7 +165,11 @@ function PosOptionsDialogContent({
         </DialogHeader>
 
         <DialogBody className="space-y-6">
-          {loading ? (
+          {error ? (
+            <p role="alert" className="text-sm text-destructive">
+              Unable to load item options. Close this dialog and sync the catalog before trying again.
+            </p>
+          ) : loading ? (
             <div className="space-y-4 py-2">
               <div className="space-y-2">
                 <Skeleton className="h-4 w-24" />
@@ -334,9 +248,9 @@ function PosOptionsDialogContent({
             modifierGroups.every((g) => (g.min_select ?? 0) === 0) && (
               <Button
                 variant="ghost"
-                disabled={!sellableItem || loading || availability?.sellable === false}
+                disabled={!sellableItem || loading || error || availability?.sellable === false}
                 onClick={() => {
-                  if (!sellableItem || availability?.sellable === false) return
+                  if (!sellableItem || loading || error || availability?.sellable === false) return
                   onConfirm({ item: sellableItem, modifiers: [] })
                   onOpenChange(false)
                 }}

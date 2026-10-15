@@ -27,7 +27,7 @@ jest.mock("@/app/api/performance/tokens/route", () => ({ GET: jest.fn() }))
 jest.mock("@/app/api/performance/video-minutes/route", () => ({ GET: jest.fn() }))
 jest.mock("@/app/api/performance/images-generated/route", () => ({ GET: jest.fn() }))
 jest.mock("@/app/api/performance/metrics-overview/route", () => ({ GET: jest.fn() }))
-jest.mock("@/app/api/revenue/route", () => ({ GET: jest.fn() }))
+jest.mock("@/app/api/dashboard/overview/revenue", () => ({ GET: jest.fn() }))
 jest.mock("@/app/api/ltv/route", () => ({ GET: jest.fn() }))
 jest.mock("@/app/api/cac/route", () => ({ GET: jest.fn() }))
 jest.mock("@/app/api/cpl/route", () => ({ GET: jest.fn() }))
@@ -40,7 +40,9 @@ const routes = { performance, overview }
 const getUser = jest.fn()
 const rpc = jest.fn()
 const handler = (kind: ReportBatchKind, key: string): jest.Mock =>
-  jest.requireMock(`@/app/api/${kind === "performance" ? "performance/" : ""}${key}/route`).GET
+  kind === "overview" && key === "revenue"
+    ? jest.requireMock("@/app/api/dashboard/overview/revenue").GET
+    : jest.requireMock(`@/app/api/${kind === "performance" ? "performance/" : ""}${key}/route`).GET
 
 function request(kind: ReportBatchKind, extra = "", authenticated = true) {
   return new NextRequest(`https://example.test/api/dashboard/${kind}?siteId=site-a&startDate=2026-01-01&endDate=2026-01-31&segmentId=segment-a${extra}`, {
@@ -204,7 +206,7 @@ it("partitions server batch caches by authenticated identity, not query userId",
   const secondKey = (setCachedJson as jest.Mock).mock.calls[2][0]
   expect(firstKey).not.toEqual(secondKey)
   expect(firstKey).toContain("trusted-user")
-  expect(firstKey).toContain("dashboard-overview:v5:")
+  expect(firstKey).toContain("dashboard-overview:v6:")
   expect(secondKey).toContain("another-member")
   expect(firstKey).not.toContain("forged")
 })

@@ -81,4 +81,31 @@ describe("mobile navigation layout", () => {
     fireEvent.click(automationTiles[0])
     expect(navigateOrAssign).toHaveBeenCalledWith(expect.anything(), "/robots")
   })
+
+  it("shows Accounts Receivable after Subscriptions in Sales with its shared image and opens its route", () => {
+    render(<NavigationPage />)
+
+    const heading = screen.getByRole("heading", { name: "sales" })
+    const section = heading.parentElement?.parentElement as HTMLElement
+    const tile = within(section).getByRole("button", { name: /Accounts Receivable/ })
+    const tiles = within(section).getAllByRole("button")
+    expect(tiles[tiles.indexOf(tile) - 1]).toHaveAttribute("id", "tour-app-subscriptions")
+    expect(screen.getAllByRole("button", { name: /Accounts Receivable/ })).toHaveLength(1)
+    expect(tile).toHaveAttribute("id", "tour-app-accountsReceivable")
+    expect(within(tile).getByAltText("Accounts Receivable app icon")).toHaveAttribute(
+      "src", getModuleImageUrl("sales", "accountsReceivable", "Accounts Receivable"),
+    )
+    fireEvent.click(tile)
+    expect(navigateOrAssign).toHaveBeenCalledWith(expect.anything(), "/accounts-receivable")
+  })
+
+  it("finds Accounts Receivable by search and supports keyboard navigation", () => {
+    render(<NavigationPage />)
+
+    fireEvent.change(screen.getByPlaceholderText("Search..."), { target: { value: "receivable" } })
+    const tile = screen.getByRole("button", { name: /Accounts Receivable/ })
+    expect(screen.queryByRole("button", { name: /Subscriptions/ })).not.toBeInTheDocument()
+    fireEvent.keyDown(tile, { key: "Enter" })
+    expect(navigateOrAssign).toHaveBeenCalledWith(expect.anything(), "/accounts-receivable")
+  })
 })

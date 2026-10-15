@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { CatalogItem } from "@/app/types";
+import type { CatalogItem, Tax } from "@/app/types";
 import type { RelationSelectValue } from "@/app/components/ui/relation-select";
 import type { PosCartItem } from "@/app/pos/components/CartPanel";
 import {
@@ -59,6 +59,7 @@ type UsePosCartArgs = {
   priceListItems: any[];
   promotions?: any[];
   getTaxesForCart: (ids: string[]) => Promise<Record<string, any[]>>;
+  preloadedTaxesByItem?: Record<string, Pick<Tax, "rate">[]>;
   onRequireLead?: () => void;
   t: (key: string) => string;
 };
@@ -73,6 +74,7 @@ export function usePosCart({
   priceListItems,
   promotions = [],
   getTaxesForCart,
+  preloadedTaxesByItem,
   onRequireLead,
   t,
   siteCurrency: siteCurrencyInput,
@@ -251,17 +253,19 @@ export function usePosCart({
   }, [cart]);
 
   useEffect(() => {
-    if (!siteId || cart.length === 0) {
+    if (preloadedTaxesByItem) return;
+    if (!siteId || !cartTaxKey) {
       setTaxesByItem({});
       return;
     }
-    const ids = new Set<string>();
-    for (const c of cart) {
-      ids.add(c.id);
-      for (const m of c.modifiers || []) ids.add(m.catalogItemId);
-    }
-    void getTaxesForCart(Array.from(ids)).then(setTaxesByItem);
-  }, [siteId, cartTaxKey, cart, getTaxesForCart]);
+    let cancelled = false;
+    void getTaxesForCart(cartTaxKey.split(",")).then((taxes) => {
+      if (!cancelled) setTaxesByItem(taxes);
+    }).catch(() => {
+      if (!cancelled) toast.error("Failed to load item taxes. Please sync the catalog.");
+    });
+    return () => { cancelled = true; };
+  }, [siteId, cartTaxKey, getTaxesForCart, preloadedTaxesByItem]);
 
   const resolvePrice = useCallback(
     (item: CatalogItem, listId?: string) => {
@@ -329,9 +333,9 @@ export function usePosCart({
     () =>
       calculateOrderTaxTotal(
         posCartTaxLinesInSiteCurrency(cart, cartCurrency, rates),
-        taxesByItem || {},
+        preloadedTaxesByItem ?? taxesByItem,
       ),
-    [cart, taxesByItem, cartCurrency, rates],
+    [cart, taxesByItem, preloadedTaxesByItem, cartCurrency, rates],
   );
   const shippingTotal = useMemo(
     () =>

@@ -59,12 +59,16 @@ not consent for automatic purchases.
    settings until a verified existing Billing card or fresh setup and explicit consent. They do not
    rewrite or revoke purchased balances.
 3. Deploy Billing, worker and webhook together. Configure server-side Stripe and
-   Supabase credentials plus `CRON_SECRET`. Ensure the webhook receives
+   Supabase credentials plus the existing `SERVICE_API_KEY`. Ensure the webhook receives
    `checkout.session.completed`, `payment_intent.succeeded`,
    `payment_intent.payment_failed`, `payment_intent.canceled`.
-4. `vercel.json` requests a five-minute cron on supported Vercel plans. Configure
-   the secret and verify actual deliveries before opting in customers. Other
-   hosting needs an equivalent authorized job. The worker has a 300-second
+4. Scheduling lives in the sibling API repository: `/api/cron/credit-auto-top-up`
+   runs every five minutes and calls this app's POST-only worker. This app has no
+   cron entries and its former worker GET no longer runs. Configure the same
+   existing `SERVICE_API_KEY` in both apps (sent as `x-api-key`), and reuse
+   `CRON_SECRET` plus `NEXT_PUBLIC_APP_URL` in API. Deploy market-fit's POST-only worker/removal
+   before enabling API schedules. Verify actual deliveries before opting in
+   customers. Other hosting needs an equivalent authorized job. The worker has a 300-second
    function budget, bounded batch size, 10-second Stripe request timeouts, and
    stops admitting new sites after 180 seconds. DB/network outages can still
    require reconciliation; cron overlap cannot authorize a second dispatch.

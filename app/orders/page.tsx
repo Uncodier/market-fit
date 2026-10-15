@@ -37,6 +37,7 @@ import { ConfirmDialog } from "@/app/components/ui/confirm-dialog"
 import { usePermissions } from "@/app/context/PermissionContext"
 import { useOrderPrinting } from "@/app/orders/hooks/use-order-printing"
 import { useDebounce } from "use-debounce"
+import { marketplaceMetadata } from "@/lib/marketplace/presentation"
 
 export default function OrdersPage() {
   const searchParams = useSearchParams()
@@ -126,6 +127,10 @@ export default function OrdersPage() {
 
   const handleUpdateOrderStatus = async (orderId: string, newStatus: string) => {
     if (!currentSite?.id) return false;
+    if (!can("update") || marketplaceMetadata(data?.data.find((order) => order.id === orderId)?.metadata)) {
+      toast.error("Use the permitted provider actions for marketplace orders.")
+      return false
+    }
     
     // Optimistic update
     mutate(data => {

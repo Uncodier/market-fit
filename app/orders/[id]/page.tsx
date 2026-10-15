@@ -19,6 +19,7 @@ import { getSaleById } from "@/app/sales/actions"
 import { Sale } from "@/app/types"
 import { OrderDetailView } from "./components/OrderDetailView"
 import { useOrderDetailData } from "../hooks/use-order-detail-data"
+import { marketplaceMetadata, providerAccepted } from "@/lib/marketplace/presentation"
 
 export default function OrderDetail(props: { params: Promise<{ id: string }> }) {
   const params = React.use(props.params)
@@ -48,6 +49,7 @@ export default function OrderDetail(props: { params: Promise<{ id: string }> }) 
 
   const handleStatusChange = async (newStatus: string) => {
     if (!currentSite || !order) return
+    if (marketplaceMetadata(order.metadata)) return
     const lineStatusByOrderStatus: Record<string, string> = {
       pending: "new",
       in_progress: "preparing",
@@ -76,6 +78,7 @@ export default function OrderDetail(props: { params: Promise<{ id: string }> }) 
   }
 
   const handleLineStatusChange = (itemId: string, newStatus: string) => {
+    if (marketplaceMetadata(order?.metadata)) return
     setModifiedLines(prev => ({ ...prev, [itemId]: newStatus }))
     setOrder(prev => prev ? { 
       ...prev, 
@@ -87,6 +90,7 @@ export default function OrderDetail(props: { params: Promise<{ id: string }> }) 
 
   const handleSaveLineItems = async () => {
     if (!order || !currentSite) return
+    if (marketplaceMetadata(order.metadata)) return
     const idsToUpdate = Object.keys(modifiedLines)
     if (idsToUpdate.length === 0) return
 
@@ -113,6 +117,7 @@ export default function OrderDetail(props: { params: Promise<{ id: string }> }) 
 
   const handleAllLineStatusesChange = async (status: string) => {
     if (!order || !currentSite) return
+    if (marketplaceMetadata(order.metadata)) return
     setUpdatingAllLines(true)
     try {
       const result = await updateOrderItemsStatus(
@@ -161,6 +166,7 @@ export default function OrderDetail(props: { params: Promise<{ id: string }> }) 
   }
 
   const handleCreateShipment = async () => {
+    if (marketplaceMetadata(order?.metadata)) return
     if (!order || !currentSite) {
       toast.error(t('orders.error.missingInfo') || "Required order info missing")
       return
@@ -224,6 +230,7 @@ export default function OrderDetail(props: { params: Promise<{ id: string }> }) 
   const lastEmailedAt = (order as any).last_emailed_at as string | null | undefined
 
   const handlePrint = () => {
+    if (!providerAccepted(order.metadata)) return
     window.open(`/order-pdf/${order.id}`, "_blank")
   }
 

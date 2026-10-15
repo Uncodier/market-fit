@@ -16,19 +16,20 @@ export async function markKitchenItemsPrinted(
         .eq("site_id", siteId)
         .eq("id", item.id)
         .maybeSingle()
-      if (error || !data) continue
+      if (error || !data) return { error: "Printed item could not be loaded" }
       const metadata = {
         ...(data.metadata && typeof data.metadata === "object" ? data.metadata : {}),
         printed_quantity: item.quantity,
       }
-      await supabase
+      const { error: updateError } = await supabase
         .from("sale_order_items")
         .update({ metadata })
         .eq("id", item.id)
         .eq("site_id", siteId)
+      if (updateError) return { error: "Print history could not be saved" }
     }
     return {}
-  } catch (e: any) {
-    return { error: e?.message || "Failed to mark items printed" }
+  } catch {
+    return { error: "Print history could not be saved" }
   }
 }

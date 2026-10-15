@@ -55,6 +55,7 @@ export const routes: RouteConfig[] = [
   { path: "/bills", hasLayout: true },
   { path: "/transactions", hasLayout: true },
   { path: "/finance", hasLayout: true },
+  { path: "/accounts-receivable", hasLayout: true },
   { path: "/accounting", hasLayout: true },
   { path: "/copywriting", hasLayout: true },
 

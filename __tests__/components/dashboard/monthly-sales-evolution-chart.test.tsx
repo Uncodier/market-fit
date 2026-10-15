@@ -20,8 +20,64 @@ const coverage = { startDate, endDate, complete: true }
 const dailyData = [{ date: "2020-06-07", onlineSales: 100, retailSales: 20, otherSales: 30, totalSales: 150 }]
 const dailyPendingData = [{ date: "2020-06-07", onlineSales: 80, retailSales: 10, otherSales: 0, totalSales: 90 }]
 const props = { data: [], dailyData, startDate, endDate, coverage, isLoading: false, dataReady: true, currency: "EUR" }
+const periodCosts = { dailyData: [{ date: "2020-06-07", expenses: 25.5, purchases: 75.25 }], coverage,
+  expensesScope: "site" as const, purchasesScope: "site" as const, currency: "EUR" }
 
 describe("sales trend presentation", () => {
+  it("overlays two smooth, distinct cost lines while retaining stacked sales", () => {
+    const { container } = render(<MonthlySalesEvolutionChart {...props} byChannel={false}
+      dailyPendingData={dailyPendingData} periodCosts={periodCosts} />)
+    const curves = container.querySelectorAll(".recharts-line-curve")
+    expect(curves).toHaveLength(2)
+    expect(curves[0]).toHaveAttribute("stroke", "#F87171")
+    expect(curves[1]).toHaveAttribute("stroke", "#818CF8")
+    expect(curves[0].getAttribute("d")).toContain("C")
+    expect(container.querySelectorAll(".recharts-bar")).toHaveLength(2)
+    expect(screen.getByLabelText("Chart legend")).toHaveTextContent("SettledPendingExpensesPurchases")
+    expect(screen.queryByText(/Active sale amounts by/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/Pending is stacked above/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/Balances are current/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/Smooth lines show recorded expenses/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/No prior-period costs or inventory valuation/)).not.toBeInTheDocument()
+  })
+
+  it("renders costs even when there are no sales and keeps a single-day cost visible", () => {
+    const { container } = render(<MonthlySalesEvolutionChart {...props} dailyData={[]} byChannel={false}
+      startDate="2020-06-07" endDate="2020-06-07" periodCosts={periodCosts} />)
+    expect(screen.getByRole("img", { name: /Expenses and purchases lines/ })).toBeInTheDocument()
+    expect(container.querySelectorAll(".recharts-line-dot")).toHaveLength(2)
+    expect(screen.queryByText("No active sales amount in this period")).not.toBeInTheDocument()
+  })
+
+  it("does not connect incomplete cost data or silently mix currencies", () => {
+    const { container, rerender } = render(<MonthlySalesEvolutionChart {...props}
+      periodCosts={{ ...periodCosts, coverage: { ...coverage, complete: false } }} />)
+    expect(screen.getByText(/Expense or purchase gaps are unavailable, not zero/)).toBeVisible()
+    for (const curve of container.querySelectorAll(".recharts-line-curve")) {
+      expect(curve.getAttribute("d")).not.toMatch(/[CL]/)
+    }
+    rerender(<MonthlySalesEvolutionChart {...props} periodCosts={{ ...periodCosts, currency: "USD" }} />)
+    for (const curve of container.querySelectorAll(".recharts-line-curve")) expect(curve).not.toHaveAttribute("d")
+  })
+
+  it("shows exact cost amounts and discloses site-wide purchases in the tooltip", async () => {
+    const { container } = render(<MonthlySalesEvolutionChart {...props} byChannel={false}
+      startDate="2020-06-07" endDate="2020-06-07" dailyPendingData={dailyPendingData}
+      periodCosts={{ ...periodCosts, expensesScope: "segment" }} />)
+    expect(screen.getByText(/purchases are site-wide and have no segment attribution/)).toBeVisible()
+    const chart = container.querySelector(".recharts-wrapper")!
+    Object.defineProperty(chart, "offsetWidth", { value: 360 })
+    Object.defineProperty(chart, "offsetHeight", { value: 300 })
+    jest.spyOn(chart, "getBoundingClientRect").mockReturnValue({ x: 0, y: 0, left: 0, top: 0, right: 360, bottom: 300, width: 360, height: 300, toJSON: () => ({}) })
+    const event = createEvent.mouseMove(chart, { clientX: 180, clientY: 100 })
+    Object.defineProperties(event, { pageX: { value: 180 }, pageY: { value: 100 } })
+    fireEvent(chart, event)
+    await waitFor(() => expect(screen.getByText("Purchases (site-wide)")).toBeInTheDocument())
+    expect(screen.getByText(/EUR.*25.50/)).toBeInTheDocument()
+    expect(screen.getByText(/EUR.*75.25/)).toBeInTheDocument()
+    expect(screen.getByText(/EUR.*150.00/)).toBeInTheDocument()
+  })
+
   it.each([false, true])("stacks Pending above the settled segments at the same x position (channels=%s)", byChannel => {
     const { container } = render(<MonthlySalesEvolutionChart {...props} startDate="2020-06-07" endDate="2020-06-07"
       dailyPendingData={dailyPendingData} byChannel={byChannel} />)
@@ -38,7 +94,7 @@ describe("sales trend presentation", () => {
     expect(Number(pending.getAttribute("y")) + Number(pending.getAttribute("height")))
       .toBeCloseTo(Number(lastSettled.getAttribute("y")))
     expect(screen.getByLabelText("Chart legend")).toHaveTextContent(byChannel ? "Online — settledRetail — settledOther / unassigned — settledPending" : "SettledPending")
-    expect(screen.getByText(/Pending is stacked above the settled portion in the same bar/)).toBeVisible()
+    expect(screen.queryByText(/Pending is stacked above the settled portion in the same bar/)).not.toBeInTheDocument()
     expect(screen.queryByText(/separate column/)).not.toBeInTheDocument()
   })
 
@@ -59,7 +115,7 @@ describe("sales trend presentation", () => {
     const positions = bars.map(bar => bar.querySelector(".recharts-bar-rectangle path")!.getAttribute("x"))
     expect(new Set(positions).size).toBe(1)
     expect(screen.getByLabelText("Chart legend")).toHaveTextContent("Online — settledRetail — settledOther / unassigned — settledPending")
-    expect(screen.getByText(/together they equal active sales/)).toBeVisible()
+    expect(screen.queryByText(/together they equal active sales/)).not.toBeInTheDocument()
   })
 
   it("adds a pending segment in the total view while leaving unknown balances unavailable", () => {
@@ -102,7 +158,7 @@ describe("sales trend presentation", () => {
     expect(screen.getByRole("heading", { name: "Sales trend" })).toBeInTheDocument()
     expect(screen.getByLabelText("Chart legend")).toHaveTextContent("Active sales")
     expect(screen.queryByText(/Confirmed sales/)).not.toBeInTheDocument()
-    expect(screen.getByText(/Active sale amounts by day \(sale date\), not cash collected/)).toBeVisible()
+    expect(screen.queryByText(/Active sale amounts by day \(sale date\), not cash collected/)).not.toBeInTheDocument()
     expect(screen.getByRole("img", { name: /Jun 1, 2020 – Jun 30, 2020/ })).toBeInTheDocument()
   })
 
@@ -165,15 +221,18 @@ describe("sales trend presentation", () => {
 
 describe("OverviewSalesTrend integration", () => {
   it("shares the revenue payload and passes selected bounds/daily coverage without a second fetch", () => {
-    jest.mocked(useOverviewSlice).mockReturnValue({ data: { dailyData, dailyPendingData, monthlyData: [], currency: "EUR", metadata: { trendCoverage: coverage } },
+    jest.mocked(useOverviewSlice).mockReturnValue({ data: { dailyData, dailyPendingData, periodCosts, monthlyData: [], currency: "EUR", metadata: { trendCoverage: coverage } },
       isLoading: false, error: undefined, mutate: jest.fn() } as ReturnType<typeof useOverviewSlice>)
     const start = new Date(2020, 5, 1)
     const end = new Date(2020, 5, 30)
-    render(<OverviewSalesTrend startDate={start} endDate={end} segmentId="segment-a" />)
+    const { container } = render(<OverviewSalesTrend startDate={start} endDate={end} segmentId="segment-a" />)
     expect(useOverviewSlice).toHaveBeenCalledWith("revenue", start, end, "segment-a")
     expect(screen.getByRole("img", { name: /Sales trend, daily totals. Jun 1, 2020 – Jun 30, 2020/ })).toBeInTheDocument()
     expect(screen.getByLabelText("Chart legend")).toHaveTextContent("SettledPending")
     expect(screen.getByLabelText("Chart legend")).toHaveTextContent("Pending")
+    expect(screen.getByLabelText("Chart legend")).toHaveTextContent("ExpensesPurchases")
+    expect(container.querySelectorAll("p")).toHaveLength(1)
+    expect(screen.getByText("Amounts in EUR.")).toBeVisible()
     expect(screen.queryByText(/Pending balances are unavailable/)).not.toBeInTheDocument()
   })
 })

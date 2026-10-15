@@ -1,7 +1,7 @@
 "use client"
 
 import React from "react"
-import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd"
+import { DragDropContext, Droppable, Draggable, type DropResult } from "@hello-pangea/dnd"
 import { Card } from "@/app/components/ui/card"
 import { Badge } from "@/app/components/ui/badge"
 import { ScrollArea } from "@/app/components/ui/scroll-area"
@@ -11,6 +11,10 @@ import { Send, ExternalLink } from "@/app/components/ui/icons"
 import Link from "next/link"
 import { navigateToOrder } from "@/lib/navigation/navigation-helpers"
 import { useRouter } from "next/navigation"
+import type { ShipmentWithRelations } from "../types"
+import { MarketplaceBadges } from "@/app/orders/components/MarketplaceBadges"
+import { asRecord, marketplaceMetadata, metadataText } from "@/lib/marketplace/presentation"
+import { useOptionalPermissions } from "@/app/context/PermissionContext"
 
 const STATUS_STYLES: Record<string, string> = {
   pending: "bg-muted text-foreground hover:bg-muted/50 border-none",
@@ -33,7 +37,7 @@ const SHIPMENT_STATUSES = [
 ]
 
 interface KanbanViewProps {
-  shipments: any[]
+  shipments: ShipmentWithRelations[]
   onUpdateShipmentStatus: (shipmentId: string, newStatus: string) => Promise<void>
 }
 
@@ -42,10 +46,12 @@ export function KanbanView({
   onUpdateShipmentStatus
 }: KanbanViewProps) {
   const router = useRouter()
+  const permissions = useOptionalPermissions()
+  const canEdit = Boolean(permissions?.capabilities && permissions.can("update"))
   
   // Group shipments by status
   const shipmentsByStatus = React.useMemo(() => {
-    const grouped: Record<string, any[]> = {}
+    const grouped: Record<string, ShipmentWithRelations[]> = {}
     SHIPMENT_STATUSES.forEach(status => {
       grouped[status.id] = shipments.filter(shipment => shipment.status === status.id)
     })
@@ -53,12 +59,13 @@ export function KanbanView({
   }, [shipments])
 
   // Handle drag end
-  const handleDragEnd = async (result: any) => {
+  const handleDragEnd = async (result: DropResult) => {
     const { destination, source, draggableId } = result
 
     if (!destination || (destination.droppableId === source.droppableId && destination.index === source.index)) {
       return
     }
+    if (!canEdit || marketplaceMetadata(shipments.find((shipment) => shipment.id === draggableId)?.metadata)) return
 
     await onUpdateShipmentStatus(draggableId, destination.droppableId)
   }
@@ -88,7 +95,7 @@ export function KanbanView({
                     >
                       <ScrollArea className="h-[500px] w-full pr-4">
                         {shipmentsByStatus[status.id].map((shipment, index) => (
-                          <Draggable key={shipment.id} draggableId={shipment.id} index={index}>
+                          <Draggable key={shipment.id} draggableId={shipment.id} index={index} isDragDisabled={!canEdit || Boolean(marketplaceMetadata(shipment.metadata))}>
                             {(provided, snapshot) => (
                               <Card
                                 ref={provided.innerRef}
@@ -127,6 +134,7 @@ export function KanbanView({
                                     </Link>
                                   </div>
                                   <div className="flex items-center gap-2 mb-2">
+                                    <MarketplaceBadges metadata={shipment.metadata} />
                                     <Badge className={cn(STATUS_STYLES[shipment.status], "text-[10px]")}>
                                       {shipment.status.replace('_', ' ').toUpperCase()}
                                     </Badge>
@@ -150,6 +158,7 @@ export function KanbanView({
                                   <div className="text-xs text-muted-foreground mb-2 truncate flex flex-col gap-1">
                                     <span>Carrier: {shipment.carrier || 'Not assigned'}</span>
                                     <span>Tracking: {shipment.tracking_number || 'Not assigned'}</span>
+                                    {marketplaceMetadata(shipment.metadata) && <span>External courier: {metadataText(asRecord(marketplaceMetadata(shipment.metadata)?.courier)?.name) || "Awaiting provider"}</span>}
                                   </div>
                                   
                                   {shipment.assignee_profile && (

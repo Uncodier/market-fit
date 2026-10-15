@@ -1,4 +1,8 @@
 {
+  "billing.salePaymentFee.label": "カード決済手数料：{{percent}}% · 決済処理費用込み",
+  "billing.salePaymentFee.defaultLabel": "標準のカード決済手数料：{{percent}}% · 決済処理費用込み · 現在のプランは確認できません",
+  "billing.salePaymentFee.planUnavailable": "現在のプランは確認できません",
+  "billing.salePaymentFee.notice": "表示の料率は標準的なカード決済向けです。{{percent}}%で国際決済、通貨換算、少額決済の処理費用を賄える保証はありません。",
   "auth.signInBtn": "サインイン",
   "auth.signInDesc": "サインインして注文履歴の確認やショッピングを続けましょう。",
   "auth.signInLink": "サインイン",

@@ -23,6 +23,10 @@ function matchExisting(
   used: Set<string>,
 ): DeltaLineInput | undefined {
   const unused = existing.filter((e) => !used.has(e.itemId || e.key))
+  if (next.itemId) {
+    const byId = unused.find(line => line.itemId === next.itemId)
+    if (byId) return byId
+  }
   if (hasStableKey(next)) {
     const byKey = unused.find((e) => e.key === next.key)
     if (byKey) return byKey
@@ -37,13 +41,24 @@ function matchExisting(
   )
 }
 
-function modifiersFor(
+export function kitchenModifiersFor(
   parent: DeltaLineInput,
   all: DeltaLineInput[],
 ): KitchenModifier[] {
-  return all
-    .filter((l) => l.parentKey === parent.key && parent.key)
-    .map((l) => ({ name: l.name, quantity: l.quantity }))
+  const result: KitchenModifier[] = []
+  const visited = new Set([parent.key])
+  const visit = (key: string, prefix: string) => {
+    if (!key) return
+    for (const child of all.filter(line => line.parentKey === key)) {
+      if (visited.has(child.key)) continue
+      visited.add(child.key)
+      const name = prefix ? `${prefix} → ${child.name}` : child.name
+      result.push({ name, quantity: child.quantity })
+      visit(child.key, name)
+    }
+  }
+  visit(parent.key, "")
+  return result
 }
 
 function toKitchenLine(
@@ -56,7 +71,7 @@ function toKitchenLine(
     quantity: line.quantity,
     itemId: line.itemId,
     catalogItemId: line.catalogItemId,
-    modifiers: modifiersFor(line, all),
+    modifiers: kitchenModifiersFor(line, all),
   }
 }
 
@@ -107,7 +122,7 @@ export function computeKitchenDelta(
         from: existing.quantity,
         to: next.quantity,
         itemId: existing.itemId,
-        modifiers: modifiersFor(next, nextLines),
+        modifiers: kitchenModifiersFor(next, nextLines),
       })
     }
   }
@@ -139,6 +154,7 @@ export function kitchenDeltaHasWork(delta: KitchenDelta | null | undefined): boo
 export function mapSaleOrderItemToDeltaLine(item: {
   id?: string
   name?: string
+  description?: string | null
   quantity?: number
   catalog_item_id?: string | null
   parent_sale_order_item_id?: string | null
@@ -159,6 +175,7 @@ export function mapSaleOrderItemToDeltaLine(item: {
   if (meta.parent_name && !finalName.startsWith(meta.parent_name)) {
     finalName = `${meta.parent_name} -> ${finalName}`
   }
+  if (item.description?.trim()) finalName = `${finalName} — ${item.description.trim()}`
 
   return {
     key: meta.client_line_key || item.id || "",

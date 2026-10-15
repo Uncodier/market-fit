@@ -5,6 +5,7 @@ import { attachDemoOverview } from "@/lib/demo-data/overview-seed"
 import { buildOverviewEconomics } from "@/app/dashboard/overview-economics-data"
 import { reportMetricKeys, isReportBatch } from "@/lib/dashboard/report-groups"
 import { shiftDay } from "@/lib/sales/report-period"
+import type { OverviewPeriodCosts } from "@/lib/sales/report-types"
 
 const today = new Date().toISOString().slice(0, 10)
 const filters = (siteId: string, group: string, segmentId = "all", startDate = shiftDay(today, -29), endDate = today) =>
@@ -23,6 +24,14 @@ describe.each(availableDemos)("Overview fixtures: $id", ({ id }) => {
     expect(daily).toHaveLength(30)
     expect(daily.reduce((sum, row) => sum + row.totalSales, 0)).toBeCloseTo(total.actual)
     expect(daily.filter(row => row.totalSales > 0).length).toBeGreaterThan(3)
+    const costs = batch.revenue.periodCosts as OverviewPeriodCosts
+    expect(costs.currency).toBe(batch.revenue.currency)
+    expect(costs.coverage).toEqual({ startDate: shiftDay(today, -29), endDate: today, complete: true })
+    expect(costs.expensesScope).toBe("site")
+    expect(costs.purchasesScope).toBe("site")
+    expect(costs.dailyData.some(row => row.expenses! > 0)).toBe(true)
+    expect(costs.dailyData.some(row => row.purchases! > 0)).toBe(true)
+    expect(costs.dailyData.every(row => row.date >= shiftDay(today, -29) && row.date <= today)).toBe(true)
   })
 
   it("populates economics and both activity sources", async () => {
@@ -46,10 +55,18 @@ describe.each(availableDemos)("Overview fixtures: $id", ({ id }) => {
 
   it("covers every selectable segment and respects empty filters", async () => {
     const data = await getDemoData(id)
+    const all = await loadDemoDashboardBatch("overview", filters(id, "summary"))
+    const allCosts = all.revenue.periodCosts as OverviewPeriodCosts
+    const sumPurchases = (costs: OverviewPeriodCosts) => costs.dailyData.reduce((sum, row) => sum + row.purchases!, 0)
     for (const segment of data!.segments) {
       const batch = await loadDemoDashboardBatch("overview", filters(id, "summary", segment.id))
       expect((batch.revenue.totalSales as { actual: number }).actual).toBeGreaterThan(0)
       expect(batch["active-users"].actual).toBeGreaterThan(0)
+      const costs = batch.revenue.periodCosts as OverviewPeriodCosts
+      expect(costs.expensesScope).toBe("segment")
+      expect(sumPurchases(costs)).toBeCloseTo(sumPurchases(allCosts))
+      expect(costs.dailyData.reduce((sum, row) => sum + row.expenses!, 0))
+        .toBeLessThan(allCosts.dailyData.reduce((sum, row) => sum + row.expenses!, 0))
       const economics = buildOverviewEconomics(await loadDemoDashboardBatch("overview", filters(id, "economics", segment.id)))
       expect(economics.cpl.value).toBeGreaterThan(0)
     }
@@ -59,6 +76,7 @@ describe.each(availableDemos)("Overview fixtures: $id", ({ id }) => {
     const future = filters(id, "summary", "all", shiftDay(today, 365), shiftDay(today, 394))
     const futureBatch = await loadDemoDashboardBatch("overview", future)
     expect((futureBatch.revenue.totalSales as { actual: number }).actual).toBe(0)
+    expect((futureBatch.revenue.periodCosts as OverviewPeriodCosts).dailyData).toEqual([])
     expect((await loadDemoRecentActivity(future)).activities).toEqual([])
   })
 
@@ -68,6 +86,7 @@ describe.each(availableDemos)("Overview fixtures: $id", ({ id }) => {
     const refreshed = attachDemoOverview(data!, new Date(`${shiftDay(today, 365)}T12:00:00Z`))
     expect(JSON.stringify(data)).toBe(before)
     expect(refreshed.sales).toHaveLength(data!.sales.length)
+    expect(refreshed.purchases).toHaveLength(data!.purchases.length)
     const sample = refreshed.sales.filter((row: { id: string }) => row.id.includes(`${id}-overview-`))
     expect(sample.some(row => row.sale_date === shiftDay(today, 365))).toBe(true)
     expect(sample.every(row => refreshed.leads.some(lead => lead.id === row.lead_id))).toBe(true)
@@ -90,6 +109,8 @@ it("keeps HabitUall's MXN and USD sales separate when changing reporting currenc
   const usd = await loadDemoDashboardBatch("overview", params)
   expect(mxn.revenue.currency).toBe("MXN")
   expect(usd.revenue.currency).toBe("USD")
+  expect((mxn.revenue.periodCosts as OverviewPeriodCosts).currency).toBe("MXN")
+  expect((usd.revenue.periodCosts as OverviewPeriodCosts).currency).toBe("USD")
   expect(mxn.revenue.availableCurrencies).toEqual(expect.arrayContaining(["MXN", "USD"]))
   const mxnSales = (mxn.revenue.totalSales as { actual: number }).actual
   const usdSales = (usd.revenue.totalSales as { actual: number }).actual

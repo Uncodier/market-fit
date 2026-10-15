@@ -23,6 +23,7 @@ import { createClient as createSbClient } from "@/lib/supabase/client"
 import { TestEndpointDialog } from "@/app/components/webhooks/test-endpoint-dialog"
 import { ChannelsSection } from "@/app/components/integrations/channels-section"
 import { ComposioSection } from "@/app/components/settings/ComposioSection"
+import { MarketplaceConfigurationCards } from "./components/MarketplaceConfigurationCards"
 import {
   listWebhookEndpoints,
   deleteWebhookEndpoint,
@@ -120,6 +121,8 @@ export default function IntegrationsPage() {
         return channelsSections
       case "integrations":
         return [
+          { id: "marketplace-rappi", title: "Rappi" },
+          { id: "marketplace-uber_eats", title: "Uber Eats" },
           { id: "composio-integration", title: "Composio" }
         ]
       default:
@@ -423,6 +426,7 @@ export default function IntegrationsPage() {
 
           {activeSegment === "integrations" && (
             <div className="space-y-6">
+              <MarketplaceConfigurationCards key={currentSite.id} siteId={currentSite.id} />
               <ComposioSection 
                 active={true}
                 siteId={currentSite.id}

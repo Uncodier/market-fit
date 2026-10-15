@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { type BillingInterval, formatPrice, subscriptionPrice } from "@/lib/billing-pricing"
 import { getMemberLimit, type LicensePlan } from "@/lib/license-entitlements"
+import { salePaymentFeePercent } from "@/lib/sale-payment-fees"
 
 export type BillingPlan = "commission" | "engine" | "foundry" | "enterprise"
 
@@ -71,6 +72,7 @@ export function SubscriptionPlans({ currentPlan, currentInterval = 'month', bill
       {PLANS.map((plan) => {
         const interval = plan.id === 'commission' ? 'month' : billingInterval
         const price = subscriptionPrice(plan.monthlyPrice, interval)
+        const paymentFeePercent = salePaymentFeePercent(plan.id)
         const isCurrent = plan.id === currentPlan && (plan.id === 'commission' || interval === currentInterval)
         const isRequired = plan.id === requiredPlan
         const memberLimit = getMemberLimit(plan.id)
@@ -121,6 +123,9 @@ export function SubscriptionPlans({ currentPlan, currentInterval = 'month', bill
               </div>
               <p className="text-xs text-muted-foreground">{plan.detail(t)}</p>
               <p className="text-xs text-muted-foreground">
+                {t("billing.salePaymentFee.label", { percent: paymentFeePercent }) || `Card payment fee: ${paymentFeePercent}% · processing included`}
+              </p>
+              <p className="text-xs text-muted-foreground">
                 {memberSummary}
               </p>
             </div>
@@ -158,6 +163,9 @@ export function SubscriptionPlans({ currentPlan, currentInterval = 'month', bill
           </div>
         )
       })}
+      <p className="px-4 py-3 text-xs text-muted-foreground">
+        {t("billing.salePaymentFee.notice", { percent: salePaymentFeePercent('enterprise') }) || `Rates are for standard card payments. ${salePaymentFeePercent('enterprise')}% is not guaranteed to cover processing costs for international payments, currency conversion or small payments.`}
+      </p>
     </div>
   )
 }

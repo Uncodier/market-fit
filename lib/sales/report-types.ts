@@ -27,6 +27,14 @@ export type SalesTrendCoverage = {
   complete: boolean
 }
 
+export type OverviewPeriodCosts = {
+  dailyData: Array<{ date: string; expenses: number | null; purchases: number | null }>
+  coverage: SalesTrendCoverage
+  expensesScope: "site" | "segment"
+  purchasesScope: "site"
+  currency: string
+}
+
 export interface SalesReportData {
   /** Absent only on older responses. Missing cash history is unavailable, never zero. */
   financialSummary?: SalesFinancialSummary
@@ -43,6 +51,8 @@ export interface SalesReportData {
   /** Current balances grouped by sale date, not historical closing balances or receipts. */
   monthlyPendingData?: SalesPendingTrendPoint[]
   dailyPendingData?: SalesPendingDailyTrendPoint[]
+  /** Overview-only recorded period amounts, not cash movements, COGS or net profit. */
+  periodCosts?: OverviewPeriodCosts
   salesDistribution: Array<{ category: string; percentage: number; amount: number }>
   currency: string
   availableCurrencies: string[]

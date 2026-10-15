@@ -8,7 +8,7 @@ export function attachDemoOverview(input: Record<string, unknown>, now = new Dat
   const item = data.catalog_items?.find(row => !row.parent_id && Number(row.target_sale_price) > 0)
   if (!siteId || !item || !data.segments?.length) return data
 
-  const tables = ["sales", "sale_orders", "sale_order_items", "leads", "tasks", "conversations", "messages", "transactions", "campaigns"]
+  const tables = ["sales", "sale_orders", "sale_order_items", "leads", "tasks", "conversations", "messages", "transactions", "campaigns", "purchases"]
   const result = { ...data }
   const prefix = `${siteId}-overview-`
   for (const table of tables) {
@@ -68,6 +68,12 @@ export function attachDemoOverview(input: Record<string, unknown>, now = new Dat
         description: "Sample campaign acquisition cost", type: "expense", status: "completed",
         amount: Math.round(amount * 0.2 * 100) / 100, currency,
         date: created.slice(0, 10), created_at: created, updated_at: created,
+      })
+      if (index % 3 === 0) result.purchases.push({
+        id: `${id}-purchase`, site_id: siteId, title: "Sample inventory purchase",
+        amount: Math.round(amount * 0.35 * 100) / 100, currency,
+        status: index % 2 === 0 ? "completed" : "pending",
+        purchase_date: created.slice(0, 10), created_at: created, updated_at: created,
       })
     }
   })

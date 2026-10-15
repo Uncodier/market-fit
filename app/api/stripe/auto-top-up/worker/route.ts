@@ -1,7 +1,7 @@
 import "server-only"
 import Stripe from "stripe"
 import { z } from "zod"
-import { timingSafeEqual } from "node:crypto"
+import { isWorkerDispatchAuthorized } from "@/lib/auth/worker-dispatch"
 import { createServiceClient } from "@/lib/supabase/server"
 import { processAutoTopUpSite } from "./process"
 
@@ -9,10 +9,8 @@ export const maxDuration = 300
 const candidateSchema = z.array(z.object({ site_id: z.string().uuid() })).max(20)
 
 /** Each site serializes in PostgreSQL; stop admission well before the function deadline. */
-export async function GET(request: Request) {
-  const expected = process.env.CRON_SECRET ? Buffer.from(`Bearer ${process.env.CRON_SECRET}`) : null
-  const received = Buffer.from(request.headers.get("authorization") ?? "")
-  if (!expected || expected.length !== received.length || !timingSafeEqual(expected, received)) {
+export async function POST(request: Request) {
+  if (!isWorkerDispatchAuthorized(request)) {
     return Response.json({ error: "Unauthorized" }, { status: 401 })
   }
   if (!process.env.STRIPE_SECRET_KEY) return Response.json({ error: "Stripe unavailable" }, { status: 503 })

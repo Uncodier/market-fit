@@ -6,7 +6,7 @@ import { usePathname } from 'next/navigation';
 import { ThemeProvider } from '../context/ThemeContext';
 import { TooltipProvider } from '../components/ui/tooltip';
 import { AuthProvider } from '../components/auth/auth-provider';
-import { LocalizationProvider } from '../context/LocalizationContext';
+import { AccountLocalizationProvider } from './AccountLocalizationProvider';
 import { DisplayCurrencyProvider } from '../context/DisplayCurrencyContext';
 import { SWRProvider } from './swr-provider';
 import { shouldUseWorkspaceProviders } from '../config/routes';
@@ -28,7 +28,7 @@ export default function Providers({ children, country }: ProvidersProps) {
     <SWRProvider>
     <AuthProvider>
       <ThemeProvider>
-        <LocalizationProvider>
+        <AccountLocalizationProvider workspace={useWorkspace}>
           <DisplayCurrencyProvider initialCountry={country}>
             {useWorkspace ? (
               <WorkspaceProviders>
@@ -40,7 +40,7 @@ export default function Providers({ children, country }: ProvidersProps) {
               </TooltipProvider>
             )}
           </DisplayCurrencyProvider>
-        </LocalizationProvider>
+        </AccountLocalizationProvider>
       </ThemeProvider>
     </AuthProvider>
     </SWRProvider>

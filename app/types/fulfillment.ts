@@ -223,6 +223,7 @@ export interface PriceListItem {
 }
 
 export interface Shipment {
+  metadata?: Record<string, unknown> | null;
   id: string;
   site_id: string;
   sale_order_id: string;

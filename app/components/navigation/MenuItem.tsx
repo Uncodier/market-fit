@@ -1,7 +1,7 @@
 "use client"
 
 import { cn } from "@/lib/utils"
-import { type LucideIcon } from "@/app/components/ui/icons"
+import { Command, type LucideIcon } from "@/app/components/ui/icons"
 import { NavigationLink } from "./NavigationLink"
 import { MenuAvatar, MenuAvatarImage, MenuAvatarFallback } from "../ui/menu-avatar"
 import {
@@ -129,6 +129,7 @@ interface MenuItemProps {
   emoji?: string
   title: string
   subtitle?: string
+  shortcut?: string
   avatarUrl?: string
   isActive?: boolean
   isCollapsed?: boolean
@@ -150,6 +151,7 @@ export function MenuItem({
   emoji,
   title, 
   subtitle,
+  shortcut,
   avatarUrl,
   isActive, 
   isCollapsed,
@@ -160,6 +162,23 @@ export function MenuItem({
   onClick
 }: MenuItemProps) {
   const linkRef = useRef<HTMLAnchorElement>(null);
+
+  const shortcutHint = shortcut ? (
+    <kbd
+      aria-label={`Command+${shortcut}`}
+      className={cn(
+        "pointer-events-none inline-flex h-5 shrink-0 select-none items-center justify-center gap-1 self-center rounded border px-1.5 font-mono text-[10px] font-medium leading-none",
+        isActive && !isCollapsed
+          ? visual
+            ? "border-current bg-transparent text-inherit"
+            : "border-primary-foreground bg-primary-foreground text-primary [&_svg]:!text-primary [&_span]:!text-primary"
+          : "border-border bg-muted text-muted-foreground"
+      )}
+    >
+      <Command size={12} />
+      <span className="block leading-none">{shortcut}</span>
+    </kbd>
+  ) : null
 
   const content = (
     <>
@@ -225,8 +244,11 @@ export function MenuItem({
         </span>
       </div>
 
-      {children && !isCollapsed && (
-        <div className="ml-auto">{children}</div>
+      {(shortcutHint || children) && !isCollapsed && (
+        <div className="ml-auto flex shrink-0 items-center gap-2">
+          {children}
+          {shortcutHint}
+        </div>
       )}
     </>
   )
@@ -236,6 +258,7 @@ export function MenuItem({
       id={id}
       ref={linkRef}
       href={href}
+      aria-keyshortcuts={shortcut ? `Meta+${shortcut} Control+${shortcut}` : undefined}
       className={cn(
         className,
         "sidebar-menu-item-link flex items-center text-sm transition-colors duration-200 relative group font-inter",
@@ -282,7 +305,10 @@ export function MenuItem({
                 className="flex flex-col gap-1 bg-popover text-popover-foreground dark:border-white/5 border-black/5 shadow-lg z-[9999]"
                 sideOffset={5}
               >
-                <p className="font-medium">{title}</p>
+                <div className="flex items-center gap-3">
+                  <p className="font-medium">{title}</p>
+                  {shortcutHint}
+                </div>
                 {subtitle && <p className="text-xs text-muted-foreground">{subtitle}</p>}
               </TooltipContent>
             </Tooltip>

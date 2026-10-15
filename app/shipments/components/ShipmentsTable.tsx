@@ -13,6 +13,8 @@ import { format, formatDistanceToNow } from "date-fns"
 import { cn } from "@/lib/utils"
 import { formatCurrency } from "@/app/lib/formatters"
 import { ShipmentWithRelations } from "@/app/shipments/types"
+import { MarketplaceBadges } from "@/app/orders/components/MarketplaceBadges"
+import { asRecord, marketplaceMetadata, metadataText } from "@/lib/marketplace/presentation"
 import {
   DocumentListHead,
   DocumentListRow,
@@ -112,6 +114,7 @@ export function ShipmentsTable({
                   </TableCell>
                   <TableCell className="py-3.5">
                     <StatusDot status={shipment.status} label={statusLabel} />
+                    <MarketplaceBadges metadata={shipment.metadata} />
                   </TableCell>
                   <TableCell className="py-3.5">
                     {hasTracking ? (
@@ -130,7 +133,10 @@ export function ShipmentsTable({
                     )}
                   </TableCell>
                   <TableCell className="py-3.5">
-                    {shipment.assignee_profile?.name ? (
+                    {marketplaceMetadata(shipment.metadata) ? <div className="text-sm">
+                      {metadataText(asRecord(marketplaceMetadata(shipment.metadata)?.courier)?.name) || "Awaiting external courier"}
+                      <p className="text-xs text-muted-foreground">Provider-managed</p>
+                    </div> : shipment.assignee_profile?.name ? (
                       <div className="flex min-w-0 items-center gap-2">
                         <EntityAvatar name={shipment.assignee_profile.name} className="h-7 w-7 text-[10px]" />
                         <div className="min-w-0">

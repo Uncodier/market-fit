@@ -3,8 +3,8 @@
 import React, { useState, useEffect } from "react"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { useSite } from "@/app/context/SiteContext"
-import { getShipment, updateShipmentStatus, setShipmentLineItems } from "../actions"
-import { ShipmentWithRelations } from "../types"
+import { updateShipmentStatus, setShipmentLineItems } from "../actions"
+import type { ShipmentWithRelations } from "../types"
 import { ShipmentGpsTracker } from "../components/ShipmentGpsTracker"
 import { LocationMapCard } from "../components/LocationMapCard"
 import { TrackingCard } from "../components/TrackingCard"
@@ -15,9 +15,7 @@ import {
   SectionCard,
   SectionCardHeader,
   SectionCardTitle,
-  SectionCardDescription,
   SectionCardContent,
-  SectionCardFooter,
 } from "@/app/components/ui/section-card"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/app/components/ui/tabs"
 import { Checkbox } from "@/app/components/ui/checkbox"
@@ -31,6 +29,10 @@ import { format } from "date-fns"
 import Link from "next/link"
 import { navigateToOrder } from "@/lib/navigation/navigation-helpers"
 import { useRouter } from "next/navigation"
+import { marketplaceMetadata } from "@/lib/marketplace/presentation"
+import { MarketplaceCourierCard } from "../components/MarketplaceCourierCard"
+import { useShipmentDetailData } from "../hooks/use-shipment-detail-data"
+import { useOptionalPermissions } from "@/app/context/PermissionContext"
 
 export default function ShipmentDetail(props: { params: Promise<{ id: string }> }) {
   const params = React.use(props.params)
@@ -38,42 +40,27 @@ export default function ShipmentDetail(props: { params: Promise<{ id: string }> 
   const { t } = useLocalization()
   const router = useRouter()
 
-  const [shipment, setShipment] = useState<ShipmentWithRelations | null>(null)
-  const [loading, setLoading] = useState(true)
+  const { shipment, setShipment, loading, error, refresh } = useShipmentDetailData(params.id)
+  const permissions = useOptionalPermissions()
+  const external = Boolean(marketplaceMetadata(shipment?.metadata))
+  const canEdit = !external && Boolean(permissions?.capabilities && permissions.can("update"))
   const [updatingStatus, setUpdatingStatus] = useState(false)
 
-  const [assignableLines, setAssignableLines] = useState<any[]>([])
-  const [selectedLines, setSelectedLines] = useState<Set<string>>(new Set())
+  const assignableLines = shipment?.sale_orders?.sale_order_items?.filter(
+    (item) => item.status !== "completed" && (!item.shipment_id || item.shipment_id === params.id),
+  ) || []
+  const [selectedDraft, setSelectedDraft] = useState<{ id: string; lines: Set<string> } | null>(null)
+  const selectedLines = selectedDraft?.id === params.id ? selectedDraft.lines
+    : new Set(assignableLines.filter((item) => item.shipment_id === params.id).map((item) => item.id))
+  const setSelectedLines = (lines: Set<string>) => setSelectedDraft({ id: params.id, lines })
   const [savingLines, setSavingLines] = useState(false)
 
   useEffect(() => {
-    async function load() {
-      const { data, error } = await getShipment(params.id)
-      if (error) {
-        toast.error("Failed to load shipment")
-      } else if (data) {
-        setShipment(data)
-
-        const items = data.sale_orders?.sale_order_items || []
-        const pool = items.filter(
-          (item: any) =>
-            item.status !== "completed" && (!item.shipment_id || item.shipment_id === params.id)
-        )
-        setAssignableLines(pool)
-
-        const initialSelected = new Set<string>()
-        pool.forEach((item: any) => {
-          if (item.shipment_id === params.id) initialSelected.add(item.id)
-        })
-        setSelectedLines(initialSelected)
-      }
-      setLoading(false)
-    }
-    load()
-  }, [params.id])
+    if (error) toast.error("Failed to load shipment")
+  }, [error])
 
   const handleStatusChange = async (newStatus: string) => {
-    if (!currentSite || !shipment) return
+    if (!currentSite || !shipment || !canEdit) return
     setUpdatingStatus(true)
     const { data, error } = await updateShipmentStatus(currentSite.id, shipment.id, newStatus)
 
@@ -81,13 +68,13 @@ export default function ShipmentDetail(props: { params: Promise<{ id: string }> 
       toast.error(error)
     } else if (data) {
       toast.success(`Status updated to ${newStatus}`)
-      setShipment((prev) => (prev ? { ...prev, status: newStatus as any } : null))
+      setShipment((prev) => (prev ? { ...prev, status: newStatus as ShipmentWithRelations["status"] } : null))
     }
     setUpdatingStatus(false)
   }
 
   const handleSaveLineItems = async () => {
-    if (!currentSite || !shipment) return
+    if (!currentSite || !shipment || !canEdit) return
     setSavingLines(true)
     const { error } = await setShipmentLineItems(
       currentSite.id,
@@ -128,7 +115,7 @@ export default function ShipmentDetail(props: { params: Promise<{ id: string }> 
 
   if (!shipment) return <div className="p-8">Shipment not found</div>
 
-  const address = (shipment.shipping_address as any) || {}
+  const address = (shipment.shipping_address || {}) as Record<string, string | undefined>
 
   return (
     <div className="flex-1 flex flex-col min-h-[calc(100vh-var(--topbar-height,64px))] bg-muted/30">
@@ -140,27 +127,27 @@ export default function ShipmentDetail(props: { params: Promise<{ id: string }> 
               <TabsTrigger value="timeline">Timeline</TabsTrigger>
             </TabsList>
             <div className="flex items-center gap-2">
-              <ShipmentGpsTracker
+              {!external && <ShipmentGpsTracker
                 shipmentId={shipment.id}
                 assignedTo={shipment.assigned_to}
                 status={shipment.status}
-              />
-              {shipment.status === "pending" && (
+              />}
+              {canEdit && shipment.status === "pending" && (
                 <Button onClick={() => handleStatusChange("preparing")} disabled={updatingStatus}>
                   Start Preparing
                 </Button>
               )}
-              {shipment.status === "preparing" && (
+              {canEdit && shipment.status === "preparing" && (
                 <Button onClick={() => handleStatusChange("shipped")} disabled={updatingStatus}>
                   Mark as Shipped
                 </Button>
               )}
-              {shipment.status === "shipped" && (
+              {canEdit && shipment.status === "shipped" && (
                 <Button onClick={() => handleStatusChange("in_transit")} disabled={updatingStatus}>
                   In Transit
                 </Button>
               )}
-              {shipment.status === "in_transit" && (
+              {canEdit && shipment.status === "in_transit" && (
                 <Button onClick={() => handleStatusChange("delivered")} disabled={updatingStatus}>
                   Mark Delivered
                 </Button>
@@ -173,7 +160,7 @@ export default function ShipmentDetail(props: { params: Promise<{ id: string }> 
           <TabsContent value="details" className="m-0 border-0 p-0">
             <div className="mx-auto max-w-[1000px] grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="md:col-span-2 space-y-6">
-                <TrackingCard
+                {external ? <MarketplaceCourierCard shipment={shipment} onRefresh={refresh} /> : <TrackingCard
                   shipmentId={shipment.id}
                   initialCarrier={shipment.carrier || ""}
                   initialTracking={shipment.tracking_number || ""}
@@ -182,7 +169,7 @@ export default function ShipmentDetail(props: { params: Promise<{ id: string }> 
                       prev ? { ...prev, carrier, tracking_number: tracking } : null
                     )
                   }
-                />
+                />}
 
                 <SectionCard>
                   <SectionCardHeader>
@@ -202,6 +189,7 @@ export default function ShipmentDetail(props: { params: Promise<{ id: string }> 
                             <Checkbox
                               id={`item-${item.id}`}
                               checked={selectedLines.has(item.id)}
+                              disabled={!canEdit}
                               onCheckedChange={(checked) => {
                                 const next = new Set(selectedLines)
                                 if (checked) next.add(item.id)
@@ -223,7 +211,7 @@ export default function ShipmentDetail(props: { params: Promise<{ id: string }> 
                   <ActionFooter>
                     <Button variant="outline"
                       onClick={handleSaveLineItems}
-                      disabled={savingLines || assignableLines.length === 0} size="sm">
+                      disabled={!canEdit || savingLines || assignableLines.length === 0} size="sm">
                       <Save className="h-4 w-4 mr-2" /> Save Items
                     </Button>
                   </ActionFooter>
@@ -273,7 +261,7 @@ export default function ShipmentDetail(props: { params: Promise<{ id: string }> 
                   </SectionCardContent>
                 </SectionCard>
 
-                {(shipment.status === "pending" || shipment.status === "preparing") && (
+                {canEdit && (shipment.status === "pending" || shipment.status === "preparing") && (
                   <div className="rounded-lg border-destructive/50 border bg-destructive/5 p-6">
                     <div className="flex flex-col gap-4">
                       <div>
@@ -305,7 +293,7 @@ export default function ShipmentDetail(props: { params: Promise<{ id: string }> 
               </div>
 
               <div className="space-y-6">
-                <AssigneeCard
+                {!external && <AssigneeCard
                   shipmentId={shipment.id}
                   initialAssignee={shipment.assigned_to}
                   onUpdate={(assigned_to, name) =>
@@ -319,14 +307,14 @@ export default function ShipmentDetail(props: { params: Promise<{ id: string }> 
                         : null
                     )
                   }
-                />
+                />}
 
-                <LocationMapCard
+                {!external && <LocationMapCard
                   shipmentId={shipment.id}
                   lastLat={shipment.last_lat ?? null}
                   lastLng={shipment.last_lng ?? null}
                   lastLocatedAt={shipment.last_located_at ?? null}
-                />
+                />}
 
                 <SectionCard>
                   <SectionCardContent className="p-4 space-y-4">

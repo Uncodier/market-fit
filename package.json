@@ -20,6 +20,10 @@
     "test:e2e:headed": "node scripts/e2e/run.cjs --headed",
     "test:e2e:validate": "node scripts/e2e/run.cjs --suite regression --validate",
     "test:e2e:report": "node scripts/e2e/report.cjs",
+    "test:harness:e2e": "node scripts/harness-e2e/run.cjs",
+    "test:harness:observe": "node scripts/harness-e2e/run.cjs observe --ack-observer-service-role",
+    "test:harness:cron": "node scripts/harness-e2e/cron.cjs",
+    "test:harness:unit": "node node_modules/jest/bin/jest.js --config jest.harness-e2e.config.cjs --runInBand",
     "agent:verify": "TS_NODE_COMPILER_OPTIONS='{\"module\":\"commonjs\",\"moduleResolution\":\"node\"}' node -r ts-node/register tests/agent/run-agent-verification.ts",
     "test:magic-links": "npx tsx scripts/test-magic-links.ts",
     "test:api-invitations": "npx tsx scripts/test-api-invitations.ts"

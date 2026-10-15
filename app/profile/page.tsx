@@ -10,9 +10,7 @@ import {
   SectionCard,
   SectionCardHeader,
   SectionCardTitle,
-  SectionCardDescription,
   SectionCardContent,
-  SectionCardFooter,
 } from "@/app/components/ui/section-card"
 import { ActionFooter } from "@/app/components/ui/card-footer"
 import Image from "next/image"
@@ -21,11 +19,9 @@ import { useDropzone } from "react-dropzone"
 import { 
   User, 
   FileText, 
-  Globe, 
   Trash2, 
   UploadCloud,
   Settings,
-  Home,
   Phone
 } from "@/app/components/ui/icons"
 import {
@@ -42,6 +38,7 @@ import { ProfileSkeleton } from "./components/ProfileSkeleton"
 import { EmailSecurityCard } from "./components/EmailSecurityCard"
 import { CalendarPreferences } from "./components/CalendarPreferences"
 import { SiteNotificationsPreferences } from "./components/SiteNotificationsPreferences"
+import { ProfilePreferences } from "./components/ProfilePreferences"
 import { CalendarSettings } from "@/app/services/profile.service"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
 
@@ -61,34 +58,30 @@ export default function ProfilePage() {
   
   const { isDarkMode } = useTheme()
   
-  // Estados del formulario
+  // Personal information form state
   const [formData, setFormData] = useState({
     name: "",
     phone: "",
     bio: "",
-    role: "Product Manager" as UserRole,
-    language: "es",
-    timezone: "America/Mexico_City"
+    role: "Product Manager" as UserRole
   })
   
   const [imageUrl, setImageUrl] = useState<string | null>(null)
 
-  // Actualizar formulario cuando se carga el perfil
+  // Populate personal information when the profile loads
   useEffect(() => {
     if (profile) {
       setFormData({
         name: profile.name || "",
         phone: profile.phone || "",
         bio: profile.bio || "",
-        role: (profile.role as UserRole) || "Product Manager",
-        language: profile.language || "es",
-        timezone: profile.timezone || "America/Mexico_City"
+        role: (profile.role as UserRole) || "Product Manager"
       })
       setImageUrl(profile.avatar_url || null)
     }
   }, [profile])
 
-  // Manejador de cambios en el formulario
+  // Handle personal information changes
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({
       ...prev,
@@ -96,7 +89,7 @@ export default function ProfilePage() {
     }))
   }
 
-  // Manejador de imágenes
+  // Handle profile picture uploads
   const { getRootProps, getInputProps } = useDropzone({
     onDrop: async (acceptedFiles) => {
       const file = acceptedFiles[0]
@@ -203,25 +196,6 @@ export default function ProfilePage() {
     } catch (error) {
       console.error("Error in handleSavePersonalInfo:", error)
       toast.error("Error updating personal information")
-    }
-  }
-
-  const handleSavePreferences = async () => {
-    try {
-      const profileData = {
-        language: formData.language,
-        timezone: formData.timezone
-      }
-      
-      const result = await updateProfile(profileData, true)
-      if (result === true) {
-        toast.success("Preferences updated successfully")
-      } else {
-        toast.error(typeof result === 'string' ? `Failed: ${result}` : "Failed to update preferences")
-      }
-    } catch (error) {
-      console.error(error)
-      toast.error("Error updating preferences")
     }
   }
 
@@ -396,64 +370,11 @@ export default function ProfilePage() {
               isUpdating={isUpdating}
             />
 
-            <SectionCard>
-              <SectionCardHeader>
-                <SectionCardTitle>Preferences</SectionCardTitle>
-              </SectionCardHeader>
-              <SectionCardContent className="space-y-8">
-                <div>
-                  <label className="block text-sm font-medium mb-2">Language</label>
-                  <div className="relative">
-                    <Globe className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Select
-                      value={formData.language}
-                      onValueChange={(value) => handleInputChange('language', value)}
-                    >
-                      <SelectTrigger className="w-full pl-12 h-12 text-base transition-colors duration-200">
-                        <SelectValue placeholder="Select your language" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="es">Spanish</SelectItem>
-                        <SelectItem value="en">English</SelectItem>
-                        <SelectItem value="fr">French</SelectItem>
-                        <SelectItem value="de">German</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium mb-2">Timezone</label>
-                  <div className="relative">
-                    <Home className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Select
-                      value={formData.timezone}
-                      onValueChange={(value) => handleInputChange('timezone', value)}
-                    >
-                      <SelectTrigger className="w-full pl-12 h-12 text-base transition-colors duration-200">
-                        <SelectValue placeholder="Select your timezone" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="America/Mexico_City">Mexico City (GMT-6)</SelectItem>
-                        <SelectItem value="America/Los_Angeles">Los Angeles (GMT-8)</SelectItem>
-                        <SelectItem value="America/New_York">New York (GMT-5)</SelectItem>
-                        <SelectItem value="Europe/Madrid">Madrid (GMT+1)</SelectItem>
-                        <SelectItem value="Europe/London">London (GMT+0)</SelectItem>
-                        <SelectItem value="Asia/Tokyo">Tokyo (GMT+9)</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-              </SectionCardContent>
-              <ActionFooter>
-                <Button variant="outline"
-                  type="button"
-                  onClick={handleSavePreferences}
-                  disabled={isUpdating} size="sm">
-                  {isUpdating ? "Saving..." : "Save Preferences"}
-                </Button>
-              </ActionFooter>
-            </SectionCard>
+            <ProfilePreferences
+              profile={profile}
+              updateProfile={updateProfile}
+              isUpdating={isUpdating}
+            />
           </TabsContent>
 
           <TabsContent value="notifications" className="mt-0 border-0 p-0 focus-visible:ring-0">

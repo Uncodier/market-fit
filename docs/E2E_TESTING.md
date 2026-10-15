@@ -7,6 +7,11 @@ The configuration excludes diagnostic/example tests and the nested agent project
 Never point regression, role-boundary or agent runs at production. Production
 mutations cannot be enabled with a flag.
 
+The separately requested [five production harness canaries](HARNESS_PRODUCTION_CANARIES.md)
+are an isolated operational exception, not a Shiplight suite or a change to those
+flags. Their explicit site/repository acknowledgements, sequential activation,
+read-only local observer and watchdog apply only to their five run-owned requirements.
+
 All live runs require explicit `TEST_TARGET`, `TEST_BASE_URL`,
 `TEST_COMMERCE_BASE_URL`, `TEST_SITE_ID` and `TEST_SITE_NAME`. The selected browser
 workspace must match both the configured name and UUID. Local origins must be

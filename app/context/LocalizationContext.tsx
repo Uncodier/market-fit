@@ -1,28 +1,22 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect, useLayoutEffect, useCallback, useRef, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useLayoutEffect, useCallback, useSyncExternalStore, ReactNode } from 'react';
 import enTranslations from './locales/en.json';
 import esOverlay from './locales/es.json';
 import frOverlay from './locales/fr.json';
 import deOverlay from './locales/de.json';
 import jaOverlay from './locales/ja.json';
 import { flattenMessages, type MessageTree } from './locale-messages';
+import { normalizeLocale, persistLocale, readStoredLocale, subscribeLocale, type SupportedLocale } from './locale-preferences';
 
-export type SupportedLocale = 'en' | 'es' | 'fr' | 'de' | 'ja';
-
-const SUPPORTED_LOCALES: SupportedLocale[] = ['en', 'es', 'fr', 'de', 'ja'];
-const LOCALE_COOKIE = 'makinari-locale';
-
-export function isSupportedLocale(value: unknown): value is SupportedLocale {
-  return typeof value === 'string' && (SUPPORTED_LOCALES as string[]).includes(value);
-}
+export { isSupportedLocale, normalizeLocale, readStoredLocale, type SupportedLocale } from './locale-preferences';
 
 interface LocalizationContextType {
   locale: SupportedLocale;
-  /** True after the initial localStorage / geo / browser resolution has run. */
+  /** True once browser preferences can be read without a hydration mismatch. */
   isReady: boolean;
   setLocale: (locale: SupportedLocale) => void;
-  /** Apply site default or browser location when the visitor has no saved preference. Does not persist. */
+  /** Register a site fallback without persisting it as a user preference. */
   applyUnresolvedLocale: (siteLocale?: string | null) => Promise<void>;
   t: (key: string, params?: Record<string, string | number>) => string;
   getAsset: (key: string) => string;
@@ -98,26 +92,16 @@ export function resolveDisplayLocale({
   country?: string | null;
   browserLanguage?: string | null;
 }): SupportedLocale {
-  if (isSupportedLocale(storedLocale)) return storedLocale;
-  if (isSupportedLocale(siteLocale)) return siteLocale;
+  const stored = normalizeLocale(storedLocale);
+  if (stored) return stored;
+  const site = normalizeLocale(siteLocale);
+  if (site) return site;
   if (country && countryToLocale[country.toUpperCase()]) return countryToLocale[country.toUpperCase()];
   if (browserLanguage) {
-    const lang = browserLanguage.split('-')[0];
-    if (isSupportedLocale(lang)) return lang;
+    const lang = normalizeLocale(browserLanguage);
+    if (lang) return lang;
   }
   return defaultLocale;
-}
-
-export function readStoredLocale(): SupportedLocale | null {
-  if (typeof window === 'undefined') return null;
-  try {
-    const fromStorage = localStorage.getItem('makinari-locale');
-    if (isSupportedLocale(fromStorage)) return fromStorage;
-  } catch {
-    // ignore
-  }
-  const match = document.cookie.match(new RegExp(`(?:^|; )${LOCALE_COOKIE}=([^;]+)`));
-  return isSupportedLocale(match?.[1]) ? match[1] : null;
 }
 
 function clearLocalePending() {
@@ -125,115 +109,52 @@ function clearLocalePending() {
   document.documentElement.classList.remove("locale-pending");
 }
 
-function persistLocale(locale: SupportedLocale) {
-  try {
-    localStorage.setItem('makinari-locale', locale);
-  } catch {
-    // ignore
-  }
-  document.cookie = `${LOCALE_COOKIE}=${locale}; path=/; max-age=31536000; SameSite=Lax`;
+interface LocalizationProviderProps {
+  children: ReactNode;
+  /** Workspace preferences are isolated from public visitor cookies and other accounts. */
+  preferenceScope?: string | null;
+  preferredLocale?: string | null;
 }
 
-function resolveInitialLocale(): SupportedLocale {
-  const stored = readStoredLocale();
-  if (stored) return stored;
-  return defaultLocale;
-}
+const serverLocale = () => null;
+const clientReady = () => true;
+const serverReady = () => false;
 
-if (typeof window !== 'undefined') {
-  const stored = readStoredLocale();
-  if (stored && stored !== 'en' && !translationCache[stored]) {
-    void loadLocaleMessages(stored);
-  }
-}
-
-export const LocalizationProvider = ({ children }: { children: ReactNode }) => {
-  const [locale, setLocaleState] = useState<SupportedLocale>(defaultLocale);
-  const [messages, setMessages] = useState<any>(enTranslations);
-  const [mounted, setMounted] = useState(false);
+export const LocalizationProvider = ({ children, preferenceScope, preferredLocale }: LocalizationProviderProps) => {
+  const mounted = useSyncExternalStore(subscribeLocale, clientReady, serverReady);
+  const getStoredLocale = useCallback(() => readStoredLocale(preferenceScope), [preferenceScope]);
+  const storedLocale = useSyncExternalStore(subscribeLocale, getStoredLocale, serverLocale);
+  const profileLocale = normalizeLocale(preferredLocale);
+  const [selection, setSelection] = useState<{
+    scope: string | null | undefined;
+    profile: SupportedLocale | null;
+    locale: SupportedLocale;
+  } | null>(null);
+  const [fallbackLocale, setFallbackLocale] = useState<SupportedLocale>(defaultLocale);
+  // Explicit selections apply immediately, but cannot leak across accounts or profile changes.
+  const selectedLocale = selection?.scope === preferenceScope && selection?.profile === profileLocale
+    ? selection?.locale : null;
+  const locale = selectedLocale || profileLocale || storedLocale || fallbackLocale;
+  // Derive translations in the same render as the locale; effects must not lag behind it.
+  const messages = translationCache[locale];
 
   useLayoutEffect(() => {
-    const next = resolveInitialLocale();
-    const cached = translationCache[next];
-    setLocaleState(next);
-    if (cached) {
-      setMessages(cached);
-      document.documentElement.lang = next;
-      clearLocalePending();
-    }
-    setMounted(true);
-    const timeout = window.setTimeout(clearLocalePending, 2000);
-    return () => window.clearTimeout(timeout);
-  }, []);
+    document.documentElement.lang = locale;
+    clearLocalePending();
+  }, [locale]);
 
-  useEffect(() => {
-    if (!mounted) return;
-    let cancelled = false;
-    const cached = translationCache[locale];
-    if (cached) {
-      setMessages(cached);
-      document.documentElement.lang = locale;
-      clearLocalePending();
-      return;
-    }
-    loadLocaleMessages(locale).then((loaded) => {
-      if (cancelled) return;
-      setMessages(loaded);
-      document.documentElement.lang = locale;
-      clearLocalePending();
-    }).catch(clearLocalePending);
-    return () => {
-      cancelled = true;
-    };
-  }, [locale, mounted]);
-
-  const setLocale = (newLocale: SupportedLocale) => {
-    setLocaleState(newLocale);
-    persistLocale(newLocale);
-    document.documentElement.lang = newLocale;
-  };
-
-  const localeApplyGeneration = useRef(0);
-
-  useEffect(() => {
-    return () => {
-      localeApplyGeneration.current += 1;
-    };
-  }, []);
+  const setLocale = useCallback((newLocale: SupportedLocale) => {
+    const normalized = normalizeLocale(newLocale);
+    if (!normalized) return;
+    setSelection({ scope: preferenceScope, profile: profileLocale, locale: normalized });
+    persistLocale(normalized, preferenceScope);
+  }, [preferenceScope, profileLocale]);
 
   const applyUnresolvedLocale = useCallback(async (siteLocale?: string | null) => {
-    if (readStoredLocale()) return; // User preference wins
-    
-    const browserLang = typeof navigator !== 'undefined' ? navigator.language : undefined;
-    const resolved = resolveDisplayLocale({
-      storedLocale: null,
+    setFallbackLocale(resolveDisplayLocale({
       siteLocale,
-      browserLanguage: browserLang,
-    });
-
-    const applyGeneration = ++localeApplyGeneration.current;
-    const applyResolved = (loaded: Record<string, string>) => {
-      if (applyGeneration !== localeApplyGeneration.current) return;
-      setLocaleState(resolved);
-      setMessages(loaded);
-      document.documentElement.lang = resolved;
-      clearLocalePending();
-    };
-
-    const cached = translationCache[resolved];
-    if (cached) {
-      applyResolved(cached);
-      return;
-    }
-
-    try {
-      const loaded = await loadLocaleMessages(resolved);
-      applyResolved(loaded);
-    } catch {
-      if (applyGeneration === localeApplyGeneration.current) {
-        clearLocalePending();
-      }
-    }
+      browserLanguage: typeof navigator !== 'undefined' ? navigator.language : undefined,
+    }));
   }, []);
 
   const t = (key: string, params?: Record<string, string | number>): string => {

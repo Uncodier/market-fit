@@ -11,7 +11,11 @@ export type PaymentOperationRow = {
   created_at: string
   transaction_type: string
   amount: number
-  details?: { original_currency?: string } | null
+  details?: {
+    original_currency?: string
+    commission_basis?: string
+    commission_rate?: number | string
+  } | null
 }
 
 export type CreditTransactionRow = {

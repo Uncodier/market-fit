@@ -76,6 +76,7 @@ export const NAVIGATION_AREAS: Record<
       { key: "catalog", href: "/catalog" },
       { key: "priceLists", href: "/price-lists" },
       { key: "subscriptions", href: "/subscriptions" },
+      { key: "accountsReceivable", href: "/accounts-receivable" },
       { key: "sales", href: "/sales" },
       { key: "leads", href: "/leads" },
       { key: "deals", href: "/deals" },
@@ -325,6 +326,7 @@ export function getNavItemTitle(item: AreaNavItem, t: (k: string) => string): st
     return translation === "layout.sidebar.agents" ? "AI Workspace" : translation
   }
   if (item.key === "salesHome") return "Home"
+  if (item.key === "accountsReceivable") return "Accounts Receivable"
   if (item.settingsTab) {
     const tabKey = `settings.tabs.${item.settingsTab}`
     const tabTitle = t(tabKey)

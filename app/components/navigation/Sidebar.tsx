@@ -123,6 +123,25 @@ export function Sidebar({
     setIsAppsLauncherOpen(false)
   }, [pathname])
 
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (
+        event.defaultPrevented ||
+        event.isComposing ||
+        event.altKey ||
+        event.shiftKey ||
+        !(event.metaKey || event.ctrlKey) ||
+        event.key.toLowerCase() !== "a"
+      ) return
+
+      event.preventDefault()
+      if (!event.repeat) setIsAppsLauncherOpen(true)
+    }
+
+    document.addEventListener("keydown", handleKeyDown)
+    return () => document.removeEventListener("keydown", handleKeyDown)
+  }, [])
+
   const handleAppsClick = (e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
@@ -153,7 +172,7 @@ export function Sidebar({
       <div
         data-collapsed={renderCollapsed}
         className={cn(
-          "flex flex-col h-[100dvh] overflow-hidden",
+          "flex flex-col h-[100dvh] overflow-y-auto overflow-x-hidden overscroll-y-contain md:overflow-hidden",
           isCollapsed ? "md:w-16" : "md:w-64",
           "bg-background/80 text-foreground transition-[width,transform] duration-300 ease-in-out border-r dark:border-white/5 border-black/5 z-[200] backdrop-blur-[5px] font-inter",
           "sidebar-light-bg",
@@ -183,14 +202,15 @@ export function Sidebar({
 
         <div
           className={cn(
-            "min-h-[71px] flex items-center border-b dark:border-white/5 border-black/5",
+            "min-h-[71px] flex flex-none items-center border-b dark:border-white/5 border-black/5",
             renderCollapsed && "px-[0.1875rem]"
           )}
         >
           <SiteSelector isCollapsed={renderCollapsed} />
         </div>
 
-        <div className="flex-1 overflow-y-auto overflow-x-hidden">
+        {/* Mobile scrolls the entire sidebar so footer items remain reachable on short viewports. */}
+        <div className="flex-1 shrink-0 overflow-visible md:min-h-0 md:shrink md:overflow-y-auto md:overflow-x-hidden">
           <div style={{ paddingTop: "21.6px", paddingBottom: "21.6px" }}>
             <div
               className={cn(
@@ -200,7 +220,10 @@ export function Sidebar({
             >
               <div className={cn("flex flex-col space-y-1 w-full", renderCollapsed ? "w-[42px] mx-auto items-center" : "px-1")}>
                 <Suspense fallback={<div className="min-h-[64px]" aria-hidden />}>
-                  <RobotsNavItems isCollapsed={renderCollapsed} />
+                  <RobotsNavItems
+                    isCollapsed={renderCollapsed}
+                    onWorkspaceNavigation={() => setIsAppsLauncherOpen(false)}
+                  />
                   <DynamicShortcuts isCollapsed={renderCollapsed} />
                 </Suspense>
               </div>
@@ -236,7 +259,7 @@ export function Sidebar({
           </div>
         </div>
 
-          <div className="flex-none border-t dark:border-white/5 border-black/5">
+        <div className="flex-none border-t dark:border-white/5 border-black/5 pb-[env(safe-area-inset-bottom,0px)] md:pb-0">
           <div
             className={cn(
               "flex flex-col space-y-1 py-4",
@@ -260,6 +283,7 @@ export function Sidebar({
                 href="/navigation"
                 icon={LayoutGrid}
                 title={t("layout.sidebar.apps") === "layout.sidebar.apps" ? "Apps" : t("layout.sidebar.apps")}
+                shortcut="A"
                 isActive={pathname.startsWith("/navigation") || isAppsLauncherOpen}
                 isCollapsed={renderCollapsed}
                 onClick={handleAppsClick}

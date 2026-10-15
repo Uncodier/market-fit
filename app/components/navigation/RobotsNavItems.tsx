@@ -1,12 +1,13 @@
 "use client"
 
-import { useMemo } from "react"
-import { usePathname, useSearchParams } from "next/navigation"
+import { useCallback, useEffect, useMemo } from "react"
+import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { MenuItem } from "./MenuItem"
 import { RobotsBadge } from "./RobotsBadge"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { useLayout } from "@/app/context/LayoutContext"
 import { useOptionalScreenAccess } from "@/app/context/ScreenAccessContext"
+import { navigateOrAssign } from "@/lib/navigation/stale-router"
 
 function resetBreadcrumbTrail() {
   if (typeof window === "undefined") return
@@ -15,12 +16,14 @@ function resetBreadcrumbTrail() {
 
 interface RobotsNavItemsProps {
   isCollapsed: boolean
+  onWorkspaceNavigation?: () => void
 }
 
-export function RobotsNavItems({ isCollapsed }: RobotsNavItemsProps) {
+export function RobotsNavItems({ isCollapsed, onWorkspaceNavigation }: RobotsNavItemsProps) {
   const { t } = useLocalization()
   const { robotsViewMode, setRobotsViewMode } = useLayout()
   const pathname = usePathname()
+  const router = useRouter()
   const searchParams = useSearchParams()
   const searchQueryString = searchParams.toString()
 
@@ -52,6 +55,33 @@ export function RobotsNavItems({ isCollapsed }: RobotsNavItemsProps) {
   const showContentCreator = !screenAccess || screenAccess.canAccessNavKey("contentCreator")
   const showWorkflows = !screenAccess || screenAccess.canAccessNavKey("workflows")
 
+  const activateAgentView = useCallback(() => {
+    setRobotsViewMode("agent")
+    resetBreadcrumbTrail()
+    onWorkspaceNavigation?.()
+  }, [setRobotsViewMode, onWorkspaceNavigation])
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (
+        event.defaultPrevented ||
+        event.isComposing ||
+        event.altKey ||
+        event.shiftKey ||
+        !(event.metaKey || event.ctrlKey) ||
+        event.key.toLowerCase() !== "i"
+      ) return
+
+      event.preventDefault()
+      if (event.repeat) return
+      activateAgentView()
+      navigateOrAssign(router, agentHref)
+    }
+
+    document.addEventListener("keydown", handleKeyDown)
+    return () => document.removeEventListener("keydown", handleKeyDown)
+  }, [activateAgentView, agentHref, router])
+
   return (
     <>
       <MenuItem
@@ -59,12 +89,10 @@ export function RobotsNavItems({ isCollapsed }: RobotsNavItemsProps) {
         href={agentHref}
         moduleImage={{ area: "automation", itemKey: "salesHome" }}
         title={t("layout.sidebar.agents") || "AI Workspace"}
+        shortcut="I"
         isActive={agentActive}
         isCollapsed={isCollapsed}
-        onClick={() => {
-          setRobotsViewMode("agent")
-          resetBreadcrumbTrail()
-        }}
+        onClick={activateAgentView}
       >
         <RobotsBadge isActive={agentActive} />
       </MenuItem>

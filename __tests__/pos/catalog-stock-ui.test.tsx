@@ -75,6 +75,7 @@ describe("POS stock UI", () => {
     ] as CatalogItem[]
     const onConfirm = jest.fn()
     render(<PosOptionsDialog item={parent} open onOpenChange={jest.fn()} onConfirm={onConfirm}
+      modifierGroupsByHostId={{}}
       catalogItems={[parent, ...children]} resolvePrice={(_, fallback) => fallback}
       getAvailability={(candidate) => getPosItemAvailability(candidate, {
         policy: "block", levels: [{ catalog_item_id: "large", location_id: "store", quantity: 1 }],
@@ -101,6 +102,7 @@ describe("POS stock UI", () => {
     ] as CatalogItem[]
     const onConfirm = jest.fn()
     render(<PosOptionsDialog item={parent} open onOpenChange={jest.fn()} onConfirm={onConfirm}
+      modifierGroupsByHostId={{}}
       catalogItems={[parent, ...children]} resolvePrice={(_, fallback) => fallback}
       getAvailability={() => ({ sellable: true, status: "available", backorderQty: 0 })} />)
     fireEvent.click(await screen.findByRole("button", { name: "Red" }))

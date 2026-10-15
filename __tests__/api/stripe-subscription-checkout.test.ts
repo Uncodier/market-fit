@@ -230,7 +230,9 @@ describe('existing subscriptions and checkout retries', () => {
     const response = await POST(request({ billingInterval: 'year' }))
     expect(response.status).toBe(200)
     expect(await response.json()).toMatchObject({ url: 'https://portal.example.test/confirm', flow: 'subscription_update_confirm' })
-    expect(sdk.billingPortal.configurations.retrieve).toHaveBeenCalledWith('bpc_safe')
+    expect(sdk.billingPortal.configurations.retrieve).toHaveBeenCalledWith('bpc_safe', {
+      expand: ['features.subscription_update.products'],
+    })
     expect(sdk.billingPortal.sessions.create.mock.calls[0][0]).toMatchObject({ customer: 'cus_site', configuration: 'bpc_safe',
       flow_data: { type: 'subscription_update_confirm', subscription_update_confirm: {
         subscription: 'sub_existing', items: [{ id: 'si_base', price: 'price_4', quantity: 1 }] } } })

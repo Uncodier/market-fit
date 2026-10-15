@@ -68,7 +68,9 @@ describe('dedicated hosted subscription-update portal', () => {
     const input = params()
     expect(await existingSubscriptionFlow(input)).toEqual({ url: 'https://portal.example.test/confirm',
       sessionId: 'bps_confirm', flow: 'subscription_update_confirm' })
-    expect(sdk.billingPortal.configurations.retrieve).toHaveBeenCalledWith('bpc_update')
+    expect(sdk.billingPortal.configurations.retrieve).toHaveBeenCalledWith('bpc_update', {
+      expand: ['features.subscription_update.products'],
+    })
     expect(beforeProviderWrite).toHaveBeenCalledTimes(1)
     expect(sdk.billingPortal.sessions.create).toHaveBeenCalledWith({
       customer: 'cus_site', configuration: 'bpc_update', return_url: input.returnUrl,
@@ -76,6 +78,17 @@ describe('dedicated hosted subscription-update portal', () => {
         subscription: 'sub_existing', items: [{ id: 'si_base', price: 'price_year', quantity: 1 }] },
       after_completion: { type: 'redirect', redirect: { return_url: input.successUrl } } },
     }, { idempotencyKey: `subscription-update-year-${input.idempotencyKey}` })
+  })
+  it('requests the portal catalog explicitly when Stripe omits products from unexpanded responses', async () => {
+    sdk.billingPortal.configurations.retrieve.mockImplementation(async (_id, options) => {
+      const config = configuration()
+      if (options?.expand?.includes('features.subscription_update.products')) return config
+      return { ...config, features: { subscription_update: {
+        ...config.features.subscription_update, products: undefined,
+      } } }
+    })
+    expect(await existingSubscriptionFlow(params())).toMatchObject({ flow: 'subscription_update_confirm' })
+    expect(sdk.billingPortal.sessions.create).toHaveBeenCalledTimes(1)
   })
   it.each([undefined, '', 'invalid', 'bpc_generic'])('requires explicit distinct configuration %s, never falls back to default', async (id) => {
     if (id === undefined) delete process.env.STRIPE_SUBSCRIPTION_UPDATE_PORTAL_CONFIGURATION_ID
@@ -94,7 +107,7 @@ describe('dedicated hosted subscription-update portal', () => {
     { proration_behavior: 'create_prorations' }, { proration_behavior: 'none' },
     { schedule_at_period_end: { conditions: [{ type: 'shortening_interval' }] } },
     { schedule_at_period_end: { conditions: [{ type: 'decreasing_item_amount' }] } },
-    { schedule_at_period_end: undefined }, { products: null },
+    { schedule_at_period_end: undefined }, { products: null }, { products: undefined },
     { products: [{ product: 'prod_other', prices: ['price_year'] }] },
     { products: [{ product: 'prod_platform', prices: ['price_month'] }] },
   ])('rejects unsupported proration/update/target settings %#', async (update) => {

@@ -75,6 +75,39 @@ Requests and responses have size limits and network deadlines. API stages have
 separate deadlines so a timed-out authorization/billing check cannot later advance
 to workflow launch. A late atomic RPC may finish, but cannot trigger a replay.
 
+## MCP agent-assisted project creation
+
+The agent buttons in `/create-site` and the Makinari MCP card in
+`/skills?tab=makinari-skills` share
+`app/components/skills/mcp-agent-skill-setup.tsx`. Selecting an agent opens a
+confirmation dialog; only **Generate Key & Download Skill** creates a key via the
+existing authenticated key API and downloads the credential-bearing Markdown.
+Opening the card preview or the dialog never creates a key.
+
+`lib/makinari-mcp-skill.ts` is the single Markdown template. Both surfaces use the
+same MCP endpoint, `x-mcp-user-id` header, security notice, and `create_project`
+instructions. Both request user-level keys with only the `create_project` scope
+and no site binding; this change does not grant broader workspace permissions.
+The key validity is the only skill difference:
+
+- `/create-site`: 1 day (24 hours), unchanged.
+- Agent Skills: 90 days, matching the existing key generator's default.
+
+Agent Skills previews placeholder credentials only. Actual credentials are used
+only for the explicit file download, not persisted in browser storage or shown in
+the preview. The downloaded file must stay out of version control and be deleted
+after setup. Key creation errors remain visible and require an explicit retry;
+duplicate creation and dialog dismissal are blocked while a request is pending.
+
+Offline regression checks:
+
+```sh
+npm test -- --runInBand __tests__/lib/makinari-mcp-skill.test.ts __tests__/components/settings/mcp-agent-skill.test.tsx __tests__/app/skills/page.test.tsx __tests__/components/onboarding/onboarding-form-layout.test.tsx __tests__/components/settings/skills-cards.test.tsx
+```
+
+These tests check the requested expirations and generated files without creating
+live credentials or executing the external MCP tool.
+
 ## Historical diagnosis
 
 The earlier create-site implementation launched only when both

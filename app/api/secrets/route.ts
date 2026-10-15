@@ -25,6 +25,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid operation' }, { status: 400 });
     }
 
+    // Marketplace credentials are write-only and owned by their integration.
+    if (typeof useCase === 'string' && useCase.startsWith('marketplace:')) {
+      return NextResponse.json(
+        { error: 'Manage these credentials through the marketplace integration' },
+        { status: 403 }
+      );
+    }
+
     const access = await requireSiteAccess(req, siteId, {
       requireManager: MANAGER_OPERATIONS.has(operation),
     });

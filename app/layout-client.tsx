@@ -286,7 +286,7 @@ function LayoutClientInner({
               onCollapse={handleCollapse}
               isMobileOpen={isMobileSidebarOpen}
               onMobileClose={() => setIsMobileSidebarOpen(false)}
-              className="flex-none fixed left-0 top-0 h-screen z-[210]"
+              className="flex-none fixed left-0 top-0 z-[210]"
             />
             {/* TOUR EXPLICITAMENTE RENDERIZADO */}
             <GuidedTour />

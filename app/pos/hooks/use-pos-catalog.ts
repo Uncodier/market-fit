@@ -31,6 +31,7 @@ export function usePosCatalog(siteId: string | undefined) {
   const [hasLocalData, setHasLocalData] = useState(false);
   const [lastPulledAt, setLastPulledAt] = useState<string | null>(null);
   const [priceListItems, setPriceListItems] = useState<any[]>([]);
+  const [taxesByItem, setTaxesByItem] = useState<Awaited<ReturnType<typeof readTaxesByItemIds>>>({});
   const [modifierGroupsByHostId, setModifierGroupsByHostId] = useState<
     Record<string, any[]>
   >({});
@@ -39,10 +40,11 @@ export function usePosCatalog(siteId: string | undefined) {
     if (!siteId || activeSiteId.current !== siteId) return;
     const sequence = ++reloadSequence.current;
     const local = await readLocalCatalog(siteId);
-    const [orders, promos, pli] = await Promise.all([
+    const [orders, promos, pli, taxes] = await Promise.all([
       readLocalPendingOrders(siteId),
       readLocalPromotions(siteId),
       getPosDb().priceListItems.toArray(),
+      readTaxesByItemIds(local.catalogItems.map((item) => item.id)),
     ]);
     if (activeSiteId.current !== siteId || sequence !== reloadSequence.current) return;
     setLoadedSiteId(siteId);
@@ -55,6 +57,7 @@ export function usePosCatalog(siteId: string | undefined) {
     setPendingOrders(orders);
     setPromotions(promos);
     setPriceListItems(pli);
+    setTaxesByItem(taxes);
     setModifierGroupsByHostId(local.modifierGroupsByHostId || {});
     setHasLocalData(local.hasLocalData);
     setLastPulledAt(local.lastPulledAt);
@@ -109,6 +112,7 @@ export function usePosCatalog(siteId: string | undefined) {
     leads: isCurrentSite ? leads : [],
     priceLists: isCurrentSite ? priceLists : [],
     priceListItems: isCurrentSite ? priceListItems : [],
+    taxesByItem: isCurrentSite ? taxesByItem : {},
     modifierGroupsByHostId: isCurrentSite ? modifierGroupsByHostId : {},
     inventorySnapshot: isCurrentSite ? inventorySnapshot : null,
     setInventorySnapshot,

@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react"
 import { toast } from "sonner"
 import { getOrder } from "@/app/orders/actions"
+import { buildOrderPrintTicket } from "@/app/orders/order-printing"
 import {
   autoPrintFlagForJob,
   bluetoothErrorMessage,
@@ -19,6 +20,8 @@ import {
   type TicketBrand,
 } from "@/lib/printer"
 import { markKitchenItemsPrinted } from "@/app/printer/actions"
+import { providerAccepted, providerCancellationConfirmed } from "@/lib/marketplace/presentation"
+import { cancellationOnlyDelta, isRecentKitchenOrder } from "../core/marketplace-printing"
 
 const PRINT_DEBOUNCE_MS = 400
 const ORDER_RETRY_ATTEMPTS = 4
@@ -110,9 +113,13 @@ export function usePrinterRealtime(
         ...delta.qtyChanges
           .filter((change) => change.itemId)
           .map((change) => ({ id: change.itemId as string, quantity: change.to })),
+        ...delta.voids
+          .filter(line => line.itemId)
+          .map(line => ({ id: line.itemId as string, quantity: 0 })),
       ]
       if (printed.length) {
-        void markKitchenItemsPrinted(currentSiteId, printed)
+        const result = await markKitchenItemsPrinted(currentSiteId, printed)
+        if (result.error) toast.warning("The ticket printed, but print history was not saved")
       }
     })
   }, [settings])
@@ -134,24 +141,25 @@ export function usePrinterRealtime(
         const order = await loadOrderForPrint(orderId)
         if (!order) return
 
+        // Receiving a marketplace order is not acceptance by the restaurant.
+        const cancellation = providerCancellationConfirmed(order.metadata)
+        if (!providerAccepted(order.metadata) && !cancellation) return
+
         // Prevent auto-printing for orders older than 24 hours
         // This avoids ghost prints if an old order gets updated (e.g., from an admin dashboard or cron job)
         // while a POS tab is left open.
-        if (order.created_at) {
-          const orderDate = new Date(order.created_at)
-          const now = new Date()
-          const diffHours = (now.getTime() - orderDate.getTime()) / (1000 * 60 * 60)
-          if (diffHours > 24) {
-            console.warn(`[printer] skipping order ${orderId} because it is older than 24h`)
-            return
-          }
-        }
+        if (!isRecentKitchenOrder(order)) return
 
         const rawItems = order.sale_order_items || []
         if (rawItems.length === 0) return
         const items = mapSaleOrderItemsToDeltaLines(rawItems)
         const previous = mapSaleOrderItemsToDeltaLines(loadSnapshot(orderId) || [])
-        const delta = computeKitchenDelta(previous, items)
+        const delta = cancellation
+          ? cancellationOnlyDelta(buildOrderPrintTicket(
+            previous.length > 0 && previous.every(line => line.status === "cancelled")
+              ? [] : rawItems.map(item => ({ ...item, status: "cancelled" })), "delta",
+          ).delta)
+          : computeKitchenDelta(previous, items)
 
         const usable =
           delta.kind === "full"

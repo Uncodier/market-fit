@@ -8,6 +8,7 @@ import { shouldCancelLinkedSale } from "./cancel-linked-sale";
 import { grantFromOrder } from "@/app/commerce/entitlements";
 import { revokeOrderFulfillment } from "@/app/commerce/order-fulfillment-sync";
 import { hashRedisKeyPart } from "@/lib/redis/control-plane";
+import { assertInternalOrder } from "@/lib/marketplace/mutation-guards";
 import {
   bumpCacheEpoch,
   readCacheEpoch,
@@ -147,6 +148,12 @@ export async function listOrders(params: OrderParams) {
       return { data: [], count: 0, error: "Not authenticated" }
     }
 
+    // Provider mutations originate outside this Server Action. A realtime reload
+    // must not consume a five-second stale cache and then wait indefinitely.
+    const { data: marketplaceConnections, error: marketplaceError } = await supabase
+      .from("marketplace_integrations").select("id").eq("site_id", params.siteId).limit(1)
+    if (marketplaceError || marketplaceConnections?.length) return queryOrders(params)
+
     const epoch = await readCacheEpoch("order-data", params.siteId)
     const cacheIdentity = await hashRedisKeyPart(
       JSON.stringify({
@@ -189,7 +196,7 @@ export async function getOrder(id: string) {
     .select(`
       *,
       sales (status, source, amount, payment_method, amount_due, payments),
-      shipments (id, status, tracking_number, carrier),
+      shipments (id, status, tracking_number, carrier, metadata),
       price_lists (name),
       promotions (name, code),
       sale_order_items (*)
@@ -277,12 +284,15 @@ export async function updateOrderStatus(siteId: string, orderId: string, status:
 
     const { data: currentOrder, error: fetchError } = await supabase
       .from("sale_orders")
-      .select("id, status, sale_id")
+      .select("id, status, sale_id, metadata")
       .eq("site_id", siteId)
       .eq("id", orderId)
       .single();
 
     if (fetchError) throw new Error(fetchError.message);
+    if (currentOrder?.metadata?.marketplace) {
+      return { error: "Use the marketplace order actions to update this order" };
+    }
     if (currentOrder?.status === "cancelled" && status !== "cancelled") {
       return { error: "Cancelled orders cannot be reopened" }
     }
@@ -358,10 +368,12 @@ export async function updateOrderStatus(siteId: string, orderId: string, status:
 export async function updateOrderItemStatus(siteId: string, itemId: string, orderId: string, status: string) {
   try {
     const supabase = await createClient();
+    await assertInternalOrder(supabase, siteId, orderId);
     const { error } = await supabase
       .from("sale_order_items")
       .update({ status })
       .eq("site_id", siteId)
+      .eq("sale_order_id", orderId)
       .eq("id", itemId);
 
     if (error) throw new Error(error.message);
@@ -391,6 +403,7 @@ export async function updateOrderItemsStatus(
 
   try {
     const supabase = await createClient()
+    await assertInternalOrder(supabase, siteId, orderId)
     const { error } = await supabase
       .from("sale_order_items")
       .update({ status })
@@ -411,6 +424,7 @@ export async function updateOrderItemsStatus(
 export async function updateOrderNotes(siteId: string, orderId: string, notes: string) {
   try {
     const supabase = await createClient();
+    await assertInternalOrder(supabase, siteId, orderId);
     const { data, error } = await supabase
       .from("sale_orders")
       .update({ notes })

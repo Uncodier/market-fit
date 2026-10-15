@@ -20,6 +20,7 @@ import {
 import type { OrderWithRelations } from "@/app/orders/types"
 import { isPosOpenOrder } from "@/app/pos/open-orders"
 import { cn } from "@/lib/utils"
+import { marketplaceMetadata, providerAccepted, providerCancellationConfirmed } from "@/lib/marketplace/presentation"
 
 type OrderActionsMenuProps = {
   order: OrderWithRelations
@@ -47,6 +48,7 @@ export function OrderActionsMenu({
   onSplit,
 }: OrderActionsMenuProps) {
   const orderIsOpen = Boolean(order.sale_id) && isPosOpenOrder(order)
+  const external = Boolean(marketplaceMetadata(order.metadata))
   const amount = Number(order.sales?.amount ?? order.total) || 0
   const amountDue = Number(order.sales?.amount_due) || 0
   const hasPriorPayments =
@@ -96,7 +98,7 @@ export function OrderActionsMenu({
           Open order
         </DropdownMenuItem>
 
-        {orderIsOpen && amountDue > 0.009 ? (
+        {!external && orderIsOpen && amountDue > 0.009 ? (
           <DropdownMenuItem
             className="cursor-pointer"
             onSelect={() => onPay(order)}
@@ -106,7 +108,7 @@ export function OrderActionsMenu({
           </DropdownMenuItem>
         ) : null}
 
-        {orderIsOpen && !hasPriorPayments ? (
+        {!external && orderIsOpen && !hasPriorPayments ? (
           <DropdownMenuItem
             className="cursor-pointer"
             onSelect={() => onSplit(order)}
@@ -116,7 +118,7 @@ export function OrderActionsMenu({
           </DropdownMenuItem>
         ) : null}
 
-        {hasPrintableItems ? (
+        {hasPrintableItems && providerAccepted(order.metadata) ? (
           <>
             <DropdownMenuSeparator />
             <DropdownMenuItem
@@ -136,7 +138,15 @@ export function OrderActionsMenu({
           </>
         ) : null}
 
-        {canCancel && order.status !== "cancelled" ? (
+        {providerCancellationConfirmed(order.metadata) && order.sale_order_items?.some(item =>
+          !item.parent_sale_order_item_id && Number(item.metadata?.printed_quantity) > 0) ? (
+          <DropdownMenuItem className="cursor-pointer" onSelect={() => void onPrintDelta(order)}>
+            <RotateCw className="mr-2 h-4 w-4" />
+            Print cancellation
+          </DropdownMenuItem>
+        ) : null}
+
+        {!external && canCancel && order.status !== "cancelled" ? (
           <>
             <DropdownMenuSeparator />
             <DropdownMenuItem

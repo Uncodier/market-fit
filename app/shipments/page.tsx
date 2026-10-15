@@ -5,9 +5,9 @@ import useSWR from "swr"
 import { useSite } from "@/app/context/SiteContext"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { listShipments, updateShipmentStatus } from "./actions"
-import { ShipmentParams } from "./types"
+import type { ShipmentParams, ShipmentWithRelations } from "./types"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
-import { MobileFiltersDrawer, FilterContainer, FilterSection, FilterSeparator } from "@/app/components/ui/mobile-filters-drawer"
+import { MobileFiltersDrawer, FilterContainer, FilterSection } from "@/app/components/ui/mobile-filters-drawer"
 import { SearchInput } from "@/app/components/ui/search-input"
 import { Tabs, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
@@ -25,6 +25,9 @@ import { CreateShipmentDialog } from "./components/CreateShipmentDialog"
 import { EmptyCard } from "@/app/components/ui/empty-card"
 
 import { SortDropdown } from "@/app/components/ui/sort-dropdown"
+import { useShipmentsRealtime } from "./hooks/useShipmentsRealtime"
+import { marketplaceMetadata } from "@/lib/marketplace/presentation"
+import { useOptionalPermissions } from "@/app/context/PermissionContext"
 
 export default function ShipmentsPage() {
   const searchParams = useSearchParams()
@@ -35,6 +38,7 @@ export default function ShipmentsPage() {
   const { currentSite } = useSite()
   const { t } = useLocalization()
   const router = useRouter()
+  const permissions = useOptionalPermissions()
 
   const [page, setPage] = useState(1)
   const pageSize = 50
@@ -62,6 +66,8 @@ export default function ShipmentsPage() {
     fetcher
   )
 
+  useShipmentsRealtime(currentSite?.id, () => { void mutate() })
+
   useEffect(() => {
     const event = new CustomEvent("breadcrumb:update", {
       detail: {
@@ -79,14 +85,15 @@ export default function ShipmentsPage() {
 
   const handleUpdateShipmentStatus = async (shipmentId: string, newStatus: string) => {
     if (!currentSite?.id) return
+    if (!permissions?.capabilities || !permissions.can("update") || marketplaceMetadata(data?.data.find((shipment) => shipment.id === shipmentId)?.metadata)) return
 
     // Optimistic update
     mutate(data => {
       if (!data) return data;
       return {
         ...data,
-        data: data.data.map((shipment: any) => 
-          shipment.id === shipmentId ? { ...shipment, status: newStatus } : shipment
+        data: data.data.map((shipment) =>
+          shipment.id === shipmentId ? { ...shipment, status: newStatus as ShipmentWithRelations["status"] } : shipment
         )
       }
     }, { revalidate: false })
@@ -100,7 +107,7 @@ export default function ShipmentsPage() {
       }
       toast.success("Shipment status updated")
       mutate()
-    } catch (error) {
+    } catch {
       toast.error("Error updating shipment")
       mutate() // Revert
     }

@@ -1,4 +1,8 @@
 {
+  "billing.salePaymentFee.label": "Frais de paiement par carte : {{percent}}% · traitement inclus",
+  "billing.salePaymentFee.defaultLabel": "Frais de paiement par carte par défaut : {{percent}}% · traitement inclus · forfait actuel indisponible",
+  "billing.salePaymentFee.planUnavailable": "Forfait actuel indisponible",
+  "billing.salePaymentFee.notice": "Les tarifs concernent les paiements standard par carte. Il n’est pas garanti que {{percent}}% couvre les coûts de traitement des paiements internationaux, des conversions de devises ou des paiements de faible montant.",
   "auth.signInBtn": "Se connecter",
   "auth.signInDesc": "Connectez-vous pour voir vos commandes et continuer vos achats.",
   "auth.signInLink": "Se connecter",

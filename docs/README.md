@@ -20,9 +20,12 @@ Use the guides below before relying on older implementation notes.
   and data assumptions.
 - [E2E execution and evidence](E2E_TESTING.md) — safe suite selection, fixtures,
   run provenance, strict assertions and unresolved live-verification blockers.
+- [Production harness canaries](HARNESS_PRODUCTION_CANARIES.md) — five explicitly
+  scoped requirement tests and a read-only local cron observer; separate from browser suites.
 
 ## Integration guides
 
+- [Native Rappi and Uber Eats orders](MARKETPLACE_ORDERS.md)
 - [Content Creator speech voice/language options](CONTENT_CREATOR_AUDIO.md)
 - [Agent channel phone numbers](AGENT_CHANNEL_NUMBERS.md)
 - [Accounting integrity and rollout](ACCOUNTING.md)
@@ -46,9 +49,12 @@ Use the guides below before relying on older implementation notes.
 - [Pending ICP mining list selection](ICP_MINING_LIST_SELECTION.md)
 - [Daily Standup settings](DAILY_STANDUP_SETTINGS.md)
 - [Stripe setup](STRIPE_SETUP.md)
+- [Stripe sale payment fee policy and rollout](STRIPE_SALE_PAYMENT_FEES.md)
 - [Annual Stripe Price provisioning script](STRIPE_ANNUAL_PRICE_SCRIPT.md)
 - [Stripe environment variables](STRIPE_ENVIRONMENT_VARIABLES.md)
 - [Stripe webhook security](STRIPE_WEBHOOK_SECURITY.md)
+- [Stripe sale currency and wallet recovery](STRIPE_SALE_CURRENCY_RECOVERY.md)
+- [Stripe sale total payment fee schedule and rollout](STRIPE_SALE_COMMISSION_RATES.md)
 - [Subscription invoice settlement and recovery](STRIPE_INVOICE_RECOVERY.md)
 - [Monthly credit reset and protected balances](BILLING_CREDIT_RESET.md)
 - [Automatic credit top-up rollout](AUTO_TOP_UP.md)
@@ -64,6 +70,10 @@ Use the guides below before relying on older implementation notes.
 Integration guides explain setup details, but the code and migrations remain the
 source of truth for implemented behavior. Revalidate event names, routes, and
 environment variables before changing production configuration.
+
+## Product designs
+
+- [Suppliers, procurement, tenders, and the unified account portal](/Users/prado/Desktop/Proyectos/Uncodie/Code/market-fit/docs/PROCUREMENT_AND_TENDERS_DESIGN.md) — planned model, screens, UI/UX reuse references, and `/buyer` to `/home` migration; not implemented behavior.
 
 ## Architecture reviews
 

@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server"
-import { GET as revenue } from "@/app/api/revenue/route"
+import { GET as revenue } from "./revenue"
 import { GET as ltv } from "@/app/api/ltv/route"
 import { GET as cac } from "@/app/api/cac/route"
 import { GET as cpl } from "@/app/api/cpl/route"

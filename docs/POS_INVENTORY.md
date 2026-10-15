@@ -30,6 +30,26 @@ an invalid line remains possible.
 
 ## Synchronization and server validation
 
+### Instant cart and option interactions
+
+Product clicks use the loaded site-scoped snapshot, including hidden variants
+and modifier groups. Simple products update the local cart immediately; the click
+does not query the server or IndexedDB to discover choices. An empty modifier map
+is authoritative. Legacy parents without variant metadata are detected from their
+cached child SKUs. Stock checks still run synchronously before a cart edit.
+
+Option dialogs render cached variants and extras on their first frame, rather
+than briefly showing a loading skeleton. Taxes are also loaded into memory with
+the catalog so product, extra, quantity, and tax totals update together. Catalog
+synchronization refreshes those in-memory values. Server pricing, inventory, and
+payment validation remain authoritative when the order is synchronized.
+
+Heavy dialog code is warmed during idle time without mounting closed dialogs.
+Opening before a chunk is ready shows a cancellable dialog skeleton instead of
+an unresponsive click. Read-only reservation availability is prefetched only for
+the selected reservable item, using the existing slot cache and in-flight request
+deduplication; it is not a reservation or permission to skip server validation.
+
 The authorized POS snapshot includes site-scoped inventory and policy in IndexedDB.
 Stock is read outside the catalog Redis cache. The existing catalog revision now
 includes stock quantities, locations and commerce settings, including writes that

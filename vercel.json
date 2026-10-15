@@ -7,6 +7,5 @@
   },
   "framework": "nextjs",
   "regions": ["cdg1"],
-  "buildCommand": "npm run build",
-  "crons": [{ "path": "/api/stripe/auto-top-up/worker", "schedule": "*/5 * * * *" }]
+  "buildCommand": "npm run build"
 } 

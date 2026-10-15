@@ -43,6 +43,8 @@ import { Sale } from "@/app/types"
 import { OrderInvoiceDocument } from "../../components/OrderInvoiceDocument"
 import { OrderStatusBar } from "../../components/OrderStatusBar"
 import { OrderWithRelations } from "../../types"
+import { MarketplaceOrderControls } from "../../components/MarketplaceOrderControls"
+import { marketplaceMetadata, providerAccepted } from "@/lib/marketplace/presentation"
 
 type OrderDetailViewProps = {
   order: OrderWithRelations
@@ -121,6 +123,7 @@ function AttributionIdentity({
 }
 
 export function OrderDetailView(props: OrderDetailViewProps) {
+  const external = Boolean(marketplaceMetadata(props.order.metadata))
   const {
     order,
     items,
@@ -151,7 +154,7 @@ export function OrderDetailView(props: OrderDetailViewProps) {
                 <TabsTrigger value="shipments">{t("orders.detail.tabs.shipments") || "Shipments"}</TabsTrigger>
               </TabsList>
               <div className="flex items-center gap-1">
-                {order.status !== "cancelled" && Number(order.sales?.amount_due) > 0 && (
+                {!external && order.status !== "cancelled" && Number(order.sales?.amount_due) > 0 && (
                   <>
                     <Button
                       variant="ghost"
@@ -182,18 +185,18 @@ export function OrderDetailView(props: OrderDetailViewProps) {
                   {t("orders.detail.clientLink") || "Client Link"}
                 </Button>
                 <div className="mx-1 h-6 w-px bg-border" />
-                <Button variant="ghost" size="sm" onClick={props.onPrint} className="flex items-center gap-1">
+                <Button variant="ghost" size="sm" onClick={props.onPrint} disabled={!providerAccepted(order.metadata)} className="flex items-center gap-1">
                   <Printer className="h-4 w-4" />
                   {t("common.print") || "Print"}
                 </Button>
               </div>
             </div>
             <div className="flex flex-shrink-0 items-center justify-end">
-              <OrderStatusBar
+              {external ? <MarketplaceOrderControls order={order} /> : <OrderStatusBar
                 currentStatus={order.status}
                 onStatusChange={props.onStatusChange}
                 disabled={updatingStatus}
-              />
+              />}
             </div>
           </div>
         </StickyHeader>
@@ -270,6 +273,7 @@ export function OrderDetailView(props: OrderDetailViewProps) {
                 </SectionCardHeader>
                 <SectionCardContent>
                   <Textarea
+                    readOnly={external}
                     placeholder={t("orders.detail.notesPlaceholder") || "Add internal notes about this order..."}
                     value={notes}
                     onChange={(event) => props.onNotesChange(event.target.value)}
@@ -280,7 +284,7 @@ export function OrderDetailView(props: OrderDetailViewProps) {
                   <Button
                     variant="outline"
                     onClick={props.onSaveNotes}
-                    disabled={savingNotes || notes === (order.notes || "")}
+                    disabled={external || savingNotes || notes === (order.notes || "")}
                     size="sm"
                   >
                     <Save className="mr-2 h-4 w-4" />
@@ -323,7 +327,7 @@ export function OrderDetailView(props: OrderDetailViewProps) {
             <div className="mx-auto max-w-[800px] space-y-6">
               <div className="flex items-center justify-between">
                 <h3 className="text-lg font-medium">{t("orders.detail.associatedShipments") || "Associated Shipments"}</h3>
-                <Button type="button" variant="outline" size="sm" onClick={props.onCreateShipment} disabled={isCreatingShipment}>
+                <Button type="button" variant="outline" size="sm" onClick={props.onCreateShipment} disabled={external || isCreatingShipment}>
                   {isCreatingShipment ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
                   {t("orders.detail.createShipment") || "Create Shipment"}
                 </Button>

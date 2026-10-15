@@ -175,7 +175,15 @@ querying it or silently replacing dates.
   Its sales series counts created records across all statuses, not revenue; the
   KPI tooltip and chart description distinguish it from the Sales report.
 - Overview's sales chart shares the revenue batch result; it no longer fetches
-  raw sales separately. Batch revenue skips category joins.
+  raw sales separately. Batch revenue skips category joins. Overview adds two
+  smooth lines for recorded expenses and purchases, using only the selected
+  period's transaction dates and purchase dates. The smoothing is visual; tooltips
+  retain exact bucket totals on the same currency axis as the stacked sales bars.
+  Purchases include active vendor bills separately from expenses, including inventory
+  purchases, without loading purchase items, reconstructing COGS, or calculating
+  net profit. Expenses follow segment attribution; purchases remain site-wide and
+  the chart explicitly discloses this when a segment is selected. Missing cost
+  coverage remains unavailable rather than becoming a zero or a connected line.
 - Traffic Sessions also uses the shared, identity-partitioned request lifecycle:
   StrictMode mounts and concurrent consumers deduplicate requests, obsolete filter
   responses cannot overwrite the active report, and errors provide a retry action.

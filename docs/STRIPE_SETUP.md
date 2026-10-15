@@ -124,9 +124,15 @@ contract is returned, optionally with `flow: subscription_update_confirm`.
 The server never optimistically changes paid plan/addons/interval. Entitlements
 change only in paid-invoice settlement.
 
-The live default portal configuration must enable price updates, list the target
-product/price, use `always_invoice`, and have no scheduled downgrade conditions.
-Configuration is read, never created or changed by this endpoint.
+Set `STRIPE_SUBSCRIPTION_UPDATE_PORTAL_CONFIGURATION_ID` to an active, dedicated,
+non-default `bpc_...` configuration, distinct from
+`STRIPE_BILLING_PORTAL_CONFIGURATION_ID`. It must allow only price updates, list
+the target product/price, use `always_invoice`, and have no scheduled downgrade
+conditions. Stripe also requires payment-method updates to be enabled. The
+endpoint explicitly expands `features.subscription_update.products` to verify
+the catalog; configuration is read, never created or changed by this endpoint.
+Keep subscription updates disabled on the separate generic billing portal. See
+[separate billing portal configurations](ANNUAL_PRICING_UI.md#separate-billing-portal-configurations).
 Stripe's SDK supports only one item for this hosted flow: multi-item subscriptions
 and unsafe/unavailable portal configuration return an explicit `409` requiring
 billing support, not a second subscription checkout.

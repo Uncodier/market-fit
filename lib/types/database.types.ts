@@ -2,6 +2,7 @@ import type { DatabaseFunctions } from "./database-functions.types"
 import type { BillingCreditRow } from "./billing-credits.types"
 import type { SaleOrderItemUnitsTable } from "./database-order-line.types"
 import type { SitesTable } from "./database-site.types"
+import type { MarketplaceDatabaseTables } from "./database-marketplace.types"
 export * from "./database-domain.types"
 
 export type Json =
@@ -11,7 +12,7 @@ export type Json =
 
 export interface Database {
   public: {
-    Tables: {
+    Tables: MarketplaceDatabaseTables & {
       user_site_notifications: {
         Row: {
           user_id: string
@@ -138,6 +139,9 @@ export interface Database {
       shipments: {
         Row: {
           id: string
+          metadata: Json
+          marketplace_integration_id: string | null
+          external_delivery_id: string | null
           site_id: string
           sale_order_id: string
           sale_id: string | null

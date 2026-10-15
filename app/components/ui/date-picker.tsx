@@ -19,7 +19,7 @@ import { isDateRangePreset, type DateRangeSelection } from "@/lib/dates/date-ran
 export type { DateEvent, DateEventPeriod, DateEventType, DatePickerMode, DatePickerProps } from "./date-picker-types"
 
 export function DatePicker({
-  date, setDate, className, placeholder, disabled = false, showEvents = true, events,
+  date, setDate, id, "aria-describedby": ariaDescribedBy, className, placeholder, disabled = false, showEvents = true, events,
   customEvents = false, position = "bottom", onRangeSelect, mode = 'default', endDate,
   setEndDate, rangeDisplay, rangePreset, maxRangeDays, showTimePicker = false, timeFormat = '24h', trigger,
 }: DatePickerProps) {
@@ -158,6 +158,8 @@ export function DatePicker({
 
   const triggerButton = (
     <Button
+      id={id}
+      aria-describedby={ariaDescribedBy}
       type="button" variant={mode === 'range' ? "secondary" : "outline"}
       className={cn(
         mode === 'range' ? "h-9" : "h-10", "text-left font-normal",
@@ -187,6 +189,7 @@ export function DatePicker({
         <Dialog open={open} onOpenChange={changeOpen}>
           <DialogTrigger asChild disabled={disabled}>{resolvedTrigger}</DialogTrigger>
           <DialogContent
+            aria-describedby={undefined}
             className="p-0 w-[95vw] max-w-[400px] gap-0 border-border bg-popover !fixed !inset-auto !left-1/2 !top-1/2 !-translate-x-1/2 !-translate-y-1/2 !rounded-xl"
             showClose={true}
           >

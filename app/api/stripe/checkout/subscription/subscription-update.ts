@@ -188,7 +188,12 @@ export async function existingSubscriptionFlow(params: {
     throw configurationError()
   }
   let config: Stripe.BillingPortal.Configuration
-  try { config = await stripe.billingPortal.configurations.retrieve(configurationId) }
+  try {
+    // Stripe omits the portal catalog unless this field is explicitly expanded.
+    config = await stripe.billingPortal.configurations.retrieve(configurationId, {
+      expand: ['features.subscription_update.products'],
+    })
+  }
   catch { throw configurationError() }
   const update = config?.features?.subscription_update
   const targetProduct = stripeObjectId(params.price.product)

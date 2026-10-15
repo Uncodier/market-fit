@@ -1,5 +1,15 @@
 # Environment Variables
 
+## API-owned worker scheduling
+
+Internal POST dispatch of marketplace recovery and credit auto-top-up workers
+uses the existing `SERVICE_API_KEY` in `x-api-key`. These workers no longer use
+`CRON_SECRET` in market-fit. Their schedules and `CRON_SECRET` live in API; API
+uses its existing `NEXT_PUBLIC_APP_URL` to reach this application. No additional
+worker-specific variables are needed. Provider webhooks and encryption
+configuration are unchanged. Never expose the service key through
+`NEXT_PUBLIC_*` or commit its value.
+
 Create `.env.local` from `.env.example` for local development:
 
 ```bash
@@ -11,6 +21,40 @@ runtime manifest. This document maps additional feature-specific configuration
 used by the code. Never copy production secrets into committed files.
 
 ## Visibility rules
+
+### Marketplace integrator applications
+
+The default **Connect with Makinari** flow reads server-only application
+credentials. Production requires `UBER_EATS_CLIENT_ID`, `UBER_EATS_CLIENT_SECRET`,
+`RAPPI_CLIENT_ID`, `RAPPI_CLIENT_SECRET`, and `RAPPI_INTEGRATION_ID` (Rappi TAM setup).
+Sandbox is independently configured using `UBER_EATS_SANDBOX_CLIENT_ID`,
+`UBER_EATS_SANDBOX_CLIENT_SECRET`, `RAPPI_SANDBOX_CLIENT_ID`,
+`RAPPI_SANDBOX_CLIENT_SECRET`, and `RAPPI_SANDBOX_INTEGRATION_ID`. There is no
+production-credential fallback for sandbox. The approved provider app must register
+the exact callback under `NEXT_PUBLIC_APP_URL` shown in
+[Marketplace orders](MARKETPLACE_ORDERS.md#merchant-connection-model).
+
+For Makinari's Uber app, configure `UBER_EATS_WEBHOOK_SIGNING_KEY` with the exact
+**Signing Key** configured under **Primary Webhook → Basic HMAC**. Sandbox uses
+`UBER_EATS_SANDBOX_WEBHOOK_SIGNING_KEY`. These server-only values are independent
+of `UBER_EATS_CLIENT_SECRET` / `UBER_EATS_SANDBOX_CLIENT_SECRET`, which remain OAuth
+credentials. Both order and store-provisioning webhooks use the signing key. There
+is no OAuth-secret or production fallback when the platform signing key is empty;
+the app is not marked ready until it is configured. If Uber's signing key is the
+same as the app secret, explicitly set the same value in both variables.
+Third-party apps retain their own client-secret signing contract; Makinari's
+global signing key is never applied to their webhooks.
+
+Keep these values in the root `market-fit/.env.local` for local development and
+private environment settings for the deployed market-fit server. The separate API
+cron project and browser do not need these secrets. Restart the local server after
+changes. Never put them in `next.config`'s `env` option (which bundles values).
+
+`ENCRYPTION_KEY` and `NEXT_PUBLIC_APP_URL` are reused. Do not place application
+secrets in `NEXT_PUBLIC_*` or copy them into tenant secrets. Optional third-party
+application credentials are entered through the Advanced UI and encrypted on the
+server; they do not override Makinari's app. These variables are application
+onboarding configuration, not new worker/scheduler variables.
 
 - Variables prefixed with `NEXT_PUBLIC_` may be bundled into browser code.
 - Supabase service keys, Stripe secrets, OAuth client secrets, API keys,

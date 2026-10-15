@@ -1,12 +1,12 @@
 "use client"
 
 import { useState } from "react"
+import { McpSkillCard } from "./McpSkillCard"
 import { toast } from "sonner"
 import {
   SectionCard,
   SectionCardHeader,
   SectionCardTitle,
-  SectionCardDescription,
   SectionCardContent,
   SectionCardFooter,
 } from "@/app/components/ui/section-card"
@@ -231,214 +231,6 @@ The blog should look professional and focus on readability:
 - Use \`aria-label\` on navigation links.
 - Ensure the user can navigate back to the blog index easily.`,
   },
-  {
-    id: "makinari",
-    name: "Makinari MCP",
-    description:
-      "Operational guide to interact with the Makinari backend via MCP. Install the Makinari MCP, create an account at makinari.com, obtain API keys and use all its tools for OpenClaw workflows.",
-    tags: ["MCP", "Backend", "Automation", "Leads"],
-    docsUrl: "https://docs.makinari.com/skills/makinari",
-    rawContent: `---
-name: makinari
-description: Guía operativa para interactuar con el backend de Makinari vía MCP. Instala el MCP de Makinari, permite crear cuenta en makinari.com, obtener API key y utilizar todas sus herramientas (tools) para flujos de trabajo en OpenClaw. Úsalo cuando se necesite integrar OpenClaw con Makinari o ejecutar tareas automatizadas, leads y campañas de Makinari.
----
-
-# Makinari OpenClaw Skill
-
-Esta skill proporciona las instrucciones y herramientas necesarias para instalar y utilizar el servidor MCP de Makinari, incluyendo la creación de cuentas, obtención de API keys y el uso adecuado de las herramientas proporcionadas por el MCP.
-
-## Requisitos Previos
-
-- Entorno OpenClaw y CLI de \`mcporter\`.
-- Navegador o herramientas como \`browser\` disponibles.
-
-## 1. Creación de Cuenta y Obtención de API Key
-
-Para que el agente pueda interactuar con los servicios de Makinari, se requiere una cuenta activa en **makinari.com** y una API Key. Como agente OpenClaw, puedes asistir al usuario guiándolo o automatizando el proceso.
-
-### Paso a paso (Manual / Guiado para el usuario)
-1. Ve a [Makinari.com/signup](https://makinari.com/signup) o la página de registro.
-2. Completa el formulario de registro con tu correo electrónico y contraseña.
-3. Inicia sesión en tu cuenta.
-4. Navega al panel de **Configuración (Settings)** o **API Keys**.
-5. Haz clic en **Generar nueva API Key**.
-6. Copia la API Key generada de forma segura.
-
-### Automatización sugerida (Para Agentes con \`browser\`)
-Si se te solicita crear la cuenta automáticamente, puedes utilizar la herramienta \`browser\` para navegar por el flujo de registro.
-
-## 2. Instalación y Configuración del MCP de Makinari
-
-Una vez obtenida la API Key, el siguiente paso es configurar el servidor MCP de Makinari en OpenClaw utilizando la herramienta CLI \`mcporter\`.
-
-### Agregar el servidor MCP
-
-Para registrar el servidor de Makinari en tu entorno OpenClaw, ejecuta el siguiente comando en la terminal. Reemplaza \`TU_API_KEY_AQUI\` por la clave real. 
-
-\`\`\`bash
-mcporter server add makinari \\
-  --command "npx" \\
-  --args "-y,@makinari/mcp-server" \\
-  --env MAKINARI_API_KEY="TU_API_KEY_AQUI" \\
-  --config "/home/sergio/.openclaw/workspace/config/mcporter.json"
-\`\`\`
-
-*Nota: Todas las llamadas a \`mcporter\` en OpenClaw DEBEN incluir \`--config /home/sergio/.openclaw/workspace/config/mcporter.json\`.*
-
-### Verificar la instalación
-
-Una vez agregado, verifica que el servidor se levanta correctamente y que las tools están disponibles:
-
-\`\`\`bash
-mcporter tool list makinari --config "/home/sergio/.openclaw/workspace/config/mcporter.json"
-\`\`\`
-
-## 3. Uso de Herramientas (Tools) del MCP y Ejemplos Prácticos
-
-El MCP de Makinari expone diversas herramientas que deben utilizarse correctamente mediante la CLI \`mcporter\`. A continuación, se detalla la documentación y los ejemplos de uso de las herramientas más importantes.
-
-**IMPORTANTE:** Todas las llamadas a \`mcporter\` en OpenClaw **DEBEN** incluir el flag \`--config /home/sergio/.openclaw/workspace/config/mcporter.json\` al final del comando.
-
-### 3.1. \`makinari.instance_plan\`
-Permite crear, leer y actualizar los pasos y el estado de ejecución de los planes (Plans) de un requerimiento. Es crucial para mantener al Orquestador (PM) informado de tu avance.
-
-**Ejemplo - Actualizar el progreso de un paso (execute_step):**
-\`\`\`bash
-mcporter call makinari.instance_plan \\
-  action="execute_step" \\
-  plan_id="<PLAN_ID>" \\
-  step_id="<STEP_ID>" \\
-  step_output="Se ha completado el setup exitosamente." \\
-  step_status="completed" \\
-  instance_id="<INSTANCE_ID>" \\
-  --config /home/sergio/.openclaw/workspace/config/mcporter.json
-\`\`\`
-
-**Ejemplo - Crear un nuevo plan (create):**
-\`\`\`bash
-mcporter call makinari.instance_plan \\
-  action="create" \\
-  requirement_id="<REQ_ID>" \\
-  steps='[{"id":"step_1", "title":"Investigación", "status":"pending"}, {"id":"step_2", "title":"Desarrollo", "status":"pending"}]' \\
-  --config /home/sergio/.openclaw/workspace/config/mcporter.json
-\`\`\`
-
-### 3.2. \`makinari.requirements\`
-Gestiona los requerimientos (tickets) de los clientes, permitiendo obtener su información, actualizarlos o cambiar su estado (ej. pasar de 'backlog' a 'in-progress' o 'on-review').
-
-**Ejemplo - Obtener los datos de un requerimiento (read):**
-\`\`\`bash
-mcporter call makinari.requirements \\
-  action="read" \\
-  requirement_id="<REQ_ID>" \\
-  --config /home/sergio/.openclaw/workspace/config/mcporter.json
-\`\`\`
-
-**Ejemplo - Actualizar metadatos de un requerimiento (update):**
-\`\`\`bash
-mcporter call makinari.requirements \\
-  action="update" \\
-  requirement_id="<REQ_ID>" \\
-  metadata='{"spawn_lock": "2023-10-27T10:00:00Z"}' \\
-  --config /home/sergio/.openclaw/workspace/config/mcporter.json
-\`\`\`
-
-### 3.3. \`makinari.content\`
-Se encarga de la generación, almacenamiento o recuperación de contenido y textos generados (copywriting, posts de blog, respuestas a clientes, etc.).
-
-**Ejemplo - Guardar contenido generado:**
-\`\`\`bash
-mcporter call makinari.content \\
-  action="create" \\
-  requirement_id="<REQ_ID>" \\
-  content_type="blog_post" \\
-  body="El contenido completo de nuestro artículo..." \\
-  --config /home/sergio/.openclaw/workspace/config/mcporter.json
-\`\`\`
-
-### 3.4. \`makinari.system_notification\`
-Permite enviar notificaciones directamente al sistema o al usuario final (cliente). Muy útil para notificar cierres de tareas, alertas críticas o solicitud de revisiones.
-
-**Ejemplo - Enviar notificación de finalización:**
-\`\`\`bash
-mcporter call makinari.system_notification \\
-  action="send" \\
-  target="client" \\
-  message="Tu sitio web ha sido desplegado exitosamente en Vercel." \\
-  severity="info" \\
-  --config /home/sergio/.openclaw/workspace/config/mcporter.json
-\`\`\`
-
-### 3.5. Commerce Tools (\`quotations\`, \`checkout\`, \`entitlements\`, \`catalog_commerce\`)
-Permiten gestionar el ciclo de ventas. El asistente puede crear cotizaciones, órdenes de venta y generar links de pago para compartir con los clientes.
-
-**Ejemplo - Crear orden y generar link de pago:**
-\`\`\`bash
-# 1. Crear Orden
-mcporter call makinari.checkout \\
-  action="create_order" \\
-  buyer_user_id="<USER_ID>" \\
-  lines='[{"catalogItemId":"<CATALOG_ITEM_ID>", "quantity": 1}]' \\
-  --config /home/sergio/.openclaw/workspace/config/mcporter.json
-
-# 2. Generar Link
-mcporter call makinari.checkout \\
-  action="create_payment_link" \\
-  order_id="<ORDER_ID>" \\
-  --config /home/sergio/.openclaw/workspace/config/mcporter.json
-\`\`\`
-
-## Referencias
-
-- Vea \`references/tools.md\` para el detalle exhaustivo de todas las herramientas adicionales.
-- Vea \`scripts/install_mcp.sh\` para el script de instalación automatizado.`,
-    content: `# Makinari OpenClaw Skill
-
-## Prerequisites
-
-- OpenClaw environment and mcporter CLI.
-- Browser or browser tools available.
-
-## 1. Account Creation & API Key
-
-1. Go to makinari.com/signup
-2. Complete the registration form.
-3. Sign in to your account.
-4. Navigate to Settings > API Keys.
-5. Generate and copy your API Key.
-
-## 2. MCP Installation
-
-Register the Makinari MCP server via mcporter:
-
-  mcporter server add makinari \\
-    --command "npx" \\
-    --args "-y,@makinari/mcp-server" \\
-    --env MAKINARI_API_KEY="YOUR_API_KEY" \\
-    --config "<config-path>/mcporter.json"
-
-Verify with: mcporter tool list makinari
-
-## 3. Available Tools
-
-### instance_plan
-Create, read and update execution plan steps. Used to keep the Orchestrator (PM) informed of progress.
-
-### requirements
-Manage client requirements/tickets — read, update status (backlog → in-progress → on-review).
-
-### content
-Generate, store or retrieve generated content (copywriting, blog posts, client responses).
-
-### system_notification
-Send notifications to the system or end user for task closures, critical alerts or review requests.
-
-### Commerce tools
-- \`catalog_commerce\`: list/update marketplace listing and digital subtypes
-- \`quotations\` / \`quotation_items\`: draft→sent quote lifecycle
-- \`checkout\`: create pending order + Stripe payment link URL
-- \`entitlements\` / \`subscription_plan_items\`: digital access library and plan mappings`,
-  },
 ]
 
 interface SkillsSectionProps {
@@ -567,6 +359,7 @@ export function SkillsSection({ active }: SkillsSectionProps) {
           </SectionCard>
         )
       })}
+      <McpSkillCard />
     </div>
   )
 }

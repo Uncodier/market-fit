@@ -12,6 +12,8 @@ import { Skeleton } from "@/app/components/ui/skeleton"
 import { formatScheduledFor, scheduledForClassName } from "@/app/orders/format-scheduled-for"
 import { formatOrderProductSummary, formatOrderTime } from "@/app/orders/order-list-description"
 import { OrderActionsMenu } from "@/app/orders/components/OrderActionsMenu"
+import { MarketplaceOrderControls } from "./MarketplaceOrderControls"
+import { marketplaceMetadata, marketplaceCustomer } from "@/lib/marketplace/presentation"
 
 interface OrdersKanbanProps {
   orders: OrderWithRelations[]
@@ -27,6 +29,7 @@ interface OrdersKanbanProps {
 }
 
 const ORDER_STATUSES = [
+  { id: "draft", name: "Awaiting Acceptance", icon: Clock },
   { id: "pending", name: "Pending", icon: Clock },
   { id: "in_progress", name: "In Progress", icon: PlayCircle },
   { id: "completed", name: "Completed", icon: CheckCircle2 },
@@ -119,6 +122,7 @@ export function OrdersKanban({
 
   const onDragEnd = (result: DropResult) => {
     const { destination, source, draggableId } = result
+    if (!canCancel || marketplaceMetadata(orders.find((order) => order.id === draggableId)?.metadata)) return
 
     if (!destination) return
 
@@ -180,8 +184,10 @@ export function OrdersKanban({
                       >
                       {statusOrders.length > 0 ? (
                         statusOrders.map((order, index) => {
-                          const leadName = order.leads?.name;
-                          const leadContact = order.leads?.email || order.leads?.phone;
+                          const providerCustomer = marketplaceCustomer(order.metadata);
+                          const external = Boolean(marketplaceMetadata(order.metadata));
+                          const leadName = order.leads?.name || providerCustomer.name;
+                          const leadContact = order.leads?.email || order.leads?.phone || providerCustomer.email || providerCustomer.phone;
                           const hasNewItems = order.sale_order_items?.some((item) => item.status === 'new') || false;
                           const scheduledLabel = formatScheduledFor(order.scheduled_for);
                           const description = formatOrderProductSummary(order.sale_order_items);
@@ -198,7 +204,7 @@ export function OrdersKanban({
                                 : MapPin;
 
                           return (
-                            <Draggable key={order.id} draggableId={order.id} index={index}>
+                            <Draggable key={order.id} draggableId={order.id} index={index} isDragDisabled={Boolean(marketplaceMetadata(order.metadata)) || !canCancel}>
                               {(provided, snapshot) => (
                                 <div
                                   ref={provided.innerRef}
@@ -226,6 +232,7 @@ export function OrdersKanban({
                                       triggerClassName="absolute right-2 top-2 z-10 h-7 w-7 bg-background/90 opacity-100 shadow-sm transition-opacity md:opacity-0 md:group-hover:opacity-100 md:focus-visible:opacity-100 data-[state=open]:opacity-100"
                                     />
                                     <CardContent className="p-3 space-y-2.5">
+                                      <MarketplaceOrderControls order={order} />
                                       <div className="flex justify-between items-start gap-2 pr-7">
                                         <div className="min-w-0">
                                           <h3 className="text-sm font-semibold leading-tight group-hover:text-primary transition-colors truncate">
@@ -243,7 +250,7 @@ export function OrdersKanban({
                                                 ? "text-emerald-700 dark:text-emerald-400"
                                                 : "text-amber-700 dark:text-amber-400"
                                             )}>
-                                              {order.sales.status !== 'cancelled' && Number(order.sales.amount_due || 0) === 0
+                                              {external ? "Payment handled externally" : order.sales.status !== 'cancelled' && Number(order.sales.amount_due || 0) === 0
                                                 ? t('orders.kanban.paid')
                                                 : t('orders.kanban.unpaid')}
                                             </span>
