@@ -13,6 +13,7 @@ import {
   ImprentaContractValidationError,
   type ImprentaNodeSnapshot,
 } from "./imprenta-contract"
+import { PublishContractValidationError, resolveImplicitPublishDestinations } from "./publish-contract"
 import {
   acquireOperationLeaseResult,
   releaseLeasesWithStream,
@@ -161,7 +162,7 @@ export async function POST(request: NextRequest) {
         }
         parsedBody = strengthenImprentaAssistantPayload(
           parsedBody,
-          node as ImprentaNodeSnapshot
+          await resolveImplicitPublishDestinations(node as ImprentaNodeSnapshot, access.supabase)
         )
       }
     } else {
@@ -255,7 +256,7 @@ export async function POST(request: NextRequest) {
     detachDisconnect?.()
     upstreamController?.abort()
     await Promise.allSettled(leases.map((lease) => lease.release()))
-    if (error instanceof ImprentaContractValidationError) {
+    if (error instanceof ImprentaContractValidationError || error instanceof PublishContractValidationError) {
       return NextResponse.json({
         success: false,
         execution_started: false,

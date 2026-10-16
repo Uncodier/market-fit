@@ -39,6 +39,49 @@ const site = {
 }
 
 describe("Imprenta publish routing", () => {
+  it("uses the selected second WhatsApp connection instead of the first", () => {
+    const routing = buildPublishRouting(["whatsapp:connection:wa-2"], { settings: { channels: { connections: [
+      { id: "wa-1", type: "whatsapp", status: "connected", zavu_sender_id: "sender-one" },
+      { id: "wa-2", type: "whatsapp", status: "connected", zavu_sender_id: "sender-two" },
+    ] } } })
+    expect(routing.channelRouting.whatsapp).toMatchObject({ connection_id: "wa-2", sender_id: "sender-two" })
+    expect(routing.publishOverride).toEqual({ channel: "whatsapp", connection_id: "wa-2" })
+    expect(routing.bulkMessageOverride).toEqual({ channel: "whatsapp", connection_id: "wa-2" })
+  })
+
+  it("preserves two accounts of the same channel as separate delivery routes", () => {
+    const routing = buildPublishRouting(["whatsapp:connection:wa-1", "whatsapp:connection:wa-2"])
+    expect(routing.deliveryChannels).toEqual(["whatsapp"])
+    expect(routing.publishOverride.delivery_routes).toEqual([
+      { channel: "whatsapp", connection_id: "wa-1" }, { channel: "whatsapp", connection_id: "wa-2" },
+    ])
+    expect(routing.bulkMessageOverride.delivery_routes).toEqual(routing.publishOverride.delivery_routes)
+    expect(routing.channelRouting).toEqual({})
+  })
+
+  it("preserves account-specific mail/newsletter modes alongside exact social IDs", () => {
+    const routing = buildPublishRouting(["mail:connection:email-2", "newsletter:connection:email-1", "facebook:social:fb-2"])
+    expect(routing.publishOverride).toEqual({
+      social_accounts: ["fb-2"], social_account_targets: [{ id: "fb-2", network: "facebook" }], delivery_routes: [
+        { channel: "email", connection_id: "email-2", audience_email_mode: "mail" },
+        { channel: "email", connection_id: "email-1", audience_email_mode: "newsletter" },
+      ],
+    })
+  })
+
+  it("never substitutes another connection for a missing explicit ID", () => {
+    const routing = buildPublishRouting(["sms:connection:missing"], site)
+    expect(routing.publishOverride.connection_id).toBe("missing")
+    expect(routing.channelRouting).toEqual({})
+  })
+
+  it("uses specific voice targets and retains conversational-call exclusivity", () => {
+    expect(togglePublishDestination(["mail:connection:email-1", "facebook:social:fb-1"], "voice-agent-call:connection:voice-2"))
+      .toEqual(["facebook:social:fb-1", "voice-agent-call:connection:voice-2"])
+    expect(buildPublishRouting(["voice-agent-call:connection:voice-2"]).publishOverride)
+      .toEqual({ channel: "voice", connection_id: "voice-2", voice_mode: "agent_call" })
+  })
+
   it("uses connected account IDs instead of platform names", () => {
     const routing = buildPublishRouting(["tiktok", "instagram", "blog"], {
       settings: { social_media: [

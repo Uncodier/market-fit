@@ -158,6 +158,18 @@ range needs an explicit preset selection once to become relative. Reuse this
 hook and `lib/dates/date-range-presets.ts` when adding persistence to other screens;
 response caches such as SWR do not persist filter selection by themselves.
 
+### Partial site settings writes
+
+`app/context/site-update-settings.ts` reads the latest settings for JSON merges,
+then updates only the supplied fields, scoped by `site_id`. It inserts only when
+the initial read finds no settings row. Never replace this with a full-row upsert:
+PostgreSQL runs INSERT triggers before conflict resolution, so copying stored
+resource `_license` metadata into an upsert is rejected even for owners/admins.
+Keep RLS and license protections enabled. Confirm each write with returned row
+identity; resource changes return the full row to publish server-enforced limits.
+Printer regression tests cover the writer and a disposable local PostgreSQL
+cluster under `__tests__/context/printer-settings-*.test.ts`.
+
 ## Before handing off
 
 - Review the diff for unrelated edits and accidental secret exposure.

@@ -61,7 +61,9 @@ function persistenceFixture(activities: unknown = saved, contextLoaded = true) {
       select: () => query,
       eq: (column: string, value: string) => { expect([column, value]).toEqual(["site_id", siteId]); return query },
       single: async () => ({ data: clone(row), error: null }),
-      upsert: async (value: any) => { row = clone(value); writes.push(row); return { error: null } },
+      update: (value: any) => {
+        row = { ...row, ...clone(value) }; writes.push(clone(row)); return query
+      },
     }
     return query
   }) }

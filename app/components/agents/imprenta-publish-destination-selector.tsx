@@ -2,7 +2,6 @@
 
 import type { ReactNode } from "react"
 
-import { isSocialMediaEntryConnected } from "@/app/components/settings/data-adapter"
 import { Bot, FileText, Globe, Mail, Phone, Play } from "@/app/components/ui/icons"
 import { SocialIcon } from "@/app/components/ui/social-icons"
 import { Switch } from "@/app/components/ui/switch"
@@ -13,10 +12,11 @@ import {
   TooltipTrigger,
 } from "@/app/components/ui/tooltip"
 import {
-  getPublishChannelAvailability,
   togglePublishDestination,
 } from "@/app/components/agents/imprenta-publish-routing"
 import type { SiteChannelSource } from "@/lib/site-channels"
+import { getPublishOptions, resolveLegacyPublishSelections } from "./imprenta-publish-options"
+import { publishDestinationMode } from "@/lib/content/publish-destinations"
 
 type PublishDestinationSite = SiteChannelSource & {
   url?: string | null
@@ -34,12 +34,23 @@ export function ImprentaPublishDestinationSelector({
   onDestinationsChange,
 }: ImprentaPublishDestinationSelectorProps) {
   const siteUrl = site?.url && String(site.url).trim()
-  const currentDestinations = Array.isArray(destinations)
+  const options = getPublishOptions(site)
+  const savedDestinations = Array.isArray(destinations)
     ? destinations
     : siteUrl
       ? ["blog"]
       : []
-  const channelAvailability = getPublishChannelAvailability(site)
+  const currentDestinations = resolveLegacyPublishSelections(savedDestinations, options)
+  const ambiguous = savedDestinations.filter((value) => !value.includes(":") && options.filter((option) => option.mode === publishDestinationMode(value)).length > 1)
+  const missing = savedDestinations.filter((value) => value.includes(":") && !options.some((option) => option.key === value))
+  const iconFor = (mode: string) => {
+    if (mode === "mail") return <Mail size={12} />
+    if (mode === "newsletter") return <FileText size={12} />
+    if (mode === "sms") return <Phone size={12} />
+    if (mode === "voice") return <Play size={12} />
+    if (mode === "voice-agent-call") return <Bot size={12} />
+    return <SocialIcon platform={mode} size={12} color="currentColor" />
+  }
 
   const renderToggle = (
     key: string,
@@ -71,7 +82,8 @@ export function ImprentaPublishDestinationSelector({
               checked={isSelected}
               onCheckedChange={() =>
                 onDestinationsChange(
-                  togglePublishDestination(currentDestinations, key)
+                  togglePublishDestination(currentDestinations.filter((value) =>
+                    !ambiguous.includes(value) || publishDestinationMode(value) !== publishDestinationMode(key)), key)
                 )
               }
               onClick={(event) => event.stopPropagation()}
@@ -87,21 +99,8 @@ export function ImprentaPublishDestinationSelector({
 
   return (
     <TooltipProvider delayDuration={200}>
-      <div className="grid w-full grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-3 lg:grid-cols-4 [&>*]:min-w-0">
-        {(site?.settings?.social_media || [])
-          .filter(isSocialMediaEntryConnected)
-          .map((socialAccount) => {
-            const platform = String(socialAccount.platform)
-            const platformLabel =
-              platform.charAt(0).toUpperCase() + platform.slice(1)
-
-            return renderToggle(
-              platform,
-              platformLabel,
-              <SocialIcon platform={platform} size={12} color="currentColor" />,
-              `Publish this content to your connected ${platformLabel} account.`
-            )
-          })}
+      <div className="grid w-full grid-cols-1 gap-x-4 gap-y-2 sm:grid-cols-2 [&>*]:min-w-0">
+        {options.map((option) => renderToggle(option.key, option.label, iconFor(option.mode), option.hint))}
         {siteUrl &&
           renderToggle(
             "blog",
@@ -109,59 +108,12 @@ export function ImprentaPublishDestinationSelector({
             <Globe size={12} />,
             "Publish this content as a blog post on your site."
           )}
-        {channelAvailability.email &&
-          renderToggle(
-            "mail",
-            "Mail",
-            <Mail size={12} />,
-            "Send this content as an individual email to the selected audience."
-          )}
-        {channelAvailability.email &&
-          renderToggle(
-            "newsletter",
-            "Newsletter",
-            <FileText
-              size={12}
-              className="[&>svg]:block [&>svg]:-translate-x-px"
-            />,
-            "Include this content in your next newsletter to subscribers."
-          )}
-        {channelAvailability.whatsapp &&
-          renderToggle(
-            "whatsapp",
-            "WhatsApp",
-            <SocialIcon platform="whatsapp" size={12} color="currentColor" />,
-            "Send this content through your connected WhatsApp channel."
-          )}
-        {channelAvailability.telegram &&
-          renderToggle(
-            "telegram",
-            "Telegram",
-            <SocialIcon platform="telegram" size={12} color="currentColor" />,
-            "Send this content through your connected Telegram channel."
-          )}
-        {channelAvailability.sms &&
-          renderToggle(
-            "sms",
-            "SMS",
-            <Phone size={12} />,
-            "Send this content as an SMS message."
-          )}
-        {channelAvailability.voice &&
-          renderToggle(
-            "voice",
-            "Voice Message",
-            <Play size={12} />,
-            "Send this content as a one-way text-to-speech voice message."
-          )}
-        {channelAvailability.voice &&
-          renderToggle(
-            "voice-agent-call",
-            "Voice Agent Call",
-            <Bot size={12} />,
-            "Start a conversational outbound voice agent call."
-          )}
       </div>
+      {ambiguous.length > 0 && <p role="alert" className="text-[11px] text-destructive">Choose specific accounts for: {ambiguous.join(", ")}. The previous channel selection is ambiguous.</p>}
+      {missing.length > 0 && <div className="space-y-1">
+        <p role="alert" className="text-[11px] text-destructive">A selected account is no longer connected. Remove it or reconnect it before publishing.</p>
+        {missing.map((value) => renderToggle(value, "Unavailable account", null, "Turn off this unavailable destination."))}
+      </div>}
     </TooltipProvider>
   )
 }

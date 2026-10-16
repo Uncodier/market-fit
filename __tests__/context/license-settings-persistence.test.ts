@@ -9,7 +9,7 @@ it("publishes server-clamped settings instead of the pre-enforcement resource st
   const requested = [{ id: "social", platform: "instagram", isActive: true }]
   const persisted = { site_id: siteId, social_media: [{ ...requested[0], isActive: false, license_suspended: true }] }
   const write = { select: jest.fn().mockReturnThis(), single: jest.fn().mockResolvedValue({ data: persisted, error: null }) }
-  const query = { select: jest.fn().mockReturnThis(), eq: jest.fn().mockReturnThis(), single: jest.fn().mockResolvedValue({ data: { site_id: siteId }, error: null }), upsert: jest.fn().mockReturnValue(write) }
+  const query = { select: jest.fn().mockReturnThis(), eq: jest.fn().mockReturnThis(), single: jest.fn().mockResolvedValue({ data: { site_id: siteId }, error: null }), update: jest.fn(() => ({ eq: jest.fn(() => write) })) }
   let current = { id: siteId, settings: {} } as Site
   await persistSiteSettings({
     supabase: { from: () => query }, siteId,

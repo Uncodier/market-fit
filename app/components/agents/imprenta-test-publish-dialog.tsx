@@ -9,6 +9,7 @@ import { Mail, Phone, User } from "@/app/components/ui/icons"
 import { RelationSelect, RelationSelectValue } from "@/app/components/ui/relation-select"
 import { createClient } from "@/utils/supabase/client"
 import { useSite } from "@/app/context/SiteContext"
+import { getPublishTestRecipientKinds } from "@/lib/content/publish-destinations"
 
 interface Props {
   isOpen: boolean
@@ -30,8 +31,7 @@ export function ImprentaTestPublishDialog({
   
   const { currentSite } = useSite()
 
-  const hasEmail = destinations.some(d => ['mail', 'newsletter', 'email'].includes(d.toLowerCase()))
-  const hasPhone = destinations.some(d => ['whatsapp', 'call', 'sms', 'telegram', 'voice', 'mensaje', 'message'].includes(d.toLowerCase()))
+  const { email: hasEmail, phone: hasPhone } = getPublishTestRecipientKinds(destinations)
 
   useEffect(() => {
     async function fetchLeads() {

@@ -307,8 +307,7 @@ export async function persistSiteSettings({
         return;
       }
 
-      // Use upsert operation with site_id as the conflict resolution field
-      // First get existing settings to preserve other fields
+      // Read the latest row to merge only the JSON fields included in this save.
       try {
         const { data: existingSettings, error: fetchError } = await supabase
           .from('settings')
@@ -369,28 +368,32 @@ export async function persistSiteSettings({
         
         
         
-        const write = supabase
-          .from('settings')
-          .upsert(mergedSettings, { 
-            onConflict: 'site_id',
-            ignoreDuplicates: false
-          });
+        // A full-row upsert runs INSERT triggers before conflict resolution and
+        // incorrectly resubmits server-managed resource license metadata.
+        const patch: Partial<SiteSettings> = { ...settingsForDB };
+        delete patch.id;
+        delete patch.site_id;
+        delete patch.created_at;
+        if (settingsForDB.channels !== undefined) patch.channels = mergedSettings.channels;
+        const write = existingSettings
+          ? supabase.from('settings').update(patch).eq('site_id', siteId)
+          : supabase.from('settings').insert({ ...patch, site_id: siteId });
         // Resource triggers may suspend excess connections. Publish the actual
         // saved row, never an optimistic pre-enforcement connection state.
+        // Returning identity also detects an update affecting zero visible rows.
         const hasResourceChanges = settings.social_media !== undefined || settings.channels !== undefined;
-        const { error, data } = hasResourceChanges ? await write.select().single() : await write;
+        const { error, data } = await write.select(hasResourceChanges ? '*' : 'id, site_id').single();
         
         if (error) {
-          console.error("UPDATE SETTINGS ERROR en upsert:", error);
-          console.error("UPDATE SETTINGS ERROR detalles:", error.code, error.message, error.details);
+          console.error("Settings persistence failed:", error.code, error.message);
           throw error;
         }
-        if (hasResourceChanges && !data) throw new Error("Saved connection settings could not be verified");
-        savedSettings = (hasResourceChanges ? data : mergedSettings) as SiteSettings;
+        if (!data) throw new Error("Saved settings could not be verified");
+        savedSettings = { ...existingSettings, ...patch, ...data } as SiteSettings;
         await requestVoiceAgentResync(siteId);
-      } catch (upsertError) {
-        console.error("UPDATE SETTINGS ERROR excepción en upsert:", upsertError);
-        throw upsertError;
+      } catch (writeError) {
+        console.error("Settings persistence failed:", writeError);
+        throw writeError;
       }
       
       

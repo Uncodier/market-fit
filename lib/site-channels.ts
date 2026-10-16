@@ -20,17 +20,19 @@ export type SiteChannelSource = {
   tracking?: { enable_chat?: boolean } | null
   settings?: {
     channels?: {
-      email?: { enabled?: boolean; status?: string }
-      whatsapp?: { enabled?: boolean; status?: string }
-      agent_email?: { status?: string }
+      email?: { enabled?: boolean; status?: string; email?: string }
+      whatsapp?: { enabled?: boolean; status?: string; number?: string; existingNumber?: string }
+      agent_email?: { status?: string; inbox_id?: string; username?: string; displayName?: string; data?: { inbox_id?: string; username?: string } }
       agent_whatsapp?: { status?: string }
       website?: { enable_chat?: boolean }
       connections?: Array<{
         id?: string | null
+        name?: string | null
         type?: string | null
         status?: string | null
         license_suspended?: boolean
         zavu_sender_id?: string | null
+        connected_account?: Record<string, unknown> | null
         metadata?: {
           phone_number?: string
           phone_number_id?: string
@@ -47,6 +49,15 @@ export type SiteChannelSource = {
       network?: string | null
       isActive?: boolean | number
       license_suspended?: boolean
+      nickname?: string
+      account_id?: string
+      accountId?: string
+      accountName?: string
+      username?: string
+      handle?: string
+      connectedPages?: Array<{
+        id?: string; name?: string; username?: string; isActive?: boolean | number; license_suspended?: boolean
+      }>
     }> | null
   } | null
 }
@@ -161,11 +172,13 @@ export function getEnabledSiteChannels(site?: SiteChannelSource | null): Communi
 
 export function getChannelRoutingMetadata(
   site: SiteChannelSource | null | undefined,
-  channel: string
+  channel: string,
+  connectionId?: string,
 ): Record<string, unknown> | undefined {
   const normalized = normalizeChannel(channel)
   const connection = site?.settings?.channels?.connections?.find(
     (item) => !item.license_suspended && normalizeChannel(item.type) === normalized && isConnectedStatus(item.status)
+      && (connectionId === undefined || item.id === connectionId)
   )
   if (!connection) return undefined
 

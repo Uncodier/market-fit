@@ -3,23 +3,10 @@ import {
   getEnabledSiteChannels,
   type SiteChannelSource,
 } from "@/lib/site-channels"
-
-const DISTRIBUTION_DESTINATIONS = new Set([
-  "mail",
-  "newsletter",
-  "whatsapp",
-  "telegram",
-  "sms",
-  "voice",
-  "voice-agent-call",
-])
-
-function destinationChannel(destination: string): string | undefined {
-  if (destination === "mail" || destination === "newsletter") return "email"
-  if (destination === "voice-agent-call") return "voice"
-  if (DISTRIBUTION_DESTINATIONS.has(destination)) return destination
-  return undefined
-}
+import {
+  DISTRIBUTION_DESTINATIONS, destinationChannel, effectivePublishDestinations,
+  parsePublishDestination, publishDestinationMode,
+} from "@/lib/content/publish-destinations"
 
 function socialAccountSelector(destination: string, site?: SiteChannelSource | null): string {
   const normalize = (value: string) => {
@@ -39,8 +26,8 @@ function socialAccountSelector(destination: string, site?: SiteChannelSource | n
 export type PublishVoiceMode = "tts" | "agent_call"
 
 export function getPublishVoiceMode(destinations: string[]): PublishVoiceMode | undefined {
-  if (destinations.includes("voice-agent-call")) return "agent_call"
-  if (destinations.includes("voice")) return "tts"
+  if (destinations.some((value) => publishDestinationMode(value) === "voice-agent-call")) return "agent_call"
+  if (destinations.some((value) => publishDestinationMode(value) === "voice")) return "tts"
   return undefined
 }
 
@@ -52,13 +39,12 @@ export function togglePublishDestination(
     return destinations.filter((item) => item !== destination)
   }
 
-  const nextDestinations = destination === "voice-agent-call"
-    ? destinations.filter((item) => !DISTRIBUTION_DESTINATIONS.has(item))
-    : DISTRIBUTION_DESTINATIONS.has(destination)
+  const mode = publishDestinationMode(destination)
+  const nextDestinations = mode === "voice-agent-call"
+    ? destinations.filter((item) => !DISTRIBUTION_DESTINATIONS.has(publishDestinationMode(item)) || publishDestinationMode(item) === mode)
+    : DISTRIBUTION_DESTINATIONS.has(mode)
       ? destinations.filter(
-          (item) => item !== "voice-agent-call" && (
-            destination !== "voice" || item !== "voice"
-          )
+          (item) => publishDestinationMode(item) !== "voice-agent-call"
         )
       : destinations
 
@@ -80,23 +66,32 @@ export function buildPublishRouting(
   destinations: string[],
   site?: SiteChannelSource | null
 ) {
-  const effectiveDestinations = destinations.includes("voice-agent-call")
-    ? destinations.filter(
-        (destination) =>
-          destination === "voice-agent-call"
-          || !DISTRIBUTION_DESTINATIONS.has(destination)
-      )
-    : destinations
+  const effectiveDestinations = effectivePublishDestinations(destinations)
+  const parsed = effectiveDestinations.map(parsePublishDestination)
+  const modes = parsed.map((value) => value.mode)
   const voiceMode = getPublishVoiceMode(effectiveDestinations)
   const deliveryChannels = Array.from(
-    new Set(effectiveDestinations.map(destinationChannel).filter((channel): channel is string => !!channel))
+    new Set(modes.map(destinationChannel).filter((channel): channel is string => !!channel))
   )
-  const socialAccounts = effectiveDestinations.filter(
-    (destination) => destination !== "blog" && !DISTRIBUTION_DESTINATIONS.has(destination)
+  const socialAccounts = parsed.filter(
+    (destination) => destination.mode !== "blog" && !DISTRIBUTION_DESTINATIONS.has(destination.mode)
   )
+  const deliveryRoutes = parsed.flatMap((destination) => {
+    const channel = destinationChannel(destination.mode)
+    if (!channel) return []
+    return [{
+      channel,
+      ...(destination.id ? { connection_id: destination.id } : {}),
+      ...(channel === "email" ? { audience_email_mode: destination.mode === "newsletter" ? "newsletter" : "mail" } : {}),
+      ...(channel === "voice" ? { voice_mode: destination.mode === "voice-agent-call" ? "agent_call" : "tts" } : {}),
+    }]
+  })
   const channelRouting = Object.fromEntries(
     deliveryChannels
-      .map((channel) => [channel, getChannelRoutingMetadata(site, channel)] as const)
+      .map((channel) => {
+        const routes = deliveryRoutes.filter((route) => route.channel === channel)
+        return [channel, routes.length === 1 ? getChannelRoutingMetadata(site, channel, routes[0].connection_id) : undefined] as const
+      })
       .filter(([, routing]) => routing)
   )
   const bulkMessageOverride: Record<string, unknown> = {}
@@ -104,18 +99,27 @@ export function buildPublishRouting(
 
   if (socialAccounts.length > 0) {
     publishOverride.social_accounts = Array.from(new Set(
-      socialAccounts.map((destination) => socialAccountSelector(destination, site))
+      socialAccounts.map((destination) => destination.id || socialAccountSelector(destination.mode, site))
     ))
+    const targets = socialAccounts.filter((destination) => destination.kind === "social")
+      .map((destination) => ({ id: destination.id!, network: destination.mode }))
+    if (targets.length) publishOverride.social_account_targets = targets
   }
 
-  // The existing bulk-message tool accepts one channel per invocation. Only
-  // force it when exactly one delivery channel was selected. With multiple
-  // channels, Temporal uses publish_channels to invoke the tool once per route.
-  if (deliveryChannels.length === 1) {
+  // Exact selections travel as separate routes, including multiple accounts
+  // of the same channel. Legacy generic multi-channel context stays compatible.
+  if (deliveryRoutes.length > 1 && parsed.some((value) => value.kind === "connection")) {
+    bulkMessageOverride.delivery_routes = deliveryRoutes
+    publishOverride.delivery_routes = deliveryRoutes
+  } else if (deliveryChannels.length === 1) {
     bulkMessageOverride.channel = deliveryChannels[0]
     publishOverride.channel = deliveryChannels[0]
+    if (deliveryRoutes[0].connection_id) {
+      bulkMessageOverride.connection_id = deliveryRoutes[0].connection_id
+      publishOverride.connection_id = deliveryRoutes[0].connection_id
+    }
     if (deliveryChannels[0] === "email") {
-      const audienceEmailMode = effectiveDestinations.includes("newsletter")
+      const audienceEmailMode = modes.includes("newsletter")
         ? "newsletter"
         : "mail"
       bulkMessageOverride.audience_email_mode = audienceEmailMode
@@ -129,15 +133,16 @@ export function buildPublishRouting(
 
   return {
     deliveryChannels,
+    deliveryRoutes,
     channelRouting,
     distributionModes: {
-      mail: effectiveDestinations.includes("mail"),
-      newsletter: effectiveDestinations.includes("newsletter"),
-      whatsapp: effectiveDestinations.includes("whatsapp"),
-      telegram: effectiveDestinations.includes("telegram"),
-      sms: effectiveDestinations.includes("sms"),
-      voice: effectiveDestinations.includes("voice"),
-      voiceAgentCall: effectiveDestinations.includes("voice-agent-call"),
+      mail: modes.includes("mail"),
+      newsletter: modes.includes("newsletter"),
+      whatsapp: modes.includes("whatsapp"),
+      telegram: modes.includes("telegram"),
+      sms: modes.includes("sms"),
+      voice: modes.includes("voice"),
+      voiceAgentCall: modes.includes("voice-agent-call"),
     },
     voiceMode,
     bulkMessageOverride,

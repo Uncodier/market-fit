@@ -1,4 +1,5 @@
 import { SPEECH_LANGUAGE_VALUES, SPEECH_VOICE_VALUES } from "@/lib/ai/speech-options"
+import { strengthenPublishPayload } from "./publish-contract"
 
 type JsonRecord = Record<string, unknown>
 
@@ -163,6 +164,9 @@ export function strengthenImprentaAssistantPayload(
 
   const incomingContext = parseContext(body.context)
   const settings = record(node?.settings)
+  if (node?.type === "publish" || (!node && (incomingContext.nodeType === "publish" || Array.isArray(incomingContext.publish_destinations)))) {
+    return strengthenPublishPayload(body, incomingContext, node)
+  }
   const outputType =
     canonicalOutputType(node?.type)
     ?? canonicalOutputType(incomingContext.nodeType)

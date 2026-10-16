@@ -1,5 +1,6 @@
 import { audienceNodeHasNonemptyResult } from "./imprenta-publish-readiness"
 import type { InstanceNode } from "@/app/types/instance-nodes"
+import { publishDestinationMode } from "@/lib/content/publish-destinations"
 
 export * from "./imprenta-publish-relations"
 import { PUBLISH_SLOT_CONTENT, PUBLISH_SLOT_AUDIENCE } from "./imprenta-publish-relations"
@@ -7,8 +8,8 @@ import { PUBLISH_SLOT_CONTENT, PUBLISH_SLOT_AUDIENCE } from "./imprenta-publish-
 export function destinationsRequireAudience(dest: string[] | undefined): boolean {
   if (!dest?.length) return false
   return dest.some((d) => {
-    const lower = d.toLowerCase()
-    return lower === "mail" || lower === "whatsapp" || lower === "telegram" || lower === "audio" || lower === "voice" || lower === "newsletter" || lower === "sms" || lower === "mensaje" || lower === "message" || lower === "email"
+    const lower = publishDestinationMode(d).toLowerCase()
+    return lower === "mail" || lower === "whatsapp" || lower === "telegram" || lower === "audio" || lower === "voice" || lower === "voice-agent-call" || lower === "newsletter" || lower === "sms" || lower === "mensaje" || lower === "message" || lower === "email"
   })
 }
 

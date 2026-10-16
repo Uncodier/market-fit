@@ -15,10 +15,11 @@ function fixture() {
   let currentSite: Site | null = initialSite
   let sites = [initialSite]
   const latestSettings = { ...initialSettings, about: "Latest", custom_settings: { keep: true } }
-  const upsert = jest.fn().mockResolvedValue({ error: null })
+  const write = { select: jest.fn().mockReturnThis(), single: jest.fn().mockResolvedValue({ data: { site_id: siteId }, error: null }) }
+  const update = jest.fn(() => ({ eq: jest.fn(() => write) }))
   const settingsQuery = {
     select: jest.fn().mockReturnThis(), eq: jest.fn().mockReturnThis(),
-    single: jest.fn().mockResolvedValue({ data: latestSettings, error: null }), upsert,
+    single: jest.fn().mockResolvedValue({ data: latestSettings, error: null }), update,
   }
   const siteQuery = {
     update: jest.fn().mockReturnThis(), eq: jest.fn().mockReturnThis(),
@@ -37,7 +38,7 @@ function fixture() {
     selectSite: jest.fn(), updateSettings: jest.fn(),
     shouldPreventRefresh: () => true, isOnProtectedPage: () => false,
   }
-  return { deps, upsert, settingsQuery, siteQuery, current: () => currentSite, sites: () => sites }
+  return { deps, update, write, settingsQuery, siteQuery, current: () => currentSite, sites: () => sites }
 }
 
 beforeEach(() => {
@@ -47,7 +48,7 @@ beforeEach(() => {
 })
 afterEach(() => jest.restoreAllMocks())
 
-it("awaits persistence and only server acceptance, with no verification query or external provider wait", async () => {
+it("awaits a confirmed partial write and only server acceptance, without an extra verification query or provider wait", async () => {
   const state = fixture()
   let accept!: (response: Response) => void
   jest.mocked(fetch).mockReturnValueOnce(new Promise(resolve => { accept = resolve }))
@@ -55,7 +56,7 @@ it("awaits persistence and only server acceptance, with no verification query or
   // Flush the existing-row read and the confirmed write.
   await Promise.resolve()
   await Promise.resolve()
-  expect(state.upsert).toHaveBeenCalledTimes(1)
+  expect(state.update).toHaveBeenCalledTimes(1)
   expect(state.deps.setCurrentSite).not.toHaveBeenCalled()
   expect(fetch).toHaveBeenCalledWith("/api/settings/voice-sync", expect.objectContaining({
     method: "POST", credentials: "same-origin", redirect: "error", body: JSON.stringify({ siteId }),
@@ -78,7 +79,7 @@ it("publishes paired site/settings writes without clearing settings, reverting s
   await persistSiteSettings({ ...state.deps, siteId, settings: { about: "Updated" } })
   expect(state.current()).toMatchObject({ name: "New name", settings: { about: "Updated" } })
   expect(state.sites()[0]).toEqual(state.current())
-  expect(state.upsert).toHaveBeenCalledTimes(1)
+  expect(state.update).toHaveBeenCalledTimes(1)
   expect(state.siteQuery.update).toHaveBeenCalledTimes(1)
   expect(fetch).toHaveBeenCalledTimes(1)
 })
@@ -94,7 +95,7 @@ it("does not switch the active site back when a save finishes late", async () =>
 
 it("does not schedule a sync or publish success after a failed write", async () => {
   const state = fixture()
-  state.upsert.mockResolvedValueOnce({ error: new Error("Write denied") })
+  state.write.single.mockResolvedValueOnce({ data: null as unknown as { site_id: string }, error: new Error("Write denied") })
   await expect(persistSiteSettings({ ...state.deps, siteId, settings: { about: "Updated" } })).rejects.toThrow("Write denied")
   expect(fetch).not.toHaveBeenCalled()
   expect(state.deps.setCurrentSite).not.toHaveBeenCalled()

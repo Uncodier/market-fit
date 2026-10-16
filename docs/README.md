@@ -27,6 +27,7 @@ Use the guides below before relying on older implementation notes.
 
 - [Native Rappi and Uber Eats orders](MARKETPLACE_ORDERS.md)
 - [Content Creator speech voice/language options](CONTENT_CREATOR_AUDIO.md)
+- [Content Creator account-specific destinations](CONTENT_CREATOR_DESTINATIONS.md)
 - [Agent channel phone numbers](AGENT_CHANNEL_NUMBERS.md)
 - [Accounting integrity and rollout](ACCOUNTING.md)
 - [Financial due dates and subscription terms](FINANCIAL_DUE_DATES.md)
