@@ -2,6 +2,8 @@ export interface CheckoutLineModifier {
   catalogItemId: string
   quantity: number
   unitPriceOverride?: number
+  /** Persisted order-line reference; its currency is resolved by the server. */
+  saleOrderItemId?: string
   groupId?: string
 }
 
@@ -9,6 +11,8 @@ export interface CheckoutLine {
   catalogItemId: string
   quantity: number
   unitPriceOverride?: number
+  /** Persisted order-line reference; its currency is resolved by the server. */
+  saleOrderItemId?: string
   reservationStart?: string
   reservationEnd?: string
   clientLineKey?: string
@@ -39,6 +43,8 @@ export interface CheckoutCartParams {
     change?: number
   }[]
   existingOrderId?: string
+  /** Original POS snapshot, checked again when a queued checkout reaches the server. */
+  expectedOrderVersion?: string
   intent?: "draft" | "send" | "complete" | "pay"
   paymentMethod?: string
   scheduledFor?: string

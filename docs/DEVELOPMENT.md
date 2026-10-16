@@ -158,6 +158,71 @@ range needs an explicit preset selection once to become relative. Reuse this
 hook and `lib/dates/date-range-presets.ts` when adding persistence to other screens;
 response caches such as SWR do not persist filter selection by themselves.
 
+### POS order selection
+
+The POS picker restores complete, site-scoped order snapshots from its existing
+IndexedDB catalog cache without calling the general order-detail action. Open-order
+reads include line IDs, stored unit prices, modifier metadata and parent links.
+Legacy description-only snapshots prefill customer and order fields. Selecting an
+existing ID enables the payment dialog immediately; its preparation state blocks
+confirmation until `getPosOrder(siteId, orderId)` returns usable lines. That
+fallback uses one authenticated, RLS-scoped order query rather than loading
+shipments, requestors or attribution profiles. Stored line prices use the order
+currency, not the catalog item's current currency.
+
+Restored prices carry sale-order-item references, not trusted client currency codes.
+Server checkout validates each reference against the selected site's order, uses
+its persisted currency for restored overrides, and converts newly added catalog
+lines into that same currency. Cart/session settlement currency remains fixed for
+an existing order, including after price-list changes. Legacy sessions without
+this context reload the selected order before checkout; current edited sessions
+retain their changes. Cancelled historical lines do not require live catalog IDs
+and cannot return to the cart. Seller display names use batched, user-scoped member
+and profile reads; unresolved retained IDs display `Seller unavailable`.
+
+Changing the order clears the previous cart immediately. A selection sequence
+ignores stale responses after another selection, New Order, unmount or a site
+change; incomplete loads are not persisted as ready checkout sessions. Cached
+data is a UI prefill, never authorization or an authoritative payment state:
+checkout retains server-side resource, pricing and payment validation. Confirmation
+re-reads an existing order and compares its original snapshot (including balance
+and line changes), not the edited cart. Changed orders are refreshed for review,
+never silently charged. The snapshot version travels with the outbox and is
+checked again on the server before checkout side effects. This is stale-write
+detection, not an atomic database lock: simultaneous payments after the check
+remain a separate concurrency limitation. Older outbox entries have no version.
+Pending-sync placeholder orders stay blocked rather than falling back to stale
+server data. Existing-order payment now requires connectivity to verify its state;
+new-order offline checkout remains available.
+
+The baseline also includes persisted notes and seller attribution to avoid lost
+updates from another device. A note already written by the local autosave can
+therefore require an explicit order refresh before payment; it is never silently
+replayed with an outdated baseline. This check still does not provide a database
+lock against simultaneous writes after validation.
+
+### POS sync error recovery
+
+The visible POS sync loop retries failed as well as pending outbox operations.
+Successful operations retain their synced result and clear their stored error;
+catalog and order pulls clear only their own errors, including unchanged-revision
+catalog checks. Unresolved failures remain visible rather than being hidden by
+another operation's success. Error state and subscriptions are site-scoped.
+
+`app/pos/local/sync-errors.ts` reports operation failures through the authenticated
+`reportPosSyncError` Server Action without awaiting the report in the sync engine.
+The email contains only diagnostic categories, site ID, mutation fingerprint and
+attempt count, never the outbox payload or arbitrary error prose. Configure
+`POS_SYNC_ERROR_EMAIL` alongside SendGrid and Redis as described in
+[Environment variables](ENVIRONMENT_VARIABLES.md). Recovery sends no success email.
+Repeated error reports are bounded on both client and server; email reporting is
+best effort and provider acceptance does not confirm inbox delivery. It is not a
+durable notification queue. Existing checkout idempotency remains unchanged.
+
+Regression coverage is in `__tests__/pos/sync-engine.test.ts`,
+`__tests__/pos/report-sync-error.test.ts`, `__tests__/pos/sync-policy.test.ts` and
+`__tests__/pos/sync-badge.test.ts`. These tests use isolated mocks and send no emails.
+
 ### Partial site settings writes
 
 `app/context/site-update-settings.ts` reads the latest settings for JSON merges,
@@ -169,6 +234,18 @@ Keep RLS and license protections enabled. Confirm each write with returned row
 identity; resource changes return the full row to publish server-enforced limits.
 Printer regression tests cover the writer and a disposable local PostgreSQL
 cluster under `__tests__/context/printer-settings-*.test.ts`.
+
+### Shop delivery selection
+
+Explicit hero/cart/checkout delivery choices are stored per seller under
+`market-shop-fulfillment:<siteId>`. `useShopFulfillmentPreference` restores them
+after hydration and gates automatic defaults until restoration commits. Only
+manual changes write the preference: nearby-store defaults and incompatible-cart
+fallbacks do not replace it. Marketplace checkout never reads a Shop preference.
+The saved value is a UI preference, not authorization; allowed item methods and
+server checkout validation still apply. Regression coverage lives in
+`__tests__/commerce/shop-fulfillment-preference.test.tsx` and
+`__tests__/shop/shop-fulfillment-cart.test.tsx`.
 
 ## Before handing off
 

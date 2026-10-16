@@ -92,5 +92,10 @@ describe("sync-policy", () => {
     it("returns false if online and pendingCount is 0", () => {
       expect(shouldDrainOutbox({ pendingCount: 0, online: true })).toBe(false);
     });
+
+    it("retries failed operations even when there are no pending operations", () => {
+      expect(shouldDrainOutbox({ pendingCount: 0, failedCount: 1, online: true })).toBe(true);
+      expect(shouldDrainOutbox({ pendingCount: 0, failedCount: 1, online: false })).toBe(false);
+    });
   });
 });

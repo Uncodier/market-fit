@@ -46,9 +46,9 @@ export function PosSyncIssues({
     if (!open) return;
     const unsub = subscribePosSync(() => {
       setRefreshTrigger((v) => v + 1);
-    });
+    }, siteId);
     return unsub;
-  }, [open]);
+  }, [open, siteId]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -82,11 +82,11 @@ export function PosSyncIssues({
               };
 
               let details = "";
-              if (row.kind === "checkout") {
-                const pd = row.payload.data as any;
+              if (row.payload.kind === "checkout") {
+                const pd = row.payload.data;
                 details = `${pd.intent || "pay"} · ${pd.lines?.length || 0} items`;
-              } else if (row.kind === "create_lead") {
-                details = (row.payload.data as any).name;
+              } else if (row.payload.kind === "create_lead") {
+                details = row.payload.data.name;
               }
 
               return (

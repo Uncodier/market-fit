@@ -1,6 +1,23 @@
 import { posSessionFromOrder } from "@/app/pos/order-session"
 
 describe("posSessionFromOrder", () => {
+  it("preserves an unavailable seller identity from an unenriched cached order", () => {
+    const session = posSessionFromOrder(
+      {
+        id: "order-1",
+        status: "pending",
+        seller_user_id: "seller-1",
+        sale_order_items: [],
+      },
+      [],
+    )
+
+    expect(session).toMatchObject({
+      sellerUserId: "seller-1",
+      sellerName: "Seller unavailable",
+    })
+  })
+
   it("restores prior payments and fulfillment for an existing order", () => {
     const session = posSessionFromOrder(
       {
@@ -25,7 +42,7 @@ describe("posSessionFromOrder", () => {
           },
         ],
       },
-      [{ id: "item-1", name: "Coffee" }] as any,
+      [],
     )
 
     expect(session).toMatchObject({

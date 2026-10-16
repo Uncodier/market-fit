@@ -27,10 +27,14 @@ export function usePosSyncStatus(siteId: string | undefined) {
 
   useEffect(() => {
     if (!siteId) return;
-    setStatus(getPosSyncStatus(siteId));
-    const unsub = subscribePosSync((next) => setStatus({ ...next }));
+    let active = true;
+    queueMicrotask(() => {
+      if (active) setStatus(getPosSyncStatus(siteId));
+    });
+    const unsub = subscribePosSync((next) => setStatus({ ...next }), siteId);
     startPosSyncLoop(siteId);
     return () => {
+      active = false;
       unsub();
       stopPosSyncLoop(siteId);
     };

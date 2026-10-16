@@ -6,8 +6,10 @@ import type { PosCartItem } from "@/app/pos/components/CartPanel"
 export function buildCartFromSaleOrderItems(
   saleOrderItems: any[],
   catalogItems: CatalogItem[],
+  orderCurrency?: string | null,
 ): PosCartItem[] {
-  const rows = saleOrderItems || []
+  const rows = (saleOrderItems || []).filter((line) => line && line.status !== "cancelled")
+  const catalogById = new Map(catalogItems.map((item) => [item.id, item]))
   const childrenByParent = new Map<string, any[]>()
   for (const oi of rows) {
     if (oi.parent_sale_order_item_id) {
@@ -18,7 +20,7 @@ export function buildCartFromSaleOrderItems(
   }
   const parents = rows.filter((oi) => !oi.parent_sale_order_item_id)
   return parents.map((oi) => {
-    const catalogItem = catalogItems.find((c) => c.id === oi.catalog_item_id)
+    const catalogItem = catalogById.get(oi.catalog_item_id)
     const childRows = childrenByParent.get(oi.id) || []
     const hostQty = Number(oi.quantity) || 1
     const modifiers = childRows.map((child) => {
@@ -32,6 +34,8 @@ export function buildCartFromSaleOrderItems(
         name: child.name,
         cartQty: perUnitQty,
         cartPrice: Number(child.unit_price) || 0,
+        currency: orderCurrency || catalogItem?.currency,
+        saleOrderItemId: child.id,
         backorderQty: Number(child.metadata?.backorder_quantity) || 0,
       }
     })
@@ -41,7 +45,10 @@ export function buildCartFromSaleOrderItems(
       id: oi.catalog_item_id,
       name: oi.name || catalogItem?.name,
       cartQty: hostQty,
-      cartPrice: oi.unit_price,
+      cartPrice: Number(oi.unit_price) || 0,
+      saleOrderItemId: oi.id,
+      // Persisted line prices are already expressed in the order currency.
+      currency: orderCurrency || catalogItem?.currency,
       backorderQty: Number(oi.metadata?.backorder_quantity) || 0,
       lineKey,
       modifiers,

@@ -8,6 +8,44 @@ import {
 } from "@/app/pos/shipping-address"
 import { sentLineQuantitiesFromSaleOrderItems } from "@/app/pos/send-delta"
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return !!value && typeof value === "object" && !Array.isArray(value)
+}
+
+function hasText(value: unknown): value is string {
+  return typeof value === "string" && value.trim().length > 0
+}
+
+function isFiniteNumeric(value: unknown): boolean {
+  return (typeof value === "number" || hasText(value)) && Number.isFinite(Number(value))
+}
+
+/** Require editable active lines, not nullable catalog references in cancelled history. */
+export function hasPosOrderCartSnapshot(order: unknown): boolean {
+  if (!isRecord(order) || !Array.isArray(order.sale_order_items)) return false
+  const rows = order.sale_order_items
+  if (!rows.every(isRecord)) return false
+
+  const cancelledParentIds = new Set(rows.filter((line) =>
+    line.status === "cancelled" && !line.parent_sale_order_item_id && hasText(line.id),
+  ).map((line) => line.id))
+  // Reconstruction nests children only under active parents; cancelled parents' children are history too.
+  const active = rows.filter((line) => line.status !== "cancelled" &&
+    !cancelledParentIds.has(line.parent_sale_order_item_id))
+  if (!active.every((line) =>
+    hasText(line.id) && hasText(line.catalog_item_id) && hasText(line.name) &&
+    isFiniteNumeric(line.unit_price) && isFiniteNumeric(line.quantity) && Number(line.quantity) > 0 &&
+    "metadata" in line && (line.metadata === null || isRecord(line.metadata)) &&
+    "parent_sale_order_item_id" in line &&
+    (line.parent_sale_order_item_id === null || hasText(line.parent_sale_order_item_id)),
+  )) return false
+
+  const parentIds = new Set(active.filter((line) => line.parent_sale_order_item_id === null).map((line) => line.id))
+  return parentIds.size > 0 && active.every((line) =>
+    line.parent_sale_order_item_id === null || parentIds.has(line.parent_sale_order_item_id),
+  )
+}
+
 export function posSessionFromOrder(
   order: any,
   catalogItems: CatalogItem[],
@@ -55,7 +93,7 @@ export function posSessionFromOrder(
 
   return {
     cart: order.sale_order_items
-      ? buildCartFromSaleOrderItems(order.sale_order_items, catalogItems)
+      ? buildCartFromSaleOrderItems(order.sale_order_items, catalogItems, order.currency)
       : null,
     sentLineQuantities: sentLineQuantitiesFromSaleOrderItems(
       order.sale_order_items || [],
@@ -68,7 +106,8 @@ export function posSessionFromOrder(
     buyerUserId: order.buyer_user_id || null,
     sellerUserId: order.seller_user_id || null,
     sellerName:
-      order.seller?.name || order.seller?.email || order.seller_name || null,
+      order.seller?.name || order.seller?.email || order.seller_name ||
+      (order.seller_user_id ? "Seller unavailable" : null),
     shippingAddress,
     existingPaymentTotal,
   }

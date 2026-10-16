@@ -12,6 +12,7 @@ import {
   resolveProductCurrency,
 } from "./checkout-currency"
 import { calculateOrderTaxTotal } from "./taxes"
+import { resolveExistingCheckoutCurrency } from "./checkout-existing-currency"
 import {
   CheckoutCartParams,
   CheckoutLine,
@@ -53,6 +54,7 @@ export async function processCheckoutLines(params: ProcessCheckoutLinesParams) {
     fulfillment,
   } = params
   const queryClient = isAdmin ? supabaseAdmin : supabase
+  const existingCurrency = await resolveExistingCheckoutCurrency(params)
   const checkoutStock = await revalidateCheckoutAvailability(params)
   let orderSubtotal = 0
   const processedLines: ProcessedCheckoutLine[] = []
@@ -152,7 +154,8 @@ export async function processCheckoutLines(params: ProcessCheckoutLinesParams) {
       catalog_item_id: line.catalogItemId,
       name: catalogItem?.name || "Unknown Item",
       description: catalogItem?.description,
-      currency: resolveProductCurrency(
+      currency: line.saleOrderItemId && line.unitPriceOverride !== undefined
+        ? existingCurrency!.currency : resolveProductCurrency(
         catalogItem?.currency,
         siteSettings?.currency
       ),
@@ -193,7 +196,8 @@ export async function processCheckoutLines(params: ProcessCheckoutLinesParams) {
         catalog_item_id: modifier.catalogItemId,
         name: modifierItem?.name || "Extra",
         description: modifierItem?.description,
-        currency: resolveProductCurrency(
+        currency: modifier.saleOrderItemId && modifier.unitPriceOverride !== undefined
+          ? existingCurrency!.currency : resolveProductCurrency(
           modifierItem?.currency || catalogItem?.currency,
           siteSettings?.currency
         ),
@@ -212,7 +216,7 @@ export async function processCheckoutLines(params: ProcessCheckoutLinesParams) {
     }
   }
 
-  const orderCurrency = resolveCheckoutOrderCurrency(
+  const orderCurrency = existingCurrency?.currency || resolveCheckoutOrderCurrency(
     processedLines,
     siteSettings?.currency
   )

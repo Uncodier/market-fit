@@ -26,7 +26,7 @@ type Props = Parameters<typeof PosPageDialogs>[0]
 function props(): Props {
   return {
     siteId: "site-1",
-    cartApi: { cart: [], leadValue: null, priceListId: "none" },
+    cartApi: { cart: [], leadValue: null, priceListId: "none", sessionReady: true, loadingOrder: true },
     catalog: { catalogItems: [], leads: [], promotions: [], priceLists: [], priceListItems: [] },
     checkout: { isPaymentDialogOpen: false, setIsPaymentDialogOpen: jest.fn(), handleCheckout: jest.fn() },
     addApi: {

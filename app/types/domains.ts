@@ -4,4 +4,6 @@ export interface AllowedDomain {
   domain: string
   created_at: string
   updated_at: string
+  source?: 'unknown' | 'user' | 'harness'
+  requirement_id?: string | null
 } 

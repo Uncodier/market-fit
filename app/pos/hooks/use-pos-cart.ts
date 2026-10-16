@@ -10,7 +10,7 @@ import {
 } from "@/app/pos/cart-line-utils";
 import { usePosInventoryCart } from "./use-pos-inventory-cart";
 import type { PosInventorySnapshot } from "../inventory-availability";
-import { clearLineDiscountFields } from "@/app/pos/line-discount";
+import { repricePosCart } from "@/app/pos/reprice-cart";
 import {
   getItemDeliveryOptions,
   intersectDeliveryOptions,
@@ -28,16 +28,15 @@ import {
 } from "@/app/pos/cart-totals";
 import { usePosPromo } from "@/app/pos/hooks/use-pos-promo";
 import { hasPosCustomer } from "@/app/pos/lead-utils";
-import {
-  clearCartSession,
-  loadCartSession,
-  saveCartSession,
-} from "@/app/pos/local/cart-session";
+import { clearCartSession } from "@/app/pos/local/cart-session";
+import type { PosCartSession } from "@/app/pos/local/types";
+import { usePosCartSession } from "./use-pos-cart-session";
+import { posOrderVersion } from "@/app/pos/order-version";
 import {
   EMPTY_POS_SHIPPING_ADDRESS,
   type PosShippingAddress,
 } from "@/app/pos/shipping-address";
-import { getOrder } from "@/app/orders/actions";
+import { usePosOrderSelection } from "./use-pos-order-selection";
 import { posSessionFromOrder } from "@/app/pos/order-session";
 import { toast } from "sonner";
 import { useDisplayCurrency } from "@/app/context/DisplayCurrencyContext";
@@ -53,6 +52,7 @@ type UsePosCartArgs = {
   siteTimezone?: string | null;
   siteCurrency?: string | null;
   catalogItems: CatalogItem[];
+  pendingOrders?: Parameters<typeof posSessionFromOrder>[0][];
   inventorySnapshot?: PosInventorySnapshot | null;
   locations: any[];
   priceLists: any[];
@@ -68,6 +68,7 @@ export function usePosCart({
   shopSettings,
   siteTimezone = null,
   catalogItems,
+  pendingOrders = [],
   inventorySnapshot,
   locations,
   priceLists,
@@ -104,10 +105,11 @@ export function usePosCart({
     EMPTY_POS_SHIPPING_ADDRESS,
   );
   const [taxesByItem, setTaxesByItem] = useState<Record<string, any[]>>({});
-  const [sessionReady, setSessionReady] = useState(false);
+  const [expectedOrderVersion, setExpectedOrderVersion] = useState<string>();
+  const [orderCurrency, setOrderCurrency] = useState<string>();
   const [loadingOrder, setLoadingOrder] = useState(false);
-  const restoredRef = useRef(false);
-  const persistTimer = useRef<number | null>(null);
+  const orderSelectionSequence = useRef(0);
+  const restoredOrderId = useRef<string | null>(null);
   useEffect(() => {
     const totalQty = cart.reduce((acc, item) => acc + item.cartQty, 0);
     const deltaQty = pendingSendDeltaCount(cart, sentLineQuantities);
@@ -119,8 +121,8 @@ export function usePosCart({
   }, [cart, sentLineQuantities, activeOrderId]);
   const hasLead = hasPosCustomer(leadValue);
   const cartCurrency = useMemo(
-    () => resolvePosCartCurrency(cart, siteCurrency),
-    [cart, siteCurrency],
+    () => orderCurrency || resolvePosCartCurrency(cart, siteCurrency),
+    [cart, siteCurrency, orderCurrency],
   );
 
   const {
@@ -143,14 +145,12 @@ export function usePosCart({
     siteCurrency: cartCurrency,
     fxRates: rates,
   });
-  useEffect(() => {
-    if (!siteId) return;
-    let cancelled = false;
-    restoredRef.current = false;
-    (async () => {
-      const session = await loadCartSession(siteId);
-      if (cancelled) return;
-      setCart(session.cart || []);
+  const restoreSession = useCallback((session: PosCartSession) => {
+      const needsOrderSnapshot = session.activeOrderId !== "new" &&
+        (!session.cart?.length || !session.orderCurrency);
+      restoredOrderId.current = needsOrderSnapshot
+        ? session.activeOrderId : null;
+      setCart(needsOrderSnapshot ? [] : session.cart || []);
       setSentLineQuantities(session.sentLineQuantities || {});
       setExistingPaymentTotal(session.existingPaymentTotal || 0);
       setLeadValue(session.leadValue);
@@ -161,64 +161,31 @@ export function usePosCart({
       setActiveOrderId(session.activeOrderId || "new");
       setBuyerUserId(session.buyerUserId);
       setSellerUserId(session.sellerUserId || null);
-      setSellerName(session.sellerName || null);
+      setSellerName(session.sellerName || (session.sellerUserId ? "Seller unavailable" : null));
       setOrderNotes(session.orderNotes || "");
       setShippingAddress(session.shippingAddress || EMPTY_POS_SHIPPING_ADDRESS);
-      setSessionReady(true);
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [siteId, setPromoCode]);
+      setExpectedOrderVersion(session.expectedOrderVersion);
+      setOrderCurrency(session.activeOrderId !== "new" ? session.orderCurrency : undefined);
+  }, [setPromoCode]);
+  const sessionSnapshot = useMemo(() => ({
+    cart, sentLineQuantities, existingPaymentTotal, leadValue, fulfillment,
+    originLocationId, priceListId, promoCode, activeOrderId, buyerUserId,
+    sellerUserId, sellerName, orderNotes, shippingAddress, expectedOrderVersion, orderCurrency,
+  }), [cart, sentLineQuantities, existingPaymentTotal, leadValue, fulfillment,
+    originLocationId, priceListId, promoCode, activeOrderId, buyerUserId,
+    sellerUserId, sellerName, orderNotes, shippingAddress, expectedOrderVersion, orderCurrency]);
+  const sessionReady = usePosCartSession({
+    siteId, snapshot: sessionSnapshot, loadingOrder, sequence: orderSelectionSequence,
+    onRestore: restoreSession,
+  });
   useEffect(() => {
-    if (!siteId || !sessionReady) return;
-    if (persistTimer.current) window.clearTimeout(persistTimer.current);
-    persistTimer.current = window.setTimeout(() => {
-      void saveCartSession({
-        siteId,
-        cart,
-        sentLineQuantities,
-        existingPaymentTotal,
-        leadValue,
-        fulfillment,
-        originLocationId,
-        priceListId,
-        promoCode,
-        activeOrderId,
-        buyerUserId,
-        sellerUserId,
-        sellerName,
-        orderNotes,
-        shippingAddress,
-      });
-    }, 200);
-    return () => {
-      if (persistTimer.current) window.clearTimeout(persistTimer.current);
-    };
-  }, [
-    siteId,
-    sessionReady,
-    cart,
-    sentLineQuantities,
-    existingPaymentTotal,
-    leadValue,
-    fulfillment,
-    originLocationId,
-    priceListId,
-    promoCode,
-    activeOrderId,
-    buyerUserId,
-    sellerUserId,
-    sellerName,
-    orderNotes,
-    shippingAddress,
-  ]);
-  useEffect(() => {
-    if (locations.length > 0 && !originLocationId) {
+    let cancelled = false;
+    if (locations.length > 0 && !originLocationId && !loadingOrder) {
       const def = locations.find((l: any) => l.is_default) || locations[0];
-      if (def) setOriginLocationId(def.id);
+      if (def) queueMicrotask(() => { if (!cancelled) setOriginLocationId(def.id); });
     }
-  }, [locations, originLocationId]);
+    return () => { cancelled = true; };
+  }, [locations, originLocationId, loadingOrder]);
 
   const allowedFulfillments = useMemo((): CheckoutFulfillmentMethod[] => {
     if (cart.length === 0) return withPosFulfillmentOptions([]);
@@ -232,16 +199,19 @@ export function usePosCart({
   }, [cart, shopSettings]);
 
   useEffect(() => {
+    let cancelled = false;
     if (
+      !loadingOrder &&
       allowedFulfillments.length > 0 &&
       !allowedFulfillments.includes(fulfillment)
     ) {
       const next = allowedFulfillments.includes("dine_in")
         ? "dine_in"
         : defaultFulfillment(allowedFulfillments) || "dine_in";
-      setFulfillment(next);
+      queueMicrotask(() => { if (!cancelled) setFulfillment(next); });
     }
-  }, [allowedFulfillments, fulfillment]);
+    return () => { cancelled = true; };
+  }, [allowedFulfillments, fulfillment, loadingOrder]);
 
   const cartTaxKey = useMemo(() => {
     const ids = new Set<string>();
@@ -255,8 +225,9 @@ export function usePosCart({
   useEffect(() => {
     if (preloadedTaxesByItem) return;
     if (!siteId || !cartTaxKey) {
-      setTaxesByItem({});
-      return;
+      let cancelled = false;
+      queueMicrotask(() => { if (!cancelled) setTaxesByItem({}); });
+      return () => { cancelled = true; };
     }
     let cancelled = false;
     void getTaxesForCart(cartTaxKey.split(",")).then((taxes) => {
@@ -298,34 +269,18 @@ export function usePosCart({
   const setItemDiscount = (id: string, percent: number) => {
     setCart((prev) => cartWithDiscountPercent(prev, id, percent));
   };
-
   const handlePriceListChange = (newId: string) => {
-    setPriceListId(newId);
     const listId = newId === "none" ? undefined : newId;
-    setCart((prev) =>
-      prev.map((c) => {
-        const cartPrice = resolveUnitPriceLocal({
-          catalogItemId: c.id,
-          targetSalePrice: c.target_sale_price,
-          priceListId: listId,
-          priceLists,
-          priceListItems,
-        }).price;
-        return {
-          ...clearLineDiscountFields(c, cartPrice),
-          modifiers: (c.modifiers || []).map((m) => ({
-            ...m,
-            cartPrice: resolveUnitPriceLocal({
-              catalogItemId: m.catalogItemId,
-              targetSalePrice: m.cartPrice,
-              priceListId: listId,
-              priceLists,
-              priceListItems,
-            }).price,
-          })),
-        };
-      }),
-    );
+    try {
+      const next = repricePosCart(cart, catalogItems, (item) => resolveUnitPriceLocal({
+        catalogItemId: item.id, targetSalePrice: item.target_sale_price,
+        priceListId: listId, priceLists, priceListItems,
+      }).price, rates);
+      setPriceListId(newId);
+      setCart(next);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to update line prices.");
+    }
   };
 
   const subtotal = posCartSubtotalInSiteCurrency(cart, cartCurrency, rates);
@@ -353,11 +308,12 @@ export function usePosCart({
     Math.max(0, subtotal - promoDiscount) + taxTotal + shippingTotal,
   );
   const activeCartItems = cart.filter((c) => c.cartQty > 0);
-  const resetToNewOrder = useCallback(async () => {
-    setActiveOrderId("new");
+  const clearOrderFields = useCallback(() => {
     setCart([]);
     setSentLineQuantities({});
     setExistingPaymentTotal(0);
+    setExpectedOrderVersion(undefined);
+    setOrderCurrency(undefined);
     setLeadValue(null);
     setPriceListId("none");
     setFulfillment("dine_in");
@@ -367,10 +323,17 @@ export function usePosCart({
     setSellerName(null);
     setShippingAddress(EMPTY_POS_SHIPPING_ADDRESS);
     resetPromo();
+    setSelectedCartItemId(null);
+  }, [resetPromo]);
+  const resetToNewOrder = useCallback(async () => {
+    orderSelectionSequence.current += 1;
+    setLoadingOrder(false);
+    setActiveOrderId("new");
+    clearOrderFields();
     if (siteId) await clearCartSession(siteId);
-  }, [siteId, resetPromo]);
-  const populateFromOrder = (order: any) => {
-    const session = posSessionFromOrder(order, catalogItems);
+  }, [siteId, clearOrderFields]);
+  const populateFromOrder = useCallback((order: Parameters<typeof posSessionFromOrder>[0], includeCart: boolean) => {
+    const session = posSessionFromOrder(includeCart ? order : { ...order, sale_order_items: [] }, catalogItems);
     if (!session) return false;
     setLeadValue(session.leadValue);
     setFulfillment(session.fulfillment);
@@ -383,56 +346,28 @@ export function usePosCart({
     setShippingAddress(session.shippingAddress);
     setSentLineQuantities(session.sentLineQuantities);
     setExistingPaymentTotal(session.existingPaymentTotal);
-    if (session.cart) setCart(session.cart);
+    setExpectedOrderVersion(includeCart ? posOrderVersion(order) : undefined);
+    setOrderCurrency(typeof order.currency === "string" && order.currency.trim()
+      ? resolveSiteCurrency(order.currency) : undefined);
+    if (includeCart && session.cart) setCart(session.cart);
     return true;
-  };
-  const handleOrderSelect = async (val: string) => {
-    if (!val || val === "new") {
-      await resetToNewOrder();
-      return true;
-    }
-    setActiveOrderId(val);
-    try {
-      setLoadingOrder(true);
-      if (siteId && (val.startsWith("local_") || !navigator.onLine)) {
-        const local = await import("@/app/pos/local/snapshot-pull").then((m) =>
-          m.readLocalPendingOrders(siteId),
-        );
-        const match = local.find((o) => o.id === val);
-        if (match?.raw && populateFromOrder(match.raw)) {
-          return true;
-        }
-        if (val.startsWith("local_")) {
-          toast.message(
-            t("pos.sync.pendingSale") ||
-              "Sale saved locally. Syncing when online…",
-          );
-          return false;
-        }
-      }
-
-      const res = await getOrder(val);
-      if (res.error) throw new Error(res.error);
-      if (!populateFromOrder(res.data)) {
-        await resetToNewOrder();
-        return false;
-      }
-      return true;
-    } catch (err: any) {
-      await resetToNewOrder();
-      toast.error(
-        err.message || t("pos.errorLoadingOrder") || "Failed to load order",
-      );
-      return false;
-    } finally {
-      setLoadingOrder(false);
-    }
-  };
+  }, [catalogItems]);
+  const { handleOrderSelect } = usePosOrderSelection({
+    siteId, pendingOrders, sequence: orderSelectionSequence, populateFromOrder,
+    clearOrderFields, resetToNewOrder, setActiveOrderId, setLoadingOrder,
+  });
+  useEffect(() => {
+    if (!sessionReady || loadingOrder || activeOrderId === "new" || cart.length ||
+      restoredOrderId.current !== activeOrderId) return;
+    restoredOrderId.current = null;
+    void handleOrderSelect(activeOrderId);
+  }, [siteId, activeOrderId, cart.length, sessionReady, loadingOrder, handleOrderSelect]);
 
   return {
-    cart: inventoryCart.displayCart,
+    cart: sessionReady ? inventoryCart.displayCart : [],
     setCart,
     existingPaymentTotal,
+    expectedOrderVersion,
     leadValue,
     setLeadValue,
     fulfillment,
@@ -462,7 +397,12 @@ export function usePosCart({
     shippingAddress,
     setShippingAddress,
     allowedFulfillments,
-    addItemToCart: inventoryCart.addItemToCart,
+    addItemToCart: (item: CatalogItem, extras?: Partial<PosCartItem>) => inventoryCart.addItemToCart(item, {
+      ...extras,
+      modifiers: extras?.modifiers?.map((modifier) => ({ ...modifier,
+        currency: modifier.currency || catalogItems.find((product) => product.id === modifier.catalogItemId)?.currency || item.currency,
+      })),
+    }),
     updateQty: inventoryCart.updateQty,
     setItemQty: inventoryCart.setItemQty,
     getItemAvailability: inventoryCart.getItemAvailability,

@@ -10,7 +10,7 @@ import type { CatalogCategory, CatalogItem } from "@/app/types";
 interface PosCategoryTabsProps {
   activeCategory: string;
   availableItems: CatalogItem[];
-  categories: CatalogCategory[];
+  categories: Pick<CatalogCategory, "id" | "name">[];
   onCategoryChange: (category: string) => void;
   t: (key: string) => string;
   unavailableItems: CatalogItem[];

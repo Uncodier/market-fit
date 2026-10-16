@@ -19,6 +19,7 @@ import {
 } from "@/app/commerce/payment-options"
 import { pickPreferredPickupLocation } from "@/app/commerce/buyer-location-availability"
 import { useNearbyCheckoutDefaults } from "@/app/commerce/use-nearby-checkout-defaults"
+import { writeShopFulfillmentPreference } from "@/app/commerce/shop-fulfillment-preference"
 import { CheckoutIdentityPicker } from "@/app/components/commerce/CheckoutIdentityPicker"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { useDisplayCurrency } from "@/app/context/DisplayCurrencyContext"
@@ -44,6 +45,7 @@ export function CartSidebar({
   handleCheckout, checkoutLoading, closeCart, site,
   buyerGeo, selectedLocationId,
   userChoseFulfillmentRef, userChosePaymentRef,
+  isFulfillmentPreferenceLoaded = true,
 }: any) {
   
   const { t } = useLocalization()
@@ -139,7 +141,13 @@ export function CartSidebar({
     selectedLocationId,
     userChoseFulfillmentRef,
     userChosePaymentRef,
+    enabled: isFulfillmentPreferenceLoaded,
   })
+
+  const chooseFulfillment = useCallback((value: Parameters<typeof setFulfillmentByUser>[0]) => {
+    writeShopFulfillmentPreference(site?.id, value)
+    setFulfillmentByUser(value)
+  }, [site?.id, setFulfillmentByUser])
 
   useEffect(() => {
     if (fulfillment !== 'pickup' && fulfillment !== 'dine_in') return;
@@ -199,7 +207,7 @@ export function CartSidebar({
                 <CartCheckoutFields 
                   allowedOptions={allowedOptions}
                   fulfillment={fulfillment}
-                  setFulfillment={setFulfillmentByUser}
+                  setFulfillment={chooseFulfillment}
                   pickupLocations={pickupLocations}
                   originLocationId={originLocationId}
                   setOriginLocationId={setOriginLocationId}

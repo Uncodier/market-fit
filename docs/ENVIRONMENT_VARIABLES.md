@@ -226,6 +226,8 @@ TWILIO_WHATSAPP_WEBHOOK_URL=
 SENDGRID_API_KEY=
 SENDGRID_FROM_EMAIL=
 SENDGRID_FROM_NAME=
+# Fixed server-owned mailbox for authenticated POS sync error reports
+POS_SYNC_ERROR_EMAIL=
 
 # AI providers
 SHIPLIGHT_API_TOKEN=
@@ -263,6 +265,33 @@ publishing accounts and their OAuth configuration are independent and unchanged.
 Some legacy or narrow integrations reference additional variables. Before
 deploying one, search that integration's source for `process.env` and add only
 the required values to the deployment secret store.
+
+### POS sync error email reporting
+
+`POS_SYNC_ERROR_EMAIL` is a single, server-only recipient mailbox for POS sync
+diagnostics. It reuses `SENDGRID_API_KEY`, `SENDGRID_FROM_EMAIL` and the optional
+`SENDGRID_FROM_NAME` configuration. Missing or invalid recipient/sender configuration
+returns an explicit configuration error; it does not pretend to send an email.
+Clients cannot choose recipients. Reports require authenticated access to the
+reported site and accept only operation metadata, never an outbox payload.
+Error prose is replaced with a fixed diagnostic classification to avoid forwarding
+secrets, names, contact details or embedded payloads; mutation IDs are SHA-256
+fingerprints, not raw client text. Email content is plain text.
+
+Reporting requires the existing `REDIS_URL` admission service and fails closed
+when it is unavailable, regardless of `REDIS_REQUIRED`. Server limits are 10
+admitted attempts per site and per authenticated user in 15 minutes, plus one
+per site/operation/mutation fingerprint in 15 minutes (without a mutation ID,
+one per site/operation). Changing error text or attempt counts does not bypass
+that suppression. Same-report suppression is checked first, so repeated identical
+reports do not consume aggregate site/user admission. Limits count before the
+SendGrid request, so a provider failure
+can consume the suppression window; retries may remain limited until it expires.
+This is best-effort flood prevention, not a durable exactly-once delivery queue.
+SendGrid requests use a fixed HTTPS endpoint, reject redirects and time out after
+five seconds. Success means provider acceptance, not confirmed inbox delivery.
+Set these values only in private local/server environment configuration; this
+change does not apply configuration or send test emails to a remote environment.
 
 `NEXT_PUBLIC_API_KEY` and `NEXT_PUBLIC_API_SECRET` are not required for site
 setup or connectivity diagnostics. Site setup now uses the user's session via

@@ -93,6 +93,7 @@ type Props = {
   selectedLocationId?: string | null
   userChoseFulfillmentRef?: MutableRefObject<boolean>
   userChosePaymentRef?: MutableRefObject<boolean>
+  isFulfillmentPreferenceLoaded?: boolean
 }
 
 export function ShopHeader({
@@ -147,6 +148,7 @@ export function ShopHeader({
   selectedLocationId,
   userChoseFulfillmentRef,
   userChosePaymentRef,
+  isFulfillmentPreferenceLoaded,
 }: Props) {
   const { href: signInHref, onClick: onSignInClick } = useCommerceSignInHref()
 
@@ -268,6 +270,7 @@ export function ShopHeader({
                     selectedLocationId={selectedLocationId}
                     userChoseFulfillmentRef={userChoseFulfillmentRef}
                     userChosePaymentRef={userChosePaymentRef}
+                    isFulfillmentPreferenceLoaded={isFulfillmentPreferenceLoaded}
                   />
                 </SheetContent>
               </Sheet>

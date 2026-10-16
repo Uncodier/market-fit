@@ -1,13 +1,17 @@
 import React from "react"
 import { Skeleton } from "@/app/components/ui/skeleton"
+import stableStyles from "./catalog-listing-stable-layout.module.css"
 
 /** Borderless listing tile — matches CatalogListingCard (image + text below). */
 export function CatalogListingCardSkeleton({
   showSeller = false,
   compactMobile = false,
+  stableLayout = false,
 }: {
   showSeller?: boolean
   compactMobile?: boolean
+  /** Match the fixed text slots used by Shop category cards. */
+  stableLayout?: boolean
 }) {
   return (
     <div className="min-w-0 w-full flex flex-col">
@@ -20,16 +24,33 @@ export function CatalogListingCardSkeleton({
         {/* CTA pill hint (desktop) / circle (mobile) */}
         <Skeleton className="absolute bottom-3 right-3 z-10 h-9 w-9 rounded-full md:h-10 md:w-28" />
       </div>
-      <div className="pt-3 space-y-1.5">
-        {showSeller ? (
-          <Skeleton className="h-3 w-20" />
-        ) : (
-          <Skeleton className="h-3 w-14" />
-        )}
-        <Skeleton className="h-4 w-4/5" />
-        <Skeleton className="h-[15px] w-2/5" />
-        <Skeleton className="h-3 w-full max-w-[90%]" />
-      </div>
+      {stableLayout ? (
+        <div className={stableStyles.stableText} aria-hidden>
+          <div>{showSeller && <Skeleton className="h-3 w-20" />}</div>
+          <div className="space-y-1.5">
+            <Skeleton className="h-4 w-4/5" />
+            <Skeleton className="h-4 w-3/5" />
+          </div>
+          <Skeleton className="h-4 w-2/5" />
+          <Skeleton className="h-4 w-1/2" />
+          <div className="space-y-1">
+            <Skeleton className="h-3 w-full max-w-[90%]" />
+            <Skeleton className="h-3 w-3/4" />
+          </div>
+          <Skeleton className="h-5 w-2/3" />
+        </div>
+      ) : (
+        <div className="pt-3 space-y-1.5">
+          {showSeller ? (
+            <Skeleton className="h-3 w-20" />
+          ) : (
+            <Skeleton className="h-3 w-14" />
+          )}
+          <Skeleton className="h-4 w-4/5" />
+          <Skeleton className="h-[15px] w-2/5" />
+          <Skeleton className="h-3 w-full max-w-[90%]" />
+        </div>
+      )}
     </div>
   )
 }

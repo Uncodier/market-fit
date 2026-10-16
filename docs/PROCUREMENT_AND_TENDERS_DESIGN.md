@@ -1,7 +1,7 @@
 # Suppliers, Procurement, Tenders, and the Unified Account Portal
 
 **Status:** agreed product direction; implementation design, not shipped behavior.
-**Design baseline:** 2026-10-14. Existing behavior was inspected in the local repository;
+**Design baseline:** 2026-10-14; scope extended 2026-10-16. Existing behavior was inspected in the local repository;
 the deployed application and remote database schema were not verified.
 
 This document consolidates the final decisions from the product discussion, including
@@ -21,14 +21,16 @@ that tables, routes, permissions, or migrations already exist.
    lines with quantities, specifications, deadlines, and a versioned publication.
 6. Evolve **/buyer into /home**, retaining its design. Do not build a separate `/supplier`
    portal. One account can purchase and supply at the same time.
-7. Keep the public **/shop** storefront and add its demand-side counterpart,
-   **/tenders/[siteSlug]**. Publishing demand does not publish internal purchasing data.
+7. Add **/tenders**, the global directory based on **/marketplace**, in the initial public
+   release; **/tenders/[siteSlug]** mirrors **/shop**. Global listing requires explicit opt-in.
 8. Reuse existing **Purchases > Quotes**, **Purchases > Orders**, **Bills**, inventory,
    and accounting surfaces. An additional view is not an additional business document.
 9. Separate solicitation, quotation submission, award, order, receipt, bill, and payment.
    None of these automatically proves that the next event has happened.
 10. Clone the established **visual composition and interaction patterns**, not CRM,
     checkout, authorization, or accounting side effects. Extract shared presentation.
+11. Add structured profile certifications and tender-specific certification requirements;
+    see the [certifications design][certifications-design] for evidence, validity, and review rules.
 
 Assumption: private business procurement. Regulated public procurement, certified
 sealed-bid custody, and real-time reverse auctions require separate requirements.
@@ -93,6 +95,7 @@ Physical names and constraints must be verified against the target schema before
 | `purchase_orders` and order lines | Proposed procurement commitment model, integrated into the existing Orders screens; explicit origin links for platform commerce. |
 | Receipts and receipt lines | Actual accepted/rejected quantities, location, actor, evidence, and service acceptance; linked to order lines. |
 | Amendments, clarifications, and audit records | Dated changes and communication, with explicit public/participant/internal visibility. |
+| Certification types, holder credentials, revisions, requirement rules, submission evidence, and reviews | Structured qualifications belonging to a person or organization; pin submitted evidence and scope acceptance to each tender. See [certifications design][certifications-design]. |
 
 One request can have multiple tenders, including a replacement after an unsuccessful
 round. One tender has many participants and submissions. One order can have multiple
@@ -159,11 +162,11 @@ planned; **modified** means extending an existing screen, not replacing its curr
 | Screen / route | Change | Content and primary actions |
 | --- | --- | --- |
 | Suppliers `/suppliers` | New | Directory, company/category/status/owner filters; create, invite, review, block. |
-| Supplier `/suppliers/[id]` | New | **Overview, Contacts, Items, Documents, Activity**; terms, representation grants, linked quotes/orders/Bills. |
+| Supplier `/suppliers/[id]` | New | **Overview, Contacts, Items, Documents, Activity**; Documents includes explicitly shared certifications, alongside quotes/orders/Bills. |
 | Purchase Requests `/purchases/requests` | New | Table/Kanban; requester, budget, required date, approval and sourcing status. |
 | Request `/purchases/requests/[id]` | New | **Overview, Items, Approvals, Sourcing, Activity**; submit, approve/reject, launch tender or direct purchase. |
 | Tenders `/purchases/tenders` | New | Table/Kanban; owner, visibility, dates, participation/submission counts and lifecycle. |
-| Tender `/purchases/tenders/[id]` | New | **Overview, Requirements, Publication, Participants, Proposals, Evaluation, Award, Clarifications, Activity**. |
+| Tender `/purchases/tenders/[id]` | New | **Overview, Requirements, Publication, Participants, Proposals, Evaluation, Award, Clarifications, Activity**; Requirements defines certifications, Publication controls global listing, Evaluation reviews evidence. |
 | Catalog `/catalog` | Modified | One catalog, filters for sales/procurement use; preserve existing item kinds and variants. |
 | Item `/catalog/[id]` | Modified | **Procurement** tab: capability, suppliers, units/terms, history, create request/tender. |
 | Received Quotes `/purchases/quotes` | Modified | Buyer-site inbox for direct, imported, and tender quotations; supplier/source/request/tender filters; record external quote. |
@@ -173,13 +176,13 @@ planned; **modified** means extending an existing screen, not replacing its curr
 | Purchase Order `/purchases/orders/[id]` | Modified | **Overview, Items, Deliveries, Bills, Activity**; confirm, receive partially, accept service, link Bill. |
 | Bills `/bills`, `/bills/[id]` | Modified | Supplier/order/receipt references, invoice reference/duplicate checks, matching; preserve due dates, payments, and posting. |
 | Inventory `/inventory` | Modified | Receipt provenance and order references; no second stock ledger. |
-| Settings `/settings?tab=procurement` | New section | Portal enabled state, stable slug, branding, legal versions, participation and approval policies. |
+| Settings `/settings?tab=procurement` | New section | Portal enabled state, stable slug, branding, legal versions, participation/approval policies and global-listing defaults; individual tenders still require publication authorization. |
 | Team `/settings?tab=team` | Modified | Explicit capabilities for supplier management, publication, evaluation, awards, receiving, and payments. |
 | Companies `/companies/[id]` | Contextual change | Link to the authorized site's supplier relationship without exposing other sites' private data. |
 | Control Center, notifications, and navigation | Modified integration | Procurement tasks/events, module icons, breadcrumbs, screen-access keys, and links. |
 
 **Do not add standalone apps** for comparisons, approvals, awards, receipts, supplier
-contacts, or supplier quotations. Use detail tabs, related-record links, and dialogs.
+contacts, certifications, or supplier quotations. Use detail tabs, related-record links, and dialogs.
 New/create flows reuse the same editor as subsequent editing; a submission receipt is
 a state in the quote detail, not an extra top-level destination.
 
@@ -200,10 +203,10 @@ another branded dashboard. Home is the activity summary; Profile is a separate s
 | Quotations `/home/quotes` | Migrate/extend | **Received / Sent**; one quotation model, not duplicated buyer/supplier stores. |
 | Quote `/home/quotes/[id]` | Migrate/extend | Document/editor, technical answers, attachments, revisions, submission receipt and permitted transitions. |
 | Tenders `/home/tenders` | New within shared shell | **Invitations / My participations**; accept/decline invitations and resume participation. |
-| Participation `/home/tenders/[id]` | New within shared shell | Authorized bases, amendments, clarifications, own submissions, and published outcome. |
+| Participation `/home/tenders/[id]` | New within shared shell | Authorized bases, amendments, clarifications, certification checklist with select/upload evidence, own submissions, and published outcome. |
 | Subscriptions `/home/subscriptions` | Migrate | Existing purchased-subscription behavior and detail links. |
 | Library `/home/library` | Migrate | Existing entitlements, content, reservations, courses, tickets, downloads, and booking links. |
-| Profile `/home/profile` | Migrate/extend | **Personal information, Organizations, Supplier registrations**; reuse current personal profile data. |
+| Profile `/home/profile` | Migrate/extend | **Personal information, Organizations, Supplier registrations, Certifications**; upload reusable credentials for authorized person/organization holders, not necessarily the uploader. |
 
 The external portal requires no buyer-workspace membership or workspace creation.
 There is no exclusive `user_type = buyer | supplier`. Derive each action from verified
@@ -222,6 +225,7 @@ must include account and acting identity; switching identities must not retain f
 
 | Screen / route | Content | Access |
 | --- | --- | --- |
+| Global directory `/tenders` | Marketplace-style search, filters, cards and pagination across buyers; show buyer, title/category, location, closing date, participation mode and optional public budget. | Anonymous; only published public tenders with global-listing opt-in and an active public portal. |
 | Portal `/tenders/[siteSlug]` | Branding, opportunity cards, category/location/deadline filters, optional closed archive, sign-in/register links. | Anonymous, published public records only. |
 | Tender `/tenders/[siteSlug]/[tenderSlug]` | Public brief, requirements, bases, deadlines, published criteria, clarifications/amendments, optional public budget/outcome. | According to visibility; never raw internal request data. |
 | Registration entry `/tenders/[siteSlug]/register` | Explain registration requirements and start verified access. | Public entry; sensitive forms continue authenticated in `/home/profile`. |
@@ -233,6 +237,10 @@ correct participation under `/home/tenders/[id]`, preserving safe intent and aut
 
 Visibility and eligibility are independent:
 
+- Global discoverability is separate from site publication: `is_globally_listed` is a
+  proposed tender-level opt-in, never a catalog flag. Exclude drafts, unlisted/private
+  tenders and disabled/archived sites from results, counts and caches; cards link to the
+  existing site-scoped tender detail. Unpublishing or removing opt-in removes global exposure.
 - Visibility: **public**, **unlisted**, or **private**. Unlisted is accessible by link,
   not confidential. Private tenders are absent from public listings and require access.
 - Participation: **open**, **invitation-only**, or **approved suppliers only**.
@@ -290,13 +298,14 @@ CatalogItem objects into incompatible components just to reuse their JSX.
 | `/home/quotes` and detail/editor | [BuyerQuotesView][buyer-quotes], [BuyerQuoteDetailView][buyer-quote-detail], [BuyerQuoteDocument][quote-document], [CreateQuotationDialog][create-quote] | Add Received/Sent and reusable editing fields. Separate rendering from checkout/public-token loading; participation does not invoke Buy. |
 | `/home/tenders` | [BuyerQuotesView][buyer-quotes] and [QuotesTable][quotes-table] | Adapt the same list/tabs/search/skeleton pattern for Invitations/My participations, deadlines and next actions. |
 | `/home/tenders/[id]` | [BuyerQuoteDetailView][buyer-quote-detail] document layout + tender brief presentation | Reuse shell/document/action placement; add authorized bases, own submission and clarifications. No internal evaluation tabs. |
-| `/home/profile` | [Buyer profile][buyer-profile] + existing [personal profile][personal-profile] fields | Reuse account identity and forms; add Organizations/Supplier registrations. Do not duplicate personal records or reuse buyer workspace administration permissions. |
+| `/home/profile` | [Buyer profile][buyer-profile] + existing [personal profile][personal-profile] fields | Reuse account identity/forms; add Organizations/Supplier registrations/Certifications. Use the [certification UI reuse map][certifications-design]; never duplicate identity or expose the full credential dossier. |
 | Subscriptions, library and experiences | [BuyerSubscriptionsView][buyer-subscriptions], [BuyerLibraryView][buyer-library] and existing experience routes | Retain current UX and entitlements; update links and preserve specialized course/ticket/booking layouts. |
 
 ### 8.4 Public screens
 
 | Target | Existing screen/components to clone as reference | Adaptation |
 | --- | --- | --- |
+| `/tenders` global directory | [MarketplaceClient][marketplace-client], [MarketplaceHeader][marketplace-header], [MarketplaceProductList][marketplace-list] | Adapt search, category/location/deadline filters, buyer identity cards, pagination and loading/empty states. Replace products with opportunities and View tender/Submit proposal; no cart, checkout or sales-ranking rules. |
 | `/tenders/[siteSlug]` | [Shop home][shop-page], [ShopClient][shop-client], [ShopHeader][shop-header], [ShopCatalogMain][shop-catalog], [ShopCategoryChips][shop-categories], [ShopSiteFooter][shop-footer] | Extract branded header, search, card/list grid, filters and footer. Replace merchandise with opportunities and deadline/status metadata; exclude cart, promotions and checkout hooks. |
 | Public tender detail | [Shop item page][shop-item-page], [ProductDetailPage][product-detail] | Adapt public header, back/share controls, content/action hierarchy and responsive layout. Render brief/requirements/deadlines and Submit proposal; do not fabricate a product or import purchase side effects. |
 | Public loading/not-found | [ShopHomeSkeleton][shop-skeleton], [ShopSlugNotFound][shop-not-found] | Match final tender layout in loading and error states; exclude cart/price skeleton sections. |
@@ -364,15 +373,16 @@ without a current workspace site. Public `/tenders` and private `/home/tenders` 
 1. **Foundation:** verify live schema, define party/representation and order bridge
    contracts, supplier relationships, catalog capabilities, and backward-compatible RLS.
 2. **Unified account portal:** extract/reuse BuyerShell, migrate navigation and profile,
-   preserve existing purchases/entitlements, and introduce authorized supplier context.
+   preserve existing purchases/entitlements, and add authorized supplier context/certifications.
 3. **First vertical slice:** request -> publish public or invite-only tender -> external
    participant submits quotation -> buyer compares -> approves whole-tender award to one
    supplier -> generates purchase order. Include versioning, deadlines, permissions,
-   private attachments and basic clarification/amendment history from the start.
+   private attachments, certification requirements/evidence, basic clarification/amendment
+   history, and the opt-in **global `/tenders` directory** from the initial public release.
 4. **Operational completion:** partial receipts/service acceptance, Bill matching,
    discrepancy handling and reliable stock integration without duplicate legacy receipts.
 5. **Later:** split/lot awards, advanced weighted evaluation, supplier performance,
-   contracts/renewals, automated sourcing, and a global tender directory like Marketplace.
+   contracts/renewals, automated sourcing, advanced search and global-directory recommendations.
 
 Recommended states and approval thresholds must be finalized before implementation;
 they are not claims about existing database enums. Decide opening/withdrawal rules,
@@ -389,6 +399,10 @@ Do not block the first vertical slice on replacing the entire CRM or building an
 - External suppliers participate without fake sites/leads; manual and portal quotes
   appear once in the existing buyer-site inbox, with their true issuer/provenance.
 - Public/unlisted/private visibility and open/invited/approved eligibility work independently.
+- Global listing requires separate opt-in; revocation affects results/counts/caches, while
+  public site-only tenders remain accessible without appearing in the directory.
+- Verify the [certification acceptance checklist][certifications-design]: holder authority,
+  required type/scope/validity, per-tender reviews, selective sharing and immutable evidence.
 - Cross-site reads/writes and competitor/private attachment access are denied, including
   public tokens, exports, cache responses, and after representation revocation.
 - Submitted versions and published bases remain stable after later edits; deadline races,
@@ -479,3 +493,7 @@ handoff checks cover link/reference integrity, current-source grounding, and fil
 [ui-dialog]: /Users/prado/Desktop/Proyectos/Uncodie/Code/market-fit/app/components/ui/dialog.tsx
 [ui-table]: /Users/prado/Desktop/Proyectos/Uncodie/Code/market-fit/app/components/ui/table.tsx
 [variant-actions]: /Users/prado/Desktop/Proyectos/Uncodie/Code/market-fit/app/catalog/variant-actions.ts
+[certifications-design]: /Users/prado/Desktop/Proyectos/Uncodie/Code/market-fit/docs/PROCUREMENT_CERTIFICATIONS_DESIGN.md
+[marketplace-client]: /Users/prado/Desktop/Proyectos/Uncodie/Code/market-fit/app/marketplace/MarketplaceClient.tsx
+[marketplace-header]: /Users/prado/Desktop/Proyectos/Uncodie/Code/market-fit/app/marketplace/MarketplaceHeader.tsx
+[marketplace-list]: /Users/prado/Desktop/Proyectos/Uncodie/Code/market-fit/app/marketplace/MarketplaceProductList.tsx

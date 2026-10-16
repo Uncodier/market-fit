@@ -138,6 +138,31 @@ Public commerce paths must derive prices and ownership from trusted server data.
 Checkout return URLs are restricted by
 `app/api/stripe/checkout/checkout-url-security.ts`.
 
+Storefront category navigation at `/shop/[siteSlug]` uses the existing
+`{ name, offset, count }` category response to mount ordered sections before
+their products load. `ShopCatalogSections` reserves grid rows from the unloaded
+item count with responsive CSS geometry. `ShopPendingGrid` mounts detailed
+skeletons only within a viewport-sized window plus overscan; offscreen rows use
+a single spacer, even inside large categories. A shared intersection observer
+activates passive, animation-frame-throttled scroll measurements only for nearby
+pending regions. Shop category cards and their skeletons share bounded text slots
+and the same responsive media aspect ratio, so replacing a placeholder does not
+change row height. The mounted catalog keeps its original layout threshold even
+when a refreshed count crosses a compact/featured boundary. Other listing surfaces
+retain their existing variable-height layout.
+
+Loaded items hidden by fulfillment do not remain as placeholders. A completed
+category read replaces only that category's bucket and reconciles its exact count,
+including zero, while retaining other loaded categories. Category navigation never
+advances the contiguous global pagination cursor. A total/category count mismatch
+keeps global pagination available when no category placeholders remain.
+Nearby incomplete sections load through an observer without initiating navigation;
+failed reads can retry after leaving/reentering, connectivity recovery, or the
+explicit retry button, without an immediate automatic request loop. Search retains
+its separate paginated feed. The category
+offset fallback paginates using exact totals to avoid truncated counts under
+Supabase row limits.
+
 ## Payment processing
 
 Stripe checkout creation and webhook settlement are separate trust boundaries:

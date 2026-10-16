@@ -46,14 +46,16 @@ export function shouldRunOrdersPull({
 
 export function shouldDrainOutbox({
   pendingCount,
+  failedCount = 0,
   online,
   force,
 }: {
   pendingCount: number;
+  failedCount?: number;
   online: boolean;
   force?: boolean;
 }): boolean {
   if (force) return online;
   if (!online) return false;
-  return pendingCount > 0;
+  return pendingCount + failedCount > 0;
 }

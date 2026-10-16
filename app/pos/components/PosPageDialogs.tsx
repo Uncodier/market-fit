@@ -169,7 +169,8 @@ export function PosPageDialogs({
 
   return (
     <>
-      {checkout.isPaymentDialogOpen && (
+      {checkout.isPaymentDialogOpen && cartApi.sessionReady &&
+        (cartApi.loadingOrder || cartApi.cart.length > 0) && (
         <LoadingDialogContext.Provider
           value={{
             ...loadingLabels,
@@ -180,12 +181,14 @@ export function PosPageDialogs({
           }}
         >
           <PaymentConfirmationDialog
+            key={`${siteId}:${cartApi.activeOrderId}`}
             open={checkout.isPaymentDialogOpen}
             onOpenChange={checkout.setIsPaymentDialogOpen}
             totalAmount={checkout.amountDue}
             currency={cartApi.cartCurrency}
             onConfirm={checkout.handleCheckout}
             isLoading={checkout.checkoutLoading}
+            isPreparing={cartApi.loadingOrder}
             hasCustomer={Boolean(cartApi.leadValue)}
           />
         </LoadingDialogContext.Provider>

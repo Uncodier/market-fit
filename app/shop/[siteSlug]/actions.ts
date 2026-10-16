@@ -16,6 +16,7 @@ import { loadChannelPriceMap } from "@/app/price-lists/apply-channel-prices";
 import { loadVariantListingPreviews } from "@/app/catalog/variant-resolve";
 import { applyStorefrontAvailability } from "@/app/catalog/storefront-availability";
 import { loadStorefrontDisplay } from "@/app/commerce/storefront-display";
+import { loadShopRequiredModifierIds } from "./shop-required-modifiers";
 
 export { getShopCategoryOffsets };
 
@@ -61,7 +62,7 @@ function categoryNameFromJoin(category: unknown): string | null {
 }
 
 async function enrichShopItems(siteId: string, items: any[], supabase: Awaited<ReturnType<typeof createServiceClient>>) {
-  const [priceData, levelsRes, settingsRes, variantPreviews, siteRes, displayMap] = await Promise.all([
+  const [priceData, levelsRes, settingsRes, variantPreviews, siteRes, displayMap, requiredModifierIds] = await Promise.all([
     loadChannelPriceMap(supabase, [siteId], "shop"),
     supabase.from("inventory_levels").select("catalog_item_id, quantity").eq("site_id", siteId),
     supabase.from("settings").select("commerce, currency").eq("site_id", siteId).maybeSingle(),
@@ -71,6 +72,7 @@ async function enrichShopItems(siteId: string, items: any[], supabase: Awaited<R
     ),
     supabase.from("sites").select("description").eq("id", siteId).maybeSingle(),
     loadStorefrontDisplay(supabase, items),
+    loadShopRequiredModifierIds(supabase, siteId, items),
   ]);
 
   const inventoryMap = new Map<string, number>();
@@ -130,6 +132,7 @@ async function enrichShopItems(siteId: string, items: any[], supabase: Awaited<R
         sellable,
         availableQty,
         hasVariants,
+        hasRequiredModifiers: requiredModifierIds.has(item.id),
         variantLabels: preview?.labels || [],
         ...(displayData || {}),
       },
@@ -227,8 +230,8 @@ export async function getShopCatalog(
         offset,
       };
     },
-    // v8: fix price list currency override
-    ["shop-catalog-v8", siteId, String(offset), String(pageSize), search, category],
+    // Include required modifier selection flags in cached listing data.
+    ["shop-catalog-v9", siteId, String(offset), String(pageSize), search, category],
     {
       revalidate: SHOP_CACHE_REVALIDATE_SECONDS,
       tags: [shopCacheTag(siteId)],
@@ -282,7 +285,7 @@ export async function getShopItemsByIds(siteId: string, ids: string[]) {
       const enriched = await enrichShopItems(siteId, items, supabase);
       return { data: enriched, error: undefined as string | undefined };
     },
-    ["shop-items-by-ids-v7", siteId, sortedIds.join(",")],
+    ["shop-items-by-ids-v8", siteId, sortedIds.join(",")],
     {
       revalidate: SHOP_CACHE_REVALIDATE_SECONDS,
       tags: [shopCacheTag(siteId)],

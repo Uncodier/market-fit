@@ -75,7 +75,7 @@ type FilterProps = {
   selectedSubtype: string
   setSelectedSubtype: (subtype: string) => void
   effectiveKind: string
-  leadingChip?: ReactNode
+  productFilters?: ReactNode
 }
 
 /** Mobile-only horizontal chips (shop-style). */
@@ -85,14 +85,12 @@ export function MarketplaceCategoryChips({
   selectedSubtype,
   setSelectedSubtype,
   effectiveKind,
-  leadingChip,
 }: FilterProps) {
   const { t } = useLocalization()
 
   return (
     <div className="md:hidden sticky top-[72px] z-30 pointer-events-none -mx-4 pt-2 pb-4 mb-6 space-y-3">
       <div className="flex overflow-x-auto gap-3 scrollbar-hide w-full items-center pointer-events-auto py-2 px-4">
-        {leadingChip}
         {KIND_OPTIONS.map(([value, key, fallback]) => (
           <Chip
             key={value}
@@ -128,13 +126,12 @@ export function MarketplaceFilterSidebar({
   selectedSubtype,
   setSelectedSubtype,
   effectiveKind,
-  leadingChip,
+  productFilters,
 }: FilterProps) {
   const { t } = useLocalization()
 
   return (
-    <aside className="w-full md:w-64 shrink-0 space-y-8 hidden md:block sticky top-28 max-h-[calc(100vh-8rem)] overflow-y-auto overflow-x-hidden pb-4">
-      {leadingChip && <div className="mb-2">{leadingChip}</div>}
+    <aside className="w-full md:w-64 shrink-0 space-y-8 hidden md:block pb-4">
       <div>
         <h3 className="font-bold text-lg mb-4">
           {t("marketplace.categories.title") || "Categories"}
@@ -170,6 +167,7 @@ export function MarketplaceFilterSidebar({
           </div>
         </div>
       )}
+      {selectedKind !== "discounts" && productFilters}
     </aside>
   )
 }

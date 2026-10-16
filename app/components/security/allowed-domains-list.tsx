@@ -1,16 +1,15 @@
-import { useState, useEffect } from "react"
+import { Fragment, useEffect, useMemo } from "react"
 import { useAllowedDomains } from "@/app/hooks/use-allowed-domains"
 import { useSite } from "@/app/context/SiteContext"
 import {
   SectionCard,
   SectionCardHeader,
   SectionCardTitle,
-  SectionCardDescription,
-  SectionCardContent,
-  SectionCardFooter,
 } from "@/app/components/ui/section-card"
 import { EmptyCard } from "@/app/components/ui/empty-card"
 import { Button } from "@/app/components/ui/button"
+import { Badge } from "@/app/components/ui/badge"
+import { sortAllowedDomainsForDisplay } from "@/lib/security-resource-order"
 import { AddDomainDialog } from "@/app/components/domains/add-domain-dialog"
 import { ActionFooter } from "@/app/components/ui/card-footer"
 import { Globe, Trash2 } from "@/app/components/ui/icons"
@@ -29,20 +28,19 @@ import {
 export function AllowedDomainsList() {
   const { domains, isLoading, isSubmitting, addDomain, deleteDomain } = useAllowedDomains()
   const { currentSite } = useSite()
+  const sortedDomains = useMemo(() => sortAllowedDomainsForDisplay(domains), [domains])
 
   // Emit domains update event whenever list changes
   useEffect(() => {
-    if (domains.length > 0) {
-      const domainsData = domains.map((domain, index) => ({
-        id: `allowed-domain-${index}`,
-        title: domain.domain || `Domain ${index + 1}`,
-      }));
-      
-      window.dispatchEvent(new CustomEvent('allowedDomainsUpdated', { 
-        detail: domainsData 
-      }));
-    }
-  }, [domains]);
+    const domainsData = sortedDomains.map((domain, index) => ({
+      id: `allowed-domain-${index}`,
+      title: domain.domain || `Domain ${index + 1}`,
+    }));
+
+    window.dispatchEvent(new CustomEvent('allowedDomainsUpdated', {
+      detail: domainsData
+    }));
+  }, [sortedDomains]);
 
   if (!currentSite) {
     return (
@@ -65,6 +63,9 @@ export function AllowedDomainsList() {
           <p className="text-sm text-muted-foreground mt-1">
             Configure which domains are allowed to make requests to your API
           </p>
+          <p className="text-sm text-muted-foreground mt-1">
+            User-added domains appear first, followed by legacy domains with unknown origin. Harness domains appear below.
+          </p>
         </div>
         <AddDomainDialog onAddDomain={addDomain} />
       </div>
@@ -79,13 +80,20 @@ export function AllowedDomainsList() {
       ) : (
         <div className="space-y-6">
           {/* Domain Cards */}
-          {domains.map((domain, index) => (
-            <SectionCard key={domain.id} id={`allowed-domain-${index}`} className="border border-border">
+          {sortedDomains.map((domain, index) => (
+            <Fragment key={domain.id}>
+            {domain.source === 'harness' && (index === 0 || sortedDomains[index - 1].source !== 'harness') && (
+              <h3 className="text-lg font-semibold border-t border-border pt-6">Automatically created domains</h3>
+            )}
+            <SectionCard id={`allowed-domain-${index}`} className="border border-border">
               <SectionCardHeader>
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
+                  <div className="flex min-w-0 flex-wrap items-center gap-3">
                     <Globe className="h-5 w-5 text-muted-foreground" />
-                    <SectionCardTitle className="text-lg font-semibold">{domain.domain}</SectionCardTitle>
+                    <SectionCardTitle className="text-lg font-semibold break-all">{domain.domain}</SectionCardTitle>
+                    <Badge variant="secondary">
+                      {domain.source === 'harness' ? 'Harness' : domain.source === 'user' ? 'User-added' : 'Unknown origin'}
+                    </Badge>
                   </div>
                 </div>
               </SectionCardHeader>
@@ -109,7 +117,7 @@ export function AllowedDomainsList() {
                       <AlertDialogHeader>
                         <AlertDialogTitle>Remove Domain</AlertDialogTitle>
                         <AlertDialogDescription>
-                          Are you sure you want to remove the domain "{domain.domain}"? This action cannot be undone and API requests from this domain will no longer be allowed.
+                          Are you sure you want to remove the domain &quot;{domain.domain}&quot;? This action cannot be undone and API requests from this domain will no longer be allowed.
                         </AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>
@@ -126,6 +134,7 @@ export function AllowedDomainsList() {
                 </div>
               </ActionFooter>
             </SectionCard>
+            </Fragment>
           ))}
         </div>
       )}

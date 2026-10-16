@@ -14,16 +14,18 @@ import { CatalogItem } from "@/app/types"
 import { BuyerGeo } from "@/app/commerce/buyer-geo"
 import { isItemLocationAvailable, type SettingsLocation } from "@/app/commerce/buyer-location-availability"
 import type { PromoBadge } from "@/app/promotions/promotion-merchandising"
+import { MARKETPLACE_PAGE_SIZE } from "./marketplace-pagination"
 
 interface MarketplaceProductListProps {
   items: Array<CatalogItem & { site?: { id: string; name: string; logo_url?: string | null; settings?: { locations?: SettingsLocation[] } } | null }>
   initialCount: number
+  globalInitialCount?: number
   isLoading: boolean
   compactMobile: boolean
   page: number
   totalPages: number
   setPage: (page: number) => void
-  onPrimaryAction: (item: any) => void
+  onPrimaryAction: (item: MarketplaceProductListProps["items"][number]) => void
   buyerGeo?: BuyerGeo
   promoBadgesByItemId?: Record<string, PromoBadge>
 }
@@ -31,6 +33,7 @@ interface MarketplaceProductListProps {
 export const MarketplaceProductList = React.memo(function MarketplaceProductList({
   items,
   initialCount,
+  globalInitialCount = initialCount,
   isLoading,
   compactMobile,
   page,
@@ -56,12 +59,12 @@ export const MarketplaceProductList = React.memo(function MarketplaceProductList
           <Search className="w-8 h-8 text-muted-foreground" />
         </div>
         <h3 className="text-xl font-bold mb-2">
-          {initialCount === 0
+          {globalInitialCount === 0
             ? t("marketplace.empty.title") || "No marketplace listings yet"
             : t("marketplace.noResults") || "No results found"}
         </h3>
         <p className="text-muted-foreground max-w-md mx-auto">
-          {initialCount === 0
+          {globalInitialCount === 0
             ? t("marketplace.empty.desc") ||
               "Sellers can list catalog items on the marketplace by enabling the Marketplace toggle on each item."
             : t("marketplace.noResultsDesc") ||
@@ -89,7 +92,7 @@ export const MarketplaceProductList = React.memo(function MarketplaceProductList
         <CommerceProductGrid
           totalCount={initialCount || 0}
           isLoading={isLoading}
-          skeletonCount={8}
+          skeletonCount={MARKETPLACE_PAGE_SIZE}
           showSeller
           maxCols={3}
         >

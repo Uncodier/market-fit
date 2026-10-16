@@ -16,7 +16,7 @@ import { useLocalization } from "@/app/context/LocalizationContext"
 import type { ShopCategoryOffset } from "./shop-catalog-shared"
 import {
   categoryDomId,
-  groupItemsByCategory,
+  buildShopCategorySections,
   SHOP_UNCATEGORIZED_NAME,
   uniqueCategoryNames,
 } from "./shop-catalog-shared"
@@ -28,13 +28,15 @@ import {
 import { ShopCategoryChips } from "./ShopCategoryChips"
 import { useShopCategorySpy } from "./useShopCategorySpy"
 import { PromoCarousel } from "@/app/components/commerce/PromoCarousel"
-import { PromoListingCard } from "@/app/components/commerce/PromoListingCard"
+import { ShopCatalogSections } from "./ShopCatalogSections"
 import type {
   PromoBadge,
   StorefrontPromoCard,
 } from "@/app/promotions/promotion-merchandising"
 import type { DeviceOrder } from "@/app/commerce/device-order-storage"
 import { ShopDeviceOrders } from "./ShopDeviceOrders"
+import { useShopCatalogViewport, type ShopCatalogRequestResult } from "./useShopCatalogViewport"
+import { Button } from "@/app/components/ui/button"
 
 interface ShopCatalogMainProps {
   siteSlug: string | string[]
@@ -53,8 +55,8 @@ interface ShopCatalogMainProps {
   isLoadingMore: boolean
   isJumping: boolean
   hasMoreBelow: boolean
-  loadMoreBelow: () => void
-  jumpToCategory: (offset: number, categoryName: string, categoryCount?: number) => void
+  loadMoreBelow: () => ShopCatalogRequestResult | Promise<ShopCatalogRequestResult>
+  jumpToCategory: (offset: number, categoryName: string, categoryCount?: number, scrollToTarget?: boolean) => ShopCatalogRequestResult | Promise<ShopCatalogRequestResult>
   pendingScrollCategory: string | null
   clearPendingScrollCategory: () => void
   addToCart: (item: CatalogItem) => void
@@ -101,6 +103,8 @@ export const ShopCatalogMain = React.memo(function ShopCatalogMain({
     getLocationAvailable ? getLocationAvailable(item) : locationAvailable
   const { t } = useLocalization()
   const sentinelRef = useRef<HTMLDivElement>(null)
+  // Reconciled totals must not switch card geometry while navigating the mounted catalog.
+  const [layoutCount] = useState(initialCount)
   /** Captured once so the initial "all" spy state cannot wipe `?category=` before restore. */
   const urlCategoryRef = useRef<string | null | undefined>(undefined)
   const [categoryUrlReady, setCategoryUrlReady] = useState(false)
@@ -114,8 +118,8 @@ export const ShopCatalogMain = React.memo(function ShopCatalogMain({
 
   const useSections = !isSearching && chipCategories.length > 0
   const sections = useMemo(
-    () => (useSections ? groupItemsByCategory(sellableCatalogItems) : []),
-    [useSections, sellableCatalogItems]
+    () => (useSections ? buildShopCategorySections(sellableCatalogItems, categoryOffsets, rawCatalogItems) : []),
+    [useSections, sellableCatalogItems, categoryOffsets, rawCatalogItems]
   )
   const loadedSectionNames = useMemo(() => sections.map((s) => s.name), [sections])
 
@@ -156,28 +160,15 @@ export const ShopCatalogMain = React.memo(function ShopCatalogMain({
     clearPendingScrollCategory,
   ])
 
-  // Infinite scroll sentinel
-  useEffect(() => {
-    const el = sentinelRef.current
-    if (!el) return
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries.some((e) => e.isIntersecting)) {
-          if (hasMoreBelow && !isLoadingMore && !isJumping && !isLoading) {
-            loadMoreBelow()
-          }
-        }
-      },
-      { root: null, rootMargin: "240px 0px", threshold: 0 }
-    )
-
-    observer.observe(el)
-    return () => observer.disconnect()
-  }, [hasMoreBelow, isLoadingMore, isJumping, isLoading, loadMoreBelow])
+  const { failedCategories, retry } = useShopCatalogViewport({
+    sections, categoryOffsets, useSections, ready: categoryUrlReady, isSearching,
+    busy: isLoading || isJumping || isLoadingMore, hasMoreBelow,
+    sentinelRef, jumpToCategory, loadMoreBelow,
+  })
 
   const handleChipSelect = (cat: string) => {
     if (isSearching) return
+    retry()
 
     if (!categoryUrlReady) setCategoryUrlReady(true)
     writeShopCategoryToLocation(cat)
@@ -190,7 +181,7 @@ export const ShopCatalogMain = React.memo(function ShopCatalogMain({
     const offsetEntry = categoryOffsets.find((o) => o.name === cat)
     const expected = offsetEntry?.count ?? 0
     const loadedInCategory = (rawCatalogItems || sellableCatalogItems).filter(
-      (item) => (item as any)._shop?.categoryName === cat
+      (item) => (item._shop?.categoryName || SHOP_UNCATEGORIZED_NAME) === cat
     ).length
     const sectionComplete =
       !!document.getElementById(categoryDomId(cat)) &&
@@ -216,31 +207,35 @@ export const ShopCatalogMain = React.memo(function ShopCatalogMain({
       urlCategoryRef.current = readShopCategoryFromLocation()
     }
 
-    const matched = matchShopCategory(urlCategoryRef.current, chipCategories)
-    if (matched) {
-      const offsetEntry = categoryOffsets.find((o) => o.name === matched)
-      const expected = offsetEntry?.count ?? 0
-      const loadedInCategory = (rawCatalogItems || sellableCatalogItems).filter(
-        (item) => (item as any)._shop?.categoryName === matched
-      ).length
-      const sectionComplete =
-        !!document.getElementById(categoryDomId(matched)) &&
-        (expected === 0 || loadedInCategory >= expected)
+    const frame = requestAnimationFrame(() => {
+      const matched = matchShopCategory(urlCategoryRef.current, chipCategories)
+      if (matched) {
+        const offsetEntry = categoryOffsets.find((o) => o.name === matched)
+        const expected = offsetEntry?.count ?? 0
+        const loadedInCategory = (rawCatalogItems || sellableCatalogItems).filter(
+          (item) => (item._shop?.categoryName || SHOP_UNCATEGORIZED_NAME) === matched
+        ).length
+        const sectionComplete =
+          !!document.getElementById(categoryDomId(matched)) &&
+          (expected === 0 || loadedInCategory >= expected)
 
-      if (sectionComplete) {
-        scrollToCategory(matched)
-      } else if (offsetEntry) {
-        setActiveCategory(matched, 1500)
-        jumpToCategory(offsetEntry.offset, matched, offsetEntry.count)
+        if (sectionComplete) {
+          scrollToCategory(matched)
+        } else if (offsetEntry) {
+          setActiveCategory(matched, 1500)
+          jumpToCategory(offsetEntry.offset, matched, offsetEntry.count)
+        }
       }
-    }
-    setCategoryUrlReady(true)
+      setCategoryUrlReady(true)
+    })
+    return () => cancelAnimationFrame(frame)
   }, [
     categoryUrlReady,
     useSections,
     isLoading,
     chipCategories,
     categoryOffsets,
+    rawCatalogItems,
     sellableCatalogItems,
     scrollToCategory,
     setActiveCategory,
@@ -249,7 +244,7 @@ export const ShopCatalogMain = React.memo(function ShopCatalogMain({
 
   // Card theme follows total catalog quantity (same as before category sections):
   // >10 → compact 2-col mobile; <3 → featured posters; else standard grid.
-  const catalogCount = initialCount || 0
+  const catalogCount = layoutCount || 0
   const compactMobile = shouldUseCompactMobileListing(catalogCount)
 
   const resultsTitle = isSearching
@@ -272,7 +267,7 @@ export const ShopCatalogMain = React.memo(function ShopCatalogMain({
       onPrimaryAction={addToCart}
       disabledLabel={t("shop.soldOut") || "Sold Out"}
       getPrimaryDisabled={(item) =>
-        !(item as any)._shop?.sellable && (item as any)._shop?.availableQty === 0
+        !item._shop?.sellable && item._shop?.availableQty === 0
       }
       getLocationAvailable={resolveLocationAvailable}
       getPromoBadge={(item) => promoBadgesByItemId[item.id] || null}
@@ -290,51 +285,17 @@ export const ShopCatalogMain = React.memo(function ShopCatalogMain({
       showSeller={false}
       descriptionLineClamp="line-clamp-1"
       primaryDisabled={
-        !(item as any)._shop?.sellable && (item as any)._shop?.availableQty === 0
+        !item._shop?.sellable && item._shop?.availableQty === 0
       }
       disabledLabel={t("shop.soldOut") || "Sold Out"}
       isOwned={ownedAccessMap.has(item.id)}
       canBook={ownedAccessMap.get(item.id)}
       compactMobile={compactMobile}
+      stableLayout={useSections}
       locationAvailable={resolveLocationAvailable(item)}
       promoBadge={promoBadgesByItemId[item.id] || null}
     />
   )
-
-  const renderSectionGrid = (
-    items: CatalogItem[],
-    sectionPromos: StorefrontPromoCard[] = [],
-  ) => {
-    const promoCards = sectionPromos.map((promo) => (
-      <PromoListingCard
-        key={`promo-${promo.id}`}
-        promo={promo}
-        href={`/shop/${siteSlug}/promo/${promo.id}`}
-        compactMobile={compactMobile}
-        fullWidth={true}
-        surface="shop"
-        siteSlug={String(siteSlug)}
-        className="col-span-full"
-      />
-    ))
-
-    if (
-      !compactMobile &&
-      catalogCount > 0 &&
-      catalogCount < FEATURED_LISTING_THRESHOLD &&
-      items.length > 0 &&
-      promoCards.length === 0
-    ) {
-      return renderFeaturedRail(items)
-    }
-
-    return (
-      <CommerceProductGrid totalCount={catalogCount + promoCards.length}>
-        {promoCards}
-        {items.map(renderCard)}
-      </CommerceProductGrid>
-    )
-  }
 
   return (
     <main className="flex-1 max-w-7xl mx-auto px-4 md:px-8 pt-5 pb-8 md:pt-8 md:pb-12 w-full">
@@ -400,7 +361,7 @@ export const ShopCatalogMain = React.memo(function ShopCatalogMain({
               onPrimaryAction={addToCart}
               disabledLabel={t("shop.soldOut") || "Sold Out"}
               getPrimaryDisabled={(item) =>
-                !(item as any)._shop?.sellable && (item as any)._shop?.availableQty === 0
+                  !item._shop?.sellable && item._shop?.availableQty === 0
               }
               isOwned
               getCanBook={(item) => Boolean(ownedAccessMap.get(item.id))}
@@ -416,7 +377,7 @@ export const ShopCatalogMain = React.memo(function ShopCatalogMain({
                   showSeller={false}
                   descriptionLineClamp="line-clamp-1"
                   primaryDisabled={
-                    !(item as any)._shop?.sellable && (item as any)._shop?.availableQty === 0
+                    !item._shop?.sellable && item._shop?.availableQty === 0
                   }
                   disabledLabel={t("shop.soldOut") || "Sold Out"}
                   isOwned={true}
@@ -429,7 +390,7 @@ export const ShopCatalogMain = React.memo(function ShopCatalogMain({
         </div>
       )}
 
-      {(sellableCatalogItems.length > 0 || ownedItems.length === 0 || isLoading) && (
+      {(sections.length > 0 || sellableCatalogItems.length > 0 || ownedItems.length === 0 || isLoading) && (
         <div>
           {(ownedItems.length > 0 || deviceOrders.length > 0) && !useSections && (
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
@@ -445,7 +406,7 @@ export const ShopCatalogMain = React.memo(function ShopCatalogMain({
             </div>
           )}
 
-          {sellableCatalogItems.length === 0 && !isLoading && !isJumping ? (
+          {sellableCatalogItems.length === 0 && sections.length === 0 && !isLoading && !isJumping ? (
             <div className="py-24 text-center">
               <Search className="h-12 w-12 text-gray-300 mx-auto mb-4" />
               <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">
@@ -456,35 +417,14 @@ export const ShopCatalogMain = React.memo(function ShopCatalogMain({
               </p>
             </div>
           ) : useSections ? (
-            <div className="space-y-12">
-              {(isJumping || isLoading) && sellableCatalogItems.length === 0 ? (
-                <CommerceProductGrid
-                  totalCount={catalogCount}
-                  isLoading
-                  skeletonCount={compactMobile ? 6 : 4}
-                >
-                  {[]}
-                </CommerceProductGrid>
-              ) : (
-                sections.map((section) => (
-                  <section
-                    key={section.name}
-                    id={categoryDomId(section.name)}
-                    className="scroll-mt-[140px]"
-                  >
-                    <h2 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-gray-100 mb-6">
-                      {section.name === SHOP_UNCATEGORIZED_NAME
-                        ? t("shop.other") || "Other"
-                        : section.name}
-                    </h2>
-                    {renderSectionGrid(
-                      section.items,
-                      categoryPromosByName[section.name] || [],
-                    )}
-                  </section>
-                ))
-              )}
-            </div>
+            <ShopCatalogSections
+              sections={sections}
+              catalogCount={catalogCount}
+              siteSlug={String(siteSlug)}
+              categoryPromosByName={categoryPromosByName}
+              renderCard={renderCard}
+              renderFeaturedRail={renderFeaturedRail}
+            />
           ) : useFeaturedSellable ? (
             renderFeaturedRail(sellableCatalogItems)
           ) : (
@@ -498,8 +438,14 @@ export const ShopCatalogMain = React.memo(function ShopCatalogMain({
           )}
 
           <div ref={sentinelRef} className="h-8 w-full" aria-hidden />
+          {failedCategories.length > 0 && (
+            <div role="status" className="mt-4 flex items-center gap-3 text-sm">
+              <span>Some products could not be loaded.</span>
+              <Button variant="outline" size="sm" onClick={retry}>Retry loading products</Button>
+            </div>
+          )}
 
-          {isLoadingMore && !isJumping && (
+          {isLoadingMore && !isJumping && !useSections && (
             <div className="mt-8">
               <CommerceProductGrid
                 totalCount={catalogCount}

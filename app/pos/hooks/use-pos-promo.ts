@@ -11,7 +11,7 @@ import {
 } from "@/app/pos/local/resolve-promo-local";
 import type { LocalPromotion } from "@/app/pos/local/types";
 import type { PosCartItem } from "@/app/pos/components/CartPanel";
-import { convertCartAmountToCurrency } from "@/app/commerce/checkout-currency";
+import { posCartLineSubtotal } from "@/app/pos/cart-totals";
 
 export type AppliedPosPromo = LocalPromoMatch;
 
@@ -47,19 +47,10 @@ export function usePosPromo({
     return cart
       .filter((c) => c.cartQty > 0)
       .map((c) => {
-        const extras = (c.modifiers || []).reduce(
-          (sum, m) => sum + m.cartPrice * m.cartQty,
-          0,
-        );
         return {
           catalogItemId: c.id,
           categoryId: c.category_id,
-          subtotal: convertCartAmountToCurrency(
-            (c.cartPrice + extras) * c.cartQty,
-            c.currency,
-            siteCurrency,
-            fxRates,
-          ),
+          subtotal: posCartLineSubtotal(c, siteCurrency, fxRates),
           quantity: c.cartQty,
         };
       });

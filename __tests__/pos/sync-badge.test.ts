@@ -42,4 +42,13 @@ describe("posSyncBadgeView", () => {
     expect(view.label).toContain("pos.sync.offline");
     expect(view.label).toContain("2");
   });
+
+  it("shows a pull error and returns to synced after recovery", () => {
+    const failed = posSyncBadgeView({ ...baseStatus, lastError: "Catalog pull failed" }, t);
+    expect(failed.label).toBe("pos.sync.error");
+    expect(failed.expanded).toBe(true);
+    const recovered = posSyncBadgeView({ ...baseStatus, lastError: null }, t);
+    expect(recovered.label).toBe("pos.sync.synced");
+    expect(recovered.expanded).toBe(false);
+  });
 });

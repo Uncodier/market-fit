@@ -71,6 +71,7 @@ interface CartPanelProps {
   clearAppliedPromo: () => void;
   handleCheckout: () => void;
   checkoutLoading: boolean;
+  orderPreparing?: boolean;
   leads: any[];
   locations: any[];
   isMobile?: boolean;
@@ -124,6 +125,7 @@ export function CartPanel({
   clearAppliedPromo,
   handleCheckout,
   checkoutLoading,
+  orderPreparing = false,
   leads,
   locations,
   isMobile,
@@ -458,12 +460,13 @@ export function CartPanel({
           <div className="flex mt-4">
             <Button
               className="flex-1 h-12 text-lg"
-              disabled={cart.length === 0 || checkoutLoading}
+              disabled={(cart.length === 0 && activeOrderId === "new") || checkoutLoading}
               onClick={handleCheckout}
             >
               <CreditCard className="h-5 w-5 mr-2" />
               {checkoutLoading
                 ? t("pos.cart.processing") || "Processing..."
+                : orderPreparing ? getTrans("pos.cart.charge", "Charge")
                 : `${t("pos.cart.charge") || "Charge"} ${money(total)}`}
             </Button>
           </div>

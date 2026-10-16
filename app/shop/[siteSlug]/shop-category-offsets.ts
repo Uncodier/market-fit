@@ -10,7 +10,11 @@ import {
   type ShopCategoryOffset,
 } from "./shop-catalog-shared"
 
-function applyShopCatalogOrder<T extends { order: (...args: any[]) => T }>(query: T): T {
+const FALLBACK_PAGE_SIZE = 1000
+
+function applyShopCatalogOrder<
+  T extends { order: (column: string, options: { ascending: boolean }) => T }
+>(query: T): T {
   return query
     .order("sort_order", { ascending: true })
     .order("name", { ascending: true })
@@ -26,23 +30,40 @@ async function loadShopCategoryOffsetsFallback(
   siteId: string,
   supabase: Awaited<ReturnType<typeof createServiceClient>>
 ): Promise<ShopCategoryOffset[]> {
-  const { data: rows, error } = await applyShopCatalogOrder(
-    applyStorefrontAvailability(
-      supabase
-        .from("catalog_items")
-        .select("id, category:catalog_categories(name)")
-        .eq("site_id", siteId)
-        .eq("status", "active")
-        .eq("is_marketplace_listed", true)
-        .is("parent_id", null)
-    )
-  )
+  const names: string[] = []
+  let offset = 0
 
-  if (error || !rows) return []
+  while (true) {
+    const { data: rows, error, count } = await applyShopCatalogOrder(
+      applyStorefrontAvailability(
+        supabase
+          .from("catalog_items")
+          .select("id, category:catalog_categories(name)", { count: "exact" })
+          .eq("site_id", siteId)
+          .eq("status", "active")
+          .eq("is_marketplace_listed", true)
+          .is("parent_id", null)
+      )
+    ).range(offset, offset + FALLBACK_PAGE_SIZE - 1)
 
-  const names = rows.map(
-    (row: { category: unknown }) => categoryNameFromJoin(row.category) || SHOP_UNCATEGORIZED_NAME
-  )
+    // Reject inside unstable_cache so failed or incomplete counts are never cached.
+    if (error || !rows || typeof count !== "number" || !Number.isSafeInteger(count) || count < 0) {
+      throw new Error("Unable to load shop category offsets")
+    }
+
+    for (const row of rows as { category: unknown }[]) {
+      names.push(categoryNameFromJoin(row.category) || SHOP_UNCATEGORIZED_NAME)
+    }
+
+    // A server row limit may be smaller than our page size. Advance by the rows
+    // actually returned and use the exact total, not a short page, to stop.
+    offset += rows.length
+    if (offset >= count) break
+    if (rows.length === 0) {
+      throw new Error("Incomplete shop category offsets")
+    }
+  }
+
   return buildShopCategoryOffsets(names)
 }
 
@@ -58,7 +79,7 @@ export async function getShopCategoryOffsets(siteId: string): Promise<ShopCatego
       }
       return loadShopCategoryOffsetsFallback(siteId, supabase)
     },
-    ["shop-category-offsets-v8", siteId],
+    ["shop-category-offsets-v9", siteId],
     {
       revalidate: SHOP_CACHE_REVALIDATE_SECONDS,
       tags: [shopCacheTag(siteId)],

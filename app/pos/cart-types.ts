@@ -6,12 +6,17 @@ export interface PosCartModifier {
   name: string
   cartQty: number
   cartPrice: number
+  currency?: string | null
+  /** Reference to the persisted modifier whose price is in the order currency. */
+  saleOrderItemId?: string
   backorderQty?: number
 }
 
 export interface PosCartItem extends CatalogItem {
   cartQty: number
   cartPrice: number
+  /** Reference to the persisted host whose price is in the order currency. */
+  saleOrderItemId?: string
   /** Unit price before a cashier line discount. */
   cartListPrice?: number
   /** Percent off cartListPrice (0–100). */

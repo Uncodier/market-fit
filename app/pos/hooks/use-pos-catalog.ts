@@ -10,10 +10,12 @@ import {
 } from "@/app/pos/local/snapshot-pull";
 import { getPosDb } from "@/app/pos/local/db";
 import { subscribePosSync } from "@/app/pos/local/sync-engine";
-import type { LocalPendingOrder, LocalPromotion } from "@/app/pos/local/types";
+import type { LocalPendingOrder, LocalPriceListItem, LocalPromotion } from "@/app/pos/local/types";
 import { selectPosOpenOrders } from "@/app/pos/open-orders";
 import { isStorefrontAvailable } from "@/app/catalog/storefront-availability";
 import type { PosInventorySnapshot } from "@/app/pos/inventory-availability";
+
+type LocalCatalog = Awaited<ReturnType<typeof readLocalCatalog>>;
 
 export function usePosCatalog(siteId: string | undefined) {
   const activeSiteId = useRef(siteId);
@@ -21,19 +23,19 @@ export function usePosCatalog(siteId: string | undefined) {
   const [loadedSiteId, setLoadedSiteId] = useState<string>();
   const [inventorySnapshot, setInventorySnapshotValue] = useState<PosInventorySnapshot | null>(null);
   const [catalogItems, setCatalogItems] = useState<CatalogItem[]>([]);
-  const [categories, setCategories] = useState<any[]>([]);
-  const [locations, setLocations] = useState<any[]>([]);
-  const [leads, setLeads] = useState<any[]>([]);
-  const [priceLists, setPriceLists] = useState<any[]>([]);
+  const [categories, setCategories] = useState<LocalCatalog["categories"]>([]);
+  const [locations, setLocations] = useState<LocalCatalog["locations"]>([]);
+  const [leads, setLeads] = useState<LocalCatalog["leads"]>([]);
+  const [priceLists, setPriceLists] = useState<LocalCatalog["priceLists"]>([]);
   const [pendingOrders, setPendingOrders] = useState<LocalPendingOrder[]>([]);
   const [promotions, setPromotions] = useState<LocalPromotion[]>([]);
   const [hydrated, setHydrated] = useState(false);
   const [hasLocalData, setHasLocalData] = useState(false);
   const [lastPulledAt, setLastPulledAt] = useState<string | null>(null);
-  const [priceListItems, setPriceListItems] = useState<any[]>([]);
+  const [priceListItems, setPriceListItems] = useState<LocalPriceListItem[]>([]);
   const [taxesByItem, setTaxesByItem] = useState<Awaited<ReturnType<typeof readTaxesByItemIds>>>({});
   const [modifierGroupsByHostId, setModifierGroupsByHostId] = useState<
-    Record<string, any[]>
+    LocalCatalog["modifierGroupsByHostId"]
   >({});
 
   const reload = useCallback(async () => {
@@ -85,7 +87,7 @@ export function usePosCatalog(siteId: string | undefined) {
       if (sig === lastSig) return;
       lastSig = sig;
       void reload();
-    });
+    }, siteId);
   }, [siteId, reload]);
 
   const getTaxesForCart = useCallback(async (itemIds: string[]) => {

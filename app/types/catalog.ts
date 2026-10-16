@@ -285,6 +285,7 @@ export interface CatalogItem {
     siteDescription?: string | null;
     sellable?: boolean;
     hasVariants?: boolean;
+    hasRequiredModifiers?: boolean;
     variantLabels?: string[];
     children?: CatalogItem[];
   };

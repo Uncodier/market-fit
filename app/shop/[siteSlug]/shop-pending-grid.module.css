@@ -1,0 +1,95 @@
+/* Mirrors CommerceProductGrid and the Shop-only stable listing text slots. */
+.container {
+  container-type: inline-size;
+  --shop-columns: 1;
+  --shop-gap-x: 1.5rem;
+  --shop-gap-y: 1.5rem;
+  --shop-image-ratio: 0.75;
+}
+
+.compact {
+  --shop-columns: 2;
+  --shop-gap-x: 0.75rem;
+  --shop-image-ratio: 1;
+}
+
+.partial,
+.rows {
+  /* Keep in sync with catalog-listing-stable-layout.module.css (padding included). */
+  --shop-card-height: calc((100cqw - (var(--shop-columns) - 1) * var(--shop-gap-x)) / var(--shop-columns) * var(--shop-image-ratio) + 11.5rem);
+  display: var(--shop-display);
+  --shop-rows: var(--shop-rows-1);
+  --shop-display: var(--shop-display-1);
+}
+
+.compact .partial,
+.compact .rows {
+  --shop-rows: var(--shop-rows-2);
+  --shop-display: var(--shop-display-2);
+}
+
+.partial {
+  height: var(--shop-card-height);
+  min-width: 0;
+}
+
+.rows {
+  grid-column: 1 / -1;
+  position: relative;
+  height: max(0px, calc(var(--shop-rows) * (var(--shop-card-height) + var(--shop-gap-y)) - var(--shop-gap-y)));
+}
+
+.window {
+  position: absolute;
+  left: 0;
+  right: 0;
+}
+
+@media (min-width: 640px) {
+  .container:not(.compact) {
+    --shop-columns: 2;
+  }
+  .container:not(.compact) .partial,
+  .container:not(.compact) .rows {
+    --shop-rows: var(--shop-rows-2);
+    --shop-display: var(--shop-display-2);
+  }
+}
+
+@media (min-width: 768px) {
+  .container { --shop-gap-x: 2rem; --shop-gap-y: 2rem; }
+  .compact {
+    --shop-gap-x: 1.5rem;
+    --shop-gap-y: 1.5rem;
+    --shop-image-ratio: 0.75;
+  }
+}
+
+@media (min-width: 1024px) {
+  .container:not(.compact),
+  .container.compact {
+    --shop-columns: 3;
+  }
+  .container:not(.compact) .partial,
+  .container:not(.compact) .rows,
+  .container.compact .partial,
+  .container.compact .rows {
+    --shop-rows: var(--shop-rows-3);
+    --shop-display: var(--shop-display-3);
+  }
+  .compact { --shop-gap-x: 2rem; --shop-gap-y: 2rem; }
+}
+
+@media (min-width: 1280px) {
+  .container:not(.compact),
+  .container.compact {
+    --shop-columns: 4;
+  }
+  .container:not(.compact) .partial,
+  .container:not(.compact) .rows,
+  .container.compact .partial,
+  .container.compact .rows {
+    --shop-rows: var(--shop-rows-4);
+    --shop-display: var(--shop-display-4);
+  }
+}

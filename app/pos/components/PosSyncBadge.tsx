@@ -8,7 +8,8 @@ import { cn } from "@/lib/utils";
 export function posSyncBadgeView(status: SyncStatus, t: (key: string) => string) {
   const pending = status.pendingCount + status.failedCount;
   const busy = status.pulling || status.syncing || status.pendingCount > 0;
-  const expanded = !status.online || status.failedCount > 0 || busy;
+  const hasError = status.failedCount > 0 || !!status.lastError;
+  const expanded = !status.online || hasError || busy;
 
   let label = t("pos.sync.synced") || "Synced";
   let tone = "text-emerald-800 bg-emerald-100 dark:text-emerald-200 dark:bg-emerald-950/50";
@@ -19,8 +20,9 @@ export function posSyncBadgeView(status: SyncStatus, t: (key: string) => string)
         ? `${t("pos.sync.offline") || "Offline"} · ${pending}`
         : t("pos.sync.offline") || "Offline";
     tone = "text-amber-800 bg-amber-100 dark:text-amber-200 dark:bg-amber-950/50";
-  } else if (status.failedCount > 0) {
-    label = `${t("pos.sync.error") || "Sync error"} · ${status.failedCount}`;
+  } else if (hasError) {
+    label = t("pos.sync.error") || "Sync error";
+    if (status.failedCount > 0) label += ` · ${status.failedCount}`;
     tone = "text-red-800 bg-red-100 dark:text-red-200 dark:bg-red-950/50";
   } else if (busy) {
     label = `${t("pos.sync.syncing") || "Syncing"} · ${status.pendingCount || "…"}`;
@@ -28,7 +30,7 @@ export function posSyncBadgeView(status: SyncStatus, t: (key: string) => string)
   }
 
   const Icon =
-    status.failedCount > 0
+    hasError
       ? AlertTriangle
       : busy
         ? Loader2

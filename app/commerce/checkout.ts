@@ -3,6 +3,7 @@
 import { randomUUID } from "node:crypto"
 import { createClient, createServiceClient } from "@/lib/supabase/server"
 import { findPosClientMutation } from "@/app/pos/actions/idempotency"
+import { assertPosOrderCurrent } from "@/app/pos/assert-order-current"
 import {
   assertQuotationCheckoutable,
   claimQuotationCheckout,
@@ -66,6 +67,9 @@ export async function checkoutCart(params: CheckoutCartParams) {
     checkoutAdminClient = supabaseAdmin
     const authenticatedUserId =
       (await supabase.auth.getUser()).data.user?.id || null
+    if (params.source === "pos" && params.existingOrderId && params.expectedOrderVersion !== undefined) {
+      await assertPosOrderCurrent(params.siteId, params.existingOrderId, params.expectedOrderVersion)
+    }
     const derivesBuyerIdentity = ["shop", "marketplace", "quote"].includes(
       params.source
     )

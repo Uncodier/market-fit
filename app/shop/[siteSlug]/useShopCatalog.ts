@@ -1,9 +1,8 @@
 "use client"
 
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { CatalogItem } from "@/app/types"
 import { getShopCatalog } from "./actions"
-import { flushSync } from "react-dom"
 import {
   countItemsByCategory,
   SHOP_PAGE_SIZE,
@@ -22,89 +21,91 @@ function dedupeById(items: CatalogItem[]): CatalogItem[] {
   return out
 }
 
+/** Category responses can overlap the initial page. Preserve loaded cards and listing order. */
+function mergeCatalogItems(current: CatalogItem[], incoming: CatalogItem[]): CatalogItem[] {
+  return dedupeById([...incoming, ...current]).sort((a, b) => {
+    const sortOrder = (a.sort_order ?? Number.POSITIVE_INFINITY) - (b.sort_order ?? Number.POSITIVE_INFINITY)
+    return (Number.isNaN(sortOrder) ? 0 : sortOrder) || a.name.localeCompare(b.name) || a.id.localeCompare(b.id)
+  })
+}
+
 /** Fetch every listed parent in a category (paginated). Does not use global offsets. */
 async function fetchAllCategoryItems(
   siteId: string,
   categoryName: string,
   isCurrent: () => boolean
-): Promise<CatalogItem[]> {
+): Promise<{ items: CatalogItem[]; count: number } | undefined> {
   const pageSize = 100
   let offset = 0
   let total = Number.POSITIVE_INFINITY
   let items: CatalogItem[] = []
 
   while (offset < total) {
-    if (!isCurrent()) return items
+    if (!isCurrent()) return undefined
     const result = await getShopCatalog(siteId, {
       offset,
       pageSize,
       search: "",
       category: categoryName,
     })
-    if (!isCurrent()) return items
+    if (!isCurrent()) return undefined
+    if (result.error || !Array.isArray(result.data) || !Number.isSafeInteger(result.count) || result.count < 0) {
+      throw new Error("Failed to load shop category")
+    }
 
     const batch = (result.data || []) as CatalogItem[]
-    if (typeof result.count === "number") total = result.count
-    if (batch.length === 0) break
+    total = result.count
+    if (batch.length === 0 && offset < total) throw new Error("Incomplete shop category")
 
     items = dedupeById([...items, ...batch])
     offset += batch.length
-    if (batch.length < pageSize) break
   }
 
-  return items
+  if (items.length !== total) throw new Error("Incomplete shop category")
+  return { items, count: total }
 }
 
-/**
- * Next category to fetch while scrolling down.
- * - From the top (windowStart === 0): walk chips in order and finish each one.
- * - After a jump (windowStart > 0): only finish/load from the furthest on-screen
- *   category forward (earlier gaps are backfillAbove's job).
- */
+/** First category with unloaded listing items, regardless of previous jumps. */
 function nextCategoryToLoadBelow(
   offsets: ShopCategoryOffset[],
   items: CatalogItem[],
-  completed: Set<string>,
-  windowStart: number
+  completed: Set<string>
 ): ShopCategoryOffset | null {
   const counts = countItemsByCategory(items)
-
-  if (windowStart <= 0) {
-    for (const entry of offsets) {
-      if (completed.has(entry.name)) continue
-      const loaded = counts.get(entry.name) || 0
-      if (loaded < entry.count) return entry
-      completed.add(entry.name)
-    }
-    return null
-  }
-
-  let lastPresentIdx = -1
-  for (let i = 0; i < offsets.length; i++) {
-    const name = offsets[i].name
-    if ((counts.get(name) || 0) > 0 || completed.has(name)) {
-      lastPresentIdx = i
-    }
-  }
-
-  if (lastPresentIdx >= 0) {
-    const current = offsets[lastPresentIdx]
-    if (
-      !completed.has(current.name) &&
-      (counts.get(current.name) || 0) < current.count
-    ) {
-      return current
-    }
-  }
-
-  for (let i = lastPresentIdx + 1; i < offsets.length; i++) {
-    const entry = offsets[i]
+  for (const entry of offsets) {
     if (completed.has(entry.name)) continue
     const loaded = counts.get(entry.name) || 0
     if (loaded < entry.count) return entry
-    completed.add(entry.name)
   }
   return null
+}
+
+/** Existing offsets are first-seen global positions, not cumulative category spans. */
+function reconcileCategoryOffsets(
+  offsets: ShopCategoryOffset[],
+  items: CatalogItem[],
+  authoritative?: ShopCategoryOffset,
+  incoming: CatalogItem[] = [],
+  globalOffset = 0
+): ShopCategoryOffset[] {
+  const counts = countItemsByCategory(items)
+  const next = offsets.map((entry) => ({
+    ...entry,
+    count: entry.name === authoritative?.name ? authoritative.count : Math.max(entry.count, counts.get(entry.name) || 0),
+  }))
+  const known = new Set(next.map((entry) => entry.name))
+  for (const [index, item] of incoming.entries()) {
+    const name = item._shop?.categoryName || SHOP_UNCATEGORIZED_NAME
+    if (known.has(name)) continue
+    next.push({ name, offset: globalOffset + index, count: counts.get(name) || 0 })
+    known.add(name)
+  }
+  if (authoritative && !known.has(authoritative.name)) next.push(authoritative)
+  return next
+}
+
+function sumCategoryCounts(offsets: ShopCategoryOffset[]): number {
+  return offsets.reduce((sum, entry) => sum + entry.count, 0)
 }
 
 export function useShopCatalog(
@@ -112,32 +113,32 @@ export function useShopCatalog(
   initialCatalog: CatalogItem[],
   initialCount: number,
   searchQuery: string,
-  categoryOffsets: ShopCategoryOffset[]
+  initialCategoryOffsets: ShopCategoryOffset[]
 ) {
+  const initialOffsets = useMemo(() => reconcileCategoryOffsets(initialCategoryOffsets, initialCatalog, undefined, initialCatalog),
+    [initialCategoryOffsets, initialCatalog])
   const [catalogItems, setCatalogItems] = useState<CatalogItem[]>(initialCatalog)
-  const [windowStart, setWindowStart] = useState(0)
   const [windowEnd, setWindowEnd] = useState(initialCatalog.length)
   const [totalCount, setTotalCount] = useState(initialCount)
+  const [categoryOffsets, setCategoryOffsets] = useState(initialOffsets)
+  const [globalTotalCount, setGlobalTotalCount] = useState(initialCount)
+  const [hasGlobalGap, setHasGlobalGap] = useState(initialCount !== sumCategoryCounts(initialOffsets))
   const [isLoading, setIsLoading] = useState(false)
   const [isLoadingMore, setIsLoadingMore] = useState(false)
   const [isJumping, setIsJumping] = useState(false)
-  const [isBackfilling, setIsBackfilling] = useState(false)
   const [pendingScrollCategory, setPendingScrollCategory] = useState<string | null>(null)
 
   const requestGen = useRef(0)
-  const windowStartRef = useRef(0)
   const windowEndRef = useRef(initialCatalog.length)
   const totalCountRef = useRef(initialCount)
   const catalogItemsRef = useRef<CatalogItem[]>(initialCatalog)
   const completedCategoriesRef = useRef<Set<string>>(new Set())
-  const backfillActiveRef = useRef(false)
   const skipSearchEffect = useRef(true)
   const prevSearch = useRef(searchQuery)
-  const categoryOffsetsRef = useRef(categoryOffsets)
-
-  useEffect(() => {
-    windowStartRef.current = windowStart
-  }, [windowStart])
+  const prevSite = useRef(siteId)
+  const categoryOffsetsRef = useRef(initialOffsets)
+  const globalTotalCountRef = useRef(initialCount)
+  const requestBusyRef = useRef(false)
 
   useEffect(() => {
     windowEndRef.current = windowEnd
@@ -151,9 +152,21 @@ export function useShopCatalog(
     catalogItemsRef.current = catalogItems
   }, [catalogItems])
 
-  useEffect(() => {
-    categoryOffsetsRef.current = categoryOffsets
-  }, [categoryOffsets])
+  useEffect(() => () => { requestGen.current += 1 }, [siteId])
+
+  const applyCategory = useCallback((name: string, offset: number, data: { items: CatalogItem[]; count: number }) => {
+    const retained = catalogItemsRef.current.filter((item) => (item._shop?.categoryName || SHOP_UNCATEGORIZED_NAME) !== name)
+    const next = mergeCatalogItems(retained, data.items)
+    const nextOffsets = reconcileCategoryOffsets(categoryOffsetsRef.current, next, { name, offset, count: data.count })
+    completedCategoriesRef.current.add(name)
+    catalogItemsRef.current = next
+    categoryOffsetsRef.current = nextOffsets
+    totalCountRef.current = sumCategoryCounts(nextOffsets)
+    setCatalogItems(next)
+    setCategoryOffsets(nextOffsets)
+    setTotalCount(totalCountRef.current)
+    // Category positions cannot extend the contiguous global feed cursor.
+  }, [])
 
   const hasMoreCategoryBelow =
     !searchQuery.trim() &&
@@ -161,147 +174,42 @@ export function useShopCatalog(
     nextCategoryToLoadBelow(
       categoryOffsets,
       catalogItems,
-      new Set(completedCategoriesRef.current),
-      windowStart
+      new Set(completedCategoriesRef.current)
     ) !== null
 
-  const hasMoreBelow = hasMoreCategoryBelow || windowEnd < totalCount
-  const hasMoreAbove = windowStart > 0
+  const hasMoreBelow = hasMoreCategoryBelow || (searchQuery.trim() || categoryOffsets.length === 0
+    ? windowEnd < totalCount
+    : hasGlobalGap && windowEnd < globalTotalCount)
 
-  const backfillAbove = useCallback(async (gen: number) => {
-    if (backfillActiveRef.current) return
-    if (gen !== requestGen.current) return
-    backfillActiveRef.current = true
-    setIsBackfilling(true)
-
-    try {
-      while (windowStartRef.current > 0) {
-        if (gen !== requestGen.current) return
-
-        const prevOffset = Math.max(0, windowStartRef.current - SHOP_PAGE_SIZE)
-        const pageSize = windowStartRef.current - prevOffset
-        const result = await getShopCatalog(siteId, {
-          offset: prevOffset,
-          pageSize,
-          search: prevSearch.current,
-        })
-
-        if (gen !== requestGen.current) return
-        if (!result.data?.length) {
-          setWindowStart(0)
-          windowStartRef.current = 0
-          break
-        }
-
-        let anchorId: string | null = null
-        let prevViewportTop = 0
-        if (typeof window !== "undefined" && typeof document !== "undefined") {
-          const sections = Array.from(document.querySelectorAll('section[id^="shop-cat-"]')) as HTMLElement[]
-          if (sections.length > 0) {
-            let chosen = sections[0]
-            for (const sec of sections) {
-              if (sec.getBoundingClientRect().top < window.innerHeight * 0.75) {
-                chosen = sec
-              }
-            }
-            anchorId = chosen.id
-            prevViewportTop = chosen.getBoundingClientRect().top
-            console.log(`[Shop Backfill] Captured anchor ${anchorId} at ${prevViewportTop}px`)
-          } else {
-            console.log(`[Shop Backfill] No sections found to anchor`)
-          }
-        }
-
-        flushSync(() => {
-          setCatalogItems((curr) => {
-            const next = dedupeById([...(result.data as CatalogItem[]), ...curr])
-            catalogItemsRef.current = next
-            return next
-          })
-          setWindowStart(prevOffset)
-        })
-        windowStartRef.current = prevOffset
-
-        if (anchorId && typeof window !== "undefined" && typeof document !== "undefined") {
-          let attempts = 0
-          const restore = () => {
-            attempts++
-            const el = document.getElementById(anchorId!)
-            if (el) {
-              const currentViewportTop = el.getBoundingClientRect().top
-              const diff = currentViewportTop - prevViewportTop
-              console.log(`[Shop Backfill Restore #${attempts}] ${anchorId} currentTop=${currentViewportTop}px, prevTop=${prevViewportTop}px, diff=${diff}px. scrollY=${window.scrollY} height=${document.documentElement.scrollHeight}`)
-              // If the element moved in the viewport, scroll by that exact amount to keep it anchored
-              if (Math.abs(diff) > 2) {
-                window.scrollBy({ top: diff, left: 0, behavior: "instant" })
-                console.log(`[Shop Backfill Restore #${attempts}] Applied scroll correction of ${diff}px`)
-              }
-            } else {
-               console.log(`[Shop Backfill Restore #${attempts}] Anchor element ${anchorId} not found in DOM anymore`)
-            }
-          }
-          // Attempt immediate restore
-          restore()
-          // Mobile Safari often requires a delay after DOM changes to correctly update scrollHeight,
-          // and because our restore() is idempotent (re-measures each time), it's safe to call repeatedly.
-          requestAnimationFrame(() => {
-            restore()
-            setTimeout(restore, 50)
-            setTimeout(restore, 150)
-          })
-        }
-      }
-    } catch (err) {
-      console.error("Failed to backfill shop catalog:", err)
-    } finally {
-      backfillActiveRef.current = false
-      if (gen === requestGen.current) {
-        setIsBackfilling(false)
-      }
-    }
-  }, [siteId])
-
-  const loadMoreBelow = useCallback(async () => {
-    if (isLoadingMore || isJumping || isLoading) return
+  const loadMoreBelow = useCallback(async (): Promise<boolean | undefined> => {
+    if (requestBusyRef.current || isLoadingMore || isJumping || isLoading) return undefined
 
     const gen = requestGen.current
     const offsets = categoryOffsetsRef.current
     const useCategoryPaging = !prevSearch.current.trim() && offsets.length > 0
 
-    if (!useCategoryPaging && windowEndRef.current >= totalCountRef.current) return
+    if (!hasMoreBelow) return undefined
 
+    requestBusyRef.current = true
     setIsLoadingMore(true)
     try {
       if (useCategoryPaging) {
         const target = nextCategoryToLoadBelow(
           offsets,
           catalogItemsRef.current,
-          completedCategoriesRef.current,
-          windowStartRef.current
+          completedCategoriesRef.current
         )
         if (!target) {
-          if (windowEndRef.current >= totalCountRef.current) return
+          if (windowEndRef.current >= globalTotalCountRef.current) return undefined
         } else {
           const data = await fetchAllCategoryItems(
             siteId,
             target.name,
             () => gen === requestGen.current
           )
-          if (gen !== requestGen.current) return
-
-          completedCategoriesRef.current.add(target.name)
-          setCatalogItems((curr) => {
-            const next = dedupeById([...curr, ...data])
-            catalogItemsRef.current = next
-            return next
-          })
-          const nextEnd = Math.max(
-            windowEndRef.current,
-            target.offset + Math.max(target.count, data.length)
-          )
-          setWindowEnd(nextEnd)
-          windowEndRef.current = nextEnd
-          return
+          if (gen !== requestGen.current || !data) return undefined
+          applyCategory(target.name, target.offset, data)
+          return true
         }
       }
 
@@ -310,40 +218,54 @@ export function useShopCatalog(
         pageSize: SHOP_PAGE_SIZE,
         search: prevSearch.current,
       })
-      if (gen !== requestGen.current) return
+      if (gen !== requestGen.current) return undefined
+      if (result.error || !Array.isArray(result.data)) throw new Error("Failed to load shop catalog page")
       if (result.data) {
         const next = result.data as CatalogItem[]
-        if (next.length === 0) return
-        setCatalogItems((curr) => {
-          const merged = dedupeById([...curr, ...next])
-          catalogItemsRef.current = merged
-          return merged
-        })
+        const count = typeof result.count === "number" ? result.count : totalCountRef.current
+        if (next.length === 0 && windowEndRef.current < count) throw new Error("Incomplete shop catalog page")
+        const merged = dedupeById([...catalogItemsRef.current, ...next])
+        catalogItemsRef.current = merged
+        setCatalogItems(merged)
+        if (!prevSearch.current.trim()) {
+          const nextOffsets = reconcileCategoryOffsets(categoryOffsetsRef.current, merged, undefined, next, windowEndRef.current)
+          categoryOffsetsRef.current = nextOffsets
+          setCategoryOffsets(nextOffsets)
+          if (count !== sumCategoryCounts(nextOffsets)) setHasGlobalGap(true)
+        }
         const nextEnd = windowEndRef.current + next.length
         setWindowEnd(nextEnd)
         windowEndRef.current = nextEnd
         if (typeof result.count === "number") {
           setTotalCount(result.count)
           totalCountRef.current = result.count
+          setGlobalTotalCount(result.count)
+          globalTotalCountRef.current = result.count
         }
       }
+      return true
     } catch (err) {
+      if (gen !== requestGen.current) return undefined
       console.error("Failed to load more shop catalog:", err)
+      return false
     } finally {
       if (gen === requestGen.current) {
+        requestBusyRef.current = false
         setIsLoadingMore(false)
       }
     }
-  }, [isLoadingMore, isJumping, isLoading, siteId])
+  }, [isLoadingMore, isJumping, isLoading, siteId, hasMoreBelow, applyCategory])
 
   const jumpToCategory = useCallback(
-    async (offset: number, categoryName: string, categoryCount = 0) => {
+    async (offset: number, categoryName: string, categoryCount = 0, scrollToTarget = true): Promise<boolean | undefined> => {
+      // Preserve the call signature; only the complete response can authorize a count.
+      void categoryCount
       const gen = ++requestGen.current
-      backfillActiveRef.current = false
-      setIsJumping(true)
-      setIsLoadingMore(false)
-      setIsBackfilling(false)
-      setPendingScrollCategory(categoryName)
+      requestBusyRef.current = true
+      setIsJumping(scrollToTarget)
+      setIsLoading(false)
+      setIsLoadingMore(!scrollToTarget)
+      setPendingScrollCategory(scrollToTarget ? categoryName : null)
 
       try {
         const data = await fetchAllCategoryItems(
@@ -351,42 +273,27 @@ export function useShopCatalog(
           categoryName || SHOP_UNCATEGORIZED_NAME,
           () => gen === requestGen.current
         )
-        if (gen !== requestGen.current) return
+        if (gen !== requestGen.current || !data) return undefined
+        applyCategory(categoryName || SHOP_UNCATEGORIZED_NAME, offset, data)
 
-        completedCategoriesRef.current.add(categoryName || SHOP_UNCATEGORIZED_NAME)
-        setCatalogItems(data)
-        catalogItemsRef.current = data
-
-        const span = Math.max(data.length, categoryCount || 0)
-        setWindowStart(offset)
-        setWindowEnd(offset + span)
-        windowStartRef.current = offset
-        windowEndRef.current = offset + span
-
-        if (data.length === 0) {
+        if (data.items.length === 0) {
           setPendingScrollCategory(null)
-          return
         }
-
-        setPendingScrollCategory(categoryName)
-
-        if (offset > 0) {
-          // Delay backfilling to allow the smooth scroll to finish first
-          // Otherwise, instantaneous scroll corrections might cancel the animation.
-          setTimeout(() => {
-            void backfillAbove(gen)
-          }, 1200)
-        }
+        return true
       } catch (err) {
+        if (gen !== requestGen.current) return undefined
         console.error("Failed to jump shop catalog category:", err)
         setPendingScrollCategory(null)
+        return false
       } finally {
         if (gen === requestGen.current) {
+          requestBusyRef.current = false
           setIsJumping(false)
+          setIsLoadingMore(false)
         }
       }
     },
-    [siteId, backfillAbove]
+    [siteId, applyCategory]
   )
 
   const clearPendingScrollCategory = useCallback(() => {
@@ -401,26 +308,29 @@ export function useShopCatalog(
       return
     }
 
-    if (prevSearch.current === searchQuery) return
+    if (prevSearch.current === searchQuery && prevSite.current === siteId) return
     prevSearch.current = searchQuery
+    prevSite.current = siteId
 
     const gen = ++requestGen.current
-    backfillActiveRef.current = false
+    requestBusyRef.current = false
     completedCategoriesRef.current = new Set()
 
     if (!searchQuery) {
       setCatalogItems(initialCatalog)
       catalogItemsRef.current = initialCatalog
-      setWindowStart(0)
       setWindowEnd(initialCatalog.length)
-      windowStartRef.current = 0
       windowEndRef.current = initialCatalog.length
       setTotalCount(initialCount)
       totalCountRef.current = initialCount
+      setCategoryOffsets(initialOffsets)
+      categoryOffsetsRef.current = initialOffsets
+      setGlobalTotalCount(initialCount)
+      globalTotalCountRef.current = initialCount
+      setHasGlobalGap(initialCount !== sumCategoryCounts(initialOffsets))
       setIsLoading(false)
       setIsLoadingMore(false)
       setIsJumping(false)
-      setIsBackfilling(false)
       setPendingScrollCategory(null)
       return
     }
@@ -430,7 +340,6 @@ export function useShopCatalog(
       setIsLoading(true)
       setIsLoadingMore(false)
       setIsJumping(false)
-      setIsBackfilling(false)
       try {
         const result = await getShopCatalog(siteId, {
           offset: 0,
@@ -441,12 +350,12 @@ export function useShopCatalog(
         const data = (result.data || []) as CatalogItem[]
         setCatalogItems(data)
         catalogItemsRef.current = data
-        setWindowStart(0)
         setWindowEnd(data.length)
-        windowStartRef.current = 0
         windowEndRef.current = data.length
         setTotalCount(result.count || 0)
         totalCountRef.current = result.count || 0
+        setGlobalTotalCount(result.count || 0)
+        globalTotalCountRef.current = result.count || 0
       } catch (err) {
         console.error("Failed to search shop catalog:", err)
       } finally {
@@ -460,17 +369,16 @@ export function useShopCatalog(
       cancelled = true
       clearTimeout(timer)
     }
-  }, [searchQuery, siteId, initialCatalog, initialCount])
+  }, [searchQuery, siteId, initialCatalog, initialCount, initialOffsets])
 
   return {
     catalogItems,
     totalCount,
+    categoryOffsets,
     isLoading,
     isLoadingMore,
     isJumping,
-    isBackfilling,
     hasMoreBelow,
-    hasMoreAbove,
     loadMoreBelow,
     jumpToCategory,
     pendingScrollCategory,

@@ -1,7 +1,8 @@
 import { Suspense } from "react"
 import { MarketplaceClient } from "./MarketplaceClient"
 import { buildShareMetadata } from "@/app/lib/commerce-metadata"
-import { loadMarketplaceHome, MARKETPLACE_REVALIDATE_SECONDS } from "./load-marketplace-home"
+import { loadMarketplaceHome } from "./load-marketplace-home"
+import { getBuyerGeoApprox } from "@/app/commerce/buyer-geo"
 
 export const revalidate = 60
 
@@ -14,7 +15,10 @@ export const metadata = buildShareMetadata({
 })
 
 export default async function MarketplacePage() {
-  const { items, count, initialTotalPages, merchandising } = await loadMarketplaceHome()
+  const [{ items, count, initialTotalPages, initialRegions, merchandising }, buyerGeo] = await Promise.all([
+    loadMarketplaceHome(),
+    getBuyerGeoApprox(),
+  ])
 
   return (
     <Suspense fallback={<main className="flex-1 min-h-screen bg-muted/30" />}>
@@ -22,6 +26,8 @@ export default async function MarketplacePage() {
         initialItems={items}
         initialCount={count}
         initialTotalPages={initialTotalPages}
+        initialRegions={initialRegions}
+        buyerGeo={buyerGeo}
         discountsFeed={merchandising.discountsFeed}
         promoBadgesByItemId={merchandising.byItemId}
       />

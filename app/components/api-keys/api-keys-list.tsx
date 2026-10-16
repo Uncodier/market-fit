@@ -1,22 +1,20 @@
-import { useState, useEffect } from "react"
+import { Fragment, useCallback, useState, useEffect } from "react"
 import { toast } from "sonner"
 import { Button } from "@/app/components/ui/button"
 import { EmptyCard } from "@/app/components/ui/empty-card"
 import { Skeleton } from "@/app/components/ui/skeleton"
-import { Key, Trash2, Clock, ChevronDown, ChevronRight, Shield, Globe, Lock, AlertCircle, BarChart, PlusCircle } from "@/app/components/ui/icons"
+import { Key, Trash2, Clock, ChevronDown, ChevronRight, Shield, Globe, AlertCircle, BarChart } from "@/app/components/ui/icons"
 import { useSite } from "@/app/context/SiteContext"
 import { ApiKey, listApiKeys, revokeApiKey } from "@/lib/api-keys"
 import { CreateKeyDialog } from "./create-key-dialog"
 import { Badge } from "@/app/components/ui/badge"
-import { cn } from "@/lib/utils"
+import { isAutomaticApiKey, sortApiKeysForDisplay } from "@/lib/security-resource-order"
 import { format } from "date-fns"
 import {
   SectionCard,
   SectionCardHeader,
   SectionCardTitle,
-  SectionCardDescription,
   SectionCardContent,
-  SectionCardFooter,
 } from "@/app/components/ui/section-card"
 import { ActionFooter } from "@/app/components/ui/card-footer"
 import {
@@ -64,6 +62,11 @@ function ApiKeyCard({
         <div className="flex items-center justify-between">
           <div className="flex-1 min-w-0">
             <SectionCardTitle className="text-lg font-semibold truncate">{apiKey.name}</SectionCardTitle>
+            {isAutomaticApiKey(apiKey) && (
+              <Badge variant="secondary" className="mt-1">
+                {apiKey.metadata?.issued_by === 'harness.requirement-provisioning' ? 'Harness' : 'Platform automation'}
+              </Badge>
+            )}
             <p className="text-sm text-muted-foreground truncate mt-1">
               <span className="font-mono">{apiKey.prefix}***</span> • Created {formatDate(apiKey.created_at)}
             </p>
@@ -227,7 +230,7 @@ function ApiKeyCard({
                 <AlertDialogHeader>
                   <AlertDialogTitle>Revoke API Key</AlertDialogTitle>
                   <AlertDialogDescription>
-                    Are you sure you want to revoke this API key "{apiKey.name || apiKey.id}"? This action cannot be undone and all applications using this key will lose access immediately.
+                    Are you sure you want to revoke this API key &quot;{apiKey.name || apiKey.id}&quot;? This action cannot be undone and all applications using this key will lose access immediately.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
@@ -255,42 +258,42 @@ export function ApiKeysList() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [expandedRows, setExpandedRows] = useState<Record<string, boolean>>({})
   const { currentSite } = useSite()
+  const siteId = currentSite?.id
 
-  const loadKeys = async () => {
-    if (!currentSite) return
+  const loadKeys = useCallback(async () => {
+    if (!siteId) {
+      setKeys([])
+      setIsLoading(false)
+      return
+    }
     
     try {
       setIsLoading(true)
-      const apiKeys = await listApiKeys(currentSite.id)
-      // Sort so newest first (by created_at)
-      const sortedKeys = [...apiKeys].sort((a, b) => 
-        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-      )
-      setKeys(sortedKeys)
+      const apiKeys = sortApiKeysForDisplay(await listApiKeys(siteId))
+      setKeys(apiKeys)
+      return apiKeys
     } catch (error) {
       console.error("Error loading API keys:", error)
       toast.error("Failed to load API keys")
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [siteId])
 
   useEffect(() => {
     loadKeys()
-  }, [currentSite])
+  }, [loadKeys])
 
   // Emit API keys update event whenever list changes
   useEffect(() => {
-    if (keys.length > 0) {
-      const keysData = keys.map((key, index) => ({
-        id: `api-key-${index}`,
-        title: key.name || `API Key ${index + 1}`,
-      }));
-      
-      window.dispatchEvent(new CustomEvent('apiKeysUpdated', { 
-        detail: keysData 
-      }));
-    }
+    const keysData = keys.map((key, index) => ({
+      id: `api-key-${index}`,
+      title: key.name || `API Key ${index + 1}`,
+    }));
+
+    window.dispatchEvent(new CustomEvent('apiKeysUpdated', {
+      detail: keysData
+    }));
   }, [keys]);
 
   const handleRevoke = async (keyId: string) => {
@@ -317,24 +320,11 @@ export function ApiKeysList() {
   }
 
   const handleCreateSuccess = async () => {
-    await loadKeys()
-    // Expand the first key (newest) after creation
-    setTimeout(() => {
-      // Get the updated keys list
-      if (currentSite) {
-        listApiKeys(currentSite.id).then(apiKeys => {
-          const sortedKeys = [...apiKeys].sort((a, b) => 
-            new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-          )
-          if (sortedKeys.length > 0) {
-            setExpandedRows(prev => ({
-              ...prev,
-              [sortedKeys[0]?.id]: true
-            }))
-          }
-        })
-      }
-    }, 200)
+    const apiKeys = await loadKeys()
+    const newestManualKey = apiKeys?.find(key => !isAutomaticApiKey(key))
+    if (newestManualKey) {
+      setExpandedRows(prev => ({ ...prev, [newestManualKey.id]: true }))
+    }
   }
 
   if (!currentSite) {
@@ -366,6 +356,9 @@ export function ApiKeysList() {
           <p className="text-sm text-muted-foreground mt-1">
             Manage your API keys to interact with our services programmatically
           </p>
+          <p className="text-sm text-muted-foreground mt-1">
+            User-managed and legacy keys appear first. Automatically created keys appear below.
+          </p>
         </div>
         <CreateKeyDialog onSuccess={handleCreateSuccess} />
       </div>
@@ -381,15 +374,19 @@ export function ApiKeysList() {
         <div className="space-y-6">
           {/* API Key Cards */}
           {keys.map((key, index) => (
-            <ApiKeyCard
-              key={key.id}
-              apiKey={key}
-              index={index}
-              isExpanded={expandedRows[key.id] || false}
-              onToggle={toggleRow}
-              onRevoke={handleRevoke}
-              isSubmitting={isSubmitting}
-            />
+            <Fragment key={key.id}>
+              {isAutomaticApiKey(key) && (index === 0 || !isAutomaticApiKey(keys[index - 1])) && (
+                <h3 className="text-lg font-semibold border-t border-border pt-6">Automatically created API keys</h3>
+              )}
+              <ApiKeyCard
+                apiKey={key}
+                index={index}
+                isExpanded={expandedRows[key.id] || false}
+                onToggle={toggleRow}
+                onRevoke={handleRevoke}
+                isSubmitting={isSubmitting}
+              />
+            </Fragment>
           ))}
         </div>
       )}

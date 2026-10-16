@@ -11,6 +11,7 @@ import {
 import { createServiceClient } from "@/lib/supabase/server"
 
 jest.mock("next/cache", () => ({ unstable_cache: (load: () => unknown) => load }))
+jest.mock("server-only", () => ({}))
 jest.mock("@/lib/supabase/server", () => ({ createServiceClient: jest.fn() }))
 jest.mock("@/app/marketplace/attach-site-settings", () => ({
   attachSiteSettings: async (_client: unknown, items: unknown[]) => items,
@@ -27,9 +28,9 @@ jest.mock("@/app/commerce/storefront-display", () => ({
   loadStorefrontDisplay: async () => new Map(),
 }))
 
-const activeSite = { id: "active-site", name: "Active", logo_url: null, archived_at: null }
+const activeSite = { id: "00000000-0000-4000-8000-000000000001", name: "Active", logo_url: null, archived_at: null }
 const archivedSite = {
-  id: "archived-site", name: "Archived", logo_url: null, archived_at: "2026-09-22T10:00:00Z",
+  id: "00000000-0000-4000-8000-000000000002", name: "Archived", logo_url: null, archived_at: "2026-09-22T10:00:00Z",
 }
 const item = {
   id: "active-item",
@@ -41,6 +42,7 @@ const item = {
   parent_id: null,
   target_sale_price: 25,
   metadata: {},
+  created_at: "2026-10-01T00:00:00Z",
 }
 const promotion = {
   id: "active-promo",
@@ -142,7 +144,7 @@ describe("archived-site marketplace exposure", () => {
 
   it("does not expose an archived seller through the API siteId filter", async () => {
     setup()
-    const response = await GET(new Request("https://example.test/api/marketplace/products?siteId=archived-site"))
+    const response = await GET(new Request(`https://example.test/api/marketplace/products?siteId=${archivedSite.id}`))
     expect(await response.json()).toMatchObject({ data: [], count: 0, totalPages: 0 })
   })
 

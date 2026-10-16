@@ -1,11 +1,11 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useLayoutEffect, useRef, useState } from "react";
 import { v4 as uuidv4 } from "uuid";
 import { toast } from "sonner";
 import type { RelationSelectValue } from "@/app/components/ui/relation-select";
 import { roundMoney } from "@/app/commerce/taxes";
-import type { CheckoutLine } from "@/app/commerce/checkout";
+import { posCheckoutLines } from "@/app/pos/checkout-lines";
 import type { PosCartItem } from "@/app/pos/components/CartPanel";
 import { getPosCheckoutGate } from "@/app/pos/checkout-gates";
 import type { CheckoutFulfillmentMethod } from "@/app/commerce/delivery-options";
@@ -21,6 +21,7 @@ import { printAfterPosCheckout, receiptFromPosCart } from "@/app/pos/print-after
 import type { PosShippingAddress } from "@/app/pos/shipping-address";
 import { createPendingSplitOrders as enqueuePendingSplitOrders } from "@/app/pos/create-pending-split-orders";
 import { planPosLeadSync } from "@/app/pos/lead-utils";
+import { checkOrderBeforePayment, PosOrderChangedError } from "@/app/pos/check-order-before-payment";
 
 type Payment = {
   method: string;
@@ -49,6 +50,9 @@ type UsePosCheckoutArgs = {
     byConditions: boolean;
   } | null;
   activeOrderId: string;
+  orderPreparing?: boolean;
+  expectedOrderVersion?: string;
+  onOrderChanged?: (id: string) => void;
   existingPaymentTotal?: number;
   buyerUserId: string | null;
   orderNotes?: string;
@@ -78,6 +82,9 @@ export function usePosCheckout({
   promoCode,
   appliedPromo = null,
   activeOrderId,
+  orderPreparing = false,
+  expectedOrderVersion,
+  onOrderChanged,
   existingPaymentTotal = 0,
   buyerUserId,
   orderNotes = "",
@@ -92,7 +99,12 @@ export function usePosCheckout({
 }: UsePosCheckoutArgs) {
   const { currentSite } = useSite();
   const [checkoutLoading, setCheckoutLoading] = useState(false);
-  const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
+  const [paymentOrder, setPaymentOrder] = useState<{ siteId?: string; id: string } | null>(null);
+  const isPaymentDialogOpen = paymentOrder?.siteId === siteId && paymentOrder?.id === activeOrderId;
+  const setIsPaymentDialogOpen = (open: boolean) => setPaymentOrder(open ? { siteId, id: activeOrderId } : null);
+  const submitting = useRef(false);
+  const selection = useRef({ siteId, activeOrderId });
+  useLayoutEffect(() => { selection.current = { siteId, activeOrderId }; }, [siteId, activeOrderId]);
   const amountDue = roundMoney(Math.max(0, total - existingPaymentTotal));
 
   const applyCheckoutGate = (
@@ -136,29 +148,15 @@ export function usePosCheckout({
   };
 
   const initiateCheckout = (opts?: { customerConfirmed?: boolean }) => {
+    if (activeOrderId !== "new" && orderPreparing) {
+      setIsPaymentDialogOpen(true);
+      return;
+    }
     const activeCartItems = cart.filter((c) => c.cartQty > 0);
     if (activeCartItems.length === 0) return;
     if (!applyCheckoutGate("checkout", opts)) return;
     setIsPaymentDialogOpen(true);
   };
-
-  const buildLines = (): CheckoutLine[] =>
-    cart
-      .filter((c) => c.cartQty > 0)
-      .map((c) => ({
-        catalogItemId: c.id,
-        quantity: c.cartQty,
-        unitPriceOverride: c.cartPrice,
-        reservationStart: c.reservationStart,
-        reservationEnd: c.reservationEnd,
-        clientLineKey: c.lineKey || c.id,
-        modifiers: (c.modifiers || []).map((m) => ({
-          catalogItemId: m.catalogItemId,
-          quantity: m.cartQty,
-          unitPriceOverride: m.cartPrice,
-          groupId: m.groupId,
-        })),
-      }));
 
   const prepareLeadForSync = async (
     value: RelationSelectValue,
@@ -201,7 +199,7 @@ export function usePosCheckout({
       siteId,
       userId,
       sellerUserId: sellerUserId || undefined,
-      lines: buildLines(),
+      lines: posCheckoutLines(cart),
       priceListId:
         priceListId && priceListId !== "none" ? priceListId : undefined,
       leadId: params.resolvedLeadId || undefined,
@@ -222,6 +220,7 @@ export function usePosCheckout({
         ? undefined
         : appliedPromo?.promotionId || undefined,
       source: "pos",
+      expectedOrderVersion,
       payments: params.payments,
       existingOrderId:
         activeOrderId !== "new" && !existingIsLocal
@@ -343,18 +342,13 @@ export function usePosCheckout({
     checkoutPromoCode?: string,
     intent?: "complete" | "pay" | "send",
   ) => {
-    if (!siteId || !userId) return;
+    if (!siteId || !userId || orderPreparing || submitting.current) return;
 
     const resolvedIntent = intent || "pay";
     const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0);
     const remainingAmount = roundMoney(amountDue - totalPaid);
     const requiresCustomer =
       resolvedIntent === "complete" && remainingAmount > 0;
-
-    if (resolvedIntent === "send" && payments.length === 0) {
-      // send-order from toolbar uses empty payments; payment dialog send requires payments
-      // Keep dialog validation for send-with-payments path only when payments expected.
-    }
 
     if (requiresCustomer && !leadValue) {
       toast.error(
@@ -370,10 +364,14 @@ export function usePosCheckout({
       return;
     }
 
+    submitting.current = true;
     setCheckoutLoading(true);
     try {
+      await checkOrderBeforePayment(siteId, activeOrderId, expectedOrderVersion);
+      if (selection.current.siteId !== siteId || selection.current.activeOrderId !== activeOrderId) return;
       const { resolvedLeadId, localLeadId } =
         await prepareLeadForSync(leadRelationValue);
+      if (selection.current.siteId !== siteId || selection.current.activeOrderId !== activeOrderId) return;
 
       if (requiresCustomer && !resolvedLeadId && !localLeadId) {
         toast.error(
@@ -391,11 +389,17 @@ export function usePosCheckout({
         resolvedLeadId,
         localLeadId,
       });
-    } catch (err: any) {
+    } catch (err) {
+      if (selection.current.siteId !== siteId || selection.current.activeOrderId !== activeOrderId) return;
+      if (err instanceof PosOrderChangedError) {
+        setIsPaymentDialogOpen(false);
+        onOrderChanged?.(activeOrderId);
+      }
       toast.error(
-        err.message || t("pos.errorCheckingOut") || "Error checking out",
+        err instanceof Error ? err.message : t("pos.errorCheckingOut") || "Error checking out",
       );
     } finally {
+      submitting.current = false;
       setCheckoutLoading(false);
     }
   };
@@ -404,6 +408,7 @@ export function usePosCheckout({
     customerConfirmed?: boolean;
     leadOverride?: RelationSelectValue;
   }) => {
+    if (orderPreparing || submitting.current) return;
     const activeItems = cart.filter((c) => c.cartQty > 0);
     if (activeItems.length === 0) {
       toast.error(t("pos.errorCartEmpty") || "Cart is empty");
@@ -424,9 +429,9 @@ export function usePosCheckout({
         resolvedLeadId,
         localLeadId,
       });
-    } catch (err: any) {
+    } catch (err) {
       toast.error(
-        err.message || t("pos.errorSendingOrder") || "Error sending order",
+        err instanceof Error ? err.message : t("pos.errorSendingOrder") || "Error sending order",
       );
     } finally {
       setCheckoutLoading(false);
@@ -435,6 +440,7 @@ export function usePosCheckout({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     cart,
+    orderPreparing,
     originLocationId,
     validateInventory,
     fulfillment,

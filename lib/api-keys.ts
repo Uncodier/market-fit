@@ -15,6 +15,10 @@ export interface ApiKey {
   created_at: string;
   updated_at: string;
   metadata: {
+    issued_by?: string;
+    requirement_id?: string;
+    posture?: string;
+    issued_at?: string;
     rate_limits?: {
       requests_per_minute?: number;
       concurrent_requests?: number;

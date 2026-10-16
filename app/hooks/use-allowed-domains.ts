@@ -61,7 +61,8 @@ export function useAllowedDomains() {
         .insert([
           {
             site_id: currentSite.id,
-            domain: domain.toLowerCase().trim()
+            domain: domain.toLowerCase().trim(),
+            source: 'user'
           }
         ])
         .select()
@@ -72,11 +73,12 @@ export function useAllowedDomains() {
       setDomains(prev => [data, ...prev])
       toast.success('Domain added successfully')
       return true
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error adding domain:', error)
-      if (error.code === '23505') {
+      const code = error && typeof error === 'object' && 'code' in error ? error.code : null
+      if (code === '23505') {
         toast.error('This domain is already allowed')
-      } else if (error.code === '23514') {
+      } else if (code === '23514') {
         toast.error('Invalid domain format')
       } else {
         toast.error('Failed to add domain')

@@ -60,6 +60,25 @@ export function groupItemsByCategory<T extends { id: string; _shop?: { categoryN
   return order.map((name) => ({ name, items: byName.get(name)! }))
 }
 
+/** Keep every category mounted; only unloaded (not fulfillment-hidden) items reserve slots. */
+export function buildShopCategorySections<T extends { id: string; _shop?: { categoryName?: string | null } }>(
+  items: T[],
+  offsets: ShopCategoryOffset[],
+  loadedItems: T[] = items
+): { name: string; items: T[]; pendingCount: number }[] {
+  const grouped = groupItemsByCategory(items)
+  const byName = new Map(grouped.map((section) => [section.name, section.items]))
+  const loadedCounts = countItemsByCategory(loadedItems)
+  const names = uniqueCategoryNames([...offsets.map((entry) => entry.name), ...byName.keys()])
+  const expectedCounts = new Map(offsets.map((entry) => [entry.name, entry.count]))
+
+  return names.map((name) => ({
+    name,
+    items: byName.get(name) || [],
+    pendingCount: Math.max(0, (expectedCounts.get(name) || 0) - (loadedCounts.get(name) || 0)),
+  })).filter((section) => section.items.length > 0 || section.pendingCount > 0)
+}
+
 /** Count loaded listing items per category name. */
 export function countItemsByCategory(
   items: { _shop?: { categoryName?: string | null } }[]

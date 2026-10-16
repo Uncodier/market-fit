@@ -1,12 +1,12 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import type { CatalogItem } from "@/app/types";
 import { usePosCart } from "@/app/pos/hooks/use-pos-cart";
-import { loadCartSession } from "@/app/pos/local/cart-session";
+import { loadCartSession, saveCartSession } from "@/app/pos/local/cart-session";
 
 jest.mock("@/app/context/DisplayCurrencyContext", () => ({
   useDisplayCurrency: () => ({ rates: {} }),
 }));
-jest.mock("@/app/orders/actions", () => ({ getOrder: jest.fn() }));
+jest.mock("@/app/pos/actions/get-order", () => ({ getPosOrder: jest.fn() }));
 jest.mock("@/app/pos/local/cart-session", () => ({
   loadCartSession: jest.fn(), saveCartSession: jest.fn(), clearCartSession: jest.fn(),
 }));
@@ -34,6 +34,7 @@ describe("preloaded POS cart taxes", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     jest.mocked(loadCartSession).mockResolvedValue({ cart: [], leadValue: null } as never);
+    jest.mocked(saveCartSession).mockResolvedValue({} as never);
   });
 
   it("renders item, extras, quantities and tax-inclusive totals together without IndexedDB reads", async () => {

@@ -34,6 +34,7 @@ export function useNearbyCheckoutDefaults(params: {
   selectedLocationId?: string | null
   userChoseFulfillmentRef?: UserChoseRef
   userChosePaymentRef?: UserChoseRef
+  enabled?: boolean
 }) {
   const {
     allowedOptions,
@@ -46,6 +47,7 @@ export function useNearbyCheckoutDefaults(params: {
     inventoryLocations,
     settingsLocations,
     selectedLocationId,
+    enabled = true,
   } = params
 
   const localFulfillmentRef = useRef(false)
@@ -82,7 +84,7 @@ export function useNearbyCheckoutDefaults(params: {
   )
 
   useEffect(() => {
-    if (allowedOptions.length === 0) return
+    if (!enabled || allowedOptions.length === 0) return
 
     if (!allowedOptions.includes(fulfillment)) {
       setFulfillment(defaultFulfillment(allowedOptions, { preferPickup: nearby }) || "none")
@@ -94,6 +96,7 @@ export function useNearbyCheckoutDefaults(params: {
     const next = defaultFulfillment(allowedOptions, { preferPickup: nearby }) || "none"
     if (next !== fulfillment) setFulfillment(next)
   }, [
+    enabled,
     allowedOptions,
     fulfillment,
     nearby,
@@ -102,6 +105,7 @@ export function useNearbyCheckoutDefaults(params: {
   ])
 
   useEffect(() => {
+    if (!enabled) return
     if (availablePaymentMethods.length === 0) {
       if (paymentMethod) setPaymentMethod("")
       return
@@ -120,6 +124,7 @@ export function useNearbyCheckoutDefaults(params: {
     const next = defaultPaymentMethod(availablePaymentMethods, { preferCash: nearby })
     if (next && next !== paymentMethod) setPaymentMethod(next)
   }, [
+    enabled,
     availablePaymentMethods,
     nearby,
     paymentMethod,

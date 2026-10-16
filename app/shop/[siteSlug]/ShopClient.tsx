@@ -2,13 +2,11 @@
 
 import { useState, useEffect, useDeferredValue, useCallback, useMemo, useRef } from "react"
 import { CatalogItem } from "@/app/types"
-import { clearCart, getCartItems, setCartItems } from "@/app/commerce/cart-storage"
-import { cartLineExtendedTotal, cartLineKey } from "@/app/commerce/cart-modifiers"
+import { clearCart } from "@/app/commerce/cart-storage"
+import { cartLineExtendedTotal } from "@/app/commerce/cart-modifiers"
 import { getDeviceOrders } from "@/app/commerce/device-order-storage"
-import type { DeviceOrder } from "@/app/commerce/device-order-storage"
 import { useGuestCheckoutPrefill } from "@/app/commerce/use-guest-checkout-prefill"
 import { useAuthContext as useAuth } from "@/app/components/auth/auth-provider"
-import { toast } from "sonner"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import dynamic from "next/dynamic"
 
@@ -21,17 +19,17 @@ import { ShopHeader } from "./ShopHeader"
 import { ShopFulfillmentHeader } from "./ShopFulfillmentHeader"
 import { ShopMobileCartCta, ShopSiteFooter } from "./ShopSiteFooter"
 import { runShopCheckout } from "./run-shop-checkout"
-import { useParams, useRouter } from "next/navigation"
+import { useParams } from "next/navigation"
 
-import { getShopItemsByIds, getShopUserOwnedItems, type ShopOwnedAccess } from "./actions"
+import type { ShopOwnedAccess } from "./actions"
 import type { ShopCategoryOffset } from "./shop-catalog-shared"
 import { useShopCatalog } from "./useShopCatalog"
+import { useShopCart } from "./useShopCart"
+import { useShopOwnedItems } from "./useShopOwnedItems"
 import type {
   PromoBadge,
   StorefrontPromoCard,
 } from "@/app/promotions/promotion-merchandising"
-import { readPendingStorefrontPromo } from "@/app/components/commerce/PromoBundleExperience"
-import { isAccessOnlyItem, requiresVariantSelection } from "@/app/catalog/product-details"
 import { isBusinessOpen, getNextOpenSlot } from "@/app/commerce/business-hours"
 import { formatDeliveryTime } from "@/app/commerce/delivery-time"
 import { BuyerGeo } from "@/app/commerce/buyer-geo"
@@ -50,13 +48,7 @@ import { useBuyerLocation } from "@/app/components/commerce/use-buyer-location"
 import { buyerLocationLeadingChip } from "@/app/components/commerce/BuyerLocationControls"
 import { useDisplayCurrency } from "@/app/context/DisplayCurrencyContext"
 import { useSiteTracking } from "@/app/hooks/useSiteTracking"
-
-interface CartItem extends CatalogItem {
-  cartQty: number;
-  cartPrice: number;
-  reservationStart?: string;
-  reservationEnd?: string;
-}
+import { useShopFulfillmentPreference } from "@/app/commerce/use-shop-fulfillment-preference"
 
 export default function ShopClient({ 
   site, 
@@ -89,11 +81,9 @@ export default function ShopClient({
   const { user, isLoading: authLoading } = useAuth()
   const params = useParams()
   const siteSlug = params?.siteSlug || site?.slug || 'unknown'
-  const [cart, setCart] = useState<CartItem[]>([])
-  const [isCartLoaded, setIsCartLoaded] = useState(false)
-  const [isCartOpen, setIsCartOpen] = useState(false)
-  const [ownedItemIdsState, setOwnedItemIdsState] = useState<ShopOwnedAccess[]>(ownedItemIds)
-  const [ownedItemsDataState, setOwnedItemsDataState] = useState<CatalogItem[]>(ownedItemsData)
+  const { ownedAccessMap, ownedItemsData: ownedItemsDataState } = useShopOwnedItems(
+    site.id, user, ownedItemIds, ownedItemsData
+  )
   const shopAllowedOptions = useMemo<CheckoutFulfillmentMethod[]>(() => {
     const raw = site?.settings?.shop?.default_delivery_options
     if (Array.isArray(raw) && raw.length > 0) {
@@ -133,7 +123,6 @@ export default function ShopClient({
   
   const [checkoutLoading, setCheckoutLoading] = useState(false)
   const [orderSuccess, setOrderSuccess] = useState(false)
-  const [deviceOrders, setDeviceOrders] = useState<DeviceOrder[]>([])
   const [searchQuery, setSearchQuery] = useState("")
   const deferredSearchQuery = useDeferredValue(searchQuery)
   const [selectedCategory, setSelectedCategory] = useState<string>("all")
@@ -141,6 +130,8 @@ export default function ShopClient({
   const searchPlaceholder = t("shop.searchPlaceholder") || "Search products..."
   const {
     catalogItems,
+    categoryOffsets,
+    totalCount,
     isLoading,
     isLoadingMore,
     isJumping,
@@ -159,7 +150,10 @@ export default function ShopClient({
 
   const [orderTiming, setOrderTiming] = useState<'now' | 'scheduled'>('now')
   const [scheduledFor, setScheduledFor] = useState<Date | null>(null)
-  const userChoseFulfillmentRef = useRef(false)
+  const { userChoseFulfillmentRef, setFulfillmentByUser, isPreferenceLoaded } = useShopFulfillmentPreference({
+    siteId: site.id,
+    setFulfillment,
+  })
   const userChosePaymentRef = useRef(false)
 
   const { trackPageview, trackEvent } = useSiteTracking(site?.id)
@@ -169,11 +163,6 @@ export default function ShopClient({
     trackPageview()
   }, [trackPageview])
 
-  const setFulfillmentByUser = useCallback((value: CheckoutFulfillmentMethod) => {
-    userChoseFulfillmentRef.current = true
-    setFulfillment(value)
-  }, [])
-  
   // Compute business availability
   const businessHours = site?.settings?.business_hours || []
   const isOpen = businessHours.length > 0 ? isBusinessOpen(businessHours) : true
@@ -250,10 +239,7 @@ export default function ShopClient({
     }
   }, [selectedCategory, site?.name])
 
-  const router = useRouter()
-
   const categories = initialCategories || [];
-  const ownedAccessMap = new Map(ownedItemIdsState.map(o => [o.catalogItemId, o.canBook]))
 
   const sellableCatalogItems = useMemo(() => {
     return catalogItems.filter((item) => isItemCompatibleWithFulfillment(item, fulfillment));
@@ -266,53 +252,18 @@ export default function ShopClient({
     );
   }, [ownedItemsDataState, fulfillment, ownedAccessMap]);
 
-  const addToCart = useCallback((item: CatalogItem) => {
-    if (ownedAccessMap.has(item.id)) {
-      window.location.href = `/shop/${siteSlug}/${item.id}`
-      return
-    }
-
-    if (item.is_dynamic_price) {
-      router.push(`/shop/${siteSlug}/${item.id}`)
-      return
-    }
-
-    if (requiresVariantSelection(item)) {
-      router.push(`/shop/${siteSlug}/${item.id}`)
-      return
-    }
-
-    if (item.is_reservation && !isAccessOnlyItem(item)) {
-      router.push(`/shop/${siteSlug}/${item.id}/book`)
-      return
-    }
-
-    trackEvent('add_to_cart', {
-      item_id: item.id,
-      item_name: item.name,
-      price: item.target_sale_price || 0,
-      currency: site?.settings?.currency || 'USD'
-    })
-
-    setCart(prevCart => {
-      const existing = prevCart.find(c => c.id === item.id)
-      if (existing) {
-        return prevCart.map(c => c.id === item.id ? { ...c, cartQty: c.cartQty + 1 } : c)
-      } else {
-        return [...prevCart, {
-          ...item,
-          site_id: item.site_id || site.id,
-          cartQty: 1,
-          cartPrice: item.target_sale_price || 0,
-        }]
-      }
-    })
-    toast.success(`${item.name} added to cart`)
-    setIsCartOpen(true)
-  }, [ownedAccessMap, siteSlug, router, site.id])
-
   const [promotionCode, setPromotionCode] = useState("")
   const [promotionId, setPromotionId] = useState<string | null>(null)
+  const { cart, setCart, isCartOpen, setIsCartOpen, deviceOrders, setDeviceOrders, addToCart, updateQty } = useShopCart({
+    siteId: site.id,
+    siteSlug: String(siteSlug),
+    currency: site?.settings?.currency || "USD",
+    ownedAccessMap,
+    orderSuccess,
+    trackEvent,
+    setPromotionCode,
+    setPromotionId,
+  })
   const [promoDiscount, setPromoDiscount] = useState(0)
   const [ownerSiteId, setOwnerSiteId] = useState<string | null>(null)
   const session = user ? { user } : null
@@ -326,106 +277,6 @@ export default function ShopClient({
     setCustomerEmail,
     setShippingAddress,
   })
-
-  // Ownership is per-buyer — load after auth so the public shop page stays cacheable
-  useEffect(() => {
-    let cancelled = false
-    async function loadOwned() {
-      if (!user) {
-        setOwnedItemIdsState([])
-        setOwnedItemsDataState([])
-        return
-      }
-      try {
-        const owned = await getShopUserOwnedItems(site.id)
-        if (cancelled) return
-        setOwnedItemIdsState(owned)
-        const ids = owned.map((o) => o.catalogItemId)
-        if (ids.length === 0) {
-          setOwnedItemsDataState([])
-          return
-        }
-        const { data } = await getShopItemsByIds(site.id, ids)
-        if (cancelled) return
-        setOwnedItemsDataState((data || []) as CatalogItem[])
-      } catch {
-        if (!cancelled) {
-          setOwnedItemIdsState([])
-          setOwnedItemsDataState([])
-        }
-      }
-    }
-    void loadOwned()
-    return () => {
-      cancelled = true
-    }
-  }, [user, site.id])
-
-  useEffect(() => {
-    if (typeof window === "undefined") return
-    const cachedOrders = getDeviceOrders(site.id)
-    setDeviceOrders(cachedOrders)
-
-    const url = new URL(window.location.href)
-    const justOrdered =
-      url.searchParams.get("ordered") === "1" ||
-      url.searchParams.get("success") === "true" ||
-      url.hash === "#your-orders"
-
-    if (justOrdered) {
-      setCart([])
-      clearCart("cart", "shop", site.id)
-      setIsCartOpen(false)
-      url.searchParams.delete("success")
-      url.searchParams.delete("order_id")
-      url.searchParams.delete("ordered")
-      window.history.replaceState({}, "", url.pathname + url.search + "#your-orders")
-      setIsCartLoaded(true)
-      // Scroll after “Your orders” paints
-      requestAnimationFrame(() => {
-        document.getElementById("your-orders")?.scrollIntoView({ behavior: "smooth", block: "start" })
-      })
-      window.setTimeout(() => {
-        document.getElementById("your-orders")?.scrollIntoView({ behavior: "smooth", block: "start" })
-      }, 250)
-    } else {
-      const loaded = getCartItems("cart", "shop", site.id).filter(
-        (item: any) => !item.site_id || item.site_id === site.id
-      )
-      setCart(loaded)
-      const pending = readPendingStorefrontPromo()
-      if (pending && pending.surface === "shop" && pending.siteId === site.id) {
-        if (pending.code) setPromotionCode(pending.code)
-        setPromotionId(pending.promotionId)
-        setIsCartOpen(true)
-      } else if (url.searchParams.get("cart") === "1") {
-        setIsCartOpen(true)
-      }
-      setIsCartLoaded(true)
-    }
-  }, [site.id])
-
-  // Sync cart changes to localStorage (shop-scoped key + this site's items only)
-  useEffect(() => {
-    if (orderSuccess || !isCartLoaded) return;
-    const scopedCart = cart.filter((item: any) => !item.site_id || item.site_id === site.id)
-    if (scopedCart.length !== cart.length) {
-      setCart(scopedCart)
-      return
-    }
-    setCartItems('cart', 'shop', site.id, cart);
-  }, [cart, site.id, orderSuccess, isCartLoaded])
-
-  const updateQty = useCallback((id: string, delta: number) => {
-    setCart(prevCart =>
-      prevCart
-        .map((c) => {
-          if (cartLineKey(c) !== id) return c
-          return { ...c, cartQty: Math.max(0, c.cartQty + delta) }
-        })
-        .filter((c) => c.cartQty > 0)
-    )
-  }, [])
 
   const subtotal = cart.reduce((sum, item) => sum + cartLineExtendedTotal(item), 0)
   const payableTotal = Math.max(0, subtotal - promoDiscount)
@@ -551,6 +402,7 @@ export default function ShopClient({
         buyerGeo={buyerLocation.effectiveBuyerGeo}
         selectedLocationId={buyerLocation.selectedLocationId}
         userChoseFulfillmentRef={userChoseFulfillmentRef}
+        isFulfillmentPreferenceLoaded={isPreferenceLoaded}
         userChosePaymentRef={userChosePaymentRef}
       />
 
@@ -587,7 +439,7 @@ export default function ShopClient({
       <ShopCatalogMain
         siteSlug={siteSlug}
         categories={categories}
-        categoryOffsets={initialCategoryOffsets}
+        categoryOffsets={categoryOffsets}
         searchQuery={deferredSearchQuery}
         ownedItems={ownedItems}
         ownedAccessMap={ownedAccessMap}
@@ -596,7 +448,7 @@ export default function ShopClient({
         onDeviceOrdersHydrated={setDeviceOrders}
         sellableCatalogItems={sellableCatalogItems}
         rawCatalogItems={catalogItems}
-        initialCount={initialCount || 0}
+        initialCount={totalCount}
         isLoading={isLoading}
         isLoadingMore={isLoadingMore}
         isJumping={isJumping}

@@ -1,5 +1,6 @@
 import {
   buildShopCategoryOffsets,
+  buildShopCategorySections,
   mapShopCategoryOffsetRows,
   countItemsByCategory,
   groupItemsByCategory,
@@ -111,5 +112,41 @@ describe("countItemsByCategory", () => {
     expect(counts.get("Brews")).toBe(2)
     expect(counts.get("Coffee")).toBe(1)
     expect(counts.get(SHOP_UNCATEGORIZED_NAME)).toBe(1)
+  })
+})
+
+describe("buildShopCategorySections", () => {
+  const offsets = [
+    { name: "Coffee", offset: 0, count: 3 },
+    { name: "Tea", offset: 3, count: 2 },
+    { name: "Other", offset: 5, count: 1 },
+  ]
+
+  it("reserves missing slots in server category order, including entirely unloaded categories", () => {
+    const items = [{ id: "tea", _shop: { categoryName: "Tea" } }]
+    expect(buildShopCategorySections(items, offsets)).toEqual([
+      { name: "Coffee", items: [], pendingCount: 3 },
+      { name: "Tea", items, pendingCount: 1 },
+      { name: "Other", items: [], pendingCount: 1 },
+    ])
+  })
+
+  it("does not reserve slots for loaded items hidden by fulfillment", () => {
+    const loaded = [{ id: "coffee", _shop: { categoryName: "Coffee" } }, { id: "other" }]
+    const sections = buildShopCategorySections([], offsets, loaded)
+    expect(sections).toEqual([
+      { name: "Coffee", items: [], pendingCount: 2 },
+      { name: "Tea", items: [], pendingCount: 2 },
+    ])
+  })
+
+  it("handles missing metadata and stale counts without negative placeholder counts", () => {
+    const items = [{ id: "one" }, { id: "two" }]
+    expect(buildShopCategorySections(items, [{ name: "Other", offset: 0, count: 1 }])).toEqual([
+      { name: "Other", items, pendingCount: 0 },
+    ])
+    expect(buildShopCategorySections(items, [])).toEqual([
+      { name: "Other", items, pendingCount: 0 },
+    ])
   })
 })

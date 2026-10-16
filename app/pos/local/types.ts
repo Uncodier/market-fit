@@ -78,6 +78,9 @@ export type PosCartSession = {
   priceListId: string;
   promoCode: string;
   activeOrderId: string;
+  expectedOrderVersion?: string;
+  /** Keep prior receipts and subsequent cart edits in the original order currency. */
+  orderCurrency?: string;
   buyerUserId: string | null;
   sellerUserId?: string | null;
   sellerName?: string | null;

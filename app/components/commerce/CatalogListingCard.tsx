@@ -17,6 +17,7 @@ import {
 } from "@/app/catalog/product-details"
 
 import { StorefrontListingMerch } from "@/app/components/commerce/StorefrontListingMerch"
+import stableStyles from "./catalog-listing-stable-layout.module.css"
 
 interface CatalogListingCardProps {
   item: CatalogItem & { 
@@ -33,7 +34,7 @@ interface CatalogListingCardProps {
     };
   }
   href: string
-  onPrimaryAction: (item: any) => void
+  onPrimaryAction: (item: CatalogListingCardProps["item"]) => void
   showSeller?: boolean
   primaryDisabled?: boolean
   disabledLabel?: string
@@ -42,6 +43,8 @@ interface CatalogListingCardProps {
   canBook?: boolean
   /** Dense 2-col tile on mobile (square image); slightly taller media from md up */
   compactMobile?: boolean
+  /** Fixed text slots for Shop category pending-grid reservations only. */
+  stableLayout?: boolean
   locationAvailable?: boolean
   /** Item-specific promotion flag (does not replace PDP navigation). */
   promoBadge?: PromoBadge | null
@@ -73,6 +76,7 @@ export const CatalogListingCard = React.memo(function CatalogListingCard({
   isOwned = false,
   canBook = false,
   compactMobile = false,
+  stableLayout = false,
   locationAvailable = true,
   promoBadge = null,
 }: CatalogListingCardProps) {
@@ -90,6 +94,13 @@ export const CatalogListingCard = React.memo(function CatalogListingCard({
   const showTypeBadge = typeLabelKey !== 'marketplace.listing.badge.product' && !isReservable
   const descClamp =
     descriptionLineClamp === "none" ? "" : descriptionLineClamp
+  const description = item.description
+    ? removeMd(item.description).replace(/\n+/g, " ").replace(/[«»]/g, '"')
+    : ""
+  const buyerLabel = stableLayout && item.metadata?.show_buyers && item._shop?.buyers?.length
+    ? item._shop.buyers.map((buyer) => buyer.name || "Buyer").join(", ") +
+      ` (${item._shop.buyerCount ?? item._shop.buyers.length} buyers)`
+    : undefined
 
   const isLocationRestricted = !locationAvailable;
   const finalActionDisabled = isLocationRestricted || actionDisabled;
@@ -176,10 +187,14 @@ export const CatalogListingCard = React.memo(function CatalogListingCard({
         </button>
       </div>
 
-      <Link href={href} className="pt-3 flex flex-col min-w-0">
-        {showSeller && item.site && (
-          <span className="text-[11px] text-muted-foreground mb-0.5 truncate">
-            {item.site.name}
+      <Link href={href} className={stableLayout ? stableStyles.stableText : "pt-3 flex flex-col min-w-0"}>
+        {(stableLayout || (showSeller && item.site)) && (
+          <span
+            className={`text-[11px] text-muted-foreground mb-0.5 truncate ${stableLayout ? stableStyles.seller : ""}`}
+            title={stableLayout && showSeller ? item.site?.name : undefined}
+            aria-hidden={!showSeller || !item.site ? true : undefined}
+          >
+            {showSeller ? item.site?.name : null}
           </span>
         )}
 
@@ -188,12 +203,16 @@ export const CatalogListingCard = React.memo(function CatalogListingCard({
             compactMobile
               ? "text-[15px] md:text-base line-clamp-2"
               : "text-base md:text-lg line-clamp-2"
-          }`}
+          } ${stableLayout ? stableStyles.title : ""}`}
+          title={stableLayout ? item.name : undefined}
         >
           {item.name}
         </h3>
 
-        <div className="mt-1 text-xs md:text-sm font-medium text-foreground">
+        <div
+          className={`mt-1 text-xs md:text-sm font-medium text-foreground ${stableLayout ? stableStyles.price : ""}`}
+          title={stableLayout ? `${priceLabel}${priceSuffixKey ? ` ${t(priceSuffixKey) || '/mo'}` : ""}` : undefined}
+        >
           {priceLabel}
           {priceSuffixKey && (
             <span className="text-[10px] md:text-xs text-muted-foreground ml-1 font-normal">
@@ -202,36 +221,45 @@ export const CatalogListingCard = React.memo(function CatalogListingCard({
           )}
         </div>
 
-        {!!item._shop?.variantLabels?.length && (
-          <div className="mt-1.5 flex flex-wrap items-center gap-1">
-            {item._shop.variantLabels.slice(0, 3).map((label) => (
+        {(stableLayout || !!item._shop?.variantLabels?.length) && (
+          <div
+            className={`mt-1.5 flex flex-wrap items-center gap-1 ${stableLayout ? stableStyles.variants : ""}`}
+            aria-label={stableLayout && item._shop?.variantLabels?.length ? item._shop.variantLabels.join(", ") : undefined}
+            role={stableLayout && item._shop?.variantLabels?.length ? "group" : undefined}
+          >
+            {item._shop?.variantLabels?.slice(0, 3).map((label) => (
               <span
                 key={label}
+                title={stableLayout ? label : undefined}
                 className="inline-flex max-w-[7.5rem] truncate rounded-md bg-muted px-1.5 py-0.5 text-[10px] font-semibold leading-tight text-muted-foreground"
               >
                 {label}
               </span>
             ))}
-            {item._shop.variantLabels.length > 3 && (
-              <span className="text-[10px] font-semibold text-muted-foreground">
+            {item._shop?.variantLabels && item._shop.variantLabels.length > 3 && (
+              <span className={`text-[10px] font-semibold text-muted-foreground ${stableLayout ? stableStyles.variantMore : ""}`}>
                 +{item._shop.variantLabels.length - 3}
               </span>
             )}
           </div>
         )}
 
-        {item.description && descriptionLineClamp !== "none" && (
-          <div className={`text-xs text-muted-foreground mt-1 ${descClamp || "line-clamp-1"}`}>
-            {removeMd(item.description).replace(/\n+/g, " ").replace(/[«»]/g, '"')}
+        {(stableLayout || (item.description && descriptionLineClamp !== "none")) && (
+          <div
+            className={`text-xs text-muted-foreground mt-1 ${descClamp || "line-clamp-1"} ${stableLayout ? stableStyles.description : ""}`}
+            title={stableLayout && descriptionLineClamp !== "none" ? description : undefined}
+          >
+            {descriptionLineClamp !== "none" ? description : null}
           </div>
         )}
 
-        <StorefrontListingMerch
-          item={item}
-          shop={item._shop}
-          showSeller={showSeller}
-          t={t}
-        />
+        {stableLayout ? (
+          <div className={stableStyles.merch} role={buyerLabel ? "group" : undefined} aria-label={buyerLabel} title={buyerLabel}>
+            <StorefrontListingMerch item={item} shop={item._shop} showSeller={showSeller} t={t} />
+          </div>
+        ) : (
+          <StorefrontListingMerch item={item} shop={item._shop} showSeller={showSeller} t={t} />
+        )}
       </Link>
     </div>
   )

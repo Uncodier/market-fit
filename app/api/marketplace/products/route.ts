@@ -1,135 +1,16 @@
-import { createServiceClient } from "@/lib/supabase/server"
-import { attachSiteSettings } from "@/app/marketplace/attach-site-settings"
-import { applyChannelPricesToItems } from "@/app/price-lists/apply-channel-prices"
-import { loadVariantListingPreviews } from "@/app/catalog/variant-resolve"
-import { applyStorefrontAvailability } from "@/app/catalog/storefront-availability"
-import { loadStorefrontDisplay } from "@/app/commerce/storefront-display"
 import { NextResponse } from "next/server"
-import type { CatalogItem, ItemSpec } from "@/app/types"
+import { loadMarketplaceProducts } from "@/app/marketplace/load-marketplace-products"
+import { parseMarketplaceProductsRequest } from "@/app/marketplace/marketplace-products-request"
 
-type MarketplaceCatalogRow = CatalogItem & {
-  site: { id: string; name: string; logo_url?: string | null }
-  raw_specs?: { sort_order: number; item_spec: ItemSpec | null }[]
-}
-
+/** Anonymous browsing is intentional; the loader authorizes public listings only. */
 export async function GET(request: Request) {
+  const filters = parseMarketplaceProductsRequest(new URL(request.url).searchParams)
+  if (!filters) return NextResponse.json({ error: "Invalid marketplace filters" }, { status: 400 })
   try {
-    const { searchParams } = new URL(request.url)
-    const kind = searchParams.get('kind')
-    const digitalSubtype = searchParams.get('digitalSubtype')
-    const siteId = searchParams.get('siteId')
-    const search = searchParams.get('search')
-    const isRecurring = searchParams.get('is_recurring') === 'true'
-    const page = parseInt(searchParams.get('page') || '1')
-    const limit = parseInt(searchParams.get('limit') || '20')
-
-    // Public marketplace aggregation — same pattern as /shop
-    const supabase = await createServiceClient(true)
-
-    let query = applyStorefrontAvailability(
-      supabase
-        .from('catalog_items')
-        .select('*, site:sites!inner(id, name, logo_url), raw_specs:catalog_item_specs(sort_order, item_spec:item_specs(*, category:item_spec_categories(*)))', { count: 'exact' })
-        .is('site.archived_at', null)
-        .eq('is_marketplace_listed', true)
-        .eq('status', 'active')
-        .is('parent_id', null)
-    )
-
-    if (kind && kind !== 'all') {
-      query = query.eq('kind', kind)
-    }
-
-    if (digitalSubtype && digitalSubtype !== 'all') {
-      query = query.eq('digital_subtype', digitalSubtype)
-    }
-
-    if (siteId) {
-      query = query.eq('site_id', siteId)
-    }
-
-    if (search) {
-      query = query.ilike('name', `%${search}%`)
-    }
-
-    if (isRecurring) {
-      query = query.eq('is_recurring', true)
-    }
-
-    const from = (page - 1) * limit
-    const to = from + limit - 1
-
-    query = query.range(from, to).order('created_at', { ascending: false })
-
-    const { data, count, error } = await query
-
-    if (error) throw error
-
-    const withSettings = await attachSiteSettings<MarketplaceCatalogRow>(supabase, data || [])
-    const priced = await applyChannelPricesToItems(supabase, withSettings, "marketplace")
-    
-    const [variantPreviews, displayMap, inventoryRes] = await Promise.all([
-      loadVariantListingPreviews(
-        supabase,
-        priced.map((item) => ({ id: item.id, name: item.name }))
-      ),
-      loadStorefrontDisplay(supabase, priced),
-      supabase.from("inventory_levels").select("catalog_item_id, quantity").in("catalog_item_id", priced.map(i => i.id))
-    ])
-
-    const inventoryMap = new Map<string, number>();
-    for (const level of inventoryRes.data || []) {
-      inventoryMap.set(
-        level.catalog_item_id,
-        (inventoryMap.get(level.catalog_item_id) || 0) + Number(level.quantity)
-      );
-    }
-
-    const enrichedData = priced.map(item => {
-      const preview = variantPreviews.get(item.id)
-      const displayData = displayMap.get(item.id)
-      
-      let sellable = true;
-      let availableQty: number | undefined;
-      const policy = (item as any).site?.settings?.commerce?.stock_shortage_policy || "allow";
-
-      if (item.availability_mode === "manual") {
-        sellable = item.availability_status === "available";
-      } else if (item.availability_mode === "inventory") {
-        availableQty = inventoryMap.get(item.id) || 0;
-        sellable = availableQty > 0 || policy !== "block";
-      }
-
-      const hasVariants = Boolean(preview?.hasVariants) ||
-        Boolean(item.metadata?.variant_axes?.length && item.is_purchasable === false);
-
-      if (item.is_purchasable === false && !hasVariants) {
-        sellable = false;
-      }
-
-      return {
-        ...item,
-        item_specs: (item.raw_specs || []).sort((a: any, b: any) => (a.sort_order || 0) - (b.sort_order || 0)).map((cis: any) => cis.item_spec).filter(Boolean),
-        _shop: {
-          ...(item as any)._shop,
-          hasVariants,
-          sellable,
-          availableQty,
-          variantLabels: preview?.labels || [],
-          ...(displayData || {})
-        },
-      }
-    })
-
-    return NextResponse.json({
-      data: enrichedData,
-      count,
-      page,
-      limit,
-      totalPages: count ? Math.ceil(count / limit) : 0
-    })
-
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    const { items, count, totalPages, regions } = await loadMarketplaceProducts(filters)
+    return NextResponse.json({ data: items, count, totalPages, regions, page: filters.page, limit: filters.limit })
+  } catch (error) {
+    console.error("[marketplace] Failed to load products", error)
+    return NextResponse.json({ error: "Unable to load marketplace products" }, { status: 500 })
   }
 }

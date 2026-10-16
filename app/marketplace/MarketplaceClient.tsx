@@ -8,7 +8,6 @@ import { useGuestCheckoutPrefill } from "@/app/commerce/use-guest-checkout-prefi
 import { buildPublicDocPath } from "@/app/documents/public-token"
 import { withInternalFrom } from "@/app/documents/internal-back"
 import { runMarketplaceCheckout } from "./run-marketplace-checkout"
-import { CatalogItem } from "@/app/types"
 import { useAuthContext as useAuth } from "@/app/components/auth/auth-provider"
 import { usePathname, useSearchParams, useRouter } from "next/navigation"
 import {
@@ -16,41 +15,33 @@ import {
   parseMarketplaceKind,
   parseMarketplaceSubtype,
 } from "./marketplace-category-url"
+import { buildMarketplaceSortSearch, parseMarketplaceSort, type MarketplaceSort } from "./marketplace-sort"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { useDisplayCurrency } from "@/app/context/DisplayCurrencyContext"
 import { isAccessOnlyItem, requiresVariantSelection } from "@/app/catalog/product-details"
-import { shouldUseCompactMobileListing } from "@/app/components/commerce/CommerceProductGrid"
 import { getSiteInfoBySlug } from "@/app/book/actions"
 import { listPublicLocations } from "@/app/inventory/actions"
 import { MarketplaceFooter } from "./MarketplaceFooter"
-import { MarketplaceCategoryChips, MarketplaceFilterSidebar } from "./MarketplaceCategoryChips"
+import { MarketplaceCatalog, type MarketplaceItem } from "./MarketplaceCatalog"
 import { MarketplaceHeader } from "./MarketplaceHeader"
-import { MarketplaceProductList } from "./MarketplaceProductList"
-import { useMarketplaceProducts } from "./useMarketplaceProducts"
 import type { PromoBadge, StorefrontPromoCard } from "@/app/promotions/promotion-merchandising"
 import { readPendingStorefrontPromo } from "@/app/components/commerce/PromoBundleExperience"
-import { MarketplaceDiscountsFeed } from "./MarketplaceDiscountsFeed"
 import { isBusinessOpen, getNextOpenSlot } from "@/app/commerce/business-hours"
 import { evaluateLocationRestrictions } from "@/app/commerce/location-restrictions"
 import { formatDeliveryTime } from "@/app/commerce/delivery-time"
-import { BuyerGeo } from "@/app/commerce/buyer-geo"
+import type { BuyerGeo } from "@/app/commerce/buyer-geo"
 import {
   buyerGeoToAddress,
   isBuyerLocationIncompatible,
-  isItemLocationAvailable,
 } from "@/app/commerce/buyer-location-availability"
 import { useBuyerLocation } from "@/app/components/commerce/use-buyer-location"
-import { buyerLocationLeadingChip } from "@/app/components/commerce/BuyerLocationControls"
+import type { MarketplaceRegion } from "./marketplace-product-filters"
 
 import dynamic from "next/dynamic"
 
 const CommerceOrderSuccess = dynamic(() => import("@/app/components/commerce/CommerceOrderSuccess").then(m => m.CommerceOrderSuccess))
 const BuyerLocationSheetHost = dynamic(() => import("@/app/components/commerce/BuyerLocationControls").then(m => m.BuyerLocationSheetHost))
 const MarketplaceCartPanel = dynamic(() => import("./MarketplaceCartPanel").then(m => m.MarketplaceCartPanel))
-
-interface MarketplaceItem extends CatalogItem {
-  site: { id: string; name: string; logo_url?: string | null; settings?: any }
-}
 
 interface CartItem extends MarketplaceItem {
   cartQty: number
@@ -63,6 +54,7 @@ export function MarketplaceClient({
   initialItems, 
   initialCount,
   initialTotalPages,
+  initialRegions,
   buyerGeo,
   discountsFeed = [],
   promoBadgesByItemId = {},
@@ -70,6 +62,7 @@ export function MarketplaceClient({
   initialItems: MarketplaceItem[],
   initialCount: number,
   initialTotalPages: number,
+  initialRegions?: MarketplaceRegion[],
   buyerGeo?: BuyerGeo,
   discountsFeed?: StorefrontPromoCard[],
   promoBadgesByItemId?: Record<string, PromoBadge>,
@@ -88,11 +81,10 @@ export function MarketplaceClient({
   const deferredSearchQuery = useDeferredValue(searchQuery)
   const selectedKind = parseMarketplaceKind(searchParams?.get("filter"))
   const selectedSubtype = parseMarketplaceSubtype(searchParams?.get("subtype"))
-  const showOnlyRecurring = selectedKind === "recurring"
+  const selectedSort = parseMarketplaceSort(searchParams?.get("sort"))
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false)
   const searchPlaceholder = t("marketplace.searchPlaceholder") || "Search everything..."
   const searchLabel = t("common.search") || "Search"
-  const showingDiscounts = selectedKind === "discounts"
 
   useEffect(() => {
     setStoreCurrency(null)
@@ -118,17 +110,10 @@ export function MarketplaceClient({
     router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false })
   }
 
-  const productKind = showingDiscounts ? "all" : selectedKind
-  const { items: rawItems, page, setPage, totalPages, isLoading } = useMarketplaceProducts(
-    initialItems,
-    initialTotalPages,
-    deferredSearchQuery,
-    productKind,
-    selectedSubtype,
-    showOnlyRecurring,
-  )
-  const items = rawItems as MarketplaceItem[];
-  const compactMobile = shouldUseCompactMobileListing(initialCount || 0)
+  const setSelectedSort = (sort: MarketplaceSort) => {
+    const qs = buildMarketplaceSortSearch(searchParams, sort)
+    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false })
+  }
 
   const effectiveKind = selectedKind === 'recurring' ? 'all' : selectedKind;
 
@@ -218,8 +203,8 @@ export function MarketplaceClient({
 
   const deliveryTimeLabel = formatDeliveryTime(siteSettings?.shop)
 
-  // Red chip when current area is incompatible with cart seller, or with any visible listing
-  const locationChipRestricted = React.useMemo(() => {
+  // Cart seller availability remains independent of the catalog's current page.
+  const sellerLocationRestricted = React.useMemo(() => {
     if (siteSettings?.locations?.length) {
       return isBuyerLocationIncompatible({
         settingsLocations: siteSettings.locations,
@@ -231,21 +216,12 @@ export function MarketplaceClient({
             : null,
       })
     }
-    if (!buyerLocation.effectiveBuyerGeo) return false
-    return items.some(
-      (item) =>
-        !isItemLocationAvailable({
-          item,
-          settingsLocations: item.site?.settings?.locations || null,
-          buyerGeo: buyerLocation.effectiveBuyerGeo,
-        })
-    )
+    return null
   }, [
     siteSettings,
     buyerLocation.effectiveBuyerGeo,
     originLocationId,
     fulfillment,
-    items,
   ])
 
 
@@ -444,56 +420,15 @@ export function MarketplaceClient({
         signInLabel={t("marketplace.signIn") || "Sign In"}
       />
 
-      <main className="flex-1 max-w-7xl mx-auto w-full px-4 md:px-8 py-8 md:py-12">
-        <div className="flex flex-col md:flex-row gap-8 items-start">
-          <MarketplaceFilterSidebar
-            selectedKind={selectedKind}
-            setSelectedKind={setSelectedKind}
-            selectedSubtype={selectedSubtype}
-            setSelectedSubtype={setSelectedSubtype}
-            effectiveKind={effectiveKind}
-            leadingChip={buyerLocationLeadingChip(
-              buyerLocation,
-              "w-full justify-start max-w-none",
-              locationChipRestricted
-            )}
-          />
-
-          <div className="flex-1 min-w-0 w-full">
-            <MarketplaceCategoryChips
-              selectedKind={selectedKind}
-              setSelectedKind={setSelectedKind}
-              selectedSubtype={selectedSubtype}
-              setSelectedSubtype={setSelectedSubtype}
-              effectiveKind={effectiveKind}
-              leadingChip={buyerLocationLeadingChip(
-                buyerLocation,
-                undefined,
-                locationChipRestricted
-              )}
-            />
-            {showingDiscounts ? (
-              <MarketplaceDiscountsFeed
-                discountsFeed={discountsFeed}
-                compactMobile={compactMobile}
-              />
-            ) : (
-              <MarketplaceProductList
-                items={items}
-                initialCount={initialCount || 0}
-                isLoading={isLoading}
-                compactMobile={compactMobile}
-                page={page}
-                totalPages={totalPages}
-                setPage={setPage}
-                onPrimaryAction={addToCart}
-                buyerGeo={buyerLocation.effectiveBuyerGeo}
-                promoBadgesByItemId={promoBadgesByItemId}
-              />
-            )}
-          </div>
-        </div>
-      </main>
+      <MarketplaceCatalog
+        initialItems={initialItems} initialCount={initialCount} initialTotalPages={initialTotalPages} initialRegions={initialRegions}
+        searchQuery={deferredSearchQuery} buyerLocation={buyerLocation}
+        sellerLocationRestricted={sellerLocationRestricted} onPrimaryAction={addToCart}
+        discountsFeed={discountsFeed} promoBadgesByItemId={promoBadgesByItemId}
+        selectedKind={selectedKind} setSelectedKind={setSelectedKind}
+        selectedSubtype={selectedSubtype} setSelectedSubtype={setSelectedSubtype}
+        selectedSort={selectedSort} setSelectedSort={setSelectedSort} effectiveKind={effectiveKind}
+      />
 
       <BuyerLocationSheetHost location={buyerLocation} />
 
