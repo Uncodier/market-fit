@@ -64,6 +64,20 @@ the cache and local/custom sorting is fetched by the client. Larger catalogs may
 eventually benefit from a database aggregate instead of reading all candidates
 and matching sale lines; changes must preserve ranking before pagination.
 
+## Public-domain API routing
+
+The client fetches `/api/marketplace/products` on the current browser origin.
+The separate `commercial-site` deployment serving www must forward that exact
+path to the app in its `beforeFiles` rewrites. This repository's conditional
+`MARKET_FIT_ORIGIN` rewrite includes the same endpoint, but changing only the app
+deployment does not update www's routing table. No broad `/api/*` proxy is needed.
+
+Without the API rewrite, www can serve the marketplace HTML while geography,
+filters, sorting or pagination trigger an HTML 404 instead of a JSON response.
+An unset local buyer location can mask this because the default first page uses
+server-loaded products without a client request. Release verification must compare
+anonymous catalog API requests on www and app, including buyer geography.
+
 Focused regression coverage is in `__tests__/marketplace/product-*.test.ts`,
 `sort-url.test.ts`, `sort-ui.test.tsx`, `use-marketplace-products.test.tsx`, and
 `archived-site-exposure.test.ts`.

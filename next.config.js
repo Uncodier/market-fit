@@ -86,6 +86,8 @@ const nextConfig = {
       ...page('/auth'),
       ...page('/shop'),
       ...page('/marketplace'),
+      // Keep the public catalog API on the same proxy boundary as its page.
+      { source: '/api/marketplace/products', destination: `${app}/api/marketplace/products` },
       ...page('/cart'),
       ...page('/buyer'),
       ...page('/book'),
