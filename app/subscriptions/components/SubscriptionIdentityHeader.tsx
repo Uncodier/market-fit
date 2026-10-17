@@ -7,6 +7,7 @@ import { EntityAvatar } from "@/app/components/documents/document-list"
 import { Mail, Plus, User } from "@/app/components/ui/icons"
 import { formatCurrency } from "@/app/lib/formatters"
 import type { SubscriptionDetail } from "../actions"
+import { GeneratePeriodInvoiceButton } from "./GeneratePeriodInvoiceButton"
 
 function formatDate(value?: string | null) {
   if (!value) return null
@@ -18,10 +19,12 @@ export function SubscriptionIdentityHeader({
   subscription,
   currency,
   onCreateInvoice,
+  onInvoiceGenerated,
 }: {
   subscription: SubscriptionDetail
   currency: string
   onCreateInvoice: () => void
+  onInvoiceGenerated: () => void | Promise<void>
 }) {
   const planName = subscription.catalog_item?.name || "Subscription"
   const customerName = subscription.lead?.name || "Unknown customer"
@@ -70,6 +73,7 @@ export function SubscriptionIdentityHeader({
             <Plus className="mr-1.5 h-3.5 w-3.5" />
             New invoice
           </Button>
+          <GeneratePeriodInvoiceButton subscription={subscription} currency={currency} onSuccess={onInvoiceGenerated} />
         </div>
       </div>
     </div>

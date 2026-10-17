@@ -58,6 +58,8 @@ interface RelationSelectProps {
     onSelect: () => void
   }
   onSearchChange?: (query: string) => void
+  /** Reports every manual text edit, including retyping the selected label. */
+  onInputValueChange?: (query: string) => void
 }
 
 export function RelationSelect({
@@ -78,6 +80,7 @@ export function RelationSelect({
   createLabel = (q) => `Use "${q}"`,
   pinnedAction,
   onSearchChange,
+  onInputValueChange,
 }: RelationSelectProps) {
   const options = rawOptions || []
   const [open, setOpen] = React.useState(false)
@@ -130,6 +133,7 @@ export function RelationSelect({
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = e.target.value
     setSearchQuery(newValue)
+    onInputValueChange?.(newValue)
     notifySearchChange(newValue)
     if (!open) setOpen(true)
   }

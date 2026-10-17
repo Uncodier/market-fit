@@ -1,20 +1,17 @@
 "use client"
 
-import { format } from "date-fns"
 import { Input } from "@/app/components/ui/input"
-import { DatePicker } from "@/app/components/ui/date-picker"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
 import { User, MessageSquare, Phone, Globe, Tag, FileText, Target } from "@/app/components/ui/icons"
-import { CalendarDays } from "./custom-icons"
 import { Lead, Segment } from "@/app/leads/types"
 import { Campaign } from "@/app/types"
 import { RelationSelect, RelationSelectValue } from "@/app/components/ui/relation-select"
 import { PropertyRow, ShowEmptyFieldsToggle, hasPropertyValue } from "./PropertyRow"
 import { useSite } from "@/app/context/SiteContext"
-import { useLocalization } from "@/app/context/LocalizationContext"
 import { resolveRelationId } from "@/app/commerce/resolve-relation"
 import { CallConsentFields } from "./CallConsentFields"
 import type { SavedCallConsent } from "../call-consent-schema"
+import { BirthdayField } from "./BirthdayField"
 
 export const LEAD_LANGUAGES: Record<string, string> = {
   en: "English",
@@ -53,7 +50,6 @@ export function DetailsTab({
   onCallConsentSaved,
 }: DetailsTabProps) {
   const { currentSite } = useSite()
-  const { t } = useLocalization()
   const getSegmentName = (segmentId: string | null) => {
     if (!segmentId) return ""
     return segments.find((segment) => segment.id === segmentId)?.name || "Unknown Segment"
@@ -135,23 +131,10 @@ export function DetailsTab({
           <Input value={draft} onChange={(event) => setDraft(event.target.value)} className="h-8 text-sm" />
         )}
       />
-      <PropertyRow
-        icon={<CalendarDays size={14} />}
-        label="Birthday"
-        value={lead.birthday ? new Date(lead.birthday).toLocaleDateString() : ""}
-        empty={!hasPropertyValue(lead.birthday)}
+      <BirthdayField
+        value={lead.birthday}
         showEmpty={showEmpty}
-        editValue={lead.birthday ? lead.birthday.split("T")[0] : ""}
-        saveOnEnter={false}
-        onCommit={(value) => save({ birthday: value || null })}
-        renderEditor={(draft, setDraft) => (
-          <DatePicker
-            date={draft ? new Date(`${draft}T12:00:00`) : undefined}
-            setDate={(next) => setDraft(format(next, "yyyy-MM-dd"))}
-            className="w-full h-8"
-            placeholder={t("datePicker.selectBirthday")}
-          />
-        )}
+        onCommit={(birthday) => save({ birthday })}
       />
       <PropertyRow
         icon={<Globe />}

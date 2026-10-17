@@ -47,22 +47,23 @@ export function CompanyTab({ lead, showEmpty, onToggleEmpty, onUpdateLead }: Com
   const { currentSite } = useSite()
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null)
   const [loading, setLoading] = useState(false)
-  const [companyValue, setCompanyValue] = useState<RelationSelectValue>(
-    lead.company_id
-      ? { mode: "existing", id: lead.company_id, label: lead.company?.name || "Unknown" }
-      : null
-  )
+  const companyValue: RelationSelectValue = lead.company_id
+    ? {
+        mode: "existing",
+        id: lead.company_id,
+        label: selectedCompany?.id === lead.company_id
+          ? selectedCompany.name
+          : lead.company?.name || lead.companies?.name || "Loading...",
+      }
+    : null
 
   useEffect(() => {
+    let cancelled = false
     const loadCompanyData = async () => {
-      if (companyValue?.mode === "create") {
-        setSelectedCompany({ id: "", name: companyValue.label } as Company)
-        return
-      }
-
       const companyId = lead.company_id
+      setSelectedCompany(null)
       if (!companyId) {
-        setSelectedCompany(null)
+        setLoading(false)
         return
       }
 
@@ -73,23 +74,24 @@ export function CompanyTab({ lead, showEmpty, onToggleEmpty, onUpdateLead }: Com
           console.error("Error loading company:", error)
           return
         }
-        setSelectedCompany(company)
+        if (!cancelled) setSelectedCompany(company)
       } catch (error) {
         console.error("Error loading company:", error)
       } finally {
-        setLoading(false)
+        if (!cancelled) setLoading(false)
       }
     }
 
     void loadCompanyData()
-  }, [lead.company_id, companyValue])
+    return () => { cancelled = true }
+  }, [lead.company_id])
 
   const saveCompanyLink = async (value: RelationSelectValue) => {
-    if (!currentSite?.id) return
+    if (!currentSite?.id) throw new Error("No site selected")
     const { id, error } = await resolveRelationId("company", value, currentSite.id)
     if (error) throw new Error(error)
+    if (value && !id) throw new Error("Could not resolve company")
     await onUpdateLead(lead.id, { company_id: id || null })
-    setCompanyValue(value)
   }
 
   const updateField = async (field: keyof Company, value: string) => {
@@ -124,24 +126,19 @@ export function CompanyTab({ lead, showEmpty, onToggleEmpty, onUpdateLead }: Com
 
   return (
     <div className="grid min-w-0">
-      <PropertyRow
+      <PropertyRow<RelationSelectValue>
         icon={<Globe />}
         label="Company"
-        value={selectedCompany?.name || ""}
-        empty={!selectedCompany}
+        value={companyValue?.label || ""}
+        empty={!companyValue}
         showEmpty
-        linkHref={selectedCompany?.id ? `/companies/${selectedCompany.id}` : undefined}
+        linkHref={lead.company_id ? `/companies/${lead.company_id}` : undefined}
         editValue={companyValue}
+        saveOnEnter={false}
         onCommit={(value) => saveCompanyLink(value)}
         renderEditor={(draft, setDraft) => (
           <CompanySelector
-            selectedCompanyId={draft?.mode === "existing" ? draft.id : null}
-            initialCompany={
-              draft?.mode === "existing" ? { id: draft.id, name: draft.label } : undefined
-            }
-            onCompanyChange={(company) => {
-              setDraft(company ? { mode: "existing", id: company.id, label: company.name } : null)
-            }}
+            initialValue={draft}
             onCompanyValueChange={setDraft}
             isEditing
             hideLabel

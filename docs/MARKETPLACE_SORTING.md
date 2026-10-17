@@ -13,6 +13,12 @@ Below categories (and digital subtypes), the sidebar shows the buyer's current
 location as text with a **Set** link, not a leading location button. Mobile uses
 the same controls below category chips, followed by the grid's sorting menu.
 
+On desktop, the sidebar stays sticky below the floating header while retaining
+its 256px column in the catalog's flex layout; it never overlays the products.
+Tall filter sets scroll inside the sidebar within the available viewport height,
+keeping price, availability and Clear filters reachable. Mobile controls keep
+their existing layout rather than using the desktop sticky column.
+
 - **Top regions** lists the six countries with the most matching public products,
   with product counts. A selected country outside the top six stays visible.
 - **All regions** clears the geographic filter. **Near me** matches the buyer's

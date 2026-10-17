@@ -119,7 +119,7 @@ export function MarketplaceCategoryChips({
   )
 }
 
-/** Desktop left filter sidebar. */
+/** Desktop sticky sidebar stays in the flex layout and scrolls tall filter sets. */
 export function MarketplaceFilterSidebar({
   selectedKind,
   setSelectedKind,
@@ -131,7 +131,7 @@ export function MarketplaceFilterSidebar({
   const { t } = useLocalization()
 
   return (
-    <aside className="w-full md:w-64 shrink-0 space-y-8 hidden md:block pb-4">
+    <aside className="w-full md:w-64 shrink-0 space-y-8 hidden md:block pb-4 md:sticky md:top-24 md:max-h-[calc(100dvh-7rem)] md:overflow-y-auto">
       <div>
         <h3 className="font-bold text-lg mb-4">
           {t("marketplace.categories.title") || "Categories"}

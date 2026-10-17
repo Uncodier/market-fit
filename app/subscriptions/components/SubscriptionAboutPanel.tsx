@@ -3,6 +3,9 @@
 import Link from "next/link"
 import { format } from "date-fns"
 import { Button } from "@/app/components/ui/button"
+import { Input } from "@/app/components/ui/input"
+import { Label } from "@/app/components/ui/label"
+import { useOptionalPermissions } from "@/app/context/PermissionContext"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
 import {
   Calendar,
@@ -16,7 +19,9 @@ import {
 import { PropertyRow, hasPropertyValue } from "@/app/leads/components/PropertyRow"
 import { formatCurrency } from "@/app/lib/formatters"
 import type { SubscriptionDetail, SubscriptionInvoice } from "../actions"
-import { formatDueDate } from "@/lib/finance/due-date"
+import { SubscriptionDateRow } from "./SubscriptionDateRow"
+import { getSubscriptionBillingDate } from "../billing-period"
+import { getSubscriptionAmountError, getSubscriptionEndDateError } from "../detail-validation"
 
 function formatDate(value?: string | null) {
   if (!value) return ""
@@ -28,15 +33,25 @@ export function SubscriptionAboutPanel({
   subscription,
   currency,
   invoices,
-  onEditDueDate,
+  onUpdateNextBillingDate,
+  onUpdateDueDate,
+  onUpdateAmount,
+  onUpdateEndDate,
 }: {
   subscription: SubscriptionDetail
   currency: string
   invoices: SubscriptionInvoice[]
-  onEditDueDate?: () => void
+  onUpdateNextBillingDate: (value: string) => Promise<void>
+  onUpdateDueDate: (value: string) => Promise<void>
+  onUpdateAmount: (value: number) => Promise<void>
+  onUpdateEndDate: (value: string) => Promise<void>
 }) {
+  const permissions = useOptionalPermissions()
+  const readOnly = permissions?.can("update") === false
   const createdLabel = formatDate(subscription.created_at)
   const updatedLabel = formatDate(subscription.updated_at)
+  const billingDate = new Date(subscription.next_billing_date || "")
+  const billingDateValue = Number.isNaN(billingDate.getTime()) ? null : billingDate.toISOString().slice(0, 10)
   const customerName = subscription.lead?.name || ""
   const totals = invoices.reduce(
     (summary, invoice) => ({
@@ -93,7 +108,28 @@ export function SubscriptionAboutPanel({
               icon={<DollarSign />}
               label="Amount"
               value={formatCurrency(Number(subscription.amount) || 0, currency)}
-              readOnly
+              editValue={String(subscription.amount ?? "")}
+              readOnly={readOnly}
+              editorLayout="stacked"
+              validate={(value) => value.trim() === "" ? "Enter an amount" : getSubscriptionAmountError(Number(value))}
+              onCommit={(value) => onUpdateAmount(Number(value))}
+              renderEditor={(draft, setDraft) => (
+                <div className="grid min-w-0 gap-2">
+                  <Label htmlFor="subscription-amount" className="sr-only">Amount</Label>
+                  <Input
+                    id="subscription-amount"
+                    type="number"
+                    min="0"
+                    max="999999999999"
+                    step="0.01"
+                    value={draft}
+                    onChange={(event) => setDraft(event.target.value)}
+                    aria-describedby="subscription-amount-description"
+                    className="h-8 w-full min-w-0 text-sm"
+                  />
+                  <p id="subscription-amount-description" className="text-xs text-muted-foreground">Billing amount per cycle. Existing invoices are unchanged.</p>
+                </div>
+              )}
             />
             <PropertyRow
               icon={<Calendar />}
@@ -103,24 +139,33 @@ export function SubscriptionAboutPanel({
               showEmpty
               readOnly
             />
-            <PropertyRow
-              icon={<Calendar />}
+            <SubscriptionDateRow
+              id="subscription-next-billing-date"
               label="Next billing"
-              value={formatDate(subscription.next_billing_date)}
-              empty={!hasPropertyValue(subscription.next_billing_date)}
-              showEmpty
-              readOnly
+              value={billingDateValue}
+              onCommit={onUpdateNextBillingDate}
+              readOnly={readOnly}
+              description="Reschedules the next cycle and shifts the due date to preserve payment terms. Existing invoices are unchanged."
             />
-            <PropertyRow
-              icon={<Calendar />}
+            <SubscriptionDateRow
+              id="subscription-end-date"
               label="End date"
-              value={formatDate(subscription.end_date)}
-              empty={!hasPropertyValue(subscription.end_date)}
-              showEmpty
-              readOnly
+              value={getSubscriptionBillingDate(subscription.end_date)}
+              onCommit={onUpdateEndDate}
+              readOnly={readOnly}
+              allowClear
+              validate={(value) => getSubscriptionEndDateError(value, subscription.start_date)}
+              description="Must be on or after the start date. Clear to leave the subscription open-ended. Existing invoices are unchanged."
             />
-            <PropertyRow icon={<Calendar />} label="Due date" value={formatDueDate(subscription.due_date)} readOnly />
-            {onEditDueDate ? <Button type="button" variant="outline" className="my-2" onClick={onEditDueDate}>Edit due date</Button> : null}
+            <SubscriptionDateRow
+              id="subscription-due-date"
+              label="Due date"
+              value={subscription.due_date}
+              onCommit={onUpdateDueDate}
+              readOnly={readOnly}
+              allowClear
+              description="Applies to future invoices only. Clear the date to remove the default."
+            />
             <PropertyRow
               icon={<FileText />}
               label="Subscription ID"

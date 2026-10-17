@@ -7,6 +7,7 @@ import { toast } from "sonner"
 import { getLeadById, updateLead, deleteLead } from "@/app/leads/actions"
 import { getSegments } from "@/app/segments/actions"
 import { getCampaigns } from "@/app/campaigns/actions/campaigns/read"
+import { getCompanyById } from "@/app/companies/actions"
 import { Lead, Segment, AttributionData } from "@/app/leads/types"
 import { Campaign } from "@/app/types"
 import { LeadDetail } from "@/app/leads/components/LeadDetail"
@@ -171,42 +172,52 @@ export default function LeadDetailPage(props: { params: Promise<{ id: string }> 
   }
   
   const handleUpdateLead = async (id: string, data: Partial<Lead>) => {
+    const updatingCompanyLink = Object.prototype.hasOwnProperty.call(data, "company_id")
     if (!currentSite?.id || !lead) {
       toast.error("No site selected or lead not found")
+      if (updatingCompanyLink) throw new Error("No site selected or lead not found")
       return
     }
     
     try {
       // Build updateData - only include changed fields + id + site_id
-      const updateData: any = {
+      const updateData = {
+        ...Object.fromEntries(Object.entries(data).filter(([key, value]) => key !== "id" && value !== undefined)),
         id,
         site_id: currentSite.id,
       }
       
-      // Handle each field explicitly to allow null/empty values
-      Object.entries(data).forEach(([key, value]) => {
-        if (key !== 'id') {
-          // Include all fields from data (which now only contains changed fields)
-          if (value !== undefined) {
-            updateData[key] = value
-          }
-        }
-      })
-      
       const result = await updateLead(updateData)
       
       if (result.error) {
+        if (updatingCompanyLink) throw new Error(result.error)
         toast.error(result.error)
         return
       }
       
-      // Update lead in local state
-      setLead((prev: Lead | null) => prev ? { ...prev, ...data } : null)
+      // Refresh relation metadata as well as the ID so the header cannot keep
+      // displaying the previously linked company after a successful save.
+      let companyData: Partial<Lead> = {}
+      if (updatingCompanyLink) {
+        let company: Lead["company"] = null
+        if (data.company_id) {
+          try {
+            const result = await getCompanyById(data.company_id)
+            company = result.company
+          } catch (error) {
+            console.error("Error refreshing company:", error)
+          }
+        }
+        companyData = { company, companies: company?.name ? { name: company.name } : null }
+      }
+      setLead((prev: Lead | null) => prev ? { ...prev, ...data, ...companyData } : null)
       
       toast.success("Lead updated successfully")
     } catch (error) {
       console.error("Error updating lead:", error)
       toast.error("Error updating lead")
+      // Field editors need a rejected save to retain their draft on failure.
+      if (updatingCompanyLink) throw error
     }
   }
   

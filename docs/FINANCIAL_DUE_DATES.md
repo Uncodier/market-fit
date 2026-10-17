@@ -46,9 +46,51 @@ the subscription cycle. The automated billing worker advances subscription
 `due_date` and `next_billing_date` together by the cycle's calendar-date difference,
 preserving net terms for future cycles. Editing subscription terms affects future
 invoices only, never rewrites existing invoices. A dedicated authenticated,
-tenant-scoped, version-checked action edits subscription due dates.
+tenant-scoped, version-checked action edits subscription dates. In
+`/subscriptions/[id]`, Next billing and Due date are editable inline using the
+same property-row calendar and save/cancel controls as lead details. Changing
+Next billing shifts the configured Due date by the same calendar-day difference
+to preserve payment terms; editing or clearing Due date changes the default for
+future invoices. Next billing cannot be cleared. Both dates are returned after
+each save so the detail panel and manual invoice defaults stay in sync.
+
+Amount and End date are also editable inline in the same panel. Amount is a
+non-negative per-cycle value with at most two decimal places (zero is allowed for
+free subscriptions). End date is optional and may be cleared; it must be on or
+after the subscription's UTC start date. These edits require accounting update
+permission and a same-site version-checked update. They change only the selected
+subscription field, never historical invoice amounts, balances, dates, payments,
+status, or entitlements. The saved amount immediately updates the detail header
+and subsequent invoice defaults. Editing End date does not itself cancel or
+expire a subscription; lifecycle changes still use the existing status actions.
 
 ## Persistence and verification
+
+### Manual period invoice generation
+
+The subscription detail header offers **Generate period invoice** alongside
+**New invoice**. The same action is available from each subscription list row's
+Actions menu, sharing the confirmation dialog and refreshing pending invoice
+balances after success. Both entry points disable generation without an active
+subscription, valid billing anchor, or accounting insert permission.
+Confirmation uses the UTC calendar date of `next_billing_date`
+(initialized to `start_date` for a new subscription), the stored recurring amount,
+the catalog currency (USD fallback), and the configured due date. The server
+requires accounting insert permission, an active same-site subscription, and an
+unchanged billing date. It creates a pending sale without charging a payment or
+advancing the subscription schedule.
+
+Existing invoices on that billing date are reused; cancelled/refunded periods
+require the manual **New invoice** flow for a replacement. A deterministic invoice
+UUID protects concurrent invocations and ambiguous retries of this action through
+the existing sales primary key. The pre-insert lookup also detects existing manual
+invoices, but does not serialize a simultaneous insert from a different manual or
+automated writer; it is not a database-wide subscription-period uniqueness rule.
+No schema migration or remote database changes are needed.
+
+Focused coverage: `__tests__/subscriptions/generate-period-invoice.test.ts`,
+`__tests__/subscriptions/generate-period-invoice-button.test.tsx`, and
+`__tests__/subscriptions/subscriptions-list-period-invoice.test.tsx`.
 
 Bill header/line edits include `due_date` in the existing atomic
 `accounting_update_purchase_items` RPC. Its tenant authorization, source-version

@@ -33,6 +33,7 @@ export interface SubscriptionDetail extends Omit<Subscription, "lead" | "catalog
     name: string;
     description: string | null;
     kind: string | null;
+    currency?: string | null;
   };
 }
 
@@ -46,7 +47,7 @@ export async function getSubscriptions(siteId: string) {
       .from("subscriptions")
       .select(`
         *,
-        catalog_item:catalog_items(id, name, description, kind),
+        catalog_item:catalog_items(id, name, description, kind, currency),
         lead:leads(id, name, email, phone),
         invoices:sales!sales_subscription_id_fkey(id, site_id, title, invoice_number, amount_due, currency, status)
       `)
@@ -101,7 +102,7 @@ export async function getSubscriptionDetail(siteId: string, subscriptionId: stri
       .from("subscriptions")
       .select(`
         *,
-        catalog_item:catalog_items(id, name, description, kind),
+        catalog_item:catalog_items(id, name, description, kind, currency),
         lead:leads(id, name, email, phone, status)
       `)
       .eq("site_id", siteId)
@@ -339,24 +340,44 @@ export async function updateSubscriptionStatus(siteId: string, subscriptionId: s
 }
 
 export async function updateSubscriptionDueDate(siteId: string, subscriptionId: string, value: string | null) {
+  return saveSubscriptionDate(siteId, subscriptionId, "due_date", value);
+}
+
+export async function updateSubscriptionNextBillingDate(siteId: string, subscriptionId: string, value: string) {
+  return saveSubscriptionDate(siteId, subscriptionId, "next_billing_date", value);
+}
+
+async function saveSubscriptionDate(
+  siteId: string,
+  subscriptionId: string,
+  field: "due_date" | "next_billing_date",
+  value: string | null,
+) {
   if (!UUID_PATTERN.test(siteId) || !UUID_PATTERN.test(subscriptionId)) return { error: "Invalid subscription request" };
+  if (field === "next_billing_date" && !isDateOnly(value)) return { error: "Enter a valid next billing date (YYYY-MM-DD)" };
   try {
-    const dueDate = normalizeDueDate(value);
+    const date = normalizeDueDate(value);
     const supabase = await requireAccountingAccess(siteId, "update");
     const { data: current, error: readError } = await supabase.from("subscriptions")
-      .select("next_billing_date, updated_at").eq("site_id", siteId).eq("id", subscriptionId).maybeSingle();
+      .select("next_billing_date, due_date, updated_at").eq("site_id", siteId).eq("id", subscriptionId).maybeSingle();
     if (readError || !current) return { error: "Subscription not found" };
-    if (dueDate && !current.next_billing_date) return { error: "A next billing date is required to configure a due date" };
+    if (field === "due_date" && date && !current.next_billing_date) return { error: "A next billing date is required to configure a due date" };
+    const update = field === "next_billing_date"
+      ? {
+          next_billing_date: `${date}T00:00:00.000Z`,
+          due_date: getSubscriptionInvoiceDueDate(current.due_date, current.next_billing_date, date!),
+        }
+      : { due_date: date };
     const { data, error } = await supabase.from("subscriptions")
-      .update({ due_date: dueDate, updated_at: new Date().toISOString() })
+      .update({ ...update, updated_at: new Date().toISOString() })
       .eq("site_id", siteId).eq("id", subscriptionId).eq("updated_at", current.updated_at)
-      .select("id").maybeSingle();
-    if (error) return { error: "Unable to save subscription due date" };
+      .select("next_billing_date, due_date, updated_at").maybeSingle();
+    if (error) return { error: "Unable to save subscription date" };
     if (!data) return { error: "Subscription changed while editing. Reload and retry." };
     revalidatePath("/subscriptions");
     revalidatePath(`/subscriptions/${subscriptionId}`);
-    return { success: true };
+    return { success: true, data: data as Pick<Subscription, "next_billing_date" | "due_date" | "updated_at"> };
   } catch (error) {
-    return { error: error instanceof Error ? error.message : "Unable to save subscription due date" };
+    return { error: error instanceof Error ? error.message : "Unable to save subscription date" };
   }
 }

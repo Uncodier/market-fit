@@ -6,7 +6,7 @@ import { Subscription } from "@/app/types"
 import { Button } from "@/app/components/ui/button"
 import { ConfirmDialog } from "@/app/components/ui/confirm-dialog"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/app/components/ui/dropdown-menu"
-import { MoreHorizontal, Play, Pause, Ban, Repeat, Trash2, CreditCard } from "@/app/components/ui/icons"
+import { MoreHorizontal, Play, Pause, Ban, Repeat, Trash2, CreditCard, Receipt } from "@/app/components/ui/icons"
 import { updateSubscriptionStatus } from "../actions"
 import { deleteSubscription } from "../delete-subscription"
 import { toast } from "sonner"
@@ -21,6 +21,8 @@ import { cn } from "@/lib/utils"
 import { formatCurrency } from "@/app/lib/formatters"
 import { invoiceBalances, type SubscriptionListItem } from "../invoice-summary"
 import { RegisterSubscriptionPaymentDialog } from "./RegisterSubscriptionPaymentDialog"
+import { GeneratePeriodInvoiceDialog } from "./GeneratePeriodInvoiceDialog"
+import { getSubscriptionBillingDate } from "../billing-period"
 import {
   DocumentListHead,
   DocumentListRow,
@@ -56,6 +58,7 @@ export function SubscriptionsList({ subscriptions, siteId, onUpdate }: Subscript
   const [updating, setUpdating] = useState<string | null>(null)
   const [subscriptionToDelete, setSubscriptionToDelete] = useState<Subscription | null>(null)
   const [subscriptionToPay, setSubscriptionToPay] = useState<SubscriptionListItem | null>(null)
+  const [subscriptionToInvoice, setSubscriptionToInvoice] = useState<SubscriptionListItem | null>(null)
   const pageTotal = subscriptions.reduce((sum, sub) => sum + (Number(sub.amount) || 0), 0)
   const pendingInvoices = subscriptions.flatMap((sub) => sub.pendingInvoices || [])
 
@@ -190,6 +193,13 @@ export function SubscriptionsList({ subscriptions, siteId, onUpdate }: Subscript
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                       <DropdownMenuItem
+                        onSelect={() => setSubscriptionToInvoice(sub)}
+                        disabled={sub.status !== "active" || !getSubscriptionBillingDate(sub.next_billing_date) || permissions?.can("insert") === false}
+                      >
+                        <Receipt className="h-4 w-4 mr-2" />
+                        Generate period invoice
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
                         onSelect={() => setSubscriptionToPay(sub)}
                         disabled={outstanding.length === 0 || permissions?.can("update") === false}
                       >
@@ -281,6 +291,16 @@ export function SubscriptionsList({ subscriptions, siteId, onUpdate }: Subscript
           subscription={subscriptionToPay}
           siteId={siteId}
           onClose={() => setSubscriptionToPay(null)}
+          onSuccess={onUpdate}
+        />
+      ) : null}
+      {subscriptionToInvoice ? (
+        <GeneratePeriodInvoiceDialog
+          key={`${siteId}:${subscriptionToInvoice.id}`}
+          subscription={{ ...subscriptionToInvoice, site_id: siteId }}
+          currency={subscriptionToInvoice.catalog_item?.currency || "USD"}
+          open
+          onOpenChange={(open) => { if (!open) setSubscriptionToInvoice(null) }}
           onSuccess={onUpdate}
         />
       ) : null}

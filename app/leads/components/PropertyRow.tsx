@@ -26,7 +26,9 @@ interface PropertyRowProps<T = string> {
   editValue?: T
   onCommit?: (value: T) => Promise<void>
   renderEditor?: (draft: T, setDraft: (value: T) => void) => React.ReactNode
+  validate?: (draft: T) => string | null
   saveOnEnter?: boolean
+  editorLayout?: "inline" | "stacked"
   readOnly?: boolean
   multiline?: boolean
   className?: string
@@ -43,7 +45,9 @@ export function PropertyRow<T = string>({
   editValue,
   onCommit,
   renderEditor,
+  validate,
   saveOnEnter = true,
+  editorLayout = "inline",
   readOnly = false,
   multiline = false,
   className,
@@ -53,6 +57,7 @@ export function PropertyRow<T = string>({
   const [saving, setSaving] = useState(false)
 
   const canEdit = Boolean(onCommit && renderEditor && !readOnly)
+  const validationError = editing ? validate?.(draft) : null
 
   if (empty && !showEmpty && !editing) return null
 
@@ -68,7 +73,7 @@ export function PropertyRow<T = string>({
   }
 
   const save = async () => {
-    if (!onCommit) return
+    if (!onCommit || saving || validate?.(draft)) return
     setSaving(true)
     try {
       await onCommit(draft)
@@ -104,7 +109,7 @@ export function PropertyRow<T = string>({
       <div className="flex-1 min-w-0">
         {editing ? (
           <div
-            className="flex items-start gap-1"
+            className={cn("flex min-w-0 items-start gap-1", editorLayout === "stacked" && "flex-wrap justify-end")}
             onKeyDown={(event) => {
               if (saveOnEnter && event.key === "Enter" && !event.shiftKey) {
                 event.preventDefault()
@@ -113,22 +118,26 @@ export function PropertyRow<T = string>({
               if (event.key === "Escape") cancel()
             }}
           >
-            <div className="flex-1 min-w-0">{renderEditor?.(draft, setDraft)}</div>
+            <div className={cn("min-w-0", editorLayout === "stacked" ? "w-full" : "flex-1")}>
+              {renderEditor?.(draft, setDraft)}
+            </div>
             <Button
               size="sm"
               variant="ghost"
-              className="h-7 w-7 p-0"
+              className="h-7 w-7 shrink-0 p-0"
               onClick={() => void save()}
-              disabled={saving}
+              disabled={saving || Boolean(validationError)}
+              aria-label={`Save ${label.toLowerCase()}`}
             >
               <Check className="h-3.5 w-3.5" />
             </Button>
             <Button
               size="sm"
               variant="ghost"
-              className="h-7 w-7 p-0"
+              className="h-7 w-7 shrink-0 p-0"
               onClick={cancel}
               disabled={saving}
+              aria-label={`Cancel ${label.toLowerCase()} edit`}
             >
               <X className="h-3.5 w-3.5" />
             </Button>
@@ -166,6 +175,9 @@ export function PropertyRow<T = string>({
               </div>
             )}
           </div>
+        )}
+        {editing && validationError && (
+          <p role="alert" className="mt-1 text-xs text-destructive">{validationError}</p>
         )}
       </div>
     </div>

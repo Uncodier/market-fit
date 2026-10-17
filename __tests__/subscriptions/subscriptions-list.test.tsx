@@ -11,6 +11,7 @@ import { registerSubscriptionPayment } from "@/app/subscriptions/register-paymen
 jest.mock("@/app/subscriptions/delete-subscription", () => ({ deleteSubscription: jest.fn() }))
 jest.mock("@/app/subscriptions/actions", () => ({ updateSubscriptionStatus: jest.fn() }))
 jest.mock("@/app/subscriptions/register-payment", () => ({ registerSubscriptionPayment: jest.fn() }))
+jest.mock("@/app/subscriptions/generate-period-invoice", () => ({ generateSubscriptionPeriodInvoice: jest.fn() }))
 jest.mock("sonner", () => ({ toast: { success: jest.fn(), error: jest.fn(), warning: jest.fn() } }))
 jest.mock("@/app/context/PermissionContext", () => ({ useOptionalPermissions: jest.fn(() => null) }))
 jest.mock("@/app/context/LocalizationContext", () => ({ useLocalization: () => ({ t: () => "" }) }))

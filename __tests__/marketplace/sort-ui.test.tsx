@@ -223,7 +223,7 @@ it("replaces stale product results with a visible error and retry action", () =>
 })
 
 it.each(["populated", "empty", "loading", "error"])(
-  "keeps the complete sidebar in document flow for a %s catalog", (state) => {
+  "keeps the sticky sidebar in document flow for a %s catalog", (state) => {
     jest.mocked(useMarketplaceProducts).mockReturnValue({
       items: state === "populated" ? initial : [], count: state === "populated" ? 30 : 0,
       regions: [], isLoading: state === "loading", totalPages: 0, page: 1,
@@ -234,9 +234,14 @@ it.each(["populated", "empty", "loading", "error"])(
     expect(within(sidebar).getByLabelText("Min price")).toBeInTheDocument()
     expect(within(sidebar).getByRole("checkbox", { name: "Available now" })).toBeInTheDocument()
     expect(within(sidebar).getByRole("button", { name: "Clear filters" })).toBeInTheDocument()
-    expect(sidebar).toHaveClass("md:block", "shrink-0")
-    // Neither the sidebar nor its containers may cap or clip the filters' natural height.
-    let element: HTMLElement | null = sidebar
+    expect(sidebar).toHaveClass("hidden", "md:block", "md:w-64", "shrink-0", "md:sticky", "md:top-24")
+    expect(sidebar).toHaveClass("md:max-h-[calc(100dvh-7rem)]", "md:overflow-y-auto")
+    expect(sidebar.className).not.toMatch(/(?:^|\s)(?:\S+:)?(?:fixed|absolute|overflow(?:-[xy])?-(?:hidden|clip))(?:\s|$)/)
+    const row = sidebar.parentElement!
+    expect(row).toHaveClass("flex", "md:flex-row", "gap-8", "items-start")
+    expect(sidebar.nextElementSibling).toHaveClass("flex-1", "min-w-0")
+    // Only the sidebar scrolls; its ancestors must not trap sticky positioning or clip the catalog.
+    let element: HTMLElement | null = row
     while (element && element !== document.body) {
       expect(element.className).not.toMatch(/(?:^|\s)(?:\S+:)?(?:overflow(?:-[xy])?-(?:hidden|clip|auto|scroll)|max-h-\S+|h-(?:screen|full)|sticky|fixed|absolute)(?:\s|$)/)
       element = element.parentElement
@@ -246,6 +251,19 @@ it.each(["populated", "empty", "loading", "error"])(
     expect(main.compareDocumentPosition(screen.getByRole("contentinfo")) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   },
 )
+
+it.each(["discounts", "digital_asset"])("keeps %s categories in the same sticky column", (kind) => {
+  render(<MarketplaceCatalog {...catalogProps} selectedKind={kind} effectiveKind={kind} />)
+  const sidebar = screen.getByRole("complementary")
+  expect(sidebar).toHaveClass("md:sticky", "md:w-64", "shrink-0", "md:overflow-y-auto")
+  expect(within(sidebar).getByRole("heading", { name: "Categories" })).toBeInTheDocument()
+  if (kind === "digital_asset") {
+    expect(within(sidebar).getByRole("heading", { name: "Subtypes" })).toBeInTheDocument()
+    expect(within(sidebar).getByRole("button", { name: "Clear filters" })).toBeInTheDocument()
+  } else {
+    expect(within(sidebar).queryByRole("region", { name: "Product filters" })).not.toBeInTheDocument()
+  }
+})
 
 it("keeps rapid price and availability changes together before router navigation commits", () => {
   const replace = jest.fn()

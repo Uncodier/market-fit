@@ -157,16 +157,11 @@ export function DealAboutPanel({
               showEmpty
               linkHref={deal.company_id ? `/companies/${deal.company_id}` : undefined}
               editValue={companyValue}
+              saveOnEnter={false}
               onCommit={(value) => saveCompany(value)}
               renderEditor={(draft, setDraft) => (
                 <CompanySelector
-                  selectedCompanyId={draft?.mode === "existing" ? draft.id : null}
-                  initialCompany={
-                    draft?.mode === "existing" ? { id: draft.id, name: draft.label } : undefined
-                  }
-                  onCompanyChange={(company) => {
-                    setDraft(company ? { mode: "existing", id: company.id, label: company.name } : null)
-                  }}
+                  initialValue={draft}
                   onCompanyValueChange={setDraft}
                   isEditing
                   hideLabel

@@ -14,6 +14,8 @@ import {
 import { useSite } from "@/app/context/SiteContext"
 import {
   getSubscriptionDetail,
+  updateSubscriptionDueDate,
+  updateSubscriptionNextBillingDate,
   updateSubscriptionStatus,
   type SubscriptionDetail,
   type SubscriptionInvoice,
@@ -24,7 +26,7 @@ import { SubscriptionIdentityHeader } from "../components/SubscriptionIdentityHe
 import { SubscriptionInvoicesTable } from "../components/SubscriptionInvoicesTable"
 import { SubscriptionPaymentsTable } from "../components/SubscriptionPaymentsTable"
 import { SubscriptionStatusBar } from "../components/SubscriptionStatusBar"
-import { EditSubscriptionDueDateDialog } from "../components/EditSubscriptionDueDateDialog"
+import { updateSubscriptionAmount, updateSubscriptionEndDate } from "../update-details"
 
 const SUBSCRIPTION_TABS: TabItem[] = [
   { value: "invoices", label: "Invoices" },
@@ -41,7 +43,6 @@ export default function SubscriptionDetailPage(props: {
   const [invoices, setInvoices] = useState<SubscriptionInvoice[]>([])
   const [loading, setLoading] = useState(true)
   const [createInvoiceOpen, setCreateInvoiceOpen] = useState(false)
-  const [editDueDateOpen, setEditDueDateOpen] = useState(false)
   const [activeTab, setActiveTab] = useState("invoices")
   const [updatingStatus, setUpdatingStatus] = useState(false)
 
@@ -110,6 +111,28 @@ export default function SubscriptionDetailPage(props: {
     }
   }
 
+  const handleDateChange = async (field: "next_billing_date" | "due_date" | "end_date", value: string) => {
+    if (!currentSite?.id || !subscription) throw new Error("Subscription not found")
+
+    const result = field === "next_billing_date"
+      ? await updateSubscriptionNextBillingDate(currentSite.id, subscription.id, value)
+      : field === "end_date"
+        ? await updateSubscriptionEndDate(currentSite.id, subscription.id, value || null)
+        : await updateSubscriptionDueDate(currentSite.id, subscription.id, value || null)
+    if (result.error || !result.data) throw new Error(result.error || "Unable to save subscription date")
+
+    setSubscription((current) => current ? { ...current, ...result.data } : current)
+    toast.success(field === "next_billing_date" ? "Next billing date saved" : field === "end_date" ? "Subscription end date saved" : "Subscription due date saved")
+  }
+
+  const handleAmountChange = async (value: number) => {
+    if (!currentSite?.id || !subscription) throw new Error("Subscription not found")
+    const result = await updateSubscriptionAmount(currentSite.id, subscription.id, value)
+    if (result.error || !result.data) throw new Error(result.error || "Unable to save subscription amount")
+    setSubscription((current) => current ? { ...current, ...result.data } : current)
+    toast.success("Subscription amount saved")
+  }
+
   if (loading) {
     return (
       <div className="flex-1 p-4 lg:p-8">
@@ -137,7 +160,7 @@ export default function SubscriptionDetailPage(props: {
     )
   }
 
-  const currency = invoices[0]?.currency || "USD"
+  const currency = subscription.catalog_item?.currency || invoices[0]?.currency || "USD"
 
   return (
     <div className="flex-1 p-0">
@@ -167,6 +190,7 @@ export default function SubscriptionDetailPage(props: {
             subscription={subscription}
             currency={currency}
             onCreateInvoice={() => setCreateInvoiceOpen(true)}
+            onInvoiceGenerated={loadSubscription}
           />
 
           <div className="mt-5 flex flex-col border-t border-border/50 lg:flex-row">
@@ -198,7 +222,10 @@ export default function SubscriptionDetailPage(props: {
                   subscription={subscription}
                   currency={currency}
                   invoices={invoices}
-                  onEditDueDate={() => setEditDueDateOpen(true)}
+                  onUpdateNextBillingDate={(value) => handleDateChange("next_billing_date", value)}
+                  onUpdateDueDate={(value) => handleDateChange("due_date", value)}
+                  onUpdateAmount={handleAmountChange}
+                  onUpdateEndDate={(value) => handleDateChange("end_date", value)}
                 />
               </div>
             </aside>
@@ -218,7 +245,6 @@ export default function SubscriptionDetailPage(props: {
           onSuccess={loadSubscription}
         />
       ) : null}
-      <EditSubscriptionDueDateDialog subscription={subscription} open={editDueDateOpen} onOpenChange={setEditDueDateOpen} onSuccess={loadSubscription} />
     </div>
   )
 }
