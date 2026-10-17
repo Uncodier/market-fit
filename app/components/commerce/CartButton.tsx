@@ -4,6 +4,7 @@ import { ShoppingCart } from "@/app/components/ui/icons"
 import { cn } from "@/lib/utils"
 import Link from "next/link"
 import { useDisplayCurrency } from "@/app/context/DisplayCurrencyContext"
+import { useLocalization } from "@/app/context/LocalizationContext"
 
 export interface CartButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   cartCount: number
@@ -43,6 +44,7 @@ export const CartButton = React.forwardRef<CartButtonElement, CartButtonProps>(
     ref
   ) => {
     const { formatPrice } = useDisplayCurrency()
+    const { t } = useLocalization()
 
     if (hideIfEmpty && cartCount === 0) return null
 
@@ -50,7 +52,7 @@ export const CartButton = React.forwardRef<CartButtonElement, CartButtonProps>(
     const showPrice = subtotal !== undefined && subtotal > 0
     const cartLabel =
       props["aria-label"] ||
-      (cartCount === 1 ? "Open cart, 1 item" : `Open cart, ${cartCount} items`)
+      (cartCount === 1 ? t("commerce.cart.openOne") : t("commerce.cart.openMany", { count: cartCount }))
 
     const badge = cartCount > 0 ? (
       <span

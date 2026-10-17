@@ -16,6 +16,7 @@ import { toast } from "sonner"
 import { useSite } from "@/app/context/SiteContext"
 import { RelationSelect, RelationSelectValue } from "@/app/components/ui/relation-select"
 import { siteMembersService, SiteMember } from "@/app/services/site-members-service"
+import { assignableSiteMembers } from "@/lib/auth/assignable-site-members"
 
 interface LinkTeamMemberDialogProps {
   deal: Deal
@@ -48,9 +49,9 @@ export function LinkTeamMemberDialog({ deal, isOpen, onOpenChange, onLinked }: L
       try {
         const data = await siteMembersService.getMembers(currentSite.id)
         
-        // Filter out members that are already linked, and must have a valid user_id
+        // Only enabled members that are not already linked can be assigned.
         const alreadyLinkedIds = deal.owners?.map(o => o.user_id) || []
-        const availableMembers = data.filter(m => m.user_id && !alreadyLinkedIds.includes(m.user_id))
+        const availableMembers = assignableSiteMembers(data).filter(m => !alreadyLinkedIds.includes(m.user_id))
         
         setMembers(availableMembers)
       } catch (err) {

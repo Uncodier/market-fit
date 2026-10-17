@@ -16,6 +16,7 @@ import { DatePicker } from "@/app/components/ui/date-picker"
 import { TimeSelect } from "@/app/components/ui/time-select"
 import useSWR from "swr"
 import { listCatalogItems } from "@/app/catalog/actions"
+import { assignableSiteMembers } from "@/lib/auth/assignable-site-members"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -77,7 +78,7 @@ export function CreateCalendarBlockDialog({
   }, [catalogData])
 
   const memberOptions = useMemo(() => {
-    return (membersData?.members || []).map((m: any) => ({
+    return assignableSiteMembers(membersData?.members || []).map(m => ({
       id: m.user_id,
       label: m.name || m.email || t("reservations.blocks.unknownUser") || "Unknown User"
     }))

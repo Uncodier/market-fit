@@ -113,12 +113,12 @@ export function useCheckoutSubmission({
     const resolvedEmail = customerEmail || session?.user?.email || ""
 
     if (!resolvedName || !resolvedEmail) {
-      toast.error("Please enter your name and email")
+      toast.error(t("checkout.errors.nameEmailRequired"))
       return
     }
 
     if (source === 'shop' && fulfillment === 'ship' && (!shippingAddress.line1 || !shippingAddress.city || !shippingAddress.zip)) {
-      toast.error("Please enter a complete shipping address")
+      toast.error(t("checkout.errors.shippingAddressRequired"))
       return
     }
 
@@ -130,7 +130,7 @@ export function useCheckoutSubmission({
     if (source === 'marketplace') {
       const uniqueSiteIds = Array.from(new Set(items.map(c => c.site_id)))
       if (uniqueSiteIds.length > 1) {
-        toast.error("V1 only supports checking out from one seller at a time.")
+        toast.error(t("checkout.errors.singleSeller"))
         setCheckoutLoading(false)
         return
       }
@@ -140,19 +140,19 @@ export function useCheckoutSubmission({
     // Ensure cart only has one currency
     const uniqueCurrencies = Array.from(new Set(items.map(c => c.currency || 'USD')))
     if (uniqueCurrencies.length > 1) {
-      toast.error("All items in the cart must use the same currency.")
+      toast.error(t("checkout.errors.singleCurrency"))
       setCheckoutLoading(false)
       return
     }
 
     if (!checkoutSiteId) {
-      toast.error("Missing seller information.")
+      toast.error(t("checkout.errors.missingSeller"))
       setCheckoutLoading(false)
       return
     }
 
     if (!paymentMethod) {
-      toast.error("Please select a payment method.")
+      toast.error(t("checkout.errors.paymentRequired"))
       setCheckoutLoading(false)
       return
     }
@@ -197,7 +197,7 @@ export function useCheckoutSubmission({
       })
 
       if (res.error || !res.success) {
-        toast.error(res.error || "Checkout failed. Please try again.")
+        toast.error(t("checkout.errors.failed"))
         return
       }
 
@@ -240,7 +240,7 @@ export function useCheckoutSubmission({
           window.location.href = stripeData.url
           return
         }
-        toast.error(stripeData.error || "Failed to initiate payment")
+        toast.error(t("checkout.errors.paymentFailed"))
         return
       }
 
@@ -251,8 +251,7 @@ export function useCheckoutSubmission({
       setOrderSuccess(true)
     } catch (error: unknown) {
       console.error('Checkout failed:', error)
-      const message = error && typeof error === "object" && "message" in error ? error.message : undefined
-      toast.error(typeof message === "string" && message ? message : "Checkout failed. Please try again.")
+      toast.error(t("checkout.errors.failed"))
     } finally {
       if (!redirectingToStripe) {
         setCheckoutLoading(false)

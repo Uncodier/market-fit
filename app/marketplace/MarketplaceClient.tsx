@@ -17,6 +17,7 @@ import {
 } from "./marketplace-category-url"
 import { buildMarketplaceSortSearch, parseMarketplaceSort, type MarketplaceSort } from "./marketplace-sort"
 import { useLocalization } from "@/app/context/LocalizationContext"
+import { useMarketplaceTitle } from "./use-marketplace-title"
 import { useDisplayCurrency } from "@/app/context/DisplayCurrencyContext"
 import { isAccessOnlyItem, requiresVariantSelection } from "@/app/catalog/product-details"
 import { getSiteInfoBySlug } from "@/app/book/actions"
@@ -117,15 +118,7 @@ export function MarketplaceClient({
 
   const effectiveKind = selectedKind === 'recurring' ? 'all' : selectedKind;
 
-  useEffect(() => {
-    let title = "Marketplace | Makinari"
-    if (selectedKind !== "all" || selectedSubtype !== "all") {
-      const activeFilter = selectedSubtype !== "all" ? selectedSubtype : selectedKind;
-      const filterLabel = activeFilter.charAt(0).toUpperCase() + activeFilter.slice(1).replace(/_/g, " ");
-      title = `${filterLabel} | Marketplace`
-    }
-    document.title = title
-  }, [selectedKind, selectedSubtype])
+  useMarketplaceTitle(selectedKind, selectedSubtype)
 
   // Checkout states
   const [checkoutLoading, setCheckoutLoading] = useState(false)
@@ -201,7 +194,7 @@ export function MarketplaceClient({
     buyerLocation.effectiveBuyerGeo,
   ])
 
-  const deliveryTimeLabel = formatDeliveryTime(siteSettings?.shop)
+  const deliveryTimeLabel = formatDeliveryTime(siteSettings?.shop, t)
 
   // Cart seller availability remains independent of the catalog's current page.
   const sellerLocationRestricted = React.useMemo(() => {

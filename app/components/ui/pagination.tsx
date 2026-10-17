@@ -4,6 +4,7 @@ import * as React from "react"
 import { ChevronLeft, ChevronRight, MoreHorizontal } from "@/app/components/ui/icons"
 import { cn } from "@/lib/utils"
 import { Button } from "@/app/components/ui/button"
+import { useLocalization } from "@/app/context/LocalizationContext"
 
 interface PaginationProps {
   currentPage: number
@@ -22,6 +23,7 @@ export function Pagination({
   disabled = false,
   className
 }: PaginationProps) {
+  const { t } = useLocalization()
   if (totalPages <= 1) return null
 
   const getVisiblePages = () => {
@@ -31,7 +33,6 @@ export function Pagination({
     }
 
     const delta = Math.floor(maxVisiblePages / 2)
-    const range = []
     const rangeWithDots = []
 
     // Calculate the range around current page
@@ -92,7 +93,7 @@ export function Pagination({
         className="h-8 w-8 p-0 hover:bg-muted/50 disabled:opacity-50"
       >
         <ChevronLeft className="h-4 w-4" />
-        <span className="sr-only">Previous page</span>
+        <span className="sr-only">{t("commerce.pagination.previous")}</span>
       </Button>
       
       <div className="flex items-center gap-1">
@@ -101,7 +102,7 @@ export function Pagination({
             return (
               <div key={`dots-${index}`} className="flex h-8 w-8 items-center justify-center">
                 <MoreHorizontal className="h-4 w-4 text-muted-foreground" />
-                <span className="sr-only">More pages</span>
+                <span className="sr-only">{t("commerce.pagination.more")}</span>
               </div>
             )
           }
@@ -135,7 +136,7 @@ export function Pagination({
         className="h-8 w-8 p-0 hover:bg-muted/50 disabled:opacity-50"
       >
         <ChevronRight className="h-4 w-4" />
-        <span className="sr-only">Next page</span>
+        <span className="sr-only">{t("commerce.pagination.next")}</span>
       </Button>
     </div>
   )

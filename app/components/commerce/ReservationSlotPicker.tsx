@@ -23,7 +23,7 @@ import { EmptyCard } from "@/app/components/ui/empty-card"
 import { Skeleton } from "@/app/components/ui/skeleton"
 import { cn } from "@/lib/utils"
 import { useLocalization } from "@/app/context/LocalizationContext"
-import { es, enUS } from "date-fns/locale"
+import { getDateFnsLocale } from "@/app/lib/date-fns-locale"
 import { useAuthContext as useAuth } from "@/app/components/auth/auth-provider"
 import { ReservationSlotPickerPage } from "./booking/ReservationSlotPickerPage"
 import {
@@ -65,7 +65,7 @@ export function ReservationSlotPicker({
 }: ReservationSlotPickerProps) {
   const display: SlotTimeDisplay = timeDisplay ?? (layout === "page" ? "venue" : "system")
   const { locale, t } = useLocalization()
-  const dateLocale = locale === "es" ? es : enUS
+  const dateLocale = getDateFnsLocale(locale)
   const { user } = useAuth()
 
   const [activeStep, setActiveStep] = useState<"calendar" | "time" | "details">("calendar")
@@ -319,7 +319,7 @@ export function ReservationSlotPicker({
                       >
                         {formatSlotTime(slot.start, slot.timezone, display)}
                         {shouldShowSlotLeftover(slot, selectedStartIso) ? (
-                          <span className="text-xs opacity-70 ml-2">({slot.available} left)</span>
+                          <span className="text-xs opacity-70 ml-2">{t("booking.slotsLeft", { count: slot.available })}</span>
                         ) : null}
                       </Button>
                     )
@@ -346,15 +346,15 @@ export function ReservationSlotPicker({
             <div className="space-y-4">
               <div className="grid gap-2">
                 <Label htmlFor="name" className="text-sm font-semibold">{t("booking.form.name") || "Name"}</Label>
-                <Input id="name" placeholder="John Doe" value={name} onChange={(e) => setName(e.target.value)} />
+                <Input id="name" placeholder={t("booking.form.namePlaceholder")} value={name} onChange={(e) => setName(e.target.value)} />
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="email" className="text-sm font-semibold">{t("booking.form.email") || "Email"}</Label>
-                <Input id="email" type="email" placeholder="john@example.com" value={email} onChange={(e) => setEmail(e.target.value)} />
+                <Input id="email" type="email" placeholder={t("booking.form.emailPlaceholder")} value={email} onChange={(e) => setEmail(e.target.value)} />
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="guests" className="text-sm font-semibold">{locale === "es" ? "Invitados (separados por coma)" : "Guests (comma separated)"}</Label>
-                <Input id="guests" placeholder={locale === "es" ? "correo1@ejemplo.com" : "guest1@example.com"} value={guestsString} onChange={(e) => setGuestsString(e.target.value)} />
+                <Label htmlFor="guests" className="text-sm font-semibold">{t("booking.form.guests")}</Label>
+                <Input id="guests" placeholder={t("booking.form.guestsPlaceholder")} value={guestsString} onChange={(e) => setGuestsString(e.target.value)} />
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="notes" className="text-sm font-semibold">{t("booking.form.notes") || "Additional Notes"}</Label>

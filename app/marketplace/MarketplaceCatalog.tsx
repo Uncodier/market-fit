@@ -5,6 +5,7 @@ import type { CatalogItem } from "@/app/types"
 import { shouldUseCompactMobileListing } from "@/app/components/commerce/CommerceProductGrid"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { Button } from "@/app/components/ui/button"
+import { useLocalization } from "@/app/context/LocalizationContext"
 import type { useBuyerLocation } from "@/app/components/commerce/use-buyer-location"
 import { isItemLocationAvailable, type SettingsLocation } from "@/app/commerce/buyer-location-availability"
 import type { PromoBadge, StorefrontPromoCard } from "@/app/promotions/promotion-merchandising"
@@ -40,6 +41,7 @@ export function MarketplaceCatalog({
   sellerLocationRestricted, onPrimaryAction, discountsFeed, promoBadgesByItemId,
   ...filters
 }: MarketplaceCatalogProps) {
+  const { t } = useLocalization()
   const searchParams = useSearchParams()
   const pathname = usePathname() || "/marketplace"
   const router = useRouter()
@@ -74,7 +76,7 @@ export function MarketplaceCatalog({
   ), [showingDiscounts, isLoading, error, items, buyerLocation.effectiveBuyerGeo])
   const locationRestricted = sellerLocationRestricted ?? listingLocationRestricted
   const productFilters = <MarketplaceFilters filters={listingFilters} onChange={setListingFilters}
-    regions={regions} isLoading={isLoading} buyerLocation={buyerLocation} locationRestricted={locationRestricted} />
+    regions={regions} initialRegions={initialRegions} isLoading={isLoading} buyerLocation={buyerLocation} locationRestricted={locationRestricted} />
 
   return (
     <main className="flex-1 max-w-7xl mx-auto w-full px-4 md:px-8 py-8 md:py-12">
@@ -89,13 +91,13 @@ export function MarketplaceCatalog({
               <div className="md:hidden mb-6">
                 {productFilters}
               </div>
-              <div className="flex justify-end mb-6" aria-label="Catalog sorting">
+              <div className="flex justify-end mb-6" aria-label={t("marketplace.sort.title")}>
                 <MarketplaceSortControl selectedSort={filters.selectedSort} setSelectedSort={filters.setSelectedSort} />
               </div>
               {error ? (
                 <div role="alert" className="space-y-3 py-8">
-                  <p>{error}</p>
-                  <Button type="button" variant="outline" onClick={retry}>Try again</Button>
+                  <p>{t("marketplace.loadError")}</p>
+                  <Button type="button" variant="outline" onClick={retry}>{t("marketplace.tryAgain")}</Button>
                 </div>
               ) : (
                 <MarketplaceProductList

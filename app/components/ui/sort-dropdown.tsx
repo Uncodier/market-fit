@@ -9,6 +9,7 @@ export function SortDropdown<SortValue extends string>({
   sortBy, 
   setSortBy,
   className,
+  title = "Sort by",
   options = [
     { value: "newest" as SortValue, label: "Newest" },
     { value: "oldest" as SortValue, label: "Oldest" },
@@ -18,6 +19,7 @@ export function SortDropdown<SortValue extends string>({
   sortBy: SortValue,
   setSortBy: (value: SortValue) => void,
   className?: string,
+  title?: string,
   options?: { value: SortValue, label: string }[]
 }) {
   const currentOption = options.find(o => o.value === sortBy) || options[0]
@@ -25,7 +27,7 @@ export function SortDropdown<SortValue extends string>({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="secondary" size="sm" className={cn("w-full md:w-auto h-10 md:h-9 gap-2 rounded-md md:rounded-full px-4 justify-between md:justify-center", className)} title="Sort by">
+        <Button variant="secondary" size="sm" className={cn("w-full md:w-auto h-10 md:h-9 gap-2 rounded-md md:rounded-full px-4 justify-between md:justify-center", className)} title={title}>
           <div className="flex min-w-0 items-center gap-2">
             <ListOrdered className="h-4 w-4 shrink-0" />
             <span className="truncate font-normal">

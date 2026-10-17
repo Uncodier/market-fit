@@ -90,6 +90,20 @@ nor overwrite that public cookie. Regional codes such as `es-MX` are normalized
 to supported languages. Locale and messages are derived together so there is no
 render with a newly selected language and the previous language's translations.
 
+`app/context/locale-catalog.ts` combines the legacy dictionaries with feature
+overlays under `app/context/locales/commerce/`. Commerce overlays cover English,
+Spanish, French, German and Japanese and take precedence over legacy copy without
+changing the workspace fallback policy. The document translator reuses this
+catalog while retaining its English/Spanish public contract. Both marketplace
+language selectors expose the same supported languages. Country display labels
+are localized separately from canonical filter values; changing language does
+not change the selected country, prices, dates or checkout currency.
+
+`__tests__/context/commerce-locales-contract.test.ts` checks commerce keys against
+each language's own dictionaries, without English fallback, including dynamic
+category/sort maps and retail/service checkout labels. Feature key sets and
+interpolation parameters must remain identical across all five languages.
+
 ## Password recovery navigation
 
 `app/auth/confirm/page.tsx` verifies recovery tokens only after a user click,

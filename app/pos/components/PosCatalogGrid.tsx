@@ -64,11 +64,11 @@ export function PosCatalogGrid({ items, loading, onAdd, t, getAvailability }: Po
     <div className="relative bg-muted/30 p-4">
       <div
         ref={gridRef}
-        className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4"
+        className="grid grid-cols-[repeat(auto-fill,minmax(180px,1fr))] gap-4"
       >
         {loading ? (
           Array.from({ length: 15 }).map((_, i) => (
-            <Card key={i} className="relative overflow-hidden flex flex-col h-40">
+            <Card key={i} className="relative overflow-hidden flex flex-col h-40 min-w-[180px]">
               <Skeleton className="absolute inset-0 w-full h-full rounded-none" />
               <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent z-10" />
               <div className="relative z-20 p-3 flex-1 flex flex-col justify-end">
@@ -107,7 +107,7 @@ export function PosCatalogGrid({ items, loading, onAdd, t, getAvailability }: Po
                 aria-disabled={!isAvailable}
                 aria-label={item.name}
                 title={availability?.reason}
-                className={`relative transition-shadow overflow-hidden flex flex-col h-40 ${isLetterAnchor ? "scroll-mt-[calc(var(--topbar-height,64px)+87px)]" : ""} ${!isAvailable ? "opacity-50 grayscale cursor-not-allowed" : "cursor-pointer hover:shadow-md"}`}
+                className={`relative transition-shadow overflow-hidden flex flex-col h-40 min-w-[180px] ${isLetterAnchor ? "scroll-mt-[calc(var(--topbar-height,64px)+87px)]" : ""} ${!isAvailable ? "opacity-50 grayscale cursor-not-allowed" : "cursor-pointer hover:shadow-md"}`}
                 onClick={() => isAvailable && onAdd(item)}
                 onKeyDown={(event) => {
                   if (isAvailable && (event.key === "Enter" || event.key === " ")) {

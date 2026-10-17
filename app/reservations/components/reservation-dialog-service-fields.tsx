@@ -98,7 +98,7 @@ export function ReservationServiceFields({
   leadValue: RelationSelectValue
   setLeadValue: (value: RelationSelectValue) => void
   siteId: string
-  members: { user_id: string; name?: string; email?: string }[]
+  members: { user_id: string; name?: string | null; email?: string }[]
   taskAssignee: string
   setTaskAssignee: (value: string) => void
   selectedSlot: { start: string; end: string; timezone?: string } | null

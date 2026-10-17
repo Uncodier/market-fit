@@ -50,7 +50,7 @@ export function PromoStorefrontShell({
       <CommerceShellHeader
         brand={
           <div className="flex items-center min-w-0">
-            <Link href={backHref} className={`${shellClasses.iconButton} shrink-0 md:mr-2`}>
+            <Link href={backHref} aria-label={t("common.back")} className={`${shellClasses.iconButton} shrink-0 md:mr-2`}>
               <ArrowLeft className="w-5 h-5" />
             </Link>
             {siteName ? (
@@ -69,7 +69,7 @@ export function PromoStorefrontShell({
                 href="/marketplace"
                 className="ml-1 text-sm font-black tracking-tight text-primary truncate"
               >
-                MARKETPLACE
+                {t("marketplace.title")}
               </Link>
             ) : null}
           </div>
@@ -90,7 +90,7 @@ export function PromoStorefrontShell({
               iconClassName="h-4 w-4"
             />
             {session ? (
-              <Link href="/buyer" className="hover:opacity-80 transition-opacity shrink-0">
+              <Link href="/buyer" aria-label={t("commerce.account")} className="hover:opacity-80 transition-opacity shrink-0">
                 {session.user.user_metadata?.avatar_url ||
                 session.user.user_metadata?.picture ? (
                   <img
@@ -98,7 +98,7 @@ export function PromoStorefrontShell({
                       session.user.user_metadata?.avatar_url ||
                       session.user.user_metadata?.picture
                     }
-                      alt="Avatar"
+                      alt={t("commerce.avatar")}
                       className="w-8 h-8 min-w-8 rounded-full object-cover border border-border shrink-0"
                   />
                 ) : (
@@ -135,10 +135,10 @@ export function PromoStorefrontShell({
       <footer className="bg-gray-50 dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 py-12 mt-auto hidden lg:block">
         <div className="max-w-7xl mx-auto px-4 md:px-8 flex flex-col md:flex-row justify-between items-center gap-6">
           <div className="text-2xl font-black tracking-tight text-gray-400 dark:text-gray-600">
-            {siteName || (surface === "marketplace" ? "Makinari" : "Shop")}
+            {siteName || (surface === "marketplace" ? "Makinari" : t("shop.title"))}
           </div>
           <div className="text-sm text-gray-500 dark:text-gray-400">
-            &copy; {new Date().getFullYear()} {siteName || "Makinari"}. All rights reserved.
+            &copy; {new Date().getFullYear()} {siteName || "Makinari"}. {t("shop.allRightsReserved")}
           </div>
           <div className="flex items-center gap-2">
             <CurrencySelector className="rounded-full" storeCurrency={currency} />

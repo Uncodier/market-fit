@@ -1,6 +1,7 @@
 "use client"
 
 import { PromptImage } from "@/app/components/commerce/PromptImage"
+import { useLocalization } from "@/app/context/LocalizationContext"
 
 import type { PdpGalleryEntry } from "@/app/lib/image-utils"
 
@@ -17,6 +18,7 @@ export function PdpProductGallery({
   selectedIndex: number
   onThumbClick: (index: number) => void
 }) {
+  const { t } = useLocalization()
   return (
     <div className="space-y-4">
       <div className="relative aspect-[4/5] bg-muted rounded-[2rem] overflow-hidden border shadow-sm">
@@ -30,7 +32,7 @@ export function PdpProductGallery({
           />
         ) : (
           <div className="absolute inset-0 flex items-center justify-center">
-            <span className="text-muted-foreground font-medium">No Image</span>
+            <span className="text-muted-foreground font-medium">{t("pdp.noImage")}</span>
           </div>
         )}
       </div>
@@ -45,6 +47,7 @@ export function PdpProductGallery({
                 type="button"
                 onClick={() => onThumbClick(i)}
                 aria-pressed={selected}
+                aria-label={t("pdp.gallery.goToSlide", { number: i + 1 })}
                 className={`relative aspect-square w-20 sm:w-24 shrink-0 rounded-2xl p-[3px] snap-start transition-colors ${
                   selected
                     ? "bg-foreground"

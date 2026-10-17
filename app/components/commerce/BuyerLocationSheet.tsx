@@ -85,7 +85,7 @@ export function BuyerLocationSheet({
   const handleUseMyLocation = async () => {
     const res = await onUseMyLocation()
     if (!res.ok) {
-      toast.error(res.error || t("shop.location.gpsFailed") || "Could not get your location")
+      toast.error(t("shop.location.gpsFailed") || "Could not get your location")
     }
   }
 
@@ -188,8 +188,7 @@ export function BuyerLocationSheet({
                     const res = onSelectPlace(place)
                     if (!res.ok) {
                       toast.error(
-                        res.error ||
-                          t("shop.location.searchFailed") ||
+                        t("shop.location.searchFailed") ||
                           "Could not use this location"
                       )
                     }

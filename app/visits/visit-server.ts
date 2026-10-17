@@ -84,6 +84,8 @@ export async function validateVisitResource(
       .eq("site_id", siteId)
       .eq("user_id", resource.assignee_user_id)
       .eq("status", "active")
+      .eq("license_suspended", false)
+      .eq("manually_disabled", false)
       .maybeSingle()
     const { data: site } = await supabase.from("sites").select("user_id").eq("id", siteId).maybeSingle()
     if (!member && site?.user_id !== resource.assignee_user_id) {

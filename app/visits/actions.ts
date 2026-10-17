@@ -102,6 +102,8 @@ export async function listVisitEmployees(siteId: string) {
       .select("user_id, name, email")
       .eq("site_id", siteId)
       .eq("status", "active")
+      .eq("license_suspended", false)
+      .eq("manually_disabled", false)
       .not("user_id", "is", null)
 
     const { data: site } = await auth.supabase.from("sites").select("user_id").eq("id", siteId).maybeSingle()

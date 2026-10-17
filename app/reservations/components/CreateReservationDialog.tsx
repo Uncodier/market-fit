@@ -43,6 +43,7 @@ import {
   ReservationTaskFields,
 } from "./reservation-dialog-task-fields"
 import { ReservationDialogFooter } from "./reservation-dialog-footer"
+import { assignableSiteMembers } from "@/lib/auth/assignable-site-members"
 
 interface CreateReservationDialogProps {
   open: boolean
@@ -112,7 +113,7 @@ export function CreateReservationDialog({
     open && currentSite && membersData?.members ? ["profiles_calendars", currentSite.id] : null,
     async () => {
       const supabase = createClient()
-      const memberIds = (membersData?.members || []).map((m: any) => m.user_id).filter(Boolean)
+      const memberIds = assignableSiteMembers(membersData?.members || []).map(m => m.user_id)
       if (memberIds.length === 0) return []
       const { data, error } = await supabase.from("profiles").select("id, name, settings").in("id", memberIds)
       if (error) throw error
@@ -130,7 +131,7 @@ export function CreateReservationDialog({
   )
 
   const leads = leadsData?.leads || []
-  const members = membersData?.members || []
+  const members = useMemo(() => assignableSiteMembers(membersData?.members || []), [membersData])
   const items = useMemo(
     () => filterReservablePickerItems(catalogData?.data || [], reservation?.catalog_item_id),
     [catalogData?.data, reservation?.catalog_item_id],

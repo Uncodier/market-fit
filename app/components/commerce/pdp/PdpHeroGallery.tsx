@@ -5,6 +5,7 @@ import { PromptImage } from "@/app/components/commerce/PromptImage"
 import { useState, useRef } from "react"
 import { PdpGalleryEntry } from "@/app/lib/image-utils"
 import { ChevronLeft, ChevronRight } from "@/app/components/ui/icons"
+import { useLocalization } from "@/app/context/LocalizationContext"
 
 interface PdpHeroGalleryProps {
   entries: PdpGalleryEntry[]
@@ -12,6 +13,7 @@ interface PdpHeroGalleryProps {
 }
 
 export function PdpHeroGallery({ entries, itemName }: PdpHeroGalleryProps) {
+  const { t } = useLocalization()
   const [currentIndex, setCurrentIndex] = useState(0)
   const scrollRef = useRef<HTMLDivElement>(null)
 
@@ -58,7 +60,7 @@ export function PdpHeroGallery({ entries, itemName }: PdpHeroGalleryProps) {
           <div key={index} className="relative w-full h-full shrink-0 snap-start">
             <PromptImage
               src={entry.url}
-              alt={`${itemName} - Image ${index + 1}`}
+              alt={t("pdp.gallery.imageAlt", { name: itemName, number: index + 1 })}
               fetchPriority={index === 0 ? "high" : "auto"}
               decoding="async"
               className="absolute inset-0 h-full w-full object-cover object-center"
@@ -73,7 +75,7 @@ export function PdpHeroGallery({ entries, itemName }: PdpHeroGalleryProps) {
           onClick={() => scrollToIndex(Math.max(0, currentIndex - 1))}
           className="w-10 h-10 rounded-full bg-background/80 backdrop-blur-sm shadow-sm flex items-center justify-center pointer-events-auto hover:bg-background transition-colors disabled:opacity-50"
           disabled={currentIndex === 0}
-          aria-label="Previous image"
+          aria-label={t("pdp.gallery.previous")}
         >
           <ChevronLeft className="w-6 h-6" />
         </button>
@@ -81,7 +83,7 @@ export function PdpHeroGallery({ entries, itemName }: PdpHeroGalleryProps) {
           onClick={() => scrollToIndex(Math.min(entries.length - 1, currentIndex + 1))}
           className="w-10 h-10 rounded-full bg-background/80 backdrop-blur-sm shadow-sm flex items-center justify-center pointer-events-auto hover:bg-background transition-colors disabled:opacity-50"
           disabled={currentIndex === entries.length - 1}
-          aria-label="Next image"
+          aria-label={t("pdp.gallery.next")}
         >
           <ChevronRight className="w-6 h-6" />
         </button>
@@ -96,7 +98,7 @@ export function PdpHeroGallery({ entries, itemName }: PdpHeroGalleryProps) {
               e.stopPropagation();
               scrollToIndex(index);
             }}
-            aria-label={`Go to slide ${index + 1}`}
+            aria-label={t("pdp.gallery.goToSlide", { number: index + 1 })}
             className={`pointer-events-auto h-1.5 rounded-full transition-all duration-300 ${
               index === currentIndex 
                 ? "w-6 bg-white shadow-[0_0_2px_rgba(0,0,0,0.5)]" 
@@ -116,7 +118,7 @@ export function PdpHeroGallery({ entries, itemName }: PdpHeroGalleryProps) {
                 e.stopPropagation();
                 scrollToIndex(index);
               }}
-              aria-label={`Go to slide ${index + 1}`}
+              aria-label={t("pdp.gallery.goToSlide", { number: index + 1 })}
               className={`pointer-events-auto relative w-12 h-12 rounded-lg overflow-hidden transition-all duration-300 ${
                 index === currentIndex 
                   ? "ring-2 ring-white scale-105 opacity-100" 

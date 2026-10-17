@@ -5,6 +5,7 @@ import Link from "next/link"
 import { Search, User, Globe } from "@/app/components/ui/icons"
 import { Button } from "@/app/components/ui/button"
 import { CartButton } from "@/app/components/commerce/CartButton"
+import { COMMERCE_LOCALES } from "@/app/components/commerce/commerce-locales"
 import { CommerceShellHeader, shellClasses } from "@/app/components/commerce/CommerceShellHeader"
 import {
   MobileShellSearchExpanded,
@@ -166,18 +167,15 @@ export function MarketplaceHeader({
                   </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuItem
-                    onClick={() => setLocale("en")}
-                    className={locale === "en" ? "font-semibold" : undefined}
-                  >
-                    English
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={() => setLocale("es")}
-                    className={locale === "es" ? "font-semibold" : undefined}
-                  >
-                    Español
-                  </DropdownMenuItem>
+                  {COMMERCE_LOCALES.map((option) => (
+                    <DropdownMenuItem
+                      key={option.value}
+                      onClick={() => setLocale(option.value)}
+                      className={locale === option.value ? "font-semibold" : undefined}
+                    >
+                      {option.label}
+                    </DropdownMenuItem>
+                  ))}
                 </DropdownMenuContent>
               </DropdownMenu>
 
@@ -194,7 +192,7 @@ export function MarketplaceHeader({
               {session ? (
                 <Link
                   href="/buyer"
-                  aria-label="Buyer account"
+                  aria-label={t("commerce.account")}
                   className="hover:opacity-80 transition-opacity shrink-0"
                 >
                   {session.user.user_metadata?.avatar_url || session.user.user_metadata?.picture ? (
@@ -203,7 +201,7 @@ export function MarketplaceHeader({
                         session.user.user_metadata?.avatar_url ||
                         session.user.user_metadata?.picture
                       }
-                      alt="Avatar"
+                      alt={t("commerce.avatar")}
                       className="w-8 h-8 min-w-8 rounded-full object-contain bg-transparent border border-border shadow-sm shrink-0"
                     />
                   ) : (

@@ -156,7 +156,7 @@ export function PassPdpLayout({ item, backUrl, experience, catalogSize = 0 }: { 
                     </div>
                     <div>
                       <div className="font-bold text-base sm:text-lg mb-1">{item.pass_uses} {t('pdp.usesIncluded') || 'Uses Included'}</div>
-                      <div className="text-xs sm:text-sm text-muted-foreground">Access limited to the specified number of uses.</div>
+                      <div className="text-xs sm:text-sm text-muted-foreground">{t("pdp.accessLimitedUses")}</div>
                     </div>
                   </div>
                 )}

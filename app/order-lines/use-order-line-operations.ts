@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useState } from "react"
 import useSWR from "swr"
 import { toast } from "sonner"
 import { siteMembersService } from "@/app/services/site-members-service"
@@ -10,7 +10,7 @@ import {
   updateOperationalOrderLineStatus,
 } from "./actions"
 import { orderLineStatusLabel, type OrderLineActionStatus } from "./status"
-import type { OrderLineAssignee, OrderLineRow } from "./types"
+import type { OrderLineRow } from "./types"
 
 interface AuthUser {
   id: string
@@ -30,7 +30,6 @@ interface UseOrderLineOperationsOptions {
 
 export function useOrderLineOperations({
   siteId,
-  user,
   refresh,
   t,
 }: UseOrderLineOperationsOptions) {
@@ -38,30 +37,9 @@ export function useOrderLineOperations({
   const [updatingOrderId, setUpdatingOrderId] = useState<string | null>(null)
   const { data: listedAssignees } = useSWR(
     siteId ? ["order-line-assignees", siteId] : null,
-    async () => {
-      const members = await siteMembersService.getMembers(siteId!)
-      return members
-        .filter(
-          (member) => member.status === "active" && Boolean(member.user_id),
-        )
-        .map((member) => ({
-          id: member.user_id!,
-          name: member.name?.trim() || member.email,
-        }))
-    },
+    () => siteMembersService.getAssigneeOptions(siteId!),
   )
-  const assignees = useMemo<OrderLineAssignee[]>(() => {
-    const currentName =
-      user?.user_metadata?.full_name ||
-      user?.user_metadata?.name ||
-      user?.email ||
-      "Current user"
-    const options = [...(listedAssignees || [])]
-    if (user?.id && !options.some((member) => member.id === user.id)) {
-      options.unshift({ id: user.id, name: currentName })
-    }
-    return options
-  }, [listedAssignees, user])
+  const assignees = listedAssignees || []
   const busy = Boolean(updatingLineId || updatingOrderId)
 
   const updateStatus = async (

@@ -57,7 +57,7 @@ export function CurrencySelector({ className, storeCurrency: propStoreCurrency }
             className={mode === 'store' ? "font-semibold bg-gray-100 dark:bg-gray-800" : undefined}
           >
             <span className="mr-2" aria-hidden>{currencyFlag(storeCurrency)}</span>
-            Store ({storeCurrency})
+            {t("commerce.currency.store")} ({storeCurrency})
           </DropdownMenuItem>
         )}
 

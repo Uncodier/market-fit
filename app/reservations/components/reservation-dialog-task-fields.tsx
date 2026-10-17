@@ -66,7 +66,7 @@ export function ReservationTaskFields({
   setTaskTitle: (value: string) => void
   taskAssignee: string
   setTaskAssignee: (value: string) => void
-  members: { user_id: string; name?: string; email?: string }[]
+  members: { user_id: string; name?: string | null; email?: string }[]
   schedules: CalendarOption[]
   schedulesLoading: boolean
   taskCalendarValue: RelationSelectValue

@@ -6,6 +6,7 @@ import { resolveItemImage } from "@/app/lib/image-utils"
 import { PromptImage } from "@/app/components/commerce/PromptImage"
 import { ShieldCheck, CalendarIcon, Clock } from "@/app/components/ui/icons"
 import { format } from "date-fns"
+import { getDateFnsLocale } from "@/app/lib/date-fns-locale"
 import Link from "next/link"
 import { Button } from "@/app/components/ui/button"
 import { PromoCodeField, AppliedPromo } from "@/app/components/commerce/PromoCodeField"
@@ -49,7 +50,8 @@ export function OrderSummary({
   setPromoDiscount,
   copyMode = 'retail'
 }: OrderSummaryProps) {
-  const { t } = useLocalization()
+  const { t, locale } = useLocalization()
+  const dateLocale = getDateFnsLocale(locale)
   const [appliedPromo, setAppliedPromo] = useState<AppliedPromo | null>(null)
   const currency = items[0]?.currency || 'USD'
   const discount = appliedPromo?.discount ?? promoDiscount ?? 0
@@ -75,7 +77,7 @@ export function OrderSummary({
   }, [setPromoDiscount])
 
   const formatMoney = (amount: number) =>
-    new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(amount)
+    new Intl.NumberFormat(locale || 'en', { style: 'currency', currency }).format(amount)
 
   return (
     <div className="bg-card border border-border/50 rounded-3xl p-6 lg:p-8 shadow-sm lg:sticky lg:top-32 relative overflow-hidden">
@@ -105,7 +107,7 @@ export function OrderSummary({
             {Array.isArray(item.modifiers) && item.modifiers.length > 0 && (
               <div className="pt-2 mt-0 border-t border-border/40 px-3 pb-3 bg-muted/20 shadow-inner">
                 <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">
-                  {(t as any)?.('checkout.modifiers') || 'Extras'}
+                  {t('checkout.modifiers') || 'Extras'}
                 </div>
                 <div className="space-y-1">
                   {item.modifiers.map((m: any) => (
@@ -135,11 +137,11 @@ export function OrderSummary({
                   <div className="flex items-center gap-2 text-[11px] font-medium text-muted-foreground group-hover:text-foreground">
                     <CalendarIcon className="w-3 h-3 opacity-70 shrink-0" />
                     <span className="truncate">
-                      {format(new Date(item.reservationStart), "MMM d, yyyy")}
+                      {format(new Date(item.reservationStart), "PP", { locale: dateLocale })}
                     </span>
                     <Clock className="w-3 h-3 opacity-70 shrink-0 ml-1" />
                     <span className="truncate">
-                      {format(new Date(item.reservationStart), "h:mm a")}
+                      {format(new Date(item.reservationStart), "p", { locale: dateLocale })}
                     </span>
                   </div>
                   <span className="text-[10px] uppercase font-bold text-muted-foreground group-hover:text-foreground transition-colors mr-1">

@@ -1,12 +1,10 @@
-import enTranslations from "@/app/context/locales/en.json"
-import esTranslations from "@/app/context/locales/es.json"
-import { flattenMessages } from "@/app/context/locale-messages"
+import { localeMessages } from "@/app/context/locale-catalog"
 
 export type DocumentLocale = "en" | "es"
 
 const translations: Record<DocumentLocale, Record<string, string>> = {
-  en: flattenMessages(enTranslations),
-  es: flattenMessages(esTranslations),
+  en: localeMessages.en,
+  es: localeMessages.es,
 }
 
 const LOCALE_TO_BCP47: Record<DocumentLocale, string> = {

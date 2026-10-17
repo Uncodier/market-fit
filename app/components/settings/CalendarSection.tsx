@@ -20,12 +20,11 @@ import { ActionFooter } from "@/app/components/ui/card-footer"
 import { Checkbox } from "@/app/components/ui/checkbox"
 import { EmptyCard } from "@/app/components/ui/empty-card"
 import { siteMembersService } from "@/app/services/site-members-service"
-import { useAuth } from "@/app/hooks/use-auth"
+import { assignableSiteMembers } from "@/lib/auth/assignable-site-members"
 import { ConfirmDialog } from "@/app/components/ui/confirm-dialog"
 
 export function CalendarSection() {
   const { currentSite, updateSettings } = useSite()
-  const { user } = useAuth()
   const [isUpdating, setIsUpdating] = useState(false)
   
   const calendars = currentSite?.settings?.calendars || []
@@ -33,32 +32,23 @@ export function CalendarSection() {
 
   React.useEffect(() => {
     let mounted = true;
+    setTeamMembers([]);
     if (currentSite?.id) {
       siteMembersService.getMembers(currentSite.id).then(members => {
         if (!mounted) return;
-        const formattedMembers = members.map(m => ({ email: m.email, name: m.name || m.email }));
-        
-        // Ensure current user is in the list just in case
-        if (user?.email && !formattedMembers.some(m => m.email === user.email)) {
-          formattedMembers.unshift({ email: user.email, name: user.user_metadata?.name || user.email });
-        }
+        const formattedMembers = assignableSiteMembers(members).map(m => ({ email: m.email, name: m.name || m.email }));
         
         setTeamMembers(formattedMembers);
       }).catch(err => {
         console.error("Error fetching site members:", err);
-        // Fallback
         if (mounted) {
-          const fallback = (currentSite.settings?.team_members || []).map(member => ({ email: member.email, name: member.name || member.email }));
-          if (user?.email && !fallback.some(m => m.email === user.email)) {
-            setTeamMembers([{ email: user.email, name: user.user_metadata?.name || user.email }, ...fallback]);
-          } else {
-            setTeamMembers(fallback);
-          }
+          setTeamMembers([]);
+          toast.error("Failed to load team members");
         }
       });
     }
     return () => { mounted = false; };
-  }, [currentSite?.id, currentSite?.settings?.team_members, user?.email, user?.user_metadata?.name]);
+  }, [currentSite?.id, currentSite?.settings?.team_members]);
 
   const [editingCalendar, setEditingCalendar] = useState<Partial<RoundRobinCalendar> | null>(null)
   const [calendarToDelete, setCalendarToDelete] = useState<string | null>(null)

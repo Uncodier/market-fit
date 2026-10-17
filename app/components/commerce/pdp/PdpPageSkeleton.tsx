@@ -1,4 +1,7 @@
+"use client"
+
 import { Skeleton } from "@/app/components/ui/skeleton"
+import { useLocalization } from "@/app/context/LocalizationContext"
 import { ArrowLeft, ShoppingCart, User } from "@/app/components/ui/icons"
 import { CommerceShellHeader, shellClasses } from "@/app/components/commerce/CommerceShellHeader"
 
@@ -29,6 +32,7 @@ export function PdpModifierSkeleton({ rows = 3 }: { rows?: number }) {
 
 /** Route-level PDP placeholder — matches ProductPdpLayout (gallery, price, description, modifiers). */
 export function PdpPageSkeleton() {
+  const { t } = useLocalization()
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <div className="h-4 w-full shrink-0" />
@@ -58,7 +62,7 @@ export function PdpPageSkeleton() {
               type="button"
               className={`md:hidden ${shellClasses.iconButton}`}
               disabled
-              aria-label="Account"
+              aria-label={t("commerce.account")}
             >
               <User className="h-4 w-4" />
             </button>

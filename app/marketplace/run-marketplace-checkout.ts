@@ -151,7 +151,7 @@ export async function runMarketplaceCheckout(params: {
         : undefined
   )
 
-  const requiresAuth = cart.some((c: any) => c.kind === "digital_asset" || c.is_recurring)
+  const requiresAuth = cart.some((c) => c.kind === "digital_asset" || c.is_recurring)
   if (requiresAuth && !session?.user) {
     toast.error(
       t("checkout.identity.signInToAccess") ||
@@ -169,7 +169,7 @@ export async function runMarketplaceCheckout(params: {
   const resolvedEmail = customerEmail || session?.user?.email || ""
 
   if (!resolvedName || !resolvedEmail) {
-    toast.error("Please enter your name and email")
+    toast.error(t("marketplace.checkout.errors.identityRequired"))
     return
   }
 
@@ -177,17 +177,17 @@ export async function runMarketplaceCheckout(params: {
     fulfillment === "ship" &&
     (!shippingAddress.line1 || !shippingAddress.city || !shippingAddress.zip)
   ) {
-    toast.error("Please enter a complete shipping address")
+    toast.error(t("marketplace.checkout.errors.shippingRequired"))
     return
   }
 
   if (fulfillment !== "none" && !originLocationId) {
-    toast.error("Store location error. Please try again.")
+    toast.error(t("marketplace.checkout.errors.storeLocation"))
     return
   }
 
   if (!paymentMethod) {
-    toast.error("Please select a payment method")
+    toast.error(t("marketplace.checkout.errors.paymentRequired"))
     return
   }
 
@@ -197,7 +197,7 @@ export async function runMarketplaceCheckout(params: {
   const uniqueSiteIds = Array.from(new Set(cart.map((c) => c.site_id)))
   if (uniqueSiteIds.length > 1) {
     toast.error(
-      "V1 only supports checking out from one seller at a time. Please remove items from other sellers."
+      t("marketplace.checkout.errors.multipleSellers")
     )
     setCheckoutLoading(false)
     return
@@ -243,7 +243,7 @@ export async function runMarketplaceCheckout(params: {
     })
 
     if (res.error || !res.success) {
-      toast.error(res.error || "Checkout failed. Please try again.")
+      toast.error(t("marketplace.checkout.errors.failed"))
       return
     }
 
@@ -269,15 +269,15 @@ export async function runMarketplaceCheckout(params: {
         window.location.href = stripeData.url
         return
       }
-      toast.error(stripeData.error || "Failed to initiate payment")
+      toast.error(t("marketplace.checkout.errors.paymentFailed"))
       return
     }
 
     onSuccess(res)
     if (returnTo?.startsWith("/")) onReturn?.()
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error("Checkout failed:", err)
-    toast.error(err?.message || "Checkout failed. Please try again.")
+    toast.error(t("marketplace.checkout.errors.failed"))
   } finally {
     if (!redirectingToStripe) setCheckoutLoading(false)
   }

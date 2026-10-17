@@ -1,12 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, useLayoutEffect, useCallback, useSyncExternalStore, ReactNode } from 'react';
-import enTranslations from './locales/en.json';
-import esOverlay from './locales/es.json';
-import frOverlay from './locales/fr.json';
-import deOverlay from './locales/de.json';
-import jaOverlay from './locales/ja.json';
-import { flattenMessages, type MessageTree } from './locale-messages';
+import { localeMessages } from './locale-catalog';
 import { normalizeLocale, persistLocale, readStoredLocale, subscribeLocale, type SupportedLocale } from './locale-preferences';
 
 export { isSupportedLocale, normalizeLocale, readStoredLocale, type SupportedLocale } from './locale-preferences';
@@ -40,17 +35,7 @@ const countryToLocale: Record<string, SupportedLocale> = {
 
 const LocalizationContext = createContext<LocalizationContextType | undefined>(undefined);
 
-function mergeOverlay(overlay: MessageTree) {
-  return { ...flattenMessages(enTranslations), ...flattenMessages(overlay) };
-}
-
-const translationCache: Record<SupportedLocale, Record<string, string>> = {
-  en: flattenMessages(enTranslations),
-  es: mergeOverlay(esOverlay),
-  fr: mergeOverlay(frOverlay),
-  de: mergeOverlay(deOverlay),
-  ja: mergeOverlay(jaOverlay),
-};
+const translationCache = localeMessages;
 
 const localeLoaders: Partial<Record<SupportedLocale, () => Promise<Record<string, string>>>> = {
   en: async () => translationCache.en,

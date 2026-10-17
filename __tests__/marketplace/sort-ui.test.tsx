@@ -33,7 +33,14 @@ jest.mock("@/app/marketplace/run-marketplace-checkout", () => ({ runMarketplaceC
 jest.mock("@/app/book/actions", () => ({ getSiteInfoBySlug: jest.fn() }))
 jest.mock("@/app/inventory/actions", () => ({ listPublicLocations: jest.fn() }))
 jest.mock("@/app/context/LocalizationContext", () => ({
-  useLocalization: () => ({ t: () => "", locale: "en", isReady: false }),
+  useLocalization: () => ({
+    t: (key: string, params?: Record<string, string | number>) => {
+      const messages = jest.requireActual("@/app/context/locale-catalog").localeMessages.en
+      const raw = messages[key] || key
+      return Object.entries(params || {}).reduce((text, [name, value]) => text.replaceAll(`{{${name}}}`, String(value)), raw)
+    },
+    locale: "en", isReady: false,
+  }),
 }))
 jest.mock("@/app/context/DisplayCurrencyContext", () => {
   const setStoreCurrency = jest.fn()

@@ -1,6 +1,7 @@
 import React from "react"
 import { render, screen } from "@testing-library/react"
 import { CartButton } from "@/app/components/commerce/CartButton"
+import { LocalizationProvider } from "@/app/context/LocalizationContext"
 
 jest.mock("@/app/context/DisplayCurrencyContext", () => ({
   useDisplayCurrency: () => ({
@@ -15,12 +16,14 @@ describe("CartButton", () => {
       const ref = React.createRef<HTMLAnchorElement | HTMLButtonElement>()
 
       render(
+        <LocalizationProvider preferredLocale="en">
         <CartButton
           ref={ref}
           href="/shop/example?cart=1"
           cartCount={2}
           variant={variant}
-        />,
+        />
+        </LocalizationProvider>,
       )
 
       const link = screen.getByRole("link", { name: "Open cart, 2 items" })
@@ -34,7 +37,7 @@ describe("CartButton", () => {
   it("keeps button mode as a labeled button", () => {
     const ref = React.createRef<HTMLAnchorElement | HTMLButtonElement>()
 
-    render(<CartButton ref={ref} cartCount={1} variant="ghost" />)
+    render(<LocalizationProvider preferredLocale="en"><CartButton ref={ref} cartCount={1} variant="ghost" /></LocalizationProvider>)
 
     const button = screen.getByRole("button", { name: "Open cart, 1 item" })
     expect(ref.current).toBe(button)

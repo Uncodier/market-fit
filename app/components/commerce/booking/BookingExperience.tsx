@@ -87,8 +87,8 @@ export function BookingExperience({
         toast.success(t("booking.confirmed") || "Reservation confirmed")
         if (onSuccess) onSuccess()
         if (backUrl) router.push(backUrl)
-      } catch (error: any) {
-        toast.error(error.message || "Failed to book")
+      } catch {
+        toast.error(t("booking.failed"))
       } finally {
         setBooking(false)
       }
@@ -98,7 +98,7 @@ export function BookingExperience({
     if (mode === "admin") {
       if (!siteId) return
       if (!leadValue || leadValue.mode !== "existing") {
-        toast.error("Please select a customer")
+        toast.error(t("booking.customerRequired"))
         return
       }
       setBooking(true)
@@ -127,11 +127,11 @@ export function BookingExperience({
           status: 'confirmed'
         })
         if (res.error) throw new Error(res.error)
-        toast.success("Reservation created successfully")
+        toast.success(t("booking.created"))
         if (onSuccess) onSuccess()
         if (backUrl) router.push(backUrl)
-      } catch (error: any) {
-        toast.error(error.message || "Failed to create reservation")
+      } catch {
+        toast.error(t("booking.createFailed"))
       } finally {
         setBooking(false)
       }
@@ -160,7 +160,7 @@ export function BookingExperience({
       {session.user.user_metadata?.avatar_url || session.user.user_metadata?.picture ? (
         <PromptImage
           src={session.user.user_metadata?.avatar_url || session.user.user_metadata?.picture}
-          alt="Avatar"
+          alt={t("commerce.avatar")}
           className="w-8 h-8 min-w-8 rounded-full object-cover border border-border shadow-sm shrink-0"
         />
       ) : (

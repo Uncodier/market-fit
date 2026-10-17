@@ -190,7 +190,7 @@ export function DynamicQuoteFieldInput({
           )}
           disabled={disabled || num <= 0}
           onClick={() => bump(-step)}
-          aria-label="Decrease"
+          aria-label={tFunc("commerce.decrease") || "Decrease"}
         >
           <Minus className="h-4 w-4" />
         </Button>
@@ -222,7 +222,7 @@ export function DynamicQuoteFieldInput({
           )}
           disabled={disabled}
           onClick={() => bump(step)}
-          aria-label="Increase"
+          aria-label={tFunc("commerce.increase") || "Increase"}
         >
           <Plus className="h-4 w-4" />
         </Button>

@@ -21,6 +21,7 @@ import {
   type SiteMember,
 } from "@/app/services/site-members-service"
 import { getMemberInitials } from "@/app/components/settings/team-types"
+import { assignableSiteMembers } from "@/lib/auth/assignable-site-members"
 
 type AuthUser = {
   id: string
@@ -64,11 +65,7 @@ export function PosSellerSelector({
       .getMembers(siteId)
       .then((rows) => {
         if (cancelled) return
-        setMembers(
-          rows.filter(
-            (member) => member.status === "active" && Boolean(member.user_id),
-          ),
-        )
+        setMembers(assignableSiteMembers(rows))
       })
       .catch((error) => {
         if (!cancelled) {

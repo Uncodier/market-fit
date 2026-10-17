@@ -56,7 +56,7 @@ export function PromoListingCard({
         detailHref: href,
       })
       if ("error" in result) {
-        toast.error(result.error)
+        toast.error(t("shop.promo.applyFailed"))
         return
       }
       if ("needsDetail" in result) {
@@ -69,8 +69,8 @@ export function PromoListingCard({
       }
       toast.success(t("shop.promo.applied") || "Offer added to cart")
       router.push(result.redirectTo)
-    } catch (err: any) {
-      toast.error(err?.message || "Failed to apply promotion")
+    } catch {
+      toast.error(t("shop.promo.applyFailed"))
     } finally {
       setApplying(false)
     }
@@ -92,7 +92,7 @@ export function PromoListingCard({
               : "aspect-[16/9] md:aspect-[4/3]",
         )}
       >
-        <Link href={href} className="absolute inset-0 z-0 block" aria-label={promo.name || "Promotion"}>
+        <Link href={href} className="absolute inset-0 z-0 block" aria-label={promo.name || t("promotions.untitled")}>
           <PromptImage
             src={imageSrc}
             alt=""

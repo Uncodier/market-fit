@@ -31,6 +31,7 @@ import type { CalendarTimeSlot } from "./components/reservation-calendar-hour-se
 import type { CalendarBlock, Reservation } from "@/app/types"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
 import { filterCalendarBlocks } from "./calendar-block-helpers"
+import { assignableSiteMembers } from "@/lib/auth/assignable-site-members"
 
 function ReservationsPageContent() {
   const { t } = useLocalization()
@@ -246,7 +247,7 @@ function ReservationsPageContent() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">{t("reservations.filter.allMembers") || "All Members"}</SelectItem>
-                    {(membersData?.members || []).map((m: any) => (
+                    {assignableSiteMembers(membersData?.members || []).map(m => (
                       <SelectItem key={m.user_id} value={m.user_id}>
                         {m.name || m.email}
                       </SelectItem>

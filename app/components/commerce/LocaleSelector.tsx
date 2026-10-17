@@ -8,15 +8,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/app/components/ui/dropdown-menu"
-import { useLocalization, SupportedLocale } from "@/app/context/LocalizationContext"
-
-const LOCALES: { value: SupportedLocale; label: string }[] = [
-  { value: "en", label: "English" },
-  { value: "es", label: "Español" },
-  { value: "fr", label: "Français" },
-  { value: "de", label: "Deutsch" },
-  { value: "ja", label: "日本語" },
-]
+import { useLocalization } from "@/app/context/LocalizationContext"
+import { COMMERCE_LOCALES } from "./commerce-locales"
 
 export function LocaleSelector({ className }: { className?: string }) {
   const { locale, setLocale, t } = useLocalization()
@@ -30,7 +23,7 @@ export function LocaleSelector({ className }: { className?: string }) {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        {LOCALES.map((option) => (
+        {COMMERCE_LOCALES.map((option) => (
           <DropdownMenuItem
             key={option.value}
             onClick={() => setLocale(option.value)}

@@ -13,7 +13,7 @@ jest.mock("@/app/components/commerce/use-commerce-sign-in-href", () => ({
 
 jest.mock("@/app/components/commerce/CartButton", () => ({ CartButton: () => null }))
 jest.mock("@/app/context/LocalizationContext", () => ({
-  useLocalization: () => ({ t: () => "" }),
+  useLocalization: () => ({ t: (key: string) => jest.requireActual("@/app/context/locale-catalog").localeMessages.en[key] || key }),
 }))
 
 const noop = () => undefined
@@ -35,15 +35,32 @@ const props: ComponentProps<typeof MarketplaceHeader> = {
 
 describe("MarketplaceHeader sign-in", () => {
   const originalResizeObserver = global.ResizeObserver
+  const originalScrollIntoView = HTMLElement.prototype.scrollIntoView
   beforeAll(() => {
+    HTMLElement.prototype.scrollIntoView = jest.fn()
     global.ResizeObserver = jest.fn(() => ({
       observe: jest.fn(),
       unobserve: jest.fn(),
       disconnect: jest.fn(),
     }))
   })
-  afterAll(() => { global.ResizeObserver = originalResizeObserver })
+  afterAll(() => {
+    global.ResizeObserver = originalResizeObserver
+    HTMLElement.prototype.scrollIntoView = originalScrollIntoView
+  })
   beforeEach(() => mockSignInClick.mockClear())
+
+  it("offers all supported languages without changing the header button styling", async () => {
+    const setLocale = jest.fn()
+    const scrollIntoView = jest.spyOn(HTMLElement.prototype, "scrollIntoView").mockImplementation(() => {})
+    render(<MarketplaceHeader {...props} setLocale={setLocale} />)
+    fireEvent.keyDown(screen.getByRole("button", { name: "Change language" }), { key: "ArrowDown" })
+    const options = await screen.findAllByRole("menuitem")
+    expect(options.map((option) => option.textContent)).toEqual(["English", "Español", "Français", "Deutsch", "日本語"])
+    fireEvent.keyDown(screen.getByRole("menuitem", { name: "日本語" }), { key: "Enter" })
+    expect(setLocale).toHaveBeenCalledWith("ja")
+    scrollIntoView.mockRestore()
+  })
 
   it("matches Shop's primary button dimensions while preserving navigation", () => {
     render(<MarketplaceHeader {...props} />)
@@ -71,6 +88,6 @@ describe("MarketplaceHeader sign-in", () => {
     render(<MarketplaceHeader {...props} session={{ user: { user_metadata: {} } }} />)
 
     expect(screen.queryByRole("link", { name: "Sign In" })).not.toBeInTheDocument()
-    expect(screen.getByRole("link", { name: "Buyer account" })).toHaveAttribute("href", "/buyer")
+    expect(screen.getByRole("link", { name: "Account" })).toHaveAttribute("href", "/buyer")
   })
 })

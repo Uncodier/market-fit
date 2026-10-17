@@ -333,7 +333,7 @@ export function ProductPdpLayout({ item, backUrl, experience: _experience, catal
                     />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center text-muted-foreground">
-                      No Image
+                      {t("pdp.noImage")}
                     </div>
                   )}
                 </div>

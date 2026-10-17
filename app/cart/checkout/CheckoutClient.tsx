@@ -16,7 +16,7 @@ import { CommerceShellHeader, shellClasses } from "@/app/components/commerce/Com
 import { CommerceOrderSuccess } from "@/app/components/commerce/CommerceOrderSuccess"
 import { CheckoutForm } from "./CheckoutForm"
 import { OrderSummary } from "./OrderSummary"
-import { Button } from "@/app/components/ui/button"
+import { CheckoutEmptyState, CheckoutLoadingState } from "./CheckoutStates"
 import {
   getItemDeliveryOptions,
   intersectDeliveryOptions,
@@ -291,7 +291,7 @@ export default function CheckoutClient({
 
   const isPurelyReservableOrDigital = items.length > 0 && items.every(item => item.is_reservation || item.kind === 'digital_asset');
 
-  const deliveryTimeLabel = formatDeliveryTime(siteSettings?.shop);
+  const deliveryTimeLabel = formatDeliveryTime(siteSettings?.shop, t);
 
   const { handleCheckout, checkoutLoading } = useCheckoutSubmission({
     items, session, siteId, source, mode, returnTo, initialOwnerSiteId, ownerSiteId,
@@ -303,7 +303,7 @@ export default function CheckoutClient({
   })
 
   if (loading) {
-    return <div className="min-h-screen bg-muted/30 flex items-center justify-center">Loading checkout...</div>
+    return <CheckoutLoadingState />
   }
 
   if (orderSuccess) {
@@ -328,27 +328,7 @@ export default function CheckoutClient({
   }
 
   if (items.length === 0) {
-    return (
-      <div className="min-h-screen bg-muted/30 flex flex-col">
-        <div className="h-4 w-full shrink-0" />
-        <CommerceShellHeader
-          brand={
-            <Link href={returnTo} className="flex items-center text-muted-foreground hover:text-foreground">
-              <ArrowLeft className="w-5 h-5 mr-2" />
-              <span className="font-medium">{t('checkout.backToStore') || 'Return to store'}</span>
-            </Link>
-          }
-          actions={<div />}
-        />
-        <div className="flex-1 flex items-center justify-center p-6">
-          <div className="text-center">
-            <h2 className="text-2xl font-bold mb-2">Checkout empty</h2>
-            <p className="text-muted-foreground mb-6">You don&apos;t have any items to checkout.</p>
-            <Link href={returnTo}><Button size="lg" className="rounded-xl">Continue Shopping</Button></Link>
-          </div>
-        </div>
-      </div>
-    )
+    return <CheckoutEmptyState returnTo={returnTo} />
   }
 
   return (
@@ -369,7 +349,7 @@ export default function CheckoutClient({
                 {session.user.user_metadata?.avatar_url || session.user.user_metadata?.picture ? (
                   <img
                     src={session.user.user_metadata?.avatar_url || session.user.user_metadata?.picture}
-                      alt="Avatar"
+                      alt={t("commerce.avatar")}
                       className="w-8 h-8 min-w-8 rounded-full object-contain bg-transparent border border-border shadow-sm shrink-0"
                   />
                 ) : (
@@ -452,9 +432,9 @@ export default function CheckoutClient({
                   : (!isPurelyReservableOrDigital && orderTiming === 'scheduled' && !scheduledFor)
                     ? t("checkout.selectTimeRequired") || "Please select a date and time"
                     : !allowedOptions.includes(fulfillment)
-                      ? "Selected delivery method not allowed"
+                      ? t("checkout.errors.deliveryNotAllowed")
                       : (!paymentMethod || !availablePaymentMethods.includes(paymentMethod))
-                        ? "Payment method not allowed"
+                        ? t("checkout.errors.paymentNotAllowed")
                         : undefined
               }
               fulfillment={fulfillment}
@@ -476,9 +456,9 @@ export default function CheckoutClient({
       {source === 'shop' ? (
         <footer className="bg-gray-50 dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 py-12 mt-auto">
           <div className="max-w-7xl mx-auto px-4 md:px-8 flex flex-col md:flex-row justify-between items-center gap-6">
-            <div className="text-2xl font-black tracking-tight text-gray-400 dark:text-gray-600">{items[0]?.site?.name || 'Store'}</div>
+            <div className="text-2xl font-black tracking-tight text-gray-400 dark:text-gray-600">{items[0]?.site?.name || t("checkout.store")}</div>
             <div className="text-sm text-gray-500 dark:text-gray-400">
-              &copy; {new Date().getFullYear()} {items[0]?.site?.name || 'Store'}. {t("shop.allRightsReserved") || "All rights reserved."}{" "}
+              &copy; {new Date().getFullYear()} {items[0]?.site?.name || t("checkout.store")}. {t("shop.allRightsReserved") || "All rights reserved."}{" "}
               {t("shop.poweredBy") || "Powered by Makinari."}
             </div>
           </div>

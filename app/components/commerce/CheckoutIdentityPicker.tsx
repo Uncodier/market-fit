@@ -110,8 +110,8 @@ export function CheckoutIdentityPicker({
       setMode("otp_code")
       setTimer(60)
       toast.success(t("checkout.identity.emailVerification") || "We'll email you a verification code")
-    } catch (err: any) {
-      toast.error(err.message || "Failed to send code")
+    } catch {
+      toast.error(t("checkout.identity.sendFailed"))
     } finally {
       setLoading(false)
     }
@@ -161,8 +161,8 @@ export function CheckoutIdentityPicker({
         setMode("signed_in")
         toast.success(t("checkout.identity.signedIn") || "Successfully signed in")
       }
-    } catch (err: any) {
-      toast.error(err.message || "Invalid verification code")
+    } catch {
+      toast.error(t("checkout.identity.verifyFailed"))
     } finally {
       setLoading(false)
     }
@@ -289,7 +289,7 @@ export function CheckoutIdentityPicker({
               </Label>
               <Input
                 required
-                placeholder="Jane Doe"
+                placeholder={t("checkout.identity.namePlaceholder")}
                 value={customerName}
                 onChange={(e) => setCustomerName(e.target.value)}
                 className="h-12 rounded-xl"
@@ -302,7 +302,7 @@ export function CheckoutIdentityPicker({
               <Input
                 required
                 type="email"
-                placeholder="jane@example.com"
+                placeholder={t("checkout.identity.emailPlaceholder")}
                 value={customerEmail}
                 onChange={(e) => setCustomerEmail(e.target.value)}
                 className="h-12 rounded-xl"
@@ -319,7 +319,7 @@ export function CheckoutIdentityPicker({
                 <Input
                   required
                   type="email"
-                  placeholder="jane@example.com"
+                  placeholder={t("checkout.identity.emailPlaceholder")}
                   value={otpEmail}
                   onChange={(e) => setOtpEmail(e.target.value)}
                   className="h-12 rounded-xl w-full"

@@ -60,7 +60,6 @@ const cardSurface =
 export function ReservationSlotPickerPage({
   dateLocale,
   t,
-  locale,
   currentMonth,
   setCurrentMonth,
   selectedDate,
@@ -351,7 +350,7 @@ export function ReservationSlotPickerPage({
                           >
                             {formatSlotTime(slot.start, slot.timezone, timeDisplay)}
                             {shouldShowSlotLeftover(slot, selectedStartIso) ? (
-                              <span className="text-xs opacity-70 ml-2">({slot.available} left)</span>
+                              <span className="text-xs opacity-70 ml-2">{t("booking.slotsLeft", { count: slot.available })}</span>
                             ) : null}
                           </Button>
                         )
@@ -411,19 +410,19 @@ export function ReservationSlotPickerPage({
               <div className="space-y-5">
                 <div className="grid gap-2">
                   <Label htmlFor="name" className="text-sm font-semibold">{t("booking.form.name") || "Name"}</Label>
-                  <Input id="name" placeholder="John Doe" className="h-12 bg-background" value={name} onChange={(e) => setName(e.target.value)} />
+                  <Input id="name" placeholder={t("booking.form.namePlaceholder")} className="h-12 bg-background" value={name} onChange={(e) => setName(e.target.value)} />
                 </div>
                 <div className="grid gap-2">
                   <Label htmlFor="email" className="text-sm font-semibold">{t("booking.form.email") || "Email"}</Label>
-                  <Input id="email" type="email" placeholder="john@example.com" className="h-12 bg-background" value={email} onChange={(e) => setEmail(e.target.value)} />
+                  <Input id="email" type="email" placeholder={t("booking.form.emailPlaceholder")} className="h-12 bg-background" value={email} onChange={(e) => setEmail(e.target.value)} />
                 </div>
                 <div className="grid gap-2">
                   <Label htmlFor="guests" className="text-sm font-semibold">
-                    {locale === "es" ? "Invitados (separados por coma)" : "Guests (comma separated)"}
+                    {t("booking.form.guests")}
                   </Label>
                   <Input
                     id="guests"
-                    placeholder={locale === "es" ? "correo1@ejemplo.com" : "guest1@example.com"}
+                    placeholder={t("booking.form.guestsPlaceholder")}
                     className="h-12 bg-background"
                     value={guestsString}
                     onChange={(e) => setGuestsString(e.target.value)}

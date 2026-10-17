@@ -24,8 +24,8 @@ export function SubscriptionManagePanel({ subscription }: { subscription: any })
       toast.success(t('buyer.subscriptions.cancelSuccess') || 'Subscription cancelled successfully')
       setShowCancelConfirm(false)
       router.refresh()
-    } catch (error: any) {
-      toast.error(error.message || 'Failed to cancel subscription')
+    } catch {
+      toast.error(t('buyer.subscriptions.cancelFailed'))
     } finally {
       setIsCancelling(false)
     }

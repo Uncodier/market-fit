@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { RelationSelectOption } from "@/app/components/ui/relation-select"
+import { siteMembersService } from "@/app/services/site-members-service"
+import { assignableSiteMembers } from "@/lib/auth/assignable-site-members"
 import {
   getRelationTargetConfig,
   keepSelectedRelationOptions,
@@ -41,6 +43,25 @@ export function useRelationOptions(
     const config = getRelationTargetConfig(target)
     const requestId = (requestIdRef.current[target] || 0) + 1
     requestIdRef.current[target] = requestId
+
+    if (target === "team_member") {
+      try {
+        const members = assignableSiteMembers(await siteMembersService.getMembers(siteId))
+        if (requestIdRef.current[target] !== requestId) return
+        const search = query.trim().toLowerCase()
+        const options = members.map(member => ({
+          id: member.user_id,
+          label: member.name || member.email,
+          searchText: `${member.name || ""} ${member.email}`,
+        })).filter(option => !search || option.searchText.toLowerCase().includes(search))
+        setRelationOptions(prev => ({ ...prev, [target]: options }))
+      } catch (error) {
+        if (requestIdRef.current[target] !== requestId) return
+        setRelationOptions(prev => ({ ...prev, [target]: [] }))
+        console.error("Error fetching team member options:", error)
+      }
+      return
+    }
 
     const supabase = createClient()
     let request = supabase

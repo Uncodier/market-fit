@@ -38,7 +38,7 @@ export function BuyerUserEmailField({
 
   const handleSearch = async () => {
     if (!email.trim() || !email.includes("@")) {
-      toast.error("Please enter a valid email address")
+      toast.error(t("commerce.buyer.invalidEmail"))
       return
     }
 
@@ -46,7 +46,7 @@ export function BuyerUserEmailField({
     try {
       const { data, error } = await resolveBuyerUserByEmail(email.trim())
       if (error || !data) {
-        toast.error(error || "No platform user found with this email.")
+        toast.error(t("commerce.buyer.notFound"))
         return
       }
 
@@ -57,7 +57,7 @@ export function BuyerUserEmailField({
       })
       setEmail("")
     } catch {
-      toast.error("Failed to lookup user")
+      toast.error(t("commerce.buyer.lookupFailed"))
     } finally {
       setIsLoading(false)
     }
@@ -78,6 +78,7 @@ export function BuyerUserEmailField({
             )}
           </div>
           <Button
+            aria-label={t("commerce.buyer.clear")}
             variant="ghost"
             size="sm"
             onClick={() => onChange(null)}
@@ -119,6 +120,7 @@ export function BuyerUserEmailField({
           }}
         />
         <Button
+          aria-label={t("commerce.buyer.lookup")}
           type="button"
           variant="secondary"
           onClick={handleSearch}

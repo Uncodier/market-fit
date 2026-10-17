@@ -22,7 +22,10 @@ jest.mock("../../../lib/supabase/client", () => ({
 
 jest.mock("@/app/context/LocalizationContext", () => ({
   useLocalization: () => ({
-    t: (key: string) => key,
+    t: (key: string) => ({
+      "checkout.identity.namePlaceholder": "Jane Doe",
+      "checkout.identity.emailPlaceholder": "jane@example.com",
+    } as Record<string, string>)[key] || key,
     locale: "en",
   }),
 }))

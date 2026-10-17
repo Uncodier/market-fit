@@ -3,6 +3,7 @@
 import { forwardRef, useEffect, useRef, useState } from "react"
 import { Search, X } from "@/app/components/ui/icons"
 import { shellClasses } from "@/app/components/commerce/CommerceShellHeader"
+import { useLocalization } from "@/app/context/LocalizationContext"
 
 /** Collapse the center bar below this; expand only above EXPAND to avoid threshold thrash. */
 const COLLAPSE_BELOW_PX = 128
@@ -146,6 +147,7 @@ export function MobileShellSearchExpanded({
   open,
   onOpenChange,
 }: ExpandedProps) {
+  const { t } = useLocalization()
   const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -171,7 +173,7 @@ export function MobileShellSearchExpanded({
         type="button"
         onClick={() => onOpenChange(false)}
         className={shellClasses.iconButton}
-        aria-label="Close search"
+        aria-label={t("commerce.search.close")}
       >
         <X className="h-5 w-5" />
       </button>
@@ -200,7 +202,7 @@ export function MobileShellSearchExpanded({
         onClick={() => onOpenChange(false)}
         className="shrink-0 h-9 px-3 rounded-full text-sm font-semibold text-slate-900 dark:text-white hover:bg-black/10 dark:hover:bg-white/15 transition-colors"
       >
-        OK
+        {t("commerce.search.done")}
       </button>
     </>
   )

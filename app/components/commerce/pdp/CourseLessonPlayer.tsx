@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { PlayCircle, CheckCircle } from "@/app/components/ui/icons"
+import { useLocalization } from "@/app/context/LocalizationContext"
 
 export function CourseLessonPlayer({ 
   videos, 
@@ -14,6 +15,7 @@ export function CourseLessonPlayer({
   progress?: { lastIndex: number, completedIndexes: number[] },
   onProgressUpdate?: (index: number, completed: boolean) => void
 }) {
+  const { t } = useLocalization()
   const initialIndex = progress?.lastIndex || 0
   const [currentIndex, setCurrentIndex] = useState(initialIndex >= 0 && initialIndex < videos.length ? initialIndex : 0)
   const completed = progress?.completedIndexes || []
@@ -34,13 +36,14 @@ export function CourseLessonPlayer({
         const videoId = parts[parts.length - 1]
         if (videoId && !isNaN(Number(videoId))) return `https://player.vimeo.com/video/${videoId}`
       }
-    } catch (e) {
+    } catch {
       // invalid URL
     }
     return null
   }
 
   const embedUrl = getEmbedUrl(currentVideo.url)
+  const lessonTitle = currentVideo.title || t("pdp.course.lessonTitle", { title, number: currentIndex + 1 })
 
   return (
     <div className="flex flex-col lg:flex-row gap-6 bg-card border border-border/50 rounded-3xl overflow-hidden shadow-lg">
@@ -49,6 +52,7 @@ export function CourseLessonPlayer({
           {embedUrl ? (
             <iframe 
               src={embedUrl}
+              title={lessonTitle}
               className="absolute inset-0 w-full h-full"
               allowFullScreen
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
@@ -62,14 +66,14 @@ export function CourseLessonPlayer({
           )}
         </div>
         <div className="p-6 sm:p-8">
-          <h2 className="text-2xl font-bold mb-2">{currentVideo.title || `${title} - Lesson ${currentIndex + 1}`}</h2>
+          <h2 className="text-2xl font-bold mb-2">{lessonTitle}</h2>
           <div className="flex items-center gap-4 mt-6">
             <button 
               onClick={() => onProgressUpdate && onProgressUpdate(currentIndex, !completed.includes(currentIndex))}
               className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-colors ${completed.includes(currentIndex) ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground hover:bg-muted/80'}`}
             >
               <CheckCircle size={18} className={completed.includes(currentIndex) ? 'text-primary' : ''} />
-              {completed.includes(currentIndex) ? 'Completed' : 'Mark as complete'}
+              {completed.includes(currentIndex) ? t("pdp.course.completed") : t("pdp.course.markComplete")}
             </button>
           </div>
         </div>
@@ -77,9 +81,9 @@ export function CourseLessonPlayer({
       
       <div className="w-full lg:w-80 shrink-0 flex flex-col max-h-[600px]">
         <div className="p-6 border-b border-border/50">
-          <h3 className="font-bold text-lg">Course Content</h3>
+          <h3 className="font-bold text-lg">{t("pdp.course.content")}</h3>
           <p className="text-sm text-muted-foreground mt-1">
-            {completed.length} of {videos.length} completed
+            {t("pdp.course.progress", { completed: completed.length, total: videos.length })}
           </p>
           <div className="w-full h-1.5 bg-muted rounded-full mt-3 overflow-hidden">
             <div 
@@ -109,7 +113,7 @@ export function CourseLessonPlayer({
                 </div>
                 <div className="flex-1">
                   <div className={`font-medium text-sm line-clamp-2 ${isActive ? 'text-foreground' : 'text-muted-foreground'}`}>
-                    {idx + 1}. {vid.title || `Lesson ${idx + 1}`}
+                    {idx + 1}. {vid.title || t("pdp.course.lesson", { number: idx + 1 })}
                   </div>
                 </div>
               </button>

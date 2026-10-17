@@ -46,7 +46,7 @@ export function MarketplaceFooter({
               size="icon"
               onClick={toggleTheme}
               className="rounded-full"
-              aria-label={theme === "dark" ? "Use light theme" : "Use dark theme"}
+              aria-label={theme === "dark" ? t("commerce.theme.light") : t("commerce.theme.dark")}
             >
               {theme === "dark" ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
             </Button>

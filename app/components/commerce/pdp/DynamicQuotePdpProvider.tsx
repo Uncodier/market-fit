@@ -241,7 +241,7 @@ export function DynamicQuotePdpProvider({
       return
     }
     if (guest && !email.trim()) {
-      toast.error("Email is required to request a quote")
+      toast.error(t("pdp.dynamicQuote.emailRequired"))
       return
     }
 
@@ -300,9 +300,7 @@ export function DynamicQuotePdpProvider({
     } catch (err: unknown) {
       console.error("DynamicQuotePdpPanel handleGetQuote error:", err)
       toast.error(
-        err instanceof Error
-          ? err.message
-          : t("pdp.dynamicQuote.failed") || "Failed to request quote"
+        t("pdp.dynamicQuote.failed") || "Failed to request quote"
       )
     } finally {
       setLoading(false)
@@ -327,12 +325,12 @@ export function DynamicQuotePdpProvider({
       } else {
         startBuyNow(quoteItem, quantity, backUrl)
       }
-    } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Failed to checkout with quote")
+    } catch {
+      toast.error(t("pdp.dynamicQuote.checkoutFailed"))
     } finally {
       setLoading(false)
     }
-  }, [pricedItem, quotationId, quotationStatus, startBuyNow, quantity, backUrl, router])
+  }, [pricedItem, quotationId, quotationStatus, startBuyNow, quantity, backUrl, router, t])
 
   const handleAddToCart = useCallback(async () => {
     const quoteItem = pricedItem()
@@ -344,8 +342,8 @@ export function DynamicQuotePdpProvider({
         `${quoteItem.name} ${t("marketplace.addedToCart") || "added to cart"}`
       )
       router.push(afterAddToCartHref(backUrl))
-    } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Failed to add quote to cart")
+    } catch {
+      toast.error(t("pdp.dynamicQuote.addToCartFailed"))
     } finally {
       setLoading(false)
     }

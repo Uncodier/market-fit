@@ -68,6 +68,7 @@ function QuantityStepper({
   disabled?: boolean
   label: string
 }) {
+  const { t } = useLocalization()
   return (
     <div className="flex items-center justify-between gap-4 rounded-2xl border border-border/60 bg-background px-4 py-3">
       <Label className="text-sm font-medium">{label}</Label>
@@ -79,7 +80,7 @@ function QuantityStepper({
           className="h-10 w-10 rounded-xl"
           disabled={disabled || quantity <= 1}
           onClick={() => onChange(Math.max(1, quantity - 1))}
-          aria-label="Decrease quantity"
+          aria-label={t("commerce.cart.decreaseQuantity")}
         >
           <Minus className="h-4 w-4" />
         </Button>
@@ -91,7 +92,7 @@ function QuantityStepper({
           className="h-10 w-10 rounded-xl"
           disabled={disabled}
           onClick={() => onChange(quantity + 1)}
-          aria-label="Increase quantity"
+          aria-label={t("commerce.cart.increaseQuantity")}
         >
           <Plus className="h-4 w-4" />
         </Button>

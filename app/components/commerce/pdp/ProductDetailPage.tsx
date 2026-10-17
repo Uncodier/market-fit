@@ -132,7 +132,7 @@ export function ProductDetailPage({ item, site, backUrl, experience, catalogSize
       <CommerceShellHeader
         brand={
           <div className="flex items-center min-w-0">
-            <Link href={backUrl} className={`${shellClasses.iconButton} shrink-0 md:mr-2`}>
+            <Link href={backUrl} aria-label={t("common.back")} className={`${shellClasses.iconButton} shrink-0 md:mr-2`}>
               <ArrowLeft className="w-5 h-5" />
             </Link>
             {siteName && (
@@ -172,14 +172,14 @@ export function ProductDetailPage({ item, site, backUrl, experience, catalogSize
             />
 
             {session ? (
-              <Link href="/buyer" className="hover:opacity-80 transition-opacity shrink-0">
+              <Link href="/buyer" aria-label={t("commerce.account")} className="hover:opacity-80 transition-opacity shrink-0">
                 {session.user.user_metadata?.avatar_url || session.user.user_metadata?.picture ? (
                   <img
                     src={
                       session.user.user_metadata?.avatar_url ||
                       session.user.user_metadata?.picture
                     }
-                      alt="Avatar"
+                      alt={t("commerce.avatar")}
                       className="w-8 h-8 min-w-8 rounded-full object-cover border border-border shrink-0"
                   />
                 ) : (
@@ -228,7 +228,7 @@ export function ProductDetailPage({ item, site, backUrl, experience, catalogSize
               <div className="flex items-center gap-2">
                 <CurrencySelector className="rounded-full hover:bg-gray-200 dark:hover:bg-gray-800 text-gray-500 dark:text-gray-400" storeCurrency={storeCurrency} />
                 <LocaleSelector className="rounded-full hover:bg-gray-200 dark:hover:bg-gray-800 text-gray-500 dark:text-gray-400" />
-                <Button variant="ghost" size="icon" onClick={toggleTheme} className="rounded-full hover:bg-gray-200 dark:hover:bg-gray-800">
+                <Button variant="ghost" size="icon" onClick={toggleTheme} aria-label={theme === "dark" ? t("commerce.theme.light") : t("commerce.theme.dark")} className="rounded-full hover:bg-gray-200 dark:hover:bg-gray-800">
                   {theme === "dark" ? <Sun className="h-5 w-5 text-gray-400 hover:text-black dark:hover:text-white" /> : <Moon className="h-5 w-5 text-gray-500 hover:text-black dark:hover:text-white" />}
                 </Button>
               </div>
@@ -245,7 +245,7 @@ export function ProductDetailPage({ item, site, backUrl, experience, catalogSize
               <div className="flex items-center gap-2">
                 <CurrencySelector className="rounded-full" />
                 <LocaleSelector className="rounded-full" />
-                <Button variant="ghost" size="icon" onClick={toggleTheme} className="rounded-full">
+                <Button variant="ghost" size="icon" onClick={toggleTheme} aria-label={theme === "dark" ? t("commerce.theme.light") : t("commerce.theme.dark")} className="rounded-full">
                   {theme === "dark" ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
                 </Button>
               </div>

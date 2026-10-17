@@ -272,9 +272,8 @@ export function PromoBundleExperience({
       } else {
         router.push(`/marketplace?cart=1`)
       }
-    } catch (err: any) {
+    } catch {
       toast.error(
-        err?.message ||
           t("shop.promo.applyFailed") ||
           "Failed to apply promotion",
       )

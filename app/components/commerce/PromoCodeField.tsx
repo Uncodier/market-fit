@@ -94,9 +94,10 @@ export function PromoCodeField({
       if (requestId !== requestIdRef.current) return
 
       if ("error" in result && result.error) {
-        setError(result.error)
+        const message = t("checkout.promoInvalid")
+        setError(message)
         onCleared()
-        if (!options.silent) toast.error(result.error)
+        if (!options.silent) toast.error(message)
         return
       }
 
@@ -112,9 +113,9 @@ export function PromoCodeField({
           toast.success(t("checkout.promoApplied") || "Promo applied")
         }
       }
-    } catch (e: any) {
+    } catch {
       if (requestId !== requestIdRef.current) return
-      const msg = e?.message || t("checkout.promoInvalid") || "Invalid or inactive promotion code"
+      const msg = t("checkout.promoInvalid") || "Invalid or inactive promotion code"
       setError(msg)
       onCleared()
       if (!options.silent) toast.error(msg)

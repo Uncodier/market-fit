@@ -93,14 +93,14 @@ export function BuyerExperienceShell({
         actions={
           actions ??
           (session ? (
-            <Link href="/buyer/profile" className="hover:opacity-80 transition-opacity shrink-0">
+            <Link href="/buyer/profile" aria-label={t("commerce.account")} className="hover:opacity-80 transition-opacity shrink-0">
               {session.user.user_metadata?.avatar_url || session.user.user_metadata?.picture ? (
                 <img
                   src={
                     session.user.user_metadata?.avatar_url ||
                     session.user.user_metadata?.picture
                   }
-                      alt="Avatar"
+                      alt={t("commerce.avatar")}
                       className="w-8 h-8 min-w-8 rounded-full object-cover border border-border shadow-sm shrink-0"
                 />
               ) : (

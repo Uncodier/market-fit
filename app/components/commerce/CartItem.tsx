@@ -7,6 +7,7 @@ import { X, CalendarIcon, Clock } from "@/app/components/ui/icons"
 import { resolveItemImage } from "@/app/lib/image-utils"
 import { useDisplayCurrency } from "@/app/context/DisplayCurrencyContext"
 import { useLocalization } from "@/app/context/LocalizationContext"
+import { getDateFnsLocale } from "@/app/lib/date-fns-locale"
 import {
   cartLineExtendedTotal,
   cartLineKey,
@@ -22,7 +23,8 @@ interface CartItemProps {
 
 export function CartItem({ item, updateQty, showSeller = false }: CartItemProps) {
   const { formatPrice } = useDisplayCurrency()
-  const { t } = useLocalization()
+  const { t, locale } = useLocalization()
+  const dateLocale = getDateFnsLocale(locale)
   const key = cartLineKey(item)
   const modifiers: CartModifier[] = Array.isArray(item.modifiers) ? item.modifiers : []
   const unit = cartLineUnitTotal(item)
@@ -45,7 +47,7 @@ export function CartItem({ item, updateQty, showSeller = false }: CartItemProps)
                 )}
                 <h4 className="font-bold text-gray-900 dark:text-gray-100 leading-tight truncate">{item.name}</h4>
               </div>
-              <button onClick={() => updateQty(key, -item.cartQty)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+              <button aria-label={t("commerce.cart.removeItem")} onClick={() => updateQty(key, -item.cartQty)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
                 <X className="h-4 w-4" />
               </button>
             </div>
@@ -58,11 +60,12 @@ export function CartItem({ item, updateQty, showSeller = false }: CartItemProps)
           </div>
           <div className="flex items-center justify-between mt-2">
             <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 rounded-lg p-1 shrink-0">
-              <Button variant="ghost" size="icon" className="h-7 w-7 rounded-md text-lg hover:bg-gray-200 dark:hover:bg-gray-700" onClick={() => updateQty(key, -1)}>
+              <Button aria-label={t("commerce.cart.decreaseQuantity")} variant="ghost" size="icon" className="h-7 w-7 rounded-md text-lg hover:bg-gray-200 dark:hover:bg-gray-700" onClick={() => updateQty(key, -1)}>
                 -
               </Button>
               <span className="w-6 text-center text-sm font-bold text-gray-900 dark:text-gray-100">{item.cartQty}</span>
               <Button 
+                aria-label={t("commerce.cart.increaseQuantity")}
                 variant="ghost" 
                 size="icon" 
                 className="h-7 w-7 rounded-md bg-white dark:bg-gray-700 shadow-sm text-lg hover:bg-gray-50 dark:hover:bg-gray-600" 
@@ -84,7 +87,7 @@ export function CartItem({ item, updateQty, showSeller = false }: CartItemProps)
       {modifiers.length > 0 && (
         <div className="bg-gray-50/50 dark:bg-gray-800/30 border-t border-gray-100 dark:border-gray-800 px-4 py-3 shadow-inner">
           <div className="text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1.5">
-            {(t as any)?.('pos.modifiers.title') || 'Extras'}
+            {t('pos.modifiers.title') || 'Extras'}
           </div>
           <div className="space-y-1.5">
             {modifiers.map((m) => (
@@ -117,11 +120,11 @@ export function CartItem({ item, updateQty, showSeller = false }: CartItemProps)
             <div className="flex items-center gap-2 text-xs font-medium text-gray-600 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-gray-100">
               <CalendarIcon className="w-3.5 h-3.5 opacity-70 shrink-0" />
               <span className="truncate">
-                {format(new Date(item.reservationStart), "MMM d, yyyy")}
+                {format(new Date(item.reservationStart), "PP", { locale: dateLocale })}
               </span>
               <Clock className="w-3.5 h-3.5 opacity-70 shrink-0 ml-1" />
               <span className="truncate">
-                {format(new Date(item.reservationStart), "h:mm a")}
+                {format(new Date(item.reservationStart), "p", { locale: dateLocale })}
               </span>
             </div>
             <span className="text-[10px] uppercase font-bold text-gray-400 group-hover:text-gray-900 dark:group-hover:text-gray-100 transition-colors mr-1">
