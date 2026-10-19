@@ -142,6 +142,37 @@ subscription status.
 
 ## Rollout and validation
 
+### Project creation and row visibility
+
+`20261019190000_fix_site_creation_returning_rls.sql` corrects the restrictive
+`license_sites_access` policy's `USING` expression. PostgREST's site insert with
+`.select()` uses `INSERT ... RETURNING`, which checks SELECT visibility before
+AFTER INSERT triggers. The STABLE `current_user_site_role()` lookup cannot see
+the newly inserted site in the statement snapshot, so the old policy rejects
+even a signed-in user's first project with SQLSTATE `42501` and rolls back the
+insert. Retrying without a logo does not resolve this authorization failure.
+
+The correction checks the primary owner directly from the candidate row's
+`user_id = auth.uid()`, retaining the suspension-aware role lookup for other
+members. It does not change `WITH CHECK`, permissive ownership policies,
+`sites_active_only`, archival guards, billing triggers or grants. Foreign-owner
+inserts and cross-site reads/writes remain denied; suspended members cannot
+access their former workspace but can create projects of their own. No service
+role or browser workaround is needed.
+
+This is a forward-only, transactional, rerunnable policy change, with no backfill
+or customer-data mutation. Apply it only after explicit target approval; adding
+the file does not fix an already deployed database. The disposable PostgreSQL
+suite reproduces the original failure and rollback, then verifies creation with
+returned rows, subsequent settings access, missing identity, cross-tenant denial,
+member suspension/manual deactivation and archival protections:
+
+```sh
+npm test -- --runInBand __tests__/security/site-creation-rls-migration.test.ts
+```
+
+### Original license-enforcement rollout
+
 Apply the forward migration only after explicit approval of the database target,
 reviewing existing triggers, policies and shared API credit/annual prerequisites.
 It includes a non-destructive backfill that immediately suspends existing excesses;

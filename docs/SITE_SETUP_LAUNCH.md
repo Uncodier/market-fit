@@ -20,6 +20,28 @@ retry remain unchanged.
 
 ## Queue and acceptance
 
+### Middleware admission
+
+The scanner heuristic in `lib/http/suspicious-request.ts` exempts only the exact
+`/api/site/setup` and `/api/stripe/auto-top-up/setup` paths (with an optional
+single trailing slash) from its generic `/setup` pattern. Other scanner and
+traversal checks remain enabled. Middleware still applies API admission and
+each route still performs its own origin, input, authentication and permission
+checks. This exception is not an anonymous-access grant or a workflow retry.
+
+Without it, legitimate setup POST/GET requests receive an empty middleware 404
+before the route runs. Project creation succeeds separately, but the browser
+receives neither JSON acceptance nor a workflow ID and displays **unconfirmed**.
+Deploying the correction restores admission for new requests; it does not replay
+an existing unconfirmed setup. Check existing execution state before any manual
+relaunch. Deployment and production relaunch require explicit approval.
+
+`__tests__/auth/setup-api-middleware.test.ts` exercises the real middleware plus
+the setup route with mocked external services, including acceptance identity,
+read-only status checks, auth/tenant denial, rate admission, invalid input,
+foreign origins, and scanner lookalikes. Route-only tests cannot detect this
+pre-route rejection.
+
 The API uses `WORKFLOW_TASK_QUEUE || 'default'`, matching the existing worker's
 subscription. The former `site-setup-queue` fallback did not match that worker.
 Keep the API and worker environment values aligned; no separate queue registry

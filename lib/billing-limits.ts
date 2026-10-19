@@ -1,4 +1,5 @@
 import { Site } from "@/app/context/site-types"
+import { effectiveBillingPlan } from "@/lib/billing/startup-trial"
 
 export function getSocialAccountLimit(plan?: string | null): number {
   if (!plan || plan === 'commission') return 1
@@ -40,12 +41,18 @@ export function countAgentChannels(site: Partial<Site> | null | undefined): numb
   // Count Zavu connections (WhatsApp, Messenger, etc.)
   const connections = site.settings?.channels?.connections || []
   for (const conn of connections) {
-    if (conn.status === 'connected') {
+    if (isActiveAgentChannel(conn)) {
       count++
     }
   }
 
   return count
+}
+
+/** Voice keeps its historical active/synced states; other channels require connected. */
+export function isActiveAgentChannel(channel: { type?: string; status?: string }): boolean {
+  return channel.status === 'connected' || (channel.type === 'voice' &&
+    (channel.status === 'active' || channel.status === 'synced'))
 }
 
 export function countConnectedAccounts(site: Partial<Site> | null | undefined): number {
@@ -71,7 +78,7 @@ export function canConnectAgentChannel(site: Partial<Site> | null | undefined, e
 }
 
 function getRequiredAddonsWithExtra(site: Partial<Site> | null | undefined, extraSocial: number, extraAgent: number): number {
-  const plan = site?.billing?.plan
+  const plan = effectiveBillingPlan(site?.billing)
   
   const socialLimit = getSocialAccountLimit(plan)
   const agentLimit = getAgentChannelLimit(plan)

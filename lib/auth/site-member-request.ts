@@ -81,26 +81,24 @@ export async function getSiteMemberAccess(siteId: string): Promise<SiteMemberAcc
     return { error: NextResponse.json({ success: false, error: "Site not found or access denied" }, { status: 404 }) }
   }
 
-  const { data: membershipCheck, error: membershipError } = await admin
-    .from("site_members")
-    .select("role")
-    .eq("site_id", siteId)
-    .eq("user_id", user.id)
-    .eq("status", "active")
-    .eq("license_suspended", false)
-    .maybeSingle()
-
   const isOwner = siteData.user_id === user.id
-  if (membershipError && !isOwner) {
-    return { error: NextResponse.json({ success: false, error: "Member access is temporarily unavailable" }, { status: 503 }) }
+  let licensedRole: string | null = null
+  try {
+    // User-scoped SQL resolves current license rank at wall time. A stored
+    // suspension flag may lag behind trial expiry and cannot authorize service writes.
+    const { data: role, error } = await supabase.rpc("current_user_site_role", { p_site_id: siteId })
+    if (error || (role !== null && typeof role !== "string")) throw new Error("Unconfirmed member access")
+    licensedRole = role
+  } catch {
+    if (!isOwner) return { error: NextResponse.json({ success: false, error: "Member access is temporarily unavailable" }, { status: 503 }) }
   }
-  const isAdmin = isAdminScreenRole(membershipCheck?.role)
+  const isAdmin = isAdminScreenRole(licensedRole)
   return {
     supabase,
     userId: user.id,
     isOwner,
     isAdmin,
-    isMember: !!membershipCheck,
+    isMember: licensedRole !== null,
     ownerUserId: siteData.user_id,
   }
 }

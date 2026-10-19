@@ -35,6 +35,28 @@ describe("CreditsWidget", () => {
     setBilling()
   })
 
+  it("uses the one-time 50-credit trial reference rather than Foundry's monthly allowance", () => {
+    jest.useFakeTimers().setSystemTime(new Date("2026-10-19T12:00:00Z"))
+    try {
+      setBilling({ plan: "commission", credits_available: 20, trial_credits_available: 19,
+        trial_started_at: "2026-10-19T12:00:00Z", trial_ends_at: "2026-11-03T12:00:00Z" })
+      render(<CreditsWidget />)
+      expect(screen.getByText("20 / 50")).toBeInTheDocument()
+    } finally { jest.useRealTimers() }
+  })
+
+  it("hides expired trial credits in a stale aggregate without changing bought funds", () => {
+    jest.useFakeTimers().setSystemTime(new Date("2026-10-19T12:00:00Z"))
+    try {
+      setBilling({ plan: "commission", credits_available: 19, trial_credits_available: 18,
+        account_balance: 2, trial_started_at: "2026-10-19T12:00:00Z", trial_ends_at: "2026-11-03T12:00:00Z" })
+      render(<CreditsWidget />)
+      expect(screen.getByText("21 / 50")).toBeInTheDocument()
+      act(() => { jest.setSystemTime(new Date("2026-11-03T12:00:00Z")); window.dispatchEvent(new Event("focus")) })
+      expect(screen.getByText("3 / 1")).toBeInTheDocument()
+    } finally { jest.useRealTimers() }
+  })
+
   it("includes withdrawable credits when regular credits are zero", () => {
     setBilling({ account_balance: 8 })
     render(<CreditsWidget />)

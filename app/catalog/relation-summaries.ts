@@ -13,6 +13,8 @@ type PassRedeemRow = {
   reservable_catalog_item: CatalogRelatedItem | CatalogRelatedItem[] | null;
 };
 
+const LOOKUP_BATCH_SIZE = 50;
+
 function asRelatedItem(
   value: CatalogRelatedItem | CatalogRelatedItem[] | null | undefined
 ): CatalogRelatedItem | null {
@@ -46,13 +48,15 @@ export async function attachCatalogRelationSummaries(
   const includesByPlan = new Map<string, CatalogRelatedItem[]>();
   const redeemsByPass = new Map<string, CatalogRelatedItem[]>();
 
-  if (planIds.length > 0) {
+  // Keep lookup URLs bounded even for existing POS/picker calls of 500–1000.
+  // These IDs come only from the returned listing page, never the whole site.
+  for (let offset = 0; offset < planIds.length; offset += LOOKUP_BATCH_SIZE) {
     const { data, error } = await supabase
       .from("subscription_plan_items")
       .select(
         "plan_catalog_item_id, digital_catalog_item:catalog_items!digital_catalog_item_id(id, name, kind, digital_subtype)"
       )
-      .in("plan_catalog_item_id", planIds);
+      .in("plan_catalog_item_id", planIds.slice(offset, offset + LOOKUP_BATCH_SIZE));
 
     if (error) {
       console.error("Error fetching plan includes:", error);
@@ -67,13 +71,13 @@ export async function attachCatalogRelationSummaries(
     }
   }
 
-  if (passIds.length > 0) {
+  for (let offset = 0; offset < passIds.length; offset += LOOKUP_BATCH_SIZE) {
     const { data, error } = await supabase
       .from("pass_redeemable_items")
       .select(
         "pass_catalog_item_id, reservable_catalog_item:catalog_items!reservable_catalog_item_id(id, name, kind, digital_subtype)"
       )
-      .in("pass_catalog_item_id", passIds);
+      .in("pass_catalog_item_id", passIds.slice(offset, offset + LOOKUP_BATCH_SIZE));
 
     if (error) {
       console.error("Error fetching pass redeemables:", error);

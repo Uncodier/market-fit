@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { BillingForm } from "../components/billing/billing-form"
+import { StartupTrialCard } from "../components/billing/startup-trial-card"
 import { PaymentHistory } from "../components/billing/payment-history"
 import { CreditUsageHistory } from "../components/billing/credit-usage-history"
 import { BillingPageSkeleton } from "../components/billing/billing-skeleton"
@@ -115,6 +116,7 @@ export default function BillingPage() {
             <SiteSetupTracking siteId={currentSite.id} />
             <Tabs value={activeTab} onValueChange={handleTabChange}>
               <TabsContent value="billing_info" className="mt-0 p-0">
+                <StartupTrialCard siteId={currentSite.id} />
                 {currentSite.billing_read_status !== 'unavailable' ? <BillingForm
                   initialData={{
                     plan: currentSite.billing?.plan || "commission",

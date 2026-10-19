@@ -43,6 +43,9 @@ export const StepIndicator: React.FC<StepIndicatorProps> = ({
   onDeleteAsset,
   isBrowserVisible = false
 }) => {
+  const displayedPlanId = currentStep?.planId ?? steps[0]?.planId
+  const displayedPlan = instancePlans.find(plan => plan.id === displayedPlanId)
+  const canCancelDisplayedPlan = displayedPlan && ['pending', 'in_progress', 'paused', 'blocked'].includes(displayedPlan.status)
   // Show widget if there are steps OR assets
   if (steps.length === 0 && assets.length === 0) return null
 
@@ -148,18 +151,16 @@ export const StepIndicator: React.FC<StepIndicatorProps> = ({
                         <Pencil className="h-3 w-3 text-muted-foreground" />
                       </Button>
                     )}
-                    {onCancelPlan && (instancePlans.some(plan => plan.status === 'in_progress' || plan.status === 'paused' || plan.status === 'pending')) && (
+                    {onCancelPlan && canCancelDisplayedPlan && (
                       <Button
                         variant="ghost"
                         size="sm"
                         onClick={() => {
-                          const activePlan = instancePlans.find(plan => plan.status === 'in_progress' || plan.status === 'paused' || plan.status === 'pending')
-                          if (activePlan) {
-                            onCancelPlan(activePlan.id)
-                          }
+                          onCancelPlan(displayedPlan.id)
                         }}
                         className="h-6 w-6 p-0 hover:bg-red-100 dark:hover:bg-red-900/30"
                         title="Cancel plan"
+                        aria-label="Cancel plan"
                       >
                         <X className="h-3 w-3 text-red-600" />
                       </Button>

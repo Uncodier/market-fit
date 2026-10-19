@@ -29,6 +29,7 @@ import { UpgradeConfirmationDialog } from "./upgrade-confirmation-dialog"
 import { useRequiredLicense } from "./use-required-license"
 import { requiresSubscriptionManagement } from './subscription-transitions'
 import { BillingHelpTooltip } from "./billing-help-tooltip"
+import { effectiveBillingPlan } from "@/lib/billing/startup-trial"
 
 const billingFormSchema = z.object({
   plan: z.enum(["commission", "engine", "foundry", "enterprise"]).default("commission"),
@@ -123,8 +124,9 @@ export function BillingForm({ initialData }: BillingFormProps) {
   const totalSocialAccounts = countSocialAccounts(currentSite)
   const totalAgentChannels = countAgentChannels(currentSite)
   
-  const socialLimit = getSocialAccountLimit(currentPlan)
-  const agentLimit = getAgentChannelLimit(currentPlan)
+  const effectivePlan = effectiveBillingPlan(currentSite?.billing)
+  const socialLimit = getSocialAccountLimit(effectivePlan)
+  const agentLimit = getAgentChannelLimit(effectivePlan)
   
   const requiredAddons = getRequiredAddons(currentSite)
   const missingAddons = Math.max(0, requiredAddons - addonsCount)

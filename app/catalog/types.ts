@@ -1,5 +1,7 @@
 import { CatalogItem } from "@/app/types";
 
+export type CatalogSort = 'display_order' | 'newest' | 'oldest' | 'updated_at';
+
 export interface CatalogListParams {
   siteId: string;
   kind?: 'product' | 'service' | 'digital_asset' | 'variant' | 'all';
@@ -10,6 +12,8 @@ export interface CatalogListParams {
   availabilityStatus?: 'available' | 'unavailable' | 'sold_out' | 'all';
   page?: number;
   pageSize?: number;
+  /** Omitted by existing pickers/POS to retain catalog display order. */
+  sortBy?: CatalogSort;
   isPosAvailable?: boolean;
   isRecurring?: boolean;
   isReservation?: boolean;

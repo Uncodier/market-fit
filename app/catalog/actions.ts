@@ -4,7 +4,7 @@ import { revalidatePath, revalidateTag } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { CatalogCategory, CatalogItem } from "@/app/types";
 import { CatalogListParams, CatalogListResponse } from "./types";
-import { attachCatalogRelationSummaries } from "./relation-summaries";
+import { readCatalogItems } from "./list-items";
 import { shopCacheTag } from "@/app/shop/[siteSlug]/shop-catalog-shared";
 import { pdpCacheTag } from "@/app/commerce/pdp-actions";
 
@@ -49,74 +49,8 @@ export async function upsertCatalogCategory(category: { id?: string, site_id: st
   }
 }
 
-export async function listCatalogItems({
-  siteId,
-  kind = 'all',
-  q = '',
-  status = 'active',
-  availabilityStatus = 'all',
-  page = 1,
-  pageSize = 50,
-  isPosAvailable,
-  isRecurring,
-  isReservation
-}: CatalogListParams): Promise<CatalogListResponse> {
-  try {
-    const supabase = await createClient();
-    
-    let query = supabase
-      .from("catalog_items")
-      .select("*, parent:parent_id(name)", { count: "exact" })
-      .eq("site_id", siteId)
-      .order("sort_order", { ascending: true })
-      .order("created_at", { ascending: false });
-
-    if (kind === 'variant') {
-      query = query.not('parent_id', 'is', null);
-    } else if (kind !== 'all') {
-      query = query.eq('kind', kind).is('parent_id', null);
-    }
-    if (status !== 'all') {
-      query = query.eq('status', status);
-    }
-    if (availabilityStatus !== 'all') {
-      query = query.eq('availability_status', availabilityStatus);
-    }
-    if (isPosAvailable !== undefined) {
-      query = query.eq('is_pos_available', isPosAvailable);
-    }
-    if (isRecurring !== undefined) {
-      query = query.eq('is_recurring', isRecurring);
-    }
-    if (isReservation !== undefined) {
-      query = query.eq('is_reservation', isReservation);
-    }
-    if (q) {
-      query = query.ilike('name', `%${q}%`);
-    }
-
-    const from = (page - 1) * pageSize;
-    const to = from + pageSize - 1;
-    query = query.range(from, to);
-
-    const { data, count, error } = await query;
-
-    if (error) {
-      console.error("Error fetching catalog items:", error);
-      return { data: [], count: 0, error: error.message };
-    }
-
-    const withRelations = await attachCatalogRelationSummaries(
-      (data || []) as CatalogItem[]
-    );
-
-    return {
-      data: withRelations,
-      count: count || 0,
-    };
-  } catch (error: any) {
-    return { data: [], count: 0, error: error.message };
-  }
+export async function listCatalogItems(params: CatalogListParams): Promise<CatalogListResponse> {
+  return readCatalogItems(params);
 }
 
 export async function getCatalogItem(id: string) {

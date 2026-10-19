@@ -30,9 +30,9 @@ export class CategoryArchivePostgres {
       '-h', this.directory, '-p', '55473', '-U', 'auditor', '-d', 'postgres']
   }
 
-  db(sql: string) {
+  db(sql: string, timeout = 20000) {
     return execFileSync(path.join(pgBin, 'psql'), this.args(), {
-      input: sql, encoding: 'utf8', stdio: 'pipe', timeout: 20000, env,
+      input: sql, encoding: 'utf8', stdio: 'pipe', timeout, env,
     }).trim()
   }
 

@@ -11,7 +11,8 @@ jest.mock('next/headers', () => ({ cookies: jest.fn().mockResolvedValue({ getAll
 const siteId = '10000000-0000-4000-8000-000000000001'
 
 function setup(status = 'active', suspended = false, archived = false, owner = false) {
-  jest.mocked(createServerClient).mockReturnValue({ auth: { getUser: jest.fn().mockResolvedValue({ data: { user: { id: 'actor' } }, error: null }) } } as never)
+  const rpc = jest.fn().mockResolvedValue({ data: owner ? 'owner' : status === 'active' && !suspended ? 'admin' : null, error: null })
+  jest.mocked(createServerClient).mockReturnValue({ auth: { getUser: jest.fn().mockResolvedValue({ data: { user: { id: 'actor' } }, error: null }) }, rpc } as never)
   const filters: Record<string, unknown> = {}
   const membership = {
     select: jest.fn().mockReturnThis(),
@@ -22,7 +23,7 @@ function setup(status = 'active', suspended = false, archived = false, owner = f
     single: jest.fn().mockResolvedValue({ data: archived ? null : { user_id: owner ? 'actor' : 'owner' }, error: null }) }
   const admin = { from: jest.fn((table: string) => table === 'sites' ? site : membership) }
   jest.mocked(createClient).mockReturnValue(admin as never)
-  return { site, membership, admin }
+  return { site, membership, admin, rpc }
 }
 
 beforeEach(() => jest.clearAllMocks())
@@ -34,8 +35,40 @@ it.each([['pending', false], ['active', true], ['rejected', false]])('does not g
 })
 
 it('permits licensed active admin access', async () => {
-  setup()
+  const { rpc, membership } = setup()
   expect(await getSiteMemberAccess(siteId)).toMatchObject({ isAdmin: true, isMember: true })
+  expect(rpc).toHaveBeenCalledWith('current_user_site_role', { p_site_id: siteId })
+  expect(membership.select).not.toHaveBeenCalled()
+})
+
+it('denies an expired admin even when its stored suspension flag is still false', async () => {
+  const { rpc, membership } = setup()
+  rpc.mockResolvedValue({ data: null, error: null })
+  expect(await getSiteMemberAccess(siteId)).toMatchObject({ isOwner: false, isAdmin: false, isMember: false })
+  expect(membership.select).not.toHaveBeenCalled()
+})
+
+it.each([
+  { data: null, error: { code: 'PGRST202' } },
+  { data: true, error: null },
+])('fails closed when dynamic license authorization is unconfirmed %j', async result => {
+  const { rpc } = setup()
+  rpc.mockResolvedValue(result)
+  expect((await getSiteMemberAccess(siteId)).error?.status).toBe(503)
+})
+
+it('handles license RPC transport failure without granting admin access', async () => {
+  const { rpc } = setup()
+  rpc.mockRejectedValue(new Error('Private diagnostics'))
+  const access = await getSiteMemberAccess(siteId)
+  expect(access.error?.status).toBe(503)
+  expect(JSON.stringify(await access.error?.json())).not.toContain('Private diagnostics')
+})
+
+it('keeps verified primary owner access when the membership RPC is unavailable', async () => {
+  const { rpc } = setup('pending', true, false, true)
+  rpc.mockRejectedValue(new Error('Unavailable'))
+  expect(await getSiteMemberAccess(siteId)).toMatchObject({ isOwner: true, isAdmin: false, isMember: false })
 })
 
 it('preserves primary owner access even without an active row', async () => {

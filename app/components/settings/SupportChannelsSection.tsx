@@ -34,6 +34,7 @@ import {
 } from "./support-channel-card-parts"
 import { getSenderPhoneNumberKey, useZavuSenderPhoneNumbers } from "./use-zavu-sender-phone-numbers"
 import { countAgentChannels, getAgentChannelLimit, canConnectAgentChannel } from "@/lib/billing-limits"
+import { effectiveBillingPlan } from "@/lib/billing/startup-trial"
 import { useSite } from "@/app/context/SiteContext"
 import { useBillingLimit } from "@/app/context/BillingLimitContext"
 import { disconnectZavuChannel, shouldDeleteZavuSender } from "./disconnect-remote-accounts"
@@ -75,7 +76,7 @@ export function SupportChannelsSection({ active, siteId, onSave }: SupportChanne
     showBillingLimit({
       kind: "accounts",
       current: countAgentChannels(currentSite),
-      limit: getAgentChannelLimit(currentSite?.billing?.plan) + (currentSite?.billing?.addons_count || 0),
+      limit: getAgentChannelLimit(effectiveBillingPlan(currentSite?.billing)) + (currentSite?.billing?.addons_count || 0),
     })
   }
   const { fields, prepend, remove, replace, update } = useFieldArray({
@@ -120,7 +121,7 @@ export function SupportChannelsSection({ active, siteId, onSave }: SupportChanne
   })
 
   const addChannel = useCallback(() => {
-    const limit = getAgentChannelLimit(currentSite?.billing?.plan) + (currentSite?.billing?.addons_count || 0)
+    const limit = getAgentChannelLimit(effectiveBillingPlan(currentSite?.billing)) + (currentSite?.billing?.addons_count || 0)
     const currentCount = countAgentChannels(currentSite)
     if (!canConnectAgentChannel(currentSite)) {
       showBillingLimit({ kind: "accounts", current: currentCount, limit })
@@ -158,7 +159,7 @@ export function SupportChannelsSection({ active, siteId, onSave }: SupportChanne
     }
     
     // Validate account limits
-    const limit = getAgentChannelLimit(currentSite?.billing?.plan) + (currentSite?.billing?.addons_count || 0)
+    const limit = getAgentChannelLimit(effectiveBillingPlan(currentSite?.billing)) + (currentSite?.billing?.addons_count || 0)
     const currentCount = countAgentChannels(currentSite)
     
     if (channel.status !== "connected" && !canConnectAgentChannel(currentSite)) {

@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/client"
 import { useToast } from "@/app/components/ui/use-toast"
+import { cancelInstancePlan } from "./cancel-instance-plan"
 
 export function usePlanRunActions(activeRobotInstance?: { id?: string }) {
   const { toast } = useToast()
@@ -141,25 +142,11 @@ export function usePlanRunActions(activeRobotInstance?: { id?: string }) {
     }
 
     try {
-      const supabase = createClient()
-      
-      const { data, error } = await supabase
-        .from('instance_plans')
-        .update({
-          status: 'cancelled',
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', planId)
-        .select()
-
-      if (error) {
-        console.error('❌ Supabase error:', error)
-        throw new Error(error.message || 'Failed to cancel plan')
-      }
+      await cancelInstancePlan(planId, activeRobotInstance.id)
 
       toast({
         title: "Plan cancelled",
-        description: "The plan has been cancelled successfully"
+        description: "The plan and its unfinished steps have been cancelled"
       })
     } catch (error) {
       console.error('❌ Error cancelling plan:', error)

@@ -10,6 +10,7 @@ import { shouldClearDemoCookieOnPath } from '@/lib/auth/workspace-site-redirect'
 import { isRouterPrefetchRequest } from '@/lib/navigation/is-router-prefetch'
 import { isServerActionRequest } from '@/lib/navigation/is-server-action'
 import { enforceApiAdmission } from '@/lib/redis/api-admission'
+import { isSuspiciousRequest } from '@/lib/http/suspicious-request'
 
 // Lista específica y exacta de rutas públicas permitidas
 const ALLOWED_PUBLIC_PATHS = [
@@ -31,55 +32,6 @@ function isPublicDocumentSharePath(pathname: string): boolean {
     pathname.startsWith('/so/') ||
     pathname.startsWith('/vb/')
   )
-}
-
-// Define suspicious patterns that should be blocked immediately
-const SUSPICIOUS_PATTERNS = [
-  /\.php(\?|$)/i,
-  /\/wp-/i,
-  /\/admin/i,
-  /\/backend/i,
-  /\/scripts/i,
-  /\/server\/php/i,
-  /filemanager/i,
-  /upload/i,
-  /\.asp(\?|$)/i,
-  /\.jsp(\?|$)/i,
-  /\.cgi(\?|$)/i,
-  /\/cgi-bin/i,
-  /\/xmlrpc/i,
-  /\/phpmyadmin/i,
-  /\/mysql/i,
-  /\.env/i,
-  /\.git/i,
-  /\.sql/i,
-  /\/config\./i,
-  /\/setup/i,
-  /\/install/i
-]
-
-// Define known malicious file extensions and paths
-const MALICIOUS_EXTENSIONS = [
-  '.php', '.asp', '.aspx', '.jsp', '.cgi', '.pl', '.py', '.rb', '.sh'
-]
-
-function isSuspiciousRequest(path: string): boolean {
-  // Check for suspicious patterns
-  if (SUSPICIOUS_PATTERNS.some(pattern => pattern.test(path))) {
-    return true
-  }
-  
-  // Check for malicious extensions in non-API routes
-  if (!path.startsWith('/api/') && MALICIOUS_EXTENSIONS.some(ext => path.includes(ext))) {
-    return true
-  }
-  
-  // Check for directory traversal attempts
-  if (path.includes('..') || path.includes('%2e%2e')) {
-    return true
-  }
-  
-  return false
 }
 
 // IMPORTANTE: Excluir completamente recursos estáticos

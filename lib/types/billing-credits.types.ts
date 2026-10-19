@@ -1,5 +1,9 @@
 /** Regular credits exclude withdrawable cash; credits_available is the bucket sum. */
 export interface BillingCreditBalances {
+  trial_started_at?: string | null
+  trial_ends_at?: string | null
+  trial_converted_at?: string | null
+  trial_credits_available?: number
   billing_interval?: 'month' | 'year'
   paid_subscription_period_start?: string | null
   paid_subscription_period_end?: string | null
@@ -20,6 +24,10 @@ export interface BillingCreditBalances {
 }
 
 export interface BillingCreditRow {
+  trial_started_at: string | null
+  trial_ends_at: string | null
+  trial_converted_at: string | null
+  trial_credits_available: number
   billing_interval: 'month' | 'year'
   paid_subscription_period_start: string | null
   paid_subscription_period_end: string | null

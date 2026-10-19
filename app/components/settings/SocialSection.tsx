@@ -11,6 +11,7 @@ import { GlobeIcon } from "../ui/social-icons"
 import { ConfirmDialog } from "../ui/confirm-dialog"
 import { disconnectOutstandSocial } from "./disconnect-remote-accounts"
 import { countSocialAccounts, getSocialAccountLimit, canConnectSocialAccount } from "@/lib/billing-limits"
+import { effectiveBillingPlan } from "@/lib/billing/startup-trial"
 import { useSite } from "@/app/context/SiteContext"
 import { useBillingLimit } from "@/app/context/BillingLimitContext"
 import { SocialAccountCard } from "./SocialAccountCard"
@@ -33,7 +34,7 @@ export function SocialSection({ active, onSave, siteId }: SocialSectionProps) {
     showBillingLimit({
       kind: "accounts",
       current: countSocialAccounts(currentSite),
-      limit: getSocialAccountLimit(currentSite?.billing?.plan) + (currentSite?.billing?.addons_count || 0),
+      limit: getSocialAccountLimit(effectiveBillingPlan(currentSite?.billing)) + (currentSite?.billing?.addons_count || 0),
     })
   }
   const [savingCard, setSavingCard] = useState<number | null>(null)
@@ -71,7 +72,7 @@ export function SocialSection({ active, onSave, siteId }: SocialSectionProps) {
 
   // Memoized functions for better performance
   const addSocialMedia = useCallback(() => {
-    const limit = getSocialAccountLimit(currentSite?.billing?.plan) + (currentSite?.billing?.addons_count || 0)
+    const limit = getSocialAccountLimit(effectiveBillingPlan(currentSite?.billing)) + (currentSite?.billing?.addons_count || 0)
     const currentCount = countSocialAccounts(currentSite)
     if (!canConnectSocialAccount(currentSite)) {
       showBillingLimit({ kind: "accounts", current: currentCount, limit })
@@ -92,7 +93,7 @@ export function SocialSection({ active, onSave, siteId }: SocialSectionProps) {
     if (!isOAuthConnectablePlatform(social.platform)) return
 
     // Validate account limits
-    const limit = getSocialAccountLimit(currentSite?.billing?.plan) + (currentSite?.billing?.addons_count || 0)
+    const limit = getSocialAccountLimit(effectiveBillingPlan(currentSite?.billing)) + (currentSite?.billing?.addons_count || 0)
     const currentCount = countSocialAccounts(currentSite)
     
     if (!social.isActive && !canConnectSocialAccount(currentSite)) {

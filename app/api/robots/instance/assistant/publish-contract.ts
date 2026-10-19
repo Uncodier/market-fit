@@ -1,6 +1,7 @@
 import { buildPublishRouting } from "@/app/components/agents/imprenta-publish-routing"
 import type { ImprentaNodeSnapshot } from "./imprenta-contract"
 import type { createClient } from "@/lib/supabase/server"
+import { PUBLISH_VOICE_INSTRUCTIONS } from "./publish-voice-instructions"
 
 type JsonRecord = Record<string, unknown>
 function record(value: unknown): JsonRecord {
@@ -53,9 +54,13 @@ export function strengthenPublishPayload(body: JsonRecord, context: JsonRecord, 
         ...(typeof testDestination.phone === "string" ? { phone: testDestination.phone } : {}),
       } }
     : {}
+  const agentCall = routing.voiceMode === "agent_call"
+  const savedPrompt = record(node?.prompt).text
   return {
     ...body,
     ...(node ? { instance_id: node.instance_id, site_id: node.site_id } : {}),
+    ...(agentCall && node ? { message: typeof savedPrompt === "string" && savedPrompt.trim() ? savedPrompt : "Execute node" } : {}),
+    ...(agentCall ? { system_prompt: [typeof body.system_prompt === "string" ? body.system_prompt : "", PUBLISH_VOICE_INSTRUCTIONS].filter(Boolean).join("\n\n") } : {}),
     context: JSON.stringify({
       ...context, nodeType: "publish", output_type: "publish", mediaType: "publish",
       publish_destinations: destinations, publish_channels: routing.deliveryChannels,

@@ -1,0 +1,7 @@
+/** Content generation rules, not a script to send or a per-contact agent mutation. */
+export const PUBLISH_VOICE_INSTRUCTIONS = [
+  "# Voice Agent Call Publication",
+  "This starts an outbound call, including Send Test. publish.text / sendBulkMessages.message is the spoken opening, not the agent's instructions or the entire connected content.",
+  "Write a brief introduction using the configured Customer Support voice agent and business identity, not the Content Creator. Explain the public-safe purpose and ask if now is a good time. Never use a reception greeting such as 'How can I help you?' or 'Thanks for calling'. Never invent a name, business, purpose or booking confirmation; if voice agent identity is missing, resolve it from trusted configuration before preparing a scripted greeting.",
+  "objective and additional_context are private call guidance, never spoken verbatim. Preserve the operator's intent and relevant connected content there, with objective at most 500 characters and additional_context at most 4000. Keep the spoken opening at most 1000 characters (including the [TEST] prefix for Send Test), in the intended call language, without links or internal details. Verify the recipient before discussing private details.",
+].join("\n")

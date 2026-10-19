@@ -8,6 +8,7 @@ import { navigateOrAssign } from "@/lib/navigation/stale-router"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/app/components/ui/tooltip"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { useCreditPeriodActive } from "@/app/hooks/use-credit-period-active"
+import { STARTUP_TRIAL_CREDITS } from "@/lib/billing/startup-trial"
 import styles from "./credits-widget.module.css"
 
 interface CreditsWidgetProps {
@@ -21,7 +22,11 @@ export function CreditsWidget({ className, isCollapsed }: CreditsWidgetProps) {
   const { t } = useLocalization()
   
   // Get values from site context
-  const creditsAvailable = currentSite?.billing?.credits_available ?? 0
+  const isTrialPeriod = useCreditPeriodActive(currentSite?.billing?.trial_started_at, currentSite?.billing?.trial_ends_at)
+  const isTrialActive = isTrialPeriod && !currentSite?.billing?.trial_converted_at
+  const trialCredits = currentSite?.billing?.trial_credits_available ?? 0
+  // A stale aggregate must not advertise expired trial credits while awaiting a refresh.
+  const creditsAvailable = (currentSite?.billing?.credits_available ?? 0) - (isTrialActive ? 0 : trialCredits)
   const withdrawableCredits = currentSite?.billing?.account_balance ?? 0
   const usableCredits = creditsAvailable + withdrawableCredits
   const plan = currentSite?.billing?.plan || 'commission'
@@ -47,7 +52,7 @@ export function CreditsWidget({ className, isCollapsed }: CreditsWidgetProps) {
   // A forward-only allowance change does not rewrite an already-paid window.
   const recordedAllowance = currentSite?.billing?.plan_credit_allowance
   // Expired, future or undated stored quotas are not the current plan reference.
-  const totalCredits = isCurrentPeriod && typeof recordedAllowance === 'number' && Number.isFinite(recordedAllowance) &&
+  const totalCredits = isTrialActive ? STARTUP_TRIAL_CREDITS : isCurrentPeriod && typeof recordedAllowance === 'number' && Number.isFinite(recordedAllowance) &&
     recordedAllowance > 0
     ? recordedAllowance : baseLimit
   const percentage = Math.max(0, (usableCredits / totalCredits) * 100)

@@ -58,6 +58,19 @@ it("forwards saved exact account selection instead of client-injected tool routi
   expect(query.eq).toHaveBeenCalledWith("site_id", "site")
 })
 
+it("forwards the saved voice call intent and outbound greeting rules through the authenticated proxy", async () => {
+  maybeSingle.mockResolvedValueOnce({ data: { ...node, prompt: { text: "Follow up on availability" },
+    settings: { publish_destinations: ["voice-agent-call:connection:voice-2"] } }, error: null })
+  expect((await POST(request({ message: "Stale intent", system_prompt: "Connected content instructions",
+    tool_overrides: { publish: { is_test: true, connection_id: "wrong", voice_mode: "tts" } },
+  }))).status).toBe(200)
+  const body = JSON.parse((fetch as jest.Mock).mock.calls[0][1].body)
+  expect(body.message).toBe("Follow up on availability")
+  expect(body.system_prompt).toContain("outbound call")
+  expect(body.system_prompt).toContain("not the Content Creator")
+  expect(body.tool_overrides.publish).toEqual({ is_test: true, channel: "voice", connection_id: "voice-2", voice_mode: "agent_call" })
+})
+
 it.each([{ publish_destinations: [] }, { publish_destinations: ["whatsapp:connection:%"] }])("rejects invalid persisted destinations before admission/forwarding %j", async ({ publish_destinations }) => {
   maybeSingle.mockResolvedValueOnce({ data: { ...node, settings: { publish_destinations } }, error: null })
   const response = await POST(request())

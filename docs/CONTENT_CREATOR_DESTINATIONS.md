@@ -38,6 +38,30 @@ site-scoped inventory and preserve them through queues and provider delivery.
 A missing, inactive, foreign or wrong-channel connection must fail rather than
 falling back to another account.
 
+### Voice Agent Call openings and private guidance
+
+For the saved `voice-agent-call` destination, the authenticated proxy also binds
+the current saved node prompt (clearing it removes stale request intent) and adds
+outbound content-generation instructions. These apply to normal execution and
+Send Test, including legacy and exact-connection selections. TTS Voice and other
+destinations do not receive interactive-call rules.
+
+`publish.text` / `sendBulkMessages.message` becomes the spoken opening: introduce
+the configured **Customer Support voice agent**, not the Content Creator, and the
+business, briefly state the public-safe purpose, then ask if now is a good time.
+Do not use a reception greeting or invent identity/booking confirmation. Resolve
+missing voice identity from trusted configuration. Keep operator intent and
+supporting connected content in private `objective` / `additional_context`, not in
+the greeting; confirm the recipient before sharing private details.
+
+The orchestration API preserves private execution context through both audience
+queues and tracked Send Test calls. Merge fields resolve for the test lead;
+explicit guidance takes precedence and cross-tenant/customer-history background
+is not inherited into a different recipient's call. Offline regressions cover the
+proxy, payload instructions and real preparation → tracking → live context path,
+with only database/provider boundaries mocked. Prompt tests do not prove spoken
+model compliance; live acceptance still requires a separately authorized call.
+
 ## Existing saved nodes
 
 A legacy platform-only selection is displayed as the concrete account only when

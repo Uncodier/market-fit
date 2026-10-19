@@ -1,5 +1,5 @@
 import { readSiteBilling } from '@/app/context/read-site-billing'
-import { ANNUAL_BILLING_FIELDS, LEGACY_SITE_BILLING_READ_FIELDS, SITE_BILLING_READ_FIELDS } from '@/app/context/site-billing-data'
+import { ANNUAL_BILLING_FIELDS, LEGACY_SITE_BILLING_READ_FIELDS, SITE_BILLING_READ_FIELDS, TRIAL_BILLING_FIELDS, PRE_TRIAL_SITE_BILLING_READ_FIELDS, hydrateSiteBilling } from '@/app/context/site-billing-data'
 
 it.each(ANNUAL_BILLING_FIELDS)('retries only the known pending annual column %s', async field => {
   const row = { plan: 'foundry', credits_available: 12 }
@@ -7,6 +7,29 @@ it.each(ANNUAL_BILLING_FIELDS)('retries only the known pending annual column %s'
     .mockResolvedValueOnce({ data: row, error: null })
   expect(await readSiteBilling(read)).toEqual({ data: row, error: null })
   expect(read.mock.calls.map(call => call[0])).toEqual([SITE_BILLING_READ_FIELDS, LEGACY_SITE_BILLING_READ_FIELDS])
+})
+
+it.each(TRIAL_BILLING_FIELDS)('missing trial column %s preserves base billing without granting a trial', async field => {
+  const row = { plan: 'commission' as const, credits_available: 1 }
+  const read = jest.fn().mockResolvedValueOnce({ data: null, error: { code: '42703', message: `column billing.${field} does not exist` } })
+    .mockResolvedValueOnce({ data: row, error: null })
+  expect(await readSiteBilling(read)).toEqual({ data: row, error: null })
+  expect(read.mock.calls.map(call => call[0])).toEqual([SITE_BILLING_READ_FIELDS, PRE_TRIAL_SITE_BILLING_READ_FIELDS])
+  expect(hydrateSiteBilling(row).trial_started_at).toBeUndefined()
+})
+
+it('handles both pending trial and annual schemas with bounded fallback reads', async () => {
+  const read = jest.fn().mockResolvedValueOnce({ data: null, error: { code: '42703', message: 'column billing.trial_started_at does not exist' } })
+    .mockResolvedValueOnce({ data: null, error: { code: '42703', message: 'column billing.billing_interval does not exist' } })
+    .mockResolvedValueOnce({ data: { plan: 'commission' }, error: null })
+  expect(await readSiteBilling(read)).toEqual({ data: { plan: 'commission' }, error: null })
+  expect(read.mock.calls.map(call => call[0])).toEqual([SITE_BILLING_READ_FIELDS, PRE_TRIAL_SITE_BILLING_READ_FIELDS, LEGACY_SITE_BILLING_READ_FIELDS])
+})
+
+it('hydrates trial fields without converting the paid base plan', () => {
+  expect(hydrateSiteBilling({ plan: 'commission', trial_started_at: '2026-10-19T12:00:00Z',
+    trial_ends_at: '2026-11-03T12:00:00Z', trial_converted_at: null, trial_credits_available: 50 }))
+    .toMatchObject({ plan: 'commission', trial_started_at: '2026-10-19T12:00:00Z', trial_credits_available: 50 })
 })
 
 it('accepts the PostgREST missing schema-cache column form', async () => {

@@ -47,6 +47,40 @@ describe("publish destination execution contract", () => {
       .toEqual({ email: "test@example.com", phone: "+15550000002" })
   })
 
+  it.each(["voice-agent-call", "voice-agent-call:connection:voice-2"])("requires outbound greeting generation for %s, including test sends", (destination) => {
+    const saved = { ...node, prompt: { text: "Ask about availability; do not claim a booking exists." },
+      settings: { publish_destinations: [destination] } }
+    const result = strengthenImprentaAssistantPayload({ instance_node_id: node.id,
+      message: "Stale request", system_prompt: "Use the connected content.",
+      context: JSON.stringify({ is_test: true }), tool_overrides: { publish: { is_test: true } },
+    }, saved)
+    expect(result.message).toBe(saved.prompt.text)
+    expect(result.system_prompt).toContain("Use the connected content.")
+    expect(result.system_prompt).toContain("outbound call")
+    expect(result.system_prompt).toContain("configured Customer Support voice agent")
+    expect(result.system_prompt).toContain("not the Content Creator")
+    expect(result.system_prompt).toContain("ask if now is a good time")
+    expect(result.system_prompt).toContain("Never use a reception greeting")
+    expect(result.system_prompt).toContain("objective and additional_context are private")
+    expect(result.system_prompt).toContain("including Send Test")
+    const overrides = result.tool_overrides as Record<string, Record<string, unknown>>
+    expect(overrides.publish).toMatchObject({ is_test: true, voice_mode: "agent_call" })
+    expect(overrides.publish).not.toHaveProperty("text")
+    expect(overrides.sendBulkMessages).not.toHaveProperty("message")
+  })
+
+  it("clearing a saved voice publish prompt removes stale execution intent", () => {
+    const result = strengthenImprentaAssistantPayload({ instance_node_id: node.id, message: "Old private goal" },
+      { ...node, prompt: { text: " " }, settings: { publish_destinations: ["voice-agent-call:connection:voice-2"] } })
+    expect(result.message).toBe("Execute node")
+  })
+
+  it.each(["voice:connection:voice-2", "whatsapp:connection:wa-2", "blog"])("does not impose interactive-call rules on %s", (destination) => {
+    const result = strengthenImprentaAssistantPayload({ instance_node_id: node.id, system_prompt: "Existing instructions" },
+      { ...node, settings: { publish_destinations: [destination] } })
+    expect(result.system_prompt).toBe("Existing instructions")
+  })
+
   it.each([[], null, ["whatsapp:connection:%"], ["whatsapp:social:account"], [123]])("rejects invalid saved destinations %j before execution", (publish_destinations) => {
     expect(() => strengthenImprentaAssistantPayload({ instance_node_id: node.id }, { ...node, settings: { publish_destinations } }))
       .toThrow(PublishContractValidationError)

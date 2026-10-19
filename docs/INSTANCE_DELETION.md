@@ -61,11 +61,80 @@ retries, direct deletion, deployment, or database changes.
 A locally initiated, read-only preflight against Makinari reproduced SQLSTATE
 `57014` (statement timeout). The API's forward migration
 `20261005220000_bound_empty_instance_deletion_preflight.sql` avoids expanding
-unrelated log tags when the authorized requirement set is empty. It is verified
-in isolated PostgreSQL, not applied remotely. This is a database-side correction;
+unrelated log tags when the authorized requirement set is empty. It was verified
+in isolated PostgreSQL without remote application in that earlier change; the
+2026-10-19 inspection below subsequently confirmed it installed. This is a database-side correction;
 deploying the proxy diagnostics alone does not install it.
 
+The 2026-10-19 read-only production check confirmed that the empty-scope
+correction was installed, but a nonempty requirement scope still timed out in
+the shared-history block. Its tag lookup planned a sequential scan across
+approximately 563,000 logs. The API repository's new forward corrections
+`20261019230000` through `20261019230004` add four partial expression indexes
+and replace only that lookup with indexed `UNION ALL` branches. They preserve
+all ownership/execution guards and require valid compatible indexes before
+installation. They are not applied remotely by this code change.
+
+The four concurrent index files must each run outside a transaction as a
+standalone statement; the final function correction runs transactionally.
+It refreshes log statistics with `ANALYZE` before installing the lookup, so the
+new expression indexes can be selected immediately rather than awaiting autovacuum.
+See the API repository's `docs/INSTANCE_REQUIREMENT_DELETION.md` for prerequisite,
+invalid-build recovery and verification details. Explicit Makinari target
+approval is required. A web deployment alone cannot correct this database plan.
+
 ## Individual requirement deletion and retirement audit
+
+### Paused-plan step reconciliation before deletion
+
+Pausing remains resumable and is not proof that a persisted active step has
+stopped. The deletion RPC still rejects active step statuses, including a step
+left `in_progress` inside a `paused` plan. Never bypass that check or mark work
+completed merely to delete its parent.
+
+`20261020000000_cancel_quiescent_instance_plan.sql` adds an explicit manager-only
+`cancel_quiescent_instance_plan(plan_id, instance_id)` operation. It locks the
+authorized requirement/instance/plan scope, requires a `paused` or `stopped`
+instance without provider/sandbox, active workflow/node/action, scheduling,
+cron, latest active status, diagnostic or harness lease signals, then cancels
+only unfinished steps and the selected plan in one transaction. Persisted
+expired lease fields are not inferred to be safe. Sibling plan sandbox evidence
+also blocks reconciliation. Completed/failed/skipped history and step payloads
+remain unchanged. No requirement, instance or provider is stopped by this RPC.
+
+Manager-cancelled plans retain their cancellation marker and immutable step
+evidence; late writers cannot resume them or overwrite the preserved array.
+An already backend-cancelled quiescent plan can be explicitly adopted into that
+protected state. Old backend cancellation writers retain their existing contract
+until a manager explicitly adopts their plan. No existing rows are backfilled.
+
+The browser's **Cancel plan** button targets the displayed plan and posts to
+`/api/robots/plan/cancel`. The route independently authenticates the real user,
+derives the site from the RLS-visible plan, checks owner/admin and update
+capability, invokes the scoped RPC and requires a matching receipt. There are
+no direct status-only fallback writes or automatic retries. Running execution
+must first be stopped and reconciled through its owning lifecycle; this new
+operation deliberately rejects it rather than claiming to stop remote work.
+
+Rollout requires explicit approval to apply the complete migration in **Makinari**,
+then deployment of the **market-fit web** change (including its API route).
+Applying the migration alone does not update the existing Cancel plan button.
+No API orchestration deployment is required for this web-owned operation.
+After both are installed, refresh the Robots page, explicitly cancel the paused
+plan, verify its receipt, refresh the instance list, then attempt deletion once.
+Other independent deletion blockers may remain. Do not automatically delete an
+instance or rewrite its production step during rollout/verification.
+
+Focused local checks:
+
+```sh
+npm test -- --runInBand __tests__/api/robot-plan-cancel.test.ts __tests__/components/simple-messages-view/plan-cancellation.test.tsx __tests__/requirements/plan-cancellation-postgres.test.ts
+```
+
+The PostgreSQL suite uses only a fresh socket-only cluster and tests atomic
+updates, denied/cross-site actors, active/expired persisted signals, malformed
+steps, rollback, idempotency, immutable evidence and concurrent instance admission.
+It does not establish that a historical production worker has actually stopped.
 
 The Requirements Server Action authenticates the real user, derives the site from
 the RLS-visible requirement, and requires owner/admin plus delete capability. It

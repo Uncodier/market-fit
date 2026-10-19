@@ -1,6 +1,15 @@
 import type { StripeSubscriptionInvoiceInput, StripeSubscriptionInvoiceResult } from "@/app/api/stripe/webhook/subscription-invoice-settlement"
+import type { StartupTrial, StartupTrialActivation } from "@/lib/billing/startup-trial"
 
 export interface BillingDatabaseFunctions {
+  get_site_startup_trial: {
+    Args: { p_site_id: string }
+    Returns: StartupTrial
+  }
+  start_site_startup_trial: {
+    Args: { p_site_id: string; p_actor_id: string }
+    Returns: StartupTrialActivation
+  }
   claim_site_subscription_checkout: {
     Args: { p_site_id: string }
     Returns: { state: 'claimed' | 'busy'; token: string | null }
