@@ -260,4 +260,47 @@ describe("instant POS order selection", () => {
     expect(getPosOrder).not.toHaveBeenCalled();
     expect(result.current.cart).toEqual([]);
   });
+
+  it("waits for catalog hydration before restoring a legacy order from the cache", async () => {
+    jest.mocked(loadCartSession).mockResolvedValue({ cart: [], activeOrderId: "a" } as never);
+    const { result, rerender } = renderHook(usePosCart, {
+      initialProps: { ...args, catalogHydrated: false, catalogItems: [] as CatalogItem[], pendingOrders: [] as unknown[] },
+    });
+    await waitFor(() => expect(result.current.sessionReady).toBe(true));
+    expect(result.current.activeOrderId).toBe("a");
+    expect(result.current.cart).toEqual([]);
+    expect(getPosOrder).not.toHaveBeenCalled();
+    expect(toast.error).not.toHaveBeenCalled();
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 220)); });
+    expect(saveCartSession).not.toHaveBeenCalled();
+
+    rerender({ ...args, catalogHydrated: true, pendingOrders: [order("a")] });
+    await waitFor(() => expect(result.current.cart[0]?.lineKey).toBe("a-key"));
+    expect(getPosOrder).not.toHaveBeenCalled();
+    expect(toast.error).not.toHaveBeenCalled();
+  });
+
+  it("withholds a saved cart until its inventory data is ready without suppressing real shortages", async () => {
+    const stockedItem = { ...item, availability_mode: "inventory" } as CatalogItem;
+    jest.mocked(loadCartSession).mockResolvedValue({ activeOrderId: "new",
+      cart: [{ ...stockedItem, cartQty: 2, cartPrice: 10 }], leadValue: null,
+    } as never);
+    const { result, rerender } = renderHook(usePosCart, {
+      initialProps: { ...args, catalogHydrated: false, catalogItems: [] as CatalogItem[],
+        inventorySnapshot: null as Parameters<typeof usePosCart>[0]["inventorySnapshot"] },
+    });
+    await waitFor(() => expect(result.current.sessionReady).toBe(true));
+    expect(result.current.cart).toEqual([]);
+
+    rerender({ ...args, catalogHydrated: true, catalogItems: [stockedItem],
+      inventorySnapshot: { levels: [{ catalog_item_id: "sku", location_id: "store", quantity: 3 }], policy: "block" },
+    });
+    expect(result.current.cart).toHaveLength(1);
+    expect(result.current.cart[0].inventoryMessage).toBeUndefined();
+
+    rerender({ ...args, catalogHydrated: true, catalogItems: [stockedItem],
+      inventorySnapshot: { levels: [], policy: "block" },
+    });
+    expect(result.current.cart[0].inventoryMessage).toBe("This item is sold out.");
+  });
 });

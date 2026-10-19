@@ -9,6 +9,7 @@ import {
 } from "./checkout-types"
 import { QuotationForCheckout } from "@/app/quotations/quote-checkout"
 import { resolveCheckoutPaymentState } from "./checkout-payment-state"
+import { newRegisterReceipts } from "@/app/pos/register/receipt-retries"
 
 type PersistCheckoutRecordsParams = {
   supabase: CheckoutSupabaseClient
@@ -34,6 +35,8 @@ type PersistCheckoutRecordsParams = {
   fulfillment: CheckoutCartParams["fulfillment"]
   shippingAddress?: any
   payments?: CheckoutCartParams["payments"]
+  registerSessionId?: string
+  registerActorId?: string
   paymentMethod?: string
   intent?: CheckoutCartParams["intent"]
   notes?: string
@@ -178,6 +181,11 @@ export async function persistCheckoutRecords(
     change: payment.change || 0,
     date: new Date().toISOString(),
     status: "completed",
+    ...(params.source === "pos" && params.registerSessionId ? {
+      register_session_id: params.registerSessionId,
+      payment_id: payment.paymentId,
+      recorded_by: params.registerActorId,
+    } : {}),
   }))
   const orderItems = serializedItems(params.processedLines, params.intent)
 
@@ -204,7 +212,7 @@ export async function persistCheckoutRecords(
     paymentState = resolveCheckoutPaymentState(
       orderTotal,
       existingPaymentRows,
-      paymentRows,
+      newRegisterReceipts(existingPaymentRows, paymentRows),
       {
         amount: existingSale?.amount,
         amountDue: existingSale?.amount_due,

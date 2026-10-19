@@ -52,6 +52,7 @@ type UsePosCartArgs = {
   siteTimezone?: string | null;
   siteCurrency?: string | null;
   catalogItems: CatalogItem[];
+  catalogHydrated?: boolean;
   pendingOrders?: Parameters<typeof posSessionFromOrder>[0][];
   inventorySnapshot?: PosInventorySnapshot | null;
   locations: any[];
@@ -68,6 +69,7 @@ export function usePosCart({
   shopSettings,
   siteTimezone = null,
   catalogItems,
+  catalogHydrated = true,
   pendingOrders = [],
   inventorySnapshot,
   locations,
@@ -175,7 +177,7 @@ export function usePosCart({
     originLocationId, priceListId, promoCode, activeOrderId, buyerUserId,
     sellerUserId, sellerName, orderNotes, shippingAddress, expectedOrderVersion, orderCurrency]);
   const sessionReady = usePosCartSession({
-    siteId, snapshot: sessionSnapshot, loadingOrder, sequence: orderSelectionSequence,
+    siteId, snapshot: sessionSnapshot, loadingOrder: loadingOrder || !catalogHydrated, sequence: orderSelectionSequence,
     onRestore: restoreSession,
   });
   useEffect(() => {
@@ -357,14 +359,14 @@ export function usePosCart({
     clearOrderFields, resetToNewOrder, setActiveOrderId, setLoadingOrder,
   });
   useEffect(() => {
-    if (!sessionReady || loadingOrder || activeOrderId === "new" || cart.length ||
+    if (!catalogHydrated || !sessionReady || loadingOrder || activeOrderId === "new" || cart.length ||
       restoredOrderId.current !== activeOrderId) return;
     restoredOrderId.current = null;
     void handleOrderSelect(activeOrderId);
-  }, [siteId, activeOrderId, cart.length, sessionReady, loadingOrder, handleOrderSelect]);
+  }, [siteId, activeOrderId, cart.length, catalogHydrated, sessionReady, loadingOrder, handleOrderSelect]);
 
   return {
-    cart: sessionReady ? inventoryCart.displayCart : [],
+    cart: sessionReady && catalogHydrated ? inventoryCart.displayCart : [],
     setCart,
     existingPaymentTotal,
     expectedOrderVersion,

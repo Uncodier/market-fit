@@ -21,7 +21,6 @@ import type { RelationSelectValue } from "@/app/components/ui/relation-select";
 import { EmptyCard } from "@/app/components/ui/empty-card";
 import {
   X,
-  CreditCard,
   ShoppingCart,
   Tag,
   Store,
@@ -35,8 +34,11 @@ import { PosOrderSelect } from "./PosOrderSelect";
 import { PosOrderNotesField } from "./PosOrderNotesField";
 import { PosAppliedPromoCard } from "./PosAppliedPromoCard";
 import { PosCartLines } from "./PosCartLines";
+import { PosCartPanelSkeleton, PosOrderLinesSkeleton } from "./PosOrderSkeleton";
+import { PosCartSummary } from "./PosCartSummary";
 import { PosReceiptActions } from "./PosReceiptActions";
 import { PosShippingAddressFields } from "./PosShippingAddressFields";
+import { CashRegisterOptions } from "../register/CashRegisterOptions";
 import { cn } from "@/lib/utils";
 import type { LocalPromoMatch } from "@/app/pos/local/resolve-promo-local";
 import type { PosShippingAddress } from "@/app/pos/shipping-address";
@@ -72,6 +74,7 @@ interface CartPanelProps {
   handleCheckout: () => void;
   checkoutLoading: boolean;
   orderPreparing?: boolean;
+  dataLoading?: boolean;
   leads: any[];
   locations: any[];
   isMobile?: boolean;
@@ -126,6 +129,7 @@ export function CartPanel({
   handleCheckout,
   checkoutLoading,
   orderPreparing = false,
+  dataLoading = false,
   leads,
   locations,
   isMobile,
@@ -149,6 +153,8 @@ export function CartPanel({
 
   const getTrans = (key: string, fallback: string) =>
     t(key) === key ? fallback : t(key);
+
+  if (dataLoading) return <PosCartPanelSkeleton isMobile={isMobile} closeCart={closeCart} />;
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
@@ -182,7 +188,7 @@ export function CartPanel({
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 space-y-4 min-h-0">
-        {cart.length === 0 ? (
+        {orderPreparing ? <PosOrderLinesSkeleton /> : cart.length === 0 ? (
           <div className="h-full flex items-center justify-center">
             <EmptyCard
               variant="fancy"
@@ -228,6 +234,7 @@ export function CartPanel({
           </TabsList>
 
           <TabsContent value="options" className="space-y-3 mt-0">
+            <CashRegisterOptions siteId={siteId} locationId={originLocationId} onLocationChange={setOriginLocationId} locations={locations} currency={siteCurrency} />
             <PosCustomerSelect
               leads={leads}
               leadValue={leadValue}
@@ -418,59 +425,21 @@ export function CartPanel({
           </TabsContent>
         </Tabs>
 
-        <div className="pt-4 border-t border-border space-y-2">
-          <div className="flex justify-between items-center">
-            <span className="text-xs text-muted-foreground">
-              {t("pos.cart.subtotal") || "Subtotal"}
-            </span>
-            <span className="text-sm font-medium text-muted-foreground">
-              {money(subtotal)}
-            </span>
-          </div>
-          {promoDiscount > 0 && (
-            <div className="flex justify-between items-center">
-              <span className="text-xs text-muted-foreground">
-                {t("pos.cart.discount") || "Discount"}
-              </span>
-              <span className="text-sm font-medium text-green-600 dark:text-green-400">
-                −{money(promoDiscount)}
-              </span>
-            </div>
-          )}
-          {taxTotal > 0 && (
-            <div className="flex justify-between items-center">
-              <span className="text-xs text-muted-foreground">
-                {t("pos.cart.tax") || "Tax"}
-              </span>
-              <span className="text-sm font-medium text-muted-foreground">
-                {money(taxTotal)}
-              </span>
-            </div>
-          )}
-          {fulfillment === 'ship' && (
-            <div className="flex justify-between items-center">
-              <span className="text-xs text-muted-foreground">
-                {t("pos.cart.shipping") || "Shipping"}
-              </span>
-              <span className={cn("text-sm font-medium", shippingTotal === 0 ? "text-green-600 dark:text-green-400" : "text-muted-foreground")}>
-                {shippingTotal === 0 ? (t("pos.cart.free") || "Free") : money(shippingTotal)}
-              </span>
-            </div>
-          )}
-          <div className="flex mt-4">
-            <Button
-              className="flex-1 h-12 text-lg"
-              disabled={(cart.length === 0 && activeOrderId === "new") || checkoutLoading}
-              onClick={handleCheckout}
-            >
-              <CreditCard className="h-5 w-5 mr-2" />
-              {checkoutLoading
-                ? t("pos.cart.processing") || "Processing..."
-                : orderPreparing ? getTrans("pos.cart.charge", "Charge")
-                : `${t("pos.cart.charge") || "Charge"} ${money(total)}`}
-            </Button>
-          </div>
-        </div>
+        <PosCartSummary
+          subtotal={subtotal}
+          promoDiscount={promoDiscount}
+          taxTotal={taxTotal}
+          shippingTotal={shippingTotal}
+          total={total}
+          fulfillment={fulfillment}
+          cartLength={cart.length}
+          activeOrderId={activeOrderId}
+          checkoutLoading={checkoutLoading}
+          orderPreparing={orderPreparing}
+          handleCheckout={handleCheckout}
+          money={money}
+          t={t}
+        />
       </div>
     </div>
   );

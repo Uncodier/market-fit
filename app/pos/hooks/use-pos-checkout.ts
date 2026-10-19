@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useLayoutEffect, useRef, useState } from "react";
+import { useCheckoutAttempt } from "./use-checkout-attempt";
 import { v4 as uuidv4 } from "uuid";
 import { toast } from "sonner";
 import type { RelationSelectValue } from "@/app/components/ui/relation-select";
@@ -10,9 +11,9 @@ import type { PosCartItem } from "@/app/pos/components/CartPanel";
 import { getPosCheckoutGate } from "@/app/pos/checkout-gates";
 import type { CheckoutFulfillmentMethod } from "@/app/commerce/delivery-options";
 import {
-  enqueueCheckout,
   enqueueCreateLead,
 } from "@/app/pos/local/outbox";
+import { enqueueRegisteredCheckout } from "@/app/pos/register/prepare-payment";
 import { drainPosOutbox, refreshPosSyncCounts } from "@/app/pos/local/sync-engine";
 import { getPosDb } from "@/app/pos/local/db";
 import { useSite } from "@/app/context/SiteContext";
@@ -99,6 +100,7 @@ export function usePosCheckout({
 }: UsePosCheckoutArgs) {
   const { currentSite } = useSite();
   const [checkoutLoading, setCheckoutLoading] = useState(false);
+  const checkoutAttempt = useCheckoutAttempt();
   const [paymentOrder, setPaymentOrder] = useState<{ siteId?: string; id: string } | null>(null);
   const isPaymentDialogOpen = paymentOrder?.siteId === siteId && paymentOrder?.id === activeOrderId;
   const setIsPaymentDialogOpen = (open: boolean) => setPaymentOrder(open ? { siteId, id: activeOrderId } : null);
@@ -191,11 +193,11 @@ export function usePosCheckout({
   }) => {
     if (!siteId || !userId) return;
 
-    const clientMutationId = uuidv4();
+    let clientMutationId = checkoutAttempt.id([siteId, activeOrderId, cart, params]);
     const existingIsLocal =
       activeOrderId !== "new" && activeOrderId.startsWith("local_");
 
-    await enqueueCheckout(siteId, {
+    const queuedCheckout = await enqueueRegisteredCheckout(siteId, {
       siteId,
       userId,
       sellerUserId: sellerUserId || undefined,
@@ -232,6 +234,9 @@ export function usePosCheckout({
       notes: orderNotes.trim(),
       clientMutationId,
     });
+    clientMutationId = queuedCheckout.clientMutationId;
+    if (selection.current.siteId !== siteId || selection.current.activeOrderId !== activeOrderId) return;
+    checkoutAttempt.clear();
     refreshPosSyncCounts(siteId);
 
     const totalPaid = params.payments.reduce((sum, p) => sum + p.amount, 0);

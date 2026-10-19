@@ -9,7 +9,7 @@ import { OverviewDataBoundary, PerformanceDataBoundary } from "@/app/dashboard/R
 import { OverviewCurrencyScope } from "@/app/dashboard/OverviewCurrencyScope"
 import { ReportDataProvider, type ReportDataGroups } from "@/app/dashboard/ReportDataContext"
 import { ReportSWRScope } from "@/app/dashboard/ReportSWRScope"
-import { reportMetricKeys } from "@/lib/dashboard/report-groups"
+import { reportMetricKeys, type ReportBatch } from "@/lib/dashboard/report-groups"
 import { CohortReport } from "@/app/components/dashboard/cohort-report"
 import { SegmentDonut } from "@/app/components/dashboard/segment-donut"
 
@@ -33,7 +33,7 @@ function deferred() {
   const promise = new Promise(value => { resolve = value })
   return { promise, resolve }
 }
-const success = (data = performanceData) => ({ ok: true, json: async () => data })
+const success = (data: ReportBatch = performanceData) => ({ ok: true, json: async () => data })
 const failure = { ok: false, status: 500 }
 
 function Scope({ children, groups = { performanceGroup: "outcomes" } }: { children: React.ReactNode; groups?: ReportDataGroups }) {
@@ -228,6 +228,52 @@ it("reveals currency choices only after the current failure settles and hides th
   await act(async () => { selected.resolve(success(Object.fromEntries(reportMetricKeys("overview", "summary")!.map(key => [key, { actual: 7 }])))) })
   expect(await screen.findByText("Report figures")).toBeInTheDocument()
   await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2))
+})
+
+it("requests the site default immediately and isolates manual currency and site changes", async () => {
+  const initial = deferred()
+  const selected = deferred()
+  const nextSite = deferred()
+  fetchMock.mockReturnValueOnce(initial.promise).mockReturnValueOnce(selected.promise).mockReturnValueOnce(nextSite.promise)
+  jest.mocked(useSite).mockReturnValue({ currentSite: { id: "site-a", settings: { currency: "MXN" } }, isLoading: false } as ReturnType<typeof useSite>)
+  const page = () => <Scope groups={{ overviewGroup: "summary" }}>
+    <OverviewCurrencyScope enabled {...filters}>
+      <OverviewDataBoundary {...filters}><div>Report figures</div></OverviewDataBoundary>
+    </OverviewCurrencyScope>
+  </Scope>
+  const { rerender } = render(page())
+  expectPending()
+  await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
+  const firstParams = new URL(fetchMock.mock.calls[0][0], "http://localhost").searchParams
+  expect(firstParams.get("currency")).toBe("MXN")
+  expect(firstParams.get("siteId")).toBe("site-a")
+  const overviewData = (currency: string) => ({
+    ...Object.fromEntries(reportMetricKeys("overview", "summary")!.map(key => [key, { actual: 7 }])),
+    revenue: { currency, availableCurrencies: ["MXN", "USD", "EUR"] },
+  })
+  await act(async () => { initial.resolve(success(overviewData("MXN"))) })
+  expect(await screen.findByText("Report figures")).toBeInTheDocument()
+  expect(screen.getByRole("combobox")).toHaveValue("MXN")
+  expect(screen.queryByText(/Select a reporting currency above/)).not.toBeInTheDocument()
+
+  fireEvent.change(screen.getByRole("combobox"), { target: { value: "USD" } })
+  expectPending()
+  await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2))
+  expect(new URL(fetchMock.mock.calls[1][0], "http://localhost").searchParams.get("currency")).toBe("USD")
+  await act(async () => { selected.resolve(success(overviewData("USD"))) })
+  expect(await screen.findByText("Report figures")).toBeInTheDocument()
+  expect(screen.getByRole("combobox")).toHaveValue("USD")
+
+  jest.mocked(useSite).mockReturnValue({ currentSite: { id: "site-b", settings: { currency: "EUR" } }, isLoading: false } as ReturnType<typeof useSite>)
+  rerender(page())
+  expectPending()
+  await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3))
+  const nextParams = new URL(fetchMock.mock.calls[2][0], "http://localhost").searchParams
+  expect(nextParams.get("currency")).toBe("EUR")
+  expect(nextParams.get("siteId")).toBe("site-b")
+  await act(async () => { nextSite.resolve(success(overviewData("EUR"))) })
+  expect(await screen.findByText("Report figures")).toBeInTheDocument()
+  expect(screen.getByRole("combobox")).toHaveValue("EUR")
 })
 
 it.each(["cohort", "distribution"])("%s renders a skeleton during site readiness before its settled failure", async report => {

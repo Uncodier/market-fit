@@ -5,6 +5,7 @@ import { format } from "date-fns"
 import { useSite } from "@/app/context/SiteContext"
 import { useDashboardOverview } from "@/app/hooks/use-dashboard-batches"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
+import { salesCurrency } from "@/lib/sales/report-format"
 import { ReportDataProvider, useReportDataContext } from "./ReportDataContext"
 
 type Filters = { startDate: Date; endDate: Date; segmentId: string }
@@ -18,13 +19,15 @@ function CurrencySelector({ filters, currency, onChange }: {
   if (isLoading || isValidating) return null
   const errorCurrencies = (error as Error & { availableCurrencies?: string[] } | undefined)?.availableCurrencies
   const available = data?.revenue?.availableCurrencies ?? errorCurrencies
-  const currencies = Array.isArray(available) ? available.filter((value): value is string => typeof value === "string") : []
+  const availableCurrencies = Array.isArray(available) ? available.filter((value): value is string => typeof value === "string") : []
   const reportedCurrency = typeof data?.revenue?.currency === "string" ? data.revenue.currency : undefined
+  const selectedCurrency = currency ?? reportedCurrency
+  const currencies = [...new Set([...(selectedCurrency ? [selectedCurrency] : []), ...availableCurrencies])].sort()
   if (currencies.length < 2) return null
   return (
     <div className="flex flex-wrap items-center gap-3 rounded-lg border bg-background p-4">
       <label htmlFor="overview-currency" className="text-sm font-medium">Reporting currency</label>
-      <Select value={currency ?? reportedCurrency ?? ""} onValueChange={onChange}>
+      <Select value={selectedCurrency ?? ""} onValueChange={onChange}>
         <SelectTrigger id="overview-currency" className="w-48"><SelectValue placeholder="Select a currency" /></SelectTrigger>
         <SelectContent>
           {currencies.map(value => <SelectItem key={value} value={value}>{value === "UNSPECIFIED" ? "Unspecified currency" : value}</SelectItem>)}
@@ -40,7 +43,8 @@ export function OverviewCurrencyScope({ enabled, children, ...filters }: Filters
   const groups = useReportDataContext()
   const scope = `${currentSite?.id}:${filters.segmentId}:${format(filters.startDate, "yyyy-MM-dd")}:${format(filters.endDate, "yyyy-MM-dd")}`
   const [selection, setSelection] = useState<{ scope: string; currency: string }>()
-  const currency = selection?.scope === scope ? selection.currency : undefined
+  const siteCurrency = salesCurrency(currentSite?.settings?.currency)
+  const currency = selection?.scope === scope ? selection.currency : siteCurrency === "UNSPECIFIED" ? undefined : siteCurrency
   if (!enabled) return <>{children}</>
   return (
     <ReportDataProvider value={{ ...groups, currency }}>

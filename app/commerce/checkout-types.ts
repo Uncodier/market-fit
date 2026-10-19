@@ -37,11 +37,14 @@ export interface CheckoutCartParams {
   customerName?: string
   customerEmail?: string
   payments?: {
+    /** Stable register receipt identity, retained by the POS outbox on retries. */
+    paymentId?: string
     method: string
     amount: number
     tendered?: number
     change?: number
   }[]
+  registerSessionId?: string
   existingOrderId?: string
   /** Original POS snapshot, checked again when a queued checkout reaches the server. */
   expectedOrderVersion?: string

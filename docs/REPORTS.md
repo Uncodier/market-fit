@@ -134,6 +134,9 @@ querying it or silently replacing dates.
 
 ## Request behavior
 
+- Overview Summary starts with the valid site currency as a filter, not a conversion.
+  Manual choices override it within the current site/date/segment scope. Missing or
+  invalid defaults retain automatic single-currency reports and explicit mixed-currency selection.
 - Performance and overview batch APIs accept a validated optional `group`.
   Omitting it preserves the full-batch API contract. Operations includes the
   activity time series as well as its four KPI metrics; duplicate keys are removed

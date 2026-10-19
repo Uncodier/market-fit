@@ -3,11 +3,13 @@ import { usePosCheckout } from "@/app/pos/hooks/use-pos-checkout";
 import { getPosOrder } from "@/app/pos/actions/get-order";
 import { posOrderVersion } from "@/app/pos/order-version";
 import { enqueueCheckout } from "@/app/pos/local/outbox";
+import { enqueueRegisteredCheckout } from "@/app/pos/register/prepare-payment";
 import { toast } from "sonner";
 
 jest.mock("@/app/pos/actions/get-order", () => ({ getPosOrder: jest.fn() }));
 jest.mock("@/app/context/SiteContext", () => ({ useSite: () => ({ currentSite: null }) }));
 jest.mock("@/app/pos/local/outbox", () => ({ enqueueCheckout: jest.fn(), enqueueCreateLead: jest.fn() }));
+jest.mock("@/app/pos/register/prepare-payment", () => ({ enqueueRegisteredCheckout: jest.fn() }));
 jest.mock("@/app/pos/local/sync-engine", () => ({ drainPosOutbox: jest.fn(), refreshPosSyncCounts: jest.fn() }));
 jest.mock("@/app/pos/local/db", () => ({ getPosDb: () => ({ pendingOrders: { delete: jest.fn(), put: jest.fn() } }) }));
 jest.mock("@/lib/printer", () => ({ normalizePrintersSettings: jest.fn(), ticketBrandFromSite: jest.fn() }));
@@ -34,6 +36,10 @@ const payments = [{ method: "cash", amount: 100, tendered: 100, change: 0 }];
 describe("POS payment preparation", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    jest.mocked(enqueueRegisteredCheckout).mockImplementation(async (siteId, data) => {
+      await enqueueCheckout(siteId, data);
+      return { clientMutationId: data.clientMutationId } as never;
+    });
     Object.defineProperty(navigator, "onLine", { configurable: true, value: false });
     jest.mocked(getPosOrder).mockResolvedValue({ data: snapshot } as never);
   });

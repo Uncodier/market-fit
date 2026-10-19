@@ -4,6 +4,7 @@ import { randomUUID } from "node:crypto"
 import { createClient, createServiceClient } from "@/lib/supabase/server"
 import { findPosClientMutation } from "@/app/pos/actions/idempotency"
 import { assertPosOrderCurrent } from "@/app/pos/assert-order-current"
+import { assertRegisterCheckout } from "@/app/pos/register/checkout-guard"
 import {
   assertQuotationCheckoutable,
   claimQuotationCheckout,
@@ -67,6 +68,7 @@ export async function checkoutCart(params: CheckoutCartParams) {
     checkoutAdminClient = supabaseAdmin
     const authenticatedUserId =
       (await supabase.auth.getUser()).data.user?.id || null
+    await assertRegisterCheckout(supabase, params, authenticatedUserId)
     if (params.source === "pos" && params.existingOrderId && params.expectedOrderVersion !== undefined) {
       await assertPosOrderCurrent(params.siteId, params.existingOrderId, params.expectedOrderVersion)
     }
@@ -287,6 +289,8 @@ export async function checkoutCart(params: CheckoutCartParams) {
       fulfillment: params.fulfillment,
       shippingAddress: params.shippingAddress,
       payments: params.payments,
+      registerSessionId: params.source === "pos" ? params.registerSessionId : undefined,
+      registerActorId: authenticatedUserId || undefined,
       paymentMethod: params.paymentMethod,
       intent: params.intent,
       notes: params.notes,

@@ -33,6 +33,7 @@ Use the guides below before relying on older implementation notes.
 - [Accounting integrity and rollout](ACCOUNTING.md)
 - [Financial due dates and subscription terms](FINANCIAL_DUE_DATES.md)
 - [POS inventory availability and backorder markers](POS_INVENTORY.md)
+- [POS cash register shifts and closing history](POS_REGISTER.md)
 - [Catalog category archival](CATALOG_CATEGORY_ARCHIVAL.md)
 - [Site archival](SITE_ARCHIVAL.md)
 - [Per-site license limits and upgrade dialogs](SITE_LICENSE_LIMITS.md)
