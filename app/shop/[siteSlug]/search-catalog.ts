@@ -57,5 +57,6 @@ export async function loadShopSearch(options: z.input<typeof optionsSchema>, enr
   })
   return { data, error: undefined as string | undefined, count: ranked.length, totalPages: Math.ceil(ranked.length / pageSize), page, pageSize, offset,
     count_kind: result.count_kind, has_more: offset + pageSize < ranked.length,
+    candidate_window_truncated: result.candidate_window_truncated === true,
     mode: result.mode, degraded: result.degraded, search_id: result.search_id }
 }

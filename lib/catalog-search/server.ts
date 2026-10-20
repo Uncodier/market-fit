@@ -84,6 +84,7 @@ export async function searchCatalogWindow(request: Omit<CatalogSearchRequest, "l
   const second = await searchCatalog({ ...request, limit: 100, offset: 100, search_id: first.search_id })
   const items = [...first.items, ...second.items]
   if (second.search_id !== first.search_id || second.mode !== first.mode || second.count !== first.count ||
+    (second.candidate_window_truncated === true) !== (first.candidate_window_truncated === true) ||
     new Set(items.map(item => item.id)).size !== items.length) {
     throw new CatalogSearchError(409, "Catalog search changed. Please try again.")
   }

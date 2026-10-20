@@ -59,6 +59,12 @@ it("preserves rank, excludes wrong-site IDs, and hydrates only the requested pag
   expect(queries[1].select.mock.calls[0][0]).not.toContain("*,")
 })
 
+it.each([true, false, undefined])("forwards only explicit overflow metadata (%s), independently of hydrated count", async truncated => {
+  const original = await jest.mocked(searchCatalogWindow)({ query: "shoes", channel: "shop", site_id: siteId })
+  jest.mocked(searchCatalogWindow).mockResolvedValue({ ...original, candidate_window_truncated: truncated })
+  expect(await loadShopSearch(options, enrich)).toMatchObject({ count: 2, candidate_window_truncated: truncated === true })
+})
+
 it("keeps pickup-only browse and search compatible with the same actual cart fulfillment/payment utilities", async () => {
   const browse = { ...marketplaceItem(first), metadata: { delivery_options: ["pickup"] as const, payment_options: ["cash_on_pickup"] as const } }
   const searched = (await loadShopSearch(options, enrich)).data[0]

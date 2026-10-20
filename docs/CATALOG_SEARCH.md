@@ -66,6 +66,20 @@ window after their own visibility filters. Region facets and pagination are also
 window-local. No-query browse keeps its existing count semantics. Search mode,
 degradation and search ID are included in server response metadata.
 
+Shop and Catalog show the ranked-window notice only when the API explicitly
+returns `candidate_window_truncated: true`, meaning retrieval confirmed more than
+200 eligible candidates. A count of exactly 200, `has_more` within the window,
+or a large browse catalog is not evidence of truncation. Older API responses
+without the field hide the notice. The notice is below results and pagination;
+Shop waits until the remaining window pages have loaded. Loading and failed
+searches do not show it. This requires the matching API overflow-detection rollout;
+the web application never runs a second database search to guess overflow.
+In the companion API repository, apply the reviewed forward migration
+`20261020010600_catalog_search_overflow_probe.sql` before deploying its new
+201-row probe, then deploy these web consumers. The older SQL rejects that probe;
+deploying the new API first makes search fail explicitly. No indexing backfill is
+needed, and this change does not apply the migration or deploy either repository.
+
 Catalog and Marketplace persist `search_id` and page in browser navigation. Page
 requests pass the expected snapshot ID into the first candidate request, and the
 second candidate request carries that same ID. An ID identifies an immutable,

@@ -53,6 +53,7 @@ interface ShopCatalogMainProps {
   initialCount: number
   isLoading: boolean
   searchError?: string
+  searchTruncated?: boolean
   retrySearch?: () => void
   isLoadingMore: boolean
   isJumping: boolean
@@ -86,6 +87,7 @@ export const ShopCatalogMain = React.memo(function ShopCatalogMain({
   initialCount,
   isLoading,
   searchError, retrySearch,
+  searchTruncated = false,
   isLoadingMore,
   isJumping,
   hasMoreBelow,
@@ -307,7 +309,6 @@ export const ShopCatalogMain = React.memo(function ShopCatalogMain({
   )
   return (
     <main className="flex-1 max-w-7xl mx-auto px-4 md:px-8 pt-5 pb-8 md:pt-8 md:pb-12 w-full">
-      {isSearching && <p className="mb-4 text-sm text-muted-foreground">Ranked results from up to 200 candidates, not an exact catalog total.</p>}
       {!isSearching && generalPromos.length > 0 && (
         <PromoCarousel
           promos={generalPromos}
@@ -468,6 +469,9 @@ export const ShopCatalogMain = React.memo(function ShopCatalogMain({
             </div>
           )}
         </div>
+      )}
+      {isSearching && searchTruncated && !isLoading && !isJumping && !isLoadingMore && !hasMoreBelow && (
+        <p className="mt-4 text-sm text-muted-foreground">Ranked results from up to 200 candidates, not an exact catalog total.</p>
       )}
     </main>
   )

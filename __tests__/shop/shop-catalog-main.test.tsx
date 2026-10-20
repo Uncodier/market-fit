@@ -168,6 +168,28 @@ afterEach(() => {
 })
 
 describe("ShopCatalogMain search visibility", () => {
+  it.each([
+    { initialCount: 2, searchTruncated: undefined }, { initialCount: 200, searchTruncated: undefined },
+    { searchTruncated: false }, { searchQuery: " " },
+    { isLoading: true }, { isLoadingMore: true }, { isJumping: true },
+    { hasMoreBelow: true }, { searchError: "Search unavailable" },
+  ])("hides the ranked notice without confirmed overflow or completed results: %j", (overrides) => {
+    render(ui(props({ searchQuery: "coffee", searchTruncated: true, hasMoreBelow: false, ...overrides })))
+    expect(screen.queryByText(/Ranked results/)).not.toBeInTheDocument()
+  })
+
+  it("places confirmed overflow after all results, waits for the last page and hides it on clear", () => {
+    const mainProps = props({ searchQuery: "coffee", searchTruncated: true, hasMoreBelow: true })
+    const { rerender, container } = render(ui(mainProps))
+    expect(screen.queryByText(/Ranked results/)).not.toBeInTheDocument()
+    rerender(ui({ ...mainProps, hasMoreBelow: false }))
+    const notice = screen.getByText(/Ranked results/)
+    expect(screen.getByTestId("card-coffee").compareDocumentPosition(notice) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(container.querySelector("main")?.lastElementChild).toBe(notice)
+    rerender(ui({ ...mainProps, searchQuery: " " }))
+    expect(screen.queryByText(/Ranked results/)).not.toBeInTheDocument()
+  })
+
   it.each(["results", "loading", "empty", "error"])("hides promotions and orders during search (%s) and restores them", (state) => {
     const promo = { id: "promo", name: "Coffee offer", catalog_item_ids: [], category_ids: [] }
     const mainProps = props({

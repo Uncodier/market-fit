@@ -30,6 +30,7 @@ export const catalogSearchResponseSchema = z.object({
   items: z.array(z.object({ id: z.string().uuid(), site_id: z.string().uuid() })).max(100),
   count: z.number().int().min(0).max(200),
   count_kind: z.literal("candidate_window"),
+  candidate_window_truncated: z.boolean().optional(),
   has_more: z.boolean(),
   mode: z.enum(["hybrid", "text"]),
   degraded: z.boolean(),

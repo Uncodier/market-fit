@@ -52,3 +52,20 @@ it("actual Catalog page requests old snapshot on page 2, then expiry restarts pa
   expect(new URLSearchParams(window.location.search).get("search_id")).toBe(newId)
   expect(new URLSearchParams(window.location.search).has("page")).toBe(false)
 })
+
+it.each([2, 200])("hides the ranked notice for %i candidates without explicit overflow", async count => {
+  jest.mocked(listCatalogItems).mockResolvedValue({ data: ranks.slice(0, 2), count })
+  render(<SWRConfig value={{ provider: () => new Map() }}><CatalogPage /></SWRConfig>)
+  await screen.findByTestId("ranks")
+  expect(screen.queryByText(/Ranked search results/)).not.toBeInTheDocument()
+})
+
+it("places a confirmed overflow notice below the table and pagination", async () => {
+  jest.mocked(listCatalogItems).mockResolvedValue({ data: ranks.slice(0, 50), count: 200,
+    candidate_window_truncated: true })
+  render(<SWRConfig value={{ provider: () => new Map() }}><CatalogPage /></SWRConfig>)
+  const notice = await screen.findByText(/Ranked search results/)
+  for (const element of [screen.getByTestId("ranks"), screen.getByRole("button", { name: "4" })]) {
+    expect(element.compareDocumentPosition(notice) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  }
+})

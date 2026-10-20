@@ -158,7 +158,7 @@ it.each([401, 403, 409, 429, 500])("preserves access/rate errors and sanitizes u
 })
 
 it.each([
-  { count: 201 }, { count_kind: "exact" }, { mode: "other" }, { has_more: true },
+  { count: 201 }, { count_kind: "exact" }, { mode: "other" }, { has_more: true }, { candidate_window_truncated: "true" },
   { items: [items[0], items[0]] }, { items: [{ ...items[0], site_id: randomUUID() }] },
 ])("rejects invalid or cross-site responses %j", async override => {
   fetchMock.mockResolvedValue(Response.json({ ...result, ...override }))
@@ -189,18 +189,35 @@ it("rejects credential-bearing and unsafe configured targets without leaking sec
   expect(fetchMock).not.toHaveBeenCalled()
 })
 
-it("fetches at most 200 ordered candidates with two requests", async () => {
+it.each([true, false, undefined])("fetches at most 200 ordered candidates and preserves explicit overflow (%s)", async truncated => {
   const candidates = Array.from({ length: 200 }, () => ({ id: randomUUID(), site_id: site }))
   fetchMock.mockImplementation(async (_url, init) => {
     const { offset } = JSON.parse(init.body)
-    return Response.json({ ...result, count: 200, items: candidates.slice(offset, offset + 100), has_more: offset === 0 })
+    return Response.json({ ...result, count: 200, candidate_window_truncated: truncated,
+      items: candidates.slice(offset, offset + 100), has_more: offset === 0 })
   })
   const found = await searchCatalogWindow({ ...request, search_id: result.search_id })
   expect(found.items).toEqual(candidates)
+  expect(found.candidate_window_truncated).toBe(truncated)
   expect(fetchMock).toHaveBeenCalledTimes(2)
   expect(fetchMock.mock.calls.map(([, init]) => JSON.parse(init.body).offset)).toEqual([0, 100])
   expect(JSON.parse(fetchMock.mock.calls[1][1].body).search_id).toBe(result.search_id)
   expect(JSON.parse(fetchMock.mock.calls[0][1].body).search_id).toBe(result.search_id)
+})
+
+it("rejects changing overflow metadata within a pinned candidate window", async () => {
+  const candidates = Array.from({ length: 200 }, () => ({ id: randomUUID(), site_id: site }))
+  fetchMock.mockResolvedValueOnce(Response.json({ ...result, count: 200, items: candidates.slice(0, 100),
+    has_more: true, candidate_window_truncated: true }))
+    .mockResolvedValueOnce(Response.json({ ...result, count: 200, items: candidates.slice(100), candidate_window_truncated: false }))
+  await expect(searchCatalogWindow(request)).rejects.toMatchObject({ status: 409 })
+})
+
+it("treats legacy omitted overflow and explicit false consistently across continuation", async () => {
+  const candidates = Array.from({ length: 101 }, () => ({ id: randomUUID(), site_id: site }))
+  fetchMock.mockResolvedValueOnce(Response.json({ ...result, count: 101, items: candidates.slice(0, 100), has_more: true }))
+    .mockResolvedValueOnce(Response.json({ ...result, count: 101, items: candidates.slice(100), candidate_window_truncated: false }))
+  expect((await searchCatalogWindow(request)).items).toEqual(candidates)
 })
 
 it("never accepts a new first-window ID when the caller requested an older snapshot", async () => {

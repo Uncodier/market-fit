@@ -43,6 +43,21 @@ it("does not append a different search window during infinite scrolling", async 
   expect(result.current.searchError).toMatch(/Catalog search changed/)
 })
 
+it("carries explicit overflow, clears it on query changes and never infers it from a count of 200", async () => {
+  jest.mocked(getShopCatalog).mockResolvedValueOnce({ ...response([tea], 200), candidate_window_truncated: true })
+    .mockResolvedValueOnce(response([coffee], 200))
+  const { result, rerender } = renderHook(({ q }) => useShopCatalog("site", initial, 2, q, offsets), { initialProps: { q: "" } })
+  rerender({ q: "tea" })
+  await waitFor(() => expect(result.current.searchTruncated).toBe(true))
+  rerender({ q: "coffee" })
+  expect(result.current.searchTruncated).toBe(false)
+  await waitFor(() => expect(result.current.catalogItems).toEqual([coffee]))
+  expect(result.current.totalCount).toBe(200)
+  expect(result.current.searchTruncated).toBe(false)
+  rerender({ q: " " })
+  expect(result.current.searchTruncated).toBe(false)
+})
+
 it("keeps loaded cards while jumping and does not replace the feed or schedule scroll corrections", async () => {
   let resolve!: (value: ReturnType<typeof response>) => void
   jest.mocked(getShopCatalog).mockReturnValue(new Promise((done) => { resolve = done }))

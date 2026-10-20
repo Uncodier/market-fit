@@ -338,9 +338,6 @@ export default function CatalogPage() {
               </div>
             ) : (
               <div className="h-full">
-                {debouncedSearch && (
-                  <p className="mb-3 text-sm text-muted-foreground">Ranked search results from up to 200 candidates, not an exact catalog total.</p>
-                )}
                 {viewType === 'table' ? (
                   <>
                     <CatalogTable 
@@ -387,6 +384,9 @@ export default function CatalogPage() {
                       totalPages={Math.ceil((data?.items.count ?? 0) / pageSize)}
                       onPageChange={setPage} />
                   </div>
+                )}
+                {debouncedSearch && data?.items.candidate_window_truncated === true && (
+                  <p className="mt-4 pb-4 text-sm text-muted-foreground">Ranked search results from up to 200 candidates, not an exact catalog total.</p>
                 )}
               </div>
             )}

@@ -24,6 +24,7 @@ export interface CatalogListResponse {
   data: CatalogItem[];
   count: number;
   count_kind?: 'candidate_window';
+  candidate_window_truncated?: boolean;
   has_more?: boolean;
   mode?: 'hybrid' | 'text';
   degraded?: boolean;

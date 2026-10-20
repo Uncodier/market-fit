@@ -19,6 +19,7 @@ module.exports = {
     '<rootDir>/__tests__/marketplace/sort-ui.test.tsx',
     '<rootDir>/__tests__/marketplace/archived-site-exposure.test.ts',
     '<rootDir>/__tests__/shop/shop-search.test.ts',
+    '<rootDir>/__tests__/shop/shop-catalog-main.test.tsx',
     '<rootDir>/__tests__/shop/shop-fulfillment-cart.test.tsx',
     '<rootDir>/__tests__/shop/use-shop-catalog.test.tsx',
     '<rootDir>/__tests__/pos/online-search.test.tsx',

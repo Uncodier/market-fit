@@ -82,6 +82,7 @@ environment variables before changing production configuration.
 
 ## Product designs
 
+- [Team Settings location-scoped access](LOCATION_ACCESS_DESIGN.md) — proposed restricted-location model preserving existing access, module matrix, day-one schema, RLS, rollout, and open decisions; not implemented behavior.
 - [Suppliers, procurement, tenders, and the unified account portal](/Users/prado/Desktop/Proyectos/Uncodie/Code/market-fit/docs/PROCUREMENT_AND_TENDERS_DESIGN.md) — planned model, screens, Marketplace-style global `/tenders`, UI/UX reuse references, and `/buyer` to `/home` migration; not implemented behavior.
 - [Procurement certifications and tender evidence](/Users/prado/Desktop/Proyectos/Uncodie/Code/market-fit/docs/PROCUREMENT_CERTIFICATIONS_DESIGN.md) — companion design for profile credentials, tender-specific requirements, private versioned evidence, and scoped review; not implemented behavior.
 

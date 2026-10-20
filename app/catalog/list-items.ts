@@ -38,6 +38,7 @@ export async function readCatalogItems({
       },
     }) : null;
     const searchMetadata = search ? { count_kind: search.count_kind, mode: search.mode,
+      candidate_window_truncated: search.candidate_window_truncated === true,
       degraded: search.degraded, search_id: search.search_id } : {};
     if (search && !search.items.length) return { data: [], count: 0, has_more: false, ...searchMetadata };
     // Keep the authenticated user client: site_id is a filter, not authorization.

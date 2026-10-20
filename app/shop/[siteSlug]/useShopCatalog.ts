@@ -125,6 +125,7 @@ export function useShopCatalog(
   const [hasGlobalGap, setHasGlobalGap] = useState(initialCount !== sumCategoryCounts(initialOffsets))
   const [isLoading, setIsLoading] = useState(false)
   const [searchError, setSearchError] = useState<string>()
+  const [searchTruncated, setSearchTruncated] = useState(false)
   const [searchAttempt, setSearchAttempt] = useState(0)
   const previousSearchAttempt = useRef(searchAttempt)
   const searchId = useRef<string | undefined>(undefined)
@@ -327,6 +328,7 @@ export function useShopCatalog(
     completedCategoriesRef.current = new Set()
     searchId.current = undefined
     setSearchError(undefined)
+    setSearchTruncated(false)
 
     if (!searchQuery.trim()) {
       setCatalogItems(initialCatalog)
@@ -368,6 +370,7 @@ export function useShopCatalog(
         if (cancelled || gen !== requestGen.current) return
         if (result.error || !Array.isArray(result.data)) throw new Error("Unable to search this shop")
         searchId.current = "search_id" in result ? result.search_id as string : undefined
+        setSearchTruncated("candidate_window_truncated" in result && result.candidate_window_truncated === true)
         const data = (result.data || []) as CatalogItem[]
         setCatalogItems(data)
         catalogItemsRef.current = data
@@ -399,6 +402,7 @@ export function useShopCatalog(
     categoryOffsets,
     isLoading,
     searchError,
+    searchTruncated,
     retrySearch: () => setSearchAttempt(attempt => attempt + 1),
     isLoadingMore,
     isJumping,
