@@ -121,6 +121,19 @@ describe("SupportChannelsSection", () => {
     jest.restoreAllMocks()
   })
 
+  it("keeps manually disabled connections visible without restarting provider setup", () => {
+    const onSave = jest.fn()
+    render(<TestForm onSave={onSave} initialConnections={[{
+      id: "voice-1", type: "voice", name: "Paused Voice", status: "disabled", enabled: false,
+      zavu_sender_id: "sender-existing", _license: { manually_disabled: true, order: 1 },
+    }]} />)
+    expect(screen.getByText("Inactive · manually disabled")).toBeInTheDocument()
+    expect(screen.getByRole("switch", { name: "Activate Paused Voice" })).not.toBeChecked()
+    expect(screen.queryByRole("button", { name: "Complete Voice setup" })).not.toBeInTheDocument()
+    expect(onSave).not.toHaveBeenCalled()
+    expect(screen.getByTestId("connections")).toHaveTextContent("sender-existing")
+  })
+
   it("adopts the backend connection snapshot without resaving stale form data", async () => {
     const onSave = jest.fn()
     render(<TestForm onSave={onSave} />)

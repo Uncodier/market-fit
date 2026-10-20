@@ -381,6 +381,7 @@ export function useSimpleMessagesView({ className = "", activeRobotInstance, isB
     activeRobotInstance,
     steps,
     instancePlans,
+    onPlanCancelled: loadInstancePlans,
     onSetSteps: () => {}
   })
 

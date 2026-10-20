@@ -28,6 +28,11 @@ it("reads without activation, with same-origin credentials and no cache", async 
   })
 })
 
+it('preserves explicit offer validation while omitting private history details', async () => {
+  fetchMock.mockResolvedValue(response({ ...eligible, offer_eligible: true, payment_history: ['private'] }))
+  await expect(getStartupTrial(siteId, new AbortController())).resolves.toEqual({ ...eligible, offer_eligible: true })
+})
+
 it.each(["started", "already_started"])("activates with strict site-only JSON (%s)", async outcome => {
   fetchMock.mockResolvedValue(response({ ...active, outcome }))
   await expect(startStartupTrial(siteId, new AbortController())).resolves.toMatchObject({ state: "active", outcome })

@@ -78,7 +78,8 @@ export const ChatInput = memo(function ChatInput({
   })
   const isVoice = !commentReplySelection && selectedChannel === 'voice'
   const voiceBlock = isVoice ? getVoiceCallBlock(leadData) : null
-  const sendingBlocked = isUpdatingChannel || isLoading || !isConversationReady || Boolean(voiceBlock) ||
+  const channelUnavailable = !commentReplySelection && !isAgentOnlyConversation && !availableChannels.includes(selectedChannel)
+  const sendingBlocked = channelUnavailable || isUpdatingChannel || isLoading || !isConversationReady || Boolean(voiceBlock) ||
     Boolean(commentReplySelection && !commentReplySelection.target)
   
   // CRITICAL: Direct handler to prevent character loss
@@ -163,6 +164,7 @@ export const ChatInput = memo(function ChatInput({
         <div className="w-full mx-auto relative pb-[20px] px-4 md:px-8 lg:px-12 xl:px-24">
           <p className="text-xs text-muted-foreground px-2 pb-2" role="status">
             {!isConversationReady ? 'Loading conversation delivery settings…'
+              : channelUnavailable ? 'This channel is inactive or unavailable. Activate it in Settings or select another channel.'
               : commentReplySelection ? (commentReplySelection.target ? 'Public reply to the selected comment. This is not a direct message.'
                 : commentReplySelection.options.length ? 'Select the comment you want to reply to.'
                   : 'No replyable comment is available. Open the original post to reply.')

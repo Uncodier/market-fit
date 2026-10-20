@@ -18,6 +18,7 @@ function TestForm({ onSave, initial, siteId = "site-a" }: { onSave: jest.Mock; i
 }
 
 const card = () => within(document.getElementById("activity-icp_lead_generation")!)
+const openSetup = () => fireEvent.click(card().getByRole("button", { name: "Show setup for ICP Lead Generation" }))
 
 describe("ICP mining controls", () => {
   it("is always active without any status toggle, sending account or follow-up dependency", async () => {
@@ -26,6 +27,9 @@ describe("ICP mining controls", () => {
     expect(card().getByText("Always active")).toBeInTheDocument()
     expect(card().queryByRole("radio")).not.toBeInTheDocument()
     expect(card().queryByRole("switch")).not.toBeInTheDocument()
+    expect(card().queryByRole("spinbutton")).not.toBeInTheDocument()
+    expect(card().getByRole("button", { name: "Save" })).toBeVisible()
+    openSetup()
     expect(card().getByText(/independently of Leads Follow Up and channel health/)).toBeInTheDocument()
     expect(card().getByText(/not candidates scanned or a guaranteed number of new leads/)).toBeInTheDocument()
     expect(card().getByRole("spinbutton", { name: "Target leads per run" })).toHaveValue(150)
@@ -43,6 +47,7 @@ describe("ICP mining controls", () => {
       future_activity: { value: true },
     })
     const { unmount } = render(<TestForm onSave={onSave} initial={initial} />)
+    openSetup()
     fireEvent.change(card().getByRole("spinbutton"), { target: { value: "3000" } })
     fireEvent.click(card().getByRole("checkbox", { name: "Additional deep research" }))
     fireEvent.click(card().getByRole("button", { name: "Save" }))
@@ -53,6 +58,7 @@ describe("ICP mining controls", () => {
     await waitFor(() => expect(card().getByRole("button", { name: "Save" })).toBeDisabled())
     unmount()
     render(<TestForm onSave={onSave} initial={saved} />)
+    openSetup()
     expect(card().getByRole("spinbutton")).toHaveValue(3000)
     expect(card().getByRole("checkbox", { name: "Additional deep research" })).toBeChecked()
     fireEvent.click(card().getByRole("checkbox", { name: "Additional deep research" }))
@@ -64,8 +70,11 @@ describe("ICP mining controls", () => {
   it.each(["", "0", "-1", "3001", "12.5"])("keeps invalid target %p dirty and blocks saving", async value => {
     const onSave = jest.fn()
     render(<TestForm onSave={onSave} />)
+    openSetup()
     fireEvent.change(card().getByRole("spinbutton"), { target: { value } })
+    fireEvent.click(card().getByRole("button", { name: "Hide setup for ICP Lead Generation" }))
     fireEvent.click(card().getByRole("button", { name: "Save" }))
+    expect(card().getByRole("button", { name: "Hide setup for ICP Lead Generation" })).toHaveAttribute("aria-expanded", "true")
     expect(card().getByRole("alert")).toHaveTextContent("Enter a whole number from 1 to 3,000 found leads per run.")
     expect(onSave).not.toHaveBeenCalled()
     expect(card().getByRole("button", { name: "Save" })).toBeEnabled()
@@ -78,6 +87,7 @@ describe("ICP mining controls", () => {
   it("keeps failed saves dirty", async () => {
     const onSave = jest.fn().mockResolvedValue(false)
     render(<TestForm onSave={onSave} />)
+    openSetup()
     fireEvent.change(card().getByRole("spinbutton"), { target: { value: "200" } })
     fireEvent.click(card().getByRole("button", { name: "Save" }))
     await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1))
@@ -87,6 +97,7 @@ describe("ICP mining controls", () => {
   it("hydrates delayed settings without overwriting unsaved edits", async () => {
     const onSave = jest.fn()
     const { rerender } = render(<TestForm onSave={onSave} />)
+    openSetup()
     rerender(<TestForm onSave={onSave} initial={{ icp_lead_generation: { target_leads: 250, research_enabled: true } }} />)
     expect(card().getByRole("spinbutton")).toHaveValue(250)
     expect(card().getByRole("checkbox", { name: "Additional deep research" })).toBeChecked()

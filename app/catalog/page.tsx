@@ -28,6 +28,7 @@ import { KanbanView } from "./components/KanbanView"
 import { cn } from "@/lib/utils"
 import { useSearchParams, useRouter } from "next/navigation"
 import { SortDropdown } from "@/app/components/ui/sort-dropdown"
+import { useSearchPagination } from "@/lib/catalog-search/use-search-pagination"
 
 const ImportCatalogDialog = dynamic(() => import("./components/ImportCatalogDialog").then(m => m.ImportCatalogDialog))
 const pageSize = 50
@@ -42,10 +43,13 @@ export default function CatalogPage() {
   const { currentSite } = useSite()
   const { t } = useLocalization()
   
-  const [searchQuery, setSearchQuery] = useState("")
-  const [debouncedSearch, setDebouncedSearch] = useState("")
-  const [kindFilter, setKindFilter] = useState<'all' | 'product' | 'service' | 'variant'>('all')
-  const [statusFilter, setStatusFilter] = useState<'active' | 'archived'>('active')
+  const [searchQuery, setSearchQuery] = useState(searchParams?.get("q") || "")
+  const [debouncedSearch, setDebouncedSearch] = useState(searchParams?.get("q")?.trim() || "")
+  const [kindFilter, setKindFilter] = useState<'all' | 'product' | 'service' | 'variant'>(() => {
+    const kind = searchParams?.get("kind")
+    return kind === "product" || kind === "service" || kind === "variant" ? kind : "all"
+  })
+  const [statusFilter, setStatusFilter] = useState<'active' | 'archived'>(searchParams?.get("status") === "archived" ? "archived" : "active")
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [isImportOpen, setIsImportOpen] = useState(false)
   const [viewType, setViewType] = useMobileView("table")
@@ -53,10 +57,19 @@ export default function CatalogPage() {
   // A new query scope uses page 1 immediately, without fetching the old page
   // before an effect resets it (especially important when switching sites).
   const scope = JSON.stringify([currentSite?.id, kindFilter, statusFilter, debouncedSearch, sortBy])
-  const [pagination, setPagination] = useState({ scope, page: 1 })
-  const page = pagination.scope === scope ? pagination.page : 1
-  if (pagination.scope !== scope) setPagination({ scope, page: 1 })
-  const setPage = (nextPage: number) => setPagination({ scope, page: nextPage })
+  const { page, setPage, searchId, acceptSearchId, restart, generation } = useSearchPagination(scope, Boolean(debouncedSearch), Boolean(currentSite?.id))
+  useEffect(() => {
+    const url = new URL(window.location.href)
+    if (debouncedSearch) url.searchParams.set("q", debouncedSearch)
+    else url.searchParams.delete("q")
+    if (kindFilter !== "all") url.searchParams.set("kind", kindFilter)
+    else url.searchParams.delete("kind")
+    if (statusFilter !== "active") url.searchParams.set("status", statusFilter)
+    else url.searchParams.delete("status")
+    if (sortBy !== "display_order") url.searchParams.set("sort", sortBy)
+    else url.searchParams.delete("sort")
+    window.history.replaceState(window.history.state, "", url)
+  }, [debouncedSearch, kindFilter, statusFilter, sortBy])
 
   useEffect(() => {
     const timer = window.setTimeout(() => setDebouncedSearch(searchQuery.trim()), 300)
@@ -65,7 +78,7 @@ export default function CatalogPage() {
 
   const fetcher = async (params: CatalogListParams) => {
     const itemsRes = await listCatalogItems(params)
-    if (itemsRes.error) throw new Error(itemsRes.error)
+    if (itemsRes.error) throw Object.assign(new Error(itemsRes.error), { status: itemsRes.error_status })
     const isComplete = params.kind === 'all' && params.status === 'active' && !params.q &&
       params.page === 1 && itemsRes.count <= pageSize && itemsRes.count <= itemsRes.data.length
     const categoryIds = itemsRes.data.flatMap(item => item.category_id ? [item.category_id] : [])
@@ -86,14 +99,21 @@ export default function CatalogPage() {
       q: debouncedSearch,
       page,
       pageSize,
-      sortBy
+      sortBy,
+      ...(debouncedSearch && searchId ? { search_id: searchId } : {}),
+      generation,
     } : null,
     fetcher
   )
 
+  useEffect(() => {
+    if (error?.status === 409 && debouncedSearch) restart()
+    else if (data?.items.search_id) acceptSearchId(data.items.search_id)
+  }, [error, data, debouncedSearch, restart, acceptSearchId])
+
   if (data && !error && !isLoading && !isValidating) {
     const lastPage = Math.max(1, Math.ceil(data.items.count / pageSize))
-    if (page > lastPage) setPagination({ scope, page: lastPage })
+    if (page > lastPage) setPage(lastPage)
   }
 
   const isDragEnabled = Boolean(
@@ -318,9 +338,13 @@ export default function CatalogPage() {
               </div>
             ) : (
               <div className="h-full">
+                {debouncedSearch && (
+                  <p className="mb-3 text-sm text-muted-foreground">Ranked search results from up to 200 candidates, not an exact catalog total.</p>
+                )}
                 {viewType === 'table' ? (
                   <>
                     <CatalogTable 
+                      key={scope}
                       items={data?.items.data || []} 
                       categories={data?.categories || []}
                       onUpdate={() => mutate()} 
@@ -334,6 +358,7 @@ export default function CatalogPage() {
                   <div className="h-full min-w-0 w-full flex flex-col">
                       {data?.items.data && data.items.data.length > 0 ? (
                         <KanbanView 
+                          key={scope}
                           items={data.items.data}
                           categories={data.categories}
                           onDragEnd={handleDragEnd}

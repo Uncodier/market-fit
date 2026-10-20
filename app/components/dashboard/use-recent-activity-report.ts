@@ -32,7 +32,7 @@ export function useRecentActivityReport(limit: number, startDate?: Date, endDate
   if (startDate) params.set("startDate", format(startDate, "yyyy-MM-dd"))
   if (endDate) params.set("endDate", format(endDate, "yyyy-MM-dd"))
   const localDemo = isKnownDemoSite(currentSite?.id)
-  const identity = auth?.user?.id || (localDemo ? currentSite?.id : undefined)
+  const identity = localDemo ? currentSite?.id : auth?.user?.id
   const enabled = currentSite?.id && currentSite.id !== "default" && identity && (localDemo || !auth?.isLoading) && !siteLoading
   return useReportResource(enabled ? [`/api/recent-activity?${params}`, identity] as const : null,
     fetchActivities, Boolean((!localDemo && auth?.isLoading) || siteLoading))

@@ -19,6 +19,7 @@ export function WorkflowSearchSelect({
   allowCreate = true,
   clearable = false,
   disabled,
+  includeCurrentOption = true,
 }: {
   options: readonly { value: string; label: string }[]
   value?: string
@@ -27,8 +28,10 @@ export function WorkflowSearchSelect({
   allowCreate?: boolean
   clearable?: boolean
   disabled?: boolean
+  /** Keep unavailable values visible without offering them as selectable options. */
+  includeCurrentOption?: boolean
 }) {
-  const list = withCurrentOption(options, value)
+  const list = includeCurrentOption ? withCurrentOption(options, value) : options
   const selected = list.find((option) => option.value === value)
   const relationValue: RelationSelectValue = value
     ? { mode: "existing", id: value, label: selected?.label || value }
@@ -44,6 +47,7 @@ export function WorkflowSearchSelect({
             onChange("")
             return
           }
+          if (!includeCurrentOption && (next.mode !== "existing" || !options.some((option) => option.value === next.id))) return
           onChange(next.mode === "create" ? next.label : next.id)
         }}
         allowCreate={allowCreate}

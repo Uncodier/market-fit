@@ -30,6 +30,12 @@ an invalid line remains possible.
 
 ## Synchronization and server validation
 
+Online semantic suggestions are separate from immediate local name/SKU matching.
+They cannot insert search response data into the cart: only matching, synchronized
+same-site snapshot items pass through existing availability checks. Missing or
+changed snapshot items require the normal catalog sync first. Offline search and
+checkout are unchanged. See [Shared catalog search](CATALOG_SEARCH.md).
+
 ### Instant cart and option interactions
 
 Product clicks use the loaded site-scoped snapshot, including hidden variants

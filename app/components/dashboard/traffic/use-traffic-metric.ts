@@ -6,6 +6,7 @@ import { useSite } from "@/app/context/SiteContext"
 import { useWidgetContext } from "@/app/context/WidgetContext"
 import { useAuth } from "@/app/hooks/use-auth"
 import { useReportResource } from "@/app/hooks/use-report-resource"
+import { isKnownDemoSite } from "@/lib/demo-data"
 import { fetchReport, ReportRequestError } from "../report-query"
 
 type TrafficMetricEndpoint = "visits" | "session-time" | "lead-conversion" | "client-conversion"
@@ -38,6 +39,11 @@ function parseTrafficMetric(payload: unknown): TrafficMetricData {
 
 async function fetchTrafficMetric(key: [string, string]) {
   try {
+    const url = new URL(key[0], "http://localhost")
+    if (isKnownDemoSite(url.searchParams.get("siteId"))) {
+      const { loadDemoTrafficReport } = await import("@/lib/demo-data/traffic-report")
+      return parseTrafficMetric(await loadDemoTrafficReport(url.pathname, url.searchParams))
+    }
     return parseTrafficMetric(await fetchReport(key))
   } catch (error) {
     if (error instanceof ReportRequestError) throw error
@@ -70,8 +76,9 @@ export function useTrafficMetric(endpoint: TrafficMetricEndpoint, filters: Traff
   const endDay = isValid(endDate) ? format(endDate, "yyyy-MM-dd") : null
   const validDates = Boolean(startDay && endDay && startDay <= endDay)
   const validSite = Boolean(currentSite?.id && currentSite.id !== "default")
-  const waitingForReadiness = Boolean(authLoading || siteLoading || !shouldExecuteWidgets || (user?.id && !validSite))
-  const enabled = !waitingForReadiness && user?.id && validSite && validDates
+  const demo = isKnownDemoSite(currentSite?.id)
+  const waitingForReadiness = Boolean((!demo && authLoading) || siteLoading || !shouldExecuteWidgets || (user?.id && !validSite))
+  const enabled = !waitingForReadiness && (demo || user?.id) && validSite && validDates
   const params = new URLSearchParams({
     siteId: currentSite?.id ?? "",
     segmentId: filters.segmentId ?? "all",
@@ -79,10 +86,10 @@ export function useTrafficMetric(endpoint: TrafficMetricEndpoint, filters: Traff
     endDate: endDay ?? "",
   })
   // Keep legacy calendar-day bounds. Identity isolates the cache, not URL authorization.
-  const key: [string, string] | null = enabled ? [`/api/traffic/${endpoint}?${params}`, user.id] : null
+  const key: [string, string] | null = enabled ? [`/api/traffic/${endpoint}?${params}`, demo ? currentSite!.id : user!.id] : null
   const resource = useReportResource<TrafficMetricData, ReportRequestError>(key, fetchTrafficMetric, waitingForReadiness)
   const error = resource.isLoading ? undefined
-    : !user?.id ? new ReportRequestError("Sign in to view this report.", 401)
+    : !demo && !user?.id ? new ReportRequestError("Sign in to view this report.", 401)
     : !validDates ? new ReportRequestError("Select a valid date range.", 400)
     : resource.error
   const data = resource.data

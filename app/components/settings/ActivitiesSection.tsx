@@ -12,6 +12,8 @@ import { Button } from "../ui/button"
 import { FormField, FormItem, FormControl, FormMessage } from "../ui/form"
 import { RadioGroup, RadioGroupItem } from "../ui/radio-group"
 import { Badge } from "../ui/badge"
+import { Collapsible, CollapsibleContent } from "../ui/collapsible"
+import { ChevronDown } from "../ui/icons"
 import { type SiteFormValues } from "./form-schema"
 import { cn } from "../../lib/utils"
 import { useEffect, useRef, useState } from "react"
@@ -26,7 +28,7 @@ import { IcpLeadGenerationFields } from "./IcpLeadGenerationFields"
 import { icpLeadGenerationSettingsSchema } from "./icp-lead-generation-settings"
 import { normalizeActivitySettings } from "./activity-settings"
 import { DailyStandupFields } from "./DailyStandupFields"
-import { dailyStandupSettingsSchema, normalizeDailyStandupSettings } from "./daily-standup-settings"
+import { dailyStandupSettingsSchema } from "./daily-standup-settings"
 import { acknowledgeActivitySave, getActivityFormUpdates } from "./activity-form-state"
 import { validatedActivityUpdates } from "./activity-settings"
 import { TIMED_ACTIVITY_KEYS, displayedActivityTimeMode, type TimedActivityKey, type ActivityStartTimeMode } from "@/lib/activity-start-time"
@@ -97,12 +99,14 @@ export function ActivitiesSection({ active, onSave, siteId }: ActivitiesSectionP
   const form = useFormContext<SiteFormValues>()
   const [savingCard, setSavingCard] = useState<string | null>(null)
   const [errors, setErrors] = useState<Record<string, string[]>>({})
+  const [expandedSetups, setExpandedSetups] = useState<Record<string, boolean>>({})
   const { currentSite } = useSite()
   const activeSiteId = siteId || currentSite?.id
   const saveScope = useRef({ siteId: activeSiteId })
   useEffect(() => {
     saveScope.current = { siteId: activeSiteId }
     setSavingCard(null)
+    setExpandedSetups({})
     return () => { saveScope.current = { siteId: undefined } }
   }, [activeSiteId])
   const segments = useOutreachSegments(active ? siteId || currentSite?.id : undefined)
@@ -119,9 +123,8 @@ export function ActivitiesSection({ active, onSave, siteId }: ActivitiesSectionP
   useEffect(() => { setErrors({}) }, [siteId, currentSite?.id])
   const sectionTitle = t("settings.nav.activities") || "AI Activities"
 
-  const validate = (key: typeof OUTREACH_ACTIVITY_KEYS[number], enabling = false) => {
+  const validate = (key: typeof OUTREACH_ACTIVITY_KEYS[number]) => {
     const value = normalizeOutreachSettings(form.getValues(`activities.${key}`), key)
-    if (enabling) value.status = "active"
     const messages = validateOutreachSettings(value, key, accounts, segments.segments.map(segment => segment.id)).map(error => error.message)
     if (value.status === "active" && !isValidOutreachTimezone(timezone)) messages.push("Set a valid business-hours timezone in Context before enabling this activity.")
     if (key !== "invoices_due" && value.status === "active" && !value.all_segments && (segments.loading || segments.error)) messages.push("Wait for this site's segments to load successfully before enabling or saving.")
@@ -143,7 +146,11 @@ export function ActivitiesSection({ active, onSave, siteId }: ActivitiesSectionP
     validation.daily_resume_and_stand_up = standup.success ? [] : standup.error.issues.map(issue => issue.message)
     validation.icp_lead_generation = icp.success ? [] : icp.error.issues.map(issue => issue.message)
     setErrors(validation)
-    if (!icp.success || !standup.success || Object.values(validation).some(messages => messages.length)) return
+    const invalidKeys = Object.keys(validation).filter(key => validation[key].length)
+    if (invalidKeys.length) {
+      setExpandedSetups(previous => ({ ...previous, ...Object.fromEntries(invalidKeys.map(key => [key, true])) }))
+      return
+    }
     setSavingCard(id)
     try {
       const formData = form.getValues()
@@ -175,6 +182,9 @@ export function ActivitiesSection({ active, onSave, siteId }: ActivitiesSectionP
           {" "}
           for the activities that use them.
         </p>
+        <p className="text-sm text-muted-foreground mt-2">
+          Activate an activity to configure its setup. Changes only take effect after saving.
+        </p>
       </div>
 
       {/* Activity Cards */}
@@ -182,7 +192,6 @@ export function ActivitiesSection({ active, onSave, siteId }: ActivitiesSectionP
         const status = form.watch(`activities.${key}.status` as const) as 'default' | 'inactive' | 'active' | undefined
         const isOutreach = isOutreachActivity(key)
         const isIcp = key === 'icp_lead_generation'
-        const isInactive = !isIcp && (status === 'inactive' || (isOutreach && status !== 'active'))
         
         // Check dependency for assign_leads_to_team
         const isAssignLeads = key === 'assign_leads_to_team'
@@ -190,6 +199,13 @@ export function ActivitiesSection({ active, onSave, siteId }: ActivitiesSectionP
         const isDailyResumeAndStandUp = key === 'daily_resume_and_stand_up'
         const isOptIn = isAssignLeads || isSuperviseConversations || isDailyResumeAndStandUp || isOutreach
         const isDependencyInactive = isAssignLeads && coldOutreachStatus !== 'active'
+        const isOptInInactive = isOutreach || isDailyResumeAndStandUp ? status !== 'active' : status === undefined
+        const isInactive = !isIcp && (status === 'inactive' || (isOptIn && isOptInInactive) || isDependencyInactive)
+        const hasSetup = isIcp || isOutreach || isDailyResumeAndStandUp
+        const canToggleSetup = hasSetup && !isInactive
+        const setupOpen = expandedSetups[key] === true
+        const setupId = `activity-${key}-setup`
+        const toggleSetup = () => setExpandedSetups(previous => ({ ...previous, [key]: !previous[key] }))
         
         return (
           <SectionCard 
@@ -201,7 +217,21 @@ export function ActivitiesSection({ active, onSave, siteId }: ActivitiesSectionP
                 : undefined
             )}
           >
-            <SectionCardHeader>
+            <SectionCardHeader
+              className={cn(canToggleSetup && "cursor-pointer hover:bg-muted/50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring")}
+              role={canToggleSetup ? "button" : undefined}
+              tabIndex={canToggleSetup ? 0 : undefined}
+              aria-label={canToggleSetup ? `${setupOpen ? "Hide" : "Show"} setup for ${title}` : undefined}
+              aria-expanded={canToggleSetup ? setupOpen : undefined}
+              aria-controls={canToggleSetup ? setupId : undefined}
+              onClick={canToggleSetup ? toggleSetup : undefined}
+              onKeyDown={canToggleSetup ? event => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault()
+                  toggleSetup()
+                }
+              } : undefined}
+            >
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <div className="flex items-center gap-2">
@@ -220,34 +250,31 @@ export function ActivitiesSection({ active, onSave, siteId }: ActivitiesSectionP
                     </p>
                   )}
                 </div>
+                {canToggleSetup && <ChevronDown aria-hidden={true} className={cn("h-5 w-5 shrink-0 text-muted-foreground transition-transform", setupOpen && "rotate-180")} />}
               </div>
             </SectionCardHeader>
-            <SectionCardContent>
-              {isIcp ? <IcpLeadGenerationFields siteId={siteId || currentSite?.id} /> : <FormField
+            <SectionCardContent className={cn(isIcp && !setupOpen && !errors[key]?.length && "pb-0")}>
+              {!isIcp && <FormField
                 control={form.control}
                 name={`activities.${key}.status` as const}
                 render={({ field }) => {
                   const options = isOptIn ? [
                     {
                       value: "inactive",
-                      title: "Inactive",
-                      description: "This activity will not run automatically"
+                      title: "Inactive"
                     },
                     {
                       value: "active",
-                      title: "Active",
-                      description: "This activity will run according to its schedule"
+                      title: "Active"
                     }
                   ] : [
                     {
                       value: "default",
-                      title: "Active",
-                      description: "This activity will run according to its schedule"
+                      title: "Active"
                     },
                     {
                       value: "inactive",
-                      title: "Inactive",
-                      description: "This activity will not run automatically"
+                      title: "Inactive"
                     }
                   ]
                   
@@ -267,24 +294,14 @@ export function ActivitiesSection({ active, onSave, siteId }: ActivitiesSectionP
                       <FormControl>
                         <RadioGroup
                           value={currentValue}
+                          aria-label={`${title} status`}
                           onValueChange={next => {
-                            if (isDailyResumeAndStandUp && next === "active") {
-                              const result = dailyStandupSettingsSchema.safeParse({
-                                ...normalizeDailyStandupSettings(form.getValues("activities.daily_resume_and_stand_up")), status: "active",
-                              })
-                              const messages = result.success ? [] : result.error.issues.map(issue => issue.message)
-                              setErrors(previous => ({ ...previous, [key]: messages }))
-                              if (messages.length) return
-                            }
-                            if (isOutreach && next === "active") {
-                              const messages = validate(key, true)
-                              setErrors(previous => ({ ...previous, [key]: messages }))
-                              if (messages.length) return
-                            } else setErrors(previous => ({ ...previous, [key]: [] }))
+                            setErrors(previous => ({ ...previous, [key]: [] }))
                             field.onChange(next)
+                            setExpandedSetups(previous => ({ ...previous, [key]: next !== "inactive" }))
                           }}
                           disabled={isDependencyInactive}
-                          className="space-y-3"
+                          className="flex flex-wrap gap-3"
                         >
                           {options.map((option) => {
                             const isSelected = currentValue === option.value
@@ -292,7 +309,7 @@ export function ActivitiesSection({ active, onSave, siteId }: ActivitiesSectionP
                               <label
                                 key={option.value}
                                 className={cn(
-                                  "flex items-start gap-3 p-4 rounded-lg border cursor-pointer transition-colors",
+                                  "flex items-center gap-3 px-3 py-2 rounded-lg border cursor-pointer transition-colors",
                                   isSelected
                                     ? "border-primary bg-primary/5 dark:bg-primary/10"
                                     : "border-gray-200 dark:border-gray-700 bg-background hover:bg-muted/50"
@@ -301,23 +318,17 @@ export function ActivitiesSection({ active, onSave, siteId }: ActivitiesSectionP
                                 <RadioGroupItem
                                   value={option.value}
                                   id={`${key}-${option.value}`}
-                                  className="mt-0.5"
                                   disabled={isDependencyInactive}
                                 />
-                                <div className="flex-1 space-y-1">
+                                <div>
                                   <div className="flex items-center gap-2 min-h-[20px]">
                                     <span className="font-semibold text-sm block">{option.title}</span>
                                     {(option.value === "default" || (option.value === "inactive" && isOptIn)) ? (
                                       <Badge variant="secondary" className="text-xs">
                                         Default
                                       </Badge>
-                                    ) : (
-                                      <div className="h-5" />
-                                    )}
+                                    ) : null}
                                   </div>
-                                  <span className="text-sm text-muted-foreground leading-relaxed block">
-                                    {option.description}
-                                  </span>
                                 </div>
                               </label>
                             )
@@ -329,8 +340,13 @@ export function ActivitiesSection({ active, onSave, siteId }: ActivitiesSectionP
                   )
                 }}
               />}
-              {isOutreach && <OutreachActivityFields activityKey={key} accounts={accounts} {...segments} timezone={timezone} />}
-              {isDailyResumeAndStandUp && <DailyStandupFields timezone={timezone} />}
+              {canToggleSetup && <Collapsible open={setupOpen}>
+                <CollapsibleContent id={setupId} forceMount hidden={!setupOpen} className={cn(!setupOpen && "hidden")}>
+                  {isIcp && <IcpLeadGenerationFields siteId={activeSiteId} />}
+                  {isOutreach && <OutreachActivityFields activityKey={key} accounts={accounts} {...segments} timezone={timezone} />}
+                  {isDailyResumeAndStandUp && <DailyStandupFields timezone={timezone} />}
+                </CollapsibleContent>
+              </Collapsible>}
               {!!errors[key]?.length && <ul role="alert" className="mt-4 space-y-1 text-sm text-destructive">{errors[key].map(message => <li key={message}>{message}</li>)}</ul>}
             </SectionCardContent>
             <SectionCardFooter>

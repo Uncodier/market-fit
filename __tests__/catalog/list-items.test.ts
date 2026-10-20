@@ -3,17 +3,19 @@ import { listCatalogItems } from "@/app/catalog/actions";
 import { createClient } from "@/lib/supabase/server";
 import { attachCatalogRelationSummaries } from "@/app/catalog/relation-summaries";
 import type { CatalogListParams } from "@/app/catalog/types";
+import { searchCatalogWindow } from "@/lib/catalog-search/server";
 
 jest.mock("@/lib/supabase/server", () => ({ createClient: jest.fn() }));
 jest.mock("@/app/catalog/relation-summaries", () => ({ attachCatalogRelationSummaries: jest.fn() }));
 jest.mock("@/app/commerce/pdp-actions", () => ({ pdpCacheTag: jest.fn() }));
 jest.mock("@/app/shop/[siteSlug]/shop-catalog-shared", () => ({ shopCacheTag: jest.fn() }));
+jest.mock("@/lib/catalog-search/server", () => ({ searchCatalogWindow: jest.fn(), CatalogSearchError: jest.requireActual("@/lib/catalog-search/server").CatalogSearchError }));
 
-const result = { data: [{ id: "item", name: "Item" }], count: 1501, error: null as null | { message: string } };
+const result = { data: [{ id: "item", name: "Item", site_id: "site" }], count: 1501, error: null as null | { message: string } };
 const query = {
   select: jest.fn().mockReturnThis(), eq: jest.fn().mockReturnThis(),
   order: jest.fn().mockReturnThis(), not: jest.fn().mockReturnThis(),
-  is: jest.fn().mockReturnThis(), or: jest.fn().mockReturnThis(),
+  is: jest.fn().mockReturnThis(), or: jest.fn().mockReturnThis(), in: jest.fn().mockReturnThis(),
   range: jest.fn().mockImplementation(() => Promise.resolve(result)),
 };
 const from = jest.fn(() => query);
@@ -70,11 +72,23 @@ it("rejects an unsafe page offset without querying", async () => {
   expect(createClient).not.toHaveBeenCalled();
 });
 
-it("searches name OR SKU with literal, quoted PostgREST operands", async () => {
-  const q = ' SKU_%,)"\\test ';
-  await listCatalogItems({ siteId: "site", q });
-  const operand = JSON.stringify(`%${q.trim().replace(/[\\%_]/g, '\\$&')}%`);
-  expect(query.or).toHaveBeenCalledWith(`name.ilike.${operand},sku.ilike.${operand}`);
+it("uses shared search candidates without a second name/SKU filter", async () => {
+  jest.mocked(searchCatalogWindow).mockResolvedValue({ success: true, items: [{ id: "item", site_id: "site" }],
+    count: 1, count_kind: "candidate_window", has_more: false, mode: "text", degraded: true, search_id: "search" });
+  result.data = [{ id: "item", name: "Semantic match", site_id: "site" }] as typeof result.data;
+  const found = await listCatalogItems({ siteId: "site", q: "comfortable", kind: "variant" });
+  expect(searchCatalogWindow).toHaveBeenCalledWith(expect.objectContaining({ query: "comfortable", channel: "catalog",
+    site_id: "site", filters: expect.objectContaining({ kind: "variant" }) }));
+  expect(query.in).toHaveBeenCalledWith("id", ["item"]);
+  expect(query.not).toHaveBeenCalledWith("parent_id", "is", null);
+  expect(query.or).not.toHaveBeenCalled();
+  expect(found).toMatchObject({ count: 1, count_kind: "candidate_window", mode: "text", degraded: true });
+});
+
+it("does not fall back to substring browse on search failure", async () => {
+  jest.mocked(searchCatalogWindow).mockRejectedValueOnce(new Error("Search unavailable"));
+  expect(await listCatalogItems({ siteId: "site", q: "comfortable" })).toHaveProperty("error");
+  expect(from).not.toHaveBeenCalled();
 });
 
 it("does not query an empty trimmed search", async () => {

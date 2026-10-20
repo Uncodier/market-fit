@@ -1,9 +1,11 @@
 "use client"
 
 import { useRouter } from "next/navigation"
+import { useState } from "react"
 import { ConfirmDialog } from "@/app/components/ui/confirm-dialog"
 import { useToast } from "@/app/components/ui/use-toast"
-import { deleteRobotInstance } from "@/app/robots/delete-robot-instance"
+import { deleteRobotInstance, RobotDeletionError } from "@/app/robots/delete-robot-instance"
+import { CancelPlansBeforeDelete } from "./CancelPlansBeforeDelete"
 
 interface DeleteRobotModalProps {
   open: boolean
@@ -15,7 +17,11 @@ interface DeleteRobotModalProps {
   onDeleteError?: (instanceId: string) => void
 }
 
-export function DeleteRobotModal({
+export function DeleteRobotModal(props: DeleteRobotModalProps) {
+  return props.open ? <DeleteRobotModalContent key={props.instanceId} {...props} /> : null
+}
+
+function DeleteRobotModalContent({
   open,
   onOpenChange,
   instanceId,
@@ -26,12 +32,15 @@ export function DeleteRobotModal({
 }: DeleteRobotModalProps) {
   const router = useRouter()
   const { toast } = useToast()
+  const [blocked, setBlocked] = useState(false)
+  const [cancellingPlan, setCancellingPlan] = useState(false)
 
   const handleDelete = async () => {
     onDeleteStart?.(instanceId)
     try {
       await deleteRobotInstance(instanceId)
     } catch (error) {
+      if (error instanceof RobotDeletionError && error.status === 409) setBlocked(true)
       onDeleteError?.(instanceId)
       toast({
         title: "Error",
@@ -61,11 +70,13 @@ export function DeleteRobotModal({
           </span>
           This cannot be undone. The instance, its associated requirements,
           requirement history, chat history, and plans will be permanently deleted.
+          {blocked && <CancelPlansBeforeDelete key={instanceId} instanceId={instanceId} onBusyChange={setCancellingPlan} />}
         </>
       }
       confirmLabel="Delete"
       variant="destructive"
       dataPermission="allow"
+      loading={cancellingPlan}
       onConfirm={handleDelete}
     />
   )

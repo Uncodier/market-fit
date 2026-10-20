@@ -9,13 +9,15 @@ interface UseStepManagementProps {
   steps: PlanStep[]
   instancePlans: InstancePlan[]
   onSetSteps?: (steps: PlanStep[]) => void
+  onPlanCancelled?: () => Promise<boolean | void>
 }
 
 export const useStepManagement = ({ 
   activeRobotInstance, 
   steps, 
   instancePlans, 
-  onSetSteps 
+  onSetSteps,
+  onPlanCancelled
 }: UseStepManagementProps) => {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [editingStep, setEditingStep] = useState<PlanStep | null>(null)
@@ -302,7 +304,7 @@ export const useStepManagement = ({
     }
   }
 
-  const { pausePlan, resumePlan, cancelPlan } = usePlanRunActions(activeRobotInstance)
+  const { pausePlan, resumePlan, cancelPlan } = usePlanRunActions(activeRobotInstance, onPlanCancelled)
 
   const addStep = async (planId: string, title: string) => {
     if (!activeRobotInstance?.id) return

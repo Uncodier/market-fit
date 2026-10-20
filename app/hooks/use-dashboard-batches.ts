@@ -23,7 +23,7 @@ function useDashboardBatch(kind: ReportBatchKind, startDate: Date, endDate: Date
   const { performanceGroup, overviewGroup, currency } = useReportDataContext()
   const group = kind === "performance" ? performanceGroup : overviewGroup
   const enabled = !(kind === "overview" && group === "activity")
-  const localDemo = isKnownDemoSite(currentSite?.id) && (kind === "overview" || group === "outcomes")
+  const localDemo = isKnownDemoSite(currentSite?.id)
   const widgetsReady = widgetContext?.shouldExecuteWidgets !== false
   const params = new URLSearchParams({
     siteId: currentSite?.id ?? "",
@@ -36,7 +36,7 @@ function useDashboardBatch(kind: ReportBatchKind, startDate: Date, endDate: Date
   const url = `/api/dashboard/${kind}?${params}`
   const hasSite = Boolean(currentSite?.id && currentSite.id !== "default")
   // Identity isolates browser caches across sessions; never send it as authority.
-  const identity = user?.id || (localDemo ? currentSite?.id : undefined)
+  const identity = localDemo ? currentSite?.id : user?.id
   const key = enabled && widgetsReady && hasSite && !siteLoading && (localDemo || !authLoading) && identity
     ? [url, identity] : null
 

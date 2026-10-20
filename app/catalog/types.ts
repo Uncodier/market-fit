@@ -8,6 +8,7 @@ export interface CatalogListParams {
   digitalSubtype?: 'ticket' | 'course' | 'file' | 'pass' | 'license' | 'all';
   isMarketplaceListed?: boolean;
   q?: string;
+  search_id?: string;
   status?: 'active' | 'archived' | 'all';
   availabilityStatus?: 'available' | 'unavailable' | 'sold_out' | 'all';
   page?: number;
@@ -22,7 +23,13 @@ export interface CatalogListParams {
 export interface CatalogListResponse {
   data: CatalogItem[];
   count: number;
+  count_kind?: 'candidate_window';
+  has_more?: boolean;
+  mode?: 'hybrid' | 'text';
+  degraded?: boolean;
+  search_id?: string;
   error?: string;
+  error_status?: number;
 }
 
 export interface CatalogAvailabilityResult {

@@ -130,6 +130,7 @@ export function CatalogTable({
   }, [items])
 
   const orderedCategorySections = useMemo(() => {
+    if (searchQuery?.trim()) return [{ id: "search-results", name: "Search results · relevance", items }]
     const sections = categories.map(cat => ({
       id: cat.id,
       name: cat.name,
@@ -156,7 +157,7 @@ export function CatalogTable({
     }
     
     return sections
-  }, [categories, itemsByCategoryId, t])
+  }, [categories, itemsByCategoryId, t, searchQuery, items])
 
   const defaultAccordionValue = orderedCategorySections.length > 10 
     ? [] 
@@ -236,7 +237,7 @@ export function CatalogTable({
                                 <Badge variant="secondary" className="ml-2 font-normal text-xs shrink-0">{section.items.length}</Badge>
                               </div>
                             </AccordionTrigger>
-                            {!isUncategorized && !isVariants && currentSite?.id && (
+                            {!searchQuery?.trim() && !isUncategorized && !isVariants && currentSite?.id && (
                               <Button
                                 variant="ghost"
                                 size="icon"

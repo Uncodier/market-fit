@@ -23,6 +23,7 @@ function TestForm({ initial, onSave = jest.fn(), siteId }: { initial?: unknown; 
 }
 
 const card = () => within(document.getElementById("activity-icp_lead_generation")!)
+const openSetup = () => fireEvent.click(card().getByRole("button", { name: "Show setup for ICP Lead Generation" }))
 const checkbox = (name: string) => card().getByRole("checkbox", { name })
 const save = () => fireEvent.click(card().getByRole("button", { name: "Save" }))
 
@@ -35,6 +36,7 @@ describe("ICP pending mining list selector", () => {
   it("defaults to dynamic all, includes future lists, displays progress and running resume without storing a snapshot", async () => {
     const onSave = jest.fn().mockResolvedValue(true)
     render(<TestForm onSave={onSave} />)
+    openSetup()
     await card().findByRole("checkbox", { name: "Mining list 1" })
     expect(fetchIcpMiningLists).toHaveBeenCalledWith("context-site", expect.any(AbortSignal))
     expect(checkbox("All pending lists")).toBeChecked()
@@ -57,6 +59,7 @@ describe("ICP pending mining list selector", () => {
     const onSave = jest.fn().mockResolvedValue(true)
     const initial = { icp_lead_generation: { extension: { keep: true } }, future_activity: { keep: true } }
     const view = render(<TestForm onSave={onSave} initial={initial} siteId="site-a" />)
+    openSetup()
     await card().findByRole("checkbox", { name: "Mining list 1" })
     expect(fetchIcpMiningLists).toHaveBeenCalledWith("site-a", expect.any(AbortSignal))
     fireEvent.click(checkbox("All pending lists"))
@@ -73,6 +76,7 @@ describe("ICP pending mining list selector", () => {
     await waitFor(() => expect(card().getByRole("button", { name: "Save" })).toBeDisabled())
     view.unmount()
     render(<TestForm onSave={onSave} initial={saved} siteId="site-a" />)
+    openSetup()
     await card().findByRole("checkbox", { name: "Mining list 2" })
     expect(checkbox("Mining list 2")).toBeChecked()
     fireEvent.click(checkbox("Mining list 2"))
@@ -86,6 +90,7 @@ describe("ICP pending mining list selector", () => {
   it("keeps completed/deleted selections removable and savable without widening to another available list", async () => {
     const onSave = jest.fn().mockResolvedValue(true)
     render(<TestForm onSave={onSave} initial={{ icp_lead_generation: { all_lists: false, list_ids: [listId(2)] } }} />)
+    openSetup()
     await card().findByRole("checkbox", { name: "Mining list 2" })
     jest.mocked(fetchIcpMiningLists).mockResolvedValue([miningList(1)])
     fireEvent.click(card().getByRole("button", { name: "Refresh lists" }))
@@ -108,6 +113,7 @@ describe("ICP pending mining list selector", () => {
     jest.mocked(fetchIcpMiningLists).mockReturnValueOnce(load.promise)
     const onSave = jest.fn().mockResolvedValue(true)
     render(<TestForm onSave={onSave} initial={{ icp_lead_generation: { all_lists: false, list_ids: [listId(9)] } }} />)
+    openSetup()
     expect(card().getByText("Loading pending mining lists...")).toBeInTheDocument()
     expect(card().getByText(/availability not verified/)).toBeInTheDocument()
     await act(async () => load.reject(new Error("private details")))
@@ -131,6 +137,7 @@ describe("ICP pending mining list selector", () => {
   it("hydrates delayed selections but does not overwrite unsaved list edits", async () => {
     const onSave = jest.fn()
     const view = render(<TestForm onSave={onSave} siteId="site-a" />)
+    openSetup()
     await card().findByRole("checkbox", { name: "Mining list 1" })
     view.rerender(<TestForm onSave={onSave} siteId="site-a" initial={{ icp_lead_generation: { all_lists: false, list_ids: [listId(1)] } }} />)
     await waitFor(() => expect(checkbox("All pending lists")).not.toBeChecked())
@@ -150,8 +157,11 @@ describe("ICP pending mining list selector", () => {
     const current = deferred<IcpMiningList[]>()
     jest.mocked(fetchIcpMiningLists).mockReturnValueOnce(old.promise).mockReturnValueOnce(current.promise)
     const view = render(<TestForm siteId="site-a" />)
+    openSetup()
     const signal = jest.mocked(fetchIcpMiningLists).mock.calls[0][1]!
     view.rerender(<TestForm siteId="site-b" />)
+    expect(card().getByRole("button", { name: "Show setup for ICP Lead Generation" })).toHaveAttribute("aria-expanded", "false")
+    openSetup()
     expect(signal.aborted).toBe(true)
     await act(async () => current.resolve([miningList(20, { name: "Site B list" })]))
     await act(async () => old.resolve([miningList(10, { name: "Site A list" })]))
@@ -160,8 +170,10 @@ describe("ICP pending mining list selector", () => {
     const back = deferred<IcpMiningList[]>()
     jest.mocked(fetchIcpMiningLists).mockReturnValueOnce(back.promise).mockResolvedValueOnce([miningList(30)])
     view.rerender(<TestForm siteId="site-a" />)
+    openSetup()
     expect(screen.queryByText("Site B list")).not.toBeInTheDocument()
     view.rerender(<TestForm siteId="site-b" />)
+    openSetup()
     await act(async () => back.reject(new Error("Old site failed")))
     await card().findByRole("checkbox", { name: "Mining list 30" })
     expect(card().queryByRole("alert")).not.toBeInTheDocument()

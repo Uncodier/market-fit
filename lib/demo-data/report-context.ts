@@ -6,11 +6,11 @@ import type { DemoReportRow } from "./report-types"
 
 export type DemoRow = DemoReportRow
 
-export async function demoReportContext(params: URLSearchParams) {
+export async function demoReportContext(params: URLSearchParams, maxRangeDays = DEFAULT_ANALYTICS_RANGE_DAYS) {
   const siteId = params.get("siteId")
   if (!isKnownDemoSite(siteId)) throw new Error("Unknown demo site")
   const period = salesReportPeriod(params)
-  if (period.days > DEFAULT_ANALYTICS_RANGE_DAYS) throw new Error("Demo report date range is too large")
+  if (period.days > maxRangeDays) throw new Error("Demo report date range is too large")
   const data = await getDemoData(siteId)
   if (!data) throw new Error("Demo data is unavailable")
   const segmentId = params.get("segmentId") || "all"

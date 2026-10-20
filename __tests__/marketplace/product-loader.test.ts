@@ -4,8 +4,11 @@ import { loadMarketplaceSales } from "@/app/marketplace/load-marketplace-sales"
 import { createServiceClient } from "@/lib/supabase/server"
 import { GET } from "@/app/api/marketplace/products/route"
 import { marketplaceItem } from "./catalog-fixture"
+import { searchCatalogWindow } from "@/lib/catalog-search/server"
+import { CatalogSearchError } from "@/lib/catalog-search/server"
 
 jest.mock("server-only", () => ({}))
+jest.mock("@/lib/catalog-search/server", () => ({ searchCatalogWindow: jest.fn(), CatalogSearchError: jest.requireActual("@/lib/catalog-search/server").CatalogSearchError }))
 jest.mock("@/lib/supabase/server", () => ({ createServiceClient: jest.fn() }))
 jest.mock("@/app/marketplace/load-marketplace-sales", () => ({
   ...jest.requireActual("@/app/marketplace/load-marketplace-sales"), loadMarketplaceSales: jest.fn(),
@@ -65,6 +68,27 @@ function setup() {
 }
 
 beforeEach(() => jest.clearAllMocks())
+
+it("uses bounded shared search order, not sales or an all-catalog candidate scan", async () => {
+  const { hydrated } = setup()
+  jest.mocked(searchCatalogWindow).mockResolvedValue({ success: true,
+    items: [{ id: "3", site_id: "seller-one" }, { id: "top", site_id: "seller-two" }],
+    count: 2, count_kind: "candidate_window", has_more: false, mode: "hybrid", degraded: false, search_id: "search" })
+  const response = await loadMarketplaceProducts({ search: "semantic", limit: 1, sort: "best_selling" })
+  expect(response.items.map(item => item.id)).toEqual(["3"])
+  expect(response).toMatchObject({ count: 2, count_kind: "candidate_window", totalPages: 2 })
+  expect(hydrated).toEqual([["3", "top"], ["3"]])
+  expect(loadMarketplaceSales).not.toHaveBeenCalled()
+  const mexico = await loadMarketplaceProducts({ search: "semantic", regionCountry: "MX" })
+  expect(mexico.items.map(item => item.id)).toEqual(["3"])
+  expect(mexico.count).toBe(1)
+})
+
+it("keeps whitespace browse and does not call shared search", async () => {
+  setup()
+  await loadMarketplaceProducts({ search: "   " })
+  expect(searchCatalogWindow).not.toHaveBeenCalled()
+})
 
 it("uses 36 items for SSR and API pages without overlapping or dropping the final page", async () => {
   setup()
@@ -147,4 +171,14 @@ it("rejects invalid requests before accessing privileged data and hides database
   expect(response.status).toBe(500)
   expect(await response.json()).toEqual({ error: "Unable to load marketplace products" })
   log.mockRestore()
+})
+
+it("parses expected search_id, forwards it on page 2, and preserves expired snapshot 409 to the frontend", async () => {
+  setup()
+  const id = "11111111-1111-4111-8111-111111111111"
+  jest.mocked(searchCatalogWindow).mockRejectedValueOnce(new CatalogSearchError(409, "Catalog search expired"))
+  const response = await GET(new Request(`https://example.test/api/marketplace/products?search=shoes&page=2&search_id=${id}`))
+  expect(response.status).toBe(409)
+  expect(searchCatalogWindow).toHaveBeenCalledWith(expect.objectContaining({ query: "shoes", search_id: id }))
+  expect((await GET(new Request("https://example.test/api/marketplace/products?search_id=invalid"))).status).toBe(400)
 })

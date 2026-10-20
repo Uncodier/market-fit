@@ -34,4 +34,22 @@ describe("publish account inventory", () => {
     ] } })
     expect(options).toEqual([])
   })
+
+  it("does not expose disabled connections through exact or ID-less fallback options", () => {
+    expect(getPublishOptions({ settings: { channels: { connections: [
+      { id: "manual", type: "whatsapp", status: "connected", _license: { manually_disabled: true } },
+      { type: "sms", status: "connected", enabled: false },
+      { id: "quota", type: "email", status: "connected", license_suspended: true },
+      { type: "voice", status: "active", _license: { manually_disabled: true } },
+      { type: "telegram", status: "synced" },
+    ] } } })).toEqual([])
+  })
+
+  it("keeps available Voice accounts and omits unavailable peers of the same channel", () => {
+    const options = getPublishOptions({ settings: { channels: { connections: [
+      { id: "disabled", type: "voice", status: "connected", enabled: false },
+      { id: "voice", type: "voice", status: "synced" },
+    ] } } })
+    expect(options.map(option => option.key)).toEqual(["voice:connection:voice", "voice-agent-call:connection:voice"])
+  })
 })

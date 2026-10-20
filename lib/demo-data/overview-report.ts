@@ -1,28 +1,16 @@
 import { buildSalesReport } from "@/app/api/revenue/build-sales-report"
 import { buildOverviewPeriodCosts } from "@/app/api/dashboard/overview/period-costs"
-import type { ReportSale } from "@/app/api/sales/sales-query"
 import { isRecognizedRevenueSale } from "@/lib/sales/recognized-sale"
 import { selectLiveCampaigns } from "@/lib/dashboard/active-campaigns"
 import { reportMetricKeys, type ReportBatch, type ReportBatchKind } from "@/lib/dashboard/report-groups"
 import { createDemoMockClient } from "./mock-client"
-import { demoMetric, demoReportContext, type DemoReportContext, type DemoRow } from "./report-context"
-import { buildDemoOutcomes } from "./activity-report"
-
-function demoSales(context: DemoReportContext) {
-  return context.scoped("sales").map(row => ({
-    ...row,
-    status: row.status || "", amount: row.amount ?? null,
-    order_statuses: context.rows("sale_orders").filter(order => order.sale_id === row.id).map(order => order.status || ""),
-    refunds: context.rows("accounting_sale_refunds").filter(refund => refund.sale_id === row.id).map(refund => ({
-      id: refund.id, sale_id: row.id, amount: refund.amount ?? 0,
-      currency: refund.currency || "UNSPECIFIED", refunded_at: String(refund.refunded_at || ""),
-    })),
-  })) satisfies (ReportSale & DemoRow)[]
-}
+import { demoMetric, demoReportContext, type DemoReportContext } from "./report-context"
+import { buildDemoSales } from "./sales-report"
+import { buildDemoPerformance } from "./performance-report"
 
 async function summary(context: DemoReportContext): Promise<ReportBatch> {
   const { siteId, period, segmentId, currency, rows, scoped, inRange } = context
-  const sales = demoSales(context)
+  const sales = buildDemoSales(context)
   // This existing fixture client is only used for local category reads; Overview omits them.
   const revenue = await buildSalesReport(createDemoMockClient(siteId), sales, period, {
     currency, segmentId, siteCurrency: currency, includeCategories: false,
@@ -51,7 +39,7 @@ async function summary(context: DemoReportContext): Promise<ReportBatch> {
 
 function economics(context: DemoReportContext): ReportBatch {
   const { scoped, inRange, currency } = context
-  const sales = demoSales(context).filter(sale => sale.currency === currency &&
+  const sales = buildDemoSales(context).filter(sale => sale.currency === currency &&
     isRecognizedRevenueSale(sale) && inRange(sale.sale_date || sale.created_at))
   const totalRevenue = sales.reduce((sum, sale) => sum + Number(sale.amount || 0), 0)
   const paid = sales.filter(sale => sale.status === "completed")
@@ -79,8 +67,7 @@ export async function loadDemoDashboardBatch(kind: ReportBatchKind, params: URLS
   if (!keys) throw new Error("Unknown demo report section")
   const context = await demoReportContext(params)
   if (kind === "performance") {
-    if (group !== "outcomes") throw new Error("This demo report section is not available")
-    return buildDemoOutcomes(context)
+    return buildDemoPerformance(context, group)
   }
   const data: ReportBatch = {
     ...(keys.includes("revenue") ? await summary(context) : {}),

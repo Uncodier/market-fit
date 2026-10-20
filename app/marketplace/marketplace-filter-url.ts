@@ -36,6 +36,8 @@ export function parseMarketplaceListingFilters(current: SearchSource): Marketpla
 export function buildMarketplaceListingFilterSearch(current: SearchSource, filters: MarketplaceListingFilters): string {
   const params = new URLSearchParams(current?.toString() || "")
   for (const key of FILTER_KEYS) params.delete(key)
+  params.delete("page")
+  params.delete("search_id")
   const requested = new URLSearchParams()
   for (const key of FILTER_KEYS) {
     const value = filters[key]

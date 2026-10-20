@@ -19,6 +19,7 @@ import { NavigationAreaGroups } from "./NavigationAreaGroups"
 import { SIDEBAR_AUTOMATION_AREA_ORDER } from "@/app/config/navigation-areas"
 import { OnboardingProgressWidget } from "./OnboardingProgressWidget"
 import { CreditsWidget } from "./CreditsWidget"
+import { StartupTrialWidget } from "./StartupTrialWidget"
 
 const NavigationPage = dynamic(() => import("@/app/navigation/page"), {
   ssr: false,
@@ -256,6 +257,7 @@ export function Sidebar({
           >
             <OnboardingProgressWidget isCollapsed={renderCollapsed} />
             <CreditsWidget isCollapsed={renderCollapsed} />
+            <StartupTrialWidget isCollapsed={renderCollapsed} />
           </div>
         </div>
 

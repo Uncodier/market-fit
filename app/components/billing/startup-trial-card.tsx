@@ -159,8 +159,12 @@ function SiteStartupTrialCard({ siteId }: { siteId: string }) {
     }
   }
 
+  // Do not advertise a trial before its eligibility is known or when it is denied.
+  // Unconfirmed operations and hydration failures retain their recovery controls.
+  if ((!trial || trial.state === "unavailable") && !error && !refreshWarning) return null
+
   return <SectionCard id="startup-trial" className="mb-6" aria-busy={operation !== null}>
-    <SectionCardHeader title="Startup trial" description="Try Startup for 15 days. The current interface calls this plan Foundry." />
+    <SectionCardHeader title="Startup trial" description="Try Startup for 15 days." />
     <SectionCardContent>
       <p className="text-sm">50 one-time credits total, not a monthly allowance. Credits do not renew and unused trial credits expire when the trial ends.</p>
       <p className="text-sm text-muted-foreground">No card required. No automatic billing or paid subscription. Your 15 days start only when you click Start.</p>
@@ -180,7 +184,6 @@ function SiteStartupTrialCard({ siteId }: { siteId: string }) {
       </div>}
       {trial?.state === "expired" && <p className="text-sm">Your Startup trial has ended. Trial credits do not renew. Choose a paid plan explicitly to continue with Startup (Foundry).</p>}
       {trial?.state === "converted" && <p className="text-sm">Your site has moved to a paid plan. The one-time Startup trial cannot be restarted.</p>}
-      {trial?.state === "unavailable" && <p className="text-sm">Startup trial is not available for this site. Activation is disabled.</p>}
       {confirmed && <p role="status" className="text-sm">Trial activation is confirmed. It will not be restarted.</p>}
       {refreshWarning && <p role="alert" className="text-sm text-amber-700 dark:text-amber-400">{confirmed
         ? "Trial activation is confirmed, but billing information could not be refreshed. Reload billing information; do not restart the trial."

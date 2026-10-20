@@ -10,6 +10,8 @@ export const startupTrialSchema = z.object({
   ends_at: z.string().datetime({ offset: true }).nullable(),
   credits_remaining: z.number().finite().min(0).max(STARTUP_TRIAL_CREDITS),
   server_now: z.string().datetime({ offset: true }),
+  /** Explicit offer proof is absent before the payment-history migration. */
+  offer_eligible: z.boolean().optional(),
 }).superRefine((trial, context) => {
   const start = trial.started_at === null ? null : Date.parse(trial.started_at)
   const end = trial.ends_at === null ? null : Date.parse(trial.ends_at)
@@ -20,6 +22,7 @@ export const startupTrialSchema = z.object({
       (trial.state === "eligible" && start !== null) ||
       (trial.state === "active" && (start === null || end === null || now < start || now >= end)) ||
       (trial.state === "expired" && (end === null || now < end)) ||
+      (trial.offer_eligible === true && trial.state !== "eligible") ||
       (trial.state !== "active" && trial.credits_remaining !== 0)) {
     context.addIssue({ code: z.ZodIssueCode.custom, message: "Invalid trial lifecycle" })
   }

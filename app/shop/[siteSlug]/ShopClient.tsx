@@ -133,6 +133,7 @@ export default function ShopClient({
     categoryOffsets,
     totalCount,
     isLoading,
+    searchError, retrySearch,
     isLoadingMore,
     isJumping,
     hasMoreBelow,
@@ -450,6 +451,7 @@ export default function ShopClient({
         rawCatalogItems={catalogItems}
         initialCount={totalCount}
         isLoading={isLoading}
+        searchError={searchError} retrySearch={retrySearch}
         isLoadingMore={isLoadingMore}
         isJumping={isJumping}
         hasMoreBelow={hasMoreBelow}

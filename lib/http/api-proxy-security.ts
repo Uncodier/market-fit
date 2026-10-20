@@ -1,5 +1,5 @@
 /** Resolve only server-configured API origins; paths are fixed by each route handler. */
-export function configuredApiUrl(request: Request, path: string): URL | null {
+export function configuredApiUrl(request: Request | null, path: string): URL | null {
   const configured = (process.env.API_SERVER_URL || process.env.NEXT_PUBLIC_API_SERVER_URL || '').trim()
   const base = /^https?:\/\//i.test(configured) ? configured
     : `${/^(localhost|127\.0\.0\.1)(:|$)/i.test(configured) ? 'http' : 'https'}://${configured}`
@@ -9,7 +9,7 @@ export function configuredApiUrl(request: Request, path: string): URL | null {
     const local = ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname)
     if (!configured || url.username || url.password || url.search || url.hash || url.pathname !== '/' ||
       (url.protocol !== 'https:' && !(url.protocol === 'http:' && local && process.env.NODE_ENV !== 'production')) ||
-      url.origin === new URL(request.url).origin) return null
+      (request && url.origin === new URL(request.url).origin)) return null
     return new URL(path, url)
   } catch {
     return null

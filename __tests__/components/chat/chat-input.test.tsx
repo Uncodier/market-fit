@@ -54,6 +54,21 @@ describe('ChatInput send guards', () => {
   afterAll(() => { Reflect.deleteProperty(HTMLElement.prototype, 'scrollIntoView') })
   beforeEach(() => { jest.mocked(useChannelSelector).mockReturnValue(channelState()) })
 
+  it('blocks all send paths through a historical channel that was deactivated', () => {
+    jest.mocked(useChannelSelector).mockReturnValue({ ...channelState(), selectedChannel: 'whatsapp', availableChannels: ['web'] })
+    const callbacks = props()
+    render(<ChatInput {...callbacks} message="Keep my draft" />)
+    const textarea = screen.getByRole('textbox')
+    fireEvent.change(textarea, { target: { value: 'Keep my draft' } })
+    fireEvent.keyDown(textarea, { key: 'Enter' })
+    fireEvent.submit(textarea.closest('form')!)
+    expect(screen.getByRole('button', { name: 'Send' })).toBeDisabled()
+    expect(screen.getByRole('status')).toHaveTextContent('inactive or unavailable')
+    expect(callbacks.handleSendMessage).not.toHaveBeenCalled()
+    expect(callbacks.handleKeyDown).not.toHaveBeenCalled()
+    expect(textarea).toHaveValue('Keep my draft')
+  })
+
   it('blocks Enter and native form submission during channel update without inserting a newline', () => {
     jest.mocked(useChannelSelector).mockReturnValue(channelState(true))
     const callbacks = props()
@@ -110,7 +125,7 @@ describe('ChatInput send guards', () => {
   })
 
   it('explains why a contactless voice conversation cannot start a call instead of acting as assistant chat', () => {
-    jest.mocked(useChannelSelector).mockReturnValue({ ...channelState(), selectedChannel: 'voice' })
+    jest.mocked(useChannelSelector).mockReturnValue({ ...channelState(), selectedChannel: 'voice', availableChannels: ['voice'] })
     const callbacks = props()
     render(<ChatInput {...callbacks} leadData={null} />)
     const textarea = screen.getByRole('textbox')
@@ -124,7 +139,7 @@ describe('ChatInput send guards', () => {
   })
 
   it('labels linked voice sends as outbound calls and blocks while routing is loading', () => {
-    jest.mocked(useChannelSelector).mockReturnValue({ ...channelState(), selectedChannel: 'voice' })
+    jest.mocked(useChannelSelector).mockReturnValue({ ...channelState(), selectedChannel: 'voice', availableChannels: ['voice'] })
     const callbacks = props()
     const { rerender } = render(<ChatInput {...callbacks} leadData={{ id: 'lead-1' }} isConversationReady={false} />)
     fireEvent.change(screen.getByRole('textbox'), { target: { value: 'Greeting' } })
@@ -140,7 +155,7 @@ describe('ChatInput send guards', () => {
     [{ do_not_call: true }, 'do-not-call'],
     [{ phone: undefined }, 'international phone number'],
   ])('blocks voice button, Enter and native submit with an actionable reason: %j', (overrides, reason) => {
-    jest.mocked(useChannelSelector).mockReturnValue({ ...channelState(), selectedChannel: 'voice' })
+    jest.mocked(useChannelSelector).mockReturnValue({ ...channelState(), selectedChannel: 'voice', availableChannels: ['voice'] })
     const callbacks = props()
     render(<ChatInput {...callbacks} leadData={{ ...consentedLead, ...overrides }} />)
     const textarea = screen.getByRole('textbox')
@@ -159,7 +174,7 @@ describe('ChatInput send guards', () => {
     { voice_call_consent_status: undefined, voice_call_consent_at: undefined },
     { voice_call_consent_status: 'granted', voice_call_consent_at: 'invalid' },
   ])('allows voice button, Enter and native submit without recorded consent: %j', overrides => {
-    jest.mocked(useChannelSelector).mockReturnValue({ ...channelState(), selectedChannel: 'voice' })
+    jest.mocked(useChannelSelector).mockReturnValue({ ...channelState(), selectedChannel: 'voice', availableChannels: ['voice'] })
     const callbacks = props()
     render(<ChatInput {...callbacks} leadData={{ ...consentedLead, ...overrides }} />)
     const textarea = screen.getByRole('textbox')
@@ -176,7 +191,7 @@ describe('ChatInput send guards', () => {
   })
 
   it('blocks new voice submissions when an explicit opt-out is loaded after an eligible lead', () => {
-    jest.mocked(useChannelSelector).mockReturnValue({ ...channelState(), selectedChannel: 'voice' })
+    jest.mocked(useChannelSelector).mockReturnValue({ ...channelState(), selectedChannel: 'voice', availableChannels: ['voice'] })
     const callbacks = props()
     const lead = { ...consentedLead, voice_call_consent_status: 'unknown', voice_call_consent_at: null }
     const { rerender } = render(<ChatInput {...callbacks} leadData={lead} />)

@@ -127,6 +127,43 @@ live('Startup trials in disposable socket-only PostgreSQL', () => {
     expect(pg.row(site).trial_converted_at).not.toBeNull()
   })
 
+  it('denies a legacy active Stripe admin without coverage and restores access after verified settlement', () => {
+    const { site, actor } = pg.seed(117)
+    const member = licenseUuid(2217)
+    pg.db(`UPDATE billing SET plan='foundry' WHERE site_id='${site}';
+      INSERT INTO site_members(site_id,user_id,role,status,email)
+        VALUES('${site}','${member}','admin','active','legacy-admin@example.test');`)
+    expect(pg.call(`SELECT current_user_site_role('${site}');`, member)).toBe('admin')
+    // A lifecycle status is not paid service proof. Like a legacy deployment,
+    // the suspension mirror remains false until a reconciliation runs.
+    pg.db(`UPDATE billing SET stripe_customer_id='cus_legacy117',
+      stripe_subscription_id='sub_legacy117',subscription_status='active' WHERE site_id='${site}';`)
+    expect(pg.row(site)).toMatchObject({ plan: 'foundry', paid_subscription_invoice_id: null })
+    expect(pg.db(`SELECT license_suspended,manually_disabled,status FROM site_members WHERE user_id='${member}';`))
+      .toBe('f|f|active')
+    expect(pg.db(`SELECT effective_site_plan('${site}');`)).toBe('commission')
+    expect(pg.call(`SELECT coalesce(current_user_site_role('${site}'),'denied');`, member)).toBe('denied')
+    expect(pg.call(`SELECT count(*) FROM sites WHERE id='${site}';`, member)).toBe('0')
+    expect(pg.call(`SELECT current_user_site_role('${site}');`, actor)).toBe('owner')
+
+    const dates = JSON.parse(pg.db(`SELECT json_build_object('start',now()-interval '1 day',
+      'end',now()+interval '29 days','now',now());`))
+    const invoice = JSON.stringify({ site_id: site, customer_id: 'cus_legacy117', subscription_id: 'sub_legacy117',
+      invoice_id: 'in_legacy117', status: 'paid', amount: 99, currency: 'USD', plan: 'foundry', addons_count: 0,
+      billing_interval: 'month', billing_reason: 'subscription_cycle', current_subscription_status: 'active',
+      period_start: dates.start, period_end: dates.end, paid_at: dates.now, coverage_verified: true })
+    const before = pg.row(site)
+    expect(pg.rpc('settle_stripe_subscription_invoice', `'${invoice}'`).outcome).toBe('settled')
+    expect(pg.db(`SELECT effective_site_plan('${site}');`)).toBe('foundry')
+    expect(pg.call(`SELECT current_user_site_role('${site}');`, member)).toBe('admin')
+    expect(pg.call(`SELECT count(*) FROM sites WHERE id='${site}';`, member)).toBe('1')
+    const recovered = pg.row(site)
+    for (const field of ['purchased_credits_available', 'legacy_credits_available', 'account_balance', 'trial_credits_available'])
+      expect(recovered[field]).toBe(before[field])
+    expect(pg.rpc('settle_stripe_subscription_invoice', `'${invoice}'`).outcome).toBe('duplicate')
+    expect(pg.row(site)).toEqual(recovered)
+  })
+
   it('actual-cost reservations debit trial first and refund only the original unexpired trial', () => {
     const { site, actor } = pg.seed(110); pg.startTrial(site, actor)
     const session = licenseUuid(3110); const event = licenseUuid(4110)

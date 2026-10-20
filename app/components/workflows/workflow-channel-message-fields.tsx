@@ -1,9 +1,9 @@
 "use client"
 
-import { useMemo } from "react"
 import { useSite } from "@/app/context/SiteContext"
 import { Button } from "@/app/components/ui/button"
-import { COMMUNICATION_CHANNELS, getChannelLabel, getEnabledSiteChannels, normalizeChannel } from "@/lib/site-channels"
+import { getChannelLabel, getEnabledSiteChannels, normalizeChannel } from "@/lib/site-channels"
+import { isActiveAgentChannel } from "@/lib/agent-channel-state"
 import { getSenderPhoneNumberKey, useZavuSenderPhoneNumbers } from "@/app/components/settings/use-zavu-sender-phone-numbers"
 import { WF_FIELD_CLASS, type WorkflowTriggerConfig } from "./types"
 import { WorkflowSearchSelect } from "./workflow-search-select"
@@ -20,18 +20,15 @@ export function WorkflowChannelMessageFields({
   const allConnections = currentSite?.settings?.channels?.connections || []
   const channel = trigger.channel || "any"
   const connections = allConnections.filter((connection) =>
-    Boolean(connection.id) && ["connected", "active", "synced"].includes(connection.status) &&
+    Boolean(connection.id) && isActiveAgentChannel(connection) &&
     (channel === "any" || normalizeChannel(connection.type) === channel),
   )
   const senderPhoneNumbers = useZavuSenderPhoneNumbers({ connections, enabled: true })
   const available = getEnabledSiteChannels(currentSite)
-  const channelOptions = useMemo(() => {
-    const channels = available.length ? available : [...COMMUNICATION_CHANNELS]
-    return [
-      { value: "any", label: "Any channel" },
-      ...channels.map((channel) => ({ value: channel, label: getChannelLabel(channel) })),
-    ]
-  }, [available])
+  const channelOptions = [
+    { value: "any", label: "Any channel" },
+    ...available.map((channel) => ({ value: channel, label: getChannelLabel(channel) })),
+  ]
   const hasAmbiguousConnections = channel === "any" || connections.length === 0 || (channel !== "voice" && connections.length !== 1)
   const priority = Number.isInteger(trigger.priority) && trigger.priority! >= 0 && trigger.priority! <= 100
     ? trigger.priority!
@@ -50,6 +47,7 @@ export function WorkflowChannelMessageFields({
           value={channel}
           placeholder="Channel"
           allowCreate={false}
+          includeCurrentOption={false}
           onChange={(next) => void onPersist({
             trigger: { ...trigger, channel: next === "any" ? undefined : next, connection_id: undefined },
           })}
@@ -69,6 +67,7 @@ export function WorkflowChannelMessageFields({
             value={trigger.connection_id || "any"}
             placeholder="Connection"
             allowCreate={false}
+            includeCurrentOption={false}
             disabled={hasAmbiguousConnections}
             onChange={(next) => void onPersist({ trigger: { ...trigger, connection_id: next === "any" ? undefined : next } })}
           />

@@ -190,7 +190,10 @@ export interface SiteSettings {
       id?: string
       type?: "whatsapp" | "messenger" | "sms" | "email" | "telegram" | "instagram" | "voice" | ""
       name?: string
-      status: "pending" | "in_progress" | "connected" | "failed" | "expired" | "cancelled" | "disconnected" | "not_configured"
+      status: "pending" | "in_progress" | "connected" | "active" | "synced" | "disabled" | "license_suspended" | "failed" | "expired" | "cancelled" | "disconnected" | "not_configured"
+      enabled?: boolean
+      license_suspended?: boolean
+      _license?: Record<string, unknown> & { manually_disabled?: boolean }
       zavu_sender_id?: string
       zavu_invitation_id?: string
       connected_account?: any

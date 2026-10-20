@@ -69,6 +69,7 @@ export function KanbanView({
   }, [items])
 
   const orderedColumns = useMemo(() => {
+    if (searchQuery?.trim()) return [{ id: "search-results", name: "Search results · relevance", items }]
     const cols = categories.map(cat => ({
       id: cat.id,
       name: cat.name,
@@ -95,7 +96,7 @@ export function KanbanView({
     }
     
     return cols
-  }, [categories, itemsByCategoryId, t])
+  }, [categories, itemsByCategoryId, t, searchQuery, items])
 
   const handleDragEndInternal = (result: any) => {
     if (!onDragEnd) return

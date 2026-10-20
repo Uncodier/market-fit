@@ -78,6 +78,12 @@ beforeEach(() => {
   jest.mocked(useSearchParams).mockReturnValue(new URLSearchParams() as ReturnType<typeof useSearchParams>)
 })
 
+it("shows relevance and bounded-window scope instead of a misleading sales sort during search", () => {
+  render(<MarketplaceCatalog {...catalogProps} searchQuery="comfortable" selectedSort="best_selling" />)
+  expect(screen.queryByTitle("Sort by")).not.toBeInTheDocument()
+  expect(screen.getByText(/Relevance · up to 200 candidates/)).toBeInTheDocument()
+})
+
 it.each([
   ["featured", "Featured"], ["best_selling", "Best selling"], ["newest", "Newest"],
   ["price_asc", "Price: low to high"], ["price_desc", "Price: high to low"],
@@ -124,7 +130,7 @@ it("places a single responsive icon sorting menu above the grid, outside sidebar
   expect(mobileCategory.compareDocumentPosition(gridSort) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   expect(mobileCategory.parentElement).not.toContainElement(within(mobileFilters).getByText("Celaya"))
   expect(gridSort.compareDocumentPosition(screen.getByTestId("product-list")) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
-  expect(useMarketplaceProducts).toHaveBeenCalledWith(initial, 2, "", "all", "all", false, "best_selling", location.effectiveBuyerGeo, {}, undefined, 30)
+  expect(useMarketplaceProducts).toHaveBeenCalledWith(initial, 2, "", "all", "all", false, "best_selling", location.effectiveBuyerGeo, {}, undefined, 30, undefined)
 })
 
 it("hides the sorting menu for Discounts and restores the persisted sort when leaving", () => {
@@ -132,7 +138,7 @@ it("hides the sorting menu for Discounts and restores the persisted sort when le
   expect(screen.queryByTitle("Sort by")).not.toBeInTheDocument()
   expect(screen.getByTestId("discounts-feed")).toBeInTheDocument()
   expect(screen.queryByTestId("product-list")).not.toBeInTheDocument()
-  expect(useMarketplaceProducts).toHaveBeenLastCalledWith(initial, 2, "", "all", "all", false, "featured", undefined, undefined, undefined, 30)
+  expect(useMarketplaceProducts).toHaveBeenLastCalledWith(initial, 2, "", "all", "all", false, "featured", undefined, undefined, undefined, 30, undefined)
   expect(screen.queryByRole("region", { name: "Product filters" })).not.toBeInTheDocument()
   rerender(<MarketplaceCatalog {...catalogProps} selectedSort="price_desc" />)
   expect(screen.getByTitle("Sort by")).toHaveTextContent("Price: high to low")
@@ -183,7 +189,7 @@ it("passes persisted listing filters and SSR facets without substituting listing
   const initialRegions = [{ country: "mexico", label: "Mexico", count: 20 }]
   render(<MarketplaceClient initialItems={initial} initialCount={30} initialTotalPages={2} initialRegions={initialRegions} />)
   expect(useMarketplaceProducts).toHaveBeenLastCalledWith(initial, 2, "", "all", "all", false, "featured",
-    location.effectiveBuyerGeo, { regionCountry: "united states", minPrice: 0, maxPrice: 50, priceCurrency: "MXN", availableOnly: true }, initialRegions, 30)
+    location.effectiveBuyerGeo, { regionCountry: "united states", minPrice: 0, maxPrice: 50, priceCurrency: "MXN", availableOnly: true }, initialRegions, 30, undefined)
   expect(screen.getAllByRole("radio", { name: "United States" }).every((radio) => radio.getAttribute("aria-checked") === "true")).toBe(true)
   expect(screen.getAllByText("Celaya")).toHaveLength(2)
 })
@@ -285,5 +291,5 @@ it("keeps rapid price and availability changes together before router navigation
     minPrice: "10", priceCurrency: "USD", availableOnly: "true",
   })
   expect(useMarketplaceProducts).toHaveBeenLastCalledWith(initial, 2, "", "all", "all", false, "featured",
-    location.effectiveBuyerGeo, { minPrice: 10, priceCurrency: "USD", availableOnly: true }, undefined, 30)
+    location.effectiveBuyerGeo, { minPrice: 10, priceCurrency: "USD", availableOnly: true }, undefined, 30, undefined)
 })

@@ -44,6 +44,12 @@ context. Product filters are hidden on the separate Discounts feed.
 
 ## Ranking rules
 
+Nonempty product searches use shared relevance order, not the sort preference.
+The sort menu is replaced with a relevance/window notice. Search counts, region
+facets and geo/price/availability filters cover at most 200 candidates, not the
+entire catalog. No sales scan is performed for these queries. The rules below
+continue to apply to **no-query browse**; see [Shared catalog search](CATALOG_SEARCH.md).
+
 - Featured prioritizes units sold in the buyer's selected or approximate area,
   then global units sold. Without local sales it naturally uses global ranking.
 - Best selling always ranks by global units sold.

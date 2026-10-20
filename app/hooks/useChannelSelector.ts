@@ -11,7 +11,7 @@ interface UseChannelSelectorProps {
     id: string
     email?: string
     phone?: string
-    social_networks?: any
+    social_networks?: Record<string, unknown> | null
   } | null
   isAgentOnlyConversation?: boolean
   defaultChannel?: Channel
@@ -34,23 +34,15 @@ export function useChannelSelector({
   const [selectedChannel, setSelectedChannelState] = useState<Channel>(defaultChannel)
   const [isUpdatingChannel, setIsUpdatingChannel] = useState(false)
 
-  // Debug log para tracking
+  // Log channel selection for diagnostics.
   console.log(`[useChannelSelector] Hook called - conversationId: ${conversationId}, selectedChannel: ${selectedChannel}`)
 
   // Memoize available channels calculation
   const availableChannels = useMemo(() => {
     const channels: Channel[] = ['web'] // Web chat is always available
 
-    console.log(`[availableChannels] Calculating channels - selectedChannel: ${selectedChannel}, isAgentOnly: ${isAgentOnlyConversation}`)
-
     // Don't show other channels for agent-only conversations
     if (isAgentOnlyConversation) {
-      console.log(`[availableChannels] Agent-only conversation, only web available`)
-      // Always include the selected channel even for agent-only conversations
-      if (selectedChannel !== 'web' && !channels.includes(selectedChannel)) {
-        channels.push(selectedChannel)
-        console.log(`[availableChannels] Added conversation channel ${selectedChannel} to agent-only conversation`)
-      }
       return channels
     }
 
@@ -67,17 +59,10 @@ export function useChannelSelector({
       }
     }
 
-    // IMPORTANT: Always include the conversation's selected channel if it's not already included
-    // This ensures the conversation's original channel is always available for selection
-    const normalizedSelected = normalizeChannel(selectedChannel) as Channel
-    if (normalizedSelected && !channels.includes(normalizedSelected)) {
-      channels.push(normalizedSelected)
-      console.log(`[availableChannels] Added conversation's channel ${normalizedSelected} to available channels`)
-    }
-
+    // Historical selection is retained separately, never treated as channel availability.
     console.log(`[availableChannels] Final channels:`, channels)
     return channels
-  }, [currentSite, leadData, isAgentOnlyConversation, selectedChannel])
+  }, [currentSite, leadData, isAgentOnlyConversation])
 
   // Enhanced setSelectedChannel with database update
   const setSelectedChannel = useCallback(async (channel: Channel) => {
@@ -201,13 +186,7 @@ export function useChannelSelector({
         }
         
         // Normalize channels like website_chat to web, twitter to x
-        if (conversationChannel === 'website_chat' as any) {
-          conversationChannel = 'web'
-          console.log(`[getConversationChannel] Normalized website_chat to web`)
-        } else if (conversationChannel === 'twitter' as any) {
-          conversationChannel = 'x'
-          console.log(`[getConversationChannel] Normalized twitter to x`)
-        }
+        conversationChannel = normalizeChannel(conversationChannel)
         
         console.log(`📺 Channel loaded from conversation ${conversationId}: ${conversationChannel}`)
         

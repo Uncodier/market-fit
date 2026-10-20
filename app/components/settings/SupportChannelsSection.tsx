@@ -1,12 +1,11 @@
 "use client"
 import { useCallback, useEffect, useState } from "react"
-import { useFormContext, useFieldArray } from "react-hook-form"
+import { useFormContext, useFieldArray, useWatch } from "react-hook-form"
 import { channelsSchema } from "./channel-form-schema"
 import { type SiteFormValues } from "./form-schema"
 import {
   SectionCard,
   SectionCardContent,
-  SectionCardFooter,
 } from "@/app/components/ui/section-card"
 import { Button } from "@/app/components/ui/button"
 import { Bot, PlusCircle } from "@/app/components/ui/icons"
@@ -26,7 +25,6 @@ import { useZavuPhoneStatusSync } from "./use-zavu-phone-status-sync"
 import { reconcilePhoneConnections } from "./zavu-phone-number-utils"
 import {
   getSupportChannelAccountLabel,
-  getSupportChannelIcon,
   getSupportChannelLabel,
   ConnectedSupportChannelSummary,
   SupportChannelHeader,
@@ -42,14 +40,19 @@ import { useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import { buildSupportChannelNavigation } from "./support-channel-navigation"
 import { reconcileSupportConnectionById } from "./support-channel-connection-utils"
+import { useAgentChannelActivation } from "./use-agent-channel-activation"
+import { isActiveAgentChannel, isManuallyDisabledAgentChannel } from "@/lib/agent-channel-state"
+import { PartnerSupportChannelSetup } from "./PartnerSupportChannelSetup"
 interface SupportChannelsSectionProps {
   active: boolean
   siteId?: string
   onSave?: (data: SiteFormValues) => void
 }
+const EMPTY_CONNECTIONS: SiteFormValues["channels"]["connections"] = []
 export function SupportChannelsSection({ active, siteId, onSave }: SupportChannelsSectionProps) {
   const form = useFormContext<SiteFormValues>()
   const { currentSite } = useSite()
+  const activation = useAgentChannelActivation(siteId)
   const router = useRouter()
   const { showBillingLimit, showBillingLimitFromError } = useBillingLimit()
   const handleConfigureAgent = async () => {
@@ -83,7 +86,7 @@ export function SupportChannelsSection({ active, siteId, onSave }: SupportChanne
     control: form.control,
     name: "channels.connections",
   })
-  const connections = form.watch("channels.connections") || []
+  const connections = useWatch({ control: form.control, name: "channels.connections" }) || EMPTY_CONNECTIONS
   const [connectingIndex, setConnectingIndex] = useState<number | null>(null)
   const [checkingIndex, setCheckingIndex] = useState<number | null>(null)
   const [channelToDelete, setChannelToDelete] = useState<number | null>(null)
@@ -96,8 +99,8 @@ export function SupportChannelsSection({ active, siteId, onSave }: SupportChanne
     }, 0)
     return () => window.clearTimeout(timer)
   }, [active, connections])
-  const persistConnections = useCallback(async (nextConnections: any[]) => {
-    form.setValue("channels.connections", nextConnections, { shouldDirty: true })
+  const persistConnections = useCallback(async (nextConnections: unknown[]) => {
+    form.setValue("channels.connections", channelsSchema.removeDefault().unwrap().shape.connections.parse(nextConnections), { shouldDirty: true })
     if (onSave) {
       await onSave(form.getValues())
     }
@@ -130,15 +133,15 @@ export function SupportChannelsSection({ active, siteId, onSave }: SupportChanne
 
     prepend({
       id: uuidv4(),
-      type: "" as any,
+      type: "",
       name: "",
       status: "pending",
     })
-  }, [prepend, currentSite, connections.length, showBillingLimit])
+  }, [prepend, currentSite, showBillingLimit])
 
   const persistPhoneConnection = useCallback((
     index: number,
-    payload: any,
+    payload: Record<string, unknown>,
   ) => {
     const nextConnections = channelsSchema.removeDefault().unwrap().shape.connections.parse(reconcilePhoneConnections(
       form.getValues("channels.connections") || [],
@@ -213,9 +216,9 @@ export function SupportChannelsSection({ active, siteId, onSave }: SupportChanne
       if (onSave) {
         await onSave(form.getValues())
       }
-    } catch (error: any) {
+    } catch (error) {
       if (!showBillingLimitFromError(error)) {
-        toast.error(error.message || "An error occurred")
+        toast.error(error instanceof Error ? error.message : "An error occurred")
       }
     } finally {
       setConnectingIndex(null)
@@ -228,8 +231,8 @@ export function SupportChannelsSection({ active, siteId, onSave }: SupportChanne
       if (!channel?.zavu_sender_id || shouldDeleteZavuSender(channel, connections, index)) {
         await disconnectZavuChannel(channel || {})
       }
-    } catch (error: any) {
-      toast.error(error.message || "Failed to disconnect channel")
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to disconnect channel")
       throw error
     }
     remove(index)
@@ -266,13 +269,12 @@ export function SupportChannelsSection({ active, siteId, onSave }: SupportChanne
           const channel = connections[index] || field
           const type = channel.type
           const hasType = !!type
-          const isConnected =
-            channel.status === "connected" &&
-            (type !== "email" || channel.metadata?.emailChannelActive === true)
+          const paused = isManuallyDisabledAgentChannel(channel) || channel.status === "disabled" || channel.status === "license_suspended"
+          const isConnected = paused || (isActiveAgentChannel(channel) &&
+            (type !== "email" || channel.metadata?.emailChannelActive === true))
           const invitationUrl = channel.metadata?.invitation_url
           const failureReason = channel.metadata?.failure_reason
           const label = channel.name || getSupportChannelLabel(type)
-          const waitingForAuth = !!invitationUrl && channel.status !== "failed"
           const accountLabel = getSupportChannelAccountLabel(
             channel,
             label,
@@ -285,6 +287,11 @@ export function SupportChannelsSection({ active, siteId, onSave }: SupportChanne
                 label={label}
                 type={type}
                 onRemove={() => setChannelToDelete(index)}
+                activation={channel.id && (paused || isActiveAgentChannel(channel)) ? {
+                  active: isActiveAgentChannel(channel), busy: activation.updatingId !== null,
+                  canManage: activation.canManage,
+                  onChange: enabled => { if (channel.id) void activation.setEnabled(channel.id, enabled) },
+                } : undefined}
               />
 
                 {!hasType && (
@@ -298,11 +305,19 @@ export function SupportChannelsSection({ active, siteId, onSave }: SupportChanne
                     <ConnectedSupportChannelSummary
                       type={type}
                       accountLabel={accountLabel}
+                      inactiveReason={paused ? channel.status === "license_suspended" ? "Inactive · plan limit" : "Inactive · manually disabled" : undefined}
                     />
+                    {channel.status === "license_suspended" && channel.id && activation.canManage && (
+                      <Button type="button" variant="outline" size="sm" className="mt-3"
+                        disabled={activation.updatingId !== null}
+                        onClick={() => { if (channel.id) void activation.setEnabled(channel.id, false) }}>
+                        Keep inactive after upgrades
+                      </Button>
+                    )}
                   </SectionCardContent>
                 )}
 
-                {isConnected && type === "voice" && siteId && (
+                {isConnected && !paused && type === "voice" && siteId && (
                   <VoiceChannelSettings
                     siteId={siteId}
                     channel={channel}
@@ -312,7 +327,7 @@ export function SupportChannelsSection({ active, siteId, onSave }: SupportChanne
                   />
                 )}
 
-                {hasType && type === "email" && siteId && (
+                {hasType && !paused && type === "email" && siteId && (
                   isConnected || canConnectAgentChannel(currentSite) ? (
                   <EmailChannelSetup
                     siteId={siteId}
@@ -409,62 +424,15 @@ export function SupportChannelsSection({ active, siteId, onSave }: SupportChanne
                 )}
 
                 {hasType && !isConnected && type !== "telegram" && type !== "email" && type !== "voice" && type !== "sms" && (
-                  <>
-                    <SectionCardContent className="pt-0">
-                      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 bg-orange-50 dark:bg-orange-900/10 rounded-lg border border-orange-100 dark:border-orange-900/30">
-                        <div className="flex items-center gap-3 flex-1 min-w-0">
-                          <div className="w-10 h-10 rounded-full bg-orange-100 dark:bg-orange-900/20 flex items-center justify-center flex-shrink-0 text-orange-600">
-                            {getSupportChannelIcon(type, 20)}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium truncate text-orange-800 dark:text-orange-200">
-                              {channel.status === "failed" ? "Setup failed" : "Action Required"}
-                            </p>
-                            <p className="text-sm text-muted-foreground">
-                              {channel.status === "failed"
-                                ? failureReason || "Authorization did not finish. You can retry the same link."
-                                : waitingForAuth
-                                  ? "Waiting for Meta authorization…"
-                                  : "Authenticate to connect this account"}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    </SectionCardContent>
-                    <SectionCardFooter className="flex flex-wrap gap-2">
-                      <Button
-                        variant="default"
-                        type="button"
-                        onClick={() => handleConnect(index)}
-                        disabled={connectingIndex === index || checkingIndex === index}
-                      >
-                        {connectingIndex === index
-                          ? "Connecting..."
-                          : invitationUrl
-                            ? "Continue Setup"
-                            : "Connect Account"}
-                      </Button>
-                      {invitationUrl && (
-                        <Button
-                          variant="outline"
-                          type="button"
-                          disabled={checkingIndex === index}
-                          onClick={async () => {
-                            setCheckingIndex(index)
-                            try {
-                              await checkStatus()
-                            } finally {
-                              setCheckingIndex(null)
-                            }
-                          }}
-                        >
-                          {checkingIndex === index ? "Checking..." : "Check setup status"}
-                        </Button>
-                      )}
-                    </SectionCardFooter>
-                  </>
+                  <PartnerSupportChannelSetup type={type} status={channel.status}
+                    invitationUrl={invitationUrl} failureReason={failureReason}
+                    connecting={connectingIndex === index} checking={checkingIndex === index}
+                    onConnect={() => { void handleConnect(index) }}
+                    onCheck={async () => {
+                      setCheckingIndex(index)
+                      try { await checkStatus() } finally { setCheckingIndex(null) }
+                    }} />
                 )}
-              {/* REMOVED EXTRA SectionCardContent CLOSING TAG */}
             </SectionCard>
           )
         })}

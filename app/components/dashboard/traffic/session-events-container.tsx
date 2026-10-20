@@ -7,6 +7,7 @@ import { ReportState } from "../report-state"
 import { fetchSessionEvents, sessionEventsUrl } from "./session-events-data"
 import { SessionEventsChart } from "./session-events-chart"
 import { SessionEventsReferrers } from "./session-events-referrers"
+import { isKnownDemoSite } from "@/lib/demo-data"
 
 interface SessionEventsContainerProps {
   siteId: string;
@@ -20,17 +21,18 @@ const layout = "grid min-w-0 grid-cols-1 items-stretch gap-4 xl:grid-cols-[minma
 export function SessionEventsContainer({ siteId, startDate, endDate, segmentId }: SessionEventsContainerProps) {
   const { user, isLoading: authLoading } = useAuth()
   const hasSite = !!siteId && siteId !== "default"
+  const demo = isKnownDemoSite(siteId)
   const url = sessionEventsUrl(siteId, startDate, endDate, segmentId)
   const { data, error, isLoading, mutate } = useReportResource(
-    hasSite && url && user?.id && !authLoading ? [url, user.id] : null,
-    fetchSessionEvents, authLoading,
+    hasSite && url && (demo || (user?.id && !authLoading)) ? [url, demo ? siteId : user!.id] : null,
+    fetchSessionEvents, !demo && authLoading,
   )
 
   if (isLoading) return <div className={layout} role="status" aria-label="Loading session events" aria-busy="true">
     <SessionEventsChart siteId={siteId} startDate={startDate} endDate={endDate} data={[]} loading />
     <SessionEventsReferrers siteId={siteId} startDate={startDate} endDate={endDate} data={[]} loading />
   </div>
-  if (!user) return <ReportState state="error" message="Sign in to view session events." />
+  if (!demo && !user) return <ReportState state="error" message="Sign in to view session events." />
   if (!hasSite) return <ReportState state="empty" message="Select a site to view session events." />
   if (!url) return <ReportState state="error" message="Select a valid date range." />
   if (error) return <Card><ReportState state="error" message={error.message} onRetry={() => { void mutate() }} /></Card>

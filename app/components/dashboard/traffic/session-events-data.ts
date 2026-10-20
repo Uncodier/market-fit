@@ -1,5 +1,6 @@
 import { format, isValid } from "date-fns"
 import { ReportRequestError } from "../report-query"
+import { isKnownDemoSite } from "@/lib/demo-data"
 
 export type SessionEventsData = {
   chartData: Array<{ date: string; label: string; pageVisits: number; uniqueVisitors: number; referralVisits?: number }>
@@ -34,6 +35,15 @@ export function parseSessionEvents(value: unknown): SessionEventsData {
 }
 
 export async function fetchSessionEvents([url]: [string, string]): Promise<SessionEventsData> {
+  const parsedUrl = new URL(url, "http://localhost")
+  if (isKnownDemoSite(parsedUrl.searchParams.get("siteId"))) {
+    try {
+      const { loadDemoTrafficReport } = await import("@/lib/demo-data/traffic-report")
+      return parseSessionEvents(await loadDemoTrafficReport(parsedUrl.pathname, parsedUrl.searchParams))
+    } catch {
+      throw new ReportRequestError("Unable to load session events. Select valid all-segment filters and try again.")
+    }
+  }
   for (let attempt = 0; ; attempt++) {
     const response = await fetch(url).catch(() => {
       throw new ReportRequestError("Unable to connect to session events. Please try again.")

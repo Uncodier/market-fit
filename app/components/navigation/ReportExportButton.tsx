@@ -14,6 +14,7 @@ import {
 } from "@/app/dashboard/export/report-export-store";
 import { Button } from "../ui/button";
 import { Download } from "../ui/icons";
+import { isKnownDemoSite } from "@/lib/demo-data";
 
 export function ReportExportButton() {
   const snapshot = useSyncExternalStore(
@@ -29,11 +30,13 @@ export function ReportExportButton() {
   const reportParam = searchParams.get("tab");
   const report = pathname === "/costs" ? "costs" : isReportId(reportParam) ? reportParam : "performance";
   const section = getReportSection(report, searchParams.get("section"));
+  const demo = isKnownDemoSite(currentSite?.id);
+  const identity = demo ? currentSite?.id : user?.id;
   const canExport = Boolean(
-    !authLoading && !siteLoading && user?.id && currentSite?.id &&
+    (demo || !authLoading) && !siteLoading && identity && currentSite?.id &&
     currentSite.id !== "default" && snapshot?.ready && snapshot.scopeKey &&
     snapshot.report === report && snapshot.section === section &&
-    snapshot.siteId === currentSite.id && snapshot.userId === user.id,
+    snapshot.siteId === currentSite.id && snapshot.userId === identity,
   );
 
   const handleExport = () => {

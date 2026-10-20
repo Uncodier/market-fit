@@ -1,6 +1,6 @@
 import { activitiesSchema, normalizeActivitySettings } from "@/app/components/settings/activity-settings"
 import { getUsableOutreachAccounts } from "@/app/components/settings/outreach-accounts"
-import { getOutreachTimezone, isValidOutreachTimezone, normalizeOutreachSettings, validateOutreachSettings } from "@/lib/outreach-settings"
+import { getOutreachTimezone, isValidOutreachTimezone, normalizeOutreachSettings, validateOutreachSettings, type OutreachSettings } from "@/lib/outreach-settings"
 import { adaptSiteToForm } from "@/app/components/settings/data-adapter"
 import { getSiteFormDefaults } from "@/app/components/settings/site-form-defaults"
 import { channelsSchema } from "@/app/components/settings/channel-form-schema"
@@ -75,7 +75,7 @@ describe("outreach settings contract", () => {
   it.each([0, -1, 10001, 1.5, NaN, Infinity, "30"])("rejects invalid daily cap %p", cap => {
     const value = { ...configured, daily_message_limit: cap }
     expect(activitiesSchema.safeParse({ leads_follow_up: value }).success).toBe(false)
-    expect(validateOutreachSettings(value as any, "leads_follow_up")).toEqual(expect.arrayContaining([expect.objectContaining({ field: "daily_message_limit" })]))
+    expect(validateOutreachSettings(value as unknown as OutreachSettings, "leads_follow_up")).toEqual(expect.arrayContaining([expect.objectContaining({ field: "daily_message_limit" })]))
   })
 
   it("requires usable selected accounts and site segments, not merely another connected account", () => {
@@ -96,7 +96,7 @@ describe("outreach settings contract", () => {
     expect(activitiesSchema.parse({ [key]: { ...configured, cooldown_mode: "fixed", cooldown_period_days: 5 } })[key]).toMatchObject({ cooldown_mode: "fixed", cooldown_period_days: 5 })
     for (const days of [undefined, null, 0, 1.5, 366, "5"]) {
       const value = { ...configured, cooldown_mode: "fixed" as const, cooldown_period_days: days }
-      expect(validateOutreachSettings(value as any, key).map(error => error.field)).toContain("cooldown_period_days")
+      expect(validateOutreachSettings(value as unknown as OutreachSettings, key).map(error => error.field)).toContain("cooldown_period_days")
       expect(activitiesSchema.safeParse({ [key]: value }).success).toBe(false)
     }
     expect(activitiesSchema.safeParse({ [key]: { ...configured, cooldown_mode: "unknown" } }).success).toBe(false)
@@ -119,7 +119,7 @@ describe("outreach settings contract", () => {
   })
 
   it("round-trips activity parameters through adapters, form defaults, site changes and normalization", () => {
-    const site = { id: "site-a", name: "A", settings: { activities: { leads_follow_up: configured } } } as any
+    const site = { id: "site-a", name: "A", settings: { activities: { leads_follow_up: configured } } } as unknown as Parameters<typeof adaptSiteToForm>[0]
     const adapted = adaptSiteToForm(site)
     expect(adapted.activities.leads_follow_up).toEqual({ ...configured, cooldown_mode: "progressive" })
     expect(getSiteFormDefaults(adapted).activities?.leads_follow_up).toEqual({ ...configured, cooldown_mode: "progressive" })
@@ -147,10 +147,30 @@ describe("usable outreach accounts", () => {
   it.each(["email", "whatsapp", "sms", "telegram", "messenger", "instagram", "voice", "custom-chat_v2"])("rejects %s connections without unique usable IDs, senders or connected status", type => {
     const valid = { id: smsId, type, status: "connected", zavu_sender_id: "sender" }
     for (const invalid of [{ status: "pending" }, { status: "disconnected" }, { status: "active" }, { id: "" }, { id: "  " }, { id: " id " }, { id: "id\n" }, { id: "a".repeat(201) }, { id: "email" }, { id: "agent_email" }, { id: "whatsapp" }, { id: "agent_whatsapp" }, { zavu_sender_id: "" }, { zavu_sender_id: " " }, { zavu_sender_id: undefined }, { enabled: false }]) {
-      expect(getUsableOutreachAccounts({ connections: [{ ...valid, ...invalid }] })).toEqual([])
+      const accounts = getUsableOutreachAccounts({ connections: [{ ...valid, ...invalid }] })
+      expect(accounts).toHaveLength(type === "voice" && invalid.status === "active" ? 1 : 0)
     }
     expect(getUsableOutreachAccounts({ connections: [valid, valid] })).toEqual([])
     expect(getUsableOutreachAccounts({ connections: [valid, { ...valid, type: "other-channel", status: "disconnected" }] })).toEqual([])
+  })
+
+  it.each(["email", "whatsapp", "sms", "telegram", "voice", "custom-chat_v2"])("excludes disabled and suspended %s accounts without replacing saved selections", type => {
+    const valid = { id: smsId, type, status: "connected", zavu_sender_id: "sender" }
+    for (const flags of [{ enabled: false }, { license_suspended: true }, { _license: { manually_disabled: true } },
+      { status: "disabled", enabled: false, license_suspended: false, _license: { manually_disabled: true } }]) {
+      const accounts = getUsableOutreachAccounts({ connections: [{ ...valid, ...flags }, { ...valid, id: "other" }] })
+      expect(accounts.map(account => account.id)).toEqual(["other"])
+      const saved = normalizeOutreachSettings({ ...configured, channel_accounts: { [type]: [smsId] } })
+      expect(saved.channel_accounts[type]).toEqual([smsId])
+      expect(validateOutreachSettings(saved, "leads_follow_up", accounts, configured.segment_ids))
+        .toEqual([expect.objectContaining({ field: "channel_accounts" })])
+    }
+  })
+
+  it.each(["active", "synced"])("preserves %s Voice compatibility but rejects disabled Voice senders", status => {
+    const voice = { id: "voice-id", type: "voice", status, zavu_sender_id: "sender" }
+    expect(getUsableOutreachAccounts({ connections: [voice] }).map(account => account.id)).toEqual(["voice-id"])
+    expect(getUsableOutreachAccounts({ connections: [{ ...voice, _license: { manually_disabled: true } }] })).toEqual([])
   })
 
   it("never offers unsafe channel keys, fake unsupported accounts without senders or audio accounts", () => {

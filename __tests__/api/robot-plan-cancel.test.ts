@@ -1,5 +1,5 @@
 /** @jest-environment node */
-import { POST } from "@/app/api/robots/plan/cancel/route"
+import { GET, POST } from "@/app/api/robots/plan/cancel/route"
 import { createClient } from "@/lib/supabase/server"
 
 jest.mock("@/lib/supabase/server", () => ({ createClient: jest.fn() }))
@@ -78,4 +78,62 @@ it.each([["PT409",409], ["23514",409], ["PGRST202",503], ["57014",503], ["PT403"
 it.each([null, { ...receipt, plan_id: siteId }, { ...receipt, steps_cancelled: -1 }])("requires matching cancellation receipt", async data => {
   rpc.mockImplementation(async name => ({ data: name === "current_user_site_role" ? "owner" : name === "user_can" ? true : data, error: null }))
   expect((await POST(request())).status).toBe(502)
+})
+
+describe("read-only cancellation plan list", () => {
+  const get = (search = `instance_id=${instanceId}`) => GET(new Request(`http://localhost:3000/api/robots/plan/cancel?${search}`))
+  const planQuery = { select: jest.fn(), eq: jest.fn(), in: jest.fn(), order: jest.fn(), range: jest.fn() }
+  beforeEach(() => {
+    for (const method of ["select", "eq", "in", "order"] as const) planQuery[method].mockReturnValue(planQuery)
+    query.maybeSingle.mockResolvedValue({ data: { id: instanceId, site_id: siteId }, error: null })
+    from.mockImplementation(table => table === "remote_instances" ? query : planQuery)
+    planQuery.range.mockReset().mockResolvedValue({ data: [
+      { id: planId, title: "Paused plan", status: "paused", steps: [{ status: "in_progress" }], metadata: {} },
+      { id: siteId, title: "Template", status: "blocked", steps: [], metadata: { workflow_template: true } },
+    ], error: null })
+  })
+  it("lists only this instance's non-template plans without payloads or writes", async () => {
+    const response = await get()
+    expect(response.status).toBe(200)
+    expect(await response.json()).toEqual({ success: true, instance_id: instanceId,
+      plans: [{ id: planId, title: "Paused plan", status: "paused", active_steps: 1 }] })
+    expect(planQuery.eq).toHaveBeenCalledWith("instance_id", instanceId)
+    expect(planQuery.eq).toHaveBeenCalledWith("site_id", siteId)
+    expect(rpc).not.toHaveBeenCalledWith("cancel_quiescent_instance_plan", expect.anything())
+  })
+  it.each(["instance_id=bad", `instance_id=${instanceId}&site_id=${siteId}`, `instance_id=${instanceId}&instance_id=${instanceId}`])("rejects invalid list scope %s", async search => {
+    expect((await get(search)).status).toBe(400)
+    expect(createClient).not.toHaveBeenCalled()
+  })
+  it("requires a real authenticated manager and RLS-visible instance", async () => {
+    auth.getUser.mockResolvedValue({ data: { user: null }, error: null })
+    expect((await get()).status).toBe(401)
+    auth.getUser.mockResolvedValue({ data: { user: { id: "verified" } }, error: null })
+    rpc.mockResolvedValue({ data: "collaborator", error: null })
+    expect((await get()).status).toBe(403)
+    query.maybeSingle.mockResolvedValue({ data: null, error: null })
+    expect((await get()).status).toBe(404)
+  })
+  it("reports read failure instead of inventing an empty list", async () => {
+    planQuery.range.mockResolvedValue({ data: null, error: { code: "57014" } })
+    expect((await get()).status).toBe(503)
+  })
+  it("includes legacy cancelled plans for reconciliation but excludes protected cancellations", async () => {
+    planQuery.range.mockResolvedValue({ data: [
+      { id: planId,title: "Legacy cancelled",status: "cancelled",steps: [{ status: "in_progress" }],metadata: {},completion_reason: "Old cancellation" },
+      { id: siteId,title: "Protected",status: "cancelled",steps: [{ status: "cancelled" }],metadata: {},completion_reason: "Cancelled by project manager" },
+    ],error: null })
+    expect((await (await get()).json()).plans).toEqual([{ id: planId,title: "Legacy cancelled",status: "cancelled",active_steps: 1 }])
+  })
+  it("pages beyond protected history to expose the remaining paused plan", async () => {
+    const protectedPlans = Array.from({ length: 100 }, () => ({ id: siteId,title: "Historical",status: "cancelled",
+      steps: [],metadata: {},completion_reason: "Cancelled by project manager" }))
+    planQuery.range.mockResolvedValueOnce({ data: protectedPlans,error: null }).mockResolvedValueOnce({ data: [
+      { id: planId,title: "Remaining",status: "paused",steps: [{ status: "in_progress" }],metadata: {} },
+    ],error: null })
+    const response = await get()
+    expect(response.status).toBe(200)
+    expect((await response.json()).plans).toHaveLength(1)
+    expect(planQuery.range).toHaveBeenCalledWith(100,199)
+  })
 })

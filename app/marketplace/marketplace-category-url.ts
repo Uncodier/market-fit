@@ -41,6 +41,8 @@ export function buildMarketplaceCategorySearch(
   )
 
   const kind = parseMarketplaceKind(next.kind)
+  params.delete("page")
+  params.delete("search_id")
   const subtype =
     kind === "digital_asset" ? parseMarketplaceSubtype(next.subtype) : "all"
 

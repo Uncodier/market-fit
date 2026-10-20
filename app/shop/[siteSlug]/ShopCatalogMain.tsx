@@ -52,6 +52,8 @@ interface ShopCatalogMainProps {
   rawCatalogItems?: CatalogItem[]
   initialCount: number
   isLoading: boolean
+  searchError?: string
+  retrySearch?: () => void
   isLoadingMore: boolean
   isJumping: boolean
   hasMoreBelow: boolean
@@ -83,6 +85,7 @@ export const ShopCatalogMain = React.memo(function ShopCatalogMain({
   rawCatalogItems,
   initialCount,
   isLoading,
+  searchError, retrySearch,
   isLoadingMore,
   isJumping,
   hasMoreBelow,
@@ -297,8 +300,14 @@ export const ShopCatalogMain = React.memo(function ShopCatalogMain({
     />
   )
 
+  if (isSearching && searchError) return (
+    <main role="alert" className="flex-1 max-w-7xl mx-auto p-8 space-y-3 w-full">
+      <p>{searchError}</p><Button variant="outline" onClick={retrySearch}>Try again</Button>
+    </main>
+  )
   return (
     <main className="flex-1 max-w-7xl mx-auto px-4 md:px-8 pt-5 pb-8 md:pt-8 md:pb-12 w-full">
+      {isSearching && <p className="mb-4 text-sm text-muted-foreground">Ranked results from up to 200 candidates, not an exact catalog total.</p>}
       {!isSearching && generalPromos.length > 0 && (
         <PromoCarousel
           promos={generalPromos}

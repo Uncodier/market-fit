@@ -1,0 +1,27 @@
+// No next/jest, Next config, setup secrets or environment files are loaded.
+module.exports = {
+  rootDir: __dirname,
+  testEnvironment: 'jsdom',
+  setupFilesAfterEnv: ['@testing-library/jest-dom', '<rootDir>/jest.setup.js'],
+  moduleNameMapper: { '^@/(.*)$': '<rootDir>/$1', '^.*\\.svg$': '<rootDir>/__tests__/catalog/svg-mock.cjs',
+    '^server-only$': '<rootDir>/__tests__/catalog/server-only-mock.cjs', '^.+\\.module\\.css$': '<rootDir>/__tests__/catalog/server-only-mock.cjs' },
+  transform: { '^.+\\.[jt]sx?$': ['next/dist/build/swc/jest-transformer', {}] },
+  testMatch: [
+    '<rootDir>/__tests__/catalog/search-adapter.test.ts',
+    '<rootDir>/__tests__/catalog/search-price-hydration.test.ts',
+    '<rootDir>/__tests__/catalog/search-pagination.test.tsx',
+    '<rootDir>/__tests__/catalog/page-search-continuation.test.tsx',
+    '<rootDir>/__tests__/catalog/list-items.test.ts',
+    '<rootDir>/__tests__/catalog/category-table.test.tsx',
+    '<rootDir>/__tests__/marketplace/product-loader.test.ts',
+    '<rootDir>/__tests__/marketplace/current-price-regression.test.ts',
+    '<rootDir>/__tests__/marketplace/use-marketplace-products.test.tsx',
+    '<rootDir>/__tests__/marketplace/sort-ui.test.tsx',
+    '<rootDir>/__tests__/marketplace/archived-site-exposure.test.ts',
+    '<rootDir>/__tests__/shop/shop-search.test.ts',
+    '<rootDir>/__tests__/shop/shop-fulfillment-cart.test.tsx',
+    '<rootDir>/__tests__/shop/use-shop-catalog.test.tsx',
+    '<rootDir>/__tests__/pos/online-search.test.tsx',
+    '<rootDir>/__tests__/pos/search-catalog-action.test.ts',
+  ],
+}

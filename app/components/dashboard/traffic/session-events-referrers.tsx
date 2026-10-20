@@ -8,6 +8,8 @@ import { EmptyCard } from '@/app/components/ui/empty-card';
 import { ExternalLink } from '@/app/components/ui/icons';
 import { useLocalization } from '@/app/context/LocalizationContext';
 import { ReportTableLoading } from '../report-visual-loading';
+import { fetchSessionEvents, sessionEventsUrl } from './session-events-data';
+import { isKnownDemoSite } from '@/lib/demo-data';
 
 interface ReferrerData {
   referrer: string;
@@ -47,6 +49,7 @@ export function SessionEventsReferrers({
     // Only fetch if no prop data is provided
     if (propData !== undefined) return;
 
+    let active = true;
     const fetchData = async () => {
       if (!siteId || !startDate || !endDate) return;
       
@@ -54,34 +57,32 @@ export function SessionEventsReferrers({
       setInternalError(null);
       
       try {
-        const start = startDate ? startDate.toISOString().split('T')[0] : null;
-        const end = endDate ? endDate.toISOString().split('T')[0] : null;
-        
-        const params = new URLSearchParams();
-        params.append('siteId', siteId);
-        if (start) params.append('startDate', start);
-        if (end) params.append('endDate', end);
-        params.append('limit', '10');
-        
-        console.log('Fetching referrers with params:', params.toString());
-        const response = await fetch(`/api/traffic/session-events-referrers?${params.toString()}`);
-        
-        if (!response.ok) {
-          throw new Error('Failed to fetch referrers data');
+        const url = sessionEventsUrl(siteId, startDate, endDate);
+        if (!url) throw new Error('Select a valid date range.');
+        if (isKnownDemoSite(siteId)) {
+          const result = await fetchSessionEvents([url, siteId]);
+          if (active) setInternalData(result.referrersData);
+        } else {
+          // Keep the authenticated standalone referrer endpoint for real sites.
+          const params = new URL(url, 'http://localhost').searchParams;
+          params.delete('referrersLimit');
+          params.set('limit', '10');
+          const response = await fetch(`/api/traffic/session-events-referrers?${params}`);
+          if (!response.ok) throw new Error('Failed to fetch referrers data');
+          const result = await response.json();
+          if (active) setInternalData(result.data || []);
         }
-        
-        const result = await response.json();
-        console.log('Referrers response:', result);
-        setInternalData(result.data || []);
       } catch (err) {
+        if (!active) return;
         setInternalError(err instanceof Error ? err.message : 'An error occurred');
         console.error('Error fetching referrers:', err);
       } finally {
-        setInternalLoading(false);
+        if (active) setInternalLoading(false);
       }
     };
 
     fetchData();
+    return () => { active = false; };
   }, [siteId, startDate, endDate, propData]);
 
   if (error && !loading) {

@@ -4,6 +4,9 @@ import type { MarketplaceSort } from "@/app/marketplace/marketplace-sort"
 import { useMarketplaceProducts } from "@/app/marketplace/useMarketplaceProducts"
 import { marketplaceItem } from "./catalog-fixture"
 import type { MarketplaceListingFilters } from "@/app/marketplace/marketplace-product-filters"
+import { buildMarketplaceSortSearch } from "@/app/marketplace/marketplace-sort"
+import { buildMarketplaceCategorySearch } from "@/app/marketplace/marketplace-category-url"
+import { buildMarketplaceListingFilterSearch } from "@/app/marketplace/marketplace-filter-url"
 
 const initial = [marketplaceItem("SSR featured")]
 const sorted = [marketplaceItem("API sorted")]
@@ -20,12 +23,13 @@ type Filters = {
   subtype?: string
   recurring?: boolean
   listing?: MarketplaceListingFilters
+  siteId?: string
 }
 
 function mount(initialProps: Filters = {}) {
   return renderHook((filters: Filters) => useMarketplaceProducts(
     initial, 3, filters.search || "", filters.kind || "all", filters.subtype || "all",
-    filters.recurring || false, filters.sort, filters.geo, filters.listing,
+    filters.recurring || false, filters.sort, filters.geo, filters.listing, undefined, undefined, filters.siteId,
   ), { initialProps })
 }
 
@@ -38,9 +42,93 @@ function requestParams(call = fetchMock.mock.calls.length - 1) {
 }
 
 beforeEach(() => {
+  window.history.replaceState(null, "", "/marketplace")
   jest.useFakeTimers()
   fetchMock.mockReset().mockResolvedValue(response())
   jest.spyOn(window, "scrollTo").mockImplementation(() => {})
+})
+
+it("continues the original 60-rank snapshot on page 2 after provider recovery, then 409 expiry restarts page 1 without duplicates", async () => {
+  const oldId = "11111111-1111-4111-8111-111111111111"
+  const newId = "22222222-2222-4222-8222-222222222222"
+  const ranks = Array.from({ length: 60 }, (_, index) => marketplaceItem(`Rank ${index + 1}`))
+  fetchMock.mockImplementation(async input => {
+    const params = new URL(String(input), "http://localhost").searchParams
+    const page = Number(params.get("page"))
+    return { ok: true, status: 200, json: async () => ({ data: ranks.slice((page - 1) * 36, page * 36),
+      count: 60, totalPages: 2, count_kind: "candidate_window", mode: "text", degraded: true, search_id: oldId }) } as Response
+  })
+  const { result } = mount({ search: "comfortable shoes" })
+  await flushRequest()
+  expect(result.current.items).toHaveLength(36)
+  expect(new URLSearchParams(window.location.search).get("search_id")).toBe(oldId)
+  act(() => result.current.setPage(2))
+  await flushRequest()
+  expect(requestParams().get("search_id")).toBe(oldId)
+  expect(result.current.items.map(item => item.id)).toEqual(ranks.slice(36).map(item => item.id))
+  expect(new URLSearchParams(window.location.search).get("page")).toBe("2")
+  fetchMock.mockResolvedValueOnce({ ok: false, status: 409 } as Response)
+    .mockResolvedValueOnce({ ok: true, status: 200, json: async () => ({ data: ranks.slice(0, 36), count: 60,
+      totalPages: 2, search_id: newId, mode: "hybrid", degraded: false, count_kind: "candidate_window" }) } as Response)
+  act(() => result.current.retry())
+  await flushRequest()
+  expect(result.current.page).toBe(1)
+  expect(result.current.items).toEqual([])
+  expect(new URLSearchParams(window.location.search).has("search_id")).toBe(false)
+  await flushRequest()
+  expect(requestParams().get("page")).toBe("1")
+  expect(requestParams().has("search_id")).toBe(false)
+  expect(result.current.items.map(item => item.id)).toEqual(ranks.slice(0, 36).map(item => item.id))
+  expect(new Set(result.current.items.map(item => item.id)).size).toBe(36)
+  expect(result.current.error).toBeUndefined()
+})
+
+it.each([
+  { search: "different query" }, { kind: "product" }, { subtype: "ticket" }, { recurring: true },
+  { sort: "newest" }, { listing: { maxPrice: 50 } }, { siteId: "site-two" },
+] as Filters[])("resets snapshot and page before fetching a changed scope %j", async next => {
+  const id = "11111111-1111-4111-8111-111111111111"
+  fetchMock.mockResolvedValue({ ok: true, status: 200, json: async () => ({ data: sorted, count: 60, totalPages: 2, search_id: id }) } as Response)
+  const { result, rerender } = mount({ search: "original query" })
+  await flushRequest()
+  act(() => result.current.setPage(2))
+  await flushRequest()
+  expect(requestParams().get("search_id")).toBe(id)
+  rerender({ search: "original query", ...next })
+  expect(result.current.page).toBe(1)
+  expect(new URLSearchParams(window.location.search).has("search_id")).toBe(false)
+  await flushRequest()
+  expect(requestParams().get("page")).toBe("1")
+  expect(requestParams().has("search_id")).toBe(false)
+})
+
+it("restores a URL search continuation on mount while plain browsing ignores snapshot/page params", async () => {
+  const id = "11111111-1111-4111-8111-111111111111"
+  window.history.replaceState(null, "", `/marketplace?search=shoes&page=2&search_id=${id}`)
+  const searched = mount({ search: "shoes" })
+  await flushRequest()
+  expect(requestParams().get("page")).toBe("2")
+  expect(requestParams().get("search_id")).toBe(id)
+  searched.unmount()
+  window.history.replaceState(null, "", `/marketplace?page=2&search_id=${id}`)
+  const browse = mount()
+  await flushRequest()
+  expect(browse.result.current.page).toBe(1)
+  expect(browse.result.current.items).toEqual(initial)
+  expect(new URLSearchParams(window.location.search).has("search_id")).toBe(false)
+})
+
+it("category, sorting and listing filter URL changes clear page/ID and retain unrelated checkout params", () => {
+  const source = "search=shoes&page=2&search_id=11111111-1111-4111-8111-111111111111&ownerSiteId=buyer"
+  for (const result of [buildMarketplaceSortSearch(source, "newest"),
+    buildMarketplaceCategorySearch(source, { kind: "product", subtype: "all" }),
+    buildMarketplaceListingFilterSearch(source, { maxPrice: 50 })]) {
+    const params = new URLSearchParams(result)
+    expect(params.has("page")).toBe(false)
+    expect(params.has("search_id")).toBe(false)
+    expect(params.get("ownerSiteId")).toBe("buyer")
+    expect(params.get("search")).toBe("shoes")
+  }
 })
 
 afterEach(() => {

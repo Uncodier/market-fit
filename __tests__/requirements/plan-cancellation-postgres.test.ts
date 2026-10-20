@@ -41,6 +41,7 @@ suite("quiescent plan cancellation in disposable PostgreSQL", () => {
       GRANT SELECT ON instance_plans TO authenticated;
       CREATE POLICY visible_plans ON instance_plans FOR SELECT TO authenticated USING(public.current_user_site_role(site_id) IS NOT NULL);`)
     db(migration("20261020000000_cancel_quiescent_instance_plan.sql"))
+    db(migration("20261020001000_serialize_quiescent_plan_cancellation.sql"))
     db("ALTER FUNCTION cancel_quiescent_instance_plan(uuid,uuid) OWNER TO postgres;")
   })
   it.each([ids.owner,ids.admin,ids.coOwner])("atomically cancels unfinished steps as manager %s, preserving history", user => {
@@ -126,5 +127,41 @@ suite("quiescent plan cancellation in disposable PostgreSQL", () => {
     const rejection = expect(result).rejects.toThrow("Stop and reconcile")
     await Promise.all([holder,rejection])
     expect(row()).toBe(before)
+  })
+  it("serializes sibling sandbox updates until the confirmed cancellation commits", async () => {
+    db(`INSERT INTO instance_plans(id,instance_id,site_id,status,steps) VALUES('${uuid(94)}','${instanceId}','${ids.site}','paused','[]');
+      CREATE FUNCTION delay_plan_cancel() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN
+        IF NEW.id='${planId}' THEN PERFORM pg_advisory_xact_lock(912047); PERFORM pg_sleep(0.6); END IF;
+        RETURN NEW; END $$;
+      CREATE TRIGGER z_delay_cancel BEFORE UPDATE ON instance_plans FOR EACH ROW EXECUTE FUNCTION delay_plan_cancel();`)
+    const cancellation = pg.concurrent(actorSql(cancel))
+    for (let i = 0; i < 100; i++) {
+      if (db("SELECT EXISTS(SELECT 1 FROM pg_locks WHERE locktype='advisory' AND objid=912047 AND granted)") === "t") break
+      await new Promise(resolve => setTimeout(resolve,10))
+    }
+    expect(db("SELECT EXISTS(SELECT 1 FROM pg_locks WHERE locktype='advisory' AND objid=912047 AND granted)")).toBe("t")
+    const update = pg.concurrent(`SET lock_timeout='150ms'; UPDATE instance_plans SET metadata='{"active_sandbox_id":"concurrent"}' WHERE id='${uuid(94)}';`)
+    await expect(update).rejects.toThrow("lock timeout")
+    expect(JSON.parse(await cancellation).status).toBe("cancelled")
+  })
+  it("rechecks a committed concurrent sibling sandbox after waiting for its row lock", async () => {
+    db(`INSERT INTO instance_plans(id,instance_id,site_id,status,steps) VALUES('${uuid(94)}','${instanceId}','${ids.site}','paused','[]')`)
+    const before = row()
+    const writer = pg.concurrent(`BEGIN; UPDATE instance_plans SET metadata='{"sandbox_id":"concurrent"}' WHERE id='${uuid(94)}';
+      SELECT pg_advisory_xact_lock(912048); SELECT pg_sleep(0.4); COMMIT;`)
+    for (let i = 0; i < 100; i++) {
+      if (db("SELECT EXISTS(SELECT 1 FROM pg_locks WHERE locktype='advisory' AND objid=912048 AND granted)") === "t") break
+      await new Promise(resolve => setTimeout(resolve,10))
+    }
+    const result = pg.concurrent(actorSql(cancel))
+    const rejected = expect(result).rejects.toThrow("Stop and reconcile")
+    await Promise.all([writer,rejected])
+    expect(row()).toBe(before)
+  })
+  it("reruns the forward correction without changing function ACLs", () => {
+    const acl = () => db("SELECT proacl::text FROM pg_proc WHERE oid='cancel_quiescent_instance_plan(uuid,uuid)'::regprocedure")
+    const before = acl()
+    db(migration("20261020001000_serialize_quiescent_plan_cancellation.sql"))
+    expect(acl()).toBe(before)
   })
 })

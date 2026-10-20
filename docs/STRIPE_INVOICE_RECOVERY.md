@@ -283,6 +283,45 @@ Do not reset the entire credit balance or indiscriminately reprocess historical
 completed invoices. Keep customer identifiers and credentials out of committed
 scripts, fixtures and documentation.
 
+### Legacy settled renewal with no stored coverage
+
+A pre-coverage invoice marker can already have granted its allowance while
+`verified_credit_coverage` is null and `credit_coverage_applied` is false. The
+normal settlement helper deliberately returns `duplicate` for that state; a
+webhook replay alone cannot recover its missing paid entitlement. Never remove
+the marker or attach an unapplied proof that could grant the allowance again.
+
+`scripts/repair-legacy-subscription-coverage.cjs` exports an operator-only
+`runRepair({ supabase, evidence, apply })` module, with read-only preview by
+default. It does not load credentials or infer payment proof. Use it only after
+explicit target authorization and fresh live Stripe verification through the
+canonical subscription/price/invoice service-line helpers, including current
+tenant binding, paid status, full service interval and refund/dispute checks.
+It supports only a monthly renewal whose already-credited window exactly matches
+the verified paid window, with one matching historical grant, payment and marker.
+Annual windows, ambiguous grants and differing service require separate review.
+
+The module fills only missing paid coverage and source/anchor fields; it never
+writes balances, consumption, plan, price or subscription identity. Its atomic
+billing update uses compare-and-set filters, including PostgreSQL numeric text
+values so JavaScript rounding cannot lose precision. The existing database
+guards, RLS and license triggers remain enabled. It then attaches immutable proof
+and `credit_coverage_applied = true` together on the existing invoice marker,
+retaining its original granted-credit count. It does not invoke a credit grant.
+
+These are two PostgREST requests, not one cross-table transaction. If interrupted
+after billing succeeds, re-fetch Stripe and inspect both records before resuming;
+the module recognizes the matching completed coverage and only finalizes the
+marker. Null stored proof keeps intervening normal invoice retries as no-ops.
+After recovery, verify effective plan/member access and replay the canonical
+helper once: `duplicate` with zero credits must leave billing, payments, marker
+and credit ledger unchanged. Reload existing browser tabs to refresh permissions.
+
+The disposable PostgreSQL tests in
+`__tests__/scripts/repair-legacy-subscription-coverage.test.ts` cover preview,
+RLS restoration, exact balances, interruption recovery, idempotency and rejection
+of stale or inconsistent evidence. They never contact a remote database or Stripe.
+
 ## Validation
 
 Run all isolated Stripe producer and webhook regressions without dotenv or remote

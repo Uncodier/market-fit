@@ -26,7 +26,8 @@ import { usePosAddItem } from "./hooks/use-pos-add-item";
 import { usePosLead } from "./hooks/use-pos-lead";
 import { usePosOrderNotesAutosave } from "./hooks/use-pos-order-notes-autosave";
 import { usePosOrderAction } from "./hooks/use-pos-order-action";
-import { moveUncategorizedCatalogItemsToEnd } from "./catalog-alphabet";
+import { filterLocalPosCatalog } from "./filter-catalog";
+import { PosOnlineSearch } from "./components/PosOnlineSearch";
 import { cn } from "@/lib/utils";
 
 export default function POSPage() {
@@ -195,55 +196,11 @@ export default function POSPage() {
   });
 
   const filteredItems = useMemo(() => {
-    const q = searchQuery.trim().toLowerCase();
     const source =
       selectedCategory === "unavailable"
         ? catalog.unavailableItems
         : catalog.availableItems;
-    let list = source.filter((i) => !i.parent_id);
-    if (q) {
-      list = list.filter(
-        (i) =>
-          i.name?.toLowerCase().includes(q) ||
-          i.sku?.toLowerCase().includes(q),
-      );
-    }
-    
-    if (selectedCategory !== "all" && selectedCategory !== "unavailable") {
-      if (selectedCategory === "kind_product") {
-        list = list.filter((i) => i.kind === "product");
-      } else if (selectedCategory === "kind_service") {
-        list = list.filter((i) => i.kind === "service");
-      } else if (selectedCategory === "kind_digital_asset") {
-        list = list.filter((i) => i.kind === "digital_asset");
-      } else {
-        list = list.filter((i) => i.category_id === selectedCategory);
-      }
-    }
-
-    return moveUncategorizedCatalogItemsToEnd(list).map((item) => {
-      const children = catalog.catalogItems.filter(
-        (child) => 
-          child.parent_id === item.id && 
-          child.status === "active" && 
-          child.is_purchasable !== false
-      );
-      if (!children.length) return item;
-
-      const variantLabels = children.slice(0, 4).map((child) => {
-        const prefix = `${item.name || ""} / `;
-        if (child.name?.startsWith(prefix)) return child.name.slice(prefix.length);
-        return child.name || "";
-      }).filter(Boolean);
-
-      return {
-        ...item,
-        _shop: {
-          ...(item as any)._shop,
-          variantLabels,
-        }
-      };
-    });
+    return filterLocalPosCatalog(source, catalog.catalogItems, searchQuery, selectedCategory);
   }, [catalog.availableItems, catalog.unavailableItems, catalog.catalogItems, searchQuery, selectedCategory]);
 
   const hasUnavailable = catalog.unavailableItems.some((i) => !i.parent_id);
@@ -456,6 +413,10 @@ export default function POSPage() {
             onAdd={addApi.addToCart}
             t={t} />
         )}
+        <PosOnlineSearch siteId={siteId} query={searchQuery} online={syncStatus.online}
+          hydrated={catalog.hydrated} catalogItems={catalog.catalogItems}
+          localResultIds={filteredItems.map(item => item.id)} selectedCategory={selectedCategory}
+          getAvailability={cartApi.getItemAvailability} onAdd={addApi.addToCart} />
       </Tabs>
 
       <div className="hidden md:flex w-96 flex-none flex-col bg-card border-l sticky top-[var(--topbar-height,64px)] h-[calc(100dvh-var(--topbar-height,64px))] overflow-hidden">

@@ -6,10 +6,16 @@ import { format, isValid, subDays } from "date-fns"
 import { useSite } from "@/app/context/SiteContext"
 import { useAuth } from "@/app/hooks/use-auth"
 import { CohortReportError, parseCohortReport, type CohortKind } from "./cohort-report-data"
+import { isKnownDemoSite } from "@/lib/demo-data"
 
 export type CohortFilters = { segmentId?: string; startDate?: Date; endDate?: Date }
 
 async function fetchCohortReport([url, , kind]: [string, string, CohortKind]) {
+  const params = new URL(url, "http://demo.local").searchParams
+  if (isKnownDemoSite(params.get("siteId"))) {
+    const { loadDemoCohortReport } = await import("@/lib/demo-data/analytics-report")
+    return parseCohortReport(await loadDemoCohortReport(kind, params), kind)
+  }
   const response = await fetch(url).catch(() => {
     throw new CohortReportError("Unable to connect to the cohort report. Please try again.")
   })
@@ -36,12 +42,16 @@ export function useCohortReport(kind: CohortKind, filters: CohortFilters) {
   const end = filters.endDate ?? fallback.endDate
   const invalidDates = !isValid(start) || !isValid(end) || start > end
   const hasSite = !!currentSite?.id && currentSite.id !== "default"
+  const demo = isKnownDemoSite(currentSite?.id)
+  const waitingForAuth = authLoading && !demo
+  const identity = demo ? currentSite?.id : user?.id
   const params = invalidDates ? null : new URLSearchParams({
     siteId: currentSite?.id ?? "", segmentId: filters.segmentId ?? "all",
     startDate: format(start, "yyyy-MM-dd"), endDate: format(end, "yyyy-MM-dd"),
   })
-  const key: [string, string, CohortKind] | null = params && hasSite && user?.id && !authLoading && !siteLoading
-    ? [`/api/${kind === "customers" ? "cohorts" : "leads-cohorts"}?${params}`, user.id, kind] : null
-  const result = useReportResource(key, fetchCohortReport, Boolean(authLoading || siteLoading))
-  return { ...result, data: key && !result.error ? result.data : undefined, authLoading, signedIn: !!user?.id, hasSite, invalidDates }
+  const key: [string, string, CohortKind] | null = params && hasSite && identity && !waitingForAuth && !siteLoading
+    ? [`/api/${kind === "customers" ? "cohorts" : "leads-cohorts"}?${params}`, identity, kind] : null
+  const result = useReportResource(key, fetchCohortReport, Boolean(waitingForAuth || siteLoading))
+  // Demo readiness applies only to local fixtures; real-site requests still require a session.
+  return { ...result, data: key && !result.error ? result.data : undefined, authLoading: waitingForAuth, signedIn: !!user?.id || demo, hasSite, invalidDates }
 }

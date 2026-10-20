@@ -65,7 +65,7 @@ export function attachDemoOverview(input: Record<string, unknown>, now = new Dat
       })
       result.transactions.push({
         id: `${id}-cost`, site_id: siteId, segment_id: segment.id, campaign_id: campaignId,
-        description: "Sample campaign acquisition cost", type: "expense", status: "completed",
+        description: "Sample campaign acquisition cost", category: "advertising", type: "variable", status: "completed",
         amount: Math.round(amount * 0.2 * 100) / 100, currency,
         date: created.slice(0, 10), created_at: created, updated_at: created,
       })

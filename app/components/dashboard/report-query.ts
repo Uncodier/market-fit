@@ -1,4 +1,5 @@
 import { endOfDay, startOfDay, subDays } from "date-fns"
+import { isKnownDemoSite } from "@/lib/demo-data"
 
 export interface ReportPeriod {
   startDate: Date
@@ -22,7 +23,8 @@ export function reportQueryKey({
   period: ReportPeriod | null
   enabled?: boolean
 }): [string, string] | null {
-  if (!enabled || !userId || !siteId || siteId === "default" || !period) return null
+  const identity = isKnownDemoSite(siteId) ? siteId : userId
+  if (!enabled || !identity || !siteId || siteId === "default" || !period) return null
   const params = new URLSearchParams({
     siteId,
     segmentId,
@@ -30,7 +32,7 @@ export function reportQueryKey({
     endDate: period.endDate.toISOString(),
   })
   // Identity isolates the browser cache; authorization comes from the server session.
-  return [`/api/${endpoint}?${params}`, userId]
+  return [`/api/${endpoint}?${params}`, identity]
 }
 
 export class ReportRequestError extends Error {
@@ -41,6 +43,22 @@ export class ReportRequestError extends Error {
 }
 
 export async function fetchReport([url]: [string, string]): Promise<unknown> {
+  const request = new URL(url, "http://demo.local")
+  if (isKnownDemoSite(request.searchParams.get("siteId"))) {
+    const endpoint = request.pathname.replace(/^\/api\//, "")
+    if (["clients-by-segment", "clients-by-campaign", "revenue-by-segment", "revenue-by-campaign"].includes(endpoint)) {
+      const { loadDemoAnalyticsDistribution } = await import("@/lib/demo-data/analytics-report")
+      const report = await loadDemoAnalyticsDistribution(endpoint, request.searchParams)
+      if (report !== null) return report
+    }
+    if (endpoint.startsWith("traffic") ||
+      (["segments/distribution", "campaigns/distribution"].includes(endpoint) && request.searchParams.get("metric") === "sessions")) {
+      const { loadDemoTrafficReport } = await import("@/lib/demo-data/traffic-report")
+      const report = await loadDemoTrafficReport(endpoint, request.searchParams)
+      if (report !== null) return report
+    }
+    throw new ReportRequestError("This demo report is not available.")
+  }
   const response = await fetch(url)
   if (!response.ok) {
     if (response.status === 422) {

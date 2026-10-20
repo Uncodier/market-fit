@@ -4,7 +4,7 @@ import { InstancePlan, PlanStep } from '../types'
 import { removeDuplicateSteps } from '../utils'
 
 interface UseInstancePlansProps {
-  activeRobotInstance?: any
+  activeRobotInstance?: { id?: string }
 }
 
 const INSTANCE_PLAN_FIELDS = [
@@ -41,13 +41,15 @@ export const useInstancePlans = ({ activeRobotInstance }: UseInstancePlansProps)
 
   // Load instance plans with proper status management
   const loadInstancePlans = useCallback(async () => {
+    // A receipt for a previous instance must not invalidate the current load.
+    if (activeInstanceIdRef.current !== instanceId) return false
     if (!instanceId) {
       loadRequestRef.current += 1
       setInstancePlans([])
       setCompletedPlans([])
       setSteps([])
       setIsLoadingPlans(false)
-      return
+      return true
     }
 
     const requestId = ++loadRequestRef.current
@@ -67,12 +69,11 @@ export const useInstancePlans = ({ activeRobotInstance }: UseInstancePlansProps)
       if (
         requestId !== loadRequestRef.current ||
         activeInstanceIdRef.current !== instanceId
-      ) return
+      ) return false
 
       if (error) {
         console.error('❌ Error loading instance plans:', error)
-        setInstancePlans([])
-        setSteps([])
+        return false
       } else {
         const allPlansRaw = data || []
         
@@ -111,7 +112,7 @@ export const useInstancePlans = ({ activeRobotInstance }: UseInstancePlansProps)
         // If no active plans found, just continue without creating test data
         if (activePlans.length === 0) {
           setSteps([])
-          return
+          return true
         }
         
         // Convert only ACTIVE instance plans to step format for the UI
@@ -127,7 +128,7 @@ export const useInstancePlans = ({ activeRobotInstance }: UseInstancePlansProps)
           
         if (latestActivePlan && latestActivePlan.steps && Array.isArray(latestActivePlan.steps) && latestActivePlan.steps.length > 0) {
           // Use steps directly from the plan
-          const planSteps = latestActivePlan.steps.map((step: any, stepIndex: number) => {
+          const planSteps = latestActivePlan.steps.map((step: { id?: string; title?: string; description?: string; status?: PlanStep['status'] }, stepIndex: number) => {
             let stepId = step.id
             
             // Ensure unique ID - use plan ID as prefix for uniqueness across plans
@@ -155,15 +156,15 @@ export const useInstancePlans = ({ activeRobotInstance }: UseInstancePlansProps)
         // Remove any duplicates before setting state
         const uniqueSteps = removeDuplicateSteps(convertedSteps)
         setSteps(uniqueSteps)
+        return true
       }
     } catch (error) {
       if (
         requestId !== loadRequestRef.current ||
         activeInstanceIdRef.current !== instanceId
-      ) return
+      ) return false
       console.error('Error loading instance plans:', error)
-      setInstancePlans([])
-      setSteps([])
+      return false
     } finally {
       if (
         requestId === loadRequestRef.current &&
@@ -203,7 +204,7 @@ export const useInstancePlans = ({ activeRobotInstance }: UseInstancePlansProps)
     const timelineItems: Array<{
       type: 'log' | 'completed_plan'
       timestamp: string
-      data: any
+      data: unknown
     }> = []
 
     // Add completed plans to timeline

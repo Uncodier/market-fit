@@ -12,6 +12,11 @@ in Billing by a licensed project owner/admin with update permission.
 - First release is available only on active Toolbox projects with no paid
   extras, live Stripe subscription or current paid coverage. Existing paid
   customers are not automatically downgraded to receive a trial.
+- A new offer additionally requires no positive completed platform subscription
+  or credit purchase in the selected project or projects currently owned by its
+  primary owner. Archived projects and refunded payments still count; failed
+  attempts, zero-price grants and unrelated commerce sales do not. Positive
+  immutable subscription settlement receipts also establish previous payment.
 - Foundry permissions: ten seats including the owner and pending invitations,
   six social accounts, and three agent channels.
 - Fifty one-time trial credits, not Foundry's normal 100 monthly credits.
@@ -46,6 +51,18 @@ replayed. A confirmed activation with failed hydration asks to reload billing,
 not restart the trial.
 An active status recovered after a lost activation response also refreshes shared
 billing, so the balance and connection allowances cannot remain at Toolbox.
+Billing hides the trial card while the initial status is loading and when the
+confirmed status is `unavailable`. Eligible, active and expired trials remain
+visible; unconfirmed operations and refresh failures retain recovery controls.
+
+The sidebar provides an **Activate trial** shortcut next to the credit widget.
+It checks eligibility asynchronously after initial rendering and stays hidden
+while loading or on an error. It requires a scoped manager with update permission,
+loaded free billing and the explicit server `offer_eligible: true` decision.
+Older deployments without this field cannot advertise an offer. The shortcut
+does not start a trial: it targets `/billing?siteId=<uuid>&tab=billing_info#startup-trial`
+where the explicit Start button owns the activation clock. It is independent of
+the credit widget's low-balance visibility rule.
 
 The stored `billing.plan` remains the base subscription plan. Presentation
 connection allowances use `effectiveBillingPlan`, while paid subscription
@@ -64,6 +81,7 @@ Forward migrations in this repository:
 5. `20261019220004_startup_trial_resource_projection.sql`
 6. `20261019233000_preserve_trial_renewal_rpc_contract.sql`
 7. `20261019233001_license_legacy_voice_statuses.sql`
+8. `20261020003000_startup_trial_payment_history.sql`
 
 These extend the shared API-owned classified credit, annual-coverage and
 actual-cost reservation prerequisites; they are **not** a standalone database
@@ -79,6 +97,11 @@ The forward corrections retain Temporal's existing `reset` / `not_due` /
 a trial. They also count legacy Voice `active` / `synced` connections against
 the same licensed quotas as `connected`, preserving their status while eligible
 and suspending them at expiry. Other connection types still require `connected`.
+The payment-history migration replaces the shared status decision, so both
+the delayed sidebar check and activation inside its existing SQL locks enforce
+the same history rule. It does not revoke an already active trial if credits are
+purchased afterwards. Apply it after the seven trial prerequisites, before
+advertising the shortcut; no remote migration is applied by this implementation.
 
 The claim is service-private and retained when a site/account is deleted so
 deletion does not reset the same owner's eligibility. Billing projects the
@@ -121,6 +144,39 @@ Before rollout, verify denied anonymous/cross-project access, per-owner concurre
 claiming, exact expiry, nonrenewal, purchased/protected fund conservation,
 reservation refunds and paid conversion. Review skipped local database cases;
 mocked HTTP/UI tests alone do not establish SQL concurrency or RLS behavior.
+
+### Legacy paid subscriptions and member access
+
+Before enabling dynamic licensing, audit active Stripe-backed paid projects whose
+`paid_subscription_invoice_id` or paid service period is missing. A stored
+Foundry plan and `subscription_status = active` alone do not establish verified
+paid coverage. Without a current verified paid period or active trial,
+`effective_site_plan` returns Toolbox (`commission`). Its only seat is reserved
+for the primary owner, so an active admin can lose both RLS visibility and write
+capabilities even while `license_suspended = false`. The raw flag is a mirror,
+not the dynamic access decision. This can also suspend effective connection use.
+
+The site-creation policy correction does not change this decision: its direct
+owner check fixes `INSERT ... RETURNING`, while non-owner visibility still uses
+the shared license-aware role lookup.
+
+Recovery requires explicit operator authorization and authoritative Stripe
+verification of the site's current customer, subscription, paid invoice, service
+lines and covered period. Use the existing invoice-keyed settlement/recovery flow
+described in [Subscription invoice recovery](STRIPE_INVOICE_RECOVERY.md); inspect
+any historical settlement and consumed credits before replaying. A completed
+payment without verified coverage is not enough to invent entitlement dates.
+An expired invoice cannot establish current coverage, and ambiguous historical
+credits require operator reconciliation rather than a second grant.
+
+Do not disable RLS, bypass seat limits, clear settlement markers, change ownership,
+or substitute `active` status for payment verification. After approved recovery,
+verify effective plan and allowed/denied member access, then reload the workspace
+to refresh its permission snapshot. The disposable PostgreSQL regression in
+`__tests__/security/startup-trial-migration.test.ts` reproduces the stale-flag admin
+denial and verifies access restoration, protected balances and duplicate safety
+after a newly verified settlement; it does not verify a customer's live Stripe
+invoice or reconcile ambiguous historical payments.
 
 Local implementation does not apply remote migrations, configure Stripe, deploy
 applications or start trials for existing customers. After an explicitly approved

@@ -3,6 +3,7 @@
 import type { UseFormReturn } from "react-hook-form"
 import type { SiteFormValues } from "./form-schema"
 import { Button } from "@/app/components/ui/button"
+import { Switch } from "@/app/components/ui/switch"
 import {
   FormControl,
   FormField,
@@ -55,7 +56,7 @@ export function getSupportChannelLabel(type: string | undefined) {
 }
 
 export function getSupportChannelAccountLabel(
-  channel: Record<string, any>,
+  channel: SiteFormValues["channels"]["connections"][number],
   fallbackLabel: string,
   fetchedPhoneNumber?: string,
 ) {
@@ -65,7 +66,7 @@ export function getSupportChannelAccountLabel(
   if (channel.type === "email") {
     return channel.metadata?.from_address || fallbackLabel
   }
-  if (PHONE_CHANNEL_TYPES.has(channel.type)) {
+  if (channel.type && PHONE_CHANNEL_TYPES.has(channel.type)) {
     const phoneNumber = getAssignedPhoneNumber(channel) || fetchedPhoneNumber
     return phoneNumber ? formatPhoneNumber(phoneNumber) : fallbackLabel
   }
@@ -76,10 +77,12 @@ export function SupportChannelHeader({
   label,
   type,
   onRemove,
+  activation,
 }: {
   label: string
   type?: string
   onRemove: () => void
+  activation?: { active: boolean; busy: boolean; canManage: boolean; onChange: (enabled: boolean) => void }
 }) {
   return (
     <SectionCardHeader>
@@ -88,6 +91,12 @@ export function SupportChannelHeader({
           {getSupportChannelIcon(type, 20)}
           {label}
         </SectionCardTitle>
+        <div className="flex items-center gap-3">
+        {activation && <label className="flex items-center gap-2 text-sm">
+          <span>{activation.active ? "Active" : "Inactive"}</span>
+          <Switch aria-label={`Activate ${label}`} checked={activation.active}
+            disabled={!activation.canManage || activation.busy} onCheckedChange={activation.onChange} />
+        </label>}
         <Button
           size="icon"
           variant="ghost"
@@ -98,6 +107,7 @@ export function SupportChannelHeader({
         >
           <Trash2 className="h-5 w-5" />
         </Button>
+        </div>
       </div>
     </SectionCardHeader>
   )
@@ -106,9 +116,11 @@ export function SupportChannelHeader({
 export function ConnectedSupportChannelSummary({
   type,
   accountLabel,
+  inactiveReason,
 }: {
   type: string
   accountLabel: string
+  inactiveReason?: string
 }) {
   return (
     <div className="flex w-full flex-col justify-between gap-4 rounded-lg border border-black/5 bg-muted/20 p-4 dark:border-white/5 sm:flex-row sm:items-center">
@@ -120,7 +132,7 @@ export function ConnectedSupportChannelSummary({
           <p className="truncate text-base font-medium">{accountLabel}</p>
           <div className="mt-1 flex items-center gap-2">
             <span className="inline-flex rounded bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800">
-              Connected
+              {inactiveReason || "Connected"}
             </span>
           </div>
         </div>

@@ -18,6 +18,7 @@ import { ReportDistributionLoading, ReportTableLoading } from "./report-visual-l
 import { TrafficRanking } from "./traffic/traffic-ranking"
 import { ReportLoading } from "@/app/dashboard/ReportLoading"
 import { TrafficAttribution } from "./traffic/traffic-attribution"
+import { isKnownDemoSite } from "@/lib/demo-data"
 
 export type TrafficSection = "summary" | "audience" | "sessions"
 
@@ -83,8 +84,9 @@ export function TrafficReports({ startDate, endDate, segmentId = "all", siteId,
     end === undefined ? undefined : new Date(end),
   ), [start, end])
 
-  if (authLoading) return <ReportLoading report="traffic" section={section} />
-  if (!user?.id) return <ReportState state="error" message="Sign in to view traffic reports." />
+  const demo = isKnownDemoSite(siteId)
+  if (!demo && authLoading) return <ReportLoading report="traffic" section={section} />
+  if (!demo && !user?.id) return <ReportState state="error" message="Sign in to view traffic reports." />
   if (!siteId || siteId === "default") return <ReportState state="empty" message="Select a site to view traffic reports." />
   if (!period) return <ReportState state="error" message="Select a valid date range." />
   if (!shouldExecuteWidgets) return <ReportLoading report="traffic" section={section} />
@@ -92,7 +94,7 @@ export function TrafficReports({ startDate, endDate, segmentId = "all", siteId,
   const showSummary = section === "summary"
   const showAudience = section === "audience"
   const filters = { ...period, segmentId }
-  const distributionProps = { siteId, userId: user.id, segmentId, period }
+  const distributionProps = { siteId, userId: demo ? siteId : user!.id, segmentId, period }
   return (
     <div className="min-w-0 space-y-6">
       {showSummary && <>

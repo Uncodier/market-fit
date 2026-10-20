@@ -121,7 +121,8 @@ The selector groups accounts dynamically using the site's persisted
 `settings.channels.connections` and saved channel keys. Email, WhatsApp, SMS,
 Telegram, Messenger, Instagram, voice, and custom channels use the same rules:
 
-- A connection must have exact `connected` status, a nonblank `zavu_sender_id`,
+- A connection must have `connected` status (Voice also accepts `active`/`synced`),
+  no manual disable or license suspension, and a nonblank `zavu_sender_id`,
   and a unique usable raw `id`. IDs need not be UUIDs; they must be at most 200
   characters, already trimmed, and contain no control characters. Duplicate IDs
   are excluded, even when another matching connection is disconnected.

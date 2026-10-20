@@ -136,6 +136,46 @@ updates, denied/cross-site actors, active/expired persisted signals, malformed
 steps, rollback, idempotency, immutable evidence and concurrent instance admission.
 It does not establish that a historical production worker has actually stopped.
 
+#### Applied-migration follow-up (2026-10-19)
+
+Read-only production logs at 22:57 UTC showed deletion preflight `PT409` in 62 ms;
+the cancellation RPC was installed but had not been called in that attempt window.
+The old paused plan still had unfinished steps. Installing this migration does
+not cancel historical work, and choosing **Delete** does not invoke cancellation.
+An unauthenticated read-only production GET to the new plan-summary endpoint
+returned HTTP 405 before rollout: that deployment did not yet expose the new
+GET handler. Schema installation does not publish web route/UI changes.
+
+The forward correction is
+`20261020001000_serialize_quiescent_plan_cancellation.sql`. Apply the complete file
+in Makinari after explicit approval. It preserves the installed function/ACLs and
+adds ordered row locks for all existing sibling plans before reading sandbox
+evidence. An unchanged binding previously allowed sibling metadata/steps writes
+to commit between the check and cancellation. New plan inserts and binding
+changes remain fenced by the prerequisite real-parent binding trigger. Locks
+remain bounded, and only the selected plan is mutated. Do not edit or replay the
+already-applied original migration to disguise this correction.
+
+The web repair refreshes plans explicitly after cancellation; failed reads retain
+existing visible data and report an unavailable refresh. A late receipt for a
+previous instance cannot invalidate the current instance's loading request.
+
+After a deletion `409`, the confirmation dialog now loads an authenticated,
+site-scoped read-only plan summary via `GET /api/robots/plan/cancel`. It offers
+**Cancel plan** for each non-template plan, including legacy cancelled plans that
+need reconciliation/adoption. Each click invokes the same guarded atomic RPC
+and requires its matching receipt. Delete/dismissal are disabled during the
+cancellation. The dialog stays open, removes only a confirmed cancelled plan,
+and never automatically retries deletion. Missing access, configuration or read
+failure is not represented as an empty plan list.
+
+Rollout: apply the forward correction, deploy market-fit, reload Robots, attempt
+deletion once to inspect the blocker, explicitly cancel only abandoned plans,
+then choose Delete again yourself. A provider, harness lease or other independent
+blocker still requires its own lifecycle. No production data is backfilled by
+either migration. The new two-connection regressions cover sibling writes both
+before and after the lock/check; they use only a disposable local cluster.
+
 The Requirements Server Action authenticates the real user, derives the site from
 the RLS-visible requirement, and requires owner/admin plus delete capability. It
 deletes only the parent, scoped to the verified site, and requires a matching

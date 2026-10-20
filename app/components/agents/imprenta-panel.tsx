@@ -41,7 +41,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/ca
 import { Badge } from "@/app/components/ui/badge"
 import { Button } from "@/app/components/ui/button"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/app/components/ui/tooltip"
-import { Plus, Play, RotateCcw as RefreshCw, AlertCircle, Bot, Eye, Trash2, GitFork, Link, Copy, Tag, UploadCloud, Download, ZoomIn, X, Send, Mail, Globe, Phone } from "@/app/components/ui/icons"
+import { Plus, Play, RotateCcw as RefreshCw, AlertCircle, Bot, Eye, Trash2, GitFork, Link, Copy, Tag, UploadCloud, Download, ZoomIn, X, Send } from "@/app/components/ui/icons"
 import { AudioPlayer } from "./audio-player"
 import { InstanceNode } from "@/app/types/instance-nodes"
 import { toast } from "sonner"
@@ -50,7 +50,6 @@ import { AnimatedConnectionLine } from "./animated-connection-line"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
 import { ImprentaContextTypeSelect } from "@/app/components/agents/imprenta-context-type-select"
 import { ScreenAnchoredPanel } from "@/app/components/ui/screen-anchored-panel"
-import { Switch } from "@/app/components/ui/switch"
 import { ImprentaAutoResizeTextarea } from "./imprenta-auto-resize-textarea"
 import {
   imprentaNodeTypeForResultMediaType,
@@ -76,6 +75,7 @@ import {
   ImprentaLazyCardImage,
 } from "@/app/components/agents/imprenta-lazy-media"
 import { ImprentaAudienceLeadsCarousel } from "@/app/components/agents/imprenta-audience-leads-carousel"
+import { ImprentaAudienceChannelSelector } from "@/app/components/agents/imprenta-audience-channel-selector"
 import { ImprentaPublishDestinationSelector } from "@/app/components/agents/imprenta-publish-destination-selector"
 import type { AudienceLeadRow } from "@/app/audiences/actions"
 import {
@@ -1243,53 +1243,23 @@ const ImprentaNodeCardInner = memo(({
                                 />
                                 
                                 {node.type === 'generate-audience' && (
-                                  <TooltipProvider delayDuration={200}>
-                                    <div className="grid w-full grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-3 lg:grid-cols-4 [&>*]:min-w-0">
-                                      {([
-                                        { key: 'email', label: 'Email', icon: Mail, hint: 'Only include leads that have an email address.' },
-                                        { key: 'web', label: 'Web', icon: Globe, hint: 'Only include leads that have a website URL.' },
-                                        { key: 'phone', label: 'Phone', icon: Phone, hint: 'Only include leads that have a phone number.' },
-                                        { key: 'deals', label: 'Deals', icon: Tag, hint: 'Only include leads that have at least one deal.' },
-                                      ] as const).map(({ key, label, icon: Icon, hint }) => {
-                                        const isSelected = !!(node.settings as any)?.audience_channels?.includes(key);
-                                        const toggleChannel = async () => {
-                                          const current = (node.settings as any)?.audience_channels || [];
-                                          const newChannels = isSelected
-                                            ? current.filter((c: string) => c !== key)
-                                            : [...current, key];
-                                          actions.setNodes((prev: InstanceNode[]) => prev.map((n: InstanceNode) => n.id === node.id ? { ...n, settings: { ...((n.settings as any) || {}), audience_channels: newChannels } } : n));
-                                          await actions.trackNodeSave(
-                                            node.id,
-                                            supabase.from('instance_nodes').update({
-                                              settings: { ...((node.settings as any) || {}), audience_channels: newChannels }
-                                            }).eq('id', node.id),
-                                            "settings"
-                                          );
-                                        };
-                                        return (
-                                          <Tooltip key={key}>
-                                            <TooltipTrigger asChild>
-                                              <label
-                                                className="flex w-full min-w-0 cursor-pointer select-none items-center gap-1.5 text-[11px]"
-                                                onClick={(e) => e.stopPropagation()}
-                                              >
-                                                <Icon className="h-3 w-3 shrink-0 text-muted-foreground" />
-                                                <span className={`min-w-0 flex-1 truncate text-right font-medium ${isSelected ? 'text-foreground' : 'text-muted-foreground'}`}>{label}</span>
-                                                <Switch
-                                                  checked={isSelected}
-                                                  onCheckedChange={toggleChannel}
-                                                  onClick={(e) => e.stopPropagation()}
-                                                />
-                                              </label>
-                                            </TooltipTrigger>
-                                            <TooltipContent side="top" className="text-[11px] max-w-[220px]">
-                                              {hint}
-                                            </TooltipContent>
-                                          </Tooltip>
-                                        );
-                                      })}
-                                    </div>
-                                  </TooltipProvider>
+                                  <ImprentaAudienceChannelSelector
+                                    channels={(node.settings as any)?.audience_channels}
+                                    onChannelsChange={async (audienceChannels) => {
+                                      actions.setNodes((prev: InstanceNode[]) => prev.map((item: InstanceNode) =>
+                                        item.id === node.id
+                                          ? { ...item, settings: { ...((item.settings as any) || {}), audience_channels: audienceChannels } }
+                                          : item
+                                      ))
+                                      await actions.trackNodeSave(
+                                        node.id,
+                                        supabase.from('instance_nodes').update({
+                                          settings: { ...((node.settings as any) || {}), audience_channels: audienceChannels }
+                                        }).eq('id', node.id),
+                                        "settings"
+                                      )
+                                    }}
+                                  />
                                 )}
 
                                 {node.type === 'publish' && (

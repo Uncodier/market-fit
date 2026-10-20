@@ -3,6 +3,7 @@ import {
   getChannelLabel,
   getChannelRoutingMetadata,
   getEnabledSiteChannels,
+  type SiteChannelSource,
   normalizeChannel,
   leadHasChannel
 } from "@/lib/site-channels"
@@ -111,6 +112,42 @@ describe("site-channels", () => {
       regulatory_status: "approved",
     })
     expect(getChannelRoutingMetadata(site, "voice")).toBeUndefined()
+  })
+
+  it.each([{ enabled: false }, { license_suspended: true }, { _license: { manually_disabled: true } },
+    { status: "disabled", enabled: false, license_suspended: false, _license: { manually_disabled: true } }])("never offers or routes a disabled connection: %p", flags => {
+    const connections: NonNullable<NonNullable<NonNullable<SiteChannelSource["settings"]>["channels"]>["connections"]> = [
+      { id: "disabled", type: "whatsapp", status: "connected", ...flags },
+    ]
+    const site = { settings: { channels: { connections } } }
+    expect(getEnabledSiteChannels(site)).toEqual([])
+    expect(getChannelRoutingMetadata(site, "whatsapp")).toBeUndefined()
+    expect(getChannelRoutingMetadata(site, "whatsapp", "disabled")).toBeUndefined()
+    site.settings.channels.connections.push({ id: "active", type: "whatsapp", status: "connected" })
+    expect(getEnabledSiteChannels(site)).toEqual(["whatsapp"])
+    expect(getChannelRoutingMetadata(site, "whatsapp")?.connection_id).toBe("active")
+    expect(getChannelRoutingMetadata(site, "whatsapp", "disabled")).toBeUndefined()
+  })
+
+  it("uses Voice compatibility only for Voice connections, not other types or missing types", () => {
+    const site: SiteChannelSource = { settings: { channels: { connections: [
+      { id: "email", type: "email", status: "synced" },
+      { id: "wa", type: "whatsapp", status: "active" },
+      { id: "unknown", status: "connected" },
+      { id: "voice", type: "voice", status: "active" },
+      { id: "voice-synced", type: "voice", status: "synced" },
+    ] } } }
+    expect(getEnabledSiteChannels(site)).toEqual(["voice"])
+    expect(getChannelRoutingMetadata(site, "voice")?.connection_id).toBe("voice")
+    expect(getChannelRoutingMetadata(site, "voice", "voice-synced")?.connection_id).toBe("voice-synced")
+    expect(getChannelRoutingMetadata(site, "web")).toBeUndefined()
+  })
+
+  it("honors explicitly disabled legacy agent channels without changing active legacy status support", () => {
+    expect(getEnabledSiteChannels({ settings: { channels: {
+      agent_email: { status: "active", enabled: false },
+      agent_whatsapp: { status: "active", enabled: false },
+    } } })).toEqual([])
   })
 
   describe("leadHasChannel", () => {

@@ -1,5 +1,8 @@
-import { Site } from "@/app/context/site-types"
+import type { Site } from "@/app/context/site-types"
+import { isActiveAgentChannel } from "@/lib/agent-channel-state"
 import { effectiveBillingPlan } from "@/lib/billing/startup-trial"
+
+export { isActiveAgentChannel } from "@/lib/agent-channel-state"
 
 export function getSocialAccountLimit(plan?: string | null): number {
   if (!plan || plan === 'commission') return 1
@@ -49,12 +52,6 @@ export function countAgentChannels(site: Partial<Site> | null | undefined): numb
   return count
 }
 
-/** Voice keeps its historical active/synced states; other channels require connected. */
-export function isActiveAgentChannel(channel: { type?: string; status?: string }): boolean {
-  return channel.status === 'connected' || (channel.type === 'voice' &&
-    (channel.status === 'active' || channel.status === 'synced'))
-}
-
 export function countConnectedAccounts(site: Partial<Site> | null | undefined): number {
   return countSocialAccounts(site) + countAgentChannels(site)
 }
@@ -62,7 +59,6 @@ export function countConnectedAccounts(site: Partial<Site> | null | undefined): 
 export function canConnectSocialAccount(site: Partial<Site> | null | undefined, extra: number = 1): boolean {
   if (!site) return false
   // For validation, we need to know if adding a social account exceeds the combined total allowed
-  const required = getRequiredAddons(site)
   const futureRequired = getRequiredAddonsWithExtra(site, extra, 0)
   
   // If the user has enough addons to cover the new accounts, or they haven't reached their plan limits yet
@@ -71,7 +67,6 @@ export function canConnectSocialAccount(site: Partial<Site> | null | undefined, 
 
 export function canConnectAgentChannel(site: Partial<Site> | null | undefined, extra: number = 1): boolean {
   if (!site) return false
-  const required = getRequiredAddons(site)
   const futureRequired = getRequiredAddonsWithExtra(site, 0, extra)
   
   return futureRequired <= (site.billing?.addons_count || 0)

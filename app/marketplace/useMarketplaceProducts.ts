@@ -5,6 +5,7 @@ import { parseMarketplaceSort, type MarketplaceSort } from './marketplace-sort'
 import type { MarketplaceListingFilters, MarketplaceRegion } from './marketplace-product-filters'
 import { buildMarketplaceListingFilterSearch } from './marketplace-filter-url'
 import { MARKETPLACE_PAGE_SIZE } from './marketplace-pagination'
+import { useSearchPagination } from '@/lib/catalog-search/use-search-pagination'
 
 const GEO_FIELDS = ['city', 'state', 'country', 'zip', 'latitude', 'longitude'] as const
 const EMPTY_REGIONS: MarketplaceRegion[] = []
@@ -39,6 +40,7 @@ export function useMarketplaceProducts(
   listingFilters?: MarketplaceListingFilters,
   initialRegions: MarketplaceRegion[] = EMPTY_REGIONS,
   initialCount: number = initialItems.length,
+  siteId?: string,
 ) {
   const sort = parseMarketplaceSort(selectedSort)
   const geoParams = new URLSearchParams()
@@ -50,11 +52,11 @@ export function useMarketplaceProducts(
   const listingSearch = buildMarketplaceListingFilterSearch('', listingFilters || {})
   const defaultFilters = isDefaultFilters(
     searchQuery, selectedKind, selectedSubtype, showOnlyRecurring, sort, geoSearch,
-  ) && listingSearch === ''
+  ) && listingSearch === '' && !siteId
   const nextKey = JSON.stringify([
-    searchQuery, selectedKind, selectedSubtype, showOnlyRecurring, sort, geoSearch, listingSearch,
+    searchQuery, selectedKind, selectedSubtype, showOnlyRecurring, sort, geoSearch, listingSearch, siteId,
   ])
-  const [page, _setPage] = useState(1)
+  const { page, setPage: _setPage, searchId, acceptSearchId, restart, generation } = useSearchPagination(nextKey, Boolean(searchQuery.trim()))
 
   const setPage = (p: number) => {
     _setPage(p)
@@ -107,7 +109,11 @@ export function useMarketplaceProducts(
         params.set('limit', String(MARKETPLACE_PAGE_SIZE))
         params.set('sort', sort)
 
-        if (searchQuery) params.set('search', searchQuery)
+        if (searchQuery) {
+          params.set('search', searchQuery)
+          if (searchId) params.set('search_id', searchId)
+        }
+        if (siteId) params.set('siteId', siteId)
 
         const effectiveKind = selectedKind === 'recurring' ? 'all' : selectedKind
         if (effectiveKind !== 'all') params.set('kind', effectiveKind)
@@ -124,10 +130,16 @@ export function useMarketplaceProducts(
           signal: controller.signal,
         })
         if (cancelled) return
+        if (res.status === 409 && searchQuery.trim()) {
+          setItems([])
+          restart()
+          return
+        }
         if (!res.ok) throw new Error('Marketplace request failed')
-        const { data, totalPages: newTotalPages, count: newCount, regions: newRegions } = await res.json()
+        const { data, totalPages: newTotalPages, count: newCount, regions: newRegions, search_id: newSearchId } = await res.json()
         if (cancelled) return
         setItems(data || [])
+        acceptSearchId(newSearchId)
         setTotalPages(newTotalPages || 0)
         setCount(typeof newCount === 'number' ? newCount : 0)
         setRegions(Array.isArray(newRegions) ? newRegions : EMPTY_REGIONS)
@@ -147,7 +159,7 @@ export function useMarketplaceProducts(
       controller.abort()
     }
   }, [page, searchQuery, selectedKind, selectedSubtype, showOnlyRecurring, sort, geoSearch,
-    nextKey, defaultFilters, initialItems, initialTotalPages, initialCount, initialRegions, listingSearch, requestVersion])
+    nextKey, defaultFilters, initialItems, initialTotalPages, initialCount, initialRegions, listingSearch, requestVersion, generation, siteId])
 
   return { items, page, setPage, totalPages, isLoading, count, regions, error,
     retry: () => setRequestVersion((version) => version + 1) }

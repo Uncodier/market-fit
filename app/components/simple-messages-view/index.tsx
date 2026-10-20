@@ -348,8 +348,12 @@ const { className, activeRobotInstance, isBrowserVisible, hasTopHeaderSpace, ski
             isEmpty ? "flex flex-col gap-3" : "flex flex-col w-full gap-2"
           )}
         >
-        {showJumpToLatest && !isEmpty && (
-          <div className="flex w-full shrink-0 justify-center">
+        {!isEmpty && (
+          // Preserve the measured composer height and scroll spacer when the button hides.
+          <div
+            className={cn("flex w-full shrink-0 justify-center", !showJumpToLatest && "invisible pointer-events-none")}
+            aria-hidden={!showJumpToLatest}
+          >
             <Button
               type="button"
               variant="secondary"
@@ -357,6 +361,8 @@ const { className, activeRobotInstance, isBrowserVisible, hasTopHeaderSpace, ski
               className="shadow-md gap-1.5 rounded-full border border-border/80 bg-background/95 backdrop-blur-sm"
               onClick={jumpToLatestLogs}
               aria-label="Jump to latest log"
+              disabled={!showJumpToLatest}
+              tabIndex={showJumpToLatest ? 0 : -1}
             >
               <ChevronDown size={16} className="opacity-80" aria-hidden />
               Latest

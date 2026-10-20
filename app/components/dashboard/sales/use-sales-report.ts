@@ -6,6 +6,7 @@ import { useAuth } from "@/app/hooks/use-auth"
 import { useSite } from "@/app/context/SiteContext"
 import { useWidgetContext } from "@/app/context/WidgetContext"
 import type { SalesReportData } from "@/lib/sales/report-types"
+import { isKnownDemoSite } from "@/lib/demo-data"
 
 export class SalesReportFetchError extends Error {
   constructor(message: string, readonly status: number, readonly availableCurrencies: string[] = []) {
@@ -24,6 +25,11 @@ export function salesReportUrl(siteId: string, start: Date, end: Date, segmentId
 }
 
 export async function fetchSalesReport([, url]: readonly [string, string]): Promise<SalesReportData> {
+  const params = new URL(url, "http://demo.local").searchParams
+  if (isKnownDemoSite(params.get("siteId"))) {
+    const { loadDemoSalesReport } = await import("@/lib/demo-data/sales-report")
+    return loadDemoSalesReport(params)
+  }
   const response = await fetch(url, { cache: "no-store" }).catch(() => {
     throw new SalesReportFetchError("Unable to connect to the sales report. Please try again.", 0)
   })
@@ -51,10 +57,12 @@ export function useSalesReport(start: Date, end: Date, segmentId: string, curren
   const url = currentSite?.id && currentSite.id !== "default"
     ? salesReportUrl(currentSite.id, start, end, segmentId, currency, categories) : null
   const invalidDates = !isValid(start) || !isValid(end) || start > end
-  const waitingForReadiness = Boolean(authLoading || siteLoading || (user?.id && url && !shouldExecuteWidgets))
-  const enabled = Boolean(user?.id && url && shouldExecuteWidgets && !authLoading && !siteLoading)
+  const localDemo = isKnownDemoSite(currentSite?.id)
+  const identity = localDemo ? currentSite?.id : user?.id
+  const waitingForReadiness = Boolean((!localDemo && authLoading) || siteLoading || (identity && url && !shouldExecuteWidgets))
+  const enabled = Boolean(identity && url && shouldExecuteWidgets && (localDemo || !authLoading) && !siteLoading)
   const result = useReportResource<SalesReportData, SalesReportFetchError>(
-    enabled ? [user!.id, url!] as const : null, fetchSalesReport,
+    enabled ? [identity!, url!] as const : null, fetchSalesReport,
     waitingForReadiness,
   )
   return { ...result, enabled, invalidDates }

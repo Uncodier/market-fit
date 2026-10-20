@@ -6,7 +6,7 @@ jest.mock("@/lib/supabase/client", () => ({
   createClient: jest.fn(),
 }))
 
-type QueryResult = { data: any[]; error: null }
+type QueryResult = { data: Record<string, unknown>[]; error: null }
 
 describe("useInstancePlans", () => {
   it("ignores an older request after the active instance changes", async () => {
@@ -44,7 +44,7 @@ describe("useInstancePlans", () => {
       }),
       removeChannel: jest.fn(),
     }
-    jest.mocked(createClient).mockReturnValue(client as any)
+    jest.mocked(createClient).mockReturnValue(client as unknown as ReturnType<typeof createClient>)
 
     const { result, rerender } = renderHook(
       ({ instanceId }) =>
@@ -53,8 +53,12 @@ describe("useInstancePlans", () => {
     )
 
     await waitFor(() => expect(pending.has("instance-a")).toBe(true))
+    const oldInstanceRefresh = result.current.loadInstancePlans
     rerender({ instanceId: "instance-b" })
     await waitFor(() => expect(pending.has("instance-b")).toBe(true))
+    const calls = client.from.mock.calls.length
+    await act(async () => { expect(await oldInstanceRefresh()).toBe(false) })
+    expect(client.from.mock.calls.length).toBe(calls)
 
     await act(async () => {
       pending.get("instance-b")?.({
@@ -101,5 +105,25 @@ describe("useInstancePlans", () => {
     })
 
     expect(result.current.instancePlans.map((plan) => plan.id)).toEqual(["plan-b"])
+  })
+  it("preserves visible plans and reports refresh failure without a Realtime event", async () => {
+    const outcome = { data: [{ id: "plan-a",title: "Plan A",status: "paused",created_at: "2026-10-13T00:00:00Z",
+      steps: [{ id: "step_1",status: "in_progress" }],metadata: {} }],error: null as null | { code: string } }
+    const query = { select: jest.fn(),eq: jest.fn(),order: jest.fn() }
+    query.select.mockReturnValue(query); query.eq.mockReturnValue(query)
+    let orders = 0
+    query.order.mockImplementation(() => ++orders % 2 === 1 ? query : Promise.resolve(outcome))
+    const channel = { on: jest.fn(),subscribe: jest.fn() }
+    channel.on.mockReturnValue(channel); channel.subscribe.mockReturnValue(channel)
+    jest.mocked(createClient).mockReturnValue({ from: () => query,channel: () => channel,removeChannel: jest.fn() } as unknown as ReturnType<typeof createClient>)
+    jest.spyOn(console,"error").mockImplementation(() => {})
+    const { result } = renderHook(() => useInstancePlans({ activeRobotInstance: { id: "instance-a" } }))
+    await waitFor(() => expect(result.current.instancePlans).toHaveLength(1))
+    outcome.error = { code: "57014" }
+    await act(async () => { expect(await result.current.loadInstancePlans()).toBe(false) })
+    expect(result.current.instancePlans[0].id).toBe("plan-a")
+    expect(result.current.steps).toHaveLength(1)
+    expect(result.current.isLoadingPlans).toBe(false)
+    jest.restoreAllMocks()
   })
 })

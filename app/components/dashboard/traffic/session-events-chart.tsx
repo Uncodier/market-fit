@@ -18,6 +18,7 @@ import { EmptyCard } from '@/app/components/ui/empty-card';
 import { BarChart as BarChartIcon } from '@/app/components/ui/icons';
 import { useTheme } from '@/app/context/ThemeContext';
 import { Skeleton } from '@/app/components/ui/skeleton';
+import { fetchSessionEvents, sessionEventsUrl } from './session-events-data';
 
 interface SessionEventData {
   date: string;
@@ -92,6 +93,7 @@ export function SessionEventsChart({
     // Only fetch if no prop data is provided
     if (propData !== undefined) return;
 
+    let active = true;
     const fetchData = async () => {
       if (!siteId || !startDate || !endDate) return;
       
@@ -99,39 +101,23 @@ export function SessionEventsChart({
       setInternalError(null);
       
       try {
-        const start = startDate ? startDate.toISOString().split('T')[0] : null;
-        const end = endDate ? endDate.toISOString().split('T')[0] : null;
-        
-        const params = new URLSearchParams();
-        params.append('siteId', siteId);
-        if (start) params.append('startDate', start);
-        if (end) params.append('endDate', end);
-        params.append('referrersLimit', '10');
-        
-        console.log('Fetching combined page visits data with params:', params.toString());
-        const response = await fetch(`/api/traffic/session-events-combined?${params.toString()}`);
-        
-        if (!response.ok) {
-          throw new Error('Failed to fetch page visits data');
-        }
-        
-        const result = await response.json();
-        console.log('Combined page visits response:', result);
-        
-        // Use the combined data directly
-        setInternalData(result.chartData || []);
-        setInternalTotals(
-          result.totals || { pageVisits: 0, uniqueVisitors: 0, referralVisits: 0 }
-        );
+        const url = sessionEventsUrl(siteId, startDate, endDate);
+        if (!url) throw new Error('Select a valid date range.');
+        const result = await fetchSessionEvents([url, siteId]);
+        if (!active) return;
+        setInternalData(result.chartData);
+        setInternalTotals(result.totals);
       } catch (err) {
+        if (!active) return;
         setInternalError(err instanceof Error ? err.message : 'An error occurred');
         console.error('Error fetching combined page visits:', err);
       } finally {
-        setInternalLoading(false);
+        if (active) setInternalLoading(false);
       }
     };
 
     fetchData();
+    return () => { active = false; };
   }, [siteId, startDate, endDate, propData]);
 
   const totalPageVisits = totals.pageVisits;

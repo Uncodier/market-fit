@@ -3,11 +3,20 @@ import { mergeDemoData } from "./merge"
 import { attachDemoOrderLineUnits } from "./order-line-units"
 import { applyDemoTimeline } from "./timeline"
 import { attachDemoOverview } from "./overview-seed"
+import { attachDemoFinancial } from "./financial-seed"
+import { attachDemoPerformance } from "./performance-seed"
+import { attachDemoTraffic } from "./traffic-seed"
+import { attachDemoAnalytics } from "./analytics-seed"
+import { attachDemoSocial } from "./social-seed"
 
 function finalizeDemoData(data: Record<string, unknown>) {
-  return attachDemoOrderLineUnits(
-    attachDemoAccounting(attachDemoOverview(applyDemoTimeline(data))),
-  )
+  const overview = attachDemoOverview(applyDemoTimeline(data))
+  const financial = attachDemoFinancial(overview)
+  const performance = attachDemoPerformance(financial)
+  const analytics = attachDemoAnalytics(performance)
+  const traffic = attachDemoTraffic(analytics)
+  const social = attachDemoSocial(traffic)
+  return attachDemoOrderLineUnits(attachDemoAccounting(social))
 }
 
 export const availableDemos = [

@@ -5,6 +5,7 @@ import { AuthContext } from "@/app/components/auth/auth-context"
 import { createReportExportRegistry, type ReportExportRegistry } from "./report-export-registry"
 import type { ReportExportScope as Scope } from "./report-export-data"
 import { reportExportResourceKey } from "./report-export-key"
+import { isKnownDemoSite } from "@/lib/demo-data"
 
 const ExportContext = createContext<ReportExportRegistry | null>(null)
 
@@ -12,7 +13,7 @@ export function ReportExportScope({ children, ...filters }: Omit<Scope, "userId"
   const auth = useContext(AuthContext)
   const scope: Scope = {
     ...filters,
-    userId: auth?.isLoading ? "" : auth?.user?.id ?? "",
+    userId: isKnownDemoSite(filters.siteId) ? filters.siteId : auth?.isLoading ? "" : auth?.user?.id ?? "",
     timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
   }
   return <ExportScope key={JSON.stringify(scope)} scope={scope}>{children}</ExportScope>

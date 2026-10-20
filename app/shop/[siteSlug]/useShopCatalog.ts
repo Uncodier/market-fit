@@ -124,6 +124,10 @@ export function useShopCatalog(
   const [globalTotalCount, setGlobalTotalCount] = useState(initialCount)
   const [hasGlobalGap, setHasGlobalGap] = useState(initialCount !== sumCategoryCounts(initialOffsets))
   const [isLoading, setIsLoading] = useState(false)
+  const [searchError, setSearchError] = useState<string>()
+  const [searchAttempt, setSearchAttempt] = useState(0)
+  const previousSearchAttempt = useRef(searchAttempt)
+  const searchId = useRef<string | undefined>(undefined)
   const [isLoadingMore, setIsLoadingMore] = useState(false)
   const [isJumping, setIsJumping] = useState(false)
   const [pendingScrollCategory, setPendingScrollCategory] = useState<string | null>(null)
@@ -220,6 +224,11 @@ export function useShopCatalog(
       })
       if (gen !== requestGen.current) return undefined
       if (result.error || !Array.isArray(result.data)) throw new Error("Failed to load shop catalog page")
+      if (prevSearch.current.trim() && searchId.current &&
+        (!("search_id" in result) || result.search_id !== searchId.current)) {
+        setSearchError("Catalog search changed. Please try again.")
+        return false
+      }
       if (result.data) {
         const next = result.data as CatalogItem[]
         const count = typeof result.count === "number" ? result.count : totalCountRef.current
@@ -308,15 +317,18 @@ export function useShopCatalog(
       return
     }
 
-    if (prevSearch.current === searchQuery && prevSite.current === siteId) return
+    if (prevSearch.current === searchQuery && prevSite.current === siteId && previousSearchAttempt.current === searchAttempt) return
+    previousSearchAttempt.current = searchAttempt
     prevSearch.current = searchQuery
     prevSite.current = siteId
 
     const gen = ++requestGen.current
     requestBusyRef.current = false
     completedCategoriesRef.current = new Set()
+    searchId.current = undefined
+    setSearchError(undefined)
 
-    if (!searchQuery) {
+    if (!searchQuery.trim()) {
       setCatalogItems(initialCatalog)
       catalogItemsRef.current = initialCatalog
       setWindowEnd(initialCatalog.length)
@@ -335,6 +347,13 @@ export function useShopCatalog(
       return
     }
 
+    setCatalogItems([])
+    catalogItemsRef.current = []
+    setTotalCount(0)
+    totalCountRef.current = 0
+    setWindowEnd(0)
+    windowEndRef.current = 0
+    setIsLoading(true)
     let cancelled = false
     const timer = setTimeout(async () => {
       setIsLoading(true)
@@ -347,6 +366,8 @@ export function useShopCatalog(
           search: searchQuery,
         })
         if (cancelled || gen !== requestGen.current) return
+        if (result.error || !Array.isArray(result.data)) throw new Error("Unable to search this shop")
+        searchId.current = "search_id" in result ? result.search_id as string : undefined
         const data = (result.data || []) as CatalogItem[]
         setCatalogItems(data)
         catalogItemsRef.current = data
@@ -357,6 +378,7 @@ export function useShopCatalog(
         setGlobalTotalCount(result.count || 0)
         globalTotalCountRef.current = result.count || 0
       } catch (err) {
+        if (!cancelled && gen === requestGen.current) setSearchError("Unable to search this shop. Please try again.")
         console.error("Failed to search shop catalog:", err)
       } finally {
         if (!cancelled && gen === requestGen.current) {
@@ -369,13 +391,15 @@ export function useShopCatalog(
       cancelled = true
       clearTimeout(timer)
     }
-  }, [searchQuery, siteId, initialCatalog, initialCount, initialOffsets])
+  }, [searchQuery, siteId, initialCatalog, initialCount, initialOffsets, searchAttempt])
 
   return {
     catalogItems,
     totalCount,
     categoryOffsets,
     isLoading,
+    searchError,
+    retrySearch: () => setSearchAttempt(attempt => attempt + 1),
     isLoadingMore,
     isJumping,
     hasMoreBelow,

@@ -2,21 +2,16 @@
 
 import type { ReactNode } from "react"
 
-import { Bot, Check, FileText, Globe, Mail, Phone, Play } from "@/app/components/ui/icons"
+import { Bot, FileText, Globe, Mail, Phone, Play } from "@/app/components/ui/icons"
 import { SocialIcon } from "@/app/components/ui/social-icons"
-import { Button } from "@/app/components/ui/button"
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/app/components/ui/tooltip"
+import { TooltipProvider } from "@/app/components/ui/tooltip"
 import {
   togglePublishDestination,
 } from "@/app/components/agents/imprenta-publish-routing"
 import type { SiteChannelSource } from "@/lib/site-channels"
 import { getPublishOptions, resolveLegacyPublishSelections } from "./imprenta-publish-options"
 import { publishDestinationMode } from "@/lib/content/publish-destinations"
+import { ImprentaOptionToggle } from "./imprenta-option-toggle"
 
 type PublishDestinationSite = SiteChannelSource & {
   url?: string | null
@@ -61,41 +56,17 @@ export function ImprentaPublishDestinationSelector({
     const isSelected = currentDestinations.includes(key)
 
     return (
-      <Tooltip key={key}>
-        <TooltipTrigger asChild>
-          <Button
-            type="button"
-            variant="secondary"
-            size="sm"
-            aria-label={label}
-            aria-pressed={isSelected}
-            data-state={isSelected ? "on" : "off"}
-            className={`h-8 w-full min-w-0 justify-start gap-2 rounded-md px-2.5 text-left text-[11px] ${
-              isSelected
-                ? "bg-secondary text-foreground ring-1 ring-inset ring-foreground/20"
-                : "bg-muted/40 text-muted-foreground hover:bg-muted/70"
-            }`}
-            onClick={(event) => {
-              event.stopPropagation()
-              onDestinationsChange(
-                togglePublishDestination(currentDestinations.filter((value) =>
-                  !ambiguous.includes(value) || publishDestinationMode(value) !== publishDestinationMode(key)), key)
-              )
-            }}
-          >
-            <span aria-hidden="true" className="flex h-3 w-3 shrink-0 items-center justify-center [&>div]:h-full [&>div]:w-full [&>span]:h-full [&>span]:w-full [&>svg]:h-full [&>svg]:w-full">
-              {icon}
-            </span>
-            <span className="min-w-0 flex-1 truncate text-left">{label}</span>
-            <span aria-hidden="true" className="flex h-3.5 w-3.5 shrink-0 items-center justify-center">
-              {isSelected && <Check size={14} />}
-            </span>
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent side="top" className="max-w-[220px] text-[11px]">
-          {hint}
-        </TooltipContent>
-      </Tooltip>
+      <ImprentaOptionToggle
+        key={key}
+        label={label}
+        icon={icon}
+        hint={hint}
+        selected={isSelected}
+        onToggle={() => onDestinationsChange(
+          togglePublishDestination(currentDestinations.filter((value) =>
+            !ambiguous.includes(value) || publishDestinationMode(value) !== publishDestinationMode(key)), key)
+        )}
+      />
     )
   }
 

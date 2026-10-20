@@ -17,6 +17,7 @@ import { loadVariantListingPreviews } from "@/app/catalog/variant-resolve";
 import { applyStorefrontAvailability } from "@/app/catalog/storefront-availability";
 import { loadStorefrontDisplay } from "@/app/commerce/storefront-display";
 import { loadShopRequiredModifierIds } from "./shop-required-modifiers";
+import { loadShopSearch } from "./search-catalog";
 
 export { getShopCategoryOffsets };
 
@@ -63,8 +64,8 @@ function categoryNameFromJoin(category: unknown): string | null {
 
 async function enrichShopItems(siteId: string, items: any[], supabase: Awaited<ReturnType<typeof createServiceClient>>) {
   const [priceData, levelsRes, settingsRes, variantPreviews, siteRes, displayMap, requiredModifierIds] = await Promise.all([
-    loadChannelPriceMap(supabase, [siteId], "shop"),
-    supabase.from("inventory_levels").select("catalog_item_id, quantity").eq("site_id", siteId),
+    loadChannelPriceMap(supabase, [siteId], "shop", items.map(item => item.id)),
+    supabase.from("inventory_levels").select("catalog_item_id, quantity").eq("site_id", siteId).in("catalog_item_id", items.map(item => item.id)),
     supabase.from("settings").select("commerce, currency").eq("site_id", siteId).maybeSingle(),
     loadVariantListingPreviews(
       supabase,
@@ -168,6 +169,15 @@ export async function getShopCatalog(
       : Math.max(0, ((options.page || 1) - 1) * pageSize);
   const page = Math.floor(offset / pageSize) + 1;
 
+  if (search.trim()) {
+    try {
+      return await loadShopSearch({ siteId, search, category, offset, pageSize }, enrichShopItems);
+    } catch {
+      return { data: [], count: 0, totalPages: 0, page, pageSize, offset,
+        error: "Unable to search this shop. Please try again." };
+    }
+  }
+
   return unstable_cache(
     async () => {
       const supabase = await createServiceClient(true);
@@ -188,10 +198,6 @@ export async function getShopCatalog(
         .is("parent_id", null);
 
       query = applyStorefrontAvailability(query);
-
-      if (search) {
-        query = query.ilike("name", `%${search}%`);
-      }
 
       if (category !== "all" && category !== SHOP_UNCATEGORIZED_NAME) {
         const { data: cats } = await supabase

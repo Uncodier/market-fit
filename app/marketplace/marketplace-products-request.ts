@@ -14,6 +14,7 @@ const schema = z.object({
   digitalSubtype: z.enum(MARKETPLACE_SUBTYPE_VALUES).optional(),
   siteId: z.string().uuid().optional(),
   search: z.string().trim().max(200).optional(),
+  search_id: z.string().uuid().optional(),
   is_recurring: z.enum(["true", "false"]).optional(),
   city: area,
   state: area,

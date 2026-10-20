@@ -65,6 +65,7 @@ export function MarketplaceCatalog({
     showingDiscounts ? "featured" : filters.selectedSort,
     showingDiscounts ? undefined : buyerLocation.effectiveBuyerGeo,
     showingDiscounts ? undefined : listingFilters, initialRegions, initialCount,
+    searchParams?.get("siteId") || undefined,
   )
   const compactMobile = shouldUseCompactMobileListing(showingDiscounts ? initialCount : count)
   const listingLocationRestricted = useMemo(() => !showingDiscounts && !isLoading && !error && items.some((item) =>
@@ -92,7 +93,9 @@ export function MarketplaceCatalog({
                 {productFilters}
               </div>
               <div className="flex justify-end mb-6" aria-label={t("marketplace.sort.title")}>
-                <MarketplaceSortControl selectedSort={filters.selectedSort} setSelectedSort={filters.setSelectedSort} />
+                {searchQuery.trim() ? (
+                  <p className="text-sm text-muted-foreground">Relevance · up to 200 candidates. Filters apply within this search window, not the entire catalog.</p>
+                ) : <MarketplaceSortControl selectedSort={filters.selectedSort} setSelectedSort={filters.setSelectedSort} />}
               </div>
               {error ? (
                 <div role="alert" className="space-y-3 py-8">

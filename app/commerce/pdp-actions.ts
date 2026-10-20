@@ -75,8 +75,15 @@ async function loadPdpCatalogItem(itemId: string, options?: PdpLoadOptions) {
   
   const channel = options?.requireMarketplace ? "marketplace" : "shop";
 
+  // Price only the current listing and its actual children, never an entire site's list.
+  const childResult = !item.parent_id ? await supabase.from("catalog_items").select("*")
+    .eq("site_id", item.site_id).eq("parent_id", item.id).eq("status", "active")
+    .eq("is_purchasable", true) : { data: [], error: null };
+  if (childResult.error) throw new Error("Unable to load product variants");
+  const childrenData = (childResult.data || []) as CatalogItem[];
+
   const [priceData, { data: inventoryLevels }, { data: settings }] = await Promise.all([
-    loadChannelPriceMap(supabase, [item.site_id], channel),
+    loadChannelPriceMap(supabase, [item.site_id], channel, [item.id, ...childrenData.map(child => child.id)]),
     supabase
       .from("inventory_levels")
       .select("quantity")
@@ -108,13 +115,6 @@ async function loadPdpCatalogItem(itemId: string, options?: PdpLoadOptions) {
   let children: CatalogItem[] = [];
   let variantAxes = item.metadata?.variant_axes || [];
   if (!item.parent_id) {
-    const { data: childrenData } = await supabase
-      .from("catalog_items")
-      .select("*")
-      .eq("parent_id", item.id)
-      .eq("status", "active")
-      .eq("is_purchasable", true);
-
     const pricedChildren = ((childrenData || []) as CatalogItem[]).map((child) => ({
       ...child,
       target_sale_price:

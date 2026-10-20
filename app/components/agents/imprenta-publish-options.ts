@@ -1,5 +1,6 @@
 import { getChannelLabel, getEnabledSiteChannels, normalizeChannel, type CommunicationChannel, type SiteChannelSource } from "@/lib/site-channels"
 import { destinationChannel, publishDestinationKey, publishDestinationMode } from "@/lib/content/publish-destinations"
+import { isActiveAgentChannel } from "@/lib/agent-channel-state"
 
 export type PublishOption = { key: string; mode: string; label: string; hint: string }
 const MODES = ["mail", "newsletter", "whatsapp", "telegram", "sms", "voice", "voice-agent-call"]
@@ -37,7 +38,7 @@ export function getPublishOptions(site?: SiteChannelSource | null): PublishOptio
     const channel = destinationChannel(mode)!
     const label = LABELS[mode] || getChannelLabel(channel)
     const connections = (channels?.connections || []).filter((item) =>
-      !item.license_suspended && normalizeChannel(item.type) === channel && connected(item.status))
+      isActiveAgentChannel(item) && normalizeChannel(item.type) === channel)
     const add = (id: string, identity: string) => options.push({
       key: publishDestinationKey(mode, "connection", id), mode,
       label: `${label} · ${identity}`,
@@ -57,7 +58,7 @@ export function getPublishOptions(site?: SiteChannelSource | null): PublishOptio
       if (channels?.email?.enabled && connected(channels.email.status)) {
         add("legacy:email", channels.email.email || "Site email")
       }
-      if (connected(channels?.agent_email?.status)) {
+      if (channels?.agent_email?.enabled !== false && connected(channels?.agent_email?.status)) {
         const email = channels?.agent_email
         add("legacy:agent_email", email?.inbox_id || email?.data?.inbox_id || email?.username || "Agent email")
       }
@@ -66,7 +67,7 @@ export function getPublishOptions(site?: SiteChannelSource | null): PublishOptio
       if (channels?.whatsapp?.enabled && connected(channels.whatsapp.status)) {
         add("legacy:whatsapp", channels.whatsapp.number || channels.whatsapp.existingNumber || "Site WhatsApp")
       }
-      if (connected(channels?.agent_whatsapp?.status)) add("legacy:agent_whatsapp", "Agent WhatsApp")
+      if (channels?.agent_whatsapp?.enabled !== false && connected(channels?.agent_whatsapp?.status)) add("legacy:agent_whatsapp", "Agent WhatsApp")
     }
     // Old, ID-less connections can still use the existing default route.
     if (!options.some((option) => option.mode === mode) && getEnabledSiteChannels(site).includes(channel as CommunicationChannel)) {

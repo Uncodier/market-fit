@@ -6,6 +6,7 @@ import { useSite } from "@/app/context/SiteContext"
 import { useReportResource } from "@/app/hooks/use-report-resource"
 import { format, isValid, subDays } from "date-fns"
 import type { CostData, CostRevenueData } from "./cost-report-data"
+import { isKnownDemoSite } from "@/lib/demo-data"
 
 type RecordData = Record<string, unknown>
 const record = (value: unknown): value is RecordData => !!value && typeof value === "object"
@@ -16,6 +17,15 @@ export class CostReportRequestError extends Error {
 }
 
 async function fetchReport(url: string): Promise<RecordData> {
+  const request = new URL(url, "http://demo.local")
+  if (isKnownDemoSite(request.searchParams.get("siteId"))) {
+    if (request.pathname === "/api/costs") {
+      const { loadDemoCostReport } = await import("@/lib/demo-data/cost-report")
+      return loadDemoCostReport(request.searchParams)
+    }
+    const { loadDemoSalesReport } = await import("@/lib/demo-data/sales-report")
+    return { ...await loadDemoSalesReport(request.searchParams) }
+  }
   const response = await fetch(url, { cache: "no-store" }).catch(() => {
     throw new CostReportRequestError("Unable to connect to the cost report. Please try again.")
   })
@@ -58,8 +68,10 @@ export function useCostReport(siteId: string | undefined, start: Date | undefine
   segmentId: string, campaignId: string, summary: boolean, currency?: string) {
   const auth = useContext(AuthContext)
   const { isLoading: siteLoading } = useSite()
-  const waitingForReadiness = Boolean(auth?.isLoading || siteLoading)
-  const signedOut = auth !== undefined && !auth.isLoading && !auth.user
+  const localDemo = isKnownDemoSite(siteId)
+  const identity = localDemo ? siteId : auth?.user?.id
+  const waitingForReadiness = Boolean((!localDemo && auth?.isLoading) || siteLoading)
+  const signedOut = !localDemo && auth !== undefined && !auth.isLoading && !auth.user
   const [defaultEnd] = useState(() => new Date())
   const endDate = end ?? defaultEnd
   const startDate = start ?? subDays(endDate, 30)
@@ -73,13 +85,13 @@ export function useCostReport(siteId: string | undefined, start: Date | undefine
   const revenueParams = params ? new URLSearchParams(params) : null
   revenueParams?.set("includeCategories", "false")
   if (campaignId !== "all") params?.set("campaignId", campaignId)
-  const costs = useReportResource<CostData, CostReportRequestError>(params ? [`/api/costs?${params}`, auth?.user?.id] : null,
+  const costs = useReportResource<CostData, CostReportRequestError>(params ? [`/api/costs?${params}`, identity] : null,
     ([url]: [string]) => fetchCosts(url), waitingForReadiness)
   if (!currency && costs.data?.currency && costs.data.currency !== "UNSPECIFIED") {
     revenueParams?.set("currency", costs.data.currency)
   }
   const revenue = useReportResource<CostRevenueData, CostReportRequestError>(summary && revenueParams && costs.data
-    ? [`/api/revenue?${revenueParams}`, auth?.user?.id] : null,
+    ? [`/api/revenue?${revenueParams}`, identity] : null,
     ([url]: [string]) => fetchRevenue(url), summary && (waitingForReadiness || costs.isLoading))
   return { costs, revenue, enabled, invalidDates, startDate, endDate }
 }

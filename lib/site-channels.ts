@@ -1,3 +1,5 @@
+import { isActiveAgentChannel, type AgentChannelState } from "@/lib/agent-channel-state"
+
 export const COMMUNICATION_CHANNELS = [
   "whatsapp",
   "messenger",
@@ -22,15 +24,12 @@ export type SiteChannelSource = {
     channels?: {
       email?: { enabled?: boolean; status?: string; email?: string }
       whatsapp?: { enabled?: boolean; status?: string; number?: string; existingNumber?: string }
-      agent_email?: { status?: string; inbox_id?: string; username?: string; displayName?: string; data?: { inbox_id?: string; username?: string } }
-      agent_whatsapp?: { status?: string }
+      agent_email?: { enabled?: boolean; status?: string; inbox_id?: string; username?: string; displayName?: string; data?: { inbox_id?: string; username?: string } }
+      agent_whatsapp?: { enabled?: boolean; status?: string }
       website?: { enable_chat?: boolean }
-      connections?: Array<{
+      connections?: Array<AgentChannelState & {
         id?: string | null
         name?: string | null
-        type?: string | null
-        status?: string | null
-        license_suspended?: boolean
         zavu_sender_id?: string | null
         connected_account?: Record<string, unknown> | null
         metadata?: {
@@ -135,14 +134,14 @@ export function getEnabledSiteChannels(site?: SiteChannelSource | null): Communi
   if (settings?.whatsapp?.enabled && isConnectedStatus(settings.whatsapp.status)) {
     addChannel(enabled, "whatsapp")
   }
-  if (isConnectedStatus(settings?.agent_whatsapp?.status)) {
+  if (settings?.agent_whatsapp?.enabled !== false && isConnectedStatus(settings?.agent_whatsapp?.status)) {
     addChannel(enabled, "whatsapp")
   }
 
   if (settings?.email?.enabled && isConnectedStatus(settings.email.status)) {
     addChannel(enabled, "email")
   }
-  if (isConnectedStatus(settings?.agent_email?.status)) {
+  if (settings?.agent_email?.enabled !== false && isConnectedStatus(settings?.agent_email?.status)) {
     addChannel(enabled, "email")
   }
 
@@ -151,8 +150,8 @@ export function getEnabledSiteChannels(site?: SiteChannelSource | null): Communi
   }
 
   for (const connection of settings?.connections || []) {
+    if (!connection.type || !isActiveAgentChannel(connection)) continue
     const type = normalizeChannel(connection.type)
-    if (connection.license_suspended || !isConnectedStatus(connection.status)) continue
     if ((COMMUNICATION_CHANNELS as readonly string[]).includes(type)) {
       addChannel(enabled, type as CommunicationChannel)
     }
@@ -177,7 +176,7 @@ export function getChannelRoutingMetadata(
 ): Record<string, unknown> | undefined {
   const normalized = normalizeChannel(channel)
   const connection = site?.settings?.channels?.connections?.find(
-    (item) => !item.license_suspended && normalizeChannel(item.type) === normalized && isConnectedStatus(item.status)
+    (item) => !!item.type && isActiveAgentChannel(item) && normalizeChannel(item.type) === normalized
       && (connectionId === undefined || item.id === connectionId)
   )
   if (!connection) return undefined

@@ -45,6 +45,20 @@ it("GET never activates a trial and returns a private minimal status", async () 
   expect(from).not.toHaveBeenCalled()
 })
 
+it.each([true, false])('returns only the explicit server offer decision without exposing payment history (%s)', async offer => {
+  const dto = { ...eligible, state: offer ? 'eligible' : 'unavailable', offer_eligible: offer }
+  rpc.mockResolvedValue({ data: { ...dto, payments: [{ amount: 99 }], primary_owner_id: 'private' }, error: null })
+  const result = await GET(get())
+  expect(result.status).toBe(200)
+  expect(await result.json()).toEqual(dto)
+  expect(from).not.toHaveBeenCalled()
+})
+
+it('fails closed for an offer flag inconsistent with trial state', async () => {
+  rpc.mockResolvedValue({ data: { ...active, offer_eligible: true }, error: null })
+  expect((await GET(get())).status).toBe(503)
+})
+
 it("POST uses only server-verified actor identity and atomic activation", async () => {
   const result = await POST(post())
   expect(result.status).toBe(200)

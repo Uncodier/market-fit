@@ -49,12 +49,14 @@ beforeEach(() => {
 })
 afterEach(() => { cleanup(); global.fetch = originalFetch; jest.useRealTimers() })
 
-it("never starts on mount and explains no-card, one-time, nonrenewing credits and Foundry naming", async () => {
+it("never starts on mount and explains no-card, one-time, nonrenewing credits without internal naming copy", async () => {
   await mount()
   expect(start()).toBeEnabled()
+  expect(document.getElementById("startup-trial")).toContainElement(screen.getByRole("heading", { name: "Startup trial" }))
   expect(screen.getByText(/50 one-time credits total/)).toHaveTextContent("not a monthly allowance")
   expect(screen.getByText(/No card required/)).toHaveTextContent("No automatic billing")
-  expect(screen.getByText(/current interface calls this plan Foundry/)).toBeVisible()
+  expect(screen.getByText("Try Startup for 15 days.")).toBeVisible()
+  expect(screen.queryByText(/current interface calls this plan Foundry/)).not.toBeInTheDocument()
   expect(fetchMock).toHaveBeenCalledTimes(1)
   expect(fetchMock.mock.calls[0][1].method).toBe("GET")
   expect(refreshSiteBilling).not.toHaveBeenCalled()
@@ -255,8 +257,8 @@ it("offers refresh-only recovery when a recovered active trial cannot hydrate bi
 it("bounds the initial availability request and offers only a status retry", async () => {
   jest.useFakeTimers()
   fetchMock.mockReturnValue(new Promise<never>(() => {}))
-  render(<StartupTrialCard siteId={siteId} />)
-  expect(screen.getByRole("status")).toHaveTextContent("Checking trial availability")
+  const view = render(<StartupTrialCard siteId={siteId} />)
+  expect(view.container).toBeEmptyDOMElement()
   await act(async () => { await jest.advanceTimersByTimeAsync(STARTUP_TRIAL_REQUEST_TIMEOUT_MS) })
   expect(screen.getByRole("alert")).toHaveTextContent("currently unavailable")
   expect(screen.getByRole("button", { name: "Reload trial status" })).toBeEnabled()
@@ -303,6 +305,26 @@ it.each(["converted", "unavailable"])("never offers activation for %s", async st
   expect(fetchMock).toHaveBeenCalledTimes(1)
 })
 
+it.each([undefined, "Already paid", "Trial already used"])("hides the entire unavailable offer, including its heading and disabled message (%s)", async reason => {
+  const view = await mount({ ...eligible, state: "unavailable", reason })
+  expect(view.container).toBeEmptyDOMElement()
+  expect(document.getElementById("startup-trial")).toBeNull()
+  expect(screen.queryByRole("heading", { name: "Startup trial" })).not.toBeInTheDocument()
+  expect(screen.queryByText(/Activation is disabled/)).not.toBeInTheDocument()
+  expect(fetchMock).toHaveBeenCalledTimes(1)
+  expect(fetchMock.mock.calls[0][1].method).toBe("GET")
+})
+
+it("does not flash an offer while an ineligible project's status is loading", async () => {
+  const pending = deferred<Response>()
+  fetchMock.mockReturnValueOnce(pending.promise)
+  const view = render(<StartupTrialCard siteId={siteId} />)
+  expect(view.container).toBeEmptyDOMElement()
+  pending.resolve(response({ ...eligible, state: "unavailable" }))
+  await flush()
+  expect(view.container).toBeEmptyDOMElement()
+})
+
 it("aborts site-change GET and ignores late responses even when transport ignores abort", async () => {
   const previous = deferred<Response>()
   fetchMock.mockReturnValueOnce(previous.promise)
@@ -313,7 +335,7 @@ it("aborts site-change GET and ignores late responses even when transport ignore
   await flush()
   previous.resolve(response(eligible))
   await flush()
-  expect(screen.getByText(/Activation is disabled/)).toBeVisible()
+  expect(view.container).toBeEmptyDOMElement()
   expect(screen.queryByRole("button", { name: /Start 15-day/ })).not.toBeInTheDocument()
 })
 
@@ -345,7 +367,7 @@ it("ignores late refresh failure after switching sites", async () => {
   await flush()
   expect(signal(1).aborted).toBe(true)
   expect(screen.queryByRole("alert")).not.toBeInTheDocument()
-  expect(screen.getByText(/Activation is disabled/)).toBeVisible()
+  expect(view.container).toBeEmptyDOMElement()
 })
 
 it("aborts and clears a hanging request on unmount", async () => {

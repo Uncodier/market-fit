@@ -4,6 +4,9 @@ import { getCurrentUserSiteRole, isSiteManagerRole } from "@/lib/auth/api-site-a
 import { userCanOnSite } from "@/lib/permissions/site-access"
 import { isSameOriginApiRequest } from "@/lib/http/api-proxy-security"
 import { decodeRequestBody, readLimitedRequestBody, RequestBodyTooLargeError } from "@/lib/http/read-limited-request-body"
+import { listCancellationPlans } from "./list-plans"
+
+export const GET = listCancellationPlans
 
 const inputSchema = z.object({ plan_id: z.string().uuid(), instance_id: z.string().uuid() }).strict()
 const receiptSchema = inputSchema.extend({ status: z.literal("cancelled"), steps_cancelled: z.number().int().nonnegative() })

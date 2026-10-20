@@ -97,6 +97,55 @@ describe('SimpleMessagesView', () => {
     expect(screen.getByPlaceholderText('How can I help you today?')).toBeEnabled()
   })
 
+  it('preserves the latest-button row when reaching the bottom of the conversation', () => {
+    model.isEmpty = false
+    model.showJumpToLatest = true
+    const { rerender } = render(<SimpleMessagesView />)
+    const button = screen.getByRole('button', { name: 'Jump to latest log' })
+    const row = button.parentElement!
+    const bottomContainer = model.bottomContainerRef.current!
+    const children = Array.from(bottomContainer.children)
+
+    fireEvent.click(button)
+    expect(model.jumpToLatestLogs).toHaveBeenCalledTimes(1)
+
+    model.showJumpToLatest = false
+    rerender(<SimpleMessagesView />)
+
+    expect(bottomContainer).toContainElement(row)
+    expect(Array.from(bottomContainer.children)).toEqual(children)
+    expect(row).toHaveClass('flex', 'shrink-0', 'invisible', 'pointer-events-none')
+    expect(row).not.toHaveClass('hidden')
+    expect(row).toHaveAttribute('aria-hidden', 'true')
+    expect(button).toBeDisabled()
+    expect(button).toHaveAttribute('tabindex', '-1')
+    expect(screen.queryByRole('button', { name: 'Jump to latest log' })).not.toBeInTheDocument()
+    fireEvent.click(button)
+    expect(model.jumpToLatestLogs).toHaveBeenCalledTimes(1)
+
+    model.showJumpToLatest = true
+    rerender(<SimpleMessagesView />)
+
+    expect(screen.getByRole('button', { name: 'Jump to latest log' })).toBe(button)
+    expect(row).not.toHaveClass('invisible', 'pointer-events-none')
+    expect(row).toHaveAttribute('aria-hidden', 'false')
+    expect(button).toBeEnabled()
+    expect(button).toHaveAttribute('tabindex', '0')
+  })
+
+  it('reserves the latest-button row from the first non-empty render, but not in an empty chat', () => {
+    const { rerender } = render(<SimpleMessagesView />)
+    expect(screen.queryByText('Latest')).not.toBeInTheDocument()
+
+    model.isEmpty = false
+    rerender(<SimpleMessagesView />)
+
+    const row = screen.getByText('Latest').parentElement!
+    expect(model.bottomContainerRef.current).toContainElement(row)
+    expect(row).toHaveClass('invisible', 'shrink-0')
+    expect(row).toHaveAttribute('aria-hidden', 'true')
+  })
+
   it.each(['thinking', 'streaming', 'tool'])('uses only the current process indicator during %s', (activity) => {
     model.isEmpty = false
     model.shouldShowNewMakina = false

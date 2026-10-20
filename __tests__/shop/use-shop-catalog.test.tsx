@@ -15,6 +15,34 @@ type LoadResult = boolean | undefined
 
 beforeEach(() => { jest.clearAllMocks(); jest.mocked(getShopCatalog).mockReset() })
 
+it("shows a search failure instead of empty success and allows a same-query retry", async () => {
+  const log = jest.spyOn(console, "error").mockImplementation(() => {})
+  jest.mocked(getShopCatalog).mockResolvedValueOnce({ ...response([], 0), data: [], error: "Search unavailable" })
+    .mockResolvedValueOnce(response([tea], 1))
+  const { result, rerender } = renderHook(({ q }) => useShopCatalog("site", initial, 2, q, offsets), { initialProps: { q: "" } })
+  rerender({ q: "relaxing" })
+  expect(result.current.catalogItems).toEqual([])
+  await waitFor(() => expect(result.current.searchError).toMatch(/Unable to search/))
+  act(() => result.current.retrySearch())
+  await waitFor(() => expect(result.current.catalogItems).toEqual([tea]))
+  expect(result.current.searchError).toBeUndefined()
+  rerender({ q: "  " })
+  expect(result.current.catalogItems).toEqual(initial)
+  expect(getShopCatalog).toHaveBeenCalledTimes(2)
+  log.mockRestore()
+})
+
+it("does not append a different search window during infinite scrolling", async () => {
+  jest.mocked(getShopCatalog).mockResolvedValueOnce({ ...response([tea], 2), search_id: "window-one" } as Awaited<ReturnType<typeof getShopCatalog>>)
+    .mockResolvedValueOnce({ ...response([coffee], 2), search_id: "window-two" } as Awaited<ReturnType<typeof getShopCatalog>>)
+  const { result, rerender } = renderHook(({ q }) => useShopCatalog("site", initial, 2, q, offsets), { initialProps: { q: "" } })
+  rerender({ q: "relaxing" })
+  await waitFor(() => expect(result.current.catalogItems).toEqual([tea]))
+  await act(async () => { expect(await result.current.loadMoreBelow()).toBe(false) })
+  expect(result.current.catalogItems).toEqual([tea])
+  expect(result.current.searchError).toMatch(/Catalog search changed/)
+})
+
 it("keeps loaded cards while jumping and does not replace the feed or schedule scroll corrections", async () => {
   let resolve!: (value: ReturnType<typeof response>) => void
   jest.mocked(getShopCatalog).mockReturnValue(new Promise((done) => { resolve = done }))

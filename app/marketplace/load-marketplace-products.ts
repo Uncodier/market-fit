@@ -15,6 +15,9 @@ import { MARKETPLACE_PAGE_SIZE } from "./marketplace-pagination"
 import { loadMarketplaceAreas } from "./load-marketplace-regions"
 import { filterMarketplaceAvailability, type AvailabilityCandidate } from "./load-marketplace-availability"
 import { filterMarketplaceGeography, filterMarketplacePrices, marketplaceRegions, type MarketplaceListingFilters } from "./marketplace-product-filters"
+import { searchCatalogWindow } from "@/lib/catalog-search/server"
+import { orderCatalogSearchRows, type CatalogSearchFilters } from "@/lib/catalog-search/types"
+import { publicListingMetadata } from "@/app/catalog/public-listing-metadata"
 
 type MarketplaceItem = CatalogItem & {
   site: { id: string; name: string; logo_url?: string | null; settings?: Record<string, unknown> }
@@ -28,6 +31,7 @@ export type MarketplaceProductFilters = MarketplaceListingFilters & {
   digitalSubtype?: string | null
   siteId?: string | null
   search?: string | null
+  search_id?: string
   isRecurring?: boolean
   buyerGeo?: BuyerGeo
 }
@@ -43,6 +47,17 @@ export async function loadMarketplaceProducts(filters: MarketplaceProductFilters
   const page = filters.page || 1
   const limit = filters.limit || MARKETPLACE_PAGE_SIZE
   const sort = filters.sort || "featured"
+  const search = filters.search?.trim() ? await searchCatalogWindow({
+    query: filters.search, channel: "marketplace", site_id: filters.siteId || undefined, search_id: filters.search_id,
+    filters: {
+      kind: filters.kind && filters.kind !== "all" ? filters.kind as CatalogSearchFilters["kind"] : undefined,
+      digital_subtype: filters.digitalSubtype && filters.digitalSubtype !== "all" ? filters.digitalSubtype : undefined,
+      is_recurring: filters.isRecurring || undefined,
+      status: "active", is_marketplace_listed: true, parent_id: null,
+    },
+  }) : null
+  const searchMetadata = search ? { count_kind: search.count_kind, mode: search.mode,
+    degraded: search.degraded, search_id: search.search_id } : { count_kind: "exact" as const }
   const publicQuery = (columns: string) => {
     let query = applyStorefrontAvailability(supabase.from("catalog_items").select(columns)
       .is("site.archived_at", null).eq("is_marketplace_listed", true)
@@ -50,16 +65,21 @@ export async function loadMarketplaceProducts(filters: MarketplaceProductFilters
     if (filters.kind && filters.kind !== "all") query = query.eq("kind", filters.kind)
     if (filters.digitalSubtype && filters.digitalSubtype !== "all") query = query.eq("digital_subtype", filters.digitalSubtype)
     if (filters.siteId) query = query.eq("site_id", filters.siteId)
-    if (filters.search) query = query.ilike("name", `%${filters.search}%`)
     if (filters.isRecurring) query = query.eq("is_recurring", true)
     return query
   }
-  let candidates = await readAllRows<AvailabilityCandidate>((from, to) =>
-    publicQuery("id, site_id, created_at, target_sale_price, currency, availability_mode, availability_status, is_purchasable, site:sites!inner(id)")
-      .order("id").range(from, to))
-  if (!candidates.length) return { items: [] as MarketplaceItem[], count: 0, totalPages: 0, regions: [] }
+  const candidateColumns = "id, site_id, created_at, target_sale_price, currency, availability_mode, availability_status, is_purchasable, site:sites!inner(id)"
+  let candidates: AvailabilityCandidate[]
+  if (search) {
+    const result = search.items.length ? await publicQuery(candidateColumns).in("id", search.items.map(item => item.id)) : { data: [], error: null }
+    if (result.error) throw new Error("Unable to load marketplace candidates")
+    candidates = orderCatalogSearchRows(search.items, (result.data || []) as AvailabilityCandidate[])
+  } else {
+    candidates = await readAllRows<AvailabilityCandidate>((from, to) => publicQuery(candidateColumns).order("id").range(from, to))
+  }
+  if (!candidates.length) return { items: [] as MarketplaceItem[], count: 0, totalPages: 0, regions: [], has_more: false, ...searchMetadata }
 
-  const isPriceSort = sort === "price_asc" || sort === "price_desc"
+  const isPriceSort = !search && (sort === "price_asc" || sort === "price_desc")
   const needsPrices = isPriceSort || filters.minPrice != null || filters.maxPrice != null
   const [areas, pricedCandidates, fx] = await Promise.all([
     loadMarketplaceAreas(supabase, candidates),
@@ -72,18 +92,18 @@ export async function loadMarketplaceProducts(filters: MarketplaceProductFilters
   const regions = marketplaceRegions(candidates, areas)
   candidates = filterMarketplaceGeography(candidates, filters, areas, filters.buyerGeo)
   const count = candidates.length
-  const scores = sort === "featured" || sort === "best_selling"
+  const scores = !search && (sort === "featured" || sort === "best_selling")
     ? await loadMarketplaceSales(supabase, candidates, sort === "featured" ? filters.buyerGeo : undefined)
     : new Map()
-  const ranked = rankMarketplaceCandidates(candidates, sort, scores, fx.rates)
+  const ranked = search ? candidates : rankMarketplaceCandidates(candidates, sort, scores, fx.rates)
   const pageIds = ranked.slice((page - 1) * limit, page * limit).map(item => item.id)
   const totalPages = Math.ceil(count / limit)
-  if (!pageIds.length) return { items: [] as MarketplaceItem[], count, totalPages, regions }
+  if (!pageIds.length) return { items: [] as MarketplaceItem[], count, totalPages, regions, has_more: false, ...searchMetadata }
 
   const { data, error } = await publicQuery(LISTING_COLUMNS + SPEC_COLUMNS).in("id", pageIds)
   if (error) throw new Error(error.message)
   const byId = new Map(((data || []) as MarketplaceItem[]).map(item => [item.id, item]))
-  const ordered = pageIds.map(id => byId.get(id)).filter(Boolean) as MarketplaceItem[]
+  const ordered = orderCatalogSearchRows(ranked.slice((page - 1) * limit, page * limit), (data || []) as MarketplaceItem[])
   const withSettings = await attachSiteSettings(supabase, ordered)
   const priced = await applyChannelPricesToItems(supabase, withSettings, "marketplace")
   const [previews, displayMap, inventory] = await Promise.all([
@@ -108,27 +128,16 @@ export async function loadMarketplaceProducts(filters: MarketplaceProductFilters
     if (availableQty !== undefined) sellable = availableQty > 0 || settings?.commerce?.stock_shortage_policy !== "block"
     if (item.is_purchasable === false && !hasVariants) sellable = false
     // Whitelist display metadata; seller prompts and operational metadata are private.
-    const metadata = item.metadata
     return {
       ...listing,
       item_specs: [...rawSpecs].sort((a, b) => a.sort_order - b.sort_order)
         .flatMap(row => row.item_spec ? [row.item_spec] : []),
-      metadata: metadata ? {
-        variant_axes: metadata.variant_axes,
-        show_buyers: metadata.show_buyers,
-        show_available_inventory: metadata.show_available_inventory,
-        attributes: metadata.attributes,
-        pickup_location_ids: metadata.pickup_location_ids,
-        dynamic_pricing: metadata.dynamic_pricing ? {
-          min_price: metadata.dynamic_pricing.min_price,
-          requires_advanced_compute: metadata.dynamic_pricing.requires_advanced_compute,
-        } : undefined,
-      } : undefined,
+      metadata: publicListingMetadata(item.metadata),
       site: { id: item.site.id, name: item.site.name, logo_url: item.site.logo_url,
         settings: { locations: settings?.locations, default_locale: settings?.default_locale,
           commerce: { stock_shortage_policy: settings?.commerce?.stock_shortage_policy } } },
       _shop: { hasVariants, variantLabels: preview?.labels || [], sellable, availableQty, ...displayMap.get(item.id) },
     }
   })
-  return { items: items as MarketplaceItem[], count, totalPages, regions }
+  return { items: items as MarketplaceItem[], count, totalPages, regions, has_more: page < totalPages, ...searchMetadata }
 }

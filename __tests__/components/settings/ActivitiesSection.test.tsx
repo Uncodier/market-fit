@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react"
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react"
 import type { ReactNode } from "react"
 import { FormProvider, useForm } from "react-hook-form"
 import { ActivitiesSection } from "@/app/components/settings/ActivitiesSection"
@@ -24,8 +24,13 @@ function TestForm({ onSave, initial }: { onSave: jest.Mock; initial?: unknown })
 }
 
 const card = (key = "leads_follow_up") => within(document.getElementById(`activity-${key}`)!)
+const showSetup = (key = "leads_follow_up") => {
+  const show = card(key).queryByRole("button", { name: /^Show setup for/ })
+  fireEvent.click(show ?? card(key).getByRole("radio", { name: /^Active/ }))
+}
 
 describe("ActivitiesSection outreach controls", () => {
+  afterEach(async () => { await act(async () => {}) })
   beforeEach(() => {
     mockCurrentSite = { id: "site-a", settings: { channels: { connections: [
       { id: emailId, type: "email", status: "connected", name: "Sales email", zavu_sender_id: "sender-1" },
@@ -44,6 +49,7 @@ describe("ActivitiesSection outreach controls", () => {
   it.each(["leads_initial_cold_outreach", "leads_follow_up"])("selects and saves fixed cooldown for %s", async key => {
     const onSave = jest.fn().mockResolvedValue(true)
     render(<TestForm onSave={onSave} />)
+    showSetup(key)
     await waitFor(() => expect(card(key).getByRole("checkbox", { name: "Enterprise" })).toBeInTheDocument())
     expect(card(key).getByRole("radio", { name: /Progressive \(default\)/ })).toBeChecked()
     fireEvent.click(card(key).getByRole("radio", { name: /Fixed number of days/ }))
@@ -56,17 +62,22 @@ describe("ActivitiesSection outreach controls", () => {
     expect(mergeActivitySettings(undefined, onSave.mock.calls[0][0].activities)[key as "leads_follow_up"]).toMatchObject({ cooldown_mode: "fixed", cooldown_period_days: 5 })
   })
 
-  it("starts inactive and blocks enabling without explicit targeting/accounts", async () => {
+  it("hides inactive setup, opens pending activation and blocks saving without targeting/accounts", async () => {
     const onSave = jest.fn()
     render(<TestForm onSave={onSave} />)
-    await waitFor(() => expect(card().getByRole("checkbox", { name: "Enterprise" })).toBeInTheDocument())
     expect(card().getByRole("radio", { name: /Inactive/ })).toBeChecked()
+    expect(card().queryByRole("button", { name: /setup for/ })).not.toBeInTheDocument()
+    expect(card().queryByRole("checkbox")).not.toBeInTheDocument()
     for (const name of ["Hidden unsupported", "Hidden Telegram", "Hidden audio"]) expect(screen.queryByText(name)).not.toBeInTheDocument()
     fireEvent.click(card().getByRole("radio", { name: /^Active/ }))
-    expect(card().getByRole("radio", { name: /Inactive/ })).toBeChecked()
+    await waitFor(() => expect(card().getByRole("checkbox", { name: "Enterprise" })).toBeInTheDocument())
+    expect(card().getByRole("radio", { name: /^Active/ })).toBeChecked()
+    fireEvent.click(card().getByRole("button", { name: "Hide setup for Leads Follow Up" }))
+    fireEvent.click(card().getByRole("button", { name: "Save" }))
     expect(card().getByRole("alert")).toHaveTextContent("Select at least one connected")
     expect(card().getByRole("alert")).toHaveTextContent("Select at least one segment")
     expect(onSave).not.toHaveBeenCalled()
+    expect(card().getByRole("button", { name: "Hide setup for Leads Follow Up" })).toHaveAttribute("aria-expanded", "true")
   })
 
   it("configures opt-in Due Invoices without lead targeting or unanswered controls and reloads it", async () => {
@@ -74,8 +85,9 @@ describe("ActivitiesSection outreach controls", () => {
     const onSave = jest.fn().mockResolvedValue(true)
     jest.mocked(fetchOutreachSegments).mockRejectedValue(new Error("Segments unavailable"))
     const { unmount } = render(<TestForm onSave={onSave} initial={{ invoices_due: "default" }} />)
-    await waitFor(() => expect(card().getByText(/Unable to load this site's segments/)).toBeInTheDocument())
     expect(card(key).getByRole("radio", { name: /Inactive/ })).toBeChecked()
+    expect(card(key).queryByRole("checkbox")).not.toBeInTheDocument()
+    showSetup(key)
     expect(card(key).getByRole("radio", { name: /Progressive \(default\)/ })).toBeChecked()
     expect(card(key).queryByRole("spinbutton", { name: "Repeat interval (days)" })).not.toBeInTheDocument()
     expect(card(key).queryByText("Target segments")).not.toBeInTheDocument()
@@ -83,7 +95,9 @@ describe("ActivitiesSection outreach controls", () => {
     expect(card(key).getByRole("combobox", { name: "Invoice reminder execution time" })).toHaveTextContent("Business opening time")
     for (const day of ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]) expect(card(key).getByRole("checkbox", { name: day })).toBeChecked()
     fireEvent.click(card(key).getByRole("radio", { name: /^Active/ }))
-    expect(card(key).getByRole("radio", { name: /Inactive/ })).toBeChecked()
+    fireEvent.click(card(key).getByRole("button", { name: "Save" }))
+    expect(onSave).not.toHaveBeenCalled()
+    expect(card(key).getByRole("alert")).toHaveTextContent("Select at least one connected")
     fireEvent.click(card(key).getByRole("checkbox", { name: "Sales Voice" }))
     fireEvent.click(card(key).getByRole("radio", { name: /Fixed number of days/ }))
     fireEvent.change(card(key).getByRole("spinbutton", { name: "Repeat interval (days)" }), { target: { value: "5" } })
@@ -95,7 +109,7 @@ describe("ActivitiesSection outreach controls", () => {
     expect(saved[key]).toMatchObject({ status: "active", channel_accounts: { voice: ["voice-id"] }, repeat_interval_days: 5, start_time_mode: "business_opening" })
     unmount()
     render(<TestForm onSave={onSave} initial={saved} />)
-    await waitFor(() => expect(card().getByText(/Unable to load this site's segments/)).toBeInTheDocument())
+    showSetup(key)
     expect(card(key).getByRole("checkbox", { name: "Sales Voice" })).toBeChecked()
     expect(card(key).getByRole("spinbutton", { name: "Repeat interval (days)" })).toHaveValue(5)
   })
@@ -103,9 +117,10 @@ describe("ActivitiesSection outreach controls", () => {
   it.each(["", "0", "-1", "1.5", "366"])("blocks saving invalid invoice interval %s even while inactive", async interval => {
     const onSave = jest.fn()
     render(<TestForm onSave={onSave} />)
-    await waitFor(() => expect(card().getByRole("checkbox", { name: "Enterprise" })).toBeInTheDocument())
+    showSetup("invoices_due")
     fireEvent.click(card("invoices_due").getByRole("radio", { name: /Fixed number of days/ }))
     fireEvent.change(card("invoices_due").getByRole("spinbutton", { name: "Repeat interval (days)" }), { target: { value: interval } })
+    fireEvent.click(card("invoices_due").getByRole("radio", { name: /Inactive/ }))
     fireEvent.click(card("invoices_due").getByRole("button", { name: "Save" }))
     expect(onSave).not.toHaveBeenCalled()
     expect(card("invoices_due").getByRole("alert")).toHaveTextContent("1 to 365 days")
@@ -113,9 +128,11 @@ describe("ActivitiesSection outreach controls", () => {
   it("selects progressive invoice cooldown and saves it separately from existing fixed intervals", async () => {
     const onSave = jest.fn().mockResolvedValue(true)
     render(<TestForm onSave={onSave} initial={{ invoices_due: { cooldown_mode: "fixed", repeat_interval_days: 5 } }} />)
+    showSetup("invoices_due")
     await waitFor(() => expect(card("invoices_due").getByRole("radio", { name: /Fixed number of days/ })).toBeChecked())
     expect(card("invoices_due").getByRole("spinbutton", { name: "Repeat interval (days)" })).toHaveValue(5)
     fireEvent.click(card("invoices_due").getByRole("radio", { name: /Progressive \(default\)/ }))
+    fireEvent.click(card("invoices_due").getByRole("radio", { name: /Inactive/ }))
     expect(card("invoices_due").queryByRole("spinbutton", { name: "Repeat interval (days)" })).not.toBeInTheDocument()
     fireEvent.click(card("invoices_due").getByRole("button", { name: "Save" }))
     await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1))
@@ -126,6 +143,7 @@ describe("ActivitiesSection outreach controls", () => {
     mockCurrentSite.settings.business_hours = [{ timezone: "Europe/Madrid" }]
     render(<TestForm onSave={jest.fn()} />)
     for (const key of ["daily_resume_and_stand_up", "leads_follow_up"]) {
+      showSetup(key)
       expect(card(key).getByText(/Schedule timezone: Europe\/Madrid/)).toBeInTheDocument()
       expect(card(key).queryByText(/Schedule timezone: America\/New_York/)).not.toBeInTheDocument()
     }
@@ -135,6 +153,7 @@ describe("ActivitiesSection outreach controls", () => {
   it("multi-selects per channel, targets site segments, saves cap and Sunday with no fallback", async () => {
     const onSave = jest.fn().mockResolvedValue(true)
     render(<TestForm onSave={onSave} />)
+    showSetup()
     await waitFor(() => expect(card().getByRole("checkbox", { name: "Enterprise" })).toBeInTheDocument())
     for (const name of ["Sales email", "Support email", "Sales WhatsApp", "Enterprise", "Local", "Sunday"]) fireEvent.click(card().getByRole("checkbox", { name }))
     for (const name of ["Tuesday", "Wednesday", "Thursday"]) fireEvent.click(card().getByRole("checkbox", { name }))
@@ -154,12 +173,14 @@ describe("ActivitiesSection outreach controls", () => {
 
   it("allows explicit all-segments targeting but rejects empty weekdays and invalid caps", async () => {
     render(<TestForm onSave={jest.fn()} />)
+    showSetup()
     await waitFor(() => expect(card().getByRole("checkbox", { name: "Enterprise" })).toBeInTheDocument())
     fireEvent.click(card().getByRole("checkbox", { name: "Sales email" }))
     fireEvent.click(card().getByRole("checkbox", { name: /All segments/ }))
     for (const name of ["Tuesday", "Wednesday", "Thursday"]) fireEvent.click(card().getByRole("checkbox", { name }))
     fireEvent.change(card().getByRole("spinbutton", { name: "Daily message limit" }), { target: { value: "1.5" } })
     fireEvent.click(card().getByRole("radio", { name: /^Active/ }))
+    fireEvent.click(card().getByRole("button", { name: "Save" }))
     expect(card().getByRole("alert")).toHaveTextContent("whole number")
     expect(card().getByRole("alert")).toHaveTextContent("weekday")
     expect(card().getByRole("alert")).not.toHaveTextContent("Select at least one segment")
@@ -168,6 +189,7 @@ describe("ActivitiesSection outreach controls", () => {
   it.each(["leads_initial_cold_outreach", "leads_follow_up"] as const)("selects all connected channel types without email/WhatsApp and reloads %s", async key => {
     const onSave = jest.fn().mockResolvedValue(true)
     const { unmount } = render(<TestForm onSave={onSave} />)
+    showSetup(key)
     await waitFor(() => expect(card(key).getByRole("checkbox", { name: "Enterprise" })).toBeInTheDocument())
     for (const label of ["SMS accounts", "Telegram accounts", "Voice calls accounts", "Custom-chat_v2 accounts"]) expect(card(key).getByRole("group", { name: label })).toBeInTheDocument()
     expect(card(key).getByText(/Voice calls are blocked for contacts who explicitly opted out/)).toBeInTheDocument()
@@ -188,6 +210,7 @@ describe("ActivitiesSection outreach controls", () => {
     })
     unmount()
     render(<TestForm onSave={onSave} initial={saved} />)
+    showSetup(key)
     await waitFor(() => expect(card(key).getByRole("checkbox", { name: "Enterprise" })).toBeChecked())
     for (const name of ["Sales SMS", "Sales Telegram", "Sales Voice", "Custom agent"]) expect(card(key).getByRole("checkbox", { name })).toBeChecked()
     for (const name of ["Sales email", "Support email", "Sales WhatsApp"]) expect(card(key).getByRole("checkbox", { name })).not.toBeChecked()
@@ -195,17 +218,20 @@ describe("ActivitiesSection outreach controls", () => {
     expect(card(key).getByRole("spinbutton", { name: "Maximum unanswered messages" })).toHaveValue(6)
   })
 
-  it("shows saved disconnected channel groups, blocks their activation and allows removal without fallback", async () => {
+  it("shows saved disconnected channel groups, blocks saving them active and allows removal without fallback", async () => {
     const onSave = jest.fn().mockResolvedValue(true)
     render(<TestForm onSave={onSave} initial={{ leads_follow_up: { channel_accounts: { telegram: ["offline-telegram"], "old-custom": ["old-id"] }, all_segments: true } }} />)
+    showSetup()
     await waitFor(() => expect(card().getByRole("checkbox", { name: "Enterprise" })).toBeInTheDocument())
     const oldGroup = within(card().getByRole("group", { name: "Old-custom accounts" }))
     expect(oldGroup.getByText(/Previously selected account is unavailable \(old-id\)/)).toBeInTheDocument()
     fireEvent.click(card().getByRole("radio", { name: /^Active/ }))
-    expect(card().getByRole("radio", { name: /Inactive/ })).toBeChecked()
+    fireEvent.click(card().getByRole("button", { name: "Save" }))
+    expect(onSave).not.toHaveBeenCalled()
     expect(card().getByRole("alert")).toHaveTextContent("Select at least one connected, usable channel account")
     fireEvent.click(oldGroup.getByRole("button", { name: "Remove" }))
     fireEvent.click(within(card().getByRole("group", { name: "Telegram accounts" })).getByRole("button", { name: "Remove" }))
+    fireEvent.click(card().getByRole("radio", { name: /Inactive/ }))
     fireEvent.click(card().getByRole("button", { name: "Save" }))
     await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1))
     expect(onSave.mock.calls[0][0].activities.leads_follow_up.channel_accounts).toEqual({ email: [], whatsapp: [], telegram: [], "old-custom": [] })
@@ -214,12 +240,89 @@ describe("ActivitiesSection outreach controls", () => {
   it("does not mark failed saves clean and shows unavailable selected accounts", async () => {
     const onSave = jest.fn().mockResolvedValue(false)
     render(<TestForm onSave={onSave} initial={{ leads_follow_up: { channel_accounts: { email: ["missing-id"], whatsapp: [] } } }} />)
+    showSetup()
     await waitFor(() => expect(card().getByRole("checkbox", { name: "Enterprise" })).toBeInTheDocument())
     expect(card().getByText(/Previously selected account is unavailable/)).toBeInTheDocument()
     fireEvent.change(card().getByRole("spinbutton", { name: "Daily message limit" }), { target: { value: "45" } })
+    fireEvent.click(card().getByRole("radio", { name: /Inactive/ }))
     fireEvent.click(card().getByRole("button", { name: "Save" }))
     await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1))
     expect(card().getByRole("button", { name: "Save" })).toBeEnabled()
     expect(card("leads_initial_cold_outreach").queryByText("Follow-up weekdays")).not.toBeInTheDocument()
+  })
+
+  it("starts active setups collapsed and expands each independently without making the form dirty", async () => {
+    const onSave = jest.fn()
+    render(<TestForm onSave={onSave} initial={{
+      leads_follow_up: { status: "active", all_segments: true, channel_accounts: { email: [emailId] }, start_time_mode: "business_opening" },
+      daily_resume_and_stand_up: { status: "active", start_time_mode: "business_opening" },
+    }} />)
+    const show = card().getByRole("button", { name: "Show setup for Leads Follow Up" })
+    expect(show).toHaveAttribute("aria-expanded", "false")
+    expect(show).toContainElement(card().getByText("Leads Follow Up"))
+    expect(show).toHaveAttribute("tabindex", "0")
+    expect(card().queryByText("Show setup")).not.toBeInTheDocument()
+    expect(document.getElementById(show.getAttribute("aria-controls")!)).not.toBeVisible()
+    expect(card().queryByRole("spinbutton", { name: "Daily message limit" })).not.toBeInTheDocument()
+    expect(card("icp_lead_generation").getByRole("button", { name: /Show setup/ })).toHaveAttribute("aria-expanded", "false")
+    fireEvent.click(card().getByText("Leads Follow Up"))
+    await waitFor(() => expect(card().getByRole("checkbox", { name: "Enterprise" })).toBeInTheDocument())
+    expect(card("daily_resume_and_stand_up").getByRole("button", { name: /Show setup/ })).toHaveAttribute("aria-expanded", "false")
+    expect(card().getByRole("button", { name: "Save" })).toBeDisabled()
+    expect(onSave).not.toHaveBeenCalled()
+  })
+
+  it("toggles setup from the header description and keyboard without saving", async () => {
+    const onSave = jest.fn()
+    render(<TestForm onSave={onSave} />)
+    const icp = card("icp_lead_generation")
+    const header = icp.getByRole("button", { name: "Show setup for ICP Lead Generation" })
+    fireEvent.click(icp.getByText(/Discover leads that match your Ideal Customer Profile/))
+    expect(header).toHaveAttribute("aria-expanded", "true")
+    expect(icp.getByRole("spinbutton", { name: "Target leads per run" })).toBeVisible()
+    header.focus()
+    fireEvent.keyDown(header, { key: "Enter" })
+    expect(header).toHaveFocus()
+    expect(header).toHaveAttribute("aria-expanded", "false")
+    expect(icp.queryByRole("spinbutton", { name: "Target leads per run" })).not.toBeInTheDocument()
+    fireEvent.keyDown(header, { key: " " })
+    expect(header).toHaveAttribute("aria-expanded", "true")
+    expect(icp.getByRole("button", { name: "Save" })).toBeDisabled()
+    expect(onSave).not.toHaveBeenCalled()
+    await waitFor(() => expect(icp.queryByText("Loading pending mining lists...")).not.toBeInTheDocument())
+  })
+
+  it("retains edited setup across collapsing and deactivation, and saves only after explicit Save", async () => {
+    const onSave = jest.fn().mockResolvedValue(true)
+    render(<TestForm onSave={onSave} initial={{ leads_follow_up: {
+      status: "active", all_segments: true, channel_accounts: { email: [emailId] }, start_time_mode: "business_opening",
+    } }} />)
+    showSetup()
+    await waitFor(() => expect(card().getByRole("checkbox", { name: "Enterprise" })).toBeInTheDocument())
+    fireEvent.change(card().getByRole("spinbutton", { name: "Daily message limit" }), { target: { value: "72" } })
+    fireEvent.click(card().getByRole("button", { name: "Hide setup for Leads Follow Up" }))
+    expect(card().queryByRole("spinbutton", { name: "Daily message limit" })).not.toBeInTheDocument()
+    showSetup()
+    expect(card().getByRole("spinbutton", { name: "Daily message limit" })).toHaveValue(72)
+    fireEvent.click(card().getByRole("radio", { name: /Inactive/ }))
+    expect(card().queryByRole("button", { name: /setup for/ })).not.toBeInTheDocument()
+    expect(card().queryByRole("checkbox")).not.toBeInTheDocument()
+    showSetup()
+    expect(card().getByRole("spinbutton", { name: "Daily message limit" })).toHaveValue(72)
+    expect(card().getByRole("checkbox", { name: "Sales email" })).toBeChecked()
+    expect(card().getByRole("checkbox", { name: /All segments/ })).toBeChecked()
+    expect(onSave).not.toHaveBeenCalled()
+    fireEvent.click(card().getByRole("button", { name: "Save" }))
+    await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1))
+    expect(onSave.mock.calls[0][0].activities.leads_follow_up.daily_message_limit).toBe(72)
+  })
+
+  it("keeps assignment inactive and unavailable until cold outreach is enabled", async () => {
+    render(<TestForm onSave={jest.fn()} initial={{ assign_leads_to_team: { status: "active" } }} />)
+    expect(card("assign_leads_to_team").getByRole("radio", { name: /Inactive/ })).toBeChecked()
+    expect(card("assign_leads_to_team").getByRole("radio", { name: /^Active/ })).toBeDisabled()
+    showSetup("leads_initial_cold_outreach")
+    expect(card("assign_leads_to_team").getByRole("radio", { name: /^Active/ })).toBeEnabled()
+    await waitFor(() => expect(card("leads_initial_cold_outreach").getByRole("checkbox", { name: "Enterprise" })).toBeInTheDocument())
   })
 })

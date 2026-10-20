@@ -2,7 +2,7 @@ import { createClient } from "@/lib/supabase/client"
 import { useToast } from "@/app/components/ui/use-toast"
 import { cancelInstancePlan } from "./cancel-instance-plan"
 
-export function usePlanRunActions(activeRobotInstance?: { id?: string }) {
+export function usePlanRunActions(activeRobotInstance?: { id?: string }, onPlanCancelled?: () => Promise<boolean | void>) {
   const { toast } = useToast()
   const pausePlan = async (planId: string) => {
     
@@ -155,6 +155,13 @@ export function usePlanRunActions(activeRobotInstance?: { id?: string }) {
         description: error instanceof Error ? error.message : "An unexpected error occurred",
         variant: "destructive"
       })
+      return
+    }
+    // Refresh failure is not cancellation failure; never replay the mutation.
+    try {
+      if (await onPlanCancelled?.() === false) throw new Error("Plan refresh unavailable")
+    } catch {
+      toast({ title: "Plan cancelled", description: "Refresh the instance to load the updated plans." })
     }
   }
 

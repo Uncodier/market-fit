@@ -4,7 +4,7 @@ import { useEffect, useState } from "react"
 import type { Site } from "@/app/context/site-types"
 import { siteMembersService } from "@/app/services/site-members-service"
 import { LICENSE_PLANS, requiredLicensePlan, type LicensePlan } from "@/lib/license-entitlements"
-import { isActiveAgentChannel } from "@/lib/billing-limits"
+import { isActiveAgentChannel, isManuallyDisabledAgentChannel, type AgentChannelState } from "@/lib/agent-channel-state"
 
 /** Recommendations are presentation only; Stripe and SQL authorize the change. */
 export function useRequiredLicense(site: Site | null) {
@@ -33,7 +33,8 @@ export function useRequiredLicense(site: Site | null) {
     account.isActive === true || account.isActive === 1 || (account as unknown as Record<string, unknown>).license_suspended === true
   ).length
   const agentChannels = (site.settings?.channels?.connections ?? []).filter(channel =>
-    isActiveAgentChannel(channel) || (channel as unknown as Record<string, unknown>).license_suspended === true
+    !isManuallyDisabledAgentChannel(channel) &&
+      (isActiveAgentChannel(channel) || (channel as AgentChannelState).license_suspended === true)
   ).length
   const recommendation = requiredLicensePlan({ members, socialAccounts, agentChannels, addons: site.billing?.addons_count })
   const requiredPlan = requested && LICENSE_PLANS.indexOf(requested) > LICENSE_PLANS.indexOf(recommendation.plan)

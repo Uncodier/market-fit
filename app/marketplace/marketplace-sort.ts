@@ -19,6 +19,8 @@ export function buildMarketplaceSortSearch(
   next: string,
 ): string {
   const params = new URLSearchParams(current?.toString() || "")
+  params.delete("page")
+  params.delete("search_id")
   const sort = parseMarketplaceSort(next)
   if (sort === "featured") params.delete("sort")
   else params.set("sort", sort)

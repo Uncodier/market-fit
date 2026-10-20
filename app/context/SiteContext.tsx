@@ -17,6 +17,7 @@ import { loadAccessibleSites } from "./site-load-sites"
 import { updateSiteRecord, createSiteRecord, deleteSiteRecord } from "./site-crud"
 import { syncSiteLogosInBackground } from "@/lib/sites/logo-background-sync"
 import { refreshSiteBillingRecord } from "./site-refresh-billing"
+import { useSiteResourceSync } from "./site-resource-sync"
 
 export type {
   Site,
@@ -311,6 +312,8 @@ export function SiteProvider({ children }: SiteProviderProps) {
     return () => clearTimeout(redirectTimer)
   }, [isMounted, isInitialized, isLoading, sitesLoaded, hasValidSession, sites.length, currentSite?.id, pathname, router])
   
+  useSiteResourceSync(currentSite?.id, setSites, setCurrentSite)
+
   const handleSetCurrentSite = async (site: Site) => {
     return applyCurrentSite({
       site,
