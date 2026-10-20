@@ -64,16 +64,14 @@ export function ShopCatalogSections({
                       promo={promo}
                       href={`/shop/${siteSlug}/promo/${promo.id}`}
                       compactMobile={compactMobile}
-                      fullWidth
                       surface="shop"
                       siteSlug={siteSlug}
-                      className="col-span-full"
                     />
                   ))}
                   {section.items.map(renderCard)}
                   {section.pendingCount > 0 && (
                     <ShopPendingGrid
-                      loadedCount={section.items.length}
+                      loadedCount={promos.length + section.items.length}
                       pendingCount={section.pendingCount}
                       compactMobile={compactMobile}
                     />

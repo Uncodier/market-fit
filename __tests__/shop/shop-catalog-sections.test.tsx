@@ -1,6 +1,7 @@
 import type { ComponentProps } from "react"
-import { render, screen, within } from "@testing-library/react"
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react"
 import { LocalizationProvider } from "@/app/context/LocalizationContext"
+import { quickApplyStorefrontPromo } from "@/app/components/commerce/quick-apply-storefront-promo"
 import { ShopCatalogSections } from "@/app/shop/[siteSlug]/ShopCatalogSections"
 import {
   buildShopCategorySections,
@@ -8,8 +9,8 @@ import {
 } from "@/app/shop/[siteSlug]/shop-catalog-shared"
 import { shopItem } from "./catalog-fixture"
 
-jest.mock("@/app/components/commerce/PromoListingCard", () => ({
-  PromoListingCard: () => null,
+jest.mock("@/app/components/commerce/quick-apply-storefront-promo", () => ({
+  quickApplyStorefrontPromo: jest.fn(),
 }))
 
 type SectionsProps = ComponentProps<typeof ShopCatalogSections>
@@ -61,6 +62,71 @@ const baseProps: Omit<SectionsProps, "sections"> = {
 }
 
 describe("ShopCatalogSections", () => {
+  it.each([0, 1, 2, 6, 16])("keeps a single coupon per category small with %i catalog items", (catalogCount) => {
+    const categories = ["Coffee", "Tea"]
+    const renderFeaturedRail = jest.fn(baseProps.renderFeaturedRail)
+    render(ui({
+      ...baseProps,
+      catalogCount,
+      sections: categories.map((name) => ({ name, items: [], pendingCount: 0 })),
+      categoryPromosByName: Object.fromEntries(categories.map((name) => [name, [{
+        id: `promo-${name}`, name: `${name} offer`, catalog_item_ids: [], category_ids: [],
+      }]])),
+      renderFeaturedRail,
+    }))
+
+    for (const name of categories) {
+      const grid = sectionGrid(sectionElement(name))
+      const coupon = grid.firstElementChild!
+      expect(grid.children).toHaveLength(1)
+      expect(coupon).toHaveClass("max-w-[18rem]")
+      expect(coupon).not.toHaveClass("col-span-full")
+      expect(coupon.firstElementChild).not.toHaveClass("aspect-[2/1]", "md:aspect-[3/1]")
+      expect(within(grid).getByRole("link", { name: `${name} offer` }))
+        .toHaveAttribute("href", `/shop/example/promo/promo-${name}`)
+      expect(within(grid).getByRole("button", { name: "Apply" })).toBeEnabled()
+    }
+    expect(renderFeaturedRail).not.toHaveBeenCalled()
+  })
+
+  it("counts coupon grid slots when reserving pending products", () => {
+    render(ui({
+      ...baseProps,
+      sections: [{ name: "Coffee", items: [allItems[0]], pendingCount: 3 }],
+      categoryPromosByName: { Coffee: [{
+        id: "promo", name: "Coffee offer", catalog_item_ids: [], category_ids: [],
+      }] },
+    }))
+
+    const grid = sectionGrid(sectionElement("Coffee"))
+    const pendingRows = grid.querySelector<HTMLElement>("[data-shop-pending-space]")!
+    // The coupon and loaded product fill the first two-column row.
+    expect(pendingRows.style.getPropertyValue("--shop-rows-2")).toBe("2")
+    const partialSlots = grid.querySelectorAll<HTMLElement>("[data-shop-partial-slot]")
+    expect(partialSlots).toHaveLength(2)
+    expect(partialSlots[0].style.getPropertyValue("--shop-display-2")).toBe("none")
+    expect(screen.getByTestId("card-coffee-1")).toBeInTheDocument()
+  })
+
+  it("preserves quick apply on a small category coupon", async () => {
+    jest.mocked(quickApplyStorefrontPromo).mockResolvedValueOnce({ ok: true, redirectTo: "/cart/checkout" })
+    render(ui({
+      ...baseProps,
+      catalogCount: 1,
+      sections: [{ name: "Coffee", items: [allItems[0]], pendingCount: 0 }],
+      categoryPromosByName: { Coffee: [{
+        id: "promo", site_id: "site", name: "Coffee offer", catalog_item_ids: [], category_ids: [],
+      }] },
+    }))
+
+    fireEvent.click(screen.getByRole("button", { name: "Apply" }))
+    await waitFor(() => expect(quickApplyStorefrontPromo).toHaveBeenCalledWith({
+      promotionId: "promo", siteId: "site", surface: "shop", siteSlug: "example",
+      detailHref: "/shop/example/promo/promo",
+    }))
+    await waitFor(() => expect(screen.getByRole("button", { name: "Apply" })).toBeEnabled())
+  })
+
   it("mounts every server category in order with exactly the unloaded card slots", () => {
     const loaded = [allItems[3]]
     const { container } = render(ui({
