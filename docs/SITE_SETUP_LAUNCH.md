@@ -107,15 +107,43 @@ existing authenticated key API and downloads the credential-bearing Markdown.
 Opening the card preview or the dialog never creates a key.
 
 `lib/makinari-mcp-skill.ts` is the single Markdown template. Both surfaces use the
-same MCP endpoint, `x-mcp-user-id` header, security notice, and `create_project`
-instructions. Both request user-level keys with only the `create_project` scope
-and no site binding; this change does not grant broader workspace permissions.
-The key validity is the only skill difference:
+same MCP endpoint, explicit API-key header instructions, `x-mcp-user-id` header,
+and security notice. The context determines the instructions and requested key:
 
-- `/create-site`: 1 day (24 hours), unchanged.
-- Agent Skills: 90 days, matching the existing key generator's default.
+- `/create-site`: 1 day (24 hours), user-level key with `create_project` scope and
+  no site binding, even if another site is currently selected.
+- Agent Skills with a selected real site: 90 days, key bound to that site with
+  `read` and `write` scopes. The preview and download include the actual `site_id`
+  and `x-mcp-site-id` header, and prohibit duplicate creation. The dialog discloses
+  the binding and scopes; its target is captured on opening so a site switch
+  cannot silently change the confirmed download.
+- Agent Skills without a selected real site: 90 days, the same conditional
+  creation instructions and unbound `create_project` request as onboarding.
+  Demo and `default` placeholder IDs are not included as existing-site context.
 
-Agent Skills previews placeholder credentials only. Actual credentials are used
+Creation instructions require tool discovery and schema inspection. The inspected
+MCP routes `create_project` through `tools` (`describe`, then `call` with JSON-encoded
+`args`); the creation input includes `name` and optional `domain`. The agent must
+respect any additional required schema fields and authorization failures. After
+confirmed success, `project.id` supplies the new site context. Creation does not
+automatically switch that context or issue a new key: obtain a site-bound Agent
+Skills download before continuing work on the new site.
+
+The current MCP may require a site UUID before accepting any tool call, including
+creation. An unbound connection therefore depends on server configuration and is
+not guaranteed. If connection or creation is blocked, the instructions point to
+`https://app.makinari.com/create-site` and a fresh site-bound skill, never a fabricated
+UUID or another tenant's context. An unbound key request can also fail if the
+deployed database disallows null site bindings; existing key-error handling remains
+visible and does not download a file on failure.
+
+Requested scopes and site headers are not authorization enforcement. The inspected
+external MCP path does not establish key-owner/site/scope checks; that requires a
+separate backend fix. This frontend change does not repair that boundary or assert
+that the deployed MCP safely enforces it. Key issuance continues through the
+existing authenticated API, which validates ownership for site-bound requests.
+
+Agent Skills previews placeholder credentials and the selected site context. Actual credentials are used
 only for the explicit file download, not persisted in browser storage or shown in
 the preview. The downloaded file must stay out of version control and be deleted
 after setup. Key creation errors remain visible and require an explicit retry;
@@ -127,8 +155,9 @@ Offline regression checks:
 npm test -- --runInBand __tests__/lib/makinari-mcp-skill.test.ts __tests__/components/settings/mcp-agent-skill.test.tsx __tests__/app/skills/page.test.tsx __tests__/components/onboarding/onboarding-form-layout.test.tsx __tests__/components/settings/skills-cards.test.tsx
 ```
 
-These tests check the requested expirations and generated files without creating
-live credentials or executing the external MCP tool.
+These tests check expirations, site bindings, scope requests, conditional creation,
+site-switch behavior, and generated files without creating live credentials or
+executing the external MCP tool.
 
 ## Historical diagnosis
 

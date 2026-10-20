@@ -1,20 +1,25 @@
 "use client"
 
 import { useState } from "react"
+import { useOptionalSite } from "@/app/context/SiteContext"
 import { McpAgentSkillSetup } from "@/app/components/skills/mcp-agent-skill-setup"
 import { Badge } from "@/app/components/ui/badge"
 import { ChevronDown, ChevronRight } from "@/app/components/ui/icons"
 import { SectionCard, SectionCardContent, SectionCardFooter, SectionCardHeader, SectionCardTitle } from "@/app/components/ui/section-card"
 import { AGENT_SKILLS_MCP_KEY_EXPIRATION_DAYS, createMakinariMcpSkill } from "@/lib/makinari-mcp-skill"
-
-const preview = createMakinariMcpSkill({
-  apiKey: "YOUR_API_KEY",
-  userId: "YOUR_USER_ID",
-  expirationDays: AGENT_SKILLS_MCP_KEY_EXPIRATION_DAYS,
-})
+import { isRealSiteId } from "@/lib/demo-utils"
 
 export function McpSkillCard() {
   const [expanded, setExpanded] = useState(false)
+  const siteContext = useOptionalSite()
+  const currentSiteId = siteContext?.currentSite?.id
+  const siteId = isRealSiteId(currentSiteId) ? currentSiteId : null
+  const preview = createMakinariMcpSkill({
+    apiKey: "YOUR_API_KEY",
+    userId: "YOUR_USER_ID",
+    expirationDays: AGENT_SKILLS_MCP_KEY_EXPIRATION_DAYS,
+    siteId,
+  })
 
   return (
     <SectionCard id="skill-makinari">
@@ -23,7 +28,9 @@ export function McpSkillCard() {
           <div className="space-y-2">
             <SectionCardTitle>Makinari MCP</SectionCardTitle>
             <p className="text-sm text-muted-foreground leading-relaxed">
-              Set up a project with your MCP-compatible agent using the same skill as create-site, with an API key valid for 90 days.
+              {siteId
+                ? "Connect your agent to the selected site with its site ID and a site-bound API key valid for 90 days."
+                : "Set up a new site with your agent if the MCP supports creation, or follow the create-site instructions, with an API key valid for 90 days."}
             </p>
             <div className="flex flex-wrap gap-2 pt-1">
               {["MCP", "Backend", "Automation", "Leads"].map((tag) => <Badge key={tag} variant="secondary">{tag}</Badge>)}
@@ -49,7 +56,7 @@ export function McpSkillCard() {
         </SectionCardContent>
       )}
       <SectionCardFooter>
-        <McpAgentSkillSetup expirationDays={AGENT_SKILLS_MCP_KEY_EXPIRATION_DAYS} />
+        <McpAgentSkillSetup expirationDays={AGENT_SKILLS_MCP_KEY_EXPIRATION_DAYS} siteId={siteId} />
       </SectionCardFooter>
     </SectionCard>
   )

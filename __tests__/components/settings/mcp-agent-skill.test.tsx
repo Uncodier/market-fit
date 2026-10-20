@@ -6,17 +6,21 @@ import { SkillsSection } from "@/app/components/settings/SkillsSection"
 import { McpAgentSkillSetup } from "@/app/components/skills/mcp-agent-skill-setup"
 import { Form } from "@/app/components/ui/form"
 import { useAuth } from "@/app/hooks/use-auth"
+import { useOptionalSite } from "@/app/context/SiteContext"
 import { createApiKey } from "@/lib/api-keys"
 import { createMakinariMcpSkill } from "@/lib/makinari-mcp-skill"
 import { toast } from "sonner"
 
 jest.mock("@/app/hooks/use-auth", () => ({ useAuth: jest.fn() }))
+jest.mock("@/app/context/SiteContext", () => ({ useOptionalSite: jest.fn() }))
 jest.mock("@/lib/api-keys", () => ({ createApiKey: jest.fn() }))
 jest.mock("@/app/context/LocalizationContext", () => ({ useLocalization: () => ({ t: () => "" }) }))
 jest.mock("sonner", () => ({ toast: { success: jest.fn(), error: jest.fn() } }))
 
 const authMock = jest.mocked(useAuth)
+const siteMock = jest.mocked(useOptionalSite)
 const keyMock = jest.mocked(createApiKey)
+const existingSiteId = "11111111-1111-4111-8111-111111111111"
 const credentials = { apiKey: "test-key-not-a-real-credential", userId: "test-user" }
 const response = { apiKey: credentials.apiKey, id: "key-id", prefix: "test", expires_at: "2027-01-11T00:00:00Z" }
 const createObjectURL = jest.fn((blob: Blob) => {
@@ -48,6 +52,7 @@ async function readDownloadedMarkdown(): Promise<string> {
 beforeEach(() => {
   jest.clearAllMocks()
   authMock.mockReturnValue({ user: { id: credentials.userId } } as ReturnType<typeof useAuth>)
+  siteMock.mockReturnValue(undefined)
   keyMock.mockResolvedValue(response)
   URL.createObjectURL = createObjectURL
   URL.revokeObjectURL = revokeObjectURL
@@ -76,6 +81,64 @@ describe("MCP Agent Skills", () => {
     expect(screen.queryByText(/mcporter/)).not.toBeInTheDocument()
     fireEvent.click(screen.getByRole("button", { name: "Collapse Makinari MCP" }))
     expect(preview).not.toBeInTheDocument()
+  })
+
+  it("previews and downloads a site-bound skill for the selected site", async () => {
+    siteMock.mockReturnValue({ currentSite: { id: existingSiteId } } as ReturnType<typeof useOptionalSite>)
+    render(<SkillsSection active />)
+    fireEvent.click(screen.getByRole("button", { name: "Expand Makinari MCP" }))
+    const preview = document.getElementById("makinari-mcp-preview")!
+    expect(preview.textContent).toBe(createMakinariMcpSkill({
+      apiKey: "YOUR_API_KEY", userId: "YOUR_USER_ID", expirationDays: 90, siteId: existingSiteId,
+    }))
+    expect(preview).not.toHaveTextContent(credentials.apiKey)
+    expect(keyMock).not.toHaveBeenCalled()
+
+    fireEvent.click(screen.getByRole("button", { name: "Use Cursor" }))
+    expect(screen.getByRole("dialog")).toHaveTextContent(existingSiteId)
+    expect(screen.getByRole("dialog")).toHaveTextContent("read and write scopes")
+    expect(keyMock).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole("button", { name: "Generate Key & Download Skill" }))
+    await waitFor(() => expect(download).toHaveBeenCalledTimes(1))
+    expect(keyMock).toHaveBeenCalledWith({
+      name: "Agent Skills MCP Key", scopes: ["read", "write"], site_id: existingSiteId, user_id: credentials.userId, expirationDays: 90,
+    })
+    const markdown = await readDownloadedMarkdown()
+    expect(markdown).toBe(createMakinariMcpSkill({ ...credentials, expirationDays: 90, siteId: existingSiteId }))
+    expect(markdown).toContain("Do not call `create_project` or create a duplicate site")
+    expect(preview).not.toHaveTextContent(credentials.apiKey)
+  })
+
+  it("updates the preview on a site switch without generating a key", () => {
+    const { rerender } = render(<SkillsSection active />)
+    fireEvent.click(screen.getByRole("button", { name: "Expand Makinari MCP" }))
+    expect(document.getElementById("makinari-mcp-preview")).toHaveTextContent("No existing `site_id`")
+    siteMock.mockReturnValue({ currentSite: { id: existingSiteId } } as ReturnType<typeof useOptionalSite>)
+    rerender(<SkillsSection active />)
+    expect(document.getElementById("makinari-mcp-preview")).toHaveTextContent(existingSiteId)
+    expect(document.getElementById("makinari-mcp-preview")).not.toHaveTextContent("No existing `site_id`")
+    expect(keyMock).not.toHaveBeenCalled()
+  })
+
+  it("keeps the confirmed target if the selected site changes while the dialog is open", async () => {
+    const { rerender } = render(<McpAgentSkillSetup expirationDays={90} siteId={existingSiteId} />)
+    fireEvent.click(screen.getByRole("button", { name: "Use Cursor" }))
+    rerender(<McpAgentSkillSetup expirationDays={90} siteId="22222222-2222-4222-8222-222222222222" />)
+    expect(screen.getByRole("dialog")).toHaveTextContent(existingSiteId)
+    fireEvent.click(screen.getByRole("button", { name: "Generate Key & Download Skill" }))
+    await waitFor(() => expect(download).toHaveBeenCalledTimes(1))
+    expect(keyMock).toHaveBeenCalledWith(expect.objectContaining({ site_id: existingSiteId }))
+    expect(await readDownloadedMarkdown()).toBe(createMakinariMcpSkill({ ...credentials, expirationDays: 90, siteId: existingSiteId }))
+  })
+
+  it.each(["demo-test", "default"])("does not include placeholder site %s in a download or key binding", async (id) => {
+    siteMock.mockReturnValue({ currentSite: { id } } as ReturnType<typeof useOptionalSite>)
+    render(<SkillsSection active />)
+    fireEvent.click(screen.getByRole("button", { name: "Use Cursor" }))
+    fireEvent.click(screen.getByRole("button", { name: "Generate Key & Download Skill" }))
+    await waitFor(() => expect(download).toHaveBeenCalledTimes(1))
+    expect(keyMock).toHaveBeenCalledWith(expect.objectContaining({ scopes: ["create_project"], site_id: null }))
+    expect(await readDownloadedMarkdown()).toBe(createMakinariMcpSkill({ ...credentials, expirationDays: 90 }))
   })
 
   it("keeps the section hidden when inactive", () => {
@@ -107,6 +170,8 @@ describe("MCP Agent Skills", () => {
   })
 
   it("preserves the 24-hour create-site key and download", async () => {
+    // Creating another site must not reuse the site's context from Agent Skills.
+    siteMock.mockReturnValue({ currentSite: { id: existingSiteId } } as ReturnType<typeof useOptionalSite>)
     render(<OnboardingHarness />)
     fireEvent.click(screen.getByRole("button", { name: "Use Cursor" }))
     expect(screen.getByRole("dialog")).toHaveTextContent("24 hours")

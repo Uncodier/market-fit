@@ -25,11 +25,12 @@ type Agent = (typeof AGENTS)[number]
 
 interface McpAgentSkillSetupProps {
   expirationDays: number
+  siteId?: string | null
 }
 
-export function McpAgentSkillSetup({ expirationDays }: McpAgentSkillSetupProps) {
+export function McpAgentSkillSetup({ expirationDays, siteId }: McpAgentSkillSetupProps) {
   const { user } = useAuth()
-  const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null)
+  const [selectedAgent, setSelectedAgent] = useState<(Agent & { siteId: string | null }) | null>(null)
   const [isGeneratingKey, setIsGeneratingKey] = useState(false)
   const generating = useRef(false)
 
@@ -43,17 +44,18 @@ export function McpAgentSkillSetup({ expirationDays }: McpAgentSkillSetupProps) 
     generating.current = true
     setIsGeneratingKey(true)
     try {
-      // Preserve the user-level, create-project-only authorization used by onboarding.
+      // Capture the target when the dialog opens so a site switch cannot change the download.
+      const targetSiteId = selectedAgent.siteId
       const result = await createApiKey({
         name: expirationDays === ONBOARDING_MCP_KEY_EXPIRATION_DAYS ? "Onboarding MCP Key" : "Agent Skills MCP Key",
-        scopes: ["create_project"],
-        site_id: null,
+        scopes: targetSiteId ? ["read", "write"] : ["create_project"],
+        site_id: targetSiteId,
         user_id: user.id,
         expirationDays,
       })
       if (!result.apiKey) throw new Error("API key not generated")
 
-      const markdown = createMakinariMcpSkill({ apiKey: result.apiKey, userId: user.id, expirationDays })
+      const markdown = createMakinariMcpSkill({ apiKey: result.apiKey, userId: user.id, expirationDays, siteId: targetSiteId })
       const url = URL.createObjectURL(new Blob([markdown], { type: "text/markdown" }))
       const link = document.createElement("a")
       try {
@@ -80,7 +82,7 @@ export function McpAgentSkillSetup({ expirationDays }: McpAgentSkillSetupProps) 
     <>
       <div className="flex flex-wrap items-center gap-3">
         {AGENTS.map((agent) => (
-          <Button key={agent.id} type="button" variant="outline" size="sm" onClick={() => setSelectedAgent(agent)}>
+          <Button key={agent.id} type="button" variant="outline" size="sm" onClick={() => setSelectedAgent({ ...agent, siteId: siteId ?? null })}>
             <agent.icon className="h-4 w-4" />
             Use {agent.name}
           </Button>
@@ -93,9 +95,13 @@ export function McpAgentSkillSetup({ expirationDays }: McpAgentSkillSetupProps) 
             <DialogDescription>
               We will generate a secure API Key and download a <strong>.md</strong> file that contains the exact instructions and credentials your {selectedAgent?.name} agent needs.
               <br /><br />
+              {selectedAgent?.siteId
+                ? <>The key will be bound to site <code>{selectedAgent.siteId}</code> with read and write scopes. The skill will reuse this site, not create a new one.</>
+                : <>The key will request the create_project scope without a site binding. The skill explains how to create a site if supported, or use the create-site page if blocked.</>}
+              <br /><br />
               <span className="text-muted-foreground font-medium flex items-center gap-1">
                 <Check className="h-3 w-3 text-green-500" />
-                For extra security, this API Key will only be valid for {mcpKeyValidityLabel(expirationDays)} to create this site.
+                For extra security, this API Key will only be valid for {mcpKeyValidityLabel(expirationDays)}.
               </span>
             </DialogDescription>
           </DialogHeader>
