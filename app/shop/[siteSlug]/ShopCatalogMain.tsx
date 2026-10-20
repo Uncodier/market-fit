@@ -330,11 +330,13 @@ export const ShopCatalogMain = React.memo(function ShopCatalogMain({
 
       <div id="shop-catalog-top" />
 
-      <ShopDeviceOrders
-        orders={deviceOrders}
-        siteId={siteId || ""}
-        onOrdersHydrated={onDeviceOrdersHydrated}
-      />
+      {!isSearching && (
+        <ShopDeviceOrders
+          orders={deviceOrders}
+          siteId={siteId || ""}
+          onOrdersHydrated={onDeviceOrdersHydrated}
+        />
+      )}
 
       {ownedItems.length === 0 && deviceOrders.length === 0 && !useSections && (
         <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-6 justify-between">

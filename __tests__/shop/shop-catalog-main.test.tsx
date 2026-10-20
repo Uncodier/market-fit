@@ -2,6 +2,8 @@ import { useState, type ComponentProps } from "react"
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { LocalizationProvider } from "@/app/context/LocalizationContext"
 import type { CatalogListingCard } from "@/app/components/commerce/CatalogListingCard"
+import type { PromoCarousel } from "@/app/components/commerce/PromoCarousel"
+import type { ShopDeviceOrders } from "@/app/shop/[siteSlug]/ShopDeviceOrders"
 import { ShopCatalogMain } from "@/app/shop/[siteSlug]/ShopCatalogMain"
 import { categoryDomId } from "@/app/shop/[siteSlug]/shop-catalog-shared"
 import { useShopCategorySpy } from "@/app/shop/[siteSlug]/useShopCategorySpy"
@@ -21,9 +23,17 @@ jest.mock("@/app/components/commerce/FeaturedListingPoster", () => ({
   ...jest.requireActual("@/app/components/commerce/FeaturedListingPoster"),
   FeaturedListingsRail: () => <div data-testid="featured-rail" />,
 }))
-jest.mock("@/app/components/commerce/PromoListingCard", () => ({ PromoListingCard: () => null }))
-jest.mock("@/app/components/commerce/PromoCarousel", () => ({ PromoCarousel: () => null }))
-jest.mock("@/app/shop/[siteSlug]/ShopDeviceOrders", () => ({ ShopDeviceOrders: () => null }))
+jest.mock("@/app/components/commerce/PromoListingCard", () => ({
+  PromoListingCard: () => <div data-testid="category-promo" />,
+}))
+jest.mock("@/app/components/commerce/PromoCarousel", () => ({
+  PromoCarousel: ({ promos }: ComponentProps<typeof PromoCarousel>) => promos.length > 0
+    ? <div data-testid="general-promos" /> : null,
+}))
+jest.mock("@/app/shop/[siteSlug]/ShopDeviceOrders", () => ({
+  ShopDeviceOrders: ({ orders }: ComponentProps<typeof ShopDeviceOrders>) => orders.length > 0
+    ? <div data-testid="device-orders" /> : null,
+}))
 
 type MainProps = ComponentProps<typeof ShopCatalogMain>
 const coffee = shopItem("coffee", "Coffee")
@@ -155,6 +165,48 @@ afterEach(() => {
   else Reflect.deleteProperty(window, "IntersectionObserver")
   if (originalScrollTo) Object.defineProperty(HTMLElement.prototype, "scrollTo", originalScrollTo)
   else Reflect.deleteProperty(HTMLElement.prototype, "scrollTo")
+})
+
+describe("ShopCatalogMain search visibility", () => {
+  it.each(["results", "loading", "empty", "error"])("hides promotions and orders during search (%s) and restores them", (state) => {
+    const promo = { id: "promo", name: "Coffee offer", catalog_item_ids: [], category_ids: [] }
+    const mainProps = props({
+      deviceOrders: [{ orderId: "order", publicAccessToken: "test-token" }],
+      generalPromos: [promo],
+      categoryPromosByName: { Coffee: [promo] },
+    })
+    const { rerender } = render(ui(mainProps))
+    finishCategoryRestore()
+
+    for (const id of ["device-orders", "general-promos", "category-promo"]) {
+      expect(screen.getByTestId(id)).toBeInTheDocument()
+    }
+
+    rerender(ui({
+      ...mainProps,
+      searchQuery: "  coffee  ",
+      isLoading: state === "loading",
+      searchError: state === "error" ? "Search unavailable" : undefined,
+      sellableCatalogItems: state === "empty" ? [] : [coffee],
+    }))
+
+    for (const id of ["device-orders", "general-promos", "category-promo"]) {
+      expect(screen.queryByTestId(id)).not.toBeInTheDocument()
+    }
+    if (state === "results") {
+      expect(screen.getByRole("heading", { name: "Results" })).toBeInTheDocument()
+      expect(screen.getByTestId("card-coffee")).toBeInTheDocument()
+    }
+    if (state === "empty") expect(screen.getByText("No products found")).toBeInTheDocument()
+    if (state === "error") expect(screen.getByRole("alert")).toHaveTextContent("Search unavailable")
+
+    rerender(ui({ ...mainProps, searchQuery: "   " }))
+
+    for (const id of ["device-orders", "general-promos", "category-promo"]) {
+      expect(screen.getByTestId(id)).toBeInTheDocument()
+    }
+    expect(screen.getByTestId("card-coffee")).toBeInTheDocument()
+  })
 })
 
 describe("ShopCatalogMain category loading", () => {

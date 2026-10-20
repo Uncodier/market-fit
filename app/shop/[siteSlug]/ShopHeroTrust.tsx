@@ -67,8 +67,9 @@ export function ShopHeroTrust({
   const { t } = useLocalization()
   const shop = site?.settings?.shop
   const badges: any[] = shop?.trust_badges?.length ? shop.trust_badges : []
-  const showHero = !searchQuery && !!(shop?.hero_title || shop?.hero_image_url)
-  const showBadges = !searchQuery && badges.length > 0
+  const isSearching = Boolean(searchQuery.trim())
+  const showHero = !isSearching && !!(shop?.hero_title || shop?.hero_image_url)
+  const showBadges = !isSearching && badges.length > 0
   const router = useRouter()
   const pathname = usePathname()
 
@@ -226,7 +227,7 @@ export function ShopHeroTrust({
         </div>
       )}
 
-      {!showHero && fulfillment ? (
+      {!isSearching && !showHero && fulfillment ? (
         <div className="max-w-7xl mx-auto px-4 md:px-8 pt-5 md:pt-8">
           {fulfillment("default")}
         </div>
