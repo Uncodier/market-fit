@@ -13,6 +13,10 @@ import { slimCartItem } from "@/app/commerce/cart-storage"
 import { publicListingMetadata } from "@/app/catalog/public-listing-metadata"
 
 jest.mock("server-only", () => ({}))
+jest.mock("@/app/shop/[siteSlug]/search-catalog", () => {
+  const actual = jest.requireActual("@/app/shop/[siteSlug]/search-catalog")
+  return { ...actual, loadShopSearch: jest.fn(actual.loadShopSearch) }
+})
 jest.mock("@/lib/catalog-search/server", () => ({ searchCatalogWindow: jest.fn() }))
 jest.mock("@/lib/supabase/server", () => ({ createServiceClient: jest.fn() }))
 jest.mock("next/cache", () => ({ unstable_cache: jest.fn() }))
@@ -63,6 +67,15 @@ it.each([true, false, undefined])("forwards only explicit overflow metadata (%s)
   const original = await jest.mocked(searchCatalogWindow)({ query: "shoes", channel: "shop", site_id: siteId })
   jest.mocked(searchCatalogWindow).mockResolvedValue({ ...original, candidate_window_truncated: truncated })
   expect(await loadShopSearch(options, enrich)).toMatchObject({ count: 2, candidate_window_truncated: truncated === true })
+})
+
+it.each(["matched", "related", undefined] as const)("preserves search classification through Shop hydration and action (%s)", async result_kind => {
+  const original = await jest.mocked(searchCatalogWindow)({ query: "shoes", channel: "shop", site_id: siteId })
+  jest.mocked(searchCatalogWindow).mockResolvedValue({ ...original, result_kind })
+  const response = await loadShopSearch(options, enrich)
+  expect(response).toMatchObject({ count: 2, result_kind: result_kind ?? "matched" })
+  jest.mocked(loadShopSearch).mockResolvedValueOnce(response)
+  expect(await getShopCatalog(siteId, { search: "shoes", pageSize: 1 })).toMatchObject({ result_kind: result_kind ?? "matched" })
 })
 
 it("keeps pickup-only browse and search compatible with the same actual cart fulfillment/payment utilities", async () => {

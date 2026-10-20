@@ -6,9 +6,24 @@ import type { MarketplaceListingFilters, MarketplaceRegion } from './marketplace
 import { buildMarketplaceListingFilterSearch } from './marketplace-filter-url'
 import { MARKETPLACE_PAGE_SIZE } from './marketplace-pagination'
 import { useSearchPagination } from '@/lib/catalog-search/use-search-pagination'
+import type { CatalogResultKind } from '@/lib/catalog-search/types'
 
 const GEO_FIELDS = ['city', 'state', 'country', 'zip', 'latitude', 'longitude'] as const
 const EMPTY_REGIONS: MarketplaceRegion[] = []
+
+type MarketplaceProductsResult = {
+  items: CatalogItem[]
+  page: number
+  setPage: (page: number) => void
+  totalPages: number
+  isLoading: boolean
+  count: number
+  regions: MarketplaceRegion[]
+  error?: string
+  retry: () => void
+  resultKind?: CatalogResultKind
+  searchTruncated?: boolean
+}
 
 function isDefaultFilters(
   searchQuery: string,
@@ -41,7 +56,7 @@ export function useMarketplaceProducts(
   initialRegions: MarketplaceRegion[] = EMPTY_REGIONS,
   initialCount: number = initialItems.length,
   siteId?: string,
-) {
+): MarketplaceProductsResult {
   const sort = parseMarketplaceSort(selectedSort)
   const geoParams = new URLSearchParams()
   for (const field of GEO_FIELDS) {
@@ -70,6 +85,8 @@ export function useMarketplaceProducts(
   const [count, setCount] = useState(defaultFilters ? initialCount : 0)
   const [regions, setRegions] = useState<MarketplaceRegion[]>(defaultFilters ? initialRegions : EMPTY_REGIONS)
   const [error, setError] = useState<string>()
+  const [resultKind, setResultKind] = useState<CatalogResultKind>('matched')
+  const [searchTruncated, setSearchTruncated] = useState(false)
   const [requestVersion, setRequestVersion] = useState(0)
   const prevFilters = useRef(nextKey)
 
@@ -90,6 +107,8 @@ export function useMarketplaceProducts(
       setCount(initialCount)
       setRegions(initialRegions)
       setError(undefined)
+      setResultKind('matched')
+      setSearchTruncated(false)
       setIsLoading(false)
       return
     }
@@ -101,6 +120,8 @@ export function useMarketplaceProducts(
     setRegions(EMPTY_REGIONS)
     setTotalPages(0)
     setError(undefined)
+    setResultKind('matched')
+    setSearchTruncated(false)
     const timer = setTimeout(async () => {
       try {
         const params = new URLSearchParams(geoSearch)
@@ -136,9 +157,12 @@ export function useMarketplaceProducts(
           return
         }
         if (!res.ok) throw new Error('Marketplace request failed')
-        const { data, totalPages: newTotalPages, count: newCount, regions: newRegions, search_id: newSearchId } = await res.json()
+        const { data, totalPages: newTotalPages, count: newCount, regions: newRegions, search_id: newSearchId,
+          result_kind: newResultKind, candidate_window_truncated: truncated } = await res.json()
         if (cancelled) return
         setItems(data || [])
+        setResultKind(newResultKind === 'related' ? 'related' : 'matched')
+        setSearchTruncated(truncated === true)
         acceptSearchId(newSearchId)
         setTotalPages(newTotalPages || 0)
         setCount(typeof newCount === 'number' ? newCount : 0)
@@ -161,6 +185,6 @@ export function useMarketplaceProducts(
   }, [page, searchQuery, selectedKind, selectedSubtype, showOnlyRecurring, sort, geoSearch,
     nextKey, defaultFilters, initialItems, initialTotalPages, initialCount, initialRegions, listingSearch, requestVersion, generation, siteId])
 
-  return { items, page, setPage, totalPages, isLoading, count, regions, error,
+  return { items, page, setPage, totalPages, isLoading, count, regions, error, resultKind, searchTruncated,
     retry: () => setRequestVersion((version) => version + 1) }
 }

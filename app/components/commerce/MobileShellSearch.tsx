@@ -3,6 +3,7 @@
 import { forwardRef, useEffect, useRef, useState } from "react"
 import { Search, X } from "@/app/components/ui/icons"
 import { shellClasses } from "@/app/components/commerce/CommerceShellHeader"
+import { CommerceSearchInput } from "@/app/components/commerce/CommerceSearchInput"
 import { useLocalization } from "@/app/context/LocalizationContext"
 
 /** Collapse the center bar below this; expand only above EXPAND to avoid threshold thrash. */
@@ -178,23 +179,21 @@ export function MobileShellSearchExpanded({
         <X className="h-5 w-5" />
       </button>
       <div className="relative flex-1 min-w-0">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none z-[1]" />
-        <input
+        <CommerceSearchInput
           ref={inputRef}
           id="mobile-search-input"
-          type="text"
           inputMode="search"
           enterKeyHint="search"
           placeholder={placeholder}
           value={value}
-          onChange={(e) => onChange(e.target.value)}
+          onChange={onChange}
           onKeyDown={(e) => {
             if (e.key === "Enter") {
               e.preventDefault()
               onOpenChange(false)
             }
           }}
-          className="w-full pl-10 pr-3 h-9 text-sm bg-muted/50 focus:bg-white dark:focus:bg-gray-950 border border-transparent focus:border-black/10 dark:focus:border-white/10 rounded-full transition-all outline-none"
+          className="pl-10 shadow-none"
         />
       </div>
       <button

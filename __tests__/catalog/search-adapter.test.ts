@@ -46,7 +46,7 @@ afterAll(() => {
 })
 
 it("validates session and site and forwards only the user's bearer to a fixed trusted URL", async () => {
-  expect(await searchCatalog(request)).toEqual(result)
+  expect(await searchCatalog(request)).toEqual({ ...result, result_kind: "matched" })
   expect(rpc).toHaveBeenCalledWith("current_user_site_role", { p_site_id: site })
   const [target, init] = fetchMock.mock.calls[0]
   expect(String(target)).toBe("https://api.example.invalid/api/catalog/search")
@@ -118,7 +118,7 @@ it("does not trust a spoofed edge header outside Vercel", async () => {
 })
 
 it("aligns the shared digital subtype boundary at 80 characters", async () => {
-  await expect(searchCatalog({ ...request, filters: { digital_subtype: "x".repeat(80) } })).resolves.toEqual(result)
+  await expect(searchCatalog({ ...request, filters: { digital_subtype: "x".repeat(80) } })).resolves.toEqual({ ...result, result_kind: "matched" })
   await expect(searchCatalog({ ...request, filters: { digital_subtype: "x".repeat(81) } })).rejects.toMatchObject({ status: 400 })
   expect(fetchMock).toHaveBeenCalledTimes(1)
 })
@@ -158,7 +158,8 @@ it.each([401, 403, 409, 429, 500])("preserves access/rate errors and sanitizes u
 })
 
 it.each([
-  { count: 201 }, { count_kind: "exact" }, { mode: "other" }, { has_more: true }, { candidate_window_truncated: "true" },
+  { count: 201 }, { count_kind: "exact" }, { mode: "other" }, { result_kind: "suggested" }, { result_kind: null },
+  { has_more: true }, { candidate_window_truncated: "true" },
   { items: [items[0], items[0]] }, { items: [{ ...items[0], site_id: randomUUID() }] },
 ])("rejects invalid or cross-site responses %j", async override => {
   fetchMock.mockResolvedValue(Response.json({ ...result, ...override }))
@@ -235,4 +236,36 @@ it("rejects a changed continuation without retries or mixing rankings", async ()
 
 it("orders only authorized hydrated IDs with matching site ownership", () => {
   expect(orderCatalogSearchRows(items, [items[1], { ...items[0], site_id: randomUUID() }])).toEqual([items[1]])
+})
+
+it.each(["matched", "related"] as const)("preserves explicit %s classification independently of retrieval mode", async result_kind => {
+  fetchMock.mockResolvedValue(Response.json({ ...result, result_kind }))
+  expect(await searchCatalog(request)).toMatchObject({ result_kind, mode: "hybrid", degraded: false })
+})
+
+it("accepts the full related top-five window without making a second request", async () => {
+  const candidates = Array.from({ length: 5 }, () => ({ id: randomUUID(), site_id: site }))
+  fetchMock.mockResolvedValue(Response.json({ ...result, result_kind: "related", items: candidates, count: 5 }))
+  expect(await searchCatalogWindow(request)).toMatchObject({ result_kind: "related", items: candidates, mode: "hybrid" })
+  expect(fetchMock).toHaveBeenCalledTimes(1)
+})
+
+it("keeps provider-degraded empty text response matched instead of inventing related results", async () => {
+  fetchMock.mockResolvedValue(Response.json({ ...result, items: [], count: 0, mode: "text", degraded: true }))
+  expect(await searchCatalog(request)).toMatchObject({ items: [], result_kind: "matched", mode: "text", degraded: true })
+})
+
+it("rejects changing a large matched snapshot to an invalid related window", async () => {
+  const candidates = Array.from({ length: 101 }, () => ({ id: randomUUID(), site_id: site }))
+  fetchMock.mockResolvedValueOnce(Response.json({ ...result, count: 101, items: candidates.slice(0, 100), has_more: true, result_kind: "matched" }))
+    .mockResolvedValueOnce(Response.json({ ...result, count: 101, items: candidates.slice(100), result_kind: "related" }))
+  await expect(searchCatalogWindow(request)).rejects.toMatchObject({ status: 502 })
+})
+
+it.each([
+  { count: 6, items: Array.from({ length: 6 }, () => ({ id: randomUUID(), site_id: site })) },
+  { mode: "text" }, { degraded: true }, { candidate_window_truncated: true },
+])("rejects a related response outside the successful semantic top-five contract %j", async override => {
+  fetchMock.mockResolvedValue(Response.json({ ...result, result_kind: "related", ...override }))
+  await expect(searchCatalog(request)).rejects.toMatchObject({ status: 502 })
 })

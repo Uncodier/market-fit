@@ -33,12 +33,16 @@ export const catalogSearchResponseSchema = z.object({
   candidate_window_truncated: z.boolean().optional(),
   has_more: z.boolean(),
   mode: z.enum(["hybrid", "text"]),
+  result_kind: z.enum(["matched", "related"]).optional(),
   degraded: z.boolean(),
   search_id: z.string().uuid(),
-})
+}).refine(value => value.result_kind !== "related" ||
+  (value.count <= 5 && value.items.length <= 5 && value.candidate_window_truncated !== true &&
+    value.mode === "hybrid" && !value.degraded))
 
 export type CatalogSearchRequest = z.input<typeof catalogSearchRequestSchema>
 export type CatalogSearchResult = z.output<typeof catalogSearchResponseSchema>
+export type CatalogResultKind = NonNullable<CatalogSearchResult["result_kind"]>
 export type CatalogSearchFilters = z.input<typeof catalogSearchFiltersSchema>
 
 /** Hydration is authoritative for visibility; the service owns only ordering. */

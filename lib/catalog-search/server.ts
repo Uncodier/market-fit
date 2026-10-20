@@ -70,7 +70,7 @@ export async function searchCatalog(request: CatalogSearchRequest): Promise<Cata
       data.items.some(item => input.site_id && item.site_id !== input.site_id)) {
       throw new CatalogSearchError(502, "Invalid catalog search response")
     }
-    return data
+    return { ...data, result_kind: data.result_kind ?? "matched" }
   } catch (error) {
     if (error instanceof CatalogSearchError) throw error
     throw new CatalogSearchError(502, "Catalog search is unavailable")
@@ -83,7 +83,7 @@ export async function searchCatalogWindow(request: Omit<CatalogSearchRequest, "l
   if (!first.has_more) return first
   const second = await searchCatalog({ ...request, limit: 100, offset: 100, search_id: first.search_id })
   const items = [...first.items, ...second.items]
-  if (second.search_id !== first.search_id || second.mode !== first.mode || second.count !== first.count ||
+  if (second.search_id !== first.search_id || second.mode !== first.mode || second.result_kind !== first.result_kind || second.count !== first.count ||
     (second.candidate_window_truncated === true) !== (first.candidate_window_truncated === true) ||
     new Set(items.map(item => item.id)).size !== items.length) {
     throw new CatalogSearchError(409, "Catalog search changed. Please try again.")

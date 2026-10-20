@@ -1,5 +1,6 @@
 import type { ComponentProps } from "react"
-import { fireEvent, render, screen } from "@testing-library/react"
+import { useState } from "react"
+import { fireEvent, render, screen, within } from "@testing-library/react"
 import { ShopHeader } from "@/app/shop/[siteSlug]/ShopHeader"
 
 const mockSignInClick = jest.fn()
@@ -14,6 +15,9 @@ jest.mock("@/app/components/commerce/use-commerce-sign-in-href", () => ({
 jest.mock("@/app/components/commerce/CartButton", () => ({ CartButton: () => null }))
 jest.mock("@/app/components/commerce/CommerceShareControl", () => ({ CommerceShareControl: () => null }))
 jest.mock("@/app/shop/[siteSlug]/CartSidebar", () => ({ CartSidebar: () => null }))
+jest.mock("@/app/context/LocalizationContext", () => ({
+  useLocalization: () => ({ t: (key: string) => jest.requireActual("@/app/context/locale-catalog").localeMessages.en[key] || key }),
+}))
 
 const noop = () => undefined
 const props: ComponentProps<typeof ShopHeader> = {
@@ -83,5 +87,30 @@ describe("ShopHeader sign-in", () => {
 
     expect(screen.queryByRole("link", { name: "Sign In" })).not.toBeInTheDocument()
     expect(screen.getAllByRole("link").some((link) => link.getAttribute("href") === "/buyer")).toBe(true)
+  })
+
+  it.each([false, true])("clears search and keeps the input focused (mobile: %s)", (mobile) => {
+    const setMobileSearchOpen = jest.fn()
+    function SearchHeader() {
+      const [searchQuery, setSearchQuery] = useState("")
+      return <ShopHeader {...props} searchQuery={searchQuery} setSearchQuery={setSearchQuery}
+        mobileSearchOpen={mobile} setMobileSearchOpen={setMobileSearchOpen} />
+    }
+    render(<SearchHeader />)
+    const input = screen.getAllByPlaceholderText("Search products").find((element) =>
+      mobile ? element.id === "mobile-search-input" : element.id !== "mobile-search-input",
+    )!
+    expect(screen.queryByRole("button", { name: "Clear search" })).not.toBeInTheDocument()
+    fireEvent.change(input, { target: { value: "coffee" } })
+    expect(screen.getAllByPlaceholderText("Search products").every((element) =>
+      (element as HTMLInputElement).value === "coffee",
+    )).toBe(true)
+
+    const searchField = input.parentElement!.parentElement!
+    fireEvent.click(within(searchField).getByRole("button", { name: "Clear search" }))
+    expect(input).toHaveValue("")
+    expect(input).toHaveFocus()
+    expect(screen.queryByRole("button", { name: "Clear search" })).not.toBeInTheDocument()
+    expect(setMobileSearchOpen).not.toHaveBeenCalled()
   })
 })

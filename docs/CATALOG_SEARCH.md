@@ -7,9 +7,20 @@ The web application does not embed text or run a second name/SKU database search
 
 ## Deployment prerequisites (not performed by this change)
 
-- Deploy the API search route and its SQL dependencies before these consumers.
+- For an initial installation, deploy the API search route and SQL dependencies
+  before these consumers, keeping semantic search disabled until they are ready.
   Missing configuration, migrations or an unavailable API produce visible errors;
   there is no silent fallback to unrelated browse results.
+- For this related-results update on an existing installation, deploy compatible
+  web consumers **before the related-producing API**. Updated consumers accept
+  older responses without `result_kind` as `matched`; older web parsers strip the
+  new field and can display semantic alternatives without related labels. Verify
+  all consumer labels before activating the new API. If API-first deployment is
+  unavoidable, keep `CATALOG_SEMANTIC_SEARCH_ENABLED=false` until consumers are
+  compatible. During rollback, stop related production before reverting the web.
+  Drain in-flight requests and existing two-minute snapshots before reverting
+  consumers; disabling semantics does not replace immutable continuation results.
+  Do not assume semantic search is disabled on an existing deployment.
 - Configure the trusted API origin using `API_SERVER_URL`, falling back to
   `NEXT_PUBLIC_API_SERVER_URL`. HTTPS is required outside loopback development.
   Configured credentials, paths, query strings and unsafe redirects are rejected.
@@ -66,7 +77,29 @@ window after their own visibility filters. Region facets and pagination are also
 window-local. No-query browse keeps its existing count semantics. Search mode,
 degradation and search ID are included in server response metadata.
 
-Shop and Catalog show the ranked-window notice only when the API explicitly
+`result_kind` is optional and accepts only `matched` or `related`; omitted fields
+default to `matched` for older API responses. All adapters, hydration responses,
+Marketplace GET metadata and client hooks preserve it independently of `mode`
+(`text`/`hybrid`), `degraded` and `candidate_window_truncated`. The API alone may
+classify a result as `related`: only a successful normal search with no eligible
+hits may use a semantic top-five fallback with a 0.25 similarity floor, identical query,
+scope, publication and filters. Provider failure/degradation, browse and ordinary
+empty results never cause the web application to invent related items or relax
+constraints. Numeric codes retain exact-search behavior.
+If the API's live visibility check removes every normal hit before returning the
+first page, it may attempt that same bounded fallback once and live-check it again.
+Continuations are not re-ranked, and the web never triggers this recovery itself.
+Related DTOs are rejected unless their count/items are at most five, mode is
+`hybrid`, degradation is false and the window is not truncated.
+
+Nonempty related Shop/Marketplace/POS sections say **Related products**; Catalog
+says **Related results**. These labels use the existing dictionary's English base
+and never call suggestions exact matches. Empty, loading, hidden and failed results
+do not show related headings. POS retains disabled unknown/stale suggestions and
+all synchronized same-site, category, availability and add-to-cart gates; related
+classification does not populate or enlarge the offline catalog snapshot.
+
+Shop, Marketplace and Catalog show the ranked-window notice only when the API explicitly
 returns `candidate_window_truncated: true`, meaning retrieval confirmed more than
 200 eligible candidates. A count of exactly 200, `has_more` within the window,
 or a large browse catalog is not evidence of truncation. Older API responses
@@ -85,11 +118,11 @@ requests pass the expected snapshot ID into the first candidate request, and the
 second candidate request carries that same ID. An ID identifies an immutable,
 120-second candidate snapshot bound to channel, query, authorized scope and API
 filters, independent of unrelated live catalog revisions or provider recovery.
-The original mode/ranks remain pinned. Missing/expired or mismatched snapshots,
+The original mode/result kind/ranks remain pinned. Missing/expired or mismatched snapshots,
 or a changed visible candidate set, return 409. Catalog and Marketplace clear
 the old results/ID, restart page 1, and fetch a new snapshot instead of mixing
 rankings or repeatedly showing page 2. Query/filter/sort/site changes also reset
-page and ID. Duplicate IDs or mismatched mode/count are rejected by the adapter.
+page and ID. Duplicate IDs or mismatched mode/result kind/count are rejected by the adapter.
 Redis shared snapshot storage is recommended across API instances; unavailable
 local snapshots fail safely with 409 rather than silently creating a new ranking.
 This is not a database snapshot transaction: current hydration remains
@@ -149,7 +182,8 @@ node node_modules/typescript/bin/tsc --noEmit --pretty false > /tmp/market-fit-c
 
 Tests isolate transport and database calls. Credentials are synthesized at runtime
 with `node:crypto`; reserved test hosts never receive network calls. Tests cover
-malformed requests/responses, trusted origins, session/site authorization, safe
+malformed requests/responses (including result-kind enums), default/related DTO
+propagation and visible/empty related headings, trusted origins, session/site authorization, safe
 errors, bounded requests, relevance hydration, visibility predicates, and POS
 offline/unsynced/unavailable gates. They do not prove live API/SQL integration,
 semantic quality, concurrent inventory safety, or a completed POS sale.

@@ -72,10 +72,10 @@ it("rejects an unsafe page offset without querying", async () => {
   expect(createClient).not.toHaveBeenCalled();
 });
 
-it("uses shared search candidates without a second name/SKU filter", async () => {
+it.each(["matched", "related", undefined] as const)("uses shared search candidates preserving %s without a second name/SKU filter", async result_kind => {
   jest.mocked(searchCatalogWindow).mockResolvedValue({ success: true, items: [{ id: "item", site_id: "site" }],
-    count: 1, count_kind: "candidate_window", has_more: false, mode: "text", degraded: true, search_id: "search",
-    candidate_window_truncated: true });
+    count: 1, count_kind: "candidate_window", has_more: false, mode: result_kind === "related" ? "hybrid" : "text",
+    degraded: result_kind !== "related", search_id: "search", candidate_window_truncated: result_kind !== "related", result_kind });
   result.data = [{ id: "item", name: "Semantic match", site_id: "site" }] as typeof result.data;
   const found = await listCatalogItems({ siteId: "site", q: "comfortable", kind: "variant" });
   expect(searchCatalogWindow).toHaveBeenCalledWith(expect.objectContaining({ query: "comfortable", channel: "catalog",
@@ -83,7 +83,8 @@ it("uses shared search candidates without a second name/SKU filter", async () =>
   expect(query.in).toHaveBeenCalledWith("id", ["item"]);
   expect(query.not).toHaveBeenCalledWith("parent_id", "is", null);
   expect(query.or).not.toHaveBeenCalled();
-  expect(found).toMatchObject({ count: 1, count_kind: "candidate_window", mode: "text", degraded: true, candidate_window_truncated: true });
+  expect(found).toMatchObject({ count: 1, count_kind: "candidate_window", mode: result_kind === "related" ? "hybrid" : "text",
+    degraded: result_kind !== "related", candidate_window_truncated: result_kind !== "related", result_kind: result_kind ?? "matched" });
 });
 
 it("does not fall back to substring browse on search failure", async () => {

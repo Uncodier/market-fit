@@ -58,7 +58,7 @@ export function MarketplaceCatalog({
     router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false })
   }
   const showingDiscounts = filters.selectedKind === "discounts"
-  const { items, page, setPage, totalPages, isLoading, count, regions, error, retry } = useMarketplaceProducts(
+  const { items, page, setPage, totalPages, isLoading, count, regions, error, retry, resultKind, searchTruncated } = useMarketplaceProducts(
     initialItems, initialTotalPages, searchQuery,
     showingDiscounts ? "all" : filters.selectedKind,
     filters.selectedSubtype, filters.selectedKind === "recurring",
@@ -92,6 +92,9 @@ export function MarketplaceCatalog({
               <div className="md:hidden mb-6">
                 {productFilters}
               </div>
+              {searchQuery.trim() && !isLoading && !error && items.length > 0 && resultKind === "related" && (
+                <h2 className="text-xl font-semibold mb-4">{t("catalog.search.relatedProducts")}</h2>
+              )}
               <div className="flex justify-end mb-6" aria-label={t("marketplace.sort.title")}>
                 {searchQuery.trim() ? (
                   <p className="text-sm text-muted-foreground">Relevance · up to 200 candidates. Filters apply within this search window, not the entire catalog.</p>
@@ -109,6 +112,9 @@ export function MarketplaceCatalog({
                   onPrimaryAction={(item) => { if (item.site) onPrimaryAction({ ...item, site: item.site }) }} buyerGeo={buyerLocation.effectiveBuyerGeo}
                   promoBadgesByItemId={promoBadgesByItemId}
                 />
+              )}
+              {searchQuery.trim() && !isLoading && !error && searchTruncated && (
+                <p className="mt-4 text-sm text-muted-foreground">Ranked results from up to 200 candidates, not an exact catalog total.</p>
               )}
             </>
           )}

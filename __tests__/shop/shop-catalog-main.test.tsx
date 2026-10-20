@@ -168,6 +168,13 @@ afterEach(() => {
 })
 
 describe("ShopCatalogMain search visibility", () => {
+  it.each(["related", "matched", "empty", "loading", "error", "browse"])("labels only visible related Shop products (%s)", (state) => {
+    render(ui(props({ searchQuery: state === "browse" ? " " : "comfortable",
+      resultKind: state === "matched" ? "matched" : "related", sellableCatalogItems: state === "empty" ? [] : [coffee],
+      isLoading: state === "loading", searchError: state === "error" ? "Search unavailable" : undefined })))
+    expect(screen.queryByRole("heading", { name: "Related products" }) !== null).toBe(state === "related")
+  })
+
   it.each([
     { initialCount: 2, searchTruncated: undefined }, { initialCount: 200, searchTruncated: undefined },
     { searchTruncated: false }, { searchQuery: " " },

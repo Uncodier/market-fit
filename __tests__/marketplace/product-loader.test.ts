@@ -69,6 +69,18 @@ function setup() {
 
 beforeEach(() => jest.clearAllMocks())
 
+it.each(["matched", "related", undefined] as const)("preserves %s in Marketplace hydration and public GET metadata", async result_kind => {
+  setup()
+  jest.mocked(searchCatalogWindow).mockResolvedValue({ success: true,
+    items: [{ id: "3", site_id: "seller-one" }], count: 1, count_kind: "candidate_window",
+    has_more: false, mode: "hybrid", degraded: false, search_id: "search", result_kind,
+    candidate_window_truncated: result_kind !== "related" })
+  expect(await loadMarketplaceProducts({ search: "comfortable" })).toMatchObject({
+    count: 1, result_kind: result_kind ?? "matched", candidate_window_truncated: result_kind !== "related" })
+  const response = await GET(new Request("https://example.test/api/marketplace/products?search=comfortable"))
+  expect(await response.json()).toMatchObject({ result_kind: result_kind ?? "matched", candidate_window_truncated: result_kind !== "related" })
+})
+
 it("uses bounded shared search order, not sales or an all-catalog candidate scan", async () => {
   const { hydrated } = setup()
   jest.mocked(searchCatalogWindow).mockResolvedValue({ success: true,

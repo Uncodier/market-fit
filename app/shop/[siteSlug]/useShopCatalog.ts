@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { CatalogItem } from "@/app/types"
 import { getShopCatalog } from "./actions"
+import type { CatalogResultKind } from "@/lib/catalog-search/types"
 import {
   countItemsByCategory,
   SHOP_PAGE_SIZE,
@@ -126,6 +127,8 @@ export function useShopCatalog(
   const [isLoading, setIsLoading] = useState(false)
   const [searchError, setSearchError] = useState<string>()
   const [searchTruncated, setSearchTruncated] = useState(false)
+  const [resultKind, setResultKind] = useState<CatalogResultKind>("matched")
+  const resultKindRef = useRef<CatalogResultKind>("matched")
   const [searchAttempt, setSearchAttempt] = useState(0)
   const previousSearchAttempt = useRef(searchAttempt)
   const searchId = useRef<string | undefined>(undefined)
@@ -226,7 +229,8 @@ export function useShopCatalog(
       if (gen !== requestGen.current) return undefined
       if (result.error || !Array.isArray(result.data)) throw new Error("Failed to load shop catalog page")
       if (prevSearch.current.trim() && searchId.current &&
-        (!("search_id" in result) || result.search_id !== searchId.current)) {
+        (!("search_id" in result) || result.search_id !== searchId.current ||
+          ("result_kind" in result ? result.result_kind ?? "matched" : "matched") !== resultKindRef.current)) {
         setSearchError("Catalog search changed. Please try again.")
         return false
       }
@@ -329,6 +333,8 @@ export function useShopCatalog(
     searchId.current = undefined
     setSearchError(undefined)
     setSearchTruncated(false)
+    setResultKind("matched")
+    resultKindRef.current = "matched"
 
     if (!searchQuery.trim()) {
       setCatalogItems(initialCatalog)
@@ -370,6 +376,8 @@ export function useShopCatalog(
         if (cancelled || gen !== requestGen.current) return
         if (result.error || !Array.isArray(result.data)) throw new Error("Unable to search this shop")
         searchId.current = "search_id" in result ? result.search_id as string : undefined
+        resultKindRef.current = "result_kind" in result && result.result_kind === "related" ? "related" : "matched"
+        setResultKind(resultKindRef.current)
         setSearchTruncated("candidate_window_truncated" in result && result.candidate_window_truncated === true)
         const data = (result.data || []) as CatalogItem[]
         setCatalogItems(data)
@@ -403,6 +411,7 @@ export function useShopCatalog(
     isLoading,
     searchError,
     searchTruncated,
+    resultKind,
     retrySearch: () => setSearchAttempt(attempt => attempt + 1),
     isLoadingMore,
     isJumping,

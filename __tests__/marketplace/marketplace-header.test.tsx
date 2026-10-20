@@ -1,5 +1,6 @@
 import type { ComponentProps } from "react"
-import { fireEvent, render, screen } from "@testing-library/react"
+import { useState } from "react"
+import { fireEvent, render, screen, within } from "@testing-library/react"
 import { MarketplaceHeader } from "@/app/marketplace/MarketplaceHeader"
 
 const mockSignInClick = jest.fn()
@@ -89,5 +90,30 @@ describe("MarketplaceHeader sign-in", () => {
 
     expect(screen.queryByRole("link", { name: "Sign In" })).not.toBeInTheDocument()
     expect(screen.getByRole("link", { name: "Account" })).toHaveAttribute("href", "/buyer")
+  })
+
+  it.each([false, true])("clears search and keeps the input focused (mobile: %s)", (mobile) => {
+    const setMobileSearchOpen = jest.fn()
+    function SearchHeader() {
+      const [searchQuery, setSearchQuery] = useState("")
+      return <MarketplaceHeader {...props} searchQuery={searchQuery} setSearchQuery={setSearchQuery}
+        mobileSearchOpen={mobile} setMobileSearchOpen={setMobileSearchOpen} />
+    }
+    render(<SearchHeader />)
+    const input = screen.getAllByPlaceholderText("Search products").find((element) =>
+      mobile ? element.id === "mobile-search-input" : element.id !== "mobile-search-input",
+    )!
+    expect(screen.queryByRole("button", { name: "Clear search" })).not.toBeInTheDocument()
+    fireEvent.change(input, { target: { value: "coffee" } })
+    expect(screen.getAllByPlaceholderText("Search products").every((element) =>
+      (element as HTMLInputElement).value === "coffee",
+    )).toBe(true)
+
+    const searchField = input.parentElement!.parentElement!
+    fireEvent.click(within(searchField).getByRole("button", { name: "Clear search" }))
+    expect(input).toHaveValue("")
+    expect(input).toHaveFocus()
+    expect(screen.queryByRole("button", { name: "Clear search" })).not.toBeInTheDocument()
+    expect(setMobileSearchOpen).not.toHaveBeenCalled()
   })
 })

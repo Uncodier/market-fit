@@ -34,3 +34,12 @@ it("rejects invalid/unauthorized tenant requests before search", async () => {
   expect(await searchPosCatalog(siteId, "tools")).toHaveProperty("error", "Forbidden")
   expect(searchCatalog).not.toHaveBeenCalled()
 })
+
+it.each(["matched", "related", undefined] as const)("preserves %s through POS identity hydration without changing filters", async result_kind => {
+  const original = await jest.mocked(searchCatalog)({ query: "tools", channel: "pos", site_id: siteId })
+  jest.mocked(searchCatalog).mockResolvedValue({ ...original, result_kind,
+    mode: result_kind === "related" ? "hybrid" : "text", degraded: result_kind !== "related" })
+  expect(await searchPosCatalog(siteId, "tools")).toMatchObject({ result_kind: result_kind ?? "matched", count: 1 })
+  expect(query.or).toHaveBeenCalledWith("is_pos_available.is.null,is_pos_available.eq.true")
+  expect(query.is).toHaveBeenCalledWith("parent_id", null)
+})

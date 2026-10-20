@@ -1,4 +1,6 @@
 {
+  "catalog.search.relatedProducts": "Related products",
+  "catalog.search.relatedResults": "Related results",
   "catalog.dynamicPricing.from": "From",
   "catalog.dynamicPricing.quote": "Quote",
   "commerce.buyer.emailLabel": "Buyer account (email)",

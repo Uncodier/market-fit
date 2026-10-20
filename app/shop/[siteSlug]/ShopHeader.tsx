@@ -2,7 +2,8 @@
 
 import Link from "next/link"
 import { Button } from "@/app/components/ui/button"
-import { Search, User } from "@/app/components/ui/icons"
+import { User } from "@/app/components/ui/icons"
+import { CommerceSearchInput } from "@/app/components/commerce/CommerceSearchInput"
 import { CartButton } from "@/app/components/commerce/CartButton"
 import { CommerceShareControl } from "@/app/components/commerce/CommerceShareControl"
 import { CommerceShellHeader, shellClasses } from "@/app/components/commerce/CommerceShellHeader"
@@ -184,16 +185,12 @@ export function ShopHeader({
         hideCenterOnMobile
         center={
           <div className="hidden md:block absolute left-1/2 top-1/2 z-[15] w-2/5 -translate-x-1/2 -translate-y-1/2">
-            <div className="relative w-full">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <input
-                type="text"
-                placeholder={searchPlaceholder}
-                className="w-full pl-9 h-9 text-sm bg-muted/50 focus:bg-white dark:focus:bg-gray-950 border border-transparent focus:border-black/10 dark:focus:border-white/10 rounded-full transition-all outline-none shadow-sm"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-            </div>
+            <CommerceSearchInput
+              placeholder={searchPlaceholder}
+              aria-label={searchLabel}
+              value={searchQuery}
+              onChange={setSearchQuery}
+            />
           </div>
         }
         actions={

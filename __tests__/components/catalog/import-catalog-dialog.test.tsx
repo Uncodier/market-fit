@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react"
 import { ImportCatalogDialog } from "@/app/catalog/components/ImportCatalogDialog"
 import { importCatalogBatch, previewCatalogImportBatch } from "@/app/catalog/import-actions"
 import { parseCatalogImportFile } from "@/app/catalog/import-file"
@@ -48,6 +48,27 @@ function confirm() {
   fireEvent.click(screen.getByLabelText("I have reviewed the preview, import mode, and any errors.", { exact: false }))
   fireEvent.click(screen.getByRole("button", { name: /Confirm import/ }))
 }
+
+it("matches the leads upload design while exposing only supported catalog formats", async () => {
+  mount()
+  expect(screen.getByText(/Download a sample file to get started/)).toBeInTheDocument()
+  expect(screen.getByRole("button", { name: "CSV Sample" })).toBeInTheDocument()
+  expect(screen.getByRole("button", { name: "Excel Sample" })).toBeInTheDocument()
+  expect(screen.queryByRole("button", { name: "JSON Sample" })).not.toBeInTheDocument()
+  expect(screen.getAllByRole("button", { name: "Close" })).toHaveLength(1)
+  const steps = screen.getByRole("list", { name: "Import steps" })
+  expect(within(steps).getAllByRole("listitem")).toHaveLength(4)
+  expect(within(steps).getByText("Upload File").closest("li")).toHaveAttribute("aria-current", "step")
+  expect(within(steps).getByText("Upload File").closest("li")?.querySelector("span")).toHaveClass("bg-blue-500")
+
+  fireEvent.drop(screen.getByRole("button", { name: /Click to upload/ }), {
+    dataTransfer: { files: [new File(["example"], "products.xlsx")] },
+  })
+  await screen.findByText("Match your columns")
+  expect(within(steps).getByText("Map Fields").closest("li")).toHaveAttribute("aria-current", "step")
+  expect(within(steps).getByText("Upload File").closest("li")?.querySelector("span")).toHaveClass("bg-green-500")
+  expect(write).not.toHaveBeenCalled()
+})
 
 it("requires explicit reviewed confirmation and defaults to USD and skip", async () => {
   mount()

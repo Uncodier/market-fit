@@ -56,7 +56,8 @@ export async function loadMarketplaceProducts(filters: MarketplaceProductFilters
       status: "active", is_marketplace_listed: true, parent_id: null,
     },
   }) : null
-  const searchMetadata = search ? { count_kind: search.count_kind, mode: search.mode,
+  const searchMetadata = search ? { count_kind: search.count_kind, mode: search.mode, result_kind: search.result_kind ?? "matched",
+    candidate_window_truncated: search.candidate_window_truncated === true,
     degraded: search.degraded, search_id: search.search_id } : { count_kind: "exact" as const }
   const publicQuery = (columns: string) => {
     let query = applyStorefrontAvailability(supabase.from("catalog_items").select(columns)

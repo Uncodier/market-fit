@@ -13,7 +13,8 @@ export async function searchPosCatalog(siteId: string, query: string) {
   try {
     const search = await searchCatalog({ query: input.data.query, site_id: siteId, channel: "pos",
       filters: { status: "active", parent_id: null }, limit: 20 })
-    if (!search.items.length) return { ...search, items: [] }
+    const metadata = { ...search, result_kind: search.result_kind ?? "matched" }
+    if (!search.items.length) return { ...metadata, items: [] }
     const { data, error } = await access.supabase.from("catalog_items")
       .select("id, site_id, name, updated_at").eq("site_id", siteId).eq("status", "active")
       .or("is_pos_available.is.null,is_pos_available.eq.true").is("parent_id", null).in("id", search.items.map(item => item.id))
@@ -21,7 +22,7 @@ export async function searchPosCatalog(siteId: string, query: string) {
     const items = orderCatalogSearchRows(search.items, (data || []) as Array<{
       id: string; site_id: string; name: string; updated_at: string
     }>)
-    return { ...search, items }
+    return { ...metadata, items }
   } catch {
     return { items: [], error: "Online search is unavailable. Local catalog search still works." }
   }

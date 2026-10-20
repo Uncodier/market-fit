@@ -1,4 +1,5 @@
 import { CatalogItem } from "@/app/types";
+import type { CatalogResultKind } from "@/lib/catalog-search/types";
 
 export type CatalogSort = 'display_order' | 'newest' | 'oldest' | 'updated_at';
 
@@ -27,6 +28,7 @@ export interface CatalogListResponse {
   candidate_window_truncated?: boolean;
   has_more?: boolean;
   mode?: 'hybrid' | 'text';
+  result_kind?: CatalogResultKind;
   degraded?: boolean;
   search_id?: string;
   error?: string;

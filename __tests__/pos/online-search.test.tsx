@@ -5,6 +5,9 @@ import { filterLocalPosCatalog } from "@/app/pos/filter-catalog"
 import { marketplaceItem } from "../marketplace/catalog-fixture"
 
 jest.mock("@/app/pos/actions/search-catalog", () => ({ searchPosCatalog: jest.fn() }))
+jest.mock("@/app/context/LocalizationContext", () => ({ useLocalization: () => ({
+  t: (key: string) => jest.requireActual("@/app/context/locale-catalog").localeMessages.en[key] || key,
+}) }))
 const item = { ...marketplaceItem("ready"), name: "Running shoe", site_id: "site", sku: "CODE-123" }
 const pending = { ...item, id: "new", name: "New product" }
 const stale = { ...item, id: "stale", name: "Changed product" }
@@ -19,7 +22,7 @@ beforeEach(() => {
   jest.clearAllMocks()
   jest.useFakeTimers()
   jest.mocked(searchPosCatalog).mockResolvedValue({ success: true, count: 4, count_kind: "candidate_window",
-    has_more: false, mode: "hybrid", degraded: false, search_id: "search",
+    has_more: false, mode: "hybrid", degraded: false, search_id: "search", result_kind: "matched",
     items: [item, pending, stale, unavailable] })
 })
 afterEach(() => jest.useRealTimers())
@@ -75,4 +78,37 @@ it("shows online failure separately without replacing the local catalog", async 
   render(<PosOnlineSearch {...props} />)
   await search()
   expect(screen.getByRole("status")).toHaveTextContent("Local search still works")
+})
+
+it("labels related products without changing synchronized-item selling eligibility", async () => {
+  const original = await jest.mocked(searchPosCatalog)("site", "comfortable")
+  jest.mocked(searchPosCatalog).mockResolvedValue({ ...original, result_kind: "related" } as Awaited<ReturnType<typeof searchPosCatalog>>)
+  render(<PosOnlineSearch {...props} />)
+  await search()
+  expect(screen.getByRole("heading", { name: "Related products" })).toBeInTheDocument()
+  expect(screen.getByRole("button", { name: "New product — Sync catalog to use" })).toBeDisabled()
+  expect(screen.getByRole("button", { name: "Changed product — Sync catalog to use" })).toBeDisabled()
+  expect(screen.getByRole("button", { name: "Unavailable product — Unavailable" })).toBeDisabled()
+  fireEvent.click(screen.getByRole("button", { name: "Running shoe" }))
+  expect(onAdd).toHaveBeenCalledWith(item)
+})
+
+it.each(["matched", "related"] as const)("does not label empty %s suggestions as related", async result_kind => {
+  jest.mocked(searchPosCatalog).mockResolvedValue({ success: true, items: [], count: 0, count_kind: "candidate_window",
+    has_more: false, mode: "hybrid", degraded: false, search_id: "search", result_kind })
+  render(<PosOnlineSearch {...props} />)
+  await search()
+  expect(screen.queryByRole("heading", { name: "Related products" })).not.toBeInTheDocument()
+  expect(screen.getByText("No additional online suggestions.")).toBeInTheDocument()
+})
+
+it("hides the related heading when local-result/category filters hide all suggestions", async () => {
+  jest.mocked(searchPosCatalog).mockResolvedValue({ success: true, items: [item], count: 1, count_kind: "candidate_window",
+    has_more: false, mode: "hybrid", degraded: false, search_id: "search", result_kind: "related" })
+  const view = render(<PosOnlineSearch {...props} localResultIds={[item.id]} />)
+  await search()
+  expect(screen.queryByRole("heading", { name: "Related products" })).not.toBeInTheDocument()
+  view.rerender(<PosOnlineSearch {...props} selectedCategory="another-category" />)
+  expect(screen.queryByRole("heading", { name: "Related products" })).not.toBeInTheDocument()
+  expect(screen.queryByRole("button", { name: "Running shoe" })).not.toBeInTheDocument()
 })

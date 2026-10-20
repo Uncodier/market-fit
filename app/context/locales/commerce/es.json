@@ -1,4 +1,6 @@
 {
+  "catalog.search.relatedProducts": "Related products",
+  "catalog.search.relatedResults": "Related results",
   "catalog.dynamicPricing.from": "Desde",
   "catalog.dynamicPricing.quote": "Cotización",
   "commerce.buyer.emailLabel": "Cuenta de comprador (correo electrónico)",

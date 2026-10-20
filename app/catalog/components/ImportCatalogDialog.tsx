@@ -2,15 +2,14 @@
 
 import { useState } from "react"
 import { Button } from "@/app/components/ui/button"
-import { Input } from "@/app/components/ui/input"
-import { Label } from "@/app/components/ui/label"
 import { Progress } from "@/app/components/ui/progress"
 import { Badge } from "@/app/components/ui/badge"
-import { UploadCloud, Check } from "@/app/components/ui/icons"
 import { Dialog, DialogBody, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/app/components/ui/dialog"
 import { ImportCatalogMapping } from "./ImportCatalogMapping"
 import { ImportCatalogErrors, ImportCatalogReview } from "./ImportCatalogReview"
 import { useImportCatalogState } from "./ImportCatalogState"
+import { ImportCatalogSteps } from "./ImportCatalogSteps"
+import { ImportCatalogUpload } from "./ImportCatalogUpload"
 
 export interface ImportCatalogDialogProps {
   open: boolean
@@ -28,9 +27,6 @@ export function ImportCatalogDialog(props: ImportCatalogDialogProps) {
 function ImportCatalogDialogContent({ open, onOpenChange, siteId, onSuccess }: ImportCatalogDialogProps) {
   const state = useImportCatalogState(siteId, onSuccess)
   const [acknowledged, setAcknowledged] = useState(false)
-  const steps = ["upload", "mapping", "review", "import"] as const
-  const labels = ["Upload", "Match columns", "Review", "Import"]
-  const stepIndex = steps.indexOf(state.step)
   const validRows = state.review?.rows.filter(row => !row.category || !state.review?.missingCategories.includes(row.category)).length ?? 0
   const totalRows = state.session?.batches.reduce((total, batch) => total + batch.rows.length, 0) ?? 0
   const completedRows = state.session?.completedRows ?? 0
@@ -41,36 +37,14 @@ function ImportCatalogDialogContent({ open, onOpenChange, siteId, onSuccess }: I
       <DialogContent size="xl" busy={state.busy} showClose={!state.busy}>
         <DialogHeader>
           <DialogTitle>Import Catalog</DialogTitle>
-          <DialogDescription>Import products from CSV or XLSX. For XLSX files, only the first worksheet is read.</DialogDescription>
+          <DialogDescription>Import products from CSV or Excel files. Download a sample file to get started.</DialogDescription>
         </DialogHeader>
-        <DialogBody className="space-y-5">
-          <ol className="grid grid-cols-4 gap-2" aria-label="Import steps">
-            {steps.map((step, index) => <li key={step} aria-current={state.step === step ? "step" : undefined}
-              className={`flex items-center gap-2 text-sm ${index > stepIndex ? "text-muted-foreground" : "font-medium"}`}>
-              <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full border ${index <= stepIndex ? "bg-primary text-primary-foreground" : ""}`}>
-                {index < stepIndex ? <Check className="h-4 w-4" /> : index + 1}
-              </span><span>{labels[index]}</span>
-            </li>)}
-          </ol>
+        <DialogBody className="grid gap-4">
+          <ImportCatalogSteps currentStep={state.step} />
 
           {state.error && <p role="alert" className="rounded-md border border-destructive/40 p-3 text-sm text-destructive">{state.error}</p>}
 
-          {state.step === "upload" && <div className="space-y-4">
-            <div className="rounded-lg border-2 border-dashed p-8 text-center"
-              onDragOver={event => event.preventDefault()} onDrop={event => {
-                event.preventDefault()
-                const file = event.dataTransfer.files[0]
-                if (file && !state.busy) void state.selectFile(file)
-              }}>
-              <UploadCloud className="mx-auto mb-3 h-10 w-10 text-muted-foreground" />
-              <Label htmlFor="catalog-import-file">Choose a file or drag it here</Label>
-              <Input id="catalog-import-file" type="file" accept=".csv,.xlsx" disabled={state.busy} className="mx-auto mt-3 max-w-md"
-                onChange={event => { const file = event.target.files?.[0]; if (file) void state.selectFile(file); event.target.value = "" }} />
-              <p className="mt-3 text-sm text-muted-foreground">CSV or XLSX only. Maximum 10 MB, 20,000 nonempty data rows, and 50 columns. Legacy .xls is not supported.</p>
-              <p className="mt-2 text-sm text-muted-foreground">The first row must contain unique, nonempty headers. Empty data rows are skipped; errors retain source row numbers. Maximum 100,001 source rows including empty rows; XLSX expanded size is limited to 50 MB.</p>
-            </div>
-            {state.busy && <p role="status">Reading file…</p>}
-          </div>}
+          {state.step === "upload" && <ImportCatalogUpload busy={state.busy} onSelectFile={state.selectFile} />}
 
           {state.step === "mapping" && state.parsed && <>
             <p className="text-sm text-muted-foreground">{state.fileName} · {state.parsed.rows.length.toLocaleString()} rows · {state.parsed.headers.length} columns</p>
@@ -101,7 +75,7 @@ function ImportCatalogDialogContent({ open, onOpenChange, siteId, onSuccess }: I
           </div>}
         </DialogBody>
         <DialogFooter>
-          {!state.busy && <Button variant="outline" onClick={close}>{state.status === "done" && state.step === "import" ? "Done" : "Close"}</Button>}
+          {!state.busy && state.step !== "upload" && <Button variant="outline" onClick={close}>{state.status === "done" && state.step === "import" ? "Done" : "Close"}</Button>}
           {state.step === "mapping" && <>
             <Button variant="outline" disabled={state.busy} onClick={state.reset}>Choose another file</Button>
             <Button disabled={state.busy || !state.mapping.sku || !state.mapping.name || !/^[A-Z]{3}$/.test(state.defaultCurrency)}

@@ -37,7 +37,7 @@ export async function readCatalogItems({
         is_marketplace_listed: isMarketplaceListed,
       },
     }) : null;
-    const searchMetadata = search ? { count_kind: search.count_kind, mode: search.mode,
+    const searchMetadata = search ? { count_kind: search.count_kind, mode: search.mode, result_kind: search.result_kind ?? "matched",
       candidate_window_truncated: search.candidate_window_truncated === true,
       degraded: search.degraded, search_id: search.search_id } : {};
     if (search && !search.items.length) return { data: [], count: 0, has_more: false, ...searchMetadata };

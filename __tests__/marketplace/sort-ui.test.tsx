@@ -235,6 +235,15 @@ it("replaces stale product results with a visible error and retry action", () =>
   expect(retry).toHaveBeenCalledTimes(1)
 })
 
+it.each(["related", "matched", "empty", "loading", "error"])("labels only visible successful related Marketplace products (%s)", state => {
+  jest.mocked(useMarketplaceProducts).mockReturnValue({ items: state === "empty" ? [] : initial,
+    count: state === "empty" ? 0 : 1, regions: [], isLoading: state === "loading", totalPages: 1,
+    page: 1, setPage: jest.fn(), retry: jest.fn(), error: state === "error" ? "Unavailable" : undefined,
+    resultKind: state === "matched" ? "matched" : "related", searchTruncated: false })
+  render(<MarketplaceCatalog {...catalogProps} searchQuery="comfortable" />)
+  expect(screen.queryByRole("heading", { name: "Related products" }) !== null).toBe(state === "related")
+})
+
 it.each(["populated", "empty", "loading", "error"])(
   "keeps the sticky sidebar in document flow for a %s catalog", (state) => {
     jest.mocked(useMarketplaceProducts).mockReturnValue({

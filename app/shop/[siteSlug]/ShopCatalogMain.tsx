@@ -37,6 +37,8 @@ import type { DeviceOrder } from "@/app/commerce/device-order-storage"
 import { ShopDeviceOrders } from "./ShopDeviceOrders"
 import { useShopCatalogViewport, type ShopCatalogRequestResult } from "./useShopCatalogViewport"
 import { Button } from "@/app/components/ui/button"
+import type { CatalogResultKind } from "@/lib/catalog-search/types"
+import { ShopResultsGroup } from "./ShopResultsGroup"
 
 interface ShopCatalogMainProps {
   siteSlug: string | string[]
@@ -54,6 +56,7 @@ interface ShopCatalogMainProps {
   isLoading: boolean
   searchError?: string
   searchTruncated?: boolean
+  resultKind?: CatalogResultKind
   retrySearch?: () => void
   isLoadingMore: boolean
   isJumping: boolean
@@ -88,6 +91,7 @@ export const ShopCatalogMain = React.memo(function ShopCatalogMain({
   isLoading,
   searchError, retrySearch,
   searchTruncated = false,
+  resultKind = "matched",
   isLoadingMore,
   isJumping,
   hasMoreBelow,
@@ -252,10 +256,6 @@ export const ShopCatalogMain = React.memo(function ShopCatalogMain({
   const catalogCount = layoutCount || 0
   const compactMobile = shouldUseCompactMobileListing(catalogCount)
 
-  const resultsTitle = isSearching
-    ? t("shop.results") || "Results"
-    : t("shop.trendingNow") || "Trending Now"
-
   const useFeaturedOwned =
     !isLoading && ownedItems.length > 0 && ownedItems.length < FEATURED_LISTING_THRESHOLD
   const useFeaturedSellable =
@@ -340,11 +340,8 @@ export const ShopCatalogMain = React.memo(function ShopCatalogMain({
       )}
 
       {ownedItems.length === 0 && deviceOrders.length === 0 && !useSections && (
-        <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-6 justify-between">
-          <h2 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-gray-100">
-            {resultsTitle}
-          </h2>
-        </div>
+        <ShopResultsGroup isSearching={isSearching} resultKind={resultKind}
+          count={sellableCatalogItems.length} isLoading={isLoading} />
       )}
 
       {ownedItems.length > 0 && (
@@ -405,17 +402,8 @@ export const ShopCatalogMain = React.memo(function ShopCatalogMain({
       {(sections.length > 0 || sellableCatalogItems.length > 0 || ownedItems.length === 0 || isLoading) && (
         <div>
           {(ownedItems.length > 0 || deviceOrders.length > 0) && !useSections && (
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-              <h2 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-gray-100">
-                {resultsTitle}
-              </h2>
-              <span className="text-gray-500 font-medium whitespace-nowrap">
-                {sellableCatalogItems.length}{" "}
-                {sellableCatalogItems.length === 1
-                  ? t("shop.product") || "product"
-                  : t("shop.products") || "products"}
-              </span>
-            </div>
+            <ShopResultsGroup isSearching={isSearching} resultKind={resultKind}
+              count={sellableCatalogItems.length} isLoading={isLoading} showCount />
           )}
 
           {sellableCatalogItems.length === 0 && sections.length === 0 && !isLoading && !isJumping ? (

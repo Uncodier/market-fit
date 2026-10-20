@@ -346,6 +346,7 @@ export default function CatalogPage() {
                       categories={data?.categories || []}
                       onUpdate={() => mutate()} 
                       searchQuery={searchQuery}
+                      resultKind={data?.items.result_kind}
                       onCreateOpen={() => setIsCreateOpen(true)}
                       onDragEnd={handleDragEnd}
                       isDragEnabled={isDragEnabled} />
@@ -360,6 +361,7 @@ export default function CatalogPage() {
                           categories={data.categories}
                           onDragEnd={handleDragEnd}
                           isDragEnabled={isDragEnabled}
+                          resultKind={data.items.result_kind}
                           searchQuery={searchQuery} />
                       ) : (
                         <div className="pt-4 px-4 md:px-6">

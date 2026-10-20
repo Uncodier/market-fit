@@ -134,7 +134,7 @@ export default function ShopClient({
     totalCount,
     isLoading,
     searchError, retrySearch,
-    searchTruncated,
+    searchTruncated, resultKind,
     isLoadingMore,
     isJumping,
     hasMoreBelow,
@@ -453,7 +453,7 @@ export default function ShopClient({
         initialCount={totalCount}
         isLoading={isLoading}
         searchError={searchError} retrySearch={retrySearch}
-        searchTruncated={searchTruncated}
+        searchTruncated={searchTruncated} resultKind={resultKind}
         isLoadingMore={isLoadingMore}
         isJumping={isJumping}
         hasMoreBelow={hasMoreBelow}

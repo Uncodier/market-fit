@@ -10,12 +10,14 @@ jest.mock("@/app/catalog/actions", () => ({ listCatalogItems: jest.fn() }))
 jest.mock("@/app/catalog/list-categories", () => ({ listCatalogPageCategories: async () => ({ data: [], complete: false }) }))
 jest.mock("@/app/catalog/reorder-actions", () => ({ reorderCatalogDisplay: jest.fn() }))
 jest.mock("@/app/context/SiteContext", () => ({ useSite: () => ({ currentSite: { id: "site" } }) }))
-jest.mock("@/app/context/LocalizationContext", () => ({ useLocalization: () => ({ t: (key: string) => key }) }))
+jest.mock("@/app/context/LocalizationContext", () => ({ useLocalization: () => ({
+  t: (key: string) => jest.requireActual("@/app/context/locale-catalog").localeMessages.en[key] || key,
+}) }))
 jest.mock("@/app/hooks/use-mobile-view", () => ({ useMobileView: () => ["table", jest.fn()], useIsMobile: () => false }))
 jest.mock("@/app/catalog/components/CreateCatalogItemDialog", () => ({ CreateCatalogItemDialog: () => null }))
 jest.mock("@/app/catalog/components/KanbanView", () => ({ KanbanView: () => null }))
-jest.mock("@/app/catalog/components/CatalogTable", () => ({ CatalogTable: ({ items }: { items: Array<{ id: string }> }) =>
-  <div data-testid="ranks">{items.map(item => item.id).join(",")}</div> }))
+jest.mock("@/app/catalog/components/CatalogTable", () => ({ CatalogTable: ({ items, resultKind }: { items: Array<{ id: string }>; resultKind?: string }) =>
+  <div data-testid="ranks" data-result-kind={resultKind}>{items.map(item => item.id).join(",")}</div> }))
 jest.mock("next/dynamic", () => ({ __esModule: true, default: () => () => null }))
 jest.mock("@/app/components/ui/sticky-header", () => ({ StickyHeader: ({ children }: { children: ReactNode }) => <div>{children}</div> }))
 
@@ -68,4 +70,11 @@ it("places a confirmed overflow notice below the table and pagination", async ()
   for (const element of [screen.getByTestId("ranks"), screen.getByRole("button", { name: "4" })]) {
     expect(element.compareDocumentPosition(notice) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   }
+})
+
+it.each([0, 2])("passes related classification to the Catalog view for %i hydrated rows", async count => {
+  jest.mocked(listCatalogItems).mockResolvedValue({ data: ranks.slice(0, count), count, result_kind: "related" })
+  render(<SWRConfig value={{ provider: () => new Map() }}><CatalogPage /></SWRConfig>)
+  await screen.findByTestId("ranks")
+  expect(screen.getByTestId("ranks")).toHaveAttribute("data-result-kind", "related")
 })

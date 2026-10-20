@@ -13,6 +13,7 @@ import { NavigationLink } from "@/app/components/navigation/NavigationLink"
 import { GripHorizontal } from "@/app/components/ui/icons"
 
 import { Button } from "@/app/components/ui/button"
+import type { CatalogResultKind } from "@/lib/catalog-search/types"
 
 interface KanbanViewProps {
   items: CatalogItem[]
@@ -20,6 +21,7 @@ interface KanbanViewProps {
   onDragEnd?: (result: any) => void
   isDragEnabled?: boolean
   searchQuery?: string
+  resultKind?: CatalogResultKind
 }
 
 export function KanbanView({ 
@@ -27,7 +29,8 @@ export function KanbanView({
   categories,
   onDragEnd,
   isDragEnabled = false,
-  searchQuery
+  searchQuery,
+  resultKind = "matched",
 }: KanbanViewProps) {
   const { t } = useLocalization()
   const [visibleCounts, setVisibleCounts] = useState<Record<string, number>>({})
@@ -69,7 +72,8 @@ export function KanbanView({
   }, [items])
 
   const orderedColumns = useMemo(() => {
-    if (searchQuery?.trim()) return [{ id: "search-results", name: "Search results · relevance", items }]
+    if (searchQuery?.trim()) return [{ id: "search-results", items,
+      name: resultKind === "related" && items.length > 0 ? t("catalog.search.relatedResults") : "Search results · relevance" }]
     const cols = categories.map(cat => ({
       id: cat.id,
       name: cat.name,
@@ -96,7 +100,7 @@ export function KanbanView({
     }
     
     return cols
-  }, [categories, itemsByCategoryId, t, searchQuery, items])
+  }, [categories, itemsByCategoryId, t, searchQuery, items, resultKind])
 
   const handleDragEndInternal = (result: any) => {
     if (!onDragEnd) return

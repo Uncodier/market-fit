@@ -5,7 +5,9 @@ import { KanbanView } from "@/app/catalog/components/KanbanView"
 import { marketplaceItem } from "../marketplace/catalog-fixture"
 
 jest.mock("@/app/context/SiteContext", () => ({ useSite: () => ({ currentSite: { id: "site" } }) }))
-jest.mock("@/app/context/LocalizationContext", () => ({ useLocalization: () => ({ t: () => "" }) }))
+jest.mock("@/app/context/LocalizationContext", () => ({ useLocalization: () => ({
+  t: (key: string) => key === "catalog.search.relatedResults" ? "Related results" : "",
+}) }))
 jest.mock("@/app/catalog/actions", () => ({ updateCatalogAvailability: jest.fn() }))
 jest.mock("@/app/catalog/components/EditCatalogCategoryDialog", () => ({
   EditCatalogCategoryDialog: ({ category, open }: { category: CatalogCategory | null; open: boolean }) =>
@@ -42,4 +44,13 @@ it.each([CatalogTable, KanbanView])("preserves relevance across categories and v
   const text = container.textContent || ""
   expect(text.indexOf("Best match")).toBeLessThan(text.indexOf("Second match"))
   expect(text.indexOf("Second match")).toBeLessThan(text.indexOf("Third match"))
+})
+
+it.each([CatalogTable, KanbanView])("labels related Catalog sections without claiming exact matches", Component => {
+  const items = [marketplaceItem("related")]
+  const view = render(<Component items={items} categories={[category]} searchQuery="query" resultKind="related" onUpdate={jest.fn()} />)
+  expect(screen.getByText("Related results")).toBeInTheDocument()
+  expect(screen.queryByText("Search results · relevance")).not.toBeInTheDocument()
+  view.rerender(<Component items={[]} categories={[category]} searchQuery="query" resultKind="related" onUpdate={jest.fn()} />)
+  expect(screen.queryByText("Related results")).not.toBeInTheDocument()
 })

@@ -1,4 +1,6 @@
 {
+  "catalog.search.relatedProducts": "Related products",
+  "catalog.search.relatedResults": "Related results",
   "catalog.dynamicPricing.from": "最低価格",
   "catalog.dynamicPricing.quote": "見積もり",
   "commerce.buyer.emailLabel": "購入者アカウント（メールアドレス）",

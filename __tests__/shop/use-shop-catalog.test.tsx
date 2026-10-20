@@ -15,6 +15,19 @@ type LoadResult = boolean | undefined
 
 beforeEach(() => { jest.clearAllMocks(); jest.mocked(getShopCatalog).mockReset() })
 
+it("preserves related classification, resets it on search/browse changes and defaults omitted matched", async () => {
+  jest.mocked(getShopCatalog).mockResolvedValueOnce({ ...response([tea]), result_kind: "related" })
+    .mockResolvedValueOnce(response([coffee]))
+  const { result, rerender } = renderHook(({ q }) => useShopCatalog("site", initial, 2, q, offsets), { initialProps: { q: "" } })
+  rerender({ q: "comfortable" })
+  await waitFor(() => expect(result.current.resultKind).toBe("related"))
+  rerender({ q: "coffee" })
+  expect(result.current.resultKind).toBe("matched")
+  await waitFor(() => expect(result.current.catalogItems).toEqual([coffee]))
+  rerender({ q: " " })
+  expect(result.current.resultKind).toBe("matched")
+})
+
 it("shows a search failure instead of empty success and allows a same-query retry", async () => {
   const log = jest.spyOn(console, "error").mockImplementation(() => {})
   jest.mocked(getShopCatalog).mockResolvedValueOnce({ ...response([], 0), data: [], error: "Search unavailable" })

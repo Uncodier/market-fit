@@ -396,3 +396,19 @@ it("clears stale facet counts on HTTP failure and supports retry", async () => {
   expect(result.current.error).toBeUndefined()
   expect(result.current.count).toBe(83)
 })
+
+it("preserves related and overflow metadata, clears both on query changes and defaults legacy matched", async () => {
+  fetchMock.mockResolvedValueOnce({ ok: true, status: 200, json: async () => ({ data: sorted,
+    count: 2, totalPages: 1, result_kind: "related", candidate_window_truncated: true }) } as Response)
+  const { result, rerender } = mount({ search: "comfortable" })
+  await flushRequest()
+  expect(result.current.resultKind).toBe("related")
+  expect(result.current.searchTruncated).toBe(true)
+  rerender({ search: "coffee" })
+  expect(result.current.resultKind).toBe("matched")
+  expect(result.current.searchTruncated).toBe(false)
+  await flushRequest()
+  expect(result.current.resultKind).toBe("matched")
+  rerender({ search: "" })
+  expect(result.current.resultKind).toBe("matched")
+})

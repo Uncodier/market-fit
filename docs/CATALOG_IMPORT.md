@@ -3,6 +3,15 @@
 The Catalog toolbar exposes **Import**, alongside the existing modifiers, sort,
 and view controls. The dialog loads its spreadsheet parser only when needed.
 
+The upload screen follows the Leads import design: descriptive progress steps,
+sample download buttons, and a keyboard-accessible click/drag-and-drop area.
+**CSV Sample** and **Excel Sample** download two editable example products using
+all supported column names. Excel produces a real `.xlsx` workbook with text SKUs
+to preserve leading zeros; it is not a legacy `.xls` or a renamed text file.
+Category and image URL examples are blank so they do not depend on site-specific
+categories or external assets. Replace the example products before importing.
+Detailed file requirements remain available in an expandable section.
+
 ## File contract
 
 - CSV or modern Excel `.xlsx`; legacy `.xls` must be converted first.

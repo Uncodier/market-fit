@@ -20,12 +20,14 @@ import { cn } from "@/lib/utils"
 import { formatCurrency } from "@/app/lib/formatters"
 import { EditCatalogCategoryDialog } from "./EditCatalogCategoryDialog"
 import { DocumentListHead, StatusDot } from "@/app/components/documents/document-list"
+import type { CatalogResultKind } from "@/lib/catalog-search/types"
 
 interface CatalogTableProps {
   items: CatalogItem[]
   categories: CatalogCategory[]
   onUpdate: () => void
   searchQuery?: string
+  resultKind?: CatalogResultKind
   onCreateOpen?: () => void
   onDragEnd?: (result: any) => void
   isDragEnabled?: boolean
@@ -85,7 +87,8 @@ export function CatalogTable({
   items, 
   categories, 
   onUpdate, 
-  searchQuery, 
+  searchQuery,
+  resultKind = "matched",
   onCreateOpen, 
   onDragEnd,
   isDragEnabled = false
@@ -130,7 +133,8 @@ export function CatalogTable({
   }, [items])
 
   const orderedCategorySections = useMemo(() => {
-    if (searchQuery?.trim()) return [{ id: "search-results", name: "Search results · relevance", items }]
+    if (searchQuery?.trim()) return [{ id: "search-results", items,
+      name: resultKind === "related" && items.length > 0 ? t("catalog.search.relatedResults") : "Search results · relevance" }]
     const sections = categories.map(cat => ({
       id: cat.id,
       name: cat.name,
@@ -157,7 +161,7 @@ export function CatalogTable({
     }
     
     return sections
-  }, [categories, itemsByCategoryId, t, searchQuery, items])
+  }, [categories, itemsByCategoryId, t, searchQuery, items, resultKind])
 
   const defaultAccordionValue = orderedCategorySections.length > 10 
     ? [] 
