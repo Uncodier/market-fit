@@ -9,6 +9,7 @@ import { useLocalization } from "@/app/context/LocalizationContext"
 import { Badge } from "../ui/badge"
 import { licensePlanLabel } from "@/lib/license-entitlements"
 import { teamMembersInDisplayOrder } from "./team-types"
+import { TeamLocationAccess } from "./TeamLocationAccess"
 
 interface TeamSectionProps {
   active: boolean
@@ -75,6 +76,8 @@ export function TeamSection({ active, siteId }: TeamSectionProps) {
           {t("settings.team.inviteNew") || "Invite New Member to Team"}
         </Button>
       </div>
+
+      {canManageTeam && siteId && <TeamLocationAccess key={siteId} siteId={siteId} members={teamList} />}
 
       {isLoading ? (
         <div className="space-y-4">

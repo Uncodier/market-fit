@@ -1,10 +1,13 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
+import { userCanOnLocation } from "@/lib/permissions/location-access"
+import type { PermissionCommand } from "@/lib/permissions/types"
 
 const SITE_MANAGER_ROLES = new Set(["owner", "admin"])
 
 type SiteAccessOptions = {
   requireManager?: boolean
+  location?: { id: string | null; command: PermissionCommand }
 }
 
 type SiteAccessResult =
@@ -76,6 +79,12 @@ export async function requireSiteAccess(
   }
 
   if (options.requireManager && !isSiteManagerRole(role)) {
+    return {
+      error: NextResponse.json({ error: "Forbidden" }, { status: 403 }),
+    }
+  }
+
+  if (options.location && !await userCanOnLocation(supabase, siteId, options.location.id, options.location.command)) {
     return {
       error: NextResponse.json({ error: "Forbidden" }, { status: 403 }),
     }

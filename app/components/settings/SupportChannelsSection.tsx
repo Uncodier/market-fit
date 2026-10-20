@@ -39,7 +39,7 @@ import { disconnectZavuChannel, shouldDeleteZavuSender } from "./disconnect-remo
 import { useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import { buildSupportChannelNavigation } from "./support-channel-navigation"
-import { reconcileSupportConnectionById } from "./support-channel-connection-utils"
+import { useEmailConnectionReconciliation } from "./use-email-connection-reconciliation"
 import { useAgentChannelActivation } from "./use-agent-channel-activation"
 import { isActiveAgentChannel, isManuallyDisabledAgentChannel } from "@/lib/agent-channel-state"
 import { PartnerSupportChannelSetup } from "./PartnerSupportChannelSetup"
@@ -53,6 +53,7 @@ export function SupportChannelsSection({ active, siteId, onSave }: SupportChanne
   const form = useFormContext<SiteFormValues>()
   const { currentSite } = useSite()
   const activation = useAgentChannelActivation(siteId)
+  const reconcileEmailConnection = useEmailConnectionReconciliation(siteId)
   const router = useRouter()
   const { showBillingLimit, showBillingLimitFromError } = useBillingLimit()
   const handleConfigureAgent = async () => {
@@ -282,7 +283,7 @@ export function SupportChannelsSection({ active, siteId, onSave }: SupportChanne
           )
 
           return (
-            <SectionCard key={field.id} id={`support-channel-${index}`}>
+            <SectionCard key={`${siteId}:${channel.id || field.id}`} id={`support-channel-${index}`}>
               <SupportChannelHeader
                 label={label}
                 type={type}
@@ -327,25 +328,14 @@ export function SupportChannelsSection({ active, siteId, onSave }: SupportChanne
                   />
                 )}
 
-                {hasType && !paused && type === "email" && siteId && (
+                {hasType && !paused && type === "email" && siteId && channel.id && (
                   isConnected || canConnectAgentChannel(currentSite) ? (
                   <EmailChannelSetup
+                    key={`${siteId}:${channel.id}`}
                     siteId={siteId}
-                    channel={channel}
-                    onUpdated={async (payload) => {
-                      if (payload?.status === "connected" && !canConnectAgentChannel(currentSite)) {
-                        openAccountLimit()
-                        return
-                      }
-                      if (!channel.id) return
-                      const currentConnections = form.getValues("channels.connections") || []
-                      const nextConnections = reconcileSupportConnectionById(
-                        currentConnections,
-                        channel.id,
-                        payload,
-                      )
-                      if (nextConnections) await persistConnections(nextConnections)
-                    }}
+                    channel={{ ...channel, id: channel.id }}
+                    connections={connections}
+                    onUpdated={() => reconcileEmailConnection(channel.id!)}
                   />
                   ) : (
                     <SectionCardContent className="pt-0">

@@ -11,6 +11,7 @@ import { toast } from "sonner"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
 import { Archive, Edit, GripHorizontal, Plus, Settings } from "@/app/components/ui/icons"
 import { resolveItemImage } from "@/app/lib/image-utils"
+import { PromptImage } from "@/app/components/commerce/PromptImage"
 import { NavigationLink } from "@/app/components/navigation/NavigationLink"
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd"
 import { Accordion, AccordionItem, AccordionHeader, AccordionTrigger, AccordionContent } from "@/app/components/ui/accordion"
@@ -333,7 +334,7 @@ export function CatalogTable({
                                                   <TableCell className="py-3.5">
                                                     <div className="flex min-w-0 items-center gap-3">
                                                       <div className="h-9 w-9 rounded-md overflow-hidden flex-shrink-0 bg-muted">
-                                                        <img src={resolveItemImage(item)} alt={item.name} className="w-full h-full object-cover" />
+                                                        <PromptImage src={resolveItemImage(item)} alt={item.name} className="w-full h-full object-cover" />
                                                       </div>
                                                       <div className="min-w-0 space-y-0.5">
                                                         <p className="truncate text-sm font-medium leading-tight text-foreground">{item.name}</p>

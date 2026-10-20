@@ -4,6 +4,7 @@ import { Button } from "@/app/components/ui/button";
 import { Tag, X } from "@/app/components/ui/icons";
 import type { LocalPromoMatch } from "@/app/pos/local/resolve-promo-local";
 import { resolvePromotionImage } from "@/app/lib/image-utils";
+import { PromptImage } from "@/app/components/commerce/PromptImage";
 import { cn } from "@/lib/utils";
 
 type PosAppliedPromoCardProps = {
@@ -33,7 +34,7 @@ export function PosAppliedPromoCard({
       )}
     >
       <div className="h-full aspect-square rounded-l-lg bg-green-500/15 overflow-hidden flex-shrink-0">
-        <img
+        <PromptImage
           src={resolvePromotionImage(
             {
               image_url: promo.imageUrl,
@@ -43,9 +44,6 @@ export function PosAppliedPromoCard({
           )}
           alt={promo.promotionName}
           className="w-full h-full object-cover"
-          onError={(e) => {
-            e.currentTarget.style.opacity = "0";
-          }}
         />
       </div>
       <div className="flex-1 min-w-0">

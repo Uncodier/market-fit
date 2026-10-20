@@ -7,6 +7,7 @@ import { Badge } from "@/app/components/ui/badge"
 import { EmptyCard } from "@/app/components/ui/empty-card"
 import { Search, Calendar } from "@/app/components/ui/icons"
 import { resolveItemImage } from "@/app/lib/image-utils"
+import { PromptImage } from "@/app/components/commerce/PromptImage"
 import { Skeleton } from "@/app/components/ui/skeleton"
 import { useDisplayCurrency } from "@/app/context/DisplayCurrencyContext"
 import { isStorefrontAvailable } from "@/app/catalog/storefront-availability"
@@ -116,7 +117,7 @@ export function PosCatalogGrid({ items, loading, onAdd, t, getAvailability }: Po
                   }
                 }}
               >
-                <img
+                <PromptImage
                   src={resolveItemImage(item, "card")}
                   alt={item.name}
                   className="absolute inset-0 w-full h-full object-cover z-0"

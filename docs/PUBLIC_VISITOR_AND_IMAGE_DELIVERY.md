@@ -214,6 +214,27 @@ there is no effect-time repair or dependence on JavaScript to change the URL.
 Uploaded URLs remain unchanged. Unscoped workspace and authenticated buyer
 callers retain their existing routing and generation contracts.
 
+### Missing or failed image artwork
+
+`PromptImage` replaces missing URLs and failed native image loads with the existing
+`/images/image-placeholder.svg` artwork. Catalog table/board thumbnails, POS
+catalog/cart/promotion images, and public shop/marketplace cards, galleries,
+variants, modifiers, promotions and saved-order mosaics use this shared fallback.
+Generation failures, insufficient-credit responses and unavailable uploaded files
+all follow the same browser error path; API status/auth checks remain unchanged.
+
+The failed `srcset` is removed so responsive selection cannot override the
+placeholder. The fallback preserves dimensions/classes and uses the explicit app
+origin in www/apex public layouts. It does not retry generation, create a new
+prompt or consume additional credits. It stays in place across unrelated renders;
+a changed source or responsive candidate set can load normally again. Completed
+broken images are also detected when handlers attach after hydration. Progressive
+images show the neutral artwork sharply rather than fading it out or blurring it.
+
+Jest coverage in `prompt-image-fallback.test.tsx`, `progressive-image.test.tsx`,
+`storefront-image-fallback.test.tsx` and the catalog/POS image-fallback suites
+simulates failed loads without calling generation or creating remote data.
+
 This in-repository image repair does not require a sibling www image rewrite.
 It must still be rolled out by the deployment owner before production changes.
 The visitor-session browser path continues using direct-app delivery and scoped

@@ -9,6 +9,7 @@ import { CatalogItem, CatalogCategory } from "@/app/types"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { Archive, DatabaseIcon, Edit } from "@/app/components/ui/icons"
 import { resolveItemImage } from "@/app/lib/image-utils"
+import { PromptImage } from "@/app/components/commerce/PromptImage"
 import { NavigationLink } from "@/app/components/navigation/NavigationLink"
 import { GripHorizontal } from "@/app/components/ui/icons"
 
@@ -194,7 +195,7 @@ export function KanbanView({
                                           style={providedRow.draggableProps.style}
                                         >
                                           <div className="h-32 w-full bg-muted/30 relative flex-shrink-0">
-                                            <img src={resolveItemImage(item)} alt={item.name} className="w-full h-full object-cover" />
+                                            <PromptImage src={resolveItemImage(item)} alt={item.name} className="w-full h-full object-cover" />
                                           </div>
                                           <div className="p-3 pb-2">
                                             <div className="flex justify-between items-start mb-2">

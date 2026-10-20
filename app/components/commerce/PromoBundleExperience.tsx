@@ -304,9 +304,6 @@ export function PromoBundleExperience({
               <PromptImage
                 src={imageSrc}
                 alt={promo.name}
-                onError={(e) => {
-                  e.currentTarget.style.opacity = "0"
-                }}
                 className="absolute inset-0 h-full w-full object-cover object-center"
               />
               <span className="absolute left-4 top-4 rounded-md bg-emerald-600 px-2.5 py-1 text-xs font-bold text-white shadow-sm uppercase tracking-wider">

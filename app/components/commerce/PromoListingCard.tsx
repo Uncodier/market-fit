@@ -92,9 +92,6 @@ export function PromoListingCard({
           <PromptImage
             src={imageSrc}
             alt=""
-            onError={(e) => {
-              e.currentTarget.style.opacity = "0"
-            }}
             className="absolute inset-0 h-full w-full object-cover object-center transition-transform duration-500 group-hover:scale-105"
           />
         </Link>

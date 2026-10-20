@@ -3,6 +3,7 @@ import { z } from "zod"
 import type { SiteMember } from "@/app/services/site-members-service"
 import { readMemberLicense, memberAdmissionResponse, memberLimitRaceResponse } from "@/lib/licenses/member-license.server"
 import { isAdminScreenRole, parseWritableSiteMemberRole, sanitizeBlockedScreens } from "@/lib/auth/screen-access"
+import { rejectPrematureLocationRestrictions } from "@/lib/permissions/location-access-request"
 import {
   createServiceSupabase,
   denyUnlessTeamManager,
@@ -182,6 +183,8 @@ export async function POST(
 
     const body = await request.json().catch(() => null)
     if (!body || typeof body !== "object" || Array.isArray(body)) return invalidSiteResponse()
+    const locationDenied = rejectPrematureLocationRestrictions(body)
+    if (locationDenied) return locationDenied
     const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : ""
     const role = parseWritableSiteMemberRole(body.role)
     if (!email) {
@@ -277,7 +280,10 @@ export async function PATCH(
     const denied = denyUnlessTeamManager(access)
     if (denied) return denied
 
-    const body = await request.json().catch(() => ({}))
+    const body = await request.json().catch(() => null)
+    if (!body || typeof body !== "object" || Array.isArray(body)) return invalidSiteResponse()
+    const locationDenied = rejectPrematureLocationRestrictions(body)
+    if (locationDenied) return locationDenied
     const memberId = typeof body.memberId === "string" ? body.memberId : ""
     if (!z.string().uuid().safeParse(memberId).success) {
       return NextResponse.json({ success: false, error: "memberId is required" }, { status: 400 })

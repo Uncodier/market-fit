@@ -49,6 +49,10 @@ export function EmailDnsSetup({
         <p className="text-xs text-muted-foreground">
           Add these DNS records to your DNS provider for {domain}
         </p>
+        <p className="text-xs text-muted-foreground">
+          These records are shared by email addresses using this exact domain. Add them once,
+          then verify; you do not need a separate set for each address.
+        </p>
 
         <div className="space-y-3">
           {records.map((record, index) => (
@@ -182,6 +186,10 @@ export function EmailInboundSettings({
                 <p className="text-xs text-muted-foreground">
                   To receive emails, add this MX record to your DNS:
                 </p>
+                <p className="text-xs text-muted-foreground">
+                  MX applies to every address at {domain}, not just this channel. If it already receives
+                  mail through Google or Microsoft, use a dedicated subdomain or plan routing before changing DNS.
+                </p>
                 <div className="p-3 bg-background rounded border text-xs font-mono flex items-center gap-2">
                   <span className="flex-1 truncate">
                     {domain} MX {ZAVU_INBOUND_MX_PRIORITY} {ZAVU_INBOUND_MX_HOST}
@@ -206,7 +214,7 @@ export function EmailInboundSettings({
             <div className="space-y-0.5">
               <Label className="text-sm">Enable Receiving</Label>
               <p className="text-xs text-muted-foreground">
-                Allow the agent to receive inbound emails
+                Enable inbound email for this address only; other addresses keep their own settings.
               </p>
             </div>
             <Switch
@@ -256,7 +264,7 @@ export function EmailInboundSettings({
         >
           {isProcessing ? "Saving..." : "Save Changes"}
         </Button>
-        {isMxConfigured && !receivingEnabled && !isChannelActive && !hasReceivingChanges && (
+        {!receivingEnabled && !isChannelActive && !hasReceivingChanges && (
           <Button
             type="button"
             onClick={onActivate}

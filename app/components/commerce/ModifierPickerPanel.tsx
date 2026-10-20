@@ -183,9 +183,6 @@ export function ModifierPickerPanel({
                           src={imageUrl}
                           alt=""
                           className="absolute inset-0 h-full w-full object-cover object-center"
-                          onError={(e) => {
-                            e.currentTarget.style.opacity = "0"
-                          }}
                         />
                       </div>
                       <div className="min-w-0">

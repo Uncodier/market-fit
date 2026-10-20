@@ -6,6 +6,7 @@ import { Button } from "@/app/components/ui/button"
 import { Minus, Plus } from "@/app/components/ui/icons"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { resolveItemImage } from "@/app/lib/image-utils"
+import { PromptImage } from "@/app/components/commerce/PromptImage"
 import { cn } from "@/lib/utils"
 import { useDisplayCurrency } from "@/app/context/DisplayCurrencyContext"
 import {
@@ -59,7 +60,7 @@ export function PosCartLines({
               onClick={() => setSelectedCartItemId?.(lineKey)}
             >
               <div className="w-16 aspect-square bg-muted/30 overflow-hidden flex-shrink-0 self-start mt-0.5 ml-0.5 rounded-md">
-                <img
+                <PromptImage
                   src={resolveItemImage(item, "thumb")}
                   alt={item.name}
                   className="w-full h-full object-cover"

@@ -1,10 +1,7 @@
 import { useState, useEffect } from "react"
-import { Button } from "@/app/components/ui/button"
-import { Input } from "@/app/components/ui/input"
-import { Label } from "@/app/components/ui/label"
+import { z } from "zod"
 import { toast } from "sonner"
 import { apiClient } from "@/app/services/api-client-service"
-import { SectionCardFooter, SectionCardContent } from "@/app/components/ui/section-card"
 import { secretsService } from "@/app/services/secrets-service"
 import { EmailDnsSetup, EmailInboundSettings } from "./EmailChannelSetupViews"
 import { isEmailChannelActive } from "./email-channel-utils"
@@ -15,15 +12,29 @@ import { ChannelSetupStepper } from "./ChannelSetupStepper"
 import { buildEmailSetupSteps } from "./channel-setup-steps"
 import { buildEmailDomainUpdate } from "./email-domain-update"
 import { ZAVU_INBOUND_MX_HOST, ZAVU_INBOUND_MX_PRIORITY } from "@/lib/zavu-email-dns"
+import { EmailDomainSelector } from "./EmailDomainSelector"
+import { EmailAddressSetup } from "./EmailAddressSetup"
+import { getEmailDomainOptions, type EmailDomainConnection } from "./email-domain-options"
+import type { SiteFormValues } from "./form-schema"
+
+type EmailConnection = NonNullable<SiteFormValues["channels"]["connections"]>[number]
+type EmailSetupChannel = Partial<Pick<EmailConnection, "name" | "zavu_sender_id" | "metadata">> & { id: string; status?: string }
+type EmailSetupUpdate = Pick<EmailConnection, "zavu_sender_id" | "metadata"> & { status?: string }
+
+function setupErrorMessage(error: unknown, fallback: string): string {
+  return error instanceof Error ? error.message : fallback
+}
 
 export function EmailChannelSetup({ 
   siteId, 
   channel, 
+  connections = [],
   onUpdated,
 }: { 
   siteId: string, 
-  channel: any, 
-  onUpdated: (payload: any) => void | Promise<void>
+  channel: EmailSetupChannel,
+  connections?: readonly EmailDomainConnection[],
+  onUpdated: (payload: EmailSetupUpdate) => void | Promise<void>
 }) {
   const metadata = channel.metadata || {}
   const domainStatus = metadata.domain_status || "not_started"
@@ -31,12 +42,14 @@ export function EmailChannelSetup({
   const hasSender = !!channel.zavu_sender_id
   const emailReceivingEnabled = !!metadata.emailReceivingEnabled
 
-  const [domain, setDomain] = useState("")
   const [isProcessing, setIsProcessing] = useState(false)
   const [copied, setCopied] = useState<string | null>(null)
 
   const [fromEmail, setFromEmail] = useState("noreply")
   const [fromName, setFromName] = useState("")
+  const canCreateSender = Boolean(fromName.trim()
+    && z.string().email().safeParse(`${fromEmail.trim()}@${metadata.domain}`).success)
+  const domains = getEmailDomainOptions(connections, channel.id)
 
   const [isCloudflareConnected, setIsCloudflareConnected] = useState(false)
   const [isSyncingCloudflare, setIsSyncingCloudflare] = useState(false)
@@ -75,6 +88,7 @@ export function EmailChannelSetup({
   })
   const setupSteps = buildEmailSetupSteps({
     domainVerified: domainStatus === "verified",
+    senderConfigured: hasSender,
     inboundEnabled: emailReceivingEnabled,
     channelActive: emailChannelActive,
   })
@@ -136,9 +150,9 @@ export function EmailChannelSetup({
 
       setIsMxVerified(true)
       toast.success("MX record rechecked in Zavu. You can now enable receiving.")
-    } catch (error: any) {
+    } catch (error) {
       setIsMxVerified(false)
-      toast.error(error.message || "Failed to verify MX record")
+      toast.error(setupErrorMessage(error, "Failed to verify MX record"))
     } finally {
       setIsVerifyingMx(false)
     }
@@ -163,43 +177,6 @@ export function EmailChannelSetup({
     setCopied(id)
     setTimeout(() => setCopied(null), 2000)
     toast.success("Copied to clipboard")
-  }
-
-  const handleAddDomain = async () => {
-    if (!domain) {
-      toast.error("Domain is required")
-      return
-    }
-
-    setIsProcessing(true)
-    try {
-      const response = await apiClient.post("/api/integrations/zavu/email-domains", {
-        domain,
-        siteId,
-        channelId: channel.id,
-        name: channel.name,
-      })
-      if (!response.success) throw new Error(response.error?.message || "Failed to add domain")
-
-      const newDomain = response.data?.domain
-      if (!newDomain?.id) throw new Error("Domain was added but the response was incomplete")
-
-      await onUpdated({
-        status: "pending",
-        metadata: {
-          ...metadata,
-          email_domain_id: newDomain.id,
-          domain: newDomain.domain,
-          domain_status: newDomain.status || "pending",
-          dns_records: newDomain.dnsRecords || [],
-        },
-      })
-      toast.success("Domain added. Please configure DNS records.")
-    } catch (error: any) {
-      toast.error(error.message || "An error occurred")
-    } finally {
-      setIsProcessing(false)
-    }
   }
 
   const handleSyncCloudflare = async () => {
@@ -234,7 +211,7 @@ export function EmailChannelSetup({
       } else {
         toast.error(data.error || "Failed to sync DNS records")
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error("Error syncing with Cloudflare:", error)
       toast.error("An error occurred while syncing with Cloudflare")
     } finally {
@@ -280,7 +257,7 @@ export function EmailChannelSetup({
       } else {
         toast.error(data.error || "Failed to sync MX record")
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error("Error syncing MX with Cloudflare:", error)
       toast.error("An error occurred while syncing with Cloudflare")
     } finally {
@@ -304,32 +281,33 @@ export function EmailChannelSetup({
 
       await onUpdated(buildEmailDomainUpdate(metadata, updatedDomain, emailChannelActive))
       toast.success("Verification check started")
-    } catch (error: any) {
-      toast.error(error.message || "An error occurred")
+    } catch (error) {
+      toast.error(setupErrorMessage(error, "An error occurred"))
     } finally {
       setIsProcessing(false)
     }
   }
 
   const handleCreateSender = async () => {
-    if (!fromEmail || !fromName) {
+    if (isProcessing || !canCreateSender) {
       toast.error("From address and name are required")
       return
     }
 
     setIsProcessing(true)
     try {
-      const fullEmail = `${fromEmail}@${metadata.domain}`
+      const fullEmail = `${fromEmail.trim()}@${metadata.domain}`
       const response = await apiClient.post("/api/integrations/zavu/channels/email", {
         siteId,
         channelId: channel.id,
         name: channel.name,
         emailAddress: fullEmail,
-        emailFromName: fromName,
+        emailFromName: fromName.trim(),
         emailDomainId: metadata.email_domain_id,
       })
 
       if (!response.success) throw new Error(response.error?.message || "Failed to create sender")
+      if (!response.data?.senderId) throw new Error("Zavu did not confirm the new email sender")
 
       const channelActive = isEmailChannelActive(response.data)
       await onUpdated({
@@ -338,48 +316,32 @@ export function EmailChannelSetup({
         metadata: {
           ...metadata,
           from_address: fullEmail,
-          from_name: fromName,
+          from_name: fromName.trim(),
           emailReceivingEnabled: false,
           emailChannelActive: channelActive,
         }
       })
       toast.success(channelActive ? "Email channel created and activated" : "Email sender created")
-    } catch (error: any) {
-      toast.error(error.message || "An error occurred")
+    } catch (error) {
+      toast.error(setupErrorMessage(error, "An error occurred"))
     } finally {
       setIsProcessing(false)
     }
   }
 
-  // Step 1: Add Domain
+  // Step 1: Choose an exact domain; the server determines whether it can be reused.
   if (!metadata.email_domain_id) {
     return (
       <>
         <ChannelSetupStepper steps={setupSteps} className="px-5 pb-5" />
-        <SectionCardContent className="space-y-4 pt-0">
-          <div className="space-y-2">
-            <h4 className="text-sm font-medium">1. Add Your Domain</h4>
-            <p className="text-xs text-muted-foreground">
-              Enter the domain you want to send emails from (e.g., yourcompany.com)
-            </p>
-          </div>
-          <div className="flex gap-2">
-            <Input 
-              placeholder="yourcompany.com" 
-              value={domain}
-              onChange={(e) => setDomain(e.target.value)}
-            />
-          </div>
-        </SectionCardContent>
-        <SectionCardFooter>
-          <Button 
-            type="button" 
-            onClick={handleAddDomain} 
-            disabled={isProcessing || !domain}
-          >
-            {isProcessing ? "Adding..." : "Add Domain"}
-          </Button>
-        </SectionCardFooter>
+        <EmailDomainSelector
+          key={`${siteId}:${channel.id}`}
+          siteId={siteId}
+          channelId={channel.id}
+          channelName={channel.name}
+          domains={domains}
+          onUpdated={(payload) => onUpdated({ ...payload, metadata: { ...metadata, ...payload.metadata } })}
+        />
       </>
     )
   }
@@ -410,49 +372,16 @@ export function EmailChannelSetup({
     return (
       <>
         <ChannelSetupStepper steps={setupSteps} className="px-5 pb-5" />
-        <SectionCardContent className="space-y-4 pt-0">
-          <div className="flex items-center justify-between">
-            <h4 className="text-sm font-medium">3. Configure Email Address</h4>
-            <span className="text-xs px-2 py-1 bg-green-100 text-green-800 rounded">
-              Domain Verified
-            </span>
-          </div>
-          <p className="text-xs text-muted-foreground">
-            Set up the email address your agent will use
-          </p>
-
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label className="text-xs">From Address</Label>
-              <div className="flex items-center gap-2">
-                <Input 
-                  value={fromEmail}
-                  onChange={(e) => setFromEmail(e.target.value)}
-                  className="text-right"
-                />
-                <span className="text-muted-foreground text-sm">@{metadata.domain}</span>
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label className="text-xs">From Name</Label>
-              <Input 
-                placeholder="e.g. Acme Support"
-                value={fromName}
-                onChange={(e) => setFromName(e.target.value)}
-              />
-            </div>
-          </div>
-        </SectionCardContent>
-
-        <SectionCardFooter>
-          <Button 
-            type="button" 
-            onClick={handleCreateSender} 
-            disabled={isProcessing || !fromEmail || !fromName}
-          >
-            {isProcessing ? "Creating..." : "Create Email Channel"}
-          </Button>
-        </SectionCardFooter>
+        <EmailAddressSetup
+          domain={metadata.domain}
+          fromEmail={fromEmail}
+          fromName={fromName}
+          isProcessing={isProcessing}
+          canCreate={canCreateSender}
+          onEmailChange={setFromEmail}
+          onNameChange={setFromName}
+          onCreate={handleCreateSender}
+        />
       </>
     )
   }

@@ -6,6 +6,7 @@ import type { FormTeamMember } from '@/app/components/settings/team-types'
 
 jest.mock('@/app/context/LocalizationContext', () => ({ useLocalization: () => ({ t: () => '' }) }))
 jest.mock('@/app/components/settings/use-team-members', () => ({ useTeamMembers: jest.fn() }))
+jest.mock('@/app/components/settings/TeamLocationAccess', () => ({ TeamLocationAccess: () => <div>Location access readiness</div> }))
 jest.mock('@/app/components/settings/TeamMemberCard', () => ({ TeamMemberCard: ({ member, index, onUpdate }: {
   member: FormTeamMember; index: number; onUpdate: (field: string, value: string) => void
 }) => <div data-testid="member-card" data-form-index={index}>

@@ -40,9 +40,6 @@ function OrderThumbMosaic({ items }: { items: DeviceOrderItem[] }) {
       <PromptImage
         src={resolveItemImage({ name: thumbs[0].name, image_url: thumbs[0].imageUrl }, "card")}
         alt=""
-        onError={(e) => {
-          e.currentTarget.style.opacity = "0"
-        }}
         className="absolute inset-0 h-full w-full object-cover object-center transition-transform duration-500 group-hover:scale-105"
       />
     )
@@ -56,9 +53,6 @@ function OrderThumbMosaic({ items }: { items: DeviceOrderItem[] }) {
             key={`${item.name}-${i}`}
             src={resolveItemImage({ name: item.name, image_url: item.imageUrl }, "card")}
             alt=""
-            onError={(e) => {
-              e.currentTarget.style.opacity = "0"
-            }}
             className="h-full w-full object-cover object-center"
           />
         ))}
@@ -72,25 +66,16 @@ function OrderThumbMosaic({ items }: { items: DeviceOrderItem[] }) {
         <PromptImage
           src={resolveItemImage({ name: thumbs[0].name, image_url: thumbs[0].imageUrl }, "card")}
           alt=""
-          onError={(e) => {
-            e.currentTarget.style.opacity = "0"
-          }}
           className="row-span-2 h-full w-full object-cover object-center"
         />
         <PromptImage
           src={resolveItemImage({ name: thumbs[1].name, image_url: thumbs[1].imageUrl }, "card")}
           alt=""
-          onError={(e) => {
-            e.currentTarget.style.opacity = "0"
-          }}
           className="h-full w-full object-cover object-center"
         />
         <PromptImage
           src={resolveItemImage({ name: thumbs[2].name, image_url: thumbs[2].imageUrl }, "card")}
           alt=""
-          onError={(e) => {
-            e.currentTarget.style.opacity = "0"
-          }}
           className="h-full w-full object-cover object-center"
         />
       </div>
@@ -104,9 +89,6 @@ function OrderThumbMosaic({ items }: { items: DeviceOrderItem[] }) {
           key={`${item.name}-${i}`}
           src={resolveItemImage({ name: item.name, image_url: item.imageUrl }, "card")}
           alt=""
-          onError={(e) => {
-            e.currentTarget.style.opacity = "0"
-          }}
           className="h-full w-full object-cover object-center"
         />
       ))}

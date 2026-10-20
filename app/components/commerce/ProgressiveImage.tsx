@@ -28,9 +28,12 @@ export const ProgressiveImage = React.memo(function ProgressiveImage({
   className = "",
   loading = "lazy",
   fetchPriority = "auto",
+  onLoad,
+  onError,
   ...props
 }: ProgressiveImageProps) {
   const [loadedSrc, setLoadedSrc] = useState<string | null>(null)
+  const [failedSrc, setFailedSrc] = useState<string | null>(null)
   const inherited = usePromptImageDelivery()
   const delivery = override || inherited
 
@@ -43,9 +46,9 @@ export const ProgressiveImage = React.memo(function ProgressiveImage({
   const cardUrl = normalizedDirect || (item ? resolveItemImage(item, "card", delivery) : src)
   const heroUrl = normalizedDirect || (item ? resolveItemImage(item, "hero", delivery) : src)
 
-  const isLoaded = loadedSrc === src
+  const isVisible = loadedSrc === src || failedSrc === src
 
-  if (!src) return null
+  if (!src) return <PromptImage {...props} delivery={delivery} alt={alt} className={className} />
 
   const srcSet = (!directUrl && item) 
     ? `${thumbUrl} 128w, ${cardUrl} 400w, ${heroUrl} 800w`
@@ -58,7 +61,7 @@ export const ProgressiveImage = React.memo(function ProgressiveImage({
         delivery={delivery}
         src={thumbUrl}
         alt={alt}
-        className={`${className} absolute inset-0 w-full h-full filter blur-xl scale-105`}
+        className={`${className} absolute inset-0 w-full h-full filter blur-xl scale-105 data-[image-fallback=true]:blur-none data-[image-fallback=true]:scale-100`}
         aria-hidden="true"
         {...props}
       />
@@ -73,11 +76,15 @@ export const ProgressiveImage = React.memo(function ProgressiveImage({
         loading={loading}
         decoding="async"
         fetchPriority={fetchPriority}
-        onLoad={() => setLoadedSrc(src)}
-        onError={(e) => {
-          e.currentTarget.style.opacity = '0'
+        onLoad={(event) => {
+          setLoadedSrc(src)
+          onLoad?.(event)
         }}
-        className={`${className} absolute inset-0 w-full h-full transition-opacity duration-700 ease-out ${isLoaded ? "opacity-100" : "opacity-0"}`}
+        onError={(event) => {
+          setFailedSrc(src)
+          onError?.(event)
+        }}
+        className={`${className} absolute inset-0 w-full h-full transition-opacity duration-700 ease-out data-[image-fallback=true]:opacity-100 ${isVisible ? "opacity-100" : "opacity-0"}`}
         {...props}
       />
     </>

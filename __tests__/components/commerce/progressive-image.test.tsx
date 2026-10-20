@@ -17,7 +17,7 @@ it('fades in only the currently loaded source when the item changes', () => {
   fireEvent.load(image)
   expect(image.className).toContain('opacity-100')
   rerender(<ProgressiveImage directUrl="https://cdn.test/b.png" alt="Photo" />)
-  expect(image.className).toContain('opacity-0')
+  expect(screen.getAllByAltText('Photo')[1].className).toContain('opacity-0')
 })
 
 it('keeps native events, upload URLs and responsive descriptors intact in a public context', () => {
@@ -45,4 +45,38 @@ it('normalizes persisted responsive prompt candidates while preserving density d
   expect(screen.getByAltText('Responsive').getAttribute('srcset')).toBe(
     'https://app.makinari.com/api/images/prompt?prompt=Coffee&width=400&height=256&public=1 1.5x, https://app.makinari.com/api/images/prompt?prompt=Tea&width=800&height=512&public=1 2x',
   )
+})
+
+it('shows a sharp, visible placeholder when both progressive layers fail', () => {
+  const onError = jest.fn()
+  const onLoad = jest.fn()
+  render(<ProgressiveImage item={{ name: 'Coffee' }} alt="Coffee" onError={onError} onLoad={onLoad} />)
+  const [preview, image] = screen.getAllByAltText('Coffee')
+  fireEvent.error(preview)
+  fireEvent.error(image)
+  expect(preview).toHaveAttribute('src', '/images/image-placeholder.svg')
+  expect(preview).toHaveClass('data-[image-fallback=true]:blur-none', 'data-[image-fallback=true]:scale-100')
+  expect(image).toHaveAttribute('src', '/images/image-placeholder.svg')
+  expect(image).not.toHaveAttribute('srcset')
+  expect(image).toHaveClass('opacity-100')
+  expect(image.style.opacity).not.toBe('0')
+  fireEvent.load(image)
+  expect(onLoad).toHaveBeenCalledTimes(1)
+  expect(onError).toHaveBeenCalledTimes(1)
+})
+
+it('loads a new progressive source normally after a failed image', () => {
+  const { rerender } = render(<ProgressiveImage directUrl="/broken.jpg" alt="Photo" />)
+  fireEvent.error(screen.getAllByAltText('Photo')[1])
+  rerender(<ProgressiveImage directUrl="/new.jpg" alt="Photo" />)
+  const image = screen.getAllByAltText('Photo')[1]
+  expect(image).toHaveAttribute('src', '/new.jpg')
+  expect(image).toHaveClass('opacity-0')
+  fireEvent.load(image)
+  expect(image).toHaveClass('opacity-100')
+})
+
+it('renders a placeholder even when no progressive source is available', () => {
+  render(<ProgressiveImage alt="Missing" className="w-full h-full" />)
+  expect(screen.getByAltText('Missing')).toHaveAttribute('src', '/images/image-placeholder.svg')
 })

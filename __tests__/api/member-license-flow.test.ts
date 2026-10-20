@@ -1,7 +1,7 @@
 /** @jest-environment node */
 import { NextResponse } from 'next/server'
 import { GET as getLicense } from '@/app/api/site-members/[siteId]/license/route'
-import { POST as addMember } from '@/app/api/site-members/[siteId]/route'
+import { POST as addMember, PATCH as updateMember } from '@/app/api/site-members/[siteId]/route'
 import { POST as accept } from '@/app/api/team/accept-invitation/route'
 import { POST as send } from '@/app/api/team/invite-member/route'
 import { createServiceSupabase, createUserSupabase, getSiteMemberAccess, denyUnlessTeamManager } from '@/lib/auth/site-member-request'
@@ -51,6 +51,33 @@ function setup(options: { invitation?: Record<string, unknown> | null; current?:
 }
 
 beforeEach(() => jest.clearAllMocks())
+
+describe('legacy member endpoints before location migrations', () => {
+  it.each([addMember, updateMember])('rejects explicit restriction changes before any write or new RPC', async handler => {
+    const { admin, rpc } = setup()
+    const response = await handler(request({ memberId, email: 'new@example.test', role: 'collaborator', restricted_location_ids: [] }), context)
+    expect(response.status).toBe(409)
+    expect(await response.json()).toMatchObject({ code: 'LOCATION_ACCESS_NOT_READY' })
+    expect(admin.from).not.toHaveBeenCalled()
+    expect(rpc).not.toHaveBeenCalled()
+  })
+
+  it('updates ordinary fields without resolving any location RPC when exclusions are omitted', async () => {
+    const { rpc, mutation } = setup()
+    const response = await updateMember(request({ memberId, name: 'Updated member' }), context)
+    expect(response.status).toBe(200)
+    expect(mutation.single).toHaveBeenCalled()
+    expect(rpc).not.toHaveBeenCalled()
+  })
+
+  it('creates a member with ordinary licensing only when location fields are omitted', async () => {
+    const { rpc, membership } = setup({ invitation: null, current: 4 })
+    const response = await addMember(request({ email: 'new@example.test', role: 'collaborator' }), context)
+    expect(response.status).toBe(200)
+    expect(membership.insert).toHaveBeenCalled()
+    expect(rpc.mock.calls.every(([name]) => name === 'get_site_member_license')).toBe(true)
+  })
+})
 
 describe('authorized member license endpoint', () => {
   it('returns validated scoped usage and trusted upgrade permission', async () => {

@@ -287,15 +287,6 @@ export function VariantPicker({
                             src={imageUrl}
                             alt=""
                             className="absolute inset-0 h-full w-full object-cover object-center"
-                            onError={(e) => {
-                              const parentUrl =
-                                typeof fallbackImageUrl === "string" ? fallbackImageUrl.trim() : ""
-                              if (parentUrl && e.currentTarget.src !== parentUrl) {
-                                e.currentTarget.src = parentUrl
-                                return
-                              }
-                              e.currentTarget.style.opacity = "0"
-                            }}
                           />
                         ) : null}
                       </div>

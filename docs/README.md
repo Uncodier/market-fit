@@ -32,6 +32,7 @@ Use the guides below before relying on older implementation notes.
 - [Content Creator account-specific destinations](CONTENT_CREATOR_DESTINATIONS.md)
 - [Agent channel phone numbers](AGENT_CHANNEL_NUMBERS.md)
 - [Agent channel activation and billing capacity](AGENT_CHANNEL_ACTIVATION.md)
+- [Shared email-domain setup](EMAIL_DOMAIN_REUSE.md)
 - [Accounting integrity and rollout](ACCOUNTING.md)
 - [Financial due dates and subscription terms](FINANCIAL_DUE_DATES.md)
 - [POS inventory availability and backorder markers](POS_INVENTORY.md)
@@ -50,6 +51,7 @@ Use the guides below before relying on older implementation notes.
 - [Public visitor sessions and image delivery](PUBLIC_VISITOR_AND_IMAGE_DELIVERY.md)
 - [Embedded application and external tracker diagnostics](EMBEDDED_APPLICATION_DIAGNOSTICS.md)
 - [Security resource provenance and display order](SECURITY_RESOURCE_PROVENANCE.md)
+- [Location access foundations and activation gates](LOCATION_ACCESS_IMPLEMENTATION.md)
 - [Report sections and data contracts](REPORTS.md)
 - [Demo report data and isolation](DEMO_REPORTS.md)
 - [Report exports](REPORT_EXPORTS.md)
@@ -82,7 +84,7 @@ environment variables before changing production configuration.
 
 ## Product designs
 
-- [Team Settings location-scoped access](LOCATION_ACCESS_DESIGN.md) — proposed restricted-location model preserving existing access, module matrix, day-one schema, RLS, rollout, and open decisions; not implemented behavior.
+- [Team Settings location-scoped access](LOCATION_ACCESS_DESIGN.md) — target restricted-location model, module matrix, day-one schema, RLS, and open decisions; foundations are staged, cross-module ACL is not activated.
 - [Suppliers, procurement, tenders, and the unified account portal](/Users/prado/Desktop/Proyectos/Uncodie/Code/market-fit/docs/PROCUREMENT_AND_TENDERS_DESIGN.md) — planned model, screens, Marketplace-style global `/tenders`, UI/UX reuse references, and `/buyer` to `/home` migration; not implemented behavior.
 - [Procurement certifications and tender evidence](/Users/prado/Desktop/Proyectos/Uncodie/Code/market-fit/docs/PROCUREMENT_CERTIFICATIONS_DESIGN.md) — companion design for profile credentials, tender-specific requirements, private versioned evidence, and scoped review; not implemented behavior.
 

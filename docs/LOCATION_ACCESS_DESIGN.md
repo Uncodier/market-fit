@@ -1,8 +1,8 @@
 # Team Settings: Location-Scoped Access
 
-**Status:** proposed design; not implemented functionality. The user requested
-the restriction-list direction to preserve existing access; other recommendations
-and open decisions below still require confirmation.
+**Status:** target design; [staged foundations](LOCATION_ACCESS_IMPLEMENTATION.md)
+are implemented locally, but cross-module ACL and editing are not activated.
+The restriction-list direction preserves access; open decisions remain below.
 **Review date:** 2026-10-19. Findings below come from repository inspection, not a
 live database audit. Physical columns, policies, grants, and RPCs must be verified
 against the approved target before implementation.
@@ -452,8 +452,10 @@ for actual policy execution. Source-contract tests alone do not prove SQL/RLS
 behavior. E2E requires an explicitly selected disposable local/staging target;
 do not run mutating role journeys on production.
 
-Existing focused tests passed during exploration (permissions and inventory),
-but there are no implemented location-access tests yet. This documentation is
+Existing focused tests passed during exploration (permissions and inventory).
+Foundation-specific Jest and isolated PostgreSQL tests are documented in
+[the implementation guide](LOCATION_ACCESS_IMPLEMENTATION.md); they do not prove
+cross-module enforcement. This documentation is
 not a claim of end-to-end enforcement or a migration/deployment authorization.
 
 ## 11. Decisions to confirm before implementation

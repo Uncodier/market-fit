@@ -72,4 +72,17 @@ describe("EmailInboundSettings", () => {
 
     expect(screen.getByRole("button", { name: "Activate Email Channel" })).toBeInTheDocument()
   })
+
+  it("warns that MX routing applies to the exact domain, not a single address", () => {
+    render(<EmailInboundSettings {...baseProps} isMxConfigured={false} />)
+    expect(screen.getByText(/MX applies to every address at mail.example.com/)).toBeInTheDocument()
+    expect(screen.getByText(/other addresses keep their own settings/)).toBeInTheDocument()
+  })
+
+  it("allows send-only activation without requiring an inbound MX", () => {
+    render(<EmailInboundSettings {...baseProps} isMxConfigured={false}
+      isChannelActive={false} receivingEnabled={false} />)
+    expect(screen.getByRole("button", { name: "Activate Email Channel" })).toBeEnabled()
+    expect(screen.getByRole("switch")).toBeDisabled()
+  })
 })

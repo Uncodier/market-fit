@@ -2,6 +2,7 @@ import type { ChannelSetupStep } from "./ChannelSetupStepper"
 
 export function buildEmailSetupSteps(params: {
   domainVerified: boolean
+  senderConfigured: boolean
   inboundEnabled: boolean
   channelActive: boolean
 }): ChannelSetupStep[] {
@@ -11,10 +12,14 @@ export function buildEmailSetupSteps(params: {
       status: params.domainVerified ? "complete" : "current",
     },
     {
+      label: "Email Address",
+      status: params.senderConfigured ? "complete" : params.domainVerified ? "current" : "upcoming",
+    },
+    {
       label: "Inbound",
       status: params.inboundEnabled
         ? "complete"
-        : params.domainVerified
+        : params.domainVerified && params.senderConfigured
           ? "current"
           : "upcoming",
     },
@@ -22,7 +27,7 @@ export function buildEmailSetupSteps(params: {
       label: "Activation",
       status: params.channelActive
         ? "complete"
-        : params.inboundEnabled
+        : params.domainVerified && params.senderConfigured
           ? "current"
           : "upcoming",
     },
