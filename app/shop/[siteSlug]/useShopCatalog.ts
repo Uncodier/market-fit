@@ -130,6 +130,12 @@ export function useShopCatalog(
   const [resultKind, setResultKind] = useState<CatalogResultKind>("matched")
   const resultKindRef = useRef<CatalogResultKind>("matched")
   const [searchAttempt, setSearchAttempt] = useState(0)
+  const searchKey = JSON.stringify([siteId, searchQuery, searchAttempt])
+  const [settledSearchKey, setSettledSearchKey] = useState<string | undefined>(
+    searchQuery.trim() ? undefined : searchKey
+  )
+  // Hide previous results immediately, before the reset effect and debounce run.
+  const searchPending = settledSearchKey !== searchKey
   const previousSearchAttempt = useRef(searchAttempt)
   const searchId = useRef<string | undefined>(undefined)
   const [isLoadingMore, setIsLoadingMore] = useState(false)
@@ -319,10 +325,8 @@ export function useShopCatalog(
     if (skipSearchEffect.current) {
       skipSearchEffect.current = false
       prevSearch.current = searchQuery
-      return
-    }
-
-    if (prevSearch.current === searchQuery && prevSite.current === siteId && previousSearchAttempt.current === searchAttempt) return
+      if (!searchQuery.trim()) return
+    } else if (!searchQuery.trim() && prevSearch.current === searchQuery && prevSite.current === siteId && previousSearchAttempt.current === searchAttempt) return
     previousSearchAttempt.current = searchAttempt
     prevSearch.current = searchQuery
     prevSite.current = siteId
@@ -352,6 +356,7 @@ export function useShopCatalog(
       setIsLoadingMore(false)
       setIsJumping(false)
       setPendingScrollCategory(null)
+      setSettledSearchKey(searchKey)
       return
     }
 
@@ -362,6 +367,8 @@ export function useShopCatalog(
     setWindowEnd(0)
     windowEndRef.current = 0
     setIsLoading(true)
+    setIsLoadingMore(false)
+    setIsJumping(false)
     let cancelled = false
     const timer = setTimeout(async () => {
       setIsLoading(true)
@@ -394,6 +401,7 @@ export function useShopCatalog(
       } finally {
         if (!cancelled && gen === requestGen.current) {
           setIsLoading(false)
+          setSettledSearchKey(searchKey)
         }
       }
     }, 300)
@@ -402,14 +410,14 @@ export function useShopCatalog(
       cancelled = true
       clearTimeout(timer)
     }
-  }, [searchQuery, siteId, initialCatalog, initialCount, initialOffsets, searchAttempt])
+  }, [searchQuery, siteId, initialCatalog, initialCount, initialOffsets, searchAttempt, searchKey])
 
   return {
     catalogItems,
     totalCount,
     categoryOffsets,
-    isLoading,
-    searchError,
+    isLoading: isLoading || searchPending,
+    searchError: searchPending ? undefined : searchError,
     searchTruncated,
     resultKind,
     retrySearch: () => setSearchAttempt(attempt => attempt + 1),

@@ -29,7 +29,7 @@ beforeEach(() => {
   jest.clearAllMocks()
   Object.defineProperty(crypto, "randomUUID", { value: randomUUID, configurable: true })
   parse.mockResolvedValue(data())
-  preview.mockResolvedValue({ data: { existingSkus: [], missingCategories: [] } })
+  preview.mockResolvedValue({ data: { existingSkus: [], missingCategories: [], ambiguousCategories: [] } })
   write.mockImplementation(async (_site: string, rows: CatalogImportRow[]) => receipt(rows.length))
 })
 
@@ -185,17 +185,50 @@ it.each(["site change", "unmount", "parent close"])("ignores stale results and s
   if (kind === "site change") expect(screen.getByLabelText("Choose a file or drag it here")).toBeInTheDocument()
 })
 
-it("shows source validation errors before confirmation and keeps missing-category errors in final results", async () => {
+it("imports rows with missing categories while preserving unrelated source validation errors", async () => {
   parse.mockResolvedValue({ headers: ["sku", "name", "category"], rows: [{ sku: "A", name: "Valid", category: "" }, { sku: "B", name: "Missing category", category: "Absent" }, { sku: "C", name: "", category: "" }], rowNumbers: [2, 4, 7] })
-  preview.mockResolvedValue({ data: { existingSkus: ["A"], missingCategories: ["Absent"] } })
+  preview.mockResolvedValue({ data: { existingSkus: ["A"], missingCategories: ["Absent"], ambiguousCategories: [] } })
+  mount()
+  await reviewFile()
+  expect(screen.getByRole("button", { name: "Confirm import (2 valid rows)" })).toBeDisabled()
+  expect(screen.getByText(/Row 7:/)).toBeInTheDocument()
+  expect(screen.getByText("1 new categories will be created as needed for imported rows.")).toBeInTheDocument()
+  expect(screen.queryByText(/Row 4:/)).not.toBeInTheDocument()
+  expect(write).not.toHaveBeenCalled()
+  confirm()
+  await screen.findByText("Import complete")
+  expect(write.mock.calls[0][1]).toHaveLength(2)
+  expect(write.mock.calls[0][1][1]).toMatchObject({ rowNumber: 4, category: "Absent" })
+  expect(screen.getByText("2 created")).toBeInTheDocument()
+  expect(screen.getByRole("button", { name: "Download error CSV" })).toBeInTheDocument()
+})
+
+it("allows confirmation when every valid row needs a new category and groups equivalent names", async () => {
+  parse.mockResolvedValue({ headers: ["sku", "name", "category"], rows: [
+    { sku: "A", name: "One", category: "New Category" },
+    { sku: "B", name: "Two", category: "new  category" },
+  ], rowNumbers: [2, 3] })
+  preview.mockResolvedValue({ data: { existingSkus: [], missingCategories: ["New Category", "new  category"], ambiguousCategories: [] } })
+  mount()
+  await reviewFile()
+  expect(screen.getByText("1 new categories will be created as needed for imported rows.")).toBeInTheDocument()
+  confirm()
+  await screen.findByText("Import complete")
+  expect(write.mock.calls[0][1]).toHaveLength(2)
+})
+
+it("rejects only ambiguous category rows rather than missing category rows", async () => {
+  parse.mockResolvedValue({ headers: ["sku", "name", "category"], rows: [
+    { sku: "A", name: "New category", category: "New" },
+    { sku: "B", name: "Ambiguous", category: "Duplicate" },
+  ], rowNumbers: [2, 4] })
+  preview.mockResolvedValue({ data: { existingSkus: [], missingCategories: ["New"], ambiguousCategories: ["Duplicate"] } })
   mount()
   await reviewFile()
   expect(screen.getByRole("button", { name: "Confirm import (1 valid rows)" })).toBeDisabled()
-  expect(screen.getByText(/Row 7:/)).toBeInTheDocument()
-  expect(screen.getByText(/Row 4:/)).toHaveTextContent("Absent")
+  expect(screen.getByText(/Row 4:/)).toHaveTextContent("matches multiple active categories")
   confirm()
   await screen.findByText("Import complete")
-  expect(write.mock.calls[0][1]).toHaveLength(1)
-  expect(screen.getByText(/Row 4:/)).toHaveTextContent("Absent")
-  expect(screen.getByRole("button", { name: "Download error CSV" })).toBeInTheDocument()
+  expect(write.mock.calls[0][1]).toEqual([expect.objectContaining({ category: "New" })])
+  expect(screen.getByText(/Row 4:/)).toHaveTextContent("Duplicate")
 })

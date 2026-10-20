@@ -141,6 +141,9 @@ visible subset even while the API's underlying candidate snapshot remains stable
   Seller prompts and private operational metadata are not returned. Existing channel
   price, stock, variant and modifier enrichment remains in use for the page.
   Search errors are visible with retry, not displayed as empty success.
+  Shop and Marketplace show animated listing skeletons from the first render of a
+  new query, throughout the debounce and request. Shop replaces its result count
+  with a skeleton while pending; empty states appear only after completion.
   A changed search ID during infinite scrolling stops appending and requests a
   full search retry, rather than combining separate candidate windows.
 - **Marketplace:** shared candidates replace the all-catalog candidate scan only

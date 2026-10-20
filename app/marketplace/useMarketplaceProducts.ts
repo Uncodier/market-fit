@@ -88,6 +88,12 @@ export function useMarketplaceProducts(
   const [resultKind, setResultKind] = useState<CatalogResultKind>('matched')
   const [searchTruncated, setSearchTruncated] = useState(false)
   const [requestVersion, setRequestVersion] = useState(0)
+  const requestKey = JSON.stringify([nextKey, page, requestVersion, generation])
+  const [settledRequestKey, setSettledRequestKey] = useState<string | undefined>(
+    defaultFilters && page === 1 ? requestKey : undefined,
+  )
+  // A new query/page is pending even before the effect starts its debounce.
+  const requestPending = settledRequestKey !== requestKey
   const prevFilters = useRef(nextKey)
 
   useEffect(() => {
@@ -110,6 +116,7 @@ export function useMarketplaceProducts(
       setResultKind('matched')
       setSearchTruncated(false)
       setIsLoading(false)
+      setSettledRequestKey(requestKey)
       return
     }
 
@@ -173,7 +180,10 @@ export function useMarketplaceProducts(
           console.error('Failed to fetch marketplace products:', err)
         }
       } finally {
-        if (!cancelled) setIsLoading(false)
+        if (!cancelled) {
+          setIsLoading(false)
+          setSettledRequestKey(requestKey)
+        }
       }
     }, 300)
 
@@ -183,8 +193,10 @@ export function useMarketplaceProducts(
       controller.abort()
     }
   }, [page, searchQuery, selectedKind, selectedSubtype, showOnlyRecurring, sort, geoSearch,
-    nextKey, defaultFilters, initialItems, initialTotalPages, initialCount, initialRegions, listingSearch, requestVersion, generation, siteId])
+    nextKey, defaultFilters, initialItems, initialTotalPages, initialCount, initialRegions, listingSearch, requestVersion, generation, siteId, requestKey])
 
-  return { items, page, setPage, totalPages, isLoading, count, regions, error, resultKind, searchTruncated,
+  return { items, page, setPage, totalPages, isLoading: isLoading || requestPending,
+    count: requestPending ? 0 : count, regions: requestPending ? EMPTY_REGIONS : regions,
+    error: requestPending ? undefined : error, resultKind, searchTruncated,
     retry: () => setRequestVersion((version) => version + 1) }
 }

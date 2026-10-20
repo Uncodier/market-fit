@@ -49,7 +49,7 @@ export const CommerceProductGrid = React.memo(function CommerceProductGrid({
   const compactMobile = shouldUseCompactMobileListing(totalCount)
 
   return (
-    <div className={commerceProductGridClassName(compactMobile, maxCols)}>
+    <div className={commerceProductGridClassName(compactMobile, maxCols)} aria-busy={isLoading}>
       {isLoading ? (
         Array.from({ length: skeletonCount }).map((_, i) => (
           <CatalogListingCardSkeleton

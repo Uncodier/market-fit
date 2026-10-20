@@ -112,7 +112,7 @@ export const MarketplaceProductList = React.memo(function MarketplaceProductList
         </CommerceProductGrid>
       )}
 
-      {totalPages > 1 && (
+      {!isLoading && totalPages > 1 && (
         <div className="mt-12 flex justify-center border-t border-gray-200 dark:border-gray-800 pt-8">
           <Pagination currentPage={page} totalPages={totalPages} onPageChange={setPage} />
         </div>

@@ -63,7 +63,9 @@ export function ImportCatalogReview({ review, mode, onModeChange, acknowledged, 
         </Select>
         {mode === "update" && <p className="text-sm text-amber-700 dark:text-amber-400">Update is enabled. Supplied fields will overwrite existing product values; omitted optional fields will be preserved.</p>}
       </div>
-      {!!review.missingCategories.length && <p className="text-sm text-destructive">{review.missingCategories.length.toLocaleString()} missing categories. Rows referencing them will be rejected. Go back and unmap category, or create matching active categories before importing.</p>}
+      <p className="text-sm text-muted-foreground">Categories are matched by name, ignoring case and extra spaces. Missing categories are created as active categories when importing; archived categories are never reused or restored.</p>
+      {!!review.missingCategories.length && <p className="text-sm text-muted-foreground">{review.missingCategories.length.toLocaleString()} new categories will be created as needed for imported rows.</p>}
+      {!!review.ambiguousCategories.length && <p className="text-sm text-destructive">{review.ambiguousCategories.length.toLocaleString()} category names match multiple active categories. Rows referencing them will be rejected. Resolve the duplicate names or unmap category before importing.</p>}
       <div className="overflow-x-auto rounded-md border">
         <Table>
           <TableHeader><TableRow><TableHead>Row</TableHead><TableHead>SKU</TableHead><TableHead>Name</TableHead><TableHead>Price</TableHead><TableHead>Currency</TableHead><TableHead>Category</TableHead></TableRow></TableHeader>

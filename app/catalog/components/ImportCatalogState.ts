@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react"
 import { importCatalogBatch, previewCatalogImportBatch } from "../import-actions"
 import { inferCatalogImportMapping, normalizeCatalogImportRows, type CatalogImportMapping, type CatalogImportRow } from "../import-schema"
 import { parseCatalogImportFile, type ParsedCatalogFile } from "../import-file"
+import { catalogImportCategoryKey } from "../import-categories"
 import { createImportCatalogBatches, runImportCatalogSession, type ImportCatalogError, type ImportCatalogMode, type ImportCatalogSession } from "./ImportCatalogRunner"
 
 export type ImportCatalogStep = "upload" | "mapping" | "review" | "import"
@@ -12,6 +13,7 @@ export interface ImportCatalogReview {
   errors: ImportCatalogError[]
   existingSkus: string[]
   missingCategories: string[]
+  ambiguousCategories: string[]
 }
 
 export function useImportCatalogState(siteId: string, onSuccess: () => void) {
@@ -80,7 +82,8 @@ export function useImportCatalogState(siteId: string, onSuccess: () => void) {
       const errors = normalized.errors.map(row => ({ ...row, rowNumber: physical(row.rowNumber) }))
       const batches = createImportCatalogBatches(rows, siteId)
       const existingSkus = new Set<string>()
-      const missingCategories = new Set<string>()
+      const missingCategories = new Map<string, string>()
+      const ambiguousCategories = new Set<string>()
       let scanned = 0
       for (const batch of batches) {
         if (!isCurrent()) return
@@ -88,17 +91,18 @@ export function useImportCatalogState(siteId: string, onSuccess: () => void) {
         if (!isCurrent()) return
         if (result.error || !result.data) throw new Error(result.error || "The catalog preview could not be loaded.")
         result.data.existingSkus.forEach((sku: string) => existingSkus.add(sku))
-        result.data.missingCategories.forEach((category: string) => missingCategories.add(category))
+        result.data.missingCategories.forEach(category => missingCategories.set(catalogImportCategoryKey(category), category))
+        result.data.ambiguousCategories.forEach(category => ambiguousCategories.add(category))
         scanned += batch.rows.length
         setScanRows(scanned)
       }
       if (!isCurrent()) return
       rows.forEach(row => {
-        if (row.category && missingCategories.has(row.category)) {
-          errors.push({ rowNumber: row.rowNumber, message: `Category "${row.category}" must match exactly one active category. This row will be rejected.` })
+        if (row.category && ambiguousCategories.has(row.category)) {
+          errors.push({ rowNumber: row.rowNumber, message: `Category "${row.category}" matches multiple active categories. This row will be rejected.` })
         }
       })
-      setReview({ rows, errors, existingSkus: [...existingSkus], missingCategories: [...missingCategories] })
+      setReview({ rows, errors, existingSkus: [...existingSkus], missingCategories: [...missingCategories.values()], ambiguousCategories: [...ambiguousCategories] })
       setStep("review")
     } catch (cause) {
       if (isCurrent()) setError(cause instanceof Error ? cause.message : "The catalog preview could not be loaded.")
@@ -139,7 +143,7 @@ export function useImportCatalogState(siteId: string, onSuccess: () => void) {
   const confirm = () => {
     if (!review?.rows.length || session.current || running.current) return
     try {
-      const validRows = review.rows.filter(row => !row.category || !review.missingCategories.includes(row.category))
+      const validRows = review.rows.filter(row => !row.category || !review.ambiguousCategories.includes(row.category))
       if (!validRows.length) return
       session.current = {
         batches: createImportCatalogBatches(validRows, siteId), mode, nextBatch: 0, completedRows: 0,

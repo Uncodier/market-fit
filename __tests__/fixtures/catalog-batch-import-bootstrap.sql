@@ -106,6 +106,7 @@ INSERT INTO public.catalog_items(site_id, sku, kind, name, parent_id, status) VA
   ('00000000-0000-4000-8000-000000000001', 'SERVICE', 'service', 'Keep service', NULL, 'active'),
   ('00000000-0000-4000-8000-000000000001', 'VARIANT', 'product', 'Keep variant', '00000000-0000-4000-8000-000000000030', 'archived');
 \ir ../../supabase/migrations/20261019230000_catalog_batch_import.sql
+\ir ../../supabase/migrations/20261020010000_catalog_import_categories.sql
 -- Match deployed non-superuser definer owner instead of running as test superuser.
 ALTER TABLE public.catalog_import_batches OWNER TO postgres;
 DO $$ DECLARE f record; BEGIN

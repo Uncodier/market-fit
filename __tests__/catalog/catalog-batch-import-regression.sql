@@ -146,7 +146,8 @@ DO $$ DECLARE r jsonb; old_row jsonb; BEGIN
     FROM public.catalog_items WHERE sku='OLD'), 'explicit zero/fields with protected defaults preserved');
 END $$;
 
--- Row-level errors commit valid peers, never create categories or foreign links.
+-- Missing names create same-site active categories; ambiguous names reject only
+-- their row. Archived/foreign categories are never reused and case is ignored.
 DO $$ DECLARE r jsonb; BEGIN
   r := pg_temp.import(jsonb_build_array(
     pg_temp.row('NEW', 2, '{"defaultCurrency":"MXN","category":"Existing"}'),
@@ -157,14 +158,23 @@ DO $$ DECLARE r jsonb; BEGIN
     pg_temp.row('CASE-CATEGORY', 7, '{"category":"existing"}'),
     pg_temp.row('FOREIGN', 8)
   ));
-  PERFORM pg_temp.assert(r->>'created'='2' AND r->>'updated'='0' AND r->>'skipped'='0'
-    AND jsonb_array_length(r->'errors')=5 AND jsonb_array_length(r->'item_ids')=2, 'partial errors exact accounting');
-  PERFORM pg_temp.assert(r->'errors'->0->>'rowNumber'='3' AND r->'errors'->4->>'rowNumber'='7', 'physical error row numbers');
+  PERFORM pg_temp.assert(r->>'created'='6' AND r->>'updated'='0' AND r->>'skipped'='0'
+    AND jsonb_array_length(r->'errors')=1 AND jsonb_array_length(r->'item_ids')=6, 'partial errors exact accounting');
+  PERFORM pg_temp.assert(r->'errors'->0->>'rowNumber'='4', 'physical error row numbers');
   PERFORM pg_temp.assert((SELECT kind='product' AND currency='MXN' AND status='active'
     AND availability_status='available' AND is_purchasable AND NOT is_marketplace_listed AND NOT is_pos_available
     AND parent_id IS NULL AND category_id='00000000-0000-4000-8000-000000000020'
     FROM public.catalog_items WHERE sku='NEW'), 'safe new product defaults and chosen default currency');
-  PERFORM pg_temp.assert((SELECT count(*)=4 FROM public.catalog_categories), 'categories not created');
+  PERFORM pg_temp.assert((SELECT count(*)=7 FROM public.catalog_categories), 'only missing active categories created');
+  PERFORM pg_temp.assert((SELECT category_id='00000000-0000-4000-8000-000000000020'
+    FROM public.catalog_items WHERE sku='CASE-CATEGORY'), 'case-insensitive category reused');
+  PERFORM pg_temp.assert((SELECT c.site_id=i.site_id AND c.status='active'
+    AND c.id<>'00000000-0000-4000-8000-000000000024'
+    FROM public.catalog_items i JOIN public.catalog_categories c ON c.id=i.category_id
+    WHERE i.sku='ARCHIVED-CATEGORY'), 'archived category not reused');
+  PERFORM pg_temp.assert((SELECT c.site_id=i.site_id AND c.id<>'00000000-0000-4000-8000-000000000023'
+    FROM public.catalog_items i JOIN public.catalog_categories c ON c.id=i.category_id
+    WHERE i.sku='FOREIGN-CATEGORY'), 'foreign category not reused');
   PERFORM pg_temp.assert((SELECT count(*)=1 FROM public.catalog_items WHERE sku='FOREIGN'), 'foreign SKU identity not reused');
   r := pg_temp.import(jsonb_build_array(pg_temp.row('SERVICE', 2), pg_temp.row('VARIANT', 3)), 'update');
   PERFORM pg_temp.assert(jsonb_array_length(r->'errors')=2 AND r->>'updated'='0', 'specialized products protected');

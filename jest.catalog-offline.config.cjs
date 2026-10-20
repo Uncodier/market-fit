@@ -7,6 +7,7 @@ module.exports = {
     '^server-only$': '<rootDir>/__tests__/catalog/server-only-mock.cjs', '^.+\\.module\\.css$': '<rootDir>/__tests__/catalog/server-only-mock.cjs' },
   transform: { '^.+\\.[jt]sx?$': ['next/dist/build/swc/jest-transformer', {}] },
   testMatch: [
+    '<rootDir>/__tests__/commerce/storefront-search-loading.test.tsx',
     '<rootDir>/__tests__/catalog/search-adapter.test.ts',
     '<rootDir>/__tests__/catalog/search-price-hydration.test.ts',
     '<rootDir>/__tests__/catalog/search-pagination.test.tsx',

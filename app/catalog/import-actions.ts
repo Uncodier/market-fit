@@ -12,6 +12,10 @@ import { catalogImportBatchSchema, type CatalogImportError, type CatalogImportMo
 import { catalogImportInFilter, catalogImportLookupChunks } from "./import-lookups"
 
 const uuidSchema = z.string().uuid()
+const categoryPreviewSchema = z.object({
+  missingCategories: z.array(z.string()),
+  ambiguousCategories: z.array(z.string()),
+})
 const batchResultSchema = z.object({
   created: z.number().int().nonnegative(),
   updated: z.number().int().nonnegative(),
@@ -33,7 +37,7 @@ async function authorizeImport(siteId: string, mode: CatalogImportMode) {
 }
 
 export async function previewCatalogImportBatch(siteId: string, rows: CatalogImportRow[]): Promise<{
-  data?: { existingSkus: string[]; missingCategories: string[] }; error?: string,
+  data?: { existingSkus: string[]; missingCategories: string[]; ambiguousCategories: string[] }; error?: string,
 }> {
   const parsed = catalogImportBatchSchema.safeParse(rows)
   if (!uuidSchema.safeParse(siteId).success || !parsed.success) return { error: "Invalid import batch" }
@@ -48,15 +52,24 @@ export async function previewCatalogImportBatch(siteId: string, rows: CatalogImp
       if (result.error) return { error: "Unable to validate the catalog. Please try again." }
       result.data?.forEach((item: { sku: string }) => existingSkus.push(item.sku))
     }
-    const counts = new Map<string, number>()
-    for (const names of catalogImportLookupChunks(categories)) {
-      const result = await supabase.from("catalog_categories").select("name").eq("site_id", siteId).eq("status", "active").filter("name", "in", catalogImportInFilter(names))
-      if (result.error) return { error: "Unable to validate the catalog. Please try again." }
-      result.data?.forEach((category: { name: string }) => counts.set(category.name, (counts.get(category.name) ?? 0) + 1))
+    let categoryPreview = { missingCategories: [] as string[], ambiguousCategories: [] as string[] }
+    if (categories.length) {
+      // Use the database's normalization for preview and execution alike. Names
+      // are JSON arguments, never interpolated into PostgREST filter syntax.
+      const result = await supabase.rpc("preview_catalog_import_categories", { p_site_id: siteId, p_names: categories })
+      if (result.error) {
+        if (["PGRST202", "42883"].includes(result.error.code ?? "")) {
+          return { error: "Automatic category import is not installed yet. Apply the catalog import categories migration before importing." }
+        }
+        return { error: "Unable to validate the catalog. Please try again." }
+      }
+      const parsedPreview = categoryPreviewSchema.safeParse(result.data)
+      if (!parsedPreview.success) return { error: "Unable to validate the catalog. Please try again." }
+      categoryPreview = parsedPreview.data
     }
     return { data: {
       existingSkus,
-      missingCategories: categories.filter(name => counts.get(name) !== 1),
+      ...categoryPreview,
     } }
   } catch { return { error: "Unable to validate the catalog. Please try again." } }
 }

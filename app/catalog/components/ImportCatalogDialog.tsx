@@ -27,7 +27,7 @@ export function ImportCatalogDialog(props: ImportCatalogDialogProps) {
 function ImportCatalogDialogContent({ open, onOpenChange, siteId, onSuccess }: ImportCatalogDialogProps) {
   const state = useImportCatalogState(siteId, onSuccess)
   const [acknowledged, setAcknowledged] = useState(false)
-  const validRows = state.review?.rows.filter(row => !row.category || !state.review?.missingCategories.includes(row.category)).length ?? 0
+  const validRows = state.review?.rows.filter(row => !row.category || !state.review?.ambiguousCategories.includes(row.category)).length ?? 0
   const totalRows = state.session?.batches.reduce((total, batch) => total + batch.rows.length, 0) ?? 0
   const completedRows = state.session?.completedRows ?? 0
   const close = () => { if (!state.busy) onOpenChange(false) }

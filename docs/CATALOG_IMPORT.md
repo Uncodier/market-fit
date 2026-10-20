@@ -36,10 +36,15 @@ Detailed file requirements remain available in an expandable section.
   Accepted URLs are canonicalized (including international hostnames and escaped
   path spaces) before database validation. Control characters, backslashes, and
   invalid Unicode are rejected during review rather than failing an entire batch.
-- Category names must match exactly one existing, active category in the same
-  site. Create missing categories first, or leave the category column unmapped.
-  Quotes, commas, and backslashes in SKUs/category names are escaped as literal
-  PostgREST operands during preview; they do not change the lookup identity.
+- Categories are matched by name within the same site, ignoring case and leading,
+  trailing, or repeated ASCII whitespace. Accents and punctuation remain significant.
+  Missing categories are created as active categories only when their product row
+  is imported. Equivalent names in later rows/batches reuse that category. Archived
+  categories are never reused or restored; a new active category can share their name.
+  Multiple active matches are ambiguous: those rows are rejected until duplicate
+  category names are resolved or the category column is unmapped.
+  Quotes, commas, and backslashes in SKUs are escaped as literal PostgREST operands;
+  category lookups use bounded JSON RPC arguments, not name filter interpolation.
 - This flow imports products, not inventory quantities, variants, taxes, or
   modifier relationships. Those keep their existing dedicated workflows.
 
@@ -47,6 +52,9 @@ Detailed file requirements remain available in an expandable section.
 
 File parsing and column mapping do not write to the database. Review shows valid
 rows, validation errors, and existing SKUs from bounded preflight queries.
+Missing category names are informational, not row errors. Review creates nothing;
+category creation and product assignment commit together during execution. Skipped
+existing SKUs do not create unused categories, and failed rows roll back new categories.
 **Skip existing SKUs** is the default. **Update existing SKUs** is explicit and
 updates only supported fields present in each row. Blank optional cells preserve
 existing values. Publication, status, parent/variant relationships, inventory,
@@ -83,6 +91,15 @@ apply remote SQL automatically. The migration adds replay receipts and an
 explicitly authorized batch function; receipt writes cannot be forged by direct
 authenticated Data API requests. The existing per-site SKU unique index remains
 the final concurrent-insert safeguard.
+
+Automatic category creation and name matching additionally require
+`supabase/migrations/20261020010000_catalog_import_categories.sql` before deploying
+the updated importer. It adds a read-only category preview RPC, a normalized-name
+lookup index, and category name-write guards sharing the archival/import site gate.
+Existing categories are not renamed, merged, or deleted by the migration. A
+concurrent category write fails fast for retry rather than creating duplicate
+categories during an import. Existing permissions and replay receipts are retained;
+replaying a previously committed request still returns its original result.
 
 The migration also adds timestamp/display-order paging indexes and trigram
 indexes for substring name/SKU searches. It requires `pg_trgm` in the confirmed
