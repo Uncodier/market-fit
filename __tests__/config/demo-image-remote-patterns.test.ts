@@ -8,7 +8,7 @@ import { saasContext } from '@/lib/demo-data/saas/context'
 import { makeItem } from '@/lib/demo-data/factories'
 
 function isAllowed(src: string) {
-  return hasRemoteMatch([], nextConfig.images.remotePatterns, new URL(src))
+  return hasRemoteMatch([], nextConfig.images?.remotePatterns ?? [], new URL(src))
 }
 
 describe('demo image remote patterns', () => {
