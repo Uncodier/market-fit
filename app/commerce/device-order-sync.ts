@@ -10,6 +10,8 @@ type SnapshotCatalog = {
 export type DeviceOrderSnapshotRow = {
   id: string
   public_access_token: string
+  public_access_token_expires_at?: string | null
+  public_access_token_revoked_at?: string | null
   order_number?: string | null
   status?: string | null
   total?: number | null

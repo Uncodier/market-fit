@@ -1,6 +1,8 @@
 import "server-only"
 
 import { createClient } from "@/lib/supabase/server"
+import { getCurrentUserSiteRole } from "@/lib/auth/api-site-access"
+import { readLocationRestrictionState } from "@/lib/permissions/location-boundary"
 import { hashRedisKeyPart } from "@/lib/redis/control-plane"
 import {
   readCacheEpoch,
@@ -13,7 +15,7 @@ export async function readCachedOrderLines(
   load: () => Promise<OrderLinesResult>,
 ): Promise<OrderLinesResult> {
   try {
-    const supabase = await createClient()
+    const supabase = await createClient(true)
     const {
       data: { user },
       error: authError,
@@ -22,12 +24,22 @@ export async function readCachedOrderLines(
       return { data: [], count: 0, error: "Not authenticated" }
     }
 
+    if (!await getCurrentUserSiteRole(supabase, params.siteId)) {
+      return { data: [], count: 0, error: "Forbidden" }
+    }
+    const restricted = await readLocationRestrictionState(supabase, params.siteId)
+    if (restricted === null) {
+      return { data: [], count: 0, error: "Location authorization could not be verified" }
+    }
+    // Never serve an unrestricted cached projection after a permission edit.
+    if (restricted) return load()
+
     const epoch = await readCacheEpoch("order-data", params.siteId)
     const cacheIdentity = await hashRedisKeyPart(
       JSON.stringify({
+        ...params,
         epoch,
         userId: user.id,
-        ...params,
         q: params.q?.trim() || "",
       }),
     )

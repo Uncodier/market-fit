@@ -30,7 +30,7 @@ beforeEach(() => {
   delete process.env.ANALYTICS_MAX_RANGE_DAYS
   userClient.mockResolvedValue({
     auth: { getUser: jest.fn(async () => ({ data: { user: { id: "trusted-user" } }, error: null })) },
-    rpc: jest.fn(async () => ({ data: "owner", error: null })),
+    rpc: jest.fn(async (name: string) => ({ data: name === 'current_user_site_role' ? 'owner' : false, error: null })),
   })
   service.mockResolvedValue(trafficDatabase().client)
 })

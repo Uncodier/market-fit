@@ -68,7 +68,7 @@ export function usePosCatalog(siteId: string | undefined) {
 
   useEffect(() => {
     activeSiteId.current = siteId;
-    queueMicrotask(() => void reload());
+    queueMicrotask(() => { void reload().catch(() => undefined); });
     return () => {
       activeSiteId.current = undefined;
       reloadSequence.current += 1;
@@ -86,7 +86,7 @@ export function usePosCatalog(siteId: string | undefined) {
       const sig = `${status.lastPulledAt ?? ""}:${status.lastOrdersPulledAt ?? ""}:${status.pendingCount}:${status.failedCount}`;
       if (sig === lastSig) return;
       lastSig = sig;
-      void reload();
+      void reload().catch(() => undefined);
     }, siteId);
   }, [siteId, reload]);
 

@@ -7,6 +7,8 @@ export type QuoteCheckoutLine = {
 export type QuotationForCheckout = {
   id: string
   site_id: string
+  /** Canonical operating scope, distinct from fulfillment origin. Absent before rollout. */
+  location_id?: string | null
   status: string
   valid_until?: string | null
   buyer_user_id?: string | null

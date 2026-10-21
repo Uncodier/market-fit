@@ -6,7 +6,10 @@ import { processCheckoutLines } from "@/app/commerce/checkout-lines"
 import { persistCheckoutRecords } from "@/app/commerce/checkout-records"
 
 jest.mock("@/lib/supabase/server", () => ({
-  createClient: jest.fn().mockResolvedValue({ auth: { getUser: async () => ({ data: { user: { id: "cashier" } } }) } }),
+  createClient: jest.fn().mockResolvedValue({
+    auth: { getUser: async () => ({ data: { user: { id: "cashier" } } }) },
+    rpc: async (name: string) => ({ data: name === 'current_user_site_role' ? 'collaborator' : false, error: null }),
+  }),
   createServiceClient: jest.fn().mockResolvedValue({}),
 }))
 jest.mock("@/app/pos/actions/idempotency", () => ({ findPosClientMutation: jest.fn() }))

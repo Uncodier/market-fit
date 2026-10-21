@@ -51,7 +51,7 @@ describe("active experiment analytics authorization", () => {
       then: (resolve: (value: { data: { id: string; status: string }[]; error: null }) => unknown) =>
         Promise.resolve({ data: [{ id: "experiment-1", status: "active" }], error: null }).then(resolve),
     }
-    jest.mocked(createServiceApiClient).mockReturnValue({ from: jest.fn(() => query) })
+    jest.mocked(createServiceApiClient).mockReturnValue({ from: jest.fn(() => query) } as unknown as ReturnType<typeof createServiceApiClient>)
     jest.mocked(findOrCreateKpi).mockResolvedValue({ kpi: null, created: false })
     const response = await GET(request("&userId=forged-user"))
     expect(response.status).toBe(200)

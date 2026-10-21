@@ -9,6 +9,7 @@ import {
   setPermissionStore,
 } from "@/lib/permissions/capabilities"
 import type { PermissionCommand, SiteCapabilities } from "@/lib/permissions/types"
+import { useLocationPermissionRevision } from '@/app/hooks/use-location-permission-revision'
 
 type PermissionContextValue = {
   siteId: string | null
@@ -35,12 +36,13 @@ async function fetchCapabilities(siteId: string): Promise<SiteCapabilities | nul
 export function PermissionProvider({ children }: { children: ReactNode }) {
   const site = useOptionalSite()
   const siteId = site?.currentSite?.id ?? null
-  const [capabilities, setCapabilities] = useState<SiteCapabilities | null>(null)
+  useLocationPermissionRevision(siteId)
+  const [loaded, setLoaded] = useState<{ siteId: string; capabilities: SiteCapabilities | null } | null>(null)
+  const capabilities = loaded?.siteId === siteId ? loaded.capabilities : null
 
   useEffect(() => {
     let cancelled = false
     setPermissionStore({ siteId, capabilities: null, loaded: false })
-    setCapabilities(null)
 
     if (!siteId) {
       setPermissionStore({ siteId: null, capabilities: null, loaded: true })
@@ -49,7 +51,7 @@ export function PermissionProvider({ children }: { children: ReactNode }) {
 
     fetchCapabilities(siteId).then((next) => {
       if (cancelled) return
-      setCapabilities(next)
+      setLoaded({ siteId, capabilities: next })
       setPermissionStore({ siteId, capabilities: next, loaded: true })
     })
 

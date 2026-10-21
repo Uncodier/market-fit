@@ -98,7 +98,7 @@ function client({
       data: { user: authenticated ? { id: userId } : null },
       error: authError ? { message: "private auth details" } : null,
     })) },
-    rpc: jest.fn(async () => ({ data: role, error: roleError ? { message: "private role details" } : null })),
+    rpc: jest.fn(async (name: string) => ({ data: name === "current_user_site_role" ? role : false, error: roleError ? { message: "private role details" } : null })),
     from: jest.fn((table: string) => {
       const query = {
         select: (value: string) => { select(table, value); return query; },
@@ -298,7 +298,7 @@ describe("listPosOpenOrders snapshots", () => {
     expect(await listPosOpenOrders(SITE_ID)).toEqual({ data });
     expectSession(data[0]);
     expect(supabase.auth.getUser).toHaveBeenCalledTimes(1);
-    expect(supabase.rpc).toHaveBeenCalledTimes(1);
+    expect(supabase.rpc).toHaveBeenCalledTimes(2);
     expect(supabase.from).not.toHaveBeenCalled();
   });
 

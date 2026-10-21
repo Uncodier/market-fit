@@ -36,10 +36,18 @@ beforeEach(() => {
   jest.mocked(createClient).mockResolvedValue({ auth: { getUser, getSession }, rpc } as never)
   getUser.mockResolvedValue({ data: { user: { id: userId } }, error: null })
   getSession.mockResolvedValue({ data: { session: { access_token: "verified-token", user: { id: userId } } }, error: null })
-  rpc.mockImplementation(async (name: string) => ({ data: name === "current_user_site_role" ? "marketing" : true, error: null }))
+  rpc.mockImplementation(async (name: string) => ({ data: name === "current_user_has_site_location_restrictions" ? false : name === "current_user_site_role" ? "marketing" : true, error: null }))
   jest.mocked(fetch).mockReset().mockImplementation(async () => imageResponse())
 })
 afterAll(() => { process.env = env })
+
+it.each([true, null, "false"])("denies image generation with location state %p before paid external fetches", async state => {
+  rpc.mockImplementation(async name => ({ data: name === "current_user_site_role" ? "collaborator"
+    : name === "user_can" ? true : state, error: null }))
+  expect(await generatePromotionImage(params)).toEqual({ error: "Image generation is not permitted for this site." })
+  expect(getSession).not.toHaveBeenCalled()
+  expect(fetch).not.toHaveBeenCalled()
+})
 
 it("generates with verified site permission and token, then returns only a confirmed persistent cache URL", async () => {
   expect(await generatePromotionImage(params)).toEqual({ imageUrl: cacheUrl })

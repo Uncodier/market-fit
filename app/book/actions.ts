@@ -10,7 +10,7 @@ import { formatInTimeZone, fromZonedTime } from "date-fns-tz";
 export async function getProfileBySlug(
   slug: string,
 ): Promise<ProfileData | null> {
-  const supabase = await createServiceClient(true);
+  const supabase = await createServiceClient(true, { access: 'public' });
 
   // 1. Try to find by explicit calendar slug
   const { data, error } = await supabase
@@ -61,7 +61,7 @@ export async function getRRCalendarBySlug(
   slug: string,
   siteId?: string,
 ): Promise<{ calendar: RoundRobinCalendar; siteId: string } | null> {
-  const supabase = await createServiceClient(true);
+  const supabase = await createServiceClient(true, { access: 'public' });
   let query = supabase
     .from("settings")
     .select("site_id, calendars");
@@ -104,7 +104,7 @@ export async function bookRRMeeting(data: {
   metadata?: Record<string, string>;
   locale?: string;
 }) {
-  const supabase = await createServiceClient(true);
+  const supabase = await createServiceClient(true, { access: 'public' });
 
   // 1. Find least busy member for that guest-local day
   const timeZone = data.timezone || "America/Mexico_City";
@@ -175,7 +175,7 @@ export async function bookMeeting(data: {
   metadata?: Record<string, string>;
   locale?: string;
 }) {
-  const supabase = await createServiceClient(true);
+  const supabase = await createServiceClient(true, { access: 'public' });
 
   // 1. Find Site if default
   let siteId = data.siteId;

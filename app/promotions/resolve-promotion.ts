@@ -2,6 +2,7 @@ import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { assertPromotionChannelAccess } from "./promotion-channels";
 import { checkPromotionWeekday, checkPromotionRequiredItems } from "./promotion-conditions";
 import { computeBogoDiscount, lineUnitPrice } from "./bogo-discount";
+import type { SupabaseClient } from '@supabase/supabase-js';
 
 export type PromotionCartLine = {
   catalogItemId: string;
@@ -44,7 +45,8 @@ function normalizePromotionCode(code: string): string {
  * Does not mutate any database rows.
  */
 export async function resolvePromotionDiscount(
-  params: ResolvePromotionParams
+  params: ResolvePromotionParams,
+  authorizedClient?: SupabaseClient,
 ): Promise<{ data: ResolvePromotionResult } | { error: string }> {
   try {
     const {
@@ -65,9 +67,9 @@ export async function resolvePromotionDiscount(
     }
     if (!lines || lines.length === 0) return { error: "Order has no items" };
 
-    const supabase = forceServiceRole
+    const supabase = authorizedClient ?? (forceServiceRole
       ? await createServiceClient(true)
-      : await createClient();
+      : await createClient());
 
     const promoQuery = supabase
       .from("promotions")

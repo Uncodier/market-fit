@@ -109,7 +109,7 @@ export async function getQuotationByPublicToken(token: string) {
     return { error: "Invalid quote link" }
   }
 
-  const supabaseAdmin = await createServiceClient(true)
+  const supabaseAdmin = await createServiceClient(true, { access: 'public' })
   const { data, error } = await supabaseAdmin
     .from("quotations")
     .select(PUBLIC_QUOTE_SELECT)
@@ -248,7 +248,7 @@ export async function rejectQuotationByPublicToken(token: string) {
     return { error: "Invalid quote link" }
   }
 
-  const supabaseAdmin = await createServiceClient(true)
+  const supabaseAdmin = await createServiceClient(true, { access: 'public' })
   const { data: quote, error } = await supabaseAdmin
     .from("quotations")
     .select("id, status, valid_until, buyer_user_id, public_access_token, public_access_token_expires_at, public_access_token_revoked_at")

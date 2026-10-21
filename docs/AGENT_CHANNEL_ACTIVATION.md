@@ -47,6 +47,55 @@ must explicitly reduce add-ons or change plans through billing to change charges
 Existing paid entitlement writers and billing-change triggers continue to own
 payment state and automatic license suspension/restoration.
 
+### Legacy Foundry coverage and unchanged-tier recovery
+
+Trial licensing checks verified paid coverage, not just `billing.plan` and an
+`active` Stripe lifecycle status. A legacy Stripe-backed Foundry project without
+`paid_subscription_invoice_id` and its current paid period is effectively Toolbox;
+its established channels can therefore show **Inactive · plan limit** despite the
+stored Foundry tier. Foundry includes three agent channels independently of its
+six social accounts. Upgrading or buying extras is not the fix for missing proof.
+
+`20261021001000_reconcile_paid_coverage_licenses.sql` corrects the billing-change
+trigger so coverage-only recovery, coverage removal, subscription binding/status
+and billing status changes reconcile persisted members and channels under the
+existing site lock. It preserves manual disable, resource order and financial
+state, and skips usage-only writes and identical retries. It does not loosen
+payment verification or backfill customer coverage. Review and apply it only with
+explicit authorization of the database target.
+
+For an affected project, verify the current invoice using live Stripe access and
+inspect completed payments, settlement markers and historical credit grants before
+using [invoice recovery](STRIPE_INVOICE_RECOVERY.md). A legacy completed payment
+without a settlement marker may already have a separate renewal-recovery grant;
+do not replay settlement as a new purchase or invent a marker. The existing
+operator repair module requires a matching marker and grant, so unmatched legacy
+history needs separate authorized reconciliation without granting credits again.
+
+`scripts/repair-unmarked-legacy-coverage.cjs` supports the audited legacy shape:
+one completed zero-credit subscription payment, one matching
+`subscription_renewal_recovery` grant, no invoice settlement marker, and the exact
+same monthly credit window as freshly verified live Stripe service. It requires
+refund/dispute checks, preserves all balances and historical records, and creates
+neither a grant nor a synthetic settlement marker. Other shapes fail closed.
+
+Call `runUnmarkedRecovery` only after explicit operator authorization, with a
+server-owned Supabase client and evidence produced by the canonical live
+subscription/price/service-line verifiers. It defaults to preview; `apply: true`
+uses compare-and-set coverage filters, then separately reruns the protected
+settings trigger with a channels equality guard and verifies effective resources.
+It changes no plan, add-on quantity, credits, Stripe configuration or authorization
+rules. If interrupted, inspect persisted coverage and re-fetch Stripe before
+retrying. Identical completed recovery is safe; missing marker history continues
+to require this explicit recovery rather than normal invoice settlement replay.
+The structural billing-trigger correction remains a separate approved migration.
+
+Local PostgreSQL coverage (no remote database or Stripe calls):
+
+```sh
+npm test -- --runInBand __tests__/security/paid-coverage-license-reconciliation.test.ts __tests__/scripts/repair-unmarked-legacy-coverage.test.ts
+```
+
 ## Consumers and execution boundaries
 
 `lib/agent-channel-state.ts` supplies the shared UI predicate for billing counters,

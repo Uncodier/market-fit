@@ -1,72 +1,135 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { Button } from "@/app/components/ui/button"
-import { Badge } from "@/app/components/ui/badge"
-import { teamLocationAccessResponseSchema, type TeamLocationAccessResponse } from "@/lib/permissions/team-location-access-schema"
-import { LOCATION_ACCESS_ROLLOUT_MESSAGE } from "@/lib/permissions/location-access-rollout"
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react"
+import { useAuthContext } from "@/app/components/auth/auth-context"
+import {
+  teamLocationAccessResponseSchema, memberLocationReplacementResponseSchema, sameLocationIds,
+  type TeamLocationAccessResponse,
+} from "@/lib/permissions/team-location-access-schema"
 import type { FormTeamMember } from "./team-types"
 
-/** Read-only readiness panel. No restriction can be edited before security rollout is complete. */
-export function TeamLocationAccess({ siteId, members }: { siteId: string; members: FormTeamMember[] }) {
-  const [state, setState] = useState<{
-    siteId: string; data?: TeamLocationAccessResponse; failed?: boolean; schemaUnavailable?: boolean
-  } | null>(null)
+type SaveResult = { status: "saved" } | { status: "stale" } | { status: "error"; message: string; refreshRequired: boolean }
+interface LocationAccessContextValue {
+  siteId?: string
+  data?: TeamLocationAccessResponse
+  loading: boolean
+  error?: string
+  savingMemberId: string | null
+  refresh: () => void
+  save: (memberId: string, ids: string[]) => Promise<SaveResult>
+}
+const LocationAccessContext = createContext<LocationAccessContextValue | null>(null)
+export const useTeamLocationAccess = () => useContext(LocationAccessContext)
+
+/** One verified configuration per team, with no cross-account or cross-site cache. */
+export function TeamLocationAccess({ siteId, members, canManageTeam, children }: {
+  siteId?: string; members: FormTeamMember[]; canManageTeam: boolean; children: ReactNode
+}) {
+  const { user, isLoading } = useAuthContext()
+  const enabled = !!siteId && !!user && !isLoading && canManageTeam
+  const membershipVersion = JSON.stringify(members.filter(member => member.id).map(member =>
+    [member.id, member.originalRole, member.status, member.manually_disabled, member.license_suspended, member.is_primary_owner]))
+  // Remount drafts and abort all old work before another identity can use it.
+  return <LocationAccessProvider key={`${siteId}:${user?.id}:${enabled}:${membershipVersion}`}
+    siteId={siteId} enabled={enabled}>{children}</LocationAccessProvider>
+}
+
+function LocationAccessProvider({ siteId, enabled, children }: { siteId?: string; enabled: boolean; children: ReactNode }) {
+  const [state, setState] = useState<{ data?: TeamLocationAccessResponse; loading: boolean; error?: string }>({ loading: enabled })
   const [attempt, setAttempt] = useState(0)
-  const membershipVersion = JSON.stringify(members.map(member => [member.id, member.role, member.originalRole, member.status]))
+  const [savingMemberId, setSavingMemberId] = useState<string | null>(null)
+  const saving = useRef<AbortController | null>(null)
+  const mounted = useRef(true)
   useEffect(() => {
+    mounted.current = true
+    return () => { mounted.current = false; saving.current?.abort() }
+  }, [])
+  useEffect(() => {
+    if (!enabled || !siteId) return
     const controller = new AbortController()
-    setState(null)
+    let cancelled = false
+    const deadline = setTimeout(() => controller.abort(), 20_000)
     const load = async () => {
       try {
         const response = await fetch(`/api/site-members/${encodeURIComponent(siteId)}/location-restrictions`, {
           cache: "no-store", signal: controller.signal,
         })
         const body = await response.json()
-        if (response.status === 503 && body?.code === "LOCATION_ACCESS_SCHEMA_UNAVAILABLE") {
-          if (!controller.signal.aborted) setState({ siteId, schemaUnavailable: true })
-          return
-        }
         const parsed = teamLocationAccessResponseSchema.safeParse(body)
-        if (!response.ok || !parsed.success || parsed.data.site_id !== siteId) throw new Error("Unverified scope")
-        if (!controller.signal.aborted) setState({ siteId, data: parsed.data })
+        if (cancelled) return
+        if (controller.signal.aborted) throw new Error("Location access timed out")
+        if (response.ok && parsed.success && parsed.data.site_id.toLowerCase() === siteId.toLowerCase()) {
+          setState({ data: parsed.data, loading: false })
+        } else {
+          setState(previous => ({ ...previous, loading: false, error:
+            body?.code === "LOCATION_ACCESS_SCHEMA_UNAVAILABLE"
+              ? "Location access setup is pending. Existing permissions are unchanged."
+              : "Location access could not be verified. Refresh before editing." }))
+        }
       } catch {
-        if (!controller.signal.aborted) setState({ siteId, failed: true })
+        if (!cancelled) setState(previous => ({ ...previous, loading: false,
+          error: "Location access could not be verified. Refresh before editing." }))
+      } finally {
+        clearTimeout(deadline)
       }
     }
     void load()
-    return () => controller.abort()
-  }, [siteId, attempt, membershipVersion])
+    return () => { cancelled = true; clearTimeout(deadline); controller.abort() }
+  }, [siteId, enabled, attempt])
 
-  const current = state?.siteId === siteId ? state : null
-  const names = new Map(current?.data?.locations.map(location => [location.id, location]) || [])
-  return (
-    <section aria-label="Team location access" className="rounded-lg border border-border/70 bg-muted/20 p-4 space-y-3">
-      <div className="flex items-center justify-between gap-3">
-        <h3 className="text-sm font-medium">Restricted locations</h3>
-        <Badge variant="outline">Editing unavailable</Badge>
-      </div>
-      <p className="text-xs text-muted-foreground">{LOCATION_ACCESS_ROLLOUT_MESSAGE}</p>
-      <p className="text-xs text-muted-foreground">An empty restriction list preserves existing role, app, and assigned-data permissions. New locations are not restricted automatically.</p>
-      {!current && <p role="status" className="text-xs">Checking location access…</p>}
-      {current?.schemaUnavailable && <p role="status" className="text-xs">Location access database setup is pending or its schema is unavailable. Existing member permissions are unchanged.</p>}
-      {current?.failed && <p role="status" className="text-xs text-destructive">Location access could not be verified. No restriction list is available.</p>}
-      {current?.data && <ul className="space-y-2 text-xs">
-        {current.data.members.map(member => {
-          const displayed = members.find(candidate => candidate.id === member.id)
-          const isManager = member.is_location_exempt
-          return <li key={member.id} className="flex flex-wrap items-center gap-2">
-            <span className="font-medium">{displayed?.name || displayed?.email || "Team member"}</span>
-            {isManager ? <span className="text-muted-foreground">Owner/admin · location restrictions do not apply</span> :
-              member.restricted_location_ids.length === 0 ? <span className="text-muted-foreground">No additional location restrictions</span> :
-                member.restricted_location_ids.map(id => {
-                  const location = names.get(id)
-                  return <Badge key={id} variant="secondary">{location?.name || "Unresolved location"}{location?.is_active === false ? " · inactive" : location?.is_active === null ? " · status unknown" : ""}</Badge>
-                })}
-          </li>
-        })}
-      </ul>}
-      <Button type="button" variant="ghost" size="sm" onClick={() => setAttempt(value => value + 1)}>Refresh location access</Button>
-    </section>
-  )
+  const refresh = () => {
+    if (!enabled || saving.current) return
+    setState(previous => ({ ...previous, loading: true, error: undefined }))
+    setAttempt(value => value + 1)
+  }
+  const save = async (memberId: string, ids: string[]): Promise<SaveResult> => {
+    if (!mounted.current) return { status: "stale" }
+    if (!enabled || !siteId || state.loading || state.error || !state.data?.editing_enabled || saving.current) {
+      return { status: "error", message: "Refresh location access before editing.", refreshRequired: true }
+    }
+    const savedMember = state.data.members.find(member => member.id.toLowerCase() === memberId.toLowerCase())
+    if (!savedMember) return { status: 'error', message: 'Refresh location access before editing.', refreshRequired: true }
+    const controller = new AbortController()
+    const deadline = setTimeout(() => controller.abort(), 20_000)
+    saving.current = controller
+    setSavingMemberId(memberId)
+    const unconfirmed: SaveResult = { status: "error", refreshRequired: true,
+      message: "The save could not be confirmed. Refresh location access before trying again." }
+    try {
+      const response = await fetch(`/api/site-members/${encodeURIComponent(siteId)}/location-restrictions`, {
+        method: "PATCH", headers: { "Content-Type": "application/json" }, cache: "no-store", signal: controller.signal,
+        body: JSON.stringify({ memberId, restricted_location_ids: ids,
+          expected_restricted_location_ids: savedMember.restricted_location_ids }),
+      })
+      const body = await response.json()
+      if (!mounted.current) return { status: "stale" }
+      if (controller.signal.aborted) return unconfirmed
+      if (!response.ok) {
+        const code = body?.code
+        if (code === "LOCATION_RESTRICTIONS_BUSY") return { status: "error", refreshRequired: false, message: "Membership is being updated. Try again shortly." }
+        if (code === 'LOCATION_RESTRICTIONS_CHANGED') return { status: 'error', refreshRequired: true, message: 'Location restrictions changed in another session. Refresh before saving.' }
+        if (code === "LOCATION_ACCESS_NOT_READY") return { status: "error", refreshRequired: true, message: "Location restriction editing is not available yet." }
+        if (response.status === 401 || response.status === 403) return { status: "error", refreshRequired: true, message: "You no longer have permission to edit location restrictions." }
+        if (code === "LOCATION_RESTRICTIONS_REJECTED") return { status: "error", refreshRequired: true, message: "The member or locations changed. Refresh to review your selection." }
+        return unconfirmed
+      }
+      const parsed = memberLocationReplacementResponseSchema.safeParse(body)
+      if (!parsed.success || parsed.data.site_id.toLowerCase() !== siteId.toLowerCase() ||
+        parsed.data.site_member_id.toLowerCase() !== memberId.toLowerCase() ||
+        !sameLocationIds(parsed.data.restricted_location_ids, ids)) return unconfirmed
+      setState(previous => ({ ...previous, data: previous.data && { ...previous.data,
+        members: previous.data.members.map(member => member.id.toLowerCase() === memberId.toLowerCase()
+          ? { ...member, restricted_location_ids: parsed.data.restricted_location_ids } : member),
+      } }))
+      return { status: "saved" }
+    } catch {
+      return !mounted.current ? { status: "stale" } : unconfirmed
+    } finally {
+      clearTimeout(deadline)
+      if (mounted.current) { saving.current = null; setSavingMemberId(null) }
+    }
+  }
+  return <LocationAccessContext.Provider value={{ siteId, ...state, savingMemberId, refresh, save }}>
+    {children}
+  </LocationAccessContext.Provider>
 }

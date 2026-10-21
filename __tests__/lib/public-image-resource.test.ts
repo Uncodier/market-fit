@@ -94,7 +94,7 @@ it('does not acquire the resource service client while public site authorization
   expect(from).not.toHaveBeenCalled()
   authorize(site)
   expect(await pending).toMatchObject({ site_id: siteId, width: 1024, height: 1024 })
-  expect(createServiceClient).toHaveBeenCalledWith(true)
+  expect(createServiceClient).toHaveBeenCalledWith(true, { access: 'public' })
   expect(jest.mocked(getShopSite).mock.invocationCallOrder[0])
     .toBeLessThan(jest.mocked(createServiceClient).mock.invocationCallOrder[0])
 })
@@ -190,7 +190,7 @@ it('allows a legitimately unlisted add-on only through tenant-scoped membership 
     { table: 'catalog_item_modifier_groups', filters: [['site_id', siteId], ['catalog_item_id', parentId]] },
   ])
   expect(queries.slice(2).map(query => query.fields)).toEqual(['modifier_group_id', 'modifier_group_id'])
-  expect(createServiceClient).toHaveBeenCalledWith(true)
+  expect(createServiceClient).toHaveBeenCalledWith(true, { access: 'public' })
   expect(jest.mocked(getShopSite).mock.invocationCallOrder[0])
     .toBeLessThan(jest.mocked(createServiceClient).mock.invocationCallOrder[0])
 })

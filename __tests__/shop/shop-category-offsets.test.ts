@@ -89,7 +89,7 @@ describe("getShopCategoryOffsets", () => {
       { name: "Other", offset: 0, count: 0 },
       { name: "Coffee", offset: 0, count: 0 },
     ])
-    expect(createServiceClient).toHaveBeenCalledWith(true)
+    expect(createServiceClient).toHaveBeenCalledWith(true, { access: 'public' })
     expect(rpc).toHaveBeenCalledWith("shop_category_offsets", { p_site_id: "site-a" })
     expect(from).not.toHaveBeenCalled()
   })

@@ -5,6 +5,7 @@ import { createServerClient, type CookieOptions } from "@supabase/ssr"
 import { cookies } from "next/headers"
 import { isAdminScreenRole } from "@/lib/auth/screen-access"
 import { z } from "zod"
+import { locationGuardedServiceFetch } from "@/lib/supabase/service-location-guard"
 
 export async function createUserSupabase() {
   const cookieStore = await cookies()
@@ -36,6 +37,7 @@ export function createServiceSupabase() {
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
     {
       auth: { persistSession: false, autoRefreshToken: false },
+      global: { fetch: locationGuardedServiceFetch() },
     }
   )
 }

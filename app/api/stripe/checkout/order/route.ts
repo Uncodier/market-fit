@@ -37,7 +37,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: checkoutUrls.error }, { status: 400 })
     }
 
-    const supabase = await createServiceClient(true)
+    const supabase = await createServiceClient(true, { access: 'public' })
     
     // 1. Fetch order details (include catalog image for Stripe Checkout summary)
     const { data: order, error: orderError } = await supabase

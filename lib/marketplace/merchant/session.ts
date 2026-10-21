@@ -24,7 +24,7 @@ export async function beginMerchantAuthorization(input: unknown, actorId: string
     provider: value.provider, environment: value.environment, country: value.country, ...credentials,
     redirect_uri: redirectUri, webhook_url: new URL(`/api/marketplace/webhooks/${value.provider}`, redirectUri).href,
   }
-  const database = await createServiceClient(true)
+  const database = await createServiceClient(true, { access: 'system' })
   const saved = await database.rpc("begin_marketplace_oauth", {
     p_context: { site_id: value.siteId, provider: value.provider, environment: value.environment,
       country: value.country, credential_mode: value.credential_mode },
@@ -37,7 +37,7 @@ export async function beginMerchantAuthorization(input: unknown, actorId: string
 }
 
 export async function claimMerchantAuthorization(state: string, provider: string, actorId: string) {
-  const database = await createServiceClient(true)
+  const database = await createServiceClient(true, { access: 'system' })
   const { data, error } = await database.rpc("claim_marketplace_oauth", {
     p_state_hash: stateHash(state), p_provider: provider, p_actor_user_id: actorId,
   })
@@ -46,7 +46,7 @@ export async function claimMerchantAuthorization(state: string, provider: string
 }
 
 export async function failMerchantAuthorization(sessionId: string, actorId: string) {
-  const database = await createServiceClient(true)
+  const database = await createServiceClient(true, { access: 'system' })
   await database.rpc("fail_marketplace_oauth", { p_session_id: sessionId, p_actor_user_id: actorId })
 }
 
@@ -62,7 +62,7 @@ export async function completeMerchantAuthorization(
     provider: session.provider, environment: session.environment, country: session.country, ...credentials,
     redirect_uri: redirectUri, webhook_url: new URL(`/api/marketplace/webhooks/${session.provider}`, redirectUri).href,
   }
-  const database = await createServiceClient(true)
+  const database = await createServiceClient(true, { access: 'system' })
   try {
     const authorization = await exchangeAuthorization(app, code, context.verifier)
     const stores = await listMerchantStores(app, authorization.merchant_token)

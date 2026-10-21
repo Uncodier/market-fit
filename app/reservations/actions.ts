@@ -13,7 +13,7 @@ export async function getReservations(siteId: string) {
       .select(`
         *,
         catalog_item:catalog_items(id, name, description, kind, digital_subtype, parent_id, metadata, parent:parent_id(name)),
-        location:locations(id, name),
+        location:locations!reservations_location_id_fkey(id, name),
         lead:leads(id, name, email, phone)
       `)
       .eq("site_id", siteId)

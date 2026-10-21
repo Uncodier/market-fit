@@ -37,13 +37,22 @@ beforeEach(() => {
   process.env.SERVICE_API_KEY = "must-never-be-forwarded"
   getUser.mockResolvedValue({ data: { user: { id: userId } }, error: null })
   getSession.mockResolvedValue({ data: { session: { user: { id: userId }, access_token: "current-user-token" } }, error: null })
-  rpc.mockImplementation(async (name: string) => ({ data: name === "current_user_site_role" ? "collaborator" : true, error: null }))
+  rpc.mockImplementation(async (name: string) => ({ data: name === "current_user_has_site_location_restrictions" ? false : name === "current_user_site_role" ? "collaborator" : true, error: null }))
   jest.mocked(createClient).mockResolvedValue({ auth: { getUser, getSession }, rpc, from })
   settings([{ id: "account-one", accountName: "Account name", username: "username", isActive: true }])
   jest.mocked(fetch).mockReset().mockResolvedValue(Response.json({ success: true, post }))
 })
 
 afterAll(() => { process.env = environment })
+
+it.each([true, null, "false"])("denies private social projections with scope %p before forwarding a token", async state => {
+  rpc.mockImplementation(async name => ({ data: name === "current_user_site_role" ? "collaborator"
+    : name === "user_can" ? true : state, error: null }))
+  expect(await fetchOutstandPosts(siteId)).toMatchObject({ success: false, status: 403 })
+  expect(await publishOutstandPost(siteId, payload())).toMatchObject({ success: false, status: 403 })
+  expect(getSession).not.toHaveBeenCalled()
+  expect(fetch).not.toHaveBeenCalled()
+})
 
 it("authorizes publishing and forwards the matching bearer and canonical account ID only", async () => {
   const result = await publishOutstandPost(siteId, payload())
@@ -53,6 +62,7 @@ it("authorizes publishing and forwards the matching bearer and canonical account
   expect(rpc.mock.calls).toEqual([
     ["current_user_site_role", { p_site_id: siteId }],
     ["user_can", { p_site_id: siteId, p_command: "insert" }],
+    ["current_user_has_site_location_restrictions", { p_site_id: siteId }],
   ])
   expect(from).toHaveBeenCalledWith("settings")
   expect(select).toHaveBeenCalledWith("site_id, social_media")
@@ -66,7 +76,7 @@ it("authorizes publishing and forwards the matching bearer and canonical account
 })
 
 it("authorizes the exported fetch using select, not a write capability", async () => {
-  rpc.mockImplementation(async (name: string) => ({ data: name === "current_user_site_role" ? "marketing" : true, error: null }))
+  rpc.mockImplementation(async (name: string) => ({ data: name === "current_user_has_site_location_restrictions" ? false : name === "current_user_site_role" ? "marketing" : true, error: null }))
   jest.mocked(fetch).mockResolvedValueOnce(Response.json({ success: true, posts: [post] }))
   expect(await fetchOutstandPosts(siteId)).toEqual({ data: [post] })
   expect(rpc).toHaveBeenCalledWith("user_can", { p_site_id: siteId, p_command: "select" })
@@ -106,7 +116,7 @@ it.each([null, "", "unexpected-role", ["owner"]])("denies missing, archived or m
 })
 
 it.each([false, null, "true"]) ("requires explicit capability permission (%j)", async permission => {
-  rpc.mockImplementation(async (name: string) => ({ data: name === "current_user_site_role" ? "marketing" : permission, error: null }))
+  rpc.mockImplementation(async (name: string) => ({ data: name === "current_user_has_site_location_restrictions" ? false : name === "current_user_site_role" ? "marketing" : permission, error: null }))
   expect(await invoke(payload())).toMatchObject({ success: false, status: 403 })
   expect(await fetchOutstandPosts(siteId)).toMatchObject({ success: false, status: 403 })
   expect(fetch).not.toHaveBeenCalled()
@@ -114,7 +124,7 @@ it.each([false, null, "true"]) ("requires explicit capability permission (%j)", 
 
 it.each(["current_user_site_role", "user_can"]) ("fails closed on %s RPC errors", async failed => {
   rpc.mockImplementation(async (name: string) => ({
-    data: name === "current_user_site_role" ? "owner" : true,
+    data: name === "current_user_has_site_location_restrictions" ? false : name === "current_user_site_role" ? "owner" : true,
     error: name === failed ? { message: "private database failure" } : null,
   }))
   expect(await invoke(payload())).toMatchObject({ success: false, status: 403 })
@@ -214,7 +224,7 @@ it("fails closed on missing/foreign settings and database failures", async () =>
 it("rechecks authorization on every invocation, including concurrent requests", async () => {
   await Promise.all([invoke(payload()), invoke(payload())])
   expect(getUser).toHaveBeenCalledTimes(2)
-  expect(rpc).toHaveBeenCalledTimes(4)
+  expect(rpc).toHaveBeenCalledTimes(6)
   expect(fetch).toHaveBeenCalledTimes(2)
   rpc.mockResolvedValue({ data: null, error: null })
   expect(await invoke(payload())).toMatchObject({ success: false, status: 403 })

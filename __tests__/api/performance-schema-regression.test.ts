@@ -99,7 +99,7 @@ beforeEach(() => {
   jest.spyOn(console, "error").mockImplementation(() => {})
   ;(createClient as jest.Mock).mockResolvedValue({
     auth: { getUser: jest.fn(async () => ({ data: { user: { id: "member" } }, error: null })) },
-    rpc: jest.fn(async () => ({ data: "owner", error: null })),
+    rpc: jest.fn(async (name: string) => ({ data: name === 'current_user_site_role' ? 'owner' : false, error: null })),
   })
   // Exercise the real SDK's URL generation and all real outcome handlers.
   ;(createServiceClient as jest.Mock).mockResolvedValue(createSupabaseClient(

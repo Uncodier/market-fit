@@ -5,7 +5,7 @@ import { v5 as uuidv5 } from "uuid"
 import { z } from "zod"
 import { requireAccountingAccess } from "@/app/accounting/access"
 import { getSubscriptionInvoiceDueDate, isDateOnly } from "@/lib/finance/due-date"
-import { getSubscriptionBillingDate } from "./billing-period"
+import { getSubscriptionBillingDate, getSubscriptionInvoicePeriod } from "./billing-period"
 
 const inputSchema = z.object({
   siteId: z.string().uuid(),
@@ -34,7 +34,7 @@ export async function generateSubscriptionPeriodInvoice(input: z.input<typeof in
     if (authError || !user) return { error: "Authentication required" }
 
     const { data: subscription, error: readError } = await supabase.from("subscriptions")
-      .select("id, status, amount, lead_id, buyer_user_id, next_billing_date, due_date, catalog_item:catalog_items(name, kind, currency)")
+      .select("*, catalog_item:catalog_items(name, kind, currency)")
       .eq("site_id", siteId).eq("id", subscriptionId).maybeSingle()
     if (readError || !subscription) return { error: "Subscription not found" }
     if (subscription.status !== "active") return { error: "Only active subscriptions can generate period invoices" }
@@ -42,11 +42,29 @@ export async function generateSubscriptionPeriodInvoice(input: z.input<typeof in
       return { error: "The billing period changed. Reload and retry." }
     }
 
-    // Stable identity makes retries and simultaneous uses of this action converge on one invoice.
-    const invoiceId = uuidv5(`period-invoice:${siteId}:${billingDate}`, subscriptionId)
-    const findExisting = () => supabase.from("sales").select("id, status")
-      .eq("site_id", siteId).eq("subscription_id", subscriptionId)
-      .eq("sale_date", billingDate).order("created_at", { ascending: true }).limit(1).maybeSingle()
+    const period = getSubscriptionInvoicePeriod(subscription.id, subscription.next_billing_date)
+    if (!period) return { error: "The subscription must have a valid next billing date" }
+    // Share the Workflows renewal identity so concurrent writers converge through the sales primary key.
+    const invoiceId = uuidv5(JSON.stringify([
+      "subscription-renewal-v1", "sale", siteId, subscription.id, period.billing_cycle,
+    ]), uuidv5.URL)
+    const findExisting = async () => {
+      const query = () => supabase.from("sales").select("id, status")
+        .eq("site_id", siteId).eq("subscription_id", subscription.id)
+      const candidates = [
+        () => query().eq("product_details->>billing_period_start", period.billing_period_start),
+        () => query().is("product_details->>billing_period_start", null)
+          .like("product_details->>billing_cycle", `${period.billing_period_start}%`),
+        () => query().is("product_details->>billing_period_start", null)
+          .is("product_details->>billing_cycle", null)
+          .gte("sale_date", period.billing_period_start).lt("sale_date", period.billing_period_end),
+      ]
+      for (const candidate of candidates) {
+        const result = await candidate().order("created_at", { ascending: true }).limit(1).maybeSingle()
+        if (result.error || result.data) return result
+      }
+      return { data: null, error: null }
+    }
     const existingResult = (invoice: { id: string; status: string }) =>
       ["cancelled", "refunded"].includes(invoice.status)
         ? { error: "This period already has a cancelled or refunded invoice. Use New invoice for a replacement." }
@@ -69,6 +87,7 @@ export async function generateSubscriptionPeriodInvoice(input: z.input<typeof in
       title: `${planName} invoice · ${billingDate}`,
       product_name: planName,
       product_type: catalogItem?.kind || "subscription",
+      product_details: period,
       amount,
       amount_due: amount,
       currency,
@@ -83,6 +102,7 @@ export async function generateSubscriptionPeriodInvoice(input: z.input<typeof in
       site_id: siteId,
       user_id: user.id,
       subscription_id: subscriptionId,
+      ...(subscription.location_id !== undefined ? { location_id: subscription.location_id } : {}),
     }).select("id").single()
 
     if (insertError || !invoice) {

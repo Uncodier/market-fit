@@ -33,7 +33,7 @@ beforeEach(() => {
   jest.mocked(createClient).mockResolvedValue({ auth, from, rpc })
   auth.getUser.mockResolvedValue({ data: { user: { id: userId } }, error: null })
   auth.getSession.mockResolvedValue({ data: { session: { user: { id: userId }, access_token: "verified-session" } }, error: null })
-  rpc.mockImplementation(async (name: string) => ({ data: name === "user_can" ? true : "owner", error: null }))
+  rpc.mockImplementation(async (name: string) => ({ data: name === "current_user_has_location_restrictions" ? false : name === "user_can" ? true : "owner", error: null }))
   query.select.mockReturnValue(query)
   query.eq.mockReturnValue(query)
   query.maybeSingle.mockResolvedValue({ data: { id: instanceId, site_id: siteId }, error: null })
@@ -51,7 +51,7 @@ afterAll(() => {
 })
 
 it.each(["owner", "admin"])("allows project %s without requiring instance creator identity", async role => {
-  rpc.mockImplementation(async name => ({ data: name === "user_can" ? true : role, error: null }))
+  rpc.mockImplementation(async name => ({ data: name === "current_user_has_location_restrictions" ? false : name === "user_can" ? true : role, error: null }))
   const response = await POST(request(undefined, { authorization: "Bearer forged", "x-api-key": "forged" }))
   expect(response.status).toBe(200)
   expect(await response.json()).toEqual(result)
@@ -80,7 +80,7 @@ it.each([null, "marketing", "collaborator"])("rejects role %s before any downstr
 })
 
 it("fails closed on a denied or unavailable delete capability", async () => {
-  rpc.mockImplementation(async name => ({ data: name === "user_can" ? false : "owner", error: null }))
+  rpc.mockImplementation(async name => ({ data: name === "current_user_has_location_restrictions" ? false : name === "user_can" ? false : "owner", error: null }))
   expect((await POST(request())).status).toBe(403)
   rpc.mockResolvedValue({ data: "owner", error: { message: "private error" } })
   expect((await POST(request())).status).toBe(403)

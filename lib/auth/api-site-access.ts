@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { userCanOnLocation } from "@/lib/permissions/location-access"
+import { canAccessUnscopedSite } from "@/lib/permissions/location-boundary"
 import type { PermissionCommand } from "@/lib/permissions/types"
 
 const SITE_MANAGER_ROLES = new Set(["owner", "admin"])
@@ -8,6 +9,8 @@ const SITE_MANAGER_ROLES = new Set(["owner", "admin"])
 type SiteAccessOptions = {
   requireManager?: boolean
   location?: { id: string | null; command: PermissionCommand }
+  /** Only for audited user-scoped queries whose complete projection is RLS protected. */
+  allowLocationScoped?: boolean
 }
 
 type SiteAccessResult =
@@ -87,6 +90,14 @@ export async function requireSiteAccess(
   if (options.location && !await userCanOnLocation(supabase, siteId, options.location.id, options.location.command)) {
     return {
       error: NextResponse.json({ error: "Forbidden" }, { status: 403 }),
+    }
+  }
+
+  if (!options.location && !options.allowLocationScoped && !await canAccessUnscopedSite(supabase, siteId)) {
+    return {
+      error: NextResponse.json({ error: "Forbidden" }, {
+        status: 403, headers: { "Cache-Control": "private, no-store" },
+      }),
     }
   }
 

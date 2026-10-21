@@ -1,5 +1,5 @@
 import { processPostPaymentFulfillment } from "../../app/commerce/post-payment";
-import { createShipment } from "../../app/shipments/actions";
+import { createAuthorizedShipment } from "../../app/shipments/create-shipment";
 import { ensureCommerceLeadConverted } from "../../app/commerce/ensure-commerce-lead-converted";
 import { grantFromOrder } from "../../app/commerce/entitlements";
 
@@ -7,8 +7,8 @@ jest.mock("../../lib/supabase/server", () => ({
   createServiceClient: jest.fn(),
 }));
 
-jest.mock("../../app/shipments/actions", () => ({
-  createShipment: jest.fn(),
+jest.mock("../../app/shipments/create-shipment", () => ({
+  createAuthorizedShipment: jest.fn(),
 }));
 
 jest.mock("../../app/commerce/ensure-commerce-lead-converted", () => ({
@@ -105,7 +105,7 @@ describe("processPostPaymentFulfillment", () => {
     // Line items promoted to completed
     expect(itemsChain.update).toHaveBeenCalledWith(expect.objectContaining({ status: "completed" }));
     // No shipment created
-    expect(createShipment).not.toHaveBeenCalled();
+    expect(createAuthorizedShipment).not.toHaveBeenCalled();
     expect(grantFromOrder).toHaveBeenCalledWith("order-1", true);
     expect(ensureCommerceLeadConverted).toHaveBeenCalledWith(expect.objectContaining({
       siteId: "site-1",
@@ -119,7 +119,7 @@ describe("processPostPaymentFulfillment", () => {
 
   it("promotes 'ship' items to 'new' and creates a shipment", async () => {
     setupOrder("ship", [{ id: "cat-2", quantity: 2 }], true);
-    (createShipment as jest.Mock).mockResolvedValue({ data: { id: "ship-123" } });
+    (createAuthorizedShipment as jest.Mock).mockResolvedValue({ data: { id: "ship-123" } });
     
     // settings
     settingsChain.single.mockResolvedValueOnce({ data: { commerce: { decrement_stock_on: 'ship' } } });
@@ -134,7 +134,7 @@ describe("processPostPaymentFulfillment", () => {
     expect(itemsChain.update).toHaveBeenCalledWith(expect.objectContaining({ status: "new" }));
     
     // Shipment created
-    expect(createShipment).toHaveBeenCalledWith(expect.objectContaining({
+    expect(createAuthorizedShipment).toHaveBeenCalledWith(mockSupabase, expect.objectContaining({
       originLocationId: "loc-123",
       shippingAddress: { line1: "123 St" },
     }));
@@ -159,7 +159,7 @@ describe("processPostPaymentFulfillment", () => {
     expect(itemsChain.update).toHaveBeenCalledWith(expect.objectContaining({ status: "new" }));
     
     // No shipment
-    expect(createShipment).not.toHaveBeenCalled();
+    expect(createAuthorizedShipment).not.toHaveBeenCalled();
 
     // Inventory inserted (since level didn't exist)
     expect(inventoryChain.insert).toHaveBeenCalledWith(expect.objectContaining({
@@ -191,7 +191,7 @@ describe("processPostPaymentFulfillment", () => {
       },
     );
 
-    expect(createShipment).not.toHaveBeenCalled();
+    expect(createAuthorizedShipment).not.toHaveBeenCalled();
     expect(mockSupabase.rpc).toHaveBeenCalledWith(
       "apply_stripe_sale_inventory_effect",
       {

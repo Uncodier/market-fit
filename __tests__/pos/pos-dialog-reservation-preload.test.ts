@@ -6,6 +6,11 @@ import {
 import { getAvailableSlots } from "@/app/reservations/availability"
 import type { LocalReservationSlots } from "@/app/pos/local/types"
 
+jest.mock("@/app/pos/local/location-permission-state", () => ({
+  requirePosPermission: () => ({ generation: 1 }),
+  isPosPermissionCurrent: () => true,
+}))
+
 const store = new Map<string, LocalReservationSlots>()
 jest.mock("@/app/pos/local/db", () => ({
   getPosDb: () => ({ reservationSlots: {

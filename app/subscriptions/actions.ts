@@ -6,6 +6,7 @@ import type { Payment, Subscription } from "@/app/types";
 import { getSubscriptionInvoiceDueDate, isDateOnly, normalizeDueDate } from "@/lib/finance/due-date";
 import { requireAccountingAccess } from "@/app/accounting/access";
 import { isOutstandingInvoice, type SubscriptionListItem } from "./invoice-summary";
+import { getSubscriptionInvoicePeriod } from "./billing-period";
 
 export interface SubscriptionInvoice {
   id: string;
@@ -173,6 +174,7 @@ export async function createSubscriptionInvoice(input: {
   subscriptionId: string;
   amount: number;
   invoiceDate: string;
+  billingDate?: string;
   dueDate?: string | null;
 }) {
   if (!UUID_PATTERN.test(input.siteId) || !UUID_PATTERN.test(input.subscriptionId)) {
@@ -185,6 +187,9 @@ export async function createSubscriptionInvoice(input: {
 
   if (!isDateOnly(input.invoiceDate)) {
     return { error: "Enter a valid invoice date" };
+  }
+  if (input.billingDate !== undefined && !isDateOnly(input.billingDate)) {
+    return { error: "Enter a valid billing period (YYYY-MM-DD)" };
   }
   try { normalizeDueDate(input.dueDate); } catch { return { error: "Enter a valid due date (YYYY-MM-DD)" }; }
 
@@ -202,12 +207,7 @@ export async function createSubscriptionInvoice(input: {
     const { data: subscription, error: subscriptionError } = await supabase
       .from("subscriptions")
       .select(`
-        id,
-        site_id,
-        lead_id,
-        buyer_user_id,
-        due_date,
-        next_billing_date,
+        *,
         catalog_item:catalog_items(name, kind)
       `)
       .eq("site_id", input.siteId)
@@ -217,6 +217,9 @@ export async function createSubscriptionInvoice(input: {
     if (subscriptionError || !subscription) {
       return { error: subscriptionError?.message || "Subscription not found" };
     }
+
+    const period = getSubscriptionInvoicePeriod(subscription.id, subscription.next_billing_date, input.billingDate);
+    if (!period) return { error: "The subscription must have a valid next billing date" };
 
     const catalogItem = Array.isArray(subscription.catalog_item)
       ? subscription.catalog_item[0]
@@ -229,6 +232,7 @@ export async function createSubscriptionInvoice(input: {
         title: `${planName} invoice`,
         product_name: planName,
         product_type: catalogItem?.kind || "subscription",
+        product_details: period,
         amount: input.amount,
         amount_due: input.amount,
         status: "pending",
@@ -244,6 +248,7 @@ export async function createSubscriptionInvoice(input: {
         site_id: input.siteId,
         user_id: user.id,
         subscription_id: subscription.id,
+        ...(subscription.location_id !== undefined ? { location_id: subscription.location_id } : {}),
       })
       .select("id")
       .single();

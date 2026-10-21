@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { createSocialSupabaseClient } from "@/app/api/social/supabase-client"
+import { createSocialSupabaseClient, SocialLocationAccessError } from "@/app/api/social/supabase-client"
 import { getOutstandIntegrationUrl } from "@/lib/api-server-url"
 import { getSocialAccountLimit, countSocialAccounts, canConnectSocialAccount } from "@/lib/billing-limits"
 import { billingLimitApiError } from "@/lib/billing-limit-errors"
@@ -93,6 +93,7 @@ export async function POST(
 
     return NextResponse.json(data, { status: response.status })
   } catch (error) {
+    if (error instanceof SocialLocationAccessError) return NextResponse.json({ error: error.message }, { status: error.status })
     console.error("Error proxying finalize:", error)
     return NextResponse.json(
       { success: false, error: "Internal server error" },

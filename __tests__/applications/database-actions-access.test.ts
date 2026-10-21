@@ -23,10 +23,10 @@ function mainClient(role: string | null) {
         error: null,
       }),
     },
-    rpc: jest.fn().mockResolvedValue({
-      data: role,
+    rpc: jest.fn(async (name: string) => ({
+      data: name === 'current_user_site_role' ? role : false,
       error: null,
-    }),
+    })),
   }
 }
 

@@ -5,6 +5,7 @@ import { postSourceJournalWithClient } from "@/app/accounting/source-posting";
 import { resolvePromotionDiscount } from "./resolve-promotion";
 import { upsertPromotionDiscountExpense } from "./promo-discount-expense";
 import { saleAmountsAfterDiscount } from "./sale-amounts-after-discount";
+import type { SupabaseClient } from '@supabase/supabase-js';
 
 export async function applyPromotionToOrder(
   siteId: string,
@@ -12,11 +13,12 @@ export async function applyPromotionToOrder(
   promotionCode: string | null | undefined,
   forceServiceRole: boolean = false,
   promotionId?: string | null,
+  authorizedClient?: SupabaseClient,
 ) {
   try {
-    const supabase = forceServiceRole
+    const supabase = authorizedClient ?? (forceServiceRole
       ? await createServiceClient(true)
-      : await createClient();
+      : await createClient());
 
     const { data: items } = await supabase
       .from("sale_order_items")
@@ -54,7 +56,7 @@ export async function applyPromotionToOrder(
       locationId: order.origin_location_id || null,
       excludeOrderId: saleOrderId,
       forceServiceRole,
-    });
+    }, supabase);
 
     if ("error" in resolved) throw new Error(resolved.error);
 

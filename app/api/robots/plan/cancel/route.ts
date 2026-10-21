@@ -1,5 +1,5 @@
 import { z } from "zod"
-import { createClient } from "@/lib/supabase/server"
+import { requireUnrestrictedLocationAccess } from "@/lib/auth/location-boundary.server"
 import { getCurrentUserSiteRole, isSiteManagerRole } from "@/lib/auth/api-site-access"
 import { userCanOnSite } from "@/lib/permissions/site-access"
 import { isSameOriginApiRequest } from "@/lib/http/api-proxy-security"
@@ -27,9 +27,9 @@ export async function POST(request: Request): Promise<Response> {
     return failure("Provide valid plan and instance IDs", error instanceof RequestBodyTooLargeError ? 413 : 400)
   }
   try {
-    const supabase = await createClient(true)
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    if (authError || !user || user.is_anonymous) return failure("Unauthorized", 401)
+    const access = await requireUnrestrictedLocationAccess()
+    if (access.error) return access.error
+    const { supabase } = access
     const { data: plan, error: readError } = await supabase.from("instance_plans")
       .select("id, instance_id, site_id").eq("id", input.plan_id).eq("instance_id", input.instance_id).maybeSingle()
     if (readError) return failure("Plan access could not be verified", 503)

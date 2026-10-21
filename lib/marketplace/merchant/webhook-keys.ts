@@ -5,7 +5,7 @@ import { appIdentity } from "./platform"
 import type { AppConfig, RappiWebhookEvent, RappiWebhookSecrets } from "./providers/types"
 
 export async function readWebhookKeys(app: AppConfig): Promise<RappiWebhookSecrets> {
-  const database = await createServiceClient(true)
+  const database = await createServiceClient(true, { access: 'system' })
   const { data, error } = await database.from("marketplace_provider_webhook_keys").select("event,secret_ciphertext")
     .eq("app_client_id_hash", appIdentity(app.client_id)).eq("provider", app.provider)
     .eq("environment", app.environment).is("country", null).is("integration_id", null)
@@ -20,7 +20,7 @@ export async function readWebhookKeys(app: AppConfig): Promise<RappiWebhookSecre
 }
 
 export async function saveWebhookKey(app: AppConfig, event: RappiWebhookEvent, secret: string) {
-  const database = await createServiceClient(true)
+  const database = await createServiceClient(true, { access: 'system' })
   const { error } = await database.from("marketplace_provider_webhook_keys").upsert({
     app_client_id_hash: appIdentity(app.client_id), provider: app.provider, environment: app.environment,
     country: null, integration_id: null, event, secret_ciphertext: encryptMarketplacePayload(secret),

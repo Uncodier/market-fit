@@ -73,7 +73,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Invalid signature" }, { status: 400 })
   }
 
-  const supabase = await createServiceClient()
+  const supabase = await createServiceClient(false, { access: 'system' })
   const eventAge = Math.floor(Date.now() / 1000) - event.created
   const maxAge = LATE_STRIPE_EVENTS.has(event.type)
     ? MAX_REFUND_EVENT_AGE_SECONDS

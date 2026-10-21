@@ -118,7 +118,7 @@ export async function deleteCatalogItemFile(fileId: string) {
 import { getActiveDigitalEntitlementForCatalogItem } from "@/app/buyer/entitlement-queries"
 
 export async function listDownloadableFilesForBuyer(catalogItemId: string) {
-  const supabase = await createServiceClient(true) // Bypass RLS to read metadata for entitled buyers
+  const supabase = await createServiceClient(true, { access: 'public' }) // Verified buyer entitlement below.
   
   const entitlement = await getActiveDigitalEntitlementForCatalogItem(catalogItemId)
   if (!entitlement) return { data: null, error: "Not entitled" }
@@ -136,7 +136,7 @@ export async function listDownloadableFilesForBuyer(catalogItemId: string) {
 
 export async function createDigitalFileDownloadUrl(fileId: string) {
   // Use service client to bypass storage RLS and create signed url
-  const adminSupabase = await createServiceClient(true)
+  const adminSupabase = await createServiceClient(true, { access: 'public' })
   
   const { data: fileRow } = await adminSupabase
     .from('catalog_item_files')

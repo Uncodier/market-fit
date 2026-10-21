@@ -1,4 +1,4 @@
-"use server";
+import "server-only";
 
 import { createClient as createClientAdmin } from "@supabase/supabase-js";
 import { DynamicQuoteMetadata } from "@/app/types";
@@ -91,9 +91,6 @@ export async function findPricedAgentLog(
     instanceId,
     logCount: tunneled.logs.length,
     sampleTypes: tunneled.logs.slice(0, 8).map((r) => r.log_type),
-    samplePreviews: tunneled.logs
-      .slice(0, 5)
-      .map((r) => String(r.message || "").slice(0, 160)),
   });
 
   return null;
@@ -185,7 +182,6 @@ export async function syncDynamicQuoteFromInstanceLogs(
       data: {
         status: "processing" as const,
         assistantInstanceId: instanceId,
-        sourceLogs,
       },
     };
   }
@@ -226,16 +222,16 @@ export async function syncDynamicQuoteFromInstanceLogs(
         unitPrice: priced.unitPrice,
         validUntil: priced.validUntil,
         assistantInstanceId: instanceId,
-        sourceLogs,
       },
     };
-  } catch (err: any) {
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Failed to apply quote price';
     console.error(
       "[dynamic-quote-sync] applyPricedResult failed:",
-      err?.message || err
+      message
     );
     return {
-      error: err?.message || "Failed to apply quote price",
+      error: message,
       data: {
         status: "processing" as const,
         assistantInstanceId: instanceId,

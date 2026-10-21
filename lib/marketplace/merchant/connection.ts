@@ -14,7 +14,7 @@ const connectionSchema = z.object({
 })
 
 export async function loadConnection(connectionId: string, siteId: string) {
-  const database = await createServiceClient(true)
+  const database = await createServiceClient(true, { access: 'system' })
   const { data, error } = await database.from("marketplace_merchant_connections").select("*")
     .eq("id", connectionId).eq("site_id", siteId).maybeSingle()
   if (error || !data) throw new Error("Merchant authorization is unavailable")

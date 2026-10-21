@@ -1,20 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { z } from 'zod'
+import { requireSiteAccess } from '@/lib/auth/api-site-access'
+
+const inputSchema = z.object({
+  siteId: z.string().uuid(),
+  domain: z.string().max(253).regex(/^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/i),
+}).strict()
 
 export async function POST(req: NextRequest) {
   try {
-    const supabase = await createClient()
-    const { data: { user: auth } } = await supabase.auth.getUser()
-    if (!auth) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    const body = await req.json()
-    const { domain, siteId } = body
-
-    if (!domain) {
-      return NextResponse.json({ error: 'Missing required parameters (domain)' }, { status: 400 })
-    }
+    const input = inputSchema.safeParse(await req.json())
+    if (!input.success) return NextResponse.json({ error: 'Invalid domain or site' }, { status: 400 })
+    const { domain, siteId } = input.data
+    const access = await requireSiteAccess(req, siteId, { requireManager: true })
+    if (access.error) return access.error
 
     // In a real environment, VERCEL_API_TOKEN and VERCEL_PROJECT_ID 
     // should be loaded securely in the environment variables.
@@ -51,8 +50,8 @@ export async function POST(req: NextRequest) {
     }
 
     return NextResponse.json({ success: true, data })
-  } catch (error: any) {
+  } catch (error) {
     console.error('Vercel API add domain error:', error)
-    return NextResponse.json({ error: error.message || 'Internal error' }, { status: 500 })
+    return NextResponse.json({ error: 'Internal error' }, { status: 500 })
   }
 }

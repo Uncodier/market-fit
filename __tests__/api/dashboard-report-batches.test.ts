@@ -61,7 +61,7 @@ beforeEach(() => {
   delete process.env.ANALYTICS_MAX_RANGE_DAYS
   delete process.env.REDIS_REQUIRED
   getUser.mockResolvedValue({ data: { user: { id: "trusted-user", email: null } }, error: null })
-  rpc.mockResolvedValue({ data: "owner", error: null })
+  rpc.mockImplementation(async (name: string) => ({ data: name === 'current_user_site_role' ? 'owner' : false, error: null }))
   ;(createClient as jest.Mock).mockResolvedValue({ auth: { getUser }, rpc })
   ;(getCachedJson as jest.Mock).mockResolvedValue(null)
   ;(acquireLock as jest.Mock).mockResolvedValue(true)

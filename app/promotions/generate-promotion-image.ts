@@ -5,6 +5,7 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUserSiteRole } from "@/lib/auth/api-site-access";
 import { userCanOnSite } from "@/lib/permissions/site-access";
+import { canAccessUnscopedSite } from "@/lib/permissions/location-boundary";
 import { configuredApiUrl } from "@/lib/http/api-proxy-security";
 import {
   promptImageCacheUrl,
@@ -43,7 +44,7 @@ export async function generatePromotionImage(params: {
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) return { error: "Please sign in to generate promotion images." };
     if (!await getCurrentUserSiteRole(supabase, input.siteId) ||
-        !await userCanOnSite(supabase, input.siteId, "insert")) {
+        !await userCanOnSite(supabase, input.siteId, "insert") || !await canAccessUnscopedSite(supabase, input.siteId)) {
       return { error: "Image generation is not permitted for this site." };
     }
     const { data: { session }, error: sessionError } = await supabase.auth.getSession();

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { createSocialSupabaseClient } from "@/app/api/social/supabase-client"
+import { createSocialSupabaseClient, SocialLocationAccessError } from "@/app/api/social/supabase-client"
 import { getOutstandNetworkFromPath } from "@/app/api/social/network-map"
 import { syncImplicitOutstandCallback } from "@/app/api/social/lib/sync-outstand-accounts"
 
@@ -103,7 +103,13 @@ export async function GET(
     )
   }
 
-  const supabase = await createSocialSupabaseClient()
+  let supabase
+  try {
+    supabase = await createSocialSupabaseClient()
+  } catch (error) {
+    if (error instanceof SocialLocationAccessError) return NextResponse.json({ error: error.message }, { status: error.status })
+    return NextResponse.json({ error: "Authorization unavailable" }, { status: 403 })
+  }
   const {
     data: { session: userSession },
   } = await supabase.auth.getSession()

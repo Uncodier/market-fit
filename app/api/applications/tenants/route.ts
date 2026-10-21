@@ -3,6 +3,7 @@ import { createClient } from "@supabase/supabase-js"
 import { createClient as createMainClient, createServiceClient } from "@/lib/supabase/server"
 import { getApiKeyFromRequest, isValidApiKey } from "@/app/lib/api-keys-config"
 import { isSiteManagerRole } from "@/lib/auth/api-site-access"
+import { readLocationRestrictionState } from '@/lib/permissions/location-boundary'
 
 interface RequirementSummary {
   id: string
@@ -75,8 +76,11 @@ export async function GET(request: Request) {
       if (authError || !user) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
       }
+      if (await readLocationRestrictionState(mainSupabase) !== false) {
+        return NextResponse.json({ error: 'This operation requires unrestricted location access' }, { status: 403 })
+      }
     } else {
-      mainSupabase = await createServiceClient(true)
+      mainSupabase = await createServiceClient(true, { access: 'system' })
     }
 
     // Authorize the requirement even when its optional repository tenant is absent.

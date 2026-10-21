@@ -102,7 +102,7 @@ export async function getOrderByPublicToken(token: string) {
   if (!isValidPublicAccessToken(token)) return { error: "Invalid order link" }
 
   // Disambiguate site_id vs owner_site_id FKs to sites.
-  const supabase = await createServiceClient(true)
+  const supabase = await createServiceClient(true, { access: 'public' })
   const { data: order, error } = await supabase
     .from("sale_orders")
     .select(PUBLIC_ORDER_SELECT)

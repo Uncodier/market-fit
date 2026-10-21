@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { createSocialSupabaseClient } from "@/app/api/social/supabase-client"
+import { createSocialSupabaseClient, SocialLocationAccessError } from "@/app/api/social/supabase-client"
 import { getOutstandIntegrationUrl } from "@/lib/api-server-url"
 
 export async function DELETE(
@@ -43,6 +43,7 @@ export async function DELETE(
     const data = await response.json().catch(() => ({}))
     return NextResponse.json(data, { status: response.status })
   } catch (error) {
+    if (error instanceof SocialLocationAccessError) return NextResponse.json({ error: error.message }, { status: error.status })
     console.error("Error proxying social account delete:", error)
     return NextResponse.json(
       { success: false, error: "Internal server error" },

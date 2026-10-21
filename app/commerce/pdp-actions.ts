@@ -44,7 +44,7 @@ export async function getPdpCatalogItem(itemId: string, options?: PdpLoadOptions
 }
 
 async function loadPdpCatalogItem(itemId: string, options?: PdpLoadOptions) {
-  const supabase = await createServiceClient(true);
+  const supabase = await createServiceClient(true, { access: 'public' });
   
   let query = supabase
     .from("catalog_items")
@@ -235,7 +235,7 @@ async function loadPdpShareItem(
   itemId: string,
   options?: { requireMarketplace?: boolean; requireStorefront?: boolean },
 ) {
-  const supabase = await createServiceClient(true)
+  const supabase = await createServiceClient(true, { access: 'public' })
   let query = supabase
     .from("catalog_items")
     .select("name, description, image_url, metadata, site:sites!inner(name)")

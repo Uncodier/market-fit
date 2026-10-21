@@ -6,6 +6,10 @@ import { assertRegisterQueueSettled, withRegisterCloseLock } from "@/app/pos/reg
 import type { CheckoutOutboxPayload, PosOutboxRow } from "@/app/pos/local/types"
 
 jest.mock("@/app/pos/register/actions", () => ({ getActiveRegisterForPayment: jest.fn() }))
+jest.mock("@/app/pos/local/location-permission-state", () => ({
+  requirePosPermission: () => ({ generation: 1 }),
+  isPosPermissionCurrent: () => true,
+}))
 jest.mock("@/app/pos/local/outbox", () => ({ enqueueCheckout: jest.fn(), listOutbox: jest.fn() }))
 jest.mock("@/app/pos/local/sync-engine", () => ({ drainPosOutbox: jest.fn() }))
 const payload: CheckoutOutboxPayload = { siteId: "site", userId: "actor", clientMutationId: "mutation",

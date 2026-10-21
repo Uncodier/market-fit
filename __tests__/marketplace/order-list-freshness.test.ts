@@ -17,6 +17,7 @@ describe("provider order realtime freshness", () => {
       limit: jest.fn(async () => ({ data: [{ id: "connection" }], error: null })) }
     for (const method of [query.select, query.eq, query.order]) method.mockReturnValue(query)
     jest.mocked(createClient).mockResolvedValue({ auth: { getUser: jest.fn(async () => ({ data: { user: { id: "actor" } } })) },
+      rpc: jest.fn(async (name: string) => ({ data: name === "current_user_site_role" ? "owner" : false, error: null })),
       from: jest.fn(() => query) })
     const result = await listOrders({ siteId: "site", page: 1 })
     expect(result.data).toEqual(rows.map(row => ({ ...row, leads: null })))

@@ -51,7 +51,7 @@ beforeEach(() => {
   jest.mocked(Stripe).mockImplementation(() => sdk as unknown as Stripe)
   jest.mocked(createClient).mockResolvedValue({ auth, from, rpc } as unknown as Awaited<ReturnType<typeof createClient>>)
   auth.getUser.mockResolvedValue({ data: { user: { id: randomUUID(), email: 'owner@example.test' } }, error: null })
-  rpc.mockResolvedValue({ data: 'owner', error: null })
+  rpc.mockImplementation(async name => ({ data: name === 'current_user_site_role' ? 'owner' : false, error: null }))
   from.mockReturnValue(query)
   query.select.mockReturnThis(); query.eq.mockReturnThis()
   query.maybeSingle.mockResolvedValue({ data: { stripe_customer_id: 'cus_site' }, error: null })

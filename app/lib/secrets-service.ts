@@ -1,13 +1,20 @@
+import "server-only"
+
 import { createClient } from '@supabase/supabase-js'
 import CryptoJS from 'crypto-js'
+import { requirePrivateCommerceSiteAccess } from '@/app/commerce/private-site-access'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || ''
-const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY || 'Encryption-key'
+function encryptionKey(): string {
+  const key = process.env.ENCRYPTION_KEY
+  if (!key) throw new Error('ENCRYPTION_KEY is not configured')
+  return key
+}
 
 export const encryptToken = (text: string): string => {
   const salt = CryptoJS.lib.WordArray.random(128 / 8).toString()
-  const encrypted = CryptoJS.AES.encrypt(text, ENCRYPTION_KEY + salt).toString()
+  const encrypted = CryptoJS.AES.encrypt(text, encryptionKey() + salt).toString()
   return `${salt}:${encrypted}`
 }
 
@@ -18,15 +25,14 @@ export const decryptToken = (encryptedValue: string): string | null => {
     
     let result = '';
     try {
-      const decrypted = CryptoJS.AES.decrypt(encrypted, ENCRYPTION_KEY + salt);
+      const decrypted = CryptoJS.AES.decrypt(encrypted, encryptionKey() + salt);
       result = decrypted.toString(CryptoJS.enc.Utf8);
     } catch (e) {
-      // Ignorar para intentar fallback
+      // An explicitly configured legacy key may decrypt older values.
     }
     
-    // Fallback para legacy keys si el resultado está vacío o falló
-    if (!result) {
-      const legacyKey = process.env.LEGACY_ENCRYPTION_KEY || 'Encryption-key';
+    if (!result && process.env.LEGACY_ENCRYPTION_KEY) {
+      const legacyKey = process.env.LEGACY_ENCRYPTION_KEY;
       const decryptedLegacy = CryptoJS.AES.decrypt(encrypted, legacyKey + salt);
       result = decryptedLegacy.toString(CryptoJS.enc.Utf8);
     }
@@ -39,6 +45,8 @@ export const decryptToken = (encryptedValue: string): string | null => {
 }
 
 export async function getSiteSecret(siteId: string, provider: string, useCase: string, instanceId?: string): Promise<string | null> {
+  const access = await requirePrivateCommerceSiteAccess(siteId, ["select"], true)
+  if (access.error) return null
   const supabase = createClient(supabaseUrl, supabaseServiceKey)
   
   let query = supabase

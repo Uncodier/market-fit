@@ -23,10 +23,10 @@ beforeEach(() => {
   query.select.mockReturnValue(query); query.eq.mockReturnValue(query)
   query.maybeSingle.mockResolvedValue({ data: { id: planId, instance_id: instanceId, site_id: siteId }, error: null })
   from.mockReturnValue(query)
-  rpc.mockImplementation(async name => ({ data: name === "current_user_site_role" ? "owner" : name === "user_can" ? true : receipt, error: null }))
+  rpc.mockImplementation(async name => ({ data: name === "current_user_has_location_restrictions" ? false : name === "current_user_site_role" ? "owner" : name === "user_can" ? true : receipt, error: null }))
 })
 it.each(["owner", "admin"])("cancels as %s using one scoped atomic RPC", async role => {
-  rpc.mockImplementation(async name => ({ data: name === "current_user_site_role" ? role : name === "user_can" ? true : receipt, error: null }))
+  rpc.mockImplementation(async name => ({ data: name === "current_user_has_location_restrictions" ? false : name === "current_user_site_role" ? role : name === "user_can" ? true : receipt, error: null }))
   const response = await POST(request())
   expect(response.status).toBe(200)
   expect(await response.json()).toEqual({ success: true, data: receipt })
@@ -46,7 +46,7 @@ it.each([null, "collaborator", "marketing"])("rejects role %s without mutation",
   expect(rpc).not.toHaveBeenCalledWith("cancel_quiescent_instance_plan", expect.anything())
 })
 it("rejects denied capability and RLS-invisible or mismatched plans", async () => {
-  rpc.mockImplementation(async name => ({ data: name === "current_user_site_role" ? "owner" : false, error: null }))
+  rpc.mockImplementation(async name => ({ data: name === "current_user_has_location_restrictions" ? false : name === "current_user_site_role" ? "owner" : false, error: null }))
   expect((await POST(request())).status).toBe(403)
   query.maybeSingle.mockResolvedValue({ data: null, error: null })
   expect((await POST(request())).status).toBe(404)
@@ -69,14 +69,14 @@ it("bounds bodies, rejects cross-origin and wrong content type", async () => {
 it.each([["PT409",409], ["23514",409], ["PGRST202",503], ["57014",503], ["PT403",403], ["PT404",404]])("sanitizes SQL failure %s without fallback", async (code, status) => {
   rpc.mockImplementation(async name => name === "cancel_quiescent_instance_plan"
     ? { data: null, error: { code, message: "private SQL credential" } }
-    : { data: name === "current_user_site_role" ? "owner" : true, error: null })
+    : { data: name === "current_user_has_location_restrictions" ? false : name === "current_user_site_role" ? "owner" : true, error: null })
   const response = await POST(request())
   expect(response.status).toBe(status)
   expect(await response.text()).not.toContain("private")
   expect(from).toHaveBeenCalledTimes(1)
 })
 it.each([null, { ...receipt, plan_id: siteId }, { ...receipt, steps_cancelled: -1 }])("requires matching cancellation receipt", async data => {
-  rpc.mockImplementation(async name => ({ data: name === "current_user_site_role" ? "owner" : name === "user_can" ? true : data, error: null }))
+  rpc.mockImplementation(async name => ({ data: name === "current_user_has_location_restrictions" ? false : name === "current_user_site_role" ? "owner" : name === "user_can" ? true : data, error: null }))
   expect((await POST(request())).status).toBe(502)
 })
 
@@ -109,7 +109,7 @@ describe("read-only cancellation plan list", () => {
     auth.getUser.mockResolvedValue({ data: { user: null }, error: null })
     expect((await get()).status).toBe(401)
     auth.getUser.mockResolvedValue({ data: { user: { id: "verified" } }, error: null })
-    rpc.mockResolvedValue({ data: "collaborator", error: null })
+    rpc.mockImplementation(async name => ({ data: name === "current_user_has_location_restrictions" ? false : "collaborator", error: null }))
     expect((await get()).status).toBe(403)
     query.maybeSingle.mockResolvedValue({ data: null, error: null })
     expect((await get()).status).toBe(404)

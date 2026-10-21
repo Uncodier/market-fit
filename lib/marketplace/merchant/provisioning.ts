@@ -9,7 +9,7 @@ import { activateMerchantStore, deactivateMerchantStore, getMerchantStoreStatus,
 import type { AppConfig } from "./providers/types"
 
 export async function registerWebhookConfiguration(app: AppConfig, siteId: string, actorId: string | undefined, work: () => Promise<void>) {
-  const database = await createServiceClient(true)
+  const database = await createServiceClient(true, { access: 'system' })
   const claimed = await database.rpc("claim_marketplace_webhook_registration", {
     p_app_hash: appIdentity(app.client_id), p_provider: app.provider, p_environment: app.environment,
     p_country: null, ...(actorId ? { p_actor_user_id: actorId, p_site_id: siteId } : {}),
@@ -44,7 +44,7 @@ export async function activateConnectedStore(input: {
   requireFreshMerchantToken(connection)
   const store = await getMerchantStoreStatus(app, merchantToken, { id: input.external_store_id })
   if (store.integration_status === "other_integration") throw new Error("This store is connected to another integration")
-  const database = await createServiceClient(true)
+  const database = await createServiceClient(true, { access: 'system' })
   const existing = await database.from("marketplace_integrations").select("id,site_id,merchant_connection_id,provisioning_status,enabled,manual_ready")
     .eq("provider", connection.provider).eq("environment", connection.environment).eq("external_store_id", store.id).maybeSingle()
   if (existing.error) throw new Error("Store connection unavailable")
@@ -97,7 +97,7 @@ export async function activateConnectedStore(input: {
 }
 
 export async function deactivateConnectedStore(integrationId: string, siteId: string, actorId: string) {
-  const database = await createServiceClient(true)
+  const database = await createServiceClient(true, { access: 'system' })
   const row = await database.from("marketplace_integrations").select("id,merchant_connection_id,external_store_id")
     .eq("id", integrationId).eq("site_id", siteId).maybeSingle()
   if (row.error || !row.data?.merchant_connection_id) throw new Error("Store connection unavailable")

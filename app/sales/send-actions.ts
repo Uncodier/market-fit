@@ -106,7 +106,7 @@ export async function revokeSalePublicAccessToken(saleId: string) {
 export async function getSaleByPublicToken(token: string) {
   if (!isValidPublicAccessToken(token)) return { error: "Invalid invoice link" }
 
-  const supabase = await createServiceClient(true)
+  const supabase = await createServiceClient(true, { access: 'public' })
   const { data: sale, error } = await supabase
     .from("sales")
     .select(PUBLIC_SALE_SELECT)

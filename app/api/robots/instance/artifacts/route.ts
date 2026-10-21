@@ -1,23 +1,16 @@
 import type { QueryResult } from '@/app/api/_shared/query-result';
 import { NextRequest, NextResponse } from "next/server"
-import { createClient, createServiceClient } from "@/lib/supabase/server"
+import { createServiceClient } from "@/lib/supabase/server"
+import { requireUnrestrictedLocationAccess } from "@/lib/auth/location-boundary.server"
 import { userCanOnSite } from "@/lib/permissions/site-access"
 
 type Artifact = { id: string; user_id: string; site_id: string | null; instance_id: string };
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient()
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-
-    if (!user) {
-      return NextResponse.json(
-        { success: false, error: { message: "Unauthorized" } },
-        { status: 401 }
-      )
-    }
+    const access = await requireUnrestrictedLocationAccess()
+    if (access.error) return access.error
+    const { supabase, user } = access
 
     const body = await request.json()
     const ids = Array.isArray(body?.ids) ? body.ids.filter((id: unknown) => typeof id === "string") : []

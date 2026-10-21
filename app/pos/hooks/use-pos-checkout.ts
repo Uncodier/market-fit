@@ -1,6 +1,8 @@
 "use client";
 
 import { useCallback, useLayoutEffect, useRef, useState } from "react";
+import type { Payment, UsePosCheckoutArgs } from "./pos-checkout-types";
+import { getPosPermissionLease, isPosPermissionCurrent } from "../local/location-permission-state";
 import { useCheckoutAttempt } from "./use-checkout-attempt";
 import { v4 as uuidv4 } from "uuid";
 import { toast } from "sonner";
@@ -9,7 +11,6 @@ import { roundMoney } from "@/app/commerce/taxes";
 import { posCheckoutLines } from "@/app/pos/checkout-lines";
 import type { PosCartItem } from "@/app/pos/components/CartPanel";
 import { getPosCheckoutGate } from "@/app/pos/checkout-gates";
-import type { CheckoutFulfillmentMethod } from "@/app/commerce/delivery-options";
 import {
   enqueueCreateLead,
 } from "@/app/pos/local/outbox";
@@ -19,53 +20,9 @@ import { getPosDb } from "@/app/pos/local/db";
 import { useSite } from "@/app/context/SiteContext";
 import { normalizePrintersSettings, ticketBrandFromSite } from "@/lib/printer";
 import { printAfterPosCheckout, receiptFromPosCart } from "@/app/pos/print-after-checkout";
-import type { PosShippingAddress } from "@/app/pos/shipping-address";
 import { createPendingSplitOrders as enqueuePendingSplitOrders } from "@/app/pos/create-pending-split-orders";
 import { planPosLeadSync } from "@/app/pos/lead-utils";
 import { checkOrderBeforePayment, PosOrderChangedError } from "@/app/pos/check-order-before-payment";
-
-type Payment = {
-  method: string;
-  amount: number;
-  tendered: number;
-  change: number;
-};
-
-type UsePosCheckoutArgs = {
-  validateInventory?: () => boolean;
-  siteId?: string;
-  userId?: string;
-  sellerUserId?: string | null;
-  sellerName?: string | null;
-  cart: PosCartItem[];
-  total: number;
-  leadValue: RelationSelectValue | string | null;
-  leadRelationValue: RelationSelectValue;
-  fulfillment: CheckoutFulfillmentMethod;
-  originLocationId: string;
-  priceListId: string;
-  promoCode: string;
-  appliedPromo?: {
-    promotionId: string;
-    code: string | null;
-    byConditions: boolean;
-  } | null;
-  activeOrderId: string;
-  orderPreparing?: boolean;
-  expectedOrderVersion?: string;
-  onOrderChanged?: (id: string) => void;
-  existingPaymentTotal?: number;
-  buyerUserId: string | null;
-  orderNotes?: string;
-  shippingAddress?: PosShippingAddress;
-  onCleared: () => void;
-  appliedPromoRequiresLead?: boolean;
-  onRequireLead?: (reason: "checkout" | "send") => void;
-  t: (key: string) => string;
-  subtotal?: number;
-  taxTotal?: number;
-  currency?: string | null;
-};
 
 export function usePosCheckout({
   validateInventory,
@@ -99,14 +56,26 @@ export function usePosCheckout({
   currency,
 }: UsePosCheckoutArgs) {
   const { currentSite } = useSite();
+  const permission = getPosPermissionLease(siteId);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
-  const checkoutAttempt = useCheckoutAttempt();
+  const checkoutAttempt = useCheckoutAttempt(siteId, userId);
   const [paymentOrder, setPaymentOrder] = useState<{ siteId?: string; id: string } | null>(null);
   const isPaymentDialogOpen = paymentOrder?.siteId === siteId && paymentOrder?.id === activeOrderId;
   const setIsPaymentDialogOpen = (open: boolean) => setPaymentOrder(open ? { siteId, id: activeOrderId } : null);
   const submitting = useRef(false);
-  const selection = useRef({ siteId, activeOrderId });
-  useLayoutEffect(() => { selection.current = { siteId, activeOrderId }; }, [siteId, activeOrderId]);
+  const cartKey = JSON.stringify(posCheckoutLines(cart));
+  const selection = useRef({ siteId, userId, activeOrderId, cartKey });
+  useLayoutEffect(() => {
+    selection.current = { siteId, userId, activeOrderId, cartKey };
+    return () => { selection.current = { siteId: undefined, userId: undefined, activeOrderId: "new", cartKey: "" }; };
+  }, [siteId, userId, activeOrderId, cartKey]);
+  const checkoutGuard = () => {
+    const selected = selection.current;
+    const session = checkoutAttempt.session();
+    return () => isPosPermissionCurrent(permission) && selection.current === selected &&
+      selected.siteId === siteId && selected.userId === userId && selected.activeOrderId === activeOrderId &&
+      selected.cartKey === cartKey && checkoutAttempt.isCurrent(session);
+  };
   const amountDue = roundMoney(Math.max(0, total - existingPaymentTotal));
 
   const applyCheckoutGate = (
@@ -190,10 +159,12 @@ export function usePosCheckout({
     promo?: string;
     resolvedLeadId?: string | null;
     localLeadId?: string | null;
-  }) => {
-    if (!siteId || !userId) return;
+  }, isCurrent: () => boolean) => {
+    if (!siteId || !userId || !isCurrent()) return;
 
-    let clientMutationId = checkoutAttempt.id([siteId, activeOrderId, cart, params]);
+    let clientMutationId = checkoutAttempt.id([activeOrderId, posCheckoutLines(cart),
+      params.payments, params.intent, params.promo, leadRelationValue, fulfillment, originLocationId,
+      priceListId, buyerUserId, shippingAddress, appliedPromo, promoCode, orderNotes, sellerUserId]);
     const existingIsLocal =
       activeOrderId !== "new" && activeOrderId.startsWith("local_");
 
@@ -233,10 +204,9 @@ export function usePosCheckout({
       intent: params.intent,
       notes: orderNotes.trim(),
       clientMutationId,
-    });
+    }, (id) => { if (isCurrent()) checkoutAttempt.adopt(id); });
+    if (!isCurrent()) return;
     clientMutationId = queuedCheckout.clientMutationId;
-    if (selection.current.siteId !== siteId || selection.current.activeOrderId !== activeOrderId) return;
-    checkoutAttempt.clear();
     refreshPosSyncCounts(siteId);
 
     const totalPaid = params.payments.reduce((sum, p) => sum + p.amount, 0);
@@ -246,6 +216,7 @@ export function usePosCheckout({
     const db = getPosDb();
     if (activeOrderId !== "new") {
       await db.pendingOrders.delete(activeOrderId);
+      if (!isCurrent()) return;
     }
     if (nextAmountDue > 0) {
       const status = params.intent === "complete" ? "completed" : "pending";
@@ -274,9 +245,16 @@ export function usePosCheckout({
           pending_sync: true,
         },
       });
+      if (!isCurrent()) return;
     }
 
     onCleared();
+    checkoutAttempt.clear();
+    const finishedSelection = selection.current;
+    const finishedSession = checkoutAttempt.session();
+    const receiptCurrent = () => isPosPermissionCurrent(permission) && checkoutAttempt.isCurrent(finishedSession) &&
+      (selection.current === finishedSelection || (selection.current.siteId === siteId &&
+        selection.current.userId === userId && selection.current.activeOrderId === "new" && selection.current.cartKey === "[]"));
     setIsPaymentDialogOpen(false);
 
     toast.success(
@@ -302,10 +280,12 @@ export function usePosCheckout({
 
     if (typeof navigator !== "undefined" && navigator.onLine) {
       void drainPosOutbox(siteId).then(async () => {
+        if (!receiptCurrent()) return;
         const row = await getPosDb()
           .outbox.where("clientMutationId")
           .equals(clientMutationId)
           .first();
+        if (!receiptCurrent()) return;
         if (row?.status === "synced") {
           try {
             await printAfterPosCheckout({
@@ -333,7 +313,7 @@ export function usePosCheckout({
               "Sale saved locally. Syncing when online…",
           );
         }
-      });
+      }).catch(() => undefined);
     } else {
       toast.message(
         t("pos.sync.pendingSale") ||
@@ -347,7 +327,9 @@ export function usePosCheckout({
     checkoutPromoCode?: string,
     intent?: "complete" | "pay" | "send",
   ) => {
-    if (!siteId || !userId || orderPreparing || submitting.current) return;
+    if (!siteId || !userId || orderPreparing || submitting.current || !isPosPermissionCurrent(permission)) return;
+    const isCurrent = checkoutGuard();
+    if (!isCurrent()) return;
 
     const resolvedIntent = intent || "pay";
     const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0);
@@ -373,10 +355,10 @@ export function usePosCheckout({
     setCheckoutLoading(true);
     try {
       await checkOrderBeforePayment(siteId, activeOrderId, expectedOrderVersion);
-      if (selection.current.siteId !== siteId || selection.current.activeOrderId !== activeOrderId) return;
+      if (!isCurrent()) return;
       const { resolvedLeadId, localLeadId } =
         await prepareLeadForSync(leadRelationValue);
-      if (selection.current.siteId !== siteId || selection.current.activeOrderId !== activeOrderId) return;
+      if (!isCurrent()) return;
 
       if (requiresCustomer && !resolvedLeadId && !localLeadId) {
         toast.error(
@@ -393,9 +375,9 @@ export function usePosCheckout({
         promo: checkoutPromoCode,
         resolvedLeadId,
         localLeadId,
-      });
+      }, isCurrent);
     } catch (err) {
-      if (selection.current.siteId !== siteId || selection.current.activeOrderId !== activeOrderId) return;
+      if (!isCurrent()) return;
       if (err instanceof PosOrderChangedError) {
         setIsPaymentDialogOpen(false);
         onOrderChanged?.(activeOrderId);
@@ -421,30 +403,39 @@ export function usePosCheckout({
     }
     if (!applyCheckoutGate("send", opts)) return;
     const effectiveLeadRelation = opts?.leadOverride ?? leadRelationValue;
-    if (!siteId || !userId) return;
+    if (!siteId || !userId || !isPosPermissionCurrent(permission)) return;
+    const isCurrent = checkoutGuard();
+    if (!isCurrent()) return;
 
+    submitting.current = true;
     setCheckoutLoading(true);
     try {
       const { resolvedLeadId, localLeadId } =
         await prepareLeadForSync(effectiveLeadRelation);
+      if (!isCurrent()) return;
 
       await enqueueAndFinishCheckout({
         payments: [],
         intent: "send",
         resolvedLeadId,
         localLeadId,
-      });
+      }, isCurrent);
     } catch (err) {
+      if (!isCurrent()) return;
       toast.error(
         err instanceof Error ? err.message : t("pos.errorSendingOrder") || "Error sending order",
       );
     } finally {
+      submitting.current = false;
       setCheckoutLoading(false);
     }
     // enqueueAndFinishCheckout closes over latest cart/session fields via render
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     cart,
+    activeOrderId,
+    expectedOrderVersion,
+    permission,
     orderPreparing,
     originLocationId,
     validateInventory,

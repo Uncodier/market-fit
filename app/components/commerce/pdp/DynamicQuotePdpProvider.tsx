@@ -14,8 +14,7 @@ import { CatalogItem } from "@/app/types"
 import { getDynamicPricingConfig } from "@/app/catalog/dynamic-pricing"
 import { validateDynamicQuoteFields } from "@/app/components/commerce/DynamicQuoteFieldsForm"
 import { getQuotation } from "@/app/quotations/actions"
-import { findOrCreateLeadForBuyer } from "@/app/commerce/resolve-buyer-lead"
-import { requestDynamicQuote } from "@/app/quotations/dynamic-quote-actions"
+import { requestPublicDynamicQuote } from "@/app/quotations/public-dynamic-quote"
 import {
   pollDynamicQuoteProgress,
   type DynamicQuoteProgressLog,
@@ -240,33 +239,21 @@ export function DynamicQuotePdpProvider({
       toast.error(validationError)
       return
     }
-    if (guest && !email.trim()) {
-      toast.error(t("pdp.dynamicQuote.emailRequired"))
+    if (guest) {
+      toast.error("Sign in with a verified email to request a quote")
       return
     }
 
     setLoading(true)
     try {
-      const emailToUse = guest ? email.trim() : user?.email || ""
-      const leadRes = await findOrCreateLeadForBuyer({
-        siteId: item.site_id,
-        email: emailToUse,
-        name: user?.user_metadata?.full_name || emailToUse,
-        buyerUserId: user?.id || null,
-      })
-      if (leadRes.error || !leadRes.lead) {
-        throw new Error(leadRes.error || "Failed to resolve buyer")
-      }
-
-      const res = await requestDynamicQuote({
+      const res = await requestPublicDynamicQuote({
         siteId: item.site_id,
         catalogItemId: item.id,
-        leadId: leadRes.lead.id,
         quantity,
         fieldValues: values,
       })
 
-      if (res.error && !res.data?.quotationId) {
+      if (res.error) {
         throw new Error(res.error)
       }
       if (!res.data?.quotationId) {

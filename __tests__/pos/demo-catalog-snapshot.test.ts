@@ -84,7 +84,11 @@ describe("POS snapshots using the real demo client and catalog actions", () => {
 
   it("preserves authorized service-client reads for non-demo POS clients", async () => {
     const client = createDemoMockClient("demo-habituall")
-    jest.mocked(createClient).mockResolvedValue({ ...client, _isDemo: false })
+    const rpc = client.rpc.bind(client)
+    jest.mocked(createClient).mockResolvedValue({ ...client, _isDemo: false,
+      rpc: (name: string, args: Record<string, unknown>) => name === "current_user_has_site_location_restrictions"
+        ? Promise.resolve({ data: false, error: null }) : rpc(name, args),
+    })
     jest.mocked(createServiceClient).mockResolvedValue(client)
     expect(await listAllModifierGroupsForPos("demo-habituall")).toEqual({ data: {} })
     expect(createServiceClient).toHaveBeenCalledWith(true)

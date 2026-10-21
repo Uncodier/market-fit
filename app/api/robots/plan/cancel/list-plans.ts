@@ -1,5 +1,5 @@
 import { z } from "zod"
-import { createClient } from "@/lib/supabase/server"
+import { requireUnrestrictedLocationAccess } from "@/lib/auth/location-boundary.server"
 import { getCurrentUserSiteRole, isSiteManagerRole } from "@/lib/auth/api-site-access"
 import { userCanOnSite } from "@/lib/permissions/site-access"
 
@@ -14,9 +14,9 @@ export async function listCancellationPlans(request: Request): Promise<Response>
   const parsed = input.safeParse(Object.fromEntries(url.searchParams))
   if (!parsed.success || url.searchParams.getAll("instance_id").length !== 1) return fail("Provide a valid instance ID", 400)
   try {
-    const supabase = await createClient(true)
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    if (authError || !user || user.is_anonymous) return fail("Unauthorized", 401)
+    const access = await requireUnrestrictedLocationAccess()
+    if (access.error) return access.error
+    const { supabase } = access
     const { data: instance, error } = await supabase.from("remote_instances").select("id, site_id")
       .eq("id", parsed.data.instance_id).maybeSingle()
     if (error) return fail("Instance access unavailable", 503)

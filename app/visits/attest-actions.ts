@@ -65,7 +65,7 @@ export async function getReservationForVisit(siteId: string, reservationId: stri
         resource_type, catalog_item_id, location_id, assignee_user_id,
         lead:leads(id, name, email, phone),
         catalog_item:catalog_items(id, name),
-        location:locations(id, name)
+        location:locations!reservations_location_id_fkey(id, name)
       `
       )
       .eq("id", reservationId)

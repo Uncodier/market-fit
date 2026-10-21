@@ -147,7 +147,7 @@ export async function getBookedSeats(
 
   if (error) {
     console.error("Error fetching booked seats:", error)
-    return 0
+    throw new Error('Reservation capacity could not be verified')
   }
 
   return (reservations || [])
@@ -165,7 +165,7 @@ export async function getAvailableSlots(
   qty: number = 1,
   ignoreReservationId?: string
 ) {
-  const supabase = await createServiceClient(true)
+  const supabase = await createServiceClient(true, { access: 'public' })
   const { data: item } = await supabase
     .from("catalog_items")
     .select("kind, digital_subtype, redeem_assignment_mode, parent_id")
@@ -216,15 +216,16 @@ export async function getAvailableSlotsForItem(
   qty: number = 1,
   ignoreReservationId?: string
 ) {
-  const supabase = await createServiceClient(true)
+  const supabase = await createServiceClient(true, { access: 'public' })
   const config = await resolveReservationConfig(catalogItemId, supabase)
   
   // 1. Get schedules
-  const { data: schedules } = await supabase
+  const { data: schedules, error: scheduleError } = await supabase
     .from("reservation_schedules")
     .select("*")
     .eq("catalog_item_id", config.scheduleItemId)
 
+  if (scheduleError) throw new Error('Reservation schedule could not be verified')
   if (!schedules || schedules.length === 0) return []
 
   const dateStrs = eachDateString(startDateStr, endDateStr)
@@ -235,7 +236,7 @@ export async function getAvailableSlotsForItem(
   const rangeEnd = addDays(parseISO(`${toDateStr(endDateStr)}T23:59:59Z`), 1)
 
   // 2. Get reservations that overlap the padded window (not merely contained in it)
-  const { data: reservations } = await applyExclusiveTimeOverlap(
+  const { data: reservations, error: reservationsError } = await applyExclusiveTimeOverlap(
     supabase
       .from("reservations")
       .select("id, start_time, end_time, quantity, status")
@@ -244,10 +245,11 @@ export async function getAvailableSlotsForItem(
     rangeStart.toISOString(),
     rangeEnd.toISOString()
   )
+  if (reservationsError) throw new Error('Reservation capacity could not be verified')
 
   // 2.5 Get calendar blocks
   const siteId = schedules[0].site_id
-  const { data: blocksData } = await applyExclusiveTimeOverlap(
+  const { data: blocksData, error: blocksError } = await applyExclusiveTimeOverlap(
     supabase
       .from("calendar_blocks")
       .select("entity_type, entity_id, start_time, end_time")
@@ -256,6 +258,7 @@ export async function getAvailableSlotsForItem(
     rangeEnd.toISOString()
   )
 
+  if (blocksError) throw new Error('Reservation blocks could not be verified')
   const calendarBlocks = (blocksData || []).filter((b: any) => 
     b.entity_type === 'global' || 
     (b.entity_type === 'catalog_item' && config.capacityGroupIds.includes(b.entity_id))
@@ -340,17 +343,18 @@ export async function assertReservationSlot(
   isAdmin: boolean = false,
   ignoreReservationId?: string
 ) {
-  const supabase = await createServiceClient(true)
+  const supabase = await createServiceClient(true, { access: 'public' })
   
   // Intercept round robin variant assert check: if it's a variant of a RR, we need to skip its own config check
   // since the parent RR handles the assert directly via assertCommerceReservationSlot mapping.
   const config = await resolveReservationConfig(catalogItemId, supabase)
 
-  const { data: schedules } = await supabase
+  const { data: schedules, error: scheduleError } = await supabase
     .from("reservation_schedules")
     .select("*")
     .eq("catalog_item_id", config.scheduleItemId)
 
+  if (scheduleError) throw new Error('Reservation schedule could not be verified')
   if (!schedules || schedules.length === 0) {
     throw new Error("Item is reservable but has no schedule configured")
   }
@@ -363,7 +367,7 @@ export async function assertReservationSlot(
   }
   
   // Check calendar blocks
-  const { data: blocksData } = await applyExclusiveTimeOverlap(
+  const { data: blocksData, error: blocksError } = await applyExclusiveTimeOverlap(
     supabase
       .from("calendar_blocks")
       .select("entity_type, entity_id, start_time, end_time")
@@ -372,6 +376,7 @@ export async function assertReservationSlot(
     endIso
   )
 
+  if (blocksError) throw new Error('Reservation blocks could not be verified')
   const isBlocked = (blocksData || []).some((b: any) =>
     (b.entity_type === 'global' ||
     (b.entity_type === 'catalog_item' && config.capacityGroupIds.includes(b.entity_id))) &&

@@ -19,7 +19,8 @@ import { Input } from "@/app/components/ui/input"
 import { Label } from "@/app/components/ui/label"
 import { createSubscriptionInvoice } from "../actions"
 import { DueDateField } from "@/app/components/finance/DueDateField"
-import { getSubscriptionInvoiceDueDate } from "@/lib/finance/due-date"
+import { getSubscriptionInvoiceDueDate, isDateOnly } from "@/lib/finance/due-date"
+import { getSubscriptionBillingDate } from "../billing-period"
 
 interface CreateSubscriptionInvoiceDialogProps {
   open: boolean
@@ -44,6 +45,7 @@ export function CreateSubscriptionInvoiceDialog({
 }: CreateSubscriptionInvoiceDialogProps) {
   const [amount, setAmount] = useState(String(defaultAmount || ""))
   const [invoiceDate, setInvoiceDate] = useState(new Date())
+  const [billingDate, setBillingDate] = useState(getSubscriptionBillingDate(nextBillingDate) || "")
   const [submitting, setSubmitting] = useState(false)
   const [dueDate, setDueDate] = useState("")
 
@@ -52,6 +54,10 @@ export function CreateSubscriptionInvoiceDialog({
     setAmount(String(defaultAmount || ""))
     setInvoiceDate(new Date())
   }, [defaultAmount, open])
+
+  useEffect(() => {
+    if (open) setBillingDate(getSubscriptionBillingDate(nextBillingDate) || "")
+  }, [nextBillingDate, open])
 
   useEffect(() => {
     if (open) setDueDate(getSubscriptionInvoiceDueDate(defaultDueDate, nextBillingDate, format(invoiceDate, "yyyy-MM-dd")) || "")
@@ -65,6 +71,10 @@ export function CreateSubscriptionInvoiceDialog({
       toast.error("Enter an amount greater than zero")
       return
     }
+    if (!isDateOnly(billingDate)) {
+      toast.error("Select a valid billing period")
+      return
+    }
 
     setSubmitting(true)
     try {
@@ -73,6 +83,7 @@ export function CreateSubscriptionInvoiceDialog({
         subscriptionId,
         amount: numericAmount,
         invoiceDate: format(invoiceDate, "yyyy-MM-dd"),
+        billingDate,
         dueDate: dueDate || null,
       })
 
@@ -114,13 +125,27 @@ export function CreateSubscriptionInvoiceDialog({
               />
             </div>
             <div className="grid gap-2">
-              <Label>Invoice date</Label>
+              <Label htmlFor="subscription-invoice-date">Invoice date</Label>
               <DatePicker
+                id="subscription-invoice-date"
                 date={invoiceDate}
                 setDate={setInvoiceDate}
                 placeholder="Select invoice date"
                 showEvents={false}
+                disabled={submitting}
               />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="subscription-invoice-billing-period">Billing period</Label>
+              <DatePicker
+                id="subscription-invoice-billing-period"
+                date={billingDate ? new Date(`${billingDate}T12:00:00`) : undefined}
+                setDate={(date) => setBillingDate(format(date, "yyyy-MM-dd"))}
+                placeholder="Select billing period"
+                showEvents={false}
+                disabled={submitting}
+              />
+              <p className="text-xs text-muted-foreground">The start of the subscription period, independent of the invoice date.</p>
             </div>
             <DueDateField id="subscription-invoice-due-date" value={dueDate} onChange={setDueDate} disabled={submitting} description="Defaults to the subscription billing-to-due offset. Changing the invoice date recalculates the default; you can override or clear it for this invoice." />
           </DialogBody>

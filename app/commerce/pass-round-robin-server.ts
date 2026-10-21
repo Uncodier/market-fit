@@ -32,7 +32,7 @@ function isActiveRoundRobinMember(item: RoundRobinMemberRow | undefined): boolea
 }
 
 export async function listPassRoundRobinMemberIds(passCatalogItemId: string): Promise<string[]> {
-  const supabase = await createServiceClient(true)
+  const supabase = await createServiceClient(true, { access: 'public' })
   
   // 1. Fetch the target item to see if it's a variant (has a parent)
   const { data: targetItem } = await supabase
@@ -169,7 +169,7 @@ export async function getMergedRoundRobinSlots(
 }
 
 async function loadRoundRobinCursor(passCatalogItemId: string): Promise<number> {
-  const supabase = await createServiceClient(true)
+  const supabase = await createServiceClient(true, { access: 'public' })
   const { data } = await supabase
     .from("pass_round_robin_state")
     .select("next_index")
@@ -184,7 +184,7 @@ async function saveRoundRobinCursor(params: {
   nextIndex: number
   lastMemberId: string
 }) {
-  const supabase = await createServiceClient(true)
+  const supabase = await createServiceClient(true, { access: 'public' })
   const { error } = await supabase.from("pass_round_robin_state").upsert({
     pass_catalog_item_id: params.passCatalogItemId,
     site_id: params.siteId,
@@ -282,7 +282,7 @@ async function catalogItemIsRoundRobin(catalogItem: {
   redeem_assignment_mode?: string | null
 }): Promise<boolean> {
   if (isRoundRobinPass(catalogItem)) return true
-  const supabase = await createServiceClient(true)
+  const supabase = await createServiceClient(true, { access: 'public' })
   const { data: item } = await supabase
     .from("catalog_items")
     .select("parent_id, redeem_assignment_mode")

@@ -8,6 +8,7 @@ import { enqueueCheckout } from "@/app/pos/local/outbox"
 import { drainPosOutbox, refreshPosSyncCounts } from "@/app/pos/local/sync-engine"
 import { getPosDb } from "@/app/pos/local/db"
 import type { PosShippingAddress } from "@/app/pos/shipping-address"
+import { requirePosPermission, isPosPermissionCurrent } from "./local/location-permission-state"
 
 type SplitOrder = { title: string; items: PosCartItem[] }
 
@@ -59,13 +60,16 @@ async function resolveSplitLead(
 export async function createPendingSplitOrders(
   params: CreatePendingSplitOrdersParams,
 ) {
+  const permission = requirePosPermission(params.siteId)
   const { resolvedLeadId, localLeadId } = await resolveSplitLead(
     params.leadRelationValue,
     params.siteId,
   )
+  if (!isPosPermissionCurrent(permission)) throw new Error("POS access changed")
   const db = getPosDb()
 
   for (const order of params.orders) {
+    if (!isPosPermissionCurrent(permission)) throw new Error("POS access changed")
     const clientMutationId = uuidv4()
     const lines = order.items
       .filter((item) => item.cartQty > 0)

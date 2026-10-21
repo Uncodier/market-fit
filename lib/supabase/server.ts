@@ -2,6 +2,7 @@ import { createServerClient } from "@supabase/ssr"
 import { cookies } from "next/headers"
 import { createDemoMockClient } from "@/lib/demo-data/mock-client"
 import { wrapSupabaseClient } from "@/lib/permissions/mutation-guard"
+import { locationGuardedServiceFetch, type ServiceAccessMode } from "./service-location-guard"
 
 export async function createClient(skipDemo: boolean = false) {
   const cookieStore = await cookies()
@@ -40,7 +41,7 @@ export async function createClient(skipDemo: boolean = false) {
 // Cliente con permisos elevados (solo para operaciones del servidor).
 // When skipDemo is true, do NOT call cookies() — required for unstable_cache /
 // static data scopes that cannot access dynamic request stores.
-export async function createServiceClient(skipDemo: boolean = false) {
+export async function createServiceClient(skipDemo: boolean = false, options: { access?: ServiceAccessMode } = {}) {
   if (!skipDemo) {
     const cookieStore = await cookies();
     const demoSiteId = cookieStore.get('market_fit_demo_site_id')?.value;
@@ -55,6 +56,7 @@ export async function createServiceClient(skipDemo: boolean = false) {
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
     {
+      global: { fetch: locationGuardedServiceFetch(options.access) },
       cookies: {
         get(name: string) {
           return undefined; // No usar cookies del usuario para service client

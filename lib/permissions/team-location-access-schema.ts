@@ -4,6 +4,8 @@ import { restrictedLocationIdsSchema } from "./location-access"
 /** Shared server/browser DTO; null activity is unknown, never silently active. */
 export const teamLocationAccessSchema = z.object({
   site_id: z.string().uuid(),
+  // Older foundation RPCs do not expose readiness. Absence must never enable writes.
+  editing_enabled: z.boolean().default(false),
   locations: z.array(z.object({ id: z.string().uuid(), name: z.string(), is_active: z.boolean().nullable() })),
   members: z.array(z.object({
     id: z.string().uuid(),
@@ -22,7 +24,25 @@ export const teamLocationAccessSchema = z.object({
 
 export const teamLocationAccessResponseSchema = z.object({
   success: z.literal(true),
-  editing_enabled: z.literal(false),
 }).and(teamLocationAccessSchema)
 
 export type TeamLocationAccessResponse = z.infer<typeof teamLocationAccessResponseSchema>
+
+export const replaceMemberLocationRestrictionsSchema = z.object({
+  memberId: z.string().uuid(),
+  restricted_location_ids: restrictedLocationIdsSchema,
+  expected_restricted_location_ids: restrictedLocationIdsSchema,
+}).strict()
+
+export const memberLocationReplacementSchema = z.object({
+  site_id: z.string().uuid(),
+  site_member_id: z.string().uuid(),
+  restricted_location_ids: restrictedLocationIdsSchema,
+  revision: z.number().int().nonnegative(),
+})
+
+export const memberLocationReplacementResponseSchema = memberLocationReplacementSchema.extend({ success: z.literal(true) })
+
+export function sameLocationIds(first: string[], second: string[]) {
+  return first.map(id => id.toLowerCase()).sort().join(",") === second.map(id => id.toLowerCase()).sort().join(",")
+}

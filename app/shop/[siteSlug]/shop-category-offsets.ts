@@ -70,7 +70,7 @@ async function loadShopCategoryOffsetsFallback(
 export async function getShopCategoryOffsets(siteId: string): Promise<ShopCategoryOffset[]> {
   return unstable_cache(
     async () => {
-      const supabase = await createServiceClient(true)
+      const supabase = await createServiceClient(true, { access: 'public' })
       const { data, error } = await supabase.rpc("shop_category_offsets", {
         p_site_id: siteId,
       })

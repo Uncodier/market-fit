@@ -54,7 +54,7 @@ export async function listLocations(siteId: string) {
 /** Public storefront read — bypasses member-only RLS on locations. */
 export async function listPublicLocations(siteId: string) {
   try {
-    const supabase = await createServiceClient(true);
+    const supabase = await createServiceClient(true, { access: 'public' });
     const { data, error } = await supabase
       .from("locations")
       .select("*")
@@ -199,46 +199,23 @@ export async function setInventoryLevel(siteId: string, locationId: string, cata
 export async function transferInventory(siteId: string, catalogItemId: string, fromLocationId: string, toLocationId: string, quantity: number) {
   try {
     const supabase = await createClient();
-    
-    // Get source quantity
-    const { data: source } = await supabase
-      .from("inventory_levels")
-      .select("id, quantity")
-      .eq("location_id", fromLocationId)
-      .eq("catalog_item_id", catalogItemId)
-      .single();
-      
-    if (!source || source.quantity < quantity) {
-      throw new Error("Insufficient stock at source location");
-    }
-
-    // Call RPC or perform in sequence if no RPC is defined
-    // Doing in sequence for simplicity, ideally needs a transaction in RPC
-    await supabase.from("inventory_levels").update({ quantity: source.quantity - quantity }).eq("id", source.id);
-    
-    // Let's rewrite set logic for target to add
-    const { data: target } = await supabase
-      .from("inventory_levels")
-      .select("id, quantity")
-      .eq("location_id", toLocationId)
-      .eq("catalog_item_id", catalogItemId)
-      .single();
-      
-    if (target) {
-      await supabase.from("inventory_levels").update({ quantity: target.quantity + quantity }).eq("id", target.id);
-    } else {
-      await supabase.from("inventory_levels").insert({
-        site_id: siteId,
-        location_id: toLocationId,
-        catalog_item_id: catalogItemId,
-        quantity: quantity
-      });
+    const { data, error } = await supabase.rpc("transfer_location_inventory", {
+      p_site_id: siteId,
+      p_catalog_item_id: catalogItemId,
+      p_from_location_id: fromLocationId,
+      p_to_location_id: toLocationId,
+      p_quantity: quantity,
+    });
+    if (error || !data) {
+      return { error: error?.code === 'PGRST202'
+        ? 'Inventory transfers require the location access migration'
+        : 'Inventory transfer could not be confirmed. No sequential fallback is allowed.' };
     }
 
     revalidatePath(`/inventory`);
     return { success: true };
-  } catch (error: any) {
-    return { error: error.message };
+  } catch {
+    return { error: 'Inventory transfer could not be confirmed' };
   }
 }
 

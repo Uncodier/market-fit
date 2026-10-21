@@ -1,12 +1,15 @@
 import { processRecordEmbeddingsById } from "@/app/records/lib/record-embedding-worker"
+import { requireUnrestrictedLocationAccess } from '@/lib/auth/location-boundary.server'
 
 jest.mock("server-only", () => ({}))
+jest.mock('@/lib/auth/location-boundary.server', () => ({ requireUnrestrictedLocationAccess: jest.fn() }))
 
 const recordId = "00000000-0000-4000-8000-000000000100"
 
 describe("record embedding API client", () => {
   beforeEach(() => {
     jest.clearAllMocks()
+    jest.mocked(requireUnrestrictedLocationAccess).mockResolvedValue({ supabase: {}, user: { id: 'user' } } as never)
     process.env.API_SERVER_URL = "https://api.example.com"
     process.env.SERVICE_API_KEY = "service-key"
   })
@@ -60,5 +63,12 @@ describe("record embedding API client", () => {
     await expect(processRecordEmbeddingsById({ recordId })).rejects.toThrow(
       "Embedding service is not configured"
     )
+  })
+
+  it('does not forward credentials or record identifiers for restricted callers', async () => {
+    jest.mocked(requireUnrestrictedLocationAccess).mockResolvedValue({ error: {} } as never)
+    global.fetch = jest.fn()
+    await expect(processRecordEmbeddingsById({ recordId })).rejects.toThrow('Embedding requires unrestricted location access')
+    expect(fetch).not.toHaveBeenCalled()
   })
 })

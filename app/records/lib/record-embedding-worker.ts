@@ -1,6 +1,7 @@
 import "server-only"
 
 import { getApiServerUrl } from "@/lib/api-server-url"
+import { requireUnrestrictedLocationAccess } from '@/lib/auth/location-boundary.server'
 
 const REQUEST_TIMEOUT_MS = 55_000
 
@@ -15,6 +16,8 @@ export async function processRecordEmbeddingsById(input: {
   recordId: string
   requestedNodeIds?: string[]
 }): Promise<RecordEmbeddingResult> {
+  const access = await requireUnrestrictedLocationAccess()
+  if (access.error) throw new Error('Embedding requires unrestricted location access')
   const apiServerUrl = getApiServerUrl()
   const serviceApiKey = process.env.SERVICE_API_KEY?.trim()
   if (!apiServerUrl || !serviceApiKey) {

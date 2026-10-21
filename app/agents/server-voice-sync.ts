@@ -1,5 +1,6 @@
 import "server-only"
 import { createClient } from "@/lib/supabase/server"
+import { readLocationRestrictionState } from '@/lib/permissions/location-boundary'
 
 export async function requestServerVoiceAgentResync(siteId: string): Promise<void> {
   const baseUrl =
@@ -15,6 +16,7 @@ export async function requestServerVoiceAgentResync(siteId: string): Promise<voi
       data: { session },
     } = await supabase.auth.getSession()
     if (!session?.access_token) return
+    if (await readLocationRestrictionState(supabase, siteId) !== false) return
 
     const response = await fetch(
       new URL("/api/integrations/zavu/voice", normalizedBaseUrl),

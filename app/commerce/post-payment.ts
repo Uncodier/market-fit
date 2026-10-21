@@ -1,5 +1,5 @@
 import { createServiceClient } from "@/lib/supabase/server"
-import { createShipment } from "@/app/shipments/actions"
+import { createAuthorizedShipment } from "@/app/shipments/create-shipment"
 import { ensureCommerceLeadConverted } from "./ensure-commerce-lead-converted"
 import { grantFromOrder } from "./entitlements"
 
@@ -20,7 +20,7 @@ export async function processPostPaymentFulfillment(
     fulfillmentClaimToken?: string
   },
 ) {
-  const supabase = await createServiceClient(true)
+  const supabase = await createServiceClient(true, { access: 'system' })
 
   try {
     const saleResult = await supabase
@@ -120,7 +120,7 @@ export async function processPostPaymentFulfillment(
 
     shipmentId = existingShipment?.id
     if (!shipmentId) {
-      const shipResult = await createShipment({
+      const shipResult = await createAuthorizedShipment(supabase, {
         siteId,
         saleOrderId: orderId,
         saleId,
@@ -128,7 +128,6 @@ export async function processPostPaymentFulfillment(
         originLocationId: order.origin_location_id,
         shippingAddress: order.shipping_address,
         userId,
-        forceServiceRole: true,
         stripeCheckoutSessionId: options?.stripeSessionId,
       });
       if (shipResult.error || !shipResult.data?.id) {

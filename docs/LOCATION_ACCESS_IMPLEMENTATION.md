@@ -1,6 +1,8 @@
 # Location access: staged authorization foundations
 
-**Status:** local foundation implementation, not an activated cross-module ACL.
+**Status:** foundation-stage historical notes. The subsequent
+[enforcement and member editor implementation](LOCATION_ACCESS_ENFORCEMENT.md)
+supersedes this stage. It adds forward-only migrations; the foundation is unchanged.
 The full target remains [Location access design](LOCATION_ACCESS_DESIGN.md).
 
 ## Implemented boundary

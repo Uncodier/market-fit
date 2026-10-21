@@ -2,6 +2,7 @@ import { pullPosCatalogSnapshot, type PosCatalogSnapshot } from "@/app/pos/actio
 import { posOrderAmountDue, selectPosOpenOrders } from "@/app/pos/open-orders";
 import { getPosDb } from "./db";
 import type { LocalPendingOrder, LocalPromotion } from "./types";
+import { requirePosPermission, isPosPermissionCurrent } from "./location-permission-state";
 
 const SCHEMA_VERSION = 1;
 
@@ -237,7 +238,9 @@ export async function pullAndStorePosCatalogSnapshot(siteId: string, revision: s
   error?: string;
   pulledAt?: string;
 }> {
+  const permission = requirePosPermission(siteId);
   const res = await pullPosCatalogSnapshot(siteId, revision);
+  if (!isPosPermissionCurrent(permission)) return { ok: false, error: "POS access changed" };
   if ("error" in res) {
     return { ok: false, error: res.error };
   }

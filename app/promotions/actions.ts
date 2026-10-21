@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath, revalidateTag } from "next/cache";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { PromotionParams, PromotionWithCampaign } from "./types";
 import { Promotion } from "@/app/types";
 import {
@@ -384,10 +384,21 @@ export async function previewPromotionForCart(params: {
   source?: string | null;
   locationId?: string | null;
 }) {
+  const isPublicPreview = ['shop', 'marketplace', 'quote'].includes(params.source || '')
+  let publicClient: Awaited<ReturnType<typeof createServiceClient>> | undefined
+  let buyerUserId = params.buyerUserId
+  if (isPublicPreview) {
+    const userClient = await createClient(true)
+    const { data: { user }, error } = await userClient.auth.getUser()
+    buyerUserId = error ? null : user?.id || null
+    publicClient = await createServiceClient(true, { access: 'public' })
+  }
   const result = await resolvePromotionDiscount({
     ...params,
+    buyerUserId,
+    leadId: isPublicPreview ? null : params.leadId,
     forceServiceRole: true,
-  });
+  }, publicClient);
 
   if ("error" in result) return { error: result.error };
 

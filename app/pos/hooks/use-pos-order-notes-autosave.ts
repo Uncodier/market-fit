@@ -1,9 +1,10 @@
 "use client";
 
-import { useCallback, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { v4 as uuidv4 } from "uuid";
 import { getPosDb } from "@/app/pos/local/db";
 import { enqueueOrderNotesUpdate } from "@/app/pos/local/outbox";
+import { getPosPermissionLease, isPosPermissionCurrent } from "../local/location-permission-state";
 import {
   drainPosOutbox,
   refreshPosSyncCounts,
@@ -26,10 +27,19 @@ async function updateCachedOrderNotes(
 
 export function usePosOrderNotesAutosave(siteId?: string) {
   const timers = useRef(new Map<string, number>());
+  useEffect(() => {
+    const pending = timers.current;
+    return () => {
+      pending.forEach((timer) => window.clearTimeout(timer));
+      pending.clear();
+    };
+  }, [siteId]);
 
   return useCallback(
     (orderId: string, notes: string) => {
       if (!siteId || !orderId || orderId === "new") return;
+      const permission = getPosPermissionLease(siteId);
+      if (!permission) return;
 
       const previousTimer = timers.current.get(orderId);
       if (previousTimer) window.clearTimeout(previousTimer);
@@ -37,7 +47,9 @@ export function usePosOrderNotesAutosave(siteId?: string) {
       const timer = window.setTimeout(async () => {
         timers.current.delete(orderId);
         try {
+          if (!isPosPermissionCurrent(permission)) return;
           await updateCachedOrderNotes(siteId, orderId, notes);
+          if (!isPosPermissionCurrent(permission)) return;
           await enqueueOrderNotesUpdate(siteId, {
             siteId,
             orderId,
@@ -45,7 +57,7 @@ export function usePosOrderNotesAutosave(siteId?: string) {
             clientMutationId: uuidv4(),
           });
           await refreshPosSyncCounts(siteId);
-          if (navigator.onLine) void drainPosOutbox(siteId);
+          if (isPosPermissionCurrent(permission)) void drainPosOutbox(siteId);
         } catch (error) {
           console.error("Failed to save POS order notes:", error);
         }

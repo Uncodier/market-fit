@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { z } from "zod"
-import { createClient } from "@/lib/supabase/server"
+import { requireUnrestrictedLocationAccess } from "@/lib/auth/location-boundary.server"
 import { processRecordEmbeddingsById } from "@/app/records/lib/record-embedding-worker"
 import {
   acquireSemaphore,
@@ -19,11 +19,9 @@ export const maxDuration = 60
 export async function POST(request: NextRequest) {
   try {
     const input = bodySchema.parse(await request.json())
-    const supabase = await createClient()
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    if (authError || !user) {
-      return NextResponse.json({ error: "Not authenticated" }, { status: 401 })
-    }
+    const access = await requireUnrestrictedLocationAccess()
+    if (access.error) return access.error
+    const { supabase } = access
 
     const { data: record, error: recordError } = await supabase
       .from("records")

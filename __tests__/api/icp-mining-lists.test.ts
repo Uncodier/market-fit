@@ -20,7 +20,7 @@ describe("authenticated pending mining lists API", () => {
   beforeEach(() => {
     jest.clearAllMocks()
     getUser = jest.fn().mockResolvedValue({ data: { user: { id: "user", email: "user@example.test" } }, error: null })
-    rpc = jest.fn().mockResolvedValue({ data: "member", error: null })
+    rpc = jest.fn(async (name: string) => ({ data: name === 'current_user_site_role' ? 'collaborator' : false, error: null }))
     jest.mocked(createClient).mockResolvedValue({ auth: { getUser }, rpc } as never)
     rows = [{ id: listId, site_id: siteId, name: "Unsegmented list", status: "pending", total_targets: 100,
       processed_targets: 10, progress_percent: "10", role_query_segments: [], private_data: "not exposed" }]

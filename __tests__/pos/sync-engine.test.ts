@@ -1,5 +1,11 @@
 import type { PosOutboxRow } from "@/app/pos/local/types";
 
+jest.mock("@/app/pos/local/location-permission-state", () => ({
+  getPosPermissionLease: jest.fn((siteId: string) => ({ siteId, userId: "cashier", generation: 1 })),
+  isPosPermissionCurrent: jest.fn(() => true),
+  subscribePosPermission: () => () => {},
+}));
+
 jest.mock("@/app/commerce/checkout", () => ({ checkoutCart: jest.fn() }));
 jest.mock("@/app/commerce/ticket-check-in", () => ({ checkInTicket: jest.fn() }));
 jest.mock("@/app/pos/actions/create-lead-sync", () => ({ createLeadWithIdempotency: jest.fn() }));
@@ -98,6 +104,53 @@ describe("POS sync failure reporting and recovery", () => {
     expect(engine.getPosSyncStatus(SITE)).toMatchObject({ pendingCount: 0, failedCount: 0, lastError: null });
     expect(report).toHaveBeenCalledTimes(1);
     expect(jest.getTimerCount()).toBe(0);
+  });
+
+  it("does not replay the next queued operation or record a late result after revocation", async () => {
+    rows = [queued("first"), queued("second")];
+    let finish!: (value: { success: boolean }) => void;
+    checkIn.mockImplementationOnce(() => new Promise((resolve) => { finish = resolve; }));
+    const draining = engine.drainPosOutbox(SITE);
+    for (let i = 0; i < 15 && !finish; i++) await Promise.resolve();
+    const permission = jest.mocked(await import("@/app/pos/local/location-permission-state"));
+    permission.isPosPermissionCurrent.mockReturnValue(false);
+    finish({ success: true });
+    await draining;
+    expect(checkIn).toHaveBeenCalledTimes(1);
+    expect(rows[0].status).toBe("syncing");
+    expect(rows[1].status).toBe("pending");
+    expect(report).not.toHaveBeenCalled();
+  });
+
+  it("does not apply old-site open orders after an actor/scope transition", async () => {
+    let finish!: (value: { data: { id: string }[] }) => void;
+    ordersPull.mockImplementationOnce(() => new Promise((resolve) => { finish = resolve; }));
+    const pulling = engine.pullPosOrdersInBackground(SITE);
+    const permission = jest.mocked(await import("@/app/pos/local/location-permission-state"));
+    permission.isPosPermissionCurrent.mockReturnValue(false);
+    finish({ data: [{ id: "old-private-order" }] });
+    await pulling;
+    expect(applyOrders).not.toHaveBeenCalled();
+  });
+
+  it("rejects forged outbox site scope before any server call", async () => {
+    const row = queued();
+    row.payload.data.siteId = "another-site";
+    rows = [row];
+    await engine.drainPosOutbox(SITE);
+    expect(checkIn).not.toHaveBeenCalled();
+    expect(rows[0]).toMatchObject({ status: "failed", lastError: "POS site changed" });
+  });
+
+  it("never replays a checkout attributed to a different cached actor", async () => {
+    rows = [{ ...queued(), kind: "checkout", payload: { kind: "checkout", data: {
+      siteId: SITE, userId: "previous-actor", clientMutationId: "mutation-1",
+      lines: [], fulfillment: "dine_in", source: "pos",
+    } } }];
+    await engine.drainPosOutbox(SITE);
+    const checkout = jest.mocked((await import("@/app/commerce/checkout")).checkoutCart);
+    expect(checkout).not.toHaveBeenCalled();
+    expect(rows[0]).toMatchObject({ status: "failed", lastError: "POS account changed" });
   });
 
   it("automatically retries a persisted failed row without pending rows or a manual force", async () => {

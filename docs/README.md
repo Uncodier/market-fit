@@ -52,6 +52,8 @@ Use the guides below before relying on older implementation notes.
 - [Embedded application and external tracker diagnostics](EMBEDDED_APPLICATION_DIAGNOSTICS.md)
 - [Security resource provenance and display order](SECURITY_RESOURCE_PROVENANCE.md)
 - [Location access foundations and activation gates](LOCATION_ACCESS_IMPLEMENTATION.md)
+- [Location ACL enforcement, member editor, and rollout](LOCATION_ACCESS_ENFORCEMENT.md)
+- [Location ACL review and corrective migrations](LOCATION_ACCESS_REVIEW.md)
 - [Report sections and data contracts](REPORTS.md)
 - [Demo report data and isolation](DEMO_REPORTS.md)
 - [Report exports](REPORT_EXPORTS.md)
@@ -84,7 +86,7 @@ environment variables before changing production configuration.
 
 ## Product designs
 
-- [Team Settings location-scoped access](LOCATION_ACCESS_DESIGN.md) — target restricted-location model, module matrix, day-one schema, RLS, and open decisions; foundations are staged, cross-module ACL is not activated.
+- [Team Settings location-scoped access](LOCATION_ACCESS_DESIGN.md) — target restricted-location model and module matrix; implementation, supported boundaries, limitations, and deployment steps are in the enforcement guide.
 - [Suppliers, procurement, tenders, and the unified account portal](/Users/prado/Desktop/Proyectos/Uncodie/Code/market-fit/docs/PROCUREMENT_AND_TENDERS_DESIGN.md) — planned model, screens, Marketplace-style global `/tenders`, UI/UX reuse references, and `/buyer` to `/home` migration; not implemented behavior.
 - [Procurement certifications and tender evidence](/Users/prado/Desktop/Proyectos/Uncodie/Code/market-fit/docs/PROCUREMENT_CERTIFICATIONS_DESIGN.md) — companion design for profile credentials, tender-specific requirements, private versioned evidence, and scoped review; not implemented behavior.
 

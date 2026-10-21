@@ -1,4 +1,4 @@
-import Dexie, { type Table } from "dexie";
+import Dexie, { type DBCoreCursor, type DBCoreTransaction, type Table } from "dexie";
 import type { CatalogItem, Tax } from "@/app/types";
 import type {
   IdMapRow,
@@ -16,7 +16,8 @@ export type PosCatalogCategory = {
   id: string;
   site_id: string;
   name: string;
-  [key: string]: any;
+  sort_order?: number | null;
+  [key: string]: unknown;
 };
 
 export type PosLead = {
@@ -26,7 +27,7 @@ export type PosLead = {
   email?: string | null;
   phone?: string | null;
   is_local?: boolean;
-  [key: string]: any;
+  [key: string]: unknown;
 };
 
 export type PosLocation = {
@@ -34,7 +35,7 @@ export type PosLocation = {
   site_id: string;
   name?: string | null;
   is_default?: boolean;
-  [key: string]: any;
+  [key: string]: unknown;
 };
 
 export type PosTaxByItem = {
@@ -43,6 +44,8 @@ export type PosTaxByItem = {
 };
 
 export class PosLocalDatabase extends Dexie {
+  private activeTransactions = new Set<DBCoreTransaction>();
+  private retired = false;
   meta!: Table<PosMeta, string>;
   catalogItems!: Table<CatalogItem, string>;
   categories!: Table<PosCatalogCategory, string>;
@@ -58,7 +61,7 @@ export class PosLocalDatabase extends Dexie {
   outbox!: Table<PosOutboxRow, string>;
   idMaps!: Table<IdMapRow, string>;
 
-  constructor() {
+  constructor(isCurrent?: () => boolean) {
     super("market-fit-pos");
     this.version(1).stores({
       meta: "siteId",
@@ -76,17 +79,109 @@ export class PosLocalDatabase extends Dexie {
       outbox: "id, siteId, status, kind, clientMutationId, createdAt",
       idMaps: "localId, siteId, kind, serverId",
     });
+    if (isCurrent) {
+      const check = () => {
+        if (this.retired || !isCurrent()) {
+          this.abortActiveTransactions();
+          throw new Error("POS access changed");
+        }
+      };
+      const gate = <T,>(operation: () => Promise<T>): Promise<T> => {
+        check();
+        return operation().then((result) => { check(); return result; });
+      };
+      const cursorGate = (cursor: DBCoreCursor | null): DBCoreCursor | null => cursor && new Proxy(cursor, {
+        get(target, key) {
+          check();
+          if (key === "start") return (onNext: () => void) => gate(() => target.start(() => { check(); onNext(); }));
+          if (key === "next") return () => gate(() => target.next()).then((next) => cursorGate(next));
+          const value = Reflect.get(target, key);
+          return typeof value === "function" ? (...args: unknown[]) => { check(); return value.apply(target, args); } : value;
+        },
+      });
+      this.use({
+        stack: "dbcore", name: "POS permission lease", level: 100,
+        create: (core) => ({ ...core,
+          transaction: (stores, mode, options) => {
+            check();
+            const transaction = core.transaction(stores, mode, options);
+            this.activeTransactions.add(transaction);
+            const release = () => { this.activeTransactions.delete(transaction); };
+            // Dexie's browser core returns the native IDBTransaction.
+            const events = transaction as IDBTransaction;
+            events.addEventListener("complete", release, { once: true });
+            events.addEventListener("abort", release, { once: true });
+            return transaction;
+          },
+          table: (name) => {
+            const table = core.table(name);
+            return { ...table,
+              get: (req) => gate(() => table.get(req)),
+              getMany: (req) => gate(() => table.getMany(req)),
+              query: (req) => gate(() => table.query(req)),
+              openCursor: (req) => gate(() => table.openCursor(req)).then(cursorGate),
+              count: (req) => gate(() => table.count(req)),
+              mutate: (req) => gate(() => table.mutate(req)),
+            };
+          },
+        }),
+      });
+    }
+  }
+
+  abortActiveTransactions() {
+    this.retired = true;
+    for (const transaction of this.activeTransactions) {
+      try { transaction.abort(); } catch { /* Already finished. */ }
+    }
+    this.activeTransactions.clear();
   }
 }
 
 let dbInstance: PosLocalDatabase | null = null;
+let accessAllowed = false;
+let accessCurrent = () => false;
+
+/** Retired handles must never auto-open after an actor/scope change. */
+export function lockPosDb() {
+  accessAllowed = false;
+  dbInstance?.abortActiveTransactions();
+  dbInstance?.close({ disableAutoOpen: true });
+  dbInstance = null;
+}
+
+export function unlockPosDb(isCurrent: () => boolean) {
+  accessAllowed = true;
+  accessCurrent = isCurrent;
+}
+
+/** Erase every table: legacy tax/price/slot rows have no site index. */
+export async function clearPosPrivateData() {
+  const db = new PosLocalDatabase();
+  try {
+    await db.transaction("rw", db.tables, async () => {
+      await Promise.all(db.tables.map((table) => table.clear()));
+    });
+    for (const key of Object.keys(localStorage)) {
+      if (["pos-active-order:", "pos-checkout-session:", "pos-checkout-attempt:"].some((prefix) => key.startsWith(prefix))) {
+        localStorage.removeItem(key);
+      }
+    }
+  } finally {
+    db.close({ disableAutoOpen: true });
+  }
+}
 
 export function getPosDb(): PosLocalDatabase {
   if (typeof window === "undefined") {
     throw new Error("POS local DB is only available in the browser");
   }
+  if (!accessAllowed || !navigator.onLine || !accessCurrent()) {
+    throw new Error("POS requires verified online access");
+  }
   if (!dbInstance) {
-    dbInstance = new PosLocalDatabase();
+    const current = accessCurrent;
+    dbInstance = new PosLocalDatabase(() => accessAllowed && current());
   }
   return dbInstance;
 }

@@ -24,6 +24,10 @@ export function clearPosSyncError(siteId: string, key: string) {
   siteErrors(siteId).delete(key);
 }
 
+export function clearAllPosSyncErrors() {
+  errorsBySite.clear();
+}
+
 export function recordPosSyncError(key: string, report: PosSyncErrorReport) {
   const errors = siteErrors(report.siteId);
   let state = errors.get(key);

@@ -85,6 +85,12 @@ describe("subscription invoices", () => {
         amount: 125,
         amount_due: 125,
         sale_date: "2026-09-22",
+        product_details: {
+          subscription_id: SUBSCRIPTION_ID,
+          billing_cycle: "2026-09-01T00:00:00.000Z",
+          billing_period_start: "2026-09-01",
+          billing_period_end: "2026-10-01",
+        },
         due_date: "2026-10-06",
         status: "pending",
       })

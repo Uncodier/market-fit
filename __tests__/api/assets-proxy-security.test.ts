@@ -268,8 +268,20 @@ describe("asset proxy URL boundary", () => {
     )
   })
 
+  it("keeps public storefront assets independent of private workspace restrictions", async () => {
+    ;(createClient as jest.Mock).mockResolvedValue({
+      auth: { getUser: jest.fn().mockResolvedValue({ data: { user: { id: "restricted-actor" } }, error: null }) },
+      rpc: jest.fn().mockResolvedValue({ data: true, error: null }),
+    })
+    const response = await getAssetProxy(request("https://project.supabase.co/storage/v1/object/public/media/file.pdf"))
+    expect(response.status).toBe(200)
+    expect(createClient).not.toHaveBeenCalled()
+    expect(global.fetch).toHaveBeenCalled()
+  })
+
   it("never adds service credentials to an authenticated ZIP request", async () => {
     ;(createClient as jest.Mock).mockResolvedValue({
+      rpc: jest.fn().mockResolvedValue({ data: false, error: null }),
       auth: {
         getUser: jest.fn().mockResolvedValue({
           data: { user: { id: "user-1" } },
@@ -299,6 +311,7 @@ describe("asset proxy URL boundary", () => {
 
   it("does not send Supabase credentials to the separate asset host", async () => {
     ;(createClient as jest.Mock).mockResolvedValue({
+      rpc: jest.fn().mockResolvedValue({ data: false, error: null }),
       auth: {
         getUser: jest.fn().mockResolvedValue({
           data: { user: { id: "user-1" } },
@@ -319,5 +332,15 @@ describe("asset proxy URL boundary", () => {
         redirect: "manual",
       })
     )
+  })
+
+  it.each([true, null, "false"])("denies ZIP downloads with restriction state %p before an external fetch", async data => {
+    ;(createClient as jest.Mock).mockResolvedValue({
+      auth: { getUser: jest.fn().mockResolvedValue({ data: { user: { id: "actor" } }, error: null }) },
+      rpc: jest.fn().mockResolvedValue({ data, error: null }),
+    })
+    const response = await getZipProxy(request("https://db.makinari.com/archive.zip"))
+    expect(response.status).toBe(403)
+    expect(global.fetch).not.toHaveBeenCalled()
   })
 })

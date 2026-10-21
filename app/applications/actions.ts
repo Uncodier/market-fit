@@ -6,6 +6,7 @@ import {
   getCurrentUserSiteRole,
   isSiteManagerRole,
 } from "@/lib/auth/api-site-access"
+import { readLocationRestrictionState } from '@/lib/permissions/location-boundary'
 
 async function getAuthorizedReposContext(schema: string) {
   const authClient = await createServerClient()
@@ -14,6 +15,7 @@ async function getAuthorizedReposContext(schema: string) {
   if (authError || !user) {
     throw new Error("Unauthorized")
   }
+  if (await readLocationRestrictionState(authClient) !== false) throw new Error('This operation requires unrestricted location access')
 
   const supabaseUrl = process.env.NEXT_PUBLIC_REPOSITORIES_SUPABASE_URL
   const supabaseKey = process.env.REPOSITORIES_SUPABASE_SECRET_KEY

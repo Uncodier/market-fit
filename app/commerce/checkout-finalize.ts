@@ -1,6 +1,6 @@
 import { revalidatePath } from "next/cache"
 import { bumpCacheEpoch } from "@/lib/redis/json-cache"
-import { createShipment } from "@/app/shipments/actions"
+import { createAuthorizedShipment } from "@/app/shipments/create-shipment"
 import { applyPromotionToOrder } from "@/app/promotions/apply-promotion-to-order"
 import { tryPostSaleJournalWithClient } from "@/app/accounting/source-posting"
 import {
@@ -23,6 +23,7 @@ import {
   CheckoutSource,
   CheckoutSupabaseClient,
   ProcessedCheckoutLine,
+  PersistedCheckoutOrder,
 } from "./checkout-types"
 
 type FinalizeCheckoutParams = {
@@ -35,7 +36,7 @@ type FinalizeCheckoutParams = {
   lines: CheckoutLine[]
   processedLines: ProcessedCheckoutLine[]
   sale: any
-  order: any
+  order: PersistedCheckoutOrder
   existingItems: any[]
   effectiveExistingOrderId?: string
   intent?: CheckoutCartParams["intent"]
@@ -100,7 +101,8 @@ export async function finalizeCheckout(params: FinalizeCheckoutParams) {
       params.order.id,
       params.normalizedPromotionCode,
       params.isAdmin,
-      params.resolvedPromotionId
+      params.resolvedPromotionId,
+      queryClient,
     )
     if (result.error) throw new Error(`Promotion failed: ${result.error}`)
   }
@@ -111,7 +113,7 @@ export async function finalizeCheckout(params: FinalizeCheckoutParams) {
     params.resolvedUserId &&
     params.orderInitialStatus === "completed"
   ) {
-    const result = await createShipment({
+    const result = await createAuthorizedShipment(params.supabaseAdmin, {
       siteId: params.siteId,
       saleOrderId: params.order.id,
       saleId: params.sale.id,
@@ -119,10 +121,6 @@ export async function finalizeCheckout(params: FinalizeCheckoutParams) {
       originLocationId: params.finalOriginLocationId,
       shippingAddress: params.shippingAddress,
       userId: params.resolvedUserId,
-      // Checkout has already authorized and persisted the order. Public buyers
-      // cannot insert shipments through RLS, so this follow-up must use the
-      // server-only client as well.
-      forceServiceRole: true,
     })
     if (result.error) throw new Error(`Shipment error: ${result.error}`)
   } else if (
@@ -196,6 +194,9 @@ export async function finalizeCheckout(params: FinalizeCheckoutParams) {
         lead_id: params.finalLeadId,
         buyer_user_id: params.buyerUserId || null,
         owner_site_id: params.ownerSiteId || null,
+        ...(params.order.location_id !== undefined
+          ? { location_id: params.order.location_id }
+          : {}),
         catalog_item_id: line.catalog_item_id,
         amount: line.unit_price,
         status:

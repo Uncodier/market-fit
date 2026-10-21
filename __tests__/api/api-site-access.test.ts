@@ -35,10 +35,10 @@ function userClient(user: unknown, role: unknown, roleError: unknown = null) {
         error: null,
       }),
     },
-    rpc: jest.fn().mockResolvedValue({
-      data: role,
+    rpc: jest.fn().mockImplementation(async (name: string) => ({
+      data: name === "current_user_site_role" ? role : false,
       error: roleError,
-    }),
+    })),
   }
 }
 
@@ -138,15 +138,37 @@ describe("site API access", () => {
     expect(result.supabase).toBe(client)
   })
 
-  it("keeps legacy callers independent of unapplied location migrations", async () => {
+  it("fails closed when location enforcement cannot be verified", async () => {
     const client = userClient({ id: "user-1" }, "collaborator")
     client.rpc.mockImplementation(async (name: string) => name === "current_user_site_role"
       ? { data: "collaborator", error: null }
       : { data: null, error: { code: "PGRST202" } })
     jest.mocked(createClient).mockResolvedValue(client as unknown as Awaited<ReturnType<typeof createClient>>)
     const result = await requireSiteAccess(requestWithCookie(), "00000000-0000-4000-8000-000000000001")
-    expect(result.error).toBeUndefined()
-    expect(client.rpc).toHaveBeenCalledTimes(1)
+    expect(result.error?.status).toBe(403)
+    expect(client.rpc).toHaveBeenCalledTimes(2)
     expect(client.rpc).toHaveBeenCalledWith("current_user_site_role", { p_site_id: "00000000-0000-4000-8000-000000000001" })
+  })
+
+  it.each([true, null, "false"])("denies unscoped access for restriction result %p", async (state) => {
+    const client = userClient({ id: "user-1" }, "collaborator")
+    client.rpc.mockImplementation(async (name: string) => ({
+      data: name === "current_user_site_role" ? "collaborator" : state, error: null,
+    }))
+    ;(createClient as jest.Mock).mockResolvedValue(client)
+    const result = await requireSiteAccess(requestWithCookie(), "00000000-0000-4000-8000-000000000001")
+    expect(result.error?.status).toBe(403)
+  })
+
+  it("supports explicitly audited RLS-only projections without granting manager privileges", async () => {
+    const client = userClient({ id: "user-1" }, "collaborator")
+    ;(createClient as jest.Mock).mockResolvedValue(client)
+    expect((await requireSiteAccess(requestWithCookie(), "00000000-0000-4000-8000-000000000001", {
+      allowLocationScoped: true,
+    })).error).toBeUndefined()
+    expect(client.rpc).toHaveBeenCalledTimes(1)
+    expect((await requireSiteAccess(requestWithCookie(), "00000000-0000-4000-8000-000000000001", {
+      allowLocationScoped: true, requireManager: true,
+    })).error?.status).toBe(403)
   })
 })

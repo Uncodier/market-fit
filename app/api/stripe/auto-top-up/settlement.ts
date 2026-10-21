@@ -12,7 +12,7 @@ export async function settleAutoTopUpIntent(
   if (expected && (expected.siteId !== intent.metadata.site_id || expected.attemptId !== intent.metadata.attempt_id)) {
     throw new Error("Unexpected automatic top-up intent")
   }
-  const service = await createServiceClient(true)
+  const service = await createServiceClient(true, { access: 'system' })
   const { data: attempt, error } = await service.from("credit_auto_top_up_attempts")
     .select("id,site_id,credits,amount_cents,stripe_customer_id,stripe_payment_method_id,stripe_payment_intent_id,claim_token,status")
     .eq("id", intent.metadata.attempt_id).maybeSingle()

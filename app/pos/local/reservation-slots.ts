@@ -1,6 +1,7 @@
 import { getAvailableSlots } from "@/app/reservations/availability";
 import { getPosDb } from "./db";
 import type { LocalReservationSlots } from "./types";
+import { requirePosPermission, isPosPermissionCurrent } from "./location-permission-state";
 
 const DEFAULT_TTL_MS = 5 * 60 * 1000;
 
@@ -87,6 +88,7 @@ async function fetchReservationSlotsNetwork(params: {
   qty?: number;
   ignoreReservationId?: string;
 }): Promise<SlotsResult> {
+  const permission = requirePosPermission();
   const skipCache = Boolean(params.ignoreReservationId);
   const slots = await getAvailableSlots(
     params.catalogItemId,
@@ -95,6 +97,7 @@ async function fetchReservationSlotsNetwork(params: {
     params.qty ?? 1,
     params.ignoreReservationId,
   );
+  if (!isPosPermissionCurrent(permission)) throw new Error("POS access changed");
   if (!skipCache) {
     await cacheReservationSlots({
       catalogItemId: params.catalogItemId,
@@ -114,7 +117,8 @@ export async function getReservationSlotsLocalFirst(params: {
   qty?: number;
   ignoreReservationId?: string;
 }): Promise<SlotsResult> {
-  const key = reservationSlotsRequestKey(params);
+  const permission = requirePosPermission();
+  const key = `${permission.generation}:${reservationSlotsRequestKey(params)}`;
   const pending = inflight.get(key);
   if (pending) return pending;
 

@@ -21,7 +21,7 @@ const columns = "id, site_id, kind, name, description, sku, target_sale_price, c
 export async function loadShopSearch(options: z.input<typeof optionsSchema>, enrich: Enrich) {
   const { siteId, search, category, offset, pageSize } = optionsSchema.parse(options)
   const page = Math.floor(offset / pageSize) + 1
-  const supabase = await createServiceClient(true)
+  const supabase = await createServiceClient(true, { access: 'public' })
   let categoryIds: string[] | undefined
   if (category !== "all" && category !== SHOP_UNCATEGORIZED_NAME) {
     const result = await supabase.from("catalog_categories").select("id").eq("site_id", siteId).eq("name", category)

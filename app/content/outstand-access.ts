@@ -1,6 +1,7 @@
 import "server-only"
 import { createClient } from "@/lib/supabase/server"
 import { userCanOnSite } from "@/lib/permissions/site-access"
+import { canAccessUnscopedSite } from "@/lib/permissions/location-boundary"
 import {
   accountIdSchema, isRecord, matchesOutstandSite, OutstandBoundaryError, siteIdSchema,
 } from "./outstand-contract"
@@ -16,7 +17,7 @@ export async function authorizeOutstandSite(input: unknown, command: "insert" | 
 
   const { data: role, error: roleError } = await supabase.rpc("current_user_site_role", { p_site_id: siteId })
   if (roleError || !["owner", "admin", "collaborator", "marketing"].includes(role) ||
-    !await userCanOnSite(supabase, siteId, command)) {
+    !await userCanOnSite(supabase, siteId, command) || !await canAccessUnscopedSite(supabase, siteId)) {
     throw new OutstandBoundaryError(403, "You do not have permission to access social posts in this site.")
   }
 

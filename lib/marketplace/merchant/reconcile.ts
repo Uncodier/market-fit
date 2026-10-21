@@ -7,7 +7,7 @@ import { registerWebhookConfiguration } from "./provisioning"
 
 /** Reconciliation only: no repeated activation or deprovisioning call. */
 export async function refreshConnectedStore(integrationId: string, siteId: string, actorId?: string) {
-  const database = await createServiceClient(true)
+  const database = await createServiceClient(true, { access: 'system' })
   const row = await database.from("marketplace_integrations").select("*").eq("id", integrationId).eq("site_id", siteId).maybeSingle()
   if (row.error || !row.data?.merchant_connection_id) throw new Error("Merchant connection unavailable")
   const { app, connection, merchantToken } = await loadConnection(row.data.merchant_connection_id, siteId)

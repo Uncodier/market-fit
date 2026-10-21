@@ -5,6 +5,7 @@ import {
   getActivePosOrderId,
 } from "@/app/pos/active-order-storage";
 import { EMPTY_POS_SHIPPING_ADDRESS } from "@/app/pos/shipping-address";
+import { resetCheckoutCartSession } from "./checkout-attempt-storage";
 
 const DEFAULT_SESSION = (
   siteId: string,
@@ -63,5 +64,6 @@ export async function saveCartSession(
 }
 
 export async function clearCartSession(siteId: string): Promise<PosCartSession> {
+  resetCheckoutCartSession(siteId);
   return saveCartSession(DEFAULT_SESSION(siteId));
 }

@@ -66,7 +66,8 @@ beforeEach(() => {
   leaseRpc.mockImplementation(async (name) => ({ data: name === 'claim_site_subscription_checkout'
     ? { state: 'claimed', token: randomUUID() } : name === 'upsert_billing' ? { success: true } : true, error: null }))
   auth.getUser.mockResolvedValue({ data: { user: { id: userId, email: 'owner@example.test' } }, error: null })
-  rpc.mockImplementation(async (name) => ({ data: name === 'current_user_site_role' ? 'owner' : { success: true }, error: null }))
+  rpc.mockImplementation(async (name) => ({ data: name === 'current_user_site_role' ? 'owner'
+    : name === 'current_user_has_site_location_restrictions' ? false : { success: true }, error: null }))
   const query = { select: jest.fn().mockReturnThis(), eq: jest.fn().mockReturnThis(),
     maybeSingle: jest.fn(async () => ({ data: { stripe_customer_id: 'cus_site' }, error: null })) }
   from.mockReturnValue(query)
@@ -187,7 +188,7 @@ describe('subscription auth, input, and server pricing', () => {
     from().maybeSingle.mockResolvedValue({ data: null, error: null })
     expect((await POST(request())).status).toBe(200)
     expect(leaseRpc).toHaveBeenCalledWith('upsert_billing', { p_site_id: siteId, p_stripe_customer_id: 'cus_site' })
-    expect(rpc.mock.calls.map(([name]) => name)).toEqual(['current_user_site_role'])
+    expect(rpc.mock.calls.map(([name]) => name)).toEqual(['current_user_site_role', 'current_user_has_site_location_restrictions'])
     expect(leaseRpc.mock.calls.at(-1)[0]).toBe('finish_site_subscription_checkout')
   })
 })

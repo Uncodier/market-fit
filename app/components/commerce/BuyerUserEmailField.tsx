@@ -8,6 +8,7 @@ import { toast } from "sonner"
 import { X, Check } from "@/app/components/ui/icons"
 import { resolveBuyerUserByEmail } from "@/app/commerce/resolve-buyer-lead"
 import { useLocalization } from "@/app/context/LocalizationContext"
+import { useSite } from "@/app/context/SiteContext"
 
 export interface BuyerUser {
   buyerUserId: string
@@ -33,6 +34,7 @@ export function BuyerUserEmailField({
   buttonClassName = "",
 }: BuyerUserEmailFieldProps) {
   const { t } = useLocalization()
+  const { currentSite } = useSite()
   const [email, setEmail] = useState("")
   const [isLoading, setIsLoading] = useState(false)
 
@@ -44,7 +46,7 @@ export function BuyerUserEmailField({
 
     setIsLoading(true)
     try {
-      const { data, error } = await resolveBuyerUserByEmail(email.trim())
+      const { data, error } = await resolveBuyerUserByEmail(email.trim(), currentSite?.id || "")
       if (error || !data) {
         toast.error(t("commerce.buyer.notFound"))
         return

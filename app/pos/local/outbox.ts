@@ -1,5 +1,6 @@
 import { v4 as uuidv4 } from "uuid";
 import { getPosDb } from "./db";
+import { requirePosPermission, isPosPermissionCurrent } from "./location-permission-state";
 import type {
   CheckInOutboxPayload,
   CheckoutOutboxPayload,
@@ -19,11 +20,16 @@ export async function enqueueOutbox(params: {
   clientMutationId: string;
   payload: PosOutboxRow["payload"];
 }): Promise<PosOutboxRow> {
+  const permission = requirePosPermission(params.siteId);
+  if (params.payload.kind === "checkout" && params.payload.data.userId !== permission.userId) {
+    throw new Error("POS account changed");
+  }
   const db = getPosDb();
   const existing = await db.outbox
     .where("clientMutationId")
     .equals(params.clientMutationId)
     .first();
+  if (!isPosPermissionCurrent(permission)) throw new Error("POS access changed");
   if (existing) return existing;
 
   const row: PosOutboxRow = {
@@ -82,6 +88,7 @@ export async function enqueueOrderNotesUpdate(
   siteId: string,
   data: UpdateOrderNotesOutboxPayload,
 ) {
+  const permission = requirePosPermission(siteId);
   const db = getPosDb();
   const previousUpdates = await db.outbox
     .where("siteId")
@@ -92,6 +99,7 @@ export async function enqueueOrderNotesUpdate(
         row.payload.data.orderId === data.orderId,
     )
     .primaryKeys();
+  if (!isPosPermissionCurrent(permission)) throw new Error("POS access changed");
   if (previousUpdates.length > 0) {
     await db.outbox.bulkDelete(previousUpdates);
   }

@@ -28,6 +28,8 @@ import {
 } from "../ui/alert-dialog"
 import { MemberBlockedScreens } from "./MemberBlockedScreens"
 import { MemberStatusControl } from "./MemberStatusControl"
+import { MemberLocationRestrictions } from "./MemberLocationRestrictions"
+import { useTeamLocationAccess } from "./TeamLocationAccess"
 import { Switch } from "../ui/switch"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import {
@@ -49,6 +51,7 @@ interface MemberValidation {
 }
 
 interface TeamMemberCardProps {
+  siteId?: string
   member: FormTeamMember
   index: number
   canEditBlockedScreens: boolean
@@ -70,12 +73,13 @@ interface TeamMemberCardProps {
 }
 
 export function TeamMemberCard({
+  siteId,
   member,
   index,
   canEditBlockedScreens,
   canManageTeam,
   isLoading,
-  isSaving,
+  isSaving: isSavingDetails,
   isSavingThis,
   isResendingThis,
   isUpdatingStatus,
@@ -91,17 +95,21 @@ export function TeamMemberCard({
 }: TeamMemberCardProps) {
   const { t } = useLocalization()
   const form = useFormContext<SiteFormValues>()
+  const locationAccess = useTeamLocationAccess()
+  const isSaving = isSavingDetails || !!locationAccess?.savingMemberId
   const isExisting = !!member.id
   const isAdmin =
     member.role === "admin" ||
     member.originalRole === "owner" ||
     member.originalRole === "admin"
-  const canChangeRole = canManageTeam && validation.canChangeRole(member)
+  const canChangeRole = canManageTeam && !isSaving && validation.canChangeRole(member)
   const displayName = member.name || member.email || (t("settings.team.newMember") || "New Member")
   const showResend = isPendingInvitation(member) && !member.manually_disabled
   const showEmailField = !isExisting || isPendingInvitation(member)
   const hasInvalidEmail = !!member.email && !isValidTeamEmail(member.email)
   const isCollapsed = isInactiveTeamMember(member)
+  const locationEditor = <MemberLocationRestrictions member={member} siteId={siteId} canManageTeam={canManageTeam}
+    disabled={isLoading || isSavingDetails || isSavingThis || isUpdatingStatus || isResendingThis} />
 
   return (
     <SectionCard id={`team-member-${index}`}>
@@ -217,6 +225,7 @@ export function TeamMemberCard({
               </div>
             </div>
           )}
+          {locationEditor}
         </div>
       </SectionCardContent>
 
@@ -311,6 +320,7 @@ export function TeamMemberCard({
         </div>
       </SectionCardFooter>
       </>}
+      {isCollapsed && <SectionCardContent className="pt-4">{locationEditor}</SectionCardContent>}
     </SectionCard>
   )
 }

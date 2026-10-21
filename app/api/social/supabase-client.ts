@@ -1,5 +1,13 @@
+import "server-only"
 import { createServerClient } from "@supabase/ssr"
 import { cookies } from "next/headers"
+import { readLocationRestrictionState } from "@/lib/permissions/location-boundary"
+
+export class SocialLocationAccessError extends Error {
+  constructor(readonly status: 401 | 403) {
+    super(status === 401 ? "Unauthorized" : "This operation requires unrestricted location access")
+  }
+}
 
 /**
  * Supabase client for /api/social/* that never clears or overwrites session
@@ -10,7 +18,7 @@ import { cookies } from "next/headers"
  */
 export async function createSocialSupabaseClient() {
   const cookieStore = await cookies()
-  return createServerClient(
+  const client = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
@@ -26,10 +34,14 @@ export async function createSocialSupabaseClient() {
             // ignore
           }
         },
-        remove(_name: string, _opts?: Record<string, unknown>) {
+        remove() {
           // No-op: never clear session in social OAuth flow.
         },
       },
     }
   )
+  const { data: { user }, error } = await client.auth.getUser()
+  if (error || !user || user.is_anonymous) throw new SocialLocationAccessError(401)
+  if (await readLocationRestrictionState(client) !== false) throw new SocialLocationAccessError(403)
+  return client
 }

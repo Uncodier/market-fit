@@ -116,7 +116,7 @@ export async function getAvailableSlots(
   buffer: number,
   guestTimezone: string = "America/Mexico_City"
 ) {
-  const supabase = await createServiceClient(true);
+  const supabase = await createServiceClient(true, { access: 'public' });
 
   // 1. Get user profile for availability settings
   const { data: profile } = await supabase
@@ -190,7 +190,7 @@ export async function getMonthAvailability(
   buffer: number,
   guestTimezone: string = "America/Mexico_City"
 ) {
-  const supabase = await createServiceClient(true);
+  const supabase = await createServiceClient(true, { access: 'public' });
 
   // 1. Get user profile for availability settings
   const { data: profile } = await supabase
@@ -270,7 +270,7 @@ export async function getRRAvailability(
   buffer: number,
   guestTimezone: string = "America/Mexico_City"
 ) {
-  const supabase = await createServiceClient(true);
+  const supabase = await createServiceClient(true, { access: 'public' });
 
   // 1. Get all members' profiles
   const { data: profiles } = await supabase
@@ -299,7 +299,7 @@ export async function getRRMonthAvailability(
   buffer: number,
   guestTimezone: string = "America/Mexico_City"
 ) {
-  const supabase = await createServiceClient(true);
+  const supabase = await createServiceClient(true, { access: 'public' });
 
   // 1. Get all members' profiles
   const { data: profiles } = await supabase

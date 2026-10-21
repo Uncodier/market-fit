@@ -2,6 +2,7 @@
 
 import { createClient as createClientAdmin } from "@supabase/supabase-js"
 import { unstable_noStore as noStore } from "next/cache"
+import { isPrivateResourceId, requirePrivateCommerceSiteAccess } from "./private-site-access"
 
 export type ResolvedBuyerUser = {
   userId: string
@@ -18,15 +19,18 @@ function adminClient() {
 
 /**
  * Resolve an existing platform auth user by email.
- * Uses the Auth Admin REST filter (avoids loading all users).
+ * Available only to verified, unrestricted staff for a specific site.
  */
 export async function resolveBuyerUserByEmail(
-  email: string
+  email: string,
+  siteId: string,
 ): Promise<{ data: ResolvedBuyerUser | null; error: string | null }> {
   noStore()
   try {
-    const trimmedEmail = email?.trim().toLowerCase()
-    if (!trimmedEmail || !trimmedEmail.includes("@")) {
+    const access = await requirePrivateCommerceSiteAccess(siteId)
+    if (access.error) return { data: null, error: access.error }
+    const trimmedEmail = typeof email === "string" ? email.trim().toLowerCase() : ""
+    if (!/^[^\s@%]+@[^\s@%]+\.[^\s@%]+$/.test(trimmedEmail) || trimmedEmail.length > 254) {
       return { data: null, error: "Please enter a valid email address" }
     }
 
@@ -69,7 +73,7 @@ export async function resolveBuyerUserByEmail(
     return { data: null, error: "No platform user found with this email." }
   } catch (err: any) {
     console.error("Exception in resolveBuyerUserByEmail:", err)
-    return { data: null, error: err.message || "Failed to lookup user" }
+    return { data: null, error: "Failed to lookup user" }
   }
 }
 
@@ -85,37 +89,57 @@ export async function findOrCreateLeadForBuyer({
   buyerUserId?: string | null
 }) {
   try {
-    const supabaseAdmin = adminClient()
-    const normalizedEmail = email.trim().toLowerCase()
-    if (!normalizedEmail || !normalizedEmail.includes("@")) {
+    const access = await requirePrivateCommerceSiteAccess(siteId, ["select", "insert", "update"])
+    if (access.error) return { lead: null, error: access.error }
+    const supabase = access.supabase
+    const normalizedEmail = typeof email === "string" ? email.trim().toLowerCase() : ""
+    if (!/^[^\s@%]+@[^\s@%]+\.[^\s@%]+$/.test(normalizedEmail) || normalizedEmail.length > 254) {
       return { lead: null, error: "Please enter a valid email address" }
     }
+    // A caller-provided account ID is a lookup hint, never an identity assertion.
+    let verifiedBuyerUserId: string | null = null
+    if (buyerUserId) {
+      if (!isPrivateResourceId(buyerUserId)) return { lead: null, error: "Invalid buyer account" }
+      const { data, error } = await adminClient().auth.admin.getUserById(buyerUserId)
+      if (error || !data.user?.email_confirmed_at || data.user.is_anonymous ||
+          data.user.email?.toLowerCase() !== normalizedEmail) {
+        return { lead: null, error: "Buyer account could not be verified" }
+      }
+      verifiedBuyerUserId = data.user.id
+    }
 
-    const { data: existing, error: searchError } = await supabaseAdmin
+    const { data: existing, error: searchError } = await supabase
       .from("leads")
-      .select("*")
+      .select("id, name, email, buyer_user_id")
       .eq("site_id", siteId)
-      .ilike("email", normalizedEmail)
+      .eq("email", normalizedEmail)
       .limit(1)
       .maybeSingle()
 
     if (searchError) {
-      return { lead: null, error: searchError.message }
+      return { lead: null, error: "Unable to resolve buyer" }
     }
 
     if (existing) {
-      if (!existing.buyer_user_id && buyerUserId) {
-        const { error: updateError } = await supabaseAdmin
+      if (verifiedBuyerUserId && existing.buyer_user_id && existing.buyer_user_id !== verifiedBuyerUserId) {
+        return { lead: null, error: "Buyer account does not match customer record" }
+      }
+      if (!existing.buyer_user_id && verifiedBuyerUserId) {
+        const { data: updated, error: updateError } = await supabase
           .from("leads")
-          .update({ buyer_user_id: buyerUserId })
+          .update({ buyer_user_id: verifiedBuyerUserId })
           .eq("id", existing.id)
+          .eq("site_id", siteId)
+          .is("buyer_user_id", null)
+          .select("id, name, email, buyer_user_id")
+          .single()
 
-        if (updateError) {
-          return { lead: null, error: updateError.message }
+        if (updateError || !updated) {
+          return { lead: null, error: "Unable to link buyer account" }
         }
 
         return {
-          lead: { ...existing, buyer_user_id: buyerUserId },
+          lead: updated,
           error: null,
         }
       }
@@ -123,7 +147,7 @@ export async function findOrCreateLeadForBuyer({
     }
 
     // leads.user_id is the site owner (seller), not the buyer
-    const { data: site, error: siteError } = await supabaseAdmin
+    const { data: site, error: siteError } = await supabase
       .from("sites")
       .select("user_id")
       .eq("id", siteId)
@@ -133,7 +157,7 @@ export async function findOrCreateLeadForBuyer({
       return { lead: null, error: siteError?.message || "Site owner not found" }
     }
 
-    const { data: lead, error } = await supabaseAdmin
+    const { data: lead, error } = await supabase
       .from("leads")
       .insert([
         {
@@ -142,15 +166,15 @@ export async function findOrCreateLeadForBuyer({
           email: normalizedEmail,
           status: "new",
           origin: "inbound",
-          buyer_user_id: buyerUserId || null,
+          buyer_user_id: verifiedBuyerUserId,
           user_id: site.user_id,
         },
       ])
-      .select()
+      .select("id, name, email, buyer_user_id")
       .single()
 
     if (error) {
-      return { lead: null, error: error.message }
+      return { lead: null, error: "Unable to create buyer" }
     }
 
     return { lead, error: null }
@@ -158,7 +182,7 @@ export async function findOrCreateLeadForBuyer({
     console.error("Error finding or creating buyer lead:", error)
     return {
       lead: null,
-      error: error.message || "Failed to find or create lead",
+      error: "Failed to find or create lead",
     }
   }
 }

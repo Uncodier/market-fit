@@ -61,7 +61,7 @@ export async function getEntitlementById(id: string) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return null
 
-  const supabaseService = await createServiceClient(true)
+  const supabaseService = await createServiceClient(true, { access: 'public' })
 
   const { data } = await supabaseService
     .from('entitlements')
@@ -80,8 +80,8 @@ export async function getActiveDigitalEntitlementForCatalogItem(catalogItemId: s
   if (!user) return null
 
   const now = new Date().toISOString()
-  
-  const { data } = await supabase
+  const buyerClient = await createServiceClient(true, { access: 'public' })
+  const { data } = await buyerClient
     .from('entitlements')
     .select('*')
     .eq('catalog_item_id', catalogItemId)
@@ -100,8 +100,8 @@ export async function getActivePassEntitlementForCatalogItem(catalogItemId: stri
   if (!user) return null
 
   const now = new Date().toISOString()
-  
-  const { data } = await supabase
+  const buyerClient = await createServiceClient(true, { access: 'public' })
+  const { data } = await buyerClient
     .from('entitlements')
     .select('*')
     .eq('catalog_item_id', catalogItemId)
@@ -129,8 +129,9 @@ export async function getActivePassEntitlementForPlanOrPass(catalogItemId: strin
 
   const now = new Date().toISOString()
 
+  const buyerClient = await createServiceClient(true, { access: 'public' })
   // Find all digital items this plan grants
-  const { data: planItems } = await supabase
+  const { data: planItems } = await buyerClient
     .from('subscription_plan_items')
     .select('digital_catalog_item_id')
     .eq('plan_catalog_item_id', catalogItemId)
@@ -142,7 +143,7 @@ export async function getActivePassEntitlementForPlanOrPass(catalogItemId: strin
 
   // Find an active entitlement on any of those granted digital items
   // Prefer passes with uses_remaining > 0
-  const { data } = await supabase
+  const { data } = await buyerClient
     .from('entitlements')
     .select('*, catalog_item:catalog_items(kind, digital_subtype)')
     .in('catalog_item_id', digitalItemIds)
@@ -188,9 +189,10 @@ export async function getActivePassEntitlementForReservable(reservableCatalogIte
   if (!user) return null
 
   const now = new Date().toISOString()
+  const buyerClient = await createServiceClient(true, { access: 'public' })
 
   // First get all valid passes for the user
-  const { data: userPasses } = await supabase
+  const { data: userPasses } = await buyerClient
     .from('entitlements')
     .select('id, catalog_item_id, uses_remaining')
     .eq('buyer_user_id', user.id)
@@ -203,7 +205,7 @@ export async function getActivePassEntitlementForReservable(reservableCatalogIte
   // Check if any of these passes map to the reservable item
   const passCatalogItemIds = userPasses.map((p: any) => p.catalog_item_id)
 
-  const { data: mapping } = await supabase
+  const { data: mapping } = await buyerClient
     .from('pass_redeemable_items')
     .select('pass_catalog_item_id')
     .eq('reservable_catalog_item_id', reservableCatalogItemId)
@@ -215,10 +217,11 @@ export async function getActivePassEntitlementForReservable(reservableCatalogIte
     const entitlement = userPasses.find((p: any) => p.catalog_item_id === mapping.pass_catalog_item_id)
     // Refetch the full entitlement to return
     if (entitlement) {
-      const { data } = await supabase
+      const { data } = await buyerClient
         .from('entitlements')
         .select('*')
         .eq('id', entitlement.id)
+        .eq('buyer_user_id', user.id)
         .single()
       return data
     }

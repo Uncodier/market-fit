@@ -29,7 +29,7 @@ export async function listBuyerSubscriptions({
   }
 
   // Use service client to bypass RLS on catalog_items (so non-marketplace items still render for buyers)
-  const supabaseService = await createServiceClient(true)
+  const supabaseService = await createServiceClient(true, { access: scope === 'personal' ? 'public' : 'workspace' })
 
   let query = supabaseService
     .from('subscriptions')
@@ -88,14 +88,25 @@ export async function cancelBuyerSubscription(subscriptionId: string) {
   const { data: { session } } = await supabase.auth.getSession()
   if (!session?.user) return { error: "Not authenticated" }
 
-  const { data: subscription, error: fetchError } = await supabase
+  let { data: subscription, error: fetchError } = await supabase
     .from('subscriptions')
     .select('*')
     .eq('id', subscriptionId)
     .single()
 
+  let personalClient: Awaited<ReturnType<typeof createServiceClient>> | undefined
   if (fetchError || !subscription) {
-    return { error: "Subscription not found" }
+    // Workspace restrictions do not remove the buyer's own cancellation right.
+    // Verify Auth before a narrowly scoped service read; never fall back to an
+    // arbitrary owner_site_id or an unfiltered subscription lookup.
+    const identity = await supabase.auth.getUser()
+    if (identity.error || identity.data.user?.id !== session.user.id) return { error: 'Not authenticated' }
+    personalClient = await createServiceClient(true, { access: 'public' })
+    const own = await personalClient.from('subscriptions').select('*')
+      .eq('id', subscriptionId).eq('buyer_user_id', identity.data.user.id).single()
+    subscription = own.data
+    fetchError = own.error
+    if (fetchError || !subscription) return { error: "Subscription not found" }
   }
 
   // Authorize
@@ -116,7 +127,7 @@ export async function cancelBuyerSubscription(subscriptionId: string) {
   }
 
   // Cancel
-  const { error: cancelError } = await supabase
+  const { error: cancelError } = await (personalClient ?? supabase)
     .from('subscriptions')
     .update({ status: 'cancelled', updated_at: new Date().toISOString() })
     .eq('id', subscriptionId)
@@ -127,7 +138,7 @@ export async function cancelBuyerSubscription(subscriptionId: string) {
 
   // Revoke entitlements
   const { revokeForSubscription } = await import('@/app/commerce/entitlements')
-  await revokeForSubscription(subscriptionId, true)
+  await revokeForSubscription(subscriptionId, !personalClient, personalClient)
 
   return { success: true }
 }

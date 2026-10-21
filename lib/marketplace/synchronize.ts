@@ -20,7 +20,7 @@ export async function synchronizeMarketplaceOrder(integrationId: string, externa
     // A later authoritative observation may restore an earlier value. Content
     // hashes deduplicate event delivery, not distinct provider reads over time.
     const eventKey = `snapshot:${randomUUID()}`
-    const database = await createServiceClient(true)
+    const database = await createServiceClient(true, { access: 'system' })
     const { error } = await database.rpc("ingest_marketplace_event", {
       p_integration_id: integrationId, p_event_key: eventKey, p_order: payload, p_event_at: null,
     })
@@ -32,7 +32,7 @@ export async function synchronizeMarketplaceOrder(integrationId: string, externa
         provider: config.provider, environment: config.environment, country: config.country,
         store_id: config.external_store_id, manual_ready: config.manual_ready, ...credentials,
       }, externalOrderId)
-      const database = await createServiceClient(true)
+      const database = await createServiceClient(true, { access: 'system' })
       let refreshed = false
       for (const event of events.slice(0, 30).reverse()) {
         if (event.kind !== "cancel" && event.kind !== "delivery") continue

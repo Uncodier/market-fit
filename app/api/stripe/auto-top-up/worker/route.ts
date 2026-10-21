@@ -16,7 +16,7 @@ export async function POST(request: Request) {
   if (!process.env.STRIPE_SECRET_KEY) return Response.json({ error: "Stripe unavailable" }, { status: 503 })
   const admissionDeadline = Date.now() + 180_000
   try {
-    const service = await createServiceClient(true)
+    const service = await createServiceClient(true, { access: 'system' })
     const { data, error } = await service.rpc("list_credit_auto_top_up_candidates", { p_limit: 20 })
     if (error) throw new Error("Top-up candidates unavailable")
     const candidates = candidateSchema.parse(data)

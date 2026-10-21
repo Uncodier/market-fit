@@ -32,7 +32,7 @@ export async function resolvePublicImageResource(input: PromptImageInput): Promi
     prompt = buildItemImagePrompt({ name: shop.hero_title, description: shop.hero_subtitle || context.description || 'store hero', siteDescription: context.description })
   } else {
     // Site authorization precedes the server-only, tenant-scoped resource lookup.
-    const supabase = await createServiceClient(true)
+    const supabase = await createServiceClient(true, { access: 'public' })
     if (input.resource_type === 'promotion') {
       const { data, error } = await supabase.from('promotions').select(
         'id, name, image_url, status, channels, show_on_shop, show_on_marketplace, starts_at, ends_at, active_weekdays, usage_limit, usage_count',

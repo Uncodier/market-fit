@@ -49,7 +49,8 @@ function setup({
   const tenantQuery = query(tenantData, tenantError)
   const main = {
     auth: { getUser: jest.fn().mockResolvedValue({ data: { user }, error: authError }) },
-    rpc: jest.fn().mockResolvedValue({ data: role, error: null }),
+    rpc: jest.fn(async (name: string): Promise<{ data: string | boolean | null; error: { message: string } | null }> =>
+      ({ data: name === 'current_user_site_role' ? role : false, error: null })),
     from: jest.fn((table: string) => {
       if (!table) throw new Error("A table name is required")
       return requirementQuery
@@ -157,7 +158,8 @@ describe("application tenant lookup", () => {
 
     expect(response.status).toBe(404)
     await expect(response.json()).resolves.toEqual({ error: "Requirement not found" })
-    expect(main.rpc).not.toHaveBeenCalled()
+    expect(main.rpc).toHaveBeenCalledWith('current_user_has_location_restrictions', {})
+    expect(main.rpc).not.toHaveBeenCalledWith('current_user_site_role', expect.anything())
     expect(createRepositoriesClient).not.toHaveBeenCalled()
   })
 
@@ -201,7 +203,8 @@ describe("application tenant lookup", () => {
 
   it("does not disguise a site-role RPC failure as authorization denial", async () => {
     const { main } = setup()
-    main.rpc.mockResolvedValue({ data: null, error: { message: "private provider details" } })
+    main.rpc.mockImplementation(async (name: string) => name === 'current_user_has_location_restrictions'
+      ? { data: false, error: null } : { data: null, error: { message: 'private provider details' } })
     const response = await GET(request())
 
     expect(response.status).toBe(500)
@@ -247,7 +250,7 @@ describe("application tenant lookup", () => {
 
     expect(response.status).toBe(200)
     expect(createServiceClient).toHaveBeenCalledTimes(1)
-    expect(createServiceClient).toHaveBeenCalledWith(true)
+    expect(createServiceClient).toHaveBeenCalledWith(true, { access: 'system' })
     expect(createMainClient).not.toHaveBeenCalled()
     expect(main.auth.getUser).not.toHaveBeenCalled()
     expect(main.rpc).not.toHaveBeenCalled()

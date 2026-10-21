@@ -1,25 +1,19 @@
-import { checkoutCart } from "@/app/commerce/checkout";
-import { checkInTicket } from "@/app/commerce/ticket-check-in";
-import { createLeadWithIdempotency } from "@/app/pos/actions/create-lead-sync";
+import { applyOutboxItem } from "./sync-outbox-item";
+import { getPosPermissionLease, isPosPermissionCurrent, subscribePosPermission } from "./location-permission-state";
 import { getPosDb } from "./db";
 import {
-  getServerIdForLocal,
   listOutbox,
-  mapLocalId,
   updateOutboxRow,
 } from "./outbox";
 import { pullAndStorePosCatalogSnapshot, applyPosOpenOrders } from "./snapshot-pull";
 import { getPosCatalogRevision } from "@/app/pos/actions/sync-revision";
 import { listPosOpenOrders } from "@/app/pos/actions/list-open-orders";
-import { updateOrderNotes } from "@/app/orders/actions";
 import {
   shouldRunCatalogPull,
   shouldRunOrdersPull,
   shouldDrainOutbox,
 } from "./sync-policy";
-import type { PosOutboxRow } from "./types";
-import type { CheckoutCartSuccess } from "@/app/commerce/checkout-client";
-import { clearPosSyncError, getPosSyncError, recordPosSyncError, reconcilePosOutboxErrors } from "./sync-errors";
+import { clearAllPosSyncErrors, clearPosSyncError, getPosSyncError, recordPosSyncError, reconcilePosOutboxErrors } from "./sync-errors";
 
 export type SyncStatus = {
   online: boolean;
@@ -56,20 +50,25 @@ const EMPTY_SITE_STATE: SiteSyncState = {
   failedCount: 0,
 };
 const siteState = new Map<string, SiteSyncState>();
+subscribePosPermission(() => { siteState.clear(); clearAllPosSyncErrors(); });
 
 function isBrowserOnline() {
   return typeof navigator === "undefined" ? true : navigator.onLine;
 }
 
 async function refreshCounts(siteId: string) {
+  const permission = getPosPermissionLease(siteId);
+  if (!permission) return;
   try {
     const rows = await listOutbox(siteId);
+    if (!isPosPermissionCurrent(permission)) return;
     reconcilePosOutboxErrors(siteId, rows);
     const pendingCount = rows.filter(
       (r) => r.status === "pending" || r.status === "syncing",
     ).length;
     const failedCount = rows.filter((r) => r.status === "failed").length;
     const meta = await getPosDb().meta.get(siteId);
+    if (!isPosPermissionCurrent(permission)) return;
     const prev = siteState.get(siteId) || { ...EMPTY_SITE_STATE };
     siteState.set(siteId, {
       ...prev,
@@ -79,6 +78,7 @@ async function refreshCounts(siteId: string) {
     });
     clearPosSyncError(siteId, "counts");
   } catch (error) {
+    if (!isPosPermissionCurrent(permission)) return;
     recordPosSyncError("counts", {
       siteId, operation: "outbox", error: error instanceof Error ? error.message : "Failed to read sync queue",
     });
@@ -126,123 +126,9 @@ export function getPosSyncStatus(siteId: string): SyncStatus {
   };
 }
 
-async function applyOutboxItem(row: PosOutboxRow): Promise<void> {
-  if (row.payload.kind === "create_lead") {
-    const data = row.payload.data;
-    const res = await createLeadWithIdempotency({
-      siteId: data.siteId,
-      name: data.name,
-      email: data.email,
-      phone: data.phone,
-      clientMutationId: data.clientMutationId,
-    });
-    if (res.error || !res.lead) throw new Error(res.error || "Lead sync failed");
-    await mapLocalId({
-      localId: data.localLeadId,
-      serverId: res.lead.id,
-      kind: "lead",
-      siteId: data.siteId,
-    });
-    await getPosDb().leads.update(data.localLeadId, {
-      is_local: false,
-      // Keep local row but also store server id mapping; UI resolves via idMaps
-    });
-    // Upsert server lead under server id
-    await getPosDb().leads.put({
-      ...res.lead,
-      site_id: data.siteId,
-      is_local: false,
-    });
-    await updateOutboxRow(row.id, {
-      status: "synced",
-      resultLeadId: res.lead.id,
-      lastError: null,
-    });
-    return;
-  }
-
-  if (row.payload.kind === "check_in") {
-    const data = row.payload.data;
-    const res = await checkInTicket({
-      code: data.code,
-      siteId: data.siteId,
-      clientMutationId: data.clientMutationId,
-    });
-    if ("error" in res && res.error) throw new Error(res.error);
-    await updateOutboxRow(row.id, { status: "synced", lastError: null });
-    return;
-  }
-
-  if (row.payload.kind === "update_order_notes") {
-    const data = row.payload.data;
-    const orderId = data.orderId.startsWith("local_")
-      ? await getServerIdForLocal(data.orderId)
-      : data.orderId;
-    if (!orderId) throw new Error("Waiting for local order to sync");
-
-    const res = await updateOrderNotes(data.siteId, orderId, data.notes);
-    if ("error" in res && res.error) throw new Error(res.error);
-    await updateOutboxRow(row.id, { status: "synced", lastError: null });
-    return;
-  }
-
-  if (row.payload.kind === "checkout") {
-    const data = { ...row.payload.data };
-    let leadId = data.leadId;
-    if (data.localLeadId) {
-      leadId =
-        (await getServerIdForLocal(data.localLeadId)) || leadId || undefined;
-      if (!leadId) {
-        throw new Error("Waiting for local lead to sync");
-      }
-    }
-
-    let existingOrderId = data.existingOrderId;
-    if (existingOrderId?.startsWith("local_")) {
-      existingOrderId =
-        (await getServerIdForLocal(existingOrderId)) || undefined;
-    }
-
-    const res = await checkoutCart({
-      ...data,
-      leadId,
-      existingOrderId,
-      clientMutationId: data.clientMutationId,
-    });
-    if ("error" in res && res.error) throw new Error(res.error);
-
-    const details = res as Pick<CheckoutCartSuccess, "orderNumber" | "kitchenDelta" | "fulfillment">;
-
-    if (res.orderId && data.existingOrderId?.startsWith("local_")) {
-      await mapLocalId({
-        localId: data.existingOrderId,
-        serverId: res.orderId,
-        kind: "order",
-        siteId: data.siteId,
-      });
-    }
-    if (res.saleId) {
-      await mapLocalId({
-        localId: data.clientMutationId,
-        serverId: res.saleId,
-        kind: "sale",
-        siteId: data.siteId,
-      });
-    }
-
-    await updateOutboxRow(row.id, {
-      status: "synced",
-      resultSaleId: res.saleId || null,
-      resultOrderId: res.orderId || null,
-      resultOrderNumber: details.orderNumber || null,
-      resultKitchenDelta: details.kitchenDelta || null,
-      resultFulfillment: details.fulfillment || null,
-      lastError: null,
-    });
-  }
-}
-
 export async function drainPosOutbox(siteId: string): Promise<void> {
+  const permission = getPosPermissionLease(siteId);
+  if (!permission) return;
   if (!isBrowserOnline()) {
     emit(siteId);
     return;
@@ -264,6 +150,7 @@ export async function drainPosOutbox(siteId: string): Promise<void> {
     ];
 
     for (const row of ordered) {
+      if (!isPosPermissionCurrent(permission)) break;
       if (row.kind === "checkout") attemptedCheckout = true;
       let timeout: ReturnType<typeof setTimeout> | undefined;
       try {
@@ -271,14 +158,16 @@ export async function drainPosOutbox(siteId: string): Promise<void> {
           status: "syncing",
           attempts: row.attempts + 1,
         });
+        if (!isPosPermissionCurrent(permission)) break;
         await Promise.race([
-          applyOutboxItem(row),
+          applyOutboxItem(row, permission),
           new Promise<void>((_, reject) => {
             timeout = setTimeout(() => reject(new Error("Sync timed out")), 45000);
           }),
         ]);
         clearPosSyncError(siteId, `outbox:${row.id}`);
       } catch (error) {
+        if (!isPosPermissionCurrent(permission)) break;
         const message = error instanceof Error ? error.message : "Sync failed";
         recordPosSyncError(`outbox:${row.id}`, {
           siteId, operation: row.kind, error: message,
@@ -294,17 +183,18 @@ export async function drainPosOutbox(siteId: string): Promise<void> {
     }
     clearPosSyncError(siteId, "outbox");
   } catch (error) {
+    if (!isPosPermissionCurrent(permission)) return;
     recordPosSyncError("outbox", {
       siteId, operation: "outbox", error: error instanceof Error ? error.message : "Sync failed",
     });
   } finally {
     running = false;
-    await refreshCounts(siteId);
-    if (attemptedCheckout) void pullPosCatalogInBackground(siteId, true);
-    if (rerunFlag) {
-      rerunFlag = false;
-      void drainPosOutbox(siteId);
+    if (isPosPermissionCurrent(permission)) {
+      await refreshCounts(siteId);
+      if (attemptedCheckout) void pullPosCatalogInBackground(siteId, true);
+      if (rerunFlag) void drainPosOutbox(siteId);
     }
+    rerunFlag = false;
   }
 }
 
@@ -320,6 +210,8 @@ export async function pullPosCatalogInBackground(
   siteId: string,
   force = false,
 ): Promise<void> {
+  const permission = getPosPermissionLease(siteId);
+  if (!permission) return;
   if (!isBrowserOnline()) return;
   if (pulling) return;
   pulling = true;
@@ -330,6 +222,7 @@ export async function pullPosCatalogInBackground(
     let revisionToUse: string | null = null;
 
     const revRes = await getPosCatalogRevision(siteId);
+    if (!isPosPermissionCurrent(permission)) return;
     if ("error" in revRes) {
       recordPosSyncError("catalog", { siteId, operation: "catalog", error: revRes.error || "Catalog revision failed" });
     }
@@ -343,6 +236,7 @@ export async function pullPosCatalogInBackground(
     }
 
     const res = await pullAndStorePosCatalogSnapshot(siteId, revisionToUse);
+    if (!isPosPermissionCurrent(permission)) return;
     if (!res.ok) {
       recordPosSyncError("catalog", { siteId, operation: "catalog", error: res.error || "Catalog pull failed" });
     } else {
@@ -355,6 +249,7 @@ export async function pullPosCatalogInBackground(
       clearPosSyncError(siteId, "catalog");
     }
   } catch (error) {
+    if (!isPosPermissionCurrent(permission)) return;
     recordPosSyncError("catalog", { siteId, operation: "catalog", error: error instanceof Error ? error.message : "Catalog pull failed" });
   } finally {
     pulling = false;
@@ -363,11 +258,15 @@ export async function pullPosCatalogInBackground(
 }
 
 export async function pullPosOrdersInBackground(siteId: string): Promise<void> {
+  const permission = getPosPermissionLease(siteId);
+  if (!permission) return;
   if (!isBrowserOnline()) return;
   try {
     const res = await listPosOpenOrders(siteId);
+    if (!isPosPermissionCurrent(permission)) return;
     if (res.error) throw new Error(res.error);
     await applyPosOpenOrders(siteId, res.data || []);
+    if (!isPosPermissionCurrent(permission)) return;
     const prev = siteState.get(siteId) || { ...EMPTY_SITE_STATE };
     siteState.set(siteId, {
       ...prev,
@@ -376,6 +275,7 @@ export async function pullPosOrdersInBackground(siteId: string): Promise<void> {
     });
     clearPosSyncError(siteId, "orders");
   } catch (error) {
+    if (!isPosPermissionCurrent(permission)) return;
     // Keep the last known local open orders if the light pull fails.
     recordPosSyncError("orders", { siteId, operation: "orders", error: error instanceof Error ? error.message : "Orders pull failed" });
   } finally {
@@ -389,7 +289,10 @@ export async function runPosSyncCycle(
   isVisibilityTrigger = false,
 ): Promise<void> {
   if (typeof window === "undefined" || document.visibilityState === "hidden") return;
+  const permission = getPosPermissionLease(siteId);
+  if (!permission) return;
   await refreshCounts(siteId);
+  if (!isPosPermissionCurrent(permission)) return;
 
   const now = Date.now();
   const state = siteState.get(siteId) || { ...EMPTY_SITE_STATE };
@@ -416,10 +319,12 @@ export async function runPosSyncCycle(
   }
 
   if (doOrders) {
+    if (!isPosPermissionCurrent(permission)) return;
     await pullPosOrdersInBackground(siteId);
   }
 
   const online = isBrowserOnline();
+  if (!isPosPermissionCurrent(permission)) return;
   const latest = siteState.get(siteId) || state;
   if (shouldDrainOutbox({ pendingCount: latest.pendingCount, failedCount: latest.failedCount, online, force })) {
     await drainPosOutbox(siteId);

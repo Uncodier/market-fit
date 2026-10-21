@@ -1,6 +1,6 @@
 "use server"
 
-import { createClient } from "@/lib/supabase/server"
+import { createClient, createServiceClient } from "@/lib/supabase/server"
 import { assertReservationSlot } from "@/app/reservations/availability"
 import { mergeParentIntoCatalogItem } from "@/app/catalog/product-details"
 import { enrichEntitlementRelations } from "@/app/buyer/entitlement-queries"
@@ -21,10 +21,11 @@ export async function completePastBuyerReservations(supabase: any, options: { bu
 }
 
 export async function getBuyerReservation(id: string) {
-  const supabase = await createClient()
-  const { data: { session } } = await supabase.auth.getSession()
+  const userClient = await createClient()
+  const { data: { session } } = await userClient.auth.getSession()
   
   if (!session?.user) return { error: "Not authenticated" }
+  const supabase = await createServiceClient(true, { access: 'public' })
 
   const { data, error } = await supabase
     .from("reservations")
@@ -143,10 +144,11 @@ export async function getBuyerReservation(id: string) {
 }
 
 export async function cancelBuyerReservation(id: string) {
-  const supabase = await createClient()
-  const { data: { session } } = await supabase.auth.getSession()
+  const userClient = await createClient()
+  const { data: { session } } = await userClient.auth.getSession()
   
   if (!session?.user) return { error: "Not authenticated" }
+  const supabase = await createServiceClient(true, { access: 'public' })
 
   // 1. Get the reservation to check ownership and status
   const { data: reservation, error: getError } = await supabase
@@ -172,6 +174,7 @@ export async function cancelBuyerReservation(id: string) {
     .from("reservations")
     .update({ status: "cancelled", updated_at: new Date().toISOString() })
     .eq("id", id)
+    .eq('buyer_user_id', session.user.id)
 
   if (cancelError) return { error: cancelError.message }
 
@@ -195,6 +198,7 @@ export async function cancelBuyerReservation(id: string) {
           updated_at: new Date().toISOString()
         })
         .eq("id", ent.id)
+        .eq('buyer_user_id', session.user.id)
     }
   }
 
@@ -202,10 +206,11 @@ export async function cancelBuyerReservation(id: string) {
 }
 
 export async function rescheduleBuyerReservation({ id, startIso, endIso }: { id: string, startIso: string, endIso: string }) {
-  const supabase = await createClient()
-  const { data: { session } } = await supabase.auth.getSession()
+  const userClient = await createClient()
+  const { data: { session } } = await userClient.auth.getSession()
   
   if (!session?.user) return { error: "Not authenticated" }
+  const supabase = await createServiceClient(true, { access: 'public' })
 
   // 1. Get the reservation
   const { data: reservation, error: getError } = await supabase
@@ -251,6 +256,7 @@ export async function rescheduleBuyerReservation({ id, startIso, endIso }: { id:
       updated_at: new Date().toISOString() 
     })
     .eq("id", id)
+    .eq('buyer_user_id', session.user.id)
 
   if (updateError) return { error: updateError.message }
 

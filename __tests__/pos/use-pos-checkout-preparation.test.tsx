@@ -5,13 +5,28 @@ import { posOrderVersion } from "@/app/pos/order-version";
 import { enqueueCheckout } from "@/app/pos/local/outbox";
 import { enqueueRegisteredCheckout } from "@/app/pos/register/prepare-payment";
 import { toast } from "sonner";
+import { resetCheckoutCartSession } from "@/app/pos/local/checkout-attempt-storage";
+import { drainPosOutbox } from "@/app/pos/local/sync-engine";
+
+let permissionCurrent = true;
+const pendingDelete = jest.fn();
+const pendingPut = jest.fn();
+const outboxFirst = jest.fn();
+
+jest.mock("@/app/pos/local/location-permission-state", () => ({
+  getPosPermissionLease: () => ({ generation: 1 }),
+  isPosPermissionCurrent: () => permissionCurrent,
+}));
 
 jest.mock("@/app/pos/actions/get-order", () => ({ getPosOrder: jest.fn() }));
 jest.mock("@/app/context/SiteContext", () => ({ useSite: () => ({ currentSite: null }) }));
 jest.mock("@/app/pos/local/outbox", () => ({ enqueueCheckout: jest.fn(), enqueueCreateLead: jest.fn() }));
 jest.mock("@/app/pos/register/prepare-payment", () => ({ enqueueRegisteredCheckout: jest.fn() }));
 jest.mock("@/app/pos/local/sync-engine", () => ({ drainPosOutbox: jest.fn(), refreshPosSyncCounts: jest.fn() }));
-jest.mock("@/app/pos/local/db", () => ({ getPosDb: () => ({ pendingOrders: { delete: jest.fn(), put: jest.fn() } }) }));
+jest.mock("@/app/pos/local/db", () => ({ getPosDb: () => ({
+  pendingOrders: { delete: pendingDelete, put: pendingPut },
+  outbox: { where: () => ({ equals: () => ({ first: outboxFirst }) }) },
+}) }));
 jest.mock("@/lib/printer", () => ({ normalizePrintersSettings: jest.fn(), ticketBrandFromSite: jest.fn() }));
 jest.mock("@/app/pos/print-after-checkout", () => ({ printAfterPosCheckout: jest.fn(), receiptFromPosCart: jest.fn() }));
 jest.mock("@/app/pos/create-pending-split-orders", () => ({ createPendingSplitOrders: jest.fn() }));
@@ -36,6 +51,11 @@ const payments = [{ method: "cash", amount: 100, tendered: 100, change: 0 }];
 describe("POS payment preparation", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    localStorage.clear();
+    permissionCurrent = true;
+    pendingDelete.mockReset().mockResolvedValue(undefined);
+    pendingPut.mockReset().mockResolvedValue(undefined);
+    outboxFirst.mockReset().mockResolvedValue({ status: "failed", lastError: "old sale failure" });
     jest.mocked(enqueueRegisteredCheckout).mockImplementation(async (siteId, data) => {
       await enqueueCheckout(siteId, data);
       return { clientMutationId: data.clientMutationId } as never;
@@ -146,5 +166,83 @@ describe("POS payment preparation", () => {
     await act(async () => { finish({ data: { ...snapshot, status: "cancelled" } } as never); await request; });
     expect(input.onOrderChanged).not.toHaveBeenCalled();
     expect(enqueueCheckout).not.toHaveBeenCalled();
+  });
+
+  it.each(["delete", "put"] as const)("rechecks permission and selection after deferred pendingOrders.%s", async (operation) => {
+    for (const change of ["order", "permission", "reset", "cart"] as const) {
+      let finish!: () => void;
+      const pending = new Promise<void>((resolve) => { finish = resolve; });
+      (operation === "delete" ? pendingDelete : pendingPut).mockReturnValueOnce(pending);
+      const input = args();
+      const { result, rerender, unmount } = renderHook(usePosCheckout, { initialProps: input });
+      let request!: Promise<void>;
+      await act(async () => { request = result.current.handleCheckout([{ ...payments[0], amount: 10 }]); });
+      expect(operation === "delete" ? pendingDelete : pendingPut).toHaveBeenCalled();
+      const putCalls = pendingPut.mock.calls.length;
+      jest.mocked(toast.success).mockClear();
+      jest.mocked(toast.message).mockClear();
+      if (change === "order") rerender({ ...input, activeOrderId: "another" });
+      if (change === "permission") permissionCurrent = false;
+      if (change === "reset") resetCheckoutCartSession("site");
+      if (change === "cart") rerender({ ...input, cart: [{ ...input.cart[0], cartQty: 2 }] });
+      await act(async () => { finish(); await request; });
+      expect(input.onCleared).not.toHaveBeenCalled();
+      expect(toast.success).not.toHaveBeenCalled();
+      expect(toast.message).not.toHaveBeenCalled();
+      expect(pendingPut).toHaveBeenCalledTimes(putCalls);
+      unmount();
+      permissionCurrent = true;
+    }
+  });
+
+  it("retains the receipt on permission loss during local cleanup, including remount after sync", async () => {
+    const input = args();
+    let finish!: () => void;
+    pendingDelete.mockReturnValueOnce(new Promise<void>((resolve) => { finish = resolve; }));
+    const first = renderHook(usePosCheckout, { initialProps: input });
+    let request!: Promise<void>;
+    await act(async () => { request = first.result.current.handleCheckout(payments); });
+    const original = jest.mocked(enqueueRegisteredCheckout).mock.calls[0][1].clientMutationId;
+    permissionCurrent = false;
+    first.unmount();
+    await act(async () => { finish(); await request; });
+    permissionCurrent = true;
+    const second = renderHook(usePosCheckout, { initialProps: input });
+    await act(async () => { await second.result.current.handleCheckout(payments); });
+    expect(jest.mocked(enqueueRegisteredCheckout).mock.calls[1][1].clientMutationId).toBe(original);
+    expect(input.onCleared).toHaveBeenCalledTimes(1);
+    // Success intentionally permits a fresh identical purchase.
+    await act(async () => { await second.result.current.handleCheckout(payments); });
+    expect(jest.mocked(enqueueRegisteredCheckout).mock.calls[2][1].clientMutationId).not.toBe(original);
+  });
+
+  it("does not show stale sync callbacks over a new cart", async () => {
+    Object.defineProperty(navigator, "onLine", { configurable: true, value: true });
+    let finish!: () => void;
+    jest.mocked(drainPosOutbox).mockReturnValueOnce(new Promise<void>((resolve) => { finish = resolve; }));
+    const input = { ...args(), activeOrderId: "new" };
+    const { result, rerender } = renderHook(usePosCheckout, { initialProps: input });
+    await act(async () => { await result.current.handleCheckout(payments); });
+    expect(input.onCleared).toHaveBeenCalledTimes(1);
+    rerender({ ...input, cart: [{ ...input.cart[0], cartQty: 3 }] });
+    jest.mocked(toast.message).mockClear();
+    await act(async () => { finish(); });
+    expect(toast.message).not.toHaveBeenCalled();
+    expect(outboxFirst).not.toHaveBeenCalled();
+    expect(toast.error).not.toHaveBeenCalled();
+  });
+
+  it("rechecks after deferred receipt lookup before showing an old failure", async () => {
+    Object.defineProperty(navigator, "onLine", { configurable: true, value: true });
+    jest.mocked(drainPosOutbox).mockResolvedValueOnce(undefined);
+    let finish!: (value: { status: string; lastError: string }) => void;
+    outboxFirst.mockReturnValueOnce(new Promise((resolve) => { finish = resolve; }));
+    const input = { ...args(), activeOrderId: "new" };
+    const { result, rerender } = renderHook(usePosCheckout, { initialProps: input });
+    await act(async () => { await result.current.handleCheckout(payments); });
+    expect(outboxFirst).toHaveBeenCalledTimes(1);
+    rerender({ ...input, cart: [{ ...input.cart[0], cartQty: 3 }] });
+    await act(async () => { finish({ status: "failed", lastError: "old sale failure" }); });
+    expect(toast.error).not.toHaveBeenCalled();
   });
 });

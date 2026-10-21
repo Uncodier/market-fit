@@ -1,4 +1,4 @@
-"use server";
+import "server-only";
 
 import { after } from "next/server";
 import { DynamicQuoteMetadata } from "@/app/types";
@@ -155,6 +155,7 @@ export async function scheduleAssistantQuoteResolution(
         instanceId: params.instanceId,
       });
       const res = await fetch(url, {
+        redirect: "error",
         method: "POST",
         headers: {
           "Content-Type": "application/json",

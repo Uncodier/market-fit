@@ -57,7 +57,7 @@ describe('legacy member endpoints before location migrations', () => {
     const { admin, rpc } = setup()
     const response = await handler(request({ memberId, email: 'new@example.test', role: 'collaborator', restricted_location_ids: [] }), context)
     expect(response.status).toBe(409)
-    expect(await response.json()).toMatchObject({ code: 'LOCATION_ACCESS_NOT_READY' })
+    expect(await response.json()).toMatchObject({ code: 'LOCATION_RESTRICTIONS_USE_DEDICATED_ENDPOINT' })
     expect(admin.from).not.toHaveBeenCalled()
     expect(rpc).not.toHaveBeenCalled()
   })

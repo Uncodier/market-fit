@@ -34,6 +34,7 @@ function authenticatedClient(userId: string | null = "buyer-1") {
       }),
     },
     from: jest.fn(),
+    rpc: jest.fn(async (name: string) => ({ data: name === 'current_user_site_role' ? 'collaborator' : false, error: null })),
   }
   jest.mocked(createClient).mockResolvedValue(client)
   return client
@@ -129,7 +130,20 @@ describe("commerce subscription action extraction", () => {
     await expect(cancelBuyerSubscription("sub-1")).resolves.toEqual({ success: true })
     expect(subscription.update).toHaveBeenCalledWith({ status: "cancelled", updated_at: expect.any(String) })
     expect(subscription.eq).toHaveBeenLastCalledWith("id", "sub-1")
-    expect(revokeForSubscription).toHaveBeenCalledWith("sub-1", true)
+    expect(revokeForSubscription).toHaveBeenCalledWith("sub-1", true, undefined)
     expect(subscription.update.mock.invocationCallOrder[0]).toBeLessThan(jest.mocked(revokeForSubscription).mock.invocationCallOrder[0])
+  })
+
+  it('allows a restricted workspace member to cancel only their own buyer subscription through the independent buyer path', async () => {
+    const client = authenticatedClient()
+    Object.assign(client.auth, { getUser: jest.fn().mockResolvedValue({ data: { user: { id: 'buyer-1' } }, error: null }) })
+    client.from.mockReturnValue(new Query(null))
+    const subscription = new Query({ id: 'sub-own', buyer_user_id: 'buyer-1', status: 'active' })
+    const buyer = { from: jest.fn(() => subscription) }
+    jest.mocked(createServiceClient).mockResolvedValue(buyer)
+    expect(await cancelBuyerSubscription('sub-own')).toEqual({ success: true })
+    expect(createServiceClient).toHaveBeenCalledWith(true, { access: 'public' })
+    expect(subscription.eq).toHaveBeenCalledWith('buyer_user_id', 'buyer-1')
+    expect(revokeForSubscription).toHaveBeenCalledWith('sub-own', false, buyer)
   })
 })

@@ -14,7 +14,7 @@ import {
 
 async function loadSitePromotions(siteId: string, forceService = false) {
   const supabase = forceService
-    ? await createServiceClient(true)
+    ? await createServiceClient(true, { access: 'public' })
     : await createClient();
 
   const { data: promos, error } = await supabase
@@ -82,7 +82,7 @@ export async function getShopMerchandising(params: {
         hrefFor: (id) => `/shop/${params.siteSlug}/promo/${id}`,
       });
 
-      const supabase = await createServiceClient(true);
+      const supabase = await createServiceClient(true, { access: 'public' });
       const { data: categories } = await supabase
         .from("catalog_categories")
         .select("id, name")
@@ -118,7 +118,7 @@ async function loadMarketplaceMerchandisingUncached(params: {
   siteIds?: string[];
   timezone?: string | null;
 }): Promise<MarketplaceMerchandisingPlacement> {
-  const supabase = await createServiceClient(true);
+  const supabase = await createServiceClient(true, { access: 'public' });
   let query = supabase
     .from("promotions")
     .select("*, site:sites!inner(id)")
@@ -187,7 +187,7 @@ export async function getStorefrontPromotionDetail(params: {
   promotionId: string;
   siteId?: string;
 }) {
-  const supabase = await createServiceClient(true);
+  const supabase = await createServiceClient(true, { access: 'public' });
   let query = supabase
     .from("promotions")
     .select("*, site:sites!inner(id)")

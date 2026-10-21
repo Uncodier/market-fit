@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { createSocialSupabaseClient } from "@/app/api/social/supabase-client"
+import { createSocialSupabaseClient, SocialLocationAccessError } from "@/app/api/social/supabase-client"
 import { syncImplicitOutstandCallback } from "@/app/api/social/lib/sync-outstand-accounts"
 import { getOutstandIntegrationUrl } from "@/lib/api-server-url"
 
@@ -33,7 +33,7 @@ export async function POST(request: Request) {
     })
 
     const text = await res.text()
-    let data: any = {}
+    let data: { success?: boolean; error?: unknown; message?: unknown; data?: unknown } = {}
     try {
       data = text ? JSON.parse(text) : {}
     } catch {
@@ -61,10 +61,11 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json({ success: true, data: data.data || data, sync: syncRes })
-  } catch (error: any) {
+  } catch (error) {
+    if (error instanceof SocialLocationAccessError) return NextResponse.json({ error: error.message }, { status: error.status })
     console.error("[Bluesky Connect] Internal error:", error)
     return NextResponse.json(
-      { success: false, error: error.message || "Internal server error" },
+      { success: false, error: "Internal server error" },
       { status: 500 }
     )
   }

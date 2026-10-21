@@ -180,7 +180,7 @@ export async function getShopCatalog(
 
   return unstable_cache(
     async () => {
-      const supabase = await createServiceClient(true);
+      const supabase = await createServiceClient(true, { access: 'public' });
 
       let query = supabase
         .from("catalog_items")
@@ -248,7 +248,7 @@ export async function getShopCatalog(
 export async function getShopCatalogSize(siteId: string) {
   return unstable_cache(
     async () => {
-      const supabase = await createServiceClient(true);
+      const supabase = await createServiceClient(true, { access: 'public' });
       const { count } = await applyStorefrontAvailability(
         supabase
           .from("catalog_items")
@@ -274,7 +274,7 @@ export async function getShopItemsByIds(siteId: string, ids: string[]) {
 
   const cached = await unstable_cache(
     async () => {
-      const supabase = await createServiceClient(true);
+      const supabase = await createServiceClient(true, { access: 'public' });
 
       const { data: items, error } = await supabase
         .from("catalog_items")

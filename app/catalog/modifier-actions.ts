@@ -226,7 +226,7 @@ export async function getModifierGroupsForCatalogItem(
   catalogItemId: string,
 ): Promise<{ data: ModifierGroupWithItems[]; error?: string }> {
   // Service role: shop/marketplace PDP are public; RLS only allows site members.
-  const supabase = await createServiceClient(true)
+  const supabase = await createServiceClient(true, { access: 'public' })
 
   const { data: item, error: itemError } = await supabase
     .from("catalog_items")

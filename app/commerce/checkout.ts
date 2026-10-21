@@ -5,6 +5,7 @@ import { createClient, createServiceClient } from "@/lib/supabase/server"
 import { findPosClientMutation } from "@/app/pos/actions/idempotency"
 import { assertPosOrderCurrent } from "@/app/pos/assert-order-current"
 import { assertRegisterCheckout } from "@/app/pos/register/checkout-guard"
+import { requirePosSiteAccess } from "@/app/pos/actions/site-access"
 import {
   assertQuotationCheckoutable,
   claimQuotationCheckout,
@@ -48,6 +49,10 @@ export async function checkoutCart(params: CheckoutCartParams) {
   let publicMutationHasSideEffects = false
 
   try {
+    if (params.source === 'pos') {
+      const access = await requirePosSiteAccess(params.siteId)
+      if ('error' in access) return { error: access.error }
+    }
     if (params.clientMutationId && params.source === "pos") {
       const existing = await findPosClientMutation(
         params.siteId,
@@ -64,7 +69,9 @@ export async function checkoutCart(params: CheckoutCartParams) {
     }
 
     const supabase = await createClient()
-    const supabaseAdmin = await createServiceClient(true)
+    const supabaseAdmin = await createServiceClient(true, {
+      access: ['shop', 'marketplace', 'quote'].includes(params.source) ? 'public' : 'workspace',
+    })
     checkoutAdminClient = supabaseAdmin
     const authenticatedUserId =
       (await supabase.auth.getUser()).data.user?.id || null

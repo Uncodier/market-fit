@@ -66,7 +66,7 @@ describe("resolveSiteInfoBySlug archive filtering", () => {
       name,
       settings,
     }))
-    expect(createServiceClient).toHaveBeenCalledWith(true)
+    expect(createServiceClient).toHaveBeenCalledWith(true, { access: 'public' })
     expect(siteQueries).toHaveLength(queryCount)
     for (const query of siteQueries) {
       expect(query.is).toHaveBeenCalledWith("archived_at", null)

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { requireUnrestrictedLocationAccess } from '@/lib/auth/location-boundary.server'
 import {
   AssetProxyError,
   fetchValidatedAsset,
@@ -22,14 +22,9 @@ export async function GET(request: NextRequest) {
 
     const targetUrl = await validateAssetUrl(urlParam)
 
-    const supabase = await createClient(true)
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser()
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const access = await requireUnrestrictedLocationAccess()
+    if (access.error) return access.error
+    const { user } = access
 
     const userLease = await acquireOperationLease(
       'asset-proxy-zip-user',

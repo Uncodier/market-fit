@@ -78,7 +78,7 @@ async function loadSiteSettings(supabase: Awaited<ReturnType<typeof createServic
 export async function resolveSiteInfoBySlug(
   siteSlug: string,
 ): Promise<(SiteInfo & { settings?: any }) | null> {
-  const supabase = await createServiceClient(true);
+  const supabase = await createServiceClient(true, { access: 'public' });
 
   const isUUID =
     /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(

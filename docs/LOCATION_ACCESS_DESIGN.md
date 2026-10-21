@@ -1,7 +1,7 @@
 # Team Settings: Location-Scoped Access
 
-**Status:** target design; [staged foundations](LOCATION_ACCESS_IMPLEMENTATION.md)
-are implemented locally, but cross-module ACL and editing are not activated.
+**Status:** target design; [operational enforcement and member management](LOCATION_ACCESS_ENFORCEMENT.md)
+are implemented in source, with documented unsupported projections and deployment steps.
 The restriction-list direction preserves access; open decisions remain below.
 **Review date:** 2026-10-19. Findings below come from repository inspection, not a
 live database audit. Physical columns, policies, grants, and RPCs must be verified

@@ -8,7 +8,7 @@ export async function settleAutoTopUpSetup(stripe: Stripe, payload: Stripe.Check
       session.metadata?.type !== "credit_auto_top_up_setup" || !session.metadata.site_id || !session.metadata.setup_token ||
       !session.customer || !session.setup_intent) throw new Error("Invalid top-up setup")
   const siteId = session.metadata.site_id
-  const service = await createServiceClient(true)
+  const service = await createServiceClient(true, { access: 'system' })
   const { data: billing, error } = await service.from("billing").select("stripe_customer_id")
     .eq("site_id", siteId).maybeSingle()
   if (error || billing?.stripe_customer_id !== session.customer) throw new Error("Billing customer mismatch")

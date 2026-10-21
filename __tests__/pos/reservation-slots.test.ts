@@ -4,6 +4,11 @@ import {
   reservationSlotsRequestKey,
 } from "@/app/pos/local/reservation-slots";
 
+jest.mock("@/app/pos/local/location-permission-state", () => ({
+  requirePosPermission: () => ({ generation: 1 }),
+  isPosPermissionCurrent: () => true,
+}));
+
 const slotsStore = new Map<string, any>();
 const getAvailableSlots = jest.fn();
 

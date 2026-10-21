@@ -1,5 +1,5 @@
 import { z } from "zod"
-import { createClient } from "@/lib/supabase/server"
+import { requireUnrestrictedLocationAccess } from "@/lib/auth/location-boundary.server"
 import { getCurrentUserSiteRole, isSiteManagerRole } from "@/lib/auth/api-site-access"
 import { userCanOnSite } from "@/lib/permissions/site-access"
 import { readUpstreamFailure } from "./upstream-failure"
@@ -43,9 +43,9 @@ export async function POST(request: Request): Promise<Response> {
   }
 
   try {
-    const supabase = await createClient(true)
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    if (authError || !user || user.is_anonymous) return failure("Unauthorized", 401)
+    const access = await requireUnrestrictedLocationAccess()
+    if (access.error) return access.error
+    const { supabase, user } = access
 
     const { data: instance, error: fetchError } = await supabase.from("remote_instances")
       .select("id, site_id").eq("id", input.instance_id).maybeSingle()

@@ -39,7 +39,7 @@ beforeEach(() => {
   }
   userClient = {
     auth: { getUser: jest.fn().mockResolvedValue({ data: { user: { id: userId, email: "owner@example.test" } }, error: null }) },
-    rpc: jest.fn().mockResolvedValue({ data: "owner", error: null }),
+    rpc: jest.fn(async (name: string) => ({ data: name === 'current_user_site_role' ? 'owner' : false, error: null })),
     from: jest.fn().mockReturnValue(siteQuery),
   }
   verifier = { auth: { signInWithPassword: jest.fn().mockResolvedValue({ data: { user: { id: userId } }, error: null }) } }

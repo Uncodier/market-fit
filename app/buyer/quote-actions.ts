@@ -41,7 +41,7 @@ export async function getBuyerQuotation(quotationId: string) {
 
   if (authError || !user) return { error: "Not authenticated" }
 
-  const serviceClient = await createServiceClient(true)
+  const serviceClient = await createServiceClient(true, { access: 'public' })
   const { data, error } = await serviceClient
     .from("quotations")
     .select(BUYER_QUOTE_SELECT)

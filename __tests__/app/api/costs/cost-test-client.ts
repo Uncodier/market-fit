@@ -78,6 +78,7 @@ export function costClient(tables: Record<string, Row[] | undefined> = {}, optio
   return {
     from, queries,
     auth: { getUser: jest.fn().mockResolvedValue({ data: { user: { id: "verified-user" } }, error: null }) },
-    rpc: jest.fn().mockResolvedValue({ data: "owner", error: null }),
+    rpc: jest.fn(async (name: string): Promise<{ data: string | boolean | null; error: string | null }> =>
+      ({ data: name === 'current_user_site_role' ? 'owner' : false, error: null })),
   }
 }

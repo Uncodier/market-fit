@@ -12,7 +12,7 @@ export const marketplaceWebhookDependencies: MarketplaceWebhookDependencies = {
   parse: parseWebhook,
   async resolve(provider, storeId) {
     const matches = await findMarketplaceIntegrations(provider, storeId)
-    const database = await createServiceClient(true)
+    const database = await createServiceClient(true, { access: 'system' })
     return Promise.all(matches.filter(({ config }) => config.enabled).map(async ({ config, credentials }) => {
       const webhookSecrets: Record<string, string> = {}
       if (config.provider === "rappi" && config.merchant_connection_id) {
@@ -48,7 +48,7 @@ export const marketplaceWebhookDependencies: MarketplaceWebhookDependencies = {
   fetchOrder,
   async persist(integration, event, eventKey) {
     // Caller has verified signature, exact store identity and configured connection.
-    const database = await createServiceClient(true)
+    const database = await createServiceClient(true, { access: 'system' })
     const order = event.normalized_order
     const payload = order ? {
       ...order,

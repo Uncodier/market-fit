@@ -35,7 +35,7 @@ export async function getBuyerPortalSummary({
 
   try {
     const { completePastBuyerReservations } = await import('./reservation-actions')
-    await completePastBuyerReservations(supabase, {
+    await completePastBuyerReservations(await createServiceClient(false, { access: scope === 'personal' ? 'public' : 'workspace' }), {
       buyerUserId: session.user.id,
       ownerSiteId: scope === 'site' ? ownerSiteId : undefined
     })
@@ -44,7 +44,7 @@ export async function getBuyerPortalSummary({
   }
 
   // Respect demo mode (skipDemo would hit Postgres with mock user ids).
-  const supabaseService = await createServiceClient()
+  const supabaseService = await createServiceClient(false, { access: scope === 'personal' ? 'public' : 'workspace' })
 
   let ordersQ = supabaseService.from('sale_orders').select('created_at', { count: 'exact' })
   let subsQ = supabaseService.from('subscriptions').select('created_at', { count: 'exact' })
@@ -175,7 +175,7 @@ export async function getBuyerOrder(orderId: string) {
   const { data: { session } } = await supabase.auth.getSession()
   if (!session?.user) return { error: "Not authenticated" }
 
-  const supabaseService = await createServiceClient(true)
+  const supabaseService = await createServiceClient(true, { access: 'public' })
 
   const { data: order, error } = await supabaseService
     .from('sale_orders')
@@ -219,6 +219,8 @@ export async function getBuyerOrder(orderId: string) {
   }
 
   if (order.owner_site_id) {
+    const scopeResult = await supabase.rpc('current_user_has_site_location_restrictions', { p_site_id: order.owner_site_id })
+    if (scopeResult.error || scopeResult.data !== false) return { error: 'This order requires unrestricted location access' }
     const isMember = await verifySiteMembership(supabase, session.user.id, order.owner_site_id)
     if (isMember) {
       return { data: order }
@@ -254,7 +256,7 @@ export async function listBuyerOrders({
   }
 
   // Use service client to bypass RLS on catalog_items (so non-marketplace items still render for buyers)
-  const supabaseService = await createServiceClient(true)
+  const supabaseService = await createServiceClient(true, { access: scope === 'personal' ? 'public' : 'workspace' })
 
   let query = supabaseService
     .from('sale_orders')
@@ -363,7 +365,9 @@ export async function listBuyerLibrary({
     selectStr = '*, catalog_item:catalog_items!inner(id, name, description, digital_subtype, image_url, is_marketplace_listed), site:site_id(id, name)'
   }
 
-  let query = supabase
+  const libraryClient = scope === 'personal'
+    ? await createServiceClient(true, { access: 'public' }) : supabase
+  let query = libraryClient
     .from('entitlements')
     .select(selectStr, { count: 'exact' })
     .eq('status', 'active')

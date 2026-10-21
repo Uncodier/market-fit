@@ -62,6 +62,19 @@ export interface CheckoutCartParams {
 export type CheckoutSource = CheckoutCartParams["source"]
 export type CheckoutSupabaseClient = any
 
+/** Persisted server result; operating scope is never taken from checkout input. */
+export type PersistedCheckoutOrder = {
+  id: string
+  location_id?: string | null
+  order_number?: string | null
+  status?: string | null
+  total?: number | null
+  currency?: string | null
+  created_at?: string | null
+  notes?: string | null
+  fulfillment_method?: string | null
+}
+
 export type ProcessedCheckoutLine = {
   site_id: string
   catalog_item_id: string

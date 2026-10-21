@@ -77,7 +77,7 @@ function userClient(
     rpc: jest.fn((name: string) =>
       Promise.resolve({
         data:
-          name === "current_user_platform_role"
+          name === 'current_user_has_site_location_restrictions' ? false : name === "current_user_platform_role"
             ? platformRole ?? null
             : (membership?.data as { role?: string } | undefined)?.role ?? null,
         error: membership?.error ?? null,

@@ -28,7 +28,7 @@ function errorIntentId(error: unknown): string | null {
 export async function processAutoTopUpSite(stripe: Stripe, siteId: string): Promise<string> {
   // A suspended worker must not use an old admission or outlive the dispatch window.
   const deadline = Date.now() + 120_000
-  const service = await createServiceClient(true)
+  const service = await createServiceClient(true, { access: 'system' })
   const { data, error } = await service.rpc("begin_credit_auto_top_up_attempt", { p_site_id: siteId })
   if (error) throw new Error("Top-up claim unavailable")
   if (["in_progress", "not_eligible", "needs_reconciliation"].includes(data?.outcome)) return data.outcome

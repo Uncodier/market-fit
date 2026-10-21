@@ -18,7 +18,7 @@ export async function receiveRappiProvisioning(request: Request, scope: { enviro
   if (!["production", "sandbox"].includes(environment) || country !== "global" || !/^[a-f0-9]{64}$/.test(appHash)) throw new Error("Invalid provisioning scope")
   const payload = z.object({ batchId: z.string(), integrationId: z.string(), operation: z.enum(["PROVISION", "DEPROVISION"]),
     results: z.array(resultSchema).max(20) }).parse(parseMarketplaceJson(raw))
-  const database = await createServiceClient(true)
+  const database = await createServiceClient(true, { access: 'system' })
   const rows = await database.from("marketplace_integrations").select("id,site_id,external_store_id,merchant_connection_id,provider_batch_id,created_by_user_id,provisioning_operation")
     .eq("provider", "rappi").eq("environment", environment).eq("provider_batch_id", payload.batchId)
   if (rows.error) throw new Error("Provisioning scope unavailable")
@@ -55,7 +55,7 @@ export async function receiveUberProvisioning(request: Request, raw: string, pay
   if (!event.success) return false
   const storeId = event.data.meta?.user_id || event.data.user_id
   if (!storeId) throw new Error("Provisioning store unavailable")
-  const database = await createServiceClient(true)
+  const database = await createServiceClient(true, { access: 'system' })
   const rows = await database.from("marketplace_integrations").select("id,site_id,merchant_connection_id,created_by_user_id")
     .eq("provider", "uber_eats").eq("external_store_id", storeId)
   if (rows.error) throw new Error("Provisioning lookup unavailable")

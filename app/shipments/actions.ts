@@ -1,7 +1,9 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createClient, createServiceClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/supabase/server";
+import { createAuthorizedShipment, type CreateShipmentInput } from './create-shipment';
+import { userCanOnSite } from '@/lib/permissions/site-access';
 import { ShipmentParams, ShipmentWithRelations } from "./types";
 import { Shipment } from "@/app/types";
 import { assertInternalShipment } from "@/lib/marketplace/mutation-guards";
@@ -146,57 +148,19 @@ export async function setShipmentLineItems(siteId: string, shipmentId: string, i
   }
 }
 
-export async function createShipment(params: {
-  siteId: string;
-  saleOrderId: string;
-  saleId?: string;
-  leadId?: string;
-  originLocationId: string;
-  shippingAddress?: any;
-  carrier?: string;
-  trackingNumber?: string;
-  assignedTo?: string;
-  itemIds?: string[];
-  userId: string;
-  forceServiceRole?: boolean;
-  stripeCheckoutSessionId?: string;
-}) {
+export async function createShipment(params: CreateShipmentInput) {
   try {
-    const supabase = params.forceServiceRole ? await createServiceClient(true) : await createClient();
-    const { data, error } = await supabase
-      .from("shipments")
-      .insert({
-        site_id: params.siteId,
-        sale_order_id: params.saleOrderId,
-        sale_id: params.saleId,
-        lead_id: params.leadId || null,
-        origin_location_id: params.originLocationId,
-        shipping_address: params.shippingAddress,
-        carrier: params.carrier,
-        tracking_number: params.trackingNumber,
-        assigned_to: params.assignedTo || null,
-        stripe_checkout_session_id: params.stripeCheckoutSessionId || null,
-        user_id: params.userId,
-        status: "pending",
-      })
-      .select()
-      .single();
-
-    if (error) throw new Error(error.message);
-
-    if (params.itemIds && params.itemIds.length > 0) {
-      await supabase
-        .from("sale_order_items")
-        .update({ shipment_id: data.id })
-        .eq("site_id", params.siteId)
-        .in("id", params.itemIds);
+    const supabase = await createClient(true);
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user || !await userCanOnSite(supabase, params.siteId, 'insert')) {
+      return { error: 'Shipment creation is not authorized' };
     }
-
-    revalidatePath(`/shipments`);
-    if (params.saleId) revalidatePath(`/sales/${params.saleId}`);
-    return { data: data as Shipment };
-  } catch (error: any) {
-    return { error: error.message };
+    const { data: order, error } = await supabase.from('sale_orders').select('id, sale_id')
+      .eq('id', params.saleOrderId).eq('site_id', params.siteId).single();
+    if (error || !order || (params.saleId && params.saleId !== order.sale_id)) return { error: 'Order not available' };
+    return createAuthorizedShipment(supabase, { ...params, saleId: order.sale_id || undefined, userId: user.id });
+  } catch {
+    return { error: 'Shipment creation could not be confirmed' };
   }
 }
 

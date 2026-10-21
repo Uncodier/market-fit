@@ -1,7 +1,7 @@
 "use server"
 
 import { createServiceClient } from "@/lib/supabase/server"
-import { isValidPublicAccessToken } from "@/app/documents/public-token"
+import { isValidPublicAccessToken, isPublicAccessTokenActive } from "@/app/documents/public-token"
 import type { DeviceOrder } from "@/app/commerce/device-order-storage"
 import {
   attachPurchaseEntitlements,
@@ -23,17 +23,17 @@ export async function getDeviceOrderSnapshots(
 
   if (valid.length === 0) return { data: [] }
 
-  const supabase = await createServiceClient(true)
+  const supabase = await createServiceClient(true, { access: 'public' })
   const { data, error } = await supabase
     .from("sale_orders")
     .select(
-      "id, public_access_token, order_number, status, total, currency, created_at, sale_order_items(name, unit_price, catalog_item_id, catalog_item:catalog_item_id(name, image_url, kind, digital_subtype))"
+      "id, public_access_token, public_access_token_expires_at, public_access_token_revoked_at, order_number, status, total, currency, created_at, sale_order_items(name, unit_price, catalog_item_id, catalog_item:catalog_item_id(name, image_url, kind, digital_subtype))"
     )
     .in("public_access_token", valid)
 
   if (error) return { error: error.message }
 
-  const orders = ((data || []) as DeviceOrderSnapshotRow[]).map(mapDeviceOrderSnapshot)
+  const orders = ((data || []) as DeviceOrderSnapshotRow[]).filter(row => isPublicAccessTokenActive(row)).map(mapDeviceOrderSnapshot)
   const orderIds = orders.map((order) => order.orderId).filter(Boolean)
   if (orderIds.length === 0) return { data: orders }
 

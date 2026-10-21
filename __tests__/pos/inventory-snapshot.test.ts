@@ -29,7 +29,7 @@ function client({
   }));
   const supabase = {
     auth: { getUser: jest.fn(async () => ({ data: { user: authenticated ? { id: "user-1" } : null }, error: null })) },
-    rpc: jest.fn(async () => ({ data: role, error: null })),
+    rpc: jest.fn(async (name: string) => ({ data: name === "current_user_site_role" ? role : false, error: null })),
     from: jest.fn((table: string) => ({
       select: jest.fn(() => ({
         eq: (column: string, value: string) => {

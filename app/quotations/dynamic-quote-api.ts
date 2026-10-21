@@ -1,19 +1,13 @@
+import "server-only";
+import { configuredApiUrl } from "@/lib/http/api-proxy-security";
+
 /**
  * Tunneled robots/API helpers (not a Server Actions module).
  * Keep non-async exports out of "use server" files.
  */
 
 export function getApiServerUrl(): string {
-  const base =
-    process.env.API_SERVER_URL || process.env.NEXT_PUBLIC_API_SERVER_URL || "";
-  if (!base) return "";
-  if (base.startsWith("http://") || base.startsWith("https://")) return base;
-  const lower = base.toLowerCase();
-  const isLocal =
-    lower.startsWith("localhost") ||
-    lower.startsWith("127.0.0.1") ||
-    lower.startsWith("0.0.0.0");
-  return `${isLocal ? "http" : "https"}://${base}`;
+  return configuredApiUrl(null, "/api/robots/instance/assistant")?.origin || "";
 }
 
 /**
@@ -53,6 +47,7 @@ export async function fetchTunneledInstanceLogs(
   const url = `${apiBase}/api/instances/${encodeURIComponent(instanceId)}/logs?limit=${safeLimit}&offset=0`;
   try {
     const res = await fetch(url, {
+      redirect: "error",
       method: "GET",
       headers: {
         Accept: "application/json",
@@ -62,7 +57,7 @@ export async function fetchTunneledInstanceLogs(
       signal: AbortSignal.timeout(10_000),
     });
     const text = await res.text();
-    let data: any = null;
+    let data: { error?: string | { message?: string }; message?: string; logs?: TunneledInstanceLog[]; raw?: string } | null = null;
     try {
       data = text ? JSON.parse(text) : null;
     } catch {
@@ -70,7 +65,7 @@ export async function fetchTunneledInstanceLogs(
     }
     if (!res.ok) {
       const message =
-        data?.error?.message ||
+        (typeof data?.error === 'object' ? data.error.message : undefined) ||
         data?.error ||
         data?.message ||
         `API error ${res.status}`;

@@ -50,7 +50,7 @@ beforeEach(() => {
   process.env.SENDGRID_FROM_EMAIL = "sender@example.test";
   process.env.SENDGRID_FROM_NAME = "POS diagnostics";
   getUser.mockResolvedValue({ data: { user: { id: userId } }, error: null });
-  rpc.mockResolvedValue({ data: "owner", error: null });
+  rpc.mockImplementation(async (name: string) => ({ data: name === "current_user_site_role" ? "owner" : false, error: null }));
   jest.mocked(createClient).mockResolvedValue({ auth: { getUser }, rpc } as never);
   jest.mocked(hashRedisKeyPart).mockImplementation(async (value) => hash(value));
   jest.mocked(executeRedisCommand).mockImplementation(async (command) => {

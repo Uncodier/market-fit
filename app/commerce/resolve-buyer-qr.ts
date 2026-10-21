@@ -1,8 +1,8 @@
 "use server"
 
-import { createClient } from "@/lib/supabase/server"
 import { createClient as createClientAdmin } from "@supabase/supabase-js"
 import { findOrCreateLeadForBuyer } from "./resolve-buyer-lead"
+import { isPrivateResourceId, requirePrivateCommerceSiteAccess } from "./private-site-access"
 
 function adminClient() {
   return createClientAdmin(
@@ -14,8 +14,9 @@ function adminClient() {
 const QR_PREFIX = "mf:user:"
 
 export async function parseBuyerIdentityQr(code: string): Promise<string | null> {
-  if (!code || !code.startsWith(QR_PREFIX)) return null
-  return code.slice(QR_PREFIX.length).trim()
+  if (typeof code !== "string" || !code.startsWith(QR_PREFIX)) return null
+  const id = code.slice(QR_PREFIX.length).trim()
+  return isPrivateResourceId(id) ? id : null
 }
 
 export type BuyerIdentityResolution = {
@@ -34,25 +35,9 @@ export async function resolveBuyerIdentityForSite({
   siteId: string
 }): Promise<{ data: BuyerIdentityResolution | null; error: string | null }> {
   try {
-    const supabase = await createClient()
-
-    // 1. Verify active site membership
-    const { data: { user: staffUser } } = await supabase.auth.getUser()
-    if (!staffUser) {
-      return { data: null, error: "Not authenticated" }
-    }
-
-    const { data: member, error: memberError } = await supabase
-      .from("site_members")
-      .select("id, role")
-      .eq("site_id", siteId)
-      .eq("user_id", staffUser.id)
-      .eq("status", "active")
-      .single()
-
-    if (memberError || !member) {
-      return { data: null, error: "You do not have permission to view this customer." }
-    }
+    const access = await requirePrivateCommerceSiteAccess(siteId, ["select", "insert", "update"])
+    if (access.error) return { data: null, error: access.error }
+    const { supabase } = access
 
     // 2. Load auth buyer via admin client
     const buyerUserId = await parseBuyerIdentityQr(code)
@@ -134,6 +119,6 @@ export async function resolveBuyerIdentityForSite({
     }
   } catch (err: any) {
     console.error("resolveBuyerIdentityForSite exception:", err)
-    return { data: null, error: err.message || "An unexpected error occurred." }
+    return { data: null, error: "An unexpected error occurred." }
   }
 }

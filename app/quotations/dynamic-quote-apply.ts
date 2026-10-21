@@ -1,4 +1,4 @@
-"use server";
+import "server-only";
 
 import { after } from "next/server";
 import { computeValidUntil } from "@/app/catalog/dynamic-pricing";
@@ -139,12 +139,15 @@ export async function applyPricedResult(params: {
     requiresAuthorization,
     quoteExpiration,
   } = params;
+  if (!Number.isFinite(unitPrice) || unitPrice < 0) throw new Error("Invalid quote price");
 
   const { data: item } = await supabase
     .from("quotation_items")
     .select("quantity, unit_price, metadata, quotation:quotations(valid_until)")
     .eq("id", quotationItemId)
+    .eq("quotation_id", quotationId)
     .single();
+  if (!item) throw new Error("Quotation item not available");
 
   const quantity = Number(item?.quantity) || 1;
   const existingPrice = Number(item?.unit_price) || 0;
@@ -189,6 +192,7 @@ export async function applyPricedResult(params: {
       metadata: { dynamic_quote: nextMeta },
     })
     .eq("id", quotationItemId)
+    .eq("quotation_id", quotationId)
     .eq("unit_price", existingPrice)
     .select("id")
     .maybeSingle();
@@ -258,13 +262,15 @@ export async function markQuoteFailed(
 
 /**
  * Server-to-server call to the robots API.
- * Uses SERVICE_API_KEY (x-api-key) — buyer sessions may be anonymous and must not
- * authenticate these routes. The API middleware requires an API key when Origin is absent.
+ * Internal only; callers must authorize the quote before supplying service-owned context.
  */
 export async function postTunneledApi(
   endpoint: string,
   body: Record<string, unknown>
 ) {
+  if (!["/api/workflow/promptRobot", "/api/robots/instance/assistant"].includes(endpoint)) {
+    return { success: false as const, error: "Unsupported quote endpoint", data: null };
+  }
   const serviceApiKey = process.env.SERVICE_API_KEY?.trim();
   if (!serviceApiKey) {
     return {
@@ -275,7 +281,8 @@ export async function postTunneledApi(
   }
 
   const apiBase = getApiServerUrl();
-  const url = apiBase ? `${apiBase}${endpoint}` : endpoint;
+  if (!apiBase) return { success: false as const, error: "API_SERVER_URL is not configured", data: null };
+  const url = `${apiBase}${endpoint}`;
 
   console.log("[postTunneledApi] request", {
     endpoint,
@@ -288,6 +295,7 @@ export async function postTunneledApi(
   let res: Response;
   try {
     res = await fetch(url, {
+      redirect: "error",
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -347,8 +355,6 @@ export async function postTunneledApi(
     endpoint,
     status: res.status,
     ok,
-    body: data,
-    rawPreview: text?.slice(0, 2000),
   });
 
   if (!ok) {
@@ -373,13 +379,17 @@ export async function startTunneledApi(
   endpoint: string,
   body: Record<string, unknown>
 ): Promise<{ started: true } | { started: false; error: string }> {
+  if (!["/api/workflow/promptRobot", "/api/robots/instance/assistant"].includes(endpoint)) {
+    return { started: false, error: "Unsupported quote endpoint" };
+  }
   const serviceApiKey = process.env.SERVICE_API_KEY?.trim();
   if (!serviceApiKey) {
     return { started: false, error: "SERVICE_API_KEY is not configured" };
   }
 
   const apiBase = getApiServerUrl();
-  const url = apiBase ? `${apiBase}${endpoint}` : endpoint;
+  if (!apiBase) return { started: false, error: "API_SERVER_URL is not configured" };
+  const url = `${apiBase}${endpoint}`;
 
   console.log("[startTunneledApi] scheduling after()", {
     endpoint,
@@ -397,6 +407,7 @@ export async function startTunneledApi(
     });
     try {
       const res = await fetch(url, {
+        redirect: "error",
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -421,12 +432,11 @@ export async function startTunneledApi(
         }
         return;
       }
-      const text = await res.text().catch(() => "");
+      await res.body?.cancel().catch(() => undefined);
       if (!res.ok) {
         console.error("[startTunneledApi] non-OK response", {
           endpoint,
           status: res.status,
-          preview: text.slice(0, 500),
         });
       }
     } catch (err: any) {

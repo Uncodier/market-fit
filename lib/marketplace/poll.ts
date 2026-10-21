@@ -8,7 +8,7 @@ import { synchronizeMarketplaceOrder } from "./synchronize"
 
 /** Bounded provider reads only; dispatch/accept/cancel are never retried by this worker. */
 export async function pollMarketplaceStores(deadline: number) {
-  const database = await createServiceClient(true)
+  const database = await createServiceClient(true, { access: 'system' })
   const { data, error } = await database.rpc("claim_marketplace_poll", { p_limit: 3 })
   if (error || !Array.isArray(data)) throw new Error("Marketplace poll admission unavailable")
   let refreshed = 0

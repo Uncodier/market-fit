@@ -76,7 +76,7 @@ export async function listVisits(siteId: string) {
         `
         *,
         catalog_item:catalog_items(id, name, kind),
-        location:locations(id, name),
+        location:locations!reservations_location_id_fkey(id, name),
         lead:leads(id, name, email, buyer_user_id)
       `
       )

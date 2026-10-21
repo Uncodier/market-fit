@@ -26,7 +26,7 @@ beforeEach(() => {
       getUser: jest.fn().mockResolvedValue({ data: { user: { id: "user-one" } }, error: null }),
       getSession: jest.fn().mockResolvedValue({ data: { session: { user: { id: "user-one" }, access_token: "user-token" } }, error: null }),
     },
-    rpc: jest.fn(async (name: string) => ({ data: name === "current_user_site_role" ? "owner" : true, error: null })),
+    rpc: jest.fn(async (name: string) => ({ data: name === "current_user_has_site_location_restrictions" ? false : name === "current_user_site_role" ? "owner" : true, error: null })),
     from: jest.fn(() => ({ select: jest.fn(() => ({ eq: jest.fn(() => ({
       maybeSingle: jest.fn().mockResolvedValue({ data: { site_id: siteId, social_media: [{ id: "account-one", isActive: true }] }, error: null }),
     })) })) })),

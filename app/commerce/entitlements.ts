@@ -1,8 +1,9 @@
 import { createClient, createServiceClient } from "@/lib/supabase/server"
 import crypto from "crypto"
+import type { SupabaseClient } from '@supabase/supabase-js'
 
 export async function grantFromOrder(orderId: string, forceServiceRole: boolean = false) {
-  const supabase = await (forceServiceRole ? createServiceClient(true) : createClient())
+  const supabase = await (forceServiceRole ? createServiceClient(true, { access: 'system' }) : createClient())
   
   // 1. Fetch order with items
   const { data: order, error: orderError } = await supabase
@@ -133,7 +134,7 @@ export async function grantFromOrder(orderId: string, forceServiceRole: boolean 
 }
 
 export async function syncSubscriptionEntitlements(subscriptionId: string, forceServiceRole: boolean = false) {
-  const supabase = await (forceServiceRole ? createServiceClient(true) : createClient())
+  const supabase = await (forceServiceRole ? createServiceClient(true, { access: 'system' }) : createClient())
   
   const { data: subscription, error: subError } = await supabase
     .from('subscriptions')
@@ -147,7 +148,7 @@ export async function syncSubscriptionEntitlements(subscriptionId: string, force
   if (!subscription) return
 
   if (subscription.status !== 'active') {
-    await revokeForSubscription(subscriptionId, forceServiceRole)
+    await revokeForSubscription(subscriptionId, false, supabase)
     return
   }
 
@@ -245,10 +246,10 @@ export async function syncSubscriptionEntitlements(subscriptionId: string, force
   }
 }
 
-export async function revokeForSubscription(subscriptionId: string, forceServiceRole: boolean = false) {
-  const supabase = await (forceServiceRole ? createServiceClient(true) : createClient())
+export async function revokeForSubscription(subscriptionId: string, forceServiceRole: boolean = false, authorizedClient?: SupabaseClient) {
+  const supabase = authorizedClient ?? await (forceServiceRole ? createServiceClient(true) : createClient())
   
-  await supabase
+  const { error } = await supabase
     .from('entitlements')
     .update({ 
       status: 'revoked', 
@@ -257,6 +258,7 @@ export async function revokeForSubscription(subscriptionId: string, forceService
     .eq('source_type', 'subscription')
     .eq('source_id', subscriptionId)
     .eq('status', 'active')
+  if (error) throw new Error('Subscription entitlements could not be revoked')
 }
 
 export async function revokeFromOrder(orderId: string, forceServiceRole: boolean = false) {

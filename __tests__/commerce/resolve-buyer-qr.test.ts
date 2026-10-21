@@ -1,5 +1,6 @@
 import { parseBuyerIdentityQr, resolveBuyerIdentityForSite } from "../../app/commerce/resolve-buyer-qr";
 import { findOrCreateLeadForBuyer } from "../../app/commerce/resolve-buyer-lead";
+jest.mock("server-only", () => ({}));
 
 // Mock the lead module
 jest.mock("../../app/commerce/resolve-buyer-lead", () => ({
@@ -8,6 +9,7 @@ jest.mock("../../app/commerce/resolve-buyer-lead", () => ({
 
 // Mock Supabase client
 const mockSupabase = {
+  rpc: jest.fn(),
   auth: {
     getUser: jest.fn()
   },
@@ -40,6 +42,10 @@ jest.mock("@supabase/supabase-js", () => ({
 describe("Buyer Identity QR", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockSupabase.rpc.mockImplementation(async (name: string) => ({
+      data: name === "current_user_site_role" ? "admin" : name === "user_can",
+      error: null,
+    }));
   });
 
   describe("parseBuyerIdentityQr", () => {

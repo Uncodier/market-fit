@@ -145,6 +145,10 @@ export async function updateQuotationBasics(
 
 export async function createQuotationFromDeal(siteId: string, dealId: string, leadId: string, notes?: string) {
   const supabase = await createClient()
+  // Read the same-site parent under RLS; never infer scope from a lead or default branch.
+  const { data: deal, error: dealError } = await supabase.from('deals')
+    .select('*').eq('id', dealId).eq('site_id', siteId).single()
+  if (dealError || !deal) return { error: 'Deal not found' }
   
   // Also get lead's buyer_user_id
   const { data: lead } = await supabase.from('leads').select('buyer_user_id').eq('id', leadId).single()
@@ -154,6 +158,7 @@ export async function createQuotationFromDeal(siteId: string, dealId: string, le
     .insert([{
       site_id: siteId,
       deal_id: dealId,
+      ...(deal.location_id !== undefined ? { location_id: deal.location_id } : {}),
       lead_id: leadId,
       buyer_user_id: lead?.buyer_user_id || null,
       notes: notes || null,

@@ -1,6 +1,6 @@
 import { finalizeCheckout } from "@/app/commerce/checkout-finalize"
 import { ensurePublicAccessTokenForRecord } from "@/app/documents/public-token-store"
-import { createShipment } from "@/app/shipments/actions"
+import { createAuthorizedShipment } from "@/app/shipments/create-shipment"
 import { revalidatePath } from "next/cache"
 import { bumpCacheEpoch } from "@/lib/redis/json-cache"
 import { upsertSaleOrderItemsWithModifiers } from "@/app/commerce/checkout-order-items"
@@ -29,8 +29,8 @@ jest.mock("@/app/commerce/entitlements", () => ({
 jest.mock("@/app/promotions/apply-promotion-to-order", () => ({
   applyPromotionToOrder: jest.fn(),
 }))
-jest.mock("@/app/shipments/actions", () => ({
-  createShipment: jest.fn().mockResolvedValue({ data: { id: "shipment-1" } }),
+jest.mock("@/app/shipments/create-shipment", () => ({
+  createAuthorizedShipment: jest.fn().mockResolvedValue({ data: { id: "shipment-1" } }),
 }))
 jest.mock("@/app/pos/actions/idempotency", () => ({
   recordPosClientMutation: jest.fn(),
@@ -153,9 +153,8 @@ describe("finalizeCheckout", () => {
       orderTotal: 0,
     })
 
-    expect(createShipment).toHaveBeenCalledWith(expect.objectContaining({
+    expect(createAuthorizedShipment).toHaveBeenCalledWith(adminClient, expect.objectContaining({
       saleOrderId: "order-1",
-      forceServiceRole: true,
     }))
     expect(ensurePublicAccessTokenForRecord).toHaveBeenCalledWith(
       adminClient,

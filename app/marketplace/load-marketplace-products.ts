@@ -43,7 +43,7 @@ const SPEC_COLUMNS = ", raw_specs:catalog_item_specs(sort_order, item_spec:item_
 export async function loadMarketplaceProducts(filters: MarketplaceProductFilters = {}) {
   // Intentionally public read: authorization is limited to active, listed parent items
   // from non-archived sites. The service client and sales rows remain server-only.
-  const supabase = await createServiceClient(true)
+  const supabase = await createServiceClient(true, { access: 'public' })
   const page = filters.page || 1
   const limit = filters.limit || MARKETPLACE_PAGE_SIZE
   const sort = filters.sort || "featured"

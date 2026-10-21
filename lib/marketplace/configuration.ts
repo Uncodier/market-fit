@@ -40,7 +40,7 @@ export async function readIntegrationCredentials(service: ServiceClient, config:
 /** Internal server loader; never serialize its return value to a browser. */
 export async function loadMarketplaceIntegration(id: string): Promise<LoadedMarketplaceIntegration | null> {
   if (!z.string().uuid().safeParse(id).success) return null
-  const service = await createServiceClient(true)
+  const service = await createServiceClient(true, { access: 'system' })
   const { data, error } = await service.from("marketplace_integrations").select(MARKETPLACE_CONFIG_COLUMNS)
     .eq("id", id).maybeSingle()
   if (error) throw new Error("Marketplace configuration is unavailable")
@@ -52,7 +52,7 @@ export async function loadMarketplaceIntegration(id: string): Promise<LoadedMark
 /** Store IDs are untrusted selectors only; ingress must verify signatures before routing. */
 export async function findMarketplaceIntegrations(provider: MarketplaceProvider, externalStoreId: string): Promise<LoadedMarketplaceIntegration[]> {
   if (!["rappi", "uber_eats"].includes(provider) || !/^[A-Za-z0-9_-]{1,200}$/.test(externalStoreId)) return []
-  const service = await createServiceClient(true)
+  const service = await createServiceClient(true, { access: 'system' })
   const { data, error } = await service.from("marketplace_integrations").select(MARKETPLACE_CONFIG_COLUMNS)
     .eq("provider", provider).eq("external_store_id", externalStoreId).eq("enabled", true)
   if (error) throw new Error("Marketplace configuration is unavailable")

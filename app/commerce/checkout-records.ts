@@ -105,7 +105,7 @@ export async function persistCheckoutRecords(
       locationId: params.finalOriginLocationId || null,
       excludeOrderId: params.effectiveExistingOrderId || null,
       forceServiceRole: params.isAdmin,
-    })
+    }, queryClient)
     if ("error" in promoPreview) {
       throw new Error(`Promotion failed: ${promoPreview.error}`)
     }
@@ -156,7 +156,10 @@ export async function persistCheckoutRecords(
     lead_id: params.finalLeadId,
     buyer_user_id: params.buyerUserId || null,
     owner_site_id: params.ownerSiteId || null,
-    location_id: params.finalOriginLocationId || null,
+    // A quote's canonical scope wins even when unresolved. Fulfillment is separate.
+    ...(params.quoteForAccept
+      ? params.quoteForAccept.location_id !== undefined ? { location_id: params.quoteForAccept.location_id } : {}
+      : { location_id: params.finalOriginLocationId || null }),
     campaign_id: params.leadCampaignId,
     segment_id: params.leadSegmentId,
     company_id: params.leadCompanyId,
@@ -277,6 +280,8 @@ export async function persistCheckoutRecords(
       amount_due: Math.max(0, orderTotal - totalPaid),
       status: saleInitialStatus,
     }
+    // Editing fulfillment must not silently reassign an existing sale's scope.
+    delete saleData.location_id
     if (paymentMethodToStore) saleData.payment_method = paymentMethodToStore
     if (params.payments?.length) {
       saleData.payments = paymentState.payments
@@ -363,6 +368,9 @@ export async function persistCheckoutRecords(
       .insert({
         site_id: params.siteId,
         sale_id: sale.id,
+        ...(params.quoteForAccept?.location_id !== undefined
+          ? { location_id: params.quoteForAccept.location_id }
+          : {}),
         price_list_id: params.finalPriceListId,
         buyer_user_id: params.buyerUserId || null,
         owner_site_id: params.ownerSiteId || null,

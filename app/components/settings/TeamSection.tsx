@@ -9,6 +9,7 @@ import { useLocalization } from "@/app/context/LocalizationContext"
 import { Badge } from "../ui/badge"
 import { licensePlanLabel } from "@/lib/license-entitlements"
 import { teamMembersInDisplayOrder } from "./team-types"
+import Link from 'next/link'
 import { TeamLocationAccess } from "./TeamLocationAccess"
 
 interface TeamSectionProps {
@@ -45,6 +46,7 @@ export function TeamSection({ active, siteId }: TeamSectionProps) {
   if (!active) return null
 
   return (
+    <TeamLocationAccess siteId={siteId} members={teamList} canManageTeam={canManageTeam}>
     <div id="team-members" className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
@@ -77,7 +79,9 @@ export function TeamSection({ active, siteId }: TeamSectionProps) {
         </Button>
       </div>
 
-      {canManageTeam && siteId && <TeamLocationAccess key={siteId} siteId={siteId} members={teamList} />}
+      {canManageTeam && <Button variant="outline" size="sm" asChild>
+        <Link href="/settings/location-access">Assign locations to operational records</Link>
+      </Button>}
 
       {isLoading ? (
         <div className="space-y-4">
@@ -105,6 +109,7 @@ export function TeamSection({ active, siteId }: TeamSectionProps) {
               </Badge>
             )}
             <TeamMemberCard
+              siteId={siteId}
               member={member}
               index={index}
               canEditBlockedScreens={canEditBlockedScreens}
@@ -128,5 +133,6 @@ export function TeamSection({ active, siteId }: TeamSectionProps) {
         ))
       )}
     </div>
+    </TeamLocationAccess>
   )
 }

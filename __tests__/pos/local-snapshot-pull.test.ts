@@ -2,6 +2,12 @@ import { getPosDb } from "@/app/pos/local/db";
 import { applyPosCatalogSnapshot, pullAndStorePosCatalogSnapshot, readLocalCatalog } from "@/app/pos/local/snapshot-pull";
 import { pullPosCatalogSnapshot, type PosCatalogSnapshot } from "@/app/pos/actions/pull-snapshot";
 import type { PosMeta } from "@/app/pos/local/types";
+import { isPosPermissionCurrent } from "@/app/pos/local/location-permission-state";
+
+jest.mock("@/app/pos/local/location-permission-state", () => ({
+  requirePosPermission: jest.fn(() => ({ generation: 1 })),
+  isPosPermissionCurrent: jest.fn(() => true),
+}));
 
 jest.mock("@/app/pos/local/db", () => ({ getPosDb: jest.fn() }));
 jest.mock("@/app/pos/actions/pull-snapshot", () => ({ pullPosCatalogSnapshot: jest.fn() }));
@@ -56,5 +62,17 @@ describe("local inventory snapshots", () => {
     expect(await pullAndStorePosCatalogSnapshot("site-1", "revision-2")).toEqual({ ok: false, error: "Inventory unavailable" });
     expect(db.meta.put).toHaveBeenCalledTimes(1);
     expect(await readLocalCatalog("site-1")).toMatchObject({ inventorySnapshot, lastCatalogRevision: "revision-1" });
+  });
+
+  it("does not store a late private snapshot after actor/scope revocation", async () => {
+    const db = localDb();
+    let finish!: (value: Awaited<ReturnType<typeof pullPosCatalogSnapshot>>) => void;
+    jest.mocked(pullPosCatalogSnapshot).mockReturnValue(new Promise((resolve) => { finish = resolve; }));
+    const pull = pullAndStorePosCatalogSnapshot("site-1", "revision-2");
+    jest.mocked(isPosPermissionCurrent).mockReturnValue(false);
+    finish({ data: snapshot });
+    expect(await pull).toEqual({ ok: false, error: "POS access changed" });
+    expect(db.meta.put).not.toHaveBeenCalled();
+    jest.mocked(isPosPermissionCurrent).mockReturnValue(true);
   });
 });
