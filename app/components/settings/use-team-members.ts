@@ -283,11 +283,11 @@ export function useTeamMembers({ active, siteId }: UseTeamMembersOptions) {
   const handleSaveMember = async (member: FormTeamMember) => {
     if (!siteId || !member.id) {
       toast.error("Cannot save: member ID is required")
-      return
+      return false
     }
     if (!hasMemberChanges(member)) {
       toast.info("No changes to save")
-      return
+      return false
     }
 
     try {
@@ -302,10 +302,11 @@ export function useTeamMembers({ active, siteId }: UseTeamMembersOptions) {
       })
       toast.success(`${member.name || member.email} updated successfully`)
       await refreshMembers()
+      return true
     } catch (error) {
       if (isBillingUpgradeRequired(error)) {
         emitBillingLimit(error.payload)
-        return
+        return false
       }
       console.error("Error saving team member:", error)
       const errorMessage = error instanceof Error ? error.message : "Unknown error"
@@ -314,6 +315,7 @@ export function useTeamMembers({ active, siteId }: UseTeamMembersOptions) {
       } else {
         toast.error(`Failed to save changes: ${errorMessage}`)
       }
+      return false
     } finally {
       setIsSavingMember(null)
     }

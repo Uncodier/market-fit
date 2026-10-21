@@ -1,5 +1,6 @@
 "use client"
 
+import { useEffect, useRef, useState } from "react"
 import { useFormContext, type Control } from "react-hook-form"
 import { toast } from "sonner"
 import { type SiteFormValues } from "./form-schema"
@@ -30,6 +31,7 @@ import { MemberBlockedScreens } from "./MemberBlockedScreens"
 import { MemberStatusControl } from "./MemberStatusControl"
 import { MemberLocationRestrictions } from "./MemberLocationRestrictions"
 import { useTeamLocationAccess } from "./TeamLocationAccess"
+import { useMemberLocationEditor } from "./use-member-location-editor"
 import { Switch } from "../ui/switch"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import {
@@ -65,7 +67,7 @@ interface TeamMemberCardProps {
   canSave: boolean
   validation: MemberValidation
   onUpdate: (field: keyof FormTeamMember, value: unknown) => void
-  onSave: () => void
+  onSave: () => void | Promise<boolean | void>
   onSaveInvite: () => void
   onRemove: () => void
   onResend: () => void
@@ -96,7 +98,38 @@ export function TeamMemberCard({
   const { t } = useLocalization()
   const form = useFormContext<SiteFormValues>()
   const locationAccess = useTeamLocationAccess()
-  const isSaving = isSavingDetails || !!locationAccess?.savingMemberId
+  const [savingCard, setSavingCard] = useState(false)
+  const pendingSave = useRef(false)
+  const mounted = useRef(true)
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false } }, [])
+  const isSaving = isSavingDetails || savingCard || !!locationAccess?.savingMemberId
+  const locationState = useMemberLocationEditor({ member, siteId, canManageTeam,
+    disabled: isLoading || isSavingDetails || savingCard || isSavingThis || isUpdatingStatus || isResendingThis })
+  const hasCardChanges = hasChanges || locationState.changed
+  const canSaveCard = hasCardChanges && (!hasChanges || canSave) && (!locationState.changed || locationState.canSave)
+  const saveCard = async () => {
+    if (pendingSave.current || !canSaveCard || !canManageTeam || isLoading || isSaving || isSavingThis || isUpdatingStatus || isResendingThis) return
+    pendingSave.current = true
+    setSavingCard(true)
+    let savedLocations = false
+    try {
+      if (locationState.changed) {
+        savedLocations = await locationState.save(!hasChanges)
+        if (!savedLocations) return
+      }
+      if (!mounted.current) return
+      if (hasChanges && await onSave() === false && savedLocations && mounted.current) {
+        toast.error("Location restrictions were saved, but member details were not confirmed. Review and save the remaining changes.")
+      }
+    } catch {
+      if (mounted.current) toast.error(savedLocations
+        ? "Location restrictions were saved, but member details were not confirmed. Review and save the remaining changes."
+        : "Member details were not confirmed. Review and try again.")
+    } finally {
+      pendingSave.current = false
+      if (mounted.current) setSavingCard(false)
+    }
+  }
   const isExisting = !!member.id
   const isAdmin =
     member.role === "admin" ||
@@ -108,8 +141,7 @@ export function TeamMemberCard({
   const showEmailField = !isExisting || isPendingInvitation(member)
   const hasInvalidEmail = !!member.email && !isValidTeamEmail(member.email)
   const isCollapsed = isInactiveTeamMember(member)
-  const locationEditor = <MemberLocationRestrictions member={member} siteId={siteId} canManageTeam={canManageTeam}
-    disabled={isLoading || isSavingDetails || isSavingThis || isUpdatingStatus || isResendingThis} />
+  const locationEditor = <MemberLocationRestrictions editor={locationState} />
 
   return (
     <SectionCard id={`team-member-${index}`}>
@@ -124,7 +156,7 @@ export function TeamMemberCard({
                 <SectionCardTitle className="truncate text-base">
                   {displayName}
                 </SectionCardTitle>
-                {hasChanges && (
+                {hasCardChanges && (
                   <span
                     className="h-1.5 w-1.5 shrink-0 rounded-full bg-primary"
                     title="Unsaved changes"
@@ -229,9 +261,11 @@ export function TeamMemberCard({
         </div>
       </SectionCardContent>
 
-      <SectionCardFooter>
+      </>}
+      {isCollapsed && <SectionCardContent className="pt-4">{locationEditor}</SectionCardContent>}
+      {(!isCollapsed || !!locationState.saved && !locationState.exempt) && <SectionCardFooter>
         <div className="flex w-full items-center justify-between gap-2">
-          <AlertDialog>
+          {!isCollapsed && <AlertDialog>
             <AlertDialogTrigger asChild>
               <Button
                 variant="ghost"
@@ -266,9 +300,9 @@ export function TeamMemberCard({
                 )}
               </AlertDialogFooter>
             </AlertDialogContent>
-          </AlertDialog>
+          </AlertDialog>}
           <div className="flex items-center gap-2">
-            {showResend && (
+            {!isCollapsed && showResend && (
               <Button
                 type="button"
                 variant="outline"
@@ -289,11 +323,11 @@ export function TeamMemberCard({
                 type="button"
                 variant="outline"
                 size="sm"
-                onClick={onSave}
-                disabled={isLoading || isSaving || isSavingThis || !hasChanges || !canSave || !canManageTeam}
+                onClick={() => void saveCard()}
+                disabled={isLoading || isSaving || isSavingThis || isUpdatingStatus || isResendingThis || !canSaveCard || !canManageTeam}
                 data-permission="allow"
               >
-                {isSavingThis ? (
+                {isSavingThis || savingCard || locationAccess?.savingMemberId === member.id ? (
                   <>
                     <Loader className="mr-1.5 h-4 w-4 animate-spin" />
                     {t("saving") || "Saving..."}
@@ -318,9 +352,7 @@ export function TeamMemberCard({
             )}
           </div>
         </div>
-      </SectionCardFooter>
-      </>}
-      {isCollapsed && <SectionCardContent className="pt-4">{locationEditor}</SectionCardContent>}
+      </SectionCardFooter>}
     </SectionCard>
   )
 }

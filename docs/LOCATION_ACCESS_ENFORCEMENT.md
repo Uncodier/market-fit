@@ -17,6 +17,15 @@ suspended memberships retain exclusions. Allow every branch to remove the
 additional denial; role, screen, assignment, and license restrictions remain.
 New branches are accessible under existing permissions until explicitly excluded.
 
+The member card footer has the only **Save** action. Location-only edits enable
+it; combined edits save the verified location draft first, then member details.
+These are separate authenticated requests, not a cross-endpoint transaction.
+Location failures retain the draft and prevent the detail write. A confirmed
+location save is not replayed if the detail write fails; partial failure is shown
+explicitly. Inactive member cards retain this footer for location edits too.
+Changing the draft role locks further location editing until the role is saved,
+but an existing location draft is saved under the persisted role first.
+
 Both UI and database use the server-owned `editing_enabled` gate. Foundation-only
 databases return false; requests do not activate the gate. Unknown, missing,
 malformed, unauthorized, timed-out, or ambiguous save responses never become

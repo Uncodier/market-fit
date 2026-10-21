@@ -3,14 +3,17 @@ import { act, fireEvent, render, screen, waitFor, within } from "@testing-librar
 import { useForm, FormProvider } from "react-hook-form"
 import { TeamLocationAccess } from "@/app/components/settings/TeamLocationAccess"
 import { MemberLocationRestrictions } from "@/app/components/settings/MemberLocationRestrictions"
+import { useMemberLocationEditor } from "@/app/components/settings/use-member-location-editor"
 import { TeamMemberCard } from "@/app/components/settings/TeamMemberCard"
 import type { FormTeamMember } from "@/app/components/settings/team-types"
 import { useAuthContext } from "@/app/components/auth/auth-context"
+import { toast } from "sonner"
 
 jest.mock("@/app/components/auth/auth-context", () => ({ useAuthContext: jest.fn() }))
 jest.mock("@/app/context/LocalizationContext", () => ({ useLocalization: () => ({ t: () => "" }) }))
 jest.mock("@/app/components/settings/MemberBlockedScreens", () => ({ MemberBlockedScreens: () => <div>App access</div> }))
 jest.mock("@/app/components/settings/MemberStatusControl", () => ({ MemberStatusControl: () => <div>Member status</div> }))
+jest.mock("sonner", () => ({ toast: { error: jest.fn() } }))
 
 const siteId = "00000000-0000-4000-8000-000000000001"
 const otherSiteId = "00000000-0000-4000-8000-000000000002"
@@ -31,24 +34,33 @@ function saved(ids = [locationId, activeLocationId]) {
 }
 function Harness({ site = siteId, team = members, manager = true }: { site?: string; team?: FormTeamMember[]; manager?: boolean }) {
   return <TeamLocationAccess siteId={site} members={team} canManageTeam={manager}>
-    {team.map((member, index) => <MemberLocationRestrictions key={member.id || index} member={member} siteId={site} canManageTeam={manager} />)}
+    {team.map((member, index) => <EditorHarness key={member.id || index} member={member} siteId={site} canManageTeam={manager} />)}
   </TeamLocationAccess>
 }
-function CardHarness({ team = members }: { team?: FormTeamMember[] }) {
+function EditorHarness(props: { member: FormTeamMember; siteId: string; canManageTeam: boolean }) {
+  const editor = useMemberLocationEditor(props)
+  return <><MemberLocationRestrictions editor={editor} />
+    <button type="button" disabled={!editor.canSave} onClick={() => void editor.save()}>Save</button>
+  </>
+}
+function CardHarness({ team = members, hasChanges = false, canSave = false, onSave = jest.fn() }: {
+  team?: FormTeamMember[]; hasChanges?: boolean; canSave?: boolean; onSave?: () => Promise<boolean> | void
+}) {
   const form = useForm({ defaultValues: { team_members: team } })
   return <FormProvider {...form}><TeamLocationAccess siteId={siteId} members={team} canManageTeam>
     <TeamMemberCard siteId={siteId} member={team[0]} index={0} canManageTeam canEditBlockedScreens
       isLoading={false} isSaving={false} isSavingThis={false} isResendingThis={false} isUpdatingStatus={false}
-      hasChanges={false} canSave={false} validation={{ canChangeRole: () => true, canDelete: () => true,
+      hasChanges={hasChanges} canSave={canSave} validation={{ canChangeRole: () => true, canDelete: () => true,
         getDeleteTooltip: () => "", getDeleteMessage: () => "", getRoleChangeMessage: () => "" }}
-      onUpdate={jest.fn()} onSave={jest.fn()} onSaveInvite={jest.fn()} onRemove={jest.fn()}
+      onUpdate={jest.fn()} onSave={onSave} onSaveInvite={jest.fn()} onRemove={jest.fn()}
       onResend={jest.fn()} onEnabledChange={jest.fn()} />
   </TeamLocationAccess></FormProvider>
 }
-const saveButton = () => screen.getByRole("button", { name: "Save location restrictions" })
+const saveButton = () => screen.getByRole("button", { name: "Save" })
 
 describe("member location restriction editor", () => {
   beforeEach(() => {
+    jest.clearAllMocks()
     jest.mocked(fetch).mockReset()
     jest.mocked(useAuthContext).mockReturnValue({ user: { id: "account-one" }, isLoading: false } as ReturnType<typeof useAuthContext>)
   })
@@ -230,7 +242,7 @@ describe("member location restriction editor", () => {
     render(<Harness />)
     fireEvent.click(await screen.findByRole("button", { name: "Branch B" }))
     fireEvent.click(saveButton())
-    const savingButton = screen.getByRole("button", { name: "Saving locations…" })
+    const savingButton = saveButton()
     expect(savingButton).toBeDisabled()
     expect(screen.getByRole("button", { name: "Branch A · inactive" })).toBeDisabled()
     fireEvent.click(savingButton)
@@ -334,5 +346,106 @@ describe("member location restriction editor", () => {
     fireEvent.click(restrictAll)
     expect(screen.getByRole("button", { name: "Branch B" })).toHaveAttribute("aria-pressed", "false")
     expect(fetch).toHaveBeenCalledTimes(1)
+  })
+
+  it("uses exactly one footer Save, enabled by location-only changes", async () => {
+    const onSave = jest.fn()
+    jest.mocked(fetch).mockResolvedValueOnce(respond(payload)).mockResolvedValueOnce(saved())
+    render(<CardHarness onSave={onSave} />)
+    const branch = await screen.findByRole("button", { name: "Branch B" })
+    expect(saveButton()).toBeDisabled()
+    expect(screen.getAllByRole("button", { name: "Save" })).toHaveLength(1)
+    expect(within(screen.getByRole("region", { name: "Location access" })).queryByRole("button", { name: /Save/ })).not.toBeInTheDocument()
+    fireEvent.click(branch)
+    expect(saveButton()).toBeEnabled()
+    fireEvent.click(saveButton())
+    expect(await screen.findByText("Location restrictions saved.")).toBeInTheDocument()
+    expect(saveButton()).toBeDisabled()
+    expect(onSave).not.toHaveBeenCalled()
+    expect(fetch).toHaveBeenCalledTimes(2)
+  })
+
+  it("saves locations before details with one footer click and blocks duplicate submissions", async () => {
+    let finish!: (value: Response) => void
+    const onSave = jest.fn().mockResolvedValue(true)
+    jest.mocked(fetch).mockResolvedValueOnce(respond(payload)).mockImplementationOnce(() => new Promise(resolve => { finish = resolve }))
+    render(<CardHarness hasChanges canSave onSave={onSave} />)
+    fireEvent.click(await screen.findByRole("button", { name: "Branch B" }))
+    fireEvent.click(saveButton())
+    expect(onSave).not.toHaveBeenCalled()
+    const saving = screen.getByRole("button", { name: "Saving..." })
+    expect(saving).toBeDisabled()
+    fireEvent.click(saving)
+    expect(fetch).toHaveBeenCalledTimes(2)
+    await act(async () => { finish(saved()) })
+    await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1))
+    expect(screen.queryByText("Location restrictions saved.")).not.toBeInTheDocument()
+  })
+
+  it("keeps details untouched after an ambiguous location save and retains the draft", async () => {
+    const onSave = jest.fn().mockResolvedValue(true)
+    jest.mocked(fetch).mockResolvedValueOnce(respond(payload)).mockRejectedValueOnce(new Error("Offline"))
+    render(<CardHarness hasChanges canSave onSave={onSave} />)
+    fireEvent.click(await screen.findByRole("button", { name: "Branch B" }))
+    fireEvent.click(saveButton())
+    expect(await screen.findByRole("alert")).toHaveTextContent("could not be confirmed")
+    expect(onSave).not.toHaveBeenCalled()
+    expect(saveButton()).toBeDisabled()
+    expect(screen.getByRole("button", { name: "Branch B" })).toHaveAttribute("aria-pressed", "true")
+  })
+
+  it("reports partial failure and does not replay already-saved locations", async () => {
+    const onSave = jest.fn().mockResolvedValue(false)
+    jest.mocked(fetch).mockResolvedValueOnce(respond(payload)).mockResolvedValueOnce(saved())
+    render(<CardHarness hasChanges canSave onSave={onSave} />)
+    fireEvent.click(await screen.findByRole("button", { name: "Branch B" }))
+    fireEvent.click(saveButton())
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith(expect.stringContaining("member details were not confirmed")))
+    await waitFor(() => expect(saveButton()).toBeEnabled())
+    fireEvent.click(saveButton())
+    await waitFor(() => expect(onSave).toHaveBeenCalledTimes(2))
+    expect(fetch).toHaveBeenCalledTimes(2)
+  })
+
+  it("saves detail-only changes without a location write", async () => {
+    const onSave = jest.fn().mockResolvedValue(true)
+    jest.mocked(fetch).mockResolvedValue(respond(payload))
+    render(<CardHarness hasChanges canSave onSave={onSave} />)
+    await screen.findByRole("button", { name: "Branch B" })
+    fireEvent.click(saveButton())
+    await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1))
+    expect(fetch).toHaveBeenCalledTimes(1)
+  })
+
+  it("does not bypass detail validation when a location draft exists", async () => {
+    jest.mocked(fetch).mockResolvedValue(respond(payload))
+    render(<CardHarness hasChanges />)
+    fireEvent.click(await screen.findByRole("button", { name: "Branch B" }))
+    expect(saveButton()).toBeDisabled()
+    fireEvent.click(saveButton())
+    expect(fetch).toHaveBeenCalledTimes(1)
+  })
+
+  it("saves inactive member location changes using the same footer", async () => {
+    jest.mocked(fetch).mockResolvedValueOnce(respond(payload)).mockResolvedValueOnce(saved())
+    render(<CardHarness team={[{ ...members[0], manually_disabled: true }]} />)
+    fireEvent.click(await screen.findByRole("button", { name: "Branch B" }))
+    expect(saveButton()).toBeEnabled()
+    fireEvent.click(saveButton())
+    expect(await screen.findByText("Location restrictions saved.")).toBeInTheDocument()
+    expect(saveButton()).toBeDisabled()
+  })
+
+  it("preserves a location draft when a role is edited and saves it before the role", async () => {
+    const onSave = jest.fn().mockResolvedValue(true)
+    jest.mocked(fetch).mockResolvedValueOnce(respond(payload)).mockResolvedValueOnce(saved())
+    const view = render(<CardHarness onSave={onSave} />)
+    fireEvent.click(await screen.findByRole("button", { name: "Branch B" }))
+    view.rerender(<CardHarness team={[{ ...members[0], role: "view" }]} hasChanges canSave onSave={onSave} />)
+    expect(screen.getByRole("button", { name: "Branch B" })).toBeDisabled()
+    expect(saveButton()).toBeEnabled()
+    fireEvent.click(saveButton())
+    await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1))
+    expect(fetch).toHaveBeenCalledTimes(2)
   })
 })
