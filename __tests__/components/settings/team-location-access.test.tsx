@@ -53,16 +53,16 @@ describe("member location restriction editor", () => {
     jest.mocked(useAuthContext).mockReturnValue({ user: { id: "account-one" }, isLoading: false } as ReturnType<typeof useAuthContext>)
   })
 
-  it("renders actual searchable checkboxes inside the saved pending member card and retains inactive selections", async () => {
+  it("renders actual searchable toggle chips inside the saved pending member card and retains inactive selections", async () => {
     jest.mocked(fetch).mockResolvedValueOnce(respond(payload)).mockResolvedValueOnce(saved())
     render(<CardHarness />)
-    const checkbox = await screen.findByRole("checkbox", { name: "Branch A · inactive" })
-    expect(checkbox).toBeChecked()
-    expect(checkbox.closest("#team-member-0")).toBeInTheDocument()
+    const chip = await screen.findByRole("button", { name: "Branch A · inactive" })
+    expect(chip).toHaveAttribute("aria-pressed", "true")
+    expect(chip.closest("#team-member-0")).toBeInTheDocument()
     expect(saveButton()).toBeDisabled()
     fireEvent.change(screen.getByRole("textbox", { name: "Search branches" }), { target: { value: "branch b" } })
-    expect(screen.queryByRole("checkbox", { name: "Branch A · inactive" })).not.toBeInTheDocument()
-    fireEvent.click(screen.getByRole("checkbox", { name: "Branch B" }))
+    expect(screen.queryByRole("button", { name: "Branch A · inactive" })).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole("button", { name: "Branch B" }))
     fireEvent.click(saveButton())
     expect(await screen.findByText("Location restrictions saved.")).toBeInTheDocument()
     expect(fetch).toHaveBeenLastCalledWith(`/api/site-members/${siteId}/location-restrictions`, expect.objectContaining({
@@ -75,20 +75,20 @@ describe("member location restriction editor", () => {
   it("supports editing saved license-suspended pending members without activating them", async () => {
     jest.mocked(fetch).mockResolvedValue(respond(payload))
     render(<CardHarness team={[{ ...members[0], license_suspended: true }]} />)
-    expect(await screen.findByRole("checkbox", { name: "Branch A · inactive" })).toBeEnabled()
+    expect(await screen.findByRole("button", { name: "Branch A · inactive" })).toBeEnabled()
     expect(screen.getByText("Member status")).toBeInTheDocument()
   })
 
   it("retains unknown activity without calling the branch active or inactive", async () => {
     jest.mocked(fetch).mockResolvedValue(respond({ ...payload, locations: [{ ...payload.locations[0], is_active: null }] }))
     render(<Harness />)
-    expect(await screen.findByRole("checkbox", { name: "Branch A · status unknown" })).toBeChecked()
+    expect(await screen.findByRole("button", { name: "Branch A · status unknown" })).toHaveAttribute("aria-pressed", "true")
   })
 
   it("clears only an explicit empty selection and explains additional-denial semantics", async () => {
     jest.mocked(fetch).mockResolvedValueOnce(respond(payload)).mockResolvedValueOnce(saved([]))
     render(<Harness />)
-    fireEvent.click(await screen.findByRole("checkbox", { name: "Branch A · inactive" }))
+    fireEvent.click(await screen.findByRole("button", { name: "Branch A · inactive" }))
     expect(screen.getByText("No additional location restrictions")).toBeInTheDocument()
     expect(screen.getByText(/An empty list adds no location restrictions/)).toBeInTheDocument()
     fireEvent.click(saveButton())
@@ -102,8 +102,8 @@ describe("member location restriction editor", () => {
     jest.mocked(fetch).mockResolvedValue(respond({ ...payload, editing_enabled }))
     render(<Harness />)
     expect(await screen.findByText("Location restriction editing is not available yet.")).toBeInTheDocument()
-    expect(screen.getByRole("checkbox", { name: "Branch A · inactive" })).toBeChecked()
-    expect(screen.getByRole("checkbox", { name: "Branch B" })).toBeDisabled()
+    expect(screen.getByRole("button", { name: "Branch A · inactive" })).toHaveAttribute("aria-pressed", "true")
+    expect(screen.getByRole("button", { name: "Branch B" })).toBeDisabled()
     expect(saveButton()).toBeDisabled()
   })
 
@@ -112,7 +112,7 @@ describe("member location restriction editor", () => {
       role: role === "effective-owner" ? "collaborator" : role, is_location_exempt: true }] }))
     render(<Harness />)
     expect(await screen.findByText("Owners and admins are exempt from location restrictions.")).toBeInTheDocument()
-    expect(screen.queryByRole("checkbox")).not.toBeInTheDocument()
+    expect(screen.queryByRole("button", { name: /^Branch / })).not.toBeInTheDocument()
   })
 
   it("does not fetch or enable editor for nonmanagers and unsaved invitations", async () => {
@@ -122,7 +122,7 @@ describe("member location restriction editor", () => {
     jest.mocked(fetch).mockResolvedValue(respond(payload))
     rerender(<Harness team={[{ ...members[0], id: undefined }]} />)
     expect(await screen.findByText("Save the invitation before setting location restrictions.")).toBeInTheDocument()
-    expect(screen.queryByRole("checkbox")).not.toBeInTheDocument()
+    expect(screen.queryByRole("button", { name: /^Branch / })).not.toBeInTheDocument()
   })
 
   it("disables unsaved role changes and refreshes after the persisted role changes", async () => {
@@ -130,13 +130,13 @@ describe("member location restriction editor", () => {
       members: [{ ...payload.members[0], role: "marketing" }],
     }))
     const { rerender } = render(<Harness />)
-    await screen.findByRole("checkbox", { name: "Branch B" })
+    await screen.findByRole("button", { name: "Branch B" })
     rerender(<Harness team={[{ ...members[0], role: "view" }]} />)
     expect(screen.getByText("Save the member's role before editing location restrictions.")).toBeInTheDocument()
-    expect(screen.getByRole("checkbox", { name: "Branch B" })).toBeDisabled()
+    expect(screen.getByRole("button", { name: "Branch B" })).toBeDisabled()
     expect(fetch).toHaveBeenCalledTimes(1)
     rerender(<Harness team={[{ ...members[0], role: "view", originalRole: "marketing" }]} />)
-    expect(await screen.findByRole("checkbox", { name: "Branch B" })).toBeEnabled()
+    expect(await screen.findByRole("button", { name: "Branch B" })).toBeEnabled()
     expect(fetch).toHaveBeenCalledTimes(2)
   })
 
@@ -144,7 +144,7 @@ describe("member location restriction editor", () => {
     const second = { ...members[0], id: otherSiteId }
     jest.mocked(fetch).mockResolvedValue(respond({ ...payload, members: [...payload.members, { ...payload.members[0], id: second.id }] }))
     render(<Harness team={[...members, second]} />)
-    await waitFor(() => expect(screen.getAllByRole("checkbox", { name: "Branch B" })).toHaveLength(2))
+    await waitFor(() => expect(screen.getAllByRole("button", { name: "Branch B" })).toHaveLength(2))
     expect(fetch).toHaveBeenCalledTimes(1)
   })
 
@@ -156,14 +156,15 @@ describe("member location restriction editor", () => {
       .mockResolvedValueOnce(respond(payload))
     render(<Harness />)
     expect(await screen.findByText(/Location access setup is pending/)).toBeInTheDocument()
+    fireEvent.click(screen.getByRole("button", { name: /^Location access/ }))
     for (let i = 0; i < 3; i++) {
       fireEvent.click(screen.getByRole("button", { name: "Refresh location access" }))
       expect(await screen.findByText("Location access could not be verified. Refresh before editing.")).toBeInTheDocument()
       expect(screen.queryByText("No additional location restrictions")).not.toBeInTheDocument()
-      expect(screen.queryByRole("checkbox")).not.toBeInTheDocument()
+      expect(screen.queryByRole("button", { name: /^Branch / })).not.toBeInTheDocument()
     }
     fireEvent.click(screen.getByRole("button", { name: "Refresh location access" }))
-    expect(await screen.findByRole("checkbox", { name: "Branch B" })).toBeEnabled()
+    expect(await screen.findByRole("button", { name: "Branch B" })).toBeEnabled()
   })
 
   it.each([
@@ -175,11 +176,11 @@ describe("member location restriction editor", () => {
   ])("preserves selection after rejected or malformed save %j and requires refresh", async ({ body, status }) => {
     jest.mocked(fetch).mockResolvedValueOnce(respond(payload)).mockResolvedValueOnce(respond(body, status === 200, status))
     render(<Harness />)
-    fireEvent.click(await screen.findByRole("checkbox", { name: "Branch B" }))
+    fireEvent.click(await screen.findByRole("button", { name: "Branch B" }))
     fireEvent.click(saveButton())
     expect(await screen.findByRole("alert")).toBeInTheDocument()
-    expect(screen.getByRole("checkbox", { name: "Branch A · inactive" })).toBeChecked()
-    expect(screen.getByRole("checkbox", { name: "Branch B" })).toBeChecked()
+    expect(screen.getByRole("button", { name: "Branch A · inactive" })).toHaveAttribute("aria-pressed", "true")
+    expect(screen.getByRole("button", { name: "Branch B" })).toHaveAttribute("aria-pressed", "true")
     expect(saveButton()).toBeDisabled()
     expect(screen.queryByText("Location restrictions saved.")).not.toBeInTheDocument()
     expect(fetch).toHaveBeenCalledTimes(2)
@@ -189,13 +190,13 @@ describe("member location restriction editor", () => {
     jest.mocked(fetch).mockResolvedValueOnce(respond(payload)).mockRejectedValueOnce(new Error("Disconnected"))
       .mockResolvedValueOnce(respond({ ...payload, members: [{ ...payload.members[0], restricted_location_ids: [locationId, activeLocationId] }] }))
     render(<Harness />)
-    fireEvent.click(await screen.findByRole("checkbox", { name: "Branch B" }))
+    fireEvent.click(await screen.findByRole("button", { name: "Branch B" }))
     fireEvent.click(saveButton())
     expect(await screen.findByRole("alert")).toHaveTextContent("The save could not be confirmed")
     expect(fetch).toHaveBeenCalledTimes(2)
     fireEvent.click(screen.getByRole("button", { name: "Refresh location access" }))
-    await waitFor(() => expect(screen.getByRole("checkbox", { name: "Branch B" })).toBeEnabled())
-    expect(screen.getByRole("checkbox", { name: "Branch B" })).toBeChecked()
+    await waitFor(() => expect(screen.getByRole("button", { name: "Branch B" })).toBeEnabled())
+    expect(screen.getByRole("button", { name: "Branch B" })).toHaveAttribute("aria-pressed", "true")
     expect(saveButton()).toBeDisabled()
     expect(fetch).toHaveBeenCalledTimes(3)
   })
@@ -204,7 +205,7 @@ describe("member location restriction editor", () => {
     jest.mocked(fetch).mockResolvedValueOnce(respond(payload))
       .mockResolvedValueOnce(respond({ code: "LOCATION_RESTRICTIONS_BUSY" }, false, 409)).mockResolvedValueOnce(saved())
     render(<Harness />)
-    fireEvent.click(await screen.findByRole("checkbox", { name: "Branch B" }))
+    fireEvent.click(await screen.findByRole("button", { name: "Branch B" }))
     fireEvent.click(saveButton())
     expect(await screen.findByRole("alert")).toHaveTextContent("Membership is being updated")
     expect(saveButton()).toBeEnabled()
@@ -215,11 +216,11 @@ describe("member location restriction editor", () => {
   it("does not resurrect an old draft when explicit refresh returns an unchanged saved selection", async () => {
     jest.mocked(fetch).mockResolvedValue(respond(payload))
     render(<Harness />)
-    fireEvent.click(await screen.findByRole("checkbox", { name: "Branch B" }))
+    fireEvent.click(await screen.findByRole("button", { name: "Branch B" }))
     expect(saveButton()).toBeEnabled()
     fireEvent.click(screen.getByRole("button", { name: "Refresh location access" }))
-    await waitFor(() => expect(screen.getByRole("checkbox", { name: "Branch B" })).toBeEnabled())
-    expect(screen.getByRole("checkbox", { name: "Branch B" })).not.toBeChecked()
+    await waitFor(() => expect(screen.getByRole("button", { name: "Branch B" })).toBeEnabled())
+    expect(screen.getByRole("button", { name: "Branch B" })).toHaveAttribute("aria-pressed", "false")
     expect(saveButton()).toBeDisabled()
   })
 
@@ -227,11 +228,11 @@ describe("member location restriction editor", () => {
     let finish!: (value: Response) => void
     jest.mocked(fetch).mockResolvedValueOnce(respond(payload)).mockReturnValueOnce(new Promise(resolve => { finish = resolve }))
     render(<Harness />)
-    fireEvent.click(await screen.findByRole("checkbox", { name: "Branch B" }))
+    fireEvent.click(await screen.findByRole("button", { name: "Branch B" }))
     fireEvent.click(saveButton())
     const savingButton = screen.getByRole("button", { name: "Saving locations…" })
     expect(savingButton).toBeDisabled()
-    expect(screen.getByRole("checkbox", { name: "Branch A · inactive" })).toBeDisabled()
+    expect(screen.getByRole("button", { name: "Branch A · inactive" })).toBeDisabled()
     fireEvent.click(savingButton)
     expect(fetch).toHaveBeenCalledTimes(2)
     await act(async () => { finish(saved()) })
@@ -242,13 +243,13 @@ describe("member location restriction editor", () => {
     jest.mocked(fetch).mockResolvedValueOnce(respond(payload)).mockImplementationOnce((_url, init) =>
       new Promise((_resolve, reject) => { init?.signal?.addEventListener("abort", () => reject(new Error("Aborted"))) }))
     render(<Harness />)
-    fireEvent.click(await screen.findByRole("checkbox", { name: "Branch B" }))
+    fireEvent.click(await screen.findByRole("button", { name: "Branch B" }))
     jest.useFakeTimers()
     try {
       fireEvent.click(saveButton())
       await act(async () => { jest.advanceTimersByTime(20_000) })
       expect(screen.getByRole("alert")).toHaveTextContent("The save could not be confirmed")
-      expect(screen.getByRole("checkbox", { name: "Branch B" })).toBeChecked()
+      expect(screen.getByRole("button", { name: "Branch B" })).toHaveAttribute("aria-pressed", "true")
       expect(saveButton()).toBeDisabled()
       expect(fetch).toHaveBeenCalledTimes(2)
     } finally { jest.useRealTimers() }
@@ -260,14 +261,15 @@ describe("member location restriction editor", () => {
       .mockResolvedValueOnce(respond({ ...payload, site_id: change === "site" ? otherSiteId : siteId,
         members: [{ ...payload.members[0], restricted_location_ids: [] }] }))
     const { rerender } = render(<Harness />)
-    fireEvent.click(await screen.findByRole("checkbox", { name: "Branch B" }))
+    fireEvent.click(await screen.findByRole("button", { name: "Branch B" }))
     fireEvent.click(saveButton())
     if (change === "account") jest.mocked(useAuthContext).mockReturnValue({ user: { id: "account-two" }, isLoading: false } as ReturnType<typeof useAuthContext>)
     rerender(<Harness site={change === "site" ? otherSiteId : siteId} />)
     await act(async () => { finish(saved()) })
     expect(await screen.findByText("No additional location restrictions")).toBeInTheDocument()
     expect(screen.queryByText("Location restrictions saved.")).not.toBeInTheDocument()
-    expect(screen.getByRole("checkbox", { name: "Branch B" })).not.toBeChecked()
+    fireEvent.click(screen.getByRole("button", { name: /^Location access/ }))
+    expect(screen.getByRole("button", { name: "Branch B" })).toHaveAttribute("aria-pressed", "false")
   })
 
   it("ignores old-site configuration while a new load is pending", async () => {
@@ -277,7 +279,60 @@ describe("member location restriction editor", () => {
     const { rerender } = render(<Harness />)
     rerender(<Harness site={otherSiteId} />)
     await act(async () => { finish(respond(payload)) })
-    expect(screen.queryByRole("checkbox")).not.toBeInTheDocument()
-    expect(within(screen.getByRole("region", { name: "Restricted locations" })).getByText(/unavailable for this member/)).toBeInTheDocument()
+    expect(screen.queryByRole("button", { name: /^Branch / })).not.toBeInTheDocument()
+    expect(within(screen.getByRole("region", { name: "Location access" })).getByText(/unavailable for this member/)).toBeInTheDocument()
+  })
+
+  it("starts unrestricted members collapsed and opens without another configuration request", async () => {
+    jest.mocked(fetch).mockResolvedValue(respond({ ...payload, members: [{ ...payload.members[0], restricted_location_ids: [] }] }))
+    render(<Harness />)
+    const header = await screen.findByRole("button", { name: "Location access No additional location restrictions" })
+    expect(header).toHaveAttribute("aria-expanded", "false")
+    expect(screen.queryByRole("textbox", { name: "Search branches" })).not.toBeInTheDocument()
+    fireEvent.click(header)
+    expect(header).toHaveAttribute("aria-expanded", "true")
+    expect(screen.getByRole("button", { name: "Branch A · inactive" })).toHaveAttribute("aria-pressed", "false")
+    expect(screen.getByRole("button", { name: "Branch B" })).toHaveAttribute("aria-pressed", "false")
+    expect(fetch).toHaveBeenCalledTimes(1)
+  })
+
+  it("shows a collapsed restriction count and preview without losing an unsaved selection", async () => {
+    jest.mocked(fetch).mockResolvedValue(respond(payload))
+    render(<Harness />)
+    fireEvent.click(await screen.findByRole("button", { name: "Branch B" }))
+    fireEvent.click(screen.getByRole("button", { name: /^Location access/ }))
+    const header = screen.getByRole("button", { name: "Location access 2 restricted Branch A, Branch B" })
+    expect(header).toHaveAttribute("aria-expanded", "false")
+    expect(screen.queryByRole("button", { name: "Branch B" })).not.toBeInTheDocument()
+    fireEvent.click(header)
+    expect(screen.getByRole("button", { name: "Branch B" })).toHaveAttribute("aria-pressed", "true")
+    expect(saveButton()).toBeEnabled()
+    expect(fetch).toHaveBeenCalledTimes(1)
+  })
+
+  it("restricts and allows the full branch list even when search hides a branch", async () => {
+    jest.mocked(fetch).mockResolvedValueOnce(respond(payload)).mockResolvedValueOnce(saved([]))
+    render(<Harness />)
+    await screen.findByRole("button", { name: "Branch B" })
+    fireEvent.change(screen.getByRole("textbox", { name: "Search branches" }), { target: { value: "branch b" } })
+    fireEvent.click(screen.getByRole("button", { name: "Restrict all" }))
+    expect(screen.getByRole("button", { name: /^Location access/ })).toHaveTextContent("2 restricted")
+    fireEvent.click(screen.getByRole("button", { name: "Allow all" }))
+    expect(screen.getByRole("button", { name: "Branch B" })).toHaveAttribute("aria-pressed", "false")
+    fireEvent.click(saveButton())
+    expect(await screen.findByText("Location restrictions saved.")).toBeInTheDocument()
+    expect(fetch).toHaveBeenLastCalledWith(expect.anything(), expect.objectContaining({
+      body: JSON.stringify({ memberId, restricted_location_ids: [], expected_restricted_location_ids: [locationId] }),
+    }))
+  })
+
+  it("keeps bulk actions disabled behind the server readiness gate", async () => {
+    jest.mocked(fetch).mockResolvedValue(respond({ ...payload, editing_enabled: false }))
+    render(<Harness />)
+    const restrictAll = await screen.findByRole("button", { name: "Restrict all" })
+    expect(restrictAll).toBeDisabled()
+    fireEvent.click(restrictAll)
+    expect(screen.getByRole("button", { name: "Branch B" })).toHaveAttribute("aria-pressed", "false")
+    expect(fetch).toHaveBeenCalledTimes(1)
   })
 })

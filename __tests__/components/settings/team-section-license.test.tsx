@@ -43,6 +43,14 @@ describe('team section member license display', () => {
     expect(screen.getByRole('button', { name: 'Invite New Member to Team' })).toBeDisabled()
   })
 
+  it.each([true, false])('hides the record assignment button and description when canManageTeam is %s', canManageTeam => {
+    hook.mockReturnValue({ ...hook({ active: true, siteId }), canManageTeam })
+    render(<TeamSection active siteId={siteId} />)
+    expect(screen.queryByRole('link', { name: /Assign branches|Assign locations/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Assign branches|Assign locations/ })).not.toBeInTheDocument()
+    expect(screen.queryByText(/Link existing records without a branch/)).not.toBeInTheDocument()
+  })
+
   it('distinguishes manual deactivation from automatic license suspension', () => {
     hook.mockReturnValue({ ...hook({ active: true, siteId }), teamList: [{ id: 'member', email: 'member@example.test', role: 'view',
       status: 'active', license_suspended: true, manually_disabled: true }] })

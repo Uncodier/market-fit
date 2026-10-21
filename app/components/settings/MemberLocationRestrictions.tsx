@@ -1,20 +1,18 @@
 "use client"
 
-import { useEffect, useId, useRef, useState } from "react"
-import { Badge } from "@/app/components/ui/badge"
+import { useEffect, useRef, useState } from "react"
 import { Button } from "@/app/components/ui/button"
-import { Checkbox } from "@/app/components/ui/checkbox"
 import { Input } from "@/app/components/ui/input"
 import { Loader, Save, Search } from "@/app/components/ui/icons"
 import { sameLocationIds, type TeamLocationAccessResponse } from "@/lib/permissions/team-location-access-schema"
 import { formRoleToSiteMemberRole, type FormTeamMember } from "./team-types"
 import { useTeamLocationAccess } from "./TeamLocationAccess"
+import { MemberAccessChip, MemberAccessPanel } from "./MemberAccessPanel"
 
 export function MemberLocationRestrictions({ member, siteId, canManageTeam, disabled = false }: {
   member: FormTeamMember; siteId?: string; canManageTeam: boolean; disabled?: boolean
 }) {
   const access = useTeamLocationAccess()
-  const inputId = useId()
   const [query, setQuery] = useState("")
   const [draft, setDraft] = useState<{ base: TeamLocationAccessResponse["members"][number]; ids: string[] } | null>(null)
   const [feedback, setFeedback] = useState<{ error: boolean; message: string; refreshRequired?: boolean } | null>(null)
@@ -43,6 +41,9 @@ export function MemberLocationRestrictions({ member, siteId, canManageTeam, disa
   const readOnly = !!disabledReason || disabled || busy || feedback?.refreshRequired
   const locations = access?.siteId === siteId ? access?.data?.locations ?? [] : []
   const matching = locations.filter(location => location.name.toLowerCase().includes(query.trim().toLowerCase()))
+  const restricted = new Set(selected.map(id => id.toLowerCase()))
+  const preview = locations.filter(location => restricted.has(location.id.toLowerCase())).map(location => location.name).slice(0, 2)
+  const allRestricted = locations.length > 0 && locations.every(location => restricted.has(location.id.toLowerCase()))
   const toggle = (id: string, checked: boolean) => {
     if (readOnly || !saved) return
     setDraft({ base: saved, ids: checked ? [...selected, id] : selected.filter(value => value.toLowerCase() !== id.toLowerCase()) })
@@ -61,34 +62,45 @@ export function MemberLocationRestrictions({ member, siteId, canManageTeam, disa
     } else setFeedback({ error: true, message: result.message, refreshRequired: result.refreshRequired })
   }
 
-  return <section aria-label="Restricted locations" className="rounded-lg border border-border/70 bg-muted/20 p-3 space-y-3">
-    <div className="flex flex-wrap items-center justify-between gap-2">
-      <h3 className="text-sm font-medium">Restricted locations</h3>
-      {saved && !exempt && <Badge variant="secondary">{selected.length} selected</Badge>}
-    </div>
+  return <MemberAccessPanel key={saved?.id ?? "unavailable"} title="Location access"
+    count={saved && !exempt ? selected.length : 0} countLabel="restricted" preview={preview}
+    summary={exempt || !saved ? disabledReason ?? "Not available" : "No additional location restrictions"}
+    initialOpen={!!saved && selected.length > 0 && !exempt}>
     <p className="text-xs text-muted-foreground">
       Selected branches are denied in addition to existing role, app, and assigned-data permissions.
       An empty list adds no location restrictions. New branches are not restricted automatically.
     </p>
-    {disabledReason && <p role="status" className="text-xs text-muted-foreground">{disabledReason}</p>}
+    {disabledReason && saved && !exempt && <p role="status" className="text-xs text-muted-foreground">{disabledReason}</p>}
     {saved && !exempt && <>
       <div className="relative">
         <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
         <Input aria-label="Search branches" placeholder="Search branches…" value={query}
           onChange={event => setQuery(event.target.value)} className="pl-9" />
       </div>
-      <div className="max-h-52 overflow-y-auto space-y-1">
-        {matching.map(location => <label key={location.id} htmlFor={`${inputId}-${location.id}`}
-          className="flex items-center gap-2 rounded px-1 py-2 text-sm hover:bg-muted/50">
-          <Checkbox id={`${inputId}-${location.id}`} disabled={readOnly}
-            checked={selected.some(id => id.toLowerCase() === location.id.toLowerCase())}
-            onCheckedChange={checked => toggle(location.id, checked === true)} />
-          <span>{location.name}{location.is_active === false ? " · inactive" : location.is_active === null ? " · status unknown" : ""}</span>
-        </label>)}
-        {!matching.length && <p className="text-xs text-muted-foreground py-2">{locations.length ? "No branches match your search." : "No branches configured."}</p>}
+      <div className="space-y-2">
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-xs font-medium text-muted-foreground">Branches</p>
+          <button type="button" disabled={readOnly || !locations.length}
+            className="text-xs text-muted-foreground hover:text-foreground disabled:opacity-50"
+            onClick={() => {
+              if (readOnly || !saved) return
+              setDraft({ base: saved, ids: allRestricted ? [] : locations.map(location => location.id) })
+              setFeedback(null)
+            }}>{allRestricted ? "Allow all" : "Restrict all"}</button>
+        </div>
+        <div className="flex max-h-52 flex-wrap gap-1.5 overflow-y-auto">
+          {matching.map(location => {
+            const isRestricted = restricted.has(location.id.toLowerCase())
+            return <MemberAccessChip key={location.id} restricted={isRestricted} disabled={readOnly}
+              title={isRestricted ? "Allow this location" : "Restrict this location"}
+              onClick={() => toggle(location.id, !isRestricted)}>
+              {location.name}{location.is_active === false ? " · inactive" : location.is_active === null ? " · status unknown" : ""}
+            </MemberAccessChip>
+          })}
+          {!matching.length && <p className="text-xs text-muted-foreground py-2">{locations.length ? "No branches match your search." : "No branches configured."}</p>}
+        </div>
       </div>
-      {selected.length === 0 && <p className="text-xs text-muted-foreground">No additional location restrictions</p>}
-      <p className="text-xs text-muted-foreground">Inactive branches keep their restrictions unless you uncheck them. Save locations separately from member details. Refresh reloads the saved selection.</p>
+      <p className="text-xs text-muted-foreground">Inactive branches keep their restrictions unless you allow them. Save locations separately from member details. Refresh reloads the saved selection.</p>
     </>}
     {feedback && <p role={feedback.error ? "alert" : "status"} className={`text-xs ${feedback.error ? "text-destructive" : "text-muted-foreground"}`}>{feedback.message}</p>}
     <div className="flex flex-wrap gap-2">
@@ -100,5 +112,5 @@ export function MemberLocationRestrictions({ member, siteId, canManageTeam, disa
       {member.id && canManageTeam && <Button type="button" size="sm" variant="ghost" disabled={busy || access?.loading}
         onClick={() => { access?.refresh(); setFeedback(null) }}>Refresh location access</Button>}
     </div>
-  </section>
+  </MemberAccessPanel>
 }

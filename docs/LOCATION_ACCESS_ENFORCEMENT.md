@@ -6,10 +6,14 @@ The member editor and operational location authorization are implemented in
 source. Deployment and remote migration application are separate, explicitly
 approved steps. The previous read-only readiness panel is removed.
 
-Team Settings now shows **Restricted locations** inside each saved member card.
+Team Settings shows **Location access** inside each member card, using the same
+collapsible panel, count/preview header, and toggle chips as **App access**.
+Chips with an X mark restricted branches; click again to allow a branch. Empty
+sets start collapsed, and saved restrictions start expanded. Managers can use
+**Restrict all** / **Allow all** for the full branch list, regardless of search.
 Owners/admins are exempt. Managers can search branches, mark excluded branches,
 and save the set through the authenticated atomic membership RPC. Pending and
-suspended memberships retain exclusions. Uncheck every branch to remove the
+suspended memberships retain exclusions. Allow every branch to remove the
 additional denial; role, screen, assignment, and license restrictions remain.
 New branches are accessible under existing permissions until explicitly excluded.
 
@@ -41,8 +45,11 @@ clients, so concurrent tabs cannot silently overwrite new restrictions.
 - Records without a resolved branch remain unchanged for members without
   exclusions. Restricted members cannot read them. No branch is inferred from a
   creator, default location, or arbitrary JSON.
-- Managers resolve existing roots at `/settings/location-access`, linked from
-  Team Settings. Select a record type, unresolved record, and its actual branch.
+- The record-assignment screen and its Team Settings button are temporarily
+  hidden. Direct visits to `/settings/location-access` redirect to
+  `/settings?tab=team` without mounting the editor or loading operational records.
+  Member location restrictions remain available. The reusable assignment editor,
+  authenticated API, and database logic are retained for later reactivation.
   The manager-only RPC allows initial null-to-known assignment, not arbitrary
   historical reassignment. Parent scopes must agree.
   Known scopes are immutable through direct DML too, including service-role DML.

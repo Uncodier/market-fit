@@ -9,7 +9,6 @@ import { useLocalization } from "@/app/context/LocalizationContext"
 import { Badge } from "../ui/badge"
 import { licensePlanLabel } from "@/lib/license-entitlements"
 import { teamMembersInDisplayOrder } from "./team-types"
-import Link from 'next/link'
 import { TeamLocationAccess } from "./TeamLocationAccess"
 
 interface TeamSectionProps {
@@ -78,10 +77,6 @@ export function TeamSection({ active, siteId }: TeamSectionProps) {
           {t("settings.team.inviteNew") || "Invite New Member to Team"}
         </Button>
       </div>
-
-      {canManageTeam && <Button variant="outline" size="sm" asChild>
-        <Link href="/settings/location-access">Assign locations to operational records</Link>
-      </Button>}
 
       {isLoading ? (
         <div className="space-y-4">
