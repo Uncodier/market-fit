@@ -1,10 +1,20 @@
 import { readFileSync } from "node:fs"
 import { join } from "node:path"
 
-const robotsPageSource = readFileSync(
-  join(process.cwd(), "app/robots/page.tsx"),
-  "utf8",
-)
+// Follow the extracted implementation; retain the same UI source contracts.
+const robotsPageSource = [
+  "page.tsx",
+  "screen-metadata.ts",
+  "use-robots-controller.tsx",
+  "use-instance-creation.tsx",
+  "use-instance-actions.tsx",
+  "use-browser-workspace.tsx",
+  "use-browser-presentation.tsx",
+  "use-workspace-tabs.tsx",
+  "instance-header.tsx",
+  "instance-modals.tsx",
+  "robots-workspace.tsx",
+].map(file => readFileSync(join(process.cwd(), "app/robots", file), "utf8")).join("\n")
 
 describe("agent workspace layout", () => {
   it("uses the responsive selector with Agent as the first section", () => {

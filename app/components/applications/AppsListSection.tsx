@@ -53,7 +53,7 @@ interface AppsListSectionProps {
 }
 
 export function AppsListSection({ searchQuery = "", viewMode = "kanban", robotInstanceId, sortBy = "newest" }: AppsListSectionProps) {
-  const { currentSite } = useSite()
+  const { currentSite, isLoading: isSiteLoading } = useSite()
   const { t } = useLocalization()
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -79,7 +79,12 @@ export function AppsListSection({ searchQuery = "", viewMode = "kanban", robotIn
     let cancelled = false
 
     async function fetchTenants() {
-      if (!effectiveSiteId) return
+      if (isSiteLoading) return
+      if (!effectiveSiteId) {
+        setApps([])
+        setLoading(false)
+        return
+      }
 
       setLoading(true)
 
@@ -102,7 +107,7 @@ export function AppsListSection({ searchQuery = "", viewMode = "kanban", robotIn
 
         if (!cancelled) {
           // Initialize apps with detailsLoading true
-          const initialApps = (data.tenants || []).map((app: any) => ({
+          const initialApps: TenantApp[] = (data.tenants || []).map((app: TenantApp) => ({
             ...app,
             detailsLoading: true,
             preview_url: null,
@@ -114,7 +119,7 @@ export function AppsListSection({ searchQuery = "", viewMode = "kanban", robotIn
 
           // Fetch extra details asynchronously
           if (initialApps.length > 0) {
-            const reqIds = initialApps.map((a: any) => a.id)
+            const reqIds = initialApps.map(a => a.id)
             fetch('/api/applications/requirements-details', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
@@ -156,9 +161,9 @@ export function AppsListSection({ searchQuery = "", viewMode = "kanban", robotIn
     return () => {
       cancelled = true
     }
-  }, [effectiveSiteId])
+  }, [effectiveSiteId, isSiteLoading, robotInstanceId, sortBy])
 
-  if (loading) {
+  if (isSiteLoading || loading) {
     return (
       <div className={viewMode === "table" ? "space-y-4" : "grid gap-4 md:grid-cols-2"}>
         <Skeleton className="h-[120px] w-full rounded-lg" />

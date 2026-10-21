@@ -1,0 +1,123 @@
+/* Home-inspired dark neutrals. Brand green and primary buttons stay independent. */
+html.dark {
+  --background: 120 6.122449% 9.607843%; /* #171a17 */
+  --foreground: 68.571429 16.27907% 91.568627%; /* #ecede6 */
+  --card: 110 8.823529% 13.333333%; /* #20251f */
+  --card-foreground: var(--foreground);
+  --popover: 92.727273 13.253012% 16.27451%; /* #292f24 */
+  --popover-foreground: var(--foreground);
+  --secondary: var(--popover);
+  --secondary-foreground: var(--foreground);
+  --muted: var(--card);
+  --muted-foreground: 88 8.571429% 65.686275%; /* #a8afa0 */
+  --accent: 90 20.454545% 17.254902%; /* #2c3523 */
+  --accent-foreground: var(--foreground);
+  --border: 96.923077 11.111111% 23.333333%; /* #3a4235 */
+  --input: var(--border);
+  --ring: var(--muted-foreground);
+
+  /* Existing gray/slate/zinc/neutral utilities share the dark surface ramp.
+     Their original Tailwind colors remain the fallback in light mode. */
+  --theme-neutral-50: 247 246 242;
+  --theme-neutral-100: 236 237 230;
+  --theme-neutral-200: 213 218 207;
+  --theme-neutral-300: 192 198 184;
+  --theme-neutral-400: 168 175 160;
+  --theme-neutral-500: 125 134 116;
+  --theme-neutral-600: 89 99 78;
+  --theme-neutral-700: 58 66 53;
+  --theme-neutral-800: 41 47 36;
+  --theme-neutral-900: 32 37 31;
+  --theme-neutral-950: 23 26 23;
+
+  background-color: hsl(var(--background));
+  color-scheme: dark;
+}
+
+html.dark body {
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+}
+
+/* Keep paper textures, but remove the old pure-black surface beneath them. */
+html.dark .bg-black-paper,
+html.dark .dark\:bg-black-paper {
+  background-color: hsl(var(--background)) !important;
+}
+
+html.dark .dark\:bg-\[radial-gradient\(circle_at_center\,transparent_0\%\,\#030303_80\%\)\] {
+  background-image: radial-gradient(circle at center, transparent 0%, hsl(var(--background)) 80%);
+}
+
+/* Preserve the existing depth and shadows while warming recessed surfaces. */
+html.dark .neu-base,
+html.dark .neu-mockup-screen {
+  background: linear-gradient(135deg, hsl(var(--card)), hsl(var(--background)));
+}
+
+html.dark .neu-panel {
+  background: linear-gradient(135deg, hsl(var(--card)), hsl(var(--background)));
+}
+
+html.dark .neu-card,
+html.dark .neu-black-chip {
+  background: linear-gradient(135deg, hsl(var(--popover)), hsl(var(--card)));
+}
+
+html.dark .neu-pressed,
+html.dark .neu-recessed,
+html.dark .neu-skeleton {
+  background: hsl(var(--background));
+}
+
+html.dark .neu-black-chip-inward {
+  background: linear-gradient(135deg, hsl(var(--card)), hsl(var(--background)));
+}
+
+html.dark .neu-auth-input {
+  background: hsl(var(--background)) !important;
+  border-color: hsl(var(--input)) !important;
+}
+
+/* Legacy chat rules use !important and must opt into the same semantic tokens. */
+html.dark .flex.flex-col.h-full.border-r.transition-all.duration-300.ease-in-out.bg-background,
+html.dark .border-b.h-\[71px\].flex.items-center.px-3.bg-background {
+  background-color: hsl(var(--card)) !important;
+}
+
+html.dark .flex.h-full > .flex-1.overflow-auto.py-6.px-4.md\:px-8.bg-muted\/30 {
+  background-color: hsl(var(--background)) !important;
+}
+
+html.dark .chat-input-container textarea,
+html.dark .chat-input-container textarea:disabled {
+  background-color: hsl(var(--card) / 0.75) !important;
+  border-color: hsl(var(--input));
+  color: hsl(var(--foreground)) !important;
+}
+
+html.dark .chat-input-container textarea:focus {
+  border-color: hsl(var(--ring)) !important;
+}
+
+html.dark .flex.h-full > .flex-1.overflow-auto.py-6.px-4.md\:px-8.bg-muted\/30 .bg-card {
+  background-color: hsl(var(--card)) !important;
+  color: hsl(var(--card-foreground)) !important;
+}
+
+html.dark .flex.flex-col.h-full.border-r input[type="search"] {
+  background-color: hsl(var(--card)) !important;
+  border-color: hsl(var(--input)) !important;
+}
+
+html.dark .style-slider-thumb .slider-thumb {
+  background-color: hsl(var(--muted-foreground));
+}
+
+html.dark .style-slider-thumb .slider-track {
+  background-color: hsl(var(--border));
+}
+
+html.dark .style-slider-thumb .slider-range {
+  background-color: rgb(var(--theme-neutral-500));
+}

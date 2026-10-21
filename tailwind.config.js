@@ -1,3 +1,13 @@
+const colors = require('tailwindcss/colors')
+
+// Preserve each light palette and its opacity modifiers; share dark neutrals.
+function themedNeutrals(palette) {
+  return Object.fromEntries(Object.entries(palette).map(([shade, hex]) => {
+    const channels = hex.slice(1).match(/.{2}/g).map(channel => parseInt(channel, 16)).join(' ')
+    return [shade, `rgb(var(--theme-neutral-${shade}, ${channels}) / <alpha-value>)`]
+  }))
+}
+
 /** @type {import('tailwindcss').Config} */
 module.exports = {
   darkMode: ["class"],
@@ -39,6 +49,10 @@ module.exports = {
         '9xl': ['5.625rem', { lineHeight: '1' }], // 6.25rem * 0.9
       },
       colors: {
+        gray: themedNeutrals(colors.gray),
+        slate: themedNeutrals(colors.slate),
+        zinc: themedNeutrals(colors.zinc),
+        neutral: themedNeutrals(colors.neutral),
         'primary-button': '#90ff17',
         'primary-button-hover': '#ffdc24',
         'primary-button-border': '#57921799',

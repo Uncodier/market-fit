@@ -31,6 +31,8 @@ const nextConfig = {
       { protocol: 'https', hostname: 'cloudfront.cdn.uncodie.com' },
       { protocol: 'https', hostname: '*.supabase.co' },
       { protocol: 'https', hostname: 'db.makinari.com' },
+      // Seeded images used by demo site logos, catalog items, and storefronts.
+      { protocol: 'https', hostname: 'picsum.photos', port: '', pathname: '/seed/**', search: '' },
     ],
   },
   // Headers configuration for CSP

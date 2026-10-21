@@ -207,8 +207,8 @@ describe("application tenant lookup", () => {
       ? { data: false, error: null } : { data: null, error: { message: 'private provider details' } })
     const response = await GET(request())
 
-    expect(response.status).toBe(500)
-    await expect(response.json()).resolves.toEqual({ error: "Failed to verify site access" })
+    expect(response.status).toBe(503)
+    await expect(response.json()).resolves.toEqual({ error: "Site access could not be verified. Please try again." })
     expect(createRepositoriesClient).not.toHaveBeenCalled()
   })
 

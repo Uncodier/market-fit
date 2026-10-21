@@ -5,7 +5,7 @@ type PosAccess = Pick<Extract<Awaited<ReturnType<typeof requirePosSiteAccess>>, 
 
 export async function requireRegisterAccess(siteId: string): Promise<PosAccess | { error: string }> {
   const access = await requirePosSiteAccess(siteId)
-  if (access.error) return { error: access.error } as const
+  if (access.error !== undefined) return { error: access.error } as const
   if (!["owner", "admin", "collaborator"].includes(access.role)) {
     return { error: "You do not have permission to use Cash Register." } as const
   }

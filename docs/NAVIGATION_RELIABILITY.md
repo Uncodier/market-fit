@@ -62,6 +62,54 @@ they remain independently authenticated and authorized, with user-scoped RLS.
 
 ## Implementation
 
+### Initial Orders loading
+
+Orders waits for site loading and persisted date-filter hydration before starting
+its list request. The table and kanban retain their loading skeleton during that
+initialization; location loading and order realtime subscriptions also wait for
+the site load to finish.
+
+The server verifies membership before any cache or order read. A temporary
+connection failure in that role lookup gets one additional attempt after 150 ms;
+a successful lookup without a role returns `Forbidden` immediately. Unavailable
+or malformed lookup results instead return a safe access-verification error and
+never authorize a cache read. Orders does not automatically retry confirmed
+`Forbidden` or `Not authenticated` responses. Location restrictions and user-scoped
+RLS remain enforced. Regression coverage lives in
+`__tests__/orders/date-filter-page.test.tsx` and
+`__tests__/orders/location-cache-boundary.test.ts`.
+
+### Other workspace screens
+
+`WorkspaceSiteSWRScope` defers workspace SWR requests while `SiteContext.isLoading`
+is true, regardless of array, object, or URL key shape. It leaves the interactive
+shell mounted and reports loading instead of a stale error or an empty list.
+It does not gate public commerce or account-global providers. Reports retain
+their deliberately independent `ReportSWRScope` and their explicit site gate.
+
+Non-SWR Applications/Repositories, Records and Requirements reads explicitly
+wait for site loading too. Applications' URL site fallback cannot bypass this
+gate. Records and Requirements invalidate pending responses when the site or
+loading state changes, so a late result cannot replace the current site's data.
+
+`lib/auth/site-role-lookup.ts` centralizes the bounded role-read retry used by
+`getCurrentUserSiteRole`, Orders, catalog search, private commerce, POS and social
+data. Unavailable or malformed membership results never authorize data access.
+`requireSiteAccess` returns a safe 503 for an unavailable role lookup, reserving
+403 for a confirmed denial. Mutations themselves are never automatically replayed.
+
+The app-wide SWR retry policy recognizes both HTTP 4xx status and exact access
+errors returned by Server Actions. Confirmed access failures are shown immediately,
+without automatic retries or keeping an older cached result visible.
+
+This gate covers the existing loading flag, not every session or resource
+lifecycle: its ten-second safety timeout is unchanged, manual site switching
+does not establish a new loading interval, and resource-ID chat/robot artifact
+flows retain their own authorization and lifecycle rules. These paths need live
+verification rather than a blanket selected-site gate.
+
+### Navigation modules
+
 - [Wake session hook](../app/hooks/use-wake-session-refresh.ts)
 - [Navigation helper and progress state](../lib/navigation/stale-router.ts)
 - [Navigation feedback](../app/hooks/use-navigation-feedback.ts)

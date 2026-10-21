@@ -133,6 +133,19 @@ predicates online. Offline/unknown access locks the database and unmounts the
 workspace; no saved permission marker is an offline grant. Freshness has a
 30-second refresh and an 8-second verification deadline.
 
+Pending POS access and route loading render a presentation-only catalog/cart
+skeleton; no private hooks mount before verification. Session notifications for
+the same actor do not retire a valid cart or restart an in-flight check. Focus,
+visibility, and reconnect checks are single-flight within the mounted verifier,
+and repeated events do not extend its deadline. Pending account/site context also
+has an eight-second deadline without erasing drafts. Confirmed failures distinguish
+offline, session, permissions, device storage, and timeout/context errors. The
+explicit **Retry access check** restarts verification, never a checkout or payment.
+Storage invalidations after a timeout retain the unavailable state until pending
+SDK work settles; they cannot return the UI to indefinite loading. Regression
+coverage is in `__tests__/pos/use-pos-location-access.test.tsx` and
+`__tests__/pos/pos-page-access.test.tsx`, without production requests.
+
 The device ownership marker preserves work only for the same verified actor,
 site, and role. Account/site/access changes purge private POS tables, drafts, and
 unsubmitted queues. Late local writes and sync results are fenced by the grant

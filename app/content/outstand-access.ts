@@ -2,6 +2,7 @@ import "server-only"
 import { createClient } from "@/lib/supabase/server"
 import { userCanOnSite } from "@/lib/permissions/site-access"
 import { canAccessUnscopedSite } from "@/lib/permissions/location-boundary"
+import { lookupCurrentUserSiteRole, SiteRoleLookupError } from "@/lib/auth/site-role-lookup"
 import {
   accountIdSchema, isRecord, matchesOutstandSite, OutstandBoundaryError, siteIdSchema,
 } from "./outstand-contract"
@@ -15,8 +16,14 @@ export async function authorizeOutstandSite(input: unknown, command: "insert" | 
   const { data: { user }, error: authError } = await supabase.auth.getUser()
   if (authError || !user?.id) throw new OutstandBoundaryError(401, "Sign in to access social posts.")
 
-  const { data: role, error: roleError } = await supabase.rpc("current_user_site_role", { p_site_id: siteId })
-  if (roleError || !["owner", "admin", "collaborator", "marketing"].includes(role) ||
+  let role: string | null
+  try {
+    role = await lookupCurrentUserSiteRole(supabase, siteId)
+  } catch (error) {
+    if (error instanceof SiteRoleLookupError) throw new OutstandBoundaryError(error.status, error.message)
+    throw error
+  }
+  if (!role || !["owner", "admin", "collaborator", "marketing"].includes(role) ||
     !await userCanOnSite(supabase, siteId, command) || !await canAccessUnscopedSite(supabase, siteId)) {
     throw new OutstandBoundaryError(403, "You do not have permission to access social posts in this site.")
   }

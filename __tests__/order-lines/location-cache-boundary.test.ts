@@ -34,3 +34,17 @@ it.each([null, "false"])("denies unverifiable state %p without consuming cache o
   expect(load).not.toHaveBeenCalled()
   expect(readThroughJsonCache).not.toHaveBeenCalled()
 })
+
+it("recovers a temporary membership lookup failure before consuming the cache", async () => {
+  rpc.mockResolvedValueOnce({ data: null, error: { code: "PGRST002" }, status: 503 })
+  expect((await readCachedOrderLines({ siteId: "site" }, load)).count).toBe(1)
+  expect(rpc).toHaveBeenCalledTimes(3)
+})
+
+it("does not label persistent lookup failures as Forbidden", async () => {
+  rpc.mockResolvedValue({ data: null, error: { code: "PGRST002" }, status: 503 })
+  expect((await readCachedOrderLines({ siteId: "site" }, load)).error)
+    .toBe("Site access could not be verified. Please try again.")
+  expect(load).not.toHaveBeenCalled()
+  expect(readThroughJsonCache).not.toHaveBeenCalled()
+})

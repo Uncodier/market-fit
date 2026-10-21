@@ -196,7 +196,7 @@ describe("getPosOrder", () => {
     { authenticated: false, error: "Not authenticated" },
     { authError: true, error: "Not authenticated" },
     { role: null, error: "Forbidden" },
-    { roleError: true, error: "Forbidden" },
+    { roleError: true, error: "Site access could not be verified. Please try again." },
   ])("denies access before querying orders: $error", async ({ error, ...options }) => {
     const supabase = client(options);
     expect(await getPosOrder(OTHER_SITE_ID, ORDER_ID)).toEqual({ error });

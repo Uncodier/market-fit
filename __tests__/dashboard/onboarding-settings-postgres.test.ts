@@ -1,5 +1,6 @@
 /** @jest-environment node */
 import { licenseIds as ids, licensePostgres, licensePostgresAvailable } from "../security/site-license-postgres"
+import { getScopedTasks, ONBOARDING_MODES } from "@/app/components/dashboard/onboarding-tasks"
 
 const suite = licensePostgresAvailable ? describe : describe.skip
 
@@ -45,5 +46,41 @@ suite("onboarding writes with license protection in disposable PostgreSQL", () =
   it("still rejects forged license metadata when updating existing settings", () => {
     expect(() => pg.call(`UPDATE settings SET social_media='[{"id":"social","isActive":true,"_license":{"order":999}}]'
       WHERE site_id='${ids.site}'`)).toThrow("Resource license metadata is server managed")
+  })
+
+  it.each(ONBOARDING_MODES)("rejects a stale validator snapshot after skipping all %s tasks", mode => {
+    const before = state()
+    const snapshot = JSON.stringify(before.onboarding)
+    const skipped = Object.fromEntries(getScopedTasks(mode).map(task => [task.id, true]))
+    const saved = { ...before.onboarding, ...skipped }
+    pg.call(`UPDATE settings SET onboarding='${JSON.stringify(saved)}'
+      WHERE site_id='${ids.site}' AND onboarding='${snapshot}'::jsonb RETURNING onboarding`)
+
+    expect(pg.call(`UPDATE settings SET onboarding='{"take_guided_tour":true,"create_workflows":true}'
+      WHERE site_id='${ids.site}' AND onboarding='${snapshot}'::jsonb RETURNING onboarding`)).toBe("")
+    expect(state().onboarding).toEqual(saved)
+
+    const merged = { ...state().onboarding, create_workflows: true }
+    const latestSnapshot = JSON.stringify(state().onboarding)
+    pg.call(`UPDATE settings SET onboarding='${JSON.stringify(merged)}'
+      WHERE site_id='${ids.site}' AND onboarding='${latestSnapshot}'::jsonb RETURNING onboarding`)
+    expect(state()).toEqual({ ...before, onboarding: merged })
+  })
+
+  it("compares JSON snapshots independently of key order and preserves explicit false values", () => {
+    pg.db(`UPDATE settings SET onboarding='{"take_guided_tour":true,"create_workflows":true}' WHERE site_id='${ids.site}'`)
+    expect(pg.call(`UPDATE settings SET onboarding='{"take_guided_tour":true,"create_workflows":false}'
+      WHERE site_id='${ids.site}' AND onboarding='{"create_workflows":true,"take_guided_tour":true}'::jsonb
+      RETURNING onboarding`)).not.toBe("")
+    expect(state().onboarding).toEqual({ take_guided_tour: true, create_workflows: false })
+  })
+
+  it("initializes null onboarding only while the snapshot remains null", () => {
+    pg.db(`UPDATE settings SET onboarding=NULL WHERE site_id='${ids.site}'`)
+    pg.call(`UPDATE settings SET onboarding='{"take_guided_tour":true}'
+      WHERE site_id='${ids.site}' AND onboarding IS NULL RETURNING onboarding`)
+    expect(pg.call(`UPDATE settings SET onboarding='{"create_workflows":true}'
+      WHERE site_id='${ids.site}' AND onboarding IS NULL RETURNING onboarding`)).toBe("")
+    expect(state().onboarding).toEqual({ take_guided_tour: true })
   })
 })

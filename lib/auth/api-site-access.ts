@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server"
 import { userCanOnLocation } from "@/lib/permissions/location-access"
 import { canAccessUnscopedSite } from "@/lib/permissions/location-boundary"
 import type { PermissionCommand } from "@/lib/permissions/types"
+import { lookupCurrentUserSiteRole, SiteRoleLookupError } from "./site-role-lookup"
 
 const SITE_MANAGER_ROLES = new Set(["owner", "admin"])
 
@@ -43,12 +44,7 @@ export async function getCurrentUserSiteRole(
   supabase: Awaited<ReturnType<typeof createClient>>,
   siteId: string
 ): Promise<string | null> {
-  const { data: role, error } = await supabase.rpc(
-    "current_user_site_role",
-    { p_site_id: siteId }
-  )
-
-  return error || typeof role !== "string" ? null : role
+  return lookupCurrentUserSiteRole(supabase, siteId)
 }
 
 export async function requireSiteAccess(
@@ -74,7 +70,15 @@ export async function requireSiteAccess(
     }
   }
 
-  const role = await getCurrentUserSiteRole(supabase, siteId)
+  let role: string | null
+  try {
+    role = await getCurrentUserSiteRole(supabase, siteId)
+  } catch (error) {
+    if (!(error instanceof SiteRoleLookupError)) throw error
+    return { error: NextResponse.json({ error: error.message }, {
+      status: error.status, headers: { "Cache-Control": "private, no-store" },
+    }) }
+  }
   if (!role) {
     return {
       error: NextResponse.json({ error: "Forbidden" }, { status: 403 }),

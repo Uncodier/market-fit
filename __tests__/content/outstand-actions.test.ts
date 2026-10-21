@@ -109,8 +109,9 @@ it.each([
 
 it.each([null, "", "unexpected-role", ["owner"]])("denies missing, archived or malformed memberships (%j)", async role => {
   rpc.mockResolvedValue({ data: role, error: null })
-  expect(await invoke(payload())).toMatchObject({ success: false, status: 403 })
-  expect(await fetchOutstandPosts(siteId)).toMatchObject({ success: false, status: 403 })
+  const status = Array.isArray(role) ? 503 : 403
+  expect(await invoke(payload())).toMatchObject({ success: false, status })
+  expect(await fetchOutstandPosts(siteId)).toMatchObject({ success: false, status })
   expect(getSession).not.toHaveBeenCalled()
   expect(fetch).not.toHaveBeenCalled()
 })
@@ -127,9 +128,18 @@ it.each(["current_user_site_role", "user_can"]) ("fails closed on %s RPC errors"
     data: name === "current_user_has_site_location_restrictions" ? false : name === "current_user_site_role" ? "owner" : true,
     error: name === failed ? { message: "private database failure" } : null,
   }))
-  expect(await invoke(payload())).toMatchObject({ success: false, status: 403 })
-  expect(await fetchOutstandPosts(siteId)).toMatchObject({ success: false, status: 403 })
+  const status = failed === "current_user_site_role" ? 503 : 403
+  expect(await invoke(payload())).toMatchObject({ success: false, status })
+  expect(await fetchOutstandPosts(siteId)).toMatchObject({ success: false, status })
   expect(fetch).not.toHaveBeenCalled()
+})
+
+it("recovers temporary membership verification before reading social posts", async () => {
+  rpc.mockResolvedValueOnce({ data: null, error: { code: "PGRST002" }, status: 503 })
+  jest.mocked(fetch).mockResolvedValue(Response.json({ success: true, posts: [] }))
+  expect(await fetchOutstandPosts(siteId)).toEqual({ data: [] })
+  expect(rpc).toHaveBeenNthCalledWith(2, "current_user_site_role", { p_site_id: siteId })
+  expect(fetch).toHaveBeenCalledTimes(1)
 })
 
 it.each([

@@ -136,6 +136,19 @@ it("denies foreign tenant before making any search request", async () => {
   expect(fetchMock).not.toHaveBeenCalled()
 })
 
+it("rechecks temporary site-role failures before forwarding catalog search", async () => {
+  rpc.mockResolvedValueOnce({ data: null, error: { code: "PGRST002" }, status: 503 })
+  await expect(searchCatalog(request)).resolves.toMatchObject({ items })
+  expect(rpc).toHaveBeenCalledTimes(2)
+  expect(fetchMock).toHaveBeenCalledTimes(1)
+})
+
+it("never forwards catalog search after persistent site verification errors", async () => {
+  rpc.mockResolvedValue({ data: null, error: { code: "PGRST002" }, status: 503 })
+  await expect(searchCatalog(request)).rejects.toMatchObject({ status: 503 })
+  expect(fetchMock).not.toHaveBeenCalled()
+})
+
 it("does not trust a session whose user differs from the verified identity", async () => {
   const client = await createClient()
   client.auth.getSession.mockResolvedValue({ data: { session: { access_token: token, user: { id: randomUUID() } } } })

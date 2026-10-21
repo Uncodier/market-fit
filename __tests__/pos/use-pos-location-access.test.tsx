@@ -52,6 +52,157 @@ describe("POS current browser location access", () => {
     expect(rpc).toHaveBeenCalledWith("current_user_has_location_restrictions");
   });
 
+  it("finishes verification despite repeated same-actor session notifications", async () => {
+    const pending = deferred<{ data: { user: { id: string } }; error: null }>();
+    auth.mockReturnValue(pending.promise);
+    const { result } = renderHook(() => usePosLocationAccess("site-a", "actor-a"));
+    await settle();
+    for (const event of ["INITIAL_SESSION", "SIGNED_IN", "TOKEN_REFRESHED"]) {
+      act(() => { authChange(event, { user: { id: "actor-a" } }); jest.advanceTimersByTime(0); });
+      await settle();
+    }
+    expect(auth).toHaveBeenCalledTimes(1);
+    pending.resolve({ data: { user: { id: "actor-a" } }, error: null });
+    await settle();
+    expect(result.current.status).toBe("allowed");
+  });
+
+  it("does not restart a hanging startup deadline on focus or session notifications", async () => {
+    auth.mockReturnValue(new Promise(() => {}));
+    const { result } = renderHook(() => usePosLocationAccess("site-a", "actor-a"));
+    await settle();
+    for (let i = 0; i < 4; i++) {
+      act(() => {
+        jest.advanceTimersByTime(2_000);
+        window.dispatchEvent(new Event("focus"));
+        authChange("SIGNED_IN", { user: { id: "actor-a" } });
+        jest.advanceTimersByTime(0);
+      });
+      await settle();
+    }
+    expect(result.current.status).toBe("unavailable");
+    expect(auth).toHaveBeenCalledTimes(1);
+    expect(unlockPosDb).not.toHaveBeenCalled();
+  });
+
+  it("bounds a storage-invalidated check and rejects its stale grant", async () => {
+    const pending = deferred<{ data: { user: { id: string } }; error: null }>();
+    auth.mockReturnValue(pending.promise);
+    const { result } = renderHook(() => usePosLocationAccess("site-a", "actor-a"));
+    await settle();
+    act(() => window.dispatchEvent(new StorageEvent("storage", { key: "pos-location-scope-v1" })));
+    act(() => jest.advanceTimersByTime(8_000));
+    await settle();
+    expect(result.current.status).toBe("unavailable");
+    pending.resolve({ data: { user: { id: "actor-a" } }, error: null });
+    await settle();
+    expect(unlockPosDb).not.toHaveBeenCalled();
+    act(() => jest.advanceTimersByTime(0));
+    await settle();
+    expect(result.current.status).toBe("allowed");
+  });
+
+  it("keeps a timed-out check unavailable after later storage invalidations until SDK work settles", async () => {
+    const pending = deferred<{ data: { user: { id: string } }; error: null }>();
+    auth.mockReturnValueOnce(pending.promise);
+    const { result } = renderHook(() => usePosLocationAccess("site-a", "actor-a"));
+    await settle();
+    act(() => jest.advanceTimersByTime(8_000));
+    await settle();
+    expect(result.current).toMatchObject({ status: "unavailable", reason: "timeout" });
+    for (let i = 0; i < 3; i++) {
+      act(() => {
+        window.dispatchEvent(new StorageEvent("storage", { key: "pos-location-scope-v1" }));
+        window.dispatchEvent(new Event("focus"));
+        jest.advanceTimersByTime(30_000);
+      });
+      await settle();
+      expect(result.current).toMatchObject({ status: "unavailable", reason: "timeout" });
+    }
+    expect(auth).toHaveBeenCalledTimes(1);
+    expect(unlockPosDb).not.toHaveBeenCalled();
+    pending.resolve({ data: { user: { id: "actor-a" } }, error: null });
+    await settle();
+    expect(unlockPosDb).not.toHaveBeenCalled();
+    act(() => jest.advanceTimersByTime(0));
+    await settle();
+    expect(result.current.status).toBe("allowed");
+    expect(auth).toHaveBeenCalledTimes(2);
+  });
+
+  it("retries a failed verification and clears the error while the new check is pending", async () => {
+    auth.mockRejectedValueOnce(new Error("Session request failed"));
+    const { result } = renderHook(() => usePosLocationAccess("site-a", "actor-a"));
+    await settle();
+    expect(result.current).toMatchObject({ status: "unavailable", reason: "session" });
+    const pending = deferred<{ data: { user: { id: string } }; error: null }>();
+    auth.mockReturnValueOnce(pending.promise);
+    act(() => result.current.retry!());
+    await settle();
+    expect(result.current.status).toBe("checking");
+    pending.resolve({ data: { user: { id: "actor-a" } }, error: null });
+    await settle();
+    expect(result.current.status).toBe("allowed");
+  });
+
+  it("bounds a stalled device-storage preparation without starting private hooks", async () => {
+    const pending = deferred<void>();
+    jest.mocked(clearPosPrivateData).mockReturnValueOnce(pending.promise);
+    const { result } = renderHook(() => usePosLocationAccess("site-a", "actor-a"));
+    await settle();
+    expect(result.current.status).toBe("checking");
+    act(() => jest.advanceTimersByTime(8_000));
+    await settle();
+    expect(result.current).toMatchObject({ status: "unavailable", reason: "timeout" });
+    pending.resolve();
+    await settle();
+    expect(auth).not.toHaveBeenCalled();
+    expect(unlockPosDb).not.toHaveBeenCalled();
+  });
+
+  it("does not accept a timed-out response after an explicit retry", async () => {
+    const old = deferred<{ data: { user: { id: string } }; error: null }>();
+    auth.mockReturnValueOnce(old.promise);
+    const { result } = renderHook(() => usePosLocationAccess("site-a", "actor-a"));
+    await settle();
+    act(() => jest.advanceTimersByTime(8_000));
+    await settle();
+    expect(result.current.status).toBe("unavailable");
+    act(() => result.current.retry!());
+    await settle();
+    expect(result.current.status).toBe("allowed");
+    const issued = result.current.lease;
+    jest.mocked(unlockPosDb).mockClear();
+    old.resolve({ data: { user: { id: "actor-a" } }, error: null });
+    await settle();
+    expect(result.current.lease).toBe(issued);
+    expect(unlockPosDb).not.toHaveBeenCalled();
+  });
+
+  it.each(["SIGNED_IN", "INITIAL_SESSION"])("keeps a verified same-actor cart mounted on %s", async (event) => {
+    const { result } = renderHook(() => usePosLocationAccess("site-a", "actor-a"));
+    await settle();
+    const issued = result.current.lease!;
+    auth.mockReturnValue(new Promise(() => {}));
+    jest.mocked(lockPosDb).mockClear();
+    act(() => { authChange(event, { user: { id: "actor-a" } }); jest.advanceTimersByTime(0); });
+    await settle();
+    expect(result.current.status).toBe("allowed");
+    expect(result.current.lease).toBe(issued);
+    expect(lockPosDb).not.toHaveBeenCalled();
+  });
+
+  it.each(["auth", "site"])("bounds pending %s context without deleting drafts", async (context) => {
+    localStorage.setItem("pos-location-scope-v1", JSON.stringify(["actor-a", "site-a", "collaborator"]));
+    const { result } = renderHook(() => usePosLocationAccess(context === "site" ? undefined : "site-a", "actor-a", context === "auth"));
+    await settle();
+    expect(result.current.status).toBe("checking");
+    act(() => jest.advanceTimersByTime(8_000));
+    await settle();
+    expect(result.current.status).toBe("unavailable");
+    expect(clearPosPrivateData).not.toHaveBeenCalled();
+  });
+
   it.each([null, undefined, "false", [], true])("fails closed for restriction value %p", async (value) => {
     rpc.mockImplementation(async (name: string) => ({ data: name === "current_user_site_role" ? "owner" : value, error: null }));
     const { result } = renderHook(() => usePosLocationAccess("site-a", "actor-a"));

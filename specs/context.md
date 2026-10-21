@@ -96,6 +96,7 @@ App env vars are documented in `docs/ENVIRONMENT_VARIABLES.md` (Supabase, API se
 - Do not use Lucide-react; the app has its own icons.
 - `package.json` `"test"` is Jest. Shiplight scripts are `test:e2e` / `test:e2e:headed`. Do not overwrite `test`.
 - `playwright.config.ts` selects explicit `smoke`, `regression`, `buyer`, or `roles` suites. Smoke is the default and never discovers root CRUD or nested agent tests. Auth state is isolated under `.auth/<target>/<run-id>/<role>.json`; buyer uses its own account and commerce host.
+- Buyer read checks match the settled document language using the app's translation catalog; they never alter the account's display-language preference to satisfy English-only locators.
 - `package.json` has no `"type": "module"` — Next config is CommonJS (`module.exports`). Leave it that way.
 - `auth/example.login.ts` was deleted in favor of `auth.setup.ts`.
 - Middleware aliases: `/chat/123` → `/chat?conversationId=123`, `/robots/123` → `/robots?instance=123`.

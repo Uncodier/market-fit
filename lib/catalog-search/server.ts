@@ -1,6 +1,6 @@
 import "server-only"
 import { createClient } from "@/lib/supabase/server"
-import { getCurrentUserSiteRole } from "@/lib/auth/api-site-access"
+import { lookupCurrentUserSiteRole, SiteRoleLookupError } from "@/lib/auth/site-role-lookup"
 import { configuredApiUrl } from "@/lib/http/api-proxy-security"
 import { decodeRequestBody, readLimitedRequestBody } from "@/lib/http/read-limited-request-body"
 import { catalogSearchRequestSchema, catalogSearchResponseSchema, type CatalogSearchRequest, type CatalogSearchResult } from "./types"
@@ -24,7 +24,14 @@ async function transportHeaders(input: CatalogSearchRequest): Promise<Record<str
   const supabase = await createClient(true)
   const { data: { user }, error } = await supabase.auth.getUser()
   if (error || !user) throw new CatalogSearchError(401, "Please sign in to search the catalog")
-  if (!input.site_id || !await getCurrentUserSiteRole(supabase, input.site_id)) {
+  let role: string | null = null
+  try {
+    if (input.site_id) role = await lookupCurrentUserSiteRole(supabase, input.site_id)
+  } catch (error) {
+    if (error instanceof SiteRoleLookupError) throw new CatalogSearchError(error.status, error.message)
+    throw error
+  }
+  if (!role) {
     throw new CatalogSearchError(403, "You do not have access to this site")
   }
   const { data: { session }, error: sessionError } = await supabase.auth.getSession()

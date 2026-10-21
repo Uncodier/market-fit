@@ -99,7 +99,7 @@ export function SiteHeader() {
   
   return (
     <>
-      <header className="w-full self-start py-4 px-6 lg:px-12 border-b dark:border-white/5 border-black/5 bg-white/80 dark:bg-[#030303]/80 backdrop-blur-md supports-[backdrop-filter]:bg-white/60 dark:supports-[backdrop-filter]:bg-[#030303]/60 sticky top-0 z-[70]">
+      <header className="w-full self-start py-4 px-6 lg:px-12 border-b dark:border-border border-black/5 bg-white/80 dark:bg-background/80 backdrop-blur-md supports-[backdrop-filter]:bg-white/60 dark:supports-[backdrop-filter]:bg-background/60 sticky top-0 z-[70]">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
         <Link href="/" className="inline-flex items-center gap-2 z-50">
           <Image 
@@ -123,7 +123,7 @@ export function SiteHeader() {
               
               {/* Dropdown Panel */}
               <div className="absolute top-full left-1/2 -translate-x-1/2 pt-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 transform origin-top scale-95 group-hover:scale-100 w-max z-50 pointer-events-none group-hover:pointer-events-auto">
-                <div className="bg-white dark:bg-[#1a1a1a] border border-black/5 dark:border-white/10 rounded-2xl shadow-2xl p-6 relative overflow-hidden">
+                <div className="bg-white dark:bg-popover border border-black/5 dark:border-border rounded-2xl shadow-2xl p-6 relative overflow-hidden">
                   <div className={`grid ${section.columns === 2 ? 'grid-cols-2 w-[440px]' : 'grid-cols-1 w-[240px]'} gap-x-8 gap-y-1`}>
                     {section.items.map((item, idx) => {
                       if (item.divider) {
@@ -178,7 +178,7 @@ export function SiteHeader() {
 
       {/* Mobile Menu Overlay */}
       <div 
-        className={`fixed inset-0 bg-white dark:bg-[#0a0a0a] z-[60] lg:hidden transition-all duration-300 ease-out flex flex-col pt-[80px] pb-8 overflow-y-auto ${
+        className={`fixed inset-0 bg-white dark:bg-background z-[60] lg:hidden transition-all duration-300 ease-out flex flex-col pt-[80px] pb-8 overflow-y-auto ${
           mobileMenuOpen ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4 pointer-events-none'
         }`}
       >

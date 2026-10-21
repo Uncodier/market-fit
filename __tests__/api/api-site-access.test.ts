@@ -81,6 +81,27 @@ describe("site API access", () => {
     expect(result.error?.status).toBe(403)
   })
 
+  it("recovers from a temporary membership lookup error without granting access early", async () => {
+    const client = userClient({ id: "user-1" }, "owner")
+    client.rpc.mockResolvedValueOnce({ data: null, error: { code: "PGRST002" }, status: 503 })
+    jest.mocked(createClient).mockResolvedValue(client)
+    const result = await requireSiteAccess(requestWithCookie(), "site", { allowLocationScoped: true })
+    expect(result.error).toBeUndefined()
+    expect(result.role).toBe("owner")
+    expect(client.rpc).toHaveBeenCalledTimes(2)
+  })
+
+  it("returns unavailable, not forbidden, after repeated lookup failures", async () => {
+    const client = userClient({ id: "user-1" }, null)
+    client.rpc.mockResolvedValue({ data: null, error: { code: "PGRST002", message: "private detail" }, status: 503 })
+    jest.mocked(createClient).mockResolvedValue(client)
+    const result = await requireSiteAccess(requestWithCookie(), "site")
+    expect(result.error?.status).toBe(503)
+    expect(result.supabase).toBeUndefined()
+    expect(await result.error?.json()).toEqual({ error: "Site access could not be verified. Please try again." })
+    expect(client.rpc).toHaveBeenCalledTimes(2)
+  })
+
   it("rejects a read-only member from manager operations", async () => {
     ;(createClient as jest.Mock).mockResolvedValue(
       userClient({ id: "user-1" }, "marketing")

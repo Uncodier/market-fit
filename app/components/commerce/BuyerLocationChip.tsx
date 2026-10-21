@@ -10,7 +10,7 @@ export function buyerLocationChipClass(active = false) {
   return `${base} ${
     active
       ? "bg-black/60 text-white border-black/30 dark:bg-white/60 dark:text-black dark:border-white/30"
-      : "bg-white/60 text-gray-700 border-black/5 md:hover:bg-white/80 active:bg-white/80 dark:bg-[#030303]/60 dark:text-gray-300 dark:border-white/10 dark:md:hover:bg-[#030303]/80 dark:active:bg-[#030303]/80"
+      : "bg-white/60 text-gray-700 border-black/5 md:hover:bg-white/80 active:bg-white/80 dark:bg-background/60 dark:text-gray-300 dark:border-border dark:md:hover:bg-background/80 dark:active:bg-background/80"
   }`
 }
 

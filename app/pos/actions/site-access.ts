@@ -2,8 +2,13 @@ import "server-only"
 
 import { createClient } from "@/lib/supabase/server"
 import { canAccessUnscopedSite } from "@/lib/permissions/location-boundary"
+import { lookupCurrentUserSiteRole, SiteRoleLookupError } from "@/lib/auth/site-role-lookup"
 
-export async function requirePosSiteAccess(siteId: string) {
+type PosSiteAccess =
+  | { error: string; supabase?: never; user?: never; role?: never }
+  | { error?: never; supabase: Awaited<ReturnType<typeof createClient>>; user: { id: string }; role: string }
+
+export async function requirePosSiteAccess(siteId: string): Promise<PosSiteAccess> {
   if (!siteId) return { error: "siteId is required" } as const
 
   const demoSite = siteId.startsWith("demo-")
@@ -14,11 +19,14 @@ export async function requirePosSiteAccess(siteId: string) {
   } = await supabase.auth.getUser()
   if (authError || !user) return { error: "Not authenticated" } as const
 
-  const { data: role, error: roleError } = await supabase.rpc(
-    "current_user_site_role",
-    { p_site_id: siteId },
-  )
-  if (roleError || typeof role !== "string") {
+  let role: string | null
+  try {
+    role = await lookupCurrentUserSiteRole(supabase, siteId)
+  } catch (error) {
+    if (error instanceof SiteRoleLookupError) return { error: error.message } as const
+    throw error
+  }
+  if (!role) {
     return { error: "Forbidden" } as const
   }
 

@@ -1,8 +1,9 @@
-import { act, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import POSPage from "@/app/pos/page";
 import { usePosLocationAccess } from "@/app/pos/hooks/use-pos-location-access";
 import { getPosDb } from "@/app/pos/local/db";
 import { useEffect } from "react";
+import PosLoading from "@/app/pos/loading";
 
 jest.mock("@/app/context/SiteContext", () => ({ useSite: () => ({ currentSite: { id: "site-a" } }) }));
 jest.mock("@/app/components/auth/auth-provider", () => ({ useAuthContext: () => ({ user: { id: "actor-a" } }) }));
@@ -22,6 +23,46 @@ describe("POS guarded workspace mount", () => {
     render(<POSPage />);
     expect(getPosDb).not.toHaveBeenCalled();
     expect(screen.queryByText("Private customer cache")).not.toBeInTheDocument();
+  });
+
+  it("shows only a POS skeleton while access is pending, not an error or offline warning", () => {
+    jest.mocked(usePosLocationAccess).mockReturnValue({ status: "checking", lease: null });
+    render(<POSPage />);
+    expect(screen.getByRole("status", { name: "Loading point of sale" })).toHaveAttribute("aria-busy", "true");
+    expect(screen.queryByText(/Checking POS access|POS unavailable|online connection|Changing account/)).not.toBeInTheDocument();
+    expect(screen.queryByRole("button")).not.toBeInTheDocument();
+    expect(getPosDb).not.toHaveBeenCalled();
+  });
+
+  it("uses the same safe skeleton for route loading", () => {
+    render(<PosLoading />);
+    expect(screen.getByRole("status", { name: "Loading point of sale" })).toBeInTheDocument();
+    expect(getPosDb).not.toHaveBeenCalled();
+  });
+
+  it("explains a confirmed timeout without claiming the browser is offline and offers retry", () => {
+    const retry = jest.fn();
+    jest.mocked(usePosLocationAccess).mockReturnValue({ status: "unavailable", lease: null, reason: "timeout", retry });
+    render(<POSPage />);
+    expect(screen.getByText(/verification timed out/i)).toBeInTheDocument();
+    expect(screen.queryByText(/Cached POS data is not available offline/)).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Retry access check" }));
+    expect(retry).toHaveBeenCalledTimes(1);
+    expect(getPosDb).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["offline", /browser reports that it is offline/],
+    ["session", /session could not be verified/],
+    ["permission", /site permissions could not be verified/],
+    ["storage", /device storage could not be prepared/],
+    ["context", /account or current site did not finish loading/],
+  ] as const)("shows the confirmed %s failure without mounting private data", (reason, message) => {
+    jest.mocked(usePosLocationAccess).mockReturnValue({ status: "unavailable", lease: null, reason });
+    render(<POSPage />);
+    expect(screen.getByText(message)).toBeInTheDocument();
+    expect(screen.queryByRole("status", { name: "Loading point of sale" })).not.toBeInTheDocument();
+    expect(getPosDb).not.toHaveBeenCalled();
   });
 
   it("unmounts cached data and sync hooks on revocation and explains unconfirmed work safety", () => {

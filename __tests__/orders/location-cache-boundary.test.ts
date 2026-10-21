@@ -60,6 +60,75 @@ it("denies missing authentication before any permissions or cache lookup", async
   expect(readThroughJsonCache).not.toHaveBeenCalled()
 })
 
+it("rechecks a transient role lookup failure before reading cached orders", async () => {
+  rpc.mockResolvedValueOnce({ data: null, error: { code: "PGRST002" }, status: 503 })
+  expect((await listOrdersCached({ siteId: "site" })).error).toBeUndefined()
+  expect(rpc).toHaveBeenCalledTimes(3)
+  expect(rpc).toHaveBeenNthCalledWith(2, "current_user_site_role", { p_site_id: "site" })
+  expect(readThroughJsonCache).toHaveBeenCalledTimes(1)
+})
+
+it("recovers from a network exception during the role lookup", async () => {
+  rpc.mockRejectedValueOnce(new TypeError("fetch failed"))
+  expect((await listOrdersCached({ siteId: "site" })).error).toBeUndefined()
+  expect(rpc).toHaveBeenCalledTimes(3)
+  expect(readThroughJsonCache).toHaveBeenCalledTimes(1)
+})
+
+it("still bypasses cached orders for restricted members after lookup recovery", async () => {
+  state = true
+  rpc.mockResolvedValueOnce({ data: null, error: { code: "PGRST002" }, status: 503 })
+  expect((await listOrdersCached({ siteId: "site" })).data).toEqual([])
+  expect(queryOrders).toHaveBeenCalledWith({ siteId: "site" })
+  expect(readThroughJsonCache).not.toHaveBeenCalled()
+})
+
+it("reports persistent lookup failures without treating them as missing membership", async () => {
+  rpc.mockResolvedValue({ data: null, error: { code: "PGRST002" }, status: 503 })
+  const result = await listOrdersCached({ siteId: "site" })
+  expect(result.error).toBe("Order access could not be verified. Please try again.")
+  expect(rpc).toHaveBeenCalledTimes(2)
+  expect(queryOrders).not.toHaveBeenCalled()
+  expect(readThroughJsonCache).not.toHaveBeenCalled()
+  expect(readCacheEpoch).not.toHaveBeenCalled()
+})
+
+it("does not retry a confirmed missing membership", async () => {
+  role = null
+  expect((await listOrdersCached({ siteId: "foreign-site" })).error).toBe("Forbidden")
+  expect(rpc).toHaveBeenCalledTimes(1)
+  expect(queryOrders).not.toHaveBeenCalled()
+  expect(readThroughJsonCache).not.toHaveBeenCalled()
+})
+
+it("still denies membership removed after a transient lookup failure", async () => {
+  role = null
+  rpc.mockResolvedValueOnce({ data: null, error: { code: "PGRST003" }, status: 504 })
+  expect((await listOrdersCached({ siteId: "foreign-site" })).error).toBe("Forbidden")
+  expect(rpc).toHaveBeenCalledTimes(2)
+  expect(from).not.toHaveBeenCalled()
+  expect(queryOrders).not.toHaveBeenCalled()
+  expect(readThroughJsonCache).not.toHaveBeenCalled()
+})
+
+it.each([undefined, false, { role: "owner" }])("fails closed on an invalid role response: %p", async value => {
+  rpc.mockResolvedValue({ data: value, error: null })
+  expect((await listOrdersCached({ siteId: "site" })).error).toBe("Order access could not be verified. Please try again.")
+  expect(rpc).toHaveBeenCalledTimes(1)
+  expect(from).not.toHaveBeenCalled()
+  expect(queryOrders).not.toHaveBeenCalled()
+  expect(readThroughJsonCache).not.toHaveBeenCalled()
+})
+
+it("does not retry non-transient role lookup errors or expose provider details", async () => {
+  rpc.mockResolvedValue({ data: null, error: { code: "42501", message: "private database detail" }, status: 403 })
+  const result = await listOrdersCached({ siteId: "site" })
+  expect(result.error).toBe("Order access could not be verified. Please try again.")
+  expect(rpc).toHaveBeenCalledTimes(1)
+  expect(queryOrders).not.toHaveBeenCalled()
+  expect(readThroughJsonCache).not.toHaveBeenCalled()
+})
+
 it("never lets additional action arguments impersonate another actor in the cache key", async () => {
   jest.mocked(readCacheEpoch).mockResolvedValue("7")
   const params = { siteId: "site", userId: "victim", epoch: 1 }

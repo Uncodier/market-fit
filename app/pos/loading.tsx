@@ -1,5 +1,5 @@
-import { PageListSkeleton } from "@/app/components/skeletons/page-list-skeleton"
+import { PosWorkspaceSkeleton } from "./components/PosWorkspaceSkeleton";
 
 export default function PosLoading() {
-  return <PageListSkeleton />
+  return <PosWorkspaceSkeleton />;
 }

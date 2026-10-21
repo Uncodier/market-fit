@@ -1,7 +1,7 @@
 import "server-only"
 
 import { createClient } from "@/lib/supabase/server"
-import { getCurrentUserSiteRole } from "@/lib/auth/api-site-access"
+import { readOrderAccess } from "./read-order-access"
 import { readLocationRestrictionState } from "@/lib/permissions/location-boundary"
 import { hashRedisKeyPart } from "@/lib/redis/control-plane"
 import { readCacheEpoch, readThroughJsonCache } from "@/lib/redis/json-cache"
@@ -22,8 +22,9 @@ export async function listOrdersCached(params: OrderParams): Promise<{
     }
 
     // Neither the cache key nor a prior successful request is authorization.
-    if (!await getCurrentUserSiteRole(supabase, params.siteId)) {
-      return { data: [], count: 0, error: "Forbidden" }
+    const access = await readOrderAccess(supabase, params.siteId)
+    if (access.error) {
+      return { data: [], count: 0, error: access.error }
     }
     const restricted = await readLocationRestrictionState(supabase, params.siteId)
     if (restricted === null) {

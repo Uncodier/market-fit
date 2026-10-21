@@ -4,11 +4,17 @@ import { endOfDay, startOfDay } from "date-fns"
 import { SWRConfig } from "swr"
 import OrdersPage from "@/app/orders/page"
 import { listOrders } from "@/app/orders/actions"
+import { listLocations } from "@/app/inventory/actions"
+import { useOrdersRealtime } from "@/app/orders/hooks/useOrdersRealtime"
 import { cacheOrdersDateRange, ordersDateRangeStorageKey } from "@/app/orders/date-range-cache"
 import type { DateRangePickerProps } from "@/app/components/ui/date-range-picker"
 
 let mockSiteId = "site-1"
-jest.mock("@/app/context/SiteContext", () => ({ useSite: () => ({ currentSite: { id: mockSiteId } }) }))
+let mockIsSiteLoading = false
+let mockViewType = "table"
+jest.mock("@/app/context/SiteContext", () => ({
+  useSite: () => ({ currentSite: { id: mockSiteId }, isLoading: mockIsSiteLoading }),
+}))
 jest.mock("@/app/context/LocalizationContext", () => ({ useLocalization: () => ({ t: (key: string) => key, locale: "en" }) }))
 jest.mock("@/app/context/PermissionContext", () => ({
   usePermissions: () => ({ can: () => false }), useOptionalPermissions: () => null,
@@ -20,7 +26,7 @@ jest.mock("@/lib/printer/hooks/use-printer-realtime", () => ({ usePrinterRealtim
 jest.mock("@/lib/printer/hooks/use-printer", () => ({ usePrinterSettings: () => ({}) }))
 jest.mock("@/lib/printer", () => ({ ticketBrandFromSite: () => ({}) }))
 jest.mock("@/app/orders/hooks/use-order-printing", () => ({ useOrderPrinting: () => ({ printingKey: null, printOrder: jest.fn() }) }))
-jest.mock("@/app/hooks/use-mobile-view", () => ({ useMobileView: () => ["table", jest.fn()] }))
+jest.mock("@/app/hooks/use-mobile-view", () => ({ useMobileView: () => [mockViewType, jest.fn()] }))
 jest.mock("use-debounce", () => ({ useDebounce: (value: unknown) => [value] }))
 jest.mock("@/app/components/ui/sticky-header", () => ({ StickyHeader: ({ children }: { children: ReactNode }) => <div>{children}</div> }))
 jest.mock("@/app/components/ui/mobile-filters-drawer", () => ({
@@ -33,9 +39,12 @@ jest.mock("@/app/components/ui/sort-dropdown", () => ({ SortDropdown: () => null
 jest.mock("@/app/components/view-selector", () => ({ ViewSelector: () => null }))
 jest.mock("@/app/components/printer/PrinterSyncBadge", () => ({ PrinterSyncBadge: () => null }))
 jest.mock("@/app/components/ui/confirm-dialog", () => ({ ConfirmDialog: () => null }))
-jest.mock("@/app/orders/components/OrdersKanban", () => ({ OrdersKanban: () => null, OrdersKanbanSkeleton: () => null }))
+jest.mock("@/app/orders/components/OrdersKanban", () => ({
+  OrdersKanban: () => <div>Loaded kanban</div>,
+  OrdersKanbanSkeleton: () => <div role="status">Loading orders</div>,
+}))
 jest.mock("@/app/orders/components/OrdersTable", () => ({
-  OrdersTableSkeleton: () => null,
+  OrdersTableSkeleton: () => <div role="status">Loading orders</div>,
   OrdersTable: ({ page, onPageChange }: { page: number; onPageChange: (page: number) => void }) => (
     <button onClick={() => onPageChange(page + 1)}>Page {page}</button>
   ),
@@ -66,10 +75,47 @@ describe("Orders persisted date filter wiring", () => {
     jest.setSystemTime(new Date(2026, 8, 30, 23, 59, 59))
     window.localStorage.clear()
     mockSiteId = "site-1"
+    mockIsSiteLoading = false
+    mockViewType = "table"
+    jest.mocked(listLocations).mockClear()
+    jest.mocked(useOrdersRealtime).mockClear()
     mockListOrders.mockReset()
     mockListOrders.mockResolvedValue({ data: [], count: 100, error: null })
   })
   afterEach(() => jest.useRealTimers())
+
+  it.each(["table", "kanban"])("waits for site initialization before requesting orders in %s view", async (viewType) => {
+    mockViewType = viewType
+    mockIsSiteLoading = true
+    mockListOrders.mockImplementation(async () => mockIsSiteLoading
+      ? { data: [], count: 0, error: "Forbidden" }
+      : { data: [], count: 100, error: null })
+    const { rerenderPage } = renderPage()
+    await act(async () => { jest.advanceTimersByTime(1000) })
+
+    expect(mockListOrders).not.toHaveBeenCalled()
+    expect(listLocations).not.toHaveBeenCalled()
+    expect(useOrdersRealtime).toHaveBeenLastCalledWith(undefined, expect.any(Function))
+    expect(screen.getByRole("status")).toHaveTextContent("Loading orders")
+    expect(screen.queryByText(/Failed to load orders/)).not.toBeInTheDocument()
+
+    mockIsSiteLoading = false
+    rerenderPage()
+    await waitFor(() => expect(mockListOrders).toHaveBeenCalledTimes(1))
+    expect(listLocations).toHaveBeenCalledWith("site-1")
+    expect(useOrdersRealtime).toHaveBeenLastCalledWith("site-1", expect.any(Function))
+    expect(screen.queryByText(/Failed to load orders/)).not.toBeInTheDocument()
+    expect(await screen.findByText(viewType === "table" ? "Page 1" : "Loaded kanban")).toBeInTheDocument()
+  })
+
+  it.each(["Forbidden", "Not authenticated"])("shows %s without repeatedly retrying it", async (error) => {
+    jest.setSystemTime(new Date(2026, 8, 30, 12))
+    mockListOrders.mockResolvedValue({ data: [], count: 0, error })
+    renderPage()
+    expect(await screen.findByText(`Failed to load orders. ${error}`)).toBeInTheDocument()
+    await act(async () => { jest.advanceTimersByTime(30000) })
+    expect(mockListOrders).toHaveBeenCalledTimes(1)
+  })
 
   it("requests today's bounds on reload, updates both pickers, and resets pagination at midnight", async () => {
     cacheOrdersDateRange("site-1", {

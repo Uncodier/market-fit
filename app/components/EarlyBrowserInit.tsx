@@ -22,7 +22,7 @@ export default function EarlyBrowserInit({
     try {
       if (pathname?.startsWith("/auth")) {
         document.documentElement.classList.add("dark")
-        document.documentElement.style.background = "#030303"
+        document.documentElement.style.background = "hsl(var(--background))"
       }
     } catch {
       // ignore

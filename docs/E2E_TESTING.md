@@ -69,6 +69,64 @@ Their names should be unique in the synthetic workspace. The storefront fixture
 must be active, published/listed and visible in the tested listing. Tests do not
 create fixtures in production or fabricate responses when data is missing.
 
+Buyer read assertions use the application's merged translation catalog and the
+current, settled `html[lang]` rather than assuming English. Completed empty and
+populated states must match that locale; supported localized loading/error states
+remain hard failures. The helper never changes the account's language preference.
+The initial `qa-e2e-20261021T044246Z-11362-buyer` failure displayed the Spanish
+completed-empty orders state while its old locator required English. That is a
+test-language mismatch, not evidence of failed order retrieval. Tracking console
+errors remain independent failures; see
+[the batch-session diagnosis](EMBEDDED_APPLICATION_DIAGNOSTICS.md#tracking-batch-session-mismatch-2026-10-21).
+
+The repaired helper completed all six Buyer read surfaces in
+`repair-buyer-20261021T052814Z-72968`: the authentication setup and the one full
+journey passed, with no retries, skipped steps or observed dependency failures.
+Its health gate remains non-green because deployed SHA is unconfigured and the
+test checkout is dirty. This run establishes the language-helper repair only;
+it does not establish that the local Robots or SDK source changes are deployed.
+
+The follow-up `repair-smoke-20261021T055449Z-2498` against the existing production
+deployment was incomplete: four product checks passed, exact workspace selection
+failed on a tracker console error, and the lead check did not run after the global
+timeout. Authentication passed separately. The attempt includes a long execution
+gap, so wall-clock duration is not useful application-performance evidence.
+Do not combine this attempt with earlier runs or claim the local SDK/Robots fixes
+were deployed. Its saved trace retains the real tracking `403` failure.
+
+Local repair validation passed 584 tests in 32 relevant Jest suites and strict
+transpilation/discovery of all 50 regression scenarios. After correcting extracted
+component types, the final TypeScript check passed with no diagnostics; an
+additional five-suite Robots run passed 56 tests. The typecheck used a temporary
+incremental cache, not a production build. The extraction initially exposed four
+lint errors and twelve warnings; the subsequent repair below addresses them
+without disabling lint rules or E2E failure assertions.
+
+### Local follow-up: browser state, creation lifecycle and SDK tests
+
+Robots browser state now reconciles incoming reads in site/instance-scoped render
+state instead of synchronous setter effects. Saved state and explicit URL choices
+remain authoritative until reads complete. New artifact arrival selects the
+intended artifact; user tab/layout changes cannot repeatedly consume `should_reload`.
+A fresh visibility/manual read snapshot retains the deliberate same-timestamp
+reload behavior. Fresh empty read arrays cannot cause a render loop. Persistence
+remains an effect, and stale event setters cannot alter a different workspace.
+
+Instance creation separately tracks site lifetime and current eligibility. It
+rechecks authentication and eligibility before insert, ignores old-site responses
+after each await, and does not cancel its own flow merely because its loading
+state changes. Successful inserts still refresh/select the new instance. Avatar
+results cannot overwrite a new site's state. Tests use actual React setters and
+StrictMode, not delayed setter shims or disabled lint rules.
+
+The final follow-up Jest run passed 642 tests in 38 relevant suites. Targeted
+Robots lint passed with `--max-warnings=0`; all modules compile with the installed
+Next SWC compiler and the final frontend TypeScript check passed. The sibling
+SDK's complete suite passed 380 tests in 44 suites and its TypeScript check
+passed. The prior eight chat/experiments failures are now
+repaired, with additional identity-lifecycle, consent and weighted-selection cases.
+These are local results; production SDK publication/deployment remains separate.
+
 ### Explicit production smoke provisioning
 
 `scripts/e2e/provision-smoke.cjs` is a separate operator provisioning tool, not

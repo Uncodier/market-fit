@@ -68,7 +68,7 @@ describe.each(actions)("%s action boundary", (_, action) => {
 
   it("fails closed on membership lookup errors", async () => {
     client.rpc.mockResolvedValue({ data: "owner", error: { message: "private schema" } })
-    expect(await action(SITE_ID)).toMatchObject({ error: "Forbidden" })
+    expect(await action(SITE_ID)).toMatchObject({ error: "Site access could not be verified. Please try again." })
     expect(client.from).not.toHaveBeenCalled()
   })
 

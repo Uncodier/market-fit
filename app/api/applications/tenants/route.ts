@@ -4,6 +4,7 @@ import { createClient as createMainClient, createServiceClient } from "@/lib/sup
 import { getApiKeyFromRequest, isValidApiKey } from "@/app/lib/api-keys-config"
 import { isSiteManagerRole } from "@/lib/auth/api-site-access"
 import { readLocationRestrictionState } from '@/lib/permissions/location-boundary'
+import { lookupCurrentUserSiteRole, SiteRoleLookupError } from '@/lib/auth/site-role-lookup'
 
 interface RequirementSummary {
   id: string
@@ -29,9 +30,12 @@ async function checkManagerAccess(
   supabase: Awaited<ReturnType<typeof createMainClient>>,
   siteId: string
 ) {
-  const { data: role, error } = await supabase.rpc("current_user_site_role", { p_site_id: siteId })
-  if (error) {
-    return NextResponse.json({ error: "Failed to verify site access" }, { status: 500 })
+  let role: string | null
+  try {
+    role = await lookupCurrentUserSiteRole(supabase, siteId)
+  } catch (error) {
+    if (!(error instanceof SiteRoleLookupError)) throw error
+    return NextResponse.json({ error: error.message }, { status: error.status })
   }
   return isSiteManagerRole(role)
     ? null

@@ -42,7 +42,7 @@ interface RequirementStatusRepo {
 
 export function RepositoriesSection({ searchQuery = "", viewMode = "table" }: { searchQuery?: string, viewMode?: ViewType }) {
   const { t } = useLocalization()
-  const { currentSite } = useSite()
+  const { currentSite, isLoading: isSiteLoading } = useSite()
   const router = useRouter()
   const supabase = createClient()
   
@@ -53,7 +53,12 @@ export function RepositoriesSection({ searchQuery = "", viewMode = "table" }: { 
     let cancelled = false
 
     async function fetchRepos() {
-      if (!currentSite?.id) return
+      if (isSiteLoading) return
+      if (!currentSite?.id) {
+        setRepos([])
+        setLoading(false)
+        return
+      }
       
       setLoading(true)
       const { data, error } = await supabase
@@ -79,7 +84,7 @@ export function RepositoriesSection({ searchQuery = "", viewMode = "table" }: { 
       } 
       
       if (data && !cancelled) {
-        let enhancedRepos = data as any[]
+        let enhancedRepos = data as RequirementStatusRepo[]
         
         // Fetch tenants
         try {
@@ -151,7 +156,7 @@ export function RepositoriesSection({ searchQuery = "", viewMode = "table" }: { 
     return () => {
       cancelled = true
     }
-  }, [currentSite?.id, supabase])
+  }, [currentSite?.id, supabase, isSiteLoading])
 
   const filteredRepos = repos.filter(r => 
     r.requirements?.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -173,7 +178,7 @@ export function RepositoriesSection({ searchQuery = "", viewMode = "table" }: { 
     navigator.clipboard.writeText(text)
   }
 
-  if (loading) {
+  if (isSiteLoading || loading) {
     return (
       <div className={viewMode === "table" ? "space-y-4" : "grid gap-4 md:grid-cols-2"}>
         <Skeleton className="h-[120px] w-full rounded-lg" />

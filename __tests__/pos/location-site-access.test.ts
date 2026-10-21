@@ -18,6 +18,20 @@ it("authorizes POS snapshots for unrestricted members using the real session", a
   expect(rpc).toHaveBeenLastCalledWith("current_user_has_site_location_restrictions", { p_site_id: "site" })
 })
 
+it("recovers a temporary lookup before authorizing snapshots", async () => {
+  rpc.mockResolvedValueOnce({ data: null, error: { code: "PGRST002" }, status: 503 })
+  expect(await requirePosSiteAccess("site")).toHaveProperty("role", "collaborator")
+  expect(rpc).toHaveBeenCalledTimes(3)
+})
+
+it("never returns a client when membership verification stays unavailable", async () => {
+  rpc.mockResolvedValue({ data: null, error: { code: "PGRST002" }, status: 503 })
+  const access = await requirePosSiteAccess("site")
+  expect(access.error).toBe("Site access could not be verified. Please try again.")
+  expect(access).not.toHaveProperty("supabase")
+  expect(rpc).toHaveBeenCalledTimes(2)
+})
+
 it.each([true, null, undefined, "false"])("denies POS scope %p before callers use snapshots/replay", async state => {
   rpc.mockImplementation(async name => ({ data: name === "current_user_site_role" ? "collaborator" : state, error: null }))
   expect(await requirePosSiteAccess("site")).toHaveProperty("error")

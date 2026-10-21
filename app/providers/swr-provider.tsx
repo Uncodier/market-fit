@@ -1,8 +1,9 @@
 'use client';
 
 import React from 'react';
-import { SWRConfig, Middleware } from 'swr';
+import { SWRConfig, type Cache, type Middleware } from 'swr';
 import { loadSWRCache, persistSWRCache } from '@/lib/swr/persist-cache';
+import { isTerminalRequestError } from '@/lib/swr/retry-policy';
 import {
   OPTIMISTIC_ERROR_DELAY_MS,
   OPTIMISTIC_RETRY_COUNT,
@@ -17,7 +18,7 @@ function persistActiveCache() {
   if (activeCache) persistSWRCache(activeCache);
 }
 
-function localStorageProvider(): any {
+function localStorageProvider() {
   if (!activeCache) {
     activeCache = loadSWRCache();
   }
@@ -28,21 +29,23 @@ function localStorageProvider(): any {
     window.addEventListener('beforeunload', persistActiveCache);
   }
 
-  return activeCache;
+  return activeCache as Cache<unknown>;
 }
 
 const optimisticErrorMiddleware: Middleware = (useSWRNext) => {
   return (key, fetcher, config) => {
     const swr = useSWRNext(key, fetcher, config);
+    const terminalError = isTerminalRequestError(swr.error);
     const hasData = swr.data !== undefined;
     const [debouncedError, isMaskingError] = useOptimisticError(
-      hasData ? undefined : swr.error,
+      hasData || terminalError ? undefined : swr.error,
       OPTIMISTIC_ERROR_DELAY_MS
     );
 
     const waitingForRetry = Boolean(swr.error && swr.isValidating && !hasData);
     const isActuallyMasking = !hasData && (isMaskingError || waitingForRetry);
 
+    if (terminalError) return { ...swr, data: undefined, error: swr.error, isLoading: false };
     return {
       ...swr,
       error: isActuallyMasking || hasData ? undefined : debouncedError,
@@ -57,27 +60,15 @@ export function SWRProvider({ children }: { children: React.ReactNode }) {
       value={{
         provider: localStorageProvider,
         keepPreviousData: true,
-        shouldRetryOnError: true,
+        shouldRetryOnError: (error: unknown) => !isTerminalRequestError(error),
         errorRetryCount: OPTIMISTIC_RETRY_COUNT,
         errorRetryInterval: OPTIMISTIC_RETRY_BASE_MS,
         onErrorRetry: (error, _key, _config, revalidate, { retryCount }) => {
           if (retryCount >= OPTIMISTIC_RETRY_COUNT) return
+          if (isTerminalRequestError(error)) return
           if (
             typeof document !== 'undefined' &&
             (document.visibilityState === 'hidden' || !navigator.onLine)
-          ) {
-            return
-          }
-          const status =
-            typeof error === 'object' && error !== null && 'status' in error
-              ? Number(error.status)
-              : null
-          if (
-            status !== null &&
-            status >= 400 &&
-            status < 500 &&
-            status !== 408 &&
-            status !== 429
           ) {
             return
           }

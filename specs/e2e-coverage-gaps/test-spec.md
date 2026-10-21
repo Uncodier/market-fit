@@ -110,7 +110,8 @@ Out of scope:
 ### E2E-GAPS-T05 Buyer and Finance Read Flows
 
 - Automated checks: `tests/buyer-navigation.test.yaml`, `tests/finance-read-flows.test.yaml`
-- Pass criteria: Buyer routes render; accounting/payment controls can be inspected without writes.
+- Pass criteria: Buyer reads require the configured email on home/profile, the exact commerce host/route, visible main content, and a completed populated or explicit empty outcome. Exact copy follows the current HTML language and shared repository dictionaries (`en`, `es`, `fr`, `de`, `ja`), including existing fallback behavior; hydration cannot accept another locale's copy or pending translations. Skeletons, loading, error toasts, and translated read failures remain hard failures. Accounting/payment controls can be inspected without writes.
+- Buyer regression checks: `__tests__/e2e/read-buyer.test.ts` and `__tests__/e2e/read-helpers.test.ts`. Tests do not set app language, update user profiles, or claim cross-buyer record isolation.
 
 ### E2E-GAPS-T06 Public Commerce Navigation
 

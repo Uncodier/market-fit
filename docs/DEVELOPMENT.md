@@ -235,6 +235,16 @@ identity; resource changes return the full row to publish server-enforced limits
 Printer regression tests cover the writer and a disposable local PostgreSQL
 cluster under `__tests__/context/printer-settings-*.test.ts`.
 
+Onboarding writes use the dedicated `app/components/dashboard/onboarding-progress.ts`
+helper. It conditionally updates only the onboarding JSON snapshot it read, then
+re-reads and merges task changes on a conflict (at most three attempts). This
+prevents overlapping auto-validation and "Skip remaining" saves from erasing
+completed steps while preserving explicit task reopening and RLS. It verifies
+requested values in the returned row before reporting success. Regression coverage
+is in `__tests__/dashboard/onboarding-progress.test.ts`,
+`__tests__/dashboard/use-onboarding-validation.test.tsx`, and the disposable local
+PostgreSQL suite `__tests__/dashboard/onboarding-settings-postgres.test.ts`.
+
 ### Shop delivery selection
 
 Explicit hero/cart/checkout delivery choices are stored per seller under

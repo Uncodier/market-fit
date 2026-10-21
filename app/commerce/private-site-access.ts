@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server"
 import { canAccessUnscopedSite } from "@/lib/permissions/location-boundary"
 import { userCanOnSite } from "@/lib/permissions/site-access"
 import type { PermissionCommand } from "@/lib/permissions/types"
+import { lookupCurrentUserSiteRole } from "@/lib/auth/site-role-lookup"
 
 export const isPrivateResourceId = (value: unknown): value is string =>
   typeof value === "string" && /^[a-zA-Z0-9_-]{1,128}$/.test(value)
@@ -19,9 +20,9 @@ export async function requirePrivateCommerceSiteAccess(
     const supabase = await createClient(true)
     const { data: { user }, error } = await supabase.auth.getUser()
     if (error || !user || user.is_anonymous) return { error: "Not authenticated" } as const
-    const { data: role, error: roleError } = await supabase.rpc("current_user_site_role", { p_site_id: siteId })
+    const role = await lookupCurrentUserSiteRole(supabase, siteId)
     const roles = requireManager ? ["owner", "admin"] : ["owner", "admin", "collaborator", "marketing"]
-    if (roleError || !roles.includes(role) || !await canAccessUnscopedSite(supabase, siteId)) {
+    if (!role || !roles.includes(role) || !await canAccessUnscopedSite(supabase, siteId)) {
       return { error: "You do not have permission to access this site" } as const
     }
     for (const command of commands) {

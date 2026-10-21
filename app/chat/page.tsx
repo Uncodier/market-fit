@@ -358,7 +358,7 @@ function ChatPageContent() {
       
       {/* Main chat content */}
       <div className={cn(
-        "flex flex-col h-full transition-all duration-300 ease-in-out min-w-0 min-h-0 fixed right-0 top-[var(--topbar-height,64px)] bottom-0",
+        "flex flex-col h-full bg-background transition-all duration-300 ease-in-out min-w-0 min-h-0 fixed right-0 top-[var(--topbar-height,64px)] bottom-0",
         !hasSelectedConversation ? "hidden md:flex" : "flex"
       )}
       style={{
@@ -395,7 +395,7 @@ function ChatPageContent() {
         </div>
 
         {/* Chat messages area */}
-        <div className="flex-1 overflow-y-auto min-w-0 w-full relative pt-[71px] flex flex-col" ref={messagesContainerRef}>
+        <div className="flex-1 overflow-y-auto bg-background min-w-0 w-full relative pt-[71px] flex flex-col" ref={messagesContainerRef}>
           <div className="transition-all duration-300 ease-in-out flex-1 flex flex-col min-h-full">
             <ChatMessages 
               chatMessages={chatMessages}

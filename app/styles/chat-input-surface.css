@@ -1,0 +1,6 @@
+/* The floating composer must not hide messages scrolling behind its margins.
+   Textareas keep their own surface; robot conversations keep their fade layer. */
+html .chat-input-container,
+html.dark .chat-input-container {
+  background-color: transparent !important;
+}

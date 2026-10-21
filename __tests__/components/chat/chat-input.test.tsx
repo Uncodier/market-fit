@@ -54,6 +54,18 @@ describe('ChatInput send guards', () => {
   afterAll(() => { Reflect.deleteProperty(HTMLElement.prototype, 'scrollIntoView') })
   beforeEach(() => { jest.mocked(useChannelSelector).mockReturnValue(channelState()) })
 
+  it('keeps the floating margins transparent and interactive controls usable', () => {
+    const { container } = render(<ChatInput {...props()} />)
+    const surface = container.querySelector('.chat-input-container')
+    const textarea = screen.getByRole('textbox')
+
+    expect(surface).toHaveClass('bg-transparent', 'pointer-events-none')
+    expect(surface).not.toHaveClass('bg-background/95')
+    expect(textarea.closest('form')).toHaveClass('pointer-events-auto')
+    expect(screen.getByRole('status')).toHaveClass('pointer-events-auto')
+    expect(textarea).toHaveClass('bg-background')
+  })
+
   it('blocks all send paths through a historical channel that was deactivated', () => {
     jest.mocked(useChannelSelector).mockReturnValue({ ...channelState(), selectedChannel: 'whatsapp', availableChannels: ['web'] })
     const callbacks = props()

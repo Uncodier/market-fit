@@ -12,6 +12,7 @@ import { TooltipProvider } from '../components/ui/tooltip';
 import { SiteCurrencyBootstrap } from '../components/commerce/SiteCurrencyBootstrap';
 import { SiteLocaleBootstrap } from '../components/commerce/SiteLocaleBootstrap';
 import { useSite } from '@/app/context/SiteContext';
+import { WorkspaceSiteSWRScope } from './WorkspaceSiteSWRScope';
 
 function WorkspaceSiteBootstraps() {
   const { currentSite } = useSite()
@@ -27,20 +28,22 @@ export default function WorkspaceProviders({ children }: { children: React.React
   return (
     <LayoutProvider>
       <SiteProvider>
-        <WorkspaceSiteBootstraps />
-        <PermissionProvider>
-          <ScreenAccessProvider>
-            <RobotsProvider>
-              <WidgetProvider>
-                <BillingLimitProvider>
-                  <TooltipProvider>
-                    {children}
-                  </TooltipProvider>
-                </BillingLimitProvider>
-              </WidgetProvider>
-            </RobotsProvider>
-          </ScreenAccessProvider>
-        </PermissionProvider>
+        <WorkspaceSiteSWRScope>
+          <WorkspaceSiteBootstraps />
+          <PermissionProvider>
+            <ScreenAccessProvider>
+              <RobotsProvider>
+                <WidgetProvider>
+                  <BillingLimitProvider>
+                    <TooltipProvider>
+                      {children}
+                    </TooltipProvider>
+                  </BillingLimitProvider>
+                </WidgetProvider>
+              </RobotsProvider>
+            </ScreenAccessProvider>
+          </PermissionProvider>
+        </WorkspaceSiteSWRScope>
       </SiteProvider>
     </LayoutProvider>
   );

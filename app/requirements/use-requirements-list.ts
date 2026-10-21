@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useSearchParams } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import { useSite } from "@/app/context/SiteContext"
@@ -29,7 +29,7 @@ const PRIORITY_ORDER: Record<RequirementPriority, number> = { high: 0, medium: 1
 export function useRequirementsList() {
   const { t } = useLocalization()
   const { toast } = useToast()
-  const { currentSite } = useSite()
+  const { currentSite, isLoading: isSiteLoading } = useSite()
   const searchParams = useSearchParams()
   const urlSort = searchParams ? searchParams.get('sort') : null
   const defaultSort = urlSort === 'updated_at' ? 'newest' : (urlSort === 'created_at' || urlSort === 'newest' ? 'newest' : (urlSort === 'budget' ? 'budget' : 'priority'))
@@ -43,10 +43,11 @@ export function useRequirementsList() {
   const [visibleError, setVisibleError] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState("all")
   const [searchQuery, setSearchQuery] = useState("")
-  const [sortBy, setSortBy] = useState<"priority" | "newest" | "budget">(defaultSort as any)
+  const [sortBy, setSortBy] = useState<"priority" | "newest" | "budget">(defaultSort)
   const [filters, setFilters] = useState<RequirementFilters>(EMPTY_FILTERS)
 
   const loadRequirements = useCallback(async () => {
+    if (isSiteLoading) return
     if (!siteId) {
       setIsLoading(false)
       return
@@ -65,6 +66,7 @@ export function useRequirementsList() {
         .eq("id", siteId)
         .single()
 
+      if (requestId !== requestIdRef.current) return
       if (siteError || !siteData) {
         throw new Error("The selected site does not exist or you don't have access to it")
       }
@@ -74,6 +76,7 @@ export function useRequirementsList() {
         .select("*")
         .eq("site_id", siteId)
 
+      if (requestId !== requestIdRef.current) return
       if (segmentError) {
         throw new Error(`Error loading segments: ${segmentError.message}`)
       }
@@ -128,6 +131,7 @@ export function useRequirementsList() {
       }
 
       const { data: requirementData, error: requirementError } = await requirementsQuery
+      if (requestId !== requestIdRef.current) return
       if (requirementError) {
         throw new Error(`Error loading requirements: ${requirementError.message}`)
       }
@@ -188,16 +192,22 @@ export function useRequirementsList() {
       setVisibleError(error instanceof Error ? error.message : "Error loading data")
       setIsLoading(false)
     }
-  }, [siteId, activeTab, filters])
+  }, [siteId, isSiteLoading, activeTab, filters])
 
   useEffect(() => {
-    if (!siteId) {
+    requestIdRef.current += 1
+    if (isSiteLoading) setIsLoading(true)
+    else if (!siteId) {
       setIsLoading(false)
-      return
+      setRequirements([])
+      setSegments([])
+      setVisibleError(null)
+    } else {
+      setIsLoading(true)
+      void loadRequirements()
     }
-    setIsLoading(true)
-    loadRequirements()
-  }, [siteId, activeTab, filters, loadRequirements])
+    return () => { requestIdRef.current += 1 }
+  }, [siteId, isSiteLoading, activeTab, filters, loadRequirements])
 
   useEffect(() => {
     const handleReload = () => {
@@ -268,8 +278,8 @@ export function useRequirementsList() {
     requirements,
     filteredRequirements,
     segments,
-    isLoading,
-    visibleError,
+    isLoading: isSiteLoading || isLoading,
+    visibleError: isSiteLoading ? null : visibleError,
     activeTab,
     setActiveTab,
     searchQuery,

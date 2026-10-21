@@ -249,3 +249,72 @@ compression, typecheck and 57 focused tests passing. No CDN publication or
 host reference change was made during compilation; production must publish
 the new files before loading that version. This repair is separate from the
 previously published 1.965.
+
+## Tracking batch session mismatch (2026-10-21)
+
+The saved `qa-e2e-20261021T044246Z-11362-smoke` failure traces establish a
+different SDK defect, not a missing domain allowlist or workspace permission:
+
+- Two successful visitor-session creation requests occur during startup. The
+  events initializer starts the SessionManager bootstrap while VisitorInitialization
+  independently registers a visitor and replaces the active session.
+- The failed batch's site matches the signed proof, and the proof is unexpired.
+  Its session and visitor IDs belong to the first session response, while its
+  proof is exactly the second response's token. Only match booleans were inspected;
+  no credential or visitor values are copied here.
+- The API returns `403` with `Site access denied` because its signed session and
+  visitor bindings correctly reject that mismatch. A later batch using the second
+  session's IDs and proof returns `202`. Weakening API authorization, rewriting
+  queued visitor identities, or adding browser service credentials is not a repair.
+
+The source boundary is the sibling `Script` repository: shared session bootstrap
+and tracking-outbox dispatch must agree on one identity. Persisted events from a
+different session must not be sent with the current proof or cause renewal of a
+healthy replacement session. SDK source changes require a separately approved
+build and CDN publication; changing this application's tracker query version alone
+does not publish those changes.
+
+The same Content trace records `/api/applications/tenants` ending with
+`net::ERR_ABORTED` during full-document navigation to `/content`. The Robots
+lookup logged that cancellation as a generic fetch error. It must explicitly
+cancel and invalidate pending work on lifecycle changes without hiding genuine
+network, HTTP or response-contract failures. Strict console observation remains
+enabled in E2E.
+
+The local Robots implementation now owns a cancellable lookup in
+`app/robots/use-tenant-lookup.ts` and validates the authorized nullable DTO in
+`app/robots/tenant-lookup.ts`. The site, instance and sorted requirement IDs scope
+its state; only the requirement ID is sent to the endpoint, which rejects combined
+identifier selectors. All parallel requests share one signal. Key changes,
+unmount and pagehide cancel pending work; persisted pageshow starts a new read.
+Late responses cannot restore another identity's URL. A real failed parallel read
+still reports an error while cancelling its siblings.
+
+The formerly oversized Robots page was split into controller, instance actions,
+browser state and presentation modules below 500 lines. Offline AST comparison
+preserved all 124 non-tenant controller statements after stripping types/comments;
+the existing layout assertions follow the extracted modules. Focused validation
+passed 49 tests in four suites, including lifecycle and composition contracts.
+This is local source evidence, not a claim that the repaired page is deployed.
+
+The sibling SDK repair coalesces event and visitor startup through one metadata-rich
+session provider without reordering consent-aware initialization. Tracking batches
+and unload staging check immutable active identity/proof snapshots; stale records
+are quarantined unchanged, never reassigned to a new visitor or allowed to renew a
+healthy replacement session. Explicit bootstrap cancellation is not logged as a
+generic error; actual provider failures remain visible. The eleven focused SDK
+suites passed 102 tests and its TypeScript check passed. The full SDK suite passed
+346 tests and initially retained eight chat-history/experiments failures, all
+reproduced against an isolated unmodified `HEAD` archive. The follow-up now repairs
+those causes, with the full SDK suite passing 380 tests and its TypeScript check.
+Generic chat resume retains private state only after fresh same-owner server
+verification; experiment weighting and conversion consent remain explicit gates.
+See `Script/docs/tracking-transport.md` for the full boundary contract.
+
+The frontend follow-up also removes the four lint errors and twelve warnings
+without suppression. Browser state reconciliation avoids setter-effect cascades,
+empty-read render loops and stale-site updates while retaining visibility-refetch
+reload semantics. Instance creation rechecks eligibility before insert and ignores
+stale completion after site changes or unmount. Final local validation passed 642
+tests in 38 relevant suites, strict targeted lint and frontend TypeScript. No API
+authorization changes, production build, SDK publication or deployment occurred.

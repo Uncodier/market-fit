@@ -45,7 +45,7 @@ export default function OrdersPage() {
   const defaultSort = urlSort === 'updated_at' ? 'updated_at' : (urlSort === 'created_at' || urlSort === 'newest' ? 'newest' : (urlSort === 'oldest' ? 'oldest' : 'newest'))
   const [sortBy, setSortBy] = useState(defaultSort)
 
-  const { currentSite } = useSite()
+  const { currentSite, isLoading: isSiteLoading } = useSite()
   const { t, locale } = useLocalization()
   const { can } = usePermissions()
   const router = useRouter()
@@ -87,7 +87,7 @@ export default function OrdersPage() {
     t("clear") === "clear" ? "Clear date range" : t("clear")
 
   const { data: locationsData } = useSWR(
-    currentSite?.id ? ['locations', currentSite.id] : null,
+    currentSite?.id && !isSiteLoading ? ['locations', currentSite.id] : null,
     () => listLocations(currentSite!.id)
   )
   const locations = locationsData?.data || []
@@ -99,7 +99,7 @@ export default function OrdersPage() {
   }
 
   const { data, error, isLoading, mutate } = useSWR(
-    currentSite?.id && isDateRangeReady
+    currentSite?.id && !isSiteLoading && isDateRangeReady
       ? {
           resource: "orders",
           siteId: currentSite.id,
@@ -116,10 +116,12 @@ export default function OrdersPage() {
     ({ resource, ...request }) => {
       void resource
       return fetcher(request)
-    }
+    },
+    { shouldRetryOnError: (error: Error) => !["Forbidden", "Not authenticated"].includes(error.message) },
   )
+  const isOrdersPending = !currentSite || isSiteLoading || !isDateRangeReady || isLoading
 
-  useOrdersRealtime(currentSite?.id, () => {
+  useOrdersRealtime(isSiteLoading ? undefined : currentSite?.id, () => {
     mutate()
   })
   const printerSettings = usePrinterSettings()
@@ -194,7 +196,7 @@ export default function OrdersPage() {
   }
 
   const renderOrdersTable = () => {
-    if (!currentSite || isLoading) return <OrdersTableSkeleton />
+    if (isOrdersPending) return <OrdersTableSkeleton />
     if (error) return <div className="p-4 text-center text-sm text-red-500">{error.message}</div>
     return (
       <OrdersTable
@@ -353,7 +355,7 @@ export default function OrdersPage() {
         )}>
           {viewType === "kanban" ? (
             <div className="h-full min-w-0 w-full">
-              {!currentSite || isLoading ? (
+              {isOrdersPending ? (
                 <OrdersKanbanSkeleton />
               ) : error ? (
                 <div className="p-6 text-center text-red-500">
@@ -375,7 +377,7 @@ export default function OrdersPage() {
             </div>
           ) : (
             <div className="h-full flex flex-col">
-              {!currentSite || isLoading ? (
+              {isOrdersPending ? (
                 <OrdersTableSkeleton />
               ) : error ? (
                 <div className="p-6 text-center text-red-500">

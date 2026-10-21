@@ -3,6 +3,7 @@ import "server-only"
 import { formatInTimeZone } from "date-fns-tz"
 import { createClient } from "@/lib/supabase/server"
 import { getSocialDateRange } from "./social-trends"
+import { lookupCurrentUserSiteRole, SiteRoleLookupError } from "@/lib/auth/site-role-lookup"
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 const DAY_MS = 86_400_000
@@ -61,7 +62,13 @@ export async function requireSocialSiteClient(siteId: string) {
   const client = await createClient(true)
   const { data, error } = await client.auth.getUser()
   if (error || !data?.user) throw new SocialActionError("Unauthorized")
-  const { data: role, error: roleError } = await client.rpc("current_user_site_role", { p_site_id: siteId })
-  if (roleError || typeof role !== "string" || !role) throw new SocialActionError("Forbidden")
+  let role: string | null
+  try {
+    role = await lookupCurrentUserSiteRole(client, siteId)
+  } catch (error) {
+    if (error instanceof SiteRoleLookupError) throw new SocialActionError(error.message)
+    throw error
+  }
+  if (!role) throw new SocialActionError("Forbidden")
   return client
 }

@@ -8,6 +8,7 @@ import { capabilitiesFromRole, resetPermissionStore, setPermissionStore } from "
 import { wrapSupabaseClient } from "@/lib/permissions/mutation-guard"
 import { ALL_TASK_IDS } from "@/app/lib/onboarding-task-ids"
 import { resetPermissionNotify } from "@/lib/permissions/notify"
+import { getScopedTasks, ONBOARDING_MODES } from "@/app/components/dashboard/onboarding-tasks"
 
 jest.mock("@/lib/supabase/client", () => ({ createClient: jest.fn() }))
 jest.mock("@/app/context/SiteContext", () => ({ useSite: jest.fn() }))
@@ -30,17 +31,25 @@ function setup(initial: Settings | null = {
   let readError: { code: string; message: string } | null = null
   let writeError: { code: string; message: string } | null = null
   let workflows = false
+  let nextWriteGate: Promise<void> | null = null
   const writes = jest.fn()
   const reads = jest.fn()
   const from = (table: string) => {
     let payload: Partial<Settings> | null = null
     let operation = "select"
     let siteId: string | null = null
+    let onboardingFilter: string | null | undefined
     const execute = async () => {
       if (table !== "settings") return { data: workflows && table === "workflows" ? [{ id: "workflow" }] : [], error: null }
       if (!payload) {
         reads(siteId)
         return { data: row, error: readError }
+      }
+      const gate = nextWriteGate
+      nextWriteGate = null
+      if (gate) await gate
+      if (onboardingFilter !== undefined && onboardingFilter !== (row?.onboarding == null ? null : JSON.stringify(row.onboarding))) {
+        return { data: null, error: null }
       }
       writes(operation, payload, siteId)
       if (writeError) return { data: null, error: writeError }
@@ -52,7 +61,12 @@ function setup(initial: Settings | null = {
     }
     const builder = {
       select: jest.fn().mockImplementation(() => builder),
-      eq: jest.fn().mockImplementation((_key: string, value: string) => { siteId = value; return builder }),
+      eq: jest.fn().mockImplementation((key: string, value: string) => {
+        if (key === "site_id") siteId = value
+        if (key === "onboarding") onboardingFilter = value
+        return builder
+      }),
+      is: (key: string, value: null) => { if (key === "onboarding") onboardingFilter = value; return builder },
       limit: jest.fn().mockImplementation(() => builder),
       single: execute,
       maybeSingle: execute,
@@ -70,6 +84,11 @@ function setup(initial: Settings | null = {
     failRead: () => { readError = { code: "503", message: "Unavailable" } },
     failWrite: () => { writeError = { code: "503", message: "Unavailable" } },
     addWorkflow: () => { workflows = true },
+    holdNextWrite: () => {
+      let release!: () => void
+      nextWriteGate = new Promise<void>(resolve => { release = resolve })
+      return release
+    },
   }
 }
 
@@ -116,6 +135,27 @@ describe("onboarding progress persistence", () => {
       onboarding: { take_guided_tour: true, create_workflows: true, configure_channels: true },
     }, "site-1")
     expect(result.current.tasks.configure_channels).toBe(true)
+  })
+
+  it.each(ONBOARDING_MODES)("keeps all 12 skipped %s tasks after an overlapping validation and remount", async mode => {
+    const db = setup({ site_id: "site-1", onboarding: {} })
+    db.addWorkflow()
+    const hook = await mount()
+    const releaseValidation = db.holdNextWrite()
+    await act(async () => { await jest.advanceTimersByTimeAsync(1000) })
+    expect(hook.result.current.isValidating).toBe(true)
+    const taskIds = getScopedTasks(mode).map(task => task.id)
+    expect(taskIds).toHaveLength(12)
+
+    await act(async () => hook.result.current.markAllDone(taskIds))
+    expect(taskIds.every(id => hook.result.current.tasks[id])).toBe(true)
+
+    await act(async () => { releaseValidation() })
+    expect(taskIds.every(id => db.row()?.onboarding[id])).toBe(true)
+    hook.unmount()
+    const reloaded = await mount()
+    expect(taskIds.every(id => reloaded.result.current.tasks[id])).toBe(true)
+    expect(toast.error).not.toHaveBeenCalled()
   })
 
   it("initializes missing settings with only site ID and onboarding", async () => {

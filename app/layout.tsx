@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from 'next'
 import "./globals.css"
 import "./safari-fix.css"
+import "./styles/dark-theme.css"
+import "./styles/chat-input-surface.css"
 import { Toaster } from "sonner"
 import ClientWrapper from './client-wrapper'
 import { Suspense } from 'react'

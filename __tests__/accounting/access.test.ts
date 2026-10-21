@@ -20,6 +20,12 @@ describe('accounting server authorization', () => {
     expect(client.auth.getUser).toHaveBeenCalled()
     expect(client.rpc).toHaveBeenCalledWith('current_user_site_role', { p_site_id: siteId })
   })
+  it('recovers temporary lookups but never grants access after persistent failures', async () => {
+    client.rpc.mockResolvedValueOnce({ data: null, error: { code: 'PGRST002' }, status: 503 })
+    await expect(requireAccountingAccess(siteId)).resolves.toBe(client)
+    client.rpc.mockResolvedValue({ data: null, error: { code: 'PGRST002' }, status: 503 })
+    await expect(requireAccountingAccess(siteId)).rejects.toThrow('Site access could not be verified')
+  })
   it('denies anonymous and foreign-site requests', async () => {
     client.auth.getUser.mockResolvedValueOnce({ data: { user: null }, error: null })
     await expect(requireAccountingAccess(siteId)).rejects.toThrow('Authentication')
