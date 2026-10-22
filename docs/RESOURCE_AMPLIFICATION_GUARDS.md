@@ -188,3 +188,52 @@ Successful authenticated reads and route loading are not a mutating checkout,
 shipping or payment E2E proof. No production order/payment/message mutations were
 used for these checks. Existing database security-advisor notices are separate
 work: [Supabase database linter](https://supabase.com/docs/guides/database/database-linter).
+
+## Final release evidence — 2026-10-22 01:38 UTC
+
+- Repair source committed and pushed as
+  `9331cc8ea0733ce24a0986c9e0a329be1e26576e`. Only 83 frozen repair files were
+  included. Unrelated localization edits, including edits in the same task-detail
+  page, stayed in the working tree. No environment files were uploaded or committed.
+- Final deployment `dpl_6ME4GGSKZ181Lzib5ZGEc5EKkX7q`:
+  `https://makinari-46jzd2pko-uncodie.vercel.app`. The production build passed
+  compilation, its TypeScript gate and generation of 229 static pages. Promotion
+  completed at 01:37 UTC; the app/demo aliases were verified against this exact ID
+  and both returned HTTP 200. GitHub also started a deployment of the same repair
+  commit; the repair is no longer an uncommitted direct-deploy-only patch.
+- **274 focused tests passed**: orders/units 63, reservations 36, badges 32, JSON
+  and analytics caches 40, Control Center 6, Realtime 16, chat 19, native read
+  indexes 3, commerce security/planning/writes 33, rejected operational experiment
+  26. The complete isolated source passed `npm run typecheck` without disabling
+  strictness. These are focused regressions, not a claim that all repository
+  test suites or all existing lint findings are clean.
+- Final authenticated browser validation used an existing configured test user,
+  actual password sign-in and actual workspace selection. Orders, order lines,
+  reservations, Control Center and chat all loaded at their expected routes with
+  HTTP 200 and no failed API/Data API responses in the sampled observation.
+  Control Center issued all five successful corrected task queries. No order,
+  payment, shipment or message was created/changed by the validation.
+- Last database capture at 01:37:56 UTC: postmaster start remained
+  `2026-10-22 00:02:46.412272+00`, 32 client connections and zero Lock waits.
+  The 01:33–01:38 log sample had no PostgreSQL timeout/OOM/shutdown events.
+  This short window does not establish long-term stability or a host restart cause.
+
+### Remaining measured work (not silently declared fixed)
+
+1. Historical task spans in the reservation calendar still need a reliable
+   indexed end-time model and reviewed backfill.
+2. Broader operational RLS was rejected; inventory, transaction, receipt, GPS and
+   comment workloads require their own measured read/permission regressions.
+3. Missing foundation/correction migration-history entries are not reconciled by
+   this release. Only the verified seven-table commerce entry was repaired.
+4. A separate `bill_sandbox_sessions` RPC timed out at 01:31:19 UTC. Logs identified
+   that function, not orders or `requirement_status`; no billing changes were made
+   here. Investigate bounded session batches, lock contention and its own atomic
+   billing/idempotency contract rather than blindly replaying migrations.
+5. Authenticated read-only navigation is not mutating checkout/shipping/payment
+   E2E coverage. Production writes need a dedicated approved disposable workflow.
+
+Sanitized local release manifest and detailed logs are in
+`/tmp/makinari-resource-final-manifest.json`, `/tmp/resource-final-*.log` and
+`/tmp/resource-auth-browser-final.log`. Temporary evidence is not a durable
+monitoring service; the decisions and release identifiers above are tracked here.
