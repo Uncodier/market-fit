@@ -4,10 +4,10 @@ import type { CheckoutSupabaseClient } from "./checkout-types"
 import type { Tax } from "@/app/types"
 
 /** Reuse the already authorized kiosk client; never reconstruct a workspace session. */
-export async function loadSelfServicePricing(client: CheckoutSupabaseClient, siteId: string, itemIds: string[]) {
+export async function loadSelfServicePricing(client: CheckoutSupabaseClient, siteId: string, itemIds: string[], channel: "shop" | "marketplace" = "shop") {
   const ids = [...new Set(itemIds)]
   const [prices, taxes] = await Promise.all([
-    loadChannelPriceMap(client, [siteId], "shop", ids),
+    loadChannelPriceMap(client, [siteId], channel, ids),
     client.from("catalog_item_taxes").select("catalog_item_id, tax:taxes(*)").eq("site_id", siteId).in("catalog_item_id", ids),
   ])
   if (taxes.error || !taxes.data) throw new Error("Unable to verify checkout taxes.")

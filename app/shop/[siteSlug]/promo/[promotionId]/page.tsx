@@ -11,9 +11,10 @@ import { SiteLocaleBootstrap } from "@/app/components/commerce/SiteLocaleBootstr
 import { ShopSlugNotFound } from "../../ShopSlugNotFound"
 import { SelfServicePromotion } from "../../self-service/SelfServicePromotion"
 import { getPdpCatalogItem } from "@/app/commerce/pdp-actions"
-import { getModifierGroupsForCatalogItem } from "@/app/catalog/modifier-actions"
+import { loadSelfServiceModifierOptions } from "@/app/commerce/self-service-modifier-options"
 import { isSelfServiceItem } from "@/app/commerce/self-service-options"
 import { enrichSelfServiceInventory } from "../../self-service-catalog"
+import { selfServicePromotionItems } from "../../self-service/self-service-promotion-requirements"
 
 export const dynamic = "force-dynamic"
 
@@ -48,13 +49,11 @@ export default async function ShopPromoPage({
   if (context?.selfService) {
     const { location, fulfillmentOptions } = context.selfService
     const promo = res.data as PromoBundleData
-    const rows = (promo.required_items || []).map((row) => ({ id: row.catalog_item_id, minimum: Math.max(1, row.min_quantity || 1) }))
-    const pickRows = (promo.category_pick_items || []).map((item) => ({ id: item.id, minimum: 1 }))
-    const unique = Array.from(new Map([...rows, ...pickRows].map((row) => [row.id, row])).values())
+    const unique = selfServicePromotionItems(promo)
     const resolved = await Promise.all(unique.map(async (row) => {
       const item = await getPdpCatalogItem(row.id, { requireStorefront: true })
       if (!item || item.site_id !== site.id || !isSelfServiceItem(item, fulfillmentOptions, location.id)) return null
-      const groups = await getModifierGroupsForCatalogItem(item.id)
+      const groups = await loadSelfServiceModifierOptions({ locationId: location.id, hostId: item.id, fulfillment: fulfillmentOptions[0] })
       const [branchItem] = await enrichSelfServiceInventory(site.id, location.id, [item])
       return { item: branchItem, minimum: row.minimum, configurable: !!groups.error || groups.data.length > 0 }
     }))

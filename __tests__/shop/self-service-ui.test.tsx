@@ -10,7 +10,7 @@ import { SelfServiceCart } from "@/app/shop/[siteSlug]/self-service/SelfServiceC
 import { useSelfService } from "@/app/shop/[siteSlug]/self-service/SelfServiceProvider"
 import { useRouter } from "next/navigation"
 import { Html5Qrcode } from "html5-qrcode"
-import { getModifierGroupsForCatalogItem } from "@/app/catalog/modifier-actions"
+import { getSelfServiceModifierOptions } from "@/app/commerce/self-service-modifier-options-actions"
 import { shopItem } from "./catalog-fixture"
 
 jest.mock("@/app/shop/[siteSlug]/self-service/SelfServiceProvider", () => ({ useSelfService: jest.fn() }))
@@ -25,7 +25,7 @@ jest.mock("@/app/components/commerce/ModifierPickerPanel", () => ({
 }))
 jest.mock("react-qr-code", () => ({ __esModule: true, default: ({ value }: { value: string }) => <div data-testid="order-qr">{value}</div> }))
 jest.mock("html5-qrcode", () => ({ Html5Qrcode: jest.fn() }))
-jest.mock("@/app/catalog/modifier-actions", () => ({ getModifierGroupsForCatalogItem: jest.fn() }))
+jest.mock("@/app/commerce/self-service-modifier-options-actions", () => ({ getSelfServiceModifierOptions: jest.fn() }))
 const identity = jest.fn()
 const addItem = jest.fn()
 const push = jest.fn()
@@ -37,7 +37,7 @@ beforeEach(() => {
   jest.clearAllMocks()
   jest.mocked(useSelfService).mockReturnValue(state as unknown as ReturnType<typeof useSelfService>)
   jest.mocked(useRouter).mockReturnValue({ push } as unknown as ReturnType<typeof useRouter>)
-  jest.mocked(getModifierGroupsForCatalogItem).mockResolvedValue({ data: [] })
+  jest.mocked(getSelfServiceModifierOptions).mockResolvedValue({ data: [] })
 })
 
 it("rejects raw user UUIDs and accepts only signed buyer syntax", () => {
@@ -102,13 +102,21 @@ it("keeps PDP variant/modifier selection and checkout in the location route with
   expect(screen.getByRole("button", { name: /Add to order/ })).toBeDisabled()
   fireEvent.click(screen.getByRole("button", { name: "Select small" }))
   await waitFor(() => expect(screen.getByRole("button", { name: "Select oat" })).toBeVisible())
-  expect(getModifierGroupsForCatalogItem).toHaveBeenCalledWith("small")
+  expect(getSelfServiceModifierOptions).toHaveBeenCalledWith({ locationId: "branch", hostId: "coffee", selectedId: "small", fulfillment: "pickup" })
   fireEvent.click(screen.getByRole("button", { name: "Select oat" }))
   fireEvent.click(screen.getByRole("button", { name: /Add to order/ }))
   expect(addItem).toHaveBeenCalledWith(expect.objectContaining({ id: "small", metadata: expect.objectContaining({ pickup_location_ids: ["branch"] }) }), 1,
     [{ groupId: "milk", catalogItemId: "oat", name: "Oat", cartQty: 1, cartPrice: 2 }])
   expect(push).toHaveBeenCalledWith("/shop/branch?cart=1")
   expect(screen.queryByText(/sign in/i)).not.toBeInTheDocument()
+})
+
+it("disables the host and explains when required options cannot be supplied", () => {
+  const reason = "This item is unavailable: not enough options in Milk for this location and order type. Please choose another item or ask staff for help."
+  render(<SelfServiceProductDetail item={product} modifierGroups={[]} modifierUnavailableReason={reason} />)
+  expect(screen.getByRole("alert")).toHaveTextContent(reason)
+  expect(screen.getByRole("button", { name: /Add to order/ })).toBeDisabled()
+  expect(screen.queryByRole("button", { name: "Select oat" })).not.toBeInTheDocument()
 })
 
 it("never quick-applies coupons into the normal storefront cart", () => {

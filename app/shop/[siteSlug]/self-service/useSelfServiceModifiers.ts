@@ -1,28 +1,41 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { getModifierGroupsForCatalogItem } from "@/app/catalog/modifier-actions"
-import type { ModifierGroupWithItems } from "@/app/catalog/modifier-types"
+import { startTransition, useEffect, useState } from "react"
+import { getSelfServiceModifierOptions } from "@/app/commerce/self-service-modifier-options-actions"
+import type { SelfServiceModifierOptions, SelfServiceModifierRequest } from "@/app/commerce/self-service-modifier-options"
 import type { CartModifier } from "@/app/commerce/cart-modifiers"
 
-/** Child-specific groups override parent groups; the shared action owns fallback inheritance. */
-export function useSelfServiceModifiers(hostId: string, selectedId: string | null, initialGroups: ModifierGroupWithItems[], initialError: boolean) {
-  const [loaded, setLoaded] = useState({ id: hostId, groups: initialGroups, error: initialError })
-  const [selection, setSelection] = useState<{ id: string; modifiers: CartModifier[] }>({ id: hostId, modifiers: [] })
+const EMPTY_MODIFIERS: CartModifier[] = []
+
+/** Every scope change revalidates options, prices, and stock through the same public loader. */
+export function useSelfServiceModifiers(request: SelfServiceModifierRequest, initial: SelfServiceModifierOptions, initialFulfillment: string) {
+  const { locationId, hostId, selectedId, fulfillment } = request
   const target = selectedId || hostId
+  const key = `${locationId}:${hostId}:${target}:${fulfillment}`
+  const initialKey = `${locationId}:${hostId}:${hostId}:${initialFulfillment}`
+  const [loaded, setLoaded] = useState({ key: initialKey, result: initial })
+  const [selection, setSelection] = useState<{ key: string; modifiers: CartModifier[] }>({ key: initialKey, modifiers: EMPTY_MODIFIERS })
   useEffect(() => {
-    if (target === loaded.id) return
+    if (key === loaded.key) return
     let cancelled = false
-    getModifierGroupsForCatalogItem(target).then((result) => {
-      if (!cancelled) setLoaded({ id: target, groups: result.data, error: !!result.error })
-    }).catch(() => { if (!cancelled) setLoaded({ id: target, groups: [], error: true }) })
+    startTransition(async () => {
+      let result: SelfServiceModifierOptions
+      try { result = await getSelfServiceModifierOptions({ locationId, hostId, selectedId: target, fulfillment }) }
+      catch { result = { data: [], error: "Unable to load product options. Please reload this page before ordering." } }
+      if (!cancelled) {
+        setLoaded({ key, result })
+        setSelection({ key, modifiers: EMPTY_MODIFIERS })
+      }
+    })
     return () => { cancelled = true }
-  }, [target, loaded.id])
+  }, [key, loaded.key, locationId, hostId, target, fulfillment])
   return {
-    groups: loaded.id === target ? loaded.groups : [],
-    ready: loaded.id === target,
-    error: loaded.id === target && loaded.error,
-    modifiers: selection.id === target ? selection.modifiers : [],
-    setModifiers: (modifiers: CartModifier[]) => setSelection({ id: target, modifiers }),
+    key,
+    groups: loaded.key === key ? loaded.result.data : [],
+    ready: loaded.key === key,
+    error: loaded.key === key ? loaded.result.error : undefined,
+    unavailableReason: loaded.key === key ? loaded.result.unavailableReason : undefined,
+    modifiers: loaded.key === key && selection.key === key ? selection.modifiers : EMPTY_MODIFIERS,
+    setModifiers: (modifiers: CartModifier[]) => setSelection({ key, modifiers }),
   }
 }

@@ -89,4 +89,19 @@ describe("public commerce checkout identity", () => {
     expect(input.buyerUserId).toBeUndefined()
     expect(input.userId).toBeUndefined()
   })
+
+  it.each([{ payments: [{ method: "cash", amount: 10 }] }, { existingOrderId: "known-kiosk-order" }, { isStaffMutation: true }, { intent: "pay" }])("rejects forged payment/staff mutation before reaching checkout %#", async (attack) => {
+    const response = await POST(request({ ...baseBody, ...attack }))
+    expect(response.status).toBe(400)
+    expect(checkoutCart).not.toHaveBeenCalled()
+    expect(await response.json()).toHaveProperty("checkoutState", "rejected")
+  })
+
+  it("returns unresolved server failures as uncertain, never a safe 400 retry", async () => {
+    ;(createClient as jest.Mock).mockResolvedValue({ auth: { getUser: async () => ({ data: { user: null } }) } })
+    ;(checkoutCart as jest.Mock).mockResolvedValue({ error: "Order link unavailable", checkoutState: "uncertain" })
+    const response = await POST(request(baseBody))
+    expect(response.status).toBe(409)
+    expect(await response.json()).toEqual({ error: "Order link unavailable", checkoutState: "uncertain" })
+  })
 })

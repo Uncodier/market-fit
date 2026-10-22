@@ -41,7 +41,8 @@ export async function upsertSaleOrderItemsWithModifiers(params: {
   const client = isAdmin ? supabaseAdmin : supabase
 
   const resolveItemStatus = (pl: any, existingItem: any) => {
-    if (params.selfService) return selfServiceLineState(isFullyPaid, existingItem)
+    // Release and inventory use current locked payment state, not this snapshot.
+    if (params.selfService) return selfServiceLineState(false, existingItem)
     let newStatus = "draft"
     let sentAt: string | null = null
 

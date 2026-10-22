@@ -18,6 +18,7 @@ type PersistCheckoutRecordsParams = {
   supabase: CheckoutSupabaseClient
   supabaseAdmin: CheckoutSupabaseClient
   isAdmin: boolean
+  publicCheckout?: boolean
   siteId: string
   source: CheckoutSource
   buyerUserId?: string | null
@@ -149,9 +150,13 @@ export async function persistCheckoutRecords(
     saleInitialStatus = isFullyPaid ? "completed" : "pending"
     orderInitialStatus = saleInitialStatus
   }
-  if (params.selfServiceLocationId) {
+  if (params.publicCheckout) {
     saleInitialStatus = isFullyPaid ? "completed" : "pending"
     orderInitialStatus = saleInitialStatus
+  }
+  if (params.selfServiceLocationId) {
+    saleInitialStatus = isFullyPaid ? "completed" : "pending"
+    orderInitialStatus = "pending"
   }
 
   const paymentMethodToStore = params.payments?.length
@@ -291,7 +296,9 @@ export async function persistCheckoutRecords(
     const selfService = isSelfServiceOrder(existingOrder) || isSelfServiceOrder({ items: existingItems })
     if (selfService) {
       saleInitialStatus = isFullyPaid ? "completed" : "pending"
-      orderInitialStatus = saleInitialStatus
+      // Payment settles the sale, not kitchen work. Preserve kitchen progress.
+      orderInitialStatus = ["in_progress", "completed", "cancelled"].includes(existingOrder.status)
+        ? existingOrder.status : "pending"
       orderItems = serializedItems(params.processedLines, params.intent,
         selfServiceLocationFromItems(existingOrder.items) || selfServiceLocationFromItems(existingItems), true)
     }

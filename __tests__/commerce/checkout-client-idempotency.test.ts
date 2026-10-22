@@ -24,6 +24,7 @@ function successfulResponse(): Response {
 }
 
 describe("checkoutCartRequest idempotency", () => {
+  beforeEach(() => { jest.mocked(global.fetch).mockReset() })
   afterEach(() => {
     jest.restoreAllMocks()
   })
@@ -46,5 +47,23 @@ describe("checkoutCartRequest idempotency", () => {
     )
     expect(bodies[1].clientMutationId).toBe(bodies[0].clientMutationId)
     expect(bodies[2].clientMutationId).not.toBe(bodies[1].clientMutationId)
+  })
+
+  it.each([400, 409, 500])("retains identity after an ambiguous HTTP %s response", async (status) => {
+    const fetchMock = jest.spyOn(global, "fetch").mockResolvedValueOnce({ ok: false, status, json: async () => ({ error: "Confirmation failed" }) } as Response)
+      .mockResolvedValueOnce(successfulResponse())
+    await checkoutCartRequest(params)
+    await checkoutCartRequest(params)
+    const bodies = fetchMock.mock.calls.map(([, init]) => JSON.parse(String(init?.body)))
+    expect(bodies[0].clientMutationId).toBe(bodies[1].clientMutationId)
+  })
+
+  it("only rotates a failed attempt after an explicit pre-write rejection", async () => {
+    const fetchMock = jest.spyOn(global, "fetch").mockResolvedValueOnce({ ok: false, status: 400, json: async () => ({ error: "Invalid item", checkoutState: "rejected" }) } as Response)
+      .mockResolvedValueOnce(successfulResponse())
+    await checkoutCartRequest(params)
+    await checkoutCartRequest(params)
+    const bodies = fetchMock.mock.calls.map(([, init]) => JSON.parse(String(init?.body)))
+    expect(bodies[0].clientMutationId).not.toBe(bodies[1].clientMutationId)
   })
 })

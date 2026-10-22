@@ -15,6 +15,7 @@ import { promoBadgeLabel } from "@/app/promotions/promotion-merchandising"
 import type { CatalogItem } from "@/app/types"
 import { SelfServiceHeader } from "./SelfServiceHeader"
 import { useSelfService } from "./SelfServiceProvider"
+import { selfServicePromotionCategories } from "./self-service-promotion-requirements"
 
 export function SelfServicePromotion({ promo, items, availableNow }: {
   promo: PromoBundleData; items: Array<{ item: CatalogItem; minimum: number; configurable: boolean }>; availableNow: boolean
@@ -32,17 +33,30 @@ export function SelfServicePromotion({ promo, items, availableNow }: {
       <p className="text-lg font-semibold">{promoBadgeLabel(promo)}</p>
       {promo.description && <p className="whitespace-pre-wrap text-gray-600">{promo.description}</p>}
       {!availableNow && <p role="alert" className="rounded-lg bg-amber-50 p-4">This offer is not available right now.</p>}
+      {((promo.required_items?.length || 0) + (promo.required_categories?.length || 0) > 0) &&
+        <p>{promo.required_items_mode === "any" ? "Meet at least one of the following requirements." : "Meet all of the following requirements."}</p>}
+      {selfServicePromotionCategories(promo).map((category) => {
+        const candidates = new Set((promo.category_pick_items || []).filter((item) => item.category_id === category.id).map((item) => item.id))
+        const quantity = cart.filter((line) => line.category_id === category.id || candidates.has(line.id) || (line.parent_id && candidates.has(line.parent_id)))
+          .reduce((sum, line) => sum + line.cartQty, 0)
+        return <section key={category.id} aria-label={`${category.name} requirement`} className="rounded-xl bg-gray-50 p-4">
+          <h3 className="font-semibold">{category.name}</h3>
+          <p>Choose at least {category.minimum} total from this category · {quantity} in order</p>
+          <p className="text-sm text-gray-500">Mix and match eligible items. You do not need every item in this category.</p>
+        </section>
+      })}
       {items.length > 0 && <>
         <h3 className="text-xl font-semibold">Choose items for this offer</h3>
         <p className="text-sm text-gray-500">Configure product options where needed. Your offer eligibility and final total are checked when ordering.</p>
         {items.map(({ item, minimum, configurable }) => {
-          const compatible = isSelfServiceItem(item, context.fulfillmentOptions, context.location.id) && isItemCompatibleWithFulfillment(item, fulfillment) && item._shop?.sellable !== false
-          const inCart = cart.filter((line) => line.id === item.id).reduce((sum, line) => sum + line.cartQty, 0)
+          const compatible = isSelfServiceItem(item, context.fulfillmentOptions, context.location.id) && isItemCompatibleWithFulfillment(item, fulfillment) && item._shop?.sellable !== false &&
+            (item.is_purchasable !== false || requiresVariantSelection(item))
+          const inCart = cart.filter((line) => line.id === item.id || line.parent_id === item.id).reduce((sum, line) => sum + line.cartQty, 0)
           return <div key={item.id} className="flex items-center gap-4 rounded-xl border p-4">
             <PromptImage src={resolveItemImage(item, "thumb")} alt="" className="h-20 w-20 rounded-lg object-cover" />
             <div className="flex-1"><Link href={`${home}/${item.id}`} className="font-semibold">{item.name}</Link>
               <p className="text-sm">{formatPrice(Number(item.target_sale_price || 0), item.currency || "USD")}</p>
-              <p className="text-sm text-gray-500">Minimum {minimum} · {inCart} in order</p></div>
+              <p className="text-sm text-gray-500">{minimum > 0 ? `Minimum ${minimum}` : "Category choice"} · {inCart} in order</p></div>
             <Button type="button" variant="outline" disabled={!availableNow || !compatible} onClick={() => {
               setPromotion({ id: promo.id, code: promo.code })
               if (configurable || requiresVariantSelection(item)) router.push(`${home}/${item.id}`)

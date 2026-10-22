@@ -26,6 +26,9 @@ import { persistCheckoutRecords } from "./checkout-records"
 import { finalizeCheckout } from "./checkout-finalize"
 import type { CheckoutCartParams } from "./checkout-types"
 import { prepareSelfServiceCheckout } from "./self-service"
+import { authorizeCheckoutBoundary } from "./checkout-boundary"
+import { verifySiteMembership } from "@/app/buyer/verify-site-membership"
+import { markPublicCheckoutReady, publicCheckoutFingerprint, recoverPublicCheckout, type PublicCheckoutClaim } from "./public-checkout-recovery"
 import {
   claimCheckoutMutation,
   completeCheckoutMutation,
@@ -44,17 +47,18 @@ export async function checkoutCart(params: CheckoutCartParams) {
     claimId: string
   } | null = null
   let quotationClaimClient: any = null
-  let publicMutationClaim: {
-    siteId: string
-    clientMutationId: string
-    ownerToken: string
-  } | null = null
+  let publicMutationClaim: PublicCheckoutClaim | null = null
   let checkoutAdminClient: any = null
   let publicMutationHasSideEffects = false
   let posClaim: PosCheckoutClaim | null = null
   let posWritesStarted = false
+  let publicCheckout = ["shop", "marketplace", "quote"].includes(params?.source) && params?.isStaffMutation !== true
+  let publicAttemptUncertain = false
 
   try {
+    const boundary = await authorizeCheckoutBoundary(params)
+    params = boundary.params
+    publicCheckout = boundary.publicCheckout
     if (params.source === 'pos') {
       const access = await requirePosSiteAccess(params.siteId)
       if ('error' in access) return { error: access.error }
@@ -85,11 +89,29 @@ export async function checkoutCart(params: CheckoutCartParams) {
       access: ['shop', 'marketplace', 'quote'].includes(params.source) ? 'public' : 'workspace',
     })
     checkoutAdminClient = supabaseAdmin
+    const authenticatedUserId = (await supabase.auth.getUser()).data.user?.id || null
+    if (boundary.publicCheckout && params.ownerSiteId && !params.selfServiceLocationId &&
+      (!authenticatedUserId || !await verifySiteMembership(supabase, authenticatedUserId, params.ownerSiteId))) {
+      throw new Error("You cannot assign this purchase to that account.")
+    }
+    if (boundary.publicCheckout && ["shop", "marketplace"].includes(params.source)) {
+      if (!params.clientMutationId) throw new Error("An idempotency key is required")
+      const fingerprint = publicCheckoutFingerprint(params, authenticatedUserId)
+      publicAttemptUncertain = true
+      const claim = await claimCheckoutMutation(supabaseAdmin, { siteId: params.siteId,
+        clientMutationId: params.clientMutationId, source: params.source, fingerprint, recoveryLocationId: params.selfServiceLocationId })
+      if (claim.state === "error") throw new Error(claim.error)
+      if (claim.state === "processing") throw new Error("This checkout is being processed or requires staff review. Retry this same attempt; do not place another order.")
+      if (claim.state === "completed") return await recoverPublicCheckout(supabaseAdmin, params.siteId, claim.result)
+      const identity = { siteId: params.siteId, clientMutationId: params.clientMutationId, ownerToken: claim.ownerToken, fingerprint, recoveryLocationId: params.selfServiceLocationId }
+      if (claim.state === "ready") return await recoverPublicCheckout(supabaseAdmin, params.siteId, claim.result, identity)
+      publicMutationClaim = identity
+      publicAttemptUncertain = false
+    }
     const selfService = params.selfServiceLocationId !== undefined
       ? await prepareSelfServiceCheckout(params, supabaseAdmin) : null
+    if (selfService && selfService.params.siteId !== params.siteId) throw new Error("Self-service location does not belong to this shop.")
     if (selfService) params = selfService.params
-    const authenticatedUserId =
-      (await supabase.auth.getUser()).data.user?.id || null
     if (params.source === "pos" && params.clientMutationId) {
       if (!authenticatedUserId) throw new Error("Authentication is required for POS checkout.")
       if (params.payments?.length && params.payments.every((p) => !!p.paymentId)) {
@@ -257,29 +279,6 @@ export async function checkoutCart(params: CheckoutCartParams) {
       ...(selfService ? { selfServiceLocationId: params.selfServiceLocationId } : {}),
     })
 
-    if (source === "shop" || source === "marketplace") {
-      if (!params.clientMutationId) {
-        throw new Error("An idempotency key is required")
-      }
-      const claim = await claimCheckoutMutation(supabaseAdmin, {
-        siteId: params.siteId,
-        clientMutationId: params.clientMutationId,
-        source,
-      })
-      if (claim.state === "error") throw new Error(claim.error)
-      if (claim.state === "processing") {
-        throw new Error("This checkout is already being processed")
-      }
-      if (claim.state === "completed") {
-        return { ...claim.result, idempotent: true }
-      }
-      publicMutationClaim = {
-        siteId: params.siteId,
-        clientMutationId: params.clientMutationId,
-        ownerToken: claim.ownerToken,
-      }
-    }
-
     const attribution = await resolveCheckoutAttribution({
       supabaseAdmin,
       siteId: params.siteId,
@@ -289,7 +288,7 @@ export async function checkoutCart(params: CheckoutCartParams) {
       requestedByLeadId: environment.finalLeadId,
     })
 
-    publicMutationHasSideEffects = Boolean(publicMutationClaim)
+    publicMutationHasSideEffects = Boolean(publicMutationClaim) && !selfService
     // Reservations/line preparation may write too. Persist the boundary first;
     // any failure afterward is ambiguous, never a safe-to-recollect rejection.
     if (posClaim) {
@@ -312,8 +311,10 @@ export async function checkoutCart(params: CheckoutCartParams) {
       effectiveExistingOrderId,
       fulfillment: params.fulfillment,
       ...(selfService ? { selfServiceLocationId: params.selfServiceLocationId } : {}),
+      ...(boundary.publicCheckout ? { publicCheckout: true } : {}),
     })
 
+    publicMutationHasSideEffects = Boolean(publicMutationClaim)
     const records = await persistCheckoutRecords({
       supabase,
       supabaseAdmin,
@@ -329,6 +330,7 @@ export async function checkoutCart(params: CheckoutCartParams) {
       resolvedUserId: environment.resolvedUserId,
       ...(selfService ? { selfServiceLocationId: params.selfServiceLocationId } : {}),
       leadCampaignId: environment.leadCampaignId,
+      ...(boundary.publicCheckout ? { publicCheckout: true } : {}),
       leadSegmentId: environment.leadSegmentId,
       leadCompanyId: environment.leadCompanyId,
       promotionCode: params.promotionCode,
@@ -379,8 +381,10 @@ export async function checkoutCart(params: CheckoutCartParams) {
       activeQuotationClaim,
       customerName: params.customerName,
       orderTotal: records.orderTotal,
+      ...(boundary.publicCheckout ? { publicCheckout: true } : {}),
       ...(selfService ? { selfServiceLocationId: params.selfServiceLocationId } : {}),
       notes: params.notes,
+      ...(publicMutationClaim ? { onReadyForPublicToken: () => markPublicCheckoutReady(supabaseAdmin, publicMutationClaim!, records) } : {}),
     })
     if (result.quotationCompleted) activeQuotationClaim = null
     const { quotationCompleted: _, ...checkoutResult } = result
@@ -420,6 +424,7 @@ export async function checkoutCart(params: CheckoutCartParams) {
       )
     }
     if (error instanceof PosCheckoutRecoveryError) return { error: error.message, recovery: error.recovery }
-    return { error: error.message }
+    return { error: error.message,
+      ...(publicCheckout ? { checkoutState: publicMutationHasSideEffects || publicAttemptUncertain ? "uncertain" as const : "rejected" as const } : {}) }
   }
 }

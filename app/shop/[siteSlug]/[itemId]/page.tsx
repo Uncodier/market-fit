@@ -10,7 +10,7 @@ import { ShopSlugNotFound } from "../ShopSlugNotFound"
 import { PdpPageSkeleton } from "@/app/components/commerce/pdp/PdpPageSkeleton"
 import { getShopRouteContext } from "../shop-route-context"
 import { isSelfServiceItem } from "@/app/commerce/self-service-options"
-import { getModifierGroupsForCatalogItem } from "@/app/catalog/modifier-actions"
+import { loadSelfServiceModifierOptions } from "@/app/commerce/self-service-modifier-options"
 import { SelfServiceProductDetail } from "../self-service/SelfServiceProductDetail"
 import { enrichSelfServiceInventory } from "../self-service-catalog"
 
@@ -57,10 +57,12 @@ async function ShopItemContent({ siteSlug, itemId }: { siteSlug: string; itemId:
     const { location, fulfillmentOptions } = context.selfService
     if (!item || item.site_id !== context.site.id || !isSelfServiceItem(item, fulfillmentOptions, location.id)) notFound()
     const [branchItem] = await enrichSelfServiceInventory(context.site.id, location.id, [item])
-    const modifiers = await getModifierGroupsForCatalogItem(item.id)
+    const fulfillment = fulfillmentOptions[0]
+    const modifiers = await loadSelfServiceModifierOptions({ locationId: location.id, hostId: item.id, fulfillment })
     return <>
       <SiteLocaleBootstrap locale={context.site.settings?.default_locale} />
-      <SelfServiceProductDetail item={branchItem} modifierGroups={modifiers.data} modifierError={!!modifiers.error} />
+      <SelfServiceProductDetail item={branchItem} modifierGroups={modifiers.data} modifierError={modifiers.error}
+        modifierFulfillment={fulfillment} modifierUnavailableReason={modifiers.unavailableReason} />
     </>
   }
   // Prefer resolving via catalog item (includes site join) so a flaky slug scan

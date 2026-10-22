@@ -37,6 +37,7 @@ type ProcessCheckoutLinesParams = {
   effectiveExistingOrderId?: string
   fulfillment: CheckoutCartParams["fulfillment"]
   selfServiceLocationId?: string
+  publicCheckout?: boolean
 }
 
 export async function processCheckoutLines(params: ProcessCheckoutLinesParams) {
@@ -58,8 +59,8 @@ export async function processCheckoutLines(params: ProcessCheckoutLinesParams) {
   const queryClient = isAdmin ? supabaseAdmin : supabase
   const existingCurrency = await resolveExistingCheckoutCurrency(params)
   const checkoutStock = await revalidateCheckoutAvailability(params)
-  const selfServicePricing = params.selfServiceLocationId ? await loadSelfServicePricing(queryClient, siteId,
-    lines.flatMap((line) => [line.catalogItemId, ...(line.modifiers || []).map((modifier) => modifier.catalogItemId)])) : null
+  const selfServicePricing = params.selfServiceLocationId || (params.publicCheckout && ["shop", "marketplace"].includes(priceListChannel)) ? await loadSelfServicePricing(queryClient, siteId,
+    lines.flatMap((line) => [line.catalogItemId, ...(line.modifiers || []).map((modifier) => modifier.catalogItemId)]), priceListChannel === "marketplace" ? "marketplace" : "shop") : null
   let orderSubtotal = 0
   const processedLines: ProcessedCheckoutLine[] = []
   const catalogItemsForShipping: Partial<

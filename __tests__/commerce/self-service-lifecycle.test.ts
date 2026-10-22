@@ -69,7 +69,7 @@ describe("self-service persisted payment gate", () => {
   it("releases a genuinely free draft after a server-resolved coupon, not a client total", async () => {
     jest.mocked(resolvePromotionDiscount).mockResolvedValueOnce({ data: { discount: 20, promotionId: "promo" } } as never)
     const result = await persistCheckoutRecords({ ...recordParams(database()), promotionCode: "FREE" })
-    expect(result).toMatchObject({ orderTotal: 0, isFullyPaid: true, saleInitialStatus: "completed", orderInitialStatus: "completed" })
+    expect(result).toMatchObject({ orderTotal: 0, isFullyPaid: true, saleInitialStatus: "completed", orderInitialStatus: "pending" })
     expect(result.sale).toMatchObject({ amount_due: 0, payments: [] })
   })
 
@@ -89,7 +89,7 @@ describe("self-service persisted payment gate", () => {
     expect(partial.sale.source).toBe("shop")
     expect(partial.order.items[0].metadata.self_service).toBe(true)
     const paid = await persistCheckoutRecords({ ...pos, payments: [{ method: "cash", amount: 15 }] })
-    expect(paid).toMatchObject({ isFullyPaid: true, orderInitialStatus: "completed", saleInitialStatus: "completed" })
+    expect(paid).toMatchObject({ isFullyPaid: true, orderInitialStatus: "pending", saleInitialStatus: "completed" })
     expect(paid.sale.amount_due).toBe(0)
   })
 
@@ -97,6 +97,21 @@ describe("self-service persisted payment gate", () => {
     const result = await persistCheckoutRecords({ ...recordParams(database()), source: "pos", selfServiceLocationId: undefined, intent: "complete" })
     expect(result).toMatchObject({ isFullyPaid: false, saleInitialStatus: "pending", orderInitialStatus: "completed" })
     expect(result.order.items[0].metadata).not.toHaveProperty("self_service")
+  })
+
+  it("preserves kitchen progress on paid self-service edits", async () => {
+    const client = database()
+    const initial = await persistCheckoutRecords(recordParams(client))
+    client.tables.sale_orders[0].status = "in_progress"
+    const result = await persistCheckoutRecords({ ...recordParams(client), source: "pos",
+      effectiveExistingOrderId: initial.order.id, payments: [{ method: "cash", amount: 20 }], intent: "complete" })
+    expect(result).toMatchObject({ isFullyPaid: true, saleInitialStatus: "completed", orderInitialStatus: "in_progress" })
+  })
+
+  it.each([0, 20])("uses server total %s, not requested completion, for normal public checkout", async (total) => {
+    const result = await persistCheckoutRecords({ ...recordParams(database()), selfServiceLocationId: undefined,
+      publicCheckout: true, intent: "complete", orderSubtotal: total })
+    expect(result.orderInitialStatus).toBe(total === 0 ? "completed" : "pending")
   })
 })
 
@@ -111,13 +126,13 @@ describe("self-service kitchen line lifecycle", () => {
     expect(client.tables.sale_order_items.every((row) => row.metadata?.self_service === true)).toBe(true)
   })
 
-  it.each(["draft", "complete", "pay"])("releases paid drafts as new, not completed, for intent %s", async (intent) => {
+  it.each(["draft", "complete", "pay"])("defers paid draft release to the atomic RPC for intent %s", async (intent) => {
     const client = database()
     await upsertSaleOrderItemsWithModifiers({ supabase: client, supabaseAdmin: client, isAdmin: false,
       siteId: "site", orderId: "order", existingItems: [], processedLines: [line, modifier], lines: [],
       intent, isFullyPaid: true, selfService: true, selfServiceLocationId: "location" })
-    expect(client.tables.sale_order_items.map((row) => row.status)).toEqual(["new", "new"])
-    expect(client.tables.sale_order_items.every((row) => typeof row.sent_at === "string")).toBe(true)
+    expect(client.tables.sale_order_items.map((row) => row.status)).toEqual(["draft", "draft"])
+    expect(client.tables.sale_order_items.every((row) => row.sent_at === null)).toBe(true)
   })
 
   it.each(["new", "preparing", "ready", "completed", "cancelled"])("does not re-release a %s line on retry", (status) => {

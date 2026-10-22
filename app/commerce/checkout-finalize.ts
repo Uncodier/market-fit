@@ -33,6 +33,7 @@ type FinalizeCheckoutParams = {
   supabaseAdmin: CheckoutSupabaseClient
   isAdmin: boolean
   isStaffCheckout: boolean
+  publicCheckout?: boolean
   siteId: string
   source: CheckoutSource
   lines: CheckoutLine[]
@@ -61,6 +62,7 @@ type FinalizeCheckoutParams = {
   customerName?: string
   orderTotal: number
   notes?: string
+  onReadyForPublicToken?: () => Promise<void>
 }
 
 export async function finalizeCheckout(params: FinalizeCheckoutParams) {
@@ -70,7 +72,9 @@ export async function finalizeCheckout(params: FinalizeCheckoutParams) {
   const selfServiceLocationId = params.selfServiceLocationId
     || selfServiceLocationFromItems((params.order as { items?: unknown }).items)
     || selfServiceLocationFromItems(params.existingItems)
-  const upsertedItems = await upsertSaleOrderItemsWithModifiers({
+  const fulfillmentIntent = params.publicCheckout && params.isFullyPaid && !selfService
+    ? "complete" : params.intent
+  let upsertedItems = await upsertSaleOrderItemsWithModifiers({
     supabase: params.supabase,
     supabaseAdmin: params.supabaseAdmin,
     isAdmin: params.isAdmin,
@@ -80,7 +84,7 @@ export async function finalizeCheckout(params: FinalizeCheckoutParams) {
     existingItems: params.existingItems,
     processedLines: params.processedLines,
     lines: params.lines,
-    intent: params.intent,
+    intent: fulfillmentIntent,
     isFullyPaid: params.isFullyPaid,
     selfService,
     selfServiceLocationId,
@@ -96,7 +100,7 @@ export async function finalizeCheckout(params: FinalizeCheckoutParams) {
     supabaseAdmin: params.supabaseAdmin,
     siteId: params.siteId,
     upsertedItems,
-    intent: params.intent,
+    intent: fulfillmentIntent,
     isFullyPaid: params.isFullyPaid,
     isAdmin: params.isStaffCheckout,
     finalLeadId: params.finalLeadId,
@@ -118,11 +122,11 @@ export async function finalizeCheckout(params: FinalizeCheckoutParams) {
   }
 
   if (selfService) {
-    if (params.isFullyPaid && params.finalOriginLocationId) {
-      await applySelfServiceInventoryRelease({
-        client: queryClient, siteId: params.siteId, locationId: params.finalOriginLocationId,
-        existingItems: params.existingItems, nextItems: upsertedItems,
+    if (params.isFullyPaid) {
+      upsertedItems = await applySelfServiceInventoryRelease({
+        client: params.supabaseAdmin, siteId: params.siteId, orderId: params.order.id,
       })
+      await bumpCacheEpoch("order-data", params.siteId)
     }
   } else if (
     params.fulfillment === "ship" &&
@@ -244,6 +248,9 @@ export async function finalizeCheckout(params: FinalizeCheckoutParams) {
     if ("error" in completion) throw new Error(completion.error)
   }
 
+  await tryPostSaleJournalWithClient(params.supabaseAdmin, params.sale.id, params.siteId)
+  await params.onReadyForPublicToken?.()
+
   // The checkout has already authorized and persisted this exact order. Public
   // buyers may not have RLS permission to update sale_orders, so token creation
   // must use the server-only client or a successful order is reported as failed.
@@ -266,7 +273,6 @@ export async function finalizeCheckout(params: FinalizeCheckoutParams) {
     .eq("id", params.order.id)
     .single()
   const order = latest ? { ...params.order, ...latest } : params.order
-  await tryPostSaleJournalWithClient(params.supabaseAdmin, params.sale.id, params.siteId)
 
   if (
     params.finalLeadId &&

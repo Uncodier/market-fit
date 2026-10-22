@@ -3,7 +3,7 @@ import { createServiceClient } from "@/lib/supabase/server"
 import type { CatalogItem } from "@/app/types"
 
 type Client = Awaited<ReturnType<typeof createServiceClient>>
-type InventoryItem = Pick<CatalogItem, "id" | "availability_mode" | "availability_status" | "_shop">
+type InventoryItem = Pick<CatalogItem, "id" | "availability_mode" | "availability_status" | "is_purchasable" | "_shop">
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 /** Stock from another branch must never make a kiosk item appear available. */
@@ -22,7 +22,7 @@ export async function enrichSelfServiceInventory<T extends InventoryItem>(
   let variantChildren: CatalogItem[] = []
   if (variantParents.length) {
     const result = await client.from("catalog_items")
-      .select("id, parent_id, availability_mode, availability_status")
+      .select("id, parent_id, availability_mode, availability_status, is_purchasable")
       .eq("site_id", siteId).eq("status", "active").eq("is_purchasable", true).in("parent_id", variantParents)
     if (result.error || !result.data) throw new Error("Unable to verify branch variants.")
     variantChildren = result.data
@@ -43,8 +43,9 @@ export async function enrichSelfServiceInventory<T extends InventoryItem>(
   if (!["allow", "warn", "block"].includes(policy)) throw new Error("Invalid branch stock policy.")
   const enrich = (item: InventoryItem): InventoryItem => {
     const availableQty = item.availability_mode === "inventory" ? quantities.get(item.id) || 0 : undefined
-    const sellable = item.availability_mode === "inventory" ? availableQty! > 0 || policy !== "block"
+    const stockAllowsSale = item.availability_mode === "inventory" ? availableQty! > 0 || policy !== "block"
       : item.availability_mode === "manual" ? item.availability_status === "available" : item._shop?.sellable !== false
+    const sellable = item.is_purchasable !== false && !item._shop?.hasVariants && stockAllowsSale
     const children = (item._shop?.children || []) as CatalogItem[]
     const summarizedChildren = children.length ? children : variantChildren.filter((child) => child.parent_id === item.id)
     const enrichedChildren = summarizedChildren.map((child) => enrich(child) as CatalogItem)

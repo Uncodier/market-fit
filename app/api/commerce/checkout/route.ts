@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { checkoutCart, type CheckoutCartParams } from '@/app/commerce/checkout'
 import { createClient } from '@/lib/supabase/server'
+import { normalizePublicCheckoutInput } from '@/app/commerce/public-checkout-input'
 import {
   decodeRequestBody,
   readLimitedRequestBody,
@@ -27,6 +28,7 @@ function hasValidCheckoutBounds(body: CheckoutCartParams): boolean {
   let modifierCount = 0
   for (const line of body.lines) {
     if (
+      !line || typeof line.catalogItemId !== 'string' ||
       !line.catalogItemId ||
       line.catalogItemId.length > 128 ||
       !Number.isSafeInteger(line.quantity) ||
@@ -36,10 +38,12 @@ function hasValidCheckoutBounds(body: CheckoutCartParams): boolean {
       return false
     }
     const modifiers = line.modifiers || []
+    if (!Array.isArray(modifiers)) return false
     modifierCount += modifiers.length
     if (modifiers.length > MAX_MODIFIERS_PER_LINE) return false
     for (const modifier of modifiers) {
       if (
+        !modifier || typeof modifier.catalogItemId !== 'string' ||
         !modifier.catalogItemId ||
         modifier.catalogItemId.length > 128 ||
         !Number.isSafeInteger(modifier.quantity) ||
@@ -63,7 +67,7 @@ export async function POST(req: Request) {
     const rawBody = decodeRequestBody(
       await readLimitedRequestBody(req, MAX_CHECKOUT_BODY_BYTES)
     )
-    const body = JSON.parse(rawBody) as CheckoutCartParams
+    let body = JSON.parse(rawBody) as CheckoutCartParams
 
     if (
       !body?.siteId ||
@@ -73,20 +77,22 @@ export async function POST(req: Request) {
       !hasValidCheckoutBounds(body)
     ) {
       return NextResponse.json(
-        { error: 'Missing required checkout fields' },
+        { error: 'Missing required checkout fields', checkoutState: 'rejected' },
         { status: 400 }
       )
     }
 
     // Public storefronts only — POS/sales keep using the server action in-app.
     if (!['shop', 'marketplace', 'quote'].includes(body.source)) {
-      return NextResponse.json({ error: 'Unsupported checkout source' }, { status: 400 })
+      return NextResponse.json({ error: 'Unsupported checkout source', checkoutState: 'rejected' }, { status: 400 })
     }
 
-    // Strip internal/staff-only parameters that shouldn't be accessible via the public endpoint
-    delete body.isStaffMutation;
-    delete (body as any).userId;
-    delete body.buyerUserId;
+    try {
+      if (body.isStaffMutation === true) throw new Error('Staff checkout is not available through this endpoint.')
+      body = normalizePublicCheckoutInput(body)
+    } catch (error) {
+      return NextResponse.json({ error: error instanceof Error ? error.message : 'Invalid checkout', checkoutState: 'rejected' }, { status: 400 })
+    }
 
     const supabase = await createClient()
     const {
@@ -99,20 +105,21 @@ export async function POST(req: Request) {
     const result = await checkoutCart(body)
 
     if ("error" in result && result.error) {
-      return NextResponse.json({ error: result.error }, { status: 400 })
+      const state = 'checkoutState' in result ? result.checkoutState : 'uncertain'
+      return NextResponse.json({ error: result.error, checkoutState: state }, { status: state === 'rejected' ? 400 : 409 })
     }
 
     return NextResponse.json(result)
   } catch (err: unknown) {
     if (err instanceof RequestBodyTooLargeError) {
-      return NextResponse.json({ error: err.message }, { status: err.status })
+      return NextResponse.json({ error: err.message, checkoutState: 'rejected' }, { status: err.status })
     }
     if (err instanceof SyntaxError) {
-      return NextResponse.json({ error: 'Invalid JSON payload' }, { status: 400 })
+      return NextResponse.json({ error: 'Invalid JSON payload', checkoutState: 'rejected' }, { status: 400 })
     }
-    console.error('Commerce checkout API error:', err)
+    console.error('Commerce checkout API failed before a confirmed response')
     return NextResponse.json(
-      { error: err instanceof Error ? err.message : 'Checkout failed' },
+      { error: 'Checkout could not be confirmed. Retry this same attempt.', checkoutState: 'uncertain' },
       { status: 500 }
     )
   }

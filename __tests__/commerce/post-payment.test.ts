@@ -166,8 +166,8 @@ describe("processPostPaymentFulfillment", () => {
     await processPostPaymentFulfillment("order-1", "site-1", "sale-1", undefined, "", {
       stripeSessionId: "cs_self_service", fulfillmentClaimToken: "claim",
     });
-    expect(itemsChain.update).toHaveBeenCalledWith({ status: "new", sent_at: expect.any(String) });
-    expect(itemsChain.eq).toHaveBeenCalledWith("status", "draft");
+    expect(itemsChain.update).not.toHaveBeenCalled();
+    expect(inventoryChain.update).not.toHaveBeenCalled();
     expect(ordersChain.eq).toHaveBeenCalledWith("site_id", "site-1");
     expect(ordersChain.eq).toHaveBeenCalledWith("sale_id", "sale-1");
     expect(mockSupabase.rpc).toHaveBeenCalledWith("apply_stripe_sale_inventory_effect", expect.any(Object));

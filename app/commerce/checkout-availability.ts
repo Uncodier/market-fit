@@ -25,6 +25,7 @@ export async function revalidateCheckoutAvailability(params: {
   priceListChannel: unknown
   existingReservationId?: string
   selfServiceLocationId?: string
+  publicCheckout?: boolean
   supabaseAdmin?: import("./checkout-types").CheckoutSupabaseClient
 }): Promise<CheckoutStock> {
   const requests: StockRequest[] = []
@@ -49,7 +50,7 @@ export async function revalidateCheckoutAvailability(params: {
 
   const isPos = params.priceListChannel === "pos"
   const totals = new Map<string, StockRequest>()
-  if (isPos || params.selfServiceLocationId) {
+  if (isPos || params.selfServiceLocationId || params.publicCheckout) {
     for (const request of requests) {
       const prior = totals.get(request.catalogItemId)
       const quantity = (prior?.quantity || 0) + request.quantity
@@ -64,7 +65,7 @@ export async function revalidateCheckoutAvailability(params: {
   }
 
   const stock: CheckoutStock = isPos ? new Map() : null
-  for (const request of isPos || params.selfServiceLocationId ? totals.values() : requests) {
+  for (const request of isPos || params.selfServiceLocationId || params.publicCheckout ? totals.values() : requests) {
     const availability = await assertCanSell(
       params.siteId,
       request.catalogItemId,
@@ -72,7 +73,7 @@ export async function revalidateCheckoutAvailability(params: {
       params.originLocationId,
       params.isAdmin,
       { skipVariantSelection: request.skipVariantSelection,
-        ...(params.selfServiceLocationId ? { checkoutClient: params.supabaseAdmin } : {}) },
+        ...(params.selfServiceLocationId || params.publicCheckout ? { checkoutClient: params.supabaseAdmin } : {}) },
     )
     stock?.set(request.catalogItemId, availability.availableQty)
   }

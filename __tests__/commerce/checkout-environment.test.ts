@@ -105,4 +105,16 @@ describe("prepareCheckoutEnvironment archived sites", () => {
     const { params } = setup()
     await expect(prepareCheckoutEnvironment({ ...params, lines: [] })).rejects.toThrow("Cart is empty")
   })
+
+  it("rejects an explicitly supplied foreign or inactive storefront location before checkout writes", async () => {
+    const { params } = setup()
+    const location = { select: jest.fn().mockReturnThis(), eq: jest.fn().mockReturnThis(), maybeSingle: jest.fn().mockResolvedValue({ data: null, error: null }) }
+    params.supabaseAdmin.from.mockImplementation((table: string) => {
+      if (table === "locations") return location as never
+      throw new Error("No further reads should occur")
+    })
+    await expect(prepareCheckoutEnvironment({ ...params, originLocationId: "foreign-location" })).rejects.toThrow("Selected location is unavailable")
+    expect(location.eq).toHaveBeenCalledWith("site_id", "site-1")
+    expect(location.eq).toHaveBeenCalledWith("is_active", true)
+  })
 })

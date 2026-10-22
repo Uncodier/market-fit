@@ -9,7 +9,7 @@ import { applySelfServiceInventoryRelease } from "@/app/commerce/self-service-in
 
 jest.mock("next/cache", () => ({ revalidatePath: jest.fn() }))
 jest.mock("@/lib/redis/json-cache", () => ({ bumpCacheEpoch: jest.fn().mockResolvedValue(true) }))
-jest.mock("@/app/commerce/self-service-inventory", () => ({ applySelfServiceInventoryRelease: jest.fn().mockResolvedValue(undefined) }))
+jest.mock("@/app/commerce/self-service-inventory", () => ({ applySelfServiceInventoryRelease: jest.fn().mockResolvedValue([]) }))
 
 jest.mock("@/app/commerce/checkout-order-items", () => ({
   upsertSaleOrderItemsWithModifiers: jest.fn().mockResolvedValue([]),
@@ -81,11 +81,25 @@ describe("finalizeCheckout", () => {
     expect(revalidatePath).toHaveBeenCalledWith("/orders/order-1")
   })
 
+  it("derives ordinary public free completion from trusted payment state", async () => {
+    await finalizeCheckout({ ...posUpdateParams(), publicCheckout: true, intent: "draft", isFullyPaid: true })
+    expect(upsertSaleOrderItemsWithModifiers).toHaveBeenCalledWith(expect.objectContaining({ intent: "complete" }))
+  })
+
+  it("checkpoints required effects before creating the public token", async () => {
+    const onReadyForPublicToken = jest.fn().mockResolvedValue(undefined)
+    await finalizeCheckout({ ...posUpdateParams(), onReadyForPublicToken })
+    expect(onReadyForPublicToken).toHaveBeenCalledTimes(1)
+    expect(onReadyForPublicToken.mock.invocationCallOrder[0])
+      .toBeGreaterThan(jest.mocked(upsertSaleOrderItemsWithModifiers).mock.invocationCallOrder[0])
+  })
+
   it.each(["complete", "pay"] as const)("returns a kitchen ticket after full self-service POS %s", async (intent) => {
     const params = posUpdateParams()
     const released = { id: "line-1", name: "Product", catalog_item_id: "product", quantity: 1,
       status: "new", metadata: { client_line_key: "line", self_service: true } }
     jest.mocked(upsertSaleOrderItemsWithModifiers).mockResolvedValueOnce([released])
+    jest.mocked(applySelfServiceInventoryRelease).mockResolvedValueOnce([released])
     const result = await finalizeCheckout({ ...params, intent, isFullyPaid: true,
       order: { id: "order-1", items: [{ metadata: { self_service: true } }] } as never,
       existingItems: [{ ...released, status: "draft" }] })
@@ -105,10 +119,11 @@ describe("finalizeCheckout", () => {
     const released = [{ id: "parent", catalog_item_id: "product", quantity: 1, status: "new", sent_at: "released" },
       { id: "extra", catalog_item_id: "modifier", quantity: 2, status: "new", sent_at: "released" }]
     jest.mocked(upsertSaleOrderItemsWithModifiers).mockResolvedValueOnce(released)
+    jest.mocked(applySelfServiceInventoryRelease).mockResolvedValueOnce(released)
     await finalizeCheckout({ ...params, selfServiceLocationId: "location", finalOriginLocationId: "location",
       isFullyPaid: true, orderInitialStatus: "completed", intent: "draft" })
     expect(applySelfServiceInventoryRelease).toHaveBeenCalledWith(expect.objectContaining({
-      existingItems: params.existingItems, nextItems: released, locationId: "location", siteId: "site-1",
+      client: params.supabaseAdmin, orderId: "order-1", siteId: "site-1",
     }))
   })
 

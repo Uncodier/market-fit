@@ -44,6 +44,7 @@ export type CheckoutCartResult =
   | CheckoutCartSuccess
   | {
       error: string
+      checkoutState?: "rejected" | "uncertain"
       success?: undefined
       saleId?: undefined
       orderId?: undefined
@@ -76,12 +77,12 @@ export async function checkoutCartRequest(
     return { error: 'Checkout failed. Please try again.' }
   }
 
-  if (res.ok || (res.status >= 400 && res.status < 500)) {
+  if ((res.ok && data.success === true) || (!data.success && data.checkoutState === "rejected")) {
     pendingMutationIds.delete(mutation.fingerprint)
   }
 
   if (!res.ok) {
-    return { error: data?.error || 'Checkout failed. Please try again.' }
+    return { error: data?.error || 'Checkout failed. Please try again.', checkoutState: !data.success ? data.checkoutState || "uncertain" : "uncertain" }
   }
 
   return data

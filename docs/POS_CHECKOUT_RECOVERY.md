@@ -17,8 +17,12 @@ an order, issue a refund, or mark incomplete checkout as successful.
 An unresolved recorded payment blocks further payment of that same order, even
 if a new mutation ID is supplied. A rejected attempt remains visible and immutable
 in the queue; a newly confirmed attempt uses new mutation and receipt IDs. The
-workspace queue offers **Review order** to reload authoritative data. Top-bar
-consumers can show diagnostic IDs without owning the cart-selection callback.
+workspace queue offers **Review order** in a read-only dialog backed by the
+authenticated, site-scoped POS order read. Paid, cancelled, and incomplete orders
+can be inspected without selecting the unpaid-only payment cart, collecting money,
+or changing queue state. Refreshing the review reads the server again; it does not
+prove checkout finalization. Top-bar consumers can show diagnostic IDs without
+owning the order-review callback.
 
 Do not clear IndexedDB or browser storage to recover a register. Do not collect
 again merely because checkout returned an error. Existing refunds remain separate

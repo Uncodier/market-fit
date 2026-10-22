@@ -57,6 +57,11 @@ export async function prepareCheckoutEnvironment(
     isStaffMutation,
   })
   const queryClient = isAdmin ? supabaseAdmin : supabase
+  if (isAdmin && originLocationId) {
+    const { data: location, error } = await queryClient.from("locations").select("id")
+      .eq("id", originLocationId).eq("site_id", siteId).eq("is_active", true).maybeSingle()
+    if (error || !location) throw new Error("Selected location is unavailable for this shop.")
+  }
   let resolvedUserId = params.userId
 
   const { data: site, error: siteError } = await supabaseAdmin

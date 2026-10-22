@@ -3,6 +3,7 @@ import { createAuthorizedShipment } from "@/app/shipments/create-shipment"
 import { ensureCommerceLeadConverted } from "./ensure-commerce-lead-converted"
 import { grantFromOrder } from "./entitlements"
 import { isPersistedSelfServiceSalePaid, isSelfServiceOrder } from "./self-service-lifecycle"
+import { applySelfServiceInventoryRelease } from "./self-service-inventory"
 
 type PaidOrderItem = {
   id: string
@@ -68,6 +69,26 @@ export async function processPostPaymentFulfillment(
     }
   } catch (e) {
     console.error("Failed to sync commerce lead conversion after payment:", e)
+  }
+
+  if (isSelfServiceOrder(order)) {
+    if (options?.stripeSessionId || options?.fulfillmentClaimToken) {
+      if (!options.stripeSessionId || !options.fulfillmentClaimToken) {
+        throw new Error("Stripe fulfillment ownership is incomplete")
+      }
+      // This RPC verifies the Stripe claim, then delegates to the same atomic
+      // inventory/release transaction as cash and free checkout.
+      const { data, error } = await supabase.rpc("apply_stripe_sale_inventory_effect", {
+        p_sale_id: saleId, p_order_id: orderId,
+        p_session_id: options.stripeSessionId, p_claim_token: options.fulfillmentClaimToken,
+      })
+      if (error || !["completed", "already_completed"].includes(data?.status)) {
+        throw new Error("Failed to atomically release paid self-service order")
+      }
+    } else {
+      await applySelfServiceInventoryRelease({ client: supabase, siteId, orderId })
+    }
+    return
   }
 
   // 1. Load line items

@@ -10,6 +10,7 @@ export type CheckoutMutationClaim =
   | { state: "claimed"; ownerToken: string }
   | { state: "processing" }
   | { state: "completed"; result: CheckoutResult }
+  | { state: "ready"; result: CheckoutResult; ownerToken: string }
   | { state: "error"; error: string }
 
 export async function claimCheckoutMutation(
@@ -18,6 +19,8 @@ export async function claimCheckoutMutation(
     siteId: string
     clientMutationId: string
     source: CheckoutSource
+    fingerprint?: string
+    recoveryLocationId?: string
   }
 ): Promise<CheckoutMutationClaim> {
   const ownerToken = crypto.randomUUID()
@@ -32,6 +35,8 @@ export async function claimCheckoutMutation(
       state: "processing",
       ownerToken,
       source: params.source,
+      ...(params.fingerprint ? { fingerprint: params.fingerprint } : {}),
+      ...(params.recoveryLocationId ? { recoveryLocationId: params.recoveryLocationId } : {}),
     },
   })
 
@@ -53,6 +58,8 @@ export async function claimCheckoutMutation(
   }
 
   const result = data.result as CheckoutResult
+  if (params.fingerprint && result.fingerprint !== params.fingerprint) return { state: "error", error: "This checkout attempt belongs to a different request. Review the original order before retrying." }
+  if (result.state === "ready" && typeof result.ownerToken === "string") return { state: "ready", result, ownerToken: result.ownerToken }
   return result.state === "completed"
     ? { state: "completed", result }
     : { state: "processing" }
@@ -65,9 +72,11 @@ export async function completeCheckoutMutation(
     clientMutationId: string
     ownerToken: string
     result: CheckoutResult
+    fingerprint?: string
+    recoveryLocationId?: string
   }
 ): Promise<void> {
-  const { error } = await supabase
+  const { error, data } = await supabase
     .from("pos_client_mutations")
     .update({
       sale_id:
@@ -77,13 +86,17 @@ export async function completeCheckoutMutation(
       result: {
         ...params.result,
         state: "completed",
+        ...(params.fingerprint ? { fingerprint: params.fingerprint } : {}),
+        ...(params.recoveryLocationId ? { recoveryLocationId: params.recoveryLocationId } : {}),
       },
     })
     .eq("site_id", params.siteId)
     .eq("client_mutation_id", params.clientMutationId)
     .contains("result", { ownerToken: params.ownerToken })
+    .select("id")
+    .maybeSingle()
 
-  if (error) throw new Error("Failed to complete checkout idempotency claim")
+  if (error || !data) throw new Error("Failed to complete checkout idempotency claim")
 }
 
 export async function releaseCheckoutMutation(

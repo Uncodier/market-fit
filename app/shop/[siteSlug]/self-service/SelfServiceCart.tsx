@@ -13,6 +13,7 @@ import type { CheckoutCartSuccess } from "@/app/commerce/checkout-client"
 import { runSelfServiceCheckout } from "./run-self-service-checkout"
 import { useSelfService } from "./SelfServiceProvider"
 import { BuyerIdentityScan } from "./BuyerIdentityScan"
+import { recoverSelfServiceAttempt } from "./self-service-attempt"
 
 export function SelfServiceCart({ open, onOpenChange, onSuccess }: {
   open: boolean; onOpenChange: (open: boolean) => void; onSuccess: (result: CheckoutCartSuccess) => void
@@ -30,10 +31,13 @@ export function SelfServiceCart({ open, onOpenChange, onSuccess }: {
 
   async function checkout(event: React.FormEvent) {
     event.preventDefault()
-    if (loading || !ready || !cart.length || incompatible) return
+    if (loading || !ready) return
     setLoading(true)
     setError("")
     try {
+      const recovered = await recoverSelfServiceAttempt(context.location.id)
+      if (recovered) { clearOrder(); onOpenChange(false); onSuccess(recovered); return }
+      if (!cart.length || incompatible) return
       if (fulfillment !== "pickup" && fulfillment !== "dine_in") throw new Error("Select pickup or dine in.")
       const result = await runSelfServiceCheckout({
         siteId: context.site.id, locationId: context.location.id, cart, fulfillment,
@@ -55,7 +59,9 @@ export function SelfServiceCart({ open, onOpenChange, onSuccess }: {
     <SheetContent className="flex w-full flex-col overflow-y-auto sm:max-w-lg">
       <SheetHeader><SheetTitle>Your order</SheetTitle><SheetDescription>{context.location.name} · {fulfillment === "dine_in" ? "Dine in" : "Pickup"}</SheetDescription></SheetHeader>
       <form onSubmit={checkout} className="mt-6 flex flex-1 flex-col gap-5">
-        {!cart.length && <p>Your cart is empty. Add something from the menu.</p>}
+        {!cart.length && <><p>Your cart is empty. Add something from the menu.</p>
+          <Button type="submit" disabled={loading}>Recover previous order</Button>
+          {error && <p role="alert" className="text-sm text-red-600">{error}</p>}</>}
         {cart.map((line) => <div key={cartLineKey(line)} className="border-b pb-4">
           <div className="flex justify-between gap-3"><h3 className="font-semibold">{line.name}</h3><span>{formatPrice(cartLineExtendedTotal(line), line.currency || currency)}</span></div>
           {(line.modifiers || []).map((modifier) => <p key={`${modifier.groupId}:${modifier.catalogItemId}`} className="text-sm text-gray-500">{modifier.cartQty} × {modifier.name}</p>)}
@@ -77,7 +83,7 @@ export function SelfServiceCart({ open, onOpenChange, onSuccess }: {
           <p className="text-sm text-gray-500">Final prices and eligible offers are confirmed when you place your order. Pay cash at the counter or pay by card on your phone after ordering.</p>
           {incompatible && <p role="alert" className="text-sm text-red-600">Some items are unavailable for this fulfillment method. Remove them or switch pickup/dine in.</p>}
           {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
-          <Button type="submit" size="lg" disabled={loading || !ready || incompatible}>{loading ? "Placing order…" : "Place order · Pay at counter"}</Button>
+          <Button type="submit" size="lg" disabled={loading || !ready}>{loading ? "Placing order…" : "Place order · Pay at counter"}</Button>
         </>}
       </form>
     </SheetContent>

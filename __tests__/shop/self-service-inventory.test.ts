@@ -47,6 +47,22 @@ it("keeps a variant listing purchasable when its child has branch stock even if 
     data: [{ id: "child", parent_id: "item", availability_mode: "inventory" }], error: null,
   }) }
   const client = { from: (table: string) => table === "catalog_items" ? children : base.from(table as Parameters<typeof base.from>[0]) }
-  const result = await enrichSelfServiceInventory(site, location, [{ ...item, _shop: { hasVariants: true } }], client)
+  const result = await enrichSelfServiceInventory(site, location, [{ ...item, is_purchasable: false, _shop: { hasVariants: true } }], client)
   expect(result[0]._shop).toMatchObject({ sellable: true, availableQty: 3, hasVariants: true })
+})
+
+it.each(["inventory", "manual"] as const)("does not undo the nonpurchasable guard for a %s item without variants", async (mode) => {
+  const { client } = setup("allow")
+  const result = await enrichSelfServiceInventory(site, location, [{ ...item, id: "child", availability_mode: mode,
+    availability_status: "available", is_purchasable: false, _shop: { sellable: false } }], client)
+  expect(result[0]._shop?.sellable).toBe(false)
+})
+
+it("never sells a variant parent with no available purchasable children", async () => {
+  const { client: base } = setup("allow")
+  const children = { select: jest.fn().mockReturnThis(), eq: jest.fn().mockReturnThis(), in: jest.fn().mockResolvedValue({ data: [], error: null }) }
+  const client = { from: (table: string) => table === "catalog_items" ? children : base.from(table as Parameters<typeof base.from>[0]) }
+  const parent: CatalogItem = { ...item, _shop: { hasVariants: true } }
+  const result = await enrichSelfServiceInventory(site, location, [parent], client)
+  expect(result[0]._shop?.sellable).toBe(false)
 })

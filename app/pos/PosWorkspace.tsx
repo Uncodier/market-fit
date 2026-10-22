@@ -18,6 +18,7 @@ import { CartPanel } from "./components/CartPanel";
 import { PosCatalogGrid } from "./components/PosCatalogGrid";
 import { PrinterSyncBadge } from "@/app/components/printer/PrinterSyncBadge";
 import { PosSyncIssues } from "./components/PosSyncIssues";
+import { PosOrderReviewDialog } from "./components/PosOrderReviewDialog";
 import { usePosCatalog } from "./hooks/use-pos-catalog";
 import { usePosCart } from "./hooks/use-pos-cart";
 import { usePosCheckout } from "./hooks/use-pos-checkout";
@@ -42,6 +43,7 @@ export default function PosWorkspace() {
   const [isSearchExpanded, setIsSearchExpanded] = useState(false);
   const [isMobileCartOpen, setIsMobileCartOpen] = useState(false);
   const [syncIssuesOpen, setSyncIssuesOpen] = useState(false);
+  const [reviewOrder, setReviewOrder] = useState<{ siteId?: string; orderId: string } | null>(null);
   const [isSplitBillOpen, setIsSplitBillOpen] = useState(false);
   const [leadGate, setLeadGate] = useState<null | "promo" | "checkout" | "send">(
     null,
@@ -424,11 +426,16 @@ export default function PosWorkspace() {
       </div>
 
       <PosSyncIssues
-        onReviewOrder={(id) => { void cartApi.handleOrderSelect(id, true); }}
+        onReviewOrder={(orderId) => setReviewOrder({ siteId, orderId })}
         siteId={siteId}
         open={syncIssuesOpen}
         onOpenChange={setSyncIssuesOpen}
         t={t} />
+
+      <PosOrderReviewDialog
+        siteId={siteId}
+        orderId={reviewOrder?.siteId === siteId ? reviewOrder?.orderId : undefined}
+        onOpenChange={(open) => { if (!open) setReviewOrder(null); }} />
 
       <PosPageDialogs
         siteId={siteId}
