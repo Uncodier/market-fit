@@ -54,6 +54,7 @@ Use the guides below before relying on older implementation notes.
 - [Location access foundations and activation gates](LOCATION_ACCESS_IMPLEMENTATION.md)
 - [Location ACL enforcement, member editor, and rollout](LOCATION_ACCESS_ENFORCEMENT.md)
 - [Location ACL review and corrective migrations](LOCATION_ACCESS_REVIEW.md)
+- [Commerce RLS planning and POS polling repair](COMMERCE_RLS_PLANNING.md)
 - [Report sections and data contracts](REPORTS.md)
 - [Demo report data and isolation](DEMO_REPORTS.md)
 - [Report exports](REPORT_EXPORTS.md)

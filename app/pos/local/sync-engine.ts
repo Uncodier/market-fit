@@ -12,6 +12,8 @@ import {
   shouldRunCatalogPull,
   shouldRunOrdersPull,
   shouldDrainOutbox,
+  ORDERS_INTERVAL_MS,
+  ORDERS_RETRY_MAX_MS,
 } from "./sync-policy";
 import { clearAllPosSyncErrors, clearPosSyncError, getPosSyncError, recordPosSyncError, reconcilePosOutboxErrors } from "./sync-errors";
 
@@ -33,6 +35,8 @@ type SiteSyncState = {
   lastOrdersPulledAt: string | null;
   pendingCount: number;
   failedCount: number;
+  ordersRetryDelayMs: number;
+  nextOrdersRetryAt: number | null;
 };
 
 type SyncListener = (status: SyncStatus) => void;
@@ -48,12 +52,21 @@ const EMPTY_SITE_STATE: SiteSyncState = {
   lastOrdersPulledAt: null,
   pendingCount: 0,
   failedCount: 0,
+  ordersRetryDelayMs: 0,
+  nextOrdersRetryAt: null,
 };
 const siteState = new Map<string, SiteSyncState>();
+// Permission changes reset scheduling, but cannot cancel an outstanding Server Action.
+// Retain its slot until the real request and local application have settled.
+const ordersInFlight = new Map<string, Promise<void>>();
 subscribePosPermission(() => { siteState.clear(); clearAllPosSyncErrors(); });
 
 function isBrowserOnline() {
   return typeof navigator === "undefined" ? true : navigator.onLine;
+}
+
+function isDocumentVisible() {
+  return typeof document === "undefined" || document.visibilityState !== "hidden";
 }
 
 async function refreshCounts(siteId: string) {
@@ -257,30 +270,46 @@ export async function pullPosCatalogInBackground(
   }
 }
 
-export async function pullPosOrdersInBackground(siteId: string): Promise<void> {
+export function pullPosOrdersInBackground(siteId: string): Promise<void> {
   const permission = getPosPermissionLease(siteId);
-  if (!permission) return;
-  if (!isBrowserOnline()) return;
-  try {
-    const res = await listPosOpenOrders(siteId);
-    if (!isPosPermissionCurrent(permission)) return;
-    if (res.error) throw new Error(res.error);
-    await applyPosOpenOrders(siteId, res.data || []);
-    if (!isPosPermissionCurrent(permission)) return;
-    const prev = siteState.get(siteId) || { ...EMPTY_SITE_STATE };
-    siteState.set(siteId, {
-      ...prev,
-      lastOrdersAt: Date.now(),
-      lastOrdersPulledAt: new Date().toISOString(),
-    });
-    clearPosSyncError(siteId, "orders");
-  } catch (error) {
-    if (!isPosPermissionCurrent(permission)) return;
-    // Keep the last known local open orders if the light pull fails.
-    recordPosSyncError("orders", { siteId, operation: "orders", error: error instanceof Error ? error.message : "Orders pull failed" });
-  } finally {
+  if (!permission || !isBrowserOnline() || !isDocumentVisible()) return Promise.resolve();
+  const existing = ordersInFlight.get(siteId);
+  if (existing) return existing;
+  const state = siteState.get(siteId) || { ...EMPTY_SITE_STATE };
+  // Force and visibility triggers may bypass freshness, never a failure cooldown.
+  if (state.nextOrdersRetryAt !== null && Date.now() < state.nextOrdersRetryAt) return Promise.resolve();
+
+  const request = Promise.resolve().then(async () => {
+    if (!isPosPermissionCurrent(permission) || !isBrowserOnline() || !isDocumentVisible()) return;
+    try {
+      const res = await listPosOpenOrders(siteId);
+      if (!isPosPermissionCurrent(permission)) return;
+      if (res.error) throw new Error(res.error);
+      await applyPosOpenOrders(siteId, res.data || []);
+      if (!isPosPermissionCurrent(permission)) return;
+      const prev = siteState.get(siteId) || { ...EMPTY_SITE_STATE };
+      siteState.set(siteId, {
+        ...prev,
+        lastOrdersAt: Date.now(),
+        lastOrdersPulledAt: new Date().toISOString(),
+        ordersRetryDelayMs: 0,
+        nextOrdersRetryAt: null,
+      });
+      clearPosSyncError(siteId, "orders");
+    } catch (error) {
+      if (!isPosPermissionCurrent(permission)) return;
+      const prev = siteState.get(siteId) || { ...EMPTY_SITE_STATE };
+      const ordersRetryDelayMs = Math.min(prev.ordersRetryDelayMs * 2 || ORDERS_INTERVAL_MS, ORDERS_RETRY_MAX_MS);
+      siteState.set(siteId, { ...prev, ordersRetryDelayMs, nextOrdersRetryAt: Date.now() + ordersRetryDelayMs });
+      // Keep the last known local open orders if the light pull fails.
+      recordPosSyncError("orders", { siteId, operation: "orders", error: error instanceof Error ? error.message : "Orders pull failed" });
+    }
+  }).finally(() => {
+    ordersInFlight.delete(siteId);
     emit(siteId);
-  }
+  });
+  ordersInFlight.set(siteId, request);
+  return request;
 }
 
 export async function runPosSyncCycle(
@@ -292,7 +321,7 @@ export async function runPosSyncCycle(
   const permission = getPosPermissionLease(siteId);
   if (!permission) return;
   await refreshCounts(siteId);
-  if (!isPosPermissionCurrent(permission)) return;
+  if (!isPosPermissionCurrent(permission) || !isDocumentVisible()) return;
 
   const now = Date.now();
   const state = siteState.get(siteId) || { ...EMPTY_SITE_STATE };
@@ -314,21 +343,17 @@ export async function runPosSyncCycle(
     force,
   });
 
-  if (doCatalog) {
-    await pullPosCatalogInBackground(siteId, force);
-  }
-
-  if (doOrders) {
-    if (!isPosPermissionCurrent(permission)) return;
-    await pullPosOrdersInBackground(siteId);
-  }
-
+  // Each lane has its own admission guard. A slow orders pull must not hold up
+  // catalog checks or local outbox replay (the framework may still serialize actions).
+  const work: Promise<void>[] = [];
+  if (doCatalog) work.push(pullPosCatalogInBackground(siteId, force));
+  if (doOrders) work.push(pullPosOrdersInBackground(siteId));
   const online = isBrowserOnline();
-  if (!isPosPermissionCurrent(permission)) return;
   const latest = siteState.get(siteId) || state;
   if (shouldDrainOutbox({ pendingCount: latest.pendingCount, failedCount: latest.failedCount, online, force })) {
-    await drainPosOutbox(siteId);
+    work.push(drainPosOutbox(siteId));
   }
+  await Promise.all(work);
 }
 
 let wired = false;

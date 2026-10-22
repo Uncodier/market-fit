@@ -16,6 +16,7 @@ export async function enrichPosOrderSellers<T extends { seller_user_id?: string 
   supabase: Pick<SupabaseClient, "from">,
   siteId: string,
   orders: T[],
+  signal?: AbortSignal,
 ): Promise<Array<T & { seller?: PosOrderSeller }>> {
   const sellerIds = [...new Set(orders.map((order) => order.seller_user_id)
     .filter((id): id is string => typeof id === "string" && id.length > 0))];
@@ -23,11 +24,12 @@ export async function enrichPosOrderSellers<T extends { seller_user_id?: string 
 
   const sellers = new Map<string, PosOrderSeller>();
   try {
-    const { data, error } = await supabase
+    const query = supabase
       .from("site_members")
       .select("user_id, name, email")
       .eq("site_id", siteId)
       .in("user_id", sellerIds);
+    const { data, error } = await (signal ? query.abortSignal(signal) : query);
     if (!error) {
       for (const member of (data || []) as SellerMemberRow[]) {
         const name = displayName(member);
@@ -41,12 +43,13 @@ export async function enrichPosOrderSellers<T extends { seller_user_id?: string 
   }
 
   const unresolvedIds = sellerIds.filter((id) => !sellers.has(id));
-  if (unresolvedIds.length > 0) {
+  if (unresolvedIds.length > 0 && !signal?.aborted) {
     try {
-      const { data, error } = await supabase
+      const query = supabase
         .from("profiles")
         .select("id, name, email")
         .in("id", unresolvedIds);
+      const { data, error } = await (signal ? query.abortSignal(signal) : query);
       if (!error) {
         for (const profile of (data || []) as SellerProfileRow[]) {
           const name = displayName(profile);

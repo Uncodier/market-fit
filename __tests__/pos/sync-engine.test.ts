@@ -126,6 +126,7 @@ describe("POS sync failure reporting and recovery", () => {
     let finish!: (value: { data: { id: string }[] }) => void;
     ordersPull.mockImplementationOnce(() => new Promise((resolve) => { finish = resolve; }));
     const pulling = engine.pullPosOrdersInBackground(SITE);
+    await Promise.resolve();
     const permission = jest.mocked(await import("@/app/pos/local/location-permission-state"));
     permission.isPosPermissionCurrent.mockReturnValue(false);
     finish({ data: [{ id: "old-private-order" }] });
@@ -245,6 +246,7 @@ describe("POS sync failure reporting and recovery", () => {
     expect(applyOrders).not.toHaveBeenCalled();
     expect(report).toHaveBeenCalledWith({ siteId: SITE, operation: "orders", error: "Orders unavailable" });
     expect(engine.getPosSyncStatus(SITE).lastError).toBe("Orders unavailable");
+    await jest.advanceTimersByTimeAsync(30_000);
     await engine.pullPosOrdersInBackground(SITE);
     expect(applyOrders).toHaveBeenCalledWith(SITE, []);
     expect(engine.getPosSyncStatus(SITE).lastError).toBeNull();

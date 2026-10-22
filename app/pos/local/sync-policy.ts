@@ -1,5 +1,6 @@
 export const CATALOG_INTERVAL_MS = 5 * 60_000;
 export const ORDERS_INTERVAL_MS = 30_000;
+export const ORDERS_RETRY_MAX_MS = 5 * 60_000;
 export const CATALOG_VISIBILITY_MIN_MS = 2 * 60_000;
 
 export function shouldRunCatalogPull({

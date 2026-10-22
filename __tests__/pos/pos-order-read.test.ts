@@ -92,6 +92,7 @@ function client({
   const orderBy = jest.fn();
   const limit = jest.fn();
   const single = jest.fn();
+  const abortSignal = jest.fn();
   const error = queryError ? { message: "private database details" } : null;
   const supabase = {
     auth: { getUser: jest.fn(async () => ({
@@ -100,31 +101,35 @@ function client({
     })) },
     rpc: jest.fn(async (name: string) => ({ data: name === "current_user_site_role" ? role : false, error: roleError ? { message: "private role details" } : null })),
     from: jest.fn((table: string) => {
+      const result = () => {
+        if (table === "site_members" || table === "profiles") {
+          if (sellerThrows) return Promise.reject(new Error("private identity details"));
+          return Promise.resolve({
+            data: table === "site_members" ? members : profiles,
+            error: sellerError || (table === "site_members" ? memberError : profileError)
+              ? { message: "private identity details" } : null,
+          });
+        }
+        return Promise.resolve({ data: table === "sales" ? sales : orders, error });
+      };
       const query = {
         select: (value: string) => { select(table, value); return query; },
         eq: (key: string, value: string) => { eq(table, key, value); return query; },
         in: (key: string, values: string[]) => {
           inFilter(table, key, values);
-          if (table === "sales") return Promise.resolve({ data: sales, error });
-          if (table === "site_members" || table === "profiles") {
-            if (sellerThrows) return Promise.reject(new Error("private identity details"));
-            return Promise.resolve({
-              data: table === "site_members" ? members : profiles,
-              error: sellerError || (table === "site_members" ? memberError : profileError)
-                ? { message: "private identity details" } : null,
-            });
-          }
           return query;
         },
         order: (key: string, options: unknown) => { orderBy(key, options); return query; },
-        limit: async (count: number) => { limit(count); return { data: orders, error }; },
+        limit: (count: number) => { limit(count); return query; },
+        abortSignal: (signal: AbortSignal) => { abortSignal(table, signal); return query; },
+        then: (...args: Parameters<ReturnType<typeof result>["then"]>) => result().then(...args),
         single: async () => { single(); return { data: detail, error }; },
       };
       return query;
     }),
   };
   jest.mocked(createClient).mockResolvedValue(supabase);
-  return { ...supabase, select, eq, inFilter, orderBy, limit, single };
+  return { ...supabase, select, eq, inFilter, orderBy, limit, single, abortSignal };
 }
 
 function expectLineProjection(select: string) {
