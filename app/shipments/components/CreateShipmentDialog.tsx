@@ -152,11 +152,11 @@ export function CreateShipmentDialog() {
         userId,
       })
 
-      if (res.error) throw new Error(res.error)
+      if ("error" in res) throw new Error(res.error)
 
       toast.success(t("shipments.created") || "Shipment created successfully")
       setOpen(false)
-      if (res.data) {
+      if ("data" in res && res.data) {
         router.push(`/shipments/${res.data.id}`)
       }
     } catch (error: any) {

@@ -66,7 +66,7 @@ export default function ShipmentsPage() {
     fetcher
   )
 
-  useShipmentsRealtime(currentSite?.id, () => { void mutate() })
+  useShipmentsRealtime(currentSite?.id, () => mutate())
 
   useEffect(() => {
     const event = new CustomEvent("breadcrumb:update", {

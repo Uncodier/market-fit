@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react"
 import { createClient } from "@/lib/supabase/client"
+import { createRealtimeInvalidation, type RealtimeInvalidation } from "./realtime-invalidation"
 import {
   ensureAudioUnlockListeners,
   playNewOrderAlarm,
@@ -10,11 +11,10 @@ import {
 
 export function useOrdersRealtime(
   siteId: string | undefined,
-  onInvalidate: () => void,
+  onInvalidate: RealtimeInvalidation,
   options: { includeUnits?: boolean; orderId?: string; playAlarm?: boolean } = {},
 ) {
   const { includeUnits = false, orderId, playAlarm = true } = options
-  const refreshTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const onInvalidateRef = useRef(onInvalidate)
   useEffect(() => {
     onInvalidateRef.current = onInvalidate
@@ -32,6 +32,8 @@ export function useOrdersRealtime(
     if (!siteId) return
 
     const supabase = createClient()
+    let active = true
+    const refresh = createRealtimeInvalidation(() => onInvalidateRef.current())
 
     const handleEvent = (payload: {
       eventType?: string
@@ -39,11 +41,11 @@ export function useOrdersRealtime(
       new?: { id?: string; sale_order_id?: string; status?: string }
       old?: { id?: string; sale_order_id?: string }
     }) => {
+      if (!active) return
       const eventOrderId = payload.table === "sale_orders"
         ? payload.new?.id || payload.old?.id
         : payload.new?.sale_order_id || payload.old?.sale_order_id
       if (orderId && eventOrderId && eventOrderId !== orderId) return
-      if (refreshTimeoutRef.current) clearTimeout(refreshTimeoutRef.current)
 
       // Play alarm on new sale orders
       if (playAlarm && payload.eventType === "INSERT" && payload.table === "sale_orders") {
@@ -55,9 +57,7 @@ export function useOrdersRealtime(
       }
 
       const delay = payload.eventType === "INSERT" ? 300 : 500
-      refreshTimeoutRef.current = setTimeout(() => {
-        onInvalidateRef.current()
-      }, delay)
+      refresh.request(delay)
     }
 
     let channel = supabase
@@ -105,12 +105,12 @@ export function useOrdersRealtime(
       })
 
     return () => {
-      if (refreshTimeoutRef.current) {
-        clearTimeout(refreshTimeoutRef.current)
-        refreshTimeoutRef.current = null
-      }
+      active = false
+      refresh.dispose()
       try {
-        supabase.removeChannel(channel)
+        void Promise.resolve(supabase.removeChannel(channel)).catch(() => {
+          console.warn("[useOrdersRealtime] Failed to unsubscribe from realtime channel")
+        })
       } catch (e) {
         console.warn("[useOrdersRealtime] Failed to unsubscribe from realtime channel:", e)
       }

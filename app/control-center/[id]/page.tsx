@@ -229,7 +229,7 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
         .from('tasks')
         .select(`
           *,
-          leads:lead_id (
+          leads:leads!tasks_lead_id_fkey (
             id,
             name
           )

@@ -10,9 +10,8 @@ export function createNewDatePreservingDay(
   const day = Math.min(targetDay, lastDayOfNewMonth)
 
   const newDate = new Date(originalDate)
-  newDate.setFullYear(newYear)
-  newDate.setMonth(newMonth)
-  newDate.setDate(day)
+  newDate.setDate(1)
+  newDate.setFullYear(newYear, newMonth, day)
   return newDate
 }
 

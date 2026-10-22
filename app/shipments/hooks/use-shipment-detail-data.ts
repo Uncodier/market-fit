@@ -12,11 +12,11 @@ export function useShipmentDetailData(id: string) {
       const result = await getShipment(id)
       if (result.error) throw new Error(result.error)
       return result.data || null
-    }, { dedupingInterval: 0 },
+    },
   )
   const setShipment: Dispatch<SetStateAction<ShipmentWithRelations | null>> = useCallback((update) => {
     void mutate((current) => typeof update === "function" ? update(current || null) : update, { revalidate: false })
   }, [mutate])
-  useShipmentsRealtime(data?.site_id, () => { void mutate() }, id)
+  useShipmentsRealtime(data?.site_id, () => mutate(), id)
   return { shipment: data || null, error, loading: isLoading, setShipment, refresh: mutate }
 }

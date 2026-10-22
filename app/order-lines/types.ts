@@ -80,4 +80,5 @@ export interface OrderLinesResult {
   data: OrderLineRow[]
   count: number
   error?: string
+  errorCode?: string
 }

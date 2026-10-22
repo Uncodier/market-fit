@@ -29,7 +29,11 @@ describe("live order detail data", () => {
 
     const subscription = jest.mocked(useOrdersRealtime).mock.calls.find(([siteId]) => siteId === "site-1")!
     expect(subscription[2]).toEqual({ orderId: "order-1", playAlarm: false })
-    act(() => subscription[1]())
+    await act(async () => {
+      const refresh = subscription[1]()
+      expect(refresh).toBeInstanceOf(Promise)
+      await refresh
+    })
     await waitFor(() => expect(result.current.order?.sale_order_items).toEqual([]))
     expect(getOrder).toHaveBeenCalledTimes(2)
   })
@@ -45,7 +49,7 @@ describe("live order detail data", () => {
     expect(getOrder).toHaveBeenCalledTimes(1)
 
     const subscription = jest.mocked(useOrdersRealtime).mock.calls.find(([siteId]) => siteId === "site-1")!
-    act(() => subscription[1]())
+    await act(async () => { await subscription[1]() })
     await waitFor(() => expect(result.current.order?.sale_order_items?.[0].status).toBe("cancelled"))
   })
 

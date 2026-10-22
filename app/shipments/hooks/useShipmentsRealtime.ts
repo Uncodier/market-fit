@@ -2,11 +2,12 @@
 
 import { useEffect, useRef } from "react"
 import { createClient } from "@/lib/supabase/client"
+import { createRealtimeInvalidation, type RealtimeInvalidation } from "@/app/orders/hooks/realtime-invalidation"
 
 /** Refetch authoritative courier metadata; never infer provider state from an event. */
 export function useShipmentsRealtime(
   siteId: string | undefined,
-  onInvalidate: () => void,
+  onInvalidate: RealtimeInvalidation,
   shipmentId?: string,
 ) {
   const invalidateRef = useRef(onInvalidate)
@@ -15,20 +16,25 @@ export function useShipmentsRealtime(
   useEffect(() => {
     if (!siteId || siteId.startsWith("demo-")) return
     const supabase = createClient()
-    let timer: ReturnType<typeof setTimeout> | undefined
+    const refresh = createRealtimeInvalidation(() => invalidateRef.current())
     const channel = supabase.channel(`shipments_${siteId}_${shipmentId || "all"}`)
       .on("postgres_changes", {
         event: "*", schema: "public", table: "shipments", filter: `site_id=eq.${siteId}`,
       }, (payload: { new?: { id?: string }; old?: { id?: string } }) => {
         const id = payload.new?.id || payload.old?.id
         if (shipmentId && id && id !== shipmentId) return
-        if (timer) clearTimeout(timer)
-        timer = setTimeout(() => invalidateRef.current(), 350)
+        refresh.request(350)
       })
       .subscribe()
     return () => {
-      if (timer) clearTimeout(timer)
-      void supabase.removeChannel(channel)
+      refresh.dispose()
+      try {
+        void Promise.resolve(supabase.removeChannel(channel)).catch(() => {
+          console.warn("[useShipmentsRealtime] Failed to unsubscribe from realtime channel")
+        })
+      } catch {
+        console.warn("[useShipmentsRealtime] Failed to unsubscribe from realtime channel")
+      }
     }
   }, [siteId, shipmentId])
 }

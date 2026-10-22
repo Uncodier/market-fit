@@ -64,7 +64,9 @@ export async function readThroughAnalyticsResponseCache(options: {
       headers,
     })
   } catch (error) {
-    if (error instanceof UncacheableResponse) return error.response
+    // A coalesced failed computation can be observed by several callers. Each
+    // response needs its own consumable body; never share the same stream.
+    if (error instanceof UncacheableResponse) return error.response.clone()
     throw error
   }
 }

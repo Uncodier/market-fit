@@ -106,4 +106,29 @@ describe("readThroughAnalyticsResponseCache", () => {
     expect(response.status).toBe(503)
     expect(response.headers.get("Retry-After")).toBe("2")
   })
+
+  it("returns independently readable errors when one failed computation is shared", async () => {
+    let pending: Promise<unknown> | undefined
+    readThroughJsonCacheMock.mockImplementation(({ compute }) => {
+      pending ??= compute()
+      return pending
+    })
+    const load = jest.fn(async () => new Response('{"error":"unavailable"}', {
+      status: 503, headers: { "Content-Type": "application/json", "Retry-After": "2" },
+    }))
+    const options = {
+      request: new Request("https://example.invalid/api/analytics?siteId=site-a"),
+      namespace: "analytics-errors", siteId: "site-a", load,
+    }
+    const [first, second] = await Promise.all([
+      readThroughAnalyticsResponseCache(options), readThroughAnalyticsResponseCache(options),
+    ])
+    expect(load).toHaveBeenCalledTimes(1)
+    expect(first).not.toBe(second)
+    expect(first.status).toBe(503)
+    expect(second.headers.get("Retry-After")).toBe("2")
+    await expect(Promise.all([first.text(), second.text()])).resolves.toEqual([
+      '{"error":"unavailable"}', '{"error":"unavailable"}',
+    ])
+  })
 })

@@ -33,22 +33,27 @@ export interface TasksBundle {
 const TASK_STATUSES = ['pending', 'in_progress', 'completed', 'failed', 'canceled'] as const
 
 export async function enrichTasks(rawTasks: TaskQueryRow[]): Promise<ExtendedTask[]> {
-  return Promise.all(
-    rawTasks.map(async (task) => {
-      let assigneeName = undefined
-      if (task.assignee) {
-        const userData = await getUserData(task.assignee)
-        assigneeName = userData?.name
-      }
+  // Keep lookups local to this load; do not reuse names across sites or sessions.
+  const assigneeIds = Array.from(new Set(rawTasks.map((task) => task.assignee).filter(
+    (id): id is string => Boolean(id)
+  )))
+  const assigneeNames = new Map<string, string | undefined>()
+  let nextAssignee = 0
 
-      return {
-        ...normalizeControlTask(task),
-        leadName: task.leads?.name,
-        assigneeName,
-        comments_count: task.comments_count?.[0]?.count || 0,
-      }
-    })
-  )
+  await Promise.all(Array.from({ length: Math.min(4, assigneeIds.length) }, async () => {
+    while (nextAssignee < assigneeIds.length) {
+      const id = assigneeIds[nextAssignee++]
+      const userData = await getUserData(id)
+      assigneeNames.set(id, userData?.name)
+    }
+  }))
+
+  return rawTasks.map((task) => ({
+    ...normalizeControlTask(task),
+    leadName: task.leads?.name,
+    assigneeName: task.assignee ? assigneeNames.get(task.assignee) : undefined,
+    comments_count: task.comments_count?.[0]?.count || 0,
+  }))
 }
 
 async function fetchTasksBundle(siteId: string): Promise<TasksBundle> {
@@ -57,25 +62,16 @@ async function fetchTasksBundle(siteId: string): Promise<TasksBundle> {
   const counts: Record<string, number> = {}
 
   for (const status of TASK_STATUSES) {
-    const { count, error: countError } = await supabase
-      .from('tasks')
-      .select('*', { count: 'exact', head: true })
-      .eq('site_id', siteId)
-      .eq('status', status)
-
-    if (countError) throw countError
-    counts[status] = count || 0
-
-    const { data: statusTasks, error } = await supabase
+    const { data: statusTasks, count, error } = await supabase
       .from('tasks')
       .select(`
         *,
-        leads:lead_id (
+        leads:leads!tasks_lead_id_fkey (
           id,
           name
         ),
         comments_count:task_comments(count)
-      `)
+      `, { count: 'exact' })
       .eq('site_id', siteId)
       .eq('status', status)
       .order('priority', { ascending: false })
@@ -83,6 +79,7 @@ async function fetchTasksBundle(siteId: string): Promise<TasksBundle> {
       .limit(50)
 
     if (error) throw error
+    counts[status] = count || 0
     if (statusTasks) allTasks.push(...statusTasks)
   }
 
@@ -210,7 +207,7 @@ export function useControlCenterData(siteId?: string, _ownerId?: string) {
       .from('tasks')
       .select(`
         *,
-        leads:lead_id (
+        leads:leads!tasks_lead_id_fkey (
           id,
           name
         ),

@@ -105,6 +105,59 @@ it.each(["outstand_dm", "email", "website_chat"])("preserves non-comment pending
 
 it("does not query messages when conversation access fails", async () => {
   const from = setup([query(null, { code: "42501" })])
-  expect(await getConversationMessages("foreign-conversation")).toEqual([])
+  await expect(getConversationMessages("foreign-conversation")).rejects.toMatchObject({ code: "42501", message: "Unable to load conversation messages" })
   expect(from).toHaveBeenCalledTimes(1)
+})
+
+it.each(["pending", "history"])("propagates %s failures rather than returning an empty successful window", async failed => {
+  const error = { code: "42501", message: "Private database detail", details: "Private policy detail" }
+  const pending = query([], failed === "pending" ? error : null)
+  const history = query([], failed === "history" ? error : null)
+  setup([query({ custom_data: { source: "website_chat" } }), pending, history])
+  await expect(getConversationMessages("conversation")).rejects.toMatchObject({ code: "42501", message: "Unable to load conversation messages" })
+  expect(pending.limit).toHaveBeenCalledWith(1000)
+  expect(history.limit).toHaveBeenCalledWith(40)
+})
+
+it("physically aborts the SDK signal while retaining the read until actual settlement", async () => {
+  jest.useFakeTimers()
+  try {
+    let settle!: (value: unknown) => void
+    const deferred = new Promise(resolve => { settle = resolve })
+    let signal!: AbortSignal
+    const conversation = query(null)
+    conversation.then = resolve => deferred.then(resolve)
+    const abortSignal = jest.fn((value: AbortSignal) => { signal = value; return conversation })
+    setup([Object.assign(conversation, { abortSignal })])
+    const read = getConversationMessages("slow", { timeoutMs: 25 })
+    let settled = false
+    const result = read.catch(error => { settled = true; return error })
+    await jest.advanceTimersByTimeAsync(30)
+    expect(signal.aborted).toBe(true)
+    expect(settled).toBe(false)
+    settle({ data: { custom_data: {} }, error: null })
+    expect(await result).toMatchObject({ code: "57014", message: "Unable to load conversation messages" })
+    expect(jest.getTimerCount()).toBe(0)
+  } finally {
+    jest.useRealTimers()
+  }
+})
+
+it("waits for both physical fanout reads when one transport rejects early", async () => {
+  let settle!: (value: unknown) => void
+  const deferred = new Promise(resolve => { settle = resolve })
+  const pending = query([])
+  Object.assign(pending, { then: (resolve: (value: unknown) => unknown, reject: (reason: unknown) => unknown) =>
+    Promise.reject({ code: "42501", message: "Private detail" }).then(resolve, reject) })
+  const history = query([])
+  history.then = resolve => deferred.then(resolve)
+  setup([query({ custom_data: { source: "website_chat" } }), pending, history])
+  let settled = false
+  const result = getConversationMessages("conversation").catch(error => { settled = true; return error })
+  await Promise.resolve()
+  await Promise.resolve()
+  await Promise.resolve()
+  expect(settled).toBe(false)
+  settle({ data: [], error: null })
+  expect(await result).toMatchObject({ code: "42501", message: "Unable to load conversation messages" })
 })

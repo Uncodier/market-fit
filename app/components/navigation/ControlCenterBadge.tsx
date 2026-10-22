@@ -1,63 +1,15 @@
 "use client"
 
+import type { FC } from "react"
 import { Badge } from "@/app/components/ui/badge"
-import { useState, useEffect } from "react"
-import { useSite } from "@/app/context/SiteContext"
-import { createClient } from "@/utils/supabase/client"
+import { useBadgeCount } from "./use-badge-count"
 
-export function ControlCenterBadge({ isActive = false }: { isActive?: boolean }) {
-  const { currentSite } = useSite()
-  const [pendingTasksCount, setPendingTasksCount] = useState(0)
-  
-  useEffect(() => {
-    const countPendingTasks = async () => {
-      if (!currentSite?.id) {
-        setPendingTasksCount(0)
-        return
-      }
-
-      try {
-        const supabase = createClient()
-        
-        // Get all tasks with pending status for the current site
-        const { data: tasks, error } = await supabase
-          .from('tasks')
-          .select('id, status')
-          .eq('site_id', currentSite.id)
-          .eq('status', 'pending')
-        
-        if (error) {
-          console.error('Error fetching pending tasks:', error)
-          setPendingTasksCount(0)
-          return
-        }
-
-        setPendingTasksCount(tasks?.length || 0)
-
-      } catch (error) {
-        console.error('Error counting pending tasks:', error)
-        setPendingTasksCount(0)
-      }
-    }
-
-    countPendingTasks()
-    
-    // Refresh count every 30 seconds
-    const interval = setInterval(countPendingTasks, 30000)
-    
-    return () => clearInterval(interval)
-  }, [currentSite?.id])
-  
-  // Don't show badge if there are no pending tasks
-  if (pendingTasksCount === 0) {
-    return null
-  }
-  
+export const ControlCenterBadge: FC<{ isActive?: boolean }> = () => {
+  const count = useBadgeCount("tasks")
+  if (count === 0) return null
   return (
-    <Badge 
-      className="h-5 min-w-[20px] px-1.5 text-xs font-semibold border-transparent text-black badge-gradient-green"
-    >
-      {pendingTasksCount > 99 ? "99+" : pendingTasksCount}
+    <Badge className="h-5 min-w-[20px] px-1.5 text-xs font-semibold border-transparent text-black badge-gradient-green">
+      {count > 99 ? "99+" : count}
     </Badge>
   )
-} 
+}

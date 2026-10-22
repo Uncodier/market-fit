@@ -22,8 +22,10 @@ export interface OrderWithRelations extends SaleOrderData {
     payment_method: string;
     amount_due: number;
     payments?: Array<{ id?: string; date: string; amount: number; method: string; notes?: string }>;
-  };
-  leads?: { id: string; name: string; email?: string; phone?: string };
+    leads?: { id: string; name: string; email?: string } | null;
+  } | null;
+  leads?: { id: string; name: string; email?: string; phone?: string } | null;
+  origin_location_id?: string | null;
   shipments?: { id: string; status: string; tracking_number?: string; carrier?: string; metadata?: unknown }[];
   price_lists?: { name: string };
   promotions?: { name: string; code: string };
@@ -38,4 +40,11 @@ export interface OrderWithRelations extends SaleOrderData {
   created_by?: { id: string; name?: string | null; email?: string | null } | null;
   seller?: { id: string; name?: string | null; email?: string | null } | null;
   requested_by?: { id: string; name?: string | null; email?: string | null } | null;
+}
+
+export interface OrdersResult {
+  data: OrderWithRelations[];
+  count: number;
+  error?: string;
+  errorCode?: string;
 }

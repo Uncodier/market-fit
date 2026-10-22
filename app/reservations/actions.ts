@@ -3,26 +3,34 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { Reservation, Task } from "@/app/types";
-import { loadReservationSalePayments } from "./ensure-sale-order";
+import { readReservationPayments } from "./read-payments";
+import { reservationReadClient } from "./read-access";
+import { createReadBudget, readAllPages, readIdBatches, READ_PAGE_SIZE } from "./read-pages";
+import { validateReadWindow, overlapsReadWindow, type ReservationReadWindow } from "./read-window";
 
-export async function getReservations(siteId: string) {
+export async function getReservations(siteId: string, readWindow?: ReservationReadWindow) {
   try {
-    const supabase = await createClient();
-    const { data, error } = await supabase
+    const window = readWindow === undefined ? undefined : validateReadWindow(readWindow);
+    const supabase = await reservationReadClient(siteId);
+    const budget = createReadBudget();
+    const data = await readAllPages<Reservation>((offset, signal) => {
+      let query = supabase
       .from("reservations")
       .select(`
-        *,
+        id, site_id, lead_id, buyer_user_id, owner_site_id, catalog_item_id,
+        resource_type, location_id, assignee_user_id, channel, terms_text,
+        terms_accepted_at, signature_url, photo_url, id_url, signed_at,
+        status, start_time, end_time, notes, quantity, sale_order_item_id,
+        entitlement_id, created_at, updated_at,
         catalog_item:catalog_items(id, name, description, kind, digital_subtype, parent_id, metadata, parent:parent_id(name)),
         location:locations!reservations_location_id_fkey(id, name),
         lead:leads(id, name, email, phone)
       `)
       .eq("site_id", siteId)
-      .order("start_time", { ascending: true });
-
-    if (error) {
-      console.error("Error fetching reservations:", error);
-      return { data: [], error: error.message };
-    }
+      .order("start_time", { ascending: true }).order("id", { ascending: true });
+      if (window) query = query.lt("start_time", window.end).or(`end_time.is.null,end_time.gt.${window.start}`);
+      return query.range(offset, offset + READ_PAGE_SIZE - 1).abortSignal(signal) as unknown as PromiseLike<{ data: Reservation[] | null; error: { message: string } | null }>;
+    }, budget);
 
     const buyerIds = Array.from(
       new Set((data || []).map((r: Reservation) => r.buyer_user_id).filter(Boolean))
@@ -30,25 +38,28 @@ export async function getReservations(siteId: string) {
 
     let profileById = new Map<string, { id: string; name?: string | null; avatar_url?: string | null }>()
     if (buyerIds.length > 0) {
-      const { data: profiles } = await supabase
+      const profiles = await readIdBatches<{ id: string; name: string | null; avatar_url: string | null }>(buyerIds, (ids, offset, signal) => supabase
         .from("profiles")
         .select("id, name, avatar_url")
-        .in("id", buyerIds)
+        .in("id", ids).order("id").range(offset, offset + READ_PAGE_SIZE - 1).abortSignal(signal), budget)
       profileById = new Map((profiles || []).map((p: { id: string; name: string | null; avatar_url: string | null }) => [p.id, p]))
     }
 
-    const { data: tasks, error: tasksError } = await supabase
+    const tasks = await readAllPages<Task>((offset, signal) => {
+      let query = supabase
       .from("tasks")
       .select(`
         *,
         lead:leads(id, name, email, phone)
       `)
       .eq("site_id", siteId)
-      .not("scheduled_date", "is", null);
-
-    if (tasksError) {
-      console.error("Error fetching tasks:", tasksError);
-    }
+      .not("scheduled_date", "is", null).not("assignee", "is", null)
+      .order("scheduled_date", { ascending: true }).order("id", { ascending: true });
+      // There is no reliable end_date column or maximum legacy metadata duration.
+      // Never discard older spanning tasks with an arbitrary lookback cutoff.
+      if (window) query = query.lt("scheduled_date", window.end);
+      return query.range(offset, offset + READ_PAGE_SIZE - 1).abortSignal(signal) as unknown as PromiseLike<{ data: Task[] | null; error: { message: string } | null }>;
+    }, budget);
 
     const mappedTasks: Reservation[] = (tasks || [])
       .filter((task: Task) => !!task.assignee) // Show all assigned tasks.
@@ -137,12 +148,12 @@ export async function getReservations(siteId: string) {
         lead: task.lead,
         buyer_profile: null,
       } as Reservation;
-    });
+    }).filter(task => !window || overlapsReadWindow(task.start_time, task.end_time, window));
 
     const itemIds = Array.from(
       new Set((data || []).map((r: Reservation) => r.sale_order_item_id).filter(Boolean))
     ) as string[]
-    const paymentByItemId = await loadReservationSalePayments(supabase, itemIds)
+    const paymentByItemId = await readReservationPayments(supabase, siteId, itemIds, budget)
 
     const enriched = (data || []).map((row: Reservation) => {
       const payment = row.sale_order_item_id

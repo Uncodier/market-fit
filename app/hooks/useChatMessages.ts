@@ -5,6 +5,9 @@ import { getConversationMessages } from '@/app/services/getConversationMessages.
 import { createClient } from '@/lib/supabase/client'
 import { useApiRequestTracker } from './useApiRequestTracker'
 import { coerceDate } from '@/app/utils/coerce-date'
+import { useAuthContext } from '@/app/components/auth/auth-provider'
+import { createRealtimeInvalidation } from '@/app/orders/hooks/realtime-invalidation'
+import { createChatMessageRead } from './chat-message-read'
 
 function normalizeChatMessage(message: ChatMessage): ChatMessage {
   return {
@@ -24,12 +27,21 @@ export function useChatMessages(
   isAgentOnlyConversation: boolean
 ) {
   const [isAgentResponding, setIsAgentResponding] = useState(false)
+  const { user } = useAuthContext()
   const { hasActiveChatRequest } = useApiRequestTracker()
-  const messageSubscriptionRef = useRef<any>(null)
-  const messageSubscriptionStatusRef = useRef<string>('INIT')
-  const isResubscribingRef = useRef(false)
-  const lastConversationIdRef = useRef<string>('')
-  const refreshTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const identity = `${user?.id || 'anonymous'}:${conversationId}`
+  const identityRef = useRef(identity)
+  identityRef.current = identity
+  const invalidationRef = useRef<ReturnType<typeof createRealtimeInvalidation> | null>(null)
+  const reader = useMemo(() => createChatMessageRead(async signal => {
+    const rawMessages = await getConversationMessages(conversationId, { signal })
+    const seen = new Set<string>()
+    return normalizeChatMessages(rawMessages.filter(message => {
+      if (!message.id || seen.has(message.id)) return false
+      seen.add(message.id)
+      return true
+    }))
+  }), [identity, conversationId])
 
   useEffect(() => {
     const hasActiveRequest = hasActiveChatRequest(conversationId)
@@ -37,23 +49,16 @@ export function useChatMessages(
   }, [hasActiveChatRequest, conversationId])
 
   const swrKey = conversationId && !conversationId.startsWith('new-')
-    ? ['chat-messages', conversationId]
+    ? ['chat-messages', user?.id || 'anonymous', conversationId]
     : null
 
-  const { data: chatMessagesData, isLoading: isSwrLoading, mutate } = useSWR(
+  const { data: chatMessagesData, error: messageReadError, isLoading: isSwrLoading, mutate } = useSWR(
     swrKey,
-    async ([_, convId]) => {
-      const rawMessages = await getConversationMessages(convId)
-      const seen = new Set<string>()
-      return normalizeChatMessages(
-        rawMessages.filter((m) => {
-          if (!m.id || seen.has(m.id)) return false
-          seen.add(m.id)
-          return true
-        })
-      )
-    },
-    { keepPreviousData: false }
+    () => reader.read(),
+    {
+      keepPreviousData: false, revalidateOnFocus: false, revalidateOnReconnect: false,
+      shouldRetryOnError: error => error?.code !== '42501', errorRetryCount: 3, errorRetryInterval: 5000,
+    }
   )
 
   const chatMessages = useMemo(() => {
@@ -64,132 +69,79 @@ export function useChatMessages(
   const isTransitioningConversation = isLoadingMessages
 
   const setChatMessages = useCallback((updater: any) => {
+    if (identityRef.current !== identity) return
     mutate((current = []) => {
       const next = typeof updater === 'function' ? updater(current) : updater
       return normalizeChatMessages(next)
     }, false)
-  }, [mutate])
+  }, [identity, mutate])
 
   const syncMessages = useCallback(async () => {
-    if (!conversationId || conversationId.startsWith('new-')) return
+    if (identityRef.current !== identity || !conversationId || conversationId.startsWith('new-')) return
     await mutate()
-  }, [conversationId, mutate])
+  }, [identity, conversationId, mutate])
 
   const clearMessagesForTransition = useCallback(() => {
     // SWR cache handles transitions; keep API for callers without forcing skeleton when cached.
   }, [])
 
-  const teardownRealtimeSubscription = useCallback(() => {
-    if (messageSubscriptionRef.current) {
-      try {
-        messageSubscriptionStatusRef.current = 'UNSUBSCRIBING'
-        messageSubscriptionRef.current.unsubscribe()
-      } catch (err) {
-        console.error('Error unsubscribing from messages:', err)
-      }
-      messageSubscriptionRef.current = null
-      messageSubscriptionStatusRef.current = 'CLOSED'
+  useEffect(() => {
+    if (!conversationId || conversationId.startsWith('new-')) {
+      setIsAgentResponding(false)
+      return () => reader.abort()
     }
-  }, [])
+    let active = true
+    let channel: any = null
+    let status = 'INIT'
+    const owns = () => active && identityRef.current === identity
+    const invalidation = createRealtimeInvalidation(() => owns() ? mutate() : undefined)
+    invalidationRef.current = invalidation
+    const supabase = createClient()
+    const disconnect = () => {
+      const previous = channel
+      channel = null
+      try { void previous?.unsubscribe() } catch { /* Already closed. */ }
+    }
+    const connect = () => {
+      if (!owns()) return
+      disconnect()
+      status = 'SUBSCRIBING'
+      channel = supabase.channel(`messages-${conversationId}`)
+        .on('postgres_changes', {
+          event: '*', schema: 'public', table: 'messages', filter: `conversation_id=eq.${conversationId}`,
+        }, (payload: any) => {
+          if (owns()) invalidation.request(payload.eventType === 'INSERT' ? 300 : 500)
+        }).subscribe((nextStatus: string) => { if (owns()) status = nextStatus })
+    }
+    // SWR owns the initial read; subscribing must not issue another startup read.
+    connect()
+    const recover = () => {
+      if (!owns() || status === 'SUBSCRIBED' || status === 'SUBSCRIBING') return
+      if (supabase.realtime?.isConnected?.() === true) connect()
+    }
+    const focus = () => {
+      if (!owns()) return
+      invalidation.request(0)
+      recover()
+    }
+    const interval = setInterval(recover, 10_000)
+    window.addEventListener('focus', focus)
+    window.addEventListener('online', focus)
+    return () => {
+      active = false
+      clearInterval(interval)
+      window.removeEventListener('focus', focus)
+      window.removeEventListener('online', focus)
+      invalidation.dispose()
+      if (invalidationRef.current === invalidation) invalidationRef.current = null
+      disconnect()
+      reader.abort()
+    }
+  }, [identity, conversationId, mutate, reader])
 
   const loadMessages = useCallback(async () => {
-    teardownRealtimeSubscription()
-
-    if (!conversationId) {
-      return
-    }
-
-    try {
-      if (conversationId.startsWith('new-')) {
-        setIsAgentResponding(false)
-      } else {
-        await mutate()
-
-        if (typeof window !== 'undefined') {
-          const supabase = createClient()
-
-          messageSubscriptionStatusRef.current = 'SUBSCRIBING'
-          messageSubscriptionRef.current = supabase
-            .channel(`messages-${conversationId}`)
-            .on('postgres_changes', {
-              event: '*',
-              schema: 'public',
-              table: 'messages',
-              filter: `conversation_id=eq.${conversationId}`,
-            }, (payload: any) => {
-              if (refreshTimeoutRef.current) clearTimeout(refreshTimeoutRef.current)
-              
-              const delay = payload.eventType === 'INSERT' ? 300 : 500
-              refreshTimeoutRef.current = setTimeout(() => {
-                mutate()
-              }, delay)
-            })
-            .subscribe((status: string) => {
-              messageSubscriptionStatusRef.current = status
-            })
-        }
-      }
-    } catch (error) {
-      console.error('Error loading messages:', error)
-      setIsAgentResponding(false)
-    }
-  }, [conversationId, mutate, teardownRealtimeSubscription])
-
-  useEffect(() => {
-    const checkConnection = () => {
-      if (!conversationId || conversationId.startsWith('new-')) return
-
-      const supabase = createClient() as { realtime?: { isConnected?: () => boolean } }
-      const isConnected = supabase.realtime?.isConnected?.() === true
-
-      if (
-        messageSubscriptionRef.current &&
-        messageSubscriptionStatusRef.current !== 'SUBSCRIBED' &&
-        messageSubscriptionStatusRef.current !== 'SUBSCRIBING' &&
-        isConnected &&
-        !isResubscribingRef.current
-      ) {
-        isResubscribingRef.current = true
-        setTimeout(() => {
-          loadMessages().finally(() => {
-            isResubscribingRef.current = false
-          })
-        }, 1000)
-      }
-    }
-
-    const intervalId = setInterval(checkConnection, 10000)
-    return () => clearInterval(intervalId)
-  }, [conversationId, loadMessages])
-
-  useEffect(() => {
-    const handleFocus = () => {
-      if (conversationId && !conversationId.startsWith('new-')) {
-        syncMessages()
-
-        if (messageSubscriptionStatusRef.current !== 'SUBSCRIBED') {
-          loadMessages()
-        }
-      }
-    }
-
-    window.addEventListener('focus', handleFocus)
-    return () => window.removeEventListener('focus', handleFocus)
-  }, [conversationId, syncMessages, loadMessages])
-
-  useEffect(() => {
-    if (lastConversationIdRef.current !== conversationId) {
-      lastConversationIdRef.current = conversationId
-      loadMessages()
-    }
-  }, [conversationId, loadMessages])
-
-  useEffect(() => {
-    return () => {
-      teardownRealtimeSubscription()
-      if (refreshTimeoutRef.current) clearTimeout(refreshTimeoutRef.current)
-    }
-  }, [teardownRealtimeSubscription])
+    if (identityRef.current === identity) invalidationRef.current?.request(0)
+  }, [identity])
 
   return {
     chatMessages,
@@ -201,5 +153,6 @@ export function useChatMessages(
     syncMessages,
     reloadMessages: loadMessages,
     clearMessagesForTransition,
+    messageReadError,
   }
 }

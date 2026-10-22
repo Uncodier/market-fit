@@ -107,10 +107,16 @@ export function splitBlockByLocalDays(block: CalendarBlock): CalendarBlockSpan[]
   return spans
 }
 
-export function groupBlockSpansByDate(blocks: CalendarBlock[]): Record<string, CalendarBlockSpan[]> {
+export function groupBlockSpansByDate(blocks: CalendarBlock[], window?: { start: string; end: string }): Record<string, CalendarBlockSpan[]> {
   const grouped: Record<string, CalendarBlockSpan[]> = {}
   for (const block of blocks) {
-    for (const span of splitBlockByLocalDays(block)) {
+    const display = window ? {
+      ...block,
+      start_time: new Date(Math.max(Date.parse(block.start_time), Date.parse(window.start))).toISOString(),
+      end_time: new Date(block.end_time ? Math.min(Date.parse(block.end_time), Date.parse(window.end)) : Date.parse(window.end)).toISOString(),
+    } : block
+    for (const span of splitBlockByLocalDays(display)) {
+      span.block = block
       if (!grouped[span.dateStr]) grouped[span.dateStr] = []
       grouped[span.dateStr].push(span)
     }
@@ -188,7 +194,7 @@ export function calendarDayItems(reservations: Reservation[], blockSpans: Calend
 export function calendarBlockOverlapsMonth(block: CalendarBlock, year: number, month: number) {
   const monthStart = new Date(year, month, 1).getTime()
   const monthEnd = new Date(year, month + 1, 1).getTime()
-  return new Date(block.start_time).getTime() < monthEnd && new Date(block.end_time).getTime() > monthStart
+  return new Date(block.start_time).getTime() < monthEnd && (!block.end_time || new Date(block.end_time).getTime() > monthStart)
 }
 
 function startOfLocalDay(date: Date) {

@@ -14,6 +14,25 @@ type CacheResult<T> =
   | { status: "hit" | "stale" | "computed"; value: T }
   | { status: "busy" }
 
+type CacheOptions<T> = {
+  key: string
+  ttlSeconds: number
+  lockTtlMs?: number
+  compute: () => Promise<T>
+}
+
+// Pending work only: callers must authorize before using their final scoped key.
+// Do not evict running entries, which would permit duplicate computations.
+const inflight = new Map<string, Promise<CacheResult<unknown>>>()
+
+function callerResult<T>(pending: Promise<CacheResult<T>>): Promise<CacheResult<T>> {
+  return pending.then(result => {
+    if (result.status === "busy") return { status: "busy" }
+    // Share pending work, not mutable JSON values between authorized callers.
+    return { status: result.status, value: structuredClone(result.value) }
+  })
+}
+
 const BUMP_CACHE_EPOCH_SCRIPT = `
 local value = redis.call("INCR", KEYS[1])
 redis.call("EXPIRE", KEYS[1], ARGV[1])
@@ -36,12 +55,23 @@ export async function normalizedRequestCacheKey(
   return `cache:v1:${namespace}:${digest}`
 }
 
-export async function readThroughJsonCache<T>(options: {
-  key: string
-  ttlSeconds: number
-  lockTtlMs?: number
-  compute: () => Promise<T>
-}): Promise<CacheResult<T>> {
+export function readThroughJsonCache<T>(
+  options: CacheOptions<T>
+): Promise<CacheResult<T>> {
+  const key = options.key
+  const pending = inflight.get(key)
+  if (pending) return callerResult(pending as Promise<CacheResult<T>>)
+  const operationOptions = { ...options, key }
+
+  // Register synchronously, before configuration, reads, or compute can run.
+  const operation = Promise.resolve()
+    .then(() => readJsonCache(operationOptions))
+    .finally(() => { inflight.delete(key) })
+  inflight.set(key, operation)
+  return callerResult(operation)
+}
+
+async function readJsonCache<T>(options: CacheOptions<T>): Promise<CacheResult<T>> {
   if (!isRedisConfigured()) {
     return { status: "computed", value: await options.compute() }
   }
@@ -60,18 +90,19 @@ export async function readThroughJsonCache<T>(options: {
   if (!acquired) {
     const stale = await getCachedJson<T>(`${options.key}:stale`)
     if (stale !== null) return { status: "stale", value: stale }
-    if (process.env.REDIS_REQUIRED !== "true") {
-      return { status: "computed", value: await options.compute() }
-    }
+    // Lock failures and contention both return false; neither permits bypass.
     return { status: "busy" }
   }
 
   try {
     const value = await options.compute()
-    await Promise.all([
+    const writes = await Promise.allSettled([
       setCachedJson(options.key, value, options.ttlSeconds),
       setCachedJson(`${options.key}:stale`, value, options.ttlSeconds * 5),
     ])
+    for (const write of writes) {
+      if (write.status === "rejected") throw write.reason
+    }
     return { status: "computed", value }
   } finally {
     await releaseLock(lockKey, ownerToken)

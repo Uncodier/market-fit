@@ -167,7 +167,7 @@ export default function OrderLinesPage() {
   )
 
   useOrdersRealtime(currentSite?.id, () => {
-    void mutate()
+    return mutate()
   }, { includeUnits: true })
   const operations = useOrderLineOperations({
     siteId: currentSite?.id,

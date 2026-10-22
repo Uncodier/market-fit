@@ -230,8 +230,8 @@ export function ReservationYearView({
       {months.map((month) => {
         const monthKey = String(month).padStart(2, "0")
         const monthReservations = reservations.filter((reservation) => {
-          const resDate = new Date(reservation.start_time)
-          return resDate.getMonth() === month && resDate.getFullYear() === year
+          return Date.parse(reservation.start_time) < new Date(year, month + 1, 1).getTime()
+            && (!reservation.end_time || Date.parse(reservation.end_time) > new Date(year, month, 1).getTime())
         })
         const monthBlocks = blocks.filter((item) => calendarBlockOverlapsMonth(item, year, month))
         const monthItems = [

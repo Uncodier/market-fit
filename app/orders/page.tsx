@@ -122,7 +122,7 @@ export default function OrdersPage() {
   const isOrdersPending = !currentSite || isSiteLoading || !isDateRangeReady || isLoading
 
   useOrdersRealtime(isSiteLoading ? undefined : currentSite?.id, () => {
-    mutate()
+    return mutate()
   })
   const printerSettings = usePrinterSettings()
   usePrinterRealtime(currentSite?.id, printerSettings, ticketBrandFromSite(currentSite))

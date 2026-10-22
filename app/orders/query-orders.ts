@@ -1,127 +1,82 @@
-import "server-only";
+import "server-only"
+import { createClient } from "@/lib/supabase/server"
+import type { OrderParams, OrdersResult } from "./types"
+import {
+  assertRead, CommerceReadError, readBatches, readFailure, searchValue, settledReads, uniqueIds, READ_DEADLINE_MS,
+} from "./scoped-read"
+import {
+  ORDER_BASE_SELECT, ORDER_ITEM_SELECT, ORDER_SALE_SELECT, ORDER_LEAD_SELECT,
+  type OrderBase, type OrderItem, type OrderSale, type OrderLead,
+} from "./order-read-dto"
 
-import { createClient } from "@/lib/supabase/server";
-import type { OrderParams, OrderWithRelations } from "./types";
-
-export async function queryOrders({ siteId, status, paymentStatus, q, locationId, page = 1, pageSize = 50, startDate, endDate, sort }: OrderParams) {
+export async function queryOrders(params: OrderParams): Promise<OrdersResult> {
+  const signal = AbortSignal.timeout(READ_DEADLINE_MS)
   try {
-    const supabase = await createClient();
-    const searchQuery = q?.trim();
-    let matchingOrderIds: string[] | null = null;
-
-    if (searchQuery) {
-      const searchPattern = `%${searchQuery}%`;
-      const [numberMatches, productMatches] = await Promise.all([
-        supabase
-          .from("sale_orders")
-          .select("id")
-          .eq("site_id", siteId)
-          .ilike("order_number", searchPattern)
-          .limit(5000),
-        supabase
-          .from("sale_order_items")
-          .select("sale_order_id")
-          .eq("site_id", siteId)
-          .ilike("name", searchPattern)
-          .limit(5000),
-      ]);
-
-      if (numberMatches.error) throw new Error(numberMatches.error.message);
-      if (productMatches.error) throw new Error(productMatches.error.message);
-
-      matchingOrderIds = [
-        ...new Set([
-          ...(numberMatches.data || []).map(
-            (row: { id: string }) => row.id,
-          ),
-          ...(productMatches.data || []).map(
-            (row: { sale_order_id: string | null }) => row.sale_order_id,
-          ),
-        ]),
-      ].filter((id): id is string => Boolean(id));
-
-      if (matchingOrderIds.length === 0) {
-        return { data: [], count: 0 };
-      }
+    const client = await createClient()
+    const search = params.q?.trim()
+    const unpaid = params.paymentStatus === "unpaid"
+    const page = Math.max(1, Math.floor(Number(params.page) || 1))
+    const pageSize = Math.min(100, Math.max(1, Math.floor(Number(params.pageSize) || 50)))
+    // Empty embeds implement complete search without hydrating every item or
+    // truncating search matches to a preliminary 5,000-row/URL-sized ID list.
+    const select = ORDER_BASE_SELECT +
+      (search ? ", matching_items:sale_order_items()" : "") +
+      (unpaid ? ", sales!inner(amount_due)" : "")
+    let query = client.from("sale_orders").select(select, { count: "exact" })
+      .eq("site_id", params.siteId)
+    if (search) {
+      query = query.ilike("matching_items.name", `%${search}%`)
+        .eq("matching_items.site_id", params.siteId)
+        .or(`order_number.ilike.${searchValue(search)},matching_items.not.is.null`)
     }
-    
-    const selectString = `
-        *,
-        fulfillment_method,
-        sale_order_items (
-          id,
-          status,
-          name,
-          quantity,
-          catalog_item_id,
-          parent_sale_order_item_id,
-          metadata
-        ),
-        sales${paymentStatus === 'unpaid' ? '!inner' : ''} (
-          status,
-          source,
-          amount,
-          payment_method,
-          amount_due,
-          payments,
-          leads (id, name, email)
-        )
-      `;
-
-    let query = supabase
-      .from("sale_orders")
-      .select(selectString, { count: "exact" })
-      .eq("site_id", siteId);
-      
-    if (sort === "oldest") {
-      query = query.order("created_at", { ascending: true });
-    } else if (sort === "updated_at") {
-      query = query.order("updated_at", { ascending: false });
-    } else {
-      query = query.order("created_at", { ascending: false });
+    if (unpaid) query = query.gt("sales.amount_due", 0).eq("sales.site_id", params.siteId)
+    if (params.status && params.status !== "all") {
+      query = params.status.includes(",") ? query.in("status", params.status.split(",")) :
+        query.eq("status", params.status)
     }
-
-    if (status && status !== 'all') {
-      if (status.includes(',')) {
-        query = query.in("status", status.split(','));
-      } else {
-        query = query.eq("status", status);
-      }
+    if (params.locationId && params.locationId !== "all") query = query.eq("origin_location_id", params.locationId)
+    if (params.startDate) query = query.gte("created_at", params.startDate)
+    if (params.endDate) query = query.lte("created_at", params.endDate)
+    query = query.order(params.sort === "updated_at" ? "updated_at" : "created_at", {
+      ascending: params.sort === "oldest",
+    }).order("id", { ascending: true })
+    const from = (page - 1) * pageSize
+    const result = await query.range(from, from + pageSize - 1).abortSignal(signal)
+    const rows = (assertRead(result, signal) || []) as unknown as OrderBase[]
+    if (!rows.length) return { data: [], count: result.count || 0 }
+    const [items, sales] = await settledReads([
+      readBatches<OrderItem>(client, params.siteId, "sale_order_items", ORDER_ITEM_SELECT,
+        "sale_order_id", rows.map(row => row.id), signal),
+      readBatches<OrderSale>(client, params.siteId, "sales", ORDER_SALE_SELECT,
+        "id", uniqueIds(rows.map(row => row.sale_id)), signal),
+    ] as const)
+    const leads = await readBatches<OrderLead>(client, params.siteId, "leads", ORDER_LEAD_SELECT,
+      "id", uniqueIds(sales.map(sale => sale.lead_id)), signal)
+    const leadsById = new Map(leads.map(lead => [lead.id, lead]))
+    const salesById = new Map(sales.map(sale => [sale.id, sale]))
+    const itemsByOrder = new Map<string, OrderItem[]>()
+    for (const item of items) {
+      const group = itemsByOrder.get(item.sale_order_id) || []
+      group.push(item)
+      itemsByOrder.set(item.sale_order_id, group)
     }
-    if (paymentStatus === 'unpaid') {
-      query = query.gt('sales.amount_due', 0);
+    return {
+      data: rows.map(row => {
+        // Discard the filtering embed, including its limited unpaid projection.
+        const base = { ...row } as OrderBase & {
+          sales?: unknown; matching_items?: unknown
+        }
+        delete base.sales
+        delete base.matching_items
+        const sale = salesById.get(row.sale_id)
+        const lead = sale?.lead_id ? leadsById.get(sale.lead_id) : null
+        const customer = lead ? { id: lead.id, name: lead.name, email: lead.email } : null
+        return { ...base, sales: sale ? { ...sale, leads: customer } : null,
+          leads: customer, sale_order_items: itemsByOrder.get(row.id) || [] }
+      }),
+      count: result.count || 0,
     }
-    if (locationId && locationId !== 'all') {
-      query = query.eq("origin_location_id", locationId);
-    }
-    if (matchingOrderIds) {
-      query = query.in("id", matchingOrderIds);
-    }
-    if (startDate) {
-      query = query.gte("created_at", startDate);
-    }
-    if (endDate) {
-      query = query.lte("created_at", endDate);
-    }
-
-    const from = (page - 1) * pageSize;
-    const to = from + pageSize - 1;
-    query = query.range(from, to);
-
-    const { data, count, error } = await query;
-
-    if (error) throw new Error(error.message);
-
-    // Flatten lead from nested sales.leads for list UI
-    const rows = (data || []).map((row: { sales?: { leads?: OrderWithRelations["leads"] } }) => ({
-      ...row,
-      leads: row.sales?.leads || null,
-    })) as OrderWithRelations[];
-
-    return { data: rows, count: count || 0 };
   } catch (error) {
-    console.error("Error in listOrders:", error);
-    return { data: [], count: 0, error: error instanceof Error ? error.message : "Failed to load orders" };
+    return readFailure(signal.aborted ? new CommerceReadError("READ_TIMEOUT", error) : error)
   }
 }
-

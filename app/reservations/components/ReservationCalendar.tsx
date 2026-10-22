@@ -17,8 +17,10 @@ import {
   ReservationYearView,
 } from "./reservation-calendar-views"
 import type { CalendarTimeSlot } from "./reservation-calendar-hour-select"
-import { localDateKey, parseLocalDate } from "./reservation-calendar-select"
+import { localDateKey } from "./reservation-calendar-select"
 import { groupBlockSpansByDate } from "../calendar-block-helpers"
+import { calendarSelectedDate, calendarReadWindow } from "../read-window"
+import { groupReservationSpans } from "./reservation-calendar-range-data"
 
 interface ReservationCalendarProps {
   reservations: Reservation[]
@@ -47,12 +49,10 @@ export function ReservationCalendar({
   const calViewParam = searchParams.get("calView") as CalendarViewMode | null
 
   const selectedDate = useMemo(() => {
-    if (!dateParam) return new Date()
-    const parsed = parseLocalDate(dateParam)
-    return isNaN(parsed.getTime()) ? new Date() : parsed
+    return calendarSelectedDate(dateParam)
   }, [dateParam])
     
-  const viewMode = calViewParam || "month"
+  const viewMode = calViewParam && ["day", "week", "month", "year"].includes(calViewParam) ? calViewParam : "month"
 
   const setSelectedDate = useCallback((action: Date | ((prev: Date) => Date)) => {
     const newDate = typeof action === "function" ? action(selectedDate) : action
@@ -137,13 +137,9 @@ export function ReservationCalendar({
     })
   }
 
-  const reservationsByDate = reservations.reduce((acc, reservation) => {
-    const dateStr = localDateKey(new Date(reservation.start_time))
-    if (!acc[dateStr]) acc[dateStr] = []
-    acc[dateStr].push(reservation)
-    return acc
-  }, {} as Record<string, Reservation[]>)
-  const blocksByDate = groupBlockSpansByDate(blocks)
+  const displayedWindow = calendarReadWindow(selectedDate, viewMode)
+  const reservationsByDate = groupReservationSpans(reservations, displayedWindow)
+  const blocksByDate = groupBlockSpansByDate(blocks, displayedWindow)
 
   const getPeriodLabel = () => {
     switch (viewMode) {
@@ -174,7 +170,7 @@ export function ReservationCalendar({
   }
 
   const handleReservationClick = (reservation: Reservation) => {
-    onReservationClick?.(reservation)
+    onReservationClick?.(reservations.find(row => row.id === reservation.id) || reservation)
   }
 
   const weekdayLabels = [

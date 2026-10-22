@@ -272,7 +272,7 @@ export default function DetailsTab({ task, onSave, formRef }: DetailsTabProps) {
         .eq('site_id', currentSite.id)
         .select(`
           *,
-          leads:lead_id (
+          leads:leads!tasks_lead_id_fkey (
             id,
             name
           )
@@ -382,7 +382,7 @@ export default function DetailsTab({ task, onSave, formRef }: DetailsTabProps) {
         .eq('site_id', currentSite.id)
         .select(`
           *,
-          leads:lead_id (
+          leads:leads!tasks_lead_id_fkey (
             id,
             name
           )

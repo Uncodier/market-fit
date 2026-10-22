@@ -8,7 +8,9 @@ bounds expansion of the seven existing `location_acl_enforcement` policies on
 deals, subscriptions, quotations, sales, sale orders, shipments and order items.
 It does not disable RLS, remove a policy, grant access to application tables,
 change compute or restart the database. Remote application and deployment
-require explicit approval; this repair is prepared locally only.
+require explicit approval. Initial preparation was local only; see the verified
+rollout section in [Resource amplification guards](RESOURCE_AMPLIFICATION_GUARDS.md)
+for the later read-only confirmation of installed helpers and application rollout.
 
 ## Authorization boundary
 

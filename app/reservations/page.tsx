@@ -32,6 +32,10 @@ import type { CalendarBlock, Reservation } from "@/app/types"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
 import { filterCalendarBlocks } from "./calendar-block-helpers"
 import { assignableSiteMembers } from "@/lib/auth/assignable-site-members"
+import { calendarSelectedDate, calendarReadWindow, listReadWindow } from "./read-window"
+import { localDateKey } from "./components/reservation-calendar-select"
+import type { CalendarViewMode } from "./components/reservation-calendar-utils"
+import { ReservationListPeriod } from "./components/ReservationListPeriod"
 
 function ReservationsPageContent() {
   const { t } = useLocalization()
@@ -66,14 +70,37 @@ function ReservationsPageContent() {
   const [isBlockFormOpen, setIsBlockFormOpen] = useState(false)
   const [editingBlock, setEditingBlock] = useState<CalendarBlock | null>(null)
 
-  const { data, isLoading, mutate } = useSWR(
-    currentSite?.id ? ["reservations", currentSite.id] : null,
-    () => getReservations(currentSite!.id)
+  // The calendar already owns URL navigation. Derive the same displayed range here,
+  // including the adjacent month cells, so navigation always changes the read key.
+  const dateParam = searchParams.get("date")
+  const calViewParam = searchParams.get("calView")
+  const selectedDate = useMemo(() => calendarSelectedDate(dateParam), [dateParam])
+  const calendarMode = (["day", "week", "month", "year"].includes(calViewParam || "") ? calViewParam : "month") as CalendarViewMode
+  const readWindow = useMemo(() => viewType === "calendar"
+    ? calendarReadWindow(selectedDate, calendarMode)
+    : listReadWindow(selectedDate), [selectedDate, calendarMode, viewType])
+  const setPeriodDate = (date: Date) => {
+    const params = new URLSearchParams(searchParams.toString())
+    params.set("date", localDateKey(date))
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false })
+  }
+
+  const { data, error: reservationsError, isLoading, mutate } = useSWR(
+    currentSite?.id && viewMode !== "schedules" ? ["reservations", currentSite.id, readWindow.start, readWindow.end] : null,
+    async () => {
+      const result = await getReservations(currentSite!.id, readWindow)
+      if (result.error) throw new Error(result.error)
+      return result
+    }
   )
 
-  const { data: blocksData, isLoading: isLoadingBlocks, mutate: mutateBlocks } = useSWR(
-    currentSite?.id ? ["calendar-blocks", currentSite.id] : null,
-    () => getCalendarBlocks(currentSite!.id)
+  const { data: blocksData, error: blocksError, isLoading: isLoadingBlocks, mutate: mutateBlocks } = useSWR(
+    currentSite?.id && viewMode !== "schedules" ? ["calendar-blocks", currentSite.id, readWindow.start, readWindow.end] : null,
+    async () => {
+      const result = await getCalendarBlocks(currentSite!.id, readWindow)
+      if (result.error) throw new Error(result.error)
+      return result
+    }
   )
 
   const { data: membersData } = useSWR(
@@ -294,6 +321,8 @@ function ReservationsPageContent() {
         </div>
       </StickyHeader>
 
+      {viewType === "list" && viewMode !== "schedules" && <ReservationListPeriod date={selectedDate} onChange={setPeriodDate} />}
+
       <div
         className={
           viewType === "calendar" && viewMode !== "schedules"
@@ -301,7 +330,12 @@ function ReservationsPageContent() {
             : "p-4 md:p-6 lg:p-8 flex-1 min-h-0 min-w-0 overflow-auto"
         }
       >
-        {!currentSite || isLoading || isLoadingBlocks ? (
+        {viewMode !== "schedules" && (reservationsError || blocksError) ? (
+          <div role="alert" className="rounded border bg-card p-4">
+            <p>{reservationsError?.message || blocksError?.message || "Calendar data could not be loaded."}</p>
+            <Button variant="outline" onClick={refresh}>Retry</Button>
+          </div>
+        ) : !currentSite || isLoading || isLoadingBlocks ? (
           <ReservationsTableSkeleton />
         ) : viewMode === "schedules" ? (
           <div className="bg-card rounded-xl shadow-sm border border-border overflow-hidden">

@@ -267,7 +267,7 @@ export function useControlCenterPage() {
         .from('tasks')
         .select(`
           *,
-          leads:lead_id (
+          leads:leads!tasks_lead_id_fkey (
             id,
             name
           ),

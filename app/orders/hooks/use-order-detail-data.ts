@@ -28,7 +28,7 @@ export function useOrderDetailData(orderId: string) {
   )
 
   useOrdersRealtime(data?.site_id, () => {
-    void mutate()
+    return mutate()
   }, { orderId, playAlarm: false })
 
   return { order: data || null, error, loading: isLoading, setOrder }

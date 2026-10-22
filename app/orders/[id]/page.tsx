@@ -193,8 +193,8 @@ export default function OrderDetail(props: { params: Promise<{ id: string }> }) 
         originLocationId: defaultLocation.id,
         userId: (order as any).user_id,
       })
-      if (res.error) throw new Error(res.error)
-      if (res.data) {
+      if ("error" in res) throw new Error(res.error)
+      if ("data" in res && res.data) {
         toast.success(t('orders.success.shipmentCreated') || "Shipment created")
         router.push(`/shipments/${res.data.id}`)
       }
