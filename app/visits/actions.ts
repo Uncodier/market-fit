@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache"
 import type { Reservation, ReservationChannel, ReservationResourceType, VisitsSettings } from "@/app/types"
+import { createVisitLead } from "./visit-lead"
 import {
   assertVisitAttestation,
   buildVisitResourcePayload,
@@ -240,21 +241,14 @@ async function resolveVisitLead(
     }
   }
 
-  const { data: created, error: createError } = await supabase
-    .from("leads")
-    .insert({
-      site_id: input.siteId,
-      name,
-      email,
-      phone,
-      status: "new",
-      origin: "visit_registration",
-    })
-    .select("id, buyer_user_id, site_id")
-    .single()
-
-  if (createError || !created) return { error: createError?.message || "Could not create visitor record" }
-  return { lead: created }
+  return createVisitLead(supabase, {
+    site_id: input.siteId,
+    name,
+    email,
+    phone,
+    status: "new",
+    origin: "visit_registration",
+  })
 }
 
 async function registerVisitCore(input: RegisterVisitInput, opts: { asBuyer: boolean }) {
@@ -440,20 +434,16 @@ export async function registerBuyerVisit(input: Omit<RegisterVisitInput, "leadId
           auth.user.email ||
           "Customer"
 
-        const { data: created, error: createError } = await auth.supabase
-          .from("leads")
-          .insert({
-            site_id: input.siteId,
-            buyer_user_id: auth.user.id,
-            name,
-            email: profile?.email || auth.user.email || null,
-            status: "new",
-          })
-          .select("id")
-          .single()
+        const created = await createVisitLead(auth.supabase, {
+          site_id: input.siteId,
+          buyer_user_id: auth.user.id,
+          name,
+          email: profile?.email || auth.user.email || null,
+          status: "new",
+        })
 
-        if (createError || !created) return { error: createError?.message || "Could not create customer record" }
-        leadId = created.id
+        if (created.error || !created.lead) return { error: created.error || "Could not create customer record" }
+        leadId = created.lead.id
       } else {
         leadId = lead.id
       }

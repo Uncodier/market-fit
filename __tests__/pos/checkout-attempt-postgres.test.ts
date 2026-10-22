@@ -93,6 +93,7 @@ suite('POS checkout attempt recovery in disposable socket-only PostgreSQL', () =
     expectedOrder = JSON.parse(pg.db(`SELECT to_jsonb(o) FROM public.sale_orders o WHERE id='${order}'`))
     // Keep these SECURITY DEFINER functions owned by the fixture auditor, as created.
     pg.db(migration('20261022140000_pos_checkout_attempt_recovery.sql'))
+    pg.db(migration('20261022201051_complete_pos_checkout_recovery.sql'))
   })
 
   it('installs RLS, service-only RPC grants and the restricted table grants', () => {
@@ -118,6 +119,19 @@ suite('POS checkout attempt recovery in disposable socket-only PostgreSQL', () =
     expect(claim()).toEqual({ state: 'claimed' })
     expect(transition()).toBe(true)
     expect(pg.call('SELECT state FROM public.pos_checkout_attempts', ids.owner, 'service_role')).toBe('writes_started')
+  })
+  it('reapplies the forward correction without changing evidence and disables the legacy commit', () => {
+    expect(claim()).toEqual({ state: 'claimed' })
+    const before = attempt()
+    pg.db(`CREATE FUNCTION public.pos_checkout_commit_order(uuid,text,uuid,uuid,jsonb,jsonb) RETURNS jsonb
+      LANGUAGE sql AS $$ SELECT '{}'::jsonb $$;
+      GRANT EXECUTE ON FUNCTION public.pos_checkout_commit_order(uuid,text,uuid,uuid,jsonb,jsonb) TO service_role;`)
+    pg.db(migration('20261022201051_complete_pos_checkout_recovery.sql'))
+    expect(attempt()).toEqual(before)
+    for (const role of ['anon', 'authenticated', 'service_role']) expect(pg.db(
+      `SELECT has_function_privilege('${role}','public.pos_checkout_commit_order(uuid,text,uuid,uuid,jsonb,jsonb)','EXECUTE')`,
+    )).toBe('f')
+    expect(pg.db("SELECT has_function_privilege('service_role','public.pos_checkout_commit_order(uuid,text,uuid,uuid,jsonb,jsonb,jsonb,jsonb)','EXECUTE')")).toBe('t')
   })
 
   it.each(['authenticated', 'anon'])('denies %s RPCs and table access even with a forged service JWT', role => {

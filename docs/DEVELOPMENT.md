@@ -261,6 +261,21 @@ server checkout validation still apply. Regression coverage lives in
 `__tests__/commerce/shop-fulfillment-preference.test.tsx` and
 `__tests__/shop/shop-fulfillment-cart.test.tsx`.
 
+### Visit registration lead ownership
+
+Both physical kiosk and buyer visit registration use `app/visits/visit-lead.ts`
+when a new customer record is needed. The helper reads `sites.user_id` for the
+target site using the authenticated, RLS-scoped client and sets the required
+`leads.user_id` from that row. Never substitute the kiosk operator, buyer account,
+or a client-provided owner ID. Buyer identity remains in `buyer_user_id`; existing
+lead ownership is unchanged. Missing or unreadable site owners stop creation with
+a safe error. No schema change or service-role fallback is needed for this fix.
+Regression coverage is in `__tests__/visits/lead-registration.test.ts`:
+
+```bash
+npm test -- --runInBand __tests__/visits
+```
+
 ## Before handing off
 
 - Review the diff for unrelated edits and accidental secret exposure.

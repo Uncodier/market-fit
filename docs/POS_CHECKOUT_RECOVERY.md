@@ -69,9 +69,31 @@ The browser queue check covers the current device, not every cashier's device.
 
 ## Rollout and validation
 
+### Production rollout, 2026-10-22
+
+The application deployment for commit `cb13babe` reached Ready on the workspace
+production domain. The Management API applied the forward correction and recorded
+version `20261022201051` (`complete_pos_checkout_recovery`). The local filename
+matches that server-assigned version; the applied SQL is unchanged. The original
+`20261022140000` migration is not recorded remotely because older admission objects
+were already installed outside that history. Do not replay it against this target.
+
+Post-application checks confirmed the eight-argument RPC is visible in PostgREST,
+the obsolete six-argument overload is unavailable to API roles, and RLS/table/RPC
+grants remain server-only. No historical order or receipt was changed. POS browser
+tabs must reload to retire the old action bundle. The informational
+[RLS-without-policy notice](https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy)
+for the attempts table is intentional: browser roles have no grants and only the
+authorized server workflow can access admission evidence. These checks are not a
+live paid checkout test or proof that the affected device's queue has reconciled.
+
 1. Review/apply the complete migration to the explicitly approved target using the
    established migration workflow. No backfill, historical receipt edits, or
    automatic legacy voids are included.
+   For partially installed admission objects or the obsolete six-argument commit
+   RPC, use `20261022201051_complete_pos_checkout_recovery.sql`. It validates the
+   existing table, preserves attempts, installs the snapshot-aware commit, and
+   revokes API execution of the obsolete overload without dropping it.
 2. Deploy matching server and browser code, then reload POS tabs to retire old
    replay loops. Stop old in-flight checkout requests before targeted incident repair.
 3. On the affected device, choose **Check payment status**, then **Review order**.
