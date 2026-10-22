@@ -4,13 +4,14 @@ import { clearCartSession } from "@/app/pos/local/cart-session";
 import { enqueueRegisteredCheckout } from "@/app/pos/register/prepare-payment";
 import { enqueueCheckout, listOutbox } from "@/app/pos/local/outbox";
 import { getActiveRegisterForPayment } from "@/app/pos/register/actions";
-import { drainPosOutbox } from "@/app/pos/local/sync-engine";
+import { syncPosCheckout } from "@/app/pos/local/sync-engine";
+import { checkoutAttemptKey } from "@/app/pos/local/checkout-attempt-storage";
 import type { CheckoutOutboxPayload, PosOutboxRow } from "@/app/pos/local/types";
 
 jest.mock("@/app/pos/register/actions", () => ({ getActiveRegisterForPayment: jest.fn() }));
 jest.mock("@/app/pos/local/location-permission-state", () => ({ requirePosPermission: () => ({}), isPosPermissionCurrent: () => true }));
 jest.mock("@/app/pos/local/outbox", () => ({ enqueueCheckout: jest.fn(), listOutbox: jest.fn() }));
-jest.mock("@/app/pos/local/sync-engine", () => ({ drainPosOutbox: jest.fn() }));
+jest.mock("@/app/pos/local/sync-engine", () => ({ syncPosCheckout: jest.fn() }));
 jest.mock("@/app/pos/local/db", () => ({ getPosDb: () => ({ cartSessions: { put: jest.fn().mockResolvedValue(undefined) } }) }));
 
 const cart = [{ id: "coffee", cartQty: 1, cartPrice: 10 }];
@@ -27,13 +28,13 @@ beforeEach(() => {
   Object.defineProperty(navigator, "locks", { configurable: true, value: { request: async (_name: string, _options: unknown, action: () => Promise<unknown>) => action() } });
   jest.mocked(listOutbox).mockImplementation(async () => rows);
   jest.mocked(getActiveRegisterForPayment).mockResolvedValue({ data: { id: "register", location_id: "store" } } as never);
-  jest.mocked(enqueueCheckout).mockImplementation(async (_site, data) => {
+  jest.mocked(enqueueCheckout).mockImplementation(async (_site, data, checkoutCartSessionId) => {
     const row = { id: "row", kind: "checkout", status: "pending", clientMutationId: data.clientMutationId,
-      payload: { kind: "checkout", data } } as PosOutboxRow;
+      checkoutCartSessionId, payload: { kind: "checkout", data } } as PosOutboxRow;
     rows.push(row);
     return row;
   });
-  jest.mocked(drainPosOutbox).mockResolvedValue(undefined);
+  jest.mocked(syncPosCheckout).mockResolvedValue(undefined);
 });
 
 it("recovers a synced ambiguous receipt after hook remount, but permits a fresh identical cart after reset", async () => {
@@ -53,9 +54,10 @@ it("recovers a synced ambiguous receipt after hook remount, but permits a fresh 
   const oldSession = second.result.current.session();
   await act(async () => { await clearCartSession("site"); });
   expect(second.result.current.isCurrent(oldSession)).toBe(false);
+  expect(localStorage.getItem(checkoutAttemptKey("site", "actor", oldSession, cart))).toBe(id);
   const freshId = second.result.current.id(cart);
   expect(freshId).not.toBe(id);
-  jest.mocked(drainPosOutbox).mockImplementation(async () => { rows.forEach((row) => { row.status = "synced"; }); });
+  jest.mocked(syncPosCheckout).mockImplementation(async () => { rows.forEach((row) => { row.status = "synced"; }); });
   await enqueueRegisteredCheckout("site", { ...payload, clientMutationId: freshId });
   expect(enqueueCheckout).toHaveBeenCalledTimes(2);
 });

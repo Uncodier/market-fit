@@ -17,28 +17,14 @@ import { reconcilePosCheckout } from "../local/checkout-recovery";
 import type { PosOutboxRow } from "@/app/pos/local/types";
 import { CheckCircle2, Loader2, AlertTriangle, Clock } from "@/app/components/ui/icons";
 import { cn } from "@/lib/utils";
+import { recoveryDetails } from "./PosCheckoutRecoveryDetails";
 
 type PosSyncIssuesProps = {
   siteId?: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   t: (key: string) => string;
-  onReviewOrder?: (orderId: string) => void;
-};
-
-const recoveryDetails = {
-  rejected: {
-    label: "Rejected — no payment recorded",
-    explanation: "No payment was recorded for this attempt. Reload and review the order before a new confirmation.",
-  },
-  payment_recorded: {
-    label: "Payment recorded — checkout not confirmed complete",
-    explanation: "Payment recorded does not mean the full checkout completed. Reload and review the order before another confirmation. Do not charge again.",
-  },
-  review_required: {
-    label: "Review required — payment status needs review",
-    explanation: "Full checkout completion is not confirmed. Reload and review the order before another confirmation; do not assume the payment failed.",
-  },
+  onReviewOrder?: (orderId: string | undefined, rowId?: string) => void;
 };
 
 export function PosSyncIssues(props: PosSyncIssuesProps) {
@@ -229,11 +215,11 @@ function PosSyncIssuesSession({ siteId, open, onOpenChange, t, onReviewOrder }: 
                         {busy === row.id ? "Checking payment status…" : "Check payment status"}
                       </Button>
                     )}
-                    {onReviewOrder && reviewOrderId && (
+                    {onReviewOrder && (checkout || reviewOrderId) && (
                       <Button variant="outline" size="sm" disabled={Boolean(busy)} onClick={() => {
                         if (!sessionRef.current.active || !open || row.siteId !== siteId) return;
                         onOpenChange(false);
-                        onReviewOrder(reviewOrderId);
+                        onReviewOrder(reviewOrderId || undefined, checkout ? row.id : undefined);
                       }}>Review order</Button>
                     )}
                   </div>

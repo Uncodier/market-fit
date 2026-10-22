@@ -1,6 +1,6 @@
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { PosSyncIssues } from "@/app/pos/components/PosSyncIssues";
-import { reconcilePosCheckoutStatus } from "@/app/pos/actions/reconcile-checkout";
+import { fetchPosCheckoutStatus } from "@/app/pos/checkout-status-client";
 import { checkoutCart } from "@/app/commerce/checkout";
 import { getPosDb } from "@/app/pos/local/db";
 import { enqueueCheckout, enqueueOutbox, listOutbox, updateOutboxRow } from "@/app/pos/local/outbox";
@@ -8,7 +8,7 @@ import { drainPosOutbox, refreshPosSyncCounts, subscribePosSync } from "@/app/po
 import type { PosOutboxRow } from "@/app/pos/local/types";
 import type { PosCheckoutRecovery } from "@/app/pos/checkout-recovery-types";
 
-jest.mock("@/app/pos/actions/reconcile-checkout", () => ({ reconcilePosCheckoutStatus: jest.fn() }));
+jest.mock("@/app/pos/checkout-status-client", () => ({ fetchPosCheckoutStatus: jest.fn() }));
 jest.mock("@/app/commerce/checkout", () => ({ checkoutCart: jest.fn() }));
 jest.mock("@/app/pos/local/db", () => ({ getPosDb: jest.fn() }));
 jest.mock("@/app/pos/local/location-permission-state", () => ({
@@ -75,7 +75,7 @@ beforeEach(() => {
   });
   jest.mocked(drainPosOutbox).mockReset().mockResolvedValue(undefined);
   jest.mocked(refreshPosSyncCounts).mockResolvedValue(undefined);
-  jest.mocked(reconcilePosCheckoutStatus).mockReset().mockResolvedValue({ data: {
+  jest.mocked(fetchPosCheckoutStatus).mockReset().mockResolvedValue({ data: {
     state: "payment_recorded", message: "Receipt exists; fulfillment still needs review.",
     orderId: "recovered-order", saleId: "recovered-sale",
   } });
@@ -90,7 +90,7 @@ function expectNoBlindRetry() {
 
 it("does not downgrade exact recorded receipts after an in-flight status response", async () => {
   storedRows = [checkoutRow({ recoveryState: "payment_recorded", recoveryMessage: "Exact receipts recorded" })];
-  jest.mocked(reconcilePosCheckoutStatus).mockResolvedValueOnce({ data: { state: "processing", message: "Still processing" } });
+  jest.mocked(fetchPosCheckoutStatus).mockResolvedValueOnce({ data: { state: "processing", message: "Still processing" } });
   render(<PosSyncIssues {...props} />);
   fireEvent.click(await screen.findByRole("button", { name: "Check payment status" }));
   await waitFor(() => expect(updateOutboxRow).toHaveBeenCalledWith("attempt-a", expect.objectContaining({
@@ -114,21 +114,21 @@ it("shows order/mutation diagnostics and the queued payment sum and methods", as
   expect(screen.getByText("Checkout response was lost")).toBeInTheDocument();
   expect(screen.queryByRole("button", { name: /delete|mark.*success/i })).not.toBeInTheDocument();
   expect(screen.queryByRole("button", { name: "Review order" })).not.toBeInTheDocument();
-  expect(reconcilePosCheckoutStatus).not.toHaveBeenCalled();
+  expect(fetchPosCheckoutStatus).not.toHaveBeenCalled();
   expectNoBlindRetry();
 });
 
 it("uses reconciliation to look up server status, blocks duplicate clicks, and refreshes persisted recovery", async () => {
-  const lookup = deferred<Awaited<ReturnType<typeof reconcilePosCheckoutStatus>>>();
-  jest.mocked(reconcilePosCheckoutStatus).mockReturnValueOnce(lookup.promise);
+  const lookup = deferred<Awaited<ReturnType<typeof fetchPosCheckoutStatus>>>();
+  jest.mocked(fetchPosCheckoutStatus).mockReturnValueOnce(lookup.promise);
   render(<PosSyncIssues {...props} />);
   const check = await screen.findByRole("button", { name: "Check payment status" });
   fireEvent.click(check);
   fireEvent.click(check);
   expect(screen.getByRole("button", { name: "Checking payment status…" })).toBeDisabled();
   expect(screen.getByRole("button", { name: "Retry sync" })).toBeDisabled();
-  await waitFor(() => expect(reconcilePosCheckoutStatus).toHaveBeenCalledTimes(1));
-  expect(reconcilePosCheckoutStatus).toHaveBeenCalledWith({
+  await waitFor(() => expect(fetchPosCheckoutStatus).toHaveBeenCalledTimes(1));
+  expect(fetchPosCheckoutStatus).toHaveBeenCalledWith({
     siteId: "site-a", clientMutationId: "mutation-a", existingOrderId: "existing-order",
     registerSessionId: "register-a", payments,
   });
@@ -165,7 +165,7 @@ it.each([
 });
 
 it("shows checkout synchronized only when reconciliation returns explicit full completion", async () => {
-  jest.mocked(reconcilePosCheckoutStatus).mockResolvedValueOnce({ data: {
+  jest.mocked(fetchPosCheckoutStatus).mockResolvedValueOnce({ data: {
     state: "completed", message: "Checkout completion confirmed by the server.",
     result: { success: true, orderId: "completed-order", saleId: "completed-sale" },
   } });
@@ -179,7 +179,7 @@ it("shows checkout synchronized only when reconciliation returns explicit full c
 });
 
 it("shows status-check failure without hiding the attempt or retrying checkout", async () => {
-  jest.mocked(reconcilePosCheckoutStatus).mockResolvedValueOnce({ error: "Status service is unavailable" });
+  jest.mocked(fetchPosCheckoutStatus).mockResolvedValueOnce({ error: "Status service is unavailable" });
   render(<PosSyncIssues {...props} />);
   fireEvent.click(await screen.findByRole("button", { name: "Check payment status" }));
   expect(await screen.findByRole("alert")).toHaveTextContent("Unable to check payment status. Try again. Status service is unavailable");
@@ -233,10 +233,24 @@ it.each(["recovery", "result", "existing"])("closes before invoking optional ord
     resultOrderId: source !== "existing" ? "result-target" : null,
   })];
   const events: string[] = [];
-  const onReviewOrder = jest.fn((id: string) => events.push(id));
+  const onReviewOrder = jest.fn((id: string | undefined) => events.push(id || ""));
   render(<PosSyncIssues {...props} onOpenChange={(open) => events.push(`open:${open}`)} onReviewOrder={onReviewOrder} />);
   fireEvent.click(await screen.findByRole("button", { name: "Review order" }));
   expect(events).toEqual(["open:false", source === "recovery" ? "review-target" : source === "result" ? "result-target" : "existing-order"]);
+  expect(onReviewOrder).toHaveBeenCalledWith(expect.any(String), "attempt-a");
+  expectNoBlindRetry();
+});
+
+it("keeps review available with the original row when a new order has no server ID", async () => {
+  const row = checkoutRow();
+  if (row.payload.kind === "checkout") delete row.payload.data.existingOrderId;
+  storedRows = [row];
+  const onReviewOrder = jest.fn();
+  render(<PosSyncIssues {...props} onReviewOrder={onReviewOrder} />);
+  fireEvent.click(await screen.findByRole("button", { name: "Review order" }));
+  expect(onReviewOrder).toHaveBeenCalledWith(undefined, "attempt-a");
+  expect(onOpenChange).toHaveBeenCalledWith(false);
+  expect(storedRows).toEqual([row]);
   expectNoBlindRetry();
 });
 
@@ -252,7 +266,7 @@ it("retains an explicit global retry with busy/error handling, separate from pay
   expect(screen.getByRole("alert")).toHaveTextContent("Unable to retry sync. Try again. Sync unavailable");
   expect(screen.getByRole("button", { name: "Retry sync" })).toBeEnabled();
   expect(drainPosOutbox).toHaveBeenCalledWith("site-a");
-  expect(reconcilePosCheckoutStatus).not.toHaveBeenCalled();
+  expect(fetchPosCheckoutStatus).not.toHaveBeenCalled();
   expect(checkoutCart).not.toHaveBeenCalled();
 });
 
@@ -284,11 +298,11 @@ it("ignores a superseded same-site list read after a sync notification", async (
 });
 
 it.each(["site", "close"])("does not leak late reconciliation failures into a new %s session", async (change) => {
-  const lookup = deferred<Awaited<ReturnType<typeof reconcilePosCheckoutStatus>>>();
-  jest.mocked(reconcilePosCheckoutStatus).mockReturnValueOnce(lookup.promise);
+  const lookup = deferred<Awaited<ReturnType<typeof fetchPosCheckoutStatus>>>();
+  jest.mocked(fetchPosCheckoutStatus).mockReturnValueOnce(lookup.promise);
   const view = render(<PosSyncIssues {...props} />);
   fireEvent.click(await screen.findByRole("button", { name: "Check payment status" }));
-  await waitFor(() => expect(reconcilePosCheckoutStatus).toHaveBeenCalledTimes(1));
+  await waitFor(() => expect(fetchPosCheckoutStatus).toHaveBeenCalledTimes(1));
   if (change === "site") {
     storedRows = [checkoutRow({ id: "attempt-b", siteId: "site-b", clientMutationId: "mutation-b" })];
     view.rerender(<PosSyncIssues {...props} siteId="site-b" />);
@@ -306,11 +320,11 @@ it.each(["site", "close"])("does not leak late reconciliation failures into a ne
 });
 
 it("does not refresh a different site when an earlier reconciliation succeeds", async () => {
-  const lookup = deferred<Awaited<ReturnType<typeof reconcilePosCheckoutStatus>>>();
-  jest.mocked(reconcilePosCheckoutStatus).mockReturnValueOnce(lookup.promise);
+  const lookup = deferred<Awaited<ReturnType<typeof fetchPosCheckoutStatus>>>();
+  jest.mocked(fetchPosCheckoutStatus).mockReturnValueOnce(lookup.promise);
   const view = render(<PosSyncIssues {...props} />);
   fireEvent.click(await screen.findByRole("button", { name: "Check payment status" }));
-  await waitFor(() => expect(reconcilePosCheckoutStatus).toHaveBeenCalledTimes(1));
+  await waitFor(() => expect(fetchPosCheckoutStatus).toHaveBeenCalledTimes(1));
   storedRows.push(checkoutRow({ id: "attempt-b", siteId: "site-b", clientMutationId: "mutation-b" }));
   view.rerender(<PosSyncIssues {...props} siteId="site-b" />);
   await screen.findByText("mutation-b");

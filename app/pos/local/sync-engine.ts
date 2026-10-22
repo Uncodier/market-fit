@@ -1,10 +1,7 @@
-import { applyOutboxItem } from "./sync-outbox-item";
+import { hasPosOutboxWork, syncPosOutboxRow } from "./sync-outbox-worker";
 import { getPosPermissionLease, isPosPermissionCurrent, subscribePosPermission } from "./location-permission-state";
 import { getPosDb } from "./db";
-import {
-  listOutbox,
-  updateOutboxRow,
-} from "./outbox";
+import { listOutbox } from "./outbox";
 import { pullAndStorePosCatalogSnapshot, applyPosOpenOrders } from "./snapshot-pull";
 import { getPosCatalogRevision } from "@/app/pos/actions/sync-revision";
 import { listPosOpenOrders } from "@/app/pos/actions/list-open-orders";
@@ -16,8 +13,6 @@ import {
   ORDERS_RETRY_MAX_MS,
 } from "./sync-policy";
 import { clearAllPosSyncErrors, clearPosSyncError, getPosSyncError, recordPosSyncError, reconcilePosOutboxErrors } from "./sync-errors";
-import { applyPosCheckoutRecovery, reconcilePosCheckout } from "./checkout-recovery";
-import { PosCheckoutRecoveryError } from "../checkout-recovery-types";
 
 export type SyncStatus = {
   online: boolean;
@@ -44,8 +39,8 @@ type SiteSyncState = {
 type SyncListener = (status: SyncStatus) => void;
 
 const listeners = new Map<SyncListener, string | undefined>();
-let running = false;
-let rerunFlag = false;
+const drainingSites = new Set<string>();
+const rerunSites = new Set<string>();
 let pulling = false;
 const EMPTY_SITE_STATE: SiteSyncState = {
   lastPulledAt: null,
@@ -110,7 +105,7 @@ function emit(siteId: string) {
   const status: SyncStatus = {
     online: isBrowserOnline(),
     pulling,
-    syncing: running,
+    syncing: drainingSites.has(siteId) || hasPosOutboxWork(siteId),
     pendingCount: state.pendingCount,
     failedCount: state.failedCount,
     lastPulledAt: state.lastPulledAt,
@@ -132,7 +127,7 @@ export function getPosSyncStatus(siteId: string): SyncStatus {
   return {
     online: isBrowserOnline(),
     pulling,
-    syncing: running,
+    syncing: drainingSites.has(siteId) || hasPosOutboxWork(siteId),
     pendingCount: state.pendingCount,
     failedCount: state.failedCount,
     lastPulledAt: state.lastPulledAt,
@@ -148,11 +143,11 @@ export async function drainPosOutbox(siteId: string): Promise<void> {
     emit(siteId);
     return;
   }
-  if (running) {
-    rerunFlag = true;
+  if (drainingSites.has(siteId)) {
+    rerunSites.add(siteId);
     return;
   }
-  running = true;
+  drainingSites.add(siteId);
   emit(siteId);
   let attemptedCheckout = false;
 
@@ -166,53 +161,8 @@ export async function drainPosOutbox(siteId: string): Promise<void> {
 
     for (const row of ordered) {
       if (!isPosPermissionCurrent(permission)) break;
-      // Failures of a collected payment are status lookups, not checkout replays.
-      // This also handles historical rows whose response predates durable admission.
-      if (row.payload?.kind === "checkout" && row.payload.data.payments?.length &&
-        (row.status !== "pending" || row.recoveryState)) {
-        if (row.recoveryState === "rejected") continue;
-        try {
-          const recovery = await reconcilePosCheckout(siteId, row.id);
-          if (recovery.state === "completed") clearPosSyncError(siteId, `outbox:${row.id}`);
-        } catch {
-          // A failed evidence read never authorizes a second collection.
-        }
-        continue;
-      }
-      if (row.recoveryState) continue;
       if (row.kind === "checkout") attemptedCheckout = true;
-      let timeout: ReturnType<typeof setTimeout> | undefined;
-      try {
-        await updateOutboxRow(row.id, {
-          status: "syncing",
-          attempts: row.attempts + 1,
-        });
-        if (!isPosPermissionCurrent(permission)) break;
-        await Promise.race([
-          applyOutboxItem(row, permission),
-          new Promise<void>((_, reject) => {
-            timeout = setTimeout(() => reject(new Error("Sync timed out")), 45000);
-          }),
-        ]);
-        clearPosSyncError(siteId, `outbox:${row.id}`);
-      } catch (error) {
-        if (!isPosPermissionCurrent(permission)) break;
-        const message = error instanceof Error ? error.message : "Sync failed";
-        recordPosSyncError(`outbox:${row.id}`, {
-          siteId, operation: row.kind, error: message,
-          clientMutationId: row.clientMutationId, attempts: row.attempts + 1,
-        });
-        await updateOutboxRow(row.id, {
-          status: "failed",
-          lastError: message,
-        });
-        if (error instanceof PosCheckoutRecoveryError) await applyPosCheckoutRecovery(row, error.recovery);
-        else if (row.payload.kind === "checkout" && row.payload.data.payments?.length) {
-          try { await reconcilePosCheckout(siteId, row.id); } catch { /* Retain unknown payment evidence. */ }
-        }
-      } finally {
-        if (timeout !== undefined) clearTimeout(timeout);
-      }
+      await syncPosOutboxRow(row, permission, outboxChanged);
     }
     clearPosSyncError(siteId, "outbox");
   } catch (error) {
@@ -221,13 +171,44 @@ export async function drainPosOutbox(siteId: string): Promise<void> {
       siteId, operation: "outbox", error: error instanceof Error ? error.message : "Sync failed",
     });
   } finally {
-    running = false;
+    drainingSites.delete(siteId);
+    const rerun = rerunSites.delete(siteId);
     if (isPosPermissionCurrent(permission)) {
       await refreshCounts(siteId);
       if (attemptedCheckout) void pullPosCatalogInBackground(siteId, true);
-      if (rerunFlag) void drainPosOutbox(siteId);
+      if (rerun) void drainPosOutbox(siteId);
     }
-    rerunFlag = false;
+  }
+}
+
+function outboxChanged(siteId: string) {
+  emit(siteId);
+  void refreshCounts(siteId);
+}
+
+/** Wait for this checkout and its local dependencies, not unrelated queue work.
+ * Failures remain in the outbox for the payment caller to inspect. A bounded
+ * wait is not payment confirmation and never releases a still-active request.
+ */
+export async function syncPosCheckout(siteId: string, mutationId: string): Promise<void> {
+  const permission = getPosPermissionLease(siteId);
+  if (!permission || !isBrowserOnline()) return;
+  try {
+    const rows = await listOutbox(siteId);
+    if (!isPosPermissionCurrent(permission)) return;
+    const row = rows.find((candidate) => candidate.siteId === siteId &&
+      candidate.clientMutationId === mutationId && candidate.kind === "checkout" && candidate.payload.kind === "checkout");
+    if (!row || row.status === "synced") return;
+    await syncPosOutboxRow(row, permission, outboxChanged);
+  } catch (error) {
+    if (isPosPermissionCurrent(permission)) recordPosSyncError("outbox", {
+      siteId, operation: "outbox", error: error instanceof Error ? error.message : "Sync failed",
+    });
+  } finally {
+    if (isPosPermissionCurrent(permission)) {
+      await refreshCounts(siteId);
+      void pullPosCatalogInBackground(siteId, true);
+    }
   }
 }
 

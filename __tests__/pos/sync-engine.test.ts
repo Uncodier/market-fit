@@ -73,7 +73,11 @@ describe("POS sync failure reporting and recovery", () => {
       Object.assign(rows.find((row) => row.id === id)!, patch);
     });
     metaGet = jest.fn(async () => undefined);
-    jest.mocked((await import("@/app/pos/local/db")).getPosDb).mockReturnValue({ meta: { get: metaGet } } as unknown as ReturnType<typeof import("@/app/pos/local/db").getPosDb>);
+    jest.mocked((await import("@/app/pos/local/db")).getPosDb).mockReturnValue({
+      meta: { get: metaGet },
+      outbox: { get: jest.fn(async (id: string) => rows.find((row) => row.id === id)) },
+      transaction: jest.fn(async (_mode: string, _table: unknown, work: () => Promise<void>) => work()),
+    } as unknown as ReturnType<typeof import("@/app/pos/local/db").getPosDb>);
     checkIn.mockResolvedValue({ success: true });
     report.mockResolvedValue({ ok: true });
     catalogPull.mockResolvedValue({ ok: true, pulledAt: "2026-10-16T10:00:00.000Z" });
@@ -112,7 +116,7 @@ describe("POS sync failure reporting and recovery", () => {
     let finish!: (value: { success: boolean }) => void;
     checkIn.mockImplementationOnce(() => new Promise((resolve) => { finish = resolve; }));
     const draining = engine.drainPosOutbox(SITE);
-    for (let i = 0; i < 15 && !finish; i++) await Promise.resolve();
+    for (let i = 0; i < 40 && !finish; i++) await Promise.resolve();
     const permission = jest.mocked(await import("@/app/pos/local/location-permission-state"));
     permission.isPosPermissionCurrent.mockReturnValue(false);
     finish({ success: true });
@@ -232,15 +236,19 @@ describe("POS sync failure reporting and recovery", () => {
     expect(engine.getPosSyncStatus(SITE).lastError).toBeNull();
   });
 
-  it("reports timeout and restores the status when a later attempt succeeds", async () => {
+  it("reports timeout, retains the active slot, and restores status on late success", async () => {
     rows = [queued()];
-    checkIn.mockImplementationOnce(() => new Promise(() => {}));
+    let finish!: (value: { success: boolean }) => void;
+    checkIn.mockImplementationOnce(() => new Promise((resolve) => { finish = resolve; }));
     const drain = engine.drainPosOutbox(SITE);
     await jest.advanceTimersByTimeAsync(45_000);
     await drain;
     expect(rows[0]).toMatchObject({ status: "failed", lastError: "Sync timed out" });
     expect(report).toHaveBeenCalledWith(expect.objectContaining({ error: "Sync timed out" }));
     await engine.drainPosOutbox(SITE);
+    expect(checkIn).toHaveBeenCalledTimes(1);
+    finish({ success: true });
+    await jest.advanceTimersByTimeAsync(0);
     expect(engine.getPosSyncStatus(SITE)).toMatchObject({ failedCount: 0, lastError: null });
   });
 

@@ -57,6 +57,8 @@ export type PosOutboxRow = {
   status: OutboxStatus;
   attempts: number;
   lastError?: string | null;
+  /** Local cart identity only; never sent to checkout as authorization. */
+  checkoutCartSessionId?: string;
   recoveryState?: import("../checkout-recovery-types").PosCheckoutRecoveryState;
   recoveryOrderId?: string | null;
   recoverySaleId?: string | null;

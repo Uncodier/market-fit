@@ -19,6 +19,7 @@ export async function enqueueOutbox(params: {
   kind: PosOutboxRow["kind"];
   clientMutationId: string;
   payload: PosOutboxRow["payload"];
+  checkoutCartSessionId?: string;
 }): Promise<PosOutboxRow> {
   const permission = requirePosPermission(params.siteId);
   if (params.payload.kind === "checkout" && params.payload.data.userId !== permission.userId) {
@@ -38,6 +39,7 @@ export async function enqueueOutbox(params: {
     kind: params.kind,
     clientMutationId: params.clientMutationId,
     payload: params.payload,
+    ...(params.checkoutCartSessionId ? { checkoutCartSessionId: params.checkoutCartSessionId } : {}),
     status: "pending",
     attempts: 0,
     lastError: null,
@@ -51,12 +53,14 @@ export async function enqueueOutbox(params: {
 export async function enqueueCheckout(
   siteId: string,
   data: CheckoutOutboxPayload,
+  checkoutCartSessionId?: string,
 ) {
   return enqueueOutbox({
     siteId,
     kind: "checkout",
     clientMutationId: data.clientMutationId,
     payload: { kind: "checkout", data },
+    checkoutCartSessionId,
   });
 }
 

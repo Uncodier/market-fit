@@ -31,7 +31,7 @@ function deferred<T>() {
 }
 
 async function flush() {
-  for (let i = 0; i < 30; i++) await Promise.resolve();
+  for (let i = 0; i < 60; i++) await Promise.resolve();
 }
 
 beforeEach(async () => {
@@ -199,7 +199,15 @@ it("allows outbox replay while both catalog and orders requests are hanging", as
   const snapshot = deferred<{ ok: boolean }>();
   orders.mockReturnValueOnce(read.promise);
   catalog.mockReturnValueOnce(snapshot.promise);
-  const row = { id: "operation", kind: "check_in", siteId: SITE, status: "pending", attempts: 0 } as PosOutboxRow;
+  const row: PosOutboxRow = {
+    id: "operation", clientMutationId: "operation", kind: "check_in", siteId: SITE, status: "pending", attempts: 0,
+    createdAt: "2026-10-21T12:00:00Z", updatedAt: "2026-10-21T12:00:00Z",
+    payload: { kind: "check_in", data: { siteId: SITE, clientMutationId: "operation", code: "ticket" } },
+  };
+  const db = (await import("@/app/pos/local/db")).getPosDb();
+  Object.assign(db, { outbox: { get: jest.fn(async () => row) },
+    transaction: jest.fn(async (_mode, _table, work) => work()),
+  });
   const outbox = jest.mocked(await import("@/app/pos/local/outbox"));
   outbox.listOutbox.mockImplementation(async () => row.status === "synced" ? [] : [row]);
   outbox.updateOutboxRow.mockResolvedValue(undefined);

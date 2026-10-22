@@ -7,7 +7,8 @@ import type { PosOrderSnapshot } from "@/app/pos/order-snapshot";
 
 jest.mock("@/app/pos/actions/get-order", () => ({ getPosOrder: jest.fn() }));
 jest.mock("@/app/commerce/checkout", () => ({ checkoutCart: jest.fn() }));
-jest.mock("@/app/pos/local/outbox", () => ({ updateOutboxRow: jest.fn() }));
+jest.mock("@/app/pos/local/outbox", () => ({ updateOutboxRow: jest.fn(), listOutbox: jest.fn() }));
+jest.mock("@/app/pos/local/checkout-recovery", () => ({ reconcilePosCheckout: jest.fn() }));
 jest.mock("@/app/context/DisplayCurrencyContext", () => ({
   useDisplayCurrency: () => ({ formatPrice: (amount: number, currency: string) => `${currency} ${amount.toFixed(2)}` }),
 }));

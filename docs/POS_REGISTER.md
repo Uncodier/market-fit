@@ -68,7 +68,14 @@ review/retry rather than collecting a second payment automatically.
 See [Checkout recovery](POS_CHECKOUT_RECOVERY.md) for evidence-based status checks,
 isolated recorded/rejected payments and the migration-dependent admission flow.
 
-Payment collection and closing use the same site-scoped browser Web Lock. Closing
+Payment collection and closing use the same site-scoped browser Web Lock. A
+collected payment synchronizes its own checkout and dependencies, not the entire
+outbox. Unrelated failed or ambiguous operations never prevent another order's
+payment; the affected order/attempt remains protected against duplicate collection.
+New cash entries round amount, tender and change to the existing two-decimal money
+precision before queueing, so exact receipt arithmetic does not reject fractional
+change because of floating-point noise. Stored ambiguous payments are not rewritten.
+Closing
 drains the local outbox and refuses to proceed while any collected payment in that
 site remains unresolved. Durable pre-write rejections do not represent collected
 receipts; recorded-but-incomplete payments still block closing. Browsers must support Web Locks (modern

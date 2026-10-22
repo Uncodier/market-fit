@@ -1,14 +1,9 @@
-import { reconcilePosCheckoutStatus } from "../actions/reconcile-checkout";
+import { fetchPosCheckoutStatus } from "../checkout-status-client";
 import { getPosDb } from "./db";
 import { requirePosPermission, isPosPermissionCurrent } from "./location-permission-state";
 import { updateOutboxRow, mapLocalId } from "./outbox";
 import type { PosOutboxRow } from "./types";
 import type { PosCheckoutRecovery } from "../checkout-recovery-types";
-
-/** Only explicit server evidence can unblock other orders. Unknown legacy writes cannot. */
-export function isPosPaymentIsolated(row: PosOutboxRow): boolean {
-  return row.status === "failed" && (row.recoveryState === "rejected" || row.recoveryState === "payment_recorded");
-}
 
 export async function applyPosCheckoutRecovery(row: PosOutboxRow, recovery: PosCheckoutRecovery): Promise<void> {
   const permission = requirePosPermission(row.siteId);
@@ -57,7 +52,7 @@ export async function reconcilePosCheckout(siteId: string, rowId: string): Promi
   }
   if (row.status === "synced") throw new Error("This checkout is already synchronized.");
   const data = row.payload.data;
-  const result = await reconcilePosCheckoutStatus({
+  const result = await fetchPosCheckoutStatus({
     siteId, clientMutationId: row.clientMutationId,
     existingOrderId: data.existingOrderId?.startsWith("local_") ? undefined : data.existingOrderId,
     registerSessionId: data.registerSessionId,

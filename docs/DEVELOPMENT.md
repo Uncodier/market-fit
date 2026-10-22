@@ -208,6 +208,11 @@ The visible POS sync loop retries pending operations and non-payment failures.
 Failed collected payments use evidence-only reconciliation rather than checkout
 replay. Recorded money is distinct from full checkout completion; safe isolation
 and deployment requirements are in [POS checkout recovery](POS_CHECKOUT_RECOVERY.md).
+Foreground collection waits only for its own checkout and required local
+dependencies, not unrelated queue errors. Unresolved payments fence their own
+order/attempt, never all orders. New Order rotates the cart identity without
+deleting recovery aliases; identical baskets in distinct carts remain distinct
+sales. Register closing still requires all collected receipts to be resolved.
 Successful operations retain their synced result and clear their stored error;
 catalog and order pulls clear only their own errors, including unchanged-revision
 catalog checks. Unresolved failures remain visible rather than being hidden by

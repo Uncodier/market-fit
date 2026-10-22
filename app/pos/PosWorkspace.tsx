@@ -43,7 +43,7 @@ export default function PosWorkspace() {
   const [isSearchExpanded, setIsSearchExpanded] = useState(false);
   const [isMobileCartOpen, setIsMobileCartOpen] = useState(false);
   const [syncIssuesOpen, setSyncIssuesOpen] = useState(false);
-  const [reviewOrder, setReviewOrder] = useState<{ siteId?: string; orderId: string } | null>(null);
+  const [reviewOrder, setReviewOrder] = useState<{ siteId?: string; orderId?: string; rowId?: string } | null>(null);
   const [isSplitBillOpen, setIsSplitBillOpen] = useState(false);
   const [leadGate, setLeadGate] = useState<null | "promo" | "checkout" | "send">(
     null,
@@ -426,7 +426,7 @@ export default function PosWorkspace() {
       </div>
 
       <PosSyncIssues
-        onReviewOrder={(orderId) => setReviewOrder({ siteId, orderId })}
+        onReviewOrder={(orderId, rowId) => setReviewOrder({ siteId, orderId, rowId })}
         siteId={siteId}
         open={syncIssuesOpen}
         onOpenChange={setSyncIssuesOpen}
@@ -435,6 +435,12 @@ export default function PosWorkspace() {
       <PosOrderReviewDialog
         siteId={siteId}
         orderId={reviewOrder?.siteId === siteId ? reviewOrder?.orderId : undefined}
+        rowId={reviewOrder?.siteId === siteId ? reviewOrder?.rowId : undefined}
+        onReloadOrder={async (orderId) => {
+          if (!siteId || reviewOrder?.siteId !== siteId) return false;
+          return cartApi.handleOrderSelect(orderId, true);
+        }}
+        onContinueSelling={() => { setSyncIssuesOpen(false); setReviewOrder(null); }}
         onOpenChange={(open) => { if (!open) setReviewOrder(null); }} />
 
       <PosPageDialogs

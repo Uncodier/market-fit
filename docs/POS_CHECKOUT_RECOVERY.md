@@ -11,18 +11,36 @@ an order, issue a refund, or mark incomplete checkout as successful.
 | --- | --- | --- | --- |
 | Completed checkout | Synced, restored result | Allowed | Allowed if all receipts settled |
 | All exact receipts recorded, incomplete checkout | Failed, payment recorded/review required | Allowed | Blocked |
-| Durable rejection before checkout writes | Failed, rejected for audit | Allowed after reviewing/reloading the order | Allowed |
-| Missing/partial/mismatched evidence or processing | Failed, review required | Blocked | Blocked |
+| Durable rejection before checkout writes | Failed, rejected for audit | Allowed | Allowed |
+| Missing/partial/mismatched evidence or processing | Failed, review required | Allowed | Blocked |
 
-An unresolved recorded payment blocks further payment of that same order, even
-if a new mutation ID is supplied. A rejected attempt remains visible and immutable
-in the queue; a newly confirmed attempt uses new mutation and receipt IDs. The
-workspace queue offers **Review order** in a read-only dialog backed by the
-authenticated, site-scoped POS order read. Paid, cancelled, and incomplete orders
-can be inspected without selecting the unpaid-only payment cart, collecting money,
-or changing queue state. Refreshing the review reads the server again; it does not
-prove checkout finalization. Top-bar consumers can show diagnostic IDs without
-owning the order-review callback.
+An unresolved payment blocks further payment of that same order, even if a new
+mutation ID is supplied. It never blocks unrelated orders or the entire POS.
+A rejected attempt remains visible and immutable in the queue; a newly confirmed
+attempt uses new mutation and receipt IDs. Review keeps
+the original queue identity, including when no server order has been linked yet.
+The authenticated, site-scoped order read remains separate from payment recovery:
+refreshing order details is not proof of checkout finalization. **Check payment
+status** reconciles the original attempt without replaying it. Only a verified
+pre-write rejection can offer reloading an unpaid order for a new confirmation.
+**Continue selling** returns to the POS without deleting or confirming the pending
+operation. Use **New Order** for another customer; do not re-enter the ambiguous
+payment as a new sale. Top-bar consumers can show diagnostic IDs without owning
+the order-review callback.
+
+Collected-payment confirmation synchronizes only its own outbox item and required
+local dependencies. It does not wait for unrelated failed payments, catalog pulls,
+or the full background queue to drain. Background and foreground work share a
+per-row in-flight slot; a timeout is not permission to send a second checkout.
+Browser evidence reads use the authenticated, read-only `/api/pos/checkout-status`
+transport with a bounded wait, outside Next.js's serialized Server Action queue.
+This keeps a slow recovery lookup from holding subsequent checkout actions.
+New queued payments retain their cart-session ID outside the server payload.
+Changing a payment in the same new-order cart cannot evade the unresolved-payment
+guard. A deliberate **New Order** rotates that identity while preserving previous
+attempt aliases and queue entries, so an identical basket for the next customer
+is not mistaken for an old retry. Legacy entries retain conservative matching
+until that explicit new-order boundary.
 
 Do not clear IndexedDB or browser storage to recover a register. Do not collect
 again merely because checkout returned an error. Existing refunds remain separate
@@ -30,7 +48,8 @@ financial actions; recovery does not invent a refund or reverse accounting.
 
 ## Server boundaries
 
-`app/pos/actions/reconcile-checkout.ts` validates request shape, authenticates and
+The checkout-status route and `app/pos/actions/reconcile-checkout.ts` share request
+validation and authorization. Each boundary authenticates and
 requires an authorized POS role and unrestricted location access before using a
 server-only, read-only service client. Receipt verification checks the original
 actor, site, shift, IDs, amounts, methods, tendered/change, and linked order. A
@@ -70,6 +89,10 @@ Checkout's broader finalization is not a fully transactional/idempotent saga.
 Concurrent non-checkout order-line writers remain a separate boundary; snapshot
 validation and admission do not replace a global order-edit transaction protocol.
 The browser queue check covers the current device, not every cashier's device.
+Collection still requires an authorized session, connectivity, a valid open
+register, and current order validation. Separating sync errors is not an offline
+payment protocol. Recovery lookups no longer enter the Server Action dispatcher;
+other existing Server Actions still use the framework's serialization behavior.
 
 ## Rollout and validation
 
@@ -101,7 +124,8 @@ live paid checkout test or proof that the affected device's queue has reconciled
 2. Deploy matching server and browser code, then reload POS tabs to retire old
    replay loops. Stop old in-flight checkout requests before targeted incident repair.
 3. On the affected device, choose **Check payment status**, then **Review order**.
-   Recorded-but-incomplete attempts still need manager review before closing.
+   Recorded-but-incomplete attempts still need manager review before closing, but
+   must not prevent other orders from being paid.
 
 Missing migration/RPCs fail closed. Do not deploy browser/server changes without
 the migration. Local tests never use a remote database or live payment provider:
@@ -114,3 +138,9 @@ npm run typecheck
 `__tests__/pos/checkout-attempt-postgres.test.ts` executes admission, replay,
 concurrency, authorization, atomic receipt persistence and rollback in a new
 socket-only PostgreSQL cluster using the existing isolated test harness.
+`__tests__/pos/payment-math-postgres.test.ts` reproduces the rejected floating-point
+cash change and verifies new rounded cash/split entries against the unchanged
+receipt trigger. The checkout-status client, route, and scheduling tests cover
+bounded read transport, authorization, and continued checkout during a hung
+recovery request. No additional database migration is required for sync isolation
+or the cash-entry correction.

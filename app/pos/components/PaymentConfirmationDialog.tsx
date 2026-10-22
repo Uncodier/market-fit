@@ -21,13 +21,8 @@ import { formatDisplayCurrency } from "@/app/lib/fx"
 import { cn } from "@/lib/utils"
 import { Skeleton } from "@/app/components/ui/skeleton"
 import { PaymentDialogSkeleton } from "./payment-dialog-skeleton"
-
-interface PaymentEntry {
-  method: string
-  amount: number
-  tendered: number
-  change: number
-}
+import { roundMoney } from "@/app/commerce/taxes"
+import { createPaymentEntry, remainingPaymentAmount, type PaymentEntry } from "../payment-math"
 
 interface PaymentConfirmationDialogProps {
   open: boolean
@@ -61,15 +56,16 @@ export function PaymentConfirmationDialog({
   const [currentAmount, setCurrentAmount] = useState("")
   const [promoCode, setPromoCode] = useState("")
 
-  const remainingAmount = Math.max(0, totalAmount - payments.reduce((sum, p) => sum + p.amount, 0))
-  const totalChange = payments.reduce((sum, p) => sum + p.change, 0)
+  const remainingAmount = remainingPaymentAmount(totalAmount, payments)
+  const totalChange = roundMoney(payments.reduce((sum, p) => sum + p.change, 0))
+  const pendingPayment = createPaymentEntry(selectedMethod, currentAmount, remainingAmount)
 
   // Reset state when dialog opens
   useEffect(() => {
     if (open) {
       setPayments([])
       setSelectedMethod("cash")
-      setCurrentAmount(totalAmount.toString())
+      setCurrentAmount(roundMoney(totalAmount).toString())
       setPromoCode("")
     }
   }, [open, totalAmount])
@@ -91,27 +87,8 @@ export function PaymentConfirmationDialog({
   ]
 
   const handleAddPayment = () => {
-    const parsedAmount = parseFloat(currentAmount)
-    if (isNaN(parsedAmount) || parsedAmount <= 0) return
-
-    let applied = 0
-    let change = 0
-    let tendered = parsedAmount
-
-    if (selectedMethod === "cash") {
-      if (parsedAmount > remainingAmount) {
-        applied = remainingAmount
-        change = parsedAmount - remainingAmount
-      } else {
-        applied = parsedAmount
-      }
-    } else {
-      // Non-cash methods usually exact match, but we cap it at remaining just in case
-      applied = Math.min(parsedAmount, remainingAmount)
-      tendered = applied
-    }
-
-    setPayments([...payments, { method: selectedMethod, amount: applied, tendered, change }])
+    if (!pendingPayment) return
+    setPayments([...payments, pendingPayment])
     setCurrentAmount("")
   }
 
@@ -262,7 +239,7 @@ export function PaymentConfirmationDialog({
                       {isLoading ? (t('pos.payment.processing') || "Processing...") : (t('pos.payment.completeOnAccount') || "Complete on Account")}
                     </Button>
                   ) : (
-                    <Button className="w-full h-12 text-base rounded-xl" onClick={handleAddPayment} disabled={!currentAmount || parseFloat(currentAmount) <= 0}>
+                    <Button className="w-full h-12 text-base rounded-xl" onClick={handleAddPayment} disabled={!pendingPayment}>
                       {t('pos.payment.addPayment') || 'Add Payment'}
                     </Button>
                   )}

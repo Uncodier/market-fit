@@ -1,8 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { getPosOrder } from "../actions/get-order";
-import { isPosOrderPaid, posOrderAmountDue } from "../open-orders";
+import { isPosOpenOrder, isPosOrderPaid, posOrderAmountDue } from "../open-orders";
+import { hasPosOrderCartSnapshot } from "../order-session";
+import { listOutbox } from "../local/outbox";
+import { reconcilePosCheckout } from "../local/checkout-recovery";
+import type { PosOutboxRow } from "../local/types";
+import { checkoutReviewOrderId, PosCheckoutRecoveryDetails } from "./PosCheckoutRecoveryDetails";
 import type { PosOrderSnapshot } from "../order-snapshot";
 import { useDisplayCurrency } from "@/app/context/DisplayCurrencyContext";
 import { Button } from "@/app/components/ui/button";
@@ -14,42 +19,121 @@ import {
 type Props = {
   siteId?: string;
   orderId?: string;
+  rowId?: string;
   onOpenChange: (open: boolean) => void;
+  onReloadOrder?: (orderId: string) => Promise<boolean> | boolean;
+  onContinueSelling?: () => void;
 };
+
+type ReviewSnapshot = { row: PosOutboxRow | null; order: PosOrderSnapshot | null; error: string | null };
+
+async function readReview(siteId: string, rowId?: string, orderId?: string, isCurrent = () => true): Promise<ReviewSnapshot> {
+  const row = rowId ? (await listOutbox(siteId)).find((item) =>
+    item.id === rowId && item.siteId === siteId && item.payload.kind === "checkout") ?? null : null;
+  if (!isCurrent()) return { row: null, order: null, error: null };
+  if (rowId && !row) throw new Error("Attempt unavailable");
+  // The original queue row, not a potentially stale order prop, owns the recovery identity.
+  const id = row ? checkoutReviewOrderId(row) : orderId;
+  if (!id || id.startsWith("local_")) return { row, order: null, error: null };
+  try {
+    const result = await getPosOrder(siteId, id);
+    const order = result.data;
+    if (result.error || !order) return { row, order: null, error: result.error || "Unable to load POS order." };
+    if (order.id !== id || order.site_id !== siteId) return { row, order: null, error: "This order is not available for this review." };
+    return { row, order, error: null };
+  } catch {
+    return { row, order: null, error: "Unable to load POS order. Try refreshing the order." };
+  }
+}
+
+function canReload(snapshot: ReviewSnapshot): boolean {
+  const { row, order, error } = snapshot;
+  const due = order && posOrderAmountDue(order);
+  return !error && row?.status === "failed" && row.recoveryState === "rejected" &&
+    Boolean(order && due !== null && due > 0.009 && isPosOpenOrder(order) && hasPosOrderCartSnapshot(order));
+}
 
 /** Review payment evidence without putting a paid or unresolved ticket back in the cart. */
 export function PosOrderReviewDialog(props: Props) {
-  return <OrderReviewSession key={`${props.siteId ?? ""}:${props.orderId ?? ""}`} {...props} />;
+  return <OrderReviewSession key={`${props.siteId ?? ""}:${props.rowId ?? ""}:${props.orderId ?? ""}`} {...props} />;
 }
 
-function OrderReviewSession({ siteId, orderId, onOpenChange }: Props) {
+function OrderReviewSession({ siteId, orderId, rowId, onOpenChange, onReloadOrder, onContinueSelling }: Props) {
   const { formatPrice } = useDisplayCurrency();
-  const canRead = Boolean(siteId && orderId && !orderId.startsWith("local_"));
-  const [order, setOrder] = useState<PosOrderSnapshot | null>(null);
+  const canRead = Boolean(siteId && (rowId || (orderId && !orderId.startsWith("local_"))));
+  const [snapshot, setSnapshot] = useState<ReviewSnapshot>({ row: null, order: null, error: null });
   const [loading, setLoading] = useState(canRead);
-  const [error, setError] = useState<string | null>(null);
-  const [revision, setRevision] = useState(0);
+  const [busy, setBusy] = useState<"refresh" | "check" | "reload" | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const busyRef = useRef(false);
+  const sessionRef = useRef({ active: false });
 
   useEffect(() => {
-    if (!canRead || !siteId || !orderId) return;
-    let active = true;
-    void getPosOrder(siteId, orderId).then((result) => {
-      if (!active) return;
-      if (result.error || !result.data) {
-        setError(result.error || "Unable to load POS order.");
-      } else {
-        setOrder(result.data);
-        setError(null);
-      }
-      setLoading(false);
-    }).catch(() => {
-      if (!active) return;
-      setError("Unable to load POS order. Try refreshing the order.");
-      setLoading(false);
-    });
-    return () => { active = false; };
-  }, [canRead, siteId, orderId, revision]);
+    const session = { active: true };
+    sessionRef.current = session;
+    if (canRead && siteId) {
+      void readReview(siteId, rowId, orderId, () => session.active).then((result) => {
+        if (session.active) setSnapshot(result);
+      }).catch(() => {
+        if (session.active) setActionError("Unable to load the original queued attempt. Try refreshing the review.");
+      }).finally(() => { if (session.active) setLoading(false); });
+    }
+    return () => { session.active = false; };
+  }, [canRead, siteId, orderId, rowId]);
 
+  function closeReview(continueSelling = false) {
+    sessionRef.current.active = false;
+    onOpenChange(false);
+    if (continueSelling) onContinueSelling?.();
+  }
+
+  async function runAction(action: "refresh" | "check" | "reload") {
+    const session = sessionRef.current;
+    if (!session.active || !siteId || busyRef.current || loading) return;
+    busyRef.current = true;
+    setBusy(action);
+    setActionError(null);
+    try {
+      let result = await readReview(siteId, rowId, orderId, () => session.active);
+      if (!session.active) return;
+      if (action !== "refresh") {
+        if (!rowId || !result.row) throw new Error("Attempt unavailable");
+        if (result.row.status !== "failed") {
+          setSnapshot(result);
+          return;
+        }
+        if (action === "reload" && !canReload(result)) {
+          setSnapshot(result);
+          setActionError("This attempt is not eligible for a new confirmation. Keep it for review.");
+          return;
+        }
+        const evidence = await reconcilePosCheckout(siteId, rowId);
+        if (!session.active) return;
+        result = await readReview(siteId, rowId, orderId, () => session.active);
+        if (!session.active) return;
+        setSnapshot(result);
+        if (action === "reload" && (evidence.state !== "rejected" || !canReload(result))) {
+          setActionError("A new confirmation requires a verified rejection and an available unpaid order.");
+          return;
+        }
+      }
+      setSnapshot(result);
+      if (action === "reload" && canReload(result) && result.order && onReloadOrder) {
+        const loaded = await onReloadOrder(result.order.id);
+        if (!session.active) return;
+        if (loaded) closeReview(true);
+        else setActionError("Unable to reload this order for a new confirmation. Keep the original attempt for review.");
+      }
+    } catch {
+      if (session.active) setActionError(action === "refresh"
+        ? "Unable to refresh the review. Keep the original queued attempt and try again."
+        : "Unable to check payment status. Keep the original queued attempt and try again.");
+    } finally {
+      if (session.active) { busyRef.current = false; setBusy(null); }
+    }
+  }
+
+  const { row, order, error } = snapshot;
   const due = order ? posOrderAmountDue(order) : null;
   const payments = order?.sales?.payments;
   const recorded = Array.isArray(payments)
@@ -58,7 +142,7 @@ function OrderReviewSession({ siteId, orderId, onOpenChange }: Props) {
     ? "Not available" : formatPrice(value, order?.currency || undefined);
 
   return (
-    <Dialog open={Boolean(orderId)} onOpenChange={onOpenChange}>
+    <Dialog open={Boolean(rowId || orderId)} onOpenChange={(open) => { if (!open) closeReview(); }}>
       <DialogContent size="sm">
         <DialogHeader>
           <DialogTitle>Review order</DialogTitle>
@@ -68,10 +152,24 @@ function OrderReviewSession({ siteId, orderId, onOpenChange }: Props) {
           </DialogDescription>
         </DialogHeader>
         <DialogBody className="space-y-4">
-          {!canRead && <p role="alert" className="text-sm text-destructive">
+          {row && <PosCheckoutRecoveryDetails row={row} />}
+          {row && (row.status === "pending" || row.status === "syncing") && <p className="text-sm">
+            This operation is waiting to sync or is still syncing. Wait for sync to finish, then refresh
+            this review. Checking a payment must not replace the first submission of a queued sale.
+          </p>}
+          {rowId && <p className="text-sm text-muted-foreground">
+            Pending payment is isolated to the affected order, not the entire POS. Continue selling leaves
+            your current cart unchanged. Use New Order for another customer; do not re-enter this uncertain payment as a new sale.
+          </p>}
+          {rowId && onReloadOrder && canReload(snapshot) && <p className="text-sm">
+            Reload order for new confirmation replaces the current cart with this unpaid order.
+            Review it before confirming a new payment. The original attempt will not be replayed or removed.
+          </p>}
+          {actionError && <p role="alert" className="text-sm text-destructive">{actionError}</p>}
+          {!loading && !order && !error && <p role="alert" className="text-sm text-destructive">
             No server order is available yet. Keep the queued operation and check payment status.
           </p>}
-          {loading ? <p role="status" className="text-sm text-muted-foreground">Loading order…</p>
+          {loading ? <p role="status" className="text-sm text-muted-foreground">Loading review…</p>
             : error ? <p role="alert" className="text-sm text-destructive">{error}</p>
             : order && <>
               <dl className="space-y-2 text-sm break-words">
@@ -100,14 +198,18 @@ function OrderReviewSession({ siteId, orderId, onOpenChange }: Props) {
               </div>
             </>}
         </DialogBody>
-        <DialogFooter>
-          <Button variant="outline" disabled={!canRead || loading} onClick={() => {
-            setOrder(null);
-            setError(null);
-            setLoading(true);
-            setRevision((value) => value + 1);
-          }}>Refresh order</Button>
-          <Button onClick={() => onOpenChange(false)}>Close review</Button>
+        <DialogFooter className="sm:flex-wrap">
+          <Button variant="outline" disabled={!canRead || loading || Boolean(busy)}
+            onClick={() => { void runAction("refresh"); }}>Refresh order</Button>
+          {rowId && (!row || row.status === "failed") && <Button variant="outline"
+            disabled={!siteId || loading || Boolean(busy)} onClick={() => { void runAction("check"); }}>
+            {busy === "check" ? "Checking payment status…" : "Check payment status"}
+          </Button>}
+          {rowId && onReloadOrder && <Button variant="outline"
+            disabled={loading || Boolean(busy) || !canReload(snapshot)} onClick={() => { void runAction("reload"); }}>
+            {busy === "reload" ? "Reloading order…" : "Reload order for new confirmation"}
+          </Button>}
+          <Button onClick={() => closeReview(Boolean(rowId))}>{rowId ? "Continue selling" : "Close review"}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

@@ -16,10 +16,9 @@ export function getCheckoutCartSession(siteId: string): string {
 }
 
 export function resetCheckoutCartSession(siteId: string) {
-  localStorage.setItem(SESSION_PREFIX + siteKey(siteId), uuidv4());
-  for (const key of Object.keys(localStorage)) {
-    if (key.startsWith(ATTEMPT_PREFIX + siteKey(siteId) + ":")) localStorage.removeItem(key);
-  }
+  // A deliberate New Order is not a legacy retry, even if its basket is identical.
+  // Preserve old aliases: another tab or an unresolved checkout may still need them.
+  localStorage.setItem(SESSION_PREFIX + siteKey(siteId), `new:${uuidv4()}`);
 }
 
 export function checkoutAttemptKey(siteId: string, userId: string, session: string, payload: unknown) {
