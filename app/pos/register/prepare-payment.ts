@@ -22,6 +22,8 @@ export async function enqueueRegisteredCheckout(siteId: string, payload: Checkou
     if (!isPosPermissionCurrent(permission)) throw new Error("POS access changed")
     const previous = rows.find((row) => row.payload.kind === "checkout" &&
       row.recoveryState !== "rejected" &&
+      (row.recoveryState !== "payment_recorded" || row.clientMutationId === payload.clientMutationId ||
+        !!payload.existingOrderId && (row.payload.data.existingOrderId === payload.existingOrderId || row.recoveryOrderId === payload.existingOrderId)) &&
       row.payload.data.registerSessionId && ((row.clientMutationId === payload.clientMutationId && row.status === "synced") ||
       (row.status !== "synced" && paymentFingerprint(row.payload.data, row.clientMutationId === payload.clientMutationId) === paymentFingerprint({
         ...payload, originLocationId: payload.originLocationId || row.payload.data.originLocationId,

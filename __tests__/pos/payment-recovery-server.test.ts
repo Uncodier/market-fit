@@ -13,12 +13,13 @@ const request: PaymentRecoveryRequest = { siteId, clientMutationId: "original", 
   registerSessionId: "44444444-4444-4444-8444-444444444444",
   payments: [{ paymentId, amount: 100, method: "cash", tendered: 120, change: 20 }],
 };
-type Read = { data: unknown; error?: unknown };
+type Read = { data: unknown; error: unknown };
+type Query = PromiseLike<Read> & { select: jest.Mock; eq: jest.Mock; in: jest.Mock; maybeSingle: jest.Mock };
 let reads: Record<string, Read>;
-const from = jest.fn((table: string) => {
-  const q = { select: jest.fn(() => q), eq: jest.fn(() => q), in: jest.fn(() => q),
+const from = jest.fn((table: string): Query => {
+  const q: Query = { select: jest.fn((): Query => q), eq: jest.fn((): Query => q), in: jest.fn((): Query => q),
     maybeSingle: jest.fn(async () => reads[table]),
-    then: (resolve: (value: Read) => unknown) => Promise.resolve(reads[table]).then(resolve),
+    then: (...args) => Promise.resolve(reads[table]).then(...args),
   };
   return q;
 });
@@ -29,8 +30,8 @@ const mutation = { kind: "checkout", sale_id: "sale", order_id: request.existing
 describe("POS read-only payment reconciliation", () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    reads = { pos_checkout_attempts: { data: null }, pos_client_mutations: { data: null },
-      pos_register_receipts: { data: [] }, sale_orders: { data: [{ id: request.existingOrderId }] } };
+    reads = { pos_checkout_attempts: { data: null, error: null }, pos_client_mutations: { data: null, error: null },
+      pos_register_receipts: { data: [], error: null }, sale_orders: { data: [{ id: request.existingOrderId }], error: null } };
     jest.mocked(createServiceClient).mockResolvedValue({ from } as never);
     jest.mocked(requirePosSiteAccess).mockResolvedValue({ user: { id: "cashier" }, role: "collaborator", supabase: {} } as never);
   });

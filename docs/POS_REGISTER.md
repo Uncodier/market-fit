@@ -65,10 +65,13 @@ payments are associated with a server-created shift and stable receipt UUIDs
 before enqueueing. The cart is only cleared after successful synchronization.
 An ambiguous result leaves the order and its queued operation available for
 review/retry rather than collecting a second payment automatically.
+See [Checkout recovery](POS_CHECKOUT_RECOVERY.md) for evidence-based status checks,
+isolated recorded/rejected payments and the migration-dependent admission flow.
 
 Payment collection and closing use the same site-scoped browser Web Lock. Closing
 drains the local outbox and refuses to proceed while any collected payment in that
-site remains pending, syncing or failed. Browsers must support Web Locks (modern
+site remains unresolved. Durable pre-write rejections do not represent collected
+receipts; recorded-but-incomplete payments still block closing. Browsers must support Web Locks (modern
 secure-context browsers); unsupported browsers fail closed.
 
 This queue check covers the current browser, not every device. Database row locks
@@ -88,8 +91,10 @@ The forward-only migrations are:
 They add sessions, immutable movements and immutable receipts. User-scoped
 Server Actions validate inputs and site roles; RLS allows reads for owner, admin,
 and collaborator roles only. Marketing and anonymous access are denied. Writes
-are limited to authorized transactional RPCs and the authenticated sales trigger;
-the application introduces no service-role register access.
+are limited to authorized transactional RPCs and the authenticated sales trigger.
+The recovery commit RPC is service-only, authorized through durable admission,
+and revalidates its admitted cashier inside the transaction. Recovery reads exact
+receipt evidence using server-only service access after POS authorization.
 
 Each new POS receipt carries a shift UUID, payment UUID and server-derived actor.
 The sales trigger validates site, location, currency, cash arithmetic and actor,

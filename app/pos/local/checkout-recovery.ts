@@ -35,7 +35,12 @@ export async function applyPosCheckoutRecovery(row: PosOutboxRow, recovery: PosC
     // A late status read cannot overwrite a newer confirmed checkout result.
     if (!current || current.status === "synced") return;
     if (!isPosPermissionCurrent(permission)) throw new Error("POS access changed");
-    await updateOutboxRow(row.id, { status: "failed", recoveryState, recoveryMessage: recovery.message,
+    // Confirmed immutable receipt evidence remains valid if a subsequent read
+    // catches a transient/in-flight state. Never undo safe order isolation.
+    const state = current.recoveryState === "payment_recorded" && recoveryState === "review_required"
+      ? "payment_recorded" : recoveryState;
+    await updateOutboxRow(row.id, { status: "failed", recoveryState: state,
+      recoveryMessage: state !== recoveryState ? current.recoveryMessage : recovery.message,
       recoveryOrderId: recovery.orderId || row.recoveryOrderId,
       recoverySaleId: recovery.saleId || row.recoverySaleId,
     });

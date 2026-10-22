@@ -168,9 +168,9 @@ export async function drainPosOutbox(siteId: string): Promise<void> {
       if (!isPosPermissionCurrent(permission)) break;
       // Failures of a collected payment are status lookups, not checkout replays.
       // This also handles historical rows whose response predates durable admission.
-      if (row.payload.kind === "checkout" && row.payload.data.payments?.length &&
+      if (row.payload?.kind === "checkout" && row.payload.data.payments?.length &&
         (row.status !== "pending" || row.recoveryState)) {
-        if (row.recoveryState) continue;
+        if (row.recoveryState === "rejected") continue;
         try {
           const recovery = await reconcilePosCheckout(siteId, row.id);
           if (recovery.state === "completed") clearPosSyncError(siteId, `outbox:${row.id}`);

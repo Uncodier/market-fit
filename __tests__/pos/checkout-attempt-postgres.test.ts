@@ -1,6 +1,6 @@
 /** @jest-environment node */
 import { actorSql, ids, isolatedPostgres, migration, postgresAvailable, uuid } from '../security/isolated-postgres'
-import { installRegisterFixture, registerIds } from './register-postgres-fixture'
+import { installRegisterFixture, openSql, payment, registerIds } from './register-postgres-fixture'
 
 const suite = postgresAvailable ? describe : describe.skip
 const order = uuid(200)
@@ -26,9 +26,22 @@ const transitionSql = (overrides: Partial<Transition> = {}) => {
   return `SELECT public.pos_checkout_transition(${[t.site, t.key, t.owner, t.state, t.order, t.sale,
     t.result === null ? null : JSON.stringify(t.result)].map(literal).join(',')})`
 }
+type Commit = { site: string; key: string; owner: string; order: string;
+  salePatch: unknown; orderPatch: unknown; expectedSale: unknown; expectedOrder: unknown }
+const paid = payment({ amount: 100, tendered: 100, change: 0, recorded_by: ids.collaborator })
+const commitSql = (overrides: Partial<Commit> = {}) => {
+  const c: Commit = { site: ids.site, key: identity.key, owner: ownerToken, order,
+    salePatch: { amount: 100, amount_due: 0, payments: [paid], status: 'completed', payment_method: 'cash' },
+    orderPatch: { status: 'completed', total: 100, notes: 'Committed checkout' },
+    expectedSale: { amount: 100, amount_due: 100, payments: [] },
+    expectedOrder: { id: order, site_id: ids.site, sale_id: registerIds.sale, status: 'pending' }, ...overrides }
+  return `SELECT public.pos_checkout_commit_order(${[c.site, c.key, c.owner, c.order].map(literal).join(',')},
+    ${[c.salePatch, c.orderPatch, c.expectedSale, c.expectedOrder].map(value => literal(value === null ? null : JSON.stringify(value))).join(',')})`
+}
 
 suite('POS checkout attempt recovery in disposable socket-only PostgreSQL', () => {
   const pg = isolatedPostgres()
+  let expectedOrder: Record<string, unknown>
   const serviceSql = (sql: string) => actorSql(sql, ids.owner, 'service_role')
   const claim = (overrides: Partial<Identity> = {}) => JSON.parse(pg.db(serviceSql(claimSql(overrides))))
   const transition = (overrides: Partial<Transition> = {}) => pg.db(serviceSql(transitionSql(overrides))) === 't'
@@ -36,6 +49,19 @@ suite('POS checkout attempt recovery in disposable socket-only PostgreSQL', () =
     `SELECT to_jsonb(a) FROM public.pos_checkout_attempts a WHERE site_id=${literal(site)} AND client_mutation_id=${literal(key)}`,
   ))
   const count = () => pg.db('SELECT count(*) FROM public.pos_checkout_attempts')
+  const preparedCommitSql = (overrides: Partial<Commit> = {}) => commitSql({ expectedOrder, ...overrides })
+  const commit = (overrides: Partial<Commit> = {}) => JSON.parse(pg.db(serviceSql(preparedCommitSql(overrides))))
+  const prepareCommit = () => {
+    pg.call(openSql(), ids.collaborator)
+    expect(claim({ actor: ids.collaborator })).toEqual({ state: 'claimed' })
+    expect(transition()).toBe(true)
+  }
+  const snapshot = () => pg.db(`SELECT jsonb_build_object(
+    'sales',(SELECT jsonb_agg(to_jsonb(s) ORDER BY id) FROM public.sales s),
+    'orders',(SELECT jsonb_agg(to_jsonb(o) ORDER BY id) FROM public.sale_orders o),
+    'attempts',(SELECT jsonb_agg(to_jsonb(a) ORDER BY site_id,client_mutation_id) FROM public.pos_checkout_attempts a),
+    'receipts',(SELECT jsonb_agg(to_jsonb(r) ORDER BY id) FROM public.pos_register_receipts r))`)
+  const receipts = () => JSON.parse(pg.db("SELECT coalesce(jsonb_agg(to_jsonb(r)),'[]'::jsonb) FROM public.pos_register_receipts r"))
   const waitForEvent = async (name: string, event: string) => {
     const deadline = Date.now() + 5000
     while (pg.db(`SELECT count(*) FROM pg_stat_activity WHERE application_name=${literal(name)}
@@ -49,11 +75,22 @@ suite('POS checkout attempt recovery in disposable socket-only PostgreSQL', () =
   afterAll(() => pg.stop())
   beforeEach(() => {
     installRegisterFixture(pg.db)
-    // Only the order columns read by this migration are needed; sales already exist.
-    pg.db(`CREATE TABLE public.sale_orders(id uuid PRIMARY KEY,site_id uuid NOT NULL REFERENCES public.sites);
-      INSERT INTO public.sale_orders VALUES ('${order}','${ids.site}'),('${secondOrder}','${ids.site}'),
-        ('${foreignOrder}','${ids.otherSite}');
+    // Minimal row types for the RPC; register/accounting trigger bodies remain real.
+    pg.db(`ALTER TABLE public.sales ADD COLUMN lead_id uuid,ADD COLUMN buyer_user_id uuid,ADD COLUMN owner_site_id uuid,
+      ADD COLUMN campaign_id uuid,ADD COLUMN segment_id uuid,ADD COLUMN company_id uuid,ADD COLUMN title text,
+      ADD COLUMN product_name text,ADD COLUMN user_id uuid,ADD COLUMN payment_method text;
+      CREATE TABLE public.sale_orders(id uuid PRIMARY KEY,site_id uuid NOT NULL REFERENCES public.sites,
+        sale_id uuid REFERENCES public.sales,status text DEFAULT 'pending',price_list_id uuid,buyer_user_id uuid,
+        owner_site_id uuid,fulfillment_method text,origin_location_id uuid,shipping_address jsonb,scheduled_for timestamptz,
+        subtotal numeric DEFAULT 100,tax_total numeric DEFAULT 0,shipping_cost numeric DEFAULT 0,total numeric DEFAULT 100,
+        currency text DEFAULT 'USD',discount_total numeric DEFAULT 0,promotion_id uuid,user_id uuid,seller_user_id uuid,
+        requested_by_lead_id uuid,items jsonb DEFAULT '[]',notes text,updated_at timestamptz DEFAULT now());
+      CREATE FUNCTION public.current_user_has_site_location_restrictions(p_site_id uuid) RETURNS boolean
+        LANGUAGE sql STABLE AS $$ SELECT false $$;
       INSERT INTO public.sales(id,site_id,location_id) VALUES ('${foreignSale}','${ids.otherSite}','${registerIds.otherLocation}');`)
+    pg.db(`INSERT INTO public.sale_orders(id,site_id,sale_id) VALUES ('${order}','${ids.site}','${registerIds.sale}'),
+      ('${secondOrder}','${ids.site}','${registerIds.secondSale}'),('${foreignOrder}','${ids.otherSite}','${foreignSale}');`)
+    expectedOrder = JSON.parse(pg.db(`SELECT to_jsonb(o) FROM public.sale_orders o WHERE id='${order}'`))
     // Keep these SECURITY DEFINER functions owned by the fixture auditor, as created.
     pg.db(migration('20261022140000_pos_checkout_attempt_recovery.sql'))
   })
@@ -61,7 +98,8 @@ suite('POS checkout attempt recovery in disposable socket-only PostgreSQL', () =
   it('installs RLS, service-only RPC grants and the restricted table grants', () => {
     expect(pg.db("SELECT relrowsecurity FROM pg_class WHERE oid='public.pos_checkout_attempts'::regclass")).toBe('t')
     const signatures = ['public.pos_checkout_claim(uuid,text,uuid,uuid,text,uuid)',
-      'public.pos_checkout_transition(uuid,text,uuid,text,uuid,uuid,jsonb)']
+      'public.pos_checkout_transition(uuid,text,uuid,text,uuid,uuid,jsonb)',
+      'public.pos_checkout_commit_order(uuid,text,uuid,uuid,jsonb,jsonb,jsonb,jsonb)']
     for (const signature of signatures) {
       expect(pg.db(`SELECT has_function_privilege('service_role','${signature}','EXECUTE')`)).toBe('t')
       expect(pg.db(`SELECT prosecdef AND proconfig @> ARRAY['search_path=public, pg_temp']
@@ -85,7 +123,7 @@ suite('POS checkout attempt recovery in disposable socket-only PostgreSQL', () =
   it.each(['authenticated', 'anon'])('denies %s RPCs and table access even with a forged service JWT', role => {
     expect(claim()).toEqual({ state: 'claimed' })
     const before = attempt()
-    const statements = [claimSql({ key: 'denied-key' }), transitionSql(),
+    const statements = [claimSql({ key: 'denied-key' }), transitionSql(), commitSql(),
       'SELECT * FROM public.pos_checkout_attempts',
       "UPDATE public.pos_checkout_attempts SET state='rejected'",
       'INSERT INTO public.pos_checkout_attempts SELECT * FROM public.pos_checkout_attempts',
@@ -105,6 +143,7 @@ suite('POS checkout attempt recovery in disposable socket-only PostgreSQL', () =
     const restricted = (sql: string) => pg.db(`SET ROLE service_role; SET request.jwt.claims='${claims}'; ${sql}`)
     expect(() => restricted(claimSql({ key: 'invalid-role' }))).toThrow('Server checkout admission required')
     expect(() => restricted(transitionSql())).toThrow('Server checkout transition required')
+    expect(() => restricted(commitSql())).toThrow('Server checkout commit required')
     expect(attempt()).toEqual(before)
     expect(count()).toBe('1')
   })
@@ -273,5 +312,165 @@ suite('POS checkout attempt recovery in disposable socket-only PostgreSQL', () =
     expect(claim({ ...foreignIdentity, actor: ids.foreign, order: foreignOrder })).toEqual({ state: 'completed',
       result: foreignResult, orderId: foreignOrder, saleId: foreignSale })
     expect(count()).toBe('2')
+  })
+
+  it('commits sale, order and receipt together as the durable actor and restores service JWT claims', () => {
+    prepareCommit()
+    const output = pg.db(serviceSql(`BEGIN; SET request.jwt.claim.role='service_role'; SET request.jwt.claim.sub='${ids.owner}';
+      ${preparedCommitSql()}; SELECT jsonb_build_object('claims',auth.jwt(),'role',current_setting('request.jwt.claim.role'),
+        'sub',current_setting('request.jwt.claim.sub')); COMMIT;`))
+      .split('\n').map(line => JSON.parse(line))
+    expect(output[0]).toMatchObject({ sale: { id: registerIds.sale, site_id: ids.site, amount: 100, amount_due: 0,
+      payments: [paid], status: 'completed', payment_method: 'cash' },
+    order: { id: order, site_id: ids.site, sale_id: registerIds.sale, status: 'completed', total: 100, notes: 'Committed checkout' } })
+    expect(output[1]).toEqual({ claims: { sub: ids.owner, role: 'service_role' }, role: 'service_role', sub: ids.owner })
+    expect(JSON.parse(pg.db(`SELECT to_jsonb(s) FROM public.sales s WHERE id='${registerIds.sale}'`))).toEqual(output[0].sale)
+    expect(JSON.parse(pg.db(`SELECT to_jsonb(o) FROM public.sale_orders o WHERE id='${order}'`))).toEqual(output[0].order)
+    expect(receipts()).toHaveLength(1)
+    expect(receipts()[0]).toMatchObject({ id: registerIds.payment, sale_id: registerIds.sale, site_id: ids.site,
+      session_id: registerIds.session, amount: 100, tendered: 100, change: 0, actor_id: ids.collaborator })
+    expect(attempt()).toMatchObject({ state: 'writes_started', actor_id: ids.collaborator, order_id: order, sale_id: registerIds.sale })
+    const before = snapshot()
+    expect(() => commit()).toThrow('Checkout balance or order changed before commit')
+    expect(snapshot()).toBe(before)
+    expect(transition({ state: 'completed', result: { success: true } })).toBe(true)
+    expect(() => commit()).toThrow('Checkout admission mismatch')
+  })
+
+  it('rolls back the sale and captured receipt when the subsequent order trigger raises', () => {
+    prepareCommit()
+    pg.db(`CREATE FUNCTION public.fail_checkout_order() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN
+      IF NOT EXISTS (SELECT 1 FROM public.pos_register_receipts WHERE id='${registerIds.payment}' AND actor_id='${ids.collaborator}')
+        OR NOT EXISTS (SELECT 1 FROM public.sales WHERE id='${registerIds.sale}' AND amount_due=0) THEN
+        RAISE EXCEPTION 'Receipt or sale not visible before order update';
+      END IF;
+      RAISE EXCEPTION 'Injected order failure after sale and receipt'; END $$;
+      CREATE TRIGGER fail_checkout_order BEFORE UPDATE ON public.sale_orders FOR EACH ROW EXECUTE FUNCTION public.fail_checkout_order();`)
+    const before = snapshot()
+    expect(() => commit()).toThrow('Injected order failure after sale and receipt')
+    expect(snapshot()).toBe(before)
+    expect(receipts()).toEqual([])
+    expect(attempt()).toMatchObject({ state: 'writes_started', sale_id: null })
+    pg.db('DROP TRIGGER fail_checkout_order ON public.sale_orders')
+    expect(commit().order.status).toBe('completed')
+    expect(receipts()).toHaveLength(1)
+  })
+
+  it('serializes concurrent commit snapshots to one receipt and one stale rejection', async () => {
+    prepareCommit()
+    const results = await Promise.allSettled([1, 2].map(() => pg.concurrent(serviceSql(preparedCommitSql()))))
+    expect(results.filter(result => result.status === 'fulfilled')).toHaveLength(1)
+    const failures = results.filter(result => result.status === 'rejected')
+    expect(failures).toHaveLength(1)
+    if (failures[0].status === 'rejected') expect(failures[0].reason.message).toContain('Checkout balance or order changed before commit')
+    expect(receipts()).toHaveLength(1)
+    expect(attempt()).toMatchObject({ state: 'writes_started', sale_id: registerIds.sale })
+  })
+
+  it.each<[string, Partial<Commit>]>([
+    ['wrong token', { owner: retryToken }], ['wrong tenant', { site: ids.otherSite }],
+    ['wrong key', { key: 'missing' }], ['wrong order', { order: secondOrder }],
+  ])('denies commit with %s before writing', (_label, overrides) => {
+    prepareCommit()
+    const before = snapshot()
+    expect(() => commit(overrides)).toThrow('Checkout admission mismatch')
+    expect(snapshot()).toBe(before)
+    expect(receipts()).toEqual([])
+  })
+
+  it('denies commit before writes_started and when payment actor differs from durable admission', () => {
+    pg.call(openSql(), ids.collaborator)
+    claim({ actor: ids.collaborator })
+    expect(() => commit()).toThrow('Checkout admission mismatch')
+    transition()
+    const before = snapshot()
+    expect(() => commit({ salePatch: { payments: [{ ...paid, recorded_by: ids.owner }] } }))
+      .toThrow('Register payment actor must match authenticated user')
+    expect(snapshot()).toBe(before)
+    expect(receipts()).toEqual([])
+  })
+
+  it.each([
+    `UPDATE public.sales SET amount=101 WHERE id='${registerIds.sale}'`,
+    `UPDATE public.sales SET amount_due=99 WHERE id='${registerIds.sale}'`,
+    `UPDATE public.sales SET payments='[{"amount":1,"method":"cash"}]' WHERE id='${registerIds.sale}'`,
+    `UPDATE public.sale_orders SET status='cancelled' WHERE id='${order}'`,
+    `UPDATE public.sale_orders SET sale_id='${registerIds.secondSale}' WHERE id='${order}'`,
+    `UPDATE public.sale_orders SET total=101,notes='Changed order',updated_at=now() WHERE id='${order}'`,
+  ])('rejects a stale sale/order snapshot after %s without a receipt', change => {
+    prepareCommit()
+    pg.db(change)
+    const before = snapshot()
+    expect(() => commit()).toThrow('Checkout balance or order changed before commit')
+    expect(snapshot()).toBe(before)
+    expect(receipts()).toEqual([])
+  })
+
+  it.each<[string, Partial<Commit>]>([
+    ['non-POS sale source', { salePatch: { source: 'shop' } }],
+    ['negative remaining balance', { salePatch: { amount_due: -1 } }],
+    ['remaining balance above sale amount', { salePatch: { amount_due: 101 } }],
+    ['changed order currency', { orderPatch: { currency: 'EUR' } }],
+  ])('rejects financial patch %s before writing', (_label, overrides) => {
+    prepareCommit()
+    const before = snapshot()
+    expect(() => commit(overrides)).toThrow('Invalid checkout financial state')
+    expect(snapshot()).toBe(before)
+    expect(receipts()).toEqual([])
+  })
+
+  it.each<[string, Partial<Commit>]>([
+    ['null sale snapshot', { expectedSale: null }], ['null order snapshot', { expectedOrder: null }],
+    ['empty sale snapshot', { expectedSale: {} }], ['empty order snapshot', { expectedOrder: {} }],
+    ['incomplete sale snapshot', { expectedSale: { amount: 100, amount_due: 100 } }],
+    ['incomplete order snapshot', { expectedOrder: { sale_id: registerIds.sale, status: 'pending' } }],
+    ['sale ID', { salePatch: { id: foreignSale } }], ['sale tenant', { salePatch: { site_id: ids.otherSite } }],
+    ['sale location', { salePatch: { location_id: registerIds.otherLocation } }], ['sale currency', { salePatch: { currency: 'EUR' } }],
+    ['order ID', { orderPatch: { id: foreignOrder } }], ['order tenant', { orderPatch: { site_id: ids.otherSite } }],
+    ['order sale', { orderPatch: { sale_id: foreignSale } }], ['nonobject sale patch', { salePatch: [] }],
+    ['null order patch', { orderPatch: null }],
+  ])('rejects invalid commit %s atomically', (label, overrides) => {
+    prepareCommit()
+    const before = snapshot()
+    const message = label.includes('snapshot') ? 'Checkout balance or order changed before commit'
+      : label.includes('patch') ? 'Invalid checkout patches' : 'Checkout scope is immutable'
+    expect(() => commit(overrides)).toThrow(message)
+    expect(snapshot()).toBe(before)
+    expect(receipts()).toEqual([])
+  })
+
+  it.each([
+    `UPDATE public.site_members SET status='inactive' WHERE user_id='${ids.collaborator}'`,
+    `UPDATE public.site_members SET license_suspended=true WHERE user_id='${ids.collaborator}'`,
+    `UPDATE public.sites SET archived_at=now() WHERE id='${ids.site}'`,
+  ])('reauthorizes the durable cashier after %s', change => {
+    prepareCommit()
+    pg.db(change)
+    const before = snapshot()
+    expect(() => commit()).toThrow('Register access denied')
+    expect(snapshot()).toBe(before)
+    expect(receipts()).toEqual([])
+  })
+
+  it.each(['true', 'NULL'])('fails closed for location restriction result %s', restriction => {
+    prepareCommit()
+    pg.db(`CREATE OR REPLACE FUNCTION public.current_user_has_site_location_restrictions(p_site_id uuid)
+      RETURNS boolean LANGUAGE sql STABLE AS $$ SELECT ${restriction}::boolean $$`)
+    const before = snapshot()
+    expect(() => commit()).toThrow('Unrestricted checkout access required')
+    expect(snapshot()).toBe(before)
+    expect(receipts()).toEqual([])
+  })
+
+  it.each<[string, string]>([
+    ['order', `UPDATE public.sale_orders SET site_id='${ids.otherSite}' WHERE id='${order}'`],
+    ['sale', `UPDATE public.sale_orders SET sale_id='${foreignSale}' WHERE id='${order}'`],
+  ])('denies an admitted order whose %s is no longer in the tenant', (entity, change) => {
+    prepareCommit()
+    pg.db(change)
+    const before = snapshot()
+    expect(() => commit()).toThrow(`Checkout ${entity} unavailable`)
+    expect(snapshot()).toBe(before)
+    expect(receipts()).toEqual([])
   })
 })

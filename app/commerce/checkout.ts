@@ -6,7 +6,7 @@ import { findPosClientMutation } from "@/app/pos/actions/idempotency"
 import { assertPosOrderCurrent } from "@/app/pos/assert-order-current"
 import { assertRegisterCheckout } from "@/app/pos/register/checkout-guard"
 import { requirePosSiteAccess } from "@/app/pos/actions/site-access"
-import { claimPosCheckout, transitionPosCheckout, type PosCheckoutClaim } from "@/app/pos/checkout-attempt-server"
+import { claimPosCheckout, transitionPosCheckout, posCheckoutFingerprint, type PosCheckoutClaim } from "@/app/pos/checkout-attempt-server"
 import { PosCheckoutRecoveryError } from "@/app/pos/checkout-recovery-types"
 import { inspectPosPayment } from "@/app/pos/payment-recovery-server"
 import {
@@ -93,6 +93,7 @@ export async function checkoutCart(params: CheckoutCartParams) {
           siteId: params.siteId, clientMutationId: params.clientMutationId,
           existingOrderId: params.existingOrderId, registerSessionId: params.registerSessionId,
           payments: params.payments.map((p) => ({ ...p, paymentId: p.paymentId! })),
+          fingerprint: posCheckoutFingerprint(params),
         }, authenticatedUserId)
         if (evidence.state === "completed" && evidence.result) return { ...evidence.result, idempotent: true }
         if (evidence.state !== "not_found") throw new PosCheckoutRecoveryError(evidence)

@@ -124,4 +124,14 @@ describe("Register payment queue and closing lock", () => {
     await expect(enqueueRegisteredCheckout("site", { ...payload, existingOrderId: "other" })).rejects.toThrow("Another payment is unresolved")
     expect(enqueueCheckout).not.toHaveBeenCalled()
   })
+  it("allows a distinct new-order attempt with an identical cart after the old receipt is isolated", async () => {
+    const old = { ...row({ ...payload, registerSessionId: "session", originLocationId: "location" }),
+      status: "failed" as const, recoveryState: "payment_recorded" as const, recoveryOrderId: "old-order" }
+    rows = [old]
+    jest.mocked(drainPosOutbox).mockImplementation(async () => { rows.filter((r) => r !== old).forEach((r) => { r.status = "synced" }) })
+    await expect(enqueueRegisteredCheckout("site", { ...payload, clientMutationId: "distinct-new-cart-session" }))
+      .resolves.toMatchObject({ status: "synced", clientMutationId: "distinct-new-cart-session" })
+    expect(enqueueCheckout).toHaveBeenCalledTimes(1)
+    expect(old.status).toBe("failed")
+  })
 })

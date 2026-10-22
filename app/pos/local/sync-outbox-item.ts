@@ -143,6 +143,8 @@ export async function applyOutboxItem(row: PosOutboxRow, permission: PosPermissi
       resultKitchenDelta: details.kitchenDelta || null,
       resultFulfillment: details.fulfillment || null,
       lastError: null,
+      recoveryState: undefined,
+      recoveryMessage: null,
     });
   }
 }

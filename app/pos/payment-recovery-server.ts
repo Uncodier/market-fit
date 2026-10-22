@@ -4,9 +4,10 @@ import type { PosCheckoutRecovery } from "./checkout-recovery-types";
 export type PaymentRecoveryRequest = {
   siteId: string; clientMutationId: string; existingOrderId?: string;
   registerSessionId?: string;
+  fingerprint?: string;
   payments: { paymentId: string; method: string; amount: number; tendered?: number; change?: number }[];
 };
-type Attempt = { actor_id: string; state: string; result: PosCheckoutRecovery["result"]; order_id: string; sale_id: string };
+type Attempt = { actor_id: string; fingerprint: string; state: string; result: PosCheckoutRecovery["result"]; order_id: string; sale_id: string };
 type Mutation = { kind: string; sale_id: string; order_id: string; result: PosCheckoutRecovery["result"] };
 type Receipt = { id: string; site_id: string; sale_id: string; session_id: string; actor_id: string;
   method: string; amount: string | number; tendered: string | number; change: string | number };
@@ -19,11 +20,12 @@ type Client = { from: (table: string) => Query };
 
 /** Read evidence only. A missing receipt is not proof that a legacy request never ran. */
 export async function inspectPosPayment(client: Client, request: PaymentRecoveryRequest, actorId: string): Promise<PosCheckoutRecovery> {
-  const attemptRead = await client.from("pos_checkout_attempts").select("actor_id,state,result,order_id,sale_id")
+  const attemptRead = await client.from("pos_checkout_attempts").select("actor_id,fingerprint,state,result,order_id,sale_id")
     .eq("site_id", request.siteId).eq("client_mutation_id", request.clientMutationId).maybeSingle();
   if (attemptRead.error) throw new Error("Unable to read checkout status. No operation was changed.");
   const attempt = attemptRead.data as Attempt | null;
   if (attempt && attempt.actor_id !== actorId) throw new Error("This checkout belongs to another cashier.");
+  if (attempt && request.fingerprint && attempt.fingerprint !== request.fingerprint) throw new Error("This checkout identity cannot be changed. Check its original payment status.");
   const linked = { orderId: attempt?.order_id, saleId: attempt?.sale_id };
   if (attempt?.state === "completed" && attempt.result?.success === true) return {
     state: "completed", message: "Checkout confirmed. No additional payment was collected.", ...linked, result: attempt.result,
@@ -42,7 +44,7 @@ export async function inspectPosPayment(client: Client, request: PaymentRecovery
   const legacyResult = !attempt && mutation?.kind === "checkout" && mutation.result?.success === true && mutation.sale_id && mutation.order_id
     ? { state: "completed" as const, message: "Original checkout result recovered. No additional payment was collected.",
       orderId: mutation.order_id, saleId: mutation.sale_id,
-      result: { ...mutation.result, success: true, saleId: mutation.sale_id, orderId: mutation.order_id },
+      result: { ...mutation.result, success: true as const, saleId: mutation.sale_id, orderId: mutation.order_id },
     } : null;
   if (!request.payments.length && legacyResult) return legacyResult;
   if (request.payments.length) {
@@ -64,8 +66,8 @@ export async function inspectPosPayment(client: Client, request: PaymentRecovery
       if (orders.length === 1 && (!request.existingOrderId || orders[0].id === request.existingOrderId)) {
         if (legacyResult && legacyResult.saleId === saleId && legacyResult.orderId === orders[0].id) return legacyResult;
         return {
-        state: "payment_recorded", orderId: orders[0].id, saleId,
-        message: "Payment recorded. Do not collect it again. Checkout finalization still requires review; other orders can continue.",
+          state: "payment_recorded", orderId: orders[0].id, saleId,
+          message: "Payment recorded. Do not collect it again. Checkout finalization still requires review; other orders can continue.",
         };
       }
     }

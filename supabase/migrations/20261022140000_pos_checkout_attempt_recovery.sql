@@ -102,7 +102,7 @@ CREATE FUNCTION public.pos_checkout_commit_order(
 ) RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp AS $$
 DECLARE attempt public.pos_checkout_attempts%ROWTYPE; saved_order public.sale_orders%ROWTYPE;
   saved_sale public.sales%ROWTYPE; next_sale public.sales%ROWTYPE; next_order public.sale_orders%ROWTYPE;
-  previous_claims text; previous_role text;
+  previous_claims text; previous_role text; previous_sub text;
 BEGIN
   IF auth.role() IS DISTINCT FROM 'service_role' THEN
     RAISE EXCEPTION 'Server checkout commit required' USING ERRCODE = '42501';
@@ -119,7 +119,10 @@ BEGIN
   IF NOT FOUND THEN RAISE EXCEPTION 'Checkout order unavailable' USING ERRCODE = '22023'; END IF;
   SELECT * INTO saved_sale FROM public.sales WHERE id=saved_order.sale_id AND site_id=p_site_id FOR UPDATE;
   IF NOT FOUND THEN RAISE EXCEPTION 'Checkout sale unavailable' USING ERRCODE = '22023'; END IF;
-  IF p_expected_sale IS NULL OR p_expected_order IS NULL
+  IF jsonb_typeof(p_expected_sale) IS DISTINCT FROM 'object' OR jsonb_typeof(p_expected_order) IS DISTINCT FROM 'object'
+    OR NOT p_expected_sale ?& ARRAY['amount','amount_due','payments']
+    OR NOT p_expected_order ?& ARRAY['sale_id','status','total','currency','notes','updated_at']
+    OR to_jsonb(saved_sale)->'payments' IS DISTINCT FROM p_expected_sale->'payments'
     OR NOT to_jsonb(saved_sale) @> p_expected_sale OR NOT to_jsonb(saved_order) @> p_expected_order THEN
     RAISE EXCEPTION 'Checkout balance or order changed before commit' USING ERRCODE = '40001';
   END IF;
@@ -131,12 +134,20 @@ BEGIN
       IS DISTINCT FROM ROW(saved_order.id,saved_order.site_id,saved_order.sale_id) THEN
     RAISE EXCEPTION 'Checkout scope is immutable' USING ERRCODE = '22023';
   END IF;
+  IF next_sale.source IS DISTINCT FROM 'pos' OR next_sale.amount IS NULL OR next_sale.amount_due IS NULL
+    OR next_sale.amount::text IN ('NaN','Infinity','-Infinity') OR next_sale.amount_due::text IN ('NaN','Infinity','-Infinity')
+    OR next_sale.amount < 0 OR next_sale.amount_due < 0
+    OR next_sale.amount_due > next_sale.amount OR next_order.currency IS DISTINCT FROM saved_order.currency THEN
+    RAISE EXCEPTION 'Invalid checkout financial state' USING ERRCODE = '22023';
+  END IF;
   -- Existing register/accounting/attribution triggers derive the actor from JWT.
   -- Bind that actor to server-owned admission and reauthorize inside this transaction.
   previous_claims := current_setting('request.jwt.claims',true);
   previous_role := current_setting('request.jwt.claim.role',true);
+  previous_sub := current_setting('request.jwt.claim.sub',true);
   PERFORM set_config('request.jwt.claims',jsonb_build_object('sub',attempt.actor_id,'role','authenticated')::text,true);
   PERFORM set_config('request.jwt.claim.role','authenticated',true);
+  PERFORM set_config('request.jwt.claim.sub',attempt.actor_id::text,true);
   PERFORM public.pos_register_authorize(p_site_id,attempt.actor_id);
   IF public.current_user_has_site_location_restrictions(p_site_id) IS DISTINCT FROM false THEN
     RAISE EXCEPTION 'Unrestricted checkout access required' USING ERRCODE = '42501';
@@ -161,6 +172,7 @@ BEGIN
     updated_at=clock_timestamp() WHERE site_id=p_site_id AND client_mutation_id=p_mutation_id;
   PERFORM set_config('request.jwt.claims',coalesce(previous_claims,''),true);
   PERFORM set_config('request.jwt.claim.role',coalesce(previous_role,''),true);
+  PERFORM set_config('request.jwt.claim.sub',coalesce(previous_sub,''),true);
   RETURN jsonb_build_object('sale',to_jsonb(saved_sale),'order',to_jsonb(saved_order));
 END;
 $$;

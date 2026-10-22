@@ -188,9 +188,10 @@ checkout retains server-side resource, pricing and payment validation. Confirmat
 re-reads an existing order and compares its original snapshot (including balance
 and line changes), not the edited cart. Changed orders are refreshed for review,
 never silently charged. The snapshot version travels with the outbox and is
-checked again on the server before checkout side effects. This is stale-write
-detection, not an atomic database lock: simultaneous payments after the check
-remain a separate concurrency limitation. Older outbox entries have no version.
+checked again on the server before checkout side effects. The recovery migration
+adds durable admission and an atomic existing-order payment commit with snapshot
+checks. Broader checkout and concurrent non-checkout edits still have the limitations
+documented in [POS checkout recovery](POS_CHECKOUT_RECOVERY.md). Older outbox entries have no version.
 Pending-sync placeholder orders stay blocked rather than falling back to stale
 server data. Existing-order payment now requires connectivity to verify its state;
 new-order offline checkout remains available.
@@ -198,12 +199,15 @@ new-order offline checkout remains available.
 The baseline also includes persisted notes and seller attribution to avoid lost
 updates from another device. A note already written by the local autosave can
 therefore require an explicit order refresh before payment; it is never silently
-replayed with an outdated baseline. This check still does not provide a database
-lock against simultaneous writes after validation.
+replayed with an outdated baseline. Admission and commit checks do not replace a
+transaction protocol for all simultaneous order-line writers.
 
 ### POS sync error recovery
 
-The visible POS sync loop retries failed as well as pending outbox operations.
+The visible POS sync loop retries pending operations and non-payment failures.
+Failed collected payments use evidence-only reconciliation rather than checkout
+replay. Recorded money is distinct from full checkout completion; safe isolation
+and deployment requirements are in [POS checkout recovery](POS_CHECKOUT_RECOVERY.md).
 Successful operations retain their synced result and clear their stored error;
 catalog and order pulls clear only their own errors, including unchanged-revision
 catalog checks. Unresolved failures remain visible rather than being hidden by
@@ -217,7 +221,7 @@ attempt count, never the outbox payload or arbitrary error prose. Configure
 [Environment variables](ENVIRONMENT_VARIABLES.md). Recovery sends no success email.
 Repeated error reports are bounded on both client and server; email reporting is
 best effort and provider acceptance does not confirm inbox delivery. It is not a
-durable notification queue. Existing checkout idempotency remains unchanged.
+durable notification queue. Checkout recovery is independent of email reporting.
 
 Regression coverage is in `__tests__/pos/sync-engine.test.ts`,
 `__tests__/pos/report-sync-error.test.ts`, `__tests__/pos/sync-policy.test.ts` and

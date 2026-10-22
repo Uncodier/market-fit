@@ -88,6 +88,17 @@ function expectNoBlindRetry() {
   expect(drainPosOutbox).not.toHaveBeenCalled();
 }
 
+it("does not downgrade exact recorded receipts after an in-flight status response", async () => {
+  storedRows = [checkoutRow({ recoveryState: "payment_recorded", recoveryMessage: "Exact receipts recorded" })];
+  jest.mocked(reconcilePosCheckoutStatus).mockResolvedValueOnce({ data: { state: "processing", message: "Still processing" } });
+  render(<PosSyncIssues {...props} />);
+  fireEvent.click(await screen.findByRole("button", { name: "Check payment status" }));
+  await waitFor(() => expect(updateOutboxRow).toHaveBeenCalledWith("attempt-a", expect.objectContaining({
+    recoveryState: "payment_recorded", recoveryMessage: "Exact receipts recorded",
+  })));
+  expectNoBlindRetry();
+});
+
 it("shows order/mutation diagnostics and the queued payment sum and methods", async () => {
   storedRows = [checkoutRow({ resultOrderId: "result-order", recoveryOrderId: "recovery-order", recoverySaleId: "recovery-sale" })];
   render(<PosSyncIssues {...props} />);

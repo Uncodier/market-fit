@@ -206,6 +206,7 @@ export async function persistCheckoutRecords(
       .select("status, amount, amount_due, payments")
       .eq("id", existingOrder.sale_id)
       .single()
+    if (!existingSale) throw new Error("Existing sale is unavailable. No payment was collected.")
     const { data: storedItems } = await queryClient
       .from("sale_order_items")
       .select("*")

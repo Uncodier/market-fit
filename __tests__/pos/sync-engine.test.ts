@@ -13,6 +13,7 @@ jest.mock("@/app/pos/actions/sync-revision", () => ({ getPosCatalogRevision: jes
 jest.mock("@/app/pos/actions/list-open-orders", () => ({ listPosOpenOrders: jest.fn() }));
 jest.mock("@/app/orders/actions", () => ({ updateOrderNotes: jest.fn() }));
 jest.mock("@/app/pos/actions/report-sync-error", () => ({ reportPosSyncError: jest.fn() }));
+jest.mock("@/app/pos/local/checkout-recovery", () => ({ reconcilePosCheckout: jest.fn(), applyPosCheckoutRecovery: jest.fn() }));
 jest.mock("@/app/pos/local/db", () => ({ getPosDb: jest.fn() }));
 jest.mock("@/app/pos/local/outbox", () => ({
   listOutbox: jest.fn(), updateOutboxRow: jest.fn(),
@@ -152,6 +153,36 @@ describe("POS sync failure reporting and recovery", () => {
     const checkout = jest.mocked((await import("@/app/commerce/checkout")).checkoutCart);
     expect(checkout).not.toHaveBeenCalled();
     expect(rows[0]).toMatchObject({ status: "failed", lastError: "POS account changed" });
+  });
+
+  it("checks failed collected-payment status without replaying checkout or blocking unrelated work", async () => {
+    rows = [{ ...queued("payment"), status: "failed", kind: "checkout", payload: { kind: "checkout", data: {
+      siteId: SITE, userId: "cashier", clientMutationId: "payment", source: "pos", fulfillment: "pickup",
+      lines: [], payments: [{ method: "cash", amount: 100, paymentId: "original-receipt" }],
+    } } }, queued("independent")];
+    const recovery = jest.mocked((await import("@/app/pos/local/checkout-recovery")).reconcilePosCheckout);
+    recovery.mockResolvedValue({ state: "payment_recorded", message: "Review finalization" });
+    await engine.drainPosOutbox(SITE);
+    expect(recovery).toHaveBeenCalledWith(SITE, "payment");
+    expect((await import("@/app/commerce/checkout")).checkoutCart).not.toHaveBeenCalled();
+    expect(checkIn).toHaveBeenCalledTimes(1);
+    expect(rows[1].status).toBe("synced");
+    expect(rows[0].payload.kind === "checkout" && rows[0].payload.data.payments?.[0].paymentId).toBe("original-receipt");
+  });
+
+  it("does not replay recovered rejected or recorded operations on manual drain", async () => {
+    rows = ["rejected", "payment_recorded"].map((recoveryState, index) => ({ ...queued(`payment-${index}`),
+      status: "failed", recoveryState, kind: "checkout", payload: { kind: "checkout", data: {
+        siteId: SITE, userId: "cashier", clientMutationId: `payment-${index}`, source: "pos", fulfillment: "pickup",
+        lines: [], payments: [{ method: "cash", amount: 100, paymentId: "receipt" }],
+      } },
+    })) as PosOutboxRow[];
+    jest.mocked((await import("@/app/pos/local/checkout-recovery")).reconcilePosCheckout)
+      .mockResolvedValue({ state: "payment_recorded", message: "Review finalization" });
+    await engine.drainPosOutbox(SITE);
+    expect((await import("@/app/commerce/checkout")).checkoutCart).not.toHaveBeenCalled();
+    expect(rows.every((row) => row.status === "failed")).toBe(true);
+    expect(rows.every((row) => row.attempts === 0)).toBe(true);
   });
 
   it("automatically retries a persisted failed row without pending rows or a manual force", async () => {

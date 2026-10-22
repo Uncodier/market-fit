@@ -4,6 +4,7 @@ import { createAuthorizedShipment } from "@/app/shipments/create-shipment"
 import { revalidatePath } from "next/cache"
 import { bumpCacheEpoch } from "@/lib/redis/json-cache"
 import { upsertSaleOrderItemsWithModifiers } from "@/app/commerce/checkout-order-items"
+import { recordPosClientMutation } from "@/app/pos/actions/idempotency"
 
 jest.mock("next/cache", () => ({ revalidatePath: jest.fn() }))
 jest.mock("@/lib/redis/json-cache", () => ({ bumpCacheEpoch: jest.fn().mockResolvedValue(true) }))
@@ -83,6 +84,27 @@ describe("finalizeCheckout", () => {
     await expect(finalizeCheckout(posUpdateParams())).rejects.toThrow("Removal failed")
     expect(bumpCacheEpoch).not.toHaveBeenCalled()
     expect(revalidatePath).not.toHaveBeenCalled()
+  })
+  it("stores the complete POS result only after required finalization and checks persistence", async () => {
+    const params = { ...posUpdateParams(), clientMutationId: "original-attempt" }
+    jest.mocked(recordPosClientMutation).mockResolvedValue({ data: {} } as never)
+    const result = await finalizeCheckout(params)
+    expect(recordPosClientMutation).toHaveBeenCalledWith(expect.objectContaining({
+      clientMutationId: "original-attempt", result: expect.objectContaining({
+        success: true, saleId: "sale-1", orderId: "order-1", publicAccessToken: "public-order-token",
+      }),
+    }))
+    expect(jest.mocked(recordPosClientMutation).mock.invocationCallOrder[0]).toBeGreaterThan(
+      jest.mocked(ensurePublicAccessTokenForRecord).mock.invocationCallOrder[0],
+    )
+    expect(result.success).toBe(true)
+    jest.mocked(recordPosClientMutation).mockResolvedValueOnce({ data: null, error: "Unavailable" })
+    await expect(finalizeCheckout(params)).rejects.toThrow("result could not be saved")
+  })
+  it("does not advertise checkout completion if a required public-link step failed", async () => {
+    jest.mocked(ensurePublicAccessTokenForRecord).mockResolvedValueOnce({ error: "Unavailable" })
+    await expect(finalizeCheckout({ ...posUpdateParams(), clientMutationId: "attempt" })).rejects.toThrow("public order link")
+    expect(recordPosClientMutation).not.toHaveBeenCalled()
   })
 
   it("uses authorized server paths for public checkout finalization", async () => {

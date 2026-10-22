@@ -14,6 +14,10 @@ function canonical(value: unknown): unknown {
   return value;
 }
 
+export function posCheckoutFingerprint(params: CheckoutCartParams): string {
+  return createHash("sha256").update(JSON.stringify(canonical(params))).digest("hex");
+}
+
 export async function claimPosCheckout(client: Client, params: CheckoutCartParams, actorId: string): Promise<
   { claim: PosCheckoutClaim; recovery?: never } | { claim?: never; recovery: PosCheckoutRecovery }
 > {
@@ -21,7 +25,7 @@ export async function claimPosCheckout(client: Client, params: CheckoutCartParam
   const { data, error } = await client.rpc("pos_checkout_claim", {
     p_site_id: params.siteId, p_mutation_id: params.clientMutationId, p_actor_id: actorId,
     p_order_id: params.existingOrderId || null,
-    p_fingerprint: createHash("sha256").update(JSON.stringify(canonical(params))).digest("hex"),
+    p_fingerprint: posCheckoutFingerprint(params),
     p_owner_token: ownerToken,
   });
   if (error || !data || typeof data !== "object") {

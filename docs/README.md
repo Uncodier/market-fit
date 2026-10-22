@@ -39,6 +39,7 @@ Use the guides below before relying on older implementation notes.
 - [Financial due dates and subscription terms](FINANCIAL_DUE_DATES.md)
 - [POS inventory availability and backorder markers](POS_INVENTORY.md)
 - [POS cash register shifts and closing history](POS_REGISTER.md)
+- [POS checkout conflicts and payment recovery](POS_CHECKOUT_RECOVERY.md)
 - [Catalog category archival](CATALOG_CATEGORY_ARCHIVAL.md)
 - [Catalog import and large catalogs](CATALOG_IMPORT.md)
 - [Site archival](SITE_ARCHIVAL.md)
