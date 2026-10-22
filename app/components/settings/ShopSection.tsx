@@ -13,6 +13,7 @@ import { ShopHeroCard } from "./ShopHeroCard"
 import { ShopTrustCard } from "./ShopTrustCard"
 import { ShopPayoutsCard } from "./ShopPayoutsCard"
 import { ShopPaymentsCard } from "./ShopPaymentsCard"
+import { ShopSelfServiceCard } from "./ShopSelfServiceCard"
 interface ShopSectionProps {
   active: boolean
   onSave?: (data: SiteFormValues) => void
@@ -89,6 +90,7 @@ export function ShopSection(props: ShopSectionProps) {
 
       {/* Payment & Delivery Policy */}
       <ShopPaymentsCard {...model} />
+      <ShopSelfServiceCard {...model} />
     </div>
   )
 }

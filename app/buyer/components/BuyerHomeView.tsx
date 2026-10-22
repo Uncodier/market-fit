@@ -24,6 +24,7 @@ import { Skeleton } from "@/app/components/ui/skeleton"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/app/components/ui/dialog"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import QRCode from "react-qr-code"
+import { getBuyerIdentityQr } from "../identity-qr-actions"
 
 export function BuyerHomeView({
   scope = "personal",
@@ -51,6 +52,9 @@ export function BuyerHomeView({
       return res
     }
   )
+  const { data: identityQr } = useSWR(data?.user?.id ? ["buyer-identity-qr", data.user.id] : null,
+    () => getBuyerIdentityQr(), { refreshInterval: 60_000, revalidateOnFocus: true })
+  const qrCode = identityQr && "code" in identityQr && identityQr.expiresAt > Date.now() ? identityQr.code : null
 
   if (error) {
     return (
@@ -193,7 +197,7 @@ export function BuyerHomeView({
               <DialogTrigger asChild>
                 <button className="group relative flex items-center gap-3 bg-white dark:bg-zinc-900 border shadow-sm hover:shadow-md pl-2 pr-4 h-16 rounded-2xl transition-all hover:border-primary/30 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-1 w-full sm:w-auto shrink-0">
                   <div className="bg-white border rounded-md p-1 shadow-sm overflow-hidden flex-shrink-0 group-hover:scale-[1.02] transition-transform">
-                    <QRCode value={`mf:user:${data.user.id}`} size={36} className="rounded-sm" />
+                    {qrCode ? <QRCode value={qrCode} size={36} className="rounded-sm" /> : <QrCode className="h-9 w-9" />}
                   </div>
                   <div className="flex flex-col text-left justify-center pr-1 whitespace-nowrap min-w-0">
                     <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground group-hover:text-primary transition-colors leading-none mb-0.5">
@@ -250,7 +254,9 @@ export function BuyerHomeView({
                   {/* QR Section */}
                   <div className="px-6 pb-10 flex flex-col items-center">
                     <div className="bg-white p-4 rounded-2xl shadow-sm border border-black/10 ring-1 ring-black/5 mb-4">
-                      <QRCode value={`mf:user:${data.user.id}`} size={180} className="rounded-md" />
+                      {qrCode ? <QRCode value={qrCode} size={180} className="rounded-md" /> : (
+                        <p className="max-w-[180px] text-sm text-muted-foreground">Account QR is temporarily unavailable. You can order anonymously.</p>
+                      )}
                     </div>
                     <p className="text-xs text-center text-muted-foreground font-medium max-w-[200px]">
                       {t("buyer.home.qrHelper") || "Show this code at the venue"}

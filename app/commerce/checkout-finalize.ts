@@ -13,6 +13,8 @@ import { upsertSaleOrderItemsWithModifiers } from "./checkout-order-items"
 import { syncCheckoutDropinReservations } from "./checkout-reservations"
 import { kitchenDeltaForSend } from "./checkout-print-delta"
 import { recordPosClientMutation } from "@/app/pos/actions/idempotency"
+import { isSelfServiceOrder, selfServiceLocationFromItems } from "./self-service-lifecycle"
+import { applySelfServiceInventoryRelease } from "./self-service-inventory"
 import {
   ensureCommerceLeadConverted,
   isCommerceLeadSource,
@@ -40,6 +42,7 @@ type FinalizeCheckoutParams = {
   existingItems: any[]
   effectiveExistingOrderId?: string
   intent?: CheckoutCartParams["intent"]
+  selfServiceLocationId?: string
   isFullyPaid: boolean
   orderInitialStatus: string
   normalizedPromotionCode?: string
@@ -62,6 +65,11 @@ type FinalizeCheckoutParams = {
 
 export async function finalizeCheckout(params: FinalizeCheckoutParams) {
   const queryClient = params.isAdmin ? params.supabaseAdmin : params.supabase
+  const selfService = Boolean(params.selfServiceLocationId) || isSelfServiceOrder(params.order)
+    || isSelfServiceOrder({ items: params.existingItems })
+  const selfServiceLocationId = params.selfServiceLocationId
+    || selfServiceLocationFromItems((params.order as { items?: unknown }).items)
+    || selfServiceLocationFromItems(params.existingItems)
   const upsertedItems = await upsertSaleOrderItemsWithModifiers({
     supabase: params.supabase,
     supabaseAdmin: params.supabaseAdmin,
@@ -74,6 +82,8 @@ export async function finalizeCheckout(params: FinalizeCheckoutParams) {
     lines: params.lines,
     intent: params.intent,
     isFullyPaid: params.isFullyPaid,
+    selfService,
+    selfServiceLocationId,
   })
 
   // Realtime readers must not reuse a list cached before the item changes.
@@ -107,7 +117,14 @@ export async function finalizeCheckout(params: FinalizeCheckoutParams) {
     if (result.error) throw new Error(`Promotion failed: ${result.error}`)
   }
 
-  if (
+  if (selfService) {
+    if (params.isFullyPaid && params.finalOriginLocationId) {
+      await applySelfServiceInventoryRelease({
+        client: queryClient, siteId: params.siteId, locationId: params.finalOriginLocationId,
+        existingItems: params.existingItems, nextItems: upsertedItems,
+      })
+    }
+  } else if (
     params.fulfillment === "ship" &&
     params.finalOriginLocationId &&
     params.resolvedUserId &&
@@ -210,7 +227,7 @@ export async function finalizeCheckout(params: FinalizeCheckoutParams) {
   }
 
   const kitchenDelta = kitchenDeltaForSend({
-    intent: params.intent,
+    intent: selfService ? (params.isFullyPaid ? "send" : "draft") : params.intent,
     existingItems: params.existingItems,
     nextItems: upsertedItems,
   })

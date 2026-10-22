@@ -40,6 +40,7 @@ Use the guides below before relying on older implementation notes.
 - [POS inventory availability and backorder markers](POS_INVENTORY.md)
 - [POS cash register shifts and closing history](POS_REGISTER.md)
 - [POS checkout conflicts and payment recovery](POS_CHECKOUT_RECOVERY.md)
+- [Location self-service Shop ordering and payment release](SHOP_SELF_SERVICE.md)
 - [Catalog category archival](CATALOG_CATEGORY_ARCHIVAL.md)
 - [Catalog import and large catalogs](CATALOG_IMPORT.md)
 - [Site archival](SITE_ARCHIVAL.md)

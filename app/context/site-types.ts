@@ -248,6 +248,7 @@ export interface SiteSettings {
     bank_routing_number?: string
     bank_account_number?: string
     default_delivery_options?: Array<'pickup' | 'ship' | 'none' | 'dine_in'>
+    self_service_fulfillment_options?: Array<'pickup' | 'dine_in'>
     bank_transfer?: {
       bank_name?: string
       account_holder?: string

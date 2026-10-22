@@ -21,6 +21,7 @@ import { listLocations, upsertLocation, deleteLocation } from "@/app/inventory/a
 import { useSite } from "@/app/context/SiteContext"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { toast } from "sonner"
+import { LocationSelfServiceShare } from "./LocationSelfServiceShare"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -371,6 +372,7 @@ export function OfficeLocationsSection({ onSave }: OfficeLocationsSectionProps) 
                     </FormItem>
                   )}
                 />
+                <LocationSelfServiceShare locationId={location.id} locationName={location.name || "New location"} />
               </SectionCardContent>
               <SectionCardFooter
                 dirty={snapshotsDiffer(location, savedLocations[index])}

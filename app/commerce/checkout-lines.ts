@@ -13,6 +13,7 @@ import {
 } from "./checkout-currency"
 import { calculateOrderTaxTotal } from "./taxes"
 import { resolveExistingCheckoutCurrency } from "./checkout-existing-currency"
+import { loadSelfServicePricing } from "./self-service-pricing"
 import {
   CheckoutCartParams,
   CheckoutLine,
@@ -35,6 +36,7 @@ type ProcessCheckoutLinesParams = {
   existingReservationId?: string
   effectiveExistingOrderId?: string
   fulfillment: CheckoutCartParams["fulfillment"]
+  selfServiceLocationId?: string
 }
 
 export async function processCheckoutLines(params: ProcessCheckoutLinesParams) {
@@ -56,6 +58,8 @@ export async function processCheckoutLines(params: ProcessCheckoutLinesParams) {
   const queryClient = isAdmin ? supabaseAdmin : supabase
   const existingCurrency = await resolveExistingCheckoutCurrency(params)
   const checkoutStock = await revalidateCheckoutAvailability(params)
+  const selfServicePricing = params.selfServiceLocationId ? await loadSelfServicePricing(queryClient, siteId,
+    lines.flatMap((line) => [line.catalogItemId, ...(line.modifiers || []).map((modifier) => modifier.catalogItemId)])) : null
   let orderSubtotal = 0
   const processedLines: ProcessedCheckoutLine[] = []
   const catalogItemsForShipping: Partial<
@@ -66,6 +70,15 @@ export async function processCheckoutLines(params: ProcessCheckoutLinesParams) {
     catalogItemId: string,
     unitPriceOverride?: number
   ) => {
+    if (selfServicePricing) {
+      const mapped = selfServicePricing.priceByItemId.get(catalogItemId)
+      if (mapped !== undefined) return mapped
+      const { data: item, error } = await queryClient.from("catalog_items").select("target_sale_price")
+        .eq("site_id", siteId).eq("id", catalogItemId).single()
+      const price = Number(item?.target_sale_price ?? 0)
+      if (error || !item || !Number.isFinite(price) || price < 0) throw new Error("Unable to verify item price.")
+      return price
+    }
     if (unitPriceOverride !== undefined) return unitPriceOverride
     const { price } = await resolveUnitPrice(
       siteId,
@@ -156,7 +169,7 @@ export async function processCheckoutLines(params: ProcessCheckoutLinesParams) {
       description: catalogItem?.description,
       currency: line.saleOrderItemId && line.unitPriceOverride !== undefined
         ? existingCurrency!.currency : resolveProductCurrency(
-        catalogItem?.currency,
+        selfServicePricing?.priceByItemId.has(line.catalogItemId) ? selfServicePricing.currencyBySiteId.get(siteId) : catalogItem?.currency,
         siteSettings?.currency
       ),
       quantity: line.quantity,
@@ -198,7 +211,7 @@ export async function processCheckoutLines(params: ProcessCheckoutLinesParams) {
         description: modifierItem?.description,
         currency: modifier.saleOrderItemId && modifier.unitPriceOverride !== undefined
           ? existingCurrency!.currency : resolveProductCurrency(
-          modifierItem?.currency || catalogItem?.currency,
+           selfServicePricing?.priceByItemId.has(modifier.catalogItemId) ? selfServicePricing.currencyBySiteId.get(siteId) : modifierItem?.currency || catalogItem?.currency,
           siteSettings?.currency
         ),
         quantity: modifierQuantity,
@@ -232,7 +245,7 @@ export async function processCheckoutLines(params: ProcessCheckoutLinesParams) {
     orderSubtotal = normalized.subtotal
   }
 
-  const { data: taxesByItem } = await getTaxesByCatalogItemIds(
+  const { data: taxesByItem } = selfServicePricing ? { data: selfServicePricing.taxesByItem } : await getTaxesByCatalogItemIds(
     siteId,
     processedLines.map((line) => line.catalog_item_id)
   )

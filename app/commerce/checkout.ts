@@ -25,6 +25,7 @@ import { processCheckoutLines } from "./checkout-lines"
 import { persistCheckoutRecords } from "./checkout-records"
 import { finalizeCheckout } from "./checkout-finalize"
 import type { CheckoutCartParams } from "./checkout-types"
+import { prepareSelfServiceCheckout } from "./self-service"
 import {
   claimCheckoutMutation,
   completeCheckoutMutation,
@@ -84,6 +85,9 @@ export async function checkoutCart(params: CheckoutCartParams) {
       access: ['shop', 'marketplace', 'quote'].includes(params.source) ? 'public' : 'workspace',
     })
     checkoutAdminClient = supabaseAdmin
+    const selfService = params.selfServiceLocationId !== undefined
+      ? await prepareSelfServiceCheckout(params, supabaseAdmin) : null
+    if (selfService) params = selfService.params
     const authenticatedUserId =
       (await supabase.auth.getUser()).data.user?.id || null
     if (params.source === "pos" && params.clientMutationId) {
@@ -118,7 +122,7 @@ export async function checkoutCart(params: CheckoutCartParams) {
     let priceListId = params.priceListId
     let leadId = params.leadId
     let buyerUserId = derivesBuyerIdentity
-      ? authenticatedBuyerId
+      ? selfService ? selfService.buyerUserId : authenticatedBuyerId
       : params.buyerUserId
     let effectiveExistingOrderId = params.existingOrderId
     let quoteForAccept: QuotationForCheckout | null = null
@@ -250,6 +254,7 @@ export async function checkoutCart(params: CheckoutCartParams) {
       originLocationId: params.originLocationId,
       scheduledFor: params.scheduledFor,
       isStaffMutation: params.isStaffMutation,
+      ...(selfService ? { selfServiceLocationId: params.selfServiceLocationId } : {}),
     })
 
     if (source === "shop" || source === "marketplace") {
@@ -279,7 +284,7 @@ export async function checkoutCart(params: CheckoutCartParams) {
       supabaseAdmin,
       siteId: params.siteId,
       source,
-      authenticatedUserId,
+      authenticatedUserId: selfService ? null : authenticatedUserId,
       sellerUserId: params.sellerUserId,
       requestedByLeadId: environment.finalLeadId,
     })
@@ -306,6 +311,7 @@ export async function checkoutCart(params: CheckoutCartParams) {
       existingReservationId: params.existingReservationId,
       effectiveExistingOrderId,
       fulfillment: params.fulfillment,
+      ...(selfService ? { selfServiceLocationId: params.selfServiceLocationId } : {}),
     })
 
     const records = await persistCheckoutRecords({
@@ -321,6 +327,7 @@ export async function checkoutCart(params: CheckoutCartParams) {
       finalOriginLocationId: environment.finalOriginLocationId,
       resolvedScheduledFor: environment.resolvedScheduledFor,
       resolvedUserId: environment.resolvedUserId,
+      ...(selfService ? { selfServiceLocationId: params.selfServiceLocationId } : {}),
       leadCampaignId: environment.leadCampaignId,
       leadSegmentId: environment.leadSegmentId,
       leadCompanyId: environment.leadCompanyId,
@@ -372,6 +379,7 @@ export async function checkoutCart(params: CheckoutCartParams) {
       activeQuotationClaim,
       customerName: params.customerName,
       orderTotal: records.orderTotal,
+      ...(selfService ? { selfServiceLocationId: params.selfServiceLocationId } : {}),
       notes: params.notes,
     })
     if (result.quotationCompleted) activeQuotationClaim = null

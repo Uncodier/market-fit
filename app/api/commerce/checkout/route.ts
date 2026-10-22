@@ -92,7 +92,7 @@ export async function POST(req: Request) {
     const {
       data: { user },
     } = await supabase.auth.getUser()
-    if (user?.id) {
+    if (user?.id && body.selfServiceLocationId === undefined) {
       body.buyerUserId = user.id
     }
 

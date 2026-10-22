@@ -29,6 +29,8 @@ type PrepareCheckoutEnvironmentParams = {
   originLocationId?: string
   scheduledFor?: string
   isStaffMutation?: boolean
+  /** Validated by prepareSelfServiceCheckout before this internal helper runs. */
+  selfServiceLocationId?: string
 }
 
 export async function prepareCheckoutEnvironment(
@@ -132,6 +134,7 @@ export async function prepareCheckoutEnvironment(
     ),
   }))
   if (
+    !params.selfServiceLocationId &&
     !isFulfillmentAllowed(
       fulfillment,
       itemsWithOptions,
@@ -144,7 +147,7 @@ export async function prepareCheckoutEnvironment(
   }
 
   const pickupLocationRestriction =
-    fulfillment === "pickup"
+    fulfillment === "pickup" && !params.selfServiceLocationId
       ? intersectPickupLocationIds(catItemsForCheck)
       : null
   if (

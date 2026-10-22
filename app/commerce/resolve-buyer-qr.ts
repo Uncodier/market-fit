@@ -3,6 +3,7 @@
 import { createClient as createClientAdmin } from "@supabase/supabase-js"
 import { findOrCreateLeadForBuyer } from "./resolve-buyer-lead"
 import { isPrivateResourceId, requirePrivateCommerceSiteAccess } from "./private-site-access"
+import { verifyBuyerIdentityToken } from "./buyer-identity-token"
 
 function adminClient() {
   return createClientAdmin(
@@ -14,6 +15,7 @@ function adminClient() {
 const QR_PREFIX = "mf:user:"
 
 export async function parseBuyerIdentityQr(code: string): Promise<string | null> {
+  if (typeof code === "string" && code.startsWith("mf:buyer:")) return verifyBuyerIdentityToken(code)
   if (typeof code !== "string" || !code.startsWith(QR_PREFIX)) return null
   const id = code.slice(QR_PREFIX.length).trim()
   return isPrivateResourceId(id) ? id : null

@@ -351,6 +351,19 @@ rewrite the committed lockfile during a test run.
 
 ## Remaining product/environment blockers
 
+- The 2026-10-22 read-suite repair reproduces the Leads undefined `.map` crash
+  locally and fixes the segment collection returned during deferred workspace
+  loading. Regression coverage uses real SWR and the actual filter dialog in
+  `__tests__/leads/search-loading.test.tsx`. This is not evidence that the local
+  application fix has been deployed or that the configured production lead is
+  absent. Keep the persisted-sentinel assertion unchanged.
+- The latest saved Content and Buyer failures share a tracking `403`: events and
+  their proof disagree on session/visitor identity while site identity matches.
+  The traces load the old SDK `1.965`; the already repaired sibling source passes
+  its full 380-test suite but needs a separately approved build/CDN release and
+  subsequent live verification. Do not weaken authorization, replace the tracker
+  with a mock, or ignore console errors to obtain a green result. See
+  [the read-suite diagnosis](EMBEDDED_APPLICATION_DIAGNOSTICS.md#read-suite-follow-up-2026-10-22).
 - Robot creation and social/OAuth mutations require safe exact-ID provisioning
   and cleanup fixtures; they are fail-closed, not counted as coverage restored.
 - People currently displays the initial search prompt for zero results; that is

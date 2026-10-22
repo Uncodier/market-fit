@@ -1,3 +1,5 @@
+import { selfServiceLineState, selfServiceMetadata } from "./self-service-lifecycle"
+
 type DbClient = {
   from: (table: string) => any
 }
@@ -19,6 +21,8 @@ export async function upsertSaleOrderItemsWithModifiers(params: {
   lines: CheckoutLineLike[]
   intent?: string
   isFullyPaid: boolean
+  selfService?: boolean
+  selfServiceLocationId?: string
 }) {
   const {
     supabase,
@@ -37,6 +41,7 @@ export async function upsertSaleOrderItemsWithModifiers(params: {
   const client = isAdmin ? supabaseAdmin : supabase
 
   const resolveItemStatus = (pl: any, existingItem: any) => {
+    if (params.selfService) return selfServiceLineState(isFullyPaid, existingItem)
     let newStatus = "draft"
     let sentAt: string | null = null
 
@@ -159,6 +164,7 @@ export async function upsertSaleOrderItemsWithModifiers(params: {
           ? existingItem.metadata
           : {}),
         is_new: newStatus === "new",
+        ...selfServiceMetadata(params.selfServiceLocationId, params.selfService),
         client_line_key: pl.client_line_key,
         parent_name: pl.parent_name,
         ...(pl.backorder_quantity !== undefined
@@ -207,6 +213,7 @@ export async function upsertSaleOrderItemsWithModifiers(params: {
           ? existingItem.metadata
           : {}),
         is_new: newStatus === "new",
+        ...selfServiceMetadata(params.selfServiceLocationId, params.selfService),
         client_line_key: pl.client_line_key,
         modifier_group_id: pl.modifier_group_id,
         is_modifier: true,

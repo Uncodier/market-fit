@@ -8,6 +8,11 @@ import { Metadata } from "next"
 import { buildCatalogItemShareMetadata } from "@/app/lib/commerce-metadata"
 import { ShopSlugNotFound } from "../ShopSlugNotFound"
 import { PdpPageSkeleton } from "@/app/components/commerce/pdp/PdpPageSkeleton"
+import { getShopRouteContext } from "../shop-route-context"
+import { isSelfServiceItem } from "@/app/commerce/self-service-options"
+import { getModifierGroupsForCatalogItem } from "@/app/catalog/modifier-actions"
+import { SelfServiceProductDetail } from "../self-service/SelfServiceProductDetail"
+import { enrichSelfServiceInventory } from "../self-service-catalog"
 
 export const revalidate = 60
 
@@ -25,7 +30,7 @@ export async function generateMetadata({ params }: { params: Promise<{ siteSlug:
     ? `/shop/${siteSlug}/${itemId}`
     : `/shop/${itemId}`;
 
-  return buildCatalogItemShareMetadata(item as any, path);
+  return buildCatalogItemShareMetadata(item, path);
 }
 
 export default async function ShopItemPage({ params }: { params: Promise<{ siteSlug: string, itemId: string }> | { siteSlug: string, itemId: string } }) {
@@ -36,15 +41,28 @@ export default async function ShopItemPage({ params }: { params: Promise<{ siteS
   if (!siteSlug || !itemId) {
     return <ShopSlugNotFound slug={siteSlug} />
   }
+  const context = await getShopRouteContext(siteSlug)
 
   return (
-    <Suspense fallback={<PdpPageSkeleton />}>
+    <Suspense fallback={context?.selfService ? <div className="p-8" role="status">Loading product…</div> : <PdpPageSkeleton />}>
       <ShopItemContent siteSlug={siteSlug} itemId={itemId} />
     </Suspense>
   )
 }
 
 async function ShopItemContent({ siteSlug, itemId }: { siteSlug: string; itemId: string }) {
+  const context = await getShopRouteContext(siteSlug)
+  if (context?.selfService) {
+    const item = await getPdpCatalogItem(itemId, { requireStorefront: true })
+    const { location, fulfillmentOptions } = context.selfService
+    if (!item || item.site_id !== context.site.id || !isSelfServiceItem(item, fulfillmentOptions, location.id)) notFound()
+    const [branchItem] = await enrichSelfServiceInventory(context.site.id, location.id, [item])
+    const modifiers = await getModifierGroupsForCatalogItem(item.id)
+    return <>
+      <SiteLocaleBootstrap locale={context.site.settings?.default_locale} />
+      <SelfServiceProductDetail item={branchItem} modifierGroups={modifiers.data} modifierError={!!modifiers.error} />
+    </>
+  }
   // Prefer resolving via catalog item (includes site join) so a flaky slug scan
   // does not block the PDP when we already have a stable item id.
   const item = await getPdpCatalogItem(itemId, { requireStorefront: true })
@@ -52,7 +70,7 @@ async function ShopItemContent({ siteSlug, itemId }: { siteSlug: string; itemId:
     notFound()
   }
 
-  const siteFromItem = (item as any).site as {
+  const siteFromItem = item.site as {
     id: string
     name: string
     logo_url: string | null
@@ -71,7 +89,7 @@ async function ShopItemContent({ siteSlug, itemId }: { siteSlug: string; itemId:
     if (!resolved) {
       return <ShopSlugNotFound slug={siteSlug} />
     }
-    if (resolved.id !== (item as any).site_id) {
+    if (resolved.id !== item.site_id) {
       notFound()
     }
     site = resolved
@@ -87,7 +105,7 @@ async function ShopItemContent({ siteSlug, itemId }: { siteSlug: string; itemId:
   return (
     <>
       <SiteLocaleBootstrap locale={siteDefaultLocale} />
-      <ProductDetailPage item={item as any} site={site} backUrl={`/shop/${siteSlug}`} catalogSize={catalogSize} />
+      <ProductDetailPage item={item} site={site} backUrl={`/shop/${siteSlug}`} catalogSize={catalogSize} />
     </>
   )
 }

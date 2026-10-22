@@ -102,6 +102,7 @@ export const brandCommerceFields = {
     })).max(3).optional().default([]),
     payment_methods: z.array(z.enum(['card', 'cash_on_pickup', 'bank_transfer'])).optional().default(['card', 'cash_on_pickup']),
     default_delivery_options: z.array(z.enum(['pickup', 'ship', 'none', 'dine_in'])).optional().default(['pickup', 'ship', 'dine_in']),
+    self_service_fulfillment_options: z.array(z.enum(['pickup', 'dine_in'])).max(2).optional(),
     bank_transfer: z.object({
       bank_name: z.string().optional(),
       account_holder: z.string().optional(),

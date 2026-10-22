@@ -366,6 +366,7 @@ export const adaptSiteToForm = (site: Site): AdaptedSiteFormValues => {
       trust_badges: site.settings?.shop?.trust_badges || [],
       payment_methods: site.settings?.shop?.payment_methods || ['card', 'cash_on_pickup'],
       default_delivery_options: site.settings?.shop?.default_delivery_options || ['pickup', 'ship', 'dine_in'],
+      self_service_fulfillment_options: site.settings?.shop?.self_service_fulfillment_options,
       bank_transfer: site.settings?.shop?.bank_transfer || {}
     },
     printers: {

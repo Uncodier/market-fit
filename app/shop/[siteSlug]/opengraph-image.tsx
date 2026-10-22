@@ -1,4 +1,4 @@
-import { getShopSite } from "./actions"
+import { getShopRouteContext } from "./shop-route-context"
 import { resolveShopShareVisual } from "@/app/lib/commerce-metadata"
 import { OG_SIZE, renderCommerceOgImage } from "@/app/lib/commerce-og"
 
@@ -13,7 +13,7 @@ export default async function Image({
   params: Promise<{ siteSlug: string }>
 }) {
   const { siteSlug } = await params
-  const site = await getShopSite(siteSlug)
+  const site = (await getShopRouteContext(siteSlug))?.site
 
   if (!site) {
     return renderCommerceOgImage({

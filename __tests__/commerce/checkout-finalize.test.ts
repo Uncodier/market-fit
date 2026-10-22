@@ -5,9 +5,11 @@ import { revalidatePath } from "next/cache"
 import { bumpCacheEpoch } from "@/lib/redis/json-cache"
 import { upsertSaleOrderItemsWithModifiers } from "@/app/commerce/checkout-order-items"
 import { recordPosClientMutation } from "@/app/pos/actions/idempotency"
+import { applySelfServiceInventoryRelease } from "@/app/commerce/self-service-inventory"
 
 jest.mock("next/cache", () => ({ revalidatePath: jest.fn() }))
 jest.mock("@/lib/redis/json-cache", () => ({ bumpCacheEpoch: jest.fn().mockResolvedValue(true) }))
+jest.mock("@/app/commerce/self-service-inventory", () => ({ applySelfServiceInventoryRelease: jest.fn().mockResolvedValue(undefined) }))
 
 jest.mock("@/app/commerce/checkout-order-items", () => ({
   upsertSaleOrderItemsWithModifiers: jest.fn().mockResolvedValue([]),
@@ -77,6 +79,37 @@ describe("finalizeCheckout", () => {
     }))
     expect(bumpCacheEpoch).toHaveBeenCalledWith("order-data", "site-1")
     expect(revalidatePath).toHaveBeenCalledWith("/orders/order-1")
+  })
+
+  it.each(["complete", "pay"] as const)("returns a kitchen ticket after full self-service POS %s", async (intent) => {
+    const params = posUpdateParams()
+    const released = { id: "line-1", name: "Product", catalog_item_id: "product", quantity: 1,
+      status: "new", metadata: { client_line_key: "line", self_service: true } }
+    jest.mocked(upsertSaleOrderItemsWithModifiers).mockResolvedValueOnce([released])
+    const result = await finalizeCheckout({ ...params, intent, isFullyPaid: true,
+      order: { id: "order-1", items: [{ metadata: { self_service: true } }] } as never,
+      existingItems: [{ ...released, status: "draft" }] })
+    expect(upsertSaleOrderItemsWithModifiers).toHaveBeenCalledWith(expect.objectContaining({ selfService: true, isFullyPaid: true }))
+    expect(result.kitchenDelta).toMatchObject({ kind: "full", adds: [{ name: "Product", quantity: 1 }] })
+  })
+
+  it("does not return kitchen work for unpaid self-service POS send", async () => {
+    const result = await finalizeCheckout({ ...posUpdateParams(), selfServiceLocationId: "location" })
+    expect(result.kitchenDelta).toBeNull()
+    expect(upsertSaleOrderItemsWithModifiers).toHaveBeenCalledWith(expect.objectContaining({ selfService: true, isFullyPaid: false }))
+    expect(applySelfServiceInventoryRelease).not.toHaveBeenCalled()
+  })
+
+  it("uses persisted parent/modifier release snapshots for paid self-service inventory instead of cart parents", async () => {
+    const params = posUpdateParams()
+    const released = [{ id: "parent", catalog_item_id: "product", quantity: 1, status: "new", sent_at: "released" },
+      { id: "extra", catalog_item_id: "modifier", quantity: 2, status: "new", sent_at: "released" }]
+    jest.mocked(upsertSaleOrderItemsWithModifiers).mockResolvedValueOnce(released)
+    await finalizeCheckout({ ...params, selfServiceLocationId: "location", finalOriginLocationId: "location",
+      isFullyPaid: true, orderInitialStatus: "completed", intent: "draft" })
+    expect(applySelfServiceInventoryRelease).toHaveBeenCalledWith(expect.objectContaining({
+      existingItems: params.existingItems, nextItems: released, locationId: "location", siteId: "site-1",
+    }))
   })
 
   it("does not treat failed line removal as a successful cache refresh", async () => {

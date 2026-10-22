@@ -50,6 +50,7 @@ interface ShopCatalogMainProps {
   deviceOrders?: DeviceOrder[]
   siteId?: string
   onDeviceOrdersHydrated?: (orders: DeviceOrder[]) => void
+  hideDeviceOrders?: boolean
   sellableCatalogItems: CatalogItem[]
   rawCatalogItems?: CatalogItem[]
   initialCount: number
@@ -85,6 +86,7 @@ export const ShopCatalogMain = React.memo(function ShopCatalogMain({
   deviceOrders = [],
   siteId,
   onDeviceOrdersHydrated,
+  hideDeviceOrders = false,
   sellableCatalogItems,
   rawCatalogItems,
   initialCount,
@@ -331,7 +333,7 @@ export const ShopCatalogMain = React.memo(function ShopCatalogMain({
 
       <div id="shop-catalog-top" />
 
-      {!isSearching && (
+      {!isSearching && !hideDeviceOrders && (
         <ShopDeviceOrders
           orders={deviceOrders}
           siteId={siteId || ""}

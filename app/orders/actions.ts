@@ -9,6 +9,7 @@ import { shouldCancelLinkedSale } from "./cancel-linked-sale";
 import { grantFromOrder } from "@/app/commerce/entitlements";
 import { revokeOrderFulfillment } from "@/app/commerce/order-fulfillment-sync";
 import { assertInternalOrder } from "@/lib/marketplace/mutation-guards";
+import { assertSelfServiceFulfillmentPaid } from "@/app/commerce/self-service-fulfillment-guard";
 import {
   bumpCacheEpoch,
 } from "@/lib/redis/json-cache";
@@ -113,6 +114,7 @@ export async function updateOrderStatus(siteId: string, orderId: string, status:
   }
   try {
     const supabase = await createClient();
+    await assertSelfServiceFulfillmentPaid(supabase, siteId, orderId, status);
 
     const { data: currentOrder, error: fetchError } = await supabase
       .from("sale_orders")
@@ -201,6 +203,7 @@ export async function updateOrderItemStatus(siteId: string, itemId: string, orde
   try {
     const supabase = await createClient();
     await assertInternalOrder(supabase, siteId, orderId);
+    await assertSelfServiceFulfillmentPaid(supabase, siteId, orderId, status);
     const { error } = await supabase
       .from("sale_order_items")
       .update({ status })
@@ -236,6 +239,7 @@ export async function updateOrderItemsStatus(
   try {
     const supabase = await createClient()
     await assertInternalOrder(supabase, siteId, orderId)
+    await assertSelfServiceFulfillmentPaid(supabase, siteId, orderId, status)
     const { error } = await supabase
       .from("sale_order_items")
       .update({ status })

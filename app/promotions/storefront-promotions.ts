@@ -4,7 +4,7 @@ import {
   SHOP_CACHE_REVALIDATE_SECONDS,
   shopCacheTag,
 } from "@/app/shop/[siteSlug]/shop-catalog-shared";
-import type { MerchandisingPromotion } from "./promotion-availability";
+import { isPromotionAvailableForStorefront, type MerchandisingPromotion } from "./promotion-availability";
 import {
   placeMarketplaceMerchandising,
   placeShopMerchandising,
@@ -69,6 +69,7 @@ export async function getShopMerchandising(params: {
   timezone?: string | null;
 }): Promise<
   ShopMerchandisingPlacement & {
+    allPromos: import("./promotion-merchandising").StorefrontPromoCard[];
     categoryPromosByName: Record<string, import("./promotion-merchandising").StorefrontPromoCard[]>;
   }
 > {
@@ -104,9 +105,11 @@ export async function getShopMerchandising(params: {
         ];
       }
 
-      return { ...placement, categoryPromosByName };
+      const allPromos = promotions.filter((promo) => isPromotionAvailableForStorefront({ promo, surface: "shop", timezone: params.timezone }))
+        .map((promo) => ({ ...promo, catalog_item_ids: promo.catalog_item_ids || [], category_ids: promo.category_ids || [] }));
+      return { ...placement, categoryPromosByName, allPromos };
     },
-    ["shop-merchandising", params.siteId, params.siteSlug, timezoneKey],
+    ["shop-merchandising-v2", params.siteId, params.siteSlug, timezoneKey],
     {
       revalidate: SHOP_CACHE_REVALIDATE_SECONDS,
       tags: [shopCacheTag(params.siteId)],

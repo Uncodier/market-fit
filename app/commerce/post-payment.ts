@@ -2,6 +2,7 @@ import { createServiceClient } from "@/lib/supabase/server"
 import { createAuthorizedShipment } from "@/app/shipments/create-shipment"
 import { ensureCommerceLeadConverted } from "./ensure-commerce-lead-converted"
 import { grantFromOrder } from "./entitlements"
+import { isPersistedSelfServiceSalePaid, isSelfServiceOrder } from "./self-service-lifecycle"
 
 type PaidOrderItem = {
   id: string
@@ -21,15 +22,38 @@ export async function processPostPaymentFulfillment(
   },
 ) {
   const supabase = await createServiceClient(true, { access: 'system' })
+  let sale: { lead_id?: string; source?: string; amount?: number; status?: string; amount_due?: number } | null = null
 
   try {
     const saleResult = await supabase
       .from("sales")
-      .select("lead_id, source, amount")
+      .select("lead_id, source, amount, status, amount_due")
       .eq("id", saleId)
+      .eq("site_id", siteId)
       .single()
 
-    const sale = saleResult?.data
+    sale = saleResult?.data || null
+  } catch (e) {
+    console.error("Failed to load commerce sale after payment:", e)
+  }
+
+  // Validate the persisted gate before reservations, kitchen, or entitlements.
+  const { data: order, error: orderError } = await supabase
+    .from('sale_orders')
+    .select('items, status, fulfillment_method, origin_location_id, shipping_address, buyer_user_id')
+    .eq('id', orderId)
+    .eq('site_id', siteId)
+    .eq('sale_id', saleId)
+    .single()
+
+  if (orderError || !order) {
+    throw new Error(`Failed to load paid order: ${orderError?.message}`)
+  }
+  if (isSelfServiceOrder(order) && (order.status === "cancelled" || !isPersistedSelfServiceSalePaid(sale))) {
+    throw new Error("Self-service fulfillment requires a fully paid, active order")
+  }
+
+  try {
     const resolvedLeadId = sale?.lead_id || leadId
     if (resolvedLeadId && userId) {
       await ensureCommerceLeadConverted({
@@ -46,17 +70,7 @@ export async function processPostPaymentFulfillment(
     console.error("Failed to sync commerce lead conversion after payment:", e)
   }
 
-  // 1. Load order fulfillment fields and line items
-  const { data: order, error: orderError } = await supabase
-    .from('sale_orders')
-    .select('items, fulfillment_method, origin_location_id, shipping_address, buyer_user_id')
-    .eq('id', orderId)
-    .single()
-    
-  if (orderError || !order) {
-    throw new Error(`Failed to load paid order: ${orderError?.message}`)
-  }
-
+  // 1. Load line items
   const { data: saleOrderItems, error: itemsError } = await supabase
     .from('sale_order_items')
     .select('id, catalog_item_id, quantity')

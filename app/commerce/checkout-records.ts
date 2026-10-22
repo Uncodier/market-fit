@@ -1,4 +1,5 @@
 import { format } from "date-fns"
+import { randomUUID } from "node:crypto"
 import { resolvePromotionDiscount } from "@/app/promotions/resolve-promotion"
 import { roundMoney } from "./taxes"
 import {
@@ -11,6 +12,7 @@ import { QuotationForCheckout } from "@/app/quotations/quote-checkout"
 import { resolveCheckoutPaymentState } from "./checkout-payment-state"
 import { newRegisterReceipts } from "@/app/pos/register/receipt-retries"
 import type { PosCheckoutClaim } from "@/app/pos/checkout-attempt-server"
+import { isSelfServiceOrder, selfServiceLocationFromItems, selfServiceMetadata } from "./self-service-lifecycle"
 
 type PersistCheckoutRecordsParams = {
   supabase: CheckoutSupabaseClient
@@ -41,6 +43,7 @@ type PersistCheckoutRecordsParams = {
   posClaim?: PosCheckoutClaim | null
   paymentMethod?: string
   intent?: CheckoutCartParams["intent"]
+  selfServiceLocationId?: string
   notes?: string
   effectiveExistingOrderId?: string
   quoteForAccept: QuotationForCheckout | null
@@ -53,7 +56,9 @@ type PersistCheckoutRecordsParams = {
 
 function serializedItems(
   processedLines: ProcessedCheckoutLine[],
-  intent?: CheckoutCartParams["intent"]
+  intent?: CheckoutCartParams["intent"],
+  selfServiceLocationId?: string,
+  selfService = Boolean(selfServiceLocationId),
 ) {
   return processedLines.map((line) => ({
     id: line.catalog_item_id,
@@ -63,6 +68,7 @@ function serializedItems(
     subtotal: line.subtotal,
     metadata: {
       is_new: intent === "send",
+      ...selfServiceMetadata(selfServiceLocationId, selfService),
       client_line_key: line.client_line_key,
       parent_client_line_key: line.parent_client_line_key,
       is_modifier: Boolean(line.parent_client_line_key),
@@ -143,6 +149,10 @@ export async function persistCheckoutRecords(
     saleInitialStatus = isFullyPaid ? "completed" : "pending"
     orderInitialStatus = saleInitialStatus
   }
+  if (params.selfServiceLocationId) {
+    saleInitialStatus = isFullyPaid ? "completed" : "pending"
+    orderInitialStatus = saleInitialStatus
+  }
 
   const paymentMethodToStore = params.payments?.length
     ? params.payments.length === 1
@@ -192,18 +202,18 @@ export async function persistCheckoutRecords(
       recorded_by: params.registerActorId,
     } : {}),
   }))
-  const orderItems = serializedItems(params.processedLines, params.intent)
+  let orderItems = serializedItems(params.processedLines, params.intent, params.selfServiceLocationId)
 
   if (params.effectiveExistingOrderId) {
     const { data: existingOrder } = await queryClient
       .from("sale_orders")
-      .select("sale_id, status, total, currency, notes, updated_at")
+      .select("sale_id, status, total, currency, notes, updated_at, items")
       .eq("id", params.effectiveExistingOrderId)
       .single()
     if (!existingOrder) throw new Error("Existing order not found")
     const { data: existingSale } = await queryClient
       .from("sales")
-      .select("status, amount, amount_due, payments")
+      .select("status, amount, amount_due, payments, source")
       .eq("id", existingOrder.sale_id)
       .single()
     if (!existingSale) throw new Error("Existing sale is unavailable. No payment was collected.")
@@ -278,10 +288,19 @@ export async function persistCheckoutRecords(
           : saleInitialStatus
     }
 
+    const selfService = isSelfServiceOrder(existingOrder) || isSelfServiceOrder({ items: existingItems })
+    if (selfService) {
+      saleInitialStatus = isFullyPaid ? "completed" : "pending"
+      orderInitialStatus = saleInitialStatus
+      orderItems = serializedItems(params.processedLines, params.intent,
+        selfServiceLocationFromItems(existingOrder.items) || selfServiceLocationFromItems(existingItems), true)
+    }
+
     const saleData: any = {
       ...commonSaleData,
       amount_due: Math.max(0, orderTotal - totalPaid),
       status: saleInitialStatus,
+      ...(selfService ? { source: existingSale.source || "shop" } : {}),
     }
     // Editing fulfillment must not silently reassign an existing sale's scope.
     delete saleData.location_id
@@ -395,7 +414,9 @@ export async function persistCheckoutRecords(
           ? { promotion_id: resolvedPromotionId }
           : {}),
         status: orderInitialStatus,
-        order_number: `ORD-${Date.now().toString().slice(-6)}`,
+        order_number: params.selfServiceLocationId
+          ? `K-${randomUUID().replace(/-/g, "").slice(0, 12).toUpperCase()}`
+          : `ORD-${Date.now().toString().slice(-6)}`,
         user_id: params.resolvedUserId,
         created_by_user_id: params.createdByUserId || null,
         seller_user_id: params.sellerUserId || null,

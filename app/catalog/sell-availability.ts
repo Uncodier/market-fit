@@ -4,6 +4,8 @@ import type { CatalogAvailabilityResult } from "./types"
 
 export type CatalogSellOptions = {
   skipVariantSelection?: boolean
+  /** Internal checkout reuses its already-authorized client, never a browser flag. */
+  checkoutClient?: Awaited<ReturnType<typeof createClient>>
 }
 
 /**
@@ -20,7 +22,7 @@ export async function getCatalogAvailability(
   if (!Number.isFinite(quantity) || quantity <= 0) {
     return { sellable: false, reason: "Quantity must be a positive finite number", policy: "block" }
   }
-  const supabase = forceServiceRole ? await createServiceClient(true) : await createClient()
+  const supabase = options?.checkoutClient || (forceServiceRole ? await createServiceClient(true) : await createClient())
 
   const [itemRes, settingsRes] = await Promise.all([
     supabase.from("catalog_items").select("*").eq("id", catalogItemId).eq("site_id", siteId).single(),

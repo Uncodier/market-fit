@@ -143,6 +143,36 @@ describe("processPostPaymentFulfillment", () => {
     expect(inventoryChain.update).toHaveBeenCalledWith({ quantity: 8 });
   });
 
+  it.each([
+    { status: "pending", amount_due: 20 },
+    { status: "completed", amount_due: 5 },
+    { status: "completed" },
+    { status: "refunded", amount_due: 0 },
+  ])("does not release an unpaid self-service order from persisted sale state %#", async (sale) => {
+    setupOrder("pickup", [{ id: "product", metadata: { self_service: true } }]);
+    salesChain.single.mockResolvedValue({ data: sale });
+    await expect(processPostPaymentFulfillment("order-1", "site-1", "sale-1", undefined, ""))
+      .rejects.toThrow("fully paid");
+    expect(itemsChain.update).not.toHaveBeenCalled();
+    expect(reservationsChain.update).not.toHaveBeenCalled();
+    expect(grantFromOrder).not.toHaveBeenCalled();
+    expect(inventoryChain.update).not.toHaveBeenCalled();
+  });
+
+  it("releases fully paid self-service pickup drafts and keeps replay conditional", async () => {
+    setupOrder("pickup", [{ id: "product", metadata: { self_service: true } }]);
+    salesChain.single.mockResolvedValue({ data: { status: "completed", amount_due: 0 } });
+    mockSupabase.rpc.mockResolvedValue({ data: { status: "already_completed" }, error: null });
+    await processPostPaymentFulfillment("order-1", "site-1", "sale-1", undefined, "", {
+      stripeSessionId: "cs_self_service", fulfillmentClaimToken: "claim",
+    });
+    expect(itemsChain.update).toHaveBeenCalledWith({ status: "new", sent_at: expect.any(String) });
+    expect(itemsChain.eq).toHaveBeenCalledWith("status", "draft");
+    expect(ordersChain.eq).toHaveBeenCalledWith("site_id", "site-1");
+    expect(ordersChain.eq).toHaveBeenCalledWith("sale_id", "sale-1");
+    expect(mockSupabase.rpc).toHaveBeenCalledWith("apply_stripe_sale_inventory_effect", expect.any(Object));
+  });
+
   it("decrements inventory for pickup and sets items to 'new'", async () => {
     setupOrder("pickup", [{ id: "cat-3", quantity: 3 }], true);
     

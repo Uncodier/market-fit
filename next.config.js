@@ -103,6 +103,7 @@ const nextConfig = {
       { source: '/api/geocode', destination: `${app}/api/geocode` },
       { source: '/api/images/prompt', destination: `${app}/api/images/prompt` },
       { source: '/api/commerce/visitor-session', destination: `${app}/api/commerce/visitor-session` },
+      { source: '/api/commerce/buyer-identity', destination: `${app}/api/commerce/buyer-identity` },
       { source: '/api/version', destination: `${app}/api/version` },
     ]
   },

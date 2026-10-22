@@ -12,6 +12,33 @@ A transport failure while calling the Server Action can still reflect a network
 or deployment issue. The recoverable state prevents the secondary `content.id`
 crash; it does not prove the original dependency is healthy.
 
+## Content Creator file uploads
+
+The `/robots?mode=imprenta` canvas confirms both the Storage upload and the
+persisted `instance_nodes` row before reporting success. Confirmed uploads update
+the active instance's SWR cache as well as the visible canvas, so reopening it
+does not hydrate an older list without the uploaded node.
+
+Returning from the operating-system file picker can trigger a visibility refresh
+while the upload is still running. A confirmed upload invalidates any older
+refresh snapshot; stale responses and responses for a previously active instance
+cannot replace the current canvas. A later refresh still uses the database as
+the source of truth, including deletions. Uploads retain the instance/site scope
+captured when they started and continue using the authenticated client and RLS.
+PDF and plain-text outputs retain an explicit file link instead of an empty media
+preview. Canvas state, synchronization, interaction and rendering are separated
+under `app/components/agents/imprenta-panel/`; the public panel entry point is
+unchanged.
+
+Offline regression tests cover the upload, failed persistence, cache restoration,
+overlapping refreshes, and instance navigation:
+
+```sh
+npm test -- --runInBand __tests__/hooks/use-imprenta-data.test.tsx __tests__/hooks/use-imprenta-upload.test.tsx __tests__/components/agents __tests__/lib/imprenta-instance-sync.test.ts
+```
+
+These tests do not verify live Storage configuration or database permissions.
+
 ## Trends
 
 The Content list retains its existing table/Kanban skeleton while the site context

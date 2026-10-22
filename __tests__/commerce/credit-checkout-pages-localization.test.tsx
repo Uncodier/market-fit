@@ -4,7 +4,7 @@ import en from "@/app/context/locales/screens/commerce-pages-en.json"
 import es from "@/app/context/locales/screens/commerce-pages-es.json"
 import CreditsCheckoutPage from "@/app/checkout/page"
 import MarketplaceBookingPage from "@/app/marketplace/[itemId]/book/page"
-import ShopBookingPage from "@/app/shop/[siteSlug]/[itemId]/book/page"
+import ShopBookingClient from "@/app/shop/[siteSlug]/[itemId]/book/ShopBookingClient"
 import QuotePdfPage from "@/app/quote-pdf/[id]/page"
 import { creditPackages } from "@/app/checkout/credit-packages"
 import { localizeCheckoutError } from "@/app/checkout/checkout-feedback"
@@ -149,7 +149,7 @@ it.each(["marketplace", "shop"])("localizes %s booking title/toast and preserves
   mockItem = { id: "item-fixture", name: "Fixture item", site_id: "site-fixture" }
   const modifiers = encodeURIComponent(JSON.stringify([{ id: "modifier-fixture" }]))
   render(mode === "shop"
-    ? <ShopBookingPage params={routePromise({ siteSlug: "fixture-shop", itemId: "item-fixture" })} searchParams={routePromise({ modifiers })} />
+    ? <ShopBookingClient params={routePromise({ siteSlug: "fixture-shop", itemId: "item-fixture" })} searchParams={routePromise({ modifiers })} />
     : <MarketplaceBookingPage params={routePromise({ itemId: "item-fixture" })} searchParams={routePromise({ modifiers })} />)
   expect(document.title).toBe(`Reservar Fixture item | ${mode === "shop" ? "Example site" : "Marketplace"}`)
   fireEvent.click(screen.getByRole("button", { name: "Add fixture" }))

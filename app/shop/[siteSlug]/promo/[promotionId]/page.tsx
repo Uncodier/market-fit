@@ -1,13 +1,19 @@
 import { notFound } from "next/navigation"
-import { getShopSite } from "../../actions"
+import { getShopRouteContext } from "../../shop-route-context"
 import { getStorefrontPromotionDetail } from "@/app/promotions/storefront-promotions"
 import {
   isPromotionCurrentlyRunnable,
   isPromotionEligibleForStorefront,
 } from "@/app/promotions/promotion-availability"
 import { PromoBundleExperience } from "@/app/components/commerce/PromoBundleExperience"
+import type { PromoBundleData } from "@/app/components/commerce/PromoBundleExperience"
 import { SiteLocaleBootstrap } from "@/app/components/commerce/SiteLocaleBootstrap"
 import { ShopSlugNotFound } from "../../ShopSlugNotFound"
+import { SelfServicePromotion } from "../../self-service/SelfServicePromotion"
+import { getPdpCatalogItem } from "@/app/commerce/pdp-actions"
+import { getModifierGroupsForCatalogItem } from "@/app/catalog/modifier-actions"
+import { isSelfServiceItem } from "@/app/commerce/self-service-options"
+import { enrichSelfServiceInventory } from "../../self-service-catalog"
 
 export const dynamic = "force-dynamic"
 
@@ -17,7 +23,8 @@ export default async function ShopPromoPage({
   params: Promise<{ siteSlug: string; promotionId: string }>
 }) {
   const { siteSlug, promotionId } = await params
-  const site = await getShopSite(siteSlug)
+  const context = await getShopRouteContext(siteSlug)
+  const site = context?.site
   if (!site) return <ShopSlugNotFound slug={siteSlug} />
 
   const res = await getStorefrontPromotionDetail({
@@ -38,11 +45,30 @@ export default async function ShopPromoPage({
     timezone,
   })
 
+  if (context?.selfService) {
+    const { location, fulfillmentOptions } = context.selfService
+    const promo = res.data as PromoBundleData
+    const rows = (promo.required_items || []).map((row) => ({ id: row.catalog_item_id, minimum: Math.max(1, row.min_quantity || 1) }))
+    const pickRows = (promo.category_pick_items || []).map((item) => ({ id: item.id, minimum: 1 }))
+    const unique = Array.from(new Map([...rows, ...pickRows].map((row) => [row.id, row])).values())
+    const resolved = await Promise.all(unique.map(async (row) => {
+      const item = await getPdpCatalogItem(row.id, { requireStorefront: true })
+      if (!item || item.site_id !== site.id || !isSelfServiceItem(item, fulfillmentOptions, location.id)) return null
+      const groups = await getModifierGroupsForCatalogItem(item.id)
+      const [branchItem] = await enrichSelfServiceInventory(site.id, location.id, [item])
+      return { item: branchItem, minimum: row.minimum, configurable: !!groups.error || groups.data.length > 0 }
+    }))
+    return <>
+      <SiteLocaleBootstrap locale={site.settings?.default_locale} />
+      <SelfServicePromotion promo={promo} items={resolved.filter((row): row is NonNullable<typeof row> => !!row)} availableNow={availableNow} />
+    </>
+  }
+
   return (
     <>
       <SiteLocaleBootstrap locale={site.settings?.default_locale} />
       <PromoBundleExperience
-        promo={res.data as any}
+        promo={res.data as PromoBundleData}
         surface="shop"
         siteSlug={siteSlug}
         backHref={`/shop/${siteSlug}`}

@@ -18,6 +18,7 @@ import { applyStorefrontAvailability } from "@/app/catalog/storefront-availabili
 import { loadStorefrontDisplay } from "@/app/commerce/storefront-display";
 import { loadShopRequiredModifierIds } from "./shop-required-modifiers";
 import { loadShopSearch } from "./search-catalog";
+import { enrichSelfServiceInventory } from "./self-service-catalog";
 
 export { getShopCategoryOffsets };
 
@@ -156,6 +157,7 @@ export async function getShopCatalog(
     offset?: number
     search?: string
     category?: string
+    selfServiceLocationId?: string
   } = {}
 ) {
   const {
@@ -171,7 +173,8 @@ export async function getShopCatalog(
 
   if (search.trim()) {
     try {
-      return await loadShopSearch({ siteId, search, category, offset, pageSize }, enrichShopItems);
+      const result = await loadShopSearch({ siteId, search, category, offset, pageSize }, enrichShopItems);
+      return options.selfServiceLocationId ? { ...result, data: await enrichSelfServiceInventory(siteId, options.selfServiceLocationId, result.data) } : result;
     } catch {
       return { data: [], count: 0, totalPages: 0, page, pageSize, offset,
         error: "Unable to search this shop. Please try again." };
@@ -226,9 +229,11 @@ export async function getShopCatalog(
       }
 
       const enrichedItems = await enrichShopItems(siteId, items, supabase);
+      const scopedItems = options.selfServiceLocationId
+        ? await enrichSelfServiceInventory(siteId, options.selfServiceLocationId, enrichedItems, supabase) : enrichedItems;
 
       return {
-        data: enrichedItems,
+        data: scopedItems,
         count: count || 0,
         totalPages: count ? Math.ceil(count / pageSize) : 0,
         page,
@@ -237,7 +242,7 @@ export async function getShopCatalog(
       };
     },
     // Include required modifier selection flags in cached listing data.
-    ["shop-catalog-v9", siteId, String(offset), String(pageSize), search, category],
+    ["shop-catalog-v10", siteId, String(offset), String(pageSize), search, category, options.selfServiceLocationId || ""],
     {
       revalidate: SHOP_CACHE_REVALIDATE_SECONDS,
       tags: [shopCacheTag(siteId)],

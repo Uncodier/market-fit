@@ -1,4 +1,4 @@
-import { getShopSite } from "./actions"
+import { getShopRouteContext } from "./shop-route-context"
 import { resolveShopIconVisual } from "@/app/lib/commerce-metadata"
 import { ICON_SIZE, renderCommerceIcon } from "@/app/lib/commerce-og"
 
@@ -13,7 +13,7 @@ export default async function Icon({
 }) {
   try {
     const { siteSlug } = await params
-    const site = await getShopSite(siteSlug)
+    const site = (await getShopRouteContext(siteSlug))?.site
     if (!site) {
       return await renderCommerceIcon({ kind: "url", url: "/images/logo.png" }, ICON_SIZE, {
         fit: "contain",

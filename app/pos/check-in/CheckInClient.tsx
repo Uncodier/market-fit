@@ -35,7 +35,7 @@ export default function CheckInClient() {
     const trimmed = code.trim()
     if (!trimmed || !currentSite?.id) return
     
-    if (trimmed.startsWith("mf:user:")) {
+    if (trimmed.startsWith("mf:user:") || trimmed.startsWith("mf:buyer:")) {
       if (!navigator.onLine) {
         toast.error(
           t("pos.sync.requiresOnline") ||

@@ -1,5 +1,4 @@
-import { Suspense } from "react"
-import { getShopSite } from "../actions"
+import { getShopRouteContext } from "../shop-route-context"
 import { Metadata } from "next"
 import { SiteLocaleBootstrap } from "@/app/components/commerce/SiteLocaleBootstrap"
 import { ShopSlugNotFound } from "../ShopSlugNotFound"
@@ -10,7 +9,7 @@ export async function generateMetadata({ params }: { params: Promise<{ siteSlug:
   const siteSlug = 'siteSlug' in resolvedParams ? resolvedParams.siteSlug : undefined;
   if (!siteSlug) return { title: 'Privacy Policy | Makinari' };
 
-  const site = await getShopSite(siteSlug);
+  const site = (await getShopRouteContext(siteSlug))?.site;
   if (!site) return { title: 'Privacy Policy | Makinari' };
 
   return {
@@ -26,7 +25,7 @@ export default async function ShopPrivacyPage({ params }: { params: Promise<{ si
     return <ShopSlugNotFound />
   }
 
-  const site = await getShopSite(siteSlug);
+  const site = (await getShopRouteContext(siteSlug))?.site;
   
   if (!site) {
     return <ShopSlugNotFound slug={siteSlug} />

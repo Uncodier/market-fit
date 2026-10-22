@@ -34,7 +34,8 @@ function mergeCatalogItems(current: CatalogItem[], incoming: CatalogItem[]): Cat
 async function fetchAllCategoryItems(
   siteId: string,
   categoryName: string,
-  isCurrent: () => boolean
+  isCurrent: () => boolean,
+  selfServiceLocationId?: string
 ): Promise<{ items: CatalogItem[]; count: number } | undefined> {
   const pageSize = 100
   let offset = 0
@@ -48,6 +49,7 @@ async function fetchAllCategoryItems(
       pageSize,
       search: "",
       category: categoryName,
+      ...(selfServiceLocationId ? { selfServiceLocationId } : {}),
     })
     if (!isCurrent()) return undefined
     if (result.error || !Array.isArray(result.data) || !Number.isSafeInteger(result.count) || result.count < 0) {
@@ -114,7 +116,8 @@ export function useShopCatalog(
   initialCatalog: CatalogItem[],
   initialCount: number,
   searchQuery: string,
-  initialCategoryOffsets: ShopCategoryOffset[]
+  initialCategoryOffsets: ShopCategoryOffset[],
+  selfServiceLocationId?: string
 ) {
   const initialOffsets = useMemo(() => reconcileCategoryOffsets(initialCategoryOffsets, initialCatalog, undefined, initialCatalog),
     [initialCategoryOffsets, initialCatalog])
@@ -130,7 +133,7 @@ export function useShopCatalog(
   const [resultKind, setResultKind] = useState<CatalogResultKind>("matched")
   const resultKindRef = useRef<CatalogResultKind>("matched")
   const [searchAttempt, setSearchAttempt] = useState(0)
-  const searchKey = JSON.stringify([siteId, searchQuery, searchAttempt])
+  const searchKey = JSON.stringify([siteId, selfServiceLocationId, searchQuery, searchAttempt])
   const [settledSearchKey, setSettledSearchKey] = useState<string | undefined>(
     searchQuery.trim() ? undefined : searchKey
   )
@@ -166,7 +169,7 @@ export function useShopCatalog(
     catalogItemsRef.current = catalogItems
   }, [catalogItems])
 
-  useEffect(() => () => { requestGen.current += 1 }, [siteId])
+  useEffect(() => () => { requestGen.current += 1 }, [siteId, selfServiceLocationId])
 
   const applyCategory = useCallback((name: string, offset: number, data: { items: CatalogItem[]; count: number }) => {
     const retained = catalogItemsRef.current.filter((item) => (item._shop?.categoryName || SHOP_UNCATEGORIZED_NAME) !== name)
@@ -219,7 +222,8 @@ export function useShopCatalog(
           const data = await fetchAllCategoryItems(
             siteId,
             target.name,
-            () => gen === requestGen.current
+            () => gen === requestGen.current,
+            selfServiceLocationId
           )
           if (gen !== requestGen.current || !data) return undefined
           applyCategory(target.name, target.offset, data)
@@ -231,6 +235,7 @@ export function useShopCatalog(
         offset: windowEndRef.current,
         pageSize: SHOP_PAGE_SIZE,
         search: prevSearch.current,
+        ...(selfServiceLocationId ? { selfServiceLocationId } : {}),
       })
       if (gen !== requestGen.current) return undefined
       if (result.error || !Array.isArray(result.data)) throw new Error("Failed to load shop catalog page")
@@ -274,7 +279,7 @@ export function useShopCatalog(
         setIsLoadingMore(false)
       }
     }
-  }, [isLoadingMore, isJumping, isLoading, siteId, hasMoreBelow, applyCategory])
+  }, [isLoadingMore, isJumping, isLoading, siteId, selfServiceLocationId, hasMoreBelow, applyCategory])
 
   const jumpToCategory = useCallback(
     async (offset: number, categoryName: string, categoryCount = 0, scrollToTarget = true): Promise<boolean | undefined> => {
@@ -291,7 +296,8 @@ export function useShopCatalog(
         const data = await fetchAllCategoryItems(
           siteId,
           categoryName || SHOP_UNCATEGORIZED_NAME,
-          () => gen === requestGen.current
+          () => gen === requestGen.current,
+          selfServiceLocationId
         )
         if (gen !== requestGen.current || !data) return undefined
         applyCategory(categoryName || SHOP_UNCATEGORIZED_NAME, offset, data)
@@ -313,7 +319,7 @@ export function useShopCatalog(
         }
       }
     },
-    [siteId, applyCategory]
+    [siteId, selfServiceLocationId, applyCategory]
   )
 
   const clearPendingScrollCategory = useCallback(() => {
@@ -379,6 +385,7 @@ export function useShopCatalog(
           offset: 0,
           pageSize: SHOP_PAGE_SIZE,
           search: searchQuery,
+          ...(selfServiceLocationId ? { selfServiceLocationId } : {}),
         })
         if (cancelled || gen !== requestGen.current) return
         if (result.error || !Array.isArray(result.data)) throw new Error("Unable to search this shop")
@@ -410,7 +417,7 @@ export function useShopCatalog(
       cancelled = true
       clearTimeout(timer)
     }
-  }, [searchQuery, siteId, initialCatalog, initialCount, initialOffsets, searchAttempt, searchKey])
+  }, [searchQuery, siteId, selfServiceLocationId, initialCatalog, initialCount, initialOffsets, searchAttempt, searchKey])
 
   return {
     catalogItems,

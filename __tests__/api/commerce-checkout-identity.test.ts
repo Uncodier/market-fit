@@ -81,4 +81,12 @@ describe("public commerce checkout identity", () => {
 
     expect((checkoutCart as jest.Mock).mock.calls[0][0].buyerUserId).toBeUndefined()
   })
+
+  it("never attaches the kiosk's ambient account to a self-service order", async () => {
+    ;(createClient as jest.Mock).mockResolvedValue({ auth: { getUser: jest.fn().mockResolvedValue({ data: { user: { id: "device-owner" } } }) } })
+    await POST(request({ ...baseBody, selfServiceLocationId: "branch", buyerUserId: "victim", userId: "staff" }))
+    const input = (checkoutCart as jest.Mock).mock.calls[0][0]
+    expect(input.buyerUserId).toBeUndefined()
+    expect(input.userId).toBeUndefined()
+  })
 })

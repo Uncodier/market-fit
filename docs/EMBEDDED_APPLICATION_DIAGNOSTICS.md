@@ -318,3 +318,58 @@ reload semantics. Instance creation rechecks eligibility before insert and ignor
 stale completion after site changes or unmount. Final local validation passed 642
 tests in 38 relevant suites, strict targeted lint and frontend TypeScript. No API
 authorization changes, production build, SDK publication or deployment occurred.
+
+## Read-suite follow-up (2026-10-22)
+
+The three failure traces from `rerun-20261022T044016Z-47905-smoke` and
+`rerun-20261022T044016Z-47905-buyer` still load
+`tracking.min.js?v=1.965`. Every rejected `track-batch` has a site matching its
+signed proof, but different session and visitor bindings. These are the same SDK
+identity mismatch described above, not evidence that the application needs weaker
+authorization. The sibling SDK's current full Jest suite passes 380 tests in 44
+suites. Its repaired source still requires a separately approved build and CDN
+publication; no new embedding version or deployed repair is claimed.
+
+### Leads render failure
+
+The CRM trace additionally records `Cannot read properties of undefined (reading
+'map')` and never displays the configured lead. Fixture absence is not established
+by that timeout. Local reproduction with real SWR and `WorkspaceSiteSWRScope`
+throws the identical error in `LeadFilterModal`, even when that dialog is closed.
+
+While site loading is deferred, the workspace middleware deliberately overrides
+SWR data with `undefined`; `fallbackData: []` alone does not protect consumers.
+`useLeadsData` now supplies an empty segment collection at its consumer boundary,
+without starting deferred requests or changing workspace-loading semantics.
+The existing modal continues rendering safely while the user's typed search is
+retained and runs after the workspace settles.
+
+`__tests__/leads/search-loading.test.tsx` covers iterable segments during initial
+and renewed loading, the actual closed modal and subsequent search/filter UI,
+and an older search response arriving after the current result. The pre-repair
+test reproduced the crash; this is local regression evidence, not a new deployed
+smoke PASS. Strict E2E console and dependency assertions remain unchanged.
+
+### Local validation and residual blockers
+
+The final focused command selected E2E harness tests, Lead tests, workspace SWR
+loading and tracker initialization. All 775 tests in 42 suites passed. Targeted
+ESLint on the Lead hook and new regression test passed without warnings. Strict
+Shiplight transpilation/discovery passed for 50 regression scenarios and the one
+Buyer journey, with no errors or warnings; these commands do not run browsers.
+
+The normal TypeScript invocation encountered malformed pre-existing generated
+files under `.next/dev/types`; `next typegen` regenerated `.next/types` but does
+not regenerate that old development cache. A separate temporary configuration
+checks authored source and the fresh route types without the duplicate stale
+development output. That check also exposed errors in unrelated, concurrently
+modified Imprenta/self-service files; repository-wide TypeScript success is not
+claimed. No production build or manual generated-file repair was run.
+
+People's completed-empty display remains a separate confirmed UI defect: the
+page does not consume the search hook's success/error state and keeps showing its
+initial search prompt after a valid zero-result response. Existing hook tests
+distinguish those states; the oversized page needs a separate responsibility
+split before changing its rendering. Robot/Social fixtures, nested reservation
+CLI version alignment and persisted POS completion remain unresolved. No new
+live execution, fixture provisioning, SDK publication or deployment is claimed.

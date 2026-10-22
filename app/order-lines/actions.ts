@@ -14,6 +14,7 @@ import type {
 import { queryOrderLines } from "./query-order-lines"
 import { readCachedOrderLines } from "./list-order-lines-cache"
 import { bumpCacheEpoch } from "@/lib/redis/json-cache"
+import { assertSelfServiceFulfillmentPaid } from "@/app/commerce/self-service-fulfillment-guard"
 import {
   relatedOne,
 } from "./order-line-mapper"
@@ -105,6 +106,7 @@ export async function updateOperationalOrderLineStatus(
 
     const supabase = await createClient()
     const [current] = await loadOperationalLines(supabase, siteId, [lineId])
+    await assertSelfServiceFulfillmentPaid(supabase, siteId, current.saleOrderId, status)
     if (
       status !== "cancelled" &&
       nextOrderLineStatus(current.status) !== status
@@ -153,6 +155,10 @@ export async function advanceOperationalOrderLines(
     )
     const actionableIds = Object.keys(transitions)
     if (actionableIds.length === 0) return { count: 0 }
+    for (const line of lines) {
+      const next = transitions[line.id]
+      if (next) await assertSelfServiceFulfillmentPaid(supabase, siteId, line.saleOrderId, next)
+    }
     const { data: updatedCount, error } = await supabase.rpc(
       "mutate_sale_order_item_units",
       {

@@ -8,7 +8,10 @@ import { getCampaigns } from "@/app/campaigns/actions/campaigns/read"
 import { createClient } from "@/lib/supabase/client"
 import { useUserData } from "@/app/hooks/use-user-data"
 import { normalizeOrigin } from "../list-helpers"
-import type { Lead } from "../types"
+import type { Lead, Segment } from "../types"
+
+const EMPTY_LEADS: Lead[] = []
+const EMPTY_SEGMENTS: Segment[] = []
 
 export interface LeadsData {
   leads: Lead[]
@@ -39,7 +42,7 @@ export function useLeadsData(currentSite: { id: string } | null) {
         const result = await searchLeadsWithCount(siteId, q, 200, 0)
         if (result.error) throw new Error(result.error)
         return {
-          leads: result.leads?.map((lead: any) => ({
+          leads: result.leads?.map(lead => ({
             ...lead,
             origin: normalizeOrigin(lead.origin),
             personal_email: lead.personal_email || null
@@ -58,7 +61,7 @@ export function useLeadsData(currentSite: { id: string } | null) {
           .eq('site_id', siteId)
           
         return {
-          leads: result.leads?.map((lead: any) => ({
+          leads: result.leads?.map(lead => ({
             ...lead,
             origin: normalizeOrigin(lead.origin),
             personal_email: lead.personal_email || null
@@ -71,26 +74,26 @@ export function useLeadsData(currentSite: { id: string } | null) {
     { revalidateOnFocus: false }
   )
 
-  const dbLeads = leadsData?.leads || []
+  const dbLeads = leadsData?.leads || EMPTY_LEADS
   const loading = isLeadsLoading
   const searchTotalCount = leadsData?.isSearch ? leadsData.totalCount : null
   const allLeadsTotalCount = leadsData && !leadsData.isSearch ? leadsData.totalCount : null
 
   // Fetch segments with SWR
-  const { data: segments } = useSWR(
+  const { data: segments = EMPTY_SEGMENTS } = useSWR(
     currentSite?.id ? ['segments', currentSite.id] : null,
-    async ([_, siteId]) => {
+    async ([, siteId]) => {
       const response = await getSegments(siteId)
       if (response.error) throw new Error(response.error)
       return response.segments?.map(s => ({ id: s.id, name: s.name })) || []
     },
-    { fallbackData: [] }
+    { fallbackData: EMPTY_SEGMENTS }
   )
 
   // Fetch campaigns with SWR
   const { data: campaigns } = useSWR(
     currentSite?.id ? ['campaigns', currentSite.id] : null,
-    async ([_, siteId]) => {
+    async ([, siteId]) => {
       const result = await getCampaigns(siteId)
       if (result.error) throw new Error(result.error)
       return result.data || []

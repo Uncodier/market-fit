@@ -21,6 +21,10 @@ export interface CheckoutLine {
 
 export interface CheckoutCartParams {
   siteId: string
+  /** Public kiosk location; the server derives the tenant and all payment state. */
+  selfServiceLocationId?: string
+  /** Short-lived signed proof for buyer attribution, never an account session. */
+  buyerIdentityQr?: string
   lines: CheckoutLine[]
   priceListId?: string
   leadId?: string
