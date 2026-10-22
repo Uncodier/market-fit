@@ -57,6 +57,10 @@ export type PosOutboxRow = {
   status: OutboxStatus;
   attempts: number;
   lastError?: string | null;
+  recoveryState?: import("../checkout-recovery-types").PosCheckoutRecoveryState;
+  recoveryOrderId?: string | null;
+  recoverySaleId?: string | null;
+  recoveryMessage?: string | null;
   resultSaleId?: string | null;
   resultOrderId?: string | null;
   resultOrderNumber?: string | null;

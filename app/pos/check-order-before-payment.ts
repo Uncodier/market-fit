@@ -1,6 +1,6 @@
 import { getPosOrder } from "@/app/pos/actions/get-order";
 import { isPosOpenOrder } from "@/app/pos/open-orders";
-import { posOrderVersion } from "@/app/pos/order-version";
+import { posOrderMatchesVersion } from "@/app/pos/order-version";
 
 export class PosOrderChangedError extends Error {
   constructor() {
@@ -21,7 +21,7 @@ export async function checkOrderBeforePayment(
   }
   const result = await getPosOrder(siteId, orderId);
   if (result.error || !result.data) throw new Error("Unable to verify the order. No payment was queued. Please try again.");
-  if (!isPosOpenOrder(result.data) || posOrderVersion(result.data) !== expectedVersion) {
+  if (!isPosOpenOrder(result.data) || !posOrderMatchesVersion(result.data, expectedVersion)) {
     throw new PosOrderChangedError();
   }
 }

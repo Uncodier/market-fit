@@ -37,3 +37,20 @@ export function posOrderVersion(value: unknown): string {
     items,
   }));
 }
+
+/** Kitchen progress is not a financial conflict; cancellation and all prices,
+ * quantities, identities, notes and payment evidence still participate. Accepts
+ * older serialized baselines without silently replacing the cashier's snapshot. */
+export function posOrderMatchesVersion(value: unknown, expected: string): boolean {
+  try {
+    const financial = (version: string) => {
+      const parsed = JSON.parse(version);
+      if (["pending", "in_progress", "completed"].includes(parsed.status)) parsed.status = "open";
+      if (Array.isArray(parsed.items)) parsed.items = parsed.items.map((item: Record<string, unknown>) => ({
+        ...item, status: item.status === "cancelled" ? "cancelled" : "active",
+      }));
+      return JSON.stringify(canonical(parsed));
+    };
+    return financial(posOrderVersion(value)) === financial(expected);
+  } catch { return false; }
+}

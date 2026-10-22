@@ -1,67 +1,152 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Dialog,
   DialogBody,
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogFooter,
 } from "@/app/components/ui/dialog";
 import { Button } from "@/app/components/ui/button";
 import { listOutbox } from "@/app/pos/local/outbox";
 import { drainPosOutbox, subscribePosSync } from "@/app/pos/local/sync-engine";
+import { reconcilePosCheckout } from "../local/checkout-recovery";
 import type { PosOutboxRow } from "@/app/pos/local/types";
 import { CheckCircle2, Loader2, AlertTriangle, Clock } from "@/app/components/ui/icons";
 import { cn } from "@/lib/utils";
 
-export function PosSyncIssues({
-  siteId,
-  open,
-  onOpenChange,
-  t,
-}: {
+type PosSyncIssuesProps = {
   siteId?: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   t: (key: string) => string;
-}) {
+  onReviewOrder?: (orderId: string) => void;
+};
+
+const recoveryDetails = {
+  rejected: {
+    label: "Rejected — no payment recorded",
+    explanation: "No payment was recorded for this attempt. Reload and review the order before a new confirmation.",
+  },
+  payment_recorded: {
+    label: "Payment recorded — checkout not confirmed complete",
+    explanation: "Payment recorded does not mean the full checkout completed. Reload and review the order before another confirmation. Do not charge again.",
+  },
+  review_required: {
+    label: "Review required — payment status needs review",
+    explanation: "Full checkout completion is not confirmed. Reload and review the order before another confirmation; do not assume the payment failed.",
+  },
+};
+
+export function PosSyncIssues(props: PosSyncIssuesProps) {
+  // A new dialog/site session must not display or act on the previous session's rows.
+  return <PosSyncIssuesSession key={`${props.siteId ?? ""}:${props.open}`} {...props} />;
+}
+
+function PosSyncIssuesSession({ siteId, open, onOpenChange, t, onReviewOrder }: PosSyncIssuesProps) {
   const [rows, setRows] = useState<PosOutboxRow[]>([]);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [loading, setLoading] = useState(open && Boolean(siteId));
+  const [listError, setListError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<{ rowId?: string; message: string } | null>(null);
+  const [busy, setBusy] = useState<string | null>(null);
+  const busyRef = useRef(false);
+  const sessionRef = useRef({ active: false });
+
+  useEffect(() => {
+    const session = { active: true };
+    sessionRef.current = session;
+    return () => { session.active = false; };
+  }, []);
 
   useEffect(() => {
     if (!open || !siteId) return;
+    let active = true;
     void listOutbox(siteId).then((data) => {
+      if (!active) return;
       setRows(
-        data.sort(
+        [...data].sort(
           (a, b) =>
             new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
         )
       );
+      setListError(null);
+      setLoading(false);
+    }).catch(() => {
+      if (!active) return;
+      setListError("Unable to load queued operations. Try refreshing the list.");
+      setLoading(false);
     });
+    return () => { active = false; };
   }, [open, siteId, refreshTrigger]);
 
   useEffect(() => {
-    if (!open) return;
+    if (!open || !siteId) return;
+    let active = true;
     const unsub = subscribePosSync(() => {
-      setRefreshTrigger((v) => v + 1);
+      if (active) setRefreshTrigger((v) => v + 1);
     }, siteId);
-    return unsub;
+    return () => { active = false; unsub(); };
   }, [open, siteId]);
+
+  async function runAction(row?: PosOutboxRow) {
+    const session = sessionRef.current;
+    if (!session.active || !open || !siteId || busyRef.current) return;
+    if (row && (row.siteId !== siteId || row.status !== "failed" || row.payload.kind !== "checkout")) return;
+    busyRef.current = true;
+    setBusy(row?.id ?? "retry");
+    setActionError(null);
+    try {
+      if (row) await reconcilePosCheckout(siteId, row.id);
+      else await drainPosOutbox(siteId);
+      if (session.active) setRefreshTrigger((v) => v + 1);
+    } catch (error) {
+      if (!session.active) return;
+      const fallback = row ? "Unable to check payment status. Try again." : "Unable to retry sync. Try again.";
+      setActionError({ rowId: row?.id, message: error instanceof Error ? `${fallback} ${error.message}` : fallback });
+    } finally {
+      if (session.active) {
+        busyRef.current = false;
+        setBusy(null);
+      }
+    }
+  }
+
+  function label(key: string, fallback: string) {
+    const translated = t(key);
+    return translated && translated !== key ? translated : fallback;
+  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent size="sm">
         <DialogHeader>
           <DialogTitle>
-            {t("pos.sync.queue") || "Queued Operations"}
+            {label("pos.sync.queue", "Queued Operations")}
           </DialogTitle>
+          <DialogDescription>
+            Check failed checkout payment status before confirming again. A status check does not retry checkout.
+          </DialogDescription>
         </DialogHeader>
         <DialogBody className="space-y-3">
-          {rows.length === 0 ? (
+          {listError && (
+            <div role="alert" className="text-sm text-destructive space-y-2">
+              <p>{listError}</p>
+              <Button variant="outline" size="sm" disabled={Boolean(busy)} onClick={() => {
+                setLoading(true);
+                setRefreshTrigger((v) => v + 1);
+              }}>Refresh list</Button>
+            </div>
+          )}
+          {actionError && !actionError.rowId && <p role="alert" className="text-sm text-destructive">{actionError.message}</p>}
+          {loading ? (
+            <p role="status" className="text-sm text-muted-foreground">Loading queued operations…</p>
+          ) : rows.length === 0 && !listError ? (
             <p className="text-sm text-muted-foreground text-center py-8">
-              {t("pos.sync.emptyQueue") || "No queued operations"}
+              {label("pos.sync.emptyQueue", "No queued operations")}
             </p>
           ) : (
             rows.map((row) => {
@@ -80,6 +165,13 @@ export function PosSyncIssues({
                 synced: "text-emerald-600 bg-emerald-50 dark:text-emerald-400 dark:bg-emerald-950/50 border-emerald-200 dark:border-emerald-900/50",
                 pending: "text-amber-600 bg-amber-50 dark:text-amber-400 dark:bg-amber-950/50 border-amber-200 dark:border-amber-900/50",
               };
+
+              const checkout = row.payload.kind === "checkout" ? row.payload.data : null;
+              const recovery = row.recoveryState ? recoveryDetails[row.recoveryState] : null;
+              const existingOrderId = checkout?.existingOrderId ?? (row.payload.kind === "update_order_notes" ? row.payload.data.orderId : null);
+              const reviewOrderId = row.recoveryOrderId || row.resultOrderId || existingOrderId;
+              const paymentTotal = (checkout?.payments ?? []).reduce((sum, payment) => sum + payment.amount, 0);
+              const paymentMethods = [...new Set(checkout?.payments?.map((payment) => payment.method) ?? [])];
 
               let details = "";
               if (row.payload.kind === "checkout") {
@@ -104,9 +196,47 @@ export function PosSyncIssues({
                   {details && (
                     <div className="text-xs opacity-80">{details}</div>
                   )}
+                  <dl className="text-xs break-words space-y-1">
+                    {[
+                      ["Client mutation ID", row.clientMutationId],
+                      ["Existing order ID", existingOrderId],
+                      ["Result order ID", row.resultOrderId],
+                      ["Recovery order ID", row.recoveryOrderId],
+                      ["Recovery sale ID", row.recoverySaleId],
+                    ].map(([name, value]) => (
+                      <div key={name}><dt className="inline font-medium">{name}: </dt><dd className="inline">{value || "Not available"}</dd></div>
+                    ))}
+                    {checkout && <>
+                      <div><dt className="inline font-medium">Queued payment total: </dt><dd className="inline">{paymentTotal.toFixed(2)}</dd></div>
+                      <div><dt className="inline font-medium">Payment method: </dt><dd className="inline">{paymentMethods.join(", ") || checkout.paymentMethod || "None"}</dd></div>
+                    </>}
+                  </dl>
+                  {recovery && (
+                    <div className="text-xs space-y-1">
+                      <p className="font-semibold">{recovery.label}</p>
+                      <p>{recovery.explanation}</p>
+                    </div>
+                  )}
+                  {row.recoveryMessage && <p className="text-xs font-medium">{row.recoveryMessage}</p>}
                   {row.lastError && (
                     <div className="text-destructive text-xs font-medium">{row.lastError}</div>
                   )}
+                  {actionError?.rowId === row.id && <p role="alert" className="text-xs text-destructive">{actionError.message}</p>}
+                  <div className="flex flex-wrap gap-2">
+                    {checkout && row.status === "failed" && (
+                      <Button variant="outline" size="sm" disabled={Boolean(busy)} onClick={() => { void runAction(row); }}>
+                        {busy === row.id && <Loader2 aria-hidden={true} className="mr-2 h-3.5 w-3.5 animate-spin" />}
+                        {busy === row.id ? "Checking payment status…" : "Check payment status"}
+                      </Button>
+                    )}
+                    {onReviewOrder && reviewOrderId && (
+                      <Button variant="outline" size="sm" disabled={Boolean(busy)} onClick={() => {
+                        if (!sessionRef.current.active || !open || row.siteId !== siteId) return;
+                        onOpenChange(false);
+                        onReviewOrder(reviewOrderId);
+                      }}>Review order</Button>
+                    )}
+                  </div>
                   <div className="text-xs opacity-60">
                     {new Date(row.createdAt).toLocaleString()}
                   </div>
@@ -116,13 +246,10 @@ export function PosSyncIssues({
           )}
         </DialogBody>
         <DialogFooter>
-        <Button
-          onClick={() => {
-            if (siteId) void drainPosOutbox(siteId);
-          }}
-        >
-          {t("pos.sync.retry") || "Retry sync"}
-        </Button>
+          <Button disabled={!siteId || Boolean(busy) || loading} onClick={() => { void runAction(); }}>
+            {busy === "retry" && <Loader2 aria-hidden={true} className="mr-2 h-4 w-4 animate-spin" />}
+            {busy === "retry" ? "Retrying sync…" : label("pos.sync.retry", "Retry sync")}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

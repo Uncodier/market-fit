@@ -4,8 +4,10 @@
 
 `npm run test:e2e` defaults to the **read-only smoke**, not all generated YAML.
 The configuration excludes diagnostic/example tests and the nested agent project.
-Never point regression, role-boundary or agent runs at production. Production
-mutations cannot be enabled with a flag.
+Never point regression, role-boundary or agent runs at production. General production
+mutations cannot be enabled with a flag. The isolated `project-lifecycle` suite is
+an explicitly requested exception for creation and archival of its own new project
+only; it does not change the existing mutation-helper restrictions.
 
 The separately requested [five production harness canaries](HARNESS_PRODUCTION_CANARIES.md)
 are an isolated operational exception, not a Shiplight suite or a change to those
@@ -37,6 +39,11 @@ npm run test:e2e -- --suite regression --target staging
 npm run test:e2e -- --suite buyer --target staging
 npm run test:e2e -- --suite roles --target staging
 
+# Explicitly acknowledged exception: one newly created synthetic project only.
+# Requires existing target/site/admin and public-key Supabase configuration.
+TEST_ALLOW_PROJECT_LIFECYCLE=1 SHIPLIGHT_RUN_ID=unique-lifecycle-run \
+  npm run test:e2e -- --suite project-lifecycle --target production
+
 # A filtered run is partial evidence, never full suite health.
 npm run test:e2e -- --suite regression --target staging --grep 'Content'
 
@@ -62,6 +69,7 @@ handled only by the exact-run report command.
 | `smoke` | Six strict read-only product checks: anonymous public product/storefront, app login redirect, exact workspace, persisted content and lead sentinels | Admin email/password; shop slug; catalog item UUID/name; `TEST_CONTENT_NAME`, `TEST_LEAD_NAME` |
 | `regression` | Root YAML journeys, including destructive CRUD, settings, mobile accessibility and negative checks | Dedicated admin; configured entity dependencies and disposal authority; see each YAML/helper |
 | `buyer` | Separate buyer login on commerce host, identity and completed read surfaces | `TEST_BUYER_EMAIL`/`TEST_BUYER_PASSWORD`; commerce fixtures |
+| `project-lifecycle` | New run-owned project persists, selects and archives with password; cancel preserves it; reference workspace remains intact | Admin credentials; Supabase URL/project ref/public key; unique run ID; `TEST_ALLOW_PROJECT_LIFECYCLE=1` |
 | `roles` | Real role RPC capabilities, positive fixture existence and cross-site RLS denial, anonymous private API denial | Four distinct accounts: admin, collaborator, marketing, foreign; second site UUID; public Supabase connection |
 
 The smoke fixtures must already exist and be visible to the configured identities.
@@ -301,6 +309,25 @@ The run is not green. Auth capture remains disabled; the login timeout is not
 proof of invalid credentials or MFA. Do not bypass it or combine this incomplete
 attempt with earlier filtered passes. New SSR/notification application fixes
 must be deployed before a fresh complete live validation.
+
+## Project lifecycle exception
+
+`tests/projects/lifecycle.spec.ts` is a deterministic native Playwright test using
+the Shiplight runner, like the native smoke tests. It is discovered only by its
+own suite. See `specs/tests/project-lifecycle.md` for its exact safety contract.
+Trace, screenshot and video recording are disabled because the archive dialog
+requires an account password. Its structured attachment contains only synthetic
+project identity and step outcomes. `safe-shiplight-reporter.ts` redacts environment
+passwords/tokens from native Playwright step titles before the vendor serializes
+them; disabling trace alone does not prevent passwords from appearing in reports.
+Application initialization can create default
+records, credits and optional background setup; archival retains them and does
+not stop external workflows. No paid checkout, DNS or channel connection is tested.
+
+If cleanup cannot confirm archival, the run is failed and reports the synthetic
+project ID for follow-up. Never replay an ambiguous archive request or delete a
+site directly. General mutation flags still cannot authorize production regression,
+role-boundary or agent workflows.
 
 ## Agent verification
 

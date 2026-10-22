@@ -94,4 +94,34 @@ describe("Register payment queue and closing lock", () => {
     Object.defineProperty(navigator, "locks", { configurable: true, value: undefined })
     await expect(enqueueRegisteredCheckout("site", payload)).rejects.toThrow("safe register locking")
   })
+  it("isolates a verified receipt to its order but still blocks register closing", async () => {
+    const old = { ...row({ ...payload, existingOrderId: "old-order", registerSessionId: "session" }),
+      status: "failed" as const, recoveryState: "payment_recorded" as const,
+      recoveryOrderId: "old-order", recoveryMessage: "Payment recorded; review required" }
+    rows = [old]
+    jest.mocked(drainPosOutbox).mockImplementation(async () => { rows.filter((r) => r !== old).forEach((r) => { r.status = "synced" }) })
+    await expect(enqueueRegisteredCheckout("site", { ...payload, existingOrderId: "old-order", clientMutationId: "changed",
+      payments: [{ method: "cash", amount: 20 }] })).rejects.toThrow("This order has an unresolved")
+    await expect(enqueueRegisteredCheckout("site", { ...payload, existingOrderId: "other-order", clientMutationId: "new-order" }))
+      .resolves.toMatchObject({ status: "synced" })
+    expect(old.status).toBe("failed")
+    await expect(withRegisterCloseLock("site", jest.fn())).rejects.toThrow("unsynchronized payments")
+  })
+  it("retains a rejected attempt but uses new identities for its reviewed reattempt", async () => {
+    const rejected = { ...row(payload), status: "failed" as const, recoveryState: "rejected" as const }
+    rows = [rejected]
+    jest.mocked(drainPosOutbox).mockImplementation(async () => { rows.filter((r) => r !== rejected).forEach((r) => { r.status = "synced" }) })
+    const adopt = jest.fn()
+    const result = await enqueueRegisteredCheckout("site", payload, adopt)
+    expect(result.clientMutationId).not.toBe(rejected.clientMutationId)
+    expect(adopt).toHaveBeenCalledWith(result.clientMutationId)
+    expect(rows).toHaveLength(2)
+    expect(rejected.status).toBe("failed")
+    await expect(assertRegisterQueueSettled("site")).resolves.toBeUndefined()
+  })
+  it("does not isolate an unverified failure, even for a different order", async () => {
+    rows = [{ ...row({ ...payload, existingOrderId: "old" }), status: "failed", recoveryState: "review_required" }]
+    await expect(enqueueRegisteredCheckout("site", { ...payload, existingOrderId: "other" })).rejects.toThrow("Another payment is unresolved")
+    expect(enqueueCheckout).not.toHaveBeenCalled()
+  })
 })

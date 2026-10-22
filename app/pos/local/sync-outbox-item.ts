@@ -7,6 +7,7 @@ import { getServerIdForLocal, mapLocalId, updateOutboxRow } from "./outbox";
 import type { PosOutboxRow } from "./types";
 import type { CheckoutCartSuccess } from "@/app/commerce/checkout-client";
 import { isPosPermissionCurrent, type PosPermissionLease } from "./location-permission-state";
+import { PosCheckoutRecoveryError } from "../checkout-recovery-types";
 
 function assertCurrent(permission: PosPermissionLease) {
   if (!isPosPermissionCurrent(permission)) throw new Error("POS access changed");
@@ -97,6 +98,7 @@ export async function applyOutboxItem(row: PosOutboxRow, permission: PosPermissi
     if (existingOrderId?.startsWith("local_")) {
       existingOrderId =
         (await getServerIdForLocal(existingOrderId)) || undefined;
+      if (!existingOrderId) throw new Error("Waiting for local order to sync");
     }
 
     assertCurrent(permission);
@@ -107,7 +109,10 @@ export async function applyOutboxItem(row: PosOutboxRow, permission: PosPermissi
       clientMutationId: data.clientMutationId,
     });
     assertCurrent(permission);
-    if ("error" in res && res.error) throw new Error(res.error);
+    if ("error" in res && res.error) {
+      if ("recovery" in res && res.recovery) throw new PosCheckoutRecoveryError(res.recovery);
+      throw new Error(res.error);
+    }
 
     const details = res as Pick<CheckoutCartSuccess, "orderNumber" | "kitchenDelta" | "fulfillment">;
 

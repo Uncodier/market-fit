@@ -1,5 +1,5 @@
 export type TestTarget = 'local' | 'staging' | 'production';
-export type TestSuite = 'smoke' | 'regression' | 'buyer' | 'roles';
+export type TestSuite = 'smoke' | 'regression' | 'buyer' | 'roles' | 'project-lifecycle';
 export type TestEnvironment = {
   target: TestTarget;
   suite: TestSuite;
@@ -51,7 +51,7 @@ export function readEnvironment(env: Record<string, string | undefined> = proces
   const target = required(env, 'TEST_TARGET') as TestTarget;
   const suite = (env.TEST_SUITE || 'smoke') as TestSuite;
   if (!['local', 'staging', 'production'].includes(target)) throw new Error('Invalid TEST_TARGET');
-  if (!['smoke', 'regression', 'buyer', 'roles'].includes(suite)) throw new Error('Invalid TEST_SUITE');
+  if (!['smoke', 'regression', 'buyer', 'roles', 'project-lifecycle'].includes(suite)) throw new Error('Invalid TEST_SUITE');
   const baseURL = validateOrigin(required(env, 'TEST_BASE_URL'), target);
   const commerceBaseURL = validateOrigin(required(env, 'TEST_COMMERCE_BASE_URL'), target);
   if (target === 'production' && (baseURL !== 'https://app.makinari.com' || commerceBaseURL === baseURL)) {

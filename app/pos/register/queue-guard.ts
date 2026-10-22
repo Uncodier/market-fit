@@ -23,7 +23,7 @@ export async function assertRegisterQueueSettled(siteId: string) {
   await drainPosOutbox(siteId)
   const rows = await listOutbox(siteId)
   const unresolved = rows.some((row) => row.status !== "synced" && row.payload.kind === "checkout" &&
-    Boolean(row.payload.data.payments?.length))
+    Boolean(row.payload.data.payments?.length) && row.recoveryState !== "rejected")
   if (unresolved) {
     throw new Error("There are unsynchronized payments on this device. Resolve them before closing the register.")
   }

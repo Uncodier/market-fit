@@ -6,6 +6,9 @@ import { findPosClientMutation } from "@/app/pos/actions/idempotency"
 import { assertPosOrderCurrent } from "@/app/pos/assert-order-current"
 import { assertRegisterCheckout } from "@/app/pos/register/checkout-guard"
 import { requirePosSiteAccess } from "@/app/pos/actions/site-access"
+import { claimPosCheckout, transitionPosCheckout, type PosCheckoutClaim } from "@/app/pos/checkout-attempt-server"
+import { PosCheckoutRecoveryError } from "@/app/pos/checkout-recovery-types"
+import { inspectPosPayment } from "@/app/pos/payment-recovery-server"
 import {
   assertQuotationCheckoutable,
   claimQuotationCheckout,
@@ -47,34 +50,57 @@ export async function checkoutCart(params: CheckoutCartParams) {
   } | null = null
   let checkoutAdminClient: any = null
   let publicMutationHasSideEffects = false
+  let posClaim: PosCheckoutClaim | null = null
+  let posWritesStarted = false
 
   try {
     if (params.source === 'pos') {
       const access = await requirePosSiteAccess(params.siteId)
       if ('error' in access) return { error: access.error }
+      if (params.payments?.length && !["owner", "admin", "collaborator"].includes(access.role)) {
+        return { error: "Forbidden POS payment." }
+      }
+      if (params.payments?.length && !params.clientMutationId) return { error: "A stable checkout identity is required for POS payment." }
     }
-    if (params.clientMutationId && params.source === "pos") {
+    if (params.clientMutationId && params.source === "pos" && !params.payments?.length) {
       const existing = await findPosClientMutation(
         params.siteId,
         params.clientMutationId
       )
+      if (existing.error) throw new Error("Unable to verify the original checkout result. Check payment status before retrying.")
       if (existing.data) {
-        return {
-          success: true,
-          saleId: existing.data.sale_id || undefined,
-          orderId: existing.data.order_id || undefined,
-          idempotent: true,
+        if (existing.data.kind !== "checkout" || existing.data.result?.success !== true ||
+          !existing.data.sale_id || !existing.data.order_id) {
+          throw new Error("The checkout identity is already used by another operation. Review it before retrying.")
         }
+        const recovered = { ...existing.data.result, success: true as const,
+          saleId: existing.data.sale_id, orderId: existing.data.order_id }
+        return { ...recovered, idempotent: true }
       }
     }
 
     const supabase = await createClient()
-    const supabaseAdmin = await createServiceClient(true, {
+    const supabaseAdmin = checkoutAdminClient || await createServiceClient(true, {
       access: ['shop', 'marketplace', 'quote'].includes(params.source) ? 'public' : 'workspace',
     })
     checkoutAdminClient = supabaseAdmin
     const authenticatedUserId =
       (await supabase.auth.getUser()).data.user?.id || null
+    if (params.source === "pos" && params.clientMutationId) {
+      if (!authenticatedUserId) throw new Error("Authentication is required for POS checkout.")
+      if (params.payments?.length && params.payments.every((p) => !!p.paymentId)) {
+        const evidence = await inspectPosPayment(supabaseAdmin, {
+          siteId: params.siteId, clientMutationId: params.clientMutationId,
+          existingOrderId: params.existingOrderId, registerSessionId: params.registerSessionId,
+          payments: params.payments.map((p) => ({ ...p, paymentId: p.paymentId! })),
+        }, authenticatedUserId)
+        if (evidence.state === "completed" && evidence.result) return { ...evidence.result, idempotent: true }
+        if (evidence.state !== "not_found") throw new PosCheckoutRecoveryError(evidence)
+      }
+      const admission = await claimPosCheckout(supabaseAdmin, params, authenticatedUserId)
+      if (admission.recovery) return { ...admission.recovery.result!, idempotent: true }
+      posClaim = admission.claim
+    }
     await assertRegisterCheckout(supabase, params, authenticatedUserId)
     if (params.source === "pos" && params.existingOrderId && params.expectedOrderVersion !== undefined) {
       await assertPosOrderCurrent(params.siteId, params.existingOrderId, params.expectedOrderVersion)
@@ -258,6 +284,12 @@ export async function checkoutCart(params: CheckoutCartParams) {
     })
 
     publicMutationHasSideEffects = Boolean(publicMutationClaim)
+    // Reservations/line preparation may write too. Persist the boundary first;
+    // any failure afterward is ambiguous, never a safe-to-recollect rejection.
+    if (posClaim) {
+      await transitionPosCheckout(supabaseAdmin, posClaim, "writes_started")
+      posWritesStarted = true
+    }
     const lineResult = await processCheckoutLines({
       supabase,
       supabaseAdmin,
@@ -298,6 +330,7 @@ export async function checkoutCart(params: CheckoutCartParams) {
       payments: params.payments,
       registerSessionId: params.source === "pos" ? params.registerSessionId : undefined,
       registerActorId: authenticatedUserId || undefined,
+      posClaim,
       paymentMethod: params.paymentMethod,
       intent: params.intent,
       notes: params.notes,
@@ -342,6 +375,10 @@ export async function checkoutCart(params: CheckoutCartParams) {
     })
     if (result.quotationCompleted) activeQuotationClaim = null
     const { quotationCompleted: _, ...checkoutResult } = result
+    if (posClaim) {
+      await transitionPosCheckout(supabaseAdmin, posClaim, "completed", checkoutResult)
+      posClaim = null
+    }
     if (publicMutationClaim) {
       const completedClaim = publicMutationClaim
       publicMutationClaim = null
@@ -352,6 +389,13 @@ export async function checkoutCart(params: CheckoutCartParams) {
     }
     return checkoutResult
   } catch (error: any) {
+    if (posClaim && checkoutAdminClient) {
+      try {
+        await transitionPosCheckout(checkoutAdminClient, posClaim, posWritesStarted ? "review_required" : "rejected")
+      } catch {
+        // A missing outcome keeps durable admission unresolved; never replay it blindly.
+      }
+    }
     if (
       publicMutationClaim &&
       checkoutAdminClient &&
@@ -366,6 +410,7 @@ export async function checkoutCart(params: CheckoutCartParams) {
         activeQuotationClaim.claimId
       )
     }
+    if (error instanceof PosCheckoutRecoveryError) return { error: error.message, recovery: error.recovery }
     return { error: error.message }
   }
 }

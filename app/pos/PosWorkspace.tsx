@@ -424,6 +424,7 @@ export default function PosWorkspace() {
       </div>
 
       <PosSyncIssues
+        onReviewOrder={(id) => { void cartApi.handleOrderSelect(id, true); }}
         siteId={siteId}
         open={syncIssuesOpen}
         onOpenChange={setSyncIssuesOpen}

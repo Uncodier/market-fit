@@ -95,7 +95,10 @@ App env vars are documented in `docs/ENVIRONMENT_VARIABLES.md` (Supabase, API se
 
 - Do not use Lucide-react; the app has its own icons.
 - `package.json` `"test"` is Jest. Shiplight scripts are `test:e2e` / `test:e2e:headed`. Do not overwrite `test`.
-- `playwright.config.ts` selects explicit `smoke`, `regression`, `buyer`, or `roles` suites. Smoke is the default and never discovers root CRUD or nested agent tests. Auth state is isolated under `.auth/<target>/<run-id>/<role>.json`; buyer uses its own account and commerce host.
+- `playwright.config.ts` selects explicit `smoke`, `regression`, `buyer`, `roles` or
+  isolated `project-lifecycle` suites. Smoke is the default and never discovers root
+  CRUD, project lifecycle or nested agent tests. Auth state is isolated under
+  `.auth/<target>/<run-id>/<role>.json`; buyer uses its own account and commerce host.
 - Buyer read checks match the settled document language using the app's translation catalog; they never alter the account's display-language preference to satisfy English-only locators.
 - `package.json` has no `"type": "module"` — Next config is CommonJS (`module.exports`). Leave it that way.
 - `auth/example.login.ts` was deleted in favor of `auth.setup.ts`.
@@ -105,7 +108,12 @@ App env vars are documented in `docs/ENVIRONMENT_VARIABLES.md` (Supabase, API se
 ## Execution contract
 
 - No live environment is inferred. `TEST_TARGET`, `TEST_BASE_URL`, `TEST_COMMERCE_BASE_URL`, `TEST_SITE_ID`, and `TEST_SITE_NAME` are mandatory.
-- Production allows read-only smoke/buyer only. Mutating suites and agent workflows require disposable local/staging targets and two explicit mutation flags.
+- Production allows read-only smoke/buyer. The separately acknowledged `project-lifecycle`
+  suite is a narrow exception for one run-owned project's creation/password-confirmed
+  archival; it requires `TEST_ALLOW_PROJECT_LIFECYCLE=1`, a unique run ID and explicit
+  public-key Supabase configuration. It never authorizes other production CRUD.
+  Regression, roles and agent mutations still require disposable local/staging targets
+  and two explicit mutation flags. See `specs/tests/project-lifecycle.md`.
 - Dedicated role/buyer credentials and foreign site fixtures remain operational provisioning requirements. Missing fixtures fail before execution, not as successful skips.
 - Paid checkout and complete POS reservation remain unverified live journeys; cash-zero Shop checkout is not Stripe evidence.
 - Smoke reads named pre-existing catalog/content/lead fixtures. CRUD uses run-owned data and scoped authenticated cleanup, never a service-role global reset.

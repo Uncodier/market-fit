@@ -1,7 +1,9 @@
 import { readEnvironment, required, requiredUuid } from './environment';
+import { projectLifecyclePolicy } from './project-lifecycle-policy';
 
 export default async function preflight(): Promise<void> {
   const env = readEnvironment();
+  if (env.suite === 'project-lifecycle') projectLifecyclePolicy();
   const roles = env.suite === 'buyer' ? ['BUYER']
     : env.suite === 'roles' ? ['ADMIN', 'COLLABORATOR', 'MARKETING', 'FOREIGN'] : ['ADMIN'];
   for (const role of roles) {

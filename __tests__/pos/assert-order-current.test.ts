@@ -44,6 +44,12 @@ describe("server POS stale-order guard", () => {
     jest.mocked(getPosOrder).mockResolvedValue({ error: "Forbidden" });
     await expect(assertPosOrderCurrent("site", "order", baseline)).rejects.toThrow("has changed");
   });
+  it("accepts kitchen progress without accepting changed financial or cancelled lines", async () => {
+    jest.mocked(getPosOrder).mockResolvedValue({ data: { ...order, status: "completed",
+      sale_order_items: [{ ...order.sale_order_items[0], status: "completed" }],
+    } } as never);
+    await expect(assertPosOrderCurrent("site", "order", baseline)).resolves.toBeUndefined();
+  });
 
   it.each(["", "x".repeat(500_001)])("rejects invalid versions before querying", async (version) => {
     await expect(assertPosOrderCurrent("site", "order", version)).rejects.toThrow("Invalid POS");

@@ -16,6 +16,8 @@ import {
   ORDERS_RETRY_MAX_MS,
 } from "./sync-policy";
 import { clearAllPosSyncErrors, clearPosSyncError, getPosSyncError, recordPosSyncError, reconcilePosOutboxErrors } from "./sync-errors";
+import { applyPosCheckoutRecovery, reconcilePosCheckout } from "./checkout-recovery";
+import { PosCheckoutRecoveryError } from "../checkout-recovery-types";
 
 export type SyncStatus = {
   online: boolean;
@@ -164,6 +166,20 @@ export async function drainPosOutbox(siteId: string): Promise<void> {
 
     for (const row of ordered) {
       if (!isPosPermissionCurrent(permission)) break;
+      // Failures of a collected payment are status lookups, not checkout replays.
+      // This also handles historical rows whose response predates durable admission.
+      if (row.payload.kind === "checkout" && row.payload.data.payments?.length &&
+        (row.status !== "pending" || row.recoveryState)) {
+        if (row.recoveryState) continue;
+        try {
+          const recovery = await reconcilePosCheckout(siteId, row.id);
+          if (recovery.state === "completed") clearPosSyncError(siteId, `outbox:${row.id}`);
+        } catch {
+          // A failed evidence read never authorizes a second collection.
+        }
+        continue;
+      }
+      if (row.recoveryState) continue;
       if (row.kind === "checkout") attemptedCheckout = true;
       let timeout: ReturnType<typeof setTimeout> | undefined;
       try {
@@ -190,6 +206,10 @@ export async function drainPosOutbox(siteId: string): Promise<void> {
           status: "failed",
           lastError: message,
         });
+        if (error instanceof PosCheckoutRecoveryError) await applyPosCheckoutRecovery(row, error.recovery);
+        else if (row.payload.kind === "checkout" && row.payload.data.payments?.length) {
+          try { await reconcilePosCheckout(siteId, row.id); } catch { /* Retain unknown payment evidence. */ }
+        }
       } finally {
         if (timeout !== undefined) clearTimeout(timeout);
       }

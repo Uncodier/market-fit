@@ -214,21 +214,6 @@ export async function finalizeCheckout(params: FinalizeCheckoutParams) {
     existingItems: params.existingItems,
     nextItems: upsertedItems,
   })
-  if (params.clientMutationId && params.source === "pos") {
-    await recordPosClientMutation({
-      siteId: params.siteId,
-      clientMutationId: params.clientMutationId,
-      kind: "checkout",
-      saleId: params.sale.id,
-      orderId: params.order.id,
-      result: {
-        success: true,
-        kitchenDelta,
-        intent: params.intent || null,
-      },
-    })
-  }
-
   if (params.quoteForAccept) {
     if (!params.activeQuotationClaim) {
       throw new Error("Quotation checkout claim was lost")
@@ -287,7 +272,7 @@ export async function finalizeCheckout(params: FinalizeCheckoutParams) {
     }
   }
 
-  return {
+  const result = {
     success: true as const,
     saleId: params.sale.id,
     orderId: order.id,
@@ -302,4 +287,13 @@ export async function finalizeCheckout(params: FinalizeCheckoutParams) {
     fulfillment: order.fulfillment_method ?? params.fulfillment ?? null,
     quotationCompleted: Boolean(params.quoteForAccept),
   }
+  if (params.clientMutationId && params.source === "pos") {
+    const saved = await recordPosClientMutation({
+      siteId: params.siteId, clientMutationId: params.clientMutationId, kind: "checkout",
+      saleId: params.sale.id, orderId: params.order.id,
+      result: { ...result, intent: params.intent || null },
+    })
+    if (!saved.data || saved.error) throw new Error("Checkout completed but its result could not be saved. Check payment status before retrying.")
+  }
+  return result
 }

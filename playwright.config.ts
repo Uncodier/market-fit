@@ -7,12 +7,19 @@ dotenv.config({ path: path.resolve(__dirname, '.env'), quiet: true });
 dotenv.config({ path: path.resolve(__dirname, '.env.local'), quiet: true });
 
 const suite = (process.env.TEST_SUITE || 'smoke') as TestSuite;
-if (!['smoke', 'regression', 'buyer', 'roles'].includes(suite)) throw new Error('Invalid TEST_SUITE');
+if (!['smoke', 'regression', 'buyer', 'roles', 'project-lifecycle'].includes(suite)) throw new Error('Invalid TEST_SUITE');
 const generated = shiplightConfig();
+const safeReporters = Array.isArray(generated.reporter) ? generated.reporter.map(entry =>
+  Array.isArray(entry) && entry[0] === 'shiplightai/reporter'
+    ? [path.join(__dirname, 'tests/support/safe-shiplight-reporter.ts'), entry[1]] as [string, object]
+    : entry) : generated.reporter;
 const shared = { browserName: 'chromium' as const };
 const adminState = storageStatePath('admin');
 const projects = suite === 'roles' ? [{ name: 'roles', testMatch: /tests\/boundaries\/.*\.spec\.ts$/ }]
-  : suite === 'buyer' ? [
+  : suite === 'project-lifecycle' ? [
+    { name: 'setup', testMatch: /(^|\/)auth\.setup\.ts$/, use: { storageState: { cookies: [], origins: [] } } },
+    { name: 'project-lifecycle', testMatch: /tests\/projects\/lifecycle\.spec\.ts$/, use: { ...shared, storageState: adminState }, dependencies: ['setup'] },
+  ] : suite === 'buyer' ? [
     { name: 'buyer-setup', testMatch: /tests\/auth\/buyer\.setup\.ts$/, use: { storageState: { cookies: [], origins: [] } } },
     { name: 'buyer', testMatch: /tests\/buyer-navigation\.yaml\.spec\.ts$/, use: { ...shared, baseURL: process.env.TEST_COMMERCE_BASE_URL, storageState: storageStatePath('buyer') }, dependencies: ['buyer-setup'] },
   ] : [
@@ -24,6 +31,7 @@ const projects = suite === 'roles' ? [{ name: 'roles', testMatch: /tests\/bounda
 
 export default defineConfig({
   ...generated,
+  reporter: safeReporters,
   testDir: '.',
   testIgnore: ['**/node_modules/**', '**/tests/agent/**', '**/arch.yaml.spec.ts'],
   globalSetup: './tests/support/preflight.ts',
@@ -47,9 +55,10 @@ export default defineConfig({
     viewport: { width: 1920, height: 1080 },
     actionTimeout: 15_000,
     navigationTimeout: 45_000,
-    video: 'retain-on-failure',
-    screenshot: 'only-on-failure',
-    trace: 'retain-on-failure',
+    // Archival reauthenticates with an account password; never record this suite.
+    video: suite === 'project-lifecycle' ? 'off' : 'retain-on-failure',
+    screenshot: suite === 'project-lifecycle' ? 'off' : 'only-on-failure',
+    trace: suite === 'project-lifecycle' ? 'off' : 'retain-on-failure',
   },
   projects,
 });

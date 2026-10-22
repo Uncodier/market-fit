@@ -10,6 +10,7 @@ import {
 import { QuotationForCheckout } from "@/app/quotations/quote-checkout"
 import { resolveCheckoutPaymentState } from "./checkout-payment-state"
 import { newRegisterReceipts } from "@/app/pos/register/receipt-retries"
+import type { PosCheckoutClaim } from "@/app/pos/checkout-attempt-server"
 
 type PersistCheckoutRecordsParams = {
   supabase: CheckoutSupabaseClient
@@ -37,6 +38,7 @@ type PersistCheckoutRecordsParams = {
   payments?: CheckoutCartParams["payments"]
   registerSessionId?: string
   registerActorId?: string
+  posClaim?: PosCheckoutClaim | null
   paymentMethod?: string
   intent?: CheckoutCartParams["intent"]
   notes?: string
@@ -195,7 +197,7 @@ export async function persistCheckoutRecords(
   if (params.effectiveExistingOrderId) {
     const { data: existingOrder } = await queryClient
       .from("sale_orders")
-      .select("sale_id, status")
+      .select("sale_id, status, total, currency, notes, updated_at")
       .eq("id", params.effectiveExistingOrderId)
       .single()
     if (!existingOrder) throw new Error("Existing order not found")
@@ -229,7 +231,7 @@ export async function persistCheckoutRecords(
       orderInitialStatus = "completed"
     } else if (params.intent === "pay") {
       saleInitialStatus = isFullyPaid ? "completed" : "pending"
-      orderInitialStatus = isFullyPaid ? "completed" : "pending"
+      orderInitialStatus = isFullyPaid ? "completed" : existingOrder.status
     }
 
     const hasNewOrChangedLines = params.processedLines.some((line) => {
@@ -286,15 +288,6 @@ export async function persistCheckoutRecords(
     if (params.payments?.length) {
       saleData.payments = paymentState.payments
     }
-    const { data: updatedSale, error: saleError } = await queryClient
-      .from("sales")
-      .update(saleData)
-      .eq("id", existingOrder.sale_id)
-      .select()
-      .single()
-    if (saleError) throw new Error(`Sale error: ${saleError.message}`)
-    sale = updatedSale
-
     const orderData = {
       price_list_id: params.finalPriceListId,
       buyer_user_id: params.buyerUserId || null,
@@ -328,14 +321,27 @@ export async function persistCheckoutRecords(
         ? { quotation_id: params.quoteForAccept.id }
         : {}),
     }
-    const { data: updatedOrder, error: orderError } = await queryClient
-      .from("sale_orders")
-      .update(orderData)
-      .eq("id", params.effectiveExistingOrderId)
-      .select()
-      .single()
-    if (orderError) throw new Error(`Order error: ${orderError.message}`)
-    order = updatedOrder
+    if (params.source === "pos" && params.posClaim && params.payments?.length) {
+      const { data: committed, error } = await params.supabaseAdmin.rpc("pos_checkout_commit_order", {
+        p_site_id: params.siteId, p_mutation_id: params.posClaim.mutationId,
+        p_owner_token: params.posClaim.ownerToken, p_order_id: params.effectiveExistingOrderId,
+        p_sale_patch: saleData, p_order_patch: orderData,
+        p_expected_sale: { amount: existingSale?.amount, amount_due: existingSale?.amount_due, payments: existingSale?.payments },
+        p_expected_order: existingOrder,
+      })
+      if (error || !committed?.sale || !committed?.order) throw new Error("Payment and order could not be committed. Check payment status before retrying.")
+      sale = committed.sale
+      order = committed.order
+    } else {
+      const { data: updatedSale, error: saleError } = await queryClient.from("sales")
+        .update(saleData).eq("id", existingOrder.sale_id).select().single()
+      if (saleError) throw new Error(`Sale error: ${saleError.message}`)
+      sale = updatedSale
+      const { data: updatedOrder, error: orderError } = await queryClient.from("sale_orders")
+        .update(orderData).eq("id", params.effectiveExistingOrderId).select().single()
+      if (orderError) throw new Error(`Order error: ${orderError.message}`)
+      order = updatedOrder
+    }
   } else {
     const saleData = {
       ...commonSaleData,
